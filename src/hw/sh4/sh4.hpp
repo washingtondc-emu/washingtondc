@@ -411,7 +411,61 @@ private:
 
         // Queue address control register 1
         reg32_t qacr1;
+    } cache_reg;
+
+    // The valid flag
+    static const unsigned OPCACHE_KEY_VALID_SHIFT = 0;
+    static const unsigned OPCACHE_KEY_VALID_MASK = 1 << OPCACHE_KEY_VALID_SHIFT;
+
+    // the dirty flag
+    static const unsigned OPCACHE_KEY_DIRTY_SHIFT = 1;
+    static const unsigned OPCACHE_KEY_DIRTY_MASK = 1 << OPCACHE_KEY_DIRTY_SHIFT;
+
+    // the tag represents bits 28:10 (inclusive) of a 29-bit address.
+    static const unsigned OPCACHE_KEY_TAG_SHIFT = 2;
+    static const unsigned OPCACHE_KEY_TAG_MASK = 0x7ffff << OPCACHE_KEY_TAG_SHIFT;
+
+    static const unsigned LONGS_PER_OPCACHE_LINE = 8;
+    static const unsigned OPCACHE_ENTRY_COUNT = 512;
+
+    struct op_cache_line {
+        // contains the tag, dirty bit and valid bit
+        boost::uint32_t key;
+
+        // cache line data array
+        boost::uint32_t lw[LONGS_PER_OPCACHE_LINE];
     };
+
+    static const unsigned LONGS_PER_INSTCACHE_LINE = 8;
+    static const unsigned INSTCACHE_ENTRY_COUNT = 256;
+
+    struct inst_cache_line {
+        // contains the tag and valid bit
+        boost::uint32_t key;
+
+        // cache line instruction array
+        boost::uint32_t lw[LONGS_PER_INST_CACHE_LINE];
+    };
+
+    // 8 KB instruction cache
+    struct inst_cache_line *inst_cache;
+
+    // 16 KB ("Operand Cache" in the hardware manual)
+    struct op_cache_line *op_cache;
+
+    /*
+     * search for the given paddr in the cache line.  If it is found, it is
+     * returned.  If it is not found, NULL is returned.  It is not considered
+     * to be an error for the paddr to not be present in the cache, so no CPU
+     * exceptions will be raised.
+     *
+     * This function does not verify that the cache is enabled; nor does it
+     * verify that paddr is even in an area which can be cached.  The callee
+     * should do that before calling this function.
+     */
+    struct op_cache_line *op_cache_check(addr32_t paddr);
+
+    struct inst_cache_line *inst_cache_check(addr32_t paddr);
 };
 
 #endif

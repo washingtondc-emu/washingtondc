@@ -25,6 +25,12 @@
 Sh4::Sh4(Memory *mem) {
     this->mem = mem;
 
+    this->inst_cache = new boost::uint8_t[INSTCACHE_ENTRY_COUNT];
+    this->op_cache = new boost::uint8_t[OPCACHE_ENTRY_COUNT];
+
+    memset(inst_cache, 0, sizeof(boost::uint8_t) * INSTCACHE_ENTRY_COUNT);
+    memset(op_cache, 0, sizeof(boost::uint8_t) * OPCACHE_ENTRY_COUNT);
+
     memset(utlb, 0, sizeof(utlb));
 }
 
@@ -213,7 +219,63 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
     return itlb_search(vaddr);
 }
 
-enum Sh4::PhysMemArea get_mem_area(addr32_t addr) {
+struct Sh4::op_cache_line *Sh4::op_cache_check(addr32_t paddr) {
+    addr32_t paddr_tag;
+
+    if (cache_reg.ccr & CCR_ORA_MASK) {
+        // the hardware manual is a little vague on how this effects
+        // the half of the cache which is not being used as memory.
+        throw UnimplementedError("Operand Cache as RAM");
+    }
+
+    // upper 19 bits (of the lower 29 bits) of paddr
+    paddr_tag = paddr & 0x1ffffc00;
+
+    // entry selection (index into the op cache)
+    addr32_t ent_sel = paddr & 0xff0;
+    if (cache_reg.ccr & CCR_OIX_MASK)
+        ent_sel |= (paddr & (1 << 25)) >> 12;
+    else
+        ent_sel |= paddr & (1 << 13);
+    ent_sel >>= 4;
+
+    struct op_cache_line *line = op_cache + ent_sel;
+
+    if ((line->key & OPCACHE_KEY_VALID_BIT)) {
+        addr32_t line_tag = (OPCACHE_KEY_TAG_MASK & line->key) >>
+            OPCACHE_KEY_TAG_SHIFT;
+        if (line_tag == paddr_tag)
+            return line;
+    }
+    return NULL;
+}
+
+struct Sh4::inst_cache_line *Sh4::inst_cache_check(addr32_t paddr) {
+    addr32_t paddr_tag;
+
+    // upper 19 bits (of the lower 29 bits) of paddr
+    paddr_tag = paddr & 0x1ffffc00;
+
+    // entry selection (index into the inst cache)
+    addr32_t ent_sel = paddr & 0x7f0;
+    if (cache_reg.ccr & CCR_IIX_MASK)
+        ent_sel |= (paddr & (1 << 25)) >> 13;
+    else
+        ent_sel |= paddr & (1 << 12);
+    ent_sel >>= 4;
+
+    struct inst_cache_line *line = inst_cache + ent_sel;
+
+    if ((line->key & INSTCACHE_KEY_VALID_BIT)) {
+        addr32_t line_tag = (INSTCACHE_KEY_TAG_MASK & line->key) >>
+            INSTCACHE_KEY_TAG_SHIFT;
+        if (line_tag == paddr_tag)
+            return line;
+    }
+    return NULL;
+}
+
+enum Sh4::PhysMemArea Sh4::get_mem_area(addr32_t addr) {
     if (addr >= AREA_P0_FIRST && addr <= AREA_P0_LAST)
         return AREA_P0;
     if (addr >= AREA_P1_FIRST && addr <= AREA_P1_LAST)
