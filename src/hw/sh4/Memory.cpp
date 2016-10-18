@@ -35,20 +35,24 @@ Memory::~Memory() {
     delete[] mem;
 }
 
-void Memory::read(void const *buf, size_t addr, size_t len) const {
+int Memory::read(void const *buf, size_t addr, size_t len) const {
     size_t end_addr = addr + len;
     if (addr >= size || end_addr >= size || end_addr < addr) {
         throw MemBoundsError(addr);
     }
 
     memcpy(buf, mem + addr, len);
+
+    return 0;
 }
 
-void Memory::write(void *buf, size_t addr, size_t len) {
+int Memory::write(void *buf, size_t addr, size_t len) {
     size_t end_addr = addr + len;
     if (addr >= size || end_addr >= size || end_addr < addr) {
         throw MemBoundsError(addr);
     }
 
     memcpy(mem + addr, buf, len);
+
+    return 0;
 }

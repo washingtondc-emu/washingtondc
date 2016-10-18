@@ -36,8 +36,8 @@ public:
     Memory(size_t size);
     ~Memory();
 
-    void read(void const *buf, size_t addr, size_t len);
-    void write(void *buf, size_t addr, size_t len);
+    int read(void const *buf, size_t addr, size_t len);
+    int write(void *buf, size_t addr, size_t len);
 private:
     size_t size;
     boost::uint8_t *mem;
