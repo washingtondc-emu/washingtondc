@@ -41,6 +41,7 @@ private:
 
 // IntegrityError - for things that *should* be impossible
 class IntegrityError : std::exception {
+public:
     IntegrityError(char const *desc) {
         this->desc = desc;
     }
@@ -50,7 +51,7 @@ class IntegrityError : std::exception {
     }
 private:
     char const *desc;
-}
+};
 
 class MemBoundsError : std::exception {
 public:

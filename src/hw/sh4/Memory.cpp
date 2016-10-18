@@ -22,7 +22,7 @@
 
 #include <cstring>
 
-#include "common/BaseException.hpp"
+#include "BaseException.hpp"
 
 #include "Memory.hpp"
 
@@ -35,7 +35,7 @@ Memory::~Memory() {
     delete[] mem;
 }
 
-int Memory::read(void const *buf, size_t addr, size_t len) const {
+int Memory::read(void *buf, size_t addr, size_t len) const {
     size_t end_addr = addr + len;
     if (addr >= size || end_addr >= size || end_addr < addr) {
         throw MemBoundsError(addr);
@@ -46,7 +46,7 @@ int Memory::read(void const *buf, size_t addr, size_t len) const {
     return 0;
 }
 
-int Memory::write(void *buf, size_t addr, size_t len) {
+int Memory::write(void const *buf, size_t addr, size_t len) {
     size_t end_addr = addr + len;
     if (addr >= size || end_addr >= size || end_addr < addr) {
         throw MemBoundsError(addr);

@@ -20,13 +20,17 @@
  *
  ******************************************************************************/
 
+#include <cstring>
+
+#include "BaseException.hpp"
+
 #include "sh4.hpp"
 
 Sh4::Sh4(Memory *mem) {
     this->mem = mem;
 
-    this->inst_cache = new boost::uint8_t[INSTCACHE_ENTRY_COUNT];
-    this->op_cache = new boost::uint8_t[OPCACHE_ENTRY_COUNT];
+    this->op_cache = new struct op_cache_line[OPCACHE_ENTRY_COUNT];
+    this->inst_cache = new struct inst_cache_line[INSTCACHE_ENTRY_COUNT];
 
     memset(inst_cache, 0, sizeof(boost::uint8_t) * INSTCACHE_ENTRY_COUNT);
     memset(op_cache, 0, sizeof(boost::uint8_t) * OPCACHE_ENTRY_COUNT);
@@ -34,19 +38,21 @@ Sh4::Sh4(Memory *mem) {
     memset(utlb, 0, sizeof(utlb));
 }
 
-int Sh4::write_mem(void *out, addr32_t addr, size_t len) {
+int Sh4::write_mem(void const *out, addr32_t addr, size_t len) {
     // TODO: finish
     if (mmu.mmucr & MMUCR_AT_MASK) {
     } else {
     }
+
+    return 1;
 }
 
 int Sh4::read_mem(void *out, addr32_t addr, size_t len) {
-
+    return 1;
 }
 
 // find entry with matching VPN
-struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr) const {
+struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr) {
     struct Sh4::utlb_entry *ret = NULL;
 
     for (unsigned i = 0; i < UTLB_SIZE; i++) {
@@ -58,29 +64,29 @@ struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr) const {
         case ONE_KILO:
             // upper 22 bits
             vpn_vaddr = vaddr & 0xfffffc00;
-            vp_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
+            vpn_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
             break;
         case FOUR_KILO:
             // upper 20 bits
             vpn_vaddr = vaddr & 0xfffff000;
-            vp_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffff000;
+            vpn_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffff000;
             break;
         case SIXTYFOUR_KILO:
             // upper 16 bits
             vpn_vaddr = vaddr & 0xffff0000;
-            vp_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xffff0000;
+            vpn_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xffff0000;
             break;
         case ONE_MEGA:
             // upper 12 bits
             vpn_vaddr = vaddr & 0xfff00000;
-            vp_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfff00000;
+            vpn_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfff00000;
             break;
         default:
             throw IntegrityError("Unrecognized UTLB size value");
         }
 
         if (!(UTLB_ENT_SH_MASK & ent->ent) &&
-            (!(mmu.mmucr & MMUCR_SV) || !(reg.sr & SR_MD_MASK))) {
+            (!(mmu.mmucr & MMUCR_SV_MASK) || !(reg.sr & SR_MD_MASK))) {
             // (not sharing pages) and (single-VM space or user-mode mode)
 
             unsigned utlb_asid = (ent->key & UTLB_KEY_ASID_MASK) >>
@@ -88,7 +94,7 @@ struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr) const {
             unsigned mmu_asid = (mmu.pteh & MMUPTEH_ASID_MASK) >>
                 MMUPTEH_ASID_SHIFT;
             if (vpn_vaddr == vpn_ent && (ent->key & UTLB_KEY_VALID_MASK) &&
-                utlb_asid == asid_shift) {
+                utlb_asid == mmu_asid) {
                 // UTLB hit
                 if (ret)
                     throw UnimplementedError("Data TLB multiple hit exception");
@@ -123,36 +129,36 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
         case ONE_KILO:
             // upper 22 bits
             vpn_vaddr = vaddr & 0xfffffc00;
-            vp_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
+            vpn_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
             break;
         case FOUR_KILO:
             // upper 20 bits
             vpn_vaddr = vaddr & 0xfffff000;
-            vp_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffff000;
+            vpn_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffff000;
             break;
         case SIXTYFOUR_KILO:
             // upper 16 bits
             vpn_vaddr = vaddr & 0xffff0000;
-            vp_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xffff0000;
+            vpn_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xffff0000;
             break;
         case ONE_MEGA:
             // upper 12 bits
             vpn_vaddr = vaddr & 0xfff00000;
-            vp_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfff00000;
+            vpn_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfff00000;
             break;
         default:
             throw IntegrityError("Unrecognized ITLB size value");
         }
 
         if (!(ITLB_ENT_SH_MASK & ent->ent) &&
-            (!(mmu.mmucr & MMUCR_SV) || !(reg.sr & SR_MD_MASK))) {
+            (!(mmu.mmucr & MMUCR_SV_MASK) || !(reg.sr & SR_MD_MASK))) {
             // (not sharing pages) and (single-VM space or user-mode mode)
             unsigned itlb_asid = (ent->key & ITLB_KEY_ASID_MASK) >>
                 ITLB_KEY_ASID_SHIFT;
             unsigned mmu_asid = (mmu.pteh & MMUPTEH_ASID_MASK) >>
                 MMUPTEH_ASID_SHIFT;
             if (vpn_vaddr == vpn_ent && (ent->key & ITLB_KEY_VALID_MASK) &&
-                itlb_asid == asid_shift) {
+                itlb_asid == mmu_asid) {
                 // ITLB hit
                 if (ret)
                     throw UnimplementedError("Data TLB multiple hit exception");
@@ -181,7 +187,7 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
         // TODO: When CPU exceptions are implemented, there will need to be an
         //       option for utlb_search to prevent it from creating a CPU
         //       exception on miss so that this function can do it itself.
-        throw UniplementedError("Instruction TLB miss exception");
+        throw UnimplementedError("Instruction TLB miss exception");
     }
 
     // now replace one of the ITLB entries.  Ideally there would be some sort
@@ -400,11 +406,11 @@ int Sh4::op_cache_write4_wt(boost::uint32_t const *data, Sh4::addr32_t paddr) {
 int Sh4::op_cache_load(struct op_cache_line *line, addr32_t paddr) {
     int err_code;
 
-    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_OP_CACHE_LINE;
+    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_OPCACHE_LINE;
     if ((err_code = mem->read(line->lw, paddr & ~31, n_bytes)) != 0)
         return err_code;
 
-    op_cache_set_tag(line, op_cache_tag_from_paddr(paddr));
+    op_cache_line_set_tag(line, op_cache_tag_from_paddr(paddr));
     line->key |= OPCACHE_KEY_VALID_MASK;
     line->key &= ~OPCACHE_KEY_DIRTY_MASK;
 
@@ -412,14 +418,14 @@ int Sh4::op_cache_load(struct op_cache_line *line, addr32_t paddr) {
 }
 
 int Sh4::inst_cache_load(struct inst_cache_line *line, addr32_t paddr) {
-    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_INST_CACHE_LINE;
+    int err_code;
+    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_INSTCACHE_LINE;
 
     if ((err_code = mem->read(line->lw, paddr & ~31, n_bytes)) != 0)
         return err_code;
 
-    inst_cache_set_tag(line, inst_cache_tag_from_paddr(paddr));
+    inst_cache_line_set_tag(line, inst_cache_tag_from_paddr(paddr));
     line->key |= INSTCACHE_KEY_VALID_MASK;
-    line->key &= ~INSTCACHE_KEY_DIRTY_MASK;
 
     return 0;
 }
@@ -427,7 +433,7 @@ int Sh4::inst_cache_load(struct inst_cache_line *line, addr32_t paddr) {
 int Sh4::op_cache_write_back(struct op_cache_line *line, addr32_t paddr) {
     int err_code = 0;
 
-    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_INST_CACHE_LINE;
+    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_INSTCACHE_LINE;
     if ((err_code = mem->write(line->lw, paddr & ~31, n_bytes)) != 0)
         return err_code;
 

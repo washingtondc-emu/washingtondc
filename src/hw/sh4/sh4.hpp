@@ -23,7 +23,9 @@
 #ifndef SH4_HPP_
 #define SH4_HPP_
 
-#include <boost/cstdint.h>
+#include <boost/cstdint.hpp>
+
+#include "Memory.hpp"
 
 /* Hitachi SuperH-4 interpreter */
 
@@ -96,7 +98,7 @@ private:
     static const unsigned UTLB_ENT_PR_MASK = 3 << UTLB_ENT_PR_SHIFT;
 
     // UTLB Cacheability bit
-    static const unsgined UTLB_ENT_C_SHIFT = 9;
+    static const unsigned UTLB_ENT_C_SHIFT = 9;
     static const unsigned UTLB_ENT_C_MASK = 1 << UTLB_ENT_C_SHIFT;
 
     // UTLB Share status bit
@@ -113,7 +115,7 @@ private:
 
     // ITLB Valid bit
     static const unsigned ITLB_KEY_VALID_SHIFT = 0;
-    static const unsigned ITLB_KEY_VALID_MASK = 1 << ITLB_VALID_SHIFT;
+    static const unsigned ITLB_KEY_VALID_MASK = 1 << ITLB_KEY_VALID_SHIFT;
 
     // ITLB Virtual Page Number
     static const unsigned ITLB_KEY_VPN_SHIFT = 1;
@@ -145,7 +147,7 @@ private:
     static const unsigned ITLB_ENT_SH_MASK = 1 << ITLB_ENT_SH_SHIFT;
 
     // ITLB Page size (see enum PageSize definition)
-    static const unsigned ITLB_SZ_SHIFT = 7;
+    static const unsigned ITLB_ENT_SZ_SHIFT = 7;
     static const unsigned ITLB_ENT_SZ_MASK = 0x3 << ITLB_ENT_SZ_SHIFT;
 
     // ITLB Physical Page Number
@@ -194,8 +196,8 @@ private:
     * appropriate CPU flags for an exception and return non-zero.  On success
     * they will return zero.
     */
-    int write_mem(void *out, size_t len);
-    int read_mem(void *out, size_t len);
+    int write_mem(void const *out, addr32_t addr, size_t len);
+    int read_mem(void *out, addr32_t addr, size_t len);
 
     Memory *mem;
 
@@ -205,7 +207,7 @@ private:
 
     // saturation operation for MAC instructions
     static const unsigned SR_FLAG_S_SHIFT = 1;
-    static const unsigned SR_FLAG_S_MASK = 1 << SR_FLAG_S;
+    static const unsigned SR_FLAG_S_MASK = 1 << SR_FLAG_S_SHIFT;
 
     // interrupt mask level
     static const unsigned SR_IMASK_SHIFT = 4;
@@ -452,7 +454,7 @@ private:
         boost::uint32_t key;
 
         // cache line instruction array
-        boost::uint32_t lw[LONGS_PER_INST_CACHE_LINE];
+        boost::uint32_t lw[LONGS_PER_INSTCACHE_LINE];
     };
 
     // 8 KB instruction cache
@@ -493,8 +495,7 @@ private:
      *
      * This function does not check the valid bit.
      */
-    bool inst_cache_line *inst_cache_check(struct inst_cache_line const *line,
-                                           addr32_t paddr);
+    bool inst_cache_check(struct inst_cache_line const *line, addr32_t paddr);
 
     // Returns: zero on success, nonzero on failure.
     int op_cache_read4(boost::uint32_t *out, addr32_t paddr);
@@ -520,7 +521,7 @@ private:
      * Load the cache-line corresponding to paddr into line.
      * Returns non-zero on failure.
      */
-    int op_cache_load(struct op_cache_line *line, paddr32_t paddr);
+    int op_cache_load(struct op_cache_line *line, addr32_t paddr);
 
     /*
      * Load the cache-line corresponding to paddr into line.
@@ -540,34 +541,42 @@ private:
      */
     int op_cache_write_back(struct op_cache_line *line, addr32_t paddr);
 
-    addr32_t op_cache_line_get_tag(struct op_cache_line *line);
+    static addr32_t
+    op_cache_line_get_tag(struct op_cache_line const *line);
 
-    addr32_t inst_cache_line_get_tag(struct inst_cache_line *line);
+    static addr32_t
+    inst_cache_line_get_tag(struct inst_cache_line const *line);
 
     // sets the line's tag to tag.
     void op_cache_line_set_tag(struct op_cache_line *line,
                                addr32_t tag);
+    // sets the line's tag to tag.
+    void inst_cache_line_set_tag(struct inst_cache_line *line,
+                                 addr32_t tag);
+
 
     // extract the tag from the upper 19 bits of the lower 29 bits of paddr
-    static void op_cache_tag_from_paddr(addr32_t paddr);
+    static addr32_t op_cache_tag_from_paddr(addr32_t paddr);
 
     // extract the tag from the upper 19 bits of the lower 29 bits of paddr
-    static void inst_cache_tag_from_paddr(addr32_t paddr);
+    static addr32_t inst_cache_tag_from_paddr(addr32_t paddr);
 };
 
-inline Sh4::addr32_t Sh4::op_cache_line_get_tag(struct op_cache_line *line) {
+inline Sh4::addr32_t
+Sh4::op_cache_line_get_tag(struct op_cache_line const *line) {
     return (OPCACHE_KEY_TAG_MASK & line->key) >> OPCACHE_KEY_TAG_SHIFT;
 }
 
-inline Sh4::addr32_t Sh4::inst_cache_line_get_tag(struct inst_cache_line *line) {
+inline Sh4::addr32_t
+Sh4::inst_cache_line_get_tag(struct inst_cache_line const *line) {
     return (INSTCACHE_KEY_TAG_MASK & line->key) >> INSTCACHE_KEY_TAG_SHIFT;
 }
 
-inline void Sh4::op_cache_tag_from_paddr(addr32_t paddr) {
+inline Sh4::addr32_t Sh4::op_cache_tag_from_paddr(addr32_t paddr) {
     return (paddr & 0x1ffffc00) >> 10;
 }
 
-inline void Sh4::inst_cache_tag_from_paddr(addr32_t paddr) {
+inline Sh4::addr32_t Sh4::inst_cache_tag_from_paddr(addr32_t paddr) {
     return (paddr & 0x1ffffc00) >> 10;
 }
 
@@ -575,6 +584,12 @@ inline void Sh4::op_cache_line_set_tag(struct op_cache_line *line,
                                        addr32_t tag) {
     line->key &= ~OPCACHE_KEY_TAG_MASK;
     line->key |= tag << OPCACHE_KEY_TAG_SHIFT;
+}
+
+inline void Sh4::inst_cache_line_set_tag(struct inst_cache_line *line,
+                                         addr32_t tag) {
+    line->key &= ~INSTCACHE_KEY_TAG_MASK;
+    line->key |= tag << INSTCACHE_KEY_TAG_SHIFT;
 }
 
 #endif

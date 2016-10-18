@@ -1,0 +1,13 @@
+HEADERS=sh4.hpp Memory.hpp BaseException.hpp
+OBJECTS=sh4.o Memory.o main.o
+CXXFLAGS=-I../../common/ --std=c++03 -Wall -Werror -g
+
+sh4_stub: $(OBJECTS)
+	g++ -o sh4_stub $+
+
+%.o: %.cpp $(HEADERS)
+	g++ -c $< $(CXXFLAGS)
+
+clean:
+	rm $(OBJECTS)
+	rm sh4_stub

@@ -20,27 +20,10 @@
  *
  ******************************************************************************/
 
-#ifndef MEMORY_HPP_
-#define MEMORY_HPP_
+#include <iostream>
 
-#include <boost/cstdint.hpp>
+int main(int argc, char **argv) {
+    std::cout << "Hello, world!" << std::endl;
 
-// Temporary memory emulator
-// This module will be used as a "dumb" memory device for the Sh4 interpreter
-// core to interact with during testing while I get this emulator bootstrapped.
-// It does not implement any of the Dreamcast's memory mappings.
-// Later it might stay on as part of some sort of unit testing system.
-
-class Memory {
-public:
-    Memory(size_t size);
-    ~Memory();
-
-    int read(void *buf, size_t addr, size_t len) const;
-    int write(void const *buf, size_t addr, size_t len);
-private:
-    size_t size;
-    boost::uint8_t *mem;
-};
-
-#endif
+    return 0;
+}
