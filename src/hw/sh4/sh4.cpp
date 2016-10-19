@@ -32,8 +32,8 @@ Sh4::Sh4(Memory *mem) {
     this->op_cache = new struct op_cache_line[OPCACHE_ENTRY_COUNT];
     this->inst_cache = new struct inst_cache_line[INSTCACHE_ENTRY_COUNT];
 
-    memset(inst_cache, 0, sizeof(boost::uint8_t) * INSTCACHE_ENTRY_COUNT);
-    memset(op_cache, 0, sizeof(boost::uint8_t) * OPCACHE_ENTRY_COUNT);
+    memset(inst_cache, 0, sizeof(struct inst_cache_line) * INSTCACHE_ENTRY_COUNT);
+    memset(op_cache, 0, sizeof(struct op_cache_line) * OPCACHE_ENTRY_COUNT);
 
     memset(utlb, 0, sizeof(utlb));
 }
@@ -226,7 +226,7 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
 }
 
 bool Sh4::op_cache_check(struct Sh4::op_cache_line const *line,
-                         Sh4::addr32_t paddr) {
+                         addr32_t paddr) {
     addr32_t paddr_tag;
 
     // upper 19 bits (of the lower 29 bits) of paddr
@@ -251,7 +251,7 @@ bool Sh4::inst_cache_check(struct Sh4::inst_cache_line const *line,
     return NULL;
 }
 
-Sh4::addr32_t Sh4::op_cache_selector(Sh4::addr32_t paddr) const {
+addr32_t Sh4::op_cache_selector(addr32_t paddr) const {
     if (cache_reg.ccr & CCR_ORA_MASK) {
         // the hardware manual is a little vague on how this effects
         // the half of the cache which is not being used as memory.
@@ -268,7 +268,7 @@ Sh4::addr32_t Sh4::op_cache_selector(Sh4::addr32_t paddr) const {
     return ent_sel;
 }
 
-Sh4::addr32_t Sh4::inst_cache_selector(Sh4::addr32_t paddr) const {
+addr32_t Sh4::inst_cache_selector(addr32_t paddr) const {
     addr32_t ent_sel = paddr & 0x7f0;
     if (cache_reg.ccr & CCR_IIX_MASK)
         ent_sel |= (paddr & (1 << 25)) >> 13;
@@ -328,7 +328,7 @@ int Sh4::op_cache_read4(boost::uint32_t *out, addr32_t paddr) {
     return err;
 }
 
-int Sh4::op_cache_write4_cb(boost::uint32_t const *data, Sh4::addr32_t paddr) {
+int Sh4::op_cache_write4_cb(boost::uint32_t const *data, addr32_t paddr) {
     int err = 0;
 
     if (paddr & 0x3) {
@@ -380,7 +380,7 @@ int Sh4::op_cache_write4_cb(boost::uint32_t const *data, Sh4::addr32_t paddr) {
     return 0;
 }
 
-int Sh4::op_cache_write4_wt(boost::uint32_t const *data, Sh4::addr32_t paddr) {
+int Sh4::op_cache_write4_wt(boost::uint32_t const *data, addr32_t paddr) {
     int err = 0;
 
     if (paddr & 0x3) {

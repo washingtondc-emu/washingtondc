@@ -25,6 +25,7 @@
 
 #include <boost/cstdint.hpp>
 
+#include "types.hpp"
 #include "Memory.hpp"
 
 /* Hitachi SuperH-4 interpreter */
@@ -33,9 +34,6 @@ class Sh4 {
 public:
     Sh4(Memory *mem);
 private:
-    typedef boost::uint32_t reg32_t;
-    typedef boost::uint32_t addr32_t;
-    typedef boost::uint32_t page_no_t;
 
     enum PhysMemArea {
         AREA_P0 = 0,
@@ -562,26 +560,26 @@ private:
     static addr32_t inst_cache_tag_from_paddr(addr32_t paddr);
 };
 
-inline Sh4::addr32_t
+inline addr32_t
 Sh4::op_cache_line_get_tag(struct op_cache_line const *line) {
     return (OPCACHE_KEY_TAG_MASK & line->key) >> OPCACHE_KEY_TAG_SHIFT;
 }
 
-inline Sh4::addr32_t
+inline addr32_t
 Sh4::inst_cache_line_get_tag(struct inst_cache_line const *line) {
     return (INSTCACHE_KEY_TAG_MASK & line->key) >> INSTCACHE_KEY_TAG_SHIFT;
 }
 
-inline Sh4::addr32_t Sh4::op_cache_tag_from_paddr(addr32_t paddr) {
+inline addr32_t Sh4::op_cache_tag_from_paddr(addr32_t paddr) {
     return (paddr & 0x1ffffc00) >> 10;
 }
 
-inline Sh4::addr32_t Sh4::inst_cache_tag_from_paddr(addr32_t paddr) {
+inline addr32_t Sh4::inst_cache_tag_from_paddr(addr32_t paddr) {
     return (paddr & 0x1ffffc00) >> 10;
 }
 
 inline void Sh4::op_cache_line_set_tag(struct op_cache_line *line,
-                                       addr32_t tag) {
+                                  addr32_t tag) {
     line->key &= ~OPCACHE_KEY_TAG_MASK;
     line->key |= tag << OPCACHE_KEY_TAG_SHIFT;
 }

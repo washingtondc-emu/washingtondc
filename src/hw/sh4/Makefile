@@ -1,4 +1,4 @@
-HEADERS=sh4.hpp Memory.hpp BaseException.hpp
+HEADERS=sh4.hpp Memory.hpp BaseException.hpp types.hpp
 OBJECTS=sh4.o Memory.o main.o
 CXXFLAGS=-I../../common/ --std=c++03 -Wall -Werror -g
 
