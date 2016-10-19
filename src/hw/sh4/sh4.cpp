@@ -23,6 +23,7 @@
 #include <cstring>
 
 #include "Icache.hpp"
+#include "Ocache.hpp"
 #include "BaseException.hpp"
 
 #include "sh4.hpp"
@@ -30,15 +31,14 @@
 Sh4::Sh4(Memory *mem) {
     this->mem = mem;
 
-    this->op_cache = new struct op_cache_line[OPCACHE_ENTRY_COUNT];
-    memset(op_cache, 0, sizeof(struct op_cache_line) * OPCACHE_ENTRY_COUNT);
-
     memset(utlb, 0, sizeof(utlb));
 
     this->inst_cache = new Icache(this, mem);
+    this->op_cache = new Ocache(this, mem);
 }
 
 Sh4::~Sh4() {
+    delete op_cache;
     delete inst_cache;
 }
 
@@ -227,185 +227,6 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
      * here just in case.
      */
     return itlb_search(vaddr);
-}
-
-bool Sh4::op_cache_check(struct Sh4::op_cache_line const *line,
-                         addr32_t paddr) {
-    addr32_t paddr_tag;
-
-    // upper 19 bits (of the lower 29 bits) of paddr
-    paddr_tag = op_cache_tag_from_paddr(paddr);
-
-    addr32_t line_tag = op_cache_line_get_tag(line);
-    if (line_tag == paddr_tag)
-        return line;
-    return NULL;
-}
-
-addr32_t Sh4::op_cache_selector(addr32_t paddr) const {
-    if (cache_reg.ccr & CCR_ORA_MASK) {
-        // the hardware manual is a little vague on how this effects
-        // the half of the cache which is not being used as memory.
-        throw UnimplementedError("Operand Cache as RAM");
-    }
-
-    addr32_t ent_sel = paddr & 0xff0;
-    if (cache_reg.ccr & CCR_OIX_MASK)
-        ent_sel |= (paddr & (1 << 25)) >> 12;
-    else
-        ent_sel |= paddr & (1 << 13);
-    ent_sel >>= 4;
-
-    return ent_sel;
-}
-
-int Sh4::op_cache_read4(boost::uint32_t *out, addr32_t paddr) {
-    int err = 0;
-
-    if (paddr & 0x3) {
-        throw UnimplementedError("Unaligned memory access exception");
-    }
-    op_cache_line *line = op_cache_selector(paddr) + op_cache;
-
-    if (line->key & OPCACHE_KEY_VALID_MASK) {
-        if (op_cache_check(line, paddr)) {
-            // cache hit
-            addr32_t idx = (paddr & 0x1f) >> 2;
-
-            *out = line->lw[idx];
-            return 0;
-        } else {
-            // tag does not match, V bit is 1
-            if (line->key & OPCACHE_KEY_DIRTY_MASK) {
-                // cache miss (with write-back)
-                // The manual says the SH4 should save the cache line to the
-                // write-back buffer.  Since memory writes are effectively
-                // instant for the emulator and since I *think* the write-back
-                // buffer is invisible from the software's perspective, I don't
-                // implement that.
-                err = op_cache_write_back(line, paddr);
-                if (err)
-                    return err;
-                err = op_cache_load(line, paddr);
-            } else {
-                //cache miss (no write-back)
-                err = op_cache_load(line, paddr);
-            }
-        }
-    } else {
-        // valid bit is 0, tag may or may not match
-        // cache miss (no write-back)
-        err = op_cache_load(line, paddr);
-    }
-
-    if (!err) {
-        addr32_t idx = (paddr & 0x1f) >> 2;
-
-        *out = line->lw[idx];
-        return 0;
-    }
-
-    return err;
-}
-
-int Sh4::op_cache_write4_cb(boost::uint32_t const *data, addr32_t paddr) {
-    int err = 0;
-
-    if (paddr & 0x3) {
-        throw UnimplementedError("Unaligned memory access exception");
-    }
-    op_cache_line *line = op_cache_selector(paddr) + op_cache;
-    unsigned lw_idx = (paddr & 0x1f) >> 2;
-
-    if (op_cache_check(line, paddr)) {
-        if (line->key & OPCACHE_KEY_VALID_MASK) {
-            // cache hit, valid bit is 1
-            line->lw[lw_idx] = *data;
-            line->key |= OPCACHE_KEY_DIRTY_MASK;
-        } else {
-            // overwrite invalid data in cache.
-            op_cache_load(line, paddr);
-            line->lw[lw_idx] = *data;
-            line->key |= OPCACHE_KEY_DIRTY_MASK;
-        }
-    } else {
-        if (line->key & OPCACHE_KEY_VALID_MASK) {
-            if (line->key & OPCACHE_KEY_DIRTY_MASK) {
-                // cache miss (with write-back)
-                // The manual says the SH4 should save the cache line to the
-                // write-back buffer.  Since memory writes are effectively
-                // instant for the emulator and since I *think* the write-back
-                // buffer is invisible from the software's perspective, I don't
-                // implement that.
-                err = op_cache_write_back(line, paddr);
-                if (err)
-                    return err;
-                err = op_cache_load(line, paddr);
-                line->lw[lw_idx] = *data;
-                line->key |= OPCACHE_KEY_DIRTY_MASK;
-            } else {
-                // clean data in cache can be safely overwritten.
-                op_cache_load(line, paddr);
-                line->lw[lw_idx] = *data;
-                line->key |= OPCACHE_KEY_DIRTY_MASK;
-            }
-        } else {
-            // overwrite invalid data in cache.
-            op_cache_load(line, paddr);
-            line->lw[lw_idx] = *data;
-            line->key |= OPCACHE_KEY_DIRTY_MASK;
-        }
-    }
-
-    return 0;
-}
-
-int Sh4::op_cache_write4_wt(boost::uint32_t const *data, addr32_t paddr) {
-    int err = 0;
-
-    if (paddr & 0x3) {
-        throw UnimplementedError("Unaligned memory access exception");
-    }
-    struct op_cache_line *line = op_cache_selector(paddr) + op_cache;
-    unsigned lw_idx = (paddr & 0x1f) >> 2;
-
-    if (op_cache_check(line, paddr) && (line->key & OPCACHE_KEY_VALID_MASK)) {
-        // write to cache and write-through to main memory
-        line->lw[lw_idx] = *data;
-        if ((err = mem->write(data, paddr, sizeof(boost::uint32_t))) != 0)
-            return err;
-    } else {
-        // write through to main memory ignoring the cache
-        if ((err = mem->write(data, paddr, sizeof(boost::uint32_t))) != 0)
-            return err;
-    }
-
-    return 0;
-}
-
-int Sh4::op_cache_load(struct op_cache_line *line, addr32_t paddr) {
-    int err_code;
-
-    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_OPCACHE_LINE;
-    if ((err_code = mem->read(line->lw, paddr & ~31, n_bytes)) != 0)
-        return err_code;
-
-    op_cache_line_set_tag(line, op_cache_tag_from_paddr(paddr));
-    line->key |= OPCACHE_KEY_VALID_MASK;
-    line->key &= ~OPCACHE_KEY_DIRTY_MASK;
-
-    return 0;
-}
-
-int Sh4::op_cache_write_back(struct op_cache_line *line, addr32_t paddr) {
-    int err_code = 0;
-
-    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_OPCACHE_LINE;
-    if ((err_code = mem->write(line->lw, paddr & ~31, n_bytes)) != 0)
-        return err_code;
-
-    line->key &= ~OPCACHE_KEY_DIRTY_MASK;
-    return 0;
 }
 
 enum Sh4::PhysMemArea Sh4::get_mem_area(addr32_t addr) {

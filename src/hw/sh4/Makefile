@@ -1,5 +1,5 @@
-HEADERS=sh4.hpp Memory.hpp BaseException.hpp types.hpp Icache.hpp
-OBJECTS=sh4.o Memory.o main.o Icache.o
+HEADERS=sh4.hpp Memory.hpp BaseException.hpp types.hpp Icache.hpp Ocache.hpp
+OBJECTS=sh4.o Memory.o main.o Icache.o Ocache.o
 CXXFLAGS=-I../../common/ --std=c++03 -Wall -Werror -g
 
 sh4_stub: $(OBJECTS)

@@ -170,6 +170,7 @@ private:
     struct itlb_entry itlb[ITLB_SIZE];
 
     Icache *inst_cache;
+    Ocache *op_cache;
 
     enum PhysMemArea get_mem_area(addr32_t addr);
 
@@ -415,109 +416,6 @@ private:
         // Queue address control register 1
         reg32_t qacr1;
     } cache_reg;
-
-    // The valid flag
-    static const unsigned OPCACHE_KEY_VALID_SHIFT = 0;
-    static const unsigned OPCACHE_KEY_VALID_MASK = 1 << OPCACHE_KEY_VALID_SHIFT;
-
-    // the dirty flag
-    static const unsigned OPCACHE_KEY_DIRTY_SHIFT = 1;
-    static const unsigned OPCACHE_KEY_DIRTY_MASK = 1 << OPCACHE_KEY_DIRTY_SHIFT;
-
-    // the tag represents bits 28:10 (inclusive) of a 29-bit address.
-    static const unsigned OPCACHE_KEY_TAG_SHIFT = 2;
-    static const unsigned OPCACHE_KEY_TAG_MASK = 0x7ffff << OPCACHE_KEY_TAG_SHIFT;
-
-    static const unsigned LONGS_PER_OPCACHE_LINE = 8;
-    static const unsigned OPCACHE_ENTRY_COUNT = 512;
-
-    struct op_cache_line {
-        // contains the tag, dirty bit and valid bit
-        boost::uint32_t key;
-
-        // cache line data array
-        boost::uint32_t lw[LONGS_PER_OPCACHE_LINE];
-    };
-
-    // 16 KB ("Operand Cache" in the hardware manual)
-    struct op_cache_line *op_cache;
-
-    /*
-     * Return true if line matches paddr; else return false.
-     *
-     * This function does not verify that the cache is enabled; nor does it
-     * verify that paddr is even in an area which can be cached.  The callee
-     * should do that before calling this function.
-     *
-     * This function does not check the valid bit.
-     */
-    bool op_cache_check(struct op_cache_line const *line, addr32_t paddr);
-
-    /*
-     * returns the index into the op-cache where paddr
-     * would go if it had an entry.
-     */
-    addr32_t op_cache_selector(addr32_t paddr) const;
-
-    // Returns: zero on success, nonzero on failure.
-    int op_cache_read4(boost::uint32_t *out, addr32_t paddr);
-
-    /*
-     * Write the 4-byte value pointed to by data to memory through the cache in
-     * copy-back mode.
-     * Returns: zero on success, nonzero on failure.
-     */
-    int op_cache_write4_cb(boost::uint32_t const *data, addr32_t paddr);
-
-    /*
-     * Write the 4-byte value pointed to by data to memory through the cache in
-     * write-through mode.
-     * Returns: zero on success, nonzero on failure.
-     */
-    int op_cache_write4_wt(boost::uint32_t const *data, addr32_t paddr);
-
-    /*
-     * Load the cache-line corresponding to paddr into line.
-     * Returns non-zero on failure.
-     */
-    int op_cache_load(struct op_cache_line *line, addr32_t paddr);
-
-    /*
-     * Write the cache-line into memory and clear its dirty-bit.
-     * returns non-zero on failure.
-     *
-     * paddr should be an address that falls within the cache-line.
-     * It is needed because the entry selector is not saved within the
-     * cache-line (although there are enough unused bits that this *may* be
-     * possible to implement), so the paddr is the only way to figure out where
-     * exactly this line goes in memory.
-     */
-    int op_cache_write_back(struct op_cache_line *line, addr32_t paddr);
-
-    static addr32_t
-    op_cache_line_get_tag(struct op_cache_line const *line);
-
-    // sets the line's tag to tag.
-    void op_cache_line_set_tag(struct op_cache_line *line,
-                               addr32_t tag);
-
-    // extract the tag from the upper 19 bits of the lower 29 bits of paddr
-    static addr32_t op_cache_tag_from_paddr(addr32_t paddr);
 };
-
-inline addr32_t
-Sh4::op_cache_line_get_tag(struct op_cache_line const *line) {
-    return (OPCACHE_KEY_TAG_MASK & line->key) >> OPCACHE_KEY_TAG_SHIFT;
-}
-
-inline addr32_t Sh4::op_cache_tag_from_paddr(addr32_t paddr) {
-    return (paddr & 0x1ffffc00) >> 10;
-}
-
-inline void Sh4::op_cache_line_set_tag(struct op_cache_line *line,
-                                  addr32_t tag) {
-    line->key &= ~OPCACHE_KEY_TAG_MASK;
-    line->key |= tag << OPCACHE_KEY_TAG_SHIFT;
-}
 
 #endif

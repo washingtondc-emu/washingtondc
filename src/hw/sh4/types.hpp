@@ -31,6 +31,7 @@ typedef boost::uint32_t page_no_t;
 
 class Sh4;
 class Icache;
+class Ocache;
 class Memory;
 
 #endif
