@@ -22,6 +22,7 @@
 
 #include <cstring>
 
+#include "Icache.hpp"
 #include "BaseException.hpp"
 
 #include "sh4.hpp"
@@ -30,12 +31,15 @@ Sh4::Sh4(Memory *mem) {
     this->mem = mem;
 
     this->op_cache = new struct op_cache_line[OPCACHE_ENTRY_COUNT];
-    this->inst_cache = new struct inst_cache_line[INSTCACHE_ENTRY_COUNT];
-
-    memset(inst_cache, 0, sizeof(struct inst_cache_line) * INSTCACHE_ENTRY_COUNT);
     memset(op_cache, 0, sizeof(struct op_cache_line) * OPCACHE_ENTRY_COUNT);
 
     memset(utlb, 0, sizeof(utlb));
+
+    this->inst_cache = new Icache(this, mem);
+}
+
+Sh4::~Sh4() {
+    delete inst_cache;
 }
 
 int Sh4::write_mem(void const *out, addr32_t addr, size_t len) {
@@ -238,19 +242,6 @@ bool Sh4::op_cache_check(struct Sh4::op_cache_line const *line,
     return NULL;
 }
 
-bool Sh4::inst_cache_check(struct Sh4::inst_cache_line const *line,
-                           addr32_t paddr) {
-    addr32_t paddr_tag;
-
-    // upper 19 bits (of the lower 29 bits) of paddr
-    paddr_tag = inst_cache_tag_from_paddr(paddr);
-
-    addr32_t line_tag = inst_cache_line_get_tag(line);
-    if (line_tag == paddr_tag)
-        return line;
-    return NULL;
-}
-
 addr32_t Sh4::op_cache_selector(addr32_t paddr) const {
     if (cache_reg.ccr & CCR_ORA_MASK) {
         // the hardware manual is a little vague on how this effects
@@ -263,17 +254,6 @@ addr32_t Sh4::op_cache_selector(addr32_t paddr) const {
         ent_sel |= (paddr & (1 << 25)) >> 12;
     else
         ent_sel |= paddr & (1 << 13);
-    ent_sel >>= 4;
-
-    return ent_sel;
-}
-
-addr32_t Sh4::inst_cache_selector(addr32_t paddr) const {
-    addr32_t ent_sel = paddr & 0x7f0;
-    if (cache_reg.ccr & CCR_IIX_MASK)
-        ent_sel |= (paddr & (1 << 25)) >> 13;
-    else
-        ent_sel |= paddr & (1 << 12);
     ent_sel >>= 4;
 
     return ent_sel;
@@ -417,49 +397,15 @@ int Sh4::op_cache_load(struct op_cache_line *line, addr32_t paddr) {
     return 0;
 }
 
-int Sh4::inst_cache_load(struct inst_cache_line *line, addr32_t paddr) {
-    int err_code;
-    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_INSTCACHE_LINE;
-
-    if ((err_code = mem->read(line->lw, paddr & ~31, n_bytes)) != 0)
-        return err_code;
-
-    inst_cache_line_set_tag(line, inst_cache_tag_from_paddr(paddr));
-    line->key |= INSTCACHE_KEY_VALID_MASK;
-
-    return 0;
-}
-
 int Sh4::op_cache_write_back(struct op_cache_line *line, addr32_t paddr) {
     int err_code = 0;
 
-    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_INSTCACHE_LINE;
+    size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_OPCACHE_LINE;
     if ((err_code = mem->write(line->lw, paddr & ~31, n_bytes)) != 0)
         return err_code;
 
     line->key &= ~OPCACHE_KEY_DIRTY_MASK;
     return 0;
-}
-
-int Sh4::inst_cache_read4(boost::uint32_t *out, addr32_t paddr) {
-    int err = 0;
-
-    if (paddr & 0x3) {
-        throw UnimplementedError("Unaligned memory access exception");
-    }
-    struct inst_cache_line *line = inst_cache_selector(paddr) + inst_cache;
-    unsigned lw_idx = (paddr & 0x1f) >> 2;
-
-    if (inst_cache_check(line, paddr) && (line->key & INSTCACHE_KEY_VALID_MASK)) {
-        // cache hit
-        *out = line->lw[lw_idx];
-        return 0;
-    } else {
-        if ((err = inst_cache_load(line, paddr)) != 0)
-            return err;
-        *out = line->lw[lw_idx];
-        return 0;
-    }
 }
 
 enum Sh4::PhysMemArea Sh4::get_mem_area(addr32_t addr) {
