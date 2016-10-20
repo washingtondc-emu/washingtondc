@@ -240,3 +240,118 @@ enum Sh4::PhysMemArea Sh4::get_mem_area(addr32_t addr) {
         return AREA_P3;
     return AREA_P4;
 }
+
+void Sh4::set_exception(unsigned excp_code) {
+    excp_reg.expevt = (excp_code << EXPEVT_CODE_SHIFT) | EXPEVT_CODE_MASK;
+
+    enter_exception((ExceptionCode)excp_code);
+}
+
+void Sh4::set_interrupt(unsigned intp_code) {
+    excp_reg.intevt = (intp_code << INTEVT_CODE_SHIFT) | INTEVT_CODE_MASK;
+
+    enter_exception((ExceptionCode)intp_code);
+}
+
+const Sh4::ExcpMeta Sh4::excp_meta[Sh4::EXCP_COUNT] = {
+    { .code = EXCP_POWER_ON_RESET, .prio_level = 1, .prio_order = 1 },
+    { .code = EXCP_MANUAL_RESET, .prio_level = 1, .prio_order = 2 },
+    { .code = EXCP_HUDI_RESET, .prio_level = 1, .prio_order = 1 },
+    { .code = EXCP_INST_TLB_MULT_HIT, .prio_level = 1, .prio_order = 3 },
+    { .code = EXCP_DATA_TLB_MULT_HIT, .prio_level = 1, .prio_order = 4 },
+    { .code = EXCP_USER_BREAK_BEFORE, .prio_level = 2, .prio_order = 0, .offset = 0x100 },
+    { .code = EXCP_INST_ADDR_ERR, .prio_level = 2, .prio_order = 1, .offset = 0x100 },
+    { .code = EXCP_INST_TLB_MISS, .prio_level = 2, .prio_order = 2, .offset = 0x400 },
+    { .code = EXCP_INST_TLB_PROT_VIOL, .prio_level = 2, .prio_order = 3, .offset = 0x100 },
+    { .code = EXCP_GEN_ILLEGAL_INST, .prio_level = 2, .prio_order = 4, .offset = 0x100 },
+    { .code = EXCP_SLOT_ILLEGAL_INST, .prio_level = 2, .prio_order = 4, .offset = 0x100 },
+    { .code = EXCP_GEN_FPU_DISABLE, .prio_level = 2, .prio_order = 4, .offset = 0x100 },
+    { .code = EXCP_SLOT_FPU_DISABLE, .prio_level = 2, .prio_order = 4, .offset = 0x100 },
+    { .code = EXCP_DATA_ADDR_READ, .prio_level = 2, .prio_order = 5, .offset = 0x100 },
+    { .code = EXCP_DATA_ADDR_WRITE, .prio_level = 2, .prio_order = 5, .offset = 0x100 },
+    { .code = EXCP_DATA_TLB_READ_MISS, .prio_level = 2, .prio_order = 6, .offset = 0x400 },
+    { .code = EXCP_DATA_TLB_WRITE_MISS, .prio_level = 2, .prio_order = 6, .offset = 0x400 },
+    { .code = EXCP_DATA_TLB_READ_PROT_VIOL, .prio_level = 2, .prio_order = 7, .offset = 0x100 },
+    { .code = EXCP_DATA_TLB_WRITE_PROT_VIOL, .prio_level = 2, .prio_order = 7, .offset = 0x100 },
+    { .code = EXCP_FPU, .prio_level = 2, .prio_order = 8, .offset = 0x100 },
+    { .code = EXCP_INITIAL_PAGE_WRITE, .prio_level = 2, .prio_order = 9, .offset = 0x100 },
+    { .code = EXCP_UNCONDITIONAL_TRAP, .prio_level = 2, .prio_order = 4, .offset = 0x100 },
+    { .code = EXCP_USER_BREAK_AFTER, .prio_level = 2, .prio_order = 10, .offset = 0x100 },
+    { .code = EXCP_NMI, .prio_level = 3, .prio_order = 0, .offset = 0x600 }, // it is nto a mistake that there is no prio_order here
+    { .code = EXCP_EXT_0, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_1, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_2, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_3, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_4, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_5, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_6, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_7, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_8, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_9, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_A, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_B, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_C, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_D, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_EXT_E, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_TMU0_TUNI0, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_TMU1_TUNI1, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_TMU2_TUNI2, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_TMU2_TICPI2, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_RTC_ATI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_RTC_PRI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_RTC_CUI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_SCI_ERI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_SCI_RXI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_SCI_TXI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_SCI_TEI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_WDT_ITI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_REF_RCMI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_REF_ROVI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_GPIO_GPIOI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_DMAC_DMTE0, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_DMAC_DMTE1, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_DMAC_DMTE2, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_DMAC_DMTE3, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_DMAC_DMAE, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_SCIF_ERI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_SCIF_RXI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_SCIF_BRI, .prio_level = 4, .prio_order = 2, .offset = 0x600 },
+    { .code = EXCP_SCIF_TXI, .prio_level = 4, .prio_order = 2, .offset = 0x600 }
+};
+
+void Sh4::enter_exception(enum ExceptionCode vector) {
+    struct ExcpMeta const *meta = NULL;
+
+    for (unsigned idx = 0; idx < EXCP_COUNT; idx++) {
+        if (excp_meta[idx].code == vector) {
+            meta = excp_meta + idx;
+            break;
+        }
+    }
+
+    if (!meta)
+        throw IntegrityError("Unknown CPU exception/interrupt type");
+
+    reg.spc = reg.pc;
+    reg.ssr = reg.sr;
+    reg.sgr = reg.rgen[7];
+
+    reg.sr |= SR_BL_MASK;
+    reg.sr |= SR_MD_MASK;
+    reg.sr |= SR_RB_MASK;
+    reg.sr &= ~SR_FD_MASK;
+
+    if (vector == EXCP_POWER_ON_RESET ||
+        vector == EXCP_MANUAL_RESET ||
+        vector == EXCP_HUDI_RESET ||
+        vector == EXCP_INST_TLB_MULT_HIT ||
+        vector == EXCP_INST_TLB_MULT_HIT) {
+        reg.pc = 0xa0000000;
+    } else if (vector == EXCP_USER_BREAK_BEFORE ||
+               vector == EXCP_USER_BREAK_AFTER) {
+        // TODO: check brcr.ubde and use DBR instead of VBR if it is set
+        reg.pc = reg.vbr + meta->offset;
+    } else {
+        reg.pc = reg.vbr + meta->offset;
+    }
+}
