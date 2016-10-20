@@ -56,13 +56,14 @@ int Sh4::read_mem(void *out, addr32_t addr, size_t len) {
 }
 
 // find entry with matching VPN
-struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr) {
+struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr,
+                                         utlb_access_t access_type) {
     struct Sh4::utlb_entry *ret = NULL;
+    addr32_t vpn_vaddr;
 
     for (unsigned i = 0; i < UTLB_SIZE; i++) {
         struct utlb_entry *ent = utlb + i;
         addr32_t vpn_ent;
-        addr32_t vpn_vaddr;
 
         switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
         case ONE_KILO:
@@ -100,34 +101,63 @@ struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr) {
             if (vpn_vaddr == vpn_ent && (ent->key & UTLB_KEY_VALID_MASK) &&
                 utlb_asid == mmu_asid) {
                 // UTLB hit
-                if (ret)
-                    throw UnimplementedError("Data TLB multiple hit exception");
-                else
+                if (ret) {
+                    set_exception(EXCP_DATA_TLB_MULT_HIT);
+                    return NULL;
+                } else {
                     ret = ent;
+                }
             }
         } else {
             if (vpn_vaddr == vpn_ent && (ent->key & UTLB_KEY_VALID_MASK)) {
                 // UTLB hit
-                if (ret)
-                    throw UnimplementedError("Data TLB multiple hit exception");
-                else
+                if (ret) {
+                    set_exception(EXCP_DATA_TLB_MULT_HIT);
+                    return NULL;
+                } else {
                     ret = ent;
+                }
             }
         }
     }
 
-    if (!ret)
-        throw UnimplementedError("Data TLB miss exception");
+    /*
+     * TODO: Make sure the vpn is being set properly for
+     *       UTLB_READ and UTLB_WRITE below.  I wonder if I am confused because
+     *       it seems weird to me that different VPN pages can have different
+     *       sizes.
+     */
+    if (!ret) {
+        switch (access_type) {
+        case UTLB_READ:
+            set_exception(EXCP_DATA_TLB_READ_MISS);
+            mmu.pteh &= ~MMUPTEH_VPN_MASK;
+            mmu.pteh |= vpn_vaddr << MMUPTEH_VPN_SHIFT;
+            mmu.tea = vaddr;
+            return NULL;
+        case UTLB_WRITE:
+            set_exception(EXCP_DATA_TLB_WRITE_MISS);
+            mmu.pteh &= ~MMUPTEH_VPN_MASK;
+            mmu.pteh |= vpn_vaddr << MMUPTEH_VPN_SHIFT;
+            mmu.tea = vaddr;
+            return NULL;
+        case UTLB_READ_ITLB:
+            return NULL;
+        default:
+            throw InvalidParamError("Unknown access type in utlb_search");
+        }
+    }
+
     return ret;
 }
 
 struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
     struct Sh4::itlb_entry *ret = NULL;
+    addr32_t vpn_vaddr;
 
     for (unsigned i = 0; i < ITLB_SIZE; i++) {
         struct itlb_entry *ent = itlb + i;
         addr32_t vpn_ent;
-        addr32_t vpn_vaddr;
 
         switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
         case ONE_KILO:
@@ -164,18 +194,34 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
             if (vpn_vaddr == vpn_ent && (ent->key & ITLB_KEY_VALID_MASK) &&
                 itlb_asid == mmu_asid) {
                 // ITLB hit
-                if (ret)
-                    throw UnimplementedError("Data TLB multiple hit exception");
-                else
+                if (ret) {
+                    /*
+                     *  TODO: set_exception may be setting more flags than is
+                     *        necessary in this scenario; the manual is a
+                     *        little vague on how this is supposed to work.
+                     */
+                    mmu.tea = vaddr;
+                    set_exception(EXCP_INST_TLB_MULT_HIT);
+                    return NULL;
+                } else {
                     ret = ent;
+                }
             }
         } else {
             if (vpn_vaddr == vpn_ent && (ent->key & ITLB_KEY_VALID_MASK)) {
                 // ITLB hit
-                if (ret)
-                    throw UnimplementedError("Data TLB multiple hit exception");
-                else
+                if (ret) {
+                    /*
+                     *  TODO: set_exception may be setting more flags than is
+                     *        necessary in this scenario; the manual is a
+                     *        little vague on how this is supposed to work.
+                     */
+                    mmu.tea = vaddr;
+                    set_exception(EXCP_INST_TLB_MULT_HIT);
+                    return NULL;
+                } else {
                     ret = ent;
+                }
             }
         }
     }
@@ -185,13 +231,14 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
 
     // ITLB miss - check the UTLB
     struct utlb_entry *utlb_ent;
-    try {
-        utlb_ent = utlb_search(vaddr);
-    } catch (UnimplementedError err) {
-        // TODO: When CPU exceptions are implemented, there will need to be an
-        //       option for utlb_search to prevent it from creating a CPU
-        //       exception on miss so that this function can do it itself.
-        throw UnimplementedError("Instruction TLB miss exception");
+    utlb_ent = utlb_search(vaddr, UTLB_READ_ITLB);
+
+    if (!utlb_ent) {
+        set_exception(EXCP_INST_TLB_MISS);
+        mmu.pteh &= ~MMUPTEH_VPN_MASK;
+        mmu.pteh |= vpn_vaddr << MMUPTEH_VPN_SHIFT;
+        mmu.tea = vaddr;
+        return NULL;
     }
 
     // now replace one of the ITLB entries.  Ideally there would be some sort

@@ -178,11 +178,32 @@ private:
     enum PhysMemArea get_mem_area(addr32_t addr);
 
     /*
+     * Parameter to utlb_search that tells it what kind of exception to raise
+     * in the event of a utlb miss.  This does not have any effect on what it
+     * does for a multiple hit (which is to raise EXCP_DATA_TLB_MULT_HIT).  Even
+     * UTLB_READ_ITLB doesn not stop it from raising EXCP_DATA_TLB_MULT_HIT if
+     * there is a multiple-hit.
+     */
+    typedef enum utlb_access {
+        UTLB_READ,     // generate EXCP_DATA_TLB_READ_MISS
+        UTLB_WRITE,    // generate EXCP_DATA_TLB_WRITE_MISS
+        UTLB_READ_ITLB // do not generate exceptions for TLB misses
+    } utlb_access_t;
+
+    /*
      * return the utlb entry for vaddr.
      * On failure, this will return NULL and set the appropriate CPU
      * flags to signal an exception of some sort.
+     *
+     * access_type should be either UTLB_READ, UTLB_WRITE or UTLB_READ_ITLB.
+     * It is only used for setting the appropriate exception type in the event
+     * of a utlb cache miss.  Other than that, it has no real effect on what
+     * this function does.
+     *
+     * This function does not check to see if the CPU actually has privelege to
+     * access the page referenced by the returned utlb_entry.
      */
-    struct utlb_entry *utlb_search(addr32_t vaddr);
+    struct utlb_entry *utlb_search(addr32_t vaddr, utlb_access_t access_type);
 
     /*
      * Return the itlb entry for vaddr.
@@ -191,6 +212,9 @@ private:
      * On miss, this function will search the utlb and if it finds what it was
      * looking for there, it will replace one of the itlb entries with the utlb
      * entry as outlined on pade 44 of the SH7750 Hardware Manual.
+     *
+     * This function does not check to see if the CPU actually has privelege to
+     * access the page referenced by the returned itlb_entry.
      */
     struct itlb_entry *itlb_search(addr32_t vaddr);
 
@@ -330,6 +354,9 @@ private:
 
     static const unsigned MMUPTEH_ASID_SHIFT = 0;
     static const unsigned MMUPTEH_ASID_MASK = 0xff << MMUPTEH_ASID_SHIFT;
+
+    static const unsigned MMUPTEH_VPN_SHIFT = 10;
+    static const unsigned MMUPTEH_VPN_MASK = 0x3fffff << MMUPTEH_VPN_SHIFT;
 
     static const unsigned MMUCR_AT_SHIFT = 0;
     static const unsigned MMUCR_AT_MASK = 1 << MMUCR_AT_SHIFT;
