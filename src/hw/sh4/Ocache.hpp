@@ -61,6 +61,21 @@ public:
     // Returns: zero on success, nonzero on failure.
     int cache_read4(boost::uint32_t *out, addr32_t paddr, bool index_enable,
                     bool cache_asm_ram);
+    /*
+     * Write the n-byte value pointed to by data to memory through the cache in
+     * copy-back mode.
+     * Returns: zero on success, nonzero on failure.
+     */
+    int cache_write4_cb(boost::uint32_t data, addr32_t paddr,
+                        bool index_enable, bool cache_as_ram);
+
+    /*
+     * Write the 4-byte value pointed to by data to memory through the cache in
+     * write-through mode.
+     * Returns: zero on success, nonzero on failure.
+     */
+    int cache_write4_wt(boost::uint32_t data, addr32_t paddr,
+                        bool index_enable, bool cache_as_ram);
 private:
     Sh4 *sh4;
     Memory *mem;
@@ -85,22 +100,6 @@ private:
      */
     addr32_t cache_selector(addr32_t paddr, bool index_enable,
                             bool cache_as_ram) const;
-
-    /*
-     * Write the 4-byte value pointed to by data to memory through the cache in
-     * copy-back mode.
-     * Returns: zero on success, nonzero on failure.
-     */
-    int cache_write4_cb(boost::uint32_t const *data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
-
-    /*
-     * Write the 4-byte value pointed to by data to memory through the cache in
-     * write-through mode.
-     * Returns: zero on success, nonzero on failure.
-     */
-    int cache_write4_wt(boost::uint32_t const *data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
 
     /*
      * Load the cache-line corresponding to paddr into line.

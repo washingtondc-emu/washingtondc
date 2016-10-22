@@ -42,17 +42,235 @@ Sh4::~Sh4() {
     delete inst_cache;
 }
 
-int Sh4::write_mem(void const *out, addr32_t addr, size_t len) {
-    // TODO: finish
-    if (mmu.mmucr & MMUCR_AT_MASK) {
-    } else {
+int Sh4::write4_mem(boost::uint32_t data, addr32_t addr) {
+    enum VirtMemArea virt_area = get_mem_area(addr);
+
+    bool privileged = reg.sr & SR_MD_MASK ? true : false;
+    bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
+    bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+
+    if (virt_area != AREA_P0 && privileged) {
+        // TODO: allow user-mode access to the store queue area
+
+        /*
+         * The spec says user-mode processes can only write to the U0 area
+         * (which overlaps with P0) and the store queue area but I can't find
+         * the part where it describes what needs to be done.  Raising the
+         * EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
+         * looks like it's for instances where the page can be looked up in the
+         * TLB.
+         */
+        throw UnimplementedError("CPU exception for unprivileged access to "
+                                 "high memory areas");
+    }
+
+    switch (virt_area) {
+    case AREA_P0:
+    case AREA_P3:
+        if (mmu.mmucr & MMUCR_AT_MASK) {
+            struct utlb_entry *utlb_ent = utlb_search(addr, UTLB_WRITE);
+
+            if (!utlb_ent)
+                return 1; // exception set by utlb_search
+
+            unsigned pr = (utlb_ent->ent & UTLB_ENT_PR_MASK) >>
+                UTLB_ENT_PR_SHIFT;
+
+            addr32_t paddr = utlb_ent_translate(utlb_ent, addr);
+            if (privileged) {
+                if (pr & 1) {
+                    // page is marked as read-write
+
+                    if (utlb_ent->ent & UTLB_ENT_D_MASK) {
+                        if ((utlb_ent->ent & UTLB_ENT_C_MASK) &&
+                            (cache_reg.ccr & CCR_OCE_MASK)) {
+                            // page is cacheable and the cache is enabled
+                            if (cache_reg.ccr & CCR_WT_MASK) {
+                                return op_cache->cache_write4_wt(data, paddr,
+                                                                 index_enable,
+                                                                 cache_as_ram);
+                            } else {
+                                return op_cache->cache_write4_cb(data, paddr,
+                                                                 index_enable,
+                                                                 cache_as_ram);
+                            }
+                        } else {
+                            // don't use the cache
+                            return mem->write(&data, addr & 0x1fffffff, 4);
+                        }
+                    } else {
+                        set_exception(EXCP_INITIAL_PAGE_WRITE);
+                        mmu.tea = addr;
+                        return 1;
+                    }
+                } else {
+                    // page is marked as read-only
+                    unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
+                        UTLB_KEY_VPN_SHIFT;
+                    set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                    mmu.pteh &= ~MMUPTEH_VPN_MASK;
+                    mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
+                    mmu.tea = addr;
+                    return 1;
+                }
+            } else {
+                if (pr != 3) {
+                    // page is marked as read-only OR we don't have permissions
+                    unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
+                        UTLB_KEY_VPN_SHIFT;
+                    set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                    mmu.pteh &= ~MMUPTEH_VPN_MASK;
+                    mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
+                    mmu.tea = addr;
+                    return 1;
+                }
+
+                if (utlb_ent->ent & UTLB_ENT_D_MASK) {
+                    if ((utlb_ent->ent & UTLB_ENT_C_MASK) &&
+                        (cache_reg.ccr & CCR_OCE_MASK)) {
+                        // page is cacheable and the cache is enabled
+                        if (cache_reg.ccr & CCR_WT_MASK) {
+                            return op_cache->cache_write4_wt(data, paddr,
+                                                             index_enable,
+                                                             cache_as_ram);
+                        } else {
+                            return op_cache->cache_write4_cb(data, paddr,
+                                                             index_enable,
+                                                             cache_as_ram);
+                        }
+                    } else {
+                        // don't use the cache
+                        return mem->write(&data, addr & 0x1fffffff, 4);
+                    }
+                } else {
+                    set_exception(EXCP_INITIAL_PAGE_WRITE);
+                    mmu.tea = addr;
+                    return 1;
+                }
+            }
+        } else {
+            if (cache_reg.ccr & CCR_WT_MASK) {
+                return op_cache->cache_write4_wt(data, addr, index_enable,
+                                                 cache_as_ram);
+            } else {
+                return op_cache->cache_write4_cb(data, addr, index_enable,
+                                                 cache_as_ram);
+            }
+        }
+        break;
+    case AREA_P1:
+        if (cache_reg.ccr & CCR_OCE_MASK) {
+            if (cache_reg.ccr & CCR_CB_MASK) {
+                return op_cache->cache_write4_cb(data, addr, index_enable,
+                                                 cache_as_ram);
+            } else {
+                return op_cache->cache_write4_wt(data, addr, index_enable,
+                                                 cache_as_ram);
+            }
+        } else {
+            return mem->write(&data, addr & 0x1fffffff, 4);
+        }
+        break;
+    case AREA_P2:
+        return mem->write(&data, addr & 0x1fffffff, 4);
+        break;
+    case AREA_P4:
+        throw UnimplementedError("Register access through memory");
+        break;
+    default:
+        break;
     }
 
     return 1;
 }
 
-int Sh4::read_mem(void *out, addr32_t addr, size_t len) {
+int Sh4::read4_mem(boost::uint32_t data, addr32_t addr) {
     return 1;
+}
+
+addr32_t Sh4::utlb_ent_get_vpn(struct utlb_entry *ent) const {
+    switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
+    case ONE_KILO:
+        // upper 22 bits
+        return ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
+    case FOUR_KILO:
+        // upper 20 bits
+        return ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffff000;
+    case SIXTYFOUR_KILO:
+        // upper 16 bits
+        return ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xffff0000;
+    case ONE_MEGA:
+        // upper 12 bits
+        return ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfff00000;
+    default:
+        throw IntegrityError("Unrecognized UTLB size value");
+    }
+}
+
+addr32_t Sh4::utlb_ent_get_addr_offset(struct utlb_entry *ent,
+                                       addr32_t addr) const {
+    switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
+    case ONE_KILO:
+        // lower 10 bits
+        return addr & 0x3ff;
+    case FOUR_KILO:
+        // lower 12 bits
+        return addr & 0xfff;
+    case SIXTYFOUR_KILO:
+        // lower 16 bits
+        return addr & 0xffff;
+    case ONE_MEGA:
+        // lowr 20 bits
+        return addr & 0xfffff;
+    default:
+        throw IntegrityError("Unrecognized UTLB size value");
+    }
+}
+
+addr32_t Sh4::utlb_ent_get_ppn(struct utlb_entry *ent) const {
+    switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
+    case ONE_KILO:
+        // upper 19 bits (of upper 29 bits)
+        return ((ent->ent & UTLB_ENT_PPN_MASK) >> UTLB_ENT_PPN_SHIFT) &
+            0x1ffffc00;
+    case FOUR_KILO:
+        // upper 17 bits (of upper 29 bits)
+        return ((ent->ent & UTLB_ENT_PPN_MASK) >> UTLB_ENT_PPN_SHIFT) &
+            0x1ffff000;
+    case SIXTYFOUR_KILO:
+        // upper 13 bits (of upper 29 bits)
+        return ((ent->ent & UTLB_ENT_PPN_MASK) >> UTLB_ENT_PPN_SHIFT) &
+            0x1fff0000;
+    case ONE_MEGA:
+        // upper 9 bits (of upper 29 bits)
+        return ((ent->ent & UTLB_ENT_PPN_MASK) >> UTLB_ENT_PPN_SHIFT) &
+            0x1ff00000;
+    default:
+        throw IntegrityError("Unrecognized UTLB size value");
+    }
+}
+
+/*
+ * TODO: if you look deep into the way this function and the functions it
+ *       calls work, it becomes apparent that the exact same switch statement
+ *       gets done 3 times in a row (suboptimal branching).
+ */
+addr32_t Sh4::utlb_ent_translate(struct utlb_entry *ent, addr32_t vaddr) const {
+    addr32_t ppn = utlb_ent_get_ppn(ent);
+    addr32_t offset = utlb_ent_get_addr_offset(ent, vaddr);
+
+    switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
+    case ONE_KILO:
+        return ppn << 10 | offset;
+    case FOUR_KILO:
+        return ppn << 12 | offset;
+    case SIXTYFOUR_KILO:
+        return ppn << 16 | offset;
+    case ONE_MEGA:
+        return ppn << 20 | offset;
+    default:
+        throw IntegrityError("Unrecognized UTLB size value");
+    }
 }
 
 // find entry with matching VPN
@@ -276,7 +494,7 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
     return itlb_search(vaddr);
 }
 
-enum Sh4::PhysMemArea Sh4::get_mem_area(addr32_t addr) {
+enum Sh4::VirtMemArea Sh4::get_mem_area(addr32_t addr) {
     if (addr >= AREA_P0_FIRST && addr <= AREA_P0_LAST)
         return AREA_P0;
     if (addr >= AREA_P1_FIRST && addr <= AREA_P1_LAST)

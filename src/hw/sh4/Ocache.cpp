@@ -122,7 +122,7 @@ int Ocache::cache_read4(boost::uint32_t *out, addr32_t paddr,
     return err;
 }
 
-int Ocache::cache_write4_cb(boost::uint32_t const *data, addr32_t paddr,
+int Ocache::cache_write4_cb(boost::uint32_t data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
 
@@ -137,12 +137,12 @@ int Ocache::cache_write4_cb(boost::uint32_t const *data, addr32_t paddr,
     if (cache_check(line, paddr)) {
         if (line->key & KEY_VALID_MASK) {
             // cache hit, valid bit is 1
-            line->lw[lw_idx] = *data;
+            line->lw[lw_idx] = data;
             line->key |= KEY_DIRTY_MASK;
         } else {
             // overwrite invalid data in cache.
             cache_load(line, paddr);
-            line->lw[lw_idx] = *data;
+            line->lw[lw_idx] = data;
             line->key |= KEY_DIRTY_MASK;
         }
     } else {
@@ -158,18 +158,18 @@ int Ocache::cache_write4_cb(boost::uint32_t const *data, addr32_t paddr,
                 if (err)
                     return err;
                 err = cache_load(line, paddr);
-                line->lw[lw_idx] = *data;
+                line->lw[lw_idx] = data;
                 line->key |= KEY_DIRTY_MASK;
             } else {
                 // clean data in cache can be safely overwritten.
                 cache_load(line, paddr);
-                line->lw[lw_idx] = *data;
+                line->lw[lw_idx] = data;
                 line->key |= KEY_DIRTY_MASK;
             }
         } else {
             // overwrite invalid data in cache.
             cache_load(line, paddr);
-            line->lw[lw_idx] = *data;
+            line->lw[lw_idx] = data;
             line->key |= KEY_DIRTY_MASK;
         }
     }
@@ -177,7 +177,7 @@ int Ocache::cache_write4_cb(boost::uint32_t const *data, addr32_t paddr,
     return 0;
 }
 
-int Ocache::cache_write4_wt(boost::uint32_t const *data, addr32_t paddr,
+int Ocache::cache_write4_wt(boost::uint32_t const data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
 
@@ -190,12 +190,12 @@ int Ocache::cache_write4_wt(boost::uint32_t const *data, addr32_t paddr,
 
     if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
         // write to cache and write-through to main memory
-        line->lw[lw_idx] = *data;
-        if ((err = mem->write(data, paddr, sizeof(boost::uint32_t))) != 0)
+        line->lw[lw_idx] = data;
+        if ((err = mem->write(&data, paddr, sizeof(data))) != 0)
             return err;
     } else {
         // write through to main memory ignoring the cache
-        if ((err = mem->write(data, paddr, sizeof(boost::uint32_t))) != 0)
+        if ((err = mem->write(&data, paddr, sizeof(data))) != 0)
             return err;
     }
 

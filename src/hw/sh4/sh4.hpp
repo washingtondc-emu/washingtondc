@@ -39,7 +39,7 @@ public:
     void set_interrupt(unsigned intp_code);
 private:
 
-    enum PhysMemArea {
+    enum VirtMemArea {
         AREA_P0 = 0,
         AREA_P1,
         AREA_P2,
@@ -175,7 +175,7 @@ private:
     Icache *inst_cache;
     Ocache *op_cache;
 
-    enum PhysMemArea get_mem_area(addr32_t addr);
+    enum VirtMemArea get_mem_area(addr32_t addr);
 
     /*
      * Parameter to utlb_search that tells it what kind of exception to raise
@@ -205,6 +205,12 @@ private:
      */
     struct utlb_entry *utlb_search(addr32_t vaddr, utlb_access_t access_type);
 
+    addr32_t utlb_ent_get_vpn(struct utlb_entry *ent) const;
+    addr32_t utlb_ent_get_ppn(struct utlb_entry *ent) const;
+    addr32_t utlb_ent_get_addr_offset(struct utlb_entry *ent,
+                                      addr32_t addr) const;
+    addr32_t utlb_ent_translate(struct utlb_entry *ent, addr32_t vaddr) const;
+
     /*
      * Return the itlb entry for vaddr.
      * On failure this will return NULL and set the appropriate CPU
@@ -225,8 +231,8 @@ private:
     * appropriate CPU flags for an exception and return non-zero.  On success
     * they will return zero.
     */
-    int write_mem(void const *out, addr32_t addr, size_t len);
-    int read_mem(void *out, addr32_t addr, size_t len);
+    int write4_mem(boost::uint32_t val, addr32_t addr);
+    int read4_mem(boost::uint32_t val, addr32_t addr);
 
     Memory *mem;
 
