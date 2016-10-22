@@ -50,7 +50,10 @@ public:
         boost::uint32_t key;
 
         // cache line data array
-        boost::uint32_t lw[LONGS_PER_CACHE_LINE];
+        union {
+            boost::uint8_t byte[LONGS_PER_CACHE_LINE * 4];
+            boost::uint32_t lw[LONGS_PER_CACHE_LINE];
+        };
     };
 
     // this class does not take ownership of sh4 or mem, so they will not be
@@ -59,21 +62,31 @@ public:
     ~Ocache();
 
     // Returns: zero on success, nonzero on failure.
+    int cache_read1(boost::uint8_t *out, addr32_t paddr, bool index_enable,
+                    bool cache_as_ram);
     int cache_read4(boost::uint32_t *out, addr32_t paddr, bool index_enable,
-                    bool cache_asm_ram);
+                    bool cache_as_ram);
     /*
      * Write the n-byte value pointed to by data to memory through the cache in
      * copy-back mode.
      * Returns: zero on success, nonzero on failure.
      */
+    int cache_write_cb(boost::uint32_t data, unsigned len, addr32_t paddr,
+                       bool index_enable, bool cache_as_ram);
+    int cache_write1_cb(boost::uint8_t data, addr32_t paddr,
+                        bool index_enable, bool cache_as_ram);
     int cache_write4_cb(boost::uint32_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
 
     /*
-     * Write the 4-byte value pointed to by data to memory through the cache in
+     * Write the n-byte value pointed to by data to memory through the cache in
      * write-through mode.
      * Returns: zero on success, nonzero on failure.
      */
+    int cache_write_wt(boost::uint32_t data, unsigned len, addr32_t paddr,
+                       bool index_enable, bool cache_as_ram);
+    int cache_write1_wt(boost::uint8_t data, addr32_t paddr,
+                        bool index_enable, bool cache_as_ram);
     int cache_write4_wt(boost::uint32_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
 private:

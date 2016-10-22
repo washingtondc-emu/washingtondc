@@ -70,6 +70,54 @@ addr32_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
     return ent_sel;
 }
 
+int Ocache::cache_read1(boost::uint8_t *out, addr32_t paddr, bool index_enable,
+                        bool cache_as_ram) {
+    int err = 0;
+
+    addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
+    struct cache_line *line = line_idx + op_cache;
+
+    if (line->key & KEY_VALID_MASK) {
+        if (cache_check(line, paddr)) {
+            // cache hit
+            addr32_t idx = paddr & 0x1f;
+
+            *out = line->byte[idx];
+            return 0;
+        } else {
+            // tag does not match, V bit is 1
+            if (line->key & KEY_DIRTY_MASK) {
+                // cache miss (with write-back)
+                // The manual says the SH4 should save the cache line to the
+                // write-back buffer.  Since memory writes are effectively
+                // instant for the emulator and since I *think* the write-back
+                // buffer is invisible from the software's perspective, I don't
+                // implement that.
+                err = cache_write_back(line, paddr);
+                if (err)
+                    return err;
+                err = cache_load(line, paddr);
+            } else {
+                //cache miss (no write-back)
+                err = cache_load(line, paddr);
+            }
+        }
+    } else {
+        // valid bit is 0, tag may or may not match
+        // cache miss (no write-back)
+        err = cache_load(line, paddr);
+    }
+
+    if (!err) {
+        addr32_t idx = paddr & 0x1f;
+
+        *out = line->byte[idx];
+        return 0;
+    }
+
+    return err;
+}
+
 int Ocache::cache_read4(boost::uint32_t *out, addr32_t paddr,
                         bool index_enable, bool cache_as_ram) {
     int err = 0;
@@ -122,6 +170,70 @@ int Ocache::cache_read4(boost::uint32_t *out, addr32_t paddr,
     return err;
 }
 
+int Ocache::cache_write_cb(boost::uint32_t data, unsigned len, addr32_t paddr,
+                           bool index_enable, bool cache_as_ram) {
+    switch (len) {
+    case 1:
+        return cache_write1_cb((boost::uint8_t)data, paddr, index_enable,
+                               cache_as_ram);
+    case 4:
+        return cache_write4_cb(data, paddr, index_enable,
+                               cache_as_ram);
+    }
+
+    throw UnimplementedError("Data writes of sizes other than 1 or 4 bytes");
+}
+
+int Ocache::cache_write1_cb(boost::uint8_t data, addr32_t paddr,
+                            bool index_enable, bool cache_as_ram) {
+    int err = 0;
+    addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
+    struct cache_line *line = line_idx + op_cache;
+    unsigned byte_idx = paddr & 0x1f;
+
+    if (cache_check(line, paddr)) {
+        if (line->key & KEY_VALID_MASK) {
+            // cache hit, valid bit is 1
+            line->byte[byte_idx] = data;
+            line->key |= KEY_DIRTY_MASK;
+        } else {
+            // overwrite invalid data in cache.
+            cache_load(line, paddr);
+            line->byte[byte_idx] = data;
+            line->key |= KEY_DIRTY_MASK;
+        }
+    } else {
+        if (line->key & KEY_VALID_MASK) {
+            if (line->key & KEY_DIRTY_MASK) {
+                // cache miss (with write-back)
+                // The manual says the SH4 should save the cache line to the
+                // write-back buffer.  Since memory writes are effectively
+                // instant for the emulator and since I *think* the write-back
+                // buffer is invisible from the software's perspective, I don't
+                // implement that.
+                err = cache_write_back(line, paddr);
+                if (err)
+                    return err;
+                err = cache_load(line, paddr);
+                line->byte[byte_idx] = data;
+                line->key |= KEY_DIRTY_MASK;
+            } else {
+                // clean data in cache can be safely overwritten.
+                cache_load(line, paddr);
+                line->byte[byte_idx] = data;
+                line->key |= KEY_DIRTY_MASK;
+            }
+        } else {
+            // overwrite invalid data in cache.
+            cache_load(line, paddr);
+            line->byte[byte_idx] = data;
+            line->key |= KEY_DIRTY_MASK;
+        }
+    }
+
+    return 0;
+}
+
 int Ocache::cache_write4_cb(boost::uint32_t data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
@@ -172,6 +284,44 @@ int Ocache::cache_write4_cb(boost::uint32_t data, addr32_t paddr,
             line->lw[lw_idx] = data;
             line->key |= KEY_DIRTY_MASK;
         }
+    }
+
+    return 0;
+}
+
+int Ocache::cache_write_wt(boost::uint32_t data, unsigned len, addr32_t paddr,
+                           bool index_enable, bool cache_as_ram) {
+    switch (len) {
+    case 1:
+        return cache_write1_wt((boost::uint8_t)data, paddr, index_enable,
+                               cache_as_ram);
+    case 4:
+        return cache_write4_wt(data, paddr, index_enable,
+                               cache_as_ram);
+    }
+
+    throw UnimplementedError("Data writes of sizes other than 1 or 4 bytes");
+}
+
+
+
+int Ocache::cache_write1_wt(boost::uint8_t data, addr32_t paddr,
+                            bool index_enable, bool cache_as_ram) {
+    int err = 0;
+
+    addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
+    struct cache_line *line = line_idx + op_cache;
+    unsigned byte_idx = paddr & 0x1f;
+
+    if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
+        // write to cache and write-through to main memory
+        line->byte[byte_idx] = data;
+        if ((err = mem->write(&data, paddr, sizeof(data))) != 0)
+            return err;
+    } else {
+        // write through to main memory ignoring the cache
+        if ((err = mem->write(&data, paddr, sizeof(data))) != 0)
+            return err;
     }
 
     return 0;

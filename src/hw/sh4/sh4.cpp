@@ -42,7 +42,7 @@ Sh4::~Sh4() {
     delete inst_cache;
 }
 
-int Sh4::write4_mem(boost::uint32_t data, addr32_t addr) {
+int Sh4::write_mem(boost::uint32_t data, addr32_t addr, unsigned len) {
     enum VirtMemArea virt_area = get_mem_area(addr);
 
     bool privileged = reg.sr & SR_MD_MASK ? true : false;
@@ -86,17 +86,19 @@ int Sh4::write4_mem(boost::uint32_t data, addr32_t addr) {
                             (cache_reg.ccr & CCR_OCE_MASK)) {
                             // page is cacheable and the cache is enabled
                             if (cache_reg.ccr & CCR_WT_MASK) {
-                                return op_cache->cache_write4_wt(data, paddr,
-                                                                 index_enable,
-                                                                 cache_as_ram);
+                                return op_cache->cache_write_wt(data, len,
+                                                                paddr,
+                                                                index_enable,
+                                                                cache_as_ram);
                             } else {
-                                return op_cache->cache_write4_cb(data, paddr,
-                                                                 index_enable,
-                                                                 cache_as_ram);
+                                return op_cache->cache_write_cb(data, len,
+                                                                paddr,
+                                                                index_enable,
+                                                                cache_as_ram);
                             }
                         } else {
                             // don't use the cache
-                            return mem->write(&data, addr & 0x1fffffff, 4);
+                            return mem->write(&data, addr & 0x1fffffff, len);
                         }
                     } else {
                         set_exception(EXCP_INITIAL_PAGE_WRITE);
@@ -130,17 +132,17 @@ int Sh4::write4_mem(boost::uint32_t data, addr32_t addr) {
                         (cache_reg.ccr & CCR_OCE_MASK)) {
                         // page is cacheable and the cache is enabled
                         if (cache_reg.ccr & CCR_WT_MASK) {
-                            return op_cache->cache_write4_wt(data, paddr,
+                            return op_cache->cache_write_wt(data, len, paddr,
                                                              index_enable,
                                                              cache_as_ram);
                         } else {
-                            return op_cache->cache_write4_cb(data, paddr,
+                            return op_cache->cache_write_cb(data, len, paddr,
                                                              index_enable,
                                                              cache_as_ram);
                         }
                     } else {
                         // don't use the cache
-                        return mem->write(&data, addr & 0x1fffffff, 4);
+                        return mem->write(&data, addr & 0x1fffffff, len);
                     }
                 } else {
                     set_exception(EXCP_INITIAL_PAGE_WRITE);
@@ -150,10 +152,10 @@ int Sh4::write4_mem(boost::uint32_t data, addr32_t addr) {
             }
         } else {
             if (cache_reg.ccr & CCR_WT_MASK) {
-                return op_cache->cache_write4_wt(data, addr, index_enable,
+                return op_cache->cache_write_wt(data, len, addr, index_enable,
                                                  cache_as_ram);
             } else {
-                return op_cache->cache_write4_cb(data, addr, index_enable,
+                return op_cache->cache_write_cb(data, len, addr, index_enable,
                                                  cache_as_ram);
             }
         }
@@ -161,18 +163,18 @@ int Sh4::write4_mem(boost::uint32_t data, addr32_t addr) {
     case AREA_P1:
         if (cache_reg.ccr & CCR_OCE_MASK) {
             if (cache_reg.ccr & CCR_CB_MASK) {
-                return op_cache->cache_write4_cb(data, addr, index_enable,
+                return op_cache->cache_write_cb(data, len, addr, index_enable,
                                                  cache_as_ram);
             } else {
-                return op_cache->cache_write4_wt(data, addr, index_enable,
+                return op_cache->cache_write_wt(data, len, addr, index_enable,
                                                  cache_as_ram);
             }
         } else {
-            return mem->write(&data, addr & 0x1fffffff, 4);
+            return mem->write(&data, addr & 0x1fffffff, len);
         }
         break;
     case AREA_P2:
-        return mem->write(&data, addr & 0x1fffffff, 4);
+        return mem->write(&data, addr & 0x1fffffff, len);
         break;
     case AREA_P4:
         throw UnimplementedError("Register access through memory");
@@ -184,7 +186,7 @@ int Sh4::write4_mem(boost::uint32_t data, addr32_t addr) {
     return 1;
 }
 
-int Sh4::read4_mem(boost::uint32_t data, addr32_t addr) {
+int Sh4::read_mem(boost::uint32_t data, addr32_t addr, unsigned len) {
     return 1;
 }
 
