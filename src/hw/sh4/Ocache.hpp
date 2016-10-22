@@ -62,7 +62,9 @@ public:
     ~Ocache();
 
     // Returns: zero on success, nonzero on failure.
-    int cache_read1(boost::uint8_t *out, addr32_t paddr, bool index_enable,
+    int cache_read(boost::uint32_t *out, unsigned len, addr32_t paddr,
+                   bool index_enable, bool cache_as_ram);
+    int cache_read1(boost::uint32_t *out, addr32_t paddr, bool index_enable,
                     bool cache_as_ram);
     int cache_read4(boost::uint32_t *out, addr32_t paddr, bool index_enable,
                     bool cache_as_ram);
@@ -73,7 +75,7 @@ public:
      */
     int cache_write_cb(boost::uint32_t data, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram);
-    int cache_write1_cb(boost::uint8_t data, addr32_t paddr,
+    int cache_write1_cb(boost::uint32_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
     int cache_write4_cb(boost::uint32_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);

@@ -70,7 +70,21 @@ addr32_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
     return ent_sel;
 }
 
-int Ocache::cache_read1(boost::uint8_t *out, addr32_t paddr, bool index_enable,
+int Ocache::cache_read(boost::uint32_t *out, unsigned len, addr32_t paddr,
+                       bool index_enable, bool cache_as_ram) {
+    switch (len) {
+    case 1:
+        return cache_read1(out, paddr, index_enable,
+                           cache_as_ram);
+    case 4:
+        return cache_read4(out, paddr, index_enable,
+                           cache_as_ram);
+    }
+
+    throw UnimplementedError("Data reads of sizes other than 1 or 4 bytes");
+}
+
+int Ocache::cache_read1(boost::uint32_t *out, addr32_t paddr, bool index_enable,
                         bool cache_as_ram) {
     int err = 0;
 
@@ -184,7 +198,7 @@ int Ocache::cache_write_cb(boost::uint32_t data, unsigned len, addr32_t paddr,
     throw UnimplementedError("Data writes of sizes other than 1 or 4 bytes");
 }
 
-int Ocache::cache_write1_cb(boost::uint8_t data, addr32_t paddr,
+int Ocache::cache_write1_cb(boost::uint32_t data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);

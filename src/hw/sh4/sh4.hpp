@@ -225,14 +225,14 @@ private:
     struct itlb_entry *itlb_search(addr32_t vaddr);
 
     /*
-    * From within the CPU, these functions should be called instead of
-    * the memory's read/write functions because these implement the MMU
-    * functionality.  In the event of a failure, these functions will set the
-    * appropriate CPU flags for an exception and return non-zero.  On success
-    * they will return zero.
-    */
+     * From within the CPU, these functions should be called instead of
+     * the memory's read/write functions because these implement the MMU
+     * functionality.  In the event of a failure, these functions will set the
+     * appropriate CPU flags for an exception and return non-zero.  On success
+     * they will return zero.
+     */
     int write_mem(boost::uint32_t val, addr32_t addr, unsigned len);
-    int read_mem(boost::uint32_t val, addr32_t addr, unsigned len);
+    int read_mem(boost::uint32_t *val, addr32_t addr, unsigned len);
 
     Memory *mem;
 
