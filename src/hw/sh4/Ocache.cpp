@@ -137,7 +137,28 @@ int Ocache::cache_read4(boost::uint32_t *out, addr32_t paddr,
     int err = 0;
 
     if (paddr & 0x3) {
-        throw UnimplementedError("Unaligned memory access exception");
+        /*
+         * the lazy implementation: do 4 1-byte reads.
+         * Obviously this is suboptibmal, but for now I'm more concerned with
+         * getting things to work than I am with getting things to work well.
+         * Also all this caching code will probably go the way of the dinosaurs
+         * later when I inevitably decide I don't need to emulate this aspect
+         * of the SH4, so it's no big deal if it's slow.
+         */
+        uint32_t out_buf = 0;
+        for (int i = 0; i < 4; i++) {
+            uint32_t tmp;
+            int err;
+
+            err = cache_read1(&tmp, paddr + i, index_enable, cache_as_ram);
+            if (err)
+                return err;
+
+            out_buf |= tmp << (8 * i);
+        }
+
+        *out = out_buf;
+        return 0;
     }
 
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
@@ -253,7 +274,25 @@ int Ocache::cache_write4_cb(boost::uint32_t data, addr32_t paddr,
     int err = 0;
 
     if (paddr & 0x3) {
-        throw UnimplementedError("Unaligned memory access exception");
+        /*
+         * the lazy implementation: do 4 1-byte writes.
+         * Obviously this is suboptibmal, but for now I'm more concerned with
+         * getting things to work than I am with getting things to work well.
+         * Also all this caching code will probably go the way of the dinosaurs
+         * later when I inevitably decide I don't need to emulate this aspect
+         * of the SH4, so it's no big deal if it's slow.
+         */
+        for (int i = 0; i < 4; i++) {
+            uint32_t tmp;
+            int err;
+
+            tmp = ((0xff << i) & data) >> i;
+            err = cache_write1_cb(tmp, paddr + i, index_enable, cache_as_ram);
+            if (err)
+                return err;
+        }
+
+        return 0;
     }
 
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
@@ -346,8 +385,27 @@ int Ocache::cache_write4_wt(boost::uint32_t const data, addr32_t paddr,
     int err = 0;
 
     if (paddr & 0x3) {
-        throw UnimplementedError("Unaligned memory access exception");
+        /*
+         * the lazy implementation: do 4 1-byte writes.
+         * Obviously this is suboptibmal, but for now I'm more concerned with
+         * getting things to work than I am with getting things to work well.
+         * Also all this caching code will probably go the way of the dinosaurs
+         * later when I inevitably decide I don't need to emulate this aspect
+         * of the SH4, so it's no big deal if it's slow.
+         */
+        for (int i = 0; i < 4; i++) {
+            uint32_t tmp;
+            int err;
+
+            tmp = ((0xff << i) & data) >> i;
+            err = cache_write1_wt(tmp, paddr + i, index_enable, cache_as_ram);
+            if (err)
+                return err;
+        }
+
+        return 0;
     }
+
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
     struct cache_line *line = line_idx + op_cache;
     unsigned lw_idx = (paddr & 0x1f) >> 2;
