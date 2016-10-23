@@ -138,7 +138,7 @@ private:
 
     // ITLB Protection Key data (0=priveleged, 1=user or priveleged)
     static const unsigned ITLB_ENT_PR_SHIFT = 4;
-    static const unsigned IRLB_ENT_PR_MASK = 1 << ITLB_ENT_PR_SHIFT;
+    static const unsigned ITLB_ENT_PR_MASK = 1 << ITLB_ENT_PR_SHIFT;
 
     // ITLB Cacheability flag
     static const unsigned ITLB_ENT_C_SHIFT = 5;
@@ -211,6 +211,12 @@ private:
                                       addr32_t addr) const;
     addr32_t utlb_ent_translate(struct utlb_entry *ent, addr32_t vaddr) const;
 
+    addr32_t itlb_ent_get_vpn(struct itlb_entry *ent) const;
+    addr32_t itlb_ent_get_ppn(struct itlb_entry *ent) const;
+    addr32_t itlb_ent_get_addr_offset(struct itlb_entry *ent,
+                                      addr32_t addr) const;
+    addr32_t itlb_ent_translate(struct itlb_entry *ent, addr32_t vaddr) const;
+
     /*
      * Return the itlb entry for vaddr.
      * On failure this will return NULL and set the appropriate CPU
@@ -233,6 +239,8 @@ private:
      */
     int write_mem(boost::uint32_t val, addr32_t addr, unsigned len);
     int read_mem(boost::uint32_t *val, addr32_t addr, unsigned len);
+
+    int read_inst(inst_t *out, addr32_t addr);
 
     Memory *mem;
 

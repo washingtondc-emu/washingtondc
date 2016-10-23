@@ -66,7 +66,7 @@ int Icache::cache_load(struct cache_line *line, addr32_t paddr) {
     int err_code;
     size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_CACHE_LINE;
 
-    if ((err_code = mem->read(line->lw, paddr & ~31, n_bytes)) != 0)
+    if ((err_code = mem->read(line->sw, paddr & ~31, n_bytes)) != 0)
         return err_code;
 
     cache_line_set_tag(line, tag_from_paddr(paddr));
@@ -75,24 +75,56 @@ int Icache::cache_load(struct cache_line *line, addr32_t paddr) {
     return 0;
 }
 
-int Icache::read4(boost::uint32_t *out, addr32_t paddr, bool index_enable) {
+int Icache::read1(boost::uint32_t *out, addr32_t paddr, bool index_enable) {
     int err = 0;
 
-    if (paddr & 0x3) {
-        throw UnimplementedError("Unaligned memory access exception");
-    }
     struct cache_line *line = cache_selector(paddr, index_enable) + inst_cache;
-    unsigned lw_idx = (paddr & 0x1f) >> 2;
+    unsigned byte_idx = paddr & 0x1f;
 
     if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
         // cache hit
-        *out = line->lw[lw_idx];
+        *out = line->byte[byte_idx];
         return 0;
     } else {
         if ((err = cache_load(line, paddr)) != 0)
             return err;
-        *out = line->lw[lw_idx];
+        *out = line->byte[byte_idx];
         return 0;
     }
 }
 
+int Icache::read2(boost::uint32_t *out, addr32_t paddr, bool index_enable) {
+    int err = 0;
+
+    if (paddr & 0x1) {
+        // do it 1 byte at a time
+        uint32_t out_buf = 0;
+        for (int i = 0; i < 2; i++) {
+            uint32_t tmp;
+            int err;
+
+            err = read1(&tmp, paddr + i, index_enable);
+            if (err)
+                return err;
+
+            out_buf |= tmp << (8 * i);
+        }
+
+        *out = out_buf;
+        return 0;
+    }
+
+    struct cache_line *line = cache_selector(paddr, index_enable) + inst_cache;
+    unsigned sw_idx = (paddr & 0x1f) >> 1;
+
+    if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
+        // cache hit
+        *out = line->sw[sw_idx];
+        return 0;
+    } else {
+        if ((err = cache_load(line, paddr)) != 0)
+            return err;
+        *out = line->sw[sw_idx];
+        return 0;
+    }
+}

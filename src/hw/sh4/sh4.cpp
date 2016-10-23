@@ -282,6 +282,84 @@ int Sh4::read_mem(boost::uint32_t *data, addr32_t addr, unsigned len) {
     return 1;
 }
 
+int Sh4::read_inst(inst_t *out, addr32_t addr) {
+    enum VirtMemArea virt_area = get_mem_area(addr);
+    bool privileged = reg.sr & SR_MD_MASK ? true : false;
+    bool index_enable = cache_reg.ccr & CCR_IIX_MASK ? true : false;
+
+    if (virt_area != AREA_P0 && !privileged) {
+        /*
+         * The spec says user-mode processes can only access the U0 area
+         * (which overlaps with P0) and the store queue area but I can't find
+         * the part where it describes what needs to be done.  Raising the
+         * EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
+         * looks like it's for instances where the page can be looked up in the
+         * TLB.
+         */
+        throw UnimplementedError("CPU exception for unprivileged access to "
+                                 "high memory areas");
+    }
+
+    switch (virt_area) {
+    case AREA_P0:
+    case AREA_P3:
+        if (mmu.mmucr & MMUCR_AT_MASK) {
+            struct itlb_entry *itlb_ent = itlb_search(addr);
+
+            if (!itlb_ent)
+                return 1;  // exception set by itlb_search
+
+            if (privileged || (itlb_ent->ent & ITLB_ENT_PR_MASK)) {
+                addr32_t paddr = itlb_ent_translate(itlb_ent, addr);
+
+                if ((itlb_ent->ent & ITLB_ENT_C_MASK) &&
+                    (cache_reg.ccr & CCR_ICE_MASK)) {
+                    // use the cache
+                    boost::uint32_t buf;
+                    int ret;
+                    ret = inst_cache->read(&buf, paddr, index_enable);
+                    *out = buf;
+                    return ret;
+                } else {
+                    // don't use the cache
+                    return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+                }
+            }
+        } else {
+            if (cache_reg.ccr & CCR_ICE_MASK) {
+                boost::uint32_t buf;
+                int ret;
+                ret = inst_cache->read(&buf, addr, index_enable);
+                *out = buf;
+                return ret;
+            } else {
+                return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+            }
+        }
+        break;
+    case AREA_P1:
+        if (cache_reg.ccr & CCR_ICE_MASK) {
+            boost::uint32_t buf;
+            int ret;
+            ret = inst_cache->read(&buf, addr, index_enable);
+            *out = buf;
+            return ret;
+        } else {
+            return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+        }
+        break;
+    case AREA_P2:
+        return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+    case AREA_P4:
+        throw UnimplementedError("CPU exception for reading instructions from "
+                                 "the P4 memory area");
+    default:
+        break;
+    }
+
+    return 1;
+}
+
 addr32_t Sh4::utlb_ent_get_vpn(struct utlb_entry *ent) const {
     switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
     case ONE_KILO:
@@ -366,6 +444,87 @@ addr32_t Sh4::utlb_ent_translate(struct utlb_entry *ent, addr32_t vaddr) const {
         throw IntegrityError("Unrecognized UTLB size value");
     }
 }
+
+addr32_t Sh4::itlb_ent_get_vpn(struct itlb_entry *ent) const {
+    switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
+    case ONE_KILO:
+        // upper 22 bits
+        return ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
+    case FOUR_KILO:
+        // upper 20 bits
+        return ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffff000;
+    case SIXTYFOUR_KILO:
+        // upper 16 bits
+        return ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xffff0000;
+    case ONE_MEGA:
+        // upper 12 bits
+        return ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfff00000;
+    default:
+        throw IntegrityError("Unrecognized ITLB size value");
+    }
+}
+
+addr32_t Sh4::itlb_ent_get_ppn(struct itlb_entry *ent) const {
+    switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
+    case ONE_KILO:
+        // upper 19 bits (of upper 29 bits)
+        return ((ent->ent & ITLB_ENT_PPN_MASK) >> ITLB_ENT_PPN_SHIFT) &
+            0x1ffffc00;
+    case FOUR_KILO:
+        // upper 17 bits (of upper 29 bits)
+        return ((ent->ent & ITLB_ENT_PPN_MASK) >> ITLB_ENT_PPN_SHIFT) &
+            0x1ffff000;
+    case SIXTYFOUR_KILO:
+        // upper 13 bits (of upper 29 bits)
+        return ((ent->ent & ITLB_ENT_PPN_MASK) >> ITLB_ENT_PPN_SHIFT) &
+            0x1fff0000;
+    case ONE_MEGA:
+        // upper 9 bits (of upper 29 bits)
+        return ((ent->ent & ITLB_ENT_PPN_MASK) >> ITLB_ENT_PPN_SHIFT) &
+            0x1ff00000;
+    default:
+        throw IntegrityError("Unrecognized ITLB size value");
+    }
+}
+
+addr32_t Sh4::itlb_ent_get_addr_offset(struct itlb_entry *ent,
+                                       addr32_t addr) const {
+    switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
+    case ONE_KILO:
+        // lower 10 bits
+        return addr & 0x3ff;
+    case FOUR_KILO:
+        // lower 12 bits
+        return addr & 0xfff;
+    case SIXTYFOUR_KILO:
+        // lower 16 bits
+        return addr & 0xffff;
+    case ONE_MEGA:
+        // lowr 20 bits
+        return addr & 0xfffff;
+    default:
+        throw IntegrityError("Unrecognized OTLB size value");
+    }
+}
+
+addr32_t Sh4::itlb_ent_translate(struct itlb_entry *ent, addr32_t vaddr) const {
+    addr32_t ppn = itlb_ent_get_ppn(ent);
+    addr32_t offset = itlb_ent_get_addr_offset(ent, vaddr);
+
+    switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
+    case ONE_KILO:
+        return ppn << 10 | offset;
+    case FOUR_KILO:
+        return ppn << 12 | offset;
+    case SIXTYFOUR_KILO:
+        return ppn << 16 | offset;
+    case ONE_MEGA:
+        return ppn << 20 | offset;
+    default:
+        throw IntegrityError("Unrecognized ITLB size value");
+    }
+}
+
 
 // find entry with matching VPN
 struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr,

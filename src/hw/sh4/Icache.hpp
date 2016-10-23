@@ -46,7 +46,10 @@ public:
         boost::uint32_t key;
 
         // cache line instruction array
-        boost::uint32_t lw[LONGS_PER_CACHE_LINE];
+        union {
+            boost::uint8_t byte[LONGS_PER_CACHE_LINE * 4];
+            boost::uint16_t sw[LONGS_PER_CACHE_LINE * 2];
+        };
     };
 
     // this class does not take ownership of sh4 or mem, so they will not be
@@ -54,13 +57,16 @@ public:
     Icache(Sh4 *sh4, Memory *mem);
     ~Icache();
 
-    // Returns: zero on success, nonzero on failur.
-    int read4(boost::uint32_t *out, addr32_t paddr, bool index_enable);
+    // Returns: zero on success, nonzero on failure
+    int read(boost::uint32_t *out, addr32_t paddr, bool index_enable);
 private:
     Sh4 *sh4;
     Memory *mem;
 
     struct cache_line *inst_cache;
+
+    int read1(boost::uint32_t *out, addr32_t paddr, bool index_enable);
+    int read2(boost::uint32_t *out, addr32_t paddr, bool index_enable);
 
     /*
      * returns the index into the inst-cache where paddr
@@ -94,6 +100,11 @@ private:
     // extract the tag from the upper 19 bits of the lower 29 bits of paddr
     static addr32_t tag_from_paddr(addr32_t paddr);
 };
+
+inline int
+Icache::read(boost::uint32_t *out, addr32_t paddr, bool index_enable) {
+    return read2(out, paddr, index_enable);
+}
 
 inline addr32_t
 Icache::cache_line_get_tag(struct cache_line const *line) {

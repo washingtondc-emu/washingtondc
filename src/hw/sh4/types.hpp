@@ -28,6 +28,7 @@
 typedef boost::uint32_t reg32_t;
 typedef boost::uint32_t addr32_t;
 typedef boost::uint32_t page_no_t;
+typedef boost::uint16_t inst_t; // instruction
 
 class Sh4;
 class Icache;
