@@ -21,9 +21,58 @@
  ******************************************************************************/
 
 #include <iostream>
+#include <list>
+
+class Test {
+public:
+    virtual int run() = 0;
+    virtual char const *name() = 0;
+private:
+};
+
+// the NullTest - does nothing, always passes
+class NullTest : public Test {
+    int run() {
+        return 0;
+    }
+
+    virtual char const *name() {
+        return "NullTest";
+    }
+};
+
+typedef std::list<Test*> TestList;
+
+static TestList tests;
+
+void instantiate_tests() {
+    tests.push_back(new NullTest);
+}
+
+void run_tests() {
+    unsigned n_success = 0;
+    unsigned n_tests = tests.size();
+
+    for (TestList::iterator it = tests.begin(); it != tests.end(); it++) {
+        char const *test_name = (*it)->name();
+        std::cout << "Running " << test_name << "..." << std::endl;
+        if ((*it)->run() == 0) {
+            n_success++;
+            std::cout << test_name << " completed successfully" << std::endl;
+        } else {
+            std::cout << test_name << " failed" << std::endl;
+        }
+    }
+
+    double percent = 100.0 * double(n_success) / double(n_tests);
+    std::cout << tests.size() << " tests run - " << n_success <<
+        " successes " << "(" << percent << "%)" << std::endl;
+}
 
 int main(int argc, char **argv) {
-    std::cout << "Hello, world!" << std::endl;
+    instantiate_tests();
+
+    run_tests();
 
     return 0;
 }
