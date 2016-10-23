@@ -25,6 +25,10 @@
 
 class Test {
 public:
+    Test() {
+    }
+    virtual ~Test() {
+    }
     virtual int run() = 0;
     virtual char const *name() = 0;
 };
@@ -48,7 +52,13 @@ void instantiate_tests() {
     tests.push_back(new NullTest);
 }
 
-void run_tests() {
+void cleanup_tests() {
+    for (TestList::iterator it = tests.begin(); it != tests.end(); it++) {
+        delete *it;
+    }
+}
+
+int run_tests() {
     unsigned n_success = 0;
     unsigned n_tests = tests.size();
 
@@ -66,12 +76,18 @@ void run_tests() {
     double percent = 100.0 * double(n_success) / double(n_tests);
     std::cout << tests.size() << " tests run - " << n_success <<
         " successes " << "(" << percent << "%)" << std::endl;
+
+    if (n_success == n_tests)
+        return 0;
+    return 1;
 }
 
 int main(int argc, char **argv) {
     instantiate_tests();
 
-    run_tests();
+    int ret_val = run_tests();
 
-    return 0;
+    cleanup_tests();
+
+    return ret_val;
 }
