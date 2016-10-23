@@ -27,7 +27,6 @@ class Test {
 public:
     virtual int run() = 0;
     virtual char const *name() = 0;
-private:
 };
 
 // the NullTest - does nothing, always passes

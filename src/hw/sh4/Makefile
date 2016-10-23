@@ -1,16 +1,13 @@
 HEADERS=sh4.hpp Memory.hpp BaseException.hpp types.hpp Icache.hpp Ocache.hpp
-OBJECTS=sh4.o Memory.o main.o Icache.o Ocache.o
+OBJECTS=sh4.o Memory.o Icache.o Ocache.o
 CXXFLAGS=-I../../common/ -I ../../../external/ --std=c++03 -Wall -Werror -g
 
-sh4_test: $(OBJECTS)
-	$(CXX) -o sh4_test $+
+libsh4.a: $(OBJECTS)
+	ar rcs libsh4.a $(OBJECTS)
 
 %.o: %.cpp $(HEADERS)
 	$(CXX) -c $< $(CXXFLAGS)
 
-test: sh4_test
-	./sh4_test
-
 clean:
-	rm $(OBJECTS)
-	rm sh4_stub
+	for obj in $(OBJECTS) ; do if [ -f $$obj ] ; then rm $$obj ; fi ; done
+	if [ -f libsh4.a ] ; then rm libsh4.a ; fi
