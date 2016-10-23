@@ -52,6 +52,7 @@ public:
         // cache line data array
         union {
             boost::uint8_t byte[LONGS_PER_CACHE_LINE * 4];
+            boost::uint16_t sw[LONGS_PER_CACHE_LINE * 2];
             boost::uint32_t lw[LONGS_PER_CACHE_LINE];
         };
     };
@@ -66,6 +67,8 @@ public:
                    bool index_enable, bool cache_as_ram);
     int cache_read1(boost::uint32_t *out, addr32_t paddr, bool index_enable,
                     bool cache_as_ram);
+    int cache_read2(boost::uint32_t *out, addr32_t paddr, bool index_enable,
+                    bool cache_as_ram);
     int cache_read4(boost::uint32_t *out, addr32_t paddr, bool index_enable,
                     bool cache_as_ram);
     /*
@@ -76,6 +79,8 @@ public:
     int cache_write_cb(boost::uint32_t data, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram);
     int cache_write1_cb(boost::uint32_t data, addr32_t paddr,
+                        bool index_enable, bool cache_as_ram);
+    int cache_write2_cb(boost::uint32_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
     int cache_write4_cb(boost::uint32_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
@@ -88,6 +93,8 @@ public:
     int cache_write_wt(boost::uint32_t data, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram);
     int cache_write1_wt(boost::uint8_t data, addr32_t paddr,
+                        bool index_enable, bool cache_as_ram);
+    int cache_write2_wt(boost::uint32_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
     int cache_write4_wt(boost::uint32_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
