@@ -60,12 +60,11 @@ addr32_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
         throw UnimplementedError("Operand Cache as RAM");
     }
 
-    addr32_t ent_sel = paddr & 0xff0;
+    addr32_t ent_sel = (paddr & 0x1fe0) >> 5;
     if (index_enable)
         ent_sel |= (paddr & (1 << 25)) >> 12;
     else
-        ent_sel |= paddr & (1 << 13);
-    ent_sel >>= 4;
+        ent_sel |= (paddr & (1 << 13)) >> 5;
 
     return ent_sel;
 }
@@ -110,7 +109,7 @@ int Ocache::cache_read1(boost::uint32_t *out, addr32_t paddr, bool index_enable,
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line, paddr);
+                err = cache_write_back(line);
                 if (err)
                     return err;
                 err = cache_load(line, paddr);
@@ -183,7 +182,7 @@ int Ocache::cache_read2(boost::uint32_t *out, addr32_t paddr,
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line, paddr);
+                err = cache_write_back(line);
                 if (err)
                     return err;
                 err = cache_load(line, paddr);
@@ -256,7 +255,7 @@ int Ocache::cache_read4(boost::uint32_t *out, addr32_t paddr,
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line, paddr);
+                err = cache_write_back(line);
                 if (err)
                     return err;
                 err = cache_load(line, paddr);
@@ -322,7 +321,7 @@ int Ocache::cache_write1_cb(boost::uint32_t data, addr32_t paddr,
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line, paddr);
+                err = cache_write_back(line);
                 if (err)
                     return err;
                 err = cache_load(line, paddr);
@@ -395,7 +394,7 @@ int Ocache::cache_write2_cb(boost::uint32_t data, addr32_t paddr,
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line, paddr);
+                err = cache_write_back(line);
                 if (err)
                     return err;
                 err = cache_load(line, paddr);
@@ -468,7 +467,7 @@ int Ocache::cache_write4_cb(boost::uint32_t data, addr32_t paddr,
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line, paddr);
+                err = cache_write_back(line);
                 if (err)
                     return err;
                 err = cache_load(line, paddr);
@@ -631,10 +630,16 @@ int Ocache::cache_load(struct cache_line *line, addr32_t paddr) {
     return 0;
 }
 
-int Ocache::cache_write_back(struct cache_line *line, addr32_t paddr) {
+int Ocache::cache_write_back(struct cache_line *line) {
     int err_code = 0;
-
+    unsigned ent_sel = line - op_cache;
     size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_CACHE_LINE;
+
+    // TODO: take OIX and ORA into account here
+    addr32_t paddr = ((line->key & KEY_TAG_MASK) >> KEY_TAG_SHIFT) << 10;
+    paddr &= 0x7ffff << 10;
+    paddr |= ent_sel << 5;
+
     if ((err_code = mem->write(line->lw, paddr & ~31, n_bytes)) != 0)
         return err_code;
 

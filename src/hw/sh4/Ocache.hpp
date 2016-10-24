@@ -132,14 +132,8 @@ private:
     /*
      * Write the cache-line into memory and clear its dirty-bit.
      * returns non-zero on failure.
-     *
-     * paddr should be an address that falls within the cache-line.
-     * It is needed because the entry selector is not saved within the
-     * cache-line (although there are enough unused bits that this *may* be
-     * possible to implement), so the paddr is the only way to figure out where
-     * exactly this line goes in memory.
      */
-    int cache_write_back(struct cache_line *line, addr32_t paddr);
+    int cache_write_back(struct cache_line *line);
 
     static addr32_t
     cache_line_get_tag(struct cache_line const *line);

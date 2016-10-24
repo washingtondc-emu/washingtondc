@@ -31,6 +31,14 @@
 /* Hitachi SuperH-4 interpreter */
 
 class Sh4 {
+    /*
+     * This is kinda lame, but I have to declare all the testing classes as
+     * friends so they can access the sh4's private members.  I consider this to
+     * be unfortunate, but still better than writing a get/set method for
+     * everything in this class
+     */
+    friend class BasicMemTest;
+
 public:
     Sh4(Memory *mem);
     ~Sh4();

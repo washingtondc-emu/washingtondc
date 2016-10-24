@@ -32,6 +32,10 @@ Sh4::Sh4(Memory *mem) {
     this->mem = mem;
 
     memset(utlb, 0, sizeof(utlb));
+    memset(itlb, 0, sizeof(itlb));
+    memset(&reg, 0, sizeof(reg));
+    memset(&mmu, 0, sizeof(mmu));
+    memset(&cache_reg, 0, sizeof(cache_reg));
 
     this->inst_cache = new Icache(this, mem);
     this->op_cache = new Ocache(this, mem);
@@ -153,10 +157,10 @@ int Sh4::write_mem(boost::uint32_t data, addr32_t addr, unsigned len) {
         } else {
             if (cache_reg.ccr & CCR_WT_MASK) {
                 return op_cache->cache_write_wt(data, len, addr, index_enable,
-                                                 cache_as_ram);
+                                                cache_as_ram);
             } else {
                 return op_cache->cache_write_cb(data, len, addr, index_enable,
-                                                 cache_as_ram);
+                                                cache_as_ram);
             }
         }
         break;
@@ -183,11 +187,12 @@ int Sh4::write_mem(boost::uint32_t data, addr32_t addr, unsigned len) {
         break;
     }
 
-    return 1;
+    throw IntegrityError("I don't believe it should be possible to get here "
+                         "(see Sh4::write_mem)");
 }
 
 int Sh4::read_mem(boost::uint32_t *data, addr32_t addr, unsigned len) {
-    enum VirtMemArea virt_area = get_mem_area(addr);
+    enum VirtMemArea virt_area = get_mem_area(addr & 0x1fffffff);
 
     bool privileged = reg.sr & SR_MD_MASK ? true : false;
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;

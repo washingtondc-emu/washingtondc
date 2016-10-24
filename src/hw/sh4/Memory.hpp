@@ -38,6 +38,8 @@ public:
 
     int read(void *buf, size_t addr, size_t len) const;
     int write(void const *buf, size_t addr, size_t len);
+
+    size_t get_size() const;
 private:
     size_t size;
     boost::uint8_t *mem;

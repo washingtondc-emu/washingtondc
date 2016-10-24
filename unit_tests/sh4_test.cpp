@@ -20,21 +20,34 @@
  *
  ******************************************************************************/
 
+#include <algorithm>
 #include <iostream>
 #include <list>
 
+#include "hw/sh4/Memory.hpp"
+#include "hw/sh4/sh4.hpp"
+
 class Test {
 public:
-    Test() {
+    Test(Sh4 *cpu, Memory *ram) {
+        this->cpu = cpu;
+        this->ram = ram;
     }
     virtual ~Test() {
     }
     virtual int run() = 0;
     virtual char const *name() = 0;
+protected:
+    Sh4 *cpu;
+    Memory *ram;
 };
 
 // the NullTest - does nothing, always passes
 class NullTest : public Test {
+public:
+    NullTest(Sh4 *cpu, Memory *ram) : Test(cpu, ram) {
+    }
+
     int run() {
         return 0;
     }
@@ -44,12 +57,69 @@ class NullTest : public Test {
     }
 };
 
+/*
+ * really simple test here: fill a large region of memory with 4-byte values
+ * which correspond to the addresses where those values are being written, then
+ * read them all back to confirm they are what we expected.  This goes off of
+ * the CPU's default state, which should be no MMU, and priveleged mode.
+ */
+class BasicMemTest : public Test {
+public:
+    BasicMemTest(Sh4 *cpu, Memory *ram) : Test(cpu, ram) {
+    }
+
+    int run() {
+        int err = 0;
+
+        addr32_t start = 0;
+        addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff);
+        for (addr32_t addr = start; addr + 32 < end; addr += 4) {
+            if ((err = cpu->write_mem(addr, addr, 4)) != 0) {
+                std::cout << "Error while writing 0x" << std::hex << addr <<
+                    " to 0x" << std::hex << addr << std::endl;
+                return err;
+            }
+        }
+
+        std::cout << "Now verifying that values written are correct..." <<
+            std::endl;
+
+        // read all the values and check that they match expectations
+        for (addr32_t addr = start; addr + 32 < end; addr += 4) {
+            boost::uint32_t val;
+            if ((err = cpu->read_mem(&val, addr, 4)) != 0) {
+                std::cout << "Error while reading four bytes from 0x" <<
+                    addr << std::endl;
+                return err;
+            }
+
+            // should be a nop since both are uint32_t
+            addr32_t val_as_addr = val;
+
+            if (val_as_addr != addr) {
+                std::cout << "Mismatch at address 0x" << std::hex << addr <<
+                    ": got 0x" << std::hex << val_as_addr << ", expected 0x" <<
+                    std::hex << addr << std::endl;
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    virtual char const *name() {
+        return "BasicMemTest";
+    }
+};
+
+
 typedef std::list<Test*> TestList;
 
 static TestList tests;
 
-void instantiate_tests() {
-    tests.push_back(new NullTest);
+void instantiate_tests(Sh4 *cpu, Memory *ram) {
+    tests.push_back(new NullTest(cpu, ram));
+    tests.push_back(new BasicMemTest(cpu, ram));
 }
 
 void cleanup_tests() {
@@ -83,7 +153,10 @@ int run_tests() {
 }
 
 int main(int argc, char **argv) {
-    instantiate_tests();
+    Memory mem(16 * 1024 * 1024);
+    Sh4 cpu(&mem);
+
+    instantiate_tests(&cpu, &mem);
 
     int ret_val = run_tests();
 

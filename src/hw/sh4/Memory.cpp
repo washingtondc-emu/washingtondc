@@ -56,3 +56,7 @@ int Memory::write(void const *buf, size_t addr, size_t len) {
 
     return 0;
 }
+
+size_t Memory::get_size() const {
+    return size;
+}
