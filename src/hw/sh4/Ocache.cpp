@@ -635,10 +635,15 @@ int Ocache::cache_write_back(struct cache_line *line) {
     unsigned ent_sel = line - op_cache;
     size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_CACHE_LINE;
 
-    // TODO: take OIX and ORA into account here
     addr32_t paddr = ((line->key & KEY_TAG_MASK) >> KEY_TAG_SHIFT) << 10;
     paddr &= 0x7ffff << 10;
-    paddr |= ent_sel << 5;
+
+    /* bits 12 and 13 are cleared so thar ORA and OIX don't need to be minded.
+     * these bits overlap with the tag (bits 28-10), so this should be safe.
+     * In the future, a sanity check to make sure these bits match their
+     * counterparts in the tag may be warranted.
+     */
+    paddr |= (ent_sel << 5) & ~0x3000;
 
     if ((err_code = mem->write(line->lw, paddr & ~31, n_bytes)) != 0)
         return err_code;

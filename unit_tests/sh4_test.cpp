@@ -112,6 +112,65 @@ public:
     }
 };
 
+/*
+ * really simple test here: fill a large region of memory with 4-byte values
+ * which correspond to the addresses where those values are being written, then
+ * read them all back to confirm they are what we expected.  This goes off of
+ * the CPU's default state, which should be no MMU, and priveleged mode, BUT we
+ * also set the OIX bit which screws around with the cache line entry selector
+ * a bit.
+ */
+class BasicMemTestWithOix : public Test {
+public:
+    BasicMemTestWithOix(Sh4 *cpu, Memory *ram) : Test(cpu, ram) {
+    }
+
+    int run() {
+        int err = 0;
+
+        // turn on oix
+        cpu->cache_reg.ccr |= Sh4::CCR_OIX_MASK;
+
+        addr32_t start = 0;
+        addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff);
+        for (addr32_t addr = start; addr + 32 < end; addr += 4) {
+            if ((err = cpu->write_mem(addr, addr, 4)) != 0) {
+                std::cout << "Error while writing 0x" << std::hex << addr <<
+                    " to 0x" << std::hex << addr << std::endl;
+                return err;
+            }
+        }
+
+        std::cout << "Now verifying that values written are correct..." <<
+            std::endl;
+
+        // read all the values and check that they match expectations
+        for (addr32_t addr = start; addr + 32 < end; addr += 4) {
+            boost::uint32_t val;
+            if ((err = cpu->read_mem(&val, addr, 4)) != 0) {
+                std::cout << "Error while reading four bytes from 0x" <<
+                    addr << std::endl;
+                return err;
+            }
+
+            // should be a nop since both are uint32_t
+            addr32_t val_as_addr = val;
+
+            if (val_as_addr != addr) {
+                std::cout << "Mismatch at address 0x" << std::hex << addr <<
+                    ": got 0x" << std::hex << val_as_addr << ", expected 0x" <<
+                    std::hex << addr << std::endl;
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    virtual char const *name() {
+        return "BasicMemTestWithOix";
+    }
+};
 
 typedef std::list<Test*> TestList;
 
@@ -120,6 +179,7 @@ static TestList tests;
 void instantiate_tests(Sh4 *cpu, Memory *ram) {
     tests.push_back(new NullTest(cpu, ram));
     tests.push_back(new BasicMemTest(cpu, ram));
+    tests.push_back(new BasicMemTestWithOix(cpu, ram));
 }
 
 void cleanup_tests() {

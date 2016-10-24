@@ -38,6 +38,7 @@ class Sh4 {
      * everything in this class
      */
     friend class BasicMemTest;
+    friend class BasicMemTestWithOix;
 
 public:
     Sh4(Memory *mem);
