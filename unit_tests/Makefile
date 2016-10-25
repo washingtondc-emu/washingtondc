@@ -10,9 +10,12 @@ all: sh4_test
 test: sh4_test
 	./sh4_test
 
-sh4_test: $(OBJECTS) $(HEADERS)
-	make -C $(SH4_DIR)
-	$(CXX) -o sh4_test $(CXXFLAGS) $+ $(LDFLAGS)
+sh4_test: $(OBJECTS) $(HEADERS) sh4_lib
+	$(CXX) -o sh4_test $(CXXFLAGS) $(OBJECTS) $(LDFLAGS)
 
 clean:
 	for obj in $(OBJECTS) ; do if [ -f $$obj ] ; then rm $$obj ; fi ; done
+
+# pseudo-target to go build libsh4.a in SH4_DIR
+sh4_lib:
+	make -C $(SH4_DIR)
