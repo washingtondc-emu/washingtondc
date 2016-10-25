@@ -38,7 +38,7 @@ class Sh4 {
      * everything in this class
      */
     friend class BasicMemTest;
-    friend class BasicMemTestWithOix;
+    friend class BasicMemTestWithIndexEnable;
 
 public:
     Sh4(Memory *mem);

@@ -113,6 +113,25 @@ public:
             }
         }
 
+        std::cout << "Now verifying that values read through the instruction "
+            "read path are correct..." << std::endl;
+
+        // now read all the values through the instruction path
+        for (addr32_t addr = start; ((addr + 2) & CACHELINE_MASK) + 32 < end;
+             addr += 2) {
+            inst_t expected_val;
+            if ((addr & 1) == 0)
+                expected_val = inst_t(addr & 0xffff);
+            else
+                expected_val = inst_t((addr >> 16) & 0xffff);
+
+            if ((err = cpu->read_inst(&expected_val, addr)) != 0) {
+                std::cout << "Error while reading instruction from 0x" <<
+                    addr << std::endl;
+                return err;
+            }
+        }
+
         return 0;
     }
 
@@ -139,20 +158,21 @@ public:
  * also set the OIX bit which screws around with the cache line entry selector
  * a bit.
  */
-class BasicMemTestWithOix : public BasicMemTest {
+class BasicMemTestWithIndexEnable : public BasicMemTest {
 public:
-    BasicMemTestWithOix(Sh4 *cpu, Memory *ram, int offset=0) :
+    BasicMemTestWithIndexEnable(Sh4 *cpu, Memory *ram, int offset=0) :
         BasicMemTest(cpu, ram, offset) {
     }
 
     virtual void setup() {
-        // turn on oix
+        // turn on oix and iix
         cpu->cache_reg.ccr |= Sh4::CCR_OIX_MASK;
+        cpu->cache_reg.ccr |= Sh4::CCR_IIX_MASK;
     }
 
     virtual char const *name() {
         std::stringstream ss;
-        ss << "BasicMemTestWithOix (offset=" << get_offset() << ")";
+        ss << "BasicMemTestWithIndexEnable (offset=" << get_offset() << ")";
         return ss.str().c_str();
     }
 };
@@ -167,10 +187,10 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
     tests.push_back(new BasicMemTest(cpu, ram, 1));
     tests.push_back(new BasicMemTest(cpu, ram, 2));
     tests.push_back(new BasicMemTest(cpu, ram, 3));
-    tests.push_back(new BasicMemTestWithOix(cpu, ram, 0));
-    tests.push_back(new BasicMemTestWithOix(cpu, ram, 1));
-    tests.push_back(new BasicMemTestWithOix(cpu, ram, 2));
-    tests.push_back(new BasicMemTestWithOix(cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithIndexEnable(cpu, ram, 0));
+    tests.push_back(new BasicMemTestWithIndexEnable(cpu, ram, 1));
+    tests.push_back(new BasicMemTestWithIndexEnable(cpu, ram, 2));
+    tests.push_back(new BasicMemTestWithIndexEnable(cpu, ram, 3));
 }
 
 void cleanup_tests() {
