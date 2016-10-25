@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <list>
 
 #include "hw/sh4/Memory.hpp"
@@ -64,8 +65,11 @@ public:
  * the CPU's default state, which should be no MMU, and priveleged mode.
  */
 class BasicMemTest : public Test {
+private:
+    int offset;
 public:
-    BasicMemTest(Sh4 *cpu, Memory *ram) : Test(cpu, ram) {
+    BasicMemTest(Sh4 *cpu, Memory *ram, int offset = 0) : Test(cpu, ram) {
+        this->offset = offset;
     }
 
     int run() {
@@ -73,9 +77,11 @@ public:
 
         setup();
 
-        addr32_t start = 0;
+        addr32_t start = offset;
         addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff);
-        for (addr32_t addr = start; addr + 32 < end; addr += 4) {
+        static const addr32_t CACHELINE_MASK = ~0x1f;
+        for (addr32_t addr = start; ((addr + 4) & CACHELINE_MASK) + 32 < end;
+             addr += 4) {
             if ((err = cpu->write_mem(addr, addr, 4)) != 0) {
                 std::cout << "Error while writing 0x" << std::hex << addr <<
                     " to 0x" << std::hex << addr << std::endl;
@@ -87,7 +93,8 @@ public:
             std::endl;
 
         // read all the values and check that they match expectations
-        for (addr32_t addr = start; addr + 32 < end; addr += 4) {
+        for (addr32_t addr = start; ((addr + 4) & CACHELINE_MASK) + 32 < end;
+             addr += 4) {
             boost::uint32_t val;
             if ((err = cpu->read_mem(&val, addr, 4)) != 0) {
                 std::cout << "Error while reading four bytes from 0x" <<
@@ -114,7 +121,13 @@ public:
     }
 
     virtual char const *name() {
-        return "BasicMemTest";
+        std::stringstream ss;
+        ss << "BasicMemTest (offset=" << get_offset() << ")";
+        return ss.str().c_str();
+    }
+
+    int get_offset() const {
+        return offset;
     }
 };
 
@@ -128,7 +141,8 @@ public:
  */
 class BasicMemTestWithOix : public BasicMemTest {
 public:
-    BasicMemTestWithOix(Sh4 *cpu, Memory *ram) : BasicMemTest(cpu, ram) {
+    BasicMemTestWithOix(Sh4 *cpu, Memory *ram, int offset=0) :
+        BasicMemTest(cpu, ram, offset) {
     }
 
     virtual void setup() {
@@ -137,7 +151,9 @@ public:
     }
 
     virtual char const *name() {
-        return "BasicMemTestWithOix";
+        std::stringstream ss;
+        ss << "BasicMemTestWithOix (offset=" << get_offset() << ")";
+        return ss.str().c_str();
     }
 };
 
@@ -147,8 +163,14 @@ static TestList tests;
 
 void instantiate_tests(Sh4 *cpu, Memory *ram) {
     tests.push_back(new NullTest(cpu, ram));
-    tests.push_back(new BasicMemTest(cpu, ram));
-    tests.push_back(new BasicMemTestWithOix(cpu, ram));
+    tests.push_back(new BasicMemTest(cpu, ram, 0));
+    tests.push_back(new BasicMemTest(cpu, ram, 1));
+    tests.push_back(new BasicMemTest(cpu, ram, 2));
+    tests.push_back(new BasicMemTest(cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithOix(cpu, ram, 0));
+    tests.push_back(new BasicMemTestWithOix(cpu, ram, 1));
+    tests.push_back(new BasicMemTestWithOix(cpu, ram, 2));
+    tests.push_back(new BasicMemTestWithOix(cpu, ram, 3));
 }
 
 void cleanup_tests() {

@@ -361,7 +361,7 @@ int Ocache::cache_write2_cb(boost::uint32_t data, addr32_t paddr,
             uint32_t tmp;
             int err;
 
-            tmp = ((0xff << i) & data) >> i;
+            tmp = ((0xff << (i * 8)) & data) >> (i * 8);
             err = cache_write1_cb(tmp, paddr + i, index_enable, cache_as_ram);
             if (err)
                 return err;
@@ -434,7 +434,7 @@ int Ocache::cache_write4_cb(boost::uint32_t data, addr32_t paddr,
             uint32_t tmp;
             int err;
 
-            tmp = ((0xff << i) & data) >> i;
+            tmp = ((0xff << (i * 8)) & data) >> (i * 8);
             err = cache_write1_cb(tmp, paddr + i, index_enable, cache_as_ram);
             if (err)
                 return err;
@@ -545,7 +545,7 @@ int Ocache::cache_write2_wt(boost::uint32_t data, addr32_t paddr,
             uint32_t tmp;
             int err;
 
-            tmp = ((0xff << i) & data) >> i;
+            tmp = ((0xff << (i * 8)) & data) >> (i * 8);
             err = cache_write1_wt(tmp, paddr + i, index_enable, cache_as_ram);
             if (err)
                 return err;
@@ -589,7 +589,7 @@ int Ocache::cache_write4_wt(boost::uint32_t data, addr32_t paddr,
             uint32_t tmp;
             int err;
 
-            tmp = ((0xff << i) & data) >> i;
+            tmp = ((0xff << (i * 8)) & data) >> (i * 8);
             err = cache_write1_wt(tmp, paddr + i, index_enable, cache_as_ram);
             if (err)
                 return err;
