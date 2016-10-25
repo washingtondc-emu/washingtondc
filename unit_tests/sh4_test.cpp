@@ -71,6 +71,8 @@ public:
     int run() {
         int err = 0;
 
+        setup();
+
         addr32_t start = 0;
         addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff);
         for (addr32_t addr = start; addr + 32 < end; addr += 4) {
@@ -105,6 +107,10 @@ public:
         }
 
         return 0;
+    }
+
+    // called at the beginning of run to set up the CPU's state.
+    virtual void setup() {
     }
 
     virtual char const *name() {
@@ -120,51 +126,14 @@ public:
  * also set the OIX bit which screws around with the cache line entry selector
  * a bit.
  */
-class BasicMemTestWithOix : public Test {
+class BasicMemTestWithOix : public BasicMemTest {
 public:
-    BasicMemTestWithOix(Sh4 *cpu, Memory *ram) : Test(cpu, ram) {
+    BasicMemTestWithOix(Sh4 *cpu, Memory *ram) : BasicMemTest(cpu, ram) {
     }
 
-    int run() {
-        int err = 0;
-
+    virtual void setup() {
         // turn on oix
         cpu->cache_reg.ccr |= Sh4::CCR_OIX_MASK;
-
-        addr32_t start = 0;
-        addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff);
-        for (addr32_t addr = start; addr + 32 < end; addr += 4) {
-            if ((err = cpu->write_mem(addr, addr, 4)) != 0) {
-                std::cout << "Error while writing 0x" << std::hex << addr <<
-                    " to 0x" << std::hex << addr << std::endl;
-                return err;
-            }
-        }
-
-        std::cout << "Now verifying that values written are correct..." <<
-            std::endl;
-
-        // read all the values and check that they match expectations
-        for (addr32_t addr = start; addr + 32 < end; addr += 4) {
-            boost::uint32_t val;
-            if ((err = cpu->read_mem(&val, addr, 4)) != 0) {
-                std::cout << "Error while reading four bytes from 0x" <<
-                    addr << std::endl;
-                return err;
-            }
-
-            // should be a nop since both are uint32_t
-            addr32_t val_as_addr = val;
-
-            if (val_as_addr != addr) {
-                std::cout << "Mismatch at address 0x" << std::hex << addr <<
-                    ": got 0x" << std::hex << val_as_addr << ", expected 0x" <<
-                    std::hex << addr << std::endl;
-                return 1;
-            }
-        }
-
-        return 0;
     }
 
     virtual char const *name() {
