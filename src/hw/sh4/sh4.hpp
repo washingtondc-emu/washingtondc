@@ -246,8 +246,8 @@ private:
      * appropriate CPU flags for an exception and return non-zero.  On success
      * they will return zero.
      */
-    int write_mem(boost::uint32_t val, addr32_t addr, unsigned len);
-    int read_mem(boost::uint32_t *val, addr32_t addr, unsigned len);
+    int write_mem(basic_val_t val, addr32_t addr, unsigned len);
+    int read_mem(basic_val_t *val, addr32_t addr, unsigned len);
 
     int read_inst(inst_t *out, addr32_t addr);
 

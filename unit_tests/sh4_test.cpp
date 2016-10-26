@@ -95,7 +95,7 @@ public:
         // read all the values and check that they match expectations
         for (addr32_t addr = start; ((addr + 4) & CACHELINE_MASK) + 32 < end;
              addr += 4) {
-            boost::uint32_t val;
+            basic_val_t val;
             if ((err = cpu->read_mem(&val, addr, 4)) != 0) {
                 std::cout << "Error while reading four bytes from 0x" <<
                     addr << std::endl;

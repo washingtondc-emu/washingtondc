@@ -69,7 +69,7 @@ addr32_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
     return ent_sel;
 }
 
-int Ocache::cache_read(boost::uint32_t *out, unsigned len, addr32_t paddr,
+int Ocache::cache_read(basic_val_t *out, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram) {
     switch (len) {
     case 1:
@@ -86,7 +86,7 @@ int Ocache::cache_read(boost::uint32_t *out, unsigned len, addr32_t paddr,
     throw UnimplementedError("8-byte data reads");
 }
 
-int Ocache::cache_read1(boost::uint32_t *out, addr32_t paddr, bool index_enable,
+int Ocache::cache_read1(basic_val_t *out, addr32_t paddr, bool index_enable,
                         bool cache_as_ram) {
     int err = 0;
 
@@ -134,7 +134,7 @@ int Ocache::cache_read1(boost::uint32_t *out, addr32_t paddr, bool index_enable,
     return err;
 }
 
-int Ocache::cache_read2(boost::uint32_t *out, addr32_t paddr,
+int Ocache::cache_read2(basic_val_t *out, addr32_t paddr,
                         bool index_enable, bool cache_as_ram) {
     int err = 0;
 
@@ -147,9 +147,9 @@ int Ocache::cache_read2(boost::uint32_t *out, addr32_t paddr,
          * later when I inevitably decide I don't need to emulate this aspect
          * of the SH4, so it's no big deal if it's slow.
          */
-        uint32_t out_buf = 0;
+        basic_val_t out_buf = 0;
         for (int i = 0; i < 2; i++) {
-            uint32_t tmp;
+            basic_val_t tmp;
             int err;
 
             err = cache_read1(&tmp, paddr + i, index_enable, cache_as_ram);
@@ -207,7 +207,7 @@ int Ocache::cache_read2(boost::uint32_t *out, addr32_t paddr,
     return err;
 }
 
-int Ocache::cache_read4(boost::uint32_t *out, addr32_t paddr,
+int Ocache::cache_read4(basic_val_t *out, addr32_t paddr,
                         bool index_enable, bool cache_as_ram) {
     int err = 0;
 
@@ -220,9 +220,9 @@ int Ocache::cache_read4(boost::uint32_t *out, addr32_t paddr,
          * later when I inevitably decide I don't need to emulate this aspect
          * of the SH4, so it's no big deal if it's slow.
          */
-        uint32_t out_buf = 0;
+        basic_val_t out_buf = 0;
         for (int i = 0; i < 4; i++) {
-            uint32_t tmp;
+            basic_val_t tmp;
             int err;
 
             err = cache_read1(&tmp, paddr + i, index_enable, cache_as_ram);
@@ -280,7 +280,7 @@ int Ocache::cache_read4(boost::uint32_t *out, addr32_t paddr,
     return err;
 }
 
-int Ocache::cache_write_cb(boost::uint32_t data, unsigned len, addr32_t paddr,
+int Ocache::cache_write_cb(basic_val_t data, unsigned len, addr32_t paddr,
                            bool index_enable, bool cache_as_ram) {
     switch (len) {
     case 1:
@@ -294,7 +294,7 @@ int Ocache::cache_write_cb(boost::uint32_t data, unsigned len, addr32_t paddr,
     throw UnimplementedError("8-byte data reads");
 }
 
-int Ocache::cache_write1_cb(boost::uint32_t data, addr32_t paddr,
+int Ocache::cache_write1_cb(basic_val_t data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
@@ -344,7 +344,7 @@ int Ocache::cache_write1_cb(boost::uint32_t data, addr32_t paddr,
     return 0;
 }
 
-int Ocache::cache_write2_cb(boost::uint32_t data, addr32_t paddr,
+int Ocache::cache_write2_cb(basic_val_t data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
 
@@ -358,7 +358,7 @@ int Ocache::cache_write2_cb(boost::uint32_t data, addr32_t paddr,
          * of the SH4, so it's no big deal if it's slow.
          */
         for (int i = 0; i < 2; i++) {
-            uint32_t tmp;
+            basic_val_t tmp;
             int err;
 
             tmp = ((0xff << (i * 8)) & data) >> (i * 8);
@@ -417,7 +417,7 @@ int Ocache::cache_write2_cb(boost::uint32_t data, addr32_t paddr,
     return 0;
 }
 
-int Ocache::cache_write4_cb(boost::uint32_t data, addr32_t paddr,
+int Ocache::cache_write4_cb(basic_val_t data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
 
@@ -431,7 +431,7 @@ int Ocache::cache_write4_cb(boost::uint32_t data, addr32_t paddr,
          * of the SH4, so it's no big deal if it's slow.
          */
         for (int i = 0; i < 4; i++) {
-            uint32_t tmp;
+            basic_val_t tmp;
             int err;
 
             tmp = ((0xff << (i * 8)) & data) >> (i * 8);
@@ -490,7 +490,7 @@ int Ocache::cache_write4_cb(boost::uint32_t data, addr32_t paddr,
     return 0;
 }
 
-int Ocache::cache_write_wt(boost::uint32_t data, unsigned len, addr32_t paddr,
+int Ocache::cache_write_wt(basic_val_t data, unsigned len, addr32_t paddr,
                            bool index_enable, bool cache_as_ram) {
     switch (len) {
     case 1:
@@ -506,7 +506,7 @@ int Ocache::cache_write_wt(boost::uint32_t data, unsigned len, addr32_t paddr,
 
 
 
-int Ocache::cache_write1_wt(boost::uint8_t data, addr32_t paddr,
+int Ocache::cache_write1_wt(basic_val_t data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
 
@@ -528,7 +528,7 @@ int Ocache::cache_write1_wt(boost::uint8_t data, addr32_t paddr,
     return 0;
 }
 
-int Ocache::cache_write2_wt(boost::uint32_t data, addr32_t paddr,
+int Ocache::cache_write2_wt(basic_val_t data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
 
@@ -542,7 +542,7 @@ int Ocache::cache_write2_wt(boost::uint32_t data, addr32_t paddr,
          * of the SH4, so it's no big deal if it's slow.
          */
         for (int i = 0; i < 2; i++) {
-            uint32_t tmp;
+            basic_val_t tmp;
             int err;
 
             tmp = ((0xff << (i * 8)) & data) >> (i * 8);
@@ -572,7 +572,7 @@ int Ocache::cache_write2_wt(boost::uint32_t data, addr32_t paddr,
     return 0;
 }
 
-int Ocache::cache_write4_wt(boost::uint32_t data, addr32_t paddr,
+int Ocache::cache_write4_wt(basic_val_t data, addr32_t paddr,
                             bool index_enable, bool cache_as_ram) {
     int err = 0;
 
@@ -586,7 +586,7 @@ int Ocache::cache_write4_wt(boost::uint32_t data, addr32_t paddr,
          * of the SH4, so it's no big deal if it's slow.
          */
         for (int i = 0; i < 4; i++) {
-            uint32_t tmp;
+            basic_val_t tmp;
             int err;
 
             tmp = ((0xff << (i * 8)) & data) >> (i * 8);
