@@ -28,6 +28,16 @@
 #include "hw/sh4/Memory.hpp"
 #include "hw/sh4/sh4.hpp"
 
+template<typename T>
+class AddrGenerator {
+public:
+    T pick_val(addr32_t addr) {
+        return (T)addr;
+    }
+};
+
+typedef AddrGenerator<boost::uint32_t> AddrGen32;
+
 class Test {
 public:
     Test(Sh4 *cpu, Memory *ram) {
@@ -64,12 +74,16 @@ public:
  * read them all back to confirm they are what we expected.  This goes off of
  * the CPU's default state, which should be no MMU, and priveleged mode.
  */
+template<typename ValType, class Generator>
 class BasicMemTest : public Test {
 private:
     int offset;
+    Generator gen;
 public:
-    BasicMemTest(Sh4 *cpu, Memory *ram, int offset = 0) : Test(cpu, ram) {
+    BasicMemTest(Generator gen, Sh4 *cpu, Memory *ram, int offset = 0) :
+        Test(cpu, ram) {
         this->offset = offset;
+        this->gen = gen;
     }
 
     int run() {
@@ -80,9 +94,12 @@ public:
         addr32_t start = offset;
         addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff);
         static const addr32_t CACHELINE_MASK = ~0x1f;
-        for (addr32_t addr = start; ((addr + 4) & CACHELINE_MASK) + 32 < end;
-             addr += 4) {
-            if ((err = cpu->write_mem(addr, addr, 4)) != 0) {
+        for (addr32_t addr = start;
+             ((addr + sizeof(ValType)) & CACHELINE_MASK) + 32 < end;
+             addr += sizeof(ValType)) {
+            ValType val = gen.pick_val(addr);
+
+            if ((err = cpu->write_mem(val, addr, sizeof(ValType))) != 0) {
                 std::cout << "Error while writing 0x" << std::hex << addr <<
                     " to 0x" << std::hex << addr << std::endl;
                 return err;
@@ -93,22 +110,22 @@ public:
             std::endl;
 
         // read all the values and check that they match expectations
-        for (addr32_t addr = start; ((addr + 4) & CACHELINE_MASK) + 32 < end;
-             addr += 4) {
+        for (addr32_t addr = start;
+             ((addr + sizeof(ValType)) & CACHELINE_MASK) + 32 < end;
+             addr += sizeof(ValType)) {
             basic_val_t val;
-            if ((err = cpu->read_mem(&val, addr, 4)) != 0) {
+            if ((err = cpu->read_mem(&val, addr, sizeof(ValType))) != 0) {
                 std::cout << "Error while reading four bytes from 0x" <<
                     addr << std::endl;
                 return err;
             }
 
+            ValType expected_val = gen.pick_val(addr);
             // should be a nop since both are uint32_t
-            addr32_t val_as_addr = val;
-
-            if (val_as_addr != addr) {
+            if (val != expected_val) {
                 std::cout << "Mismatch at address 0x" << std::hex << addr <<
-                    ": got 0x" << std::hex << val_as_addr << ", expected 0x" <<
-                    std::hex << addr << std::endl;
+                    ": got 0x" << std::hex << val << ", expected 0x" <<
+                    std::hex << expected_val << std::endl;
                 return 1;
             }
         }
@@ -117,18 +134,23 @@ public:
             "read path are correct..." << std::endl;
 
         // now read all the values through the instruction path
-        for (addr32_t addr = start; ((addr + 2) & CACHELINE_MASK) + 32 < end;
-             addr += 2) {
-            inst_t expected_val;
-            if ((addr & 1) == 0)
-                expected_val = inst_t(addr & 0xffff);
-            else
-                expected_val = inst_t((addr >> 16) & 0xffff);
+        for (addr32_t addr = start;
+             ((addr + sizeof(ValType)) & CACHELINE_MASK) + 32 < end;
+             addr += sizeof(ValType)) {
+            inst_t inst;
 
-            if ((err = cpu->read_inst(&expected_val, addr)) != 0) {
+            if ((err = cpu->read_inst(&inst, addr)) != 0) {
                 std::cout << "Error while reading instruction from 0x" <<
                     addr << std::endl;
                 return err;
+            }
+
+            inst_t expected_val = gen.pick_val(addr);
+            if (inst != expected_val) {
+                std::cout << "Mismatch at address 0x" << std::hex << addr <<
+                    ": got 0x" << std::hex << inst << ", expected 0x" <<
+                    std::hex << expected_val << std::endl;
+                return 1;
             }
         }
 
@@ -158,21 +180,24 @@ public:
  * also set the OIX bit which screws around with the cache line entry selector
  * a bit.
  */
-class BasicMemTestWithIndexEnable : public BasicMemTest {
+template<typename ValType, class Generator>
+class BasicMemTestWithIndexEnable : public BasicMemTest<ValType, Generator> {
 public:
-    BasicMemTestWithIndexEnable(Sh4 *cpu, Memory *ram, int offset=0) :
-        BasicMemTest(cpu, ram, offset) {
+    BasicMemTestWithIndexEnable(Generator gen, Sh4 *cpu, Memory *ram,
+                                int offset=0) :
+        BasicMemTest<ValType, Generator>(gen, cpu, ram, offset) {
     }
 
     virtual void setup() {
         // turn on oix and iix
-        cpu->cache_reg.ccr |= Sh4::CCR_OIX_MASK;
-        cpu->cache_reg.ccr |= Sh4::CCR_IIX_MASK;
+        this->cpu->cache_reg.ccr |= Sh4::CCR_OIX_MASK;
+        this->cpu->cache_reg.ccr |= Sh4::CCR_IIX_MASK;
     }
 
     virtual char const *name() {
         std::stringstream ss;
-        ss << "BasicMemTestWithIndexEnable (offset=" << get_offset() << ")";
+        ss << "BasicMemTestWithIndexEnable (offset=" << this->get_offset() <<
+            ")";
         return ss.str().c_str();
     }
 };
@@ -182,15 +207,24 @@ typedef std::list<Test*> TestList;
 static TestList tests;
 
 void instantiate_tests(Sh4 *cpu, Memory *ram) {
+    // I almost want to give up on the arbitrary 80-column limit now
     tests.push_back(new NullTest(cpu, ram));
-    tests.push_back(new BasicMemTest(cpu, ram, 0));
-    tests.push_back(new BasicMemTest(cpu, ram, 1));
-    tests.push_back(new BasicMemTest(cpu, ram, 2));
-    tests.push_back(new BasicMemTest(cpu, ram, 3));
-    tests.push_back(new BasicMemTestWithIndexEnable(cpu, ram, 0));
-    tests.push_back(new BasicMemTestWithIndexEnable(cpu, ram, 1));
-    tests.push_back(new BasicMemTestWithIndexEnable(cpu, ram, 2));
-    tests.push_back(new BasicMemTestWithIndexEnable(cpu, ram, 3));
+    tests.push_back(new BasicMemTest<boost::uint32_t, AddrGen32>(AddrGen32(),
+                                                                 cpu, ram, 0));
+    tests.push_back(new BasicMemTest<boost::uint32_t, AddrGen32>(AddrGen32(),
+                                                                 cpu, ram, 1));
+    tests.push_back(new BasicMemTest<boost::uint32_t, AddrGen32>(AddrGen32(),
+                                                                 cpu, ram, 2));
+    tests.push_back(new BasicMemTest<boost::uint32_t, AddrGen32>(AddrGen32(),
+                                                                 cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 0));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 1));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 2));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 3));
 }
 
 void cleanup_tests() {

@@ -37,7 +37,10 @@ class Sh4 {
      * be unfortunate, but still better than writing a get/set method for
      * everything in this class
      */
+    template<typename ValType, class Generator>
     friend class BasicMemTest;
+
+    template<typename ValType, class Generator>
     friend class BasicMemTestWithIndexEnable;
 
 public:
