@@ -28,15 +28,74 @@
 #include "hw/sh4/Memory.hpp"
 #include "hw/sh4/sh4.hpp"
 
+// Generator that returns the address
 template<typename T>
 class AddrGenerator {
 public:
     T pick_val(addr32_t addr) {
         return (T)addr;
     }
+
+    /*
+     * needed for compatibility, this does nothing
+     * because this generator keeps no state.
+     */
+    void reset() {
+    }
+
+    char const *name() const {
+        std::stringstream ss;
+        ss << "AddrGenerator<" << (sizeof(T) * 8) << " bits>";
+        return ss.str().c_str();
+    }
 };
 
+// Generator that returns pseudo-random values.
+template<typename T>
+class RandGenerator {
+public:
+    RandGenerator() {
+        this->seed = time(NULL);
+    }
+
+    RandGenerator(unsigned int seed) {
+        this->seed = seed;
+    }
+
+    /*
+     * cause subsequent calls to pick_val to return the same values as they did
+     * after the last time reset was called for this generator.
+     *
+     * YOU MUST CALL RESET YOURSELF BEFORE THE FIRST CALL TO pic_val
+     */
+    void reset() {
+        if (first_val) {
+            std::cout << name() << " using seed=" << this->seed << std::endl;
+            first_val = false;
+        }
+        srand(this->seed);
+    }
+
+    T pick_val(addr32_t addr) {
+        return (T)rand();
+    }
+
+    char const *name() const {
+        std::stringstream ss;
+        ss << "RandGenerator<" << sizeof(T) << " bits>";
+        return ss.str().c_str();
+    }
+private:
+    unsigned seed;
+    bool first_val; // used to print the 'using seed=' message only once
+};
+
+typedef AddrGenerator<boost::uint8_t> AddrGen8;
+typedef RandGenerator<boost::uint8_t> RandGen8;
+typedef AddrGenerator<boost::uint16_t> AddrGen16;
+typedef RandGenerator<boost::uint16_t> RandGen16;
 typedef AddrGenerator<boost::uint32_t> AddrGen32;
+typedef RandGenerator<boost::uint32_t> RandGen32;
 
 class Test {
 public:
@@ -91,6 +150,7 @@ public:
 
         setup();
 
+        gen.reset();
         addr32_t start = offset;
         addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff);
         static const addr32_t CACHELINE_MASK = ~0x1f;
@@ -108,6 +168,8 @@ public:
 
         std::cout << "Now verifying that values written are correct..." <<
             std::endl;
+
+        gen.reset();
 
         // read all the values and check that they match expectations
         for (addr32_t addr = start;
@@ -133,6 +195,8 @@ public:
         std::cout << "Now verifying that values read through the instruction "
             "read path are correct..." << std::endl;
 
+        gen.reset();
+
         // now read all the values through the instruction path
         for (addr32_t addr = start;
              ((addr + sizeof(ValType)) & CACHELINE_MASK) + 32 < end;
@@ -144,6 +208,12 @@ public:
                     addr << std::endl;
                 return err;
             }
+
+            /*
+             * in case ValType is narrower than inst_t (ie uint8_t), clear any
+             * bits which may be set in inst_t that aren't set in ValType
+             */
+            inst &= ValType(-1);
 
             inst_t expected_val = gen.pick_val(addr);
             if (inst != expected_val) {
@@ -163,7 +233,8 @@ public:
 
     virtual char const *name() {
         std::stringstream ss;
-        ss << "BasicMemTest (offset=" << get_offset() << ")";
+        ss << "BasicMemTest <offset=" << get_offset() << ", size=" <<
+            (sizeof(ValType) * 8) << " bits, generator=" << gen.name() << ">";
         return ss.str().c_str();
     }
 
@@ -207,6 +278,19 @@ typedef std::list<Test*> TestList;
 static TestList tests;
 
 void instantiate_tests(Sh4 *cpu, Memory *ram) {
+    /*
+     * The 32-bit memory tests all use AddrGen because there is a 1:1 mapping
+     * between 32-bit address and 32-bit data.  With AddrGen, it is easy to tell
+     * where a bad write came from because it is recorded in the (incorrect)
+     * data that was read back.
+     *
+     * The other tests all use RandGen because AddrGen would get truncated, so
+     * there would be a higher chance for false-negatives (since two separate
+     * cache-lines could easily have the same data when that data is AddrGen
+     * casted to uint8_t) and also it would not be easy to tell where the
+     * garbage data is coming from like it is with 32-bit.
+     */
+
     // I almost want to give up on the arbitrary 80-column limit now
     tests.push_back(new NullTest(cpu, ram));
     tests.push_back(new BasicMemTest<boost::uint32_t, AddrGen32>(AddrGen32(),
@@ -225,6 +309,40 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
                         AddrGen32(), cpu, ram, 2));
     tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
                         AddrGen32(), cpu, ram, 3));
+
+    tests.push_back(new BasicMemTest<boost::uint16_t, RandGen16>(RandGen16(),
+                                                                 cpu, ram, 0));
+    tests.push_back(new BasicMemTest<boost::uint16_t, RandGen16>(RandGen16(),
+                                                                 cpu, ram, 1));
+    tests.push_back(new BasicMemTest<boost::uint16_t, RandGen16>(RandGen16(),
+                                                                 cpu, ram, 2));
+    tests.push_back(new BasicMemTest<boost::uint16_t, RandGen16>(RandGen16(),
+                                                                 cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 0));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 1));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 2));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 3));
+
+    tests.push_back(new BasicMemTest<boost::uint8_t, RandGen8>(RandGen8(),
+                                                               cpu, ram, 0));
+    tests.push_back(new BasicMemTest<boost::uint8_t, RandGen8>(RandGen8(),
+                                                               cpu, ram, 1));
+    tests.push_back(new BasicMemTest<boost::uint8_t, RandGen8>(RandGen8(),
+                                                               cpu, ram, 2));
+    tests.push_back(new BasicMemTest<boost::uint8_t, RandGen8>(RandGen8(),
+                                                               cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 0));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 1));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 2));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 3));
 }
 
 void cleanup_tests() {
