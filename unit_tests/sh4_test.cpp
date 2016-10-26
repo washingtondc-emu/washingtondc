@@ -43,10 +43,10 @@ public:
     void reset() {
     }
 
-    char const *name() const {
+    std::string name() const {
         std::stringstream ss;
         ss << "AddrGenerator<" << (sizeof(T) * 8) << " bits>";
-        return ss.str().c_str();
+        return ss.str();
     }
 };
 
@@ -56,6 +56,7 @@ class RandGenerator {
 public:
     RandGenerator() {
         this->seed = time(NULL);
+        this->first_val = true;
     }
 
     RandGenerator(unsigned int seed) {
@@ -80,10 +81,10 @@ public:
         return (T)rand();
     }
 
-    char const *name() const {
+    std::string name() const {
         std::stringstream ss;
-        ss << "RandGenerator<" << sizeof(T) << " bits>";
-        return ss.str().c_str();
+        ss << "RandGenerator<" << (sizeof(T) * 8) << " bits>";
+        return ss.str();
     }
 private:
     unsigned seed;
@@ -106,7 +107,7 @@ public:
     virtual ~Test() {
     }
     virtual int run() = 0;
-    virtual char const *name() = 0;
+    virtual std::string name() = 0;
 protected:
     Sh4 *cpu;
     Memory *ram;
@@ -122,8 +123,8 @@ public:
         return 0;
     }
 
-    virtual char const *name() {
-        return "NullTest";
+    virtual std::string name() {
+        return std::string("NullTest");
     }
 };
 
@@ -231,11 +232,11 @@ public:
     virtual void setup() {
     }
 
-    virtual char const *name() {
+    virtual std::string name() {
         std::stringstream ss;
         ss << "BasicMemTest <offset=" << get_offset() << ", size=" <<
             (sizeof(ValType) * 8) << " bits, generator=" << gen.name() << ">";
-        return ss.str().c_str();
+        return ss.str();
     }
 
     int get_offset() const {
@@ -265,11 +266,11 @@ public:
         this->cpu->cache_reg.ccr |= Sh4::CCR_IIX_MASK;
     }
 
-    virtual char const *name() {
+    virtual std::string name() {
         std::stringstream ss;
         ss << "BasicMemTestWithIndexEnable (offset=" << this->get_offset() <<
             ")";
-        return ss.str().c_str();
+        return ss.str();
     }
 };
 
@@ -356,7 +357,7 @@ int run_tests() {
     unsigned n_tests = tests.size();
 
     for (TestList::iterator it = tests.begin(); it != tests.end(); it++) {
-        char const *test_name = (*it)->name();
+        std::string test_name = (*it)->name();
         std::cout << "Running " << test_name << "..." << std::endl;
         if ((*it)->run() == 0) {
             n_success++;
