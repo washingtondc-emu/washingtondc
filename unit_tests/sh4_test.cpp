@@ -91,12 +91,67 @@ private:
     bool first_val; // used to print the 'using seed=' message only once
 };
 
+/*
+ * on x86_64, the rand function returns a 32-bit int, so we uint64_t needs a
+ * special version of RandGenerator that will combine two calls to rand into a
+ * 64-bit int.
+ */
+template<>
+class RandGenerator<boost::uint64_t> {
+public:
+    RandGenerator() {
+        this->seed = time(NULL);
+        this->first_val = true;
+    }
+
+    RandGenerator(unsigned int seed) {
+        this->seed = seed;
+    }
+
+    /*
+     * cause subsequent calls to pick_val to return the same values as they did
+     * after the last time reset was called for this generator.
+     *
+     * YOU MUST CALL RESET YOURSELF BEFORE THE FIRST CALL TO pic_val
+     */
+    void reset() {
+        if (first_val) {
+            std::cout << name() << " using seed=" << this->seed << std::endl;
+            first_val = false;
+        }
+        srand(this->seed);
+    }
+
+    /*
+     * The reason this function ands with 0xffffffff is that it is theoretically
+     * possible that there may be some platform where sizeof(int) is actually 8
+     * and not 4.
+     */
+    boost::uint64_t pick_val(addr32_t addr) {
+        return boost::uint64_t(rand() & 0xffffffff) |
+            (boost::uint64_t(rand() & 0xffffffff) << 32);
+    }
+
+    std::string name() const {
+        std::stringstream ss;
+        ss << "RandGenerator<" << (sizeof(boost::uint64_t) * 8) << " bits>";
+        return ss.str();
+    }
+private:
+    unsigned seed;
+    bool first_val; // used to print the 'using seed=' message only once
+};
+
+
 typedef AddrGenerator<boost::uint8_t> AddrGen8;
 typedef RandGenerator<boost::uint8_t> RandGen8;
 typedef AddrGenerator<boost::uint16_t> AddrGen16;
 typedef RandGenerator<boost::uint16_t> RandGen16;
 typedef AddrGenerator<boost::uint32_t> AddrGen32;
 typedef RandGenerator<boost::uint32_t> RandGen32;
+typedef AddrGenerator<boost::uint64_t> AddrGen64;
+typedef RandGenerator<boost::uint64_t> RandGen64;
+
 
 class Test {
 public:
@@ -310,6 +365,23 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
                         AddrGen32(), cpu, ram, 2));
     tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
                         AddrGen32(), cpu, ram, 3));
+
+    tests.push_back(new BasicMemTest<boost::uint64_t, RandGen64>(RandGen64(),
+                                                                 cpu, ram, 0));
+    tests.push_back(new BasicMemTest<boost::uint64_t, RandGen64>(RandGen64(),
+                                                                 cpu, ram, 1));
+    tests.push_back(new BasicMemTest<boost::uint64_t, RandGen64>(RandGen64(),
+                                                                 cpu, ram, 2));
+    tests.push_back(new BasicMemTest<boost::uint64_t, RandGen64>(RandGen64(),
+                                                                 cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 0));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 1));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 2));
+    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 3));
 
     tests.push_back(new BasicMemTest<boost::uint16_t, RandGen16>(RandGen16(),
                                                                  cpu, ram, 0));

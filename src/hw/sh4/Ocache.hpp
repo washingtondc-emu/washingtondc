@@ -54,6 +54,7 @@ public:
             boost::uint8_t byte[LONGS_PER_CACHE_LINE * 4];
             boost::uint16_t sw[LONGS_PER_CACHE_LINE * 2];
             boost::uint32_t lw[LONGS_PER_CACHE_LINE];
+            boost::uint64_t qw[LONGS_PER_CACHE_LINE / 2];
         };
     };
 
@@ -71,6 +72,8 @@ public:
                     bool cache_as_ram);
     int cache_read4(basic_val_t *out, addr32_t paddr, bool index_enable,
                     bool cache_as_ram);
+    int cache_read8(basic_val_t *out, addr32_t paddr, bool index_enable,
+                    bool cache_as_ram);
     /*
      * Write the n-byte value pointed to by data to memory through the cache in
      * copy-back mode.
@@ -83,6 +86,8 @@ public:
     int cache_write2_cb(basic_val_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
     int cache_write4_cb(basic_val_t data, addr32_t paddr,
+                        bool index_enable, bool cache_as_ram);
+    int cache_write8_cb(basic_val_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
 
     /*
@@ -97,6 +102,8 @@ public:
     int cache_write2_wt(basic_val_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
     int cache_write4_wt(basic_val_t data, addr32_t paddr,
+                        bool index_enable, bool cache_as_ram);
+    int cache_write8_wt(basic_val_t data, addr32_t paddr,
                         bool index_enable, bool cache_as_ram);
 private:
     Sh4 *sh4;

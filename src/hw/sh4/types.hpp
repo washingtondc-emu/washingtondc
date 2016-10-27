@@ -38,7 +38,7 @@ typedef boost::uint16_t inst_t; // instruction
  * components all use inst_t because nothing else would make sense
  * given the context.
  */
-typedef boost::uint32_t basic_val_t;
+typedef boost::uint64_t basic_val_t;
 
 class Sh4;
 class Icache;
