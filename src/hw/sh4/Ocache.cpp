@@ -793,8 +793,9 @@ int Ocache::cache_write8_wt(basic_val_t data, addr32_t paddr,
         for (int i = 0; i < 8; i++) {
             basic_val_t tmp;
             int err;
+            basic_val_t mask = basic_val_t(0xff) << (i * 8);
 
-            tmp = ((0xff << (i * 8)) & data) >> (i * 8);
+            tmp = (mask & data) >> (i * 8);
             err = cache_write1_wt(tmp, paddr + i, index_enable, cache_as_ram);
             if (err)
                 return err;

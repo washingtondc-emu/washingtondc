@@ -297,6 +297,36 @@ public:
     int get_offset() const {
         return offset;
     }
+
+    void set_oix(bool enable) {
+        if (enable)
+            this->cpu->cache_reg.ccr |= Sh4::CCR_OIX_MASK;
+        else
+            this->cpu->cache_reg.ccr &= ~Sh4::CCR_OIX_MASK;
+    }
+
+    void set_iix(bool enable) {
+        if (enable)
+            this->cpu->cache_reg.ccr |= Sh4::CCR_IIX_MASK;
+        else
+            this->cpu->cache_reg.ccr &= ~Sh4::CCR_IIX_MASK;
+    }
+
+    /*
+     * simoltaneously enables/disables the writethrough and callback flags
+     * so that either writethrough is enabled and callback is disabled
+     * (enable=true) or writethrough is disabled and callback is enabled
+     * (enable = false).
+     */
+    void set_wt(bool enable) {
+        if (enable) {
+            this->cpu->cache_reg.ccr |= Sh4::CCR_WT_MASK;
+            this->cpu->cache_reg.ccr &= ~Sh4::CCR_CB_MASK;
+        } else {
+            this->cpu->cache_reg.ccr &= ~Sh4::CCR_WT_MASK;
+            this->cpu->cache_reg.ccr |= Sh4::CCR_CB_MASK;
+        }
+    }
 };
 
 /*
@@ -304,29 +334,38 @@ public:
  * which correspond to the addresses where those values are being written, then
  * read them all back to confirm they are what we expected.  This goes off of
  * the CPU's default state, which should be no MMU, and priveleged mode, BUT we
- * also set the OIX bit which screws around with the cache line entry selector
- * a bit.
+ * also optionally set the OIX, IIX, WT, and CB flags in the cache-control
+ * register.
  */
 template<typename ValType, class Generator>
-class BasicMemTestWithIndexEnable : public BasicMemTest<ValType, Generator> {
+class BasicMemTestWithFlags : public BasicMemTest<ValType, Generator> {
 public:
-    BasicMemTestWithIndexEnable(Generator gen, Sh4 *cpu, Memory *ram,
-                                int offset=0) :
+    BasicMemTestWithFlags(Generator gen, Sh4 *cpu, Memory *ram,
+                          int offset = 0, bool oix = false, bool iix = false,
+                          bool wt = false) :
         BasicMemTest<ValType, Generator>(gen, cpu, ram, offset) {
+        this->oix = oix;
+        this->iix = iix;
+        this->wt = wt;
     }
 
     virtual void setup() {
         // turn on oix and iix
-        this->cpu->cache_reg.ccr |= Sh4::CCR_OIX_MASK;
-        this->cpu->cache_reg.ccr |= Sh4::CCR_IIX_MASK;
+        this->set_oix(oix);
+        this->set_iix(iix);
+        this->set_wt(wt);
     }
 
     virtual std::string name() {
         std::stringstream ss;
-        ss << "BasicMemTestWithIndexEnable (offset=" << this->get_offset() <<
-            ")";
+        ss << "BasicMemTestWithFlags (offset=" << this->get_offset() <<
+            ", oix=" << this->oix << ", iix=" << this->iix << ", wt=" <<
+            this->wt << ", cb=" << !this->wt << ")";
         return ss.str();
     }
+
+private:
+    bool oix, iix, wt;
 };
 
 typedef std::list<Test*> TestList;
@@ -357,14 +396,22 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
                                                                  cpu, ram, 2));
     tests.push_back(new BasicMemTest<boost::uint32_t, AddrGen32>(AddrGen32(),
                                                                  cpu, ram, 3));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
-                        AddrGen32(), cpu, ram, 0));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
-                        AddrGen32(), cpu, ram, 1));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
-                        AddrGen32(), cpu, ram, 2));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint32_t, AddrGen32>(
-                        AddrGen32(), cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 0, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 1, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 2, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 3, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 0, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 1, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 2, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint32_t, AddrGen32>(
+                        AddrGen32(), cpu, ram, 3, true, true, true));
 
     tests.push_back(new BasicMemTest<boost::uint64_t, RandGen64>(RandGen64(),
                                                                  cpu, ram, 0));
@@ -374,14 +421,22 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
                                                                  cpu, ram, 2));
     tests.push_back(new BasicMemTest<boost::uint64_t, RandGen64>(RandGen64(),
                                                                  cpu, ram, 3));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint64_t, RandGen64>(
-                        RandGen64(), cpu, ram, 0));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint64_t, RandGen64>(
-                        RandGen64(), cpu, ram, 1));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint64_t, RandGen64>(
-                        RandGen64(), cpu, ram, 2));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint64_t, RandGen64>(
-                        RandGen64(), cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 0, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 1, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 2, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 3, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 0, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 1, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 2, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint64_t, RandGen64>(
+                        RandGen64(), cpu, ram, 3, true, true, true));
 
     tests.push_back(new BasicMemTest<boost::uint16_t, RandGen16>(RandGen16(),
                                                                  cpu, ram, 0));
@@ -391,14 +446,22 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
                                                                  cpu, ram, 2));
     tests.push_back(new BasicMemTest<boost::uint16_t, RandGen16>(RandGen16(),
                                                                  cpu, ram, 3));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint16_t, RandGen16>(
-                        RandGen16(), cpu, ram, 0));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint16_t, RandGen16>(
-                        RandGen16(), cpu, ram, 1));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint16_t, RandGen16>(
-                        RandGen16(), cpu, ram, 2));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint16_t, RandGen16>(
-                        RandGen16(), cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 0, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 1, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 2, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 3, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 0, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 1, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 2, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint16_t, RandGen16>(
+                        RandGen16(), cpu, ram, 3, true, true, true));
 
     tests.push_back(new BasicMemTest<boost::uint8_t, RandGen8>(RandGen8(),
                                                                cpu, ram, 0));
@@ -408,14 +471,22 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
                                                                cpu, ram, 2));
     tests.push_back(new BasicMemTest<boost::uint8_t, RandGen8>(RandGen8(),
                                                                cpu, ram, 3));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint8_t, RandGen8>(
-                        RandGen8(), cpu, ram, 0));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint8_t, RandGen8>(
-                        RandGen8(), cpu, ram, 1));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint8_t, RandGen8>(
-                        RandGen8(), cpu, ram, 2));
-    tests.push_back(new BasicMemTestWithIndexEnable<boost::uint8_t, RandGen8>(
-                        RandGen8(), cpu, ram, 3));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 0, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 1, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 2, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 3, true, true, false));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 0, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 1, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 2, true, true, true));
+    tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
+                        RandGen8(), cpu, ram, 3, true, true, true));
 }
 
 void cleanup_tests() {
