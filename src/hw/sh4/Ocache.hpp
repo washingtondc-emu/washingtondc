@@ -66,14 +66,6 @@ public:
     // Returns: zero on success, nonzero on failure.
     int cache_read(basic_val_t *out, unsigned len, addr32_t paddr,
                    bool index_enable, bool cache_as_ram);
-    int cache_read1(basic_val_t *out, addr32_t paddr, bool index_enable,
-                    bool cache_as_ram);
-    int cache_read2(basic_val_t *out, addr32_t paddr, bool index_enable,
-                    bool cache_as_ram);
-    int cache_read4(basic_val_t *out, addr32_t paddr, bool index_enable,
-                    bool cache_as_ram);
-    int cache_read8(basic_val_t *out, addr32_t paddr, bool index_enable,
-                    bool cache_as_ram);
     /*
      * Write the n-byte value pointed to by data to memory through the cache in
      * copy-back mode.
@@ -81,14 +73,6 @@ public:
      */
     int cache_write_cb(basic_val_t data, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram);
-    int cache_write1_cb(basic_val_t data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
-    int cache_write2_cb(basic_val_t data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
-    int cache_write4_cb(basic_val_t data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
-    int cache_write8_cb(basic_val_t data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
 
     /*
      * Write the n-byte value pointed to by data to memory through the cache in
@@ -97,20 +81,25 @@ public:
      */
     int cache_write_wt(basic_val_t data, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram);
-    int cache_write1_wt(basic_val_t data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
-    int cache_write2_wt(basic_val_t data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
-    int cache_write4_wt(basic_val_t data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
-    int cache_write8_wt(basic_val_t data, addr32_t paddr,
-                        bool index_enable, bool cache_as_ram);
+
 private:
     Sh4 *sh4;
     Memory *mem;
 
     // 16 KB ("Operand Cache" in the hardware manual)
     struct cache_line *op_cache;
+
+    template<int N_BYTES>
+    int do_cache_read(basic_val_t *out, addr32_t paddr, bool index_enable,
+                      bool cache_as_ram);
+
+    template<int N_BYTES>
+    int do_cache_write_cb(basic_val_t data, addr32_t paddr,
+                          bool index_enable, bool cache_as_ram);
+
+    template<int N_BYTES>
+    int do_cache_write_wt(basic_val_t data, addr32_t paddr,
+                          bool index_enable, bool cache_as_ram);
 
     /*
      * Return true if line matches paddr; else return false.
