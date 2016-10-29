@@ -765,13 +765,13 @@ enum Sh4::VirtMemArea Sh4::get_mem_area(addr32_t addr) {
 }
 
 void Sh4::set_exception(unsigned excp_code) {
-    excp_reg.expevt = (excp_code << EXPEVT_CODE_SHIFT) | EXPEVT_CODE_MASK;
+    excp_reg.expevt = (excp_code << EXPEVT_CODE_SHIFT) & EXPEVT_CODE_MASK;
 
     enter_exception((ExceptionCode)excp_code);
 }
 
 void Sh4::set_interrupt(unsigned intp_code) {
-    excp_reg.intevt = (intp_code << INTEVT_CODE_SHIFT) | INTEVT_CODE_MASK;
+    excp_reg.intevt = (intp_code << INTEVT_CODE_SHIFT) & INTEVT_CODE_MASK;
 
     enter_exception((ExceptionCode)intp_code);
 }

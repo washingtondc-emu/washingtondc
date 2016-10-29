@@ -23,8 +23,10 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
+#include <cstring>
 #include <list>
 
+#include "BaseException.hpp"
 #include "hw/sh4/Memory.hpp"
 #include "hw/sh4/sh4.hpp"
 
@@ -368,6 +370,134 @@ private:
     bool oix, iix, wt;
 };
 
+/*
+ * Set up an mmu mapping, then run through every possible address (in P1 area)
+ * and verify that either there was a Data TLB miss exception or the read/write
+ * went through as expected.
+ */
+template <typename ValType, class Generator>
+class MmuUtlbMissTest : public Test {
+public:
+    static const addr32_t CACHELINE_MASK = ~0x1f;
+
+    MmuUtlbMissTest(Generator gen, int offset, int page_sz, Sh4 *cpu,
+                    Memory *ram) :
+        Test(cpu, ram) {
+        this->offset = offset;
+        this->gen = gen;
+        this->page_sz = page_sz;
+    }
+
+    int run() {
+        int err;
+        unsigned sz_tbl[] = { 1024, 4 * 1024, 64 * 1024, 1024 * 1024 };
+
+        this->gen.reset();
+        memset(this->cpu->utlb, 0, sizeof(this->cpu->utlb));
+        this->cpu->mmu.mmucr |= Sh4::MMUCR_AT_MASK;
+
+        // map (0xf000 + page_sz) into the first page_sz bytes of virtual memory
+        addr32_t phys_addr = 0x0000ffff; // TODO: this ought to be randomized
+        unsigned sz = page_sz;
+        addr32_t ppn = phys_addr & ~(sz_tbl[page_sz] - 1) & 0x1fffffff;
+        bool shared = false;
+        bool cacheable = false;
+        unsigned priv = 3;
+        bool dirty = true;
+        bool write_through = false;
+        boost::uint32_t utlb_ent = gen_utlb_ent(ppn, sz, shared,
+                                                cacheable, priv, dirty,
+                                                write_through);
+        boost::uint32_t utlb_key = gen_utlb_key(0, 0);
+        set_utlb(0, utlb_key, utlb_ent);
+
+        addr32_t start = this->offset;
+        addr32_t end = std::min(this->ram->get_size(), (size_t)0xffffffff);
+
+        for (addr32_t addr = start; addr < end; addr += sizeof(ValType)) {
+            ValType val = this->gen.pick_val(addr);
+            err = this->cpu->write_mem(val, addr, sizeof(ValType));
+            if (err == 0) {
+                if (addr >= sz_tbl[page_sz]) {
+                    std::cout << "Error while writing 0x" << std::hex << addr <<
+                        " to 0x" << std::hex << addr <<
+                        ": There should have been an error!" << std::endl;
+                    return 1;
+                }
+            } else {
+                if (addr < sz_tbl[page_sz]) {
+                    std::cout << "Error while writing 0x" << std::hex << addr <<
+                        " to 0x" << std::hex << addr <<
+                        ": There should not have been an error!" << std::endl;
+                    return 1;
+                } else {
+                    // make sure it's the right kind of error
+                    reg32_t excp =
+                        (this->cpu->excp_reg.expevt & Sh4::EXPEVT_CODE_MASK) >>
+                        Sh4::EXPEVT_CODE_SHIFT;
+                    if (excp != Sh4::EXCP_DATA_TLB_WRITE_MISS) {
+                        std::cout << "Error: The wrong kind of error!" << std::endl;
+                        std::cout << "Was expecting 0x" << std::hex <<
+                            Sh4::EXCP_DATA_TLB_WRITE_MISS << " but got 0x" <<
+                            std::hex << excp << std::endl;
+                        return 1;
+                    }
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    void set_utlb(unsigned utlb_idx, boost::uint32_t utlb_key,
+                  boost::uint32_t utlb_ent) {
+        if (utlb_idx >= Sh4::UTLB_SIZE)
+            throw InvalidParamError("Bad utlb index!");
+
+        this->cpu->utlb[utlb_idx].key = utlb_key;
+        this->cpu->utlb[utlb_idx].ent = utlb_ent;
+    }
+
+    boost::uint32_t gen_utlb_key(unsigned asid, unsigned vpn, bool valid=true) {
+        return ((asid << Sh4::UTLB_KEY_ASID_SHIFT) & Sh4::UTLB_KEY_ASID_MASK) |
+            ((vpn << Sh4::UTLB_KEY_VPN_SHIFT) & Sh4::UTLB_KEY_VPN_MASK) |
+            (((valid ? 1 : 0) << Sh4::UTLB_KEY_VALID_SHIFT) &
+             Sh4::UTLB_KEY_VALID_MASK);
+    }
+
+    boost::uint32_t gen_utlb_ent(unsigned ppn, unsigned sz, bool shared,
+                                 bool cacheable, unsigned priv, bool dirty,
+                                 bool write_through) {
+        int sh = shared ? 1 : 0;
+        int c = cacheable ? 1 : 0;
+        int d = dirty ? 1 : 0;
+        int wt = write_through ? 1 : 0;
+
+        boost::uint32_t ret = (ppn << Sh4::UTLB_ENT_PPN_SHIFT) &
+            Sh4::UTLB_ENT_PPN_MASK;
+        ret |= (sz << Sh4::UTLB_ENT_SZ_SHIFT) & Sh4::UTLB_ENT_SZ_MASK;
+        ret |= (sh << Sh4::UTLB_ENT_SH_SHIFT) & Sh4::UTLB_ENT_SH_MASK;
+        ret |= (c << Sh4::UTLB_ENT_C_SHIFT) & Sh4::UTLB_ENT_C_MASK;
+        ret |= (priv << Sh4::UTLB_ENT_PR_SHIFT) & Sh4::UTLB_ENT_PR_MASK;
+        ret |= (d << Sh4::UTLB_ENT_D_SHIFT) & Sh4::UTLB_ENT_D_MASK;
+        ret |= (wt << Sh4::UTLB_ENT_WT_SHIFT) & Sh4::UTLB_ENT_WT_MASK;
+
+        return ret;
+    }
+
+    virtual std::string name() {
+        std::stringstream ss;
+        ss << "MmuTlbBasicMissTest<offset=" << this->offset << ", page_sz=" <<
+            page_sz << ">";
+        return ss.str();
+    }
+
+private:
+    Generator gen;
+    int offset;
+    int page_sz;
+};
+
 typedef std::list<Test*> TestList;
 
 static TestList tests;
@@ -487,6 +617,17 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
                         RandGen8(), cpu, ram, 2, true, true, true));
     tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
                         RandGen8(), cpu, ram, 3, true, true, true));
+
+    for (int page_sz = 0; page_sz < 4; page_sz++) {
+        tests.push_back(new MmuUtlbMissTest<boost::uint8_t, RandGen8>(
+                            RandGen8(), 0, page_sz, cpu, ram));
+        tests.push_back(new MmuUtlbMissTest<boost::uint16_t, RandGen16>(
+                            RandGen16(), 0, page_sz, cpu, ram));
+        tests.push_back(new MmuUtlbMissTest<boost::uint32_t, RandGen32>(
+                            RandGen32(), 0, page_sz, cpu, ram));
+        tests.push_back(new MmuUtlbMissTest<boost::uint64_t, RandGen64>(
+                            RandGen64(), 0, page_sz, cpu, ram));
+    }
 }
 
 void cleanup_tests() {

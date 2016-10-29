@@ -43,6 +43,9 @@ class Sh4 {
     template<typename ValType, class Generator>
     friend class BasicMemTestWithIndexEnable;
 
+    template <typename ValType, class Generator>
+    friend class MmuUtlbMissTest;
+
 public:
     Sh4(Memory *mem);
     ~Sh4();
