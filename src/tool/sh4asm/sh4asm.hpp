@@ -23,6 +23,9 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <sstream>
+
+#include <boost/shared_ptr.hpp>
 
 #include "types.hpp"
 
@@ -60,29 +63,210 @@ public:
 
     addr32_t lookup_sym(const std::string& sym_name) const;
 
-    void assemble_line(const std::string& inst);
+    inst_t assemble_line(const std::string& inst);
 private:
-    class Token {
-    public:
-        enum Type {
-            TEXT,
-            COLON,
-            COMMA,
-            AT,
-            POUND,
-            REG,
-            END_OF_LINE
-        };
-        Type tp;
-
-        std::string txt;
-
-        Token(const std::string& tok_txt);
-    };
+    class Token;
 
     typedef std::map<std::string, addr32_t> SymMap;
     typedef std::vector<inst_t> InstList;
-    typedef std::vector<Token> TokenList;
+    typedef boost::shared_ptr<Token> TokPtr;
+    typedef std::vector<TokPtr> TokList;
+    typedef std::vector<TokPtr> PatternList;
+
+    static PatternList get_patterns();
+
+    template <class IteratorType>
+    static bool safe_to_advance(IteratorType begin, IteratorType end, int adv) {
+        /*
+         * This is certainly the "wrong" way to do this and I would fail any job
+         * interview where I submitted this code, but I'm not at a job interview
+         * and I'm not in the mood for algebra either.
+         */
+        while (adv) {
+            if (begin == end)
+                return false;
+            begin++;
+            adv--;
+        }
+        return true;
+    }
+
+    class Token {
+    public:
+        virtual ~Token() {
+        }
+
+        /*
+         * matches returns how far to advance rbegin.
+         * If the return is <= 0, then there was no match.
+         */
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) = 0;
+        virtual std::string text() const = 0;
+        virtual inst_t assemble() const {
+            return 0;
+        }
+    };
+
+    class TxtToken : public Token {
+    public:
+        std::string txt;
+
+        TxtToken(char const *txt) {
+            this->txt = std::string(txt);
+        }
+
+        TxtToken(const std::string& txt) {
+            this->txt = txt;
+        }
+
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            return 0;
+        }
+
+        virtual std::string text() const {
+            return txt;
+        }
+    };
+
+    class Tok_movw : public Token{
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                             TokList::reverse_iterator rend) {
+            if ((*rbegin)->text() == "MOV.W") {
+                return 1;
+            }
+
+            return 0;
+        }
+
+        virtual std::string text() const {
+            return "MOV.W";
+        }
+    };
+
+    template <class Inst, class SrcInput, class DstInput,
+              int BIN, int SRC_SHIFT = 0, int DST_SHIFT = 0>
+    struct BinaryOperator : public Token{
+        Inst inst;
+
+        SrcInput src;
+        DstInput dst;
+
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            int adv;
+            int adv_total = 0;
+
+            if ((adv = dst.matches(rbegin, rend)) == 0)
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, adv)) {
+                rbegin += adv;
+                adv_total += adv;
+            } else
+                return 0;
+
+            if ((*rbegin)->text() != ",")
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, 1)) {
+                rbegin++;
+                adv_total++;
+            }
+
+            if ((adv = src.matches(rbegin, rend)) == 0)
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, adv)) {
+                rbegin += adv;
+                adv_total += adv;
+            } else
+                return 0;
+
+            if ((adv = inst.matches(rbegin, rend)) != 0) {
+                adv_total += adv;
+                return adv_total;
+            }
+
+            return 0;
+        }
+
+        virtual std::string text() const {
+            return inst.text() + " " + src.text() + ", " + dst.text();
+        }
+
+        inst_t assemble() const {
+            return BIN | (src.assemble() << SRC_SHIFT) |
+                (dst.assemble() << DST_SHIFT);
+        }
+    };
+
+    class Tok_GenReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                             TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if (txt.size() == 2 || txt.size() == 3) {
+                int reg_no;
+                std::stringstream(txt.substr(1)) >> reg_no;
+                if (reg_no >= 0 && reg_no <= 15) {
+                    this->reg_no = reg_no;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            std::stringstream ss;
+            ss << "R" << reg_no;
+            return ss.str();
+        }
+
+        inst_t assemble() const {
+            return reg_no & 0xff;
+        }
+    private:
+        int reg_no;
+    };
+
+    template <class InnerOperand>
+    class Tok_Ind : public Token {
+    public:
+        InnerOperand op;
+
+        virtual int matches(TokList::reverse_iterator rbegin,
+                             TokList::reverse_iterator rend) {
+            int advance = 0;
+            if (rbegin == rend)
+                return 0;
+
+            if ((advance = op.matches(rbegin, rend))) {
+                if (safe_to_advance(rbegin, rend, advance))
+                    rbegin += advance;
+                else
+                    return 0;
+
+                if ((*rbegin)->text() == "@") {
+                    return advance + 1;
+                }
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("@") + op.text();
+        }
+
+        inst_t assemble() const {
+            return op.assemble();
+        }
+    };
 
     SymMap syms;
     InstList prog;
@@ -90,9 +274,9 @@ private:
     /* remove any comments from the line. */
     std::string preprocess_line(const std::string& line);
 
-    TokenList tokenize_line(const std::string& line);
+    static TokList tokenize_line(const std::string& line);
 
-    inst_t assemble_tokens(TokenList toks);
+    inst_t assemble_tokens(TokList toks);
     inst_t assemble_op_noargs(const std::string& inst);
 
     void add_label(const std::string& lbl);

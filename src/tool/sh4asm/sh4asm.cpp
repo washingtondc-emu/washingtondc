@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include <iostream>
+
 #include "types.hpp"
 
 #include "sh4asm.hpp"
@@ -33,8 +35,31 @@ addr32_t Sh4Prog::lookup_sym(const std::string& sym_name) const {
     return it->second;
 }
 
-void Sh4Prog::assemble_line(const std::string& inst) {
-    
+Sh4Prog::PatternList Sh4Prog::get_patterns() {
+    PatternList list;
+
+    list.push_back(TokPtr(new Sh4Prog::BinaryOperator<Sh4Prog::Tok_movw,
+                          Sh4Prog::Tok_GenReg,
+                          Sh4Prog::Tok_Ind<Sh4Prog::Tok_GenReg>,
+                          0x2001, 4, 8>));
+    list.push_back(TokPtr(new Sh4Prog::BinaryOperator<Sh4Prog::Tok_movw,
+                          Sh4Prog::Tok_Ind<Sh4Prog::Tok_GenReg>,
+                          Sh4Prog::Tok_GenReg, 0x6001, 4, 8>));
+    return list;
+}
+
+inst_t Sh4Prog::assemble_line(const std::string& inst) {
+    TokList toks = tokenize_line(preprocess_line(inst));
+    PatternList patterns = get_patterns();
+
+    for (PatternList::iterator it = patterns.begin(); it != patterns.end();
+         ++it) {
+        if ((*it)->matches(toks.rbegin(), toks.rend())) {
+            return (*it)->assemble();
+        }
+    }
+
+    throw ParseError("Unrecognized opcode");
 }
 
 std::string Sh4Prog::preprocess_line(const std::string& line) {
@@ -46,37 +71,34 @@ std::string Sh4Prog::preprocess_line(const std::string& line) {
     return line.substr(0, comment_start);
 }
 
-Sh4Prog::Token::Token(const std::string& tok_txt) {
-    this->txt = tok_txt;
-
-    if (tok_txt == ",")
-        tp = COMMA;
-    else if (tok_txt == ":")
-        tp = COLON;
-    else if (tok_txt == "\n")
-        tp = END_OF_LINE;
-    else
-        tp = TEXT;
-}
-
-Sh4Prog::TokenList Sh4Prog::tokenize_line(const std::string& line) {
+Sh4Prog::TokList Sh4Prog::tokenize_line(const std::string& line) {
     std::string cur_tok;
-    TokenList tok_list;
+    TokList tok_list;
 
     for (std::string::const_iterator it = line.begin(); it != line.end();
          ++it) {
         char cur_char = *it;
 
-        if (cur_char == ' ' || cur_char == '\t') {
-            tok_list.push_back(Token(cur_tok));
-            cur_tok.clear();
-        } else if (cur_char == ':' || cur_char == ',' || cur_char == '\n') {
-            tok_list.push_back(Token(cur_tok));
-            tok_list.push_back(Token(std::string(1, cur_char)));
+        if (cur_char == ' ' || cur_char == '\t' || cur_char == '\n') {
+            if (cur_tok.size()) {
+                tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
+                cur_tok.clear();
+            }
+        } else if (cur_char == ':' || cur_char == ',' || cur_char == '@') {
+            if (cur_tok.size()) {
+                tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
+            }
+            std::string cur_char_as_str(1, cur_char);
+            tok_list.push_back(TokPtr(new TxtToken(cur_char_as_str)));
             cur_tok.clear();
         } else {
             cur_tok.push_back(cur_char);
         }
+    }
+
+    if (cur_tok.size()) {
+        tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
+        cur_tok.clear();
     }
 
     return tok_list;
@@ -522,31 +544,4 @@ inst_t Sh4Prog::assemble_op_noargs(const std::string& inst) {
 
 void Sh4Prog::add_label(const std::string& lbl) {
     syms[lbl] = prog.size() - 1;
-}
-
-inst_t Sh4Prog::assemble_tokens(TokenList toks) {
-    if (toks.at(toks.size() - 1).tp != Token::END_OF_LINE) {
-        throw ParseError("Line does not end in \\n");
-    }
-
-    if (toks.size() == 3 && toks.at(0).tp == Token::TEXT &&
-        toks.at(1).tp == Token::COLON) {
-        // declaring a label
-        add_label(toks.at(0).txt);
-    } else if (toks.size() == 2 && toks.at(0).tp == Token::TEXT) {
-        // instruction with no operands
-        return assemble_op_noargs(toks.at(0).txt);
-    } else if (toks.size() == 3 && toks.at(0).tp == Token::TEXT &&
-               toks.at(1).tp == Token::TEXT) {
-        // instruction with 1 operand
-    } else if (toks.size() == 5 && toks.at(0).tp == Token::TEXT &&
-               toks.at(1).tp == Token::TEXT &&
-               toks.at(2).tp == Token::COMMA &&
-               toks.at(3).tp == Token::TEXT) {
-        // instruction with 2 operands
-    } else {
-        throw ParseError("Unrecognized token sequence");
-    }
-
-    return 0;//TODO: finish
 }
