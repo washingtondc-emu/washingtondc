@@ -3,3 +3,5 @@ compiler:
 - g++
 os:
 - linux
+git:
+  submodules: true
