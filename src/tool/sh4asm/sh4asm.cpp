@@ -60,11 +60,11 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
                           0x0029, 8>));
 
     // 0100nnnn00010001
-    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(comppz), Tok_GenReg,
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(cmppz), Tok_GenReg,
                           0x4011, 8>));
 
     // 0100nnnn00010101
-    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(comppl), Tok_GenReg,
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(cmppl), Tok_GenReg,
                           0x4015, 8>));
 
     // 0100nnnn00010000
@@ -143,6 +143,69 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new UnaryOperator<TXT_TOK(jsr), Tok_GenReg,
                           0x400b, 8>));
 
+
+    // opcode that only takes an immediate value as input
+
+    // 10001000iiiiiiii
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(cmpeq), Tok_immed<0xff>,
+                          0x8800, 0>));
+
+    // 11001101iiiiiiii
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(andb), Tok_immed<0xff>,
+                          0xcd00, 0>));
+
+    // 11001111iiiiiiii
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(orb), Tok_immed<0xff>,
+                          0xcf00, 0>));
+
+    // 11001011iiiiiiii
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(or), Tok_immed<0xff>,
+                          0xcb00, 0>));
+
+    // 11001000iiiiiiii
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(tst), Tok_immed<0xff>,
+                          0xc800, 0>));
+
+    // 11001100iiiiiiii
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(tstb), Tok_immed<0xff>,
+                          0xcc00, 0>));
+
+    // 11001010iiiiiiii
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(xor), Tok_immed<0xff>,
+                          0xca00, 0>));
+
+    // 11001110iiiiiiii
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(xorb), Tok_immed<0xff>,
+                          0xce00, 0>));
+
+    // 10001011dddddddd
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bf), Tok_immed<0xff>,
+                          0x8b00, 0>));
+
+    // 10001111dddddddd
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bfs), Tok_immed<0xff>,
+                          0x8f00, 0>));
+
+    // 10001001dddddddd
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bt), Tok_immed<0xff>,
+                          0x8900, 0>));
+
+    // 10001101dddddddd
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bts), Tok_immed<0xff>,
+                          0x8d00, 0>));
+
+    // 1010dddddddddddd
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bts), Tok_immed<0xfff>,
+                          0xa000, 0>));
+
+    // 1011dddddddddddd
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bsr), Tok_immed<0xfff>,
+                          0xb000, 0>));
+
+    // 11000011iiiiiiii
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(trapa), Tok_immed<0x0ff>,
+                          0xc300, 0>));
+
     // 0010nnnnmmmm0001
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
                           Tok_Ind<Tok_GenReg>, 0x2001, 4, 8>));
@@ -189,7 +252,8 @@ Sh4Prog::TokList Sh4Prog::tokenize_line(const std::string& line) {
                 tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
                 cur_tok.clear();
             }
-        } else if (cur_char == ':' || cur_char == ',' || cur_char == '@') {
+        } else if (cur_char == ':' || cur_char == ',' ||
+                   cur_char == '@' || cur_char == '#') {
             if (cur_tok.size()) {
                 tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
             }

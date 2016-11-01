@@ -142,28 +142,41 @@ private:
         }                                       \
     }
 
-    INST_TOK(divou, "DIVOU");
-    INST_TOK(rts, "RTS");
+    INST_TOK(andb, "AND.B");
+    INST_TOK(bf, "BF");
+    INST_TOK(bfs, "BF/S");
+    INST_TOK(bra, "BRA");
+    INST_TOK(braf, "BRAF");
+    INST_TOK(bsr, "BSR");
+    INST_TOK(bsrf, "BSRF");
+    INST_TOK(bt, "BT");
+    INST_TOK(bts, "BT/S");
     INST_TOK(clrmac, "CLRMAC");
     INST_TOK(clrs, "CLRS");
     INST_TOK(clrt, "CLRT");
-    INST_TOK(ldtlb, "LDTLB");
-    INST_TOK(nop, "NOP");
-    INST_TOK(rte, "RTE");
-    INST_TOK(sets, "SETS");
-    INST_TOK(sett, "SETT");
-    INST_TOK(sleep, "SLEEP");
+    INST_TOK(cmppz, "CMP/PZ");
+    INST_TOK(cmppl, "CMP/PL");
+    INST_TOK(cmpeq, "CMP/EQ");
+    INST_TOK(divou, "DIVOU");
+    INST_TOK(dt, "DT");
     INST_TOK(frchg, "FRCHG");
     INST_TOK(fschg, "FSCHG");
+    INST_TOK(jmp, "JMP");
+    INST_TOK(jsr, "JSR");
+    INST_TOK(ldtlb, "LDTLB");
     INST_TOK(movw, "MOV.W");
     INST_TOK(movt, "MOVT");
-    INST_TOK(comppz, "COMP/PZ");
-    INST_TOK(comppl, "COMP/PL");
-    INST_TOK(dt, "DT");
+    INST_TOK(nop, "NOP");
+    INST_TOK(or, "OR");
+    INST_TOK(orb, "OR.B");
     INST_TOK(rotl, "ROTL");
     INST_TOK(rotr, "ROTR");
     INST_TOK(rotcl, "ROTCL");
     INST_TOK(rotcr, "ROTCR");
+    INST_TOK(rte, "RTE");
+    INST_TOK(rts, "RTS");
+    INST_TOK(sets, "SETS");
+    INST_TOK(sett, "SETT");
     INST_TOK(shal, "SHAL");
     INST_TOK(shar, "SHAR");
     INST_TOK(shll, "SHLL");
@@ -174,10 +187,12 @@ private:
     INST_TOK(shlr8, "SHLR8");
     INST_TOK(shll16, "SHLL16");
     INST_TOK(shlr16, "SHLR16");
-    INST_TOK(braf, "BRAF");
-    INST_TOK(bsrf, "BSRF");
-    INST_TOK(jmp, "JMP");
-    INST_TOK(jsr, "JSR");
+    INST_TOK(sleep, "SLEEP");
+    INST_TOK(tst, "TST");
+    INST_TOK(tstb, "TST.B");
+    INST_TOK(trapa, "TRAPA");
+    INST_TOK(xor, "XOR");
+    INST_TOK(xorb, "XOR.B");
 
     template <class Inst, int BIN>
     struct NoArgOperator : public Token {
@@ -294,7 +309,7 @@ private:
     class Tok_GenReg : public Token {
     public:
         virtual int matches(TokList::reverse_iterator rbegin,
-                             TokList::reverse_iterator rend) {
+                            TokList::reverse_iterator rend) {
             std::string txt = (*rbegin)->text();
 
             if (txt.size() == 2 || txt.size() == 3) {
@@ -322,13 +337,77 @@ private:
         int reg_no;
     };
 
+    template <unsigned MASK>
+    class Tok_immed : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+            bool is_hex;
+
+            if (txt.size() < 1)
+                return 0;
+
+            if (txt.size() > 2 && txt.substr(0, 2) == "0x") {
+                // hex string
+                is_hex = true;
+                txt = txt.substr(0, 2);
+
+                for (std::string::iterator it = txt.begin();
+                     it != txt.end(); it++) {
+                    if ((*it < '0' || *it > '9') &&
+                        (*it < 'a' || *it > 'f') &&
+                        (*it < 'A' || *it > 'F'))
+                        return 0;
+                }
+            } else {
+                is_hex = false;
+                for (std::string::iterator it = txt.begin();
+                     it != txt.end(); it++) {
+                    if (*it < '0' || *it > '9')
+                        return 0;
+                }
+            }
+
+            if (safe_to_advance(rbegin, rend, 1))
+                rbegin += 1;
+            else
+                return 0;
+
+            if ((*rbegin)->text() == "#") {
+                std::stringstream ss(txt);
+                if (is_hex) {
+                    ss >> std::hex >> imm;
+                } else {
+                    ss >> imm;
+                }
+
+                return 2;
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            std::stringstream ss;
+            ss << "#0x" << std::hex << imm;
+            return ss.str();
+        }
+
+        inst_t assemble() const {
+            return imm & MASK;
+        }
+    private:
+        unsigned imm;
+    };
+
     template <class InnerOperand>
     class Tok_Ind : public Token {
     public:
         InnerOperand op;
 
         virtual int matches(TokList::reverse_iterator rbegin,
-                             TokList::reverse_iterator rend) {
+                            TokList::reverse_iterator rend) {
             int advance = 0;
             if (rbegin == rend)
                 return 0;
