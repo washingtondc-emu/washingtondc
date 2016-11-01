@@ -122,18 +122,6 @@ private:
 
         virtual int matches(TokList::reverse_iterator rbegin,
                             TokList::reverse_iterator rend) {
-            return 0;
-        }
-
-        virtual std::string text() const {
-            return txt;
-        }
-    };
-
-    class Tok_movw : public Token{
-    public:
-        virtual int matches(TokList::reverse_iterator rbegin,
-                             TokList::reverse_iterator rend) {
             if ((*rbegin)->text() == "MOV.W") {
                 return 1;
             }
@@ -142,13 +130,55 @@ private:
         }
 
         virtual std::string text() const {
-            return "MOV.W";
+            return txt;
+        }
+    };
+
+#define TXT_TOK(name) Tok_ ## name
+#define INST_TOK(name, inst)                    \
+    class TXT_TOK(name) : public TxtToken {     \
+    public:                                     \
+        TXT_TOK(name)() : TxtToken(inst) {      \
+        }                                       \
+    }
+
+    INST_TOK(divou, "DIVOU");
+    INST_TOK(rts, "RTS");
+    INST_TOK(clrmac, "CLRMAC");
+    INST_TOK(clrs, "CLRS");
+    INST_TOK(clrt, "CLRT");
+    INST_TOK(ldtlb, "LDTLB");
+    INST_TOK(nop, "NOP");
+    INST_TOK(rte, "RTE");
+    INST_TOK(sets, "SETS");
+    INST_TOK(sett, "SETT");
+    INST_TOK(sleep, "SLEEP");
+    INST_TOK(frchg, "FRCHG");
+    INST_TOK(fschg, "FSCHG");
+    INST_TOK(movw, "MOV.W");
+
+
+    template <class Inst, int BIN>
+    struct NoArgOperator : public Token {
+        Inst inst;
+
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            return inst.matches(rbegin, rend);
+        }
+
+        virtual std::string text() const {
+            return inst.text();
+        }
+
+        inst_t assemble() const {
+            return (inst_t)BIN;
         }
     };
 
     template <class Inst, class SrcInput, class DstInput,
               int BIN, int SRC_SHIFT = 0, int DST_SHIFT = 0>
-    struct BinaryOperator : public Token{
+    struct BinaryOperator : public Token {
         Inst inst;
 
         SrcInput src;

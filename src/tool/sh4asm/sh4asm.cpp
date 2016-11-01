@@ -38,13 +38,28 @@ addr32_t Sh4Prog::lookup_sym(const std::string& sym_name) const {
 Sh4Prog::PatternList Sh4Prog::get_patterns() {
     PatternList list;
 
-    list.push_back(TokPtr(new Sh4Prog::BinaryOperator<Sh4Prog::Tok_movw,
-                          Sh4Prog::Tok_GenReg,
-                          Sh4Prog::Tok_Ind<Sh4Prog::Tok_GenReg>,
-                          0x2001, 4, 8>));
-    list.push_back(TokPtr(new Sh4Prog::BinaryOperator<Sh4Prog::Tok_movw,
-                          Sh4Prog::Tok_Ind<Sh4Prog::Tok_GenReg>,
-                          Sh4Prog::Tok_GenReg, 0x6001, 4, 8>));
+    // operators which take no arguments
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(divou), 0x0019>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(rts), 0x000b>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(clrmac), 0x0028>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(clrs), 0x0048>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(clrt), 0x0008>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(ldtlb), 0x0038>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(nop), 0x0009>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(rte), 0x002b>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(sets), 0x0058>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(sett), 0x0018>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(sleep), 0x001b>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(frchg), 0xfbfd>));
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(fschg), 0xf3fd>));
+
+    // 0010nnnnmmmm0001
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
+                          Tok_Ind<Tok_GenReg>, 0x2001, 4, 8>));
+
+    // 0110nnnnmmmm0001
+    list.push_back(TokPtr(new BinaryOperator<Tok_movw, Tok_Ind<Tok_GenReg>,
+                          Tok_GenReg, 0x6001, 4, 8>));
     return list;
 }
 
