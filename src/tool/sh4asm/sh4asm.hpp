@@ -156,7 +156,28 @@ private:
     INST_TOK(frchg, "FRCHG");
     INST_TOK(fschg, "FSCHG");
     INST_TOK(movw, "MOV.W");
-
+    INST_TOK(movt, "MOVT");
+    INST_TOK(comppz, "COMP/PZ");
+    INST_TOK(comppl, "COMP/PL");
+    INST_TOK(dt, "DT");
+    INST_TOK(rotl, "ROTL");
+    INST_TOK(rotr, "ROTR");
+    INST_TOK(rotcl, "ROTCL");
+    INST_TOK(rotcr, "ROTCR");
+    INST_TOK(shal, "SHAL");
+    INST_TOK(shar, "SHAR");
+    INST_TOK(shll, "SHLL");
+    INST_TOK(shlr, "SHLR");
+    INST_TOK(shll2, "SHLL2");
+    INST_TOK(shlr2, "SHLR2");
+    INST_TOK(shll8, "SHLL8");
+    INST_TOK(shlr8, "SHLR8");
+    INST_TOK(shll16, "SHLL16");
+    INST_TOK(shlr16, "SHLR16");
+    INST_TOK(braf, "BRAF");
+    INST_TOK(bsrf, "BSRF");
+    INST_TOK(jmp, "JMP");
+    INST_TOK(jsr, "JSR");
 
     template <class Inst, int BIN>
     struct NoArgOperator : public Token {
@@ -173,6 +194,43 @@ private:
 
         inst_t assemble() const {
             return (inst_t)BIN;
+        }
+    };
+
+    template <class Inst, class SrcInput, int BIN, int SRC_SHIFT>
+    struct UnaryOperator : public Token {
+        Inst inst;
+
+        SrcInput src;
+
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            int adv;
+            int adv_total = 0;
+
+            if ((adv = src.matches(rbegin, rend)) == 0)
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, adv)) {
+                rbegin += adv;
+                adv_total += adv;
+            } else
+                return 0;
+
+            if ((adv = inst.matches(rbegin, rend)) != 0) {
+                adv_total += adv;
+                return adv_total;
+            }
+
+            return 0;
+        }
+
+        virtual std::string text() const {
+            return inst.text() + " " + src.text();
+        }
+
+        inst_t assemble() const {
+            return BIN | (src.assemble() << SRC_SHIFT);
         }
     };
 

@@ -53,6 +53,96 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new NoArgOperator<TXT_TOK(frchg), 0xfbfd>));
     list.push_back(TokPtr(new NoArgOperator<TXT_TOK(fschg), 0xf3fd>));
 
+    // Operators which take 1 argument (general-purpose register):
+
+    // 0000nnnn00101001
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(movt), Tok_GenReg,
+                          0x0029, 8>));
+
+    // 0100nnnn00010001
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(comppz), Tok_GenReg,
+                          0x4011, 8>));
+
+    // 0100nnnn00010101
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(comppl), Tok_GenReg,
+                          0x4015, 8>));
+
+    // 0100nnnn00010000
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(dt), Tok_GenReg,
+                          0x4010, 8>));
+
+    // 0100nnnn00000100
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(rotl), Tok_GenReg,
+                          0x4004, 8>));
+
+    // 0100nnnn00000101
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(rotr), Tok_GenReg,
+                          0x4005, 8>));
+
+    // 0100nnnn00100100
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(rotcl), Tok_GenReg,
+                          0x4024, 8>));
+
+    // 0100nnnn00100101
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(rotcr), Tok_GenReg,
+                          0x4025, 8>));
+
+    // 0100nnnn00200000
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shal), Tok_GenReg,
+                          0x4020, 8>));
+
+    // 0100nnnn00100001
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shar), Tok_GenReg,
+                          0x4021, 8>));
+
+    // 0100nnnn00000000
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shll), Tok_GenReg,
+                          0x4000, 8>));
+
+    // 0100nnnn00000001
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shlr), Tok_GenReg,
+                          0x4001, 8>));
+
+    // 0100nnnn00001000
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shll2), Tok_GenReg,
+                          0x4008, 8>));
+
+    // 0100nnnn00001001
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shlr2), Tok_GenReg,
+                          0x4009, 8>));
+
+    // 0100nnnn00011000
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shll8), Tok_GenReg,
+                          0x4018, 8>));
+
+    // 0100nnnn00011001
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shlr8), Tok_GenReg,
+                          0x4019, 8>));
+
+    // 0100nnnn00101000
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shll16), Tok_GenReg,
+                          0x4028, 8>));
+
+    // 0100nnnn00101001
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(shlr16), Tok_GenReg,
+                          0x4029, 8>));
+
+    // 0000nnnn00100011
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(braf), Tok_GenReg,
+                          0x0023, 8>));
+
+    // 0000nnnn00000011
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bsrf), Tok_GenReg,
+                          0x0003, 8>));
+
+    // 0100nnnn00101011
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(jmp), Tok_GenReg,
+                          0x402b, 8>));
+
+    // 0100nnnn00001011
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(jsr), Tok_GenReg,
+                          0x400b, 8>));
+
     // 0010nnnnmmmm0001
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
                           Tok_Ind<Tok_GenReg>, 0x2001, 4, 8>));
