@@ -163,6 +163,8 @@ private:
     INST_TOK(fschg, "FSCHG");
     INST_TOK(jmp, "JMP");
     INST_TOK(jsr, "JSR");
+    INST_TOK(ldc, "LDC");
+    INST_TOK(ldcl, "LDC.L");
     INST_TOK(ldtlb, "LDTLB");
     INST_TOK(movw, "MOV.W");
     INST_TOK(movt, "MOVT");
@@ -192,6 +194,8 @@ private:
     INST_TOK(shll16, "SHLL16");
     INST_TOK(shlr16, "SHLR16");
     INST_TOK(sleep, "SLEEP");
+    INST_TOK(stc, "STC");
+    INST_TOK(stcl, "STC.L");
     INST_TOK(tasb, "TAS.B");
     INST_TOK(tst, "TST");
     INST_TOK(tstb, "TST.B");
@@ -342,6 +346,153 @@ private:
         int reg_no;
     };
 
+    class Tok_SrReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if (txt == "SR")
+                return 1;
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("SR");
+        }
+
+        inst_t assemble() const {
+            // instruction opcode should imply this operand
+            return 0;
+        }
+    };
+
+    class Tok_GbrReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if (txt == "GBR")
+                return 1;
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("GBR");
+        }
+
+        inst_t assemble() const {
+            // instruction opcode should imply this operand
+            return 0;
+        }
+    };
+
+    class Tok_VbrReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if (txt == "VBR")
+                return 1;
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("VBR");
+        }
+
+        inst_t assemble() const {
+            // instruction opcode should imply this operand
+            return 0;
+        }
+    };
+
+    class Tok_SsrReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if (txt == "SSR")
+                return 1;
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("SSR");
+        }
+
+        inst_t assemble() const {
+            // instruction opcode should imply this operand
+            return 0;
+        }
+    };
+
+    class Tok_SpcReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if (txt == "SPC")
+                return 1;
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("SPC");
+        }
+
+        inst_t assemble() const {
+            // instruction opcode should imply this operand
+            return 0;
+        }
+    };
+
+    class Tok_SgrReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if (txt == "SGR")
+                return 1;
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("SGR");
+        }
+
+        inst_t assemble() const {
+            // instruction opcode should imply this operand
+            return 0;
+        }
+    };
+
+    class Tok_DbrReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if (txt == "DBR")
+                return 1;
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("DBR");
+        }
+
+        inst_t assemble() const {
+            // instruction opcode should imply this operand
+            return 0;
+        }
+    };
+
     template <unsigned MASK>
     class Tok_immed : public Token {
     public:
@@ -433,6 +584,101 @@ private:
 
         std::string text() const {
             return std::string("@") + op.text();
+        }
+
+        inst_t assemble() const {
+            return op.assemble();
+        }
+    };
+
+    template <class InnerOperand>
+    class Tok_IndInc : public Token {
+    public:
+        InnerOperand op;
+
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            int advance = 0;
+            if (rbegin == rend)
+                return 0;
+
+            if ((*rbegin)->text() != "+") {
+                return 0;
+            }
+
+            if (safe_to_advance(rbegin, rend, 1)) {
+                advance++;
+                rbegin++;
+            } else {
+                return 0;
+            }
+
+            if ((advance = op.matches(rbegin, rend))) {
+                if (safe_to_advance(rbegin, rend, advance))
+                    rbegin += advance;
+                else
+                    return 0;
+
+                if ((*rbegin)->text() == "@") {
+                    return advance + 1;
+                }
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("@") + op.text() + std::string("+");
+        }
+
+        inst_t assemble() const {
+            return op.assemble();
+        }
+    };
+
+    template <class InnerOperand>
+    class Tok_DecInd : public Token {
+    public:
+        InnerOperand op;
+
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            int advance = 0;
+            if (rbegin == rend)
+                return 0;
+
+            if ((*rbegin)->text() != "+") {
+                return 0;
+            }
+
+            if (safe_to_advance(rbegin, rend, 1)) {
+                advance++;
+                rbegin++;
+            } else {
+                return 0;
+            }
+
+            if ((advance = op.matches(rbegin, rend))) {
+                if (safe_to_advance(rbegin, rend, advance))
+                    rbegin += advance;
+                else
+                    return 0;
+
+                if ((*rbegin)->text() == "@") {
+                    if (safe_to_advance(rbegin, rend, 1)) {
+                        advance++;
+
+                        if ((*rbegin)->text() == "-")
+                            return advance +1;
+                    }
+                }
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("@") + op.text() + std::string("+");
         }
 
         inst_t assemble() const {
