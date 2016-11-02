@@ -167,8 +167,12 @@ private:
     INST_TOK(movw, "MOV.W");
     INST_TOK(movt, "MOVT");
     INST_TOK(nop, "NOP");
+    INST_TOK(ocbi, "OCBI");
+    INST_TOK(ocbp, "OCBP");
+    INST_TOK(ocbwb, "OCBWB");
     INST_TOK(or, "OR");
     INST_TOK(orb, "OR.B");
+    INST_TOK(pref, "PREF");
     INST_TOK(rotl, "ROTL");
     INST_TOK(rotr, "ROTR");
     INST_TOK(rotcl, "ROTCL");
@@ -188,6 +192,7 @@ private:
     INST_TOK(shll16, "SHLL16");
     INST_TOK(shlr16, "SHLR16");
     INST_TOK(sleep, "SLEEP");
+    INST_TOK(tasb, "TAS.B");
     INST_TOK(tst, "TST");
     INST_TOK(tstb, "TST.B");
     INST_TOK(trapa, "TRAPA");

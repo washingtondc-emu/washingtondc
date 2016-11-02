@@ -38,7 +38,11 @@ addr32_t Sh4Prog::lookup_sym(const std::string& sym_name) const {
 Sh4Prog::PatternList Sh4Prog::get_patterns() {
     PatternList list;
 
-    // operators which take no arguments
+    /***************************************************************************
+     **
+     ** operators which take no arguments
+     **
+     **************************************************************************/
     list.push_back(TokPtr(new NoArgOperator<TXT_TOK(divou), 0x0019>));
     list.push_back(TokPtr(new NoArgOperator<TXT_TOK(rts), 0x000b>));
     list.push_back(TokPtr(new NoArgOperator<TXT_TOK(clrmac), 0x0028>));
@@ -53,8 +57,11 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new NoArgOperator<TXT_TOK(frchg), 0xfbfd>));
     list.push_back(TokPtr(new NoArgOperator<TXT_TOK(fschg), 0xf3fd>));
 
-    // Operators which take 1 argument (general-purpose register):
-
+    /***************************************************************************
+     **
+     ** operators which take 1 argument (general-purpose register):
+     **
+     **************************************************************************/
     // 0000nnnn00101001
     list.push_back(TokPtr(new UnaryOperator<TXT_TOK(movt), Tok_GenReg,
                           0x0029, 8>));
@@ -144,8 +151,11 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
                           0x400b, 8>));
 
 
-    // opcode that only takes an immediate value as input
-
+    /***************************************************************************
+     **
+     ** opcode that only takes an immediate value as input
+     **
+     **************************************************************************/
     // 10001000iiiiiiii
     list.push_back(TokPtr(new UnaryOperator<TXT_TOK(cmpeq), Tok_immed<0xff>,
                           0x8800, 0>));
@@ -205,6 +215,28 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     // 11000011iiiiiiii
     list.push_back(TokPtr(new UnaryOperator<TXT_TOK(trapa), Tok_immed<0x0ff>,
                           0xc300, 0>));
+
+    /***************************************************************************
+     **
+     ** opcode that takes a general-purpose register containing the
+     ** address of its sole argument.
+     **
+     **************************************************************************/
+    // 0100nnnn00011011
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(tasb), Tok_Ind<Tok_GenReg>,
+                          0x401b, 8>));
+
+    // 0000nnnn10100011
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(ocbi), Tok_Ind<Tok_GenReg>,
+                          0x00a3, 8>));
+
+    // 0000nnnn10100011
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(ocbp), Tok_Ind<Tok_GenReg>,
+                          0x00b3, 8>));
+
+    // 0000nnnn10000011
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(pref), Tok_Ind<Tok_GenReg>,
+                          0x0083, 8>));
 
     // 0010nnnnmmmm0001
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
