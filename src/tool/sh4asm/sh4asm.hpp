@@ -142,6 +142,7 @@ private:
         }                                       \
     }
 
+    INST_TOK(add, "ADD");
     INST_TOK(andb, "AND.B");
     INST_TOK(bf, "BF");
     INST_TOK(bfs, "BF/S");
@@ -166,6 +167,8 @@ private:
     INST_TOK(ldc, "LDC");
     INST_TOK(ldcl, "LDC.L");
     INST_TOK(ldtlb, "LDTLB");
+    INST_TOK(mov, "MOV");
+    INST_TOK(movl, "MOV.L");
     INST_TOK(movw, "MOV.W");
     INST_TOK(movt, "MOVT");
     INST_TOK(nop, "NOP");
@@ -493,6 +496,27 @@ private:
         }
     };
 
+    class Tok_PcReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if (txt == "PC")
+                return 1;
+            return 0;
+        }
+
+        std::string text() const {
+            return std::string("PC");
+        }
+
+        inst_t assemble() const {
+            // instruction opcode should imply this operand
+            return 0;
+        }
+    };
+
     template <unsigned MASK>
     class Tok_immed : public Token {
     public:
@@ -591,6 +615,87 @@ private:
         }
     };
 
+    /*
+     * this is a token for representing operands which are indirections of sums
+     * They are expressed in assembler in the form @(LeftOperand, RightOperand)
+     */
+    template <class LeftOperand, class RightOperand, int BIN, int SRC_SHIFT = 0,
+              int DST_SHIFT = 0>
+    class Tok_BinaryInd : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+            int adv = 0, adv_extra;
+
+            if ((*rbegin)->text() != ")")
+                return 0;
+            if (safe_to_advance(rbegin, rend, 1)) {
+                adv++;
+                rbegin++;
+            } else {
+                return 0;
+            }
+
+            if (!(adv_extra = op_right.matches(rbegin, rend)))
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, adv_extra)) {
+                adv += adv_extra;
+                rbegin += adv_extra;
+            } else {
+                return 0;
+            }
+
+            if ((*rbegin)->text() != ",")
+                return 0;
+            if (safe_to_advance(rbegin, rend, 1)) {
+                adv++;
+                rbegin++;
+            } else {
+                return 0;
+            }
+
+            if (!(adv_extra = op_left.matches(rbegin, rend)))
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, adv_extra)) {
+                adv += adv_extra;
+                rbegin += adv_extra;
+            } else {
+                return 0;
+            }
+
+            if ((*rbegin)->text() != "(")
+                return 0;
+            if (safe_to_advance(rbegin, rend, 1)) {
+                adv++;
+                rbegin++;
+            } else {
+                return 0;
+            }
+
+            if ((*rbegin)->text() != "@")
+                return 0;
+
+            return adv + 1;
+        }
+
+        std::string text() const {
+            return std::string("@(") + op_left.text() + std::string(", ") +
+                op_right.text() + std::string(")");
+        }
+
+        inst_t assemble() const {
+            return (op_left.assemble() << SRC_SHIFT) |
+                (op_right.assemble() << DST_SHIFT) | BIN;
+        }
+
+    private:
+        LeftOperand op_left;
+        RightOperand op_right;
+    };
+
     template <class InnerOperand>
     class Tok_IndInc : public Token {
     public:
@@ -643,7 +748,7 @@ private:
 
         virtual int matches(TokList::reverse_iterator rbegin,
                             TokList::reverse_iterator rend) {
-            int advance = 0;
+            int advance = 0, more_adv;
             if (rbegin == rend)
                 return 0;
 
@@ -658,9 +763,10 @@ private:
                 return 0;
             }
 
-            if ((advance = op.matches(rbegin, rend))) {
-                if (safe_to_advance(rbegin, rend, advance))
-                    rbegin += advance;
+            if ((more_adv = op.matches(rbegin, rend))) {
+                advance += more_adv;
+                if (safe_to_advance(rbegin, rend, more_adv))
+                    rbegin += more_adv;
                 else
                     return 0;
 
@@ -669,7 +775,7 @@ private:
                         advance++;
 
                         if ((*rbegin)->text() == "-")
-                            return advance +1;
+                            return advance + 1;
                     }
                 }
             }

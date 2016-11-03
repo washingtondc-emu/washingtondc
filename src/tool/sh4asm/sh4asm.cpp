@@ -348,6 +348,38 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stcl),
                           Tok_DbrReg, Tok_DecInd<Tok_GenReg>, 0x40f2, 0, 8>));
 
+    /***************************************************************************
+     **
+     ** Opcodes that take an immediate as input and a general-purpose
+     ** register as output
+     **
+     **************************************************************************/
+    // 1110nnnniiiiiiii
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(mov), Tok_immed<0x00ff>,
+                          Tok_GenReg, 0xe000, 0, 8>));
+
+    // 0111nnnniiiiiiii
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(add), Tok_immed<0x00ff>,
+                          Tok_GenReg, 0x7000, 0, 8>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that add an immediate value (scaled by either 2 or 4) to the
+     ** PC and then use *that* address as the source to move a value into a
+     ** given general-purpose register (the destination).
+     **
+     **************************************************************************/
+
+    // 1001nnnndddddddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_BinaryInd<
+                          Tok_immed<0x00ff>, Tok_PcReg, 0x0000, 0, 0>,
+                          Tok_GenReg, 0x9000, 0, 8>));
+
+    // 1001nnnndddddddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_BinaryInd<
+                          Tok_immed<0x00ff>, Tok_PcReg, 0x0000, 0, 0>,
+                          Tok_GenReg, 0xd000, 0, 8>));
+
 
     // 0010nnnnmmmm0001
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
@@ -396,7 +428,8 @@ Sh4Prog::TokList Sh4Prog::tokenize_line(const std::string& line) {
                 cur_tok.clear();
             }
         } else if (cur_char == ':' || cur_char == ',' ||
-                   cur_char == '@' || cur_char == '#') {
+                   cur_char == '@' || cur_char == '#' ||
+                   cur_char == '(' || cur_char == ')') {
             if (cur_tok.size()) {
                 tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
             }
