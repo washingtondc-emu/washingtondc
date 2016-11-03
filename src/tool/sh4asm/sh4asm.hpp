@@ -349,171 +349,80 @@ private:
         int reg_no;
     };
 
-    class Tok_SrReg : public Token {
+    // Special register (i.e., not one of the general-purpose registers)
+    class Tok_SpecReg : public Token {
     public:
+        Tok_SpecReg(char const *name) {
+            this->name = name;
+        }
+
         virtual int matches(TokList::reverse_iterator rbegin,
                             TokList::reverse_iterator rend) {
             std::string txt = (*rbegin)->text();
 
-            if (txt == "SR")
+            if (txt == name)
                 return 1;
             return 0;
-        }
-
-        std::string text() const {
-            return std::string("SR");
         }
 
         inst_t assemble() const {
             // instruction opcode should imply this operand
             return 0;
+        }
+
+        std::string text() const {
+            return std::string(name);
+        }
+
+    private:
+        char const *name;
+    };
+
+    class Tok_SrReg : public Tok_SpecReg {
+    public:
+        Tok_SrReg() : Tok_SpecReg("SR") {
         }
     };
 
-    class Tok_GbrReg : public Token {
+    class Tok_GbrReg : public Tok_SpecReg {
     public:
-        virtual int matches(TokList::reverse_iterator rbegin,
-                            TokList::reverse_iterator rend) {
-            std::string txt = (*rbegin)->text();
-
-            if (txt == "GBR")
-                return 1;
-            return 0;
-        }
-
-        std::string text() const {
-            return std::string("GBR");
-        }
-
-        inst_t assemble() const {
-            // instruction opcode should imply this operand
-            return 0;
+        Tok_GbrReg() : Tok_SpecReg("GBR") {
         }
     };
 
-    class Tok_VbrReg : public Token {
+    class Tok_VbrReg : public Tok_SpecReg {
     public:
-        virtual int matches(TokList::reverse_iterator rbegin,
-                            TokList::reverse_iterator rend) {
-            std::string txt = (*rbegin)->text();
-
-            if (txt == "VBR")
-                return 1;
-            return 0;
-        }
-
-        std::string text() const {
-            return std::string("VBR");
-        }
-
-        inst_t assemble() const {
-            // instruction opcode should imply this operand
-            return 0;
+        Tok_VbrReg() : Tok_SpecReg("VBR") {
         }
     };
 
-    class Tok_SsrReg : public Token {
+    class Tok_SsrReg : public Tok_SpecReg {
     public:
-        virtual int matches(TokList::reverse_iterator rbegin,
-                            TokList::reverse_iterator rend) {
-            std::string txt = (*rbegin)->text();
-
-            if (txt == "SSR")
-                return 1;
-            return 0;
-        }
-
-        std::string text() const {
-            return std::string("SSR");
-        }
-
-        inst_t assemble() const {
-            // instruction opcode should imply this operand
-            return 0;
+        Tok_SsrReg() : Tok_SpecReg("SSR") {
         }
     };
 
-    class Tok_SpcReg : public Token {
+    class Tok_SpcReg : public Tok_SpecReg {
     public:
-        virtual int matches(TokList::reverse_iterator rbegin,
-                            TokList::reverse_iterator rend) {
-            std::string txt = (*rbegin)->text();
-
-            if (txt == "SPC")
-                return 1;
-            return 0;
-        }
-
-        std::string text() const {
-            return std::string("SPC");
-        }
-
-        inst_t assemble() const {
-            // instruction opcode should imply this operand
-            return 0;
+        Tok_SpcReg() : Tok_SpecReg("SPC") {
         }
     };
 
-    class Tok_SgrReg : public Token {
+    class Tok_SgrReg : public Tok_SpecReg {
     public:
-        virtual int matches(TokList::reverse_iterator rbegin,
-                            TokList::reverse_iterator rend) {
-            std::string txt = (*rbegin)->text();
-
-            if (txt == "SGR")
-                return 1;
-            return 0;
-        }
-
-        std::string text() const {
-            return std::string("SGR");
-        }
-
-        inst_t assemble() const {
-            // instruction opcode should imply this operand
-            return 0;
+        Tok_SgrReg() : Tok_SpecReg("SGR") {
         }
     };
 
-    class Tok_DbrReg : public Token {
+    class Tok_DbrReg : public Tok_SpecReg {
     public:
-        virtual int matches(TokList::reverse_iterator rbegin,
-                            TokList::reverse_iterator rend) {
-            std::string txt = (*rbegin)->text();
-
-            if (txt == "DBR")
-                return 1;
-            return 0;
-        }
-
-        std::string text() const {
-            return std::string("DBR");
-        }
-
-        inst_t assemble() const {
-            // instruction opcode should imply this operand
-            return 0;
+        Tok_DbrReg() : Tok_SpecReg("DBR") {
         }
     };
 
-    class Tok_PcReg : public Token {
+    class Tok_PcReg : public Tok_SpecReg {
     public:
-        virtual int matches(TokList::reverse_iterator rbegin,
-                            TokList::reverse_iterator rend) {
-            std::string txt = (*rbegin)->text();
-
-            if (txt == "PC")
-                return 1;
-            return 0;
-        }
-
-        std::string text() const {
-            return std::string("PC");
-        }
-
-        inst_t assemble() const {
-            // instruction opcode should imply this operand
-            return 0;
+        Tok_PcReg() : Tok_SpecReg("PC") {
         }
     };
 
