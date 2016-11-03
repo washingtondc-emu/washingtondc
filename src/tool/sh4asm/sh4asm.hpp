@@ -490,6 +490,68 @@ private:
         unsigned imm;
     };
 
+    /*
+     * Displacement values, which are like immediates but they don't
+     * begin with #-symbols.
+     *
+     * TODO: add support for labels here (wherein you reference an address by a
+     *       string of ascii letters).
+     */
+    template <unsigned MASK>
+    class Tok_Disp : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+            bool is_hex;
+
+            if (txt.size() < 1)
+                return 0;
+
+            if (txt.size() > 2 && txt.substr(0, 2) == "0x") {
+                // hex string
+                is_hex = true;
+                txt = txt.substr(0, 2);
+
+                for (std::string::iterator it = txt.begin();
+                     it != txt.end(); it++) {
+                    if ((*it < '0' || *it > '9') &&
+                        (*it < 'a' || *it > 'f') &&
+                        (*it < 'A' || *it > 'F'))
+                        return 0;
+                }
+            } else {
+                is_hex = false;
+                for (std::string::iterator it = txt.begin();
+                     it != txt.end(); it++) {
+                    if (*it < '0' || *it > '9')
+                        return 0;
+                }
+            }
+
+            std::stringstream ss(txt);
+            if (is_hex) {
+                ss >> std::hex >> imm;
+            } else {
+                ss >> imm;
+            }
+
+            return 1;
+        }
+
+        std::string text() const {
+            std::stringstream ss;
+            ss << "#0x" << std::hex << imm;
+            return ss.str();
+        }
+
+        inst_t assemble() const {
+            return imm & MASK;
+        }
+    private:
+        unsigned imm;
+    };
+
     template <class InnerOperand>
     class Tok_Ind : public Token {
     public:

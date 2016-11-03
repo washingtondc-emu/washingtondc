@@ -189,27 +189,27 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
                           0xce00, 0>));
 
     // 10001011dddddddd
-    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bf), Tok_immed<0xff>,
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bf), Tok_Disp<0xff>,
                           0x8b00, 0>));
 
     // 10001111dddddddd
-    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bfs), Tok_immed<0xff>,
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bfs), Tok_Disp<0xff>,
                           0x8f00, 0>));
 
     // 10001001dddddddd
-    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bt), Tok_immed<0xff>,
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bt), Tok_Disp<0xff>,
                           0x8900, 0>));
 
     // 10001101dddddddd
-    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bts), Tok_immed<0xff>,
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bts), Tok_Disp<0xff>,
                           0x8d00, 0>));
 
     // 1010dddddddddddd
-    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bts), Tok_immed<0xfff>,
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bts), Tok_Disp<0xfff>,
                           0xa000, 0>));
 
     // 1011dddddddddddd
-    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bsr), Tok_immed<0xfff>,
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(bsr), Tok_Disp<0xfff>,
                           0xb000, 0>));
 
     // 11000011iiiiiiii
@@ -372,12 +372,12 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
 
     // 1001nnnndddddddd
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_BinaryInd<
-                          Tok_immed<0x00ff>, Tok_PcReg, 0x0000, 0, 0>,
+                          Tok_Disp<0x00ff>, Tok_PcReg, 0x0000, 0, 0>,
                           Tok_GenReg, 0x9000, 0, 8>));
 
     // 1001nnnndddddddd
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_BinaryInd<
-                          Tok_immed<0x00ff>, Tok_PcReg, 0x0000, 0, 0>,
+                          Tok_Disp<0x00ff>, Tok_PcReg, 0x0000, 0, 0>,
                           Tok_GenReg, 0xd000, 0, 8>));
 
 
