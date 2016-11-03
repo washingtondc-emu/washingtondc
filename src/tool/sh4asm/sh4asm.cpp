@@ -380,6 +380,155 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
                           Tok_Disp<0x00ff>, Tok_PcReg, 0x0000, 0, 0>,
                           Tok_GenReg, 0xd000, 0, 8>));
 
+    /***************************************************************************
+     **
+     ** Opcodes that take a general-purpose register as a source and a
+     ** general-purpose register as a destination
+     **
+     **************************************************************************/
+    // 0110nnnnmmmm0011
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
+                          Tok_GenReg, 0x6003, 4, 8>));
+
+    // 0110nnnnmmmm1000
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(swapb), Tok_GenReg,
+                          Tok_GenReg, 0x6008, 4, 8>));
+
+    // 0110nnnnmmmm1001
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(swapw), Tok_GenReg,
+                          Tok_GenReg, 0x6009, 4, 8>));
+
+    // 0110nnnnmmmm1101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(xtrct), Tok_GenReg,
+                          Tok_GenReg, 0x200d, 4, 8>));
+
+    // 0111nnnnmmmm1100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(add), Tok_GenReg,
+                          Tok_GenReg, 0x300c, 4, 8>));
+
+    // 0111nnnnmmmm1110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(addc), Tok_GenReg,
+                          Tok_GenReg, 0x300e, 4, 8>));
+
+    // 0111nnnnmmmm1111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(addv), Tok_GenReg,
+                          Tok_GenReg, 0x300f, 4, 8>));
+
+    // 0011nnnnmmmm0000
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(cmpeq), Tok_GenReg,
+                          Tok_GenReg, 0x3000, 4, 8>));
+
+    // 0011nnnnmmmm0010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(cmphs), Tok_GenReg,
+                          Tok_GenReg, 0x3002, 4, 8>));
+
+    // 0011nnnnmmmm0011
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(cmpge), Tok_GenReg,
+                          Tok_GenReg, 0x3003, 4, 8>));
+
+    // 0011nnnnmmmm0110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(cmphi), Tok_GenReg,
+                          Tok_GenReg, 0x3006, 4, 8>));
+
+    // 0011nnnnmmmm0111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(cmpgt), Tok_GenReg,
+                          Tok_GenReg, 0x3007, 4, 8>));
+
+    // 0010nnnnmmmm1100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(cmpstr), Tok_GenReg,
+                          Tok_GenReg, 0x200c, 4, 8>));
+
+    // 0011nnnnmmmm0100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(div1), Tok_GenReg,
+                          Tok_GenReg, 0x3004, 4, 8>));
+
+    // 0010nnnnmmmm0111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(div0s), Tok_GenReg,
+                          Tok_GenReg, 0x2007, 4, 8>));
+
+    // 0011nnnnmmmm1101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(dmulsl), Tok_GenReg,
+                          Tok_GenReg, 0x300d, 4, 8>));
+
+    // 0011nnnnmmmm0101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(dmulul), Tok_GenReg,
+                          Tok_GenReg, 0x3005, 4, 8>));
+
+    // 0110nnnnmmmm1110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(extsb), Tok_GenReg,
+                          Tok_GenReg, 0x600e, 4, 8>));
+
+    // 0110nnnnmmmm1111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(extsw), Tok_GenReg,
+                          Tok_GenReg, 0x600f, 4, 8>));
+
+    // 0110nnnnmmmm1100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(extub), Tok_GenReg,
+                          Tok_GenReg, 0x600c, 4, 8>));
+
+    // 0110nnnnmmmm1101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(extuw), Tok_GenReg,
+                          Tok_GenReg, 0x600d, 4, 8>));
+
+    // 0000nnnnmmmm0111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(mull), Tok_GenReg,
+                          Tok_GenReg, 0x0007, 4, 8>));
+
+    // 0010nnnnmmmm1111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(mulsw), Tok_GenReg,
+                          Tok_GenReg, 0x200f, 4, 8>));
+
+    // 0010nnnnmmmm1110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(muluw), Tok_GenReg,
+                          Tok_GenReg, 0x200e, 4, 8>));
+
+    // 0110nnnnmmmm1011
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(neg), Tok_GenReg,
+                          Tok_GenReg, 0x600b, 4, 8>));
+
+    // 0110nnnnmmmm1010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(negc), Tok_GenReg,
+                          Tok_GenReg, 0x600a, 4, 8>));
+
+    // 0011nnnnmmmm1000
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(sub), Tok_GenReg,
+                          Tok_GenReg, 0x3008, 4, 8>));
+
+    // 0011nnnnmmmm1010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(subc), Tok_GenReg,
+                          Tok_GenReg, 0x300a, 4, 8>));
+
+    // 0011nnnnmmmm1011
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(subv), Tok_GenReg,
+                          Tok_GenReg, 0x300b, 4, 8>));
+
+    // 0010nnnnmmmm1001
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(and), Tok_GenReg,
+                          Tok_GenReg, 0x2009, 4, 8>));
+
+    // 0110nnnnmmmm0111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(not), Tok_GenReg,
+                          Tok_GenReg, 0x6007, 4, 8>));
+
+    // 0010nnnnmmmm1011
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(or), Tok_GenReg,
+                          Tok_GenReg, 0x200b, 4, 8>));
+
+    // 0010nnnnmmmm1000
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(tst), Tok_GenReg,
+                          Tok_GenReg, 0x2008, 4, 8>));
+
+    // 0010nnnnmmmm1010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(xor), Tok_GenReg,
+                          Tok_GenReg, 0x200a, 4, 8>));
+
+    // 0100nnnnmmmm1100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(shad), Tok_GenReg,
+                          Tok_GenReg, 0x400c, 4, 8>));
+
+    // 0100nnnnmmmm1101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(shld), Tok_GenReg,
+                          Tok_GenReg, 0x400c, 4, 8>));
 
     // 0010nnnnmmmm0001
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,

@@ -142,7 +142,10 @@ private:
         }                                       \
     }
 
+    INST_TOK(and, "AND");
     INST_TOK(add, "ADD");
+    INST_TOK(addc, "ADDC");
+    INST_TOK(addv, "ADDV");
     INST_TOK(andb, "AND.B");
     INST_TOK(bf, "BF");
     INST_TOK(bfs, "BF/S");
@@ -155,11 +158,24 @@ private:
     INST_TOK(clrmac, "CLRMAC");
     INST_TOK(clrs, "CLRS");
     INST_TOK(clrt, "CLRT");
+    INST_TOK(cmpeq, "CMP/EQ");
+    INST_TOK(cmpge, "CMP/GE");
+    INST_TOK(cmpgt, "CMP/GT");
+    INST_TOK(cmphi, "CMP/HI");
+    INST_TOK(cmphs, "CMP/HS");
     INST_TOK(cmppz, "CMP/PZ");
     INST_TOK(cmppl, "CMP/PL");
-    INST_TOK(cmpeq, "CMP/EQ");
+    INST_TOK(cmpstr, "CMP/STR");
+    INST_TOK(div1, "DIV1");
+    INST_TOK(div0s, "DIV0S");
     INST_TOK(divou, "DIVOU");
+    INST_TOK(dmulsl, "DMULS.L");
+    INST_TOK(dmulul, "DMULU.L");
     INST_TOK(dt, "DT");
+    INST_TOK(extsb, "EXTS.B");
+    INST_TOK(extsw, "EXTS.W");
+    INST_TOK(extub, "EXTU.B");
+    INST_TOK(extuw, "EXTU.W");
     INST_TOK(frchg, "FRCHG");
     INST_TOK(fschg, "FSCHG");
     INST_TOK(jmp, "JMP");
@@ -171,7 +187,13 @@ private:
     INST_TOK(movl, "MOV.L");
     INST_TOK(movw, "MOV.W");
     INST_TOK(movt, "MOVT");
+    INST_TOK(mull, "MUL.L");
+    INST_TOK(mulsw, "MULS.W");
+    INST_TOK(muluw, "MULU.W");
+    INST_TOK(neg, "NEG");
+    INST_TOK(negc, "NEGC");
     INST_TOK(nop, "NOP");
+    INST_TOK(not, "NOT");
     INST_TOK(ocbi, "OCBI");
     INST_TOK(ocbp, "OCBP");
     INST_TOK(ocbwb, "OCBWB");
@@ -186,6 +208,8 @@ private:
     INST_TOK(rts, "RTS");
     INST_TOK(sets, "SETS");
     INST_TOK(sett, "SETT");
+    INST_TOK(shad, "SHAD");
+    INST_TOK(shld, "SHLD");
     INST_TOK(shal, "SHAL");
     INST_TOK(shar, "SHAR");
     INST_TOK(shll, "SHLL");
@@ -199,12 +223,18 @@ private:
     INST_TOK(sleep, "SLEEP");
     INST_TOK(stc, "STC");
     INST_TOK(stcl, "STC.L");
+    INST_TOK(sub, "SUB");
+    INST_TOK(subc, "SUBC");
+    INST_TOK(subv, "SUBV");
+    INST_TOK(swapb, "SWAP.B");
+    INST_TOK(swapw, "SWAP.W");
     INST_TOK(tasb, "TAS.B");
     INST_TOK(tst, "TST");
     INST_TOK(tstb, "TST.B");
     INST_TOK(trapa, "TRAPA");
     INST_TOK(xor, "XOR");
     INST_TOK(xorb, "XOR.B");
+    INST_TOK(xtrct, "XTRCT");
 
     template <class Inst, int BIN>
     struct NoArgOperator : public Token {
