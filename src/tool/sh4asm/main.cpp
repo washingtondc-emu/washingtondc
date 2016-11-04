@@ -28,12 +28,20 @@ int main(int argc, char **argv) {
     Sh4Prog prog;
     inst_t inst;
 
-    // TODO: this goes in the unit_tests
-    inst = prog.assemble_line("MOV.W R4, @R5\n");
+    if (argc != 2) {
+        std::cerr << "Usage: " << argv[0] << " instruction" << std::endl;
+        return 1;
+    }
+
+    inst = prog.assemble_line((argv[1] + std::string("\n")).c_str());
     std::cout << std::hex << inst << std::endl;
 
-    inst = prog.assemble_line("MOV.W @R5, R4");
-    std::cout << std::hex << inst << std::endl;
+    // TODO: this goes in the unit_tests
+    // inst = prog.assemble_line("MOV.W R4, @R5\n");
+    // std::cout << std::hex << inst << std::endl;
+
+    // inst = prog.assemble_line("MOV.W @R5, R4");
+    // std::cout << std::hex << inst << std::endl;
 
     return 0;
 }
