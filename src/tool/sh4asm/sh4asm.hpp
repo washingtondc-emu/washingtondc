@@ -122,7 +122,7 @@ private:
 
         virtual int matches(TokList::reverse_iterator rbegin,
                             TokList::reverse_iterator rend) {
-            if ((*rbegin)->text() == "MOV.W") {
+            if ((*rbegin)->text() == txt) {
                 return 1;
             }
 
@@ -507,7 +507,7 @@ private:
             if (txt.size() > 2 && txt.substr(0, 2) == "0x") {
                 // hex string
                 is_hex = true;
-                txt = txt.substr(0, 2);
+                txt = txt.substr(2);
 
                 for (std::string::iterator it = txt.begin();
                      it != txt.end(); it++) {
@@ -578,7 +578,7 @@ private:
             if (txt.size() > 2 && txt.substr(0, 2) == "0x") {
                 // hex string
                 is_hex = true;
-                txt = txt.substr(0, 2);
+                txt = txt.substr(2);
 
                 for (std::string::iterator it = txt.begin();
                      it != txt.end(); it++) {
@@ -790,17 +790,6 @@ private:
             if (rbegin == rend)
                 return 0;
 
-            if ((*rbegin)->text() != "+") {
-                return 0;
-            }
-
-            if (safe_to_advance(rbegin, rend, 1)) {
-                advance++;
-                rbegin++;
-            } else {
-                return 0;
-            }
-
             if ((more_adv = op.matches(rbegin, rend))) {
                 advance += more_adv;
                 if (safe_to_advance(rbegin, rend, more_adv))
@@ -808,11 +797,12 @@ private:
                 else
                     return 0;
 
-                if ((*rbegin)->text() == "@") {
+                if ((*rbegin)->text() == "-") {
                     if (safe_to_advance(rbegin, rend, 1)) {
                         advance++;
+                        rbegin++;
 
-                        if ((*rbegin)->text() == "-")
+                        if ((*rbegin)->text() == "@")
                             return advance + 1;
                     }
                 }

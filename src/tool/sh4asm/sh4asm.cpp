@@ -543,12 +543,12 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     // STC Rm_BANK, Rn
     // 0000nnnn1mmm0010
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stc), Tok_BankReg,
-                          Tok_GenReg, 0x0082, 8, 4>));
+                          Tok_GenReg, 0x0082, 4, 8>));
 
     // STC.L Rm_BANK, @-Rn
     // 0100nnnn1mmm0011
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stcl), Tok_BankReg,
-                          Tok_DecInd<Tok_GenReg>, 0x4083, 8, 4>));
+                          Tok_DecInd<Tok_GenReg>, 0x4083, 4, 8>));
 
     // 0010nnnnmmmm0001
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
@@ -557,6 +557,7 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     // 0110nnnnmmmm0001
     list.push_back(TokPtr(new BinaryOperator<Tok_movw, Tok_Ind<Tok_GenReg>,
                           Tok_GenReg, 0x6001, 4, 8>));
+
     return list;
 }
 
@@ -598,7 +599,8 @@ Sh4Prog::TokList Sh4Prog::tokenize_line(const std::string& line) {
             }
         } else if (cur_char == ':' || cur_char == ',' ||
                    cur_char == '@' || cur_char == '#' ||
-                   cur_char == '(' || cur_char == ')') {
+                   cur_char == '(' || cur_char == ')' ||
+                   cur_char == '+' || cur_char == '-') {
             if (cur_tok.size()) {
                 tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
             }
