@@ -379,6 +379,43 @@ private:
         int reg_no;
     };
 
+    class Tok_BankReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+            if (txt.size() == 7 || txt.size() == 8) {
+                if (txt.at(0) != 'R')
+                    return 0;
+                size_t underscore_pos = txt.find_first_of("_BANK");
+                if (underscore_pos == std::string::npos)
+                    return 0;
+                int reg_no;
+                std::stringstream(txt.substr(1, underscore_pos)) >> reg_no;
+                if (reg_no >= 0 && reg_no <= 7) {
+                    this->reg_no = reg_no;
+                    return 1;
+                } else {
+                    return 0;
+                }
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            std::stringstream ss;
+            ss << "R" << reg_no << "_BANK";
+            return ss.str();
+        }
+
+        inst_t assemble() const {
+            return reg_no & 0x7;
+        }
+    private:
+        int reg_no;
+    };
+
     // Special register (i.e., not one of the general-purpose registers)
     class Tok_SpecReg : public Token {
     public:

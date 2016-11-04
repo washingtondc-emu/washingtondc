@@ -530,6 +530,26 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(shld), Tok_GenReg,
                           Tok_GenReg, 0x400c, 4, 8>));
 
+    // LDC Rm, Rn_BANK
+    // 0100mmmm1nnn1110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ldc), Tok_GenReg,
+                          Tok_BankReg, 0x408e, 8, 4>));
+
+    // LDC.L @Rm+, Rn_BANK
+    // 0100mmmm1nnn0111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ldcl),
+                          Tok_IndInc<Tok_GenReg>, Tok_BankReg, 0x4087, 8, 4>));
+
+    // STC Rm_BANK, Rn
+    // 0000nnnn1mmm0010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stc), Tok_BankReg,
+                          Tok_GenReg, 0x0082, 8, 4>));
+
+    // STC.L Rm_BANK, @-Rn
+    // 0100nnnn1mmm0011
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stcl), Tok_BankReg,
+                          Tok_DecInd<Tok_GenReg>, 0x4083, 8, 4>));
+
     // 0010nnnnmmmm0001
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
                           Tok_Ind<Tok_GenReg>, 0x2001, 4, 8>));
