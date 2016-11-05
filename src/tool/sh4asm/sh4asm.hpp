@@ -176,8 +176,26 @@ private:
     INST_TOK(extsw, "EXTS.W");
     INST_TOK(extub, "EXTU.B");
     INST_TOK(extuw, "EXTU.W");
+    INST_TOK(fabs, "FABS");
+    INST_TOK(fadd, "FADD");
+    INST_TOK(fcmpeq, "FCMP/EQ");
+    INST_TOK(fcmpgt, "FCMP/GT");
+    INST_TOK(fdiv, "FDIV");
+    INST_TOK(fldi0, "FLDI0");
+    INST_TOK(fldi1, "FLDI1");
+    INST_TOK(flds, "FLDS");
+    INST_TOK(float, "FLOAT");
+    INST_TOK(fmac, "FMAC");
+    INST_TOK(fmov, "FMOV");
+    INST_TOK(fmovs, "FMOV.S");
+    INST_TOK(fmul, "FMUL");
+    INST_TOK(fneg, "FNEG");
     INST_TOK(frchg, "FRCHG");
     INST_TOK(fschg, "FSCHG");
+    INST_TOK(fsqrt, "FSQRT");
+    INST_TOK(fsts, "FSTS");
+    INST_TOK(fsub, "FSUB");
+    INST_TOK(ftrc, "FTRC");
     INST_TOK(jmp, "JMP");
     INST_TOK(jsr, "JSR");
     INST_TOK(ldc, "LDC");
@@ -357,13 +375,92 @@ private:
         }
     };
 
+    // Uggh, I have to implement this just to support *one* instruction (FMAC).
+    template <class Inst, class Src1Input, class Src2Input, class DstInput,
+              int BIN, int SRC1_SHIFT = 0, int SRC2_SHIFT = 0,
+              int DST_SHIFT = 0>
+    struct TrinaryOperator : public Token {
+        Inst inst;
+
+        Src1Input src1;
+        Src2Input src2;
+        DstInput dst;
+
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            int adv;
+            int adv_total = 0;
+
+            if ((adv = dst.matches(rbegin, rend)) == 0)
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, adv)) {
+                rbegin += adv;
+                adv_total += adv;
+            } else
+                return 0;
+
+            if ((*rbegin)->text() != ",")
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, 1)) {
+                rbegin++;
+                adv_total++;
+            }
+
+            if ((adv = src2.matches(rbegin, rend)) == 0)
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, adv)) {
+                rbegin += adv;
+                adv_total += adv;
+            } else
+                return 0;
+
+            if ((*rbegin)->text() != ",")
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, 1)) {
+                rbegin++;
+                adv_total++;
+            }
+
+            if ((adv = src1.matches(rbegin, rend)) == 0)
+                return 0;
+
+            if (safe_to_advance(rbegin, rend, adv)) {
+                rbegin += adv;
+                adv_total += adv;
+            } else
+                return 0;
+
+            if ((adv = inst.matches(rbegin, rend)) != 0) {
+                adv_total += adv;
+                return adv_total;
+            }
+
+            return 0;
+        }
+
+        virtual std::string text() const {
+            return inst.text() + " " + src1.text() + ", " +
+                src2.text() + ", " + dst.text();
+        }
+
+        inst_t assemble() const {
+            return BIN | (src1.assemble() << SRC1_SHIFT) |
+                (src2.assemble() << SRC2_SHIFT) |
+                (dst.assemble() << DST_SHIFT);
+        }
+    };
+
     class Tok_GenReg : public Token {
     public:
         virtual int matches(TokList::reverse_iterator rbegin,
                             TokList::reverse_iterator rend) {
             std::string txt = (*rbegin)->text();
 
-            if (txt.size() == 2 || txt.size() == 3) {
+            if ((txt[0] == 'R') && (txt.size() == 2 || txt.size() == 3)) {
                 int reg_no;
                 std::stringstream(txt.substr(1)) >> reg_no;
                 if (reg_no >= 0 && reg_no <= 15) {
@@ -516,6 +613,86 @@ private:
     public:
         Tok_R0Reg() : Tok_SpecReg("R0") {
         }
+    };
+
+    class Tok_FpulReg : public Tok_SpecReg {
+    public:
+        Tok_FpulReg() : Tok_SpecReg("FPUL") {
+        }
+    };
+
+    class Tok_FrReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if ((txt.substr(0, 2) == "FR") &&
+                (txt.size() == 3 || txt.size() == 4)) {
+                int reg_no;
+                std::stringstream(txt.substr(2)) >> reg_no;
+                if (reg_no >= 0 && reg_no <= 15) {
+                    this->reg_no = reg_no;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            std::stringstream ss;
+            ss << "FR" << reg_no;
+            return ss.str();
+        }
+
+        inst_t assemble() const {
+            return reg_no & 0xf;
+        }
+    private:
+        int reg_no;
+    };
+
+    class Tok_Fr0Reg : public Tok_SpecReg {
+    public:
+        Tok_Fr0Reg() : Tok_SpecReg("FR0") {
+        }
+    };
+
+    // Double-precision floating point registers
+    class Tok_DrReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if ((txt.substr(0, 2) == "DR") &&
+                (txt.size() == 3 || txt.size() == 4)) {
+                int reg_no;
+                std::stringstream(txt.substr(2)) >> reg_no;
+                if (reg_no == 0  || reg_no == 2  ||
+                    reg_no == 4  || reg_no == 6  ||
+                    reg_no == 8  || reg_no == 10 ||
+                    reg_no == 12 || reg_no == 14) {
+                    this->reg_no = reg_no;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            std::stringstream ss;
+            ss << "DR" << reg_no;
+            return ss.str();
+        }
+
+        inst_t assemble() const {
+            return (reg_no >> 1) & 0x7;
+        }
+    private:
+        int reg_no;
     };
 
     template <unsigned MASK>
