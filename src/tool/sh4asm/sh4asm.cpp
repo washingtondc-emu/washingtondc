@@ -530,6 +530,11 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(shld), Tok_GenReg,
                           Tok_GenReg, 0x400c, 4, 8>));
 
+    /***************************************************************************
+     **
+     ** Opcodes that use bank-switched registers as the source or destination
+     **
+     **************************************************************************/
     // LDC Rm, Rn_BANK
     // 0100mmmm1nnn1110
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ldc), Tok_GenReg,
@@ -550,13 +555,352 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stcl), Tok_BankReg,
                           Tok_DecInd<Tok_GenReg>, 0x4083, 4, 8>));
 
+    /***************************************************************************
+     **
+     ** Some assorted LDS/STS instructions
+     **
+     **************************************************************************/
+    // LDS Rm,MACH
+    // 0100mmmm00001010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(lds), Tok_GenReg, Tok_Mach,
+                          0x400a, 8, 0>));
+
+    // LDS Rm, MACL
+    // 0100mmmm00011010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(lds), Tok_GenReg, Tok_Macl,
+                          0x401a, 8, 0>));
+
+    // STS MACH, Rn
+    // 0000nnnn00001010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(sts), Tok_Mach, Tok_GenReg,
+                          0x000a, 0, 8>));
+
+    // STS MACL, Rn
+    // 0000nnnn00011010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(sts), Tok_Macl, Tok_GenReg,
+                          0x001a, 0, 8>));
+
+    // LDS Rm, PR
+    // 0100mmmm00101010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(lds), Tok_GenReg, Tok_PrReg,
+                          0x402a, 8, 0>));
+
+    // STS PR, Rn
+    // 0000nnnn00101010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(sts), Tok_PrReg, Tok_GenReg,
+                          0x002a, 0, 8>));
+
+    // LDS.L @Rm+, MACH
+    // 0100mmmm00000110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ldsl),
+                          Tok_IndInc<Tok_GenReg>, Tok_Mach, 0x4006, 8, 0>));
+
+    // LDS.L @Rm+, MACL
+    // 0100mmmm00010110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ldsl),
+                          Tok_IndInc<Tok_GenReg>, Tok_Macl, 0x4016, 8, 0>));
+
+    // STS.L MACH, @-Rn
+    // 0100mmmm00000010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stsl),
+                          Tok_Mach, Tok_DecInd<Tok_GenReg>, 0x4002, 0, 8>));
+
+    // STS.L MACL, @-Rn
+    // 0100mmmm00010010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stsl),
+                          Tok_Macl, Tok_DecInd<Tok_GenReg>, 0x4012, 0, 8>));
+
+    // LDS.L @Rm+, PR
+    // 0100mmmm00100110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ldsl),
+                          Tok_IndInc<Tok_GenReg>, Tok_PrReg, 0x4026, 8, 0>));
+
+    // STS.L PR, @-Rn
+    // 0100nnnn00100010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stsl), Tok_PrReg,
+                          Tok_DecInd<Tok_GenReg>, 0x4022, 0, 8>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that move a general-purpose register into the address pointed
+     ** to by another general-purpose register
+     **
+     **************************************************************************/
+    // MOV.B Rm, @Rn
+    // 0010nnnnmmmm0000
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb), Tok_GenReg,
+                          Tok_Ind<Tok_GenReg>, 0x2000, 4, 8>));
+
+    // MOV.W Rm, @Rn
     // 0010nnnnmmmm0001
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
                           Tok_Ind<Tok_GenReg>, 0x2001, 4, 8>));
 
+    // MOV.L Rm, @Rn
+    // 0010nnnnmmmm0010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl), Tok_GenReg,
+                          Tok_Ind<Tok_GenReg>, 0x2002, 4, 8>));
+
+
+    /***************************************************************************
+     **
+     ** Opcodes that move the contents of the address pointed to by a
+     ** general-purpose register into a general-purpose register
+     **
+     **************************************************************************/
+    // MOV.B @Rm, Rn
+    // 0110nnnnmmmm0000
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb), Tok_Ind<Tok_GenReg>,
+                          Tok_GenReg, 0x6000, 4, 8>));
+
+    // MOV.W @Rm, Rn
     // 0110nnnnmmmm0001
-    list.push_back(TokPtr(new BinaryOperator<Tok_movw, Tok_Ind<Tok_GenReg>,
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_Ind<Tok_GenReg>,
                           Tok_GenReg, 0x6001, 4, 8>));
+
+    // MOV.L @Rm, Rn
+    // 0110nnnnmmmm0010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl), Tok_Ind<Tok_GenReg>,
+                          Tok_GenReg, 0x6002, 4, 8>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that move the contents of a general-purpose register into the
+     ** memory pointed to by another general purpose register after first
+     ** decrementing the destination register
+     **
+     **************************************************************************/
+    // MOV.B Rm, @-Rn
+    // 0010nnnnmmmm0100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb), Tok_GenReg,
+                          Tok_DecInd<Tok_GenReg>, 0x2004, 4, 8>));
+
+    // MOV.W Rm, @-Rn
+    // 0010nnnnmmmm0101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
+                          Tok_DecInd<Tok_GenReg>, 0x2005, 4, 8>));
+
+    // MOV.L Rm, @-Rn
+    // 0010nnnnmmmm0110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl), Tok_GenReg,
+                          Tok_DecInd<Tok_GenReg>, 0x2006, 4, 8>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that move the contents of the memory pointed to by the source
+     ** register into the destination register and then increment the source
+     ** register
+     **
+     **************************************************************************/
+    // MOV.B @Rm+, Rn
+    // 0110nnnnmmmm0100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb),
+                          Tok_IndInc<Tok_GenReg>, Tok_GenReg, 0x6004, 4, 8>));
+
+    // MOV.W @Rm+, Rn
+    // 0110nnnnmmmm0101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw),
+                          Tok_IndInc<Tok_GenReg>, Tok_GenReg, 0x6005, 4, 8>));
+
+    // MOV.L @Rm+, Rn
+    // 0110nnnnmmmm0110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl),
+                          Tok_IndInc<Tok_GenReg>, Tok_GenReg, 0x6006, 4, 8>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that multiply the contents of the memory pointed to by the
+     ** source register into the second source register and add that to MAC.
+     ** Then both source registers are incremented
+     **
+     **************************************************************************/
+    // MAC.L @Rm+, @Rn+
+    // 0000nnnnmmmm1111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(macl), Tok_IndInc<Tok_GenReg>,
+                          Tok_IndInc<Tok_GenReg>, 0x000f, 4, 8>));
+
+    // MAC.W @Rm+, @Rn+
+    // 0100nnnnmmmm1111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(macw),
+                          Tok_IndInc<Tok_GenReg>, Tok_IndInc<Tok_GenReg>,
+                          0x400f, 4, 8>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that move R0 into @(source reg + displacement).
+     **
+     **************************************************************************/
+    // MOV.B R0, @(disp, Rn)
+    // 10000000nnnndddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb), Tok_R0Reg,
+                          Tok_BinaryInd<Tok_Disp<0xf>, Tok_GenReg, 0, 0, 4>,
+                          0x8000, 0, 0>));
+
+    // MOV.W R0, @(disp, Rn)
+    // 10000001nnnndddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_R0Reg,
+                          Tok_BinaryInd<Tok_Disp<0xf>, Tok_GenReg, 0, 0, 4>,
+                          0x8100, 0, 0>));
+
+    /***************************************************************************
+     **
+     ** Opcode that moves a general-purpose register into
+     ** @(source reg + displacement).
+     **
+     **************************************************************************/
+    // MOV.L Rm, @(disp, Rn)
+    // 0001nnnnmmmmdddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl), Tok_GenReg,
+                          Tok_BinaryInd<Tok_Disp<0xf>, Tok_GenReg, 0, 0, 8>,
+                          0x1000, 4, 0>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that move @(source reg + displacement) into R0
+     **
+     **************************************************************************/
+    // MOV.B @(disp, Rm), R0
+    // 10000100mmmmdddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb),
+                          Tok_BinaryInd<Tok_Disp<0xf>, Tok_GenReg, 0, 0, 4>,
+                          Tok_R0Reg, 0x8400, 0, 0>));
+
+    // MOV.W @(disp, Rm), R0
+    // 10000101mmmmdddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb),
+                          Tok_BinaryInd<Tok_Disp<0xf>, Tok_GenReg, 0, 0, 4>,
+                          Tok_R0Reg, 0x8500, 0, 0>));
+
+    /***************************************************************************
+     **
+     ** Opcode that moves @(source reg + displacement) into a general-purpose
+     ** register.
+     **
+     **************************************************************************/
+    // MOV.L @(disp, Rm), Rn
+    // 0101nnnnmmmmdddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl),
+                          Tok_BinaryInd<Tok_Disp<0xf>, Tok_GenReg, 0, 0, 4>,
+                          Tok_GenReg, 0x5000, 0, 8>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that move a general purpose register into
+     ** @(R0 + another general-purpose register)
+     **
+     **************************************************************************/
+    // MOV.B Rm, @(R0, Rn)
+    // 0000nnnnmmmm0100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb), Tok_GenReg,
+                          Tok_BinaryInd<Tok_R0Reg, Tok_GenReg, 0, 0, 8>,
+                          0x0004, 4, 0>));
+
+    // MOV.W Rm, @(R0, Rn)
+    // 0000nnnnmmmm0101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_GenReg,
+                          Tok_BinaryInd<Tok_R0Reg, Tok_GenReg, 0, 0, 8>,
+                          0x0005, 4, 0>));
+
+    // MOV.L Rm, @(R0, Rn)
+    // 0000nnnnmmmm0110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl), Tok_GenReg,
+                          Tok_BinaryInd<Tok_R0Reg, Tok_GenReg, 0, 0, 8>,
+                          0x0006, 4, 0>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that move @(R0 + general purpose register) into
+     ** another general purpose register
+     **
+     **************************************************************************/
+    // MOV.B @(R0, Rm), Rn
+    // 0000nnnnmmmm1100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb),
+                          Tok_BinaryInd<Tok_R0Reg, Tok_GenReg, 0, 0, 4>,
+                          Tok_GenReg, 0x000c, 0, 8>));
+
+    // MOV.W @(R0, Rm), Rn
+    // 0000nnnnmmmm1101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw),
+                          Tok_BinaryInd<Tok_R0Reg, Tok_GenReg, 0, 0, 4>,
+                          Tok_GenReg, 0x000d, 0, 8>));
+
+    // MOV.L @(R0, Rm), Rn
+    // 0000nnnnmmmm1110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl),
+                          Tok_BinaryInd<Tok_R0Reg, Tok_GenReg, 0, 0, 4>,
+                          Tok_GenReg, 0x000e, 0, 8>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that move R0 into @(disp + GBR)
+     **
+     **************************************************************************/
+    // MOV.B R0, @(disp, GBR)
+    // 11000000dddddddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb), Tok_R0Reg,
+                          Tok_BinaryInd<Tok_Disp<0xff>, Tok_GbrReg, 0, 0, 0>,
+                          0xc000, 0, 0>));
+
+    // MOV.W R0, @(disp, GBR)
+    // 11000001dddddddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw), Tok_R0Reg,
+                          Tok_BinaryInd<Tok_Disp<0xff>, Tok_GbrReg, 0, 0, 0>,
+                          0xc100, 0, 0>));
+
+    // MOV.L R0, @(disp, GBR)
+    // 11000010dddddddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl), Tok_R0Reg,
+                          Tok_BinaryInd<Tok_Disp<0xff>, Tok_GbrReg, 0, 0, 0>,
+                          0xc200, 0, 0>));
+
+    /***************************************************************************
+     **
+     ** Opcodes that move @(disp + GBR) into R0
+     **
+     **************************************************************************/
+    // MOV.B R0, @(disp, GBR)
+    // 11000100dddddddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movb),
+                          Tok_BinaryInd<Tok_Disp<0xff>, Tok_GbrReg, 0, 0, 0>,
+                          Tok_R0Reg, 0xc400, 0, 0>));
+
+    // MOV.W R0, @(disp, GBR)
+    // 11000101dddddddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movw),
+                          Tok_BinaryInd<Tok_Disp<0xff>, Tok_GbrReg, 0, 0, 0>,
+                          Tok_R0Reg, 0xc500, 0, 0>));
+
+    // MOV.L R0, @(disp, GBR)
+    // 11000110dddddddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movl),
+                          Tok_BinaryInd<Tok_Disp<0xff>, Tok_GbrReg, 0, 0, 0>,
+                          Tok_R0Reg, 0xc600, 0, 0>));
+
+    /***************************************************************************
+     **
+     ** Opcode that does a 4-byte move from @(disp + PC + 1) into R0
+     **
+     **************************************************************************/
+    // MOVA @(disp, PC), R0
+    // 11000111dddddddd
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(mova),
+                          Tok_BinaryInd<Tok_Disp<0xff>, Tok_PcReg, 0, 0, 0>,
+                          Tok_R0Reg, 0xc700, 0, 0>));
+
+    /***************************************************************************
+     **
+     ** Opcode that moves R0 into the address pointed to by a general-purpose
+     ** register.  Apparently it doesn't fetch a cache block; IDK if that's
+     ** supposed to mean it operates in write-through mode or if it skips the
+     ** cache entirely or if it means something completely different from
+     ** either hypothesis.
+     **
+     **************************************************************************/
+    // MOVA.L R0, @Rn
+    // 0000nnnn11000011
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(movcal), Tok_R0Reg,
+                          Tok_Ind<Tok_GenReg>, 0x00c3, 0, 8>));
 
     return list;
 }

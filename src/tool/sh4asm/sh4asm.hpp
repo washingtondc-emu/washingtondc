@@ -181,9 +181,16 @@ private:
     INST_TOK(jmp, "JMP");
     INST_TOK(jsr, "JSR");
     INST_TOK(ldc, "LDC");
+    INST_TOK(lds, "LDS");
+    INST_TOK(ldsl, "LDS.L");
     INST_TOK(ldcl, "LDC.L");
     INST_TOK(ldtlb, "LDTLB");
+    INST_TOK(macl, "MAC.L");
+    INST_TOK(macw, "MAC.W");
     INST_TOK(mov, "MOV");
+    INST_TOK(mova, "MOVA");
+    INST_TOK(movb, "MOV.B");
+    INST_TOK(movcal, "MOVCA.L");
     INST_TOK(movl, "MOV.L");
     INST_TOK(movw, "MOV.W");
     INST_TOK(movt, "MOVT");
@@ -223,6 +230,8 @@ private:
     INST_TOK(sleep, "SLEEP");
     INST_TOK(stc, "STC");
     INST_TOK(stcl, "STC.L");
+    INST_TOK(sts, "STS");
+    INST_TOK(stsl, "STS.L");
     INST_TOK(sub, "SUB");
     INST_TOK(subc, "SUBC");
     INST_TOK(subv, "SUBV");
@@ -490,6 +499,22 @@ private:
     class Tok_PcReg : public Tok_SpecReg {
     public:
         Tok_PcReg() : Tok_SpecReg("PC") {
+        }
+    };
+
+    class Tok_PrReg : public Tok_SpecReg {
+    public:
+        Tok_PrReg() : Tok_SpecReg("PR") {
+        }
+    };
+
+    /*
+     * R0 will also be picked up by Tok_GenReg; this token is for the few
+     * instructions that only allow R0
+     */
+    class Tok_R0Reg : public Tok_SpecReg {
+    public:
+        Tok_R0Reg() : Tok_SpecReg("R0") {
         }
     };
 
@@ -817,6 +842,18 @@ private:
 
         inst_t assemble() const {
             return op.assemble();
+        }
+    };
+
+    class Tok_Mach : public TxtToken {
+    public:
+        Tok_Mach() : TxtToken("MACH") {
+        }
+    };
+
+    class Tok_Macl : public TxtToken {
+    public:
+        Tok_Macl() : TxtToken("MACL") {
         }
     };
 
