@@ -183,6 +183,7 @@ private:
     INST_TOK(fcnvds, "FCNVDS");
     INST_TOK(fcnvsd, "FCNVSD");
     INST_TOK(fdiv, "FDIV");
+    INST_TOK(fipr, "FIPR");
     INST_TOK(fldi0, "FLDI0");
     INST_TOK(fldi1, "FLDI1");
     INST_TOK(flds, "FLDS");
@@ -198,6 +199,7 @@ private:
     INST_TOK(fsts, "FSTS");
     INST_TOK(fsub, "FSUB");
     INST_TOK(ftrc, "FTRC");
+    INST_TOK(ftrv, "FTRV");
     INST_TOK(jmp, "JMP");
     INST_TOK(jsr, "JSR");
     INST_TOK(ldc, "LDC");
@@ -629,6 +631,17 @@ private:
         }
     };
 
+    /*
+     * This isn't a special register in the strictest sense since it is not a
+     * control register or status register, but there's only one xmtrx so in
+     * that sense it is a special register.
+     */
+    class Tok_XmtrxReg : public Tok_SpecReg {
+    public:
+        Tok_XmtrxReg() : Tok_SpecReg("XMTRX") {
+        }
+    };
+
     class Tok_FrReg : public Token {
     public:
         virtual int matches(TokList::reverse_iterator rbegin,
@@ -698,6 +711,74 @@ private:
 
         inst_t assemble() const {
             return (reg_no >> 1) & 0x7;
+        }
+    private:
+        int reg_no;
+    };
+
+    // Double-precision floating point registers
+    class Tok_XdReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if ((txt.substr(0, 2) == "XD") &&
+                (txt.size() == 3 || txt.size() == 4)) {
+                int reg_no;
+                std::stringstream(txt.substr(2)) >> reg_no;
+                if (reg_no == 0  || reg_no == 2  ||
+                    reg_no == 4  || reg_no == 6  ||
+                    reg_no == 8  || reg_no == 10 ||
+                    reg_no == 12 || reg_no == 14) {
+                    this->reg_no = reg_no;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            std::stringstream ss;
+            ss << "XD" << reg_no;
+            return ss.str();
+        }
+
+        inst_t assemble() const {
+            return (reg_no >> 1) & 0x7;
+        }
+    private:
+        int reg_no;
+    };
+
+    // Floating-point vector registers
+    class Tok_FvReg : public Token {
+    public:
+        virtual int matches(TokList::reverse_iterator rbegin,
+                            TokList::reverse_iterator rend) {
+            std::string txt = (*rbegin)->text();
+
+            if ((txt.substr(0, 2) == "FV") && (txt.size() == 3)) {
+                int reg_no;
+                std::stringstream(txt.substr(2)) >> reg_no;
+                if (reg_no == 0 || reg_no == 4 || reg_no == 8 || reg_no == 12) {
+                    this->reg_no = reg_no;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        std::string text() const {
+            std::stringstream ss;
+            ss << "FV" << reg_no;
+            return ss.str();
+        }
+
+        inst_t assemble() const {
+            return (reg_no >> 2) & 0x3;
         }
     private:
         int reg_no;

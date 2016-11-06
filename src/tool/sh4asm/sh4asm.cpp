@@ -1173,6 +1173,71 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stsl),
                           Tok_FpulReg, Tok_DecInd<Tok_GenReg>, 0x4052, 8>));
 
+    // FMOV DRm, XDn
+    // 1111nnn1mmm01100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmov),
+                          Tok_DrReg, Tok_XdReg, 0xf00c, 5, 9>));
+
+    // FMOV XDm, DRn
+    // 1111nnn0mmm11100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmov),
+                          Tok_XdReg, Tok_DrReg, 0xf01c, 5, 9>));
+
+    // FMOV XDm, XDn
+    // 1111nnn1mmm11100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmov),
+                          Tok_XdReg, Tok_XdReg, 0xf11c, 5, 9>));
+
+    // FMOV @Rm, XDn
+    // 1111nnn1mmmm1000
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmov),
+                          Tok_Ind<Tok_GenReg>, Tok_XdReg, 0xf108, 4, 9>));
+
+    // FMOV @Rm+, XDn
+    // 1111nnn1mmmm1001
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmov),
+                          Tok_IndInc<Tok_GenReg>, Tok_XdReg, 0xf109, 4, 9>));
+
+    // FMOV @(R0, Rn), XDn
+    // 1111nnn1mmmm0110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmov),
+                          Tok_BinaryInd<Tok_R0Reg, Tok_GenReg, 0, 0, 4>,
+                          Tok_XdReg, 0xf106, 0, 9>));
+
+    // FMOV XDm, @Rn
+    // 1111nnnnmmm11010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmov),
+                          Tok_XdReg, Tok_Ind<Tok_GenReg>, 0xf01a, 5, 8>));
+
+    // FMOV XDm, @-Rn
+    // 1111nnnnmmm11011
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmov),
+                          Tok_XdReg, Tok_DecInd<Tok_GenReg>, 0xf01b, 5, 8>));
+
+    // FMOV XDm, @(R0, Rn)
+    // 1111nnnnmmm10111
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmov), Tok_XdReg,
+                          Tok_BinaryInd<Tok_R0Reg, Tok_GenReg, 0, 0, 8>,
+                          0xf017, 5, 0>));
+
+    // FIPR FVm, FVn - vector dot product
+    // 1111nnmm11101101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fipr),
+                          Tok_FvReg, Tok_FvReg, 0xf0ed, 8, 10>));
+
+    // FTRV MXTRX, FVn - multiple vector by matrix
+    // 1111nn0111111101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ftrv),
+                          Tok_XmtrxReg, Tok_FvReg, 0xf1fd, 0, 10>));
+
+    // FRCHG
+    // 1111101111111101
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(frchg), 0xfbfd>));
+
+    // FSCHG
+    // 1111001111111101
+    list.push_back(TokPtr(new NoArgOperator<TXT_TOK(frchg), 0xf3fd>));
+
     return list;
 }
 
