@@ -77,7 +77,7 @@ private:
 
     static TokList tokenize_line(const std::string& line);
 
-    inst_t assemble_tokens(TokList toks);
+    inst_t assemble_tokens(PtrnList toks);
     inst_t assemble_op_noargs(const std::string& inst);
 
     void add_label(const std::string& lbl);

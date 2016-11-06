@@ -37,9 +37,9 @@ addr32_t Sh4Prog::lookup_sym(const std::string& sym_name) const {
 
 inst_t Sh4Prog::assemble_line(const std::string& inst) {
     TokList toks = tokenize_line(preprocess_line(inst));
-    PatternList patterns = get_patterns();
+    PtrnList patterns = get_patterns();
 
-    for (PatternList::iterator it = patterns.begin(); it != patterns.end();
+    for (PtrnList::iterator it = patterns.begin(); it != patterns.end();
          ++it) {
         if ((*it)->matches(toks.rbegin(), toks.rend())) {
             return (*it)->assemble();
@@ -59,7 +59,7 @@ std::string Sh4Prog::preprocess_line(const std::string& line) {
 }
 
 TokList Sh4Prog::tokenize_line(const std::string& line) {
-    std::string cur_tok;
+    Token cur_tok;
     TokList tok_list;
 
     for (std::string::const_iterator it = line.begin(); it != line.end();
@@ -68,7 +68,7 @@ TokList Sh4Prog::tokenize_line(const std::string& line) {
 
         if (cur_char == ' ' || cur_char == '\t' || cur_char == '\n') {
             if (cur_tok.size()) {
-                tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
+                tok_list.push_back(cur_tok);
                 cur_tok.clear();
             }
         } else if (cur_char == ':' || cur_char == ',' ||
@@ -76,10 +76,10 @@ TokList Sh4Prog::tokenize_line(const std::string& line) {
                    cur_char == '(' || cur_char == ')' ||
                    cur_char == '+' || cur_char == '-') {
             if (cur_tok.size()) {
-                tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
+                tok_list.push_back(cur_tok);
             }
             std::string cur_char_as_str(1, cur_char);
-            tok_list.push_back(TokPtr(new TxtToken(cur_char_as_str)));
+            tok_list.push_back(cur_char_as_str);
             cur_tok.clear();
         } else {
             cur_tok.push_back(cur_char);
@@ -87,7 +87,7 @@ TokList Sh4Prog::tokenize_line(const std::string& line) {
     }
 
     if (cur_tok.size()) {
-        tok_list.push_back(TokPtr(new TxtToken(cur_tok)));
+        tok_list.push_back(cur_tok);
         cur_tok.clear();
     }
 

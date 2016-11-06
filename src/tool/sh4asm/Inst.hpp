@@ -28,13 +28,15 @@
 
 #include "types.hpp"
 
-class Token;
+class Pattern;
 
-typedef boost::shared_ptr<Token> TokPtr;
-typedef std::vector<TokPtr> TokList;
-typedef std::vector<TokPtr> PatternList;
+typedef boost::shared_ptr<Pattern> PtrnPtr;
+typedef std::vector<PtrnPtr> PtrnList;
 
-PatternList get_patterns();
+typedef std::string Token;
+typedef std::vector<Token> TokList;
+
+PtrnList get_patterns();
 
 template <class IteratorType>
 static bool safe_to_advance(IteratorType begin, IteratorType end, int adv) {
@@ -52,9 +54,9 @@ static bool safe_to_advance(IteratorType begin, IteratorType end, int adv) {
     return true;
 }
 
-class Token {
+class Pattern {
 public:
-    virtual ~Token() {
+    virtual ~Pattern() {
     }
 
     /*
@@ -69,21 +71,21 @@ public:
     }
 };
 
-class TxtToken : public Token {
+class TxtPattern : public Pattern {
 public:
     std::string txt;
 
-    TxtToken(char const *txt) {
+    TxtPattern(char const *txt) {
         this->txt = std::string(txt);
     }
 
-    TxtToken(const std::string& txt) {
+    TxtPattern(const std::string& txt) {
         this->txt = txt;
     }
 
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        if ((*rbegin)->text() == txt) {
+        if (*rbegin == txt) {
             return 1;
         }
 
@@ -95,141 +97,141 @@ public:
     }
 };
 
-#define TXT_TOK(name) Tok_ ## name
-#define INST_TOK(name, inst)                    \
-    class TXT_TOK(name) : public TxtToken {     \
+#define INST_PTRN(name) Ptrn_ ## name
+#define DECL_INST_PTRN(name, inst)              \
+    class INST_PTRN(name) : public TxtPattern { \
     public:                                     \
-        TXT_TOK(name)() : TxtToken(inst) {      \
+        INST_PTRN(name)() : TxtPattern(inst) {  \
         }                                       \
     }
 
-INST_TOK(and, "AND");
-INST_TOK(add, "ADD");
-INST_TOK(addc, "ADDC");
-INST_TOK(addv, "ADDV");
-INST_TOK(andb, "AND.B");
-INST_TOK(bf, "BF");
-INST_TOK(bfs, "BF/S");
-INST_TOK(bra, "BRA");
-INST_TOK(braf, "BRAF");
-INST_TOK(bsr, "BSR");
-INST_TOK(bsrf, "BSRF");
-INST_TOK(bt, "BT");
-INST_TOK(bts, "BT/S");
-INST_TOK(clrmac, "CLRMAC");
-INST_TOK(clrs, "CLRS");
-INST_TOK(clrt, "CLRT");
-INST_TOK(cmpeq, "CMP/EQ");
-INST_TOK(cmpge, "CMP/GE");
-INST_TOK(cmpgt, "CMP/GT");
-INST_TOK(cmphi, "CMP/HI");
-INST_TOK(cmphs, "CMP/HS");
-INST_TOK(cmppz, "CMP/PZ");
-INST_TOK(cmppl, "CMP/PL");
-INST_TOK(cmpstr, "CMP/STR");
-INST_TOK(div1, "DIV1");
-INST_TOK(div0s, "DIV0S");
-INST_TOK(divou, "DIVOU");
-INST_TOK(dmulsl, "DMULS.L");
-INST_TOK(dmulul, "DMULU.L");
-INST_TOK(dt, "DT");
-INST_TOK(extsb, "EXTS.B");
-INST_TOK(extsw, "EXTS.W");
-INST_TOK(extub, "EXTU.B");
-INST_TOK(extuw, "EXTU.W");
-INST_TOK(fabs, "FABS");
-INST_TOK(fadd, "FADD");
-INST_TOK(fcmpeq, "FCMP/EQ");
-INST_TOK(fcmpgt, "FCMP/GT");
-INST_TOK(fcnvds, "FCNVDS");
-INST_TOK(fcnvsd, "FCNVSD");
-INST_TOK(fdiv, "FDIV");
-INST_TOK(fipr, "FIPR");
-INST_TOK(fldi0, "FLDI0");
-INST_TOK(fldi1, "FLDI1");
-INST_TOK(flds, "FLDS");
-INST_TOK(float, "FLOAT");
-INST_TOK(fmac, "FMAC");
-INST_TOK(fmov, "FMOV");
-INST_TOK(fmovs, "FMOV.S");
-INST_TOK(fmul, "FMUL");
-INST_TOK(fneg, "FNEG");
-INST_TOK(frchg, "FRCHG");
-INST_TOK(fschg, "FSCHG");
-INST_TOK(fsqrt, "FSQRT");
-INST_TOK(fsts, "FSTS");
-INST_TOK(fsub, "FSUB");
-INST_TOK(ftrc, "FTRC");
-INST_TOK(ftrv, "FTRV");
-INST_TOK(jmp, "JMP");
-INST_TOK(jsr, "JSR");
-INST_TOK(ldc, "LDC");
-INST_TOK(lds, "LDS");
-INST_TOK(ldsl, "LDS.L");
-INST_TOK(ldcl, "LDC.L");
-INST_TOK(ldtlb, "LDTLB");
-INST_TOK(macl, "MAC.L");
-INST_TOK(macw, "MAC.W");
-INST_TOK(mov, "MOV");
-INST_TOK(mova, "MOVA");
-INST_TOK(movb, "MOV.B");
-INST_TOK(movcal, "MOVCA.L");
-INST_TOK(movl, "MOV.L");
-INST_TOK(movw, "MOV.W");
-INST_TOK(movt, "MOVT");
-INST_TOK(mull, "MUL.L");
-INST_TOK(mulsw, "MULS.W");
-INST_TOK(muluw, "MULU.W");
-INST_TOK(neg, "NEG");
-INST_TOK(negc, "NEGC");
-INST_TOK(nop, "NOP");
-INST_TOK(not, "NOT");
-INST_TOK(ocbi, "OCBI");
-INST_TOK(ocbp, "OCBP");
-INST_TOK(ocbwb, "OCBWB");
-INST_TOK(or, "OR");
-INST_TOK(orb, "OR.B");
-INST_TOK(pref, "PREF");
-INST_TOK(rotl, "ROTL");
-INST_TOK(rotr, "ROTR");
-INST_TOK(rotcl, "ROTCL");
-INST_TOK(rotcr, "ROTCR");
-INST_TOK(rte, "RTE");
-INST_TOK(rts, "RTS");
-INST_TOK(sets, "SETS");
-INST_TOK(sett, "SETT");
-INST_TOK(shad, "SHAD");
-INST_TOK(shld, "SHLD");
-INST_TOK(shal, "SHAL");
-INST_TOK(shar, "SHAR");
-INST_TOK(shll, "SHLL");
-INST_TOK(shlr, "SHLR");
-INST_TOK(shll2, "SHLL2");
-INST_TOK(shlr2, "SHLR2");
-INST_TOK(shll8, "SHLL8");
-INST_TOK(shlr8, "SHLR8");
-INST_TOK(shll16, "SHLL16");
-INST_TOK(shlr16, "SHLR16");
-INST_TOK(sleep, "SLEEP");
-INST_TOK(stc, "STC");
-INST_TOK(stcl, "STC.L");
-INST_TOK(sts, "STS");
-INST_TOK(stsl, "STS.L");
-INST_TOK(sub, "SUB");
-INST_TOK(subc, "SUBC");
-INST_TOK(subv, "SUBV");
-INST_TOK(swapb, "SWAP.B");
-INST_TOK(swapw, "SWAP.W");
-INST_TOK(tasb, "TAS.B");
-INST_TOK(tst, "TST");
-INST_TOK(tstb, "TST.B");
-INST_TOK(trapa, "TRAPA");
-INST_TOK(xor, "XOR");
-INST_TOK(xorb, "XOR.B");
-INST_TOK(xtrct, "XTRCT");
+DECL_INST_PTRN(and, "AND");
+DECL_INST_PTRN(add, "ADD");
+DECL_INST_PTRN(addc, "ADDC");
+DECL_INST_PTRN(addv, "ADDV");
+DECL_INST_PTRN(andb, "AND.B");
+DECL_INST_PTRN(bf, "BF");
+DECL_INST_PTRN(bfs, "BF/S");
+DECL_INST_PTRN(bra, "BRA");
+DECL_INST_PTRN(braf, "BRAF");
+DECL_INST_PTRN(bsr, "BSR");
+DECL_INST_PTRN(bsrf, "BSRF");
+DECL_INST_PTRN(bt, "BT");
+DECL_INST_PTRN(bts, "BT/S");
+DECL_INST_PTRN(clrmac, "CLRMAC");
+DECL_INST_PTRN(clrs, "CLRS");
+DECL_INST_PTRN(clrt, "CLRT");
+DECL_INST_PTRN(cmpeq, "CMP/EQ");
+DECL_INST_PTRN(cmpge, "CMP/GE");
+DECL_INST_PTRN(cmpgt, "CMP/GT");
+DECL_INST_PTRN(cmphi, "CMP/HI");
+DECL_INST_PTRN(cmphs, "CMP/HS");
+DECL_INST_PTRN(cmppz, "CMP/PZ");
+DECL_INST_PTRN(cmppl, "CMP/PL");
+DECL_INST_PTRN(cmpstr, "CMP/STR");
+DECL_INST_PTRN(div1, "DIV1");
+DECL_INST_PTRN(div0s, "DIV0S");
+DECL_INST_PTRN(divou, "DIVOU");
+DECL_INST_PTRN(dmulsl, "DMULS.L");
+DECL_INST_PTRN(dmulul, "DMULU.L");
+DECL_INST_PTRN(dt, "DT");
+DECL_INST_PTRN(extsb, "EXTS.B");
+DECL_INST_PTRN(extsw, "EXTS.W");
+DECL_INST_PTRN(extub, "EXTU.B");
+DECL_INST_PTRN(extuw, "EXTU.W");
+DECL_INST_PTRN(fabs, "FABS");
+DECL_INST_PTRN(fadd, "FADD");
+DECL_INST_PTRN(fcmpeq, "FCMP/EQ");
+DECL_INST_PTRN(fcmpgt, "FCMP/GT");
+DECL_INST_PTRN(fcnvds, "FCNVDS");
+DECL_INST_PTRN(fcnvsd, "FCNVSD");
+DECL_INST_PTRN(fdiv, "FDIV");
+DECL_INST_PTRN(fipr, "FIPR");
+DECL_INST_PTRN(fldi0, "FLDI0");
+DECL_INST_PTRN(fldi1, "FLDI1");
+DECL_INST_PTRN(flds, "FLDS");
+DECL_INST_PTRN(float, "FLOAT");
+DECL_INST_PTRN(fmac, "FMAC");
+DECL_INST_PTRN(fmov, "FMOV");
+DECL_INST_PTRN(fmovs, "FMOV.S");
+DECL_INST_PTRN(fmul, "FMUL");
+DECL_INST_PTRN(fneg, "FNEG");
+DECL_INST_PTRN(frchg, "FRCHG");
+DECL_INST_PTRN(fschg, "FSCHG");
+DECL_INST_PTRN(fsqrt, "FSQRT");
+DECL_INST_PTRN(fsts, "FSTS");
+DECL_INST_PTRN(fsub, "FSUB");
+DECL_INST_PTRN(ftrc, "FTRC");
+DECL_INST_PTRN(ftrv, "FTRV");
+DECL_INST_PTRN(jmp, "JMP");
+DECL_INST_PTRN(jsr, "JSR");
+DECL_INST_PTRN(ldc, "LDC");
+DECL_INST_PTRN(lds, "LDS");
+DECL_INST_PTRN(ldsl, "LDS.L");
+DECL_INST_PTRN(ldcl, "LDC.L");
+DECL_INST_PTRN(ldtlb, "LDTLB");
+DECL_INST_PTRN(macl, "MAC.L");
+DECL_INST_PTRN(macw, "MAC.W");
+DECL_INST_PTRN(mov, "MOV");
+DECL_INST_PTRN(mova, "MOVA");
+DECL_INST_PTRN(movb, "MOV.B");
+DECL_INST_PTRN(movcal, "MOVCA.L");
+DECL_INST_PTRN(movl, "MOV.L");
+DECL_INST_PTRN(movw, "MOV.W");
+DECL_INST_PTRN(movt, "MOVT");
+DECL_INST_PTRN(mull, "MUL.L");
+DECL_INST_PTRN(mulsw, "MULS.W");
+DECL_INST_PTRN(muluw, "MULU.W");
+DECL_INST_PTRN(neg, "NEG");
+DECL_INST_PTRN(negc, "NEGC");
+DECL_INST_PTRN(nop, "NOP");
+DECL_INST_PTRN(not, "NOT");
+DECL_INST_PTRN(ocbi, "OCBI");
+DECL_INST_PTRN(ocbp, "OCBP");
+DECL_INST_PTRN(ocbwb, "OCBWB");
+DECL_INST_PTRN(or, "OR");
+DECL_INST_PTRN(orb, "OR.B");
+DECL_INST_PTRN(pref, "PREF");
+DECL_INST_PTRN(rotl, "ROTL");
+DECL_INST_PTRN(rotr, "ROTR");
+DECL_INST_PTRN(rotcl, "ROTCL");
+DECL_INST_PTRN(rotcr, "ROTCR");
+DECL_INST_PTRN(rte, "RTE");
+DECL_INST_PTRN(rts, "RTS");
+DECL_INST_PTRN(sets, "SETS");
+DECL_INST_PTRN(sett, "SETT");
+DECL_INST_PTRN(shad, "SHAD");
+DECL_INST_PTRN(shld, "SHLD");
+DECL_INST_PTRN(shal, "SHAL");
+DECL_INST_PTRN(shar, "SHAR");
+DECL_INST_PTRN(shll, "SHLL");
+DECL_INST_PTRN(shlr, "SHLR");
+DECL_INST_PTRN(shll2, "SHLL2");
+DECL_INST_PTRN(shlr2, "SHLR2");
+DECL_INST_PTRN(shll8, "SHLL8");
+DECL_INST_PTRN(shlr8, "SHLR8");
+DECL_INST_PTRN(shll16, "SHLL16");
+DECL_INST_PTRN(shlr16, "SHLR16");
+DECL_INST_PTRN(sleep, "SLEEP");
+DECL_INST_PTRN(stc, "STC");
+DECL_INST_PTRN(stcl, "STC.L");
+DECL_INST_PTRN(sts, "STS");
+DECL_INST_PTRN(stsl, "STS.L");
+DECL_INST_PTRN(sub, "SUB");
+DECL_INST_PTRN(subc, "SUBC");
+DECL_INST_PTRN(subv, "SUBV");
+DECL_INST_PTRN(swapb, "SWAP.B");
+DECL_INST_PTRN(swapw, "SWAP.W");
+DECL_INST_PTRN(tasb, "TAS.B");
+DECL_INST_PTRN(tst, "TST");
+DECL_INST_PTRN(tstb, "TST.B");
+DECL_INST_PTRN(trapa, "TRAPA");
+DECL_INST_PTRN(xor, "XOR");
+DECL_INST_PTRN(xorb, "XOR.B");
+DECL_INST_PTRN(xtrct, "XTRCT");
 
 template <class Inst, int BIN>
-struct NoArgOperator : public Token {
+struct NoArgOperator : public Pattern {
     Inst inst;
 
     virtual int matches(TokList::reverse_iterator rbegin,
@@ -247,7 +249,7 @@ struct NoArgOperator : public Token {
 };
 
 template <class Inst, class SrcInput, int BIN, int SRC_SHIFT>
-struct UnaryOperator : public Token {
+struct UnaryOperator : public Pattern {
     Inst inst;
 
     SrcInput src;
@@ -285,7 +287,7 @@ struct UnaryOperator : public Token {
 
 template <class Inst, class SrcInput, class DstInput,
           int BIN, int SRC_SHIFT = 0, int DST_SHIFT = 0>
-struct BinaryOperator : public Token {
+struct BinaryOperator : public Pattern {
     Inst inst;
 
     SrcInput src;
@@ -305,7 +307,7 @@ struct BinaryOperator : public Token {
         } else
             return 0;
 
-        if ((*rbegin)->text() != ",")
+        if (*rbegin != ",")
             return 0;
 
         if (safe_to_advance(rbegin, rend, 1)) {
@@ -344,7 +346,7 @@ struct BinaryOperator : public Token {
 template <class Inst, class Src1Input, class Src2Input, class DstInput,
           int BIN, int SRC1_SHIFT = 0, int SRC2_SHIFT = 0,
           int DST_SHIFT = 0>
-struct TrinaryOperator : public Token {
+struct TrinaryOperator : public Pattern {
     Inst inst;
 
     Src1Input src1;
@@ -365,7 +367,7 @@ struct TrinaryOperator : public Token {
         } else
             return 0;
 
-        if ((*rbegin)->text() != ",")
+        if ((*rbegin) != ",")
             return 0;
 
         if (safe_to_advance(rbegin, rend, 1)) {
@@ -382,7 +384,7 @@ struct TrinaryOperator : public Token {
         } else
             return 0;
 
-        if ((*rbegin)->text() != ",")
+        if (*rbegin != ",")
             return 0;
 
         if (safe_to_advance(rbegin, rend, 1)) {
@@ -419,11 +421,11 @@ struct TrinaryOperator : public Token {
     }
 };
 
-class Tok_GenReg : public Token {
+class Ptrn_GenReg : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
 
         if ((txt[0] == 'R') && (txt.size() == 2 || txt.size() == 3)) {
             int reg_no;
@@ -450,11 +452,11 @@ private:
     int reg_no;
 };
 
-class Tok_BankReg : public Token {
+class Ptrn_BankReg : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
         if (txt.size() == 7 || txt.size() == 8) {
             if (txt.at(0) != 'R')
                 return 0;
@@ -488,15 +490,15 @@ private:
 };
 
 // Special register (i.e., not one of the general-purpose registers)
-class Tok_SpecReg : public Token {
+class Ptrn_SpecReg : public Pattern {
 public:
-    Tok_SpecReg(char const *name) {
+    Ptrn_SpecReg(char const *name) {
         this->name = name;
     }
 
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
 
         if (txt == name)
             return 1;
@@ -516,79 +518,79 @@ private:
     char const *name;
 };
 
-class Tok_SrReg : public Tok_SpecReg {
+class Ptrn_SrReg : public Ptrn_SpecReg {
 public:
-    Tok_SrReg() : Tok_SpecReg("SR") {
+    Ptrn_SrReg() : Ptrn_SpecReg("SR") {
     }
 };
 
-class Tok_GbrReg : public Tok_SpecReg {
+class Ptrn_GbrReg : public Ptrn_SpecReg {
 public:
-    Tok_GbrReg() : Tok_SpecReg("GBR") {
+    Ptrn_GbrReg() : Ptrn_SpecReg("GBR") {
     }
 };
 
-class Tok_VbrReg : public Tok_SpecReg {
+class Ptrn_VbrReg : public Ptrn_SpecReg {
 public:
-    Tok_VbrReg() : Tok_SpecReg("VBR") {
+    Ptrn_VbrReg() : Ptrn_SpecReg("VBR") {
     }
 };
 
-class Tok_SsrReg : public Tok_SpecReg {
+class Ptrn_SsrReg : public Ptrn_SpecReg {
 public:
-    Tok_SsrReg() : Tok_SpecReg("SSR") {
+    Ptrn_SsrReg() : Ptrn_SpecReg("SSR") {
     }
 };
 
-class Tok_SpcReg : public Tok_SpecReg {
+class Ptrn_SpcReg : public Ptrn_SpecReg {
 public:
-    Tok_SpcReg() : Tok_SpecReg("SPC") {
+    Ptrn_SpcReg() : Ptrn_SpecReg("SPC") {
     }
 };
 
-class Tok_SgrReg : public Tok_SpecReg {
+class Ptrn_SgrReg : public Ptrn_SpecReg {
 public:
-    Tok_SgrReg() : Tok_SpecReg("SGR") {
+    Ptrn_SgrReg() : Ptrn_SpecReg("SGR") {
     }
 };
 
-class Tok_DbrReg : public Tok_SpecReg {
+class Ptrn_DbrReg : public Ptrn_SpecReg {
 public:
-    Tok_DbrReg() : Tok_SpecReg("DBR") {
+    Ptrn_DbrReg() : Ptrn_SpecReg("DBR") {
     }
 };
 
-class Tok_PcReg : public Tok_SpecReg {
+class Ptrn_PcReg : public Ptrn_SpecReg {
 public:
-    Tok_PcReg() : Tok_SpecReg("PC") {
+    Ptrn_PcReg() : Ptrn_SpecReg("PC") {
     }
 };
 
-class Tok_PrReg : public Tok_SpecReg {
+class Ptrn_PrReg : public Ptrn_SpecReg {
 public:
-    Tok_PrReg() : Tok_SpecReg("PR") {
+    Ptrn_PrReg() : Ptrn_SpecReg("PR") {
     }
 };
 
 /*
- * R0 will also be picked up by Tok_GenReg; this token is for the few
+ * R0 will also be picked up by Ptrn_GenReg; this token is for the few
  * instructions that only allow R0
  */
-class Tok_R0Reg : public Tok_SpecReg {
+class Ptrn_R0Reg : public Ptrn_SpecReg {
 public:
-    Tok_R0Reg() : Tok_SpecReg("R0") {
+    Ptrn_R0Reg() : Ptrn_SpecReg("R0") {
     }
 };
 
-class Tok_FpulReg : public Tok_SpecReg {
+class Ptrn_FpulReg : public Ptrn_SpecReg {
 public:
-    Tok_FpulReg() : Tok_SpecReg("FPUL") {
+    Ptrn_FpulReg() : Ptrn_SpecReg("FPUL") {
     }
 };
 
-class Tok_FpscrReg : public Tok_SpecReg {
+class Ptrn_FpscrReg : public Ptrn_SpecReg {
 public:
-    Tok_FpscrReg() : Tok_SpecReg("FPSCR") {
+    Ptrn_FpscrReg() : Ptrn_SpecReg("FPSCR") {
     }
 };
 
@@ -597,17 +599,17 @@ public:
  * control register or status register, but there's only one xmtrx so in
  * that sense it is a special register.
  */
-class Tok_XmtrxReg : public Tok_SpecReg {
+class Ptrn_XmtrxReg : public Ptrn_SpecReg {
 public:
-    Tok_XmtrxReg() : Tok_SpecReg("XMTRX") {
+    Ptrn_XmtrxReg() : Ptrn_SpecReg("XMTRX") {
     }
 };
 
-class Tok_FrReg : public Token {
+class Ptrn_FrReg : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
 
         if ((txt.substr(0, 2) == "FR") &&
             (txt.size() == 3 || txt.size() == 4)) {
@@ -635,18 +637,18 @@ private:
     int reg_no;
 };
 
-class Tok_Fr0Reg : public Tok_SpecReg {
+class Ptrn_Fr0Reg : public Ptrn_SpecReg {
 public:
-    Tok_Fr0Reg() : Tok_SpecReg("FR0") {
+    Ptrn_Fr0Reg() : Ptrn_SpecReg("FR0") {
     }
 };
 
 // Double-precision floating point registers
-class Tok_DrReg : public Token {
+class Ptrn_DrReg : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
 
         if ((txt.substr(0, 2) == "DR") &&
             (txt.size() == 3 || txt.size() == 4)) {
@@ -678,11 +680,11 @@ private:
 };
 
 // Double-precision floating point registers
-class Tok_XdReg : public Token {
+class Ptrn_XdReg : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
 
         if ((txt.substr(0, 2) == "XD") &&
             (txt.size() == 3 || txt.size() == 4)) {
@@ -714,11 +716,11 @@ private:
 };
 
 // Floating-point vector registers
-class Tok_FvReg : public Token {
+class Ptrn_FvReg : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
 
         if ((txt.substr(0, 2) == "FV") && (txt.size() == 3)) {
             int reg_no;
@@ -746,11 +748,11 @@ private:
 };
 
 template <unsigned MASK>
-class Tok_immed : public Token {
+class Ptrn_immed : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
         bool is_hex;
 
         if (txt.size() < 1)
@@ -782,7 +784,7 @@ public:
         else
             return 0;
 
-        if ((*rbegin)->text() == "#") {
+        if (*rbegin == "#") {
             std::stringstream ss(txt);
             if (is_hex) {
                 ss >> std::hex >> imm;
@@ -817,11 +819,11 @@ private:
  *       string of ascii letters).
  */
 template <unsigned MASK>
-class Tok_Disp : public Token {
+class Ptrn_Disp : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
         bool is_hex;
 
         if (txt.size() < 1)
@@ -872,7 +874,7 @@ private:
 };
 
 template <class InnerOperand>
-class Tok_Ind : public Token {
+class Ptrn_Ind : public Pattern {
 public:
     InnerOperand op;
 
@@ -888,7 +890,7 @@ public:
             else
                 return 0;
 
-            if ((*rbegin)->text() == "@") {
+            if (*rbegin == "@") {
                 return advance + 1;
             }
         }
@@ -911,14 +913,14 @@ public:
  */
 template <class LeftOperand, class RightOperand, int BIN, int SRC_SHIFT = 0,
           int DST_SHIFT = 0>
-class Tok_BinaryInd : public Token {
+class Ptrn_BinaryInd : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        std::string txt = (*rbegin)->text();
+        std::string txt = *rbegin;
         int adv = 0, adv_extra;
 
-        if ((*rbegin)->text() != ")")
+        if (*rbegin != ")")
             return 0;
         if (safe_to_advance(rbegin, rend, 1)) {
             adv++;
@@ -937,7 +939,7 @@ public:
             return 0;
         }
 
-        if ((*rbegin)->text() != ",")
+        if (*rbegin != ",")
             return 0;
         if (safe_to_advance(rbegin, rend, 1)) {
             adv++;
@@ -956,7 +958,7 @@ public:
             return 0;
         }
 
-        if ((*rbegin)->text() != "(")
+        if (*rbegin != "(")
             return 0;
         if (safe_to_advance(rbegin, rend, 1)) {
             adv++;
@@ -965,7 +967,7 @@ public:
             return 0;
         }
 
-        if ((*rbegin)->text() != "@")
+        if (*rbegin != "@")
             return 0;
 
         return adv + 1;
@@ -987,7 +989,7 @@ private:
 };
 
 template <class InnerOperand>
-class Tok_IndInc : public Token {
+class Ptrn_IndInc : public Pattern {
 public:
     InnerOperand op;
 
@@ -997,7 +999,7 @@ public:
         if (rbegin == rend)
             return 0;
 
-        if ((*rbegin)->text() != "+") {
+        if (*rbegin != "+") {
             return 0;
         }
 
@@ -1014,7 +1016,7 @@ public:
             else
                 return 0;
 
-            if ((*rbegin)->text() == "@") {
+            if (*rbegin == "@") {
                 return advance + 1;
             }
         }
@@ -1032,7 +1034,7 @@ public:
 };
 
 template <class InnerOperand>
-class Tok_DecInd : public Token {
+class Ptrn_DecInd : public Pattern {
 public:
     InnerOperand op;
 
@@ -1049,12 +1051,12 @@ public:
             else
                 return 0;
 
-            if ((*rbegin)->text() == "-") {
+            if (*rbegin == "-") {
                 if (safe_to_advance(rbegin, rend, 1)) {
                     advance++;
                     rbegin++;
 
-                    if ((*rbegin)->text() == "@")
+                    if (*rbegin == "@")
                         return advance + 1;
                 }
             }
@@ -1072,15 +1074,14 @@ public:
     }
 };
 
-class Tok_Mach : public TxtToken {
+class Ptrn_Mach : public TxtPattern {
 public:
-    Tok_Mach() : TxtToken("MACH") {
+    Ptrn_Mach() : TxtPattern("MACH") {
     }
 };
 
-class Tok_Macl : public TxtToken {
+class Ptrn_Macl : public TxtPattern {
 public:
-    Tok_Macl() : TxtToken("MACL") {
+    Ptrn_Macl() : TxtPattern("MACL") {
     }
 };
-
