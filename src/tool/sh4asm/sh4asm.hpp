@@ -623,6 +623,12 @@ private:
         }
     };
 
+    class Tok_FpscrReg : public Tok_SpecReg {
+    public:
+        Tok_FpscrReg() : Tok_SpecReg("FPSCR") {
+        }
+    };
+
     class Tok_FrReg : public Token {
     public:
         virtual int matches(TokList::reverse_iterator rbegin,

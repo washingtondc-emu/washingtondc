@@ -1133,6 +1133,46 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ftrc),
                           Tok_DrReg, Tok_FpulReg, 0xf03d, 9>));
 
+    // LDS Rm, FPSCR
+    // 0100mmmm01101010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(lds),
+                          Tok_GenReg, Tok_FpscrReg, 0x406a, 8>));
+
+    // LDS Rm, FPUL
+    // 0100mmmm01011010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(lds),
+                          Tok_GenReg, Tok_FpulReg, 0x405a, 8, 0>));
+
+    // LDS.L @Rm+, FPSCR
+    // 0100mmmm01100110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ldsl),
+                          Tok_IndInc<Tok_GenReg>, Tok_FpscrReg, 0x4066, 8, 0>));
+
+    // LDS.L @Rm+, FPUL
+    // 0100mmmm01010110
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ldsl),
+                          Tok_IndInc<Tok_GenReg>, Tok_FpulReg, 0x4056, 8, 0>));
+
+    // STS FPSCR, Rn
+    // 0000nnnn01101010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(sts),
+                          Tok_FpscrReg, Tok_GenReg, 0x006a>));
+
+    // STS FPUL, Rn
+    // 0000nnnn01011010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(sts),
+                          Tok_FpulReg, Tok_GenReg, 0x005a, 8>));
+
+    // STS.L FPSCR, @-Rn
+    // 0100nnnn01100010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stsl),
+                          Tok_FpscrReg, Tok_DecInd<Tok_GenReg>, 0x4062, 8>));
+
+    // STS.L FPUL, @-Rn
+    // 0100nnnn01010010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(stsl),
+                          Tok_FpulReg, Tok_DecInd<Tok_GenReg>, 0x4052, 8>));
+
     return list;
 }
 
