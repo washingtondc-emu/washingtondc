@@ -180,6 +180,8 @@ private:
     INST_TOK(fadd, "FADD");
     INST_TOK(fcmpeq, "FCMP/EQ");
     INST_TOK(fcmpgt, "FCMP/GT");
+    INST_TOK(fcnvds, "FCNVDS");
+    INST_TOK(fcnvsd, "FCNVSD");
     INST_TOK(fdiv, "FDIV");
     INST_TOK(fldi0, "FLDI0");
     INST_TOK(fldi1, "FLDI1");

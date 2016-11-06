@@ -1068,6 +1068,71 @@ Sh4Prog::PatternList Sh4Prog::get_patterns() {
     list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ftrc),
                           Tok_FrReg, Tok_FpulReg, 0xf03d, 8, 0>));
 
+    // FABS DRn
+    // 1111nnn001011101
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(fabs),
+                          Tok_DrReg, 0xf05d, 9>));
+
+    // FADD DRm, DRn
+    // 1111nnn0mmm00000
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fadd),
+                          Tok_DrReg, Tok_DrReg, 0xf000, 5, 9>));
+
+    // FCMP/EQ DRm, DRn
+    // 1111nnn0mmm00100
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fcmpeq),
+                          Tok_DrReg, Tok_DrReg, 0xf004, 5, 9>));
+
+    // FCMP/GT DRm, DRn
+    // 1111nnn0mmm00101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fcmpgt),
+                          Tok_DrReg, Tok_DrReg, 0xf005, 5, 9>));
+
+    // FDIV DRm, DRn
+    // 1111nnn0mmm00011
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fdiv),
+                          Tok_DrReg, Tok_DrReg, 0xf003, 5, 9>));
+
+    // FCNVDS DRm, FPUL
+    // 1111mmm010111101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fcnvds),
+                          Tok_DrReg, Tok_FpulReg, 0xf0bd, 9>));
+
+    // FCNVSD FPUL, DRn
+    // 1111nnn010101101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fcnvsd),
+                          Tok_FpulReg, Tok_DrReg, 0xf0ad, 0, 9>));
+
+    // FLOAT FPUL, DRn
+    // 1111nnn000101101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(float),
+                          Tok_FpulReg, Tok_DrReg, 0xf02d, 0, 9>));
+
+    // FMUL DRm, DRn
+    // 1111nnn0mmm00010
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fmul),
+                          Tok_DrReg, Tok_DrReg, 0xf002, 5, 9>));
+
+    // FNEG DRn
+    // 1111nnn001001101
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(fneg),
+                          Tok_DrReg, 0xf04d, 9>));
+
+    // FSQRT DRn
+    // 1111nnn001101101
+    list.push_back(TokPtr(new UnaryOperator<TXT_TOK(fsqrt),
+                          Tok_DrReg, 0xf06d, 9>));
+
+    // FSUB DRm, DRn
+    // 1111nnn0mmm00001
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(fsub),
+                          Tok_DrReg, Tok_DrReg, 0xf001, 5, 9>));
+
+    // FTRC DRm, FPUL
+    // 1111mmm000111101
+    list.push_back(TokPtr(new BinaryOperator<TXT_TOK(ftrc),
+                          Tok_DrReg, Tok_FpulReg, 0xf03d, 9>));
+
     return list;
 }
 
