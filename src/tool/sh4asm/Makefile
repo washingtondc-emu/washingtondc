@@ -1,5 +1,5 @@
-HEADERS=sh4asm.hpp
-OBJECTS=sh4asm.o
+HEADERS=sh4asm.hpp Inst.hpp
+OBJECTS=sh4asm.o Inst.o
 CXXFLAGS=-I../../common/ -I ../../../external/ -I ../../hw/sh4/ \
 --std=c++03 -Wall -Werror -g
 
