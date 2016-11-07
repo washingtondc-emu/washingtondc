@@ -65,10 +65,13 @@ public:
      */
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) = 0;
-    virtual std::string text() const = 0;
+
     virtual inst_t assemble() const {
         return 0;
     }
+
+    /* returns the pattern in string-form */
+    virtual Token disassemble() const = 0;
 };
 
 class TxtPattern : public Pattern {
@@ -92,8 +95,8 @@ public:
         return 0;
     }
 
-    virtual std::string text() const {
-        return txt;
+    virtual Token disassemble() const {
+        return Token(txt);
     }
 };
 
@@ -230,7 +233,7 @@ DECL_INST_PTRN(xor, "XOR");
 DECL_INST_PTRN(xorb, "XOR.B");
 DECL_INST_PTRN(xtrct, "XTRCT");
 
-template <class Inst, int BIN>
+template <class Inst, inst_t BIN>
 struct NoArgOperator : public Pattern {
     Inst inst;
 
@@ -239,12 +242,12 @@ struct NoArgOperator : public Pattern {
         return inst.matches(rbegin, rend);
     }
 
-    virtual std::string text() const {
-        return inst.text();
-    }
-
     inst_t assemble() const {
         return (inst_t)BIN;
+    }
+
+    Token disassemble() const {
+        return inst.disassemble() + "\n";
     }
 };
 
@@ -276,12 +279,12 @@ struct UnaryOperator : public Pattern {
         return 0;
     }
 
-    virtual std::string text() const {
-        return inst.text() + " " + src.text();
-    }
-
     inst_t assemble() const {
         return BIN | (src.assemble() << SRC_SHIFT);
+    }
+
+    Token disassemble() const {
+        return inst.disassemble() + " " + src.disassemble() + "\n";
     }
 };
 
@@ -332,13 +335,14 @@ struct BinaryOperator : public Pattern {
         return 0;
     }
 
-    virtual std::string text() const {
-        return inst.text() + " " + src.text() + ", " + dst.text();
-    }
-
     inst_t assemble() const {
         return BIN | (src.assemble() << SRC_SHIFT) |
             (dst.assemble() << DST_SHIFT);
+    }
+
+    Token disassemble() const {
+        return inst.disassemble() + " " + src.disassemble() + ", " +
+            dst.disassemble() + "\n";
     }
 };
 
@@ -409,15 +413,15 @@ struct TrinaryOperator : public Pattern {
         return 0;
     }
 
-    virtual std::string text() const {
-        return inst.text() + " " + src1.text() + ", " +
-            src2.text() + ", " + dst.text();
-    }
-
     inst_t assemble() const {
         return BIN | (src1.assemble() << SRC1_SHIFT) |
             (src2.assemble() << SRC2_SHIFT) |
             (dst.assemble() << DST_SHIFT);
+    }
+
+    Token disassemble() const {
+        return inst.disassemble() + " " + src1.disassemble() + ", " +
+            src2.disassemble() + ", " + dst.disassemble() + "\n";
     }
 };
 
@@ -439,14 +443,14 @@ public:
         return 0;
     }
 
-    std::string text() const {
+    inst_t assemble() const {
+        return reg_no & 0xff;
+    }
+
+    Token disassemble() const {
         std::stringstream ss;
         ss << "R" << reg_no;
         return ss.str();
-    }
-
-    inst_t assemble() const {
-        return reg_no & 0xff;
     }
 private:
     int reg_no;
@@ -476,14 +480,14 @@ public:
         return 0;
     }
 
-    std::string text() const {
+    inst_t assemble() const {
+        return reg_no & 0x7;
+    }
+
+    Token disassemble() const {
         std::stringstream ss;
         ss << "R" << reg_no << "_BANK";
         return ss.str();
-    }
-
-    inst_t assemble() const {
-        return reg_no & 0x7;
     }
 private:
     int reg_no;
@@ -510,8 +514,8 @@ public:
         return 0;
     }
 
-    std::string text() const {
-        return std::string(name);
+    Token disassemble() const {
+        return Token(name);
     }
 
 private:
@@ -624,7 +628,7 @@ public:
         return 0;
     }
 
-    std::string text() const {
+    Token disassemble() const {
         std::stringstream ss;
         ss << "FR" << reg_no;
         return ss.str();
@@ -672,6 +676,12 @@ public:
         return ss.str();
     }
 
+    Token disassemble() const {
+        std::stringstream ss;
+        ss << "DR" << reg_no;
+        return ss.str();
+    }
+
     inst_t assemble() const {
         return (reg_no >> 1) & 0x7;
     }
@@ -702,7 +712,7 @@ public:
         return 0;
     }
 
-    std::string text() const {
+    Token disassemble() const {
         std::stringstream ss;
         ss << "XD" << reg_no;
         return ss.str();
@@ -734,7 +744,7 @@ public:
         return 0;
     }
 
-    std::string text() const {
+    Token disassemble() const {
         std::stringstream ss;
         ss << "FV" << reg_no;
         return ss.str();
@@ -798,7 +808,7 @@ public:
         return 0;
     }
 
-    std::string text() const {
+    Token disassemble() const {
         std::stringstream ss;
         ss << "#0x" << std::hex << imm;
         return ss.str();
@@ -860,14 +870,14 @@ public:
         return 1;
     }
 
-    std::string text() const {
+    inst_t assemble() const {
+        return imm & MASK;
+    }
+
+    Token disassemble() const {
         std::stringstream ss;
         ss << "#0x" << std::hex << imm;
         return ss.str();
-    }
-
-    inst_t assemble() const {
-        return imm & MASK;
     }
 private:
     unsigned imm;
@@ -898,12 +908,12 @@ public:
         return 0;
     }
 
-    std::string text() const {
-        return std::string("@") + op.text();
-    }
-
     inst_t assemble() const {
         return op.assemble();
+    }
+
+    Token disassemble() const {
+        return std::string("@") + op.disassemble();
     }
 };
 
@@ -973,9 +983,9 @@ public:
         return adv + 1;
     }
 
-    std::string text() const {
-        return std::string("@(") + op_left.text() + std::string(", ") +
-            op_right.text() + std::string(")");
+    Token disassemble() const {
+        return std::string("@(") + op_left.disassemble() + std::string(", ") +
+            op_right.disassemble() + std::string(")");
     }
 
     inst_t assemble() const {
@@ -1024,8 +1034,8 @@ public:
         return 0;
     }
 
-    std::string text() const {
-        return std::string("@") + op.text() + std::string("+");
+    Token disassemble() const {
+        return std::string("@") + op.disassemble() + std::string("+");
     }
 
     inst_t assemble() const {
@@ -1065,12 +1075,12 @@ public:
         return 0;
     }
 
-    std::string text() const {
-        return std::string("@") + op.text() + std::string("+");
-    }
-
     inst_t assemble() const {
         return op.assemble();
+    }
+
+    Token disassemble() const {
+        return std::string("@") + op.disassemble() + std::string("+");
     }
 };
 
