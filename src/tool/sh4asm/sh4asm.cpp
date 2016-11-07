@@ -49,6 +49,19 @@ inst_t Sh4Prog::assemble_line(const std::string& inst) {
     throw ParseError("Unrecognized opcode");
 }
 
+std::string Sh4Prog::disassemble_line(inst_t inst) const {
+    PtrnList patterns = get_patterns();
+
+    for (PtrnList::iterator it = patterns.begin(); it != patterns.end();
+         ++it) {
+        if ((*it)->matches(inst)) {
+            return (*it)->disassemble(inst);
+        }
+    }
+
+    throw ParseError("Unrecognized instruction");
+}
+
 std::string Sh4Prog::preprocess_line(const std::string& line) {
     size_t comment_start = line.find_first_of('!');
 

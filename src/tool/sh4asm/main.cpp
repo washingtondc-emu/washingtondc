@@ -20,21 +20,46 @@
  *
  ******************************************************************************/
 
+#include <unistd.h>
+
 #include <iostream>
+#include <sstream>
 
 #include "sh4asm.hpp"
 
 int main(int argc, char **argv) {
     Sh4Prog prog;
     inst_t inst;
+    int opt;
+    bool disas = false;
+    char const *cmd = argv[0];
 
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " instruction" << std::endl;
+    while ((opt = getopt(argc, argv, "d")) != -1) {
+        switch (opt) {
+        case 'd':
+            disas = true;
+            break;
+        }
+    }
+
+    argv += optind;
+    argc -= optind;
+
+    if (argc != 1) {
+        std::cerr << "Usage: " << cmd << " instruction" << std::endl;
         return 1;
     }
 
-    inst = prog.assemble_line((argv[1] + std::string("\n")).c_str());
-    std::cout << std::hex << inst << std::endl;
+    if (disas) {
+        std::stringstream ss;
+        ss << std::hex << argv[0];
+        ss >> inst;
+
+        std::cout << prog.disassemble_line(inst) << std::endl;
+    } else {
+        inst = prog.assemble_line((argv[0] + std::string("\n")).c_str());
+        std::cout << std::hex << inst << std::endl;
+    }
 
     // TODO: this goes in the unit_tests
     // inst = prog.assemble_line("MOV.W R4, @R5\n");

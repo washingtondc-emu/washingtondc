@@ -65,6 +65,7 @@ public:
     addr32_t lookup_sym(const std::string& sym_name) const;
 
     inst_t assemble_line(const std::string& inst);
+    std::string disassemble_line(inst_t inst) const;
 private:
     typedef std::map<std::string, addr32_t> SymMap;
     typedef std::vector<inst_t> InstList;

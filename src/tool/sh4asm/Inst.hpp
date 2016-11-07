@@ -66,12 +66,22 @@ public:
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) = 0;
 
+    /*
+     * like the other version of this method, 0 is returned for non-matching and
+     * nonzero is returned for matching.  This version does not modify any
+     * underlying objects, so you have to call disassemble to get the actual
+     * Token.
+     */
+    virtual int matches(inst_t opcode) {
+        return 0;
+    }
+
     virtual inst_t assemble() const {
         return 0;
     }
 
     /* returns the pattern in string-form */
-    virtual Token disassemble() const = 0;
+    virtual Token disassemble(inst_t opcode) const = 0;
 };
 
 class TxtPattern : public Pattern {
@@ -95,7 +105,7 @@ public:
         return 0;
     }
 
-    virtual Token disassemble() const {
+    virtual Token disassemble(inst_t opcode) const {
         return Token(txt);
     }
 };
@@ -246,12 +256,16 @@ struct NoArgOperator : public Pattern {
         return (inst_t)BIN;
     }
 
-    Token disassemble() const {
-        return inst.disassemble() + "\n";
+    Token disassemble(inst_t opcode) const {
+        return inst.disassemble(opcode) + "\n";
+    }
+
+    virtual int matches(inst_t opcode) {
+        return opcode == BIN;
     }
 };
 
-template <class Inst, class SrcInput, int BIN, int SRC_SHIFT>
+template <class Inst, class SrcInput, inst_t BIN, inst_t MASK, int SRC_SHIFT>
 struct UnaryOperator : public Pattern {
     Inst inst;
 
@@ -279,17 +293,22 @@ struct UnaryOperator : public Pattern {
         return 0;
     }
 
+    virtual int matches(inst_t opcode) {
+        return (opcode & MASK) == BIN;
+    }
+
     inst_t assemble() const {
         return BIN | (src.assemble() << SRC_SHIFT);
     }
 
-    Token disassemble() const {
-        return inst.disassemble() + " " + src.disassemble() + "\n";
+    Token disassemble(inst_t opcode) const {
+        return inst.disassemble(opcode) + " " +
+            src.disassemble(opcode >> SRC_SHIFT) + "\n";
     }
 };
 
 template <class Inst, class SrcInput, class DstInput,
-          int BIN, int SRC_SHIFT = 0, int DST_SHIFT = 0>
+          inst_t BIN, inst_t MASK, int SRC_SHIFT = 0, int DST_SHIFT = 0>
 struct BinaryOperator : public Pattern {
     Inst inst;
 
@@ -335,20 +354,25 @@ struct BinaryOperator : public Pattern {
         return 0;
     }
 
+    virtual int matches(inst_t opcode) {
+        return (opcode & MASK) == BIN;
+    }
+
     inst_t assemble() const {
         return BIN | (src.assemble() << SRC_SHIFT) |
             (dst.assemble() << DST_SHIFT);
     }
 
-    Token disassemble() const {
-        return inst.disassemble() + " " + src.disassemble() + ", " +
-            dst.disassemble() + "\n";
+    Token disassemble(inst_t opcode) const {
+        return inst.disassemble(opcode) + " " +
+            src.disassemble(opcode >> SRC_SHIFT) + ", " +
+            dst.disassemble(opcode >> DST_SHIFT) + "\n";
     }
 };
 
 // Uggh, I have to implement this just to support *one* instruction (FMAC).
 template <class Inst, class Src1Input, class Src2Input, class DstInput,
-          int BIN, int SRC1_SHIFT = 0, int SRC2_SHIFT = 0,
+          inst_t BIN, inst_t MASK, int SRC1_SHIFT = 0, int SRC2_SHIFT = 0,
           int DST_SHIFT = 0>
 struct TrinaryOperator : public Pattern {
     Inst inst;
@@ -413,15 +437,21 @@ struct TrinaryOperator : public Pattern {
         return 0;
     }
 
+    virtual int matches(inst_t opcode) {
+        return (opcode & MASK) == BIN;
+    }
+
     inst_t assemble() const {
         return BIN | (src1.assemble() << SRC1_SHIFT) |
             (src2.assemble() << SRC2_SHIFT) |
             (dst.assemble() << DST_SHIFT);
     }
 
-    Token disassemble() const {
-        return inst.disassemble() + " " + src1.disassemble() + ", " +
-            src2.disassemble() + ", " + dst.disassemble() + "\n";
+    Token disassemble(inst_t opcode) const {
+        return inst.disassemble(opcode) + " " +
+            src1.disassemble(opcode >> SRC1_SHIFT) + ", " +
+            src2.disassemble(opcode >> SRC2_SHIFT) + ", " +
+            dst.disassemble(opcode >> DST_SHIFT) + "\n";
     }
 };
 
@@ -447,9 +477,9 @@ public:
         return reg_no & 0xff;
     }
 
-    Token disassemble() const {
+    Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "R" << reg_no;
+        ss << "R" << (opcode & 0xf);
         return ss.str();
     }
 private:
@@ -484,9 +514,9 @@ public:
         return reg_no & 0x7;
     }
 
-    Token disassemble() const {
+    Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "R" << reg_no << "_BANK";
+        ss << "R" << (opcode & 0x7) << "_BANK";
         return ss.str();
     }
 private:
@@ -514,7 +544,7 @@ public:
         return 0;
     }
 
-    Token disassemble() const {
+    Token disassemble(inst_t opcode) const {
         return Token(name);
     }
 
@@ -628,9 +658,9 @@ public:
         return 0;
     }
 
-    Token disassemble() const {
+    Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "FR" << reg_no;
+        ss << "FR" << (opcode & 0xf);
         return ss.str();
     }
 
@@ -676,9 +706,9 @@ public:
         return ss.str();
     }
 
-    Token disassemble() const {
+    Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "DR" << reg_no;
+        ss << "DR" << ((opcode & 0x7) << 1);
         return ss.str();
     }
 
@@ -712,9 +742,9 @@ public:
         return 0;
     }
 
-    Token disassemble() const {
+    Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "XD" << reg_no;
+        ss << "XD" << ((opcode & 0x7) << 1);
         return ss.str();
     }
 
@@ -744,9 +774,9 @@ public:
         return 0;
     }
 
-    Token disassemble() const {
+    Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "FV" << reg_no;
+        ss << "FV" << ((opcode & 0x3) << 2);
         return ss.str();
     }
 
@@ -808,9 +838,9 @@ public:
         return 0;
     }
 
-    Token disassemble() const {
+    Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "#0x" << std::hex << imm;
+        ss << "#0x" << std::hex << (opcode & MASK);
         return ss.str();
     }
 
@@ -874,9 +904,9 @@ public:
         return imm & MASK;
     }
 
-    Token disassemble() const {
+    Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "#0x" << std::hex << imm;
+        ss << "#0x" << std::hex << (opcode & MASK);
         return ss.str();
     }
 private:
@@ -912,8 +942,8 @@ public:
         return op.assemble();
     }
 
-    Token disassemble() const {
-        return std::string("@") + op.disassemble();
+    Token disassemble(inst_t opcode) const {
+        return std::string("@") + op.disassemble(opcode);
     }
 };
 
@@ -983,9 +1013,9 @@ public:
         return adv + 1;
     }
 
-    Token disassemble() const {
-        return std::string("@(") + op_left.disassemble() + std::string(", ") +
-            op_right.disassemble() + std::string(")");
+    Token disassemble(inst_t opcode) const {
+        return std::string("@(") + op_left.disassemble(opcode) + std::string(", ") +
+            op_right.disassemble(opcode) + std::string(")");
     }
 
     inst_t assemble() const {
@@ -1034,8 +1064,8 @@ public:
         return 0;
     }
 
-    Token disassemble() const {
-        return std::string("@") + op.disassemble() + std::string("+");
+    Token disassemble(inst_t opcode) const {
+        return std::string("@") + op.disassemble(opcode) + std::string("+");
     }
 
     inst_t assemble() const {
@@ -1079,8 +1109,8 @@ public:
         return op.assemble();
     }
 
-    Token disassemble() const {
-        return std::string("@") + op.disassemble() + std::string("+");
+    Token disassemble(inst_t opcode) const {
+        return std::string("@") + op.disassemble(opcode) + std::string("+");
     }
 };
 
