@@ -184,7 +184,7 @@ PtrnList get_patterns() {
                            0x8d00, 0xff00, 0>));
 
     // 1010dddddddddddd
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bts), Ptrn_Disp<0xfff>,
+    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bra), Ptrn_Disp<0xfff>,
                            0xa000, 0xf000, 0>));
 
     // 1011dddddddddddd
@@ -193,7 +193,7 @@ PtrnList get_patterns() {
 
     // 11000011iiiiiiii
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(trapa), Ptrn_immed<0x0ff>,
-                           0xc300, 0xf000, 0>));
+                           0xc300, 0xff00, 0>));
 
     /***************************************************************************
      **

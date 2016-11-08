@@ -906,7 +906,7 @@ public:
 
     Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "#0x" << std::hex << (opcode & MASK);
+        ss << "0x" << std::hex << (opcode & MASK);
         return ss.str();
     }
 private:
@@ -1035,7 +1035,7 @@ public:
 
     virtual int matches(TokList::reverse_iterator rbegin,
                         TokList::reverse_iterator rend) {
-        int advance = 0;
+        int advance = 0, more_adv;
         if (rbegin == rend)
             return 0;
 
@@ -1050,11 +1050,13 @@ public:
             return 0;
         }
 
-        if ((advance = op.matches(rbegin, rend))) {
-            if (safe_to_advance(rbegin, rend, advance))
-                rbegin += advance;
-            else
+        if ((more_adv = op.matches(rbegin, rend))) {
+            if (safe_to_advance(rbegin, rend, more_adv)) {
+                rbegin += more_adv;
+                advance += more_adv;
+            } else {
                 return 0;
+            }
 
             if (*rbegin == "@") {
                 return advance + 1;
@@ -1085,11 +1087,12 @@ public:
             return 0;
 
         if ((more_adv = op.matches(rbegin, rend))) {
-            advance += more_adv;
-            if (safe_to_advance(rbegin, rend, more_adv))
+            if (safe_to_advance(rbegin, rend, more_adv)) {
+                advance += more_adv;
                 rbegin += more_adv;
-            else
+            } else {
                 return 0;
+            }
 
             if (*rbegin == "-") {
                 if (safe_to_advance(rbegin, rend, 1)) {
@@ -1110,7 +1113,7 @@ public:
     }
 
     Token disassemble(inst_t opcode) const {
-        return std::string("@") + op.disassemble(opcode) + std::string("+");
+        return std::string("@-") + op.disassemble(opcode);
     }
 };
 
