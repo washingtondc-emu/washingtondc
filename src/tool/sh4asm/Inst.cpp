@@ -129,14 +129,6 @@ PtrnList get_patterns() {
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bsrf), Ptrn_GenReg,
                            0x0003, 0xf0ff, 8>));
 
-    // 0100nnnn00101011
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(jmp), Ptrn_GenReg,
-                           0x402b, 0xf0ff, 8>));
-
-    // 0100nnnn00001011
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(jsr), Ptrn_GenReg,
-                           0x400b, 0xf0ff, 8>));
-
 
     /***************************************************************************
      **
@@ -225,6 +217,13 @@ PtrnList get_patterns() {
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(pref), Ptrn_Ind<Ptrn_GenReg>,
                            0x0083, 0xf0ff, 8>));
 
+    // 0100nnnn00101011
+    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(jmp),
+                           Ptrn_Ind<Ptrn_GenReg>, 0x402b, 0xf0ff, 8>));
+
+    // 0100nnnn00001011
+    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(jsr),
+                           Ptrn_Ind<Ptrn_GenReg>, 0x400b, 0xf0ff, 8>));
 
     /***************************************************************************
      **

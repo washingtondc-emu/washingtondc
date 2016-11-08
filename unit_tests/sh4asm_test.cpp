@@ -21,8 +21,14 @@
  ******************************************************************************/
 
 #include <iostream>
+#include <cstdlib>
+
+#include <boost/cstdint.hpp>
+#include <boost/tokenizer.hpp>
 
 #include "tool/sh4asm/sh4asm.hpp"
+#include "RandGenerator.hpp"
+#include "BaseException.hpp"
 
 /*
  * This function tests assembler and disassembler functionality on the given
@@ -67,9 +73,11 @@ bool test_inst(std::string const& inst) {
     return false;
 }
 
+/*
+ * <N> means to generate a random N-bit integer.
+ * Obviously N cannot be greater than 16
+ */
 char const *insts_to_test[] = {
-
-    // instructions which take no arguments
     "DIVOU",
     "RTS",
     "CLRMAC",
@@ -83,16 +91,91 @@ char const *insts_to_test[] = {
     "SLEEP",
     "FRCHG",
     "FSCHG",
+    "MOVT R<4>",
+    "CMP/PZ R<4>",
+    "CMP/PL R<4>",
+    "DT R<4>",
+    "ROTL R<4>",
+    "ROTR R<4>",
+    "ROTCL R<4>",
+    "ROTCR R<4>",
+    "SHAL R<4>",
+    "SHAR R<4>",
+    "SHLL R<4>",
+    "SHLR R<4>",
+    "SHLL2 R<4>",
+    "SHLR2 R<4>",
+    "SHLL8 R<4>",
+    "SHLR8 R<4>",
+    "SHLL16 R<4>",
+    "SHLR16 R<4>",
+    "BRAF R<4>",
+    "BSRF R<4>",
+    "JMP @R<4>",
+    "JSR @R<4>",
     NULL
 };
+
+// lookup table for n-bit integer masks
+static const unsigned MASK_MAX = 16;
+static unsigned masks[1 + MASK_MAX] = {
+    0,
+    0x1,
+    0x3,
+    0x7,
+    0xf,
+    0x1f,
+    0x3f,
+    0x7f,
+    0xff,
+    0x1ff,
+    0x3ff,
+    0x7ff,
+    0xfff,
+    0x1fff,
+    0x3fff,
+    0x7fff,
+    0xffff
+};
+
+typedef boost::char_separator<char> CharSeparator;
+typedef boost::tokenizer<CharSeparator> Tokenizer ;
+template <class RandGen>
+std::string process_inst_str(RandGen *gen, std::string inst) {
+    std::stringstream actual;
+    CharSeparator sep("<>");
+    Tokenizer tok(inst, sep);
+    bool pick_val = false;
+
+    for (Tokenizer::iterator it = tok.begin(); it != tok.end();
+         it++, pick_val = !pick_val) {
+        if (pick_val) {
+            unsigned n_bits = atoi(it->c_str());
+            if (n_bits > MASK_MAX)
+                throw InvalidParamError("Too many bits in instruction mask!");
+            boost::uint32_t val_mask = masks[n_bits];
+            boost::uint32_t rand_val = gen->pick_val(0) & val_mask;
+
+            actual << rand_val;
+        } else {
+            actual << *it;
+        }
+    }
+
+    return actual.str();
+}
 
 int test_all_insts() {
     unsigned n_tests = 0;
     unsigned n_success = 0;
     char const **inst = insts_to_test;
 
+    RandGenerator<boost::uint32_t> gen;
+
     while (*inst) {
-        if (test_inst(std::string(*inst) + "\n"))
+        std::string processed(process_inst_str(&gen, std::string(*inst)));
+
+        if (test_inst(processed + "\n"))
             n_success++;
         n_tests++;
 
