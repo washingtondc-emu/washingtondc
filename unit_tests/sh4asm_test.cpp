@@ -67,12 +67,22 @@ bool test_inst(std::string const& inst) {
     return false;
 }
 
-bool test_inst(char const *inst) {
-    return test_inst(std::string(inst));
-}
-
 char const *insts_to_test[] = {
-    "NOP\n",
+
+    // instructions which take no arguments
+    "DIVOU",
+    "RTS",
+    "CLRMAC",
+    "CLRS",
+    "CLRT",
+    "LDTLB",
+    "NOP",
+    "RTE",
+    "SETS",
+    "SETT",
+    "SLEEP",
+    "FRCHG",
+    "FSCHG",
     NULL
 };
 
@@ -82,7 +92,7 @@ int test_all_insts() {
     char const **inst = insts_to_test;
 
     while (*inst) {
-        if (test_inst(*inst))
+        if (test_inst(std::string(*inst) + "\n"))
             n_success++;
         n_tests++;
 
