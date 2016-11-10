@@ -1250,7 +1250,7 @@ PtrnList get_patterns() {
     // FTRV MXTRX, FVn - multiple vector by matrix
     // 1111nn0111111101
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ftrv),
-                           Ptrn_XmtrxReg, Ptrn_FvReg, 0xf1fd, 0xfcff, 0, 10>));
+                           Ptrn_XmtrxReg, Ptrn_FvReg, 0xf1fd, 0xf3ff, 0, 10>));
 
     // FRCHG
     // 1111101111111101

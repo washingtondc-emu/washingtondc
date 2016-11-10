@@ -248,6 +248,70 @@ char const *insts_to_test[] = {
     "MOV.L @(<8>, GBR), R0",
     "MOVA @(<8>, PC), R0",
     "MOVCA.L R0, @R<4>",
+    "FLDI0 FR<4>",
+    "FLDI1 FR<4>",
+    "FMOV FR<4>, FR<4>",
+    "FMOV.S @R<4>, FR<4>",
+    "FMOV.S @(R0, R<4>), FR<4>",
+    "FMOV.S @R<4>+, FR<4>",
+    "FMOV.S FR<4>, @R<4>",
+    "FMOV.S FR<4>, @-R<4>",
+    "FMOV.S FR<4>, @(R0, R<4>)",
+    "FMOV DR<3,2>, DR<3,2>",
+    "FMOV @R<4>, DR<3,2>",
+    "FMOV @(R0, R<4>), DR<3,2>",
+    "FMOV @R<4>+, DR<3,2>",
+    "FMOV DR<3,2>, @R<4>",
+    "FMOV DR<3,2>, @-R<4>",
+    "FMOV DR<3,2>, @(R0, R<4>)",
+    "FLDS FR<4>, FPUL",
+    "FSTS FPUL, FR<4>",
+    "FABS FR<4>",
+    "FADD FR<4>, FR<4>",
+    "FCMP/EQ FR<4>, FR<4>",
+    "FCMP/GT FR<4>, FR<4>",
+    "FDIV FR<4>, FR<4>",
+    "FLOAT FPUL, FR<4>",
+    "FMAC FR0, FR<4>, FR<4>",
+    "FMUL FR<4>, FR<4>",
+    "FNEG FR<4>",
+    "FSQRT FR<4>",
+    "FSUB FR<4>, FR<4>",
+    "FTRC FR<4>, FPUL",
+    "FABS DR<3,2>",
+    "FADD DR<3,2>, DR<3,2>",
+    "FCMP/EQ DR<3,2>, DR<3,2>",
+    "FCMP/GT DR<3,2>, DR<3,2>",
+    "FDIV DR<3,2>, DR<3,2>",
+    "FCNVDS DR<3,2>, FPUL",
+    "FCNVSD FPUL, DR<3,2>",
+    "FLOAT FPUL, DR<3,2>",
+    "FMUL DR<3,2>, DR<3,2>",
+    "FNEG DR<3,2>",
+    "FSQRT DR<3,2>",
+    "FSUB DR<3,2>, DR<3,2>",
+    "FTRC DR<3,2>, FPUL",
+    "LDS R<4>, FPSCR",
+    "LDS R<4>, FPUL",
+    "LDS.L @R<4>+, FPSCR",
+    "LDS.L @R<4>+, FPUL",
+    "STS FPSCR, R<4>",
+    "STS FPUL, R<4>",
+    "STS.L FPSCR, @-R<4>",
+    "STS.L FPUL, @-R<4>",
+    "FMOV DR<3,2>, XD<3,2>",
+    "FMOV XD<3,2>, DR<3,2>",
+    "FMOV XD<3,2>, XD<3,2>",
+    "FMOV @R<4>, XD<3,2>",
+    "FMOV @R<4>+, XD<3,2>",
+    "FMOV @(R0, R<4>), XD<3,2>",
+    "FMOV XD<3,2>, @R<4>",
+    "FMOV XD<3,2>, @-R<4>",
+    "FMOV XD<3,2>, @(R0, R<4>)",
+    "FIPR FV<2,4>, FV<2,4>",
+    "FTRV XMTRX, FV<2,4>",
+    "FRCHG",
+    "FSCHG",
     NULL
 };
 
@@ -282,16 +346,31 @@ std::string process_inst_str(RandGen *gen, std::string inst) {
     Tokenizer tok(inst, sep);
     bool pick_val = false;
 
+    /*
+     * instruction template format:
+     *     <N> - random N-bit integer
+     *     <N,M> - random N-bit interger multiplied by M
+     */
     for (Tokenizer::iterator it = tok.begin(); it != tok.end();
          it++, pick_val = !pick_val) {
         if (pick_val) {
-            unsigned n_bits = atoi(it->c_str());
+            size_t comma_idx = it->find_first_of(',');
+            std::string val_str, scale_str;
+            if (comma_idx == std::string::npos) {
+                val_str = it->c_str();
+                scale_str = "1";
+            } else {
+                val_str = it->substr(0, comma_idx);
+                scale_str = it->substr(comma_idx);
+            }
+            unsigned n_bits = atoi(val_str.c_str());
+            unsigned scale = atoi(scale_str.c_str());
             if (n_bits > MASK_MAX)
                 throw InvalidParamError("Too many bits in instruction mask!");
             boost::uint32_t val_mask = masks[n_bits];
             boost::uint32_t rand_val = gen->pick_val(0) & val_mask;
 
-            actual << rand_val;
+            actual << (rand_val * scale);
         } else {
             actual << *it;
         }
