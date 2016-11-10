@@ -374,8 +374,8 @@ PtrnList get_patterns() {
                            Ptrn_Disp<0x00ff>, Ptrn_PcReg, 0x0000, 0, 0>,
                            Ptrn_GenReg, 0x9000, 0xf000, 0, 8>));
 
-    // 1001nnnndddddddd
-    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw), Ptrn_BinaryInd<
+    // 1101nnnndddddddd
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movl), Ptrn_BinaryInd<
                            Ptrn_Disp<0x00ff>, Ptrn_PcReg, 0x0000, 0, 0>,
                            Ptrn_GenReg, 0xd000, 0xf000, 0, 8>));
 
@@ -775,7 +775,7 @@ PtrnList get_patterns() {
 
     // MOV.W @(disp, Rm), R0
     // 10000101mmmmdddd
-    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movb),
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw),
                            Ptrn_BinaryInd<Ptrn_Disp<0xf>, Ptrn_GenReg, 0, 0, 4>,
                            Ptrn_R0Reg, 0x8500, 0xff00, 0, 0>));
 
@@ -867,19 +867,19 @@ PtrnList get_patterns() {
      ** Opcodes that move @(disp + GBR) into R0
      **
      **************************************************************************/
-    // MOV.B R0, @(disp, GBR)
+    // MOV.B @(disp, GBR), R0
     // 11000100dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movb),
                            Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_GbrReg, 0, 0, 0>,
                            Ptrn_R0Reg, 0xc400, 0xff00, 0, 0>));
 
-    // MOV.W R0, @(disp, GBR)
+    // MOV.W @(disp, GBR), R0
     // 11000101dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw),
                            Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_GbrReg, 0, 0, 0>,
                            Ptrn_R0Reg, 0xc500, 0xff00, 0, 0>));
 
-    // MOV.L R0, @(disp, GBR)
+    // MOV.L @(disp, GBR), R0
     // 11000110dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movl),
                            Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_GbrReg, 0, 0, 0>,
@@ -905,7 +905,7 @@ PtrnList get_patterns() {
      ** either hypothesis.
      **
      **************************************************************************/
-    // MOVA.L R0, @Rn
+    // MOVCA.L R0, @Rn
     // 0000nnnn11000011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movcal), Ptrn_R0Reg,
                            Ptrn_Ind<Ptrn_GenReg>, 0x00c3, 0xf0ff, 0, 8>));

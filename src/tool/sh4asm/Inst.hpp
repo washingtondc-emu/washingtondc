@@ -498,7 +498,7 @@ public:
             if (underscore_pos == std::string::npos)
                 return 0;
             int reg_no;
-            std::stringstream(txt.substr(1, underscore_pos)) >> reg_no;
+            std::stringstream(txt.substr(1, underscore_pos - 1)) >> reg_no;
             if (reg_no >= 0 && reg_no <= 7) {
                 this->reg_no = reg_no;
                 return 1;
@@ -1014,8 +1014,9 @@ public:
     }
 
     Token disassemble(inst_t opcode) const {
-        return std::string("@(") + op_left.disassemble(opcode) + std::string(", ") +
-            op_right.disassemble(opcode) + std::string(")");
+        return std::string("@(") + op_left.disassemble(opcode >> SRC_SHIFT) +
+            std::string(", ") + op_right.disassemble(opcode >> DST_SHIFT) +
+            std::string(")");
     }
 
     inst_t assemble() const {
