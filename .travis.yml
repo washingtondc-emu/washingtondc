@@ -5,18 +5,9 @@ os:
 - linux
 git:
   submodules: true
-addons:
-  apt:
-      packages:
-      - cmake
 script:
-  # configure cmake for out-of-tree build
   mkdir build
   cd build
   cmake ..
-
-  # build
   make
-
-  # test
   ./sh4asm_test && ./sh4_test
