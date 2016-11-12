@@ -6,8 +6,8 @@ os:
 git:
   submodules: true
 script:
-  mkdir build
-  cd build
-  cmake ..
-  make
+  mkdir build ;
+  cd build ;
+  cmake .. ;
+  make ;
   ./sh4asm_test && ./sh4_test
