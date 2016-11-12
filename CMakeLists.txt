@@ -27,7 +27,8 @@ set(WashingtonDC_VERSION_MINOR 1)
 
 include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
-                    "${PROJECT_SOURCE_DIR}/src/common")
+                    "${PROJECT_SOURCE_DIR}/src/common"
+                    "${PROJECT_SOURCE_DIR}/external")
 
 add_library(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"
                    "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp"
