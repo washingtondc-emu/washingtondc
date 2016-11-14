@@ -35,6 +35,7 @@ add_library(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"
                    "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/sh4asm.cpp")
 
 add_library(sh4 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/Icache.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/Memory.cpp")

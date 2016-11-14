@@ -39,6 +39,8 @@ Sh4::Sh4(Memory *mem) {
 
     this->inst_cache = new Icache(this, mem);
     this->op_cache = new Ocache(this, mem);
+
+    compile_instructions();
 }
 
 Sh4::~Sh4() {

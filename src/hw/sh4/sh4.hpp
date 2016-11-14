@@ -52,8 +52,9 @@ public:
 
     void set_exception(unsigned excp_code);
     void set_interrupt(unsigned intp_code);
-private:
 
+    void exec_inst(inst_t inst);
+private:
     enum VirtMemArea {
         AREA_P0 = 0,
         AREA_P1,
@@ -601,6 +602,19 @@ private:
      * the CPU registers to enter an exception state.
      */
     void enter_exception(enum ExceptionCode vector);
+
+    typedef void (Sh4::*opcode_func_t)(inst_t inst);
+    void inst_nop(inst_t inst);
+
+    static struct InstOpcode {
+        char const *fmt;
+        opcode_func_t func;
+        inst_t mask;
+        inst_t val;
+    } opcode_list[];
+
+    static void compile_instructions();
+    static void compile_instruction(struct Sh4::InstOpcode *op);
 };
 
 #endif
