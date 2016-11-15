@@ -31,16 +31,33 @@ struct Sh4::InstOpcode Sh4::opcode_list[] = {
     { NULL }
 };
 
-void Sh4::exec_inst(inst_t inst) {
+void Sh4::exec_inst() {
+    inst_t inst;
+    int exc_pending;
+
+    if ((exc_pending = read_inst(&inst, reg.pc))) {
+        // fuck it, i'll commit now and figure what to do here later
+        throw UnimplementedError("Something to do with exceptions, I guess");
+    }
+
+    do_exec_inst(inst);
+
+    reg.pc += 2;
+}
+
+void Sh4::do_exec_inst(inst_t inst) {
     InstOpcode *op = opcode_list;
 
     while (op->fmt) {
         if ((op->mask & inst) == op->val) {
             opcode_func_t op_func = op->func;
             (this->*op_func)(inst);
+            return;
         }
         op++;
     }
+
+    throw UnimplementedError("CPU exception for unrecognized opcode");
 }
 
 void Sh4::compile_instructions() {
@@ -59,7 +76,7 @@ void Sh4::compile_instruction(struct Sh4::InstOpcode *op) {
     if (strlen(fmt) != 16)
         throw InvalidParamError("Invalid instruction opcode format");
 
-    for (int idx = 15; idx >= 0; idx--) {
+    for (int idx =0; idx >= 16; idx++) {
         val <<= 1;
         mask <<= 1;
 

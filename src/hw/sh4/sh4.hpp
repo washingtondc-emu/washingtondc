@@ -53,7 +53,8 @@ public:
     void set_exception(unsigned excp_code);
     void set_interrupt(unsigned intp_code);
 
-    void exec_inst(inst_t inst);
+    // runs the next instruction, modifies CPU state and sets flags accordingly
+    void exec_inst();
 private:
     enum VirtMemArea {
         AREA_P0 = 0,
@@ -615,6 +616,8 @@ private:
 
     static void compile_instructions();
     static void compile_instruction(struct Sh4::InstOpcode *op);
+
+    void do_exec_inst(inst_t inst);
 };
 
 #endif
