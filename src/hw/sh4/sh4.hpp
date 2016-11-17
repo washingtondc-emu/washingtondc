@@ -24,6 +24,7 @@
 #define SH4_HPP_
 
 #include <boost/cstdint.hpp>
+#include <boost/static_assert.hpp>
 
 #include "types.hpp"
 #include "Memory.hpp"
@@ -604,8 +605,924 @@ private:
      */
     void enter_exception(enum ExceptionCode vector);
 
-    typedef void (Sh4::*opcode_func_t)(inst_t inst);
-    void inst_nop(inst_t inst);
+    union OpArgs {
+        inst_t inst;
+
+        // operators that take a single general-purpose register and/or
+        // an 8-bit immediate value
+        struct {
+            inst_t imm8 : 8;
+            inst_t gen_reg : 4;
+        inst_t : 4;
+        };
+
+        // operators that take a base register and a 4-bit displacement
+        struct {
+            inst_t imm4 : 4;
+
+            /* the nomenclature here is kind of confusing:
+             * base_reg_src can be a source *or* a dest for opcodes that only
+             * take one register.  For opcodes that need two registers,
+             * base_reg_src is the source and base_reg_dst is the destination.
+             */
+            inst_t base_reg_src : 4;
+            inst_t base_reg_dst : 4;
+        };
+
+        // operators that take a 12-bit immediate value
+        struct {
+            inst_t imm12 : 12;
+        inst_t : 4;
+        };
+
+        // operators that take two general-purpose registers
+        struct {
+        inst_t : 4;
+            inst_t src_reg : 4;
+            inst_t dst_reg : 4;
+        inst_t : 4;
+        };
+
+        // opcodes that take a single floating-point register
+        struct {
+        inst_t : 8;
+            inst_t fr_reg : 4;
+        inst_t : 4;
+        };
+
+        // opcodes that take two floating-point registers
+        struct {
+        inst_t : 4;
+            inst_t fr_src : 4;
+            inst_t fr_dst : 4;
+        inst_t : 4;
+        };
+
+        // opcodes that take a single double-precision floating-point register
+        struct {
+        inst_t : 9;
+            inst_t dr_reg : 3;
+        inst_t : 4;
+        };
+
+        // opcodes that take two double-precision floating-point registers
+        struct {
+        inst_t : 5;
+            inst_t dr_src : 3;
+        inst_t : 1;
+            inst_t dr_dst : 3;
+        inst_t : 4;
+        };
+
+        // opcodes that take a single double-precision floating-point register
+        struct {
+        inst_t : 9;
+            inst_t xd_reg : 3;
+        inst_t : 4;
+        };
+
+        // opcodes that take two double-precision floating-point registers
+        struct {
+        inst_t : 5;
+            inst_t xd_src : 3;
+        inst_t : 1;
+            inst_t xd_dst : 3;
+        inst_t : 4;
+        };
+
+        // opcodes that take two floating-point vector registers
+        struct {
+        inst_t : 8;
+            inst_t fv_src : 2;
+            inst_t fv_dst : 2;
+        inst_t : 4;
+        };
+
+        // opcodes that take a single floating-point vector register
+        struct {
+        inst_t : 10;
+            inst_t fv_reg : 2;
+        inst_t : 4;
+        };
+
+        // operators that take in a banked register
+        struct {
+        inst_t : 4;
+            inst_t bank_reg : 3;
+        inst_t : 9;
+        };
+    };
+
+    BOOST_STATIC_ASSERT(sizeof(OpArgs) == 2);
+
+    typedef void (Sh4::*opcode_func_t)(OpArgs oa);
+
+    void inst_rts(OpArgs inst);
+    void inst_clrmac(OpArgs inst);
+    void inst_clrs(OpArgs inst);
+    void inst_clrt(OpArgs inst);
+    void inst_ldtlb(OpArgs inst);
+    void inst_nop(OpArgs inst);
+    void inst_rte(OpArgs inst);
+    void inst_sets(OpArgs inst);
+    void inst_sett(OpArgs inst);
+    void inst_sleep(OpArgs inst);
+    void inst_frchg(OpArgs inst);
+    void inst_fschg(OpArgs inst);
+    void inst_unary_movt_gen(OpArgs inst);
+    void inst_unary_cmppz_gen(OpArgs inst);
+    void inst_unary_cmppl_gen(OpArgs inst);
+    void inst_unary_dt_gen(OpArgs inst);
+    void inst_unary_rotl_gen(OpArgs inst);
+    void inst_unary_rotr_gen(OpArgs inst);
+    void inst_unary_rotcl_gen(OpArgs inst);
+    void inst_unary_rotcr_gen(OpArgs inst);
+    void inst_unary_shal_gen(OpArgs inst);
+    void inst_unary_shar_gen(OpArgs inst);
+    void inst_unary_shll_gen(OpArgs inst);
+    void inst_unary_shlr_gen(OpArgs inst);
+    void inst_unary_shll2_gen(OpArgs inst);
+    void inst_unary_shlr2_gen(OpArgs inst);
+    void inst_unary_shll8_gen(OpArgs inst);
+    void inst_unary_shlr8_gen(OpArgs inst);
+    void inst_unary_shll16_gen(OpArgs inst);
+    void inst_unary_shlr16_gen(OpArgs inst);
+    void inst_unary_braf_gen(OpArgs inst);
+    void inst_unary_bsrf_gen(OpArgs inst);
+    void inst_binary_cmpeq_imm_r0(OpArgs inst);
+    void inst_binary_andb_imm_r0_gbr(OpArgs inst);
+    void inst_binary_orb_imm_r0_gbr(OpArgs inst);
+
+    // OR #imm, R0
+    void inst_binary_or_imm_r0(OpArgs inst);
+
+    // TST #imm, R0
+    void inst_binary_tst_imm_r0(OpArgs inst);
+
+    // TST.B #imm, @(R0, GBR)
+    void inst_binary_tstb_imm_r0_gbr(OpArgs inst);
+
+    // XOR #imm, R0
+    void inst_binary_xor_imm_r0(OpArgs inst);
+
+    // XOR.B #imm, @(R0, GBR)
+    void inst_binary_xorb_imm_r0_gbr(OpArgs inst);
+
+    // BF label
+    void inst_unary_bf_disp(OpArgs inst);
+
+    // BF/S label
+    void inst_unary_bfs_disp(OpArgs inst);
+
+    // BT label
+    void inst_unary_bt_disp(OpArgs inst);
+
+    // BT/S label
+    void inst_unary_bts_disp(OpArgs inst);
+
+    // BRA label
+    void inst_unary_bra_disp(OpArgs inst);
+
+    // BSR label
+    void inst_unary_bsr_disp(OpArgs inst);
+
+    // TRAPA #immed
+    void inst_unary_trapa_disp(OpArgs inst);
+
+    // TAS.B @Rn
+    void inst_unary_tasb_gen(OpArgs inst);
+
+    // OCBI @Rn
+    // 0000nnnn10100011
+    void inst_unary_ocbi_indgen(OpArgs inst);
+
+    // OCBP @Rn
+    // 0000nnnn10100011
+    void inst_unary_ocbp_indgen(OpArgs inst);
+
+    // PREF @Rn
+    // 0000nnnn10000011
+    void inst_unary_pref_indgen(OpArgs inst);
+
+    // JMP @Rn
+    // 0100nnnn00101011
+    void inst_unary_jmp_indgen(OpArgs inst);
+
+    // JSR @Rn
+    //0100nnnn00001011
+    void inst_unary_jsr_indgen(OpArgs inst);
+
+    // LDC Rm, SR
+    // 0100mmmm00001110
+    void inst_binary_ldc_gen_sr(OpArgs inst);
+
+    // LDC Rm, GBR
+    // 0100mmmm00011110
+    void inst_binary_ldc_gen_gbr(OpArgs inst);
+
+    // LDC Rm, VBR
+    // 0100mmmm00101110
+    void inst_binary_ldc_gen_vbr(OpArgs inst);
+
+    // LDC Rm, SSR
+    // 0100mmmm00111110
+    void inst_binary_ldc_gen_ssr(OpArgs inst);
+
+    // LDC Rm, SPC
+    // 0100mmmm01001110
+    void inst_binary_ldc_gen_spc(OpArgs inst);
+
+    // LDC Rm, DBR
+    // 0100mmmm11111010
+    void inst_binary_ldc_gen_dbr(OpArgs inst);
+
+    // STC SR, Rn
+    // 0000nnnn00000010
+    void inst_binary_stc_sr_gen(OpArgs inst);
+
+    // STC GBR, Rn
+    // 0000nnnn00010010
+    void inst_binary_stc_gbr_gen(OpArgs inst);
+
+    // STC VBR, Rn
+    // 0000nnnn00100010
+    void inst_binary_stc_vbr_gen(OpArgs inst);
+
+    // STC SSR, Rn
+    // 0000nnnn01000010
+    void inst_binary_stc_ssr_gen(OpArgs inst);
+
+    // STC SPC, Rn
+    // 0000nnnn01000010
+    void inst_binary_stc_spc_gen(OpArgs inst);
+
+    // STC SGR, Rn
+    // 0000nnnn00111010
+    void inst_binary_stc_sgr_gen(OpArgs inst);
+
+    // STC DBR, Rn
+    // 0000nnnn11111010
+    void inst_binary_stc_dbr_gen(OpArgs inst);
+
+    // LDC.L @Rm+, SR
+    // 0100mmmm00000111
+    void inst_binary_ldcl_indgeninc_sr(OpArgs inst);
+
+    // LDC.L @Rm+, GBR
+    // 0100mmmm00010111
+    void inst_binary_ldcl_indgeninc_gbr(OpArgs inst);
+
+    // LDC.L @Rm+, VBR
+    // 0100mmmm00100111
+    void inst_binary_ldcl_indgeninc_vbr(OpArgs inst);
+
+    // LDC.L @Rm+, SSR
+    // 0100mmmm00110111
+    void inst_binary_ldcl_indgenic_ssr(OpArgs inst);
+
+    // LDC.L @Rm+, SPC
+    // 0100mmmm01000111
+    void inst_binary_ldcl_indgeninc_spc(OpArgs inst);
+
+    // LDC.L @Rm+, DBR
+    // 0100mmmm11110110
+    void inst_binary_ldcl_indgeninc_dbr(OpArgs inst);
+
+    // STC.L SR, @-Rn
+    // 0100nnnn00000011
+    void inst_binary_stcl_sr_inddecgen(OpArgs inst);
+
+    // STC.L GBR, @-Rn
+    // 0100nnnn00010011
+    void inst_binary_stcl_gbr_inddecgen(OpArgs inst);
+
+    // STC.L VBR, @-Rn
+    // 0100nnnn00100011
+    void inst_binary_stcl_vbr_inddecgen(OpArgs inst);
+
+    // STC.L SSR, @-Rn
+    // 0100nnnn00110011
+    void inst_binary_stcl_ssr_inddecgen(OpArgs inst);
+
+    // STC.L SPC, @-Rn
+    // 0100nnnn01000011
+    void inst_binary_stcl_spc_inddecgen(OpArgs inst);
+
+    // STC.L SGR, @-Rn
+    // 0100nnnn00110010
+    void inst_binary_stcl_sgr_inddecgen(OpArgs inst);
+
+    // STC.L DBR, @-Rn
+    // 0100nnnn11110010
+    void inst_binary_stcl_dbr_inddecgen(OpArgs inst);
+
+    // MOV #imm, Rn
+    // 1110nnnniiiiiiii
+    void inst_binary_mov_imm_gen(OpArgs inst);
+
+    // ADD #imm, Rn
+    // 0111nnnniiiiiiii
+    void inst_binary_add_imm_gen(OpArgs inst);
+
+    // MOV.W @(disp, PC), Rn
+    // 1001nnnndddddddd
+    void inst_binary_movw_binind_disp_pc_gen(OpArgs inst);
+
+    // MOV.L @(disp, PC), Rn
+    // 1101nnnndddddddd
+    void inst_binary_movl_binind_disp_pc_gen(OpArgs inst);
+
+    // MOV.W Rm, Rn
+    // 0110nnnnmmmm0011
+    void inst_binary_movw_gen_gen(OpArgs inst);
+
+    // SWAP.B Rm, Rn
+    // 0110nnnnmmmm1000
+    void inst_binary_swapb_gen_gen(OpArgs inst);
+
+    // SWAP.W Rm, Rn
+    // 0110nnnnmmmm1001
+    void inst_binary_swapw_gen_gen(OpArgs inst);
+
+    // XTRCT Rm, Rn
+    // 0110nnnnmmmm1101
+    void inst_binary_xtrct_gen_gen(OpArgs inst);
+
+    // ADD Rm, Rn
+    // 0111nnnnmmmm1100
+    void inst_binary_add_gen_gen(OpArgs inst);
+
+    // ADDC Rm, Rn
+    // 0111nnnnmmmm1110
+    void inst_binary_addc_gen_gen(OpArgs inst);
+
+    // ADDV Rm, Rn
+    // 0111nnnnmmmm1111
+    void inst_binary_addv_gen_gen(OpArgs inst);
+
+    // CMP/EQ Rm, Rn
+    // 0011nnnnmmmm0000
+    void inst_binary_cmpeq_gen_gen(OpArgs inst);
+
+    // CMP/HS Rm, Rn
+    // 0011nnnnmmmm0010
+    void inst_binary_cmphs_gen_gen(OpArgs inst);
+
+    // CMP/GE Rm, Rn
+    // 0011nnnnmmmm0011
+    void inst_binary_cmpge_gen_gen(OpArgs inst);
+
+    // CMP/HI Rm, Rn
+    // 0011nnnnmmmm0110
+    void inst_binary_cmphi_gen_gen(OpArgs inst);
+
+    // CMP/GT Rm, Rn
+    // 0011nnnnmmmm0111
+    void inst_binary_cmpgt_gen_gen(OpArgs inst);
+
+    // CMP/STR Rm, Rn
+    // 0010nnnnmmmm1100
+    void inst_binary_cmpstr_gen_gen(OpArgs inst);
+
+    // DIV1 Rm, Rn
+    // 0011nnnnmmmm0100
+    void inst_binary_div1_gen_gen(OpArgs inst);
+
+    // DIV0S Rm, Rn
+    // 0010nnnnmmmm0111
+    void inst_binary_div0s_gen_gen(OpArgs inst);
+
+    // DMULS.L Rm, Rn
+    //0011nnnnmmmm1101
+    void inst_binary_dmulsl_gen_gen(OpArgs inst);
+
+    // DMULU.L Rm, Rn
+    // 0011nnnnmmmm0101
+    void inst_binary_dmulul_gen_gen(OpArgs inst);
+
+    // EXTS.B Rm, Rn
+    // 0110nnnnmmmm1110
+    void inst_binary_extsb_gen_gen(OpArgs inst);
+
+    // EXTS.W Rm, Rnn
+    // 0110nnnnmmmm1111
+    void inst_binary_extsw_gen_gen(OpArgs inst);
+
+    // EXTU.B Rm, Rn
+    // 0110nnnnmmmm1100
+    void inst_binary_extub_gen_gen(OpArgs inst);
+
+    // EXTU.W Rm, Rn
+    // 0110nnnnmmmm1101
+    void inst_binary_extuw_gen_gen(OpArgs inst);
+
+    // MUL.L Rm, Rn
+    // 0000nnnnmmmm0111
+    void inst_binary_mull_gen_gen(OpArgs inst);
+
+    // MULS.W Rm, Rn
+    // 0010nnnnmmmm1111
+    void inst_binary_mulsw_gen_gen(OpArgs inst);
+
+    // MULU.W Rm, Rn
+    // 0010nnnnmmmm1110
+    void inst_binary_muluw_gen_gen(OpArgs inst);
+
+    // NEG Rm, Rn
+    // 0110nnnnmmmm1011
+    void inst_binary_neg_gen_gen(OpArgs inst);
+
+    // NEGC Rm, Rn
+    // 0110nnnnmmmm1010
+    void inst_binary_negc_gen_gen(OpArgs inst);
+
+    // SUB Rm, Rn
+    // 0011nnnnmmmm1000
+    void inst_binary_sub_gen_gen(OpArgs inst);
+
+    // SUBC Rm, Rn
+    // 0011nnnnmmmm1010
+    void inst_binary_subc_gen_gen(OpArgs inst);
+
+    // SUBV Rm, Rn
+    // 0011nnnnmmmm1011
+    void inst_binary_subv_gen_gen(OpArgs inst);
+
+    // AND Rm, Rn
+    // 0010nnnnmmmm1001
+    void inst_binary_and_gen_gen(OpArgs inst);
+
+    // NOT Rm, Rn
+    // 0110nnnnmmmm0111
+    void inst_binary_not_gen_gen(OpArgs inst);
+
+    // OR Rm, Rn
+    // 0010nnnnmmmm1011
+    void inst_binary_or_gen_gen(OpArgs inst);
+
+    // TST Rm, Rn
+    // 0010nnnnmmmm1000
+    void inst_binary_tst_gen_gen(OpArgs inst);
+
+    // XOR Rm, Rn
+    // 0010nnnnmmmm1010
+    void inst_binary_xor_gen_gen(OpArgs inst);
+
+    // SHAD Rm, Rn
+    // 0100nnnnmmmm1100
+    void inst_binary_shad_gen_gen(OpArgs inst);
+
+    // SHLD Rm, Rn
+    // 0100nnnnmmmm1101
+    void inst_binary_shld_gen_gen(OpArgs inst);
+
+    // LDC Rm, Rn_BANK
+    // 0100mmmm1nnn1110
+    void inst_binary_ldc_gen_bank(OpArgs inst);
+
+    // LDC.L @Rm+, Rn_BANK
+    // 0100mmmm1nnn0111
+    void inst_binary_ldcl_indgeninc_bank(OpArgs inst);
+
+    // STC Rm_BANK, Rn
+    // 0000nnnn1mmm0010
+    void inst_binary_stc_bank_gen(OpArgs inst);
+
+    // STC.L Rm_BANK, @-Rn
+    // 0100nnnn1mmm0011
+    void inst_binary_stcl_bank_inddecgen(OpArgs inst);
+
+    // LDS Rm,MACH
+    // 0100mmmm00001010
+    void inst_binary_lds_gen_mach(OpArgs inst);
+
+    // LDS Rm, MACL
+    // 0100mmmm00011010
+    void inst_binary_lds_gen_macl(OpArgs inst);
+
+    // STS MACH, Rn
+    // 0000nnnn00001010
+    void inst_binary_sts_mach_gen(OpArgs inst);
+
+    // STS MACL, Rn
+    // 0000nnnn00011010
+    void inst_binary_sts_macl_gen(OpArgs inst);
+
+    // LDS Rm, PR
+    // 0100mmmm00101010
+    void inst_binary_lds_gen_pr(OpArgs inst);
+
+    // STS PR, Rn
+    // 0000nnnn00101010
+    void inst_binary_sts_pr_gen(OpArgs inst);
+
+    // LDS.L @Rm+, MACH
+    // 0100mmmm00000110
+    void inst_binary_ldsl_indgeninc_mach(OpArgs inst);
+
+    // LDS.L @Rm+, MACL
+    // 0100mmmm00010110
+    void inst_binary_ldsl_indgeninc_macl(OpArgs inst);
+
+    // STS.L MACH, @-Rn
+    // 0100mmmm00000010
+    void inst_binary_stsl_mach_inddecgen(OpArgs inst);
+
+    // STS.L MACL, @-Rn
+    // 0100mmmm00010010
+    void inst_binary_stsl_macl_inddecgen(OpArgs inst);
+
+    // LDS.L @Rm+, PR
+    // 0100mmmm00100110
+    void inst_binary_ldsl_indgeninc_pr(OpArgs inst);
+
+    // STS.L PR, @-Rn
+    // 0100nnnn00100010
+    void inst_binary_stsl_pr_inddecgen(OpArgs inst);
+
+    // MOV.B Rm, @Rn
+    // 0010nnnnmmmm0000
+    void inst_binary_movb_gen_indgen(OpArgs inst);
+
+    // MOV.W Rm, @Rn
+    // 0010nnnnmmmm0001
+    void inst_binary_movw_gen_indgen(OpArgs inst);
+
+    // MOV.L Rm, @Rn
+    // 0010nnnnmmmm0010
+    void inst_binary_movl_gen_indgen(OpArgs inst);
+
+    // MOV.B @Rm, Rn
+    // 0110nnnnmmmm0000
+    void inst_binary_movb_indgen_gen(OpArgs inst);
+
+    // MOV.W @Rm, Rn
+    // 0110nnnnmmmm0001
+    void inst_binary_movw_indgen_gen(OpArgs inst);
+
+    // MOV.L @Rm, Rn
+    // 0110nnnnmmmm0010
+    void inst_binary_movl_indgen_gen(OpArgs inst);
+
+    // MOV.B Rm, @-Rn
+    // 0010nnnnmmmm0100
+    void inst_binary_movb_gen_inddecgen(OpArgs inst);
+
+    // MOV.W Rm, @-Rn
+    // 0010nnnnmmmm0101
+    void inst_binary_movw_gen_inddecgen(OpArgs inst);
+
+    // MOV.L Rm, @-Rn
+    // 0010nnnnmmmm0110
+    void inst_binary_movl_gen_inddecgen(OpArgs inst);
+
+    // MOV.B @Rm+, Rn
+    // 0110nnnnmmmm0100
+    void inst_binary_movb_indgeninc_gen(OpArgs inst);
+
+    // MOV.W @Rm+, Rn
+    // 0110nnnnmmmm0101
+    void inst_binary_movw_indgeninc_gen(OpArgs inst);
+
+    // MOV.L @Rm+, Rn
+    // 0110nnnnmmmm0110
+    void inst_binary_movl_indgeninc_gen(OpArgs inst);
+
+    // MAC.L @Rm+, @Rn+
+    // 0000nnnnmmmm1111
+    void inst_binary_macl_indgeninc_indgeninc(OpArgs inst);
+
+    // MAC.W @Rm+, @Rn+
+    // 0100nnnnmmmm1111
+    void inst_binary_macw_indgeninc_indgeninc(OpArgs inst);
+
+    // MOV.B R0, @(disp, Rn)
+    // 10000000nnnndddd
+    void inst_binary_movb_r0_binind_disp_gen(OpArgs inst);
+
+    // MOV.W R0, @(disp, Rn)
+    // 10000001nnnndddd
+    void inst_binary_movw_r0_binind_disp_gen(OpArgs inst);
+
+    // MOV.L Rm, @(disp, Rn)
+    // 0001nnnnmmmmdddd
+    void inst_binary_movl_gen_binind_disp_gen(OpArgs inst);
+
+    // MOV.B @(disp, Rm), R0
+    // 10000100mmmmdddd
+    void inst_binary_movb_binind_disp_gen_r0(OpArgs inst);
+
+    // MOV.W @(disp, Rm), R0
+    // 10000101mmmmdddd
+    void inst_binary_movw_binind_disp_gen_r0(OpArgs inst);
+
+    // MOV.L @(disp, Rm), Rn
+    // 0101nnnnmmmmdddd
+    void inst_binary_movl_binind_disp_gen_gen(OpArgs inst);
+
+    // MOV.B Rm, @(R0, Rn)
+    // 0000nnnnmmmm0100
+    void inst_binary_movb_gen_binind_r0_gen(OpArgs inst);
+
+    // MOV.W Rm, @(R0, Rn)
+    // 0000nnnnmmmm0101
+    void inst_binary_movw_gen_binind_r0_gen(OpArgs inst);
+
+    // MOV.L Rm, @(R0, Rn)
+    // 0000nnnnmmmm0110
+    void inst_binary_movl_gen_binind_r0_gen(OpArgs inst);
+
+    // MOV.B @(R0, Rm), Rn
+    // 0000nnnnmmmm1100
+    void inst_binary_movb_binind_r0_gen_gen(OpArgs inst);
+
+    // MOV.W @(R0, Rm), Rn
+    // 0000nnnnmmmm1101
+    void inst_binary_movw_binind_r0_gen_gen(OpArgs inst);
+
+    // MOV.L @(R0, Rm), Rn
+    // 0000nnnnmmmm1110
+    void inst_binary_movl_binind_r0_gen_gen(OpArgs inst);
+
+    // MOV.B R0, @(disp, GBR)
+    // 11000000dddddddd
+    void inst_binary_movb_r0_binind_disp_gbr(OpArgs inst);
+
+    // MOV.W R0, @(disp, GBR)
+    // 11000001dddddddd
+    void inst_binary_movw_r0_binind_disp_gbr(OpArgs inst);
+
+    // MOV.L R0, @(disp, GBR)
+    // 11000010dddddddd
+    void inst_binary_movl_r0_binind_disp_gbr(OpArgs inst);
+
+    // MOV.B @(disp, GBR), R0
+    // 11000100dddddddd
+    void inst_binary_movb_binind_disp_gbr_r0(OpArgs inst);
+
+    // MOV.W @(disp, GBR), R0
+    // 11000101dddddddd
+    void inst_binary_movw_binind_disp_gbr_r0(OpArgs inst);
+
+    // MOV.L @(disp, GBR), R0
+    // 11000110dddddddd
+    void inst_binary_movl_binind_disp_gbr_r0(OpArgs inst);
+
+    // MOVA @(disp, PC), R0
+    // 11000111dddddddd
+    void inst_binary_mova_binind_disp_pc_r0(OpArgs inst);
+
+    // MOVCA.L R0, @Rn
+    // 0000nnnn11000011
+    void inst_binary_movcal_r0_indgen(OpArgs inst);
+
+    // FLDI0 FRn
+    // 1111nnnn10001101
+    void inst_unary_fldi0_fr(OpArgs inst);
+
+    // FLDI1 Frn
+    // 1111nnnn10011101
+    void inst_unary_fldi1_fr(OpArgs inst);
+
+    // FMOV FRm, FRn
+    // 1111nnnnmmmm1100
+    void inst_binary_fmov_fr_fr(OpArgs inst);
+
+    // FMOV.S @Rm, FRn
+    // 1111nnnnmmmm1000
+    void inst_binary_fmovs_indgen_fr(OpArgs inst);
+
+    // FMOV.S @(R0,Rm), FRn
+    // 1111nnnnmmmm0110
+    void inst_binary_fmovs_binind_r0_gen_fr(OpArgs inst);
+
+    // FMOV.S @Rm+, FRn
+    // 1111nnnnmmmm1001
+    void inst_binary_fmovs_indgeninc_fr(OpArgs inst);
+
+    // FMOV.S FRm, @Rn
+    // 1111nnnnmmmm1010
+    void inst_binary_fmovs_fr_indgen(OpArgs inst);
+
+    // FMOV.S FRm, @-Rn
+    // 1111nnnnmmmm1011
+    void inst_binary_fmovs_fr_inddecgen(OpArgs inst);
+
+    // FMOV.S FRm, @(R0, Rn)
+    // 1111nnnnmmmm0111
+    void inst_binary_fmovs_fr_binind_r0_gen(OpArgs inst);
+
+    // FMOV DRm, DRn
+    // 1111nnn0mmm01100
+    void inst_binary_fmov_dr_dr(OpArgs inst);
+
+    // FMOV @Rm, DRn
+    // 1111nnn0mmmm1000
+    void inst_binary_fmov_indgen_dr(OpArgs inst);
+
+    // FMOV @(R0, Rm), DRn
+    // 1111nnn0mmmm0110
+    void inst_binary_fmov_binind_r0_gen_dr(OpArgs inst);
+
+    // FMOV @Rm+, DRn
+    // 1111nnn0mmmm1001
+    void inst_binary_fmov_indgeninc_dr(OpArgs inst);
+
+    // FMOV DRm, @Rn
+    // 1111nnnnmmm01010
+    void inst_binary_fmov_dr_indgen(OpArgs inst);
+
+    // FMOV DRm, @-Rn
+    // 1111nnnnmmm01011
+    void inst_binary_fmov_dr_inddecgen(OpArgs inst);
+
+    // FMOV DRm, @(R0,Rn)
+    // 1111nnnnmmm00111
+    void inst_binary_fmov_dr_binind_r0_gen(OpArgs inst);
+
+    // FLDS FRm, FPUL
+    // 1111mmmm00011101
+    void inst_binary_flds_fr_fpul(OpArgs inst);
+
+    // FSTS FPUL, FRn
+    // 1111nnnn00001101
+    void inst_binary_fsts_fpul_fp(OpArgs inst);
+
+    // FABS FRn
+    // 1111nnnn01011101
+    void inst_unary_fabs_fr(OpArgs inst);
+
+    // FADD FRm, FRn
+    // 1111nnnnmmmm0000
+    void inst_binary_fadd_fr_fr(OpArgs inst);
+
+    // FCMP/EQ FRm, FRn
+    // 1111nnnnmmmm0100
+    void inst_binary_fcmpeq_fr_fr(OpArgs inst);
+
+    // FCMP/GT FRm, FRn
+    // 1111nnnnmmmm0101
+    void inst_binary_fcmpgt_fr_fr(OpArgs inst);
+
+    // FDIV FRm, FRn
+    // 1111nnnnmmmm0011
+    void inst_binary_fdiv_fr_fr(OpArgs inst);
+
+    // FLOAT FPUL, FRn
+    // 1111nnnn00101101
+    void inst_binary_float_fpul_fr(OpArgs inst);
+
+    // FMAC FR0, FRm, FRn
+    // 1111nnnnmmmm1110
+    void inst_trinary_fmac_fr0_fr_fr(OpArgs inst);
+
+    // FMUL FRm, FRn
+    // 1111nnnnmmmm0010
+    void inst_binary_fmul_fr_fr(OpArgs inst);
+
+    // FNEG FRn
+    // 1111nnnn01001101
+    void inst_unary_fneg_fr(OpArgs inst);
+
+    // FSQRT FRn
+    // 1111nnnn01101101
+    void inst_unary_fsqrt_fr(OpArgs inst);
+
+    // FSUB FRm, FRn
+    // 1111nnnnmmmm0001
+    void inst_binary_fsub_fr_fr(OpArgs inst);
+
+    // FTRC FRm, FPUL
+    // 1111mmmm00111101
+    void inst_binary_ftrc_fr_fpul(OpArgs inst);
+
+    // FABS DRn
+    // 1111nnn001011101
+    void inst_unary_fabs_dr(OpArgs inst);
+
+    // FADD DRm, DRn
+    // 1111nnn0mmm00000
+    void inst_binary_fadd_dr_dr(OpArgs inst);
+
+    // FCMP/EQ DRm, DRn
+    // 1111nnn0mmm00100
+    void inst_binary_fcmpeq_dr_dr(OpArgs inst);
+
+    // FCMP/GT DRm, DRn
+    // 1111nnn0mmm00101
+    void inst_binary_fcmpgt_dr_dr(OpArgs inst);
+
+    // FDIV DRm, DRn
+    // 1111nnn0mmm00011
+    void inst_binary_fdiv_dr_dr(OpArgs inst);
+
+    // FCNVDS DRm, FPUL
+    // 1111mmm010111101
+    void inst_binary_fcnvds_dr_fpul(OpArgs inst);
+
+    // FCNVSD FPUL, DRn
+    // 1111nnn010101101
+    void inst_binary_fcnvsd_fpul_dr(OpArgs inst);
+
+    // FLOAT FPUL, DRn
+    // 1111nnn000101101
+    void inst_binary_float_fpul_dr(OpArgs inst);
+
+    // FMUL DRm, DRn
+    // 1111nnn0mmm00010
+    void inst_binary_fmul_dr_dr(OpArgs inst);
+
+    // FNEG DRn
+    // 1111nnn001001101
+    void inst_unary_fneg_dr(OpArgs inst);
+
+    // FSQRT DRn
+    // 1111nnn001101101
+    void inst_unary_fsqrt_dr(OpArgs inst);
+
+    // FSUB DRm, DRn
+    // 1111nnn0mmm00001
+    void inst_binary_fsub_dr_dr(OpArgs inst);
+
+    // FTRC DRm, FPUL
+    // 1111mmm000111101
+    void inst_binary_ftrc_dr_fpul(OpArgs inst);
+
+    // LDS Rm, FPSCR
+    // 0100mmmm01101010
+    void inst_binary_lds_gen_fpscr(OpArgs inst);
+
+    // LDS Rm, FPUL
+    // 0100mmmm01011010
+    void inst_binary_gen_fpul(OpArgs inst);
+
+    // LDS.L @Rm+, FPSCR
+    // 0100mmmm01100110
+    void inst_binary_ldsl_indgeninc_fpscr(OpArgs inst);
+
+    // LDS.L @Rm+, FPUL
+    // 0100mmmm01010110
+    void inst_binary_ldsl_indgeninc_fpul(OpArgs inst);
+
+    // STS FPSCR, Rn
+    // 0000nnnn01101010
+    void inst_binary_sts_fpscr_gen(OpArgs inst);
+
+    // STS FPUL, Rn
+    // 0000nnnn01011010
+    void inst_binary_sts_fpul_gen(OpArgs inst);
+
+    // STS.L FPSCR, @-Rn
+    // 0100nnnn01100010
+    void inst_binary_stsl_fpscr_inddecgen(OpArgs inst);
+
+    // STS.L FPUL, @-Rn
+    // 0100nnnn01010010
+    void inst_binary_stsl_fpul_inddecgen(OpArgs inst);
+
+    // FMOV DRm, XDn
+    // 1111nnn1mmm01100
+    void inst_binary_fmove_dr_xd(OpArgs inst);
+
+    // FMOV XDm, DRn
+    // 1111nnn0mmm11100
+    void inst_binary_fmov_xd_dr(OpArgs inst);
+
+    // FMOV XDm, XDn
+    // 1111nnn1mmm11100
+    void inst_binary_fmov_xd_xd(OpArgs inst);
+
+    // FMOV @Rm, XDn
+    // 1111nnn1mmmm1000
+    void inst_binary_fmov_indgen_xd(OpArgs inst);
+
+    // FMOV @Rm+, XDn
+    // 1111nnn1mmmm1001
+    void inst_binary_fmov_indgeninc_xd(OpArgs inst);
+
+    // FMOV @(R0, Rn), XDn
+    // 1111nnn1mmmm0110
+    void inst_binary_fmov_binind_r0_gen_xd(OpArgs inst);
+
+    // FMOV XDm, @Rn
+    // 1111nnnnmmm11010
+    void inst_binary_fmov_xd_indgen(OpArgs inst);
+
+    // FMOV XDm, @-Rn
+    // 1111nnnnmmm11011
+    void inst_binary_fmov_xd_inddecgen(OpArgs inst);
+
+    // FMOV XDm, @(R0, Rn)
+    // 1111nnnnmmm10111
+    void inst_binary_fmov_xs_binind_r0_gen(OpArgs inst);
+
+    // FIPR FVm, FVn - vector dot product
+    // 1111nnmm11101101
+    void inst_binary_fipr_fv_fv(OpArgs inst);
+
+    // FTRV MXTRX, FVn - multiple vector by matrix
+    // 1111nn0111111101
+    void inst_binary_fitrv_mxtrx_fv(OpArgs inst);
 
     static struct InstOpcode {
         char const *fmt;
