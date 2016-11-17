@@ -49,82 +49,103 @@ PtrnList get_patterns() {
      ** operators which take 1 argument (general-purpose register):
      **
      **************************************************************************/
+
+    // MOVT Rn
     // 0000nnnn00101001
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(movt), Ptrn_GenReg,
                            0x0029, 0xf0ff, 8>));
 
+    // CMP/PZ Rn
     // 0100nnnn00010001
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(cmppz), Ptrn_GenReg,
                            0x4011, 0xf0ff, 8>));
 
+    // CMP/PL Rn
     // 0100nnnn00010101
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(cmppl), Ptrn_GenReg,
                            0x4015, 0xf0ff, 8>));
 
+    // DT Rn
     // 0100nnnn00010000
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(dt), Ptrn_GenReg,
                            0x4010, 0xf0ff, 8>));
 
+    // ROTL Rn
     // 0100nnnn00000100
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(rotl), Ptrn_GenReg,
                            0x4004, 0xf0ff, 8>));
 
+    // ROTR Rn
     // 0100nnnn00000101
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(rotr), Ptrn_GenReg,
                            0x4005, 0xf0ff, 8>));
 
+    // ROTCL Rn
     // 0100nnnn00100100
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(rotcl), Ptrn_GenReg,
                            0x4024, 0xf0ff, 8>));
 
+    // ROTCR Rn
     // 0100nnnn00100101
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(rotcr), Ptrn_GenReg,
                            0x4025, 0xf0ff, 8>));
 
+    // SHAL Rn
     // 0100nnnn00200000
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shal), Ptrn_GenReg,
                            0x4020, 0xf0ff, 8>));
 
+    // SHAR Rn
     // 0100nnnn00100001
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shar), Ptrn_GenReg,
                            0x4021, 0xf0ff, 8>));
 
+    // SHLL Rn
     // 0100nnnn00000000
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shll), Ptrn_GenReg,
                            0x4000, 0xf0ff, 8>));
 
+    // SHLR Rn
     // 0100nnnn00000001
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shlr), Ptrn_GenReg,
                            0x4001, 0xf0ff, 8>));
 
+    // SHLL2 Rn
     // 0100nnnn00001000
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shll2), Ptrn_GenReg,
                            0x4008, 0xf0ff, 8>));
 
+    // SHLR2 Rn
     // 0100nnnn00001001
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shlr2), Ptrn_GenReg,
                            0x4009, 0xf0ff, 8>));
 
+    // SHLL8 Rn
     // 0100nnnn00011000
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shll8), Ptrn_GenReg,
                            0x4018, 0xf0ff, 8>));
 
+    // SHLR8 Rn
     // 0100nnnn00011001
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shlr8), Ptrn_GenReg,
                            0x4019, 0xf0ff, 8>));
 
+    // SHLL16 Rn
     // 0100nnnn00101000
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shll16), Ptrn_GenReg,
                            0x4028, 0xf0ff, 8>));
 
+    // SHLR16 Rn
     // 0100nnnn00101001
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(shlr16), Ptrn_GenReg,
                            0x4029, 0xf0ff, 8>));
 
+    // BRAF Rn
     // 0000nnnn00100011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(braf), Ptrn_GenReg,
                            0x0023, 0xf0ff, 8>));
 
+    // BSRF Rn
     // 0000nnnn00000011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bsrf), Ptrn_GenReg,
                            0x0003, 0xf0ff, 8>));
@@ -135,62 +156,81 @@ PtrnList get_patterns() {
      ** opcode that only takes an immediate value as input
      **
      **************************************************************************/
+    // CMP/EQ #imm, R0
     // 10001000iiiiiiii
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(cmpeq), Ptrn_immed<0xff>,
-                           0x8800, 0xff00, 0>));
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(cmpeq), Ptrn_immed<0xff>,
+                           Ptrn_R0Reg, 0x8800, 0xff00, 0, 0>));
 
+    // AND.B #imm, @(R0, GBR)
     // 11001101iiiiiiii
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(andb), Ptrn_immed<0xff>,
-                           0xcd00, 0xff00, 0>));
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(andb), Ptrn_immed<0xff>,
+                           Ptrn_BinaryInd<Ptrn_R0Reg, Ptrn_GbrReg, 0, 0, 0>,
+			   0xcd00, 0xff00, 0, 0>));
 
+    // OR.B #imm, @(R0, GBR)
     // 11001111iiiiiiii
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(orb), Ptrn_immed<0xff>,
-                           0xcf00, 0xff00, 0>));
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(orb), Ptrn_immed<0xff>,
+                           Ptrn_BinaryInd<Ptrn_R0Reg, Ptrn_GbrReg, 0, 0, 0>,
+			   0xcf00, 0xff00, 0>));
 
+    // OR #imm, R0
     // 11001011iiiiiiii
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(or), Ptrn_immed<0xff>,
-                           0xcb00, 0xff00, 0>));
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(or), Ptrn_immed<0xff>,
+			   Ptrn_R0Reg, 0xcb00, 0xff00, 0>));
 
+    // TST #imm, R0
     // 11001000iiiiiiii
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(tst), Ptrn_immed<0xff>,
-                           0xc800, 0xff00, 0>));
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(tst), Ptrn_immed<0xff>,
+                           Ptrn_R0Reg, 0xc800, 0xff00, 0, 0>));
 
+    // TST.B #imm, @(R0, GBR)
     // 11001100iiiiiiii
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(tstb), Ptrn_immed<0xff>,
-                           0xcc00, 0xff00, 0>));
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(tstb), Ptrn_immed<0xff>,
+                           Ptrn_BinaryInd<Ptrn_R0Reg, Ptrn_GbrReg, 0, 0, 0>,
+			   0xcc00, 0xff00, 0, 0>));
 
+    // XOR #imm, R0
     // 11001010iiiiiiii
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(xor), Ptrn_immed<0xff>,
-                           0xca00, 0xff00, 0>));
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(xor), Ptrn_immed<0xff>,
+                           Ptrn_R0Reg, 0xca00, 0xff00, 0, 0>));
 
+    // XOR.B #imm, @(R0, GBR)
     // 11001110iiiiiiii
-    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(xorb), Ptrn_immed<0xff>,
-                           0xce00, 0xff00, 0>));
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(xorb), Ptrn_immed<0xff>,
+                           Ptrn_BinaryInd<Ptrn_R0Reg, Ptrn_GbrReg, 0, 0, 0>,
+			   0xce00, 0xff00, 0, 0>));
 
+    // BF label
     // 10001011dddddddd
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bf), Ptrn_Disp<0xff>,
                            0x8b00, 0xff00, 0>));
 
+    // BF/S label
     // 10001111dddddddd
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bfs), Ptrn_Disp<0xff>,
                            0x8f00, 0xff00, 0>));
 
+    // BT label
     // 10001001dddddddd
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bt), Ptrn_Disp<0xff>,
                            0x8900, 0xff00, 0>));
 
+    // BT/S label
     // 10001101dddddddd
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bts), Ptrn_Disp<0xff>,
                            0x8d00, 0xff00, 0>));
 
+    // BRA label
     // 1010dddddddddddd
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bra), Ptrn_Disp<0xfff>,
                            0xa000, 0xf000, 0>));
 
+    // BSR label
     // 1011dddddddddddd
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(bsr), Ptrn_Disp<0xfff>,
                            0xb000, 0xf000, 0>));
 
+    // TRAPA #immed
     // 11000011iiiiiiii
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(trapa), Ptrn_immed<0x0ff>,
                            0xc300, 0xff00, 0>));
@@ -201,26 +241,32 @@ PtrnList get_patterns() {
      ** address of its sole argument.
      **
      **************************************************************************/
+    // TAS.B @Rn
     // 0100nnnn00011011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(tasb), Ptrn_Ind<Ptrn_GenReg>,
                            0x401b, 0xf0ff, 8>));
 
+    // OCBI @Rn
     // 0000nnnn10100011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(ocbi), Ptrn_Ind<Ptrn_GenReg>,
                            0x00a3, 0xf0ff, 8>));
 
+    // OCBP @Rn
     // 0000nnnn10100011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(ocbp), Ptrn_Ind<Ptrn_GenReg>,
                            0x00b3, 0xf0ff, 8>));
 
+    // PREF @Rn
     // 0000nnnn10000011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(pref), Ptrn_Ind<Ptrn_GenReg>,
                            0x0083, 0xf0ff, 8>));
 
+    // JMP @Rn
     // 0100nnnn00101011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(jmp),
                            Ptrn_Ind<Ptrn_GenReg>, 0x402b, 0xf0ff, 8>));
 
+    // JSR @Rn
     // 0100nnnn00001011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(jsr),
                            Ptrn_Ind<Ptrn_GenReg>, 0x400b, 0xf0ff, 8>));
@@ -230,118 +276,144 @@ PtrnList get_patterns() {
      ** LDC/STC instructions
      **
      **************************************************************************/
+    // LDC Rm, SR
     // 0100mmmm00001110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldc), Ptrn_GenReg,
                            Ptrn_SrReg, 0x400e, 0xf0ff, 8, 0>));
 
+    // LDC Rm, GBR
     // 0100mmmm00011110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldc), Ptrn_GenReg,
                            Ptrn_GbrReg, 0x401e, 0xf0ff, 8, 0>));
 
+    // LDC Rm, VBR
     // 0100mmmm00101110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldc), Ptrn_GenReg,
                            Ptrn_VbrReg, 0x402e, 0xf0ff, 8, 0>));
 
+    // LDC Rm, SSR
     // 0100mmmm00111110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldc), Ptrn_GenReg,
                            Ptrn_SsrReg, 0x403e, 0xf0ff, 8, 0>));
 
+    // LDC Rm, SPC
     // 0100mmmm01001110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldc), Ptrn_GenReg,
                            Ptrn_SpcReg, 0x404e, 0xf0ff, 8, 0>));
 
+    // LDC Rm, DBR
     // 0100mmmm11111010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldc), Ptrn_GenReg,
                            Ptrn_DbrReg, 0x40fa, 0xf0ff, 8, 0>));
 
-    // 0000mmmm00000010
+    // STC SR, Rn
+    // 0000nnnn00000010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stc), Ptrn_SrReg,
                            Ptrn_GenReg, 0x0002, 0xf0ff, 0, 8>));
 
-    // 0000mmmm00010010
+    // STC GBR, Rn
+    // 0000nnnn00010010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stc), Ptrn_GbrReg,
                            Ptrn_GenReg, 0x0012, 0xf0ff, 0, 8>));
 
-    // 0000mmmm00100010
+    // STC VBR, Rn
+    // 0000nnnn00100010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stc), Ptrn_VbrReg,
                            Ptrn_GenReg, 0x0022, 0xf0ff, 0, 8>));
 
-    // 0000mmmm01000010
+    // STC SSR, Rn
+    // 0000nnnn01000010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stc), Ptrn_SsrReg,
                            Ptrn_GenReg, 0x0032, 0xf0ff, 0, 8>));
 
-    // 0000mmmm01000010
+    // STC SPC, Rn
+    // 0000nnnn01000010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stc), Ptrn_SpcReg,
                            Ptrn_GenReg, 0x0042, 0xf0ff, 0, 8>));
 
-    // 0000mmmm00111010
+    // STC SGR, Rn
+    // 0000nnnn00111010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stc), Ptrn_SgrReg,
                            Ptrn_GenReg, 0x003a, 0xf0ff, 0, 8>));
 
-    // 0000mmmm11111010
+    // STC DBR, Rn
+    // 0000nnnn11111010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stc), Ptrn_DbrReg,
                            Ptrn_GenReg, 0x00fa, 0xf0ff, 0, 8>));
 
+    // LDC.L @Rm+, SR
     // 0100mmmm00000111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldcl),
                            Ptrn_IndInc<Ptrn_GenReg>, Ptrn_SrReg,
                            0x4007, 0xf0ff, 8, 0>));
 
+    // LDC.L @Rm+, GBR
     // 0100mmmm00010111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldcl),
                            Ptrn_IndInc<Ptrn_GenReg>, Ptrn_GbrReg, 0x4017,
                            0xf0ff, 8, 0>));
 
+    // LDC.L @Rm+, VBR
     // 0100mmmm00100111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldcl),
                            Ptrn_IndInc<Ptrn_GenReg>, Ptrn_VbrReg,
                            0x4027, 0xf0ff, 8, 0>));
 
+    // LDC.L @Rm+, SSR
     // 0100mmmm00110111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldcl),
                            Ptrn_IndInc<Ptrn_GenReg>, Ptrn_SsrReg,
                            0x4037, 0xf0ff, 8, 0>));
 
+    // LDC.L @Rm+, SPC
     // 0100mmmm01000111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldcl),
                            Ptrn_IndInc<Ptrn_GenReg>, Ptrn_SpcReg,
                            0x4047, 0xf0ff, 8, 0>));
 
+    // LDC.L @Rm+, DBR
     // 0100mmmm11110110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(ldcl),
                            Ptrn_IndInc<Ptrn_GenReg>, Ptrn_DbrReg,
                            0x40f6, 0xf0ff, 8, 0>));
 
+    // STC.L SR, @-Rn
     // 0100nnnn00000011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stcl),
                            Ptrn_SrReg, Ptrn_DecInd<Ptrn_GenReg>,
                            0x4003, 0xf0ff, 0, 8>));
 
+    // STC.L GBR, @-Rn
     // 0100nnnn00010011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stcl),
                            Ptrn_GbrReg, Ptrn_DecInd<Ptrn_GenReg>,
                            0x4013, 0xf0ff, 0, 8>));
 
+    // STC.L VBR, @-Rn
     // 0100nnnn00100011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stcl),
                            Ptrn_VbrReg, Ptrn_DecInd<Ptrn_GenReg>,
                            0x4023, 0xf0ff, 0, 8>));
 
+    // STC.L SSR, @-Rn
     // 0100nnnn00110011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stcl),
                            Ptrn_SsrReg, Ptrn_DecInd<Ptrn_GenReg>,
                            0x4033, 0xf0ff, 0, 8>));
 
+    // STC.L SPC, @-Rn
     // 0100nnnn01000011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stcl),
                            Ptrn_SpcReg, Ptrn_DecInd<Ptrn_GenReg>,
                            0x4043, 0xf0ff, 0, 8>));
 
+    // STC.L SGR, @-Rn
     // 0100nnnn00110010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stcl),
                            Ptrn_SgrReg, Ptrn_DecInd<Ptrn_GenReg>,
                            0x4032, 0xf0ff, 0, 8>));
 
+    // STC.L DBR, @-Rn
     // 0100nnnn11110010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stcl),
                            Ptrn_DbrReg, Ptrn_DecInd<Ptrn_GenReg>,
@@ -353,10 +425,12 @@ PtrnList get_patterns() {
      ** register as output
      **
      **************************************************************************/
+    // MOV #imm, Rn
     // 1110nnnniiiiiiii
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(mov), Ptrn_immed<0x00ff>,
                            Ptrn_GenReg, 0xe000, 0xf000, 0, 8>));
 
+    // ADD #imm, Rn
     // 0111nnnniiiiiiii
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(add), Ptrn_immed<0x00ff>,
                            Ptrn_GenReg, 0x7000, 0xf000, 0, 8>));
@@ -368,12 +442,13 @@ PtrnList get_patterns() {
      ** given general-purpose register (the destination).
      **
      **************************************************************************/
-
+    // MOV.W @(disp, PC), Rn
     // 1001nnnndddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw), Ptrn_BinaryInd<
                            Ptrn_Disp<0x00ff>, Ptrn_PcReg, 0x0000, 0, 0>,
                            Ptrn_GenReg, 0x9000, 0xf000, 0, 8>));
 
+    // MOV.L @(disp, PC), Rn
     // 1101nnnndddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movl), Ptrn_BinaryInd<
                            Ptrn_Disp<0x00ff>, Ptrn_PcReg, 0x0000, 0, 0>,
@@ -385,146 +460,182 @@ PtrnList get_patterns() {
      ** general-purpose register as a destination
      **
      **************************************************************************/
+    // MOV.W Rm, Rn
     // 0110nnnnmmmm0011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw), Ptrn_GenReg,
                            Ptrn_GenReg, 0x6003, 0xf00f, 4, 8>));
 
+    // SWAP.B Rm, Rn
     // 0110nnnnmmmm1000
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(swapb), Ptrn_GenReg,
                            Ptrn_GenReg, 0x6008, 0xf00f, 4, 8>));
 
+    // SWAP.W Rm, Rn
     // 0110nnnnmmmm1001
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(swapw), Ptrn_GenReg,
                            Ptrn_GenReg, 0x6009, 0xf00f, 4, 8>));
 
+    // XTRCT Rm, Rn
     // 0110nnnnmmmm1101
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(xtrct), Ptrn_GenReg,
                            Ptrn_GenReg, 0x200d, 0xf00f, 4, 8>));
 
+    // ADD Rm, Rn
     // 0111nnnnmmmm1100
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(add), Ptrn_GenReg,
                            Ptrn_GenReg, 0x300c, 0xf00f, 4, 8>));
 
+    // ADDC Rm, Rn
     // 0111nnnnmmmm1110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(addc), Ptrn_GenReg,
                            Ptrn_GenReg, 0x300e, 0xf00f, 4, 8>));
 
+    // ADDV Rm, Rn
     // 0111nnnnmmmm1111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(addv), Ptrn_GenReg,
                            Ptrn_GenReg, 0x300f, 0xf00f, 4, 8>));
 
+    // CMP/EQ Rm, Rn
     // 0011nnnnmmmm0000
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(cmpeq), Ptrn_GenReg,
                            Ptrn_GenReg, 0x3000, 0xf00f, 4, 8>));
 
+    // CMP/HS Rm, Rn
     // 0011nnnnmmmm0010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(cmphs), Ptrn_GenReg,
                            Ptrn_GenReg, 0x3002, 0xf00f, 4, 8>));
 
+    // CMP/GE Rm, Rn
     // 0011nnnnmmmm0011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(cmpge), Ptrn_GenReg,
                            Ptrn_GenReg, 0x3003, 0xf00f, 4, 8>));
 
+    // CMP/HI Rm, Rn
     // 0011nnnnmmmm0110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(cmphi), Ptrn_GenReg,
                            Ptrn_GenReg, 0x3006, 0xf00f, 4, 8>));
 
+    // CMP/GT Rm, Rn
     // 0011nnnnmmmm0111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(cmpgt), Ptrn_GenReg,
                            Ptrn_GenReg, 0x3007, 0xf00f, 4, 8>));
 
+    // CMP/STR Rm, Rn
     // 0010nnnnmmmm1100
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(cmpstr), Ptrn_GenReg,
                            Ptrn_GenReg, 0x200c, 0xf00f, 4, 8>));
 
+    // DIV1 Rm, Rn
     // 0011nnnnmmmm0100
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(div1), Ptrn_GenReg,
                            Ptrn_GenReg, 0x3004, 0xf00f, 4, 8>));
 
+    // DIV0S Rm, Rn
     // 0010nnnnmmmm0111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(div0s), Ptrn_GenReg,
                            Ptrn_GenReg, 0x2007, 0xf00f, 4, 8>));
 
+    // DMULS.L Rm, Rn
     // 0011nnnnmmmm1101
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(dmulsl), Ptrn_GenReg,
                            Ptrn_GenReg, 0x300d, 0xf00f, 4, 8>));
 
+    // DMULU.L Rm, Rn
     // 0011nnnnmmmm0101
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(dmulul), Ptrn_GenReg,
                            Ptrn_GenReg, 0x3005, 0xf00f, 4, 8>));
 
+    // EXTS.B Rm, Rn
     // 0110nnnnmmmm1110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(extsb), Ptrn_GenReg,
                            Ptrn_GenReg, 0x600e, 0xf00f, 4, 8>));
 
+    // EXTS.W Rm, Rn
     // 0110nnnnmmmm1111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(extsw), Ptrn_GenReg,
                            Ptrn_GenReg, 0x600f, 0xf00f, 4, 8>));
 
+    // EXTU.B Rm, Rn
     // 0110nnnnmmmm1100
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(extub), Ptrn_GenReg,
                            Ptrn_GenReg, 0x600c, 0xf00f, 4, 8>));
 
+    // EXTU.W Rm, Rn
     // 0110nnnnmmmm1101
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(extuw), Ptrn_GenReg,
                            Ptrn_GenReg, 0x600d, 0xf00f, 4, 8>));
 
+    // MUL.L Rm, Rn
     // 0000nnnnmmmm0111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(mull), Ptrn_GenReg,
                            Ptrn_GenReg, 0x0007, 0xf00f, 4, 8>));
 
+    // MULS.W Rm, Rn
     // 0010nnnnmmmm1111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(mulsw), Ptrn_GenReg,
                            Ptrn_GenReg, 0x200f, 0xf00f, 4, 8>));
 
+    // MULU.W Rm, Rn
     // 0010nnnnmmmm1110
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(muluw), Ptrn_GenReg,
                            Ptrn_GenReg, 0x200e, 0xf00f, 4, 8>));
 
+    // NEG Rm, Rn
     // 0110nnnnmmmm1011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(neg), Ptrn_GenReg,
                            Ptrn_GenReg, 0x600b, 0xf00f, 4, 8>));
 
+    // NEGC Rm, Rn
     // 0110nnnnmmmm1010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(negc), Ptrn_GenReg,
                            Ptrn_GenReg, 0x600a, 0xf00f, 4, 8>));
 
+    // SUB Rm, Rn
     // 0011nnnnmmmm1000
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(sub), Ptrn_GenReg,
                            Ptrn_GenReg, 0x3008, 0xf00f, 4, 8>));
 
+    // SUBC Rm, Rn
     // 0011nnnnmmmm1010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(subc), Ptrn_GenReg,
                            Ptrn_GenReg, 0x300a, 0xf00f, 4, 8>));
 
+    // SUBV Rm, Rn
     // 0011nnnnmmmm1011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(subv), Ptrn_GenReg,
                            Ptrn_GenReg, 0x300b, 0xf00f, 4, 8>));
 
+    // AND Rm, Rn
     // 0010nnnnmmmm1001
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(and), Ptrn_GenReg,
                            Ptrn_GenReg, 0x2009, 0xf00f, 4, 8>));
 
+    // NOT Rm, Rn
     // 0110nnnnmmmm0111
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(not), Ptrn_GenReg,
                            Ptrn_GenReg, 0x6007, 0xf00f, 4, 8>));
 
+    // OR Rm, Rn
     // 0010nnnnmmmm1011
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(or), Ptrn_GenReg,
                            Ptrn_GenReg, 0x200b, 0xf00f, 4, 8>));
 
+    // TST Rm, Rn
     // 0010nnnnmmmm1000
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(tst), Ptrn_GenReg,
                            Ptrn_GenReg, 0x2008, 0xf00f, 4, 8>));
 
+    // XOR Rm, Rn
     // 0010nnnnmmmm1010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(xor), Ptrn_GenReg,
                            Ptrn_GenReg, 0x200a, 0xf00f, 4, 8>));
 
+    // SHAD Rm, Rn
     // 0100nnnnmmmm1100
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(shad), Ptrn_GenReg,
                            Ptrn_GenReg, 0x400c, 0xf00f, 4, 8>));
 
+    // SHLD Rm, Rn
     // 0100nnnnmmmm1101
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(shld), Ptrn_GenReg,
                            Ptrn_GenReg, 0x400c, 0xf00f, 4, 8>));
