@@ -30,6 +30,8 @@ option(ENABLE_SH4_OCACHE "emulate the sh4's operand cache" ON)
 
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mem.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/Memory.cpp")
 
 if (ENABLE_SH4_ICACHE)
