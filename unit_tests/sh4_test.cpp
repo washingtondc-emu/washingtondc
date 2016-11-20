@@ -560,7 +560,7 @@ int run_tests() {
     }
 
     double percent = 100.0 * double(n_success) / double(n_tests);
-    std::cout << tests.size() << " tests run - " << n_success <<
+    std::cout << std::dec << tests.size() << " tests run - " << n_success <<
         " successes " << "(" << percent << "%)" << std::endl;
 
     if (n_success == n_tests)
