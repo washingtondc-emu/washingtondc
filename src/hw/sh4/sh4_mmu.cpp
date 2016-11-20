@@ -20,6 +20,10 @@
  *
  ******************************************************************************/
 
+#ifndef ENABLE_SH4_MMU
+#error this file cannot be built with the sh4 MMU disabled!
+#endif
+
 #include "BaseException.hpp"
 
 #include "sh4.hpp"

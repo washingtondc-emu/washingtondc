@@ -20,6 +20,10 @@
  *
  ******************************************************************************/
 
+#ifndef ENABLE_SH4_ICACHE
+#error this file cannot be built with the sh4 instruction cache disabled!
+#endif
+
 #include <cstring>
 
 #include "sh4.hpp"

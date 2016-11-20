@@ -23,6 +23,10 @@
 #ifndef OCACHE_HPP_
 #define OCACHE_HPP_
 
+#ifndef ENABLE_SH4_OCACHE
+#error this file cannot be built with the sh4 operand cache disabled!
+#endif
+
 #include <boost/cstdint.hpp>
 
 #include "types.hpp"

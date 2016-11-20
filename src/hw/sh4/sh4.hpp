@@ -174,11 +174,11 @@ private:
     static const unsigned ITLB_ENT_PPN_SHIFT = 9;
     static const unsigned ITLB_ENT_PPN_MASK = 0x7ffff << ITLB_ENT_PPN_SHIFT;
 
-#if ENABLE_SH4_ICACHE
+#ifdef ENABLE_SH4_ICACHE
     Icache *inst_cache;
 #endif
 
-#if ENABLE_SH4_OCACHE
+#ifdef ENABLE_SH4_OCACHE
     Ocache *op_cache;
 #endif
 
