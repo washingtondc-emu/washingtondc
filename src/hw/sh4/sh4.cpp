@@ -37,8 +37,11 @@
 Sh4::Sh4(Memory *mem) {
     this->mem = mem;
 
+#ifdef ENABLE_SH4_MMU
     memset(utlb, 0, sizeof(utlb));
     memset(itlb, 0, sizeof(itlb));
+#endif
+
     memset(&reg, 0, sizeof(reg));
     memset(&mmu, 0, sizeof(mmu));
     memset(&cache_reg, 0, sizeof(cache_reg));

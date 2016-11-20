@@ -278,6 +278,7 @@ private:
     bool oix, iix, wt;
 };
 
+#ifdef ENABLE_SH4_MMU
 /*
  * Set up an mmu mapping, then run through every possible address (in P1 area)
  * and verify that either there was a Data TLB miss exception or the read/write
@@ -405,6 +406,7 @@ private:
     int offset;
     int page_sz;
 };
+#endif
 
 typedef std::list<Test*> TestList;
 
@@ -526,6 +528,7 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
     tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>(
                         RandGen8(), cpu, ram, 3, true, true, true));
 
+#ifdef ENABLE_SH4_MMU
     for (int page_sz = 0; page_sz < 4; page_sz++) {
         tests.push_back(new MmuUtlbMissTest<boost::uint8_t, RandGen8>(
                             RandGen8(), 0, page_sz, cpu, ram));
@@ -536,6 +539,7 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
         tests.push_back(new MmuUtlbMissTest<boost::uint64_t, RandGen64>(
                             RandGen64(), 0, page_sz, cpu, ram));
     }
+#endif
 }
 
 void cleanup_tests() {

@@ -27,10 +27,10 @@ set(WashingtonDC_VERSION_MINOR 1)
 
 option(ENABLE_SH4_ICACHE "emulate the sh4's instruction cache" ON)
 option(ENABLE_SH4_OCACHE "emulate the sh4's operand cache" ON)
+option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)
 
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mem.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/Memory.cpp")
 
@@ -42,6 +42,11 @@ endif()
 if (ENABLE_SH4_OCACHE)
     add_definitions(-DENABLE_SH4_OCACHE)
     set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.cpp")
+endif()
+
+if (ENABLE_SH4_MMU)
+    add_definitions(-DENABLE_SH4_MMU)
+    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.cpp")
 endif()
 
 set(sh4asm_sources "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"

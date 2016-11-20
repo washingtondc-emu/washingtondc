@@ -174,6 +174,17 @@ private:
     static const unsigned ITLB_ENT_PPN_SHIFT = 9;
     static const unsigned ITLB_ENT_PPN_MASK = 0x7ffff << ITLB_ENT_PPN_SHIFT;
 
+#if ENABLE_SH4_ICACHE
+    Icache *inst_cache;
+#endif
+
+#if ENABLE_SH4_OCACHE
+    Ocache *op_cache;
+#endif
+
+    enum VirtMemArea get_mem_area(addr32_t addr);
+
+#ifdef ENABLE_SH4_MMU
     struct utlb_entry {
         boost::uint32_t key;
         boost::uint32_t ent;
@@ -189,16 +200,6 @@ private:
 
     static const size_t ITLB_SIZE = 4;
     struct itlb_entry itlb[ITLB_SIZE];
-
-#if ENABLE_SH4_ICACHE
-    Icache *inst_cache;
-#endif
-
-#if ENABLE_SH4_OCACHE
-    Ocache *op_cache;
-#endif
-
-    enum VirtMemArea get_mem_area(addr32_t addr);
 
     /*
      * Parameter to utlb_search that tells it what kind of exception to raise
@@ -252,6 +253,8 @@ private:
      * access the page referenced by the returned itlb_entry.
      */
     struct itlb_entry *itlb_search(addr32_t vaddr);
+
+#endif
 
     /*
      * From within the CPU, these functions should be called instead of

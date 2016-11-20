@@ -58,6 +58,7 @@ int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
     case AREA_P0:
     case AREA_P3:
         if (mmu.mmucr & MMUCR_AT_MASK) {
+#ifdef ENABLE_SH4_MMU
             struct utlb_entry *utlb_ent = utlb_search(addr, UTLB_WRITE);
 
             if (!utlb_ent)
@@ -148,6 +149,10 @@ int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                     return 1;
                 }
             }
+#else // ifdef ENABLE_SH4_MMU
+                throw UnimplementedError("MMU (run cmake with "
+                                         "-DENABLE_SH4_MMU=ON and rebuild)");
+#endif
         } else {
 #ifdef ENABLE_SH4_OCACHE
             if (cache_reg.ccr & CCR_WT_MASK) {
@@ -220,6 +225,7 @@ int Sh4::read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
     case AREA_P0:
     case AREA_P3:
         if (mmu.mmucr & MMUCR_AT_MASK) {
+#ifdef ENABLE_SH4_MMU
             struct utlb_entry *utlb_ent = utlb_search(addr, UTLB_READ);
 
             if (!utlb_ent)
@@ -257,6 +263,11 @@ int Sh4::read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
                 return mem->read(data, addr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
             }
+#endif
+#else // ifdef ENABLE_SH4_MMU
+	    throw UnimplementedError("MMU (run cmake with "
+				     "-DENABLE_SH4_MMU=ON and rebuild)");
+
 #endif
         } else {
 #ifdef ENABLE_SH4_OCACHE
@@ -325,6 +336,7 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
     case AREA_P0:
     case AREA_P3:
         if (mmu.mmucr & MMUCR_AT_MASK) {
+#ifdef ENABLE_SH4_MMU
             struct itlb_entry *itlb_ent = itlb_search(addr);
 
             if (!itlb_ent)
@@ -350,6 +362,10 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
                 }
 #endif
             }
+#else // ifdef ENABLE_SH4_MMU
+	    throw UnimplementedError("MMU (run cmake with "
+				     "-DENABLE_SH4_MMU=ON and rebuild)");
+#endif
         } else {
 #ifdef ENABLE_SH4_ICACHE
             if (cache_reg.ccr & CCR_ICE_MASK) {
