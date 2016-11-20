@@ -193,7 +193,10 @@ private:
 #if ENABLE_SH4_ICACHE
     Icache *inst_cache;
 #endif
+
+#if ENABLE_SH4_OCACHE
     Ocache *op_cache;
+#endif
 
     enum VirtMemArea get_mem_area(addr32_t addr);
 

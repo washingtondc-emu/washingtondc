@@ -40,13 +40,18 @@ Sh4::Sh4(Memory *mem) {
 #ifdef ENABLE_SH4_ICACHE
     this->inst_cache = new Icache(this, mem);
 #endif
+
+#ifdef ENABLE_SH4_OCACHE
     this->op_cache = new Ocache(this, mem);
+#endif
 
     compile_instructions();
 }
 
 Sh4::~Sh4() {
+#ifdef ENABLE_SH4_OCACHE
     delete op_cache;
+#endif
 
 #ifdef ENABLE_SH4_ICACHE
     delete inst_cache;
@@ -93,6 +98,7 @@ int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                     // page is marked as read-write
 
                     if (utlb_ent->ent & UTLB_ENT_D_MASK) {
+#ifdef ENABLE_SH4_OCACHE
                         if ((utlb_ent->ent & UTLB_ENT_C_MASK) &&
                             (cache_reg.ccr & CCR_OCE_MASK)) {
                             // page is cacheable and the cache is enabled
@@ -108,9 +114,12 @@ int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                                                                 cache_as_ram);
                             }
                         } else {
+#endif
                             // don't use the cache
                             return mem->write(&data, addr & 0x1fffffff, len);
+#ifdef ENABLE_SH4_OCACHE
                         }
+#endif
                     } else {
                         set_exception(EXCP_INITIAL_PAGE_WRITE);
                         mmu.tea = addr;
@@ -139,6 +148,7 @@ int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                 }
 
                 if (utlb_ent->ent & UTLB_ENT_D_MASK) {
+#ifdef ENABLE_SH4_OCACHE
                     if ((utlb_ent->ent & UTLB_ENT_C_MASK) &&
                         (cache_reg.ccr & CCR_OCE_MASK)) {
                         // page is cacheable and the cache is enabled
@@ -152,9 +162,12 @@ int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                                                              cache_as_ram);
                         }
                     } else {
+#endif
                         // don't use the cache
                         return mem->write(&data, addr & 0x1fffffff, len);
+#ifdef ENABLE_SH4_OCACHE
                     }
+#endif
                 } else {
                     set_exception(EXCP_INITIAL_PAGE_WRITE);
                     mmu.tea = addr;
@@ -162,6 +175,7 @@ int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                 }
             }
         } else {
+#ifdef ENABLE_SH4_OCACHE
             if (cache_reg.ccr & CCR_WT_MASK) {
                 return op_cache->cache_write_wt(data, len, addr, index_enable,
                                                 cache_as_ram);
@@ -169,9 +183,14 @@ int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                 return op_cache->cache_write_cb(data, len, addr, index_enable,
                                                 cache_as_ram);
             }
+#else
+	    // don't use the cache
+	    return mem->write(&data, addr & 0x1fffffff, len);
+#endif
         }
         break;
     case AREA_P1:
+#ifdef ENABLE_SH4_OCACHE
         if (cache_reg.ccr & CCR_OCE_MASK) {
             if (cache_reg.ccr & CCR_CB_MASK) {
                 return op_cache->cache_write_cb(data, len, addr, index_enable,
@@ -181,8 +200,11 @@ int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                                                  cache_as_ram);
             }
         } else {
+#endif
             return mem->write(&data, addr & 0x1fffffff, len);
+#ifdef ENABLE_SH4_OCACHE
         }
+#endif
         break;
     case AREA_P2:
         return mem->write(&data, addr & 0x1fffffff, len);
@@ -244,6 +266,7 @@ int Sh4::read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
                 return 1;
             }
 
+#ifdef ENABLE_SH4_OCACHE
             if ((utlb_ent->ent & UTLB_ENT_C_MASK) &&
                 (cache_reg.ccr & CCR_OCE_MASK)) {
                 // page is cacheable and the cache is enabled
@@ -255,10 +278,14 @@ int Sh4::read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
                                                 cache_as_ram);
                 }
             } else {
+#endif
                 // don't use the cache
                 return mem->read(data, addr & 0x1fffffff, len);
+#ifdef ENABLE_SH4_OCACHE
             }
+#endif
         } else {
+#ifdef ENABLE_SH4_OCACHE
             if (cache_reg.ccr & CCR_WT_MASK) {
                 return op_cache->cache_read(data, len, addr, index_enable,
                                             cache_as_ram);
@@ -266,9 +293,14 @@ int Sh4::read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
                 return op_cache->cache_read(data, len, addr, index_enable,
                                             cache_as_ram);
             }
+#else
+	    // don't use the cache
+	    return mem->read(data, addr & 0x1fffffff, len);
+#endif
         }
         break;
     case AREA_P1:
+#ifdef ENABLE_SH4_OCACHE
         if (cache_reg.ccr & CCR_OCE_MASK) {
             if (cache_reg.ccr & CCR_CB_MASK) {
                 return op_cache->cache_read(data, len, addr, index_enable,
@@ -278,8 +310,11 @@ int Sh4::read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
                                             cache_as_ram);
             }
         } else {
+#endif
             return mem->read(&data, addr & 0x1fffffff, len);
+#ifdef ENABLE_SH4_OCACHE
         }
+#endif
         break;
     case AREA_P2:
         return mem->read(&data, addr & 0x1fffffff, len);

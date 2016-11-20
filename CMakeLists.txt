@@ -26,10 +26,10 @@ set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 
 option(ENABLE_SH4_ICACHE "emulate the sh4's instruction cache" ON)
+option(ENABLE_SH4_OCACHE "emulate the sh4's operand cache" ON)
 
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/Memory.cpp")
 
 if (ENABLE_SH4_ICACHE)
