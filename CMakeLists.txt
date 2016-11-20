@@ -25,20 +25,34 @@ project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 
+option(ENABLE_SH4_ICACHE "emulate the sh4's instruction cache" ON)
+
+set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/Memory.cpp")
+
+if (ENABLE_SH4_ICACHE)
+    add_definitions(-DENABLE_SH4_ICACHE)
+    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Icache.cpp")
+endif()
+
+if (ENABLE_SH4_OCACHE)
+    add_definitions(-DENABLE_SH4_OCACHE)
+    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.cpp")
+endif()
+
+set(sh4asm_sources "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"
+                   "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp"
+                   "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/sh4asm.cpp")
+
 include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
                     "${PROJECT_SOURCE_DIR}/src/common"
                     "${PROJECT_SOURCE_DIR}/external")
 
-add_library(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"
-                   "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp"
-                   "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/sh4asm.cpp")
-
-add_library(sh4 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/sh4/Icache.cpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.cpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/sh4/Memory.cpp")
+add_library(sh4asm ${sh4asm_sources})
+add_library(sh4 ${sh4_sources})
 
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp")
 target_link_libraries(sh4asm_test sh4asm)

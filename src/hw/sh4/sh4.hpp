@@ -190,7 +190,9 @@ private:
     static const size_t ITLB_SIZE = 4;
     struct itlb_entry itlb[ITLB_SIZE];
 
+#if ENABLE_SH4_ICACHE
     Icache *inst_cache;
+#endif
     Ocache *op_cache;
 
     enum VirtMemArea get_mem_area(addr32_t addr);

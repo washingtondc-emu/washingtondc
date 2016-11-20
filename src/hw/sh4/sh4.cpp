@@ -37,7 +37,9 @@ Sh4::Sh4(Memory *mem) {
     memset(&mmu, 0, sizeof(mmu));
     memset(&cache_reg, 0, sizeof(cache_reg));
 
+#ifdef ENABLE_SH4_ICACHE
     this->inst_cache = new Icache(this, mem);
+#endif
     this->op_cache = new Ocache(this, mem);
 
     compile_instructions();
@@ -45,7 +47,10 @@ Sh4::Sh4(Memory *mem) {
 
 Sh4::~Sh4() {
     delete op_cache;
+
+#ifdef ENABLE_SH4_ICACHE
     delete inst_cache;
+#endif
 }
 
 int Sh4::write_mem(basic_val_t data, addr32_t addr, unsigned len) {
@@ -319,6 +324,7 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
             if (privileged || (itlb_ent->ent & ITLB_ENT_PR_MASK)) {
                 addr32_t paddr = itlb_ent_translate(itlb_ent, addr);
 
+#ifdef ENABLE_SH4_ICACHE
                 if ((itlb_ent->ent & ITLB_ENT_C_MASK) &&
                     (cache_reg.ccr & CCR_ICE_MASK)) {
                     // use the cache
@@ -328,11 +334,15 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
                     *out = buf;
                     return ret;
                 } else {
+#endif
                     // don't use the cache
                     return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+#ifdef ENABLE_SH4_ICACHE
                 }
+#endif
             }
         } else {
+#ifdef ENABLE_SH4_ICACHE
             if (cache_reg.ccr & CCR_ICE_MASK) {
                 boost::uint32_t buf;
                 int ret;
@@ -340,11 +350,15 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
                 *out = buf;
                 return ret;
             } else {
+#endif
                 return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+#ifdef ENABLE_SH4_ICACHE
             }
+#endif
         }
         break;
     case AREA_P1:
+#ifdef ENABLE_SH4_ICACHE
         if (cache_reg.ccr & CCR_ICE_MASK) {
             boost::uint32_t buf;
             int ret;
@@ -352,8 +366,11 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
             *out = buf;
             return ret;
         } else {
+#endif
             return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+#ifdef ENABLE_SH4_ICACHE
         }
+#endif
         break;
     case AREA_P2:
         return mem->read(out, addr & 0x1fffffff, sizeof(*out));
