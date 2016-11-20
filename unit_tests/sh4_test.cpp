@@ -141,7 +141,7 @@ public:
         for (addr32_t addr = start;
              ((addr + sizeof(ValType)) & CACHELINE_MASK) + 32 < end;
              addr += sizeof(ValType)) {
-            basic_val_t val;
+            basic_val_t val = 0;
             if ((err = cpu->read_mem(&val, addr, sizeof(ValType))) != 0) {
                 std::cout << "Error while reading four bytes from 0x" <<
                     addr << std::endl;
