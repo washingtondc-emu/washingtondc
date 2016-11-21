@@ -62,13 +62,20 @@ public:
     // hand.  This can be freely changed with no consequence.
     static const int MAX_INST_COUNT = 8 * 1024 * 1024;
 
+    typedef std::vector<inst_t> InstList;
+
     addr32_t lookup_sym(const std::string& sym_name) const;
 
     inst_t assemble_line(const std::string& inst);
     std::string disassemble_line(inst_t inst) const;
+
+    // assemble all instructions in txt and add it to this program.
+    void assemble(const std::string& txt);
+
+    const InstList& get_prog() const;
+
 private:
     typedef std::map<std::string, addr32_t> SymMap;
-    typedef std::vector<inst_t> InstList;
 
     SymMap syms;
     InstList prog;

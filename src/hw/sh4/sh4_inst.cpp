@@ -1184,7 +1184,7 @@ void Sh4::inst_binary_mov_imm_gen(OpArgs inst) {
 // ADD #imm, Rn
 // 0111nnnniiiiiiii
 void Sh4::inst_binary_add_imm_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    *gen_reg(inst.gen_reg) += inst.imm8;
 }
 
 // MOV.W @(disp, PC), Rn

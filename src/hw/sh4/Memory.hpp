@@ -25,6 +25,8 @@
 
 #include <boost/cstdint.hpp>
 
+#include "types.hpp"
+
 // Temporary memory emulator
 // This module will be used as a "dumb" memory device for the Sh4 interpreter
 // core to interact with during testing while I get this emulator bootstrapped.
@@ -40,9 +42,26 @@ public:
     int write(void const *buf, size_t addr, size_t len);
 
     size_t get_size() const;
+
+    /*
+     * loads a program into the given address.  the InputIterator's
+     * indirect method (overload*) should return an inst_t.
+     */
+    template<class InputIterator>
+    void load_program(addr32_t where, InputIterator start, InputIterator end);
+
 private:
     size_t size;
     boost::uint8_t *mem;
 };
+
+template<class InputIterator>
+void Memory::load_program(addr32_t where, InputIterator start,
+			  InputIterator end) {
+    for (InputIterator it = start; it != end; it++, where += 2) {
+	inst_t tmp = (inst_t)*it;
+	write(&tmp, where, sizeof(tmp));
+    }
+}
 
 #endif

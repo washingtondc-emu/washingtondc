@@ -22,6 +22,8 @@
 
 #include <iostream>
 
+#include <boost/tokenizer.hpp>
+
 #include "types.hpp"
 
 #include "sh4asm.hpp"
@@ -109,4 +111,18 @@ TokList Sh4Prog::tokenize_line(const std::string& line) {
 
 void Sh4Prog::add_label(const std::string& lbl) {
     syms[lbl] = prog.size() - 1;
+}
+
+const Sh4Prog::InstList& Sh4Prog::get_prog() const {
+    return prog;
+}
+
+typedef boost::tokenizer<boost::char_separator<char> > LineTokenizer;
+
+void Sh4Prog::assemble(const std::string& txt) {
+    LineTokenizer tok(txt, boost::char_separator<char>("\n"));
+
+    for (LineTokenizer::iterator it = tok.begin(); it != tok.end(); it++) {
+	prog.push_back(assemble_line(*it));
+    }
 }

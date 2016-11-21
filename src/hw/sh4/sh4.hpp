@@ -23,6 +23,7 @@
 #ifndef SH4_HPP_
 #define SH4_HPP_
 
+#include <cassert>
 #include <boost/cstdint.hpp>
 #include <boost/static_assert.hpp>
 
@@ -46,6 +47,8 @@ class Sh4 {
 
     template <typename ValType, class Generator>
     friend class MmuUtlbMissTest;
+
+    friend class Sh4InstTests;
 
 public:
     Sh4(Memory *mem);
@@ -391,6 +394,23 @@ private:
         // floating-point communication register
         reg32_t fpul;
     } reg;
+
+    /*
+     * return a pointer to the given general-purpose register.
+     * This function takes bank-switching into account.
+     */
+    reg32_t *gen_reg(int idx) {
+	assert(!(idx & ~0xf));
+
+	if (idx <= 7) {
+	    if (reg.sr & SR_RB_MASK)
+		return &reg.r_bank1[idx];
+	    else
+		return &reg.r_bank0[idx];
+	} else {
+	    return &reg.rgen[idx - 8];
+	}
+    }
 
     static const unsigned MMUPTEH_ASID_SHIFT = 0;
     static const unsigned MMUPTEH_ASID_MASK = 0xff << MMUPTEH_ASID_SHIFT;
