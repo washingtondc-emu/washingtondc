@@ -286,13 +286,13 @@ struct Sh4::InstOpcode Sh4::opcode_list[] = {
     { "0110nnnnmmmm1101", &Sh4::inst_binary_xtrct_gen_gen },
 
     // ADD Rm, Rn
-    { "0111nnnnmmmm1100", &Sh4::inst_binary_add_gen_gen },
+    { "0011nnnnmmmm1100", &Sh4::inst_binary_add_gen_gen },
 
     // ADDC Rm, Rn
-    { "0111nnnnmmmm1110", &Sh4::inst_binary_addc_gen_gen },
+    { "0011nnnnmmmm1110", &Sh4::inst_binary_addc_gen_gen },
 
     // ADDV Rm, Rn
-    { "0111nnnnmmmm1111", &Sh4::inst_binary_addv_gen_gen },
+    { "0011nnnnmmmm1111", &Sh4::inst_binary_addv_gen_gen },
 
     // CMP/EQ Rm, Rn
     { "0011nnnnmmmm0000", &Sh4::inst_binary_cmpeq_gen_gen },
@@ -1224,21 +1224,59 @@ void Sh4::inst_binary_xtrct_gen_gen(OpArgs inst) {
 }
 
 // ADD Rm, Rn
-// 0111nnnnmmmm1100
+// 0011nnnnmmmm1100
 void Sh4::inst_binary_add_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    *gen_reg(inst.dst_reg) += *gen_reg(inst.src_reg);
 }
 
 // ADDC Rm, Rn
-// 0111nnnnmmmm1110
+// 0011nnnnmmmm1110
 void Sh4::inst_binary_addc_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    // detect carry by doing 64-bit math
+    boost::uint64_t in_src, in_dst;
+    reg32_t *src_reg, *dst_reg;
+
+    src_reg = gen_reg(inst.src_reg);
+    dst_reg = gen_reg(inst.dst_reg);
+
+    in_src = *src_reg;
+    in_dst = *dst_reg;
+
+    assert(!(in_src & 0xffffffff00000000));
+    assert(!(in_dst & 0xffffffff00000000));
+
+    in_dst += in_src;
+
+    unsigned carry_bit = (in_dst & 0x100000000) << SR_FLAG_T_SHIFT;
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg.sr |= carry_bit;
+
+    *dst_reg = in_dst;
 }
 
 // ADDV Rm, Rn
-// 0111nnnnmmmm1111
+// 0011nnnnmmmm1111
 void Sh4::inst_binary_addv_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    // detect overflow using 64-bit math
+    boost::int64_t in_src, in_dst;
+    reg32_t *src_reg, *dst_reg;
+
+    src_reg = gen_reg(inst.src_reg);
+    dst_reg = gen_reg(inst.dst_reg);
+
+    in_src = *src_reg;
+    in_dst = *dst_reg;
+
+    assert(!(in_src & 0xffffffff00000000));
+    assert(!(in_dst & 0xffffffff00000000));
+
+    in_dst += in_src;
+
+    unsigned overflow_bit = (in_dst != int32_t(in_dst)) << SR_FLAG_T_SHIFT;
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg.sr |= overflow_bit;
+
+    *dst_reg = in_dst;
 }
 
 // CMP/EQ Rm, Rn

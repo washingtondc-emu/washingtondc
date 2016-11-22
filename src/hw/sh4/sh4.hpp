@@ -977,15 +977,15 @@ private:
     void inst_binary_xtrct_gen_gen(OpArgs inst);
 
     // ADD Rm, Rn
-    // 0111nnnnmmmm1100
+    // 0011nnnnmmmm1100
     void inst_binary_add_gen_gen(OpArgs inst);
 
     // ADDC Rm, Rn
-    // 0111nnnnmmmm1110
+    // 0011nnnnmmmm1110
     void inst_binary_addc_gen_gen(OpArgs inst);
 
     // ADDV Rm, Rn
-    // 0111nnnnmmmm1111
+    // 0011nnnnmmmm1111
     void inst_binary_addv_gen_gen(OpArgs inst);
 
     // CMP/EQ Rm, Rn
