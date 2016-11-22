@@ -151,10 +151,8 @@ public:
 
     // ADDC Rm, Rn
     // 0011nnnnmmmm1110
-    static int addc_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
-
+    static int do_addc_gen_gen_test(Sh4 *cpu, Memory *mem,
+                                    reg32_t src1, reg32_t src2) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -165,13 +163,13 @@ public:
             for (int reg2_no = 0; reg2_no <= 15; reg2_no++) {
                 Sh4Prog test_prog;
                 std::stringstream ss;
-                reg32_t initial_val1 = randgen32.pick_val(0);
+                reg32_t initial_val1 = src1;
                 reg32_t initial_val2;
 
                 if (reg1_no == reg2_no)
                     initial_val2 = initial_val1;
                 else
-                    initial_val2 = randgen32.pick_val(0);
+                    initial_val2 = src2;
 
                 ss << "ADDC R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
@@ -221,6 +219,39 @@ public:
             }
         }
         return 0;
+    }
+
+    // ADDC Rm, Rn
+    // 0011nnnnmmmm1110
+    static int addc_gen_gen_test(Sh4 *cpu, Memory *mem) {
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+        int failed = 0;
+
+        // run the test with a couple random values
+        failed = failed || do_addc_gen_gen_test(cpu, mem,
+                                                randgen32.pick_val(0),
+                                                randgen32.pick_val(0));
+
+        // make sure we get at least one value in that should not cause a carry
+        failed = failed || do_addc_gen_gen_test(cpu, mem, 0, 0);
+
+        // make sure we get at least one value in that should cause a carry
+        failed = failed ||
+            do_addc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
+                                 std::numeric_limits<reg32_t>::max());
+
+        // test a value that should *almost* cause a carry
+        failed = failed ||
+            do_addc_gen_gen_test(cpu, mem, 1,
+                                 std::numeric_limits<reg32_t>::max() - 1);
+
+        // test a value pair that should barely cause a carry
+        failed = failed ||
+            do_addc_gen_gen_test(cpu, mem,
+                                 std::numeric_limits<reg32_t>::max() - 1, 2);
+
+        return failed;
     }
 
     // ADDV Rm, Rn
