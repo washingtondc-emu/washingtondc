@@ -322,6 +322,253 @@ public:
         }
         return 0;
     }
+
+    // SUB Rm, Rn
+    // 0011nnnnmmmm1000
+    static int sub_gen_gen_test(Sh4 *cpu, Memory *mem) {
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        /*
+         * I don't bother toggling the bank switching flag because if there's a
+         * problem with that, the root-cause will be in Sh4::gen_reg and if the
+         * root-cause is in Sh4::gen_reg then both this function and the opcode
+         * will have the exact same bug, an it will be hidden.
+         */
+        for (int reg1_no = 0; reg1_no <= 15; reg1_no++) {
+            for (int reg2_no = 0; reg2_no <= 15; reg2_no++) {
+                Sh4Prog test_prog;
+                std::stringstream ss;
+                reg32_t initial_val1 = randgen32.pick_val(0);
+                reg32_t initial_val2;
+
+                if (reg1_no == reg2_no)
+                    initial_val2 = initial_val1;
+                else
+                    initial_val2 = randgen32.pick_val(0);
+
+                ss << "SUB R" << reg1_no << ", R" << reg2_no << "\n";
+                test_prog.assemble(ss.str());
+                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                mem->load_program(0, inst.begin(), inst.end());
+
+                reset_cpu(cpu);
+
+                *cpu->gen_reg(reg1_no) = initial_val1;
+                *cpu->gen_reg(reg2_no) = initial_val2;
+                cpu->exec_inst();
+
+                reg32_t expected_val = initial_val2 - initial_val1;
+                reg32_t actual_val = *cpu->gen_reg(reg2_no);
+
+                if (actual_val != expected_val) {
+                    std::cout << "ERROR running: " << std::endl
+                              << "\t" << ss.str();
+                    std::cout << "Expected " << std::hex <<
+                        (initial_val2 - initial_val1) << " but got " <<
+                        actual_val << std::endl;
+                    std::cout << "initial value of R" << std::dec <<
+                        reg2_no << ": " << std::hex << initial_val2 <<
+                        std::endl;
+                    std::cout << "initial value of R" << std::dec <<
+                        reg1_no << ": " << std::hex << initial_val1 <<
+                        std::endl;
+                    return 1;
+                }
+            }
+        }
+        return 0;
+    }
+
+    // SUBC Rm, Rn
+    // 0011nnnnmmmm1010
+    static int subc_gen_gen_test(Sh4 *cpu, Memory *mem) {
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        /*
+         * I don't bother toggling the bank switching flag because if there's a
+         * problem with that, the root-cause will be in Sh4::gen_reg and if the
+         * root-cause is in Sh4::gen_reg then both this function and the opcode
+         * will have the exact same bug, an it will be hidden.
+         */
+        for (int reg1_no = 0; reg1_no <= 15; reg1_no++) {
+            for (int reg2_no = 0; reg2_no <= 15; reg2_no++) {
+                Sh4Prog test_prog;
+                std::stringstream ss;
+                reg32_t initial_val1 = randgen32.pick_val(0);
+                reg32_t initial_val2;
+
+                if (reg1_no == reg2_no)
+                    initial_val2 = initial_val1;
+                else
+                    initial_val2 = randgen32.pick_val(0);
+
+                ss << "SUBC R" << reg1_no << ", R" << reg2_no << "\n";
+                test_prog.assemble(ss.str());
+                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                mem->load_program(0, inst.begin(), inst.end());
+
+                reset_cpu(cpu);
+
+                *cpu->gen_reg(reg1_no) = initial_val1;
+                *cpu->gen_reg(reg2_no) = initial_val2;
+                cpu->exec_inst();
+
+                reg32_t expected_val = initial_val2 - initial_val1;
+                reg32_t actual_val = *cpu->gen_reg(reg2_no);
+
+                if (actual_val != expected_val) {
+                    std::cout << "ERROR running: " << std::endl
+                              << "\t" << ss.str() << std::endl;
+                    std::cout << "Expected " << std::hex <<
+                        (initial_val2 - initial_val1) << " but got " <<
+                        actual_val << std::endl;
+                    std::cout << "initial value of R" << std::dec <<
+                        reg2_no << ": " << std::hex << initial_val2;
+                    std::cout << "initial value of R" << std::dec <<
+                        reg1_no << ": " << std::hex << initial_val1;
+                    return 1;
+                }
+
+                // now check the carry-bit
+                uint64_t expected_val64 = uint64_t(initial_val2) -
+                    uint64_t(initial_val1);
+                if (expected_val64 <= std::numeric_limits<uint64_t>::max()) {
+                    // there should not be a carry
+                    if (cpu->reg.sr & Sh4::SR_FLAG_T_MASK) {
+                        std::cout << "ERROR running: " << std::endl
+                                  << "\t" << ss.str() << std::endl;
+                        std::cout << "Expected no carry bit "
+                            "(there was a carry)" << std::endl;
+                        std::cout << "initial value of R" << std::dec <<
+                            reg2_no << ": " << std::hex << initial_val2;
+                        std::cout << "initial value of R" << std::dec <<
+                            reg1_no << ": " << std::hex << initial_val1;
+                        std::cout << "output val: " << std::hex <<
+                            actual_val << std::endl;
+                        return 1;
+                    }
+                } else {
+                    // there should be a carry
+                    if (!(cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {
+                        std::cout << "ERROR running: " << std::endl
+                                  << "\t" << ss.str() << std::endl;
+                        std::cout << "Expected a carry bit "
+                            "(there was no carry)" << std::endl;
+                        std::cout << "initial value of R" << std::dec <<
+                            reg2_no << ": " << std::hex << initial_val2 <<
+                            std::endl;
+                        std::cout << "initial value of R" << std::dec <<
+                            reg1_no << ": " << std::hex << initial_val1 <<
+                            std::endl;
+                        std::cout << "output val: " << std::hex <<
+                            actual_val << std::endl;
+                        return 1;
+                    }
+                }
+            }
+        }
+        return 0;
+    }
+
+    static int subv_gen_gen_test(Sh4 *cpu, Memory *mem) {
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        /*
+         * I don't bother toggling the bank switching flag because if there's a
+         * problem with that, the root-cause will be in Sh4::gen_reg and if the
+         * root-cause is in Sh4::gen_reg then both this function and the opcode
+         * will have the exact same bug, an it will be hidden.
+         */
+        for (int reg1_no = 0; reg1_no <= 15; reg1_no++) {
+            for (int reg2_no = 0; reg2_no <= 15; reg2_no++) {
+                Sh4Prog test_prog;
+                std::stringstream ss;
+
+                // it is not a mistake that I'm using int32_t
+                // here instead of reg32_t
+                int32_t initial_val1 = randgen32.pick_val(0);
+                int32_t initial_val2;
+
+                if (reg1_no == reg2_no)
+                    initial_val2 = initial_val1;
+                else
+                    initial_val2 = randgen32.pick_val(0);
+
+                ss << "SUBV R" << reg1_no << ", R" << reg2_no << "\n";
+                test_prog.assemble(ss.str());
+                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                mem->load_program(0, inst.begin(), inst.end());
+
+                reset_cpu(cpu);
+
+                *cpu->gen_reg(reg1_no) = initial_val1;
+                *cpu->gen_reg(reg2_no) = initial_val2;
+                cpu->exec_inst();
+
+                reg32_t expected_val = initial_val2 - initial_val1;
+                reg32_t actual_val = *cpu->gen_reg(reg2_no);
+
+                if (actual_val != expected_val) {
+                    std::cout << "ERROR running: " << std::endl
+                              << "\t" << ss.str() << std::endl;
+                    std::cout << "Expected " << std::hex <<
+                        (initial_val1 + initial_val2) << " but got " <<
+                        actual_val << std::endl;
+                    return 1;
+                }
+
+                // now check the overflow-bit
+                bool overflow_flag = cpu->reg.sr & Sh4::SR_FLAG_T_MASK;
+                if (int32_t(initial_val2) >= 0 &&
+                    int32_t(initial_val1) < 0) {
+                    if (int32_t(actual_val) < 0) {
+                        // there should be an overflow
+                        if (!overflow_flag) {
+                            std::cout << "ERROR running: " << std::endl
+                                      << "\t" << ss.str() << std::endl;
+                            std::cout << "Expected an overflow bit "
+                                "(there was no overflow bit set)" << std::endl;
+                            return 1;
+                        }
+                    } else {
+                        //there should not be an overflow
+                        if (overflow_flag) {
+                            std::cout << "ERROR running: " << std::endl
+                                      << "\t" << ss.str() << std::endl;
+                            std::cout << "Expected no overflow bit "
+                                "(there was an overflow bit set)" << std::endl;
+                            return 1;
+                        }
+                    }
+                } else if (int32_t(initial_val2) < 0 &&
+                           int32_t(initial_val1) >= 0) {
+                    if (int32_t(actual_val) > 0) {
+                        // there should be an overflow
+                        if (!overflow_flag) {
+                            std::cout << "ERROR running: " << std::endl
+                                      << "\t" << ss.str() << std::endl;
+                            std::cout << "Expected an overflow bit "
+                                "(there was no overflow bit set)" << std::endl;
+                            return 1;
+                        }
+                    } else {
+                        // there should not be an overflow
+                        if (overflow_flag) {
+                            std::cout << "ERROR running: " << std::endl
+                                      << "\t" << ss.str() << std::endl;
+                            std::cout << "Expected no overflow bit "
+                                "(there was an overflow bit set)" << std::endl;
+                            return 1;
+                        }
+                    }
+                }
+            }
+        }
+        return 0;
+    }
 };
 
 struct inst_test {
@@ -333,6 +580,9 @@ struct inst_test {
     { "add_gen_gen_test", &Sh4InstTests::add_gen_gen_test },
     { "addc_gen_gen_test", &Sh4InstTests::addc_gen_gen_test },
     { "addv_gen_gen_test", &Sh4InstTests::addv_gen_gen_test },
+    { "sub_gen_gen_test", &Sh4InstTests::sub_gen_gen_test },
+    { "subc_gen_gen_test", &Sh4InstTests::subc_gen_gen_test },
+    { "subv_gen_gen_test", &Sh4InstTests::subv_gen_gen_test },
     { NULL }
 };
 

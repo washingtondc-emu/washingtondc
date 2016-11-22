@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <limits>
 #include <cstring>
 
 #include "BaseException.hpp"
@@ -1396,19 +1397,57 @@ void Sh4::inst_binary_negc_gen_gen(OpArgs inst) {
 // SUB Rm, Rn
 // 0011nnnnmmmm1000
 void Sh4::inst_binary_sub_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    *gen_reg(inst.dst_reg) -= *gen_reg(inst.src_reg);
 }
 
 // SUBC Rm, Rn
 // 0011nnnnmmmm1010
 void Sh4::inst_binary_subc_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    // detect carry by doing 64-bit math
+    boost::uint64_t in_src, in_dst;
+    reg32_t *src_reg, *dst_reg;
+
+    src_reg = gen_reg(inst.src_reg);
+    dst_reg = gen_reg(inst.dst_reg);
+
+    in_src = *src_reg;
+    in_dst = *dst_reg;
+
+    assert(!(in_src & 0xffffffff00000000));
+    assert(!(in_dst & 0xffffffff00000000));
+
+    in_dst -= in_src;
+
+    unsigned carry_bit = (in_dst & 0x100000000) << SR_FLAG_T_SHIFT;
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg.sr |= carry_bit;
+
+    *dst_reg = in_dst;
 }
 
 // SUBV Rm, Rn
 // 0011nnnnmmmm1011
 void Sh4::inst_binary_subv_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    // detect overflow using 64-bit math
+    boost::int64_t in_src, in_dst;
+    reg32_t *src_reg, *dst_reg;
+
+    src_reg = gen_reg(inst.src_reg);
+    dst_reg = gen_reg(inst.dst_reg);
+
+    // cast to int32_t instead of int64_t so it gets sign-extended
+    // instead of zero-extended.
+    in_src = int32_t(*src_reg);
+    in_dst = int32_t(*dst_reg);
+
+    in_dst -= in_src;
+
+    unsigned overflow_bit = (in_dst > std::numeric_limits<int32_t>::max()) ||
+        (in_dst < std::numeric_limits<int32_t>::min());
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg.sr |= overflow_bit;
+
+    *dst_reg = in_dst;
 }
 
 // AND Rm, Rn
