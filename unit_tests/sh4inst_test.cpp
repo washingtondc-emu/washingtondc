@@ -579,10 +579,8 @@ public:
         return failed;
     }
 
-    static int subv_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
-
+    static int do_subv_gen_gen_test(Sh4 *cpu, Memory *mem,
+                                    reg32_t src1, reg32_t src2) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -596,13 +594,13 @@ public:
 
                 // it is not a mistake that I'm using int32_t
                 // here instead of reg32_t
-                int32_t initial_val1 = randgen32.pick_val(0);
+                int32_t initial_val1 = src1;
                 int32_t initial_val2;
 
                 if (reg1_no == reg2_no)
                     initial_val2 = initial_val1;
                 else
-                    initial_val2 = randgen32.pick_val(0);
+                    initial_val2 = src2;
 
                 ss << "SUBV R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
@@ -675,6 +673,54 @@ public:
             }
         }
         return 0;
+    }
+
+    static int subv_gen_gen_test(Sh4 *cpu, Memory *mem) {
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+        int failed = 0;
+
+        // do one at random...
+        failed = failed ||
+            do_subv_gen_gen_test(cpu, mem,
+                                 randgen32.pick_val(0), randgen32.pick_val(0));
+
+        // now do one that's trivial
+        failed = failed || do_subv_gen_gen_test(cpu, mem, 0, 0);
+
+        // now do one that *almost* causes a negative overflow
+        failed = failed ||
+            do_subv_gen_gen_test(cpu, mem,
+                                 -(std::numeric_limits<int32_t>::min() + 1), 0);
+
+        // now do one that barely causes a negative overflow
+        failed = failed ||
+            do_subv_gen_gen_test(cpu, mem,
+                                 -(std::numeric_limits<int32_t>::min() + 1), -1);
+
+        // now do a massive negative overflow
+        failed = failed ||
+            do_subv_gen_gen_test(cpu, mem,
+                                 -(std::numeric_limits<int32_t>::min() + 1),
+                                 std::numeric_limits<int32_t>::min());
+
+        // now do one that *almost* causes a positive overflow
+        failed = failed ||
+            do_subv_gen_gen_test(cpu, mem,
+                                 -std::numeric_limits<int32_t>::max(), 0);
+
+        // now do one that barely causes a positive overflow
+        failed = failed ||
+            do_subv_gen_gen_test(cpu, mem,
+                                 -std::numeric_limits<int32_t>::max(), 1);
+
+        // now do a massive positive overflow
+        failed = failed ||
+            do_subv_gen_gen_test(cpu, mem,
+                                 -std::numeric_limits<int32_t>::max(),
+                                 std::numeric_limits<int32_t>::max());
+
+        return failed;
     }
 };
 
