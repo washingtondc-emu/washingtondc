@@ -722,6 +722,542 @@ public:
 
         return failed;
     }
+
+    // MOVT Rn
+    // 0000nnnn00101001
+    static int movt_unary_gen_test(Sh4 *cpu, Memory *mem) {
+        for (int reg_no = 0; reg_no < 16; reg_no++) {
+            for (int t_val = 0; t_val < 2; t_val++) {
+                Sh4Prog test_prog;
+                std::stringstream ss;
+
+                cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+                if (t_val)
+                    cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+
+                ss << "MOVT R" << reg_no << "\n";
+                test_prog.assemble(ss.str());
+                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                mem->load_program(0, inst.begin(), inst.end());
+
+                reset_cpu(cpu);
+
+                cpu->exec_inst();
+
+                if (*cpu->gen_reg(reg_no) != t_val)
+                    return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    // MOV #imm, Rn
+    // 1110nnnniiiiiiii
+    static int mov_binary_imm_gen_test(Sh4 *cpu, Memory *mem) {
+        for (int reg_no = 0; reg_no < 16; reg_no++) {
+            for (uint8_t imm_val = 0;
+                 imm_val < std::numeric_limits<uint8_t>::max();
+                 imm_val++) {
+                Sh4Prog test_prog;
+                std::stringstream ss;
+
+                // the reason for the cast to unsigned below is that the
+                // operator<< overload can't tell the difference between a char
+                // and an 8-bit integer
+                ss << "MOV #" << (unsigned)imm_val << ", R" << reg_no << "\n";
+                test_prog.assemble(ss.str());
+                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                mem->load_program(0, inst.begin(), inst.end());
+
+                reset_cpu(cpu);
+
+                cpu->exec_inst();
+
+                if (*cpu->gen_reg(reg_no) != (int32_t)imm_val)
+                    return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    // MOV.W @(disp, PC), Rn
+    // 1001nnnndddddddd
+    static int do_movw_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem,
+                                                 unsigned disp, unsigned pc,
+                                                 unsigned reg_no,
+                                                 int16_t mem_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "MOV.W @(" << disp << ", PC), R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(pc, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        cpu->reg.pc = pc;
+        mem->write(&mem_val, disp * 2 + pc + 4, sizeof(mem_val));
+
+        cpu->exec_inst();
+
+        if (int32_t(*cpu->gen_reg(reg_no)) != int32_t(mem_val)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "pc is " << std::hex << pc << std::endl;
+            std::cout << "expected mem_val is " << std::hex << mem_val
+                      << std::endl;
+            std::cout << "actual mem_val is " << std::hex <<
+                *cpu->gen_reg(reg_no) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movw_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int i = 0; i < 1024; i++) {
+            failed = failed ||
+                do_movw_binary_binind_disp_pc_gen(cpu, mem, randgen32.pick_val(0) % 0xff,
+                                                  (randgen32.pick_val(0) %
+                                                   (16*1024*1024)) & ~1,
+                                                  randgen32.pick_val(0) % 15,
+                                                  randgen32.pick_val(0) & 0xffff);
+        }
+
+        // not much rhyme or reason to this test case, but it did
+        // actually catch a bug once
+        failed = failed ||
+            do_movw_binary_binind_disp_pc_gen(cpu, mem, 48,
+                                              (randgen32.pick_val(0) %
+                                               (16*1024*1024)) & ~1, 2,
+                                              randgen32.pick_val(0) & 0xffff);
+        return failed;
+    }
+
+    // MOV.L @(disp, PC), Rn
+    // 1001nnnndddddddd
+    static int do_movl_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem,
+                                                 unsigned disp, unsigned pc,
+                                                 unsigned reg_no,
+                                                 int32_t mem_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "MOV.L @(" << disp << ", PC), R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(pc, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        cpu->reg.pc = pc;
+        mem->write(&mem_val, disp * 4 + (pc & ~3) + 4, sizeof(mem_val));
+
+        cpu->exec_inst();
+
+        if (int32_t(*cpu->gen_reg(reg_no)) != int32_t(mem_val)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "pc is " << std::hex << pc << std::endl;
+            std::cout << "expected mem_val is " << std::hex << mem_val
+                      << std::endl;
+            std::cout << "actual mem_val is " << std::hex <<
+                *cpu->gen_reg(reg_no) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movl_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int i = 0; i < 1024; i++) {
+            failed = failed ||
+                do_movl_binary_binind_disp_pc_gen(cpu, mem, randgen32.pick_val(0) % 0xff,
+                                                  (randgen32.pick_val(0) %
+                                                   (16*1024*1024)) & ~1,
+                                                  randgen32.pick_val(0) % 15,
+                                                  randgen32.pick_val(0));
+        }
+
+        // not much rhyme or reason to this test case, but it did
+        // actually catch a bug once
+        failed = failed ||
+            do_movl_binary_binind_disp_pc_gen(cpu, mem, 48,
+                                              (randgen32.pick_val(0) %
+                                               (16*1024*1024)) & ~1, 2,
+                                              randgen32.pick_val(0));
+        return failed;
+    }
+
+    // MOV Rm, Rn
+    // 0110nnnnmmmm0011
+    static int do_mov_binary_gen_gen(Sh4 *cpu, Memory *mem, reg32_t src_val,
+                                     unsigned reg_src, unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "MOV R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != src_val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "src_val is " << std::hex << src_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                *cpu->gen_reg(reg_dst) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int mov_binary_gen_gen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                failed = failed ||
+                    do_mov_binary_gen_gen(cpu, mem, randgen32.pick_val(0),
+                                          reg_src, reg_dst);
+            }
+        }
+        return failed;
+    }
+
+    static int do_movb_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+                                         unsigned addr, uint8_t val,
+                                         unsigned reg_src, unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        uint8_t mem_val;
+
+        if (reg_src == reg_dst)
+            val = addr;
+
+        ss << "MOV.B R" << reg_src << ", @R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        *cpu->gen_reg(reg_dst) = addr;
+        cpu->exec_inst();
+
+        mem->read(&mem_val, addr, sizeof(mem_val));
+
+        if (mem_val != val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movb_binary_gen_indgen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                failed = failed ||
+                    do_movb_binary_gen_indgen(cpu, mem, randgen32.pick_val(0) %
+                                              (16*1024*1024),
+                                              randgen32.pick_val(0) % 0xff,
+                                              reg_src, reg_dst);
+            }
+        }
+
+        return failed;
+    }
+
+    static int do_movw_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+                                         unsigned addr, uint16_t val,
+                                         unsigned reg_src, unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        uint16_t mem_val;
+
+        if (reg_src == reg_dst)
+            val = addr;
+
+        ss << "MOV.W R" << reg_src << ", @R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        *cpu->gen_reg(reg_dst) = addr;
+        cpu->exec_inst();
+
+        mem->read(&mem_val, addr, sizeof(mem_val));
+
+        if (mem_val != val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movw_binary_gen_indgen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                failed = failed ||
+                    do_movb_binary_gen_indgen(cpu, mem, randgen32.pick_val(0) %
+                                              (16*1024*1024),
+                                              randgen32.pick_val(0) % 0xffff,
+                                              reg_src, reg_dst);
+            }
+        }
+
+        return failed;
+    }
+
+    static int do_movl_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+                                         unsigned addr, uint32_t val,
+                                         unsigned reg_src, unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        uint8_t mem_val;
+
+        if (reg_src == reg_dst)
+            val = addr;
+
+        ss << "MOV.L R" << reg_src << ", @R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        *cpu->gen_reg(reg_dst) = addr;
+        cpu->exec_inst();
+
+        mem->read(&mem_val, addr, sizeof(mem_val));
+
+        if (mem_val != val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movl_binary_gen_indgen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                failed = failed ||
+                    do_movb_binary_gen_indgen(cpu, mem, randgen32.pick_val(0) %
+                                              (16*1024*1024),
+                                              randgen32.pick_val(0),
+                                              reg_src, reg_dst);
+            }
+        }
+
+        return failed;
+    }
+
+    static int do_movb_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+                                         unsigned addr, int8_t val,
+                                         unsigned reg_src, unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        if (reg_src == reg_dst)
+            val = addr;
+
+        ss << "MOV.B @R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = addr;
+        mem->write(&val, addr, sizeof(val));
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                *cpu->gen_reg(reg_dst) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movb_binary_indgen_gen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                failed = failed ||
+                    do_movb_binary_indgen_gen(cpu, mem, randgen32.pick_val(0) %
+                                              (16*1024*1024),
+                                              randgen32.pick_val(0) % 0xff,
+                                              reg_src, reg_dst);
+            }
+        }
+
+        return failed;
+    }
+
+    static int do_movw_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+                                         unsigned addr, int16_t val,
+                                         unsigned reg_src, unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        if (reg_src == reg_dst)
+            val = addr;
+
+        ss << "MOV.W @R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = addr;
+        mem->write(&val, addr, sizeof(val));
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                *cpu->gen_reg(reg_dst) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movw_binary_indgen_gen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                failed = failed ||
+                    do_movw_binary_indgen_gen(cpu, mem, randgen32.pick_val(0) %
+                                              (16*1024*1024),
+                                              randgen32.pick_val(0) % 0xff,
+                                              reg_src, reg_dst);
+            }
+        }
+
+        return failed;
+    }
+
+    static int do_movl_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+                                         unsigned addr, int32_t val,
+                                         unsigned reg_src, unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        if (reg_src == reg_dst)
+            val = addr;
+
+        ss << "MOV.L @R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = addr;
+        mem->write(&val, addr, sizeof(val));
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                *cpu->gen_reg(reg_dst) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movl_binary_indgen_gen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                failed = failed ||
+                    do_movw_binary_indgen_gen(cpu, mem, randgen32.pick_val(0) %
+                                              (16*1024*1024),
+                                              randgen32.pick_val(0) % 0xff,
+                                              reg_src, reg_dst);
+            }
+        }
+
+        return failed;
+    }
 };
 
 struct inst_test {
@@ -736,6 +1272,20 @@ struct inst_test {
     { "sub_gen_gen_test", &Sh4InstTests::sub_gen_gen_test },
     { "subc_gen_gen_test", &Sh4InstTests::subc_gen_gen_test },
     { "subv_gen_gen_test", &Sh4InstTests::subv_gen_gen_test },
+    { "movt_unary_gen_test", &Sh4InstTests::movt_unary_gen_test },
+    { "mov_binary_imm_gen_test", &Sh4InstTests::mov_binary_imm_gen_test },
+    { "movw_binary_binind_disp_pc_gen",
+      &Sh4InstTests::movw_binary_binind_disp_pc_gen },
+    { "movl_binary_binind_disp_pc_gen",
+      &Sh4InstTests::movl_binary_binind_disp_pc_gen },
+    { "mov_binary_gen_gen",
+      &Sh4InstTests::mov_binary_gen_gen },
+    { "movb_binary_gen_indgen", &Sh4InstTests::movb_binary_gen_indgen },
+    { "movw_binary_gen_indgen", &Sh4InstTests::movw_binary_gen_indgen },
+    { "movl_binary_gen_indgen", &Sh4InstTests::movl_binary_gen_indgen },
+    { "movb_binary_indgen_gen", &Sh4InstTests::movb_binary_indgen_gen },
+    { "movw_binary_indgen_gen", &Sh4InstTests::movw_binary_indgen_gen },
+    { "movl_binary_indgen_gen", &Sh4InstTests::movl_binary_indgen_gen },
     { NULL }
 };
 
