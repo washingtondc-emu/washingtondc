@@ -1077,7 +1077,7 @@ private:
     // 1101nnnndddddddd
     void inst_binary_movl_binind_disp_pc_gen(OpArgs inst);
 
-    // MOV.W Rm, Rn
+    // MOV Rm, Rn
     // 0110nnnnmmmm0011
     void inst_binary_movw_gen_gen(OpArgs inst);
 

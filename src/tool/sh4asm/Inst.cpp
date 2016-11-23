@@ -498,9 +498,9 @@ PtrnList get_patterns() {
      ** general-purpose register as a destination
      **
      **************************************************************************/
-    // MOV.W Rm, Rn
+    // MOV Rm, Rn
     // 0110nnnnmmmm0011
-    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw), Ptrn_GenReg,
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(mov), Ptrn_GenReg,
                            Ptrn_GenReg, 0x6003, 0xf00f, 4, 8>));
 
     // SWAP.B Rm, Rn
