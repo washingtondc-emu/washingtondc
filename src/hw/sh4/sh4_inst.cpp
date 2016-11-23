@@ -1418,7 +1418,7 @@ void Sh4::inst_binary_subc_gen_gen(OpArgs inst) {
 
     in_dst -= in_src;
 
-    unsigned carry_bit = (in_dst & 0x100000000) << SR_FLAG_T_SHIFT;
+    unsigned carry_bit = ((in_dst & 0x100000000) >> 32) << SR_FLAG_T_SHIFT;
     reg.sr &= ~SR_FLAG_T_MASK;
     reg.sr |= carry_bit;
 

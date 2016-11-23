@@ -461,10 +461,8 @@ public:
 
     // SUBC Rm, Rn
     // 0011nnnnmmmm1010
-    static int subc_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
-
+    static int do_subc_gen_gen_test(Sh4 *cpu, Memory *mem,
+                                    reg32_t src1, reg32_t src2) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -475,13 +473,13 @@ public:
             for (int reg2_no = 0; reg2_no <= 15; reg2_no++) {
                 Sh4Prog test_prog;
                 std::stringstream ss;
-                reg32_t initial_val1 = randgen32.pick_val(0);
+                reg32_t initial_val1 = src1;
                 reg32_t initial_val2;
 
                 if (reg1_no == reg2_no)
                     initial_val2 = initial_val1;
                 else
-                    initial_val2 = randgen32.pick_val(0);
+                    initial_val2 = src2;
 
                 ss << "SUBC R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
@@ -513,7 +511,7 @@ public:
                 // now check the carry-bit
                 uint64_t expected_val64 = uint64_t(initial_val2) -
                     uint64_t(initial_val1);
-                if (expected_val64 <= std::numeric_limits<uint64_t>::max()) {
+                if (initial_val1 <= initial_val2) {
                     // there should not be a carry
                     if (cpu->reg.sr & Sh4::SR_FLAG_T_MASK) {
                         std::cout << "ERROR running: " << std::endl
@@ -549,6 +547,36 @@ public:
             }
         }
         return 0;
+    }
+
+    static int subc_gen_gen_test(Sh4 *cpu, Memory *mem) {
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+        int failed = 0;
+
+        // run the test with a couple random values
+        failed = failed || do_subc_gen_gen_test(cpu, mem,
+                                                randgen32.pick_val(0),
+                                                randgen32.pick_val(0));
+
+        // make sure we get at least one value in that should not cause a carry
+        failed = failed || do_subc_gen_gen_test(cpu, mem, 0, 0);
+
+        // make sure we get at least one value in that should cause a carry
+        failed = failed ||
+            do_subc_gen_gen_test(cpu, mem,
+                                 std::numeric_limits<reg32_t>::max(), 0);
+
+        // test a value that should *almost* cause a carry
+        failed = failed ||
+            do_subc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
+                                 std::numeric_limits<reg32_t>::max());
+
+        // test a value pair that should barely cause a carry
+        failed = failed ||
+            do_subc_gen_gen_test(cpu, mem, 1, 0);
+
+        return failed;
     }
 
     static int subv_gen_gen_test(Sh4 *cpu, Memory *mem) {
