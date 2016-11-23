@@ -745,79 +745,196 @@ private:
 
     typedef void (Sh4::*opcode_func_t)(OpArgs oa);
 
+    // RTS
+    // 0000000000001011
     void inst_rts(OpArgs inst);
+
+    // CLRMAC
+    // 0000000000101000
     void inst_clrmac(OpArgs inst);
+
+    // CLRS
+    // 0000000001001000
     void inst_clrs(OpArgs inst);
+
+    // CLRT
+    // 0000000000001000
     void inst_clrt(OpArgs inst);
+
+    // LDTLB
+    // 0000000000111000
     void inst_ldtlb(OpArgs inst);
+
+    // NOP
+    // 0000000000001001
     void inst_nop(OpArgs inst);
+
+    // RTE
+    // 0000000000101011
     void inst_rte(OpArgs inst);
+
+    // SETS
+    // 0000000001011000
     void inst_sets(OpArgs inst);
+
+    // SETT
+    // 0000000000011000
     void inst_sett(OpArgs inst);
+
+    // SLEEP
+    // 0000000000011011
     void inst_sleep(OpArgs inst);
+
+    // FRCHG
+    // 1111101111111101
     void inst_frchg(OpArgs inst);
+
+    // FSCHG
+    // 1111001111111101
     void inst_fschg(OpArgs inst);
+
+    // MOVT Rn
+    // 0000nnnn00101001
     void inst_unary_movt_gen(OpArgs inst);
+
+    // CMP/PZ Rn
+    // 0100nnnn00010001
     void inst_unary_cmppz_gen(OpArgs inst);
+
+    // CMP/PL Rn
+    // 0100nnnn00010101
     void inst_unary_cmppl_gen(OpArgs inst);
+
+    // DT Rn
+    // 0100nnnn00010000
     void inst_unary_dt_gen(OpArgs inst);
+
+    // ROTL Rn
+    // 0100nnnn00000100
     void inst_unary_rotl_gen(OpArgs inst);
+
+    // ROTR Rn
+    // 0100nnnn00000101
     void inst_unary_rotr_gen(OpArgs inst);
+
+    // ROTCL Rn
+    // 0100nnnn00100100
     void inst_unary_rotcl_gen(OpArgs inst);
+
+    // ROTCR Rn
+    // 0100nnnn00100101
     void inst_unary_rotcr_gen(OpArgs inst);
+
+    // SHAL Rn
+    // 0100nnnn00200000
     void inst_unary_shal_gen(OpArgs inst);
+
+    // SHAR Rn
+    // 0100nnnn00100001
     void inst_unary_shar_gen(OpArgs inst);
+
+    // SHLL Rn
+    // 0100nnnn00000000
     void inst_unary_shll_gen(OpArgs inst);
+
+    // SHLR Rn
+    // 0100nnnn00000001
     void inst_unary_shlr_gen(OpArgs inst);
+
+    // SHLL2 Rn
+    // 0100nnnn00001000
     void inst_unary_shll2_gen(OpArgs inst);
+
+    // SHLR2 Rn
+    // 0100nnnn00001001
     void inst_unary_shlr2_gen(OpArgs inst);
+
+    // SHLL8 Rn
+    // 0100nnnn00011000
     void inst_unary_shll8_gen(OpArgs inst);
+
+    // SHLR8 Rn
+    // 0100nnnn00011001
     void inst_unary_shlr8_gen(OpArgs inst);
+
+    // SHLL16 Rn
+    // 0100nnnn00101000
     void inst_unary_shll16_gen(OpArgs inst);
+
+    // SHLR16 Rn
+    // 0100nnnn00101001
     void inst_unary_shlr16_gen(OpArgs inst);
+
+    // BRAF Rn
+    // 0000nnnn00100011
     void inst_unary_braf_gen(OpArgs inst);
+
+    // BSRF Rn
+    // 0000nnnn00000011
     void inst_unary_bsrf_gen(OpArgs inst);
+
+    // CMP/EQ #imm, R0
+    // 10001000iiiiiiii
     void inst_binary_cmpeq_imm_r0(OpArgs inst);
+
+    // AND.B #imm, @(R0, GBR)
+    // 11001101iiiiiiii
     void inst_binary_andb_imm_r0_gbr(OpArgs inst);
+
+    // OR.B #imm, @(R0, GBR)
+    // 11001111iiiiiiii
     void inst_binary_orb_imm_r0_gbr(OpArgs inst);
 
     // OR #imm, R0
+    // 11001011iiiiiiii
     void inst_binary_or_imm_r0(OpArgs inst);
 
     // TST #imm, R0
+    // 11001000iiiiiiii
     void inst_binary_tst_imm_r0(OpArgs inst);
 
     // TST.B #imm, @(R0, GBR)
+    // 11001100iiiiiiii
     void inst_binary_tstb_imm_r0_gbr(OpArgs inst);
 
     // XOR #imm, R0
+    // 11001010iiiiiiii
     void inst_binary_xor_imm_r0(OpArgs inst);
 
     // XOR.B #imm, @(R0, GBR)
+    // 11001110iiiiiiii
     void inst_binary_xorb_imm_r0_gbr(OpArgs inst);
 
     // BF label
+    // 10001011dddddddd
     void inst_unary_bf_disp(OpArgs inst);
 
     // BF/S label
+    // 10001111dddddddd
     void inst_unary_bfs_disp(OpArgs inst);
 
     // BT label
+    // 10001001dddddddd
     void inst_unary_bt_disp(OpArgs inst);
 
     // BT/S label
+    // 10001101dddddddd
     void inst_unary_bts_disp(OpArgs inst);
 
     // BRA label
+    // 1010dddddddddddd
     void inst_unary_bra_disp(OpArgs inst);
 
     // BSR label
+    // 1011dddddddddddd
     void inst_unary_bsr_disp(OpArgs inst);
 
     // TRAPA #immed
+    // 11000011iiiiiiii
     void inst_unary_trapa_disp(OpArgs inst);
 
     // TAS.B @Rn
+    // 0100nnnn00011011
     void inst_unary_tasb_gen(OpArgs inst);
 
     // OCBI @Rn

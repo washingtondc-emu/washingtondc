@@ -785,207 +785,293 @@ void Sh4::compile_instruction(struct Sh4::InstOpcode *op) {
     op->val = val;
 }
 
+// RTS
+// 0000000000001011
 void Sh4::inst_rts(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+
+// CLRMAC
+// 0000000000101000
 void Sh4::inst_clrmac(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+
+// CLRS
+// 0000000001001000
 void Sh4::inst_clrs(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+
+// CLRT
+// 0000000000001000
 void Sh4::inst_clrt(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// LDTLB
+// 0000000000111000
 void Sh4::inst_ldtlb(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// NOP
+// 0000000000001001
 void Sh4::inst_nop(OpArgs inst) {
     // do nothing
 }
 
+// RTE
+// 0000000000101011
 void Sh4::inst_rte(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SETS
+// 0000000001011000
 void Sh4::inst_sets(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SETT
+// 0000000000011000
 void Sh4::inst_sett(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SLEEP
+// 0000000000011011
 void Sh4::inst_sleep(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// FRCHG
+// 1111101111111101
 void Sh4::inst_frchg(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// FSCHG
+// 1111001111111101
 void Sh4::inst_fschg(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// MOVT Rn
+// 0000nnnn00101001
 void Sh4::inst_unary_movt_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// CMP/PZ Rn
+// 0100nnnn00010001
 void Sh4::inst_unary_cmppz_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// CMP/PL Rn
+// 0100nnnn00010101
 void Sh4::inst_unary_cmppl_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// DT Rn
+// 0100nnnn00010000
 void Sh4::inst_unary_dt_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// ROTL Rn
+// 0100nnnn00000100
 void Sh4::inst_unary_rotl_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// ROTR Rn
+// 0100nnnn00000101
 void Sh4::inst_unary_rotr_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// ROTCL Rn
+// 0100nnnn00100100
 void Sh4::inst_unary_rotcl_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// ROTCR Rn
+// 0100nnnn00100101
 void Sh4::inst_unary_rotcr_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHAL Rn
+// 0100nnnn00200000
 void Sh4::inst_unary_shal_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHAR Rn
+// 0100nnnn00100001
 void Sh4::inst_unary_shar_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHLL Rn
+// 0100nnnn00000000
 void Sh4::inst_unary_shll_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHLR Rn
+// 0100nnnn00000001
 void Sh4::inst_unary_shlr_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHLL2 Rn
+// 0100nnnn00001000
 void Sh4::inst_unary_shll2_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHLR2 Rn
+// 0100nnnn00001001
 void Sh4::inst_unary_shlr2_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHLL8 Rn
+// 0100nnnn00011000
 void Sh4::inst_unary_shll8_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHLR8 Rn
+// 0100nnnn00011001
 void Sh4::inst_unary_shlr8_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHLL16 Rn
+// 0100nnnn00101000
 void Sh4::inst_unary_shll16_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// SHLR16 Rn
+// 0100nnnn00101001
 void Sh4::inst_unary_shlr16_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// BRAF Rn
+// 0000nnnn00100011
 void Sh4::inst_unary_braf_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// BSRF Rn
+// 0000nnnn00000011
 void Sh4::inst_unary_bsrf_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// CMP/EQ #imm, R0
+// 10001000iiiiiiii
 void Sh4::inst_binary_cmpeq_imm_r0(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// AND.B #imm, @(R0, GBR)
+// 11001101iiiiiiii
 void Sh4::inst_binary_andb_imm_r0_gbr(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
+// OR.B #imm, @(R0, GBR)
+// 11001111iiiiiiii
 void Sh4::inst_binary_orb_imm_r0_gbr(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // OR #imm, R0
+// 11001011iiiiiiii
 void Sh4::inst_binary_or_imm_r0(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // TST #imm, R0
+// 11001000iiiiiiii
 void Sh4::inst_binary_tst_imm_r0(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // TST.B #imm, @(R0, GBR)
+// 11001100iiiiiiii
 void Sh4::inst_binary_tstb_imm_r0_gbr(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // XOR #imm, R0
+// 11001010iiiiiiii
 void Sh4::inst_binary_xor_imm_r0(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // XOR.B #imm, @(R0, GBR)
+// 11001110iiiiiiii
 void Sh4::inst_binary_xorb_imm_r0_gbr(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // BF label
+// 10001011dddddddd
 void Sh4::inst_unary_bf_disp(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // BF/S label
+// 10001111dddddddd
 void Sh4::inst_unary_bfs_disp(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // BT label
+// 10001001dddddddd
 void Sh4::inst_unary_bt_disp(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // BT/S label
+// 10001101dddddddd
 void Sh4::inst_unary_bts_disp(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // BRA label
+// 1010dddddddddddd
 void Sh4::inst_unary_bra_disp(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // BSR label
+// 1011dddddddddddd
 void Sh4::inst_unary_bsr_disp(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // TRAPA #immed
+// 11000011iiiiiiii
 void Sh4::inst_unary_trapa_disp(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }
 
 // TAS.B @Rn
+// 0100nnnn00011011
 void Sh4::inst_unary_tasb_gen(OpArgs inst) {
     throw UnimplementedError("Instruction handler");
 }

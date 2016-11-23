@@ -30,18 +30,56 @@ PtrnList get_patterns() {
      ** operators which take no arguments
      **
      **************************************************************************/
+    // DIVOU
+    // 0000000000011001
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(divou), 0x0019>));
+
+    // RTS
+    // 0000000000001011
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(rts), 0x000b>));
+
+    // CLRMAC
+    // 0000000000101000
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(clrmac), 0x0028>));
+
+    // CLRS
+    // 0000000001001000
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(clrs), 0x0048>));
+
+    // CLRT
+    // 0000000000001000
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(clrt), 0x0008>));
+
+    // LDTLB
+    // 0000000000111000
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(ldtlb), 0x0038>));
+
+    // NOP
+    // 0000000000001001
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(nop), 0x0009>));
+
+    // RTE
+    // 0000000000101011
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(rte), 0x002b>));
+
+    // SETS
+    // 0000000001011000
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(sets), 0x0058>));
+
+    // SETT
+    // 0000000000011000
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(sett), 0x0018>));
+
+    // SLEEP
+    // 0000000000011011
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(sleep), 0x001b>));
+
+    // FRCHG
+    // 1111101111111101
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(frchg), 0xfbfd>));
+
+    // FSCHG
+    // 1111001111111101
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(fschg), 0xf3fd>));
 
     /***************************************************************************
