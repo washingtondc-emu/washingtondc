@@ -746,21 +746,21 @@ int main(int argc, char **argv) {
     int n_success = 0, n_tests = 0;
 
     try {
-	while (test->name) {
-	    std::cout << "Trying " << test->name << "..." << std::endl;
+        while (test->name) {
+            std::cout << "Trying " << test->name << "..." << std::endl;
 
-	    int test_ret = test->func(&cpu, &mem);
+            int test_ret = test->func(&cpu, &mem);
 
-	    if (test_ret != 0)
-		std::cout << test->name << " FAIL" << std::endl;
-	    else {
-		std::cout << test->name << " SUCCESS" << std::endl;
-		n_success++;
-	    }
+            if (test_ret != 0)
+                std::cout << test->name << " FAIL" << std::endl;
+            else {
+                std::cout << test->name << " SUCCESS" << std::endl;
+                n_success++;
+            }
 
-	    test++;
-	    n_tests++;
-	}
+            test++;
+            n_tests++;
+        }
     } catch (UnimplementedError excp) {
         std::cerr << "ERROR: " << excp.what() << std::endl;
         return 1;
