@@ -256,10 +256,8 @@ public:
 
     // ADDV Rm, Rn
     // 0011nnnnmmmm1111
-    static int addv_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
-
+    static int do_addv_gen_gen_test(Sh4 *cpu, Memory *mem,
+                                    reg32_t src1, reg32_t src2) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -273,13 +271,13 @@ public:
 
                 // it is not a mistake that I'm using int32_t
                 // here instead of reg32_t
-                int32_t initial_val1 = randgen32.pick_val(0);
+                int32_t initial_val1 = src1;
                 int32_t initial_val2;
 
                 if (reg1_no == reg2_no)
                     initial_val2 = initial_val1;
                 else
-                    initial_val2 = randgen32.pick_val(0);
+                    initial_val2 = src2;
 
                 ss << "ADDV R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
@@ -307,7 +305,7 @@ public:
                 // now check the overflow-bit
                 bool overflow_flag = cpu->reg.sr & Sh4::SR_FLAG_T_MASK;
                 if (initial_val1 >= 0 && initial_val2 >= 0) {
-                    if (std::numeric_limits<int32_t>::max() - initial_val1 <=
+                    if (std::numeric_limits<int32_t>::max() - initial_val1 <
                         initial_val2) {
                         // there should be an overflow
                         if (!overflow_flag) {
@@ -328,7 +326,7 @@ public:
                         }
                     }
                 } else if (initial_val1 < 0 && initial_val2 < 0) {
-                    if (std::numeric_limits<int32_t>::min() - initial_val2 >=
+                    if (std::numeric_limits<int32_t>::min() - initial_val2 >
                         initial_val1) {
                         // there should be an overflow
                         if (!overflow_flag) {
@@ -352,6 +350,56 @@ public:
             }
         }
         return 0;
+    }
+
+    // ADDV Rm, Rn
+    // 0011nnnnmmmm1111
+    static int addv_gen_gen_test(Sh4 *cpu, Memory *mem) {
+        RandGenerator<boost::uint32_t> randgen32;
+        int failed = 0;
+        randgen32.reset();
+
+        // this should not overflow
+        failed = failed || do_addv_gen_gen_test(cpu, mem, 0, 0);
+
+        // random values for good measure
+        failed = failed || do_addv_gen_gen_test(cpu, mem,
+                                                randgen32.pick_val(0),
+                                                randgen32.pick_val(0));
+
+        // *almost* overflow positive to negative
+        failed = failed ||
+            do_addv_gen_gen_test(cpu, mem, 1,
+                                 std::numeric_limits<int32_t>::max() - 1);
+
+        // slight overflow positive to negative
+        failed = failed ||
+            do_addv_gen_gen_test(cpu, mem, 2,
+                                 std::numeric_limits<int32_t>::max() - 1);
+
+        // massive overflow positive to negative
+        failed = failed ||
+            do_addv_gen_gen_test(cpu, mem,
+                                 std::numeric_limits<int32_t>::max(),
+                                 std::numeric_limits<int32_t>::max());
+
+        // *almost* overflow negative to positive
+        failed = failed ||
+            do_addv_gen_gen_test(cpu, mem,
+                                 std::numeric_limits<int32_t>::min() + 1, 1);
+
+        // slight overflow negative to positive
+        failed = failed ||
+            do_addv_gen_gen_test(cpu, mem,
+                                 std::numeric_limits<int32_t>::min() + 1, 2);
+
+        // massive overflow negative to positive
+        failed = failed ||
+            do_addv_gen_gen_test(cpu, mem,
+                                 std::numeric_limits<int32_t>::min(),
+                                 std::numeric_limits<int32_t>::min());
+
+        return failed;
     }
 
     // SUB Rm, Rn
