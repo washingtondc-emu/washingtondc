@@ -944,6 +944,8 @@ public:
         return failed;
     }
 
+    // MOV.B Rm, @Rn
+    // 0010nnnnmmmm0000
     static int do_movb_binary_gen_indgen(Sh4 *cpu, Memory *mem,
                                          unsigned addr, uint8_t val,
                                          unsigned reg_src, unsigned reg_dst) {
@@ -998,6 +1000,8 @@ public:
         return failed;
     }
 
+    // MOV.W Rm, @Rn
+    // 0010nnnnmmmm0001
     static int do_movw_binary_gen_indgen(Sh4 *cpu, Memory *mem,
                                          unsigned addr, uint16_t val,
                                          unsigned reg_src, unsigned reg_dst) {
@@ -1052,6 +1056,8 @@ public:
         return failed;
     }
 
+    // MOV.L Rm, @Rn
+    // 0010nnnnmmmm0010
     static int do_movl_binary_gen_indgen(Sh4 *cpu, Memory *mem,
                                          unsigned addr, uint32_t val,
                                          unsigned reg_src, unsigned reg_dst) {
@@ -1106,6 +1112,8 @@ public:
         return failed;
     }
 
+    // MOV.B @Rm, Rn
+    // 0110nnnnmmmm0000
     static int do_movb_binary_indgen_gen(Sh4 *cpu, Memory *mem,
                                          unsigned addr, int8_t val,
                                          unsigned reg_src, unsigned reg_dst) {
@@ -1157,6 +1165,8 @@ public:
         return failed;
     }
 
+    // MOV.W @Rm, Rn
+    // 0110nnnnmmmm0001
     static int do_movw_binary_indgen_gen(Sh4 *cpu, Memory *mem,
                                          unsigned addr, int16_t val,
                                          unsigned reg_src, unsigned reg_dst) {
@@ -1208,6 +1218,8 @@ public:
         return failed;
     }
 
+    // MOV.L @Rm, Rn
+    // 0110nnnnmmmm0010
     static int do_movl_binary_indgen_gen(Sh4 *cpu, Memory *mem,
                                          unsigned addr, int32_t val,
                                          unsigned reg_src, unsigned reg_dst) {
