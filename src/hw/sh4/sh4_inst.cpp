@@ -1784,19 +1784,40 @@ void Sh4::inst_binary_movl_gen_inddecgen(OpArgs inst) {
 // MOV.B @Rm+, Rn
 // 0110nnnnmmmm0100
 void Sh4::inst_binary_movb_indgeninc_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg32_t *src_reg = gen_reg(inst.src_reg);
+    reg32_t *dst_reg = gen_reg(inst.dst_reg);
+    int8_t val;
+
+    mem->read(&val, *src_reg, sizeof(val));
+    *dst_reg = int32_t(val);
+
+    (*src_reg)++;
 }
 
 // MOV.W @Rm+, Rn
 // 0110nnnnmmmm0101
 void Sh4::inst_binary_movw_indgeninc_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg32_t *src_reg = gen_reg(inst.src_reg);
+    reg32_t *dst_reg = gen_reg(inst.dst_reg);
+    int16_t val;
+
+    mem->read(&val, *src_reg, sizeof(val));
+    *dst_reg = int32_t(val);
+
+    (*src_reg) += 2;
 }
 
 // MOV.L @Rm+, Rn
 // 0110nnnnmmmm0110
 void Sh4::inst_binary_movl_indgeninc_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg32_t *src_reg = gen_reg(inst.src_reg);
+    reg32_t *dst_reg = gen_reg(inst.dst_reg);
+    int32_t val;
+
+    mem->read(&val, *src_reg, sizeof(val));
+    *dst_reg = int32_t(val);
+
+    (*src_reg) += 4;
 }
 
 // MAC.L @Rm+, @Rn+
