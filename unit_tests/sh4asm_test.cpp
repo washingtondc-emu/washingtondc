@@ -162,7 +162,7 @@ char const *insts_to_test[] = {
     "ADD #<8>, R<4>",
     "MOV.W @(<8>, PC), R<4>",
     "MOV.L @(<8>, PC), R<4>",
-    "MOV.W R<4>, R<4>",
+    "MOV R<4>, R<4>",
     "SWAP.B R<4>, R<4>",
     "SWAP.W R<4>, R<4>",
     "XTRCT R<4>, R<4>",
