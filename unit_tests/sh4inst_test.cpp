@@ -1270,6 +1270,237 @@ public:
 
         return failed;
     }
+
+    // MOV.B Rm, @-Rn
+    // 0010nnnnmmmm0100
+    static int do_movb_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+                                            unsigned addr, uint8_t val,
+                                            unsigned reg_src,
+                                            unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        uint8_t mem_val;
+
+        // increment addr 'cause the opcode is going to decrement it
+        addr++;
+
+        if (reg_src == reg_dst)
+            val = addr;
+
+        ss << "MOV.B R" << reg_src << ", @-R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        *cpu->gen_reg(reg_dst) = addr;
+        cpu->exec_inst();
+
+        mem->read(&mem_val, addr-1, sizeof(mem_val));
+
+        if (reg_src == reg_dst) {
+            // special case - val will be decremented because the source and
+            // destination are the same register
+            val -= 1;
+        }
+
+        if (mem_val != val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        if (*cpu->gen_reg(reg_dst) != addr - 1) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "Expected the destination to be decremented "
+                "(it was not)" << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movb_binary_gen_inddecgen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_src = 0; reg_src < 16; reg_src++) {
+            for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
+            failed = failed ||
+                do_movb_binary_gen_inddecgen(cpu, mem,
+                                             randgen32.pick_val(0) % (16 * 1024 * 1024),
+                                             randgen32.pick_val(0),
+                                             reg_src, reg_dst);
+            }
+        }
+
+        return failed;
+    }
+
+    // MOV.W Rm, @-Rn
+    // 0010nnnnmmmm0101
+    static int do_movw_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+                                            unsigned addr, uint16_t val,
+                                            unsigned reg_src,
+                                            unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        uint16_t mem_val;
+
+        // increment addr 'cause the opcode is going to decrement it
+        addr += 2;
+
+        if (reg_src == reg_dst)
+            val = addr;
+
+        ss << "MOV.W R" << reg_src << ", @-R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        *cpu->gen_reg(reg_dst) = addr;
+        cpu->exec_inst();
+
+        mem->read(&mem_val, addr-2, sizeof(mem_val));
+
+        if (reg_src == reg_dst) {
+            // special case - val will be decremented because the source and
+            // destination are the same register
+            val -= 2;
+        }
+
+        if (mem_val != val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        if (*cpu->gen_reg(reg_dst) != addr - 2) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "Expected the destination to be decremented "
+                "(it was not)" << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movw_binary_gen_inddecgen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_src = 0; reg_src < 16; reg_src++) {
+            for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
+            failed = failed ||
+                do_movb_binary_gen_inddecgen(cpu, mem,
+                                             randgen32.pick_val(0) % (16 * 1024 * 1024),
+                                             randgen32.pick_val(0),
+                                             reg_src, reg_dst);
+            }
+        }
+
+        return failed;
+    }
+
+    // MOV.L Rm, @-Rn
+    // 0010nnnnmmmm0110
+    static int do_movl_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+                                            unsigned addr, uint32_t val,
+                                            unsigned reg_src,
+                                            unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        uint32_t mem_val;
+
+        // increment addr 'cause the opcode is going to decrement it
+        addr += 4;
+
+        if (reg_src == reg_dst)
+            val = addr;
+
+        ss << "MOV.L R" << reg_src << ", @-R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        *cpu->gen_reg(reg_dst) = addr;
+        cpu->exec_inst();
+
+        mem->read(&mem_val, addr-4, sizeof(mem_val));
+
+        if (reg_src == reg_dst) {
+            // special case - val will be decremented because the source and
+            // destination are the same register
+            val -= 4;
+        }
+
+        if (mem_val != val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        if (*cpu->gen_reg(reg_dst) != addr - 4) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "Expected the destination to be decremented "
+                "(it was not)" << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movl_binary_gen_inddecgen(Sh4 *cpu, Memory *mem) {
+        int failed = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_src = 0; reg_src < 16; reg_src++) {
+            for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
+            failed = failed ||
+                do_movb_binary_gen_inddecgen(cpu, mem,
+                                             randgen32.pick_val(0) % (16 * 1024 * 1024),
+                                             randgen32.pick_val(0),
+                                             reg_src, reg_dst);
+            }
+        }
+
+        return failed;
+    }
 };
 
 struct inst_test {
@@ -1298,6 +1529,9 @@ struct inst_test {
     { "movb_binary_indgen_gen", &Sh4InstTests::movb_binary_indgen_gen },
     { "movw_binary_indgen_gen", &Sh4InstTests::movw_binary_indgen_gen },
     { "movl_binary_indgen_gen", &Sh4InstTests::movl_binary_indgen_gen },
+    { "movb_binary_gen_inddecgen", &Sh4InstTests::movb_binary_gen_inddecgen },
+    { "movw_binary_gen_inddecgen", &Sh4InstTests::movw_binary_gen_inddecgen },
+    { "movl_binary_gen_inddecgen", &Sh4InstTests::movl_binary_gen_inddecgen },
     { NULL }
 };
 
