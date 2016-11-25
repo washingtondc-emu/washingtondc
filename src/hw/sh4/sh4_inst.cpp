@@ -2008,7 +2008,14 @@ void Sh4::inst_binary_movl_binind_disp_gbr_r0(OpArgs inst) {
 // MOVA @(disp, PC), R0
 // 11000111dddddddd
 void Sh4::inst_binary_mova_binind_disp_pc_r0(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    /*
+     * The assembly for this one is a bit of a misnomer.
+     * even though it has the @ indirection symbol around (disp, PC), it
+     * actually just loads that address into R0 instead of the value at that
+     * address.  It is roughly analagous to the x86 architectures lea family of
+     * opcodes.
+     */
+    *gen_reg(0) = (inst.imm8 << 2) + (reg.pc & ~3) + 4;
 }
 
 // MOVCA.L R0, @Rn
