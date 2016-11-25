@@ -1978,19 +1978,31 @@ void Sh4::inst_binary_movl_r0_binind_disp_gbr(OpArgs inst) {
 // MOV.B @(disp, GBR), R0
 // 11000100dddddddd
 void Sh4::inst_binary_movb_binind_disp_gbr_r0(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    addr32_t addr = inst.imm8 + reg.gbr;
+    int8_t val;
+
+    mem->read(&val, addr, sizeof(val));
+    *gen_reg(0) = int32_t(val);
 }
 
 // MOV.W @(disp, GBR), R0
 // 11000101dddddddd
 void Sh4::inst_binary_movw_binind_disp_gbr_r0(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    addr32_t addr = (inst.imm8 << 1) + reg.gbr;
+    int16_t val;
+
+    mem->read(&val, addr, sizeof(val));
+    *gen_reg(0) = int32_t(val);
 }
 
 // MOV.L @(disp, GBR), R0
 // 11000110dddddddd
 void Sh4::inst_binary_movl_binind_disp_gbr_r0(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    addr32_t addr = (inst.imm8 << 2) + reg.gbr;
+    int32_t val;
+
+    mem->read(&val, addr, sizeof(val));
+    *gen_reg(0) = val;
 }
 
 // MOVA @(disp, PC), R0
