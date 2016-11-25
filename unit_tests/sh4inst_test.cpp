@@ -2808,6 +2808,53 @@ public:
 
         return failure;
     }
+
+    // MOVA @(disp, PC), R0
+    // 11000111dddddddd
+    static int do_binary_mova_binind_disp_pc_r0(Sh4 *cpu, Memory *mem,
+                                                uint8_t disp, reg32_t pc_val) {
+        std::stringstream ss;
+        std::string cmd;
+        Sh4Prog test_prog;
+
+        ss << "MOVA @(" << (unsigned)disp << ", PC), R0\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(pc_val, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        cpu->reg.pc = pc_val;
+        cpu->exec_inst();
+
+        reg32_t expected_val = disp * 4 + (pc_val & ~3) + 4;
+
+        if (*cpu->gen_reg(0) != expected_val) {
+            std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
+            std::cout << "expected value was " << std::hex <<
+                expected_val << std::endl;
+            std::cout << "actual value was " << std::hex << *cpu->gen_reg(0) <<
+                std::endl;
+            std::cout << "PC value was " << std::hex << pc_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_mova_binind_disp_pc_r0(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int disp = 0; disp <= 0xff; disp++) {
+            reg32_t pc_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            failure = failure ||
+                do_binary_mova_binind_disp_pc_r0(cpu, mem, disp, pc_val);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -2875,6 +2922,8 @@ struct inst_test {
       &Sh4InstTests::binary_movw_binind_disp_gbr_r0 },
     { "binary_movl_binind_disp_gbr_r0",
       &Sh4InstTests::binary_movl_binind_disp_gbr_r0 },
+    { "binary_mova_binind_disp_pc_r0",
+      &Sh4InstTests::binary_mova_binind_disp_pc_r0 },
     { NULL }
 };
 
