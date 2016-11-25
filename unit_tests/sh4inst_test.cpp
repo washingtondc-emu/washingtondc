@@ -2505,6 +2505,162 @@ public:
 
         return failure;
     }
+
+    // MOV.B R0, @(disp, GBR)
+    // 11000000dddddddd
+    static int do_binary_movb_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+                                                 reg32_t r0_val, uint8_t disp,
+                                                 reg32_t gbr_val) {
+        std::stringstream ss;
+        std::string cmd;
+        Sh4Prog test_prog;
+
+        ss << "MOV.B R0, @(" << (unsigned)disp << ", GBR)\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(0) = r0_val;
+        cpu->reg.gbr = gbr_val;
+        cpu->exec_inst();
+
+        int8_t mem_val;
+        mem->read(&mem_val, disp + gbr_val, sizeof(mem_val));
+        if (mem_val != int8_t(r0_val)) {
+            std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
+            std::cout << "expected value was " << std::hex << r0_val <<
+                std::endl;
+            std::cout << "actual value was " << std::hex << (unsigned)mem_val <<
+                std::endl;
+            std::cout << "R0 value was " << std::hex << r0_val << std::endl;
+            std::cout << "GBR value was " << std::hex << gbr_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_movb_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int disp = 0; disp <= 0xff; disp++) {
+            reg32_t r0_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t gbr_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            failure = failure ||
+                do_binary_movb_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
+                                                  gbr_val);
+        }
+
+        return failure;
+    }
+
+    // MOV.W R0, @(disp, GBR)
+    // 11000001dddddddd
+    static int do_binary_movw_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+                                                 reg32_t r0_val, uint8_t disp,
+                                                 reg32_t gbr_val) {
+        std::stringstream ss;
+        std::string cmd;
+        Sh4Prog test_prog;
+
+        ss << "MOV.W R0, @(" << (unsigned)disp << ", GBR)\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(0) = r0_val;
+        cpu->reg.gbr = gbr_val;
+        cpu->exec_inst();
+
+        int16_t mem_val;
+        mem->read(&mem_val, disp * 2 + gbr_val, sizeof(mem_val));
+        if (mem_val != int16_t(r0_val)) {
+            std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
+            std::cout << "expected value was " << std::hex << r0_val <<
+                std::endl;
+            std::cout << "actual value was " << std::hex << (unsigned)mem_val <<
+                std::endl;
+            std::cout << "R0 value was " << std::hex << r0_val << std::endl;
+            std::cout << "GBR value was " << std::hex << gbr_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_movw_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int disp = 0; disp <= 0xff; disp++) {
+            reg32_t r0_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t gbr_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            failure = failure ||
+                do_binary_movw_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
+                                                  gbr_val);
+        }
+
+        return failure;
+    }
+
+    // MOV.L R0, @(disp, GBR)
+    // 11000010dddddddd
+    static int do_binary_movl_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+                                                 reg32_t r0_val, uint8_t disp,
+                                                 reg32_t gbr_val) {
+        std::stringstream ss;
+        std::string cmd;
+        Sh4Prog test_prog;
+
+        ss << "MOV.L R0, @(" << (unsigned)disp << ", GBR)\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(0) = r0_val;
+        cpu->reg.gbr = gbr_val;
+        cpu->exec_inst();
+
+        int32_t mem_val;
+        mem->read(&mem_val, disp * 4 + gbr_val, sizeof(mem_val));
+        if (mem_val != int32_t(r0_val)) {
+            std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
+            std::cout << "expected value was " << std::hex << r0_val <<
+                std::endl;
+            std::cout << "actual value was " << std::hex << (unsigned)mem_val <<
+                std::endl;
+            std::cout << "R0 value was " << std::hex << r0_val << std::endl;
+            std::cout << "GBR value was " << std::hex << gbr_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_movl_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int disp = 0; disp <= 0xff; disp++) {
+            reg32_t r0_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t gbr_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            failure = failure ||
+                do_binary_movl_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
+                                                  gbr_val);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -2560,6 +2716,12 @@ struct inst_test {
       &Sh4InstTests::binary_movw_binind_r0_gen_gen },
     { "binary_movl_binind_r0_gen_gen",
       &Sh4InstTests::binary_movl_binind_r0_gen_gen },
+    { "binary_movb_r0_binind_disp_gbr",
+      &Sh4InstTests::binary_movb_r0_binind_disp_gbr },
+    { "binary_movw_r0_binind_disp_gbr",
+      &Sh4InstTests::binary_movw_r0_binind_disp_gbr },
+    { "binary_movl_r0_binind_disp_gbr",
+      &Sh4InstTests::binary_movl_r0_binind_disp_gbr },
     { NULL }
 };
 
