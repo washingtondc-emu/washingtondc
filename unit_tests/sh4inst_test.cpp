@@ -2032,6 +2032,251 @@ public:
         }
         return failed;
     }
+
+    // MOV.B Rm, @(R0, Rn)
+    // 0000nnnnmmmm0100
+    static int do_movb_gen_binind_r0_gen(Sh4 *cpu, Memory *mem, reg32_t src_val,
+                                         reg32_t r0_val, reg32_t base_val,
+                                         int reg_src, int reg_base) {
+        std::stringstream ss;
+        std::string cmd;
+        Sh4Prog test_prog;
+
+        if (reg_base == 0)
+            base_val = r0_val;
+
+        if (reg_src == 0)
+            src_val = r0_val;
+
+        if (reg_src == reg_base)
+            src_val = base_val;
+
+        ss << "MOV.B R" << reg_src << ", @(R0, R" << reg_base << ")\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_val;
+        *cpu->gen_reg(reg_base) = base_val;
+        *cpu->gen_reg(0) = r0_val;
+        cpu->exec_inst();
+
+        uint8_t mem_val;
+        mem->read(&mem_val, r0_val + base_val, sizeof(mem_val));
+
+        if (mem_val != uint8_t(src_val)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "src_val is " << std::hex << (unsigned)src_val << std::endl;
+            std::cout << "r0_val is " << std::hex << r0_val << std::endl;
+            std::cout << "base_val is " << std::hex << base_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movb_gen_binind_r0_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        addr32_t base_addr = (randgen32.pick_val(0) %
+                              (16 * 1024 * 1024)) >> 1;
+        addr32_t r0_val = (randgen32.pick_val(0) %
+                           (16 * 1024 * 1024)) >> 1;
+        failure = failure ||
+            do_movb_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+                                      r0_val, base_addr, 1, 1);
+
+
+        for (int reg_base = 0; reg_base < 16; reg_base++) {
+            for (int reg_src = 0; reg_src < 16; reg_src++) {
+                /*
+                 * the reason for the divide-by-two is so that they don't
+                 * add up to be more than 16MB
+                 */
+                addr32_t base_addr = (randgen32.pick_val(0) %
+                                      (16 * 1024 * 1024)) >> 1;
+                addr32_t r0_val = (randgen32.pick_val(0) %
+                                      (16 * 1024 * 1024)) >> 1;
+
+                failure = failure ||
+                    do_movb_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+                                              r0_val, base_addr,
+                                              reg_src, reg_base);
+            }
+        }
+
+        return failure;
+    }
+
+
+    // MOV.W R0, @(disp, Rn)
+    // 10000001nnnndddd
+    static int do_movw_gen_binind_r0_gen(Sh4 *cpu, Memory *mem, reg32_t src_val,
+                                         reg32_t r0_val, reg32_t base_val,
+                                         int reg_src, int reg_base) {
+        std::stringstream ss;
+        std::string cmd;
+        Sh4Prog test_prog;
+
+        if (reg_base == 0)
+            base_val = r0_val;
+
+        if (reg_src == 0)
+            src_val = r0_val;
+
+        if (reg_src == reg_base)
+            src_val = base_val;
+
+        ss << "MOV.W R" << reg_src << ", @(R0, R" << reg_base << ")\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_val;
+        *cpu->gen_reg(reg_base) = base_val;
+        *cpu->gen_reg(0) = r0_val;
+        cpu->exec_inst();
+
+        uint16_t mem_val;
+        mem->read(&mem_val, r0_val + base_val, sizeof(mem_val));
+
+        if (mem_val != uint16_t(src_val)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "src_val is " << std::hex << (unsigned)src_val <<
+                std::endl;
+            std::cout << "r0_val is " << std::hex << r0_val << std::endl;
+            std::cout << "base_val is " << std::hex << base_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movw_gen_binind_r0_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        addr32_t base_addr = (randgen32.pick_val(0) %
+                              (16 * 1024 * 1024)) >> 1;
+        addr32_t r0_val = (randgen32.pick_val(0) %
+                           (16 * 1024 * 1024)) >> 1;
+        failure = failure ||
+            do_movw_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+                                      r0_val, base_addr, 1, 1);
+
+
+        for (int reg_base = 0; reg_base < 16; reg_base++) {
+            for (int reg_src = 0; reg_src < 16; reg_src++) {
+                /*
+                 * the reason for the divide-by-two is so that they don't
+                 * add up to be more than 16MB
+                 */
+                addr32_t base_addr = (randgen32.pick_val(0) %
+                                      (16 * 1024 * 1024)) >> 1;
+                addr32_t r0_val = (randgen32.pick_val(0) %
+                                      (16 * 1024 * 1024)) >> 1;
+
+                failure = failure ||
+                    do_movw_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+                                              r0_val, base_addr,
+                                              reg_src, reg_base);
+            }
+        }
+
+        return failure;
+    }
+
+    // MOV.L Rm, @(disp, Rn)
+    // 0001nnnnmmmmdddd
+    static int do_movl_gen_binind_r0_gen(Sh4 *cpu, Memory *mem, reg32_t src_val,
+                                         reg32_t r0_val, reg32_t base_val,
+                                         int reg_src, int reg_base) {
+        std::stringstream ss;
+        std::string cmd;
+        Sh4Prog test_prog;
+
+        if (reg_base == 0)
+            base_val = r0_val;
+
+        if (reg_src == 0)
+            src_val = r0_val;
+
+        if (reg_src == reg_base)
+            src_val = base_val;
+
+        ss << "MOV.L R" << reg_src << ", @(R0, R" << reg_base << ")\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_val;
+        *cpu->gen_reg(reg_base) = base_val;
+        *cpu->gen_reg(0) = r0_val;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        mem->read(&mem_val, r0_val + base_val, sizeof(mem_val));
+
+        if (mem_val != uint32_t(src_val)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "src_val is " << std::hex << (unsigned)src_val << std::endl;
+            std::cout << "r0_val is " << std::hex << r0_val << std::endl;
+            std::cout << "base_val is " << std::hex << base_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movl_gen_binind_r0_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        addr32_t base_addr = (randgen32.pick_val(0) %
+                              (16 * 1024 * 1024)) >> 1;
+        addr32_t r0_val = (randgen32.pick_val(0) %
+                           (16 * 1024 * 1024)) >> 1;
+        failure = failure ||
+            do_movl_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+                                      r0_val, base_addr, 1, 1);
+
+
+        for (int reg_base = 0; reg_base < 16; reg_base++) {
+            for (int reg_src = 0; reg_src < 16; reg_src++) {
+                /*
+                 * the reason for the divide-by-two is so that they don't
+                 * add up to be more than 16MB
+                 */
+                addr32_t base_addr = (randgen32.pick_val(0) %
+                                      (16 * 1024 * 1024)) >> 1;
+                addr32_t r0_val = (randgen32.pick_val(0) %
+                                      (16 * 1024 * 1024)) >> 1;
+
+                failure = failure ||
+                    do_movl_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+                                              r0_val, base_addr,
+                                              reg_src, reg_base);
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -2078,6 +2323,9 @@ struct inst_test {
       &Sh4InstTests::movw_binary_binind_disp_gen_r0 },
     { "movl_binary_binind_disp_gen_gen",
       &Sh4InstTests::movl_binary_binind_disp_gen_gen },
+    { "movb_gen_binind_r0_gen", &Sh4InstTests::movb_gen_binind_r0_gen },
+    { "movw_gen_binind_r0_gen", &Sh4InstTests::movw_gen_binind_r0_gen },
+    { "movl_gen_binind_r0_gen", &Sh4InstTests::movl_gen_binind_r0_gen },
     { NULL }
 };
 
