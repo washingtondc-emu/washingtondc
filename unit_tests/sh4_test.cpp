@@ -125,7 +125,7 @@ public:
              addr += sizeof(ValType)) {
             ValType val = gen.pick_val(addr);
 
-            if ((err = cpu->write_mem(val, addr, sizeof(ValType))) != 0) {
+            if ((err = cpu->do_write_mem(val, addr, sizeof(ValType))) != 0) {
                 std::cout << "Error while writing 0x" << std::hex << addr <<
                     " to 0x" << std::hex << addr << std::endl;
                 return err;
@@ -142,7 +142,7 @@ public:
              ((addr + sizeof(ValType)) & CACHELINE_MASK) + 32 < end;
              addr += sizeof(ValType)) {
             basic_val_t val = 0;
-            if ((err = cpu->read_mem(&val, addr, sizeof(ValType))) != 0) {
+            if ((err = cpu->do_read_mem(&val, addr, sizeof(ValType))) != 0) {
                 std::cout << "Error while reading four bytes from 0x" <<
                     addr << std::endl;
                 return err;
@@ -325,7 +325,7 @@ public:
 
         for (addr32_t addr = start; addr < end; addr += sizeof(ValType)) {
             ValType val = this->gen.pick_val(addr);
-            err = this->cpu->write_mem(val, addr, sizeof(ValType));
+            err = this->cpu->do_write_mem(val, addr, sizeof(ValType));
             if (err == 0) {
                 if (addr >= sz_tbl[page_sz]) {
                     std::cout << "Error while writing 0x" << std::hex << addr <<

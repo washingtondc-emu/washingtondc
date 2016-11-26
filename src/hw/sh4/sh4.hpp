@@ -266,8 +266,26 @@ private:
      * appropriate CPU flags for an exception and return non-zero.  On success
      * they will return zero.
      */
-    int write_mem(basic_val_t val, addr32_t addr, unsigned len);
-    int read_mem(basic_val_t *val, addr32_t addr, unsigned len);
+    int do_write_mem(basic_val_t val, addr32_t addr, unsigned len);
+    int do_read_mem(basic_val_t *val, addr32_t addr, unsigned len);
+
+    template<typename val_t>
+    int write_mem(val_t const *val, addr32_t addr, unsigned len) {
+        basic_val_t tmp = *val;
+
+        return do_write_mem(tmp, addr, len);
+    }
+
+    template<typename val_t>
+    int read_mem(val_t *val, addr32_t addr, unsigned len) {
+        basic_val_t tmp;
+        int err;
+
+        if ((err = do_read_mem(&tmp, addr, len)) != 0)
+            return err;
+        *val = tmp;
+        return 0;
+    }
 
     int read_inst(inst_t *out, addr32_t addr);
 

@@ -801,7 +801,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg.pc = pc;
-        mem->write(&mem_val, disp * 2 + pc + 4, sizeof(mem_val));
+        cpu->write_mem(&mem_val, disp * 2 + pc + 4, sizeof(mem_val));
 
         cpu->exec_inst();
 
@@ -860,7 +860,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg.pc = pc;
-        mem->write(&mem_val, disp * 4 + (pc & ~3) + 4, sizeof(mem_val));
+        cpu->write_mem(&mem_val, disp * 4 + (pc & ~3) + 4, sizeof(mem_val));
 
         cpu->exec_inst();
 
@@ -969,7 +969,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        mem->read(&mem_val, addr, sizeof(mem_val));
+        cpu->read_mem(&mem_val, addr, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -1025,7 +1025,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        mem->read(&mem_val, addr, sizeof(mem_val));
+        cpu->read_mem(&mem_val, addr, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -1081,7 +1081,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        mem->read(&mem_val, addr, sizeof(mem_val));
+        cpu->read_mem(&mem_val, addr, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -1133,7 +1133,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        mem->write(&val, addr, sizeof(val));
+        cpu->write_mem(&val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
@@ -1186,7 +1186,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        mem->write(&val, addr, sizeof(val));
+        cpu->write_mem(&val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
@@ -1239,7 +1239,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        mem->write(&val, addr, sizeof(val));
+        cpu->write_mem(&val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != val) {
@@ -1300,7 +1300,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        mem->read(&mem_val, addr-1, sizeof(mem_val));
+        cpu->read_mem(&mem_val, addr-1, sizeof(mem_val));
 
         if (reg_src == reg_dst) {
             // special case - val will be decremented because the source and
@@ -1377,7 +1377,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        mem->read(&mem_val, addr-2, sizeof(mem_val));
+        cpu->read_mem(&mem_val, addr-2, sizeof(mem_val));
 
         if (reg_src == reg_dst) {
             // special case - val will be decremented because the source and
@@ -1454,7 +1454,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        mem->read(&mem_val, addr-4, sizeof(mem_val));
+        cpu->read_mem(&mem_val, addr-4, sizeof(mem_val));
 
         if (reg_src == reg_dst) {
             // special case - val will be decremented because the source and
@@ -1524,7 +1524,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        mem->write(&val, addr, sizeof(val));
+        cpu->write_mem(&val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
@@ -1587,7 +1587,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        mem->write(&val, addr, sizeof(val));
+        cpu->write_mem(&val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
@@ -1650,7 +1650,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        mem->write(&val, addr, sizeof(val));
+        cpu->write_mem(&val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
@@ -1717,7 +1717,7 @@ public:
         cpu->exec_inst();
 
         uint8_t mem_val;
-        mem->read(&mem_val, disp + base, sizeof(mem_val));
+        cpu->read_mem(&mem_val, disp + base, sizeof(mem_val));
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "val is " << std::hex << (unsigned)val << std::endl;
@@ -1773,7 +1773,7 @@ public:
         cpu->exec_inst();
 
         uint16_t mem_val;
-        mem->read(&mem_val, disp * 2 + base, sizeof(mem_val));
+        cpu->read_mem(&mem_val, disp * 2 + base, sizeof(mem_val));
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "val is " << std::hex << (unsigned)val << std::endl;
@@ -1831,7 +1831,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        mem->read(&mem_val, disp * 4 + base, sizeof(mem_val));
+        cpu->read_mem(&mem_val, disp * 4 + base, sizeof(mem_val));
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "val is " << std::hex << (unsigned)val << std::endl;
@@ -1887,7 +1887,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
-        mem->write(&val, disp + base, sizeof(val));
+        cpu->write_mem(&val, disp + base, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != int32_t(val)) {
@@ -1941,7 +1941,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
-        mem->write(&val, disp * 2 + base, sizeof(val));
+        cpu->write_mem(&val, disp * 2 + base, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != int32_t(val)) {
@@ -1997,7 +1997,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
-        mem->write(&val, disp * 4 + base, sizeof(val));
+        cpu->write_mem(&val, disp * 4 + base, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
@@ -2065,7 +2065,7 @@ public:
         cpu->exec_inst();
 
         uint8_t mem_val;
-        mem->read(&mem_val, r0_val + base_val, sizeof(mem_val));
+        cpu->read_mem(&mem_val, r0_val + base_val, sizeof(mem_val));
 
         if (mem_val != uint8_t(src_val)) {
             std::cout << "While running: " << cmd << std::endl;
@@ -2147,7 +2147,7 @@ public:
         cpu->exec_inst();
 
         uint16_t mem_val;
-        mem->read(&mem_val, r0_val + base_val, sizeof(mem_val));
+        cpu->read_mem(&mem_val, r0_val + base_val, sizeof(mem_val));
 
         if (mem_val != uint16_t(src_val)) {
             std::cout << "While running: " << cmd << std::endl;
@@ -2229,7 +2229,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        mem->read(&mem_val, r0_val + base_val, sizeof(mem_val));
+        cpu->read_mem(&mem_val, r0_val + base_val, sizeof(mem_val));
 
         if (mem_val != uint32_t(src_val)) {
             std::cout << "While running: " << cmd << std::endl;
@@ -2301,7 +2301,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base_val;
         *cpu->gen_reg(0) = r0_val;
-        mem->write(&src_val, r0_val + base_val, sizeof(src_val));
+        cpu->write_mem(&src_val, r0_val + base_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(src_val)) {
@@ -2377,7 +2377,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base_val;
         *cpu->gen_reg(0) = r0_val;
-        mem->write(&src_val, r0_val + base_val, sizeof(src_val));
+        cpu->write_mem(&src_val, r0_val + base_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(src_val)) {
@@ -2453,7 +2453,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base_val;
         *cpu->gen_reg(0) = r0_val;
-        mem->write(&src_val, r0_val + base_val, sizeof(src_val));
+        cpu->write_mem(&src_val, r0_val + base_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != src_val) {
@@ -2528,7 +2528,7 @@ public:
         cpu->exec_inst();
 
         int8_t mem_val;
-        mem->read(&mem_val, disp + gbr_val, sizeof(mem_val));
+        cpu->read_mem(&mem_val, disp + gbr_val, sizeof(mem_val));
         if (mem_val != int8_t(r0_val)) {
             std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
             std::cout << "expected value was " << std::hex << r0_val <<
@@ -2580,7 +2580,7 @@ public:
         cpu->exec_inst();
 
         int16_t mem_val;
-        mem->read(&mem_val, disp * 2 + gbr_val, sizeof(mem_val));
+        cpu->read_mem(&mem_val, disp * 2 + gbr_val, sizeof(mem_val));
         if (mem_val != int16_t(r0_val)) {
             std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
             std::cout << "expected value was " << std::hex << r0_val <<
@@ -2632,7 +2632,7 @@ public:
         cpu->exec_inst();
 
         int32_t mem_val;
-        mem->read(&mem_val, disp * 4 + gbr_val, sizeof(mem_val));
+        cpu->read_mem(&mem_val, disp * 4 + gbr_val, sizeof(mem_val));
         if (mem_val != int32_t(r0_val)) {
             std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
             std::cout << "expected value was " << std::hex << r0_val <<
@@ -2680,7 +2680,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg.gbr = gbr_val;
-        mem->write(&src_val, disp + gbr_val, sizeof(src_val));
+        cpu->write_mem(&src_val, disp + gbr_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != int32_t(src_val)) {
@@ -2729,7 +2729,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg.gbr = gbr_val;
-        mem->write(&src_val, disp * 2 + gbr_val, sizeof(src_val));
+        cpu->write_mem(&src_val, disp * 2 + gbr_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != int32_t(src_val)) {
@@ -2778,7 +2778,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg.gbr = gbr_val;
-        mem->write(&src_val, disp * 4 + gbr_val, sizeof(src_val));
+        cpu->write_mem(&src_val, disp * 4 + gbr_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != src_val) {

@@ -1312,7 +1312,7 @@ void Sh4::inst_binary_movw_binind_disp_pc_gen(OpArgs inst) {
     int reg_no = inst.gen_reg;
     int16_t mem_in;
 
-    mem->read(&mem_in, addr, sizeof(mem_in));
+    read_mem<int16_t>(&mem_in, addr, sizeof(mem_in));
     *gen_reg(reg_no) = (int32_t)mem_in;
 }
 
@@ -1323,7 +1323,7 @@ void Sh4::inst_binary_movl_binind_disp_pc_gen(OpArgs inst) {
     int reg_no = inst.gen_reg;
     int32_t mem_in;
 
-    mem->read(&mem_in, addr, sizeof(mem_in));
+    read_mem(&mem_in, addr, sizeof(mem_in));
     *gen_reg(reg_no) = mem_in;
 }
 
@@ -1727,7 +1727,7 @@ void Sh4::inst_binary_movb_gen_indgen(OpArgs inst) {
     addr32_t addr = *gen_reg(inst.dst_reg);
     uint8_t mem_val = *gen_reg(inst.src_reg);
 
-    mem->write(&mem_val, addr, sizeof(mem_val));
+    write_mem(&mem_val, addr, sizeof(mem_val));
 }
 
 // MOV.W Rm, @Rn
@@ -1736,7 +1736,7 @@ void Sh4::inst_binary_movw_gen_indgen(OpArgs inst) {
     addr32_t addr = *gen_reg(inst.dst_reg);
     uint16_t mem_val = *gen_reg(inst.src_reg);
 
-    mem->write(&mem_val, addr, sizeof(mem_val));
+    write_mem(&mem_val, addr, sizeof(mem_val));
 }
 
 // MOV.L Rm, @Rn
@@ -1745,7 +1745,7 @@ void Sh4::inst_binary_movl_gen_indgen(OpArgs inst) {
     addr32_t addr = *gen_reg(inst.dst_reg);
     uint32_t mem_val = *gen_reg(inst.src_reg);
 
-    mem->write(&mem_val, addr, sizeof(mem_val));
+    write_mem(&mem_val, addr, sizeof(mem_val));
 }
 
 // MOV.B @Rm, Rn
@@ -1754,7 +1754,7 @@ void Sh4::inst_binary_movb_indgen_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(inst.src_reg);
     int8_t mem_val;
 
-    mem->read(&mem_val, addr, sizeof(mem_val));
+    read_mem(&mem_val, addr, sizeof(mem_val));
 
     *gen_reg(inst.dst_reg) = int32_t(mem_val);
 }
@@ -1765,7 +1765,7 @@ void Sh4::inst_binary_movw_indgen_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(inst.src_reg);
     int16_t mem_val;
 
-    mem->read(&mem_val, addr, sizeof(mem_val));
+    read_mem(&mem_val, addr, sizeof(mem_val));
 
     *gen_reg(inst.dst_reg) = int32_t(mem_val);
 }
@@ -1776,7 +1776,7 @@ void Sh4::inst_binary_movl_indgen_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(inst.src_reg);
     int32_t mem_val;
 
-    mem->read(&mem_val, addr, sizeof(mem_val));
+    read_mem(&mem_val, addr, sizeof(mem_val));
 
     *gen_reg(inst.dst_reg) = mem_val;
 }
@@ -1790,7 +1790,7 @@ void Sh4::inst_binary_movb_gen_inddecgen(OpArgs inst) {
 
     (*dst_reg)--;
     val = *src_reg;
-    mem->write(&val, *dst_reg, sizeof(val));
+    write_mem(&val, *dst_reg, sizeof(val));
 }
 
 // MOV.W Rm, @-Rn
@@ -1802,7 +1802,7 @@ void Sh4::inst_binary_movw_gen_inddecgen(OpArgs inst) {
 
     (*dst_reg) -= 2;
     val = *src_reg;
-    mem->write(&val, *dst_reg, sizeof(val));
+    write_mem(&val, *dst_reg, sizeof(val));
 }
 
 // MOV.L Rm, @-Rn
@@ -1814,7 +1814,7 @@ void Sh4::inst_binary_movl_gen_inddecgen(OpArgs inst) {
 
     (*dst_reg) -= 4;
     val = *src_reg;
-    mem->write(&val, *dst_reg, sizeof(val));
+    write_mem(&val, *dst_reg, sizeof(val));
 }
 
 // MOV.B @Rm+, Rn
@@ -1824,7 +1824,7 @@ void Sh4::inst_binary_movb_indgeninc_gen(OpArgs inst) {
     reg32_t *dst_reg = gen_reg(inst.dst_reg);
     int8_t val;
 
-    mem->read(&val, *src_reg, sizeof(val));
+    read_mem(&val, *src_reg, sizeof(val));
     *dst_reg = int32_t(val);
 
     (*src_reg)++;
@@ -1837,7 +1837,7 @@ void Sh4::inst_binary_movw_indgeninc_gen(OpArgs inst) {
     reg32_t *dst_reg = gen_reg(inst.dst_reg);
     int16_t val;
 
-    mem->read(&val, *src_reg, sizeof(val));
+    read_mem(&val, *src_reg, sizeof(val));
     *dst_reg = int32_t(val);
 
     (*src_reg) += 2;
@@ -1850,7 +1850,7 @@ void Sh4::inst_binary_movl_indgeninc_gen(OpArgs inst) {
     reg32_t *dst_reg = gen_reg(inst.dst_reg);
     int32_t val;
 
-    mem->read(&val, *src_reg, sizeof(val));
+    read_mem(&val, *src_reg, sizeof(val));
     *dst_reg = int32_t(val);
 
     (*src_reg) += 4;
@@ -1874,7 +1874,7 @@ void Sh4::inst_binary_movb_r0_binind_disp_gen(OpArgs inst) {
     addr32_t addr = inst.imm4 + *gen_reg(inst.base_reg_src);
     int8_t val = *gen_reg(0);
 
-    mem->write(&val, addr, sizeof(val));
+    write_mem(&val, addr, sizeof(val));
 }
 
 // MOV.W R0, @(disp, Rn)
@@ -1883,7 +1883,7 @@ void Sh4::inst_binary_movw_r0_binind_disp_gen(OpArgs inst) {
     addr32_t addr = (inst.imm4 << 1) + *gen_reg(inst.base_reg_src);
     int16_t val = *gen_reg(0);
 
-    mem->write(&val, addr, sizeof(val));
+    write_mem(&val, addr, sizeof(val));
 }
 
 // MOV.L Rm, @(disp, Rn)
@@ -1892,7 +1892,7 @@ void Sh4::inst_binary_movl_gen_binind_disp_gen(OpArgs inst) {
     addr32_t addr = (inst.imm4 << 2) + *gen_reg(inst.base_reg_dst);
     int32_t val = *gen_reg(inst.base_reg_src);
 
-    mem->write(&val, addr, sizeof(val));
+    write_mem(&val, addr, sizeof(val));
 }
 
 // MOV.B @(disp, Rm), R0
@@ -1901,7 +1901,7 @@ void Sh4::inst_binary_movb_binind_disp_gen_r0(OpArgs inst) {
     addr32_t addr = inst.imm4 + *gen_reg(inst.base_reg_src);
     int8_t val;
 
-    mem->read(&val, addr, sizeof(val));
+    read_mem(&val, addr, sizeof(val));
 
     *gen_reg(0) = int32_t(val);
 }
@@ -1912,7 +1912,7 @@ void Sh4::inst_binary_movw_binind_disp_gen_r0(OpArgs inst) {
     addr32_t addr = (inst.imm4 << 1) + *gen_reg(inst.base_reg_src);
     int16_t val;
 
-    mem->read(&val, addr, sizeof(val));
+    read_mem(&val, addr, sizeof(val));
 
     *gen_reg(0) = int32_t(val);
 }
@@ -1923,7 +1923,7 @@ void Sh4::inst_binary_movl_binind_disp_gen_gen(OpArgs inst) {
     addr32_t addr = (inst.imm4 << 2) + *gen_reg(inst.base_reg_src);
     int32_t val;
 
-    mem->read(&val, addr, sizeof(val));
+    read_mem(&val, addr, sizeof(val));
 
     *gen_reg(inst.base_reg_dst) = val;
 }
@@ -1934,7 +1934,7 @@ void Sh4::inst_binary_movb_gen_binind_r0_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(0) + *gen_reg(inst.dst_reg);
     uint8_t val = *gen_reg(inst.src_reg);
 
-    mem->write(&val, addr, sizeof(val));
+    write_mem(&val, addr, sizeof(val));
 }
 
 // MOV.W Rm, @(R0, Rn)
@@ -1943,7 +1943,7 @@ void Sh4::inst_binary_movw_gen_binind_r0_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(0) + *gen_reg(inst.dst_reg);
     uint16_t val = *gen_reg(inst.src_reg);
 
-    mem->write(&val, addr, sizeof(val));
+    write_mem(&val, addr, sizeof(val));
 }
 
 // MOV.L Rm, @(R0, Rn)
@@ -1952,7 +1952,7 @@ void Sh4::inst_binary_movl_gen_binind_r0_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(0) + *gen_reg(inst.dst_reg);
     uint32_t val = *gen_reg(inst.src_reg);
 
-    mem->write(&val, addr, sizeof(val));
+    write_mem(&val, addr, sizeof(val));
 }
 
 // MOV.B @(R0, Rm), Rn
@@ -1960,7 +1960,7 @@ void Sh4::inst_binary_movl_gen_binind_r0_gen(OpArgs inst) {
 void Sh4::inst_binary_movb_binind_r0_gen_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(0) + *gen_reg(inst.src_reg);
     int8_t val;
-    mem->read(&val, addr, sizeof(val));
+    read_mem(&val, addr, sizeof(val));
     *gen_reg(inst.dst_reg) = int32_t(val);
 }
 
@@ -1970,7 +1970,7 @@ void Sh4::inst_binary_movw_binind_r0_gen_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(0) + *gen_reg(inst.src_reg);
     int16_t val;
 
-    mem->read(&val, addr, sizeof(val));
+    read_mem(&val, addr, sizeof(val));
     *gen_reg(inst.dst_reg) = int32_t(val);
 }
 
@@ -1980,7 +1980,7 @@ void Sh4::inst_binary_movl_binind_r0_gen_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(0) + *gen_reg(inst.src_reg);
     int32_t val;
 
-    mem->read(&val, addr, sizeof(val));
+    read_mem(&val, addr, sizeof(val));
     *gen_reg(inst.dst_reg) = val;
 }
 
@@ -1990,7 +1990,7 @@ void Sh4::inst_binary_movb_r0_binind_disp_gbr(OpArgs inst) {
     addr32_t addr = inst.imm8 + reg.gbr;
     int8_t val = *gen_reg(0);
 
-    mem->write(&val, addr, sizeof(val));
+    write_mem(&val, addr, sizeof(val));
 }
 
 // MOV.W R0, @(disp, GBR)
@@ -1999,7 +1999,7 @@ void Sh4::inst_binary_movw_r0_binind_disp_gbr(OpArgs inst) {
     addr32_t addr = (inst.imm8 << 1) + reg.gbr;
     int16_t val = *gen_reg(0);
 
-    mem->write(&val, addr, sizeof(val));
+    write_mem(&val, addr, sizeof(val));
 }
 
 // MOV.L R0, @(disp, GBR)
@@ -2008,7 +2008,7 @@ void Sh4::inst_binary_movl_r0_binind_disp_gbr(OpArgs inst) {
     addr32_t addr = (inst.imm8 << 2) + reg.gbr;
     int32_t val = *gen_reg(0);
 
-    mem->write(&val, addr, sizeof(val));
+    write_mem(&val, addr, sizeof(val));
 }
 
 // MOV.B @(disp, GBR), R0
@@ -2017,7 +2017,7 @@ void Sh4::inst_binary_movb_binind_disp_gbr_r0(OpArgs inst) {
     addr32_t addr = inst.imm8 + reg.gbr;
     int8_t val;
 
-    mem->read(&val, addr, sizeof(val));
+    read_mem(&val, addr, sizeof(val));
     *gen_reg(0) = int32_t(val);
 }
 
@@ -2027,7 +2027,7 @@ void Sh4::inst_binary_movw_binind_disp_gbr_r0(OpArgs inst) {
     addr32_t addr = (inst.imm8 << 1) + reg.gbr;
     int16_t val;
 
-    mem->read(&val, addr, sizeof(val));
+    read_mem(&val, addr, sizeof(val));
     *gen_reg(0) = int32_t(val);
 }
 
@@ -2037,7 +2037,7 @@ void Sh4::inst_binary_movl_binind_disp_gbr_r0(OpArgs inst) {
     addr32_t addr = (inst.imm8 << 2) + reg.gbr;
     int32_t val;
 
-    mem->read(&val, addr, sizeof(val));
+    read_mem(&val, addr, sizeof(val));
     *gen_reg(0) = val;
 }
 
