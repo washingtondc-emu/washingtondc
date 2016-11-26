@@ -39,6 +39,7 @@ public:
      */
     static void reset_cpu(Sh4 *cpu) {
         cpu->reg.pc = 0;
+        cpu->reg.sr = Sh4::SR_MD_MASK;
     }
 
     // very basic test that does a whole lot of nothing
@@ -731,10 +732,6 @@ public:
                 Sh4Prog test_prog;
                 std::stringstream ss;
 
-                cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-                if (t_val)
-                    cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
-
                 ss << "MOVT R" << reg_no << "\n";
                 test_prog.assemble(ss.str());
                 const Sh4Prog::InstList& inst = test_prog.get_prog();
@@ -742,7 +739,11 @@ public:
 
                 reset_cpu(cpu);
 
-                cpu->exec_inst();
+                cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+                if (t_val)
+                    cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+
+                 cpu->exec_inst();
 
                 if (*cpu->gen_reg(reg_no) != t_val)
                     return 1;
@@ -2855,6 +2856,306 @@ public:
 
         return failure;
     }
+
+    // LDC Rm, SR
+    // 0100mmmm00001110
+    static int do_binary_ldc_gen_sr(Sh4 *cpu, Memory *mem,
+                                    unsigned reg_no, reg32_t reg_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC R" << reg_no << ", SR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->exec_inst();
+
+        if (cpu->reg.sr != reg_val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "reg_val is " << std::hex << reg_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                cpu->reg.sr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldc_gen_sr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_ldc_gen_sr(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDC Rm, GBR
+    // 0100mmmm00011110
+    static int do_binary_ldc_gen_gbr(Sh4 *cpu, Memory *mem,
+                                     unsigned reg_no, reg32_t reg_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC R" << reg_no << ", GBR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->exec_inst();
+
+        if (cpu->reg.gbr != reg_val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "reg_val is " << std::hex << reg_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                cpu->reg.gbr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldc_gen_gbr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_ldc_gen_gbr(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDC Rm, VBR
+    // 0100mmmm00101110
+    static int do_binary_ldc_gen_vbr(Sh4 *cpu, Memory *mem,
+                                     unsigned reg_no, reg32_t reg_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC R" << reg_no << ", VBR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->exec_inst();
+
+        if (cpu->reg.vbr != reg_val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "reg_val is " << std::hex << reg_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                cpu->reg.vbr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldc_gen_vbr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_ldc_gen_vbr(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDC Rm, SSR
+    // 0100mmmm00111110
+    static int do_binary_ldc_gen_ssr(Sh4 *cpu, Memory *mem,
+                                     unsigned reg_no, reg32_t reg_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC R" << reg_no << ", SSR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->exec_inst();
+
+        if (cpu->reg.ssr != reg_val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "reg_val is " << std::hex << reg_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                cpu->reg.ssr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldc_gen_ssr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_ldc_gen_ssr(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDC Rm, SPC
+    // 0100mmmm01001110
+    static int do_binary_ldc_gen_spc(Sh4 *cpu, Memory *mem,
+                                     unsigned reg_no, reg32_t reg_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC R" << reg_no << ", SPC\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->exec_inst();
+
+        if (cpu->reg.spc != reg_val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "reg_val is " << std::hex << reg_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                cpu->reg.spc << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldc_gen_spc(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_ldc_gen_spc(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDC Rm, DBR
+    // 0100mmmm11111010
+    static int do_binary_ldc_gen_dbr(Sh4 *cpu, Memory *mem,
+                                     unsigned reg_no, reg32_t reg_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC R" << reg_no << ", DBR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->exec_inst();
+
+        if (cpu->reg.dbr != reg_val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "reg_val is " << std::hex << reg_val << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                cpu->reg.dbr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldc_gen_dbr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_ldc_gen_dbr(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDC Rm, Rn_BANK
+    // 0100mmmm1nnn1110
+    static int do_binary_ldc_gen_bank(Sh4 *cpu, Memory *mem,
+                                      unsigned reg_no, unsigned bank_reg_no,
+                                      reg32_t reg_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC R" << reg_no << ", R" << bank_reg_no << "_BANK\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->exec_inst();
+
+        reg32_t bank_reg_val = *cpu->bank_reg(bank_reg_no);
+
+        if (bank_reg_val != reg_val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "reg_val is " << std::hex << reg_val << std::endl;
+            std::cout << "actual val is " << std::hex << bank_reg_val <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldc_gen_bank(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            for (unsigned bank_reg_no = 0; bank_reg_no < 8; bank_reg_no++) {
+                failure = failure ||
+                    do_binary_ldc_gen_bank(cpu, mem, reg_no, bank_reg_no,
+                                           randgen32.pick_val(0));
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -2924,6 +3225,12 @@ struct inst_test {
       &Sh4InstTests::binary_movl_binind_disp_gbr_r0 },
     { "binary_mova_binind_disp_pc_r0",
       &Sh4InstTests::binary_mova_binind_disp_pc_r0 },
+    { "binary_ldc_gen_sr", &Sh4InstTests::binary_ldc_gen_sr },
+    { "binary_ldc_gen_gbr", &Sh4InstTests::binary_ldc_gen_gbr },
+    { "binary_ldc_gen_vbr", &Sh4InstTests::binary_ldc_gen_vbr },
+    { "binary_ldc_gen_ssr", &Sh4InstTests::binary_ldc_gen_ssr },
+    { "binary_ldc_gen_spc", &Sh4InstTests::binary_ldc_gen_spc },
+    { "binary_ldc_gen_bank", &Sh4InstTests::binary_ldc_gen_bank },
     { NULL }
 };
 
