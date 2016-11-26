@@ -412,6 +412,16 @@ private:
         }
     }
 
+    // return a pointer to the given banked general-purpose register
+    reg32_t *bank_reg(int idx) {
+        assert(!(idx & ~0x7));
+
+        if (reg.sr & SR_RB_MASK)
+            return &reg.r_bank0[idx];
+        else
+            return &reg.r_bank1[idx];
+    }
+
     static const unsigned MMUPTEH_ASID_SHIFT = 0;
     static const unsigned MMUPTEH_ASID_MASK = 0xff << MMUPTEH_ASID_SHIFT;
 
