@@ -400,16 +400,16 @@ private:
      * This function takes bank-switching into account.
      */
     reg32_t *gen_reg(int idx) {
-	assert(!(idx & ~0xf));
+        assert(!(idx & ~0xf));
 
-	if (idx <= 7) {
-	    if (reg.sr & SR_RB_MASK)
-		return &reg.r_bank1[idx];
-	    else
-		return &reg.r_bank0[idx];
-	} else {
-	    return &reg.rgen[idx - 8];
-	}
+        if (idx <= 7) {
+            if (reg.sr & SR_RB_MASK)
+                return &reg.r_bank1[idx];
+            else
+                return &reg.r_bank0[idx];
+        } else {
+            return &reg.rgen[idx - 8];
+        }
     }
 
     static const unsigned MMUPTEH_ASID_SHIFT = 0;
