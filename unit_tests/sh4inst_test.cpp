@@ -823,14 +823,17 @@ public:
         RandGenerator<boost::uint32_t> randgen32;
         randgen32.reset();
 
-        for (int i = 0; i < 1024; i++) {
-            addr32_t pc_val = (randgen32.pick_val(0) % mem->get_size()) & ~1;
-            failed = failed ||
-                do_movw_binary_binind_disp_pc_gen(cpu, mem,
-                                                  randgen32.pick_val(0) % 0xff,
-                                                  pc_val,
-                                                  randgen32.pick_val(0) % 15,
-                                                  randgen32.pick_val(0) & 0xffff);
+        for (int disp = 0; disp < 256; disp++) {
+            for (int reg_no = 0; reg_no < 16; reg_no++) {
+                addr32_t pc_max = mem->get_size() - 1 - 4 - disp * 2;
+                addr32_t pc_val =
+                    randgen32.pick_range(0, pc_max) & ~1;
+                failed = failed ||
+                    do_movw_binary_binind_disp_pc_gen(cpu, mem, disp,
+                                                      pc_val, reg_no,
+                                                      randgen32.pick_val(0) &
+                                                      0xffff);
+            }
         }
 
         // not much rhyme or reason to this test case, but it did
