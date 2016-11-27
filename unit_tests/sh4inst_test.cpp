@@ -3484,6 +3484,314 @@ public:
 
         return failure;
     }
+
+    // STC SR, Rn
+    // 0000nnnn00000010
+    static int do_binary_stc_sr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+                                    reg32_t sr_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        /*
+         * using random values for SR is a little messy 'cause it has side
+         * effects.  In the future I may decide not to use random values for
+         * this test.
+         */
+        sr_val |= Sh4::SR_MD_MASK;
+
+        ss << "STC SR, R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.sr = sr_val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != sr_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << sr_val <<
+                std::endl;
+            std::cout << "Actual value is " << cpu->reg.sr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stc_sr_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_stc_sr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STC GBR, Rn
+    // 0000nnnn00010010
+    static int do_binary_stc_gbr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+                                     reg32_t gbr_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC GBR, R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.gbr = gbr_val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != gbr_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << gbr_val <<
+                std::endl;
+            std::cout << "Actual value is " << cpu->reg.gbr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stc_gbr_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_stc_gbr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STC VBR, Rn
+    // 0000nnnn00100010
+    static int do_binary_stc_vbr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+                                     reg32_t vbr_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC VBR, R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.vbr = vbr_val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != vbr_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << vbr_val <<
+                std::endl;
+            std::cout << "Actual value is " << cpu->reg.vbr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stc_vbr_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_stc_vbr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STC SSR, Rn
+    // 0000nnnn00110010
+    static int do_binary_stc_ssr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+                                     reg32_t ssr_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC SSR, R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.ssr = ssr_val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != ssr_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << ssr_val <<
+                std::endl;
+            std::cout << "Actual value is " << cpu->reg.ssr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stc_ssr_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_stc_ssr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STC SPC, Rn
+    // 0000nnnn01000010
+    static int do_binary_stc_spc_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+                                     reg32_t spc_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC SPC, R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.spc = spc_val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != spc_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << spc_val <<
+                std::endl;
+            std::cout << "Actual value is " << cpu->reg.spc << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stc_spc_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_stc_spc_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STC SGR, Rn
+    // 0000nnnn00111010
+    static int do_binary_stc_sgr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+                                     reg32_t sgr_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC SGR, R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.sgr = sgr_val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != sgr_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << sgr_val <<
+                std::endl;
+            std::cout << "Actual value is " << cpu->reg.sgr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stc_sgr_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_stc_sgr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STC DBR, Rn
+    // 0000nnnn11111010
+    static int do_binary_stc_dbr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+                                     reg32_t dbr_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC DBR, R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.dbr = dbr_val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != dbr_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << dbr_val <<
+                std::endl;
+            std::cout << "Actual value is " << cpu->reg.dbr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stc_dbr_gen(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (int reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_stc_dbr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -3565,6 +3873,13 @@ struct inst_test {
     { "binary_ldcl_indgeninc_ssr", &Sh4InstTests::binary_ldcl_indgeninc_ssr },
     { "binary_ldcl_indgeninc_spc", &Sh4InstTests::binary_ldcl_indgeninc_spc },
     { "binary_ldcl_indgeninc_dbr", &Sh4InstTests::binary_ldcl_indgeninc_dbr },
+    { "binary_stc_sr_gen", &Sh4InstTests::binary_stc_sr_gen },
+    { "binary_stc_gbr_gen", &Sh4InstTests::binary_stc_gbr_gen },
+    { "binary_stc_vbr_gen", &Sh4InstTests::binary_stc_vbr_gen },
+    { "binary_stc_ssr_gen", &Sh4InstTests::binary_stc_ssr_gen },
+    { "binary_stc_spc_gen", &Sh4InstTests::binary_stc_spc_gen },
+    { "binary_stc_sgr_gen", &Sh4InstTests::binary_stc_sgr_gen },
+    { "binary_stc_dbr_gen", &Sh4InstTests::binary_stc_dbr_gen },
     { NULL }
 };
 
