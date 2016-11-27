@@ -3156,6 +3156,331 @@ public:
 
         return failure;
     }
+
+    // LDC.L @Rm+, SR
+    // 0100mmmm00000111
+    static int do_binary_ldcl_indgeninc_sr(Sh4 *cpu, Memory *mem,
+                                           unsigned reg_src, addr32_t addr,
+                                           uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC.L @R" << reg_src << "+, SR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_src) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        /*
+         * Need to restore the original SR because editing SR can cause us to
+         * do things that interfere with the test (such as bank-switching).
+         */
+        reg32_t old_sr = cpu->reg.sr;
+        cpu->exec_inst();
+        reg32_t new_sr = cpu->reg.sr;
+        cpu->reg.sr = old_sr;
+
+        if ((new_sr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "address is " << std::hex << addr << std::endl;
+            std::cout << "expected value is " << val << std::endl;
+            std::cout << "actual value is " << new_sr << std::endl;
+            std::cout << "expected output address is " << (4 + addr) <<
+                std::endl;
+            std::cout << "actual output address is " <<
+                *cpu->gen_reg(reg_src) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldcl_indgeninc_sr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t val = randgen32.pick_val(0);
+
+            failure = failure ||
+                do_binary_ldcl_indgeninc_sr(cpu, mem, reg_src, addr, val);
+        }
+
+        return failure;
+    }
+
+    // LDC.L @Rm+, GBR
+    // 0100mmmm00010111
+    static int do_binary_ldcl_indgeninc_gbr(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_src, addr32_t addr,
+                                            uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC.L @R" << reg_src << "+, GBR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_src) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        if ((cpu->reg.gbr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "address is " << std::hex << addr << std::endl;
+            std::cout << "expected value is " << val << std::endl;
+            std::cout << "actual value is " << cpu->reg.gbr << std::endl;
+            std::cout << "expected output address is " << (4 + addr) <<
+                std::endl;
+            std::cout << "actual output address is " <<
+                *cpu->gen_reg(reg_src) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldcl_indgeninc_gbr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t val = randgen32.pick_val(0);
+
+            failure = failure ||
+                do_binary_ldcl_indgeninc_gbr(cpu, mem, reg_src, addr, val);
+        }
+
+        return failure;
+    }
+
+    // LDC.L @Rm+, VBR
+    // 0100mmmm00100111
+    static int do_binary_ldcl_indgeninc_vbr(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_src, addr32_t addr,
+                                            uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC.L @R" << reg_src << "+, VBR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_src) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        if ((cpu->reg.vbr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "address is " << std::hex << addr << std::endl;
+            std::cout << "expected value is " << val << std::endl;
+            std::cout << "actual value is " << cpu->reg.vbr << std::endl;
+            std::cout << "expected output address is " << (4 + addr) <<
+                std::endl;
+            std::cout << "actual output address is " <<
+                *cpu->gen_reg(reg_src) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldcl_indgeninc_vbr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t val = randgen32.pick_val(0);
+
+            failure = failure ||
+                do_binary_ldcl_indgeninc_vbr(cpu, mem, reg_src, addr, val);
+        }
+
+        return failure;
+    }
+
+    // LDC.L @Rm+, SSR
+    // 0100mmmm00110111
+    static int do_binary_ldcl_indgeninc_ssr(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_src, addr32_t addr,
+                                            uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC.L @R" << reg_src << "+, SSR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_src) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        if ((cpu->reg.ssr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "address is " << std::hex << addr << std::endl;
+            std::cout << "expected value is " << val << std::endl;
+            std::cout << "actual value is " << cpu->reg.ssr << std::endl;
+            std::cout << "expected output address is " << (4 + addr) <<
+                std::endl;
+            std::cout << "actual output address is " <<
+                *cpu->gen_reg(reg_src) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldcl_indgeninc_ssr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t val = randgen32.pick_val(0);
+
+            failure = failure ||
+                do_binary_ldcl_indgeninc_ssr(cpu, mem, reg_src, addr, val);
+        }
+
+        return failure;
+    }
+
+    // LDC.L @Rm+, SPC
+    // 0100mmmm01000111
+    static int do_binary_ldcl_indgeninc_spc(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_src, addr32_t addr,
+                                            uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC.L @R" << reg_src << "+, SPC\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_src) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        if ((cpu->reg.spc != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "address is " << std::hex << addr << std::endl;
+            std::cout << "expected value is " << val << std::endl;
+            std::cout << "actual value is " << cpu->reg.spc << std::endl;
+            std::cout << "expected output address is " << (4 + addr) <<
+                std::endl;
+            std::cout << "actual output address is " <<
+                *cpu->gen_reg(reg_src) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldcl_indgeninc_spc(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t val = randgen32.pick_val(0);
+
+            failure = failure ||
+                do_binary_ldcl_indgeninc_spc(cpu, mem, reg_src, addr, val);
+        }
+
+        return failure;
+    }
+
+    // LDC.L @Rm+, DBR
+    // 0100mmmm11110110
+    static int do_binary_ldcl_indgeninc_dbr(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_src, addr32_t addr,
+                                            uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC.L @R" << reg_src << "+, DBR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_src) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        if ((cpu->reg.dbr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "address is " << std::hex << addr << std::endl;
+            std::cout << "expected value is " << val << std::endl;
+            std::cout << "actual value is " << cpu->reg.dbr << std::endl;
+            std::cout << "expected output address is " << (4 + addr) <<
+                std::endl;
+            std::cout << "actual output address is " <<
+                *cpu->gen_reg(reg_src) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldcl_indgeninc_dbr(Sh4 *cpu, Memory *mem) {
+        int failure = 0;
+        RandGenerator<boost::uint32_t> randgen32;
+        randgen32.reset();
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t val = randgen32.pick_val(0);
+
+            failure = failure ||
+                do_binary_ldcl_indgeninc_dbr(cpu, mem, reg_src, addr, val);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -3231,6 +3556,12 @@ struct inst_test {
     { "binary_ldc_gen_ssr", &Sh4InstTests::binary_ldc_gen_ssr },
     { "binary_ldc_gen_spc", &Sh4InstTests::binary_ldc_gen_spc },
     { "binary_ldc_gen_bank", &Sh4InstTests::binary_ldc_gen_bank },
+    { "binary_ldcl_indgeninc_sr", &Sh4InstTests::binary_ldcl_indgeninc_sr },
+    { "binary_ldcl_indgeninc_gbr", &Sh4InstTests::binary_ldcl_indgeninc_gbr },
+    { "binary_ldcl_indgeninc_vbr", &Sh4InstTests::binary_ldcl_indgeninc_vbr },
+    { "binary_ldcl_indgeninc_ssr", &Sh4InstTests::binary_ldcl_indgeninc_ssr },
+    { "binary_ldcl_indgeninc_spc", &Sh4InstTests::binary_ldcl_indgeninc_spc },
+    { "binary_ldcl_indgeninc_dbr", &Sh4InstTests::binary_ldcl_indgeninc_dbr },
     { NULL }
 };
 
