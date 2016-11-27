@@ -201,7 +201,7 @@ char const *insts_to_test[] = {
     "LDC R<4>, R<3>_BANK",
     "LDC.L @R<4>+, R<3>_BANK",
     "STC R<3>_BANK, R<4>",
-    "STC.L R<4>_BANK, @-R<3>",
+    "STC.L R<3>_BANK, @-R<4>",
     "LDS R<4>, MACH",
     "LDS R<4>, MACL",
     "STS MACH, R<4>",
