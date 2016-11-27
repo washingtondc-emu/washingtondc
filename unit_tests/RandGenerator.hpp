@@ -24,6 +24,7 @@
 #define RANDGENERATOR_HPP_
 
 #include <cstdlib>
+#include <limits>
 
 // Generator that returns pseudo-random values.
 template<typename T>
@@ -42,7 +43,7 @@ public:
      * cause subsequent calls to pick_val to return the same values as they did
      * after the last time reset was called for this generator.
      *
-     * YOU MUST CALL RESET YOURSELF BEFORE THE FIRST CALL TO pic_val
+     * YOU MUST CALL RESET YOURSELF BEFORE THE FIRST CALL TO pick_val or pick_range
      */
     void reset() {
         if (first_val) {
@@ -54,6 +55,18 @@ public:
 
     T pick_val(addr32_t addr) {
         return (T)rand();
+    }
+
+    /*
+     * return a value that is greater than or equal to min and
+     * less than or equal to max
+     */
+    T pick_range(T min, T max) {
+        if (max == std::numeric_limits<T>::max() &&
+            min == std::numeric_limits<T>::min())
+            return pick_val(0);
+
+        return (T(rand()) % (max - min + 1)) + min;
     }
 
     std::string name() const {
