@@ -827,7 +827,7 @@ public:
             failed = failed ||
                 do_movw_binary_binind_disp_pc_gen(cpu, mem, randgen32.pick_val(0) % 0xff,
                                                   (randgen32.pick_val(0) %
-                                                   (16*1024*1024)) & ~1,
+                                                   mem->get_size()) & ~1,
                                                   randgen32.pick_val(0) % 15,
                                                   randgen32.pick_val(0) & 0xffff);
         }
@@ -837,7 +837,7 @@ public:
         failed = failed ||
             do_movw_binary_binind_disp_pc_gen(cpu, mem, 48,
                                               (randgen32.pick_val(0) %
-                                               (16*1024*1024)) & ~1, 2,
+                                               mem->get_size()) & ~1, 2,
                                               randgen32.pick_val(0) & 0xffff);
         return failed;
     }
@@ -886,7 +886,7 @@ public:
             failed = failed ||
                 do_movl_binary_binind_disp_pc_gen(cpu, mem, randgen32.pick_val(0) % 0xff,
                                                   (randgen32.pick_val(0) %
-                                                   (16*1024*1024)) & ~1,
+                                                   mem->get_size()) & ~1,
                                                   randgen32.pick_val(0) % 15,
                                                   randgen32.pick_val(0));
         }
@@ -896,7 +896,7 @@ public:
         failed = failed ||
             do_movl_binary_binind_disp_pc_gen(cpu, mem, 48,
                                               (randgen32.pick_val(0) %
-                                               (16*1024*1024)) & ~1, 2,
+                                               mem->get_size()) & ~1, 2,
                                               randgen32.pick_val(0));
         return failed;
     }
@@ -992,7 +992,7 @@ public:
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 failed = failed ||
                     do_movb_binary_gen_indgen(cpu, mem, randgen32.pick_val(0) %
-                                              (16*1024*1024),
+                                              mem->get_size(),
                                               randgen32.pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
@@ -1048,7 +1048,7 @@ public:
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 failed = failed ||
                     do_movb_binary_gen_indgen(cpu, mem, randgen32.pick_val(0) %
-                                              (16*1024*1024),
+                                              mem->get_size(),
                                               randgen32.pick_val(0) % 0xffff,
                                               reg_src, reg_dst);
             }
@@ -1104,7 +1104,7 @@ public:
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 failed = failed ||
                     do_movb_binary_gen_indgen(cpu, mem, randgen32.pick_val(0) %
-                                              (16*1024*1024),
+                                              mem->get_size(),
                                               randgen32.pick_val(0),
                                               reg_src, reg_dst);
             }
@@ -1157,7 +1157,7 @@ public:
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 failed = failed ||
                     do_movb_binary_indgen_gen(cpu, mem, randgen32.pick_val(0) %
-                                              (16*1024*1024),
+                                              mem->get_size(),
                                               randgen32.pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
@@ -1210,7 +1210,7 @@ public:
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 failed = failed ||
                     do_movw_binary_indgen_gen(cpu, mem, randgen32.pick_val(0) %
-                                              (16*1024*1024),
+                                              mem->get_size(),
                                               randgen32.pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
@@ -1263,7 +1263,7 @@ public:
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 failed = failed ||
                     do_movw_binary_indgen_gen(cpu, mem, randgen32.pick_val(0) %
-                                              (16*1024*1024),
+                                              mem->get_size(),
                                               randgen32.pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
@@ -1340,7 +1340,8 @@ public:
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
             failed = failed ||
                 do_movb_binary_gen_inddecgen(cpu, mem,
-                                             randgen32.pick_val(0) % (16 * 1024 * 1024),
+                                             randgen32.pick_val(0) %
+                                             mem->get_size(),
                                              randgen32.pick_val(0),
                                              reg_src, reg_dst);
             }
@@ -1417,7 +1418,8 @@ public:
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
             failed = failed ||
                 do_movb_binary_gen_inddecgen(cpu, mem,
-                                             randgen32.pick_val(0) % (16 * 1024 * 1024),
+                                             randgen32.pick_val(0) %
+                                             mem->get_size(),
                                              randgen32.pick_val(0),
                                              reg_src, reg_dst);
             }
@@ -1494,7 +1496,8 @@ public:
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
             failed = failed ||
                 do_movb_binary_gen_inddecgen(cpu, mem,
-                                             randgen32.pick_val(0) % (16 * 1024 * 1024),
+                                             randgen32.pick_val(0) %
+                                             mem->get_size(),
                                              randgen32.pick_val(0),
                                              reg_src, reg_dst);
             }
@@ -1557,7 +1560,8 @@ public:
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
             failed = failed ||
                 do_movb_binary_gen_inddecgen(cpu, mem,
-                                             randgen32.pick_val(0) % (16 * 1024 * 1024),
+                                             randgen32.pick_val(0) %
+                                             mem->get_size(),
                                              randgen32.pick_val(0),
                                              reg_src, reg_dst);
             }
@@ -1620,7 +1624,8 @@ public:
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
             failed = failed ||
                 do_movw_binary_gen_inddecgen(cpu, mem,
-                                             randgen32.pick_val(0) % (16 * 1024 * 1024),
+                                             randgen32.pick_val(0) %
+                                             mem->get_size(),
                                              randgen32.pick_val(0),
                                              reg_src, reg_dst);
             }
@@ -1683,7 +1688,8 @@ public:
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
             failed = failed ||
                 do_movl_binary_gen_inddecgen(cpu, mem,
-                                             randgen32.pick_val(0) % (16 * 1024 * 1024),
+                                             randgen32.pick_val(0) %
+                                             mem->get_size(),
                                              randgen32.pick_val(0),
                                              reg_src, reg_dst);
             }
@@ -1741,7 +1747,7 @@ public:
                 failed = failed ||
                     do_movb_binary_r0_binind_disp_gen(cpu, mem, disp,
                                                       randgen32.pick_val(0) %
-                                                      (16 * 1024 * 1024),
+                                                      mem->get_size(),
                                                       randgen32.pick_val(0),
                                                       reg_no);
             }
@@ -1797,7 +1803,7 @@ public:
                 failed = failed ||
                     do_movw_binary_r0_binind_disp_gen(cpu, mem, disp,
                                                       randgen32.pick_val(0) %
-                                                      (16 * 1024 * 1024),
+                                                      mem->get_size(),
                                                       randgen32.pick_val(0),
                                                       reg_no);
             }
@@ -1853,7 +1859,7 @@ public:
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_base = 0; reg_base < 16; reg_base++) {
                 for (int disp = 0; disp < 4; disp++) {
-                    addr32_t base = randgen32.pick_val(0) % (16 * 1024 * 1024);
+                    addr32_t base = randgen32.pick_val(0) % mem->get_size();
                     reg32_t val = randgen32.pick_val(0);
                     failed = failed ||
                         do_movl_binary_gen_binind_disp_gen(cpu, mem, disp,
@@ -1912,7 +1918,7 @@ public:
                 failed = failed ||
                     do_movb_binary_binind_disp_gen_r0(cpu, mem, disp,
                                                       randgen32.pick_val(0) %
-                                                      (16 * 1024 * 1024),
+                                                      mem->get_size(),
                                                       randgen32.pick_val(0),
                                                       reg_no);
             }
@@ -1966,7 +1972,7 @@ public:
                 failed = failed ||
                     do_movw_binary_binind_disp_gen_r0(cpu, mem, disp,
                                                       randgen32.pick_val(0) %
-                                                      (16 * 1024 * 1024),
+                                                      mem->get_size(),
                                                       randgen32.pick_val(0),
                                                       reg_no);
             }
@@ -2021,7 +2027,7 @@ public:
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
                     for (int disp = 0; disp < 4; disp++) {
                         addr32_t base = randgen32.pick_val(0) %
-                            (16 * 1024 * 1024);
+                            mem->get_size();
                         uint32_t val = randgen32.pick_val(0);
                         failed = failed ||
                             do_movl_binary_binind_disp_gen_gen(cpu, mem, disp,
@@ -2086,9 +2092,9 @@ public:
         randgen32.reset();
 
         addr32_t base_addr = (randgen32.pick_val(0) %
-                              (16 * 1024 * 1024)) >> 1;
+                              mem->get_size()) >> 1;
         addr32_t r0_val = (randgen32.pick_val(0) %
-                           (16 * 1024 * 1024)) >> 1;
+                           mem->get_size()) >> 1;
         failure = failure ||
             do_movb_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
                                       r0_val, base_addr, 1, 1);
@@ -2101,9 +2107,9 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                      mem->get_size()) >> 1;
                 addr32_t r0_val = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                      mem->get_size()) >> 1;
 
                 failure = failure ||
                     do_movb_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
@@ -2169,9 +2175,9 @@ public:
         randgen32.reset();
 
         addr32_t base_addr = (randgen32.pick_val(0) %
-                              (16 * 1024 * 1024)) >> 1;
+                              mem->get_size()) >> 1;
         addr32_t r0_val = (randgen32.pick_val(0) %
-                           (16 * 1024 * 1024)) >> 1;
+                           mem->get_size()) >> 1;
         failure = failure ||
             do_movw_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
                                       r0_val, base_addr, 1, 1);
@@ -2184,9 +2190,9 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                      mem->get_size()) >> 1;
                 addr32_t r0_val = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                      mem->get_size()) >> 1;
 
                 failure = failure ||
                     do_movw_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
@@ -2250,9 +2256,9 @@ public:
         randgen32.reset();
 
         addr32_t base_addr = (randgen32.pick_val(0) %
-                              (16 * 1024 * 1024)) >> 1;
+                              mem->get_size()) >> 1;
         addr32_t r0_val = (randgen32.pick_val(0) %
-                           (16 * 1024 * 1024)) >> 1;
+                           mem->get_size()) >> 1;
         failure = failure ||
             do_movl_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
                                       r0_val, base_addr, 1, 1);
@@ -2265,9 +2271,9 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                      mem->get_size()) >> 1;
                 addr32_t r0_val = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                   mem->get_size()) >> 1;
 
                 failure = failure ||
                     do_movl_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
@@ -2325,9 +2331,9 @@ public:
         randgen32.reset();
 
         addr32_t base_addr = (randgen32.pick_val(0) %
-                              (16 * 1024 * 1024)) >> 1;
+                              mem->get_size()) >> 1;
         addr32_t r0_val = (randgen32.pick_val(0) %
-                           (16 * 1024 * 1024)) >> 1;
+                           mem->get_size()) >> 1;
         failure = failure ||
             do_movb_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
                                       r0_val, base_addr, 1, 1);
@@ -2340,9 +2346,9 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                      mem->get_size()) >> 1;
                 addr32_t r0_val = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                   mem->get_size()) >> 1;
 
                 failure = failure ||
                     do_binary_movb_binind_r0_gen_gen(cpu, mem,
@@ -2401,9 +2407,9 @@ public:
         randgen32.reset();
 
         addr32_t base_addr = (randgen32.pick_val(0) %
-                              (16 * 1024 * 1024)) >> 1;
+                              mem->get_size()) >> 1;
         addr32_t r0_val = (randgen32.pick_val(0) %
-                           (16 * 1024 * 1024)) >> 1;
+                           mem->get_size()) >> 1;
         failure = failure ||
             do_movw_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
                                       r0_val, base_addr, 1, 1);
@@ -2416,9 +2422,9 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                      mem->get_size()) >> 1;
                 addr32_t r0_val = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                   mem->get_size()) >> 1;
 
                 failure = failure ||
                     do_binary_movw_binind_r0_gen_gen(cpu, mem,
@@ -2477,9 +2483,9 @@ public:
         randgen32.reset();
 
         addr32_t base_addr = (randgen32.pick_val(0) %
-                              (16 * 1024 * 1024)) >> 1;
+                              mem->get_size()) >> 1;
         addr32_t r0_val = (randgen32.pick_val(0) %
-                           (16 * 1024 * 1024)) >> 1;
+                           mem->get_size()) >> 1;
         failure = failure ||
             do_movl_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
                                       r0_val, base_addr, 1, 1);
@@ -2492,9 +2498,9 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                      mem->get_size()) >> 1;
                 addr32_t r0_val = (randgen32.pick_val(0) %
-                                      (16 * 1024 * 1024)) >> 1;
+                                      mem->get_size()) >> 1;
 
                 failure = failure ||
                     do_binary_movl_binind_r0_gen_gen(cpu, mem,
@@ -2549,8 +2555,8 @@ public:
         randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t r0_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
-            reg32_t gbr_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t r0_val = randgen32.pick_val(0) % mem->get_size();
+            reg32_t gbr_val = randgen32.pick_val(0) % mem->get_size();
             failure = failure ||
                 do_binary_movb_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
                                                   gbr_val);
@@ -2601,8 +2607,8 @@ public:
         randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t r0_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
-            reg32_t gbr_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t r0_val = randgen32.pick_val(0) % mem->get_size();
+            reg32_t gbr_val = randgen32.pick_val(0) % mem->get_size();
             failure = failure ||
                 do_binary_movw_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
                                                   gbr_val);
@@ -2653,8 +2659,8 @@ public:
         randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t r0_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
-            reg32_t gbr_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t r0_val = randgen32.pick_val(0) % mem->get_size();
+            reg32_t gbr_val = randgen32.pick_val(0) % mem->get_size();
             failure = failure ||
                 do_binary_movl_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
                                                   gbr_val);
@@ -2703,7 +2709,7 @@ public:
 
         for (int disp = 0; disp <= 0xff; disp++) {
             int8_t src_val = randgen32.pick_val(0);
-            reg32_t gbr_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t gbr_val = randgen32.pick_val(0) % mem->get_size();
             failure = failure ||
                 do_binary_movb_binind_disp_gbr_r0(cpu, mem, src_val, disp,
                                                   gbr_val);
@@ -2752,7 +2758,7 @@ public:
 
         for (int disp = 0; disp <= 0xff; disp++) {
             int8_t src_val = randgen32.pick_val(0);
-            reg32_t gbr_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t gbr_val = randgen32.pick_val(0) % mem->get_size();
             failure = failure ||
                 do_binary_movw_binind_disp_gbr_r0(cpu, mem, src_val, disp,
                                                   gbr_val);
@@ -2801,7 +2807,7 @@ public:
 
         for (int disp = 0; disp <= 0xff; disp++) {
             int8_t src_val = randgen32.pick_val(0);
-            reg32_t gbr_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t gbr_val = randgen32.pick_val(0) % mem->get_size();
             failure = failure ||
                 do_binary_movl_binind_disp_gbr_r0(cpu, mem, src_val, disp,
                                                   gbr_val);
@@ -2849,7 +2855,7 @@ public:
         randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t pc_val = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            reg32_t pc_val = randgen32.pick_val(0) % mem->get_size();
             failure = failure ||
                 do_binary_mova_binind_disp_pc_r0(cpu, mem, disp, pc_val);
         }
@@ -3207,7 +3213,7 @@ public:
         randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t addr = randgen32.pick_val(0) % mem->get_size();
             addr32_t val = randgen32.pick_val(0);
 
             failure = failure ||
@@ -3260,7 +3266,7 @@ public:
         randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t addr = randgen32.pick_val(0) % mem->get_size();
             addr32_t val = randgen32.pick_val(0);
 
             failure = failure ||
@@ -3313,7 +3319,7 @@ public:
         randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t addr = randgen32.pick_val(0) % mem->get_size();
             addr32_t val = randgen32.pick_val(0);
 
             failure = failure ||
@@ -3366,7 +3372,7 @@ public:
         randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t addr = randgen32.pick_val(0) % mem->get_size();
             addr32_t val = randgen32.pick_val(0);
 
             failure = failure ||
@@ -3419,7 +3425,7 @@ public:
         randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t addr = randgen32.pick_val(0) % mem->get_size();
             addr32_t val = randgen32.pick_val(0);
 
             failure = failure ||
@@ -3472,7 +3478,7 @@ public:
         randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_val(0) % (16 * 1024 * 1024);
+            addr32_t addr = randgen32.pick_val(0) % mem->get_size();
             addr32_t val = randgen32.pick_val(0);
 
             failure = failure ||
