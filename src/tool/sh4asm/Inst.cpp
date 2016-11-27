@@ -360,7 +360,7 @@ PtrnList get_patterns() {
                            Ptrn_GenReg, 0x0022, 0xf0ff, 0, 8>));
 
     // STC SSR, Rn
-    // 0000nnnn01000010
+    // 0000nnnn00110010
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(stc), Ptrn_SsrReg,
                            Ptrn_GenReg, 0x0032, 0xf0ff, 0, 8>));
 

@@ -212,7 +212,7 @@ struct Sh4::InstOpcode Sh4::opcode_list[] = {
     { "0000nnnn00100010", &Sh4::inst_binary_stc_vbr_gen },
 
     // STC SSR, Rn
-    { "0000nnnn01000010", &Sh4::inst_binary_stc_ssr_gen },
+    { "0000nnnn00110010", &Sh4::inst_binary_stc_ssr_gen },
 
     // STC SPC, Rn
     { "0000nnnn01000010", &Sh4::inst_binary_stc_spc_gen },
@@ -1176,43 +1176,79 @@ void Sh4::inst_binary_ldc_gen_dbr(OpArgs inst) {
 // STC SR, Rn
 // 0000nnnn00000010
 void Sh4::inst_binary_stc_sr_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    *gen_reg(inst.gen_reg) = reg.sr;
 }
 
 // STC GBR, Rn
 // 0000nnnn00010010
 void Sh4::inst_binary_stc_gbr_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    *gen_reg(inst.gen_reg) = reg.gbr;
 }
 
 // STC VBR, Rn
 // 0000nnnn00100010
 void Sh4::inst_binary_stc_vbr_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    *gen_reg(inst.gen_reg) = reg.vbr;
 }
 
 // STC SSR, Rn
-// 0000nnnn01000010
+// 0000nnnn00110010
 void Sh4::inst_binary_stc_ssr_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    *gen_reg(inst.gen_reg) = reg.ssr;
 }
 
 // STC SPC, Rn
 // 0000nnnn01000010
 void Sh4::inst_binary_stc_spc_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    *gen_reg(inst.gen_reg) = reg.spc;
 }
 
 // STC SGR, Rn
 // 0000nnnn00111010
 void Sh4::inst_binary_stc_sgr_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    *gen_reg(inst.gen_reg) = reg.sgr;
 }
 
 // STC DBR, Rn
 // 0000nnnn11111010
 void Sh4::inst_binary_stc_dbr_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    *gen_reg(inst.gen_reg) = reg.dbr;
 }
 
 // LDC.L @Rm+, SR
