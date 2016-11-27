@@ -37,6 +37,7 @@ public:
 
     RandGenerator(unsigned int seed) {
         this->seed = seed;
+        this->first_val = true;
     }
 
     /*
@@ -94,6 +95,7 @@ public:
 
     RandGenerator(unsigned int seed) {
         this->seed = seed;
+        this->first_val = true;
     }
 
     /*

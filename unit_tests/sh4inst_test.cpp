@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <unistd.h>
 #include <iostream>
 #include <sstream>
 #include <limits>
@@ -30,7 +31,8 @@
 #include "tool/sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
 
-typedef int(*inst_test_func_t)(Sh4 *cpu, Memory *mem);
+typedef RandGenerator<boost::uint32_t> RandGen32;
+typedef int(*inst_test_func_t)(Sh4 *cpu, Memory *mem, RandGen32 *randgen32);
 
 class Sh4InstTests {
 public:
@@ -43,7 +45,7 @@ public:
     }
 
     // very basic test that does a whole lot of nothing
-    static int nop_test(Sh4 *cpu, Memory *mem) {
+    static int nop_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         Sh4Prog test_prog;
         test_prog.assemble("NOP\n");
         const Sh4Prog::InstList& inst = test_prog.get_prog();
@@ -58,11 +60,8 @@ public:
 
     // ADD #imm, Rn
     // 0111nnnniiiiiiii
-    static int add_immed_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
-
-        reg32_t initial_val = randgen32.pick_val(0);
+    static int add_immed_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        reg32_t initial_val = randgen32->pick_val(0);
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -101,10 +100,7 @@ public:
 
     // ADD Rm, Rn
     // 0111nnnnmmmm1100
-    static int add_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
-
+    static int add_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -115,13 +111,13 @@ public:
             for (int reg2_no = 0; reg2_no <= 15; reg2_no++) {
                 Sh4Prog test_prog;
                 std::stringstream ss;
-                reg32_t initial_val1 = randgen32.pick_val(0);
+                reg32_t initial_val1 = randgen32->pick_val(0);
                 reg32_t initial_val2;
 
                 if (reg1_no == reg2_no)
                     initial_val2 = initial_val1;
                 else
-                    initial_val2 = randgen32.pick_val(0);
+                    initial_val2 = randgen32->pick_val(0);
 
                 ss << "ADD R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
@@ -224,15 +220,13 @@ public:
 
     // ADDC Rm, Rn
     // 0011nnnnmmmm1110
-    static int addc_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
+    static int addc_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failed = 0;
 
         // run the test with a couple random values
         failed = failed || do_addc_gen_gen_test(cpu, mem,
-                                                randgen32.pick_val(0),
-                                                randgen32.pick_val(0));
+                                                randgen32->pick_val(0),
+                                                randgen32->pick_val(0));
 
         // make sure we get at least one value in that should not cause a carry
         failed = failed || do_addc_gen_gen_test(cpu, mem, 0, 0);
@@ -355,18 +349,17 @@ public:
 
     // ADDV Rm, Rn
     // 0011nnnnmmmm1111
-    static int addv_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
+    static int addv_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failed = 0;
-        randgen32.reset();
+        randgen32->reset();
 
         // this should not overflow
         failed = failed || do_addv_gen_gen_test(cpu, mem, 0, 0);
 
         // random values for good measure
         failed = failed || do_addv_gen_gen_test(cpu, mem,
-                                                randgen32.pick_val(0),
-                                                randgen32.pick_val(0));
+                                                randgen32->pick_val(0),
+                                                randgen32->pick_val(0));
 
         // *almost* overflow positive to negative
         failed = failed ||
@@ -405,10 +398,7 @@ public:
 
     // SUB Rm, Rn
     // 0011nnnnmmmm1000
-    static int sub_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
-
+    static int sub_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -419,13 +409,13 @@ public:
             for (int reg2_no = 0; reg2_no <= 15; reg2_no++) {
                 Sh4Prog test_prog;
                 std::stringstream ss;
-                reg32_t initial_val1 = randgen32.pick_val(0);
+                reg32_t initial_val1 = randgen32->pick_val(0);
                 reg32_t initial_val2;
 
                 if (reg1_no == reg2_no)
                     initial_val2 = initial_val1;
                 else
-                    initial_val2 = randgen32.pick_val(0);
+                    initial_val2 = randgen32->pick_val(0);
 
                 ss << "SUB R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
@@ -550,15 +540,13 @@ public:
         return 0;
     }
 
-    static int subc_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
+    static int subc_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failed = 0;
 
         // run the test with a couple random values
         failed = failed || do_subc_gen_gen_test(cpu, mem,
-                                                randgen32.pick_val(0),
-                                                randgen32.pick_val(0));
+                                                randgen32->pick_val(0),
+                                                randgen32->pick_val(0));
 
         // make sure we get at least one value in that should not cause a carry
         failed = failed || do_subc_gen_gen_test(cpu, mem, 0, 0);
@@ -676,15 +664,13 @@ public:
         return 0;
     }
 
-    static int subv_gen_gen_test(Sh4 *cpu, Memory *mem) {
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
+    static int subv_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failed = 0;
 
         // do one at random...
         failed = failed ||
             do_subv_gen_gen_test(cpu, mem,
-                                 randgen32.pick_val(0), randgen32.pick_val(0));
+                                 randgen32->pick_val(0), randgen32->pick_val(0));
 
         // now do one that's trivial
         failed = failed || do_subv_gen_gen_test(cpu, mem, 0, 0);
@@ -726,7 +712,8 @@ public:
 
     // MOVT Rn
     // 0000nnnn00101001
-    static int movt_unary_gen_test(Sh4 *cpu, Memory *mem) {
+    static int movt_unary_gen_test(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (int t_val = 0; t_val < 2; t_val++) {
                 Sh4Prog test_prog;
@@ -755,7 +742,8 @@ public:
 
     // MOV #imm, Rn
     // 1110nnnniiiiiiii
-    static int mov_binary_imm_gen_test(Sh4 *cpu, Memory *mem) {
+    static int mov_binary_imm_gen_test(Sh4 *cpu, Memory *mem,
+                                       RandGen32 *randgen32) {
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (uint8_t imm_val = 0;
                  imm_val < std::numeric_limits<uint8_t>::max();
@@ -818,30 +806,29 @@ public:
         return 0;
     }
 
-    static int movw_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem) {
+    static int movw_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int disp = 0; disp < 256; disp++) {
             for (int reg_no = 0; reg_no < 16; reg_no++) {
                 addr32_t pc_max = mem->get_size() - 1 - 4 - disp * 2;
                 addr32_t pc_val =
-                    randgen32.pick_range(0, pc_max) & ~1;
+                    randgen32->pick_range(0, pc_max) & ~1;
                 failed = failed ||
                     do_movw_binary_binind_disp_pc_gen(cpu, mem, disp,
                                                       pc_val, reg_no,
-                                                      randgen32.pick_val(0) &
+                                                      randgen32->pick_val(0) &
                                                       0xffff);
             }
         }
 
         // not much rhyme or reason to this test case, but it did
         // actually catch a bug once
-        addr32_t pc_val = (randgen32.pick_val(0) % mem->get_size()) & ~1;
+        addr32_t pc_val = (randgen32->pick_val(0) % mem->get_size()) & ~1;
         failed = failed ||
             do_movw_binary_binind_disp_pc_gen(cpu, mem, 48, pc_val, 2,
-                                              randgen32.pick_val(0) & 0xffff);
+                                              randgen32->pick_val(0) & 0xffff);
         return failed;
     }
 
@@ -880,27 +867,26 @@ public:
         return 0;
     }
 
-    static int movl_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem) {
+    static int movl_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int i = 0; i < 1024; i++) {
-            addr32_t pc_val = (randgen32.pick_val(0) % mem->get_size()) & ~1;
+            addr32_t pc_val = (randgen32->pick_val(0) % mem->get_size()) & ~1;
             failed = failed ||
                 do_movl_binary_binind_disp_pc_gen(cpu, mem,
-                                                  randgen32.pick_val(0) % 0xff,
+                                                  randgen32->pick_val(0) % 0xff,
                                                   pc_val,
-                                                  randgen32.pick_val(0) % 15,
-                                                  randgen32.pick_val(0));
+                                                  randgen32->pick_val(0) % 15,
+                                                  randgen32->pick_val(0));
         }
 
         // not much rhyme or reason to this test case, but it did
         // actually catch a bug once
-        addr32_t pc_val = (randgen32.pick_val(0) % mem->get_size()) & ~1;
+        addr32_t pc_val = (randgen32->pick_val(0) % mem->get_size()) & ~1;
         failed = failed ||
             do_movl_binary_binind_disp_pc_gen(cpu, mem, 48, pc_val, 2,
-                                              randgen32.pick_val(0));
+                                              randgen32->pick_val(0));
         return failed;
     }
 
@@ -933,15 +919,13 @@ public:
         return 0;
     }
 
-    static int mov_binary_gen_gen(Sh4 *cpu, Memory *mem) {
+    static int mov_binary_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 failed = failed ||
-                    do_mov_binary_gen_gen(cpu, mem, randgen32.pick_val(0),
+                    do_mov_binary_gen_gen(cpu, mem, randgen32->pick_val(0),
                                           reg_src, reg_dst);
             }
         }
@@ -986,17 +970,16 @@ public:
         return 0;
     }
 
-    static int movb_binary_gen_indgen(Sh4 *cpu, Memory *mem) {
+    static int movb_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+                                      RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_val(0) % mem->get_size();
+                addr32_t addr = randgen32->pick_val(0) % mem->get_size();
                 failed = failed ||
                     do_movb_binary_gen_indgen(cpu, mem, addr,
-                                              randgen32.pick_val(0) % 0xff,
+                                              randgen32->pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
         }
@@ -1042,17 +1025,16 @@ public:
         return 0;
     }
 
-    static int movw_binary_gen_indgen(Sh4 *cpu, Memory *mem) {
+    static int movw_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+                                      RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_val(0) % (mem->get_size() - 1);
+                addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 1);
                 failed = failed ||
                     do_movb_binary_gen_indgen(cpu, mem, addr,
-                                              randgen32.pick_val(0) % 0xffff,
+                                              randgen32->pick_val(0) % 0xffff,
                                               reg_src, reg_dst);
             }
         }
@@ -1098,17 +1080,16 @@ public:
         return 0;
     }
 
-    static int movl_binary_gen_indgen(Sh4 *cpu, Memory *mem) {
+    static int movl_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+                                      RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_val(0) % (mem->get_size() - 3);
+                addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 3);
                 failed = failed ||
                     do_movb_binary_gen_indgen(cpu, mem, addr,
-                                              randgen32.pick_val(0),
+                                              randgen32->pick_val(0),
                                               reg_src, reg_dst);
             }
         }
@@ -1151,17 +1132,16 @@ public:
         return 0;
     }
 
-    static int movb_binary_indgen_gen(Sh4 *cpu, Memory *mem) {
+    static int movb_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+                                      RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_val(0) % mem->get_size();
+                addr32_t addr = randgen32->pick_val(0) % mem->get_size();
                 failed = failed ||
                     do_movb_binary_indgen_gen(cpu, mem, addr,
-                                              randgen32.pick_val(0) % 0xff,
+                                              randgen32->pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
         }
@@ -1204,17 +1184,16 @@ public:
         return 0;
     }
 
-    static int movw_binary_indgen_gen(Sh4 *cpu, Memory *mem) {
+    static int movw_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+                                      RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_val(0) % (mem->get_size() - 1);
+                addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 1);
                 failed = failed ||
                     do_movw_binary_indgen_gen(cpu, mem, addr,
-                                              randgen32.pick_val(0) % 0xff,
+                                              randgen32->pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
         }
@@ -1257,17 +1236,16 @@ public:
         return 0;
     }
 
-    static int movl_binary_indgen_gen(Sh4 *cpu, Memory *mem) {
+    static int movl_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+                                      RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_val(0) % (mem->get_size() - 3);
+                addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 3);
                 failed = failed ||
                     do_movw_binary_indgen_gen(cpu, mem, addr,
-                                              randgen32.pick_val(0) % 0xff,
+                                              randgen32->pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
         }
@@ -1334,17 +1312,16 @@ public:
         return 0;
     }
 
-    static int movb_binary_gen_inddecgen(Sh4 *cpu, Memory *mem) {
+    static int movb_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_range(1, mem->get_size() - 2);
+                addr32_t addr = randgen32->pick_range(1, mem->get_size() - 2);
                 failed = failed ||
                     do_movb_binary_gen_inddecgen(cpu, mem, addr,
-                                                 randgen32.pick_val(0),
+                                                 randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
         }
@@ -1411,17 +1388,16 @@ public:
         return 0;
     }
 
-    static int movw_binary_gen_inddecgen(Sh4 *cpu, Memory *mem) {
+    static int movw_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_range(2, mem->get_size() - 2);
+                addr32_t addr = randgen32->pick_range(2, mem->get_size() - 2);
                 failed = failed ||
                     do_movb_binary_gen_inddecgen(cpu, mem, addr,
-                                                 randgen32.pick_val(0),
+                                                 randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
         }
@@ -1488,17 +1464,16 @@ public:
         return 0;
     }
 
-    static int movl_binary_gen_inddecgen(Sh4 *cpu, Memory *mem) {
+    static int movl_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_range(4, mem->get_size() - 4);
+                addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
                 failed = failed ||
                     do_movb_binary_gen_inddecgen(cpu, mem, addr,
-                                                 randgen32.pick_val(0),
+                                                 randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
         }
@@ -1551,17 +1526,16 @@ public:
         return 0;
     }
 
-    static int movb_binary_indgeninc_gen(Sh4 *cpu, Memory *mem) {
+    static int movb_binary_indgeninc_gen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_range(0, mem->get_size() - 2);
+                addr32_t addr = randgen32->pick_range(0, mem->get_size() - 2);
                 failed = failed ||
                     do_movb_binary_gen_inddecgen(cpu, mem, addr,
-                                                 randgen32.pick_val(0),
+                                                 randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
         }
@@ -1614,19 +1588,18 @@ public:
         return 0;
     }
 
-    static int movw_binary_indgeninc_gen(Sh4 *cpu, Memory *mem) {
+    static int movw_binary_indgeninc_gen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_range(0, mem->get_size() - 3);
+                addr32_t addr = randgen32->pick_range(0, mem->get_size() - 3);
                 failed = failed ||
                     do_movw_binary_gen_inddecgen(cpu, mem,
-                                                 randgen32.pick_val(0) %
+                                                 randgen32->pick_val(0) %
                                                  mem->get_size(),
-                                                 randgen32.pick_val(0),
+                                                 randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
         }
@@ -1679,17 +1652,16 @@ public:
         return 0;
     }
 
-    static int movl_binary_indgeninc_gen(Sh4 *cpu, Memory *mem) {
+    static int movl_binary_indgeninc_gen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32.pick_range(0, mem->get_size() - 5);
+                addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
                 failed = failed ||
                     do_movl_binary_gen_inddecgen(cpu, mem, addr,
-                                                 randgen32.pick_val(0),
+                                                 randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
         }
@@ -1736,18 +1708,17 @@ public:
         return 0;
     }
 
-    static int movb_binary_r0_binind_disp_gen(Sh4 *cpu, Memory *mem) {
+    static int movb_binary_r0_binind_disp_gen(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (int disp = 0; disp < 4; disp++) {
                 reg32_t base =
-                    randgen32.pick_range(0, mem->get_size() - 1 - 0xf);
+                    randgen32->pick_range(0, mem->get_size() - 1 - 0xf);
                 failed = failed ||
                     do_movb_binary_r0_binind_disp_gen(cpu, mem, disp, base,
-                                                      randgen32.pick_val(0),
+                                                      randgen32->pick_val(0),
                                                       reg_no);
             }
         }
@@ -1792,20 +1763,19 @@ public:
         return 0;
     }
 
-    static int movw_binary_r0_binind_disp_gen(Sh4 *cpu, Memory *mem) {
+    static int movw_binary_r0_binind_disp_gen(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (int disp = 0; disp < 4; disp++) {
                 reg32_t base =
-                    randgen32.pick_range(0, mem->get_size() - 2 - 0xf * 2);
+                    randgen32->pick_range(0, mem->get_size() - 2 - 0xf * 2);
                 failed = failed ||
                     do_movw_binary_r0_binind_disp_gen(cpu, mem, disp,
-                                                      randgen32.pick_val(0) %
+                                                      randgen32->pick_val(0) %
                                                       mem->get_size(),
-                                                      randgen32.pick_val(0),
+                                                      randgen32->pick_val(0),
                                                       reg_no);
             }
         }
@@ -1852,17 +1822,16 @@ public:
         return 0;
     }
 
-    static int movl_binary_gen_binind_disp_gen(Sh4 *cpu, Memory *mem) {
+    static int movl_binary_gen_binind_disp_gen(Sh4 *cpu, Memory *mem,
+                                               RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_base = 0; reg_base < 16; reg_base++) {
                 for (int disp = 0; disp < 4; disp++) {
                     reg32_t base =
-                        randgen32.pick_range(0, mem->get_size() - 4 - 0xf * 4);
-                    reg32_t val = randgen32.pick_val(0);
+                        randgen32->pick_range(0, mem->get_size() - 4 - 0xf * 4);
+                    reg32_t val = randgen32->pick_val(0);
                     failed = failed ||
                         do_movl_binary_gen_binind_disp_gen(cpu, mem, disp,
                                                            base, val,
@@ -1910,18 +1879,17 @@ public:
         return 0;
     }
 
-    static int movb_binary_binind_disp_gen_r0(Sh4 *cpu, Memory *mem) {
+    static int movb_binary_binind_disp_gen_r0(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (int disp = 0; disp < 4; disp++) {
                 reg32_t base =
-                    randgen32.pick_range(0, mem->get_size() - 1 - 0xf);
+                    randgen32->pick_range(0, mem->get_size() - 1 - 0xf);
                 failed = failed ||
                     do_movb_binary_binind_disp_gen_r0(cpu, mem, disp, base,
-                                                      randgen32.pick_val(0),
+                                                      randgen32->pick_val(0),
                                                       reg_no);
             }
         }
@@ -1964,18 +1932,17 @@ public:
         return 0;
     }
 
-    static int movw_binary_binind_disp_gen_r0(Sh4 *cpu, Memory *mem) {
+    static int movw_binary_binind_disp_gen_r0(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (int disp = 0; disp < 4; disp++) {
                 reg32_t base =
-                    randgen32.pick_range(0, mem->get_size() - 2 - 0xf * 2);
+                    randgen32->pick_range(0, mem->get_size() - 2 - 0xf * 2);
                 failed = failed ||
                     do_movw_binary_binind_disp_gen_r0(cpu, mem, disp, base,
-                                                      randgen32.pick_val(0),
+                                                      randgen32->pick_val(0),
                                                       reg_no);
             }
         }
@@ -2020,17 +1987,16 @@ public:
         return 0;
     }
 
-    static int movl_binary_binind_disp_gen_gen(Sh4 *cpu, Memory *mem) {
+    static int movl_binary_binind_disp_gen_gen(Sh4 *cpu, Memory *mem,
+                                               RandGen32 *randgen32) {
         int failed = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_base = 0; reg_base < 16; reg_base++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
                     for (int disp = 0; disp < 4; disp++) {
                         reg32_t base =
-                            randgen32.pick_range(0, mem->get_size() - 4 - 0xf * 4);
-                        uint32_t val = randgen32.pick_val(0);
+                            randgen32->pick_range(0, mem->get_size() - 4 - 0xf * 4);
+                        uint32_t val = randgen32->pick_val(0);
                         failed = failed ||
                             do_movl_binary_binind_disp_gen_gen(cpu, mem, disp,
                                                                base, val,
@@ -2088,16 +2054,15 @@ public:
         return 0;
     }
 
-    static int movb_gen_binind_r0_gen(Sh4 *cpu, Memory *mem) {
+    static int movb_gen_binind_r0_gen(Sh4 *cpu, Memory *mem,
+                                      RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
-        addr32_t base_addr = (randgen32.pick_range(0, mem->get_size()) - 1) / 2;
-        addr32_t r0_val = (randgen32.pick_range(0, mem->get_size()) - 1) / 2;
+        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
+        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
 
         failure = failure ||
-            do_movb_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+            do_movb_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2108,12 +2073,12 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32.pick_range(0, mem->get_size()) - 1) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
                 addr32_t r0_val =
-                    (randgen32.pick_range(0, mem->get_size()) - 1) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
 
                 failure = failure ||
-                    do_movb_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+                    do_movb_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
                                               r0_val, base_addr,
                                               reg_src, reg_base);
             }
@@ -2170,16 +2135,15 @@ public:
         return 0;
     }
 
-    static int movw_gen_binind_r0_gen(Sh4 *cpu, Memory *mem) {
+    static int movw_gen_binind_r0_gen(Sh4 *cpu, Memory *mem,
+                                      RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
-        addr32_t base_addr = (randgen32.pick_range(0, mem->get_size()) - 2) / 2;
-        addr32_t r0_val = (randgen32.pick_range(0, mem->get_size()) - 2) / 2;
+        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
+        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
 
         failure = failure ||
-            do_movw_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+            do_movw_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2190,12 +2154,12 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32.pick_range(0, mem->get_size()) - 2) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
                 addr32_t r0_val =
-                    (randgen32.pick_range(0, mem->get_size()) - 2) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
 
                 failure = failure ||
-                    do_movw_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+                    do_movw_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
                                               r0_val, base_addr,
                                               reg_src, reg_base);
             }
@@ -2250,16 +2214,15 @@ public:
         return 0;
     }
 
-    static int movl_gen_binind_r0_gen(Sh4 *cpu, Memory *mem) {
+    static int movl_gen_binind_r0_gen(Sh4 *cpu, Memory *mem,
+                                      RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
-        addr32_t base_addr = (randgen32.pick_range(0, mem->get_size()) - 4) / 2;
-        addr32_t r0_val = (randgen32.pick_range(0, mem->get_size()) - 4) / 2;
+        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
+        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
 
         failure = failure ||
-            do_movl_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+            do_movl_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2270,12 +2233,12 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32.pick_range(0, mem->get_size()) - 4) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
                 addr32_t r0_val =
-                    (randgen32.pick_range(0, mem->get_size()) - 4) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
 
                 failure = failure ||
-                    do_movl_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+                    do_movl_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
                                               r0_val, base_addr,
                                               reg_src, reg_base);
             }
@@ -2324,16 +2287,15 @@ public:
         return 0;
     }
 
-    static int binary_movb_binind_r0_gen_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_movb_binind_r0_gen_gen(Sh4 *cpu, Memory *mem,
+                                             RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
-        addr32_t base_addr = (randgen32.pick_range(0, mem->get_size()) - 1) / 2;
-        addr32_t r0_val = (randgen32.pick_range(0, mem->get_size()) - 1) / 2;
+        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
+        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
 
         failure = failure ||
-            do_movb_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+            do_movb_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2344,13 +2306,13 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32.pick_range(0, mem->get_size()) - 1) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
                 addr32_t r0_val =
-                    (randgen32.pick_range(0, mem->get_size()) - 1) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
 
                 failure = failure ||
                     do_binary_movb_binind_r0_gen_gen(cpu, mem,
-                                                     randgen32.pick_val(0),
+                                                     randgen32->pick_val(0),
                                                      r0_val, base_addr,
                                                      reg_dst, reg_base);
             }
@@ -2399,15 +2361,14 @@ public:
         return 0;
     }
 
-    static int binary_movw_binind_r0_gen_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_movw_binind_r0_gen_gen(Sh4 *cpu, Memory *mem,
+                                             RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
-        addr32_t base_addr = (randgen32.pick_range(0, mem->get_size()) - 2) / 2;
-        addr32_t r0_val = (randgen32.pick_range(0, mem->get_size()) - 2) / 2;
+        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
+        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
         failure = failure ||
-            do_movw_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+            do_movw_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2418,13 +2379,13 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32.pick_range(0, mem->get_size()) - 2) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
                 addr32_t r0_val =
-                    (randgen32.pick_range(0, mem->get_size()) - 2) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
 
                 failure = failure ||
                     do_binary_movw_binind_r0_gen_gen(cpu, mem,
-                                                     randgen32.pick_val(0),
+                                                     randgen32->pick_val(0),
                                                      r0_val, base_addr,
                                                      reg_dst, reg_base);
             }
@@ -2473,15 +2434,14 @@ public:
         return 0;
     }
 
-    static int binary_movl_binind_r0_gen_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_movl_binind_r0_gen_gen(Sh4 *cpu, Memory *mem,
+                                             RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
-        addr32_t base_addr = (randgen32.pick_range(0, mem->get_size()) - 4) / 2;
-        addr32_t r0_val = (randgen32.pick_range(0, mem->get_size()) - 4) / 2;
+        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
+        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
         failure = failure ||
-            do_movl_gen_binind_r0_gen(cpu, mem, randgen32.pick_val(0),
+            do_movl_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2492,13 +2452,13 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32.pick_range(0, mem->get_size()) - 4) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
                 addr32_t r0_val =
-                    (randgen32.pick_range(0, mem->get_size()) - 4) / 2;
+                    (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
 
                 failure = failure ||
                     do_binary_movl_binind_r0_gen_gen(cpu, mem,
-                                                     randgen32.pick_val(0),
+                                                     randgen32->pick_val(0),
                                                      r0_val, base_addr,
                                                      reg_dst, reg_base);
             }
@@ -2543,15 +2503,14 @@ public:
         return 0;
     }
 
-    static int binary_movb_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem) {
+    static int binary_movb_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t r0_val = randgen32.pick_val(0);
+            reg32_t r0_val = randgen32->pick_val(0);
             reg32_t gbr_val =
-                randgen32.pick_range(0, mem->get_size() - 1 - disp);
+                randgen32->pick_range(0, mem->get_size() - 1 - disp);
             failure = failure ||
                 do_binary_movb_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
                                                   gbr_val);
@@ -2596,15 +2555,14 @@ public:
         return 0;
     }
 
-    static int binary_movw_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem) {
+    static int binary_movw_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t r0_val = randgen32.pick_val(0) % mem->get_size();
+            reg32_t r0_val = randgen32->pick_val(0) % mem->get_size();
             reg32_t gbr_val =
-                randgen32.pick_range(0, mem->get_size() - 2 - disp * 2);
+                randgen32->pick_range(0, mem->get_size() - 2 - disp * 2);
             failure = failure ||
                 do_binary_movw_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
                                                   gbr_val);
@@ -2649,15 +2607,14 @@ public:
         return 0;
     }
 
-    static int binary_movl_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem) {
+    static int binary_movl_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t r0_val = randgen32.pick_val(0) % mem->get_size();
+            reg32_t r0_val = randgen32->pick_val(0) % mem->get_size();
             reg32_t gbr_val =
-                randgen32.pick_range(0, mem->get_size() - 4 - disp * 4);
+                randgen32->pick_range(0, mem->get_size() - 4 - disp * 4);
             failure = failure ||
                 do_binary_movl_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
                                                   gbr_val);
@@ -2699,15 +2656,14 @@ public:
         return 0;
     }
 
-    static int binary_movb_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem) {
+    static int binary_movb_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            int8_t src_val = randgen32.pick_val(0);
+            int8_t src_val = randgen32->pick_val(0);
             reg32_t gbr_val =
-                randgen32.pick_range(0, mem->get_size() - 1 - disp);
+                randgen32->pick_range(0, mem->get_size() - 1 - disp);
             failure = failure ||
                 do_binary_movb_binind_disp_gbr_r0(cpu, mem, src_val, disp,
                                                   gbr_val);
@@ -2749,15 +2705,14 @@ public:
         return 0;
     }
 
-    static int binary_movw_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem) {
+    static int binary_movw_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            int8_t src_val = randgen32.pick_val(0);
+            int8_t src_val = randgen32->pick_val(0);
             reg32_t gbr_val =
-                randgen32.pick_range(0, mem->get_size() - 2 - disp * 2);
+                randgen32->pick_range(0, mem->get_size() - 2 - disp * 2);
             failure = failure ||
                 do_binary_movw_binind_disp_gbr_r0(cpu, mem, src_val, disp,
                                                   gbr_val);
@@ -2799,15 +2754,14 @@ public:
         return 0;
     }
 
-    static int binary_movl_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem) {
+    static int binary_movl_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem,
+                                              RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            int8_t src_val = randgen32.pick_val(0);
+            int8_t src_val = randgen32->pick_val(0);
             reg32_t gbr_val =
-                randgen32.pick_range(0, mem->get_size() - 4 - disp * 4);
+                randgen32->pick_range(0, mem->get_size() - 4 - disp * 4);
             failure = failure ||
                 do_binary_movl_binind_disp_gbr_r0(cpu, mem, src_val, disp,
                                                   gbr_val);
@@ -2849,13 +2803,12 @@ public:
         return 0;
     }
 
-    static int binary_mova_binind_disp_pc_r0(Sh4 *cpu, Memory *mem) {
+    static int binary_mova_binind_disp_pc_r0(Sh4 *cpu, Memory *mem,
+                                             RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t pc_val = randgen32.pick_range(0, (mem->get_size() - 4 - disp * 4) & ~1);
+            reg32_t pc_val = randgen32->pick_range(0, (mem->get_size() - 4 - disp * 4) & ~1);
             failure = failure ||
                 do_binary_mova_binind_disp_pc_r0(cpu, mem, disp, pc_val);
         }
@@ -2892,14 +2845,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_sr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldc_gen_sr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_sr(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_ldc_gen_sr(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -2934,14 +2885,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_gbr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldc_gen_gbr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_gbr(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_ldc_gen_gbr(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -2976,14 +2925,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_vbr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldc_gen_vbr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_vbr(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_ldc_gen_vbr(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3018,14 +2965,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_ssr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldc_gen_ssr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_ssr(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_ldc_gen_ssr(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3060,14 +3005,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_spc(Sh4 *cpu, Memory *mem) {
+    static int binary_ldc_gen_spc(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_spc(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_ldc_gen_spc(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3102,14 +3045,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_dbr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldc_gen_dbr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_dbr(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_ldc_gen_dbr(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3147,16 +3088,15 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_bank(Sh4 *cpu, Memory *mem) {
+    static int binary_ldc_gen_bank(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             for (unsigned bank_reg_no = 0; bank_reg_no < 8; bank_reg_no++) {
                 failure = failure ||
                     do_binary_ldc_gen_bank(cpu, mem, reg_no, bank_reg_no,
-                                           randgen32.pick_val(0));
+                                           randgen32->pick_val(0));
             }
         }
 
@@ -3207,14 +3147,13 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_sr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldcl_indgeninc_sr(Sh4 *cpu, Memory *mem,
+                                        RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_range(0, mem->get_size() - 5);
-            addr32_t val = randgen32.pick_val(0);
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
                 do_binary_ldcl_indgeninc_sr(cpu, mem, reg_src, addr, val);
@@ -3260,14 +3199,13 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_gbr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldcl_indgeninc_gbr(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_range(0, mem->get_size() - 5);
-            addr32_t val = randgen32.pick_val(0);
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
                 do_binary_ldcl_indgeninc_gbr(cpu, mem, reg_src, addr, val);
@@ -3313,14 +3251,13 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_vbr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldcl_indgeninc_vbr(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_range(0, mem->get_size() - 5);
-            addr32_t val = randgen32.pick_val(0);
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
                 do_binary_ldcl_indgeninc_vbr(cpu, mem, reg_src, addr, val);
@@ -3366,14 +3303,13 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_ssr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldcl_indgeninc_ssr(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_range(0, mem->get_size() - 5);
-            addr32_t val = randgen32.pick_val(0);
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
                 do_binary_ldcl_indgeninc_ssr(cpu, mem, reg_src, addr, val);
@@ -3419,14 +3355,13 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_spc(Sh4 *cpu, Memory *mem) {
+    static int binary_ldcl_indgeninc_spc(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_range(0, mem->get_size() - 5);
-            addr32_t val = randgen32.pick_val(0);
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
                 do_binary_ldcl_indgeninc_spc(cpu, mem, reg_src, addr, val);
@@ -3472,14 +3407,13 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_dbr(Sh4 *cpu, Memory *mem) {
+    static int binary_ldcl_indgeninc_dbr(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32.pick_range(0, mem->get_size() - 5);
-            addr32_t val = randgen32.pick_val(0);
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
                 do_binary_ldcl_indgeninc_dbr(cpu, mem, reg_src, addr, val);
@@ -3525,14 +3459,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_sr_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_stc_sr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_sr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_stc_sr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3568,14 +3500,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_gbr_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_stc_gbr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_gbr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_stc_gbr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3611,14 +3541,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_vbr_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_stc_vbr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_vbr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_stc_vbr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3654,14 +3582,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_ssr_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_stc_ssr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_ssr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_stc_ssr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3697,14 +3623,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_spc_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_stc_spc_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_spc_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_stc_spc_gen(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3740,14 +3664,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_sgr_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_stc_sgr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_sgr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_stc_sgr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3783,14 +3705,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_dbr_gen(Sh4 *cpu, Memory *mem) {
+    static int binary_stc_dbr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
-        RandGenerator<boost::uint32_t> randgen32;
-        randgen32.reset();
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_dbr_gen(cpu, mem, reg_no, randgen32.pick_val(0));
+                do_binary_stc_dbr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3891,12 +3811,22 @@ int main(int argc, char **argv) {
     Sh4 cpu(&mem);
     struct inst_test *test = inst_tests;
     int n_success = 0, n_tests = 0;
+    unsigned int seed = time(NULL);
+    int opt;
+
+    while ((opt = getopt(argc, argv, "s:")) > 0) {
+        if (opt == 's')
+            seed = atoi(optarg);
+    }
 
     try {
+        RandGen32 randgen32(seed);
+        randgen32.reset();
+
         while (test->name) {
             std::cout << "Trying " << test->name << "..." << std::endl;
 
-            int test_ret = test->func(&cpu, &mem);
+            int test_ret = test->func(&cpu, &mem, &randgen32);
 
             if (test_ret != 0)
                 std::cout << test->name << " FAIL" << std::endl;

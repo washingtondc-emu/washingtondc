@@ -379,12 +379,13 @@ std::string process_inst_str(RandGen *gen, std::string inst) {
     return actual.str();
 }
 
-int test_all_insts() {
+int test_all_insts(unsigned seed) {
     unsigned n_tests = 0;
     unsigned n_success = 0;
     char const **inst = insts_to_test;
 
-    RandGenerator<boost::uint32_t> gen;
+    RandGenerator<boost::uint32_t> gen(seed);
+    gen.reset();
 
     while (*inst) {
         std::string processed(process_inst_str(&gen, std::string(*inst)));
@@ -406,5 +407,13 @@ int test_all_insts() {
 }
 
 int main(int argc, char **argv) {
-    return test_all_insts();
+    unsigned int seed = time(NULL);
+    int opt;
+
+    while ((opt = getopt(argc, argv, "s:")) > 0) {
+        if (opt == 's')
+            seed = atoi(optarg);
+    }
+
+    return test_all_insts(seed);
 }
