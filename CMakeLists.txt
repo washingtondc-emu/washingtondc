@@ -49,23 +49,25 @@ if (ENABLE_SH4_MMU)
     set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.cpp")
 endif()
 
-set(sh4asm_sources "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"
-                   "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp"
-                   "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/sh4asm.cpp")
+set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"
+                        "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/sh4asm.cpp")
 
 include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
                     "${PROJECT_SOURCE_DIR}/src/common"
                     "${PROJECT_SOURCE_DIR}/external")
 
-add_library(sh4asm ${sh4asm_sources})
+add_library(sh4asm_core ${sh4asm_core_sources})
 add_library(sh4 ${sh4_sources})
 
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp")
-target_link_libraries(sh4asm_test sh4asm)
+target_link_libraries(sh4asm_test sh4asm_core)
 
 add_executable(sh4_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4_test.cpp")
 target_link_libraries(sh4_test sh4)
 
 add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp")
-target_link_libraries(sh4inst_test sh4 sh4asm)
+target_link_libraries(sh4inst_test sh4 sh4asm_core)
+
+add_executable(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp")
+target_link_libraries(sh4asm sh4asm_core)
