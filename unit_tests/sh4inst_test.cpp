@@ -3715,6 +3715,373 @@ public:
 
         return failure;
     }
+
+    // STC.L SR, @-Rn
+    // 0100nnnn00000011
+    static int do_binary_stcl_sr_inddecgen(Sh4 *cpu, Memory *mem,
+                                           unsigned reg_no, reg32_t sr_val,
+                                           addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        // obviously this needs to run in privileged mode
+        sr_val |= Sh4::SR_MD_MASK;
+
+        ss << "STC.L SR, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.sr = sr_val;
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (sr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << sr_val <<
+                std::endl;
+            std::cout << "Actual value is " << mem_val << std::endl;
+            std::cout << "expected output addr is " << (addr - 4) << std::endl;
+            std::cout << "actual output addr is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stcl_sr_inddecgen(Sh4 *cpu, Memory *mem,
+                                        RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            failure = failure ||
+                do_binary_stcl_sr_inddecgen(cpu, mem, reg_no,
+                                            randgen32->pick_val(0), addr);
+        }
+
+        return failure;
+    }
+
+    // STC.L GBR, @-Rn
+    // 0100nnnn00010011
+    static int do_binary_stcl_gbr_inddecgen(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_no, reg32_t gbr_val,
+                                            addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC.L GBR, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.gbr = gbr_val;
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (gbr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << gbr_val <<
+                std::endl;
+            std::cout << "Actual value is " << mem_val << std::endl;
+            std::cout << "expected output addr is " << (addr - 4) << std::endl;
+            std::cout << "actual output addr is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stcl_gbr_inddecgen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            failure = failure ||
+                do_binary_stcl_gbr_inddecgen(cpu, mem, reg_no,
+                                             randgen32->pick_val(0), addr);
+        }
+
+        return failure;
+    }
+
+    // STC.L VBR, @-Rn
+    // 01n00nnnn00100011
+    static int do_binary_stcl_vbr_inddecgen(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_no, reg32_t vbr_val,
+                                            addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC.L VBR, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.vbr = vbr_val;
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (vbr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << vbr_val <<
+                std::endl;
+            std::cout << "Actual value is " << mem_val << std::endl;
+            std::cout << "expected output addr is " << (addr - 4) << std::endl;
+            std::cout << "actual output addr is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stcl_vbr_inddecgen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            failure = failure ||
+                do_binary_stcl_vbr_inddecgen(cpu, mem, reg_no,
+                                             randgen32->pick_val(0), addr);
+        }
+
+        return failure;
+    }
+
+    // STC.L SSR, @-Rn
+    // 0100nnnn00110011
+    static int do_binary_stcl_ssr_inddecgen(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_no, reg32_t ssr_val,
+                                            addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC.L SSR, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.ssr = ssr_val;
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (ssr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << ssr_val <<
+                std::endl;
+            std::cout << "Actual value is " << mem_val << std::endl;
+            std::cout << "expected output addr is " << (addr - 4) << std::endl;
+            std::cout << "actual output addr is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stcl_ssr_inddecgen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            failure = failure ||
+                do_binary_stcl_ssr_inddecgen(cpu, mem, reg_no,
+                                             randgen32->pick_val(0), addr);
+        }
+
+        return failure;
+    }
+
+    // STC.L SPC, @-Rn
+    // 0100nnnn01000011
+    static int do_binary_stcl_spc_inddecgen(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_no, reg32_t spc_val,
+                                            addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC.L SPC, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.spc = spc_val;
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (spc_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << spc_val <<
+                std::endl;
+            std::cout << "Actual value is " << mem_val << std::endl;
+            std::cout << "expected output addr is " << (addr - 4) << std::endl;
+            std::cout << "actual output addr is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stcl_spc_inddecgen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            failure = failure ||
+                do_binary_stcl_spc_inddecgen(cpu, mem, reg_no,
+                                             randgen32->pick_val(0), addr);
+        }
+
+        return failure;
+    }
+
+    // STC.L SGR, @-Rn
+    // 0100nnnn00110010
+    static int do_binary_stcl_sgr_inddecgen(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_no, reg32_t sgr_val,
+                                            addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC.L SGR, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.sgr = sgr_val;
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (sgr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << sgr_val <<
+                std::endl;
+            std::cout << "Actual value is " << mem_val << std::endl;
+            std::cout << "expected output addr is " << (addr - 4) << std::endl;
+            std::cout << "actual output addr is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stcl_sgr_inddecgen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            failure = failure ||
+                do_binary_stcl_sgr_inddecgen(cpu, mem, reg_no,
+                                             randgen32->pick_val(0), addr);
+        }
+
+        return failure;
+    }
+
+    // STC.L DBR, @-Rn
+    // 0100nnnn11110010
+    static int do_binary_stcl_dbr_inddecgen(Sh4 *cpu, Memory *mem,
+                                            unsigned reg_no, reg32_t dbr_val,
+                                            addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC.L DBR, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.dbr = dbr_val;
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (dbr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << dbr_val <<
+                std::endl;
+            std::cout << "Actual value is " << mem_val << std::endl;
+            std::cout << "expected output addr is " << (addr - 4) << std::endl;
+            std::cout << "actual output addr is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stcl_dbr_inddecgen(Sh4 *cpu, Memory *mem,
+                                         RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            failure = failure ||
+                do_binary_stcl_dbr_inddecgen(cpu, mem, reg_no,
+                                             randgen32->pick_val(0), addr);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -3803,6 +4170,13 @@ struct inst_test {
     { "binary_stc_spc_gen", &Sh4InstTests::binary_stc_spc_gen },
     { "binary_stc_sgr_gen", &Sh4InstTests::binary_stc_sgr_gen },
     { "binary_stc_dbr_gen", &Sh4InstTests::binary_stc_dbr_gen },
+    { "binary_stcl_sr_inddecgen", &Sh4InstTests::binary_stcl_sr_inddecgen },
+    { "binary_stcl_gbr_inddecgen", &Sh4InstTests::binary_stcl_gbr_inddecgen },
+    { "binary_stcl_vbr_inddecgen", &Sh4InstTests::binary_stcl_vbr_inddecgen },
+    { "binary_stcl_ssr_inddecgen", &Sh4InstTests::binary_stcl_ssr_inddecgen },
+    { "binary_stcl_spc_inddecgen", &Sh4InstTests::binary_stcl_spc_inddecgen },
+    { "binary_stcl_sgr_inddecgen", &Sh4InstTests::binary_stcl_sgr_inddecgen },
+    { "binary_stcl_dbr_inddecgen", &Sh4InstTests::binary_stcl_dbr_inddecgen },
     { NULL }
 };
 
