@@ -1374,43 +1374,114 @@ void Sh4::inst_binary_ldcl_indgeninc_dbr(OpArgs inst) {
 // STC.L SR, @-Rn
 // 0100nnnn00000011
 void Sh4::inst_binary_stcl_sr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    reg32_t *regp = gen_reg(inst.gen_reg);
+    addr32_t addr = *regp - 4;
+    if (write_mem(&reg.sr, addr, sizeof(reg.sr)) != 0)
+        return;
+
+    *regp = addr;
 }
 
 // STC.L GBR, @-Rn
 // 0100nnnn00010011
 void Sh4::inst_binary_stcl_gbr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg32_t *regp = gen_reg(inst.gen_reg);
+    addr32_t addr = *regp - 4;
+    if (write_mem(&reg.gbr, addr, sizeof(reg.gbr)) != 0)
+        return;
+
+    *regp = addr;
 }
 
 // STC.L VBR, @-Rn
 // 0100nnnn00100011
 void Sh4::inst_binary_stcl_vbr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    reg32_t *regp = gen_reg(inst.gen_reg);
+    addr32_t addr = *regp - 4;
+    if (write_mem(&reg.vbr, addr, sizeof(reg.vbr)) != 0)
+        return;
+
+    *regp = addr;
 }
 
 // STC.L SSR, @-Rn
 // 0100nnnn00110011
 void Sh4::inst_binary_stcl_ssr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    reg32_t *regp = gen_reg(inst.gen_reg);
+    addr32_t addr = *regp - 4;
+    if (write_mem(&reg.ssr, addr, sizeof(reg.ssr)) != 0)
+        return;
+
+    *regp = addr;
 }
 
 // STC.L SPC, @-Rn
 // 0100nnnn01000011
 void Sh4::inst_binary_stcl_spc_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    reg32_t *regp = gen_reg(inst.gen_reg);
+    addr32_t addr = *regp - 4;
+    if (write_mem(&reg.spc, addr, sizeof(reg.spc)) != 0)
+        return;
+
+    *regp = addr;
 }
 
 // STC.L SGR, @-Rn
 // 0100nnnn00110010
 void Sh4::inst_binary_stcl_sgr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    reg32_t *regp = gen_reg(inst.gen_reg);
+    addr32_t addr = *regp - 4;
+    if (write_mem(&reg.sgr, addr, sizeof(reg.sgr)) != 0)
+        return;
+
+    *regp = addr;
 }
 
 // STC.L DBR, @-Rn
 // 0100nnnn11110010
 void Sh4::inst_binary_stcl_dbr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_MMU
+    if (!(reg.sr & SR_MD_MASK))
+        throw UnimplementedError("CPU exception for using a privileged "
+                                 "exception in an unprivileged mode");
+#endif
+
+    reg32_t *regp = gen_reg(inst.gen_reg);
+    addr32_t addr = *regp - 4;
+    if (write_mem(&reg.dbr, addr, sizeof(reg.dbr)) != 0)
+        return;
+
+    *regp = addr;
 }
 
 // MOV #imm, Rn
