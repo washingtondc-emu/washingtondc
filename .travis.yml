@@ -21,4 +21,4 @@ script:
         -DENABLE_SH4_ICACHE=$DO_ENABLE_SH4_ICACHE \
         -DENABLE_SH4_OCACHE=$DO_ENABLE_SH4_OCACHE .. ;
   make ;
-  ./sh4asm_test && ./sh4_test
+  ./sh4asm_test && ./sh4_test && ./sh4inst_test
