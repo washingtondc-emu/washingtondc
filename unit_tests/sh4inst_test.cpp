@@ -871,14 +871,21 @@ public:
                                               RandGen32 *randgen32) {
         int failed = 0;
 
-        for (int i = 0; i < 1024; i++) {
-            addr32_t pc_val = (randgen32->pick_val(0) % mem->get_size()) & ~1;
+        for (unsigned disp = 0; disp < 256; disp++) {
+            for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            /*
+             * the reason that pc_max gets OR'd with three is that those lower
+             * two bits will get cleared when the instruction calculates the
+             * actual address.
+             */
+            addr32_t pc_max = (mem->get_size() - 1 - 4 - disp * 4) | 3;
+            addr32_t pc_val =
+                randgen32->pick_range(0, pc_max) & ~1;
             failed = failed ||
-                do_movl_binary_binind_disp_pc_gen(cpu, mem,
-                                                  randgen32->pick_val(0) % 0xff,
-                                                  pc_val,
-                                                  randgen32->pick_val(0) % 15,
+                do_movl_binary_binind_disp_pc_gen(cpu, mem, disp, pc_val,
+                                                  reg_no,
                                                   randgen32->pick_val(0));
+            }
         }
 
         // not much rhyme or reason to this test case, but it did
