@@ -4082,6 +4082,160 @@ public:
 
         return failure;
     }
+
+    // LDC.L @Rm+, Rn_BANK
+    // 0100mmmm1nnn0111
+    static int do_binary_ldcl_indgeninc_bank(Sh4 *cpu, Memory *mem,
+                                             unsigned reg_no,
+                                             unsigned bank_reg_no,
+                                             addr32_t addr, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDC.L @R" << reg_no << "+, R" << bank_reg_no << "_BANK\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+        cpu->exec_inst();
+
+        reg32_t bank_reg_val = *cpu->bank_reg(bank_reg_no);
+
+        if (bank_reg_val != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input address is " << addr << std::endl;
+            std::cout << "val is " << std::hex << val << std::endl;
+            std::cout << "actual val is " << std::hex << bank_reg_val <<
+                std::endl;
+            std::cout << "expected output address is " << addr + 4 << std::endl;
+            std::cout << "actual output address is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldcl_indgeninc_bank(Sh4 *cpu, Memory *mem,
+                                          RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            for (unsigned bank_reg_no = 0; bank_reg_no < 8; bank_reg_no++) {
+                addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+                failure = failure ||
+                    do_binary_ldcl_indgeninc_bank(cpu, mem, reg_no, bank_reg_no,
+                                                  addr, randgen32->pick_val(0));
+            }
+        }
+
+        return failure;
+    }
+
+    // STC Rm_BANK, Rn
+    // 0000nnnn1mmm0010
+    static int do_binary_stc_bank_gen(Sh4 *cpu, Memory *mem,
+                                      unsigned bank_reg_no, unsigned reg_no,
+                                      reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC R" << bank_reg_no << "_BANK, R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->bank_reg(bank_reg_no) = val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_no) != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << val <<
+                std::endl;
+            std::cout << "Actual value is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stc_bank_gen(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            for (unsigned bank_reg_no = 0; bank_reg_no < 8; bank_reg_no++) {
+                failure = failure ||
+                    do_binary_stc_bank_gen(cpu, mem, bank_reg_no, reg_no,
+                                           randgen32->pick_val(0));
+            }
+        }
+        return failure;
+    }
+
+    // STC.L Rm_BANK, @-Rn
+    // 0100nnnn1mmm0011
+    static int do_binary_stcl_bank_inddecgen(Sh4 *cpu, Memory *mem,
+                                             unsigned bank_reg_no,
+                                             unsigned reg_no, reg32_t val,
+                                             addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STC.L R" << bank_reg_no << "_BANK, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->bank_reg(bank_reg_no) = val;
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "Expected value was " << std::hex << val <<
+                std::endl;
+            std::cout << "Actual value is " << mem_val << std::endl;
+            std::cout << "expected output addr is " << (addr - 4) << std::endl;
+            std::cout << "actual output addr is " << *cpu->gen_reg(reg_no) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stcl_bank_inddecgen(Sh4 *cpu, Memory *mem,
+                                          RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            for (unsigned bank_reg_no = 0; bank_reg_no < 8; bank_reg_no++) {
+                addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+                failure = failure ||
+                    do_binary_stcl_bank_inddecgen(cpu, mem, bank_reg_no, reg_no,
+                                                  randgen32->pick_val(0), addr);
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -4177,6 +4331,9 @@ struct inst_test {
     { "binary_stcl_spc_inddecgen", &Sh4InstTests::binary_stcl_spc_inddecgen },
     { "binary_stcl_sgr_inddecgen", &Sh4InstTests::binary_stcl_sgr_inddecgen },
     { "binary_stcl_dbr_inddecgen", &Sh4InstTests::binary_stcl_dbr_inddecgen },
+    { "binary_ldcl_indgeninc_bank", &Sh4InstTests::binary_ldcl_indgeninc_bank },
+    { "binary_stc_bank_gen", &Sh4InstTests::binary_stc_bank_gen },
+    { "binary_stcl_bank_inddecgen", &Sh4InstTests::binary_stcl_bank_inddecgen },
     { NULL }
 };
 
