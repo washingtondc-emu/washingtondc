@@ -1889,13 +1889,13 @@ void Sh4::inst_binary_lds_gen_macl(OpArgs inst) {
 // STS MACH, Rn
 // 0000nnnn00001010
 void Sh4::inst_binary_sts_mach_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    *gen_reg(inst.gen_reg) = reg.mach;
 }
 
 // STS MACL, Rn
 // 0000nnnn00011010
 void Sh4::inst_binary_sts_macl_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    *gen_reg(inst.gen_reg) = reg.macl;
 }
 
 // LDS Rm, PR
@@ -1907,7 +1907,7 @@ void Sh4::inst_binary_lds_gen_pr(OpArgs inst) {
 // STS PR, Rn
 // 0000nnnn00101010
 void Sh4::inst_binary_sts_pr_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    *gen_reg(inst.gen_reg) = reg.pr;
 }
 
 // LDS.L @Rm+, MACH
