@@ -1874,16 +1874,16 @@ void Sh4::inst_binary_stcl_bank_inddecgen(OpArgs inst) {
     *addr_reg = addr;
 }
 
-// LDS Rm,MACH
+// LDS Rm, MACH
 // 0100mmmm00001010
 void Sh4::inst_binary_lds_gen_mach(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.mach = *gen_reg(inst.gen_reg);
 }
 
 // LDS Rm, MACL
 // 0100mmmm00011010
 void Sh4::inst_binary_lds_gen_macl(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.macl = *gen_reg(inst.gen_reg);
 }
 
 // STS MACH, Rn
@@ -1901,7 +1901,7 @@ void Sh4::inst_binary_sts_macl_gen(OpArgs inst) {
 // LDS Rm, PR
 // 0100mmmm00101010
 void Sh4::inst_binary_lds_gen_pr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.pr = *gen_reg(inst.gen_reg);
 }
 
 // STS PR, Rn
