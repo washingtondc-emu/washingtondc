@@ -4243,6 +4243,132 @@ public:
 
         return failure;
     }
+
+    // LDS Rm, MACH
+    // 0100mmmm00001010
+    static int do_binary_lds_gen_mach(Sh4 *cpu, Memory *mem,
+                                      unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS R" << reg_no << ", MACH\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        if (cpu->reg.mach != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << cpu->reg.mach << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_lds_gen_mach(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_lds_gen_mach(cpu, mem, reg_no,
+                                       randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDS Rm, MACL
+    // 0100mmmm00011010
+    static int do_binary_lds_gen_macl(Sh4 *cpu, Memory *mem,
+                                      unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS R" << reg_no << ", MACL\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        if (cpu->reg.macl != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << cpu->reg.macl << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_lds_gen_macl(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_lds_gen_macl(cpu, mem, reg_no,
+                                       randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDS Rm, PR
+    // 0100mmmm00101010
+    static int do_binary_lds_gen_pr(Sh4 *cpu, Memory *mem,
+                                      unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS R" << reg_no << ", PR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        if (cpu->reg.pr != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << cpu->reg.pr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_lds_gen_pr(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_lds_gen_pr(cpu, mem, reg_no,
+                                       randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -4341,6 +4467,9 @@ struct inst_test {
     { "binary_ldcl_indgeninc_bank", &Sh4InstTests::binary_ldcl_indgeninc_bank },
     { "binary_stc_bank_gen", &Sh4InstTests::binary_stc_bank_gen },
     { "binary_stcl_bank_inddecgen", &Sh4InstTests::binary_stcl_bank_inddecgen },
+    { "binary_lds_gen_mach", &Sh4InstTests::binary_lds_gen_mach },
+    { "binary_lds_gen_macl", &Sh4InstTests::binary_lds_gen_macl },
+    { "binary_lds_gen_pr", &Sh4InstTests::binary_lds_gen_pr },
     { NULL }
 };
 
