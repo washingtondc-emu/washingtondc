@@ -4369,6 +4369,132 @@ public:
 
         return failure;
     }
+
+    // STS MACH, Rn
+    // 0000nnnn00001010
+    static int do_binary_sts_mach_gen(Sh4 *cpu, Memory *mem,
+                                      unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS MACH, R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.mach = val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_no) != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << *cpu->gen_reg(reg_no) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_sts_mach_gen(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_sts_mach_gen(cpu, mem, reg_no,
+                                       randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STS MACL, Rn
+    // 0000nnnn00011010
+    static int do_binary_sts_macl_gen(Sh4 *cpu, Memory *mem,
+                                      unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS MACL, R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.macl = val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_no) != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << *cpu->gen_reg(reg_no) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_sts_macl_gen(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_sts_macl_gen(cpu, mem, reg_no,
+                                       randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STS PR, Rn
+    // 0000nnnn00101010
+    static int do_binary_sts_pr_gen(Sh4 *cpu, Memory *mem,
+                                    unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS PR, R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg.pr = val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_no) != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << *cpu->gen_reg(reg_no) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_sts_pr_gen(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_sts_pr_gen(cpu, mem, reg_no,
+                                     randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -4470,6 +4596,9 @@ struct inst_test {
     { "binary_lds_gen_mach", &Sh4InstTests::binary_lds_gen_mach },
     { "binary_lds_gen_macl", &Sh4InstTests::binary_lds_gen_macl },
     { "binary_lds_gen_pr", &Sh4InstTests::binary_lds_gen_pr },
+    { "binary_sts_mach_gen", &Sh4InstTests::binary_sts_mach_gen },
+    { "binary_sts_macl_gen", &Sh4InstTests::binary_sts_macl_gen },
+    { "binary_sts_pr_gen", &Sh4InstTests::binary_sts_pr_gen },
     { NULL }
 };
 
