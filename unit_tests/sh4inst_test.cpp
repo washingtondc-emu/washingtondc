@@ -5332,6 +5332,218 @@ public:
 
         return failure;
     }
+
+    // TST Rm, Rn
+    // 0010nnnnmmmm1000
+    static int do_binary_tst_gen_gen(Sh4 *cpu, Memory *mem,
+                                     unsigned reg1_no, unsigned reg2_no,
+                                     reg32_t reg1_val, reg32_t reg2_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "TST R" << reg1_no << ", R" << reg2_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg1_no) = reg1_val;
+        *cpu->gen_reg(reg2_no) = reg2_val;
+        cpu->exec_inst();
+        bool t_expect = !(reg1_val & reg2_val);
+
+        if (t_expect && !(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) ||
+            !t_expect && (cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected t val is " << t_expect << std::endl;
+            std::cout << "actual val is " <<
+                bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) << std::endl;
+            std::cout << "reg1_val is " << std::hex << reg1_val << std::endl;
+            std::cout << "reg2_val is " << std::hex << reg2_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_tst_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg1_no = 0; reg1_no < 16; reg1_no++) {
+            for (unsigned reg2_no = 0; reg2_no < 16; reg2_no++) {
+                reg32_t reg1_val = randgen32->pick_val(0);
+                reg32_t reg2_val = reg1_val;
+
+                if (reg1_no != reg2_no)
+                    reg2_val = randgen32->pick_val(0);
+
+                failure = failure ||
+                    do_binary_tst_gen_gen(cpu, mem, reg1_no, reg2_no,
+                                          reg1_val, reg2_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // TAS.B @Rn
+    // 0100nnnn00011011
+    static int do_unary_tasb_indgen(Sh4 *cpu, Memory *mem, unsigned reg_no,
+                                    addr32_t addr, uint8_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "TAS.B @R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+        cpu->exec_inst();
+        bool t_expect = !val;
+
+        if (t_expect && !(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) ||
+            !t_expect && (cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected t val is " << t_expect << std::endl;
+            std::cout << "actual t val is " <<
+                bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) << std::endl;
+            std::cout << "val is " << std::hex << val << std::endl;
+            std::cout << "addr is " << addr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_tasb_indgen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 1);
+            uint8_t val = randgen32->pick_val(0);
+
+            // make sure 0 gets tested
+            failure = failure ||
+                do_unary_tasb_indgen(cpu, mem, reg_no, addr, 0);
+
+            failure = failure ||
+                do_unary_tasb_indgen(cpu, mem, reg_no, addr, val);
+        }
+        return failure;
+    }
+
+    // TST #imm, R0
+    // 11001000iiiiiiii
+    static int do_binary_tst_imm_r0(Sh4 *cpu, Memory *mem, uint8_t imm_val,
+                                    reg32_t r0_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "TST #" << unsigned(imm_val) << ", R0\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(0) = r0_val;
+        cpu->exec_inst();
+        bool t_expect = !(r0_val & imm_val);
+
+        if (t_expect && !(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) ||
+            !t_expect && (cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected t val is " << t_expect << std::endl;
+            std::cout << "actual val is " <<
+                bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) << std::endl;
+            std::cout << "r0_val is " << std::hex << r0_val << std::endl;
+            std::cout << "imm_val is " << std::hex << unsigned(imm_val) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_tst_imm_r0(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
+            failure = failure ||
+                do_binary_tst_imm_r0(cpu, mem, imm_val, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // TST.B #imm, @(R0, GBR)
+    // 11001100iiiiiiii
+    static int do_binary_tstb_imm_binind_r0_gbr(Sh4 *cpu, Memory *mem,
+                                                uint8_t imm_val, reg32_t r0_val,
+                                                reg32_t gbr_val,
+                                                uint8_t mem_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        addr32_t addr = gbr_val + r0_val;
+
+        ss << "TST.B #" << unsigned(imm_val) << ", @(R0, GBR)\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(0) = r0_val;
+        cpu->reg.gbr = gbr_val;
+        cpu->write_mem(&mem_val, addr, sizeof(mem_val));
+
+        cpu->exec_inst();
+
+        bool t_expect = !(mem_val & imm_val);
+
+        if (t_expect && !(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) ||
+            !t_expect && (cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected t val is " << t_expect << std::endl;
+            std::cout << "actual val is " <<
+                bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) << std::endl;
+            std::cout << "r0_val is " << std::hex << r0_val << std::endl;
+            std::cout << "imm_val is " << std::hex << unsigned(imm_val) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_tstb_imm_ind_r0_gbr(Sh4 *cpu, Memory *mem,
+                                          RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
+            reg32_t gbr_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
+            reg32_t r0_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
+
+            failure = failure ||
+                do_binary_tstb_imm_binind_r0_gbr(cpu, mem, imm_val, r0_val,
+                                                 gbr_val,
+                                                 randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -5451,6 +5663,10 @@ struct inst_test {
     { "binary_cmphi_gen_gen", &Sh4InstTests::binary_cmphi_gen_gen },
     { "binary_cmpgt_gen_gen", &Sh4InstTests::binary_cmpgt_gen_gen },
     { "binary_cmpstr_gen_gen", &Sh4InstTests::binary_cmpstr_gen_gen },
+    { "binary_tst_gen_gen", &Sh4InstTests::binary_tst_gen_gen },
+    { "unary_tasb_indgen", &Sh4InstTests::unary_tasb_indgen },
+    { "binary_tst_imm_r0", &Sh4InstTests::binary_tst_imm_r0 },
+    { "binary_tstb_imm_ind_r0_gbr", &Sh4InstTests::binary_tstb_imm_ind_r0_gbr },
     { NULL }
 };
 
