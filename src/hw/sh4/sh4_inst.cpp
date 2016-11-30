@@ -870,13 +870,19 @@ void Sh4::inst_unary_movt_gen(OpArgs inst) {
 // CMP/PZ Rn
 // 0100nnnn00010001
 void Sh4::inst_unary_cmppz_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    uint32_t flag = (*gen_reg(inst.gen_reg)) >= 0;
+
+    reg.sr |= flag << SR_FLAG_T_SHIFT;
 }
 
 // CMP/PL Rn
 // 0100nnnn00010101
 void Sh4::inst_unary_cmppl_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    uint32_t flag = (*gen_reg(inst.gen_reg)) > 0;
+
+    reg.sr |= flag << SR_FLAG_T_SHIFT;
 }
 
 // DT Rn
@@ -984,7 +990,8 @@ void Sh4::inst_unary_bsrf_gen(OpArgs inst) {
 // CMP/EQ #imm, R0
 // 10001000iiiiiiii
 void Sh4::inst_binary_cmpeq_imm_r0(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg.sr |= ((*gen_reg(0) == inst.imm8) << SR_FLAG_T_SHIFT);
 }
 
 // AND.B #imm, @(R0, GBR)
@@ -1601,37 +1608,61 @@ void Sh4::inst_binary_addv_gen_gen(OpArgs inst) {
 // CMP/EQ Rm, Rn
 // 0011nnnnmmmm0000
 void Sh4::inst_binary_cmpeq_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg.sr |= ((*gen_reg(inst.src_reg) == *gen_reg(inst.dst_reg)) <<
+               SR_FLAG_T_SHIFT);
 }
 
 // CMP/HS Rm, Rn
 // 0011nnnnmmmm0010
 void Sh4::inst_binary_cmphs_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    uint32_t lhs = *gen_reg(inst.dst_reg);
+    uint32_t rhs = *gen_reg(inst.src_reg);
+    reg.sr |= ((lhs >= rhs) << SR_FLAG_T_SHIFT);
 }
 
 // CMP/GE Rm, Rn
 // 0011nnnnmmmm0011
 void Sh4::inst_binary_cmpge_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    int32_t lhs = *gen_reg(inst.dst_reg);
+    int32_t rhs = *gen_reg(inst.src_reg);
+    reg.sr |= ((lhs >= rhs) << SR_FLAG_T_SHIFT);
 }
 
 // CMP/HI Rm, Rn
 // 0011nnnnmmmm0110
 void Sh4::inst_binary_cmphi_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    uint32_t lhs = *gen_reg(inst.dst_reg);
+    uint32_t rhs = *gen_reg(inst.src_reg);
+    reg.sr |= ((lhs > rhs) << SR_FLAG_T_SHIFT);
 }
 
 // CMP/GT Rm, Rn
 // 0011nnnnmmmm0111
 void Sh4::inst_binary_cmpgt_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    int32_t lhs = *gen_reg(inst.dst_reg);
+    int32_t rhs = *gen_reg(inst.src_reg);
+    reg.sr |= ((lhs > rhs) << SR_FLAG_T_SHIFT);
 }
 
 // CMP/STR Rm, Rn
 // 0010nnnnmmmm1100
 void Sh4::inst_binary_cmpstr_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    uint32_t lhs = *gen_reg(inst.dst_reg);
+    uint32_t rhs = *gen_reg(inst.src_reg);
+    uint32_t flag;
+
+    flag = !!(((lhs & 0x000000ff) == (rhs & 0x000000ff)) ||
+              ((lhs & 0x0000ff00) == (rhs & 0x0000ff00)) ||
+              ((lhs & 0x00ff0000) == (rhs & 0x00ff0000)) ||
+              ((lhs & 0xff000000) == (rhs & 0xff000000)));
+
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg.sr |= flag << SR_FLAG_T_SHIFT;
 }
 
 // DIV1 Rm, Rn
