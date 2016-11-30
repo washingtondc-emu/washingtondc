@@ -4639,6 +4639,159 @@ public:
 
         return failure;
     }
+
+    // STS.L MACH, @-Rn
+    // 0100mmmm00000010
+    static int do_binary_stsl_mach_inddecgen(Sh4 *cpu, Memory *mem,
+                                             unsigned reg_no, reg32_t mach_val,
+                                             addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS.L MACH, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->reg.mach = mach_val;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (mem_val != mach_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << mach_val << std::endl;
+            std::cout << "actual val is " << mem_val << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr - 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stsl_mach_inddecgen(Sh4 *cpu, Memory *mem,
+                                          RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 1);
+            reg32_t mach_val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_stsl_mach_inddecgen(cpu, mem, reg_no,
+                                              mach_val, addr);
+        }
+
+        return failure;
+    }
+
+    // STS.L MACL, @-Rn
+    // 0100mmmm00010010
+    static int do_binary_stsl_macl_inddecgen(Sh4 *cpu, Memory *mem,
+                                             unsigned reg_no, reg32_t macl_val,
+                                             addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS.L MACL, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->reg.macl = macl_val;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (mem_val != macl_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << macl_val << std::endl;
+            std::cout << "actual val is " << mem_val << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr - 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stsl_macl_inddecgen(Sh4 *cpu, Memory *mem,
+                                          RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 1);
+            reg32_t macl_val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_stsl_macl_inddecgen(cpu, mem, reg_no,
+                                              macl_val, addr);
+        }
+
+        return failure;
+    }
+
+    // STS.L PR, @-Rn
+    // 0100nnnn00100010
+    static int do_binary_stsl_pr_inddecgen(Sh4 *cpu, Memory *mem,
+                                           unsigned reg_no, reg32_t pr_val,
+                                           addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS.L PR, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->reg.pr = pr_val;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (mem_val != pr_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << pr_val << std::endl;
+            std::cout << "actual val is " << mem_val << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr - 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stsl_pr_inddecgen(Sh4 *cpu, Memory *mem,
+                                        RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 1);
+            reg32_t pr_val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_stsl_pr_inddecgen(cpu, mem, reg_no,
+                                              pr_val, addr);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -4746,6 +4899,9 @@ struct inst_test {
     { "binary_ldsl_indgeninc_mach", &Sh4InstTests::binary_ldsl_indgeninc_mach },
     { "binary_ldsl_indgeninc_macl", &Sh4InstTests::binary_ldsl_indgeninc_macl },
     { "binary_ldsl_indgeninc_pr",  &Sh4InstTests::binary_ldsl_indgeninc_pr },
+    { "binary_stsl_mach_inddecgen", &Sh4InstTests::binary_stsl_mach_inddecgen },
+    { "binary_stsl_macl_inddecgen", &Sh4InstTests::binary_stsl_macl_inddecgen },
+    { "binary_stsl_pr_inddecgen", &Sh4InstTests::binary_stsl_pr_inddecgen },
     { NULL }
 };
 
