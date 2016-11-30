@@ -1015,13 +1015,24 @@ void Sh4::inst_binary_or_imm_r0(OpArgs inst) {
 // TST #imm, R0
 // 11001000iiiiiiii
 void Sh4::inst_binary_tst_imm_r0(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg32_t flag = !(inst.imm8 & *gen_reg(0)) <<
+        SR_FLAG_T_SHIFT;
+    reg.sr |= flag;
 }
 
 // TST.B #imm, @(R0, GBR)
 // 11001100iiiiiiii
 void Sh4::inst_binary_tstb_imm_r0_gbr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    addr32_t addr = *gen_reg(0) + reg.gbr;
+    uint8_t val;
+
+    read_mem(&val, addr, sizeof(val));
+
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg32_t flag = !(inst.imm8 & val) <<
+        SR_FLAG_T_SHIFT;
+    reg.sr |= flag;
 }
 
 // XOR #imm, R0
@@ -1081,7 +1092,16 @@ void Sh4::inst_unary_trapa_disp(OpArgs inst) {
 // TAS.B @Rn
 // 0100nnnn00011011
 void Sh4::inst_unary_tasb_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    addr32_t addr = *gen_reg(inst.gen_reg);
+    uint8_t val;
+    reg32_t mask;
+
+    read_mem(&val, addr, sizeof(val));
+    reg.sr &= ~SR_FLAG_T_MASK;
+    mask = (!val) << SR_FLAG_T_SHIFT;
+    reg.sr |= mask;
+    val |= 0x80;
+    write_mem(&val, addr, sizeof(val));
 }
 
 // OCBI @Rn
@@ -1820,7 +1840,10 @@ void Sh4::inst_binary_or_gen_gen(OpArgs inst) {
 // TST Rm, Rn
 // 0010nnnnmmmm1000
 void Sh4::inst_binary_tst_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg32_t flag = !(*gen_reg(inst.src_reg) & *gen_reg(inst.dst_reg)) <<
+        SR_FLAG_T_MASK;
+    reg.sr |= flag;
 }
 
 // XOR Rm, Rn
