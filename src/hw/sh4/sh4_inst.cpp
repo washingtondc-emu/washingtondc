@@ -1941,13 +1941,25 @@ void Sh4::inst_binary_ldsl_indgeninc_macl(OpArgs inst) {
 // STS.L MACH, @-Rn
 // 0100mmmm00000010
 void Sh4::inst_binary_stsl_mach_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+    addr32_t addr = *addr_reg - 4;
+
+    if (write_mem(&reg.mach, addr, sizeof(reg.mach)) != 0)
+        return;
+
+    *addr_reg = addr;
 }
 
 // STS.L MACL, @-Rn
 // 0100mmmm00010010
 void Sh4::inst_binary_stsl_macl_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+    addr32_t addr = *addr_reg - 4;
+
+    if (write_mem(&reg.macl, addr, sizeof(reg.macl)) != 0)
+        return;
+
+    *addr_reg = addr;
 }
 
 // LDS.L @Rm+, PR
@@ -1967,7 +1979,13 @@ void Sh4::inst_binary_ldsl_indgeninc_pr(OpArgs inst) {
 // STS.L PR, @-Rn
 // 0100nnnn00100010
 void Sh4::inst_binary_stsl_pr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+    addr32_t addr = *addr_reg - 4;
+
+    if (write_mem(&reg.pr, addr, sizeof(reg.pr)) != 0)
+        return;
+
+    *addr_reg = addr;
 }
 
 // MOV.B Rm, @Rn
