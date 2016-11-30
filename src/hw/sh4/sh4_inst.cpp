@@ -1913,13 +1913,29 @@ void Sh4::inst_binary_sts_pr_gen(OpArgs inst) {
 // LDS.L @Rm+, MACH
 // 0100mmmm00000110
 void Sh4::inst_binary_ldsl_indgeninc_mach(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    uint32_t val;
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+
+    if (read_mem(&val, *addr_reg, sizeof(val)) != 0)
+        return;
+
+    reg.mach = val;
+
+    *addr_reg += 4;
 }
 
 // LDS.L @Rm+, MACL
 // 0100mmmm00010110
 void Sh4::inst_binary_ldsl_indgeninc_macl(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    uint32_t val;
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+
+    if (read_mem(&val, *addr_reg, sizeof(val)) != 0)
+        return;
+
+    reg.macl = val;
+
+    *addr_reg += 4;
 }
 
 // STS.L MACH, @-Rn
@@ -1937,7 +1953,15 @@ void Sh4::inst_binary_stsl_macl_inddecgen(OpArgs inst) {
 // LDS.L @Rm+, PR
 // 0100mmmm00100110
 void Sh4::inst_binary_ldsl_indgeninc_pr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    uint32_t val;
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+
+    if (read_mem(&val, *addr_reg, sizeof(val)) != 0)
+        return;
+
+    reg.pr = val;
+
+    *addr_reg += 4;
 }
 
 // STS.L PR, @-Rn
