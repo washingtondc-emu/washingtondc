@@ -4495,6 +4495,150 @@ public:
 
         return failure;
     }
+
+    // LDS.L @Rm+, MACH
+    // 0100mmmm00000110
+    static int do_binary_ldsl_indgeninc_mach(Sh4 *cpu, Memory *mem,
+                                             unsigned reg_no, addr32_t addr,
+                                             uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS.L @R" << reg_no << "+, MACH\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        if (cpu->reg.mach != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << val << std::endl;
+            std::cout << "actual val is " << cpu->reg.mach << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr + 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldsl_indgeninc_mach(Sh4 *cpu, Memory *mem,
+                                          RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            uint32_t val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_ldsl_indgeninc_mach(cpu, mem, reg_no, addr, val);
+        }
+
+        return failure;
+    }
+
+    // LDS.L @Rm+, MACL
+    // 0100mmmm00010110
+    static int do_binary_ldsl_indgeninc_macl(Sh4 *cpu, Memory *mem,
+                                             unsigned reg_no, addr32_t addr,
+                                             uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS.L @R" << reg_no << "+, MACL\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        if (cpu->reg.macl != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << val << std::endl;
+            std::cout << "actual val is " << cpu->reg.macl << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr + 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldsl_indgeninc_macl(Sh4 *cpu, Memory *mem,
+                                          RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            uint32_t val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_ldsl_indgeninc_macl(cpu, mem, reg_no, addr, val);
+        }
+
+        return failure;
+    }
+
+    // LDS.L @Rm+, PR
+    // 0100mmmm00100110
+    static int do_binary_ldsl_indgeninc_pr(Sh4 *cpu, Memory *mem,
+                                           unsigned reg_no, addr32_t addr,
+                                           uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS.L @R" << reg_no << "+, PR\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        if (cpu->reg.pr != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << val << std::endl;
+            std::cout << "actual val is " << cpu->reg.pr << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr + 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldsl_indgeninc_pr(Sh4 *cpu, Memory *mem,
+                                        RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            uint32_t val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_ldsl_indgeninc_pr(cpu, mem, reg_no, addr, val);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -4599,6 +4743,9 @@ struct inst_test {
     { "binary_sts_mach_gen", &Sh4InstTests::binary_sts_mach_gen },
     { "binary_sts_macl_gen", &Sh4InstTests::binary_sts_macl_gen },
     { "binary_sts_pr_gen", &Sh4InstTests::binary_sts_pr_gen },
+    { "binary_ldsl_indgeninc_mach", &Sh4InstTests::binary_ldsl_indgeninc_mach },
+    { "binary_ldsl_indgeninc_macl", &Sh4InstTests::binary_ldsl_indgeninc_macl },
+    { "binary_ldsl_indgeninc_pr",  &Sh4InstTests::binary_ldsl_indgeninc_pr },
     { NULL }
 };
 
