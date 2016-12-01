@@ -36,11 +36,15 @@ Icache::Icache(Sh4 *sh4, Memory *mem) {
     this->mem = mem;
 
     inst_cache = new cache_line[ENTRY_COUNT];
-    memset(inst_cache, 0, sizeof(struct cache_line) * ENTRY_COUNT);
+    reset();
 }
 
 Icache::~Icache() {
     delete[] inst_cache;
+}
+
+void Icache::reset() {
+    memset(inst_cache, 0, sizeof(struct cache_line) * ENTRY_COUNT);
 }
 
 addr32_t Icache::cache_selector(addr32_t paddr, bool index_enable) const {

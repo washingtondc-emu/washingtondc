@@ -63,6 +63,9 @@ public:
 
     // Returns: zero on success, nonzero on failure
     int read(boost::uint32_t *out, addr32_t paddr, bool index_enable);
+
+    // reset the cache to its default (empty) state
+    void reset(void);
 private:
     Sh4 *sh4;
     Memory *mem;

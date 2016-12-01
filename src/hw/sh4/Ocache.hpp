@@ -86,6 +86,9 @@ public:
     int cache_write_wt(basic_val_t data, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram);
 
+    // reset the cache to its default (empty) state
+    void reset(void);
+
 private:
     Sh4 *sh4;
     Memory *mem;

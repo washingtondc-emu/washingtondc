@@ -36,11 +36,15 @@ Ocache::Ocache(Sh4 *sh4, Memory *mem) {
     this->mem = mem;
 
     op_cache = new cache_line[ENTRY_COUNT];
-    memset(op_cache, 0, sizeof(struct cache_line) * ENTRY_COUNT);
+    reset();
 }
 
 Ocache::~Ocache() {
     delete[] op_cache;
+}
+
+void Ocache::reset(void) {
+    memset(op_cache, 0, sizeof(struct cache_line) * ENTRY_COUNT);
 }
 
 bool Ocache::cache_check(struct cache_line const *line,

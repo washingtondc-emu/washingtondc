@@ -28,6 +28,8 @@
 #include "BaseException.hpp"
 #include "hw/sh4/Memory.hpp"
 #include "hw/sh4/sh4.hpp"
+#include "hw/sh4/Icache.hpp"
+#include "hw/sh4/Ocache.hpp"
 #include "tool/sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
 
@@ -42,6 +44,13 @@ public:
     static void reset_cpu(Sh4 *cpu) {
         cpu->reg.pc = 0;
         cpu->reg.sr = Sh4::SR_MD_MASK;
+
+#ifdef ENABLE_SH4_OCACHE
+        cpu->op_cache->reset();
+#endif
+#ifdef ENABLE_SH4_ICACHE
+        cpu->inst_cache->reset();
+#endif
     }
 
     // very basic test that does a whole lot of nothing
@@ -1965,6 +1974,7 @@ public:
         std::stringstream ss;
         std::string cmd;
         Sh4Prog test_prog;
+        addr32_t addr = disp * 4 + base;
 
         if (reg_base == reg_dst) {
             val = base;
@@ -1979,7 +1989,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
-        cpu->write_mem(&val, disp * 4 + base, sizeof(val));
+        cpu->write_mem(&val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
@@ -1989,6 +1999,7 @@ public:
             std::cout << "base is " << std::hex << base << std::endl;
             std::cout << "actual val is " << std::hex <<
                 *cpu->gen_reg(reg_dst) << std::endl;
+            std::cout << "addr is " << addr << std::endl;
             return 1;
         }
         return 0;
