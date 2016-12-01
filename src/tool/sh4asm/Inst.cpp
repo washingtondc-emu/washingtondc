@@ -205,6 +205,11 @@ PtrnList get_patterns() {
                            Ptrn_BinaryInd<Ptrn_R0Reg, Ptrn_GbrReg, 0, 0, 0>,
 			   0xcd00, 0xff00, 0, 0>));
 
+    // AND #imm, R0
+    // 11001001iiiiiiii
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(and), Ptrn_immed<0xff>,
+                           Ptrn_R0Reg, 0xc900, 0xff00, 0, 0>));
+
     // OR.B #imm, @(R0, GBR)
     // 11001111iiiiiiii
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(orb), Ptrn_immed<0xff>,

@@ -113,6 +113,7 @@ char const *insts_to_test[] = {
     "BSRF R<4>",
     "CMP/EQ #<8>, R0",
     "AND.B #<8>, @(R0, GBR)",
+    "AND #<8>, R0",
     "OR.B #<8>, @(R0, GBR)",
     "OR #<8>, R0",
     "TST #<8>, R0",
