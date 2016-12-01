@@ -909,6 +909,10 @@ private:
     // 11001101iiiiiiii
     void inst_binary_andb_imm_r0_gbr(OpArgs inst);
 
+    // AND #imm, R0
+    // 11001001iiiiiiii
+    void inst_binary_and_imm_r0(OpArgs inst);
+
     // OR.B #imm, @(R0, GBR)
     // 11001111iiiiiiii
     void inst_binary_orb_imm_r0_gbr(OpArgs inst);
