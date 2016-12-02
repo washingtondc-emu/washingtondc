@@ -91,7 +91,7 @@ public:
                 *cpu->gen_reg(reg_no) = initial_val;
                 cpu->exec_inst();
 
-                reg32_t expected_val = (initial_val + imm_val);
+                reg32_t expected_val = (initial_val + int32_t(int8_t(imm_val)));
                 reg32_t actual_val = *cpu->gen_reg(reg_no);
 
                 if (actual_val != expected_val) {
@@ -772,7 +772,7 @@ public:
 
                 cpu->exec_inst();
 
-                if (*cpu->gen_reg(reg_no) != (int32_t)imm_val)
+                if (*cpu->gen_reg(reg_no) != int32_t(int8_t(imm_val)))
                     return 1;
             }
         }
@@ -4913,7 +4913,7 @@ public:
         *cpu->gen_reg(0) = r0_val;
         cpu->exec_inst();
 
-        bool t_expect = (r0_val == imm_val);
+        bool t_expect = (r0_val == int32_t(int8_t(imm_val)));
 
         if (t_expect && !(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) ||
             !t_expect && (cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {

@@ -993,8 +993,9 @@ void Sh4::inst_unary_bsrf_gen(OpArgs inst) {
 // CMP/EQ #imm, R0
 // 10001000iiiiiiii
 void Sh4::inst_binary_cmpeq_imm_r0(OpArgs inst) {
+    reg32_t imm_val = int32_t(int8_t(inst.imm8));
     reg.sr &= ~SR_FLAG_T_MASK;
-    reg.sr |= ((*gen_reg(0) == inst.imm8) << SR_FLAG_T_SHIFT);
+    reg.sr |= ((*gen_reg(0) == imm_val) << SR_FLAG_T_SHIFT);
 }
 
 // AND.B #imm, @(R0, GBR)
@@ -1550,13 +1551,13 @@ void Sh4::inst_binary_stcl_dbr_inddecgen(OpArgs inst) {
 // MOV #imm, Rn
 // 1110nnnniiiiiiii
 void Sh4::inst_binary_mov_imm_gen(OpArgs inst) {
-    *gen_reg(inst.gen_reg) = (reg32_t)(inst.imm8);
+    *gen_reg(inst.gen_reg) = int32_t(int8_t(inst.imm8));
 }
 
 // ADD #imm, Rn
 // 0111nnnniiiiiiii
 void Sh4::inst_binary_add_imm_gen(OpArgs inst) {
-    *gen_reg(inst.gen_reg) += inst.imm8;
+    *gen_reg(inst.gen_reg) += int32_t(int8_t(inst.imm8));
 }
 
 // MOV.W @(disp, PC), Rn
