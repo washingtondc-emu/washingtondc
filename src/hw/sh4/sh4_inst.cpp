@@ -1791,13 +1791,19 @@ void Sh4::inst_binary_muluw_gen_gen(OpArgs inst) {
 // NEG Rm, Rn
 // 0110nnnnmmmm1011
 void Sh4::inst_binary_neg_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    *gen_reg(inst.dst_reg) = -*gen_reg(inst.src_reg);
 }
 
 // NEGC Rm, Rn
 // 0110nnnnmmmm1010
 void Sh4::inst_binary_negc_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    int64_t val = -int64_t(*gen_reg(inst.src_reg));
+    unsigned carry_bit = ((val & 0x100000000) >> 32) << SR_FLAG_T_SHIFT;
+
+    *gen_reg(inst.dst_reg) = val;
+
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg.sr |= carry_bit;
 }
 
 // SUB Rm, Rn
