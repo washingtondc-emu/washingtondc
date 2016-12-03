@@ -891,7 +891,10 @@ void Sh4::inst_unary_cmppl_gen(OpArgs inst) {
 // DT Rn
 // 0100nnnn00010000
 void Sh4::inst_unary_dt_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg32_t *valp = gen_reg(inst.gen_reg);
+    (*valp)--;
+    reg.sr &= ~SR_FLAG_T_MASK;
+    reg.sr |= (!*valp) << SR_FLAG_T_SHIFT;
 }
 
 // ROTL Rn
