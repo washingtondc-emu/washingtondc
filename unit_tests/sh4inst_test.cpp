@@ -6150,6 +6150,56 @@ public:
         }
         return failure;
     }
+
+    // DT Rn
+    // 0100nnnn00010000
+    static int do_unary_dt_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32,
+                               unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "DT R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t output_expect = val - 1;
+        bool t_expect = !val;
+        bool t_actual = bool(!!(cpu->reg.sr & Sh4::SR_FLAG_T_MASK));
+
+        if ((*cpu->gen_reg(reg_no) != output_expect) ||
+            (t_expect != t_actual)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val is " << std::hex << val << std::endl;
+            std::cout << "expected output val is " << output_expect <<
+                std::endl;
+            std::cout << "actual val is " << std::hex <<
+                *cpu->gen_reg(reg_no) << std::endl;
+            std::cout << "expected t val is " << t_expect << std::endl;
+            std::cout << "actual t val is " << t_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_dt_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_dt_gen(cpu, mem, randgen32,
+                                reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -6285,6 +6335,7 @@ struct inst_test {
     { "binary_not_gen_gen", &Sh4InstTests::binary_not_gen_gen },
     { "binary_neg_gen_gen", &Sh4InstTests::binary_neg_gen_gen },
     { "binary_negc_gen_gen", &Sh4InstTests::binary_negc_gen_gen },
+    { "unary_dt_gen", &Sh4InstTests::unary_dt_gen },
     { NULL }
 };
 
