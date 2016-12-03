@@ -1885,7 +1885,7 @@ void Sh4::inst_binary_or_gen_gen(OpArgs inst) {
 void Sh4::inst_binary_tst_gen_gen(OpArgs inst) {
     reg.sr &= ~SR_FLAG_T_MASK;
     reg32_t flag = !(*gen_reg(inst.src_reg) & *gen_reg(inst.dst_reg)) <<
-        SR_FLAG_T_MASK;
+        SR_FLAG_T_SHIFT;
     reg.sr |= flag;
 }
 
