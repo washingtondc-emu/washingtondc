@@ -6059,6 +6059,97 @@ public:
 
         return failure;
     }
+
+    // NEG Rm, Rn
+    // 0110nnnnmmmm1011
+    static int do_binary_neg_gen_gen(Sh4 *cpu, Memory *mem,
+                                     unsigned reg_src, unsigned reg_dst,
+                                     uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "NEG R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != -val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val is " << std::hex << val << std::endl;
+            std::cout << "expected output val is " << (-val) << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                *cpu->gen_reg(reg_dst) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_neg_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                uint32_t val = randgen32->pick_val(0);
+                failure = failure ||
+                    do_binary_neg_gen_gen(cpu, mem, reg_src, reg_dst, val);
+            }
+        }
+        return failure;
+    }
+
+    // NEGC Rm, Rn
+    // 0110nnnnmmmm1010
+    static int do_binary_negc_gen_gen(Sh4 *cpu, Memory *mem,
+                                      unsigned reg_src, unsigned reg_dst,
+                                      uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "NEGC R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        cpu->exec_inst();
+
+        bool t_expect = val > 0;
+        bool t_actual = bool(!!(cpu->reg.sr & Sh4::SR_FLAG_T_MASK));
+
+        if ((*cpu->gen_reg(reg_dst) != -val) || (t_expect != t_actual)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val is " << std::hex << val << std::endl;
+            std::cout << "expected output val is " << (-val) << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                *cpu->gen_reg(reg_dst) << std::endl;
+            std::cout << "expected t val is " << t_expect << std::endl;
+            std::cout << "actual t val is " << t_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_negc_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                uint32_t val = randgen32->pick_val(0);
+                failure = failure ||
+                    do_binary_negc_gen_gen(cpu, mem, reg_src, reg_dst, val);
+            }
+        }
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -6192,6 +6283,8 @@ struct inst_test {
     { "binary_xor_imm_r0", &Sh4InstTests::binary_xor_imm_r0 },
     { "binary_xorb_imm_binind_r0_gbr", &Sh4InstTests::binary_xorb_imm_binind_r0_gbr },
     { "binary_not_gen_gen", &Sh4InstTests::binary_not_gen_gen },
+    { "binary_neg_gen_gen", &Sh4InstTests::binary_neg_gen_gen },
+    { "binary_negc_gen_gen", &Sh4InstTests::binary_negc_gen_gen },
     { NULL }
 };
 
