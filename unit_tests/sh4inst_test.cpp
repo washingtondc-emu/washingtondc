@@ -6200,6 +6200,154 @@ public:
 
         return failure;
     }
+
+    // SWAP.B Rm, Rn
+    // 0110nnnnmmmm1000
+    static int do_binary_swapb_gen_gen(Sh4 *cpu, Memory *mem,
+                                       unsigned reg_src, unsigned reg_dst,
+                                       unsigned val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        unsigned val_low = val & 0xff;
+        unsigned val_hi = (val & 0xff00) >> 8;
+        unsigned val_expect = (val_low << 8) | val_hi | (val & ~0xffff);
+
+        ss << "SWAP.B R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input value was " << std::hex << val << std::endl;
+            std::cout << "Expected output was " << val_expect << std::endl;
+            std::cout << "actual output was " << *cpu->gen_reg(reg_dst) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_swapb_gen_gen(Sh4 *cpu, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++)
+            for (unsigned reg_dst = 0;reg_dst < 16; reg_dst++) {
+                failure = failure ||
+                    do_binary_swapb_gen_gen(cpu, mem, reg_src, reg_dst,
+                                            randgen32->pick_val(0));
+            }
+        return failure;
+    }
+
+    // SWAP.W Rm, Rn
+    // 0110nnnnmmmm1001
+    static int do_binary_swapw_gen_gen(Sh4 *cpu, Memory *mem,
+                                       unsigned reg_src, unsigned reg_dst,
+                                       unsigned val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        unsigned val_low = val & 0x0000ffff;
+        unsigned val_hi = (val & 0xffff0000) >> 16;
+        unsigned val_expect = (val_low << 16) | val_hi;
+
+        ss << "SWAP.W R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input value was " << std::hex << val << std::endl;
+            std::cout << "Expected output was " << val_expect << std::endl;
+            std::cout << "actual output was " << *cpu->gen_reg(reg_dst) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_swapw_gen_gen(Sh4 *cpu, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++)
+            for (unsigned reg_dst = 0;reg_dst < 16; reg_dst++) {
+                failure = failure ||
+                    do_binary_swapw_gen_gen(cpu, mem, reg_src, reg_dst,
+                                            randgen32->pick_val(0));
+            }
+        return failure;
+    }
+
+    // XTRCT Rm, Rn
+    // 0110nnnnmmmm1101
+    static int do_binary_xtrct_gen_gen(Sh4 *cpu, Memory *mem,
+                                       unsigned reg_src, unsigned reg_dst,
+                                       unsigned val_src, unsigned val_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        unsigned val_src_low = val_src & 0x0000ffff;
+        unsigned val_dst_hi = (val_dst & 0xffff0000) >> 16;
+        unsigned val_expect = (val_src_low << 16) | val_dst_hi;
+
+        ss << "XTRCT R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val_src;
+        *cpu->gen_reg(reg_dst) = val_dst;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input values were " << std::hex << val_src <<
+                ", " << val_dst << std::endl;
+            std::cout << "Expected output was " << val_expect << std::endl;
+            std::cout << "actual output was " << *cpu->gen_reg(reg_dst) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_xtrct_gen_gen(Sh4 *cpu, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++)
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                unsigned val_src = randgen32->pick_val(0);
+                unsigned val_dst = val_src;
+
+                if (reg_src != reg_dst)
+                    randgen32->pick_val(0);
+                failure = failure ||
+                    do_binary_xtrct_gen_gen(cpu, mem, reg_src, reg_dst,
+                                            val_src, val_dst);
+            }
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -6336,6 +6484,9 @@ struct inst_test {
     { "binary_neg_gen_gen", &Sh4InstTests::binary_neg_gen_gen },
     { "binary_negc_gen_gen", &Sh4InstTests::binary_negc_gen_gen },
     { "unary_dt_gen", &Sh4InstTests::unary_dt_gen },
+    { "binary_swapb_gen_gen", &Sh4InstTests::binary_swapb_gen_gen },
+    { "binary_swapw_gen_gen", &Sh4InstTests::binary_swapw_gen_gen },
+    { "binary_xtrct_gen_gen", &Sh4InstTests::binary_xtrct_gen_gen },
     { NULL }
 };
 
