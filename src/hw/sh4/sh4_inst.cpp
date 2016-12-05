@@ -287,7 +287,7 @@ struct Sh4::InstOpcode Sh4::opcode_list[] = {
     { "0110nnnnmmmm1001", &Sh4::inst_binary_swapw_gen_gen },
 
     // XTRCT Rm, Rn
-    { "0110nnnnmmmm1101", &Sh4::inst_binary_xtrct_gen_gen },
+    { "0010nnnnmmmm1101", &Sh4::inst_binary_xtrct_gen_gen },
 
     // ADD Rm, Rn
     { "0011nnnnmmmm1100", &Sh4::inst_binary_add_gen_gen },
@@ -1594,19 +1594,40 @@ void Sh4::inst_binary_movw_gen_gen(OpArgs inst) {
 // SWAP.B Rm, Rn
 // 0110nnnnmmmm1000
 void Sh4::inst_binary_swapb_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    unsigned byte0, byte1;
+    reg32_t *reg_src = gen_reg(inst.src_reg);
+    reg32_t val_src = *reg_src;
+
+    byte0 = val_src & 0x00ff;
+    byte1 = (val_src & 0xff00) >> 8;
+
+    val_src &= ~0xffff;
+    val_src |= byte1 | (byte0 << 8);
+    *gen_reg(inst.dst_reg) = val_src;
 }
 
 // SWAP.W Rm, Rn
 // 0110nnnnmmmm1001
 void Sh4::inst_binary_swapw_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    unsigned word0, word1;
+    uint32_t *reg_src = gen_reg(inst.src_reg);
+    uint32_t val_src = *reg_src;
+
+    word0 = val_src & 0xffff;
+    word1 = val_src >> 16;
+
+    val_src = word1 | (word0 << 16);
+    *gen_reg(inst.dst_reg) = val_src;
 }
 
 // XTRCT Rm, Rn
 // 0110nnnnmmmm1101
 void Sh4::inst_binary_xtrct_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg32_t *reg_dst = gen_reg(inst.dst_reg);
+    reg32_t *reg_src = gen_reg(inst.src_reg);
+
+    *reg_dst = (((*reg_dst) & 0xffff0000) >> 16) |
+        (((*reg_src) & 0x0000ffff) << 16);
 }
 
 // ADD Rm, Rn
