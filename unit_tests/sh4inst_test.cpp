@@ -6348,6 +6348,194 @@ public:
             }
         return failure;
     }
+
+    // EXTS.B Rm, Rn
+    // 0110nnnnmmmm1110
+    static int do_binary_extsb_gen_gen(Sh4 *cpu, Memory *mem,
+                                       unsigned reg_src, unsigned reg_dst,
+                                       unsigned val_src) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        unsigned val_expect = int32_t(int8_t(val_src & 0xff));
+
+        ss << "EXTS.B R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val_src;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input value was " <<
+                std::hex << val_src << std::endl;
+            std::cout << "Expected output was " << val_expect << std::endl;
+            std::cout << "actual output was " << *cpu->gen_reg(reg_dst) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_extsb_gen_gen(Sh4 *cpu, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++)
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                unsigned val_src = randgen32->pick_val(0);
+
+                failure = failure ||
+                    do_binary_extsb_gen_gen(cpu, mem, reg_src,
+                                            reg_dst, val_src);
+            }
+        return failure;
+    }
+
+    // EXTS.W Rm, Rnn
+    // 0110nnnnmmmm1111
+    static int do_binary_extsw_gen_gen(Sh4 *cpu, Memory *mem,
+                                       unsigned reg_src, unsigned reg_dst,
+                                       unsigned val_src) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        unsigned val_expect = int32_t(int16_t(val_src & 0xffff));
+
+        ss << "EXTS.W R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val_src;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input value was " <<
+                std::hex << val_src << std::endl;
+            std::cout << "Expected output was " << val_expect << std::endl;
+            std::cout << "actual output was " << *cpu->gen_reg(reg_dst) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_extsw_gen_gen(Sh4 *cpu, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++)
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                unsigned val_src = randgen32->pick_val(0);
+
+                failure = failure ||
+                    do_binary_extsw_gen_gen(cpu, mem, reg_src,
+                                            reg_dst, val_src);
+            }
+        return failure;
+    }
+
+    // EXTU.B Rm, Rn
+    // 0110nnnnmmmm1100
+    static int do_binary_extub_gen_gen(Sh4 *cpu, Memory *mem,
+                                       unsigned reg_src, unsigned reg_dst,
+                                       unsigned val_src) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        unsigned val_expect = uint32_t(uint8_t(val_src & 0xff));
+
+        ss << "EXTU.B R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val_src;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input value was " <<
+                std::hex << val_src << std::endl;
+            std::cout << "Expected output was " << val_expect << std::endl;
+            std::cout << "actual output was " << *cpu->gen_reg(reg_dst) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_extub_gen_gen(Sh4 *cpu, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++)
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                unsigned val_src = randgen32->pick_val(0);
+
+                failure = failure ||
+                    do_binary_extub_gen_gen(cpu, mem, reg_src,
+                                            reg_dst, val_src);
+            }
+        return failure;
+    }
+
+    // EXTU.W Rm, Rn
+    // 0110nnnnmmmm1101
+    static int do_binary_extuw_gen_gen(Sh4 *cpu, Memory *mem,
+                                       unsigned reg_src, unsigned reg_dst,
+                                       unsigned val_src) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        unsigned val_expect = uint32_t(uint16_t(val_src & 0xffff));
+
+        ss << "EXTU.W R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val_src;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_dst) != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input value was " <<
+                std::hex << val_src << std::endl;
+            std::cout << "Expected output was " << val_expect << std::endl;
+            std::cout << "actual output was " << *cpu->gen_reg(reg_dst) <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_extuw_gen_gen(Sh4 *cpu, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++)
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                unsigned val_src = randgen32->pick_val(0);
+
+                failure = failure ||
+                    do_binary_extuw_gen_gen(cpu, mem, reg_src,
+                                            reg_dst, val_src);
+            }
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -6487,6 +6675,10 @@ struct inst_test {
     { "binary_swapb_gen_gen", &Sh4InstTests::binary_swapb_gen_gen },
     { "binary_swapw_gen_gen", &Sh4InstTests::binary_swapw_gen_gen },
     { "binary_xtrct_gen_gen", &Sh4InstTests::binary_xtrct_gen_gen },
+    { "binary_extsb_gen_gen", &Sh4InstTests::binary_extsb_gen_gen },
+    { "binary_extsw_gen_gen", &Sh4InstTests::binary_extsw_gen_gen },
+    { "binary_extub_gen_gen", &Sh4InstTests::binary_extub_gen_gen },
+    { "binary_extuw_gen_gen", &Sh4InstTests::binary_extuw_gen_gen },
     { NULL }
 };
 
