@@ -6536,6 +6536,790 @@ public:
             }
         return failure;
     }
+
+    // ROTL Rn
+    // 0100nnnn00000100
+    static int do_unary_rotl_gen(Sh4 *cpu, Memory *mem,
+                                 unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "ROTL R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val << 1;
+        if (val & 0x80000000)
+            val_expect |= 1;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        bool t_expect = val & 0x80000000 ? true : false;
+        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+
+        if (val_actual != val_expect || t_actual != t_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            std::cout << "expected output T flag was " << t_expect << std::endl;
+            std::cout << "actual output T flag was "<< t_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_rotl_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_rotl_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // ROTR Rn
+    // 0100nnnn00000101
+    static int do_unary_rotr_gen(Sh4 *cpu, Memory *mem,
+                                 unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "ROTR R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val >> 1;
+        if (val & 1)
+            val_expect |= 0x80000000;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        bool t_expect = val & 1 ? true : false;
+        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+
+        if (val_actual != val_expect || t_actual != t_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            std::cout << "expected output T flag was " << t_expect << std::endl;
+            std::cout << "actual output T flag was "<< t_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_rotr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_rotr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // ROTCL Rn
+    // 0100nnnn00100100
+    static int do_unary_rotcl_gen(Sh4 *cpu, Memory *mem,
+                                  unsigned reg_no, uint32_t val, bool t_flag) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "ROTCL R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        if (t_flag)
+            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+        else
+            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val << 1;
+        if (t_flag)
+            val_expect |= 1;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        bool t_expect = val & 0x80000000 ? true : false;
+        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+
+        if (val_actual != val_expect || t_actual != t_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            std::cout << "expected output T flag was " << t_expect << std::endl;
+            std::cout << "actual output T flag was "<< t_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_rotcl_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_rotcl_gen(cpu, mem, reg_no,
+                                   randgen32->pick_val(0), false);
+            failure = failure ||
+                do_unary_rotcl_gen(cpu, mem, reg_no,
+                                   randgen32->pick_val(0), true);
+        }
+
+        return failure;
+    }
+
+    // ROTCR Rn
+    // 0100nnnn00100101
+    static int do_unary_rotcr_gen(Sh4 *cpu, Memory *mem,
+                                  unsigned reg_no, uint32_t val, bool t_flag) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "ROTCR R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        if (t_flag)
+            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+        else
+            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val >> 1;
+        if (t_flag)
+            val_expect |= 0x80000000;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        bool t_expect = val & 1 ? true : false;
+        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+
+        if (val_actual != val_expect || t_actual != t_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            std::cout << "expected output T flag was " << t_expect << std::endl;
+            std::cout << "actual output T flag was "<< t_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_rotcr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_rotcr_gen(cpu, mem, reg_no,
+                                   randgen32->pick_val(0), false);
+            failure = failure ||
+                do_unary_rotcr_gen(cpu, mem, reg_no,
+                                   randgen32->pick_val(0), true);
+        }
+
+        return failure;
+    }
+
+    // SHAD Rm, Rn
+    // 0100nnnnmmmm1100
+    static int do_binary_shad_gen(Sh4 *cpu, Memory *mem,
+                                  unsigned reg_src, unsigned reg_dst,
+                                  uint32_t val_src, uint32_t val_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHAD R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val_src;
+        *cpu->gen_reg(reg_dst) = val_dst;
+        cpu->exec_inst();
+
+        uint32_t val_expect;
+        if (int32_t(val_src) >= 0) {
+            val_expect = val_dst << val_src;
+        } else {
+            val_expect = int32_t(val_dst) >> -int32_t(val_src);
+        }
+
+        uint32_t val_actual = *cpu->gen_reg(reg_dst);
+
+        if (val_actual != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val were " << val_src << ", " <<
+                val_dst << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_shad_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                uint32_t src_val = randgen32->pick_val(0);
+                uint32_t dst_val = src_val;
+                if (reg_src != reg_dst)
+                    dst_val = randgen32->pick_val(0);
+                failure = failure ||
+                    do_binary_shad_gen(cpu, mem, reg_src, reg_dst,
+                                       src_val, dst_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // SHAL Rn
+    // 0100nnnn00100000
+    static int do_unary_shal_gen(Sh4 *cpu, Memory *mem,
+                                 unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHAL R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val << 1;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        bool t_expect = val & 0x80000000 ? true : false;
+        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+
+        if (val_actual != val_expect || t_actual != t_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            std::cout << "expected output T flag was " << t_expect << std::endl;
+            std::cout << "actual output T flag was "<< t_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shal_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shal_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // SHAR Rn
+    // 0100nnnn00100001
+    static int do_unary_shar_gen(Sh4 *cpu, Memory *mem,
+                                 unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHAR R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = int32_t(val) >> 1;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        bool t_expect = val & 1 ? true : false;
+        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+
+        if (val_actual != val_expect || t_actual != t_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            std::cout << "expected output T flag was " << t_expect << std::endl;
+            std::cout << "actual output T flag was "<< t_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shar_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shar_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // SHLD Rm, Rn
+    // 0100nnnnmmmm1101
+    static int do_binary_shld_gen(Sh4 *cpu, Memory *mem,
+                                  unsigned reg_src, unsigned reg_dst,
+                                  uint32_t val_src, uint32_t val_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHLD R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = val_src;
+        *cpu->gen_reg(reg_dst) = val_dst;
+        cpu->exec_inst();
+
+        uint32_t val_expect;
+        if (int32_t(val_src) >= 0) {
+            val_expect = val_dst << val_src;
+        } else {
+            val_expect = val_dst >> -int32_t(val_src);
+        }
+
+        uint32_t val_actual = *cpu->gen_reg(reg_dst);
+
+        if (val_actual != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val were " << val_src << ", " <<
+                val_dst << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_shld_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                uint32_t src_val = randgen32->pick_val(0);
+                uint32_t dst_val = src_val;
+                if (reg_src != reg_dst)
+                    dst_val = randgen32->pick_val(0);
+                failure = failure ||
+                    do_binary_shld_gen(cpu, mem, reg_src, reg_dst,
+                                       src_val, dst_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // SHLL Rn
+    // 0100nnnn00000000
+    static int do_unary_shll_gen(Sh4 *cpu, Memory *mem,
+                                 unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHLL R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val << 1;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        bool t_expect = val & 0x80000000 ? true : false;
+        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+
+        if (val_actual != val_expect || t_actual != t_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            std::cout << "expected output T flag was " << t_expect << std::endl;
+            std::cout << "actual output T flag was "<< t_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shll_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shll_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // SHLR Rn
+    // 0100nnnn00000001
+    static int do_unary_shlr_gen(Sh4 *cpu, Memory *mem,
+                                 unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHLR R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val >> 1;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        bool t_expect = val & 1 ? true : false;
+        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+
+        if (val_actual != val_expect || t_actual != t_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            std::cout << "expected output T flag was " << t_expect << std::endl;
+            std::cout << "actual output T flag was "<< t_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shlr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shlr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // SHLL2 Rn
+    // 0100nnnn00001000
+    static int do_unary_shll2_gen(Sh4 *cpu, Memory *mem,
+                                  unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHLL2 R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val << 2;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        if (val_actual != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shll2_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shll2_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // SHLR2 Rn
+    // 0100nnnn00001001
+    static int do_unary_shlr2_gen(Sh4 *cpu, Memory *mem,
+                                  unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHLR2 R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val >> 2;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        if (val_actual != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shlr2_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shlr2_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // SHLL8 Rn
+    // 0100nnnn00011000
+    static int do_unary_shll8_gen(Sh4 *cpu, Memory *mem,
+                                  unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHLL8 R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val << 8;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        if (val_actual != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shll8_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shll8_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // SHLR8 Rn
+    // 0100nnnn00011001
+    static int do_unary_shlr8_gen(Sh4 *cpu, Memory *mem,
+                                  unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHLR8 R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val >> 8;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        if (val_actual != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shlr8_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shlr8_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // SHLL16 Rn
+    // 0100nnnn00101000
+    static int do_unary_shll16_gen(Sh4 *cpu, Memory *mem,
+                                   unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHLL16 R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val << 16;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        if (val_actual != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shll16_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shll16_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // SHLR16 Rn
+    // 0100nnnn00101001
+    static int do_unary_shlr16_gen(Sh4 *cpu, Memory *mem,
+                                   unsigned reg_no, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SHLR16 R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        uint32_t val_expect = val >> 16;
+        uint32_t val_actual = *cpu->gen_reg(reg_no);
+
+        if (val_actual != val_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "input val was " << val << std::endl;
+            std::cout << "expected output val was " << val_expect << std::endl;
+            std::cout << "actual output val was " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_shlr16_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_shlr16_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -6679,6 +7463,22 @@ struct inst_test {
     { "binary_extsw_gen_gen", &Sh4InstTests::binary_extsw_gen_gen },
     { "binary_extub_gen_gen", &Sh4InstTests::binary_extub_gen_gen },
     { "binary_extuw_gen_gen", &Sh4InstTests::binary_extuw_gen_gen },
+    { "unary_rotl_gen", &Sh4InstTests::unary_rotl_gen },
+    { "unary_rotr_gen", &Sh4InstTests::unary_rotr_gen },
+    { "unary_rotcl_gen", &Sh4InstTests::unary_rotcl_gen },
+    { "unary_rotcr_gen", &Sh4InstTests::unary_rotcr_gen },
+    { "binary_shad_gen", &Sh4InstTests::binary_shad_gen },
+    { "unary_shal_gen", &Sh4InstTests::unary_shal_gen },
+    { "unary_shar_gen", &Sh4InstTests::unary_shar_gen },
+    { "binary_shld_gen", &Sh4InstTests::binary_shld_gen },
+    { "unary_shll_gen", &Sh4InstTests::unary_shll_gen },
+    { "unary_shlr_gen", &Sh4InstTests::unary_shlr_gen },
+    { "unary_shll2_gen", &Sh4InstTests::unary_shll2_gen },
+    { "unary_shlr2_gen", &Sh4InstTests::unary_shlr2_gen },
+    { "unary_shll8_gen", &Sh4InstTests::unary_shll8_gen },
+    { "unary_shlr8_gen", &Sh4InstTests::unary_shlr8_gen },
+    { "unary_shll16_gen", &Sh4InstTests::unary_shll16_gen },
+    { "unary_shlr16_gen", &Sh4InstTests::unary_shlr16_gen },
     { NULL }
 };
 
