@@ -7320,6 +7320,166 @@ public:
 
         return failure;
     }
+
+    // MUL.L Rm, Rn
+    // 0000nnnnmmmm0111
+    static int do_binary_mull_gen_gen(Sh4 *cpu, Memory *mem,
+                                      unsigned reg_src, unsigned reg_dst,
+                                      reg32_t src_val, reg32_t dst_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "MUL.L R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_val;
+        *cpu->gen_reg(reg_dst) = dst_val;
+        cpu->exec_inst();
+
+        reg32_t val_expect = dst_val * src_val;
+        if (cpu->reg.macl != val_expect) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "inputs are " << std::hex <<
+                src_val << ", " << dst_val << std::endl;
+            std::cout << "expected output is " << val_expect << std::endl;
+            std::cout << "actual output is " << cpu->reg.macl << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_mull_gen_gen(Sh4 *cpu, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                reg32_t src_val = randgen32->pick_val(0);
+                reg32_t dst_val = src_val;
+                if (reg_src != reg_dst)
+                    dst_val = randgen32->pick_val(0);
+                failure = failure ||
+                    do_binary_mull_gen_gen(cpu, mem, reg_src, reg_dst,
+                                           src_val, dst_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // MULS.W Rm, Rn
+    // 0010nnnnmmmm1111
+    static int do_binary_mulsw_gen_gen(Sh4 *cpu, Memory *mem,
+                                       unsigned reg_src, unsigned reg_dst,
+                                       reg32_t src_val, reg32_t dst_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "MULS.W R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_val;
+        *cpu->gen_reg(reg_dst) = dst_val;
+        cpu->exec_inst();
+
+        reg32_t val_expect = int32_t(int16_t(dst_val)) *
+            int32_t(int16_t(src_val));
+
+        if (cpu->reg.macl != val_expect) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "inputs are " << std::hex <<
+                src_val << ", " << dst_val << std::endl;
+            std::cout << "expected output is " << val_expect << std::endl;
+            std::cout << "actual output is " << cpu->reg.macl << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_mulsw_gen_gen(Sh4 *cpu, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                reg32_t src_val = randgen32->pick_val(0);
+                reg32_t dst_val = src_val;
+                if (reg_src != reg_dst)
+                    dst_val = randgen32->pick_val(0);
+                failure = failure ||
+                    do_binary_mulsw_gen_gen(cpu, mem, reg_src, reg_dst,
+                                            src_val, dst_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // MULU.W Rm, Rn
+    // 0010nnnnmmmm1110
+    static int do_binary_muluw_gen_gen(Sh4 *cpu, Memory *mem,
+                                       unsigned reg_src, unsigned reg_dst,
+                                       reg32_t src_val, reg32_t dst_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "MULU.W R" << reg_src << ", R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_val;
+        *cpu->gen_reg(reg_dst) = dst_val;
+        cpu->exec_inst();
+
+        reg32_t val_expect = uint32_t(uint16_t(dst_val)) *
+            uint32_t(uint16_t(src_val));
+
+        if (cpu->reg.macl != val_expect) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "inputs are " << std::hex <<
+                src_val << ", " << dst_val << std::endl;
+            std::cout << "expected output is " << val_expect << std::endl;
+            std::cout << "actual output is " << cpu->reg.macl << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_muluw_gen_gen(Sh4 *cpu, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                reg32_t src_val = randgen32->pick_val(0);
+                reg32_t dst_val = src_val;
+                if (reg_src != reg_dst)
+                    dst_val = randgen32->pick_val(0);
+                failure = failure ||
+                    do_binary_muluw_gen_gen(cpu, mem, reg_src, reg_dst,
+                                            src_val, dst_val);
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -7479,6 +7639,9 @@ struct inst_test {
     { "unary_shlr8_gen", &Sh4InstTests::unary_shlr8_gen },
     { "unary_shll16_gen", &Sh4InstTests::unary_shll16_gen },
     { "unary_shlr16_gen", &Sh4InstTests::unary_shlr16_gen },
+    { "binary_mull_gen_gen", &Sh4InstTests::binary_mull_gen_gen },
+    { "binary_mulsw_gen_gen", &Sh4InstTests::binary_mulsw_gen_gen },
+    { "binary_muluw_gen_gen", &Sh4InstTests::binary_muluw_gen_gen },
     { NULL }
 };
 
