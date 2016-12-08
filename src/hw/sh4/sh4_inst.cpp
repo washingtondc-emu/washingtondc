@@ -1886,19 +1886,25 @@ void Sh4::inst_binary_extuw_gen_gen(OpArgs inst) {
 // MUL.L Rm, Rn
 // 0000nnnnmmmm0111
 void Sh4::inst_binary_mull_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.macl = *gen_reg(inst.dst_reg) * *gen_reg(inst.src_reg);
 }
 
 // MULS.W Rm, Rn
 // 0010nnnnmmmm1111
 void Sh4::inst_binary_mulsw_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    int16_t lhs = *gen_reg(inst.dst_reg);
+    int16_t rhs = *gen_reg(inst.src_reg);
+
+    reg.macl = int32_t(lhs) * int32_t(rhs);
 }
 
 // MULU.W Rm, Rn
 // 0010nnnnmmmm1110
 void Sh4::inst_binary_muluw_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    uint16_t lhs = *gen_reg(inst.dst_reg);
+    uint16_t rhs = *gen_reg(inst.src_reg);
+
+    reg.macl = uint32_t(lhs) * uint32_t(rhs);
 }
 
 // NEG Rm, Rn
