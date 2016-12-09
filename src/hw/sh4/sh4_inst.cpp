@@ -801,21 +801,21 @@ void Sh4::inst_rts(OpArgs inst) {
 // CLRMAC
 // 0000000000101000
 void Sh4::inst_clrmac(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.macl = reg.mach = 0;
 }
 
 
 // CLRS
 // 0000000001001000
 void Sh4::inst_clrs(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_S_MASK;
 }
 
 
 // CLRT
 // 0000000000001000
 void Sh4::inst_clrt(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr &= ~SR_FLAG_T_MASK;
 }
 
 // LDTLB
@@ -839,19 +839,19 @@ void Sh4::inst_rte(OpArgs inst) {
 // SETS
 // 0000000001011000
 void Sh4::inst_sets(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr |= SR_FLAG_S_MASK;
 }
 
 // SETT
 // 0000000000011000
 void Sh4::inst_sett(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    reg.sr |= SR_FLAG_T_MASK;
 }
 
 // SLEEP
 // 0000000000011011
 void Sh4::inst_sleep(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    throw UnimplementedError("Power-down state (\"SLEEP mode\")");
 }
 
 // FRCHG
