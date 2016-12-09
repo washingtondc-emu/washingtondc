@@ -7480,6 +7480,288 @@ public:
 
         return failure;
     }
+
+    // MAC.L @Rm+, @Rn+
+    // 0000nnnnmmmm1111
+    static int do_binary_macl_indgeninc_indgeninc(Sh4 *cpu, Memory *mem,
+                                                  unsigned reg_src,
+                                                  unsigned reg_dst,
+                                                  addr32_t src_addr,
+                                                  addr32_t dst_addr,
+                                                  uint32_t src_val,
+                                                  uint32_t dst_val,
+                                                  uint32_t macl_init,
+                                                  uint32_t mach_init,
+                                                  bool sat_flag) {
+        static const int64_t MAX48 = 0x7fffffffffff;
+        static const int64_t MIN48 = 0xffff800000000000;
+
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "MAC.L @R" << reg_src << "+, @R" << reg_dst << "+\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_addr;
+        *cpu->gen_reg(reg_dst) = dst_addr;
+        cpu->reg.macl = macl_init;
+        cpu->reg.mach = mach_init;
+        cpu->write_mem(&src_val, src_addr, sizeof(src_val));
+        cpu->write_mem(&dst_val, dst_addr, sizeof(dst_val));
+        if (sat_flag)
+            cpu->reg.sr |= Sh4::SR_FLAG_S_MASK;
+        else
+            cpu->reg.sr &= ~Sh4::SR_FLAG_S_MASK;
+        cpu->exec_inst();
+
+        /*
+         * TODO: Ideally this would not be using the exact
+         * same code as the actual implementation...
+         */
+        reg32_t macl_expect, mach_expect;
+        int64_t prod = int64_t(int32_t(dst_val)) * int64_t(int32_t(src_val));
+        int64_t sum;
+
+        if (sat_flag) {
+            // 48-bit saturation addition
+            int64_t mac = int64_t(uint64_t(macl_init) |
+                                  (uint64_t(mach_init) << 32));
+            sum = mac + prod;
+            if (sum < 0) {
+                if (mac >= 0 && prod >= 0) {
+                    // overflow positive to negative
+                    sum = MAX48;
+                } else if (sum < MIN48) {
+                    sum = MIN48;
+                }
+            } else {
+                if (mac < 0 && prod < 0) {
+                    // overflow negative to positive
+                    sum = MIN48;
+                } else if (sum > MAX48) {
+                    sum = MAX48;
+                }
+            }
+        } else {
+            sum = prod +
+                int64_t(uint64_t(macl_init) | (uint64_t(mach_init) << 32));
+        }
+
+        macl_expect = uint64_t(sum) & 0xffffffff;
+        mach_expect = uint64_t(sum) >> 32;
+
+        reg32_t out_src_addr_expect = src_addr + 4;
+        reg32_t out_dst_addr_expect = dst_addr + 4;
+        if (reg_src == reg_dst)
+            out_src_addr_expect = out_dst_addr_expect = src_addr + 8;
+
+        if (cpu->reg.macl != macl_expect || cpu->reg.mach != mach_expect ||
+            (*cpu->gen_reg(reg_src) != out_src_addr_expect) ||
+            (*cpu->gen_reg(reg_dst) != out_dst_addr_expect)) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "the saturation flag is " << sat_flag << std::endl;
+            std::cout << "inputs are " << std::hex <<
+                src_val << ", " << dst_val << std::endl;
+            std::cout << "input addresses are " << src_addr << ", " <<
+                dst_addr << std::endl;
+            std::cout << "initial mac is " << mach_init << ", " << macl_init <<
+                std::endl;
+            std::cout << "expected macl is " << macl_expect << std::endl;
+            std::cout << "expected mach is " << mach_expect << std::endl;
+            std::cout << "expected output addresses are " <<
+                out_src_addr_expect << ", " << out_dst_addr_expect << std::endl;
+            std::cout << "output macl is " << cpu->reg.macl << std::endl;
+            std::cout << "output mach is " << cpu->reg.mach << std::endl;
+            std::cout << "output addresses are " << *cpu->gen_reg(reg_src) <<
+                ", " << *cpu->gen_reg(reg_dst) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_macl_indgeninc_indgeninc(Sh4 *cpu, Memory *mem,
+                                               RandGen32 *randgen32) {
+        int failure = 0;
+
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                addr32_t src_addr =
+                    randgen32->pick_range(0, mem->get_size() - 5);
+                addr32_t dst_addr = src_addr;
+                reg32_t src_val = randgen32->pick_val(0);
+                reg32_t dst_val = src_val;
+                if (reg_src != reg_dst) {
+                    dst_addr = randgen32->pick_range(0, mem->get_size() - 5);
+                    dst_val = randgen32->pick_val(0);
+                }
+                uint32_t macl_init = randgen32->pick_val(0);
+                uint32_t mach_init = randgen32->pick_val(0);
+
+                failure = failure ||
+                    do_binary_macl_indgeninc_indgeninc(cpu, mem, reg_src,
+                                                       reg_dst, src_addr,
+                                                       dst_addr, src_val,
+                                                       dst_val, macl_init,
+                                                       mach_init, false);
+
+                failure = failure ||
+                    do_binary_macl_indgeninc_indgeninc(cpu, mem, reg_src,
+                                                       reg_dst, src_addr,
+                                                       dst_addr, src_val,
+                                                       dst_val, macl_init,
+                                                       mach_init, true);
+            }
+        }
+
+        return failure;
+    }
+
+    // MAC.W @Rm+, @Rn+
+    // 0100nnnnmmmm1111
+    static int do_binary_macw_indgeninc_indgeninc(Sh4 *cpu, Memory *mem,
+                                                  unsigned reg_src,
+                                                  unsigned reg_dst,
+                                                  addr32_t src_addr,
+                                                  addr32_t dst_addr,
+                                                  uint32_t src_val,
+                                                  uint32_t dst_val,
+                                                  uint32_t macl_init,
+                                                  uint32_t mach_init,
+                                                  bool sat_flag) {
+        static const int64_t MAX32 = 0x7fffffff;
+        static const int64_t MIN32 = 0x80000000;
+
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "MAC.W @R" << reg_src << "+, @R" << reg_dst << "+\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_addr;
+        *cpu->gen_reg(reg_dst) = dst_addr;
+        cpu->reg.macl = macl_init;
+        cpu->reg.mach = mach_init;
+        cpu->write_mem(&src_val, src_addr, sizeof(src_val));
+        cpu->write_mem(&dst_val, dst_addr, sizeof(dst_val));
+        if (sat_flag)
+            cpu->reg.sr |= Sh4::SR_FLAG_S_MASK;
+        else
+            cpu->reg.sr &= ~Sh4::SR_FLAG_S_MASK;
+        cpu->exec_inst();
+
+        reg32_t macl_expect, mach_expect;
+
+        if (sat_flag) {
+            // 32-bit saturation arithmetic
+            int32_t prod = int32_t(int16_t(dst_val)) *
+                int32_t(int16_t(src_val));
+            int32_t signed_macl = int32_t(macl_init);
+            int32_t sum = prod + signed_macl;
+
+            mach_expect = mach_init;
+            if (sum < 0) {
+                if (signed_macl >= 0 && prod >= 0) {
+                    // overflow positive to negative
+                    sum = MAX32;
+                    mach_expect |= 1;
+                }
+            } else {
+                if (signed_macl < 0 && prod < 0) {
+                    // overflow negative to positive
+                    sum = MIN32;
+                    mach_expect |= 1;
+                }
+            }
+
+            macl_expect = sum;
+        } else {
+            int64_t prod = int64_t(int16_t(dst_val)) * int64_t(int16_t(src_val));
+            int64_t sum = prod +
+                int64_t(uint64_t(macl_init) | (uint64_t(mach_init) << 32));
+            macl_expect = uint64_t(sum) & 0xffffffff;
+            mach_expect = uint64_t(sum) >> 32;
+        }
+
+        reg32_t out_src_addr_expect = src_addr + 2;
+        reg32_t out_dst_addr_expect = dst_addr + 2;
+        if (reg_src == reg_dst)
+            out_src_addr_expect = out_dst_addr_expect = src_addr + 4;
+
+        if (cpu->reg.macl != macl_expect ||
+            (cpu->reg.mach & 1) != (mach_expect & 1) || // only check the LSB
+            (*cpu->gen_reg(reg_src) != out_src_addr_expect) ||
+            (*cpu->gen_reg(reg_dst) != out_dst_addr_expect)) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "the saturation flag is " << sat_flag << std::endl;
+            std::cout << "inputs are " << std::hex <<
+                src_val << ", " << dst_val << std::endl;
+            std::cout << "input addresses are " << src_addr << ", " <<
+                dst_addr << std::endl;
+            std::cout << "initial mac is " << mach_init << ", " << macl_init <<
+                std::endl;
+            std::cout << "expected macl is " << macl_expect << std::endl;
+            std::cout << "expected mach is " << mach_expect << std::endl;
+            std::cout << "expected output addresses are " <<
+                out_src_addr_expect << ", " << out_dst_addr_expect << std::endl;
+            std::cout << "output macl is " << cpu->reg.macl << std::endl;
+            std::cout << "output mach is " << cpu->reg.mach << std::endl;
+            std::cout << "output addresses are " << *cpu->gen_reg(reg_src) <<
+                ", " << *cpu->gen_reg(reg_dst) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_macw_indgeninc_indgeninc(Sh4 *cpu, Memory *mem,
+                                               RandGen32 *randgen32) {
+        int failure = 0;
+
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                addr32_t src_addr =
+                    randgen32->pick_range(0, mem->get_size() - 5);
+                addr32_t dst_addr = src_addr;
+                reg32_t src_val = randgen32->pick_val(0);
+                reg32_t dst_val = src_val;
+                if (reg_src != reg_dst) {
+                    dst_addr = randgen32->pick_range(0, mem->get_size() - 5);
+                    dst_val = randgen32->pick_val(0);
+                }
+                uint32_t macl_init = randgen32->pick_val(0);
+                uint32_t mach_init = randgen32->pick_val(0);
+
+                failure = failure ||
+                    do_binary_macw_indgeninc_indgeninc(cpu, mem, reg_src,
+                                                       reg_dst, src_addr,
+                                                       dst_addr, src_val,
+                                                       dst_val, macl_init,
+                                                       mach_init, false);
+
+                failure = failure ||
+                    do_binary_macw_indgeninc_indgeninc(cpu, mem, reg_src,
+                                                       reg_dst, src_addr,
+                                                       dst_addr, src_val,
+                                                       dst_val, macl_init,
+                                                       mach_init, true);
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -7642,6 +7924,10 @@ struct inst_test {
     { "binary_mull_gen_gen", &Sh4InstTests::binary_mull_gen_gen },
     { "binary_mulsw_gen_gen", &Sh4InstTests::binary_mulsw_gen_gen },
     { "binary_muluw_gen_gen", &Sh4InstTests::binary_muluw_gen_gen },
+    { "binary_macl_indgeninc_indgeninc",
+      &Sh4InstTests::binary_macl_indgeninc_indgeninc },
+    { "binary_macw_indgeninc_indgeninc",
+      &Sh4InstTests::binary_macw_indgeninc_indgeninc },
     { NULL }
 };
 
