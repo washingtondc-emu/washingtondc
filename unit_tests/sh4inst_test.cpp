@@ -7762,6 +7762,134 @@ public:
 
         return failure;
     }
+
+    // CLRMAC
+    // 0000000000101000
+    static int noarg_clrmac(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "CLRMAC\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        cpu->reg.mach = randgen32->pick_val(0);
+        cpu->reg.macl = randgen32->pick_val(0);
+        cpu->exec_inst();
+
+        if (cpu->reg.mach || cpu->reg.macl) {
+            std::cout << "ERROR: While running " << cmd << std::endl;
+            std::cout << "value of MACH is " << std::hex << cpu->reg.mach <<
+                std::endl;
+            std::cout << "value of MACL is " << cpu->reg.macl << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    // CLRS
+    // 0000000001001000
+    static int noarg_clrs(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "CLRS\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
+        cpu->exec_inst();
+
+        if (cpu->reg.sr & Sh4::SR_FLAG_S_MASK) {
+            std::cout << "ERROR: While running " << cmd << std::endl;
+            std::cout << "value of SR is " << cpu->reg.sr << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    // CLRT
+    // 0000000000001000
+    static int noarg_clrt(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "CLRT\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
+        cpu->exec_inst();
+
+        if (cpu->reg.sr & Sh4::SR_FLAG_T_MASK) {
+            std::cout << "ERROR: While running " << cmd << std::endl;
+            std::cout << "value of SR is " << cpu->reg.sr << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    // SETS
+    // 0000000001011000
+    static int noarg_sets(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SETS\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
+        cpu->exec_inst();
+
+        if (!(cpu->reg.sr & Sh4::SR_FLAG_S_MASK)) {
+            std::cout << "ERROR: While running " << cmd << std::endl;
+            std::cout << "value of SR is " << cpu->reg.sr << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    // SETT
+    // 0000000000011000
+    static int noarg_sett(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "SETT\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
+        cpu->exec_inst();
+
+        if (!(cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {
+            std::cout << "ERROR: While running " << cmd << std::endl;
+            std::cout << "value of SR is " << cpu->reg.sr << std::endl;
+            return 1;
+        }
+        return 0;
+    }
 };
 
 struct inst_test {
@@ -7928,6 +8056,11 @@ struct inst_test {
       &Sh4InstTests::binary_macl_indgeninc_indgeninc },
     { "binary_macw_indgeninc_indgeninc",
       &Sh4InstTests::binary_macw_indgeninc_indgeninc },
+    { "noarg_clrmac", &Sh4InstTests::noarg_clrmac },
+    { "noarg_clrs", &Sh4InstTests::noarg_clrs },
+    { "noarg_clrt", &Sh4InstTests::noarg_clrt },
+    { "noarg_sets", &Sh4InstTests::noarg_sets },
+    { "noarg_sett", &Sh4InstTests::noarg_sett },
     { NULL }
 };
 
