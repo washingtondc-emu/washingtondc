@@ -2364,13 +2364,108 @@ void Sh4::inst_binary_movl_indgeninc_gen(OpArgs inst) {
 // MAC.L @Rm+, @Rn+
 // 0000nnnnmmmm1111
 void Sh4::inst_binary_macl_indgeninc_indgeninc(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    static const int64_t MAX48 = 0x7fffffffffff;
+    static const int64_t MIN48 = 0xffff800000000000;
+    reg32_t *dst_addrp = gen_reg(inst.dst_reg);
+    reg32_t *src_addrp = gen_reg(inst.src_reg);
+
+    reg32_t lhs, rhs;
+    if (read_mem(&lhs, *dst_addrp, sizeof(lhs)) != 0 ||
+        read_mem(&rhs, *src_addrp, sizeof(rhs)) != 0)
+        return;
+
+    int64_t product = int64_t(int32_t(lhs)) * int64_t(int32_t(rhs));
+    int64_t sum;
+
+    if (!(reg.sr & SR_FLAG_S_MASK)) {
+        sum = product +
+            int64_t(uint64_t(reg.macl) | (uint64_t(reg.mach) << 32));
+    } else {
+        // 48-bit saturation addition
+        int64_t mac = int64_t(uint64_t(reg.macl) | (uint64_t(reg.mach) << 32));
+        sum = mac + product;
+        if (sum < 0) {
+            if (mac >= 0 && product >= 0) {
+                // overflow positive to negative
+                sum = MAX48;
+            } else if (sum < MIN48) {
+                sum = MIN48;
+            }
+        } else {
+            if (mac < 0 && product < 0) {
+                // overflow negative to positive
+                sum = MIN48;
+            } else if (sum > MAX48) {
+                sum = MAX48;
+            }
+        }
+    }
+
+    reg.macl = uint64_t(sum) & 0xffffffff;
+    reg.mach = uint64_t(sum) >> 32;
+
+
+    (*dst_addrp) += 4;
+    (*src_addrp) += 4;
 }
 
 // MAC.W @Rm+, @Rn+
 // 0100nnnnmmmm1111
 void Sh4::inst_binary_macw_indgeninc_indgeninc(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    static const int32_t MAX32 = 0x7fffffff;
+    static const int32_t MIN32 = 0x80000000;
+    reg32_t *dst_addrp = gen_reg(inst.dst_reg);
+    reg32_t *src_addrp = gen_reg(inst.src_reg);
+
+    int16_t lhs, rhs;
+    if (read_mem(&lhs, *dst_addrp, sizeof(lhs)) != 0 ||
+        read_mem(&rhs, *src_addrp, sizeof(rhs)) != 0)
+        return;
+
+    int64_t result = int64_t(lhs) * int64_t(rhs);
+
+    if (reg.sr & SR_FLAG_S_MASK) {
+        /*
+         * handle overflow
+         *
+         * There's a fairly ridiculous inconsistency in the sh4 documentation
+         * regarding the mach register here.
+         *
+         * From page 327 of SH-4 Software Manual (Rev 6.00):
+         *    "In a saturation operation, only the MACL register is valid"
+         *    ...
+         *    "If overflow occurs, the LSB of the MACH register is set to 1."
+         *
+         * Obviously both of these statements can't be true.
+         * The current implementation interprets this literally by OR'ing 1
+         * into mach when there is an overflow, and doing nothing when there is
+         * not an overflow.  This is because I prefer not to change things when
+         * I don't have to, although in this case it may not be the correct
+         * behavior since setting the LSB to 1 is obviously useless unless you
+         * are tracking the initial value.  Someday in the future I will need to
+         * test this out on real hardware to see how this opcode effects the
+         * mach register when the saturation bit is set in the SR register.
+         */
+        result += int64_t(reg.macl);
+
+        if (result < MIN32) {
+            result = MIN32;
+            reg.mach |= 1;
+        } else if (result > MAX32) {
+            result = MAX32;
+            reg.mach |= 1;
+        }
+
+        reg.macl = result;
+    } else {
+        // saturation arithmetic is disabled
+        result += int64_t(uint64_t(reg.macl) | (uint64_t(reg.mach) << 32));
+        reg.macl = uint64_t(result) & 0xffffffff;
+        reg.mach = uint64_t(result) >> 32;
+    }
+
+    (*dst_addrp) += 2;
+    (*src_addrp) += 2;
 }
 
 // MOV.B R0, @(disp, Rn)
