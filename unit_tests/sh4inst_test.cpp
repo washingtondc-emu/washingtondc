@@ -1055,7 +1055,7 @@ public:
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 1);
                 failed = failed ||
-                    do_movb_binary_gen_indgen(cpu, mem, addr,
+                    do_movw_binary_gen_indgen(cpu, mem, addr,
                                               randgen32->pick_val(0) % 0xffff,
                                               reg_src, reg_dst);
             }
@@ -1072,7 +1072,7 @@ public:
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
-        uint8_t mem_val;
+        uint32_t mem_val;
 
         if (reg_src == reg_dst)
             val = addr;
@@ -1110,7 +1110,7 @@ public:
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 3);
                 failed = failed ||
-                    do_movb_binary_gen_indgen(cpu, mem, addr,
+                    do_movl_binary_gen_indgen(cpu, mem, addr,
                                               randgen32->pick_val(0),
                                               reg_src, reg_dst);
             }
