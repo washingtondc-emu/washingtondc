@@ -28,10 +28,16 @@
 #include "BaseException.hpp"
 #include "hw/sh4/Memory.hpp"
 #include "hw/sh4/sh4.hpp"
-#include "hw/sh4/Icache.hpp"
-#include "hw/sh4/Ocache.hpp"
 #include "tool/sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
+
+#ifdef ENABLE_SH4_ICACHE
+#include "hw/sh4/Icache.hpp"
+#endif
+
+#ifdef ENABLE_SH4_OCACHE
+#include "hw/sh4/Ocache.hpp"
+#endif
 
 typedef RandGenerator<boost::uint32_t> RandGen32;
 typedef int(*inst_test_func_t)(Sh4 *cpu, Memory *mem, RandGen32 *randgen32);
