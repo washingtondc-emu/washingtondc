@@ -91,6 +91,15 @@ public:
 
     int cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram);
 
+    // if paddr is in the cache, paddr's entire cache line will be invalidated
+    // no data will be written back.  This is part of the OCBI instruction's
+    // implementation
+    void invalidate(addr32_t paddr, bool index_enable, bool cache_as_ram);
+
+    // if paddr is in the cache, paddr's entire cache line will be written back
+    // and invalidated.  This is part of the OCBP instruction's implementation
+    int purge(addr32_t paddr, bool index_enable, bool cache_as_ram);
+
 private:
     Sh4 *sh4;
     Memory *mem;

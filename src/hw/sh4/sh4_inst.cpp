@@ -1236,13 +1236,135 @@ void Sh4::inst_unary_tasb_gen(OpArgs inst) {
 // OCBI @Rn
 // 0000nnnn10100011
 void Sh4::inst_unary_ocbi_indgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_OCACHE
+    addr32_t addr = *gen_reg(inst.dst_reg);
+    addr32_t paddr;
+
+    if (mmu.mmucr & MMUCR_AT_MASK) {
+#ifdef ENABLE_SH4_MMU
+        /*
+         * TODO: ideally there would be some function we call here that is also
+         * called by the code in sh4_mem.cpp that touches the utlb.  That way,
+         * I could rest assured that this actually works because the sh4mem_test
+         * would already be exercising it.
+         */
+        bool privileged = reg.sr & SR_MD_MASK ? true : false;
+        struct utlb_entry *utlb_ent = utlb_search(addr, UTLB_WRITE);
+
+        if (!utlb_ent)
+            return; // exception set by utlb_search
+
+        unsigned pr = (utlb_ent->ent & UTLB_ENT_PR_MASK) >>
+            UTLB_ENT_PR_SHIFT;
+
+        paddr = utlb_ent_translate(utlb_ent, addr);
+
+        /*
+         * Check privileges.  For all intents and purposes this is a write operation
+         * because whatever pending writes in the cache will be dropped, meaning
+         * that from the software's perspective the memory has been written to.
+         */
+        if (privileged) {
+            if (!(pr & 1)) {
+                // page is marked as read-only
+                unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
+                    UTLB_KEY_VPN_SHIFT;
+                set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                mmu.pteh &= ~MMUPTEH_VPN_MASK;
+                mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
+                mmu.tea = addr;
+                return;
+            }
+        } else if (pr != 3) {
+            // page is marked as read-only OR we don't have permissions
+            unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
+                UTLB_KEY_VPN_SHIFT;
+            set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            mmu.pteh &= ~MMUPTEH_VPN_MASK;
+            mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
+            mmu.tea = addr;
+            return;
+        }
+#else
+        throw UnimplementedError("MMU (run cmake with "
+                                 "-DENABLE_SH4_MMU=ON and rebuild)");
+#endif
+    } else {
+        paddr = addr;
+    }
+
+    bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
+    bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+
+    op_cache->invalidate(paddr, index_enable, cache_as_ram);
+#endif
 }
 
 // OCBP @Rn
 // 0000nnnn10100011
 void Sh4::inst_unary_ocbp_indgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+#ifdef ENABLE_SH4_OCACHE
+    addr32_t addr = *gen_reg(inst.dst_reg);
+    addr32_t paddr;
+
+    if (mmu.mmucr & MMUCR_AT_MASK) {
+#ifdef ENABLE_SH4_MMU
+        /*
+         * TODO: ideally there would be some function we call here that is also
+         * called by the code in sh4_mem.cpp that touches the utlb.  That way,
+         * I could rest assured that this actually works because the sh4mem_test
+         * would already be exercising it.
+         */
+        bool privileged = reg.sr & SR_MD_MASK ? true : false;
+        struct utlb_entry *utlb_ent = utlb_search(addr, UTLB_WRITE);
+
+        if (!utlb_ent)
+            return; // exception set by utlb_search
+
+        unsigned pr = (utlb_ent->ent & UTLB_ENT_PR_MASK) >>
+            UTLB_ENT_PR_SHIFT;
+
+        paddr = utlb_ent_translate(utlb_ent, addr);
+
+        /*
+         * Check privileges.  For all intents and purposes this is a write operation
+         * because whatever pending writes in the cache will be dropped, meaning
+         * that from the software's perspective the memory has been written to.
+         */
+        if (privileged) {
+            if (!(pr & 1)) {
+                // page is marked as read-only
+                unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
+                    UTLB_KEY_VPN_SHIFT;
+                set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                mmu.pteh &= ~MMUPTEH_VPN_MASK;
+                mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
+                mmu.tea = addr;
+                return;
+            }
+        } else if (pr != 3) {
+            // page is marked as read-only OR we don't have permissions
+            unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
+                UTLB_KEY_VPN_SHIFT;
+            set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            mmu.pteh &= ~MMUPTEH_VPN_MASK;
+            mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
+            mmu.tea = addr;
+            return;
+        }
+#else
+        throw UnimplementedError("MMU (run cmake with "
+                                 "-DENABLE_SH4_MMU=ON and rebuild)");
+#endif
+    } else {
+        paddr = addr;
+    }
+
+    bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
+    bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+
+    op_cache->purge(paddr, index_enable, cache_as_ram);
+#endif
 }
 
 // PREF @Rn

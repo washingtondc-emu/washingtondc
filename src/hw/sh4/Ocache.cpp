@@ -202,6 +202,28 @@ int Ocache::do_cache_read(basic_val_t *out, addr32_t paddr, bool index_enable,
     return err;
 }
 
+void Ocache::invalidate(addr32_t paddr, bool index_enable, bool cache_as_ram) {
+    addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
+    struct cache_line *line = line_idx + op_cache;
+
+    if (cache_check(line, paddr))
+        line->key &= ~KEY_VALID_MASK;
+}
+
+int Ocache::purge(addr32_t paddr, bool index_enable, bool cache_as_ram) {
+    int err;
+    addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
+    struct cache_line *line = line_idx + op_cache;
+
+    if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
+        if ((err = cache_write_back(line)))
+            return err;
+        line->key &= ~KEY_VALID_MASK;
+    }
+
+    return 0;
+}
+
 int Ocache::cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram) {
     int err = 0;
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
