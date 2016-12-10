@@ -63,8 +63,8 @@ add_library(sh4 ${sh4_sources})
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp")
 target_link_libraries(sh4asm_test sh4asm_core)
 
-add_executable(sh4_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4_test.cpp")
-target_link_libraries(sh4_test sh4)
+add_executable(sh4mem_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4mem_test.cpp")
+target_link_libraries(sh4mem_test sh4)
 
 add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp")
 target_link_libraries(sh4inst_test sh4 sh4asm_core)
