@@ -27,6 +27,10 @@
 
 #include "sh4.hpp"
 
+#ifdef ENABLE_SH4_OCACHE
+#include "Ocache.hpp"
+#endif
+
 struct Sh4::InstOpcode Sh4::opcode_list[] = {
     // RTS
     { "0000000000001011", &Sh4::inst_rts },
@@ -2657,7 +2661,83 @@ void Sh4::inst_binary_mova_binind_disp_pc_r0(OpArgs inst) {
 // MOVCA.L R0, @Rn
 // 0000nnnn11000011
 void Sh4::inst_binary_movcal_r0_indgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    uint32_t src_val = *gen_reg(0);
+    addr32_t vaddr = *gen_reg(inst.dst_reg);
+    addr32_t paddr;
+
+    /*
+     * XXX I'm fairly certain that there are ways a program running in
+     * un-privileged mode could fuck with protected memory due to the way
+     * this opcode is implemented.
+     */
+#ifdef ENABLE_SH4_OCACHE
+    if (mmu.mmucr & MMUCR_AT_MASK) {
+#ifdef ENABLE_SH4_MMU
+        /*
+         * TODO: ideally there would be some function we call here that is also
+         * called by the code in sh4_mem.cpp that touches the utlb.  That way,
+         * I could rest assured that this actually works because the sh4mem_test
+         * would already be exercising it.
+         */
+        bool privileged = reg.sr & SR_MD_MASK ? true : false;
+        struct utlb_entry *utlb_ent = utlb_search(vaddr, UTLB_WRITE);
+
+        if (!utlb_ent)
+            return; // exception set by utlb_search
+
+        unsigned pr = (utlb_ent->ent & UTLB_ENT_PR_MASK) >>
+            UTLB_ENT_PR_SHIFT;
+
+        paddr = utlb_ent_translate(utlb_ent, vaddr);
+
+        /*
+         * Check privileges.  This is necessary because if the call to write_mem
+         * below raises a protection violation, there will still be invalid data
+         * in the operand cache which be marked as valid
+         */
+        if (privileged) {
+            if (!(pr & 1)) {
+                // page is marked as read-only
+                unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
+                    UTLB_KEY_VPN_SHIFT;
+                set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                mmu.pteh &= ~MMUPTEH_VPN_MASK;
+                mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
+                mmu.tea = vaddr;
+                return;
+            }
+        } else if (pr != 3) {
+            // page is marked as read-only OR we don't have permissions
+            unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
+                UTLB_KEY_VPN_SHIFT;
+            set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            mmu.pteh &= ~MMUPTEH_VPN_MASK;
+            mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
+            mmu.tea = vaddr;
+            return;
+        }
+#else
+        throw UnimplementedError("MMU (run cmake with "
+                                 "-DENABLE_SH4_MMU=ON and rebuild)");
+#endif
+    } else {
+        paddr = vaddr;
+    }
+
+    bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
+    bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+
+    if (op_cache->cache_alloc(paddr, index_enable, cache_as_ram))
+        return;
+#endif
+
+    /*
+     * TODO: when the Ocache is enabled it may be a good idea to mark the
+     * operand cache line which was allocated above as invalid if this function
+     * fails.  Checking the privilege bits above should be enough, but I may
+     * change my mind later and decide to cover all my bases.
+     */
+    write_mem(&src_val, vaddr, sizeof(src_val));
 }
 
 // FLDI0 FRn

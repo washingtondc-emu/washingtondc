@@ -55,9 +55,7 @@ bool Ocache::cache_check(struct cache_line const *line,
     paddr_tag = tag_from_paddr(paddr);
 
     addr32_t line_tag = cache_line_get_tag(line);
-    if (line_tag == paddr_tag)
-        return line;
-    return NULL;
+    return line_tag == paddr_tag;
 }
 
 addr32_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
@@ -204,6 +202,32 @@ int Ocache::do_cache_read(basic_val_t *out, addr32_t paddr, bool index_enable,
     return err;
 }
 
+int Ocache::cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram) {
+    int err = 0;
+    addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
+    struct cache_line *line = line_idx + op_cache;
+
+    if (line->key & KEY_VALID_MASK) {
+        if (cache_check(line, paddr))
+            return 0; // cache hit, nothing to see here
+
+        if (line->key & KEY_DIRTY_MASK) {
+            if ((err = cache_write_back(line)))
+                return err;
+        }
+
+        cache_line_set_tag(line, tag_from_paddr(paddr));
+        line->key |= KEY_VALID_MASK;
+        line->key &= ~KEY_DIRTY_MASK;
+    } else {
+        // cache holds no valid data
+        cache_line_set_tag(line, tag_from_paddr(paddr));
+        line->key |= KEY_VALID_MASK;
+        line->key &= ~KEY_DIRTY_MASK;
+    }
+
+    return err;
+}
 
 template<>
 int Ocache::do_cache_write_cb<1>(basic_val_t data, addr32_t paddr,

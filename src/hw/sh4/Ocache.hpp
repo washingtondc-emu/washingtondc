@@ -89,6 +89,8 @@ public:
     // reset the cache to its default (empty) state
     void reset(void);
 
+    int cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram);
+
 private:
     Sh4 *sh4;
     Memory *mem;
