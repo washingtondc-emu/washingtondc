@@ -7896,6 +7896,59 @@ public:
         }
         return 0;
     }
+
+    // MOVCA.L R0, @Rn
+    // 0000nnnn11000011
+    static int do_movcal_binary_r0_indgen(Sh4 *cpu, Memory *mem,
+                                          unsigned addr, uint32_t val,
+                                          unsigned reg_dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        uint32_t mem_val;
+
+        if (0 == reg_dst)
+            val = addr;
+
+        ss << "MOVCA.L R0" << ", @R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.assemble(cmd);
+        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        mem->load_program(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(0) = val;
+        *cpu->gen_reg(reg_dst) = addr;
+        cpu->exec_inst();
+
+        cpu->read_mem(&mem_val, addr, sizeof(mem_val));
+
+        if (mem_val != val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << std::hex << (unsigned)val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex <<
+                (unsigned)mem_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int movcal_binary_r0_indgen(Sh4 *cpu, Memory *mem,
+                                       RandGen32 *randgen32) {
+        int failed = 0;
+
+        for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+            addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 3);
+            failed = failed ||
+                do_movcal_binary_r0_indgen(cpu, mem, addr,
+                                           randgen32->pick_val(0),
+                                           reg_dst);
+        }
+
+        return failed;
+    }
 };
 
 struct inst_test {
@@ -8067,6 +8120,7 @@ struct inst_test {
     { "noarg_clrt", &Sh4InstTests::noarg_clrt },
     { "noarg_sets", &Sh4InstTests::noarg_sets },
     { "noarg_sett", &Sh4InstTests::noarg_sett },
+    { "movcal_binary_r0_indgen", &Sh4InstTests::movcal_binary_r0_indgen },
     { NULL }
 };
 
