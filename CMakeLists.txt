@@ -49,6 +49,12 @@ if (ENABLE_SH4_MMU)
     set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.cpp")
 endif()
 
+set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
+                         "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp"
+                         "${PROJECT_SOURCE_DIR}/src/Dreamcast.hpp"
+                         "${PROJECT_SOURCE_DIR}/src/Dreamcast.cpp"
+                         "${PROJECT_SOURCE_DIR}/src/main.cpp")
+
 set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"
                         "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/sh4asm.cpp")
 
@@ -71,3 +77,6 @@ target_link_libraries(sh4inst_test sh4 sh4asm_core)
 
 add_executable(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp")
 target_link_libraries(sh4asm sh4asm_core)
+
+add_executable(washingtondc ${washingtondc_sources})
+target_link_libraries(washingtondc sh4)
