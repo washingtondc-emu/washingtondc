@@ -26,13 +26,13 @@
 #include <string>
 #include <exception>
 
-class InitError : std::exception {
+class InitError : public std::exception {
 public:
     InitError(char const *desc) {
         this->desc = desc;
     }
 
-    char const *what() {
+    char const *what() const throw() {
         return desc;
     }
 private:
@@ -40,26 +40,26 @@ private:
 };
 
 // IntegrityError - for things that *should* be impossible
-class IntegrityError : std::exception {
+class IntegrityError : public std::exception {
 public:
     IntegrityError(char const *desc) {
         this->desc = desc;
     }
 
-    char const *what() {
+    char const *what() const throw() {
         return desc;
     }
 private:
     char const *desc;
 };
 
-class MemBoundsError : std::exception {
+class MemBoundsError : public std::exception {
 public:
     MemBoundsError(unsigned addr) {
         this->addr = addr;
     }
 
-    char const* what() {
+    char const* what() const throw() {
         // TODO: IDK how to put the addr in the what() output without
         //       making an allocation that may throw another exception
         return "Memory access error (bad address)";
@@ -68,12 +68,12 @@ private:
     unsigned addr;
 };
 
-class MemAlignError : std::exception {
+class MemAlignError : public std::exception {
 public:
     MemAlignError(unsigned addr) {
         this->addr = addr;
     }
-    char const* what() {
+    char const* what() const throw() {
         // TODO: IDK how to put the addr in the what() output without
         //       making an allocation that may throw another exception
         return "Memory access error (unaligned 16-bit read or write)";
@@ -82,69 +82,69 @@ private:
     unsigned addr;
 };
 
-class InvalidParamError : std::exception {
+class InvalidParamError : public std::exception {
 public:
     InvalidParamError(char const *desc) {
         this->desc = desc;
     }
 
-    char const *what() {
+    char const *what() const throw() {
         return desc;
     }
 private:
     char const *desc;
 };
 
-class UnimplementedError : std::exception {
+class UnimplementedError : public std::exception {
 public:
     UnimplementedError(char const *inst_name) {
         this->inst_name = inst_name;
     }
 
-    char const *what() {
+    char const *what() const throw() {
         return inst_name;
     }
 private:
     char const *inst_name;
 };
 
-class UnimplementedInstructionError : std::exception {
+class UnimplementedInstructionError : public std::exception {
 public:
     UnimplementedInstructionError(char const *inst_name) {
         this->inst_name = inst_name;
     }
 
-    char const *what() {
+    char const *what() const throw() {
         return inst_name;
     }
 private:
     char const *inst_name;
 };
 
-class BadOpcodeError : std::exception {
+class BadOpcodeError : public std::exception {
 public:
-    char const *what() {
+    char const *what() const throw() {
         return "Bad opcode";
     }
 };
 
-class StackUnderflowError : std::exception {
+class StackUnderflowError : public std::exception {
 public:
-    char const *what() {
+    char const *what() const throw() {
         return "Stack underflow";
     }
 };
 
-class StackOverflowError : std::exception {
+class StackOverflowError : public std::exception {
 public:
-    char const *what() {
+    char const *what() const throw() {
         return "Stack overflow";
     }
 };
 
-class InvalidRegisterError : std::exception {
+class InvalidRegisterError : public std::exception {
 public:
-    char const *what() {
+    char const *what() const throw() {
         return "Invalid register";
     }
 };
