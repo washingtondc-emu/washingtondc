@@ -1,0 +1,136 @@
+/*******************************************************************************
+ *
+ *
+ *    WashingtonDC Dreamcast Emulator
+ *    Copyright (C) 2016 snickerbockers
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ ******************************************************************************/
+
+#ifndef GDBSTUB_H_
+#define GDBSTUB_H_
+
+#ifndef ENABLE_DEBUGGER
+#error This file should not be included unless the debugger is enabled
+#endif
+
+#include <string>
+#include <sstream>
+#include <queue>
+
+#include <boost/array.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/buffer.hpp>
+
+#include "common/BaseException.hpp"
+#include "Debugger.hpp"
+#include "types.hpp"
+
+class GdbStub : public Debugger {
+public:
+    // it's 'cause 1999 is the year the Dreamcast came out in America
+    static const unsigned PORT_NO = 1999;
+
+    GdbStub(Dreamcast *dc);
+    ~GdbStub();
+
+    void attach();
+
+    void step(inst_t pc);
+
+    enum RegOrder {
+        R0, R1, R2, R3, R4, R5, R6, R7,
+        R8, R9, R10, R11, R12, R13, R14,
+        R15, PC, PR, GBR, VBR, MACH, MACL, SR,
+        TICKS, STALLS, CYCLES, INSTS, PLR, N_REGS
+    };
+
+private:
+    boost::asio::io_service io_service;
+    boost::asio::ip::tcp::endpoint tcp_endpoint;
+    boost::asio::ip::tcp::acceptor tcp_acceptor;
+    boost::asio::ip::tcp::socket tcp_socket;
+
+    bool is_reading, is_writing;
+    boost::array<char, 1> read_buffer;
+    boost::array<char, 128> write_buffer;
+
+    std::queue<char> input_queue;
+    std::queue<char> output_queue;
+
+    // the last unsuccessfully acknowledged packet, or empty if there is none
+    std::string unack_packet;
+
+    std::string input_packet;
+
+    // enqueue data for transmit
+    void transmit(const std::string& data);
+
+    // set unack_packet = pkt and transmit
+    void transmit_pkt(const std::string& pkt);
+
+    // schedule queued data for transmission
+    void write_start();
+
+    std::string next_packet();
+
+    void handle_packet(std::string pkt);
+    std::string craft_packet(std::string data_in);
+    std::string extract_packet(std::string packet_in);
+
+    Dreamcast *dc;
+
+    static int decode_hex(char ch);
+    
+    std::string serialize_regs() const;
+
+    static std::string serialize_data(void const *buf, unsigned buf_len);
+
+    template<class Stream>
+    size_t deserialize_data(Stream& input, void *out, size_t max_sz) {
+        uint8_t *out8 = (uint8_t*)out;
+        size_t bytes_written = 0;
+        char ch;
+        char const eof = std::char_traits<char>::eof();
+        while ((ch = input.get()) != eof) {
+            if (bytes_written >= max_sz)
+                return max_sz;
+            *out8++ = uint8_t(decode_hex(ch)) << 4;
+            bytes_written++;
+
+            if ((ch = input.get()) != eof)
+                *out8 |= uint8_t(decode_hex(ch));
+            else
+                break;
+        }
+
+        return bytes_written;
+    }
+
+    void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]);
+
+    void handle_read(const boost::system::error_code& error);
+
+    void handle_write(const boost::system::error_code& error);
+
+    std::string handle_g_packet(std::string dat);
+    std::string handle_m_packet(std::string dat);
+    std::string handle_q_packet(std::string dat);
+    std::string handle_G_packet(std::string dat);
+    std::string handle_M_packet(std::string dat);
+};
+
+#endif

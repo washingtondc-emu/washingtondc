@@ -20,59 +20,35 @@
  *
  ******************************************************************************/
 
-#include <iostream>
-
-#include "common/BaseException.hpp"
-#include "BiosFile.hpp"
+#include "Debugger.hpp"
 #include "GdbStub.hpp"
 
-#include "Dreamcast.hpp"
-
-Dreamcast::Dreamcast(char const *bios_path) {
-    mem = new Memory(MEM_SZ);
-    cpu = new Sh4(mem);
-
-#ifdef ENABLE_DEBUGGER
-    debugger = NULL;
+#ifndef ENABLE_DEBUGGER
+#error This file should not be included unless the debugger is enabled
 #endif
 
-    BiosFile bios(bios_path);
-    mem->load_program<inst_t*>(0, (inst_t*)bios.begin(), (inst_t*)bios.end());
+Debugger::Debugger(Dreamcast *dc) {
+    this->cur_state = STATE_NORM;
+    this->dc = dc;
+
+    for (int i = 0; i < N_BREAKPOINTS; i++)
+        this->breakpoints[i] = -1;
 }
 
-Dreamcast::~Dreamcast() {
-    delete mem;
-    delete cpu;
+bool Debugger::should_break(inst_t pc) {
 
-#ifdef ENABLE_DEBUGGER
-    if (debugger)
-        delete debugger;
-#endif
+    // hold at a breakpoint for user interaction
+    if (cur_state == STATE_STEP)
+        return true;
+
+    for (int i = 0; i < N_BREAKPOINTS; i++)
+        if (pc == breakpoints[i])
+            return true;
+
+    return false;
 }
 
-void Dreamcast::run() {
-#ifdef ENABLE_DEBUGGER
-    debugger = new GdbStub(this);
-    debugger->attach();
-#endif
-
-    try {
-        while (true) {
-#ifdef ENABLE_DEBUGGER
-            debugger->step(cpu->get_pc());
-#endif
-
-            cpu->exec_inst();
-        }
-    } catch(const std::exception& exc) {
-        std::cerr << "Exception caught - " << exc.what() << std::endl;
-    }
-}
-
-Sh4 *Dreamcast::get_cpu() {
-    return cpu;
-}
-
-Memory *Dreamcast::gem_mem() {
-    return mem;
+void Debugger::step(inst_t pc) {
+    if (!should_break(pc))
+        return;
 }

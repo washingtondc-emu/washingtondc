@@ -20,34 +20,42 @@
  *
  ******************************************************************************/
 
-#ifndef DREAMCAST_HPP_
-#define DREAMCAST_HPP_
+#ifndef DEBUGGER_HPP_
+#define DEBUGGER_HPP_
 
-#include "hw/sh4/Memory.hpp"
-#include "hw/sh4/sh4.hpp"
-
-#ifdef ENABLE_DEBUGGER
-#include "Debugger.hpp"
+#ifndef ENABLE_DEBUGGER
+#error This file should not be included unless the debugger is enabled
 #endif
 
-class Dreamcast {
+#include <boost/weak_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include "types.hpp"
+
+class Dreamcast;
+
+class Debugger {
 public:
-    Dreamcast(char const *bios_path);
-    ~Dreamcast();
+    Debugger(Dreamcast *dc);
 
-    void run();
+    bool should_break(inst_t pc);
 
-    Sh4 *get_cpu();
-    Memory *gem_mem();
+    virtual void step(inst_t pc);
+
+    virtual void attach() = 0;
 private:
-    static const size_t MEM_SZ = 16 * 1024 * 1024;
+    // I store breakpoints as int instead of inst_t because I want to be able
+    // to set them to -1 when they're disabled.
+    static const unsigned N_BREAKPOINTS = 10;
+    int breakpoints[N_BREAKPOINTS];
 
-    Sh4 *cpu;
-    Memory *mem;
+    Dreamcast *dc;
 
-#ifdef ENABLE_DEBUGGER
-    Debugger *debugger;
-#endif
+    enum State {
+        STATE_NORM,
+        STATE_STEP
+    };
+    State cur_state;
 };
 
 #endif

@@ -67,6 +67,10 @@ Sh4::~Sh4() {
 #endif
 }
 
+reg32_t Sh4::get_pc() const {
+    return reg.pc;
+}
+
 void Sh4::set_exception(unsigned excp_code) {
     excp_reg.expevt = (excp_code << EXPEVT_CODE_SHIFT) & EXPEVT_CODE_MASK;
 
@@ -77,6 +81,14 @@ void Sh4::set_interrupt(unsigned intp_code) {
     excp_reg.intevt = (intp_code << INTEVT_CODE_SHIFT) & INTEVT_CODE_MASK;
 
     enter_exception((ExceptionCode)intp_code);
+}
+
+Sh4::RegFile Sh4::get_regs() const {
+    return reg;
+}
+
+void Sh4::set_regs(const Sh4::RegFile& src) {
+    this->reg = src;
 }
 
 const Sh4::ExcpMeta Sh4::excp_meta[Sh4::EXCP_COUNT] = {

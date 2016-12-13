@@ -28,6 +28,7 @@ set(WashingtonDC_VERSION_MINOR 1)
 option(ENABLE_SH4_ICACHE "emulate the sh4's instruction cache" ON)
 option(ENABLE_SH4_OCACHE "emulate the sh4's operand cache" ON)
 option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)
+option(ENABLE_DEBUGGER "Enable the debugger" ON)
 
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
@@ -55,6 +56,14 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
                          "${PROJECT_SOURCE_DIR}/src/Dreamcast.cpp"
                          "${PROJECT_SOURCE_DIR}/src/main.cpp")
 
+if (ENABLE_DEBUGGER)
+    add_definitions(-DENABLE_DEBUGGER)
+    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/Debugger.hpp"
+                                   "${PROJECT_SOURCE_DIR}/src/Debugger.cpp"
+                                   "${PROJECT_SOURCE_DIR}/src/GdbStub.hpp"
+                                   "${PROJECT_SOURCE_DIR}/src/GdbStub.cpp")
+endif()
+
 set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"
                         "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/sh4asm.cpp")
 
@@ -79,4 +88,9 @@ add_executable(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp")
 target_link_libraries(sh4asm sh4asm_core)
 
 add_executable(washingtondc ${washingtondc_sources})
-target_link_libraries(washingtondc sh4)
+
+# HACK - do not commit (build within washingtondc-boost instead)
+#find_package(Boost COMPONENTS system REQUIRED)
+add_library(boost_system "${PROJECT_SOURCE_DIR}/external/washingtondc-boost/libs/system/src/error_code.cpp")
+
+target_link_libraries(washingtondc sh4 boost_system)
