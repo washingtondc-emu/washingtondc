@@ -200,7 +200,7 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
 }
 
 int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
-    enum VirtMemArea virt_area = get_mem_area(addr & 0x1fffffff);
+    enum VirtMemArea virt_area = get_mem_area(addr);
 
     bool privileged = reg.sr & SR_MD_MASK ? true : false;
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
