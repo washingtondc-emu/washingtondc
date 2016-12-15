@@ -49,7 +49,9 @@ public:
 
     void attach();
 
-    void step(inst_t pc);
+    bool step(inst_t pc);
+
+    void on_break();
 
     enum RegOrder {
         R0, R1, R2, R3, R4, R5, R6, R7,
@@ -108,13 +110,15 @@ private:
         while ((ch = input.get()) != eof) {
             if (bytes_written >= max_sz)
                 return max_sz;
-            *out8++ = uint8_t(decode_hex(ch)) << 4;
+            *out8 = uint8_t(decode_hex(ch)) << 4;
             bytes_written++;
 
             if ((ch = input.get()) != eof)
                 *out8 |= uint8_t(decode_hex(ch));
             else
                 break;
+
+            *out8++;
         }
 
         return bytes_written;
@@ -126,11 +130,14 @@ private:
 
     void handle_write(const boost::system::error_code& error);
 
+    std::string handle_c_packet(std::string dat);
     std::string handle_g_packet(std::string dat);
     std::string handle_m_packet(std::string dat);
     std::string handle_q_packet(std::string dat);
+    std::string handle_s_packet(std::string dat);
     std::string handle_G_packet(std::string dat);
     std::string handle_M_packet(std::string dat);
+
 };
 
 #endif

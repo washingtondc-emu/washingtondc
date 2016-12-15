@@ -24,7 +24,10 @@
 
 #include "common/BaseException.hpp"
 #include "BiosFile.hpp"
+
+#ifdef ENABLE_DEBUGGER
 #include "GdbStub.hpp"
+#endif
 
 #include "Dreamcast.hpp"
 
@@ -59,7 +62,8 @@ void Dreamcast::run() {
     try {
         while (true) {
 #ifdef ENABLE_DEBUGGER
-            debugger->step(cpu->get_pc());
+            if (debugger->step(cpu->get_pc()))
+                continue;
 #endif
 
             cpu->exec_inst();

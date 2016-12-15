@@ -36,8 +36,7 @@ GdbStub::GdbStub(Dreamcast *dc) : Debugger(dc),
                                   tcp_acceptor(io_service, tcp_endpoint),
                                   tcp_endpoint(boost::asio::ip::tcp::v4(),
                                                PORT_NO),
-                                  tcp_socket(io_service)//,
-                                  // tcp_buffer(read_buffer, TCP_BUFFER_LEN) 
+                                  tcp_socket(io_service)
 {
     this->dc = dc;
 }
@@ -51,7 +50,12 @@ void GdbStub::attach() {
     tcp_acceptor.accept(tcp_socket);
     std::cout << "Connection established." << std::endl;
     boost::asio::async_read(tcp_socket, boost::asio::buffer(read_buffer),
-                            boost::bind(&GdbStub::handle_read, this, boost::asio::placeholders::error));
+                            boost::bind(&GdbStub::handle_read, this,
+                                        boost::asio::placeholders::error));
+}
+
+void GdbStub::on_break() {
+    transmit_pkt(craft_packet(std::string("S05")));
 }
 
 std::string GdbStub::serialize_regs() const {
@@ -90,6 +94,8 @@ void GdbStub::deserialize_regs(std::string input_str, reg32_t regs[N_REGS]) {
 
     if (sz_expect != sz_actual) {
         // TODO: better error messages
+        std::cout << "sz_expect is " << sz_expect << ", sz_actual is " <<
+            sz_actual << std::endl;
         throw IntegrityError("Some shit with gdb i guess");
     }
 }
@@ -104,8 +110,10 @@ std::string GdbStub::serialize_data(void const *buf, unsigned buf_len) {
         'c', 'd', 'e', 'f'
     };
 
-    for (unsigned i = 0; i < buf_len; i++)
+    for (unsigned i = 0; i < buf_len; i++) {
         ss << hex_tbl[(*buf8) >> 4] << hex_tbl[(*buf8) & 0xf];
+        buf8++;
+    }
 
     return ss.str();
 }
@@ -121,10 +129,12 @@ int GdbStub::decode_hex(char ch)
     return -1;
 }
 
-void GdbStub::step(inst_t pc) {
-    Debugger::step(pc);
+bool GdbStub::step(inst_t pc) {
+    bool res = Debugger::step(pc);
 
-    io_service.run();
+    io_service.poll();
+
+    return res;
 }
 
 void GdbStub::transmit(const std::string& data) {
@@ -142,7 +152,6 @@ void GdbStub::write_start() {
 
     while (idx < write_buffer.size() && !output_queue.empty()) {
         write_buffer[idx++] = output_queue.front();
-        // std::cout << "sending char " << write_buffer[idx - 1] << std::endl;
         output_queue.pop();
     }
 
@@ -170,7 +179,6 @@ void GdbStub::handle_read(const boost::system::error_code& error) {
     if (error)
         return;
     for (unsigned i = 0; i < read_buffer.size(); i++) {
-        // std::cout << "received char " << read_buffer.at(i) << std::endl;
         input_queue.push(read_buffer.at(i));
     }
 
@@ -240,19 +248,12 @@ std::string GdbStub::extract_packet(std::string packet_in) {
     return packet_in.substr(dollar_idx + 1, pound_idx - dollar_idx - 1);
 }
 
+std::string GdbStub::handle_c_packet(std::string dat) {
+    cur_state = Debugger::STATE_NORM;
+    return "";
+}
+
 std::string GdbStub::handle_q_packet(std::string dat) {
-    if (dat == "qC")
-        return std::string("QC0");
-    // boost::char_delimiters_separator<char> sep(';');
-    // boost::tokenizer<> tokenizer(dat.substr(dat.find_last_of(':') + 1), sep);
-    // std::string response("stubfeature ");
-
-    // for (boost::tokenizer<>::iterator it = tokenizer.begin();
-    //      it != tokenizer.end(); ++it) {
-        
-    //     response +=
-    // }
-
     return std::string();
 }
 
@@ -265,18 +266,30 @@ std::string GdbStub::handle_m_packet(std::string dat) {
     size_t comma_idx = dat.find_last_of(',');
     size_t len_idx = comma_idx + 1;
 
-    unsigned addr = atoi(dat.substr(addr_idx, comma_idx).c_str());
-    unsigned len = atoi(dat.substr(len_idx).c_str());
+    unsigned len;
+    unsigned addr;
+    std::stringstream(dat.substr(addr_idx, comma_idx)) >> std::hex >> addr;
+    std::stringstream(dat.substr(len_idx)) >> std::hex >> len;
 
     std::stringstream ss;
     while (len--) {
         uint8_t val;
 
-        dc->get_cpu()->read_mem(&val, addr++, sizeof(val));
-        ss << std::setfill('0') << std::setw(2) << unsigned(val);
+        // for now don't cooperate if it wants memory-mapped registers
+        if (addr >= 0xe0000000)
+            return std::string("E01"); // EINVAL
+        else
+            dc->get_cpu()->read_mem(&val, addr++, sizeof(val));
+        ss << std::setfill('0') << std::setw(2) << std::hex << unsigned(val);
     }
 
     return ss.str();
+}
+
+std::string GdbStub::handle_s_packet(std::string dat) {
+    cur_state = Debugger::STATE_PRE_STEP;
+    // TODO finish
+    return "";
 }
 
 std::string GdbStub::handle_G_packet(std::string dat) {
@@ -306,8 +319,6 @@ std::string GdbStub::handle_G_packet(std::string dat) {
     new_regs.mach = regs[MACH];
     new_regs.macl = regs[MACL];
     new_regs.sr = regs[SR];
-
-    // return serialize_data(regs, sizeof(regs));
 
     dc->get_cpu()->set_regs(new_regs);
 
@@ -344,7 +355,7 @@ std::string GdbStub::handle_M_packet(std::string dat) {
 void GdbStub::handle_packet(std::string pkt) {
     std::string response;
     std::string dat = extract_packet(pkt);
-    std::cout << "data received " << dat << std::endl;
+    // std::cout << "data received " << dat << std::endl;
 
     response = craft_packet(std::string());
 
@@ -360,7 +371,13 @@ void GdbStub::handle_packet(std::string pkt) {
         } else if (dat.at(0) == 'M') {
             response = craft_packet(handle_M_packet(dat));
         } else if (dat.at(0) == '?') {
-            response = craft_packet(std::string("S00"));
+            response = craft_packet(std::string("S05 create:"));
+        } else if (dat.at(0) == 's') {
+            handle_s_packet(dat);
+            return;
+        } else if (dat.at(0) == 'c') {
+            handle_c_packet(dat);
+            return;
         }
     }
 
@@ -427,8 +444,6 @@ std::string GdbStub::next_packet() {
     pkt += ch;
 
     input_packet = pktbuf_tmp;
-
-    // std::cout << "packet received: \"" << pkt << "\"" << std::endl;
 
     return pkt;
 }

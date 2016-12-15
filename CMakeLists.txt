@@ -89,8 +89,6 @@ target_link_libraries(sh4asm sh4asm_core)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-# HACK - do not commit (build within washingtondc-boost instead)
-#find_package(Boost COMPONENTS system REQUIRED)
 add_library(boost_system "${PROJECT_SOURCE_DIR}/external/washingtondc-boost/libs/system/src/error_code.cpp")
 
 target_link_libraries(washingtondc sh4 boost_system)

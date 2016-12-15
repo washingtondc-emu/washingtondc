@@ -40,9 +40,11 @@ public:
 
     bool should_break(inst_t pc);
 
-    virtual void step(inst_t pc);
+    virtual bool step(inst_t pc);
 
     virtual void attach() = 0;
+
+    virtual void on_break() = 0;
 private:
     // I store breakpoints as int instead of inst_t because I want to be able
     // to set them to -1 when they're disabled.
@@ -50,10 +52,12 @@ private:
     int breakpoints[N_BREAKPOINTS];
 
     Dreamcast *dc;
-
+protected:
     enum State {
         STATE_NORM,
-        STATE_STEP
+        STATE_PRE_STEP,
+        STATE_POST_STEP,
+        STATE_BREAK
     };
     State cur_state;
 };

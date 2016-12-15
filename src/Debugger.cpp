@@ -28,7 +28,7 @@
 #endif
 
 Debugger::Debugger(Dreamcast *dc) {
-    this->cur_state = STATE_NORM;
+    this->cur_state = STATE_BREAK;
     this->dc = dc;
 
     for (int i = 0; i < N_BREAKPOINTS; i++)
@@ -36,19 +36,31 @@ Debugger::Debugger(Dreamcast *dc) {
 }
 
 bool Debugger::should_break(inst_t pc) {
-
     // hold at a breakpoint for user interaction
-    if (cur_state == STATE_STEP)
+    if (cur_state == STATE_BREAK)
         return true;
 
+    if (cur_state == STATE_POST_STEP) {
+        on_break();
+        cur_state = STATE_BREAK;
+        return true;
+    }
+
+    // allow it to step once then break
+    if (cur_state == STATE_PRE_STEP) {
+        cur_state = STATE_POST_STEP;
+        return false;
+    }
+
     for (int i = 0; i < N_BREAKPOINTS; i++)
-        if (pc == breakpoints[i])
+        if (pc == breakpoints[i]) {
+            cur_state = STATE_BREAK;
             return true;
+        }
 
     return false;
 }
 
-void Debugger::step(inst_t pc) {
-    if (!should_break(pc))
-        return;
+bool Debugger::step(inst_t pc) {
+    return should_break(pc);
 }
