@@ -26,7 +26,7 @@
 #include "Dreamcast.hpp"
 
 static void print_usage(char const *cmd) {
-    std::cerr << "USAGE: " << cmd << " -b bios" << std::endl;
+    std::cerr << "USAGE: " << cmd << " -b bios [-g]" << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -34,11 +34,15 @@ int main(int argc, char **argv) {
     bool is_running = true;
     char const *bios_path = NULL;
     char const *cmd = argv[0];
+    bool enable_debugger = false;
 
-    while ((opt = getopt(argc, argv, "b:")) != -1) {
+    while ((opt = getopt(argc, argv, "b:g")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
+            break;
+        case 'g':
+            enable_debugger = true;
             break;
         }
     }
@@ -52,6 +56,16 @@ int main(int argc, char **argv) {
     }
 
     Dreamcast dc(bios_path);
+
+    if (enable_debugger) {
+#ifdef ENABLE_DEBUGGER
+        dc.enable_debugger();
+#else
+        std::cerr << "WARNING: Unable to enable remote gdb stub." <<
+            std::endl << "Please rebuild with -DENABLE_DEBUGGER=On" <<
+            std::endl;
+#endif
+    }
 
     dc.run();
 

@@ -35,6 +35,11 @@ public:
     Dreamcast(char const *bios_path);
     ~Dreamcast();
 
+#ifdef ENABLE_DEBUGGER
+    // this must be called before run or not at all
+    void enable_debugger(void);
+#endif
+
     void run();
 
     Sh4 *get_cpu();

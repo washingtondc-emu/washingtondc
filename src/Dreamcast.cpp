@@ -54,15 +54,10 @@ Dreamcast::~Dreamcast() {
 }
 
 void Dreamcast::run() {
-#ifdef ENABLE_DEBUGGER
-    debugger = new GdbStub(this);
-    debugger->attach();
-#endif
-
     try {
         while (true) {
 #ifdef ENABLE_DEBUGGER
-            if (debugger->step(cpu->get_pc()))
+            if (debugger && debugger->step(cpu->get_pc()))
                 continue;
 #endif
 
@@ -80,3 +75,10 @@ Sh4 *Dreamcast::get_cpu() {
 Memory *Dreamcast::gem_mem() {
     return mem;
 }
+
+#ifdef ENABLE_DEBUGGER
+void Dreamcast::enable_debugger(void) {
+    debugger = new GdbStub(this);
+    debugger->attach();
+}
+#endif
