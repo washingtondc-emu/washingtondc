@@ -284,7 +284,6 @@ std::string GdbStub::extract_packet(std::string packet_in) {
 
 int GdbStub::set_reg(Sh4::RegFile *file, unsigned reg_no,
                       reg32_t reg_val, bool bank) {
-
     // there is some ambiguity over whether register banking should be based off
     // of the old sr or the new sr.  For now, it's based off of the old sr.
 
@@ -406,13 +405,20 @@ std::string GdbStub::handle_P_packet(std::string dat) {
     std::string reg_no_str = dat.substr(1, equals_idx - 1);
     std::string reg_val_str = dat.substr(equals_idx + 1);
 
-    unsigned reg_no;
-    reg32_t reg_val;
-    std::stringstream(reg_no_str) >> std::hex >> reg_no;
-    std::stringstream(reg_val_str) >> std::hex >> reg_val;
+    unsigned reg_no = 0;
+    reg32_t reg_val = 0;
+    std::stringstream reg_no_stream(reg_no_str);
+    std::stringstream reg_val_stream(reg_val_str);
+    deserialize_data<std::stringstream>(reg_no_stream, &reg_no, sizeof(reg_no));
+    deserialize_data<std::stringstream>(reg_val_stream, &reg_val, sizeof(reg_val));
 
-    if (reg_no >= N_REGS)
+    if (reg_no >= N_REGS) {
+#ifdef GDBSTUB_VERBOSE
+        std::cout << "ERROR: unable to write to register number " <<
+            std::hex << reg_no << std::endl;
+#endif
         return "E16";
+    }
 
     Sh4::RegFile regs = dc->get_cpu()->get_regs();
     set_reg(&regs, reg_no, reg_val, bool(regs.sr & Sh4::SR_RB_MASK));

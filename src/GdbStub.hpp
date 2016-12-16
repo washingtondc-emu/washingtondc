@@ -122,13 +122,15 @@ private:
         while ((ch = input.get()) != eof) {
             if (bytes_written >= max_sz)
                 return max_sz;
-            *out8 = uint8_t(decode_hex(ch)) << 4;
+            *out8 = uint8_t(decode_hex(ch));
             bytes_written++;
 
-            if ((ch = input.get()) != eof)
+            if ((ch = input.get()) != eof) {
+                *out8 <<= 4;
                 *out8 |= uint8_t(decode_hex(ch));
-            else
+            } else {
                 break;
+            }
 
             *out8++;
         }
