@@ -130,11 +130,11 @@ private:
 
     void handle_write(const boost::system::error_code& error);
 
-    std::string handle_c_packet(std::string dat);
+    void handle_c_packet(std::string dat);
+    void handle_s_packet(std::string dat);
     std::string handle_g_packet(std::string dat);
     std::string handle_m_packet(std::string dat);
     std::string handle_q_packet(std::string dat);
-    std::string handle_s_packet(std::string dat);
     std::string handle_G_packet(std::string dat);
     std::string handle_M_packet(std::string dat);
 

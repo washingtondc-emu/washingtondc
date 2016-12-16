@@ -32,6 +32,9 @@
 
 #include "GdbStub.hpp"
 
+// uncomment this to log all traffic in/out of the debugger to stdout
+// #define GDBSTUB_VERBOSE
+
 GdbStub::GdbStub(Dreamcast *dc) : Debugger(dc),
                                   tcp_acceptor(io_service, tcp_endpoint),
                                   tcp_endpoint(boost::asio::ip::tcp::v4(),
@@ -192,20 +195,35 @@ void GdbStub::handle_read(const boost::system::error_code& error) {
             std::string pkt = next_packet();
             if (pkt.size()) {
                 input_packet = "";
-                transmit(std::string("+"));// TODO: checksum
+
+                // TODO: verify the checksum
+
+#ifdef GDBSTUB_VERBOSE
+                std::cout << ">>>> +" << std::endl;
+#endif
+                transmit(std::string("+"));
                 handle_packet(pkt);
             }
         } else {
             if (c == '+') {
+#ifdef GDBSTUB_VERBOSE
+                std::cout << "<<<< +" << std::endl;
+#endif
                 if (!unack_packet.size())
                     std::cerr << "WARNING: received acknowledgement for unsent " <<
                         "packet" << std::endl;
                 unack_packet = "";
             } else if (c == '-') {
+#ifdef GDBSTUB_VERBOSE
+                std::cout << "<<<< -" << std::endl;
+#endif
                 if (!unack_packet.size()) {
                     std::cerr << "WARNING: received negative acknowledgement for " <<
                         "unsent packet" << std::endl;
                 } else {
+#ifdef GDBSTUB_VERBOSE
+                    std::cout << ">>>>" << unack_packet << std::endl;
+#endif
                     transmit(unack_packet);
                 }
             } else if (c == '$') {
@@ -248,9 +266,8 @@ std::string GdbStub::extract_packet(std::string packet_in) {
     return packet_in.substr(dollar_idx + 1, pound_idx - dollar_idx - 1);
 }
 
-std::string GdbStub::handle_c_packet(std::string dat) {
+void GdbStub::handle_c_packet(std::string dat) {
     cur_state = Debugger::STATE_NORM;
-    return "";
 }
 
 std::string GdbStub::handle_q_packet(std::string dat) {
@@ -286,10 +303,8 @@ std::string GdbStub::handle_m_packet(std::string dat) {
     return ss.str();
 }
 
-std::string GdbStub::handle_s_packet(std::string dat) {
+void GdbStub::handle_s_packet(std::string dat) {
     cur_state = Debugger::STATE_PRE_STEP;
-    // TODO finish
-    return "";
 }
 
 std::string GdbStub::handle_G_packet(std::string dat) {
@@ -355,7 +370,6 @@ std::string GdbStub::handle_M_packet(std::string dat) {
 void GdbStub::handle_packet(std::string pkt) {
     std::string response;
     std::string dat = extract_packet(pkt);
-    // std::cout << "data received " << dat << std::endl;
 
     response = craft_packet(std::string());
 
@@ -381,11 +395,14 @@ void GdbStub::handle_packet(std::string pkt) {
         }
     }
 
-    // std::cout << "response outgoing " << response << std::endl;
     transmit_pkt(response);
 }
 
 void GdbStub::transmit_pkt(const std::string& pkt) {
+#ifdef GDBSTUB_VERBOSE
+    std::cout << ">>>> " << pkt << std::endl;
+#endif
+
     unack_packet = pkt;
     transmit(pkt);
 }
@@ -444,6 +461,10 @@ std::string GdbStub::next_packet() {
     pkt += ch;
 
     input_packet = pktbuf_tmp;
+
+#ifdef GDBSTUB_VERBOSE
+    std::cout << "<<<< " << pkt << std::endl;
+#endif
 
     return pkt;
 }
