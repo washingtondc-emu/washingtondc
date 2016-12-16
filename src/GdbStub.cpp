@@ -66,6 +66,7 @@ std::string GdbStub::serialize_regs() const {
     Sh4::RegFile reg_file = cpu->get_regs();
     reg32_t regs[N_REGS] = { 0 };
 
+    // general-purpose registers
     for (int i = 0; i < 16; i++) {
         if (i < 8) {
             if (reg_file.sr & Sh4::SR_RB_MASK)
@@ -77,6 +78,15 @@ std::string GdbStub::serialize_regs() const {
         }
     }
 
+    // banked registers
+    for (int i = 0; i < 8; i++) {
+        regs[R0B0 + i] = reg_file.r_bank0[i];
+        regs[R0B1 + i] = reg_file.r_bank1[i];
+    }
+
+    // TODO: floating point registers
+
+    // system/control registers
     regs[PC] = reg_file.pc;
     regs[PR] = reg_file.pr;
     regs[GBR] = reg_file.gbr;
@@ -84,6 +94,12 @@ std::string GdbStub::serialize_regs() const {
     regs[MACH] = reg_file.mach;
     regs[MACL] = reg_file.macl;
     regs[SR] = reg_file.sr;
+    regs[SSR] = reg_file.ssr;
+    regs[SPC] = reg_file.spc;
+
+    // FPU system/control registers
+    regs[FPUL] = reg_file.fpul;
+    regs[FPSCR] = reg_file.fpscr;
 
     return serialize_data(regs, sizeof(regs));
 }
@@ -266,6 +282,61 @@ std::string GdbStub::extract_packet(std::string packet_in) {
     return packet_in.substr(dollar_idx + 1, pound_idx - dollar_idx - 1);
 }
 
+int GdbStub::set_reg(Sh4::RegFile *file, unsigned reg_no,
+                      reg32_t reg_val, bool bank) {
+
+    // there is some ambiguity over whether register banking should be based off
+    // of the old sr or the new sr.  For now, it's based off of the old sr.
+
+    // TODO: floating point registers
+    if (reg_no >= R0 && reg_no <= R15) {
+        unsigned idx = reg_no - R0;
+
+        if (idx < 8) {
+            if (bank)
+                file->r_bank1[idx] = reg_val;
+            else
+                file->r_bank0[idx] = reg_val;
+        } else {
+            file->rgen[idx - 8] = reg_val;
+        }
+    } else if (reg_no >= R0B0 && reg_no <= R7B0) {
+        file->r_bank0[reg_no - R0B0] = reg_val;
+    } else if (reg_no >= R0B1 && reg_no <= R7B1) {
+        file->r_bank1[reg_no - R0B1] = reg_val;
+    } else if (reg_no == PC) {
+        file->pc = reg_val;
+    } else if (reg_no == PR) {
+        file->pr = reg_val;
+    } else if (reg_no == GBR) {
+        file->gbr = reg_val;
+    } else if (reg_no == VBR) {
+        file->vbr = reg_val;
+    } else if (reg_no == MACH) {
+        file->mach = reg_val;
+    } else if (reg_no == MACL) {
+        file->macl = reg_val;
+    } else if (reg_no == SR) {
+        file->sr = reg_val;
+    } else if (reg_no == SSR) {
+        file->ssr = reg_val;
+    } else if (reg_no == SPC) {
+        file->spc = reg_val;
+    } else if (reg_no == FPUL) {
+        file->fpul = reg_val;
+    } else if (reg_no == FPSCR) {
+        file->fpscr = reg_val;
+    } else {
+#ifdef GDBSTUB_VERBOSE
+        std::cout << "WARNING: GdbStub unable to set value of register " <<
+            std::hex << reg_no << " to " << reg_val << std::endl;
+#endif
+        return 1;
+    }
+
+    return 0;
+}
+
 void GdbStub::handle_c_packet(std::string dat) {
     cur_state = Debugger::STATE_NORM;
 }
@@ -312,31 +383,40 @@ std::string GdbStub::handle_G_packet(std::string dat) {
 
     deserialize_regs(dat.substr(1), regs);
 
-    Sh4::RegFile new_regs, old_regs = dc->get_cpu()->get_regs();
+    Sh4::RegFile new_regs = dc->get_cpu()->get_regs();
+    bool bank = new_regs.sr & Sh4::SR_RB_MASK;
 
-    // there is some ambiguity over whether register banking should be based off
-    // of the old sr or the new sr.  For now, it's based off of the old sr.
-    for (int i = 0; i < 16; i++) {
-        if (i < 8) {
-            if (old_regs.sr & Sh4::SR_RB_MASK)
-                new_regs.r_bank1[i] = regs[R0 + i];
-            else
-                new_regs.r_bank0[i] = regs[R0 + i];
-        }else {
-            new_regs.rgen[i - 8] = regs[R0 + i];
-        }
+    for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
+        set_reg(&new_regs, reg_no, regs[reg_no], bank);
+    return "OK";
+}
+
+std::string GdbStub::handle_P_packet(std::string dat) {
+    size_t equals_idx = dat.find_first_of('=');
+
+    if (equals_idx >= dat.size() - 1) {
+#ifdef GDBSTUB_VERBOSE
+        std::cout << "WARNING: malformed P packet in gdbstub \"" << dat <<
+            "\"" << std::endl;
+#endif
+
+        return "E16";
     }
 
-    new_regs.pc = regs[PC];
-    new_regs.pr = regs[PR];
-    new_regs.gbr = regs[GBR];
-    new_regs.vbr = regs[VBR];
-    new_regs.mach = regs[MACH];
-    new_regs.macl = regs[MACL];
-    new_regs.sr = regs[SR];
+    std::string reg_no_str = dat.substr(1, equals_idx - 1);
+    std::string reg_val_str = dat.substr(equals_idx + 1);
 
-    dc->get_cpu()->set_regs(new_regs);
+    unsigned reg_no;
+    reg32_t reg_val;
+    std::stringstream(reg_no_str) >> std::hex >> reg_no;
+    std::stringstream(reg_val_str) >> std::hex >> reg_val;
 
+    if (reg_no >= N_REGS)
+        return "E16";
+
+    Sh4::RegFile regs = dc->get_cpu()->get_regs();
+    set_reg(&regs, reg_no, reg_val, bool(regs.sr & Sh4::SR_RB_MASK));
+    dc->get_cpu()->set_regs(regs);
 
     return "OK";
 }
@@ -392,6 +472,8 @@ void GdbStub::handle_packet(std::string pkt) {
         } else if (dat.at(0) == 'c') {
             handle_c_packet(dat);
             return;
+        } else if (dat.at(0) == 'P') {
+            response = craft_packet(handle_P_packet(dat));
         }
     }
 

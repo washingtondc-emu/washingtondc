@@ -38,6 +38,7 @@
 #include "common/BaseException.hpp"
 #include "Debugger.hpp"
 #include "types.hpp"
+#include "hw/sh4/sh4.hpp"
 
 class GdbStub : public Debugger {
 public:
@@ -53,11 +54,22 @@ public:
 
     void on_break();
 
+    // see sh_sh4_register_name in gdb/sh-tdep.c in the gdb source code
     enum RegOrder {
         R0, R1, R2, R3, R4, R5, R6, R7,
-        R8, R9, R10, R11, R12, R13, R14,
-        R15, PC, PR, GBR, VBR, MACH, MACL, SR,
-        TICKS, STALLS, CYCLES, INSTS, PLR, N_REGS
+        R8, R9, R10, R11, R12, R13, R14, R15,
+
+        PC, PR, GBR, VBR, MACH, MACL, SR, FPUL, FPSCR,
+
+        FR0, FR1, FR2, FR3, FR4, FR5, FR6, FR7,
+        FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15,
+
+        SSR, SPC,
+
+        R0B0, R1B0, R2B0, R3B0, R4B0, R5B0, R6B0, R7B0,
+        R0B1, R1B1, R2B1, R3B1, R4B1, R5B1, R6B1, R7B1,
+
+        N_REGS
     };
 
 private:
@@ -126,6 +138,10 @@ private:
 
     void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]);
 
+    // returns 0 on success, 1 on failure
+    int set_reg(Sh4::RegFile *file, unsigned reg_no,
+                reg32_t reg_val, bool bank);
+
     void handle_read(const boost::system::error_code& error);
 
     void handle_write(const boost::system::error_code& error);
@@ -137,7 +153,7 @@ private:
     std::string handle_q_packet(std::string dat);
     std::string handle_G_packet(std::string dat);
     std::string handle_M_packet(std::string dat);
-
+    std::string handle_P_packet(std::string dat);
 };
 
 #endif
