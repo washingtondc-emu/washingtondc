@@ -24,6 +24,7 @@ cmake_minimum_required(VERSION 2.6)
 project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
+set(CMAKE_CXX_STANDARD 98)
 
 option(ENABLE_SH4_ICACHE "emulate the sh4's instruction cache" ON)
 option(ENABLE_SH4_OCACHE "emulate the sh4's operand cache" ON)
