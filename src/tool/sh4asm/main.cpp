@@ -22,51 +22,123 @@
 
 #include <unistd.h>
 
+#include <cctype>
 #include <iostream>
+#include <fstream>
 #include <sstream>
+
+#include "BaseException.hpp"
 
 #include "sh4asm.hpp"
 
+static bool only_whitespace(std::string const& str) {
+    for (std::string::const_iterator it = str.begin(); it != str.end(); it++) {
+        if (!isspace(*it))
+            return false;
+    }
+
+    return true;
+}
+
+static unsigned to_hex(char ch) {
+    if (ch >= '0' && ch <= '9')
+        return ch - '0';
+    if (ch >= 'a' && ch <= 'f')
+        return ch - 'a' + 10;
+    if (ch >= 'A' && ch <= 'F')
+        return ch - 'A' + 10;
+
+    throw InvalidParamError("character is not hex");
+}
+
+static void print_usage(char const *cmd) {
+    std::cerr << "Usage: " << cmd << " [-i input] [-o output] " <<
+        "instruction" << std::endl;
+}
+
 int main(int argc, char **argv) {
     Sh4Prog prog;
-    inst_t inst;
     int opt;
     bool disas = false;
     char const *cmd = argv[0];
+    char const *filename_in = NULL, *filename_out = NULL;
 
-    while ((opt = getopt(argc, argv, "d")) != -1) {
+    std::ostream *output = &std::cout;
+    std::istream *input = &std::cin;
+    std::ofstream *file_out = NULL;
+    std::ifstream *file_in = NULL;
+
+    while ((opt = getopt(argc, argv, "di:o:")) != -1) {
         switch (opt) {
         case 'd':
             disas = true;
             break;
+        case 'i':
+            filename_in = optarg;
+            break;
+        case 'o':
+            filename_out = optarg;
+            break;
+        default:
+            print_usage(cmd);
+            return 1;
         }
     }
 
     argv += optind;
     argc -= optind;
 
-    if (argc != 1) {
-        std::cerr << "Usage: " << cmd << " instruction" << std::endl;
+    if (argc != 0) {
+        print_usage(cmd);
         return 1;
     }
 
-    if (disas) {
-        std::stringstream ss;
-        ss << std::hex << argv[0];
-        ss >> inst;
+    if (filename_in)
+        input = file_in = new std::ifstream(filename_in);
 
-        std::cout << prog.disassemble_line(inst) << std::endl;
-    } else {
-        inst = prog.assemble_line((argv[0] + std::string("\n")).c_str());
-        std::cout << std::hex << inst << std::endl;
+    if (filename_out) {
+        output = file_out = new std::ofstream(filename_out);
     }
 
-    // TODO: this goes in the unit_tests
-    // inst = prog.assemble_line("MOV.W R4, @R5\n");
-    // std::cout << std::hex << inst << std::endl;
+    if (disas) {
+        inst_t instr = 0;
+        unsigned count = 0;
+        while (input->good()) {
+            char c = input->get();
+            if (c == std::char_traits<char>::eof())
+                break;
 
-    // inst = prog.assemble_line("MOV.W @R5, R4");
-    // std::cout << std::hex << inst << std::endl;
+            if (isspace(c))
+                continue;
+
+            instr = (instr << 4) | inst_t(to_hex(c));
+
+            count++;
+            if (count == 4) {
+                (*output) << prog.disassemble_line(instr) << std::endl;
+                count = 0;
+                instr = 0;
+            }
+        }
+
+        if (count)
+            (*output) << prog.disassemble_line(instr) << std::endl;
+    } else {
+        while (input->good()) {
+            std::string line;
+            std::getline(*input, line, '\n');
+
+            if (!only_whitespace(line)) {
+                inst_t instr = prog.assemble_line((line + "\n").c_str());
+                (*output) << std::hex << instr << std::endl;
+            }
+        }
+    }
+
+    if (file_in)
+        delete file_in;
+    if (file_out)
+        delete file_out;
 
     return 0;
 }
