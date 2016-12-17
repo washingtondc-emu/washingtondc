@@ -25,7 +25,7 @@
 #include <vector>
 #include <sstream>
 
-#include <boost/shared_ptr.hpp>
+#include <boost/tokenizer.hpp>
 
 #include "types.hpp"
 #include "Inst.hpp"
@@ -58,35 +58,76 @@ private:
 
 class Sh4Prog {
 public:
-    // completemy arbitrary 16MB limit to keep things from getting too out of
-    // hand.  This can be freely changed with no consequence.
-    static const int MAX_INST_COUNT = 8 * 1024 * 1024;
+    typedef std::vector<uint8_t> ByteList;
 
-    typedef std::vector<inst_t> InstList;
+    Sh4Prog();
+    Sh4Prog(ByteList const& prog);
+    Sh4Prog(std::string const& asm_txt);
 
     addr32_t lookup_sym(const std::string& sym_name) const;
 
-    inst_t assemble_line(const std::string& inst);
-    std::string disassemble_line(inst_t inst) const;
+    /*
+     * add the given line to the program.  This also adds its hex-string
+     * equivalent to the binary data
+     */
+    void add_txt(const std::string& line);
+
+    /*
+     * add all the bytes in bin_data to the program.
+     *
+     * This regenerates the stored assembly text, which means that any fancy
+     * whitespace will get removed if you try to use add_bin after already using
+     * add_txt
+     */
+    void add_bin(const ByteList& bin_data);
+
+    /*
+     * assemble or disassemble a single instruction.
+     * This does not add the instruction to this Sh4Prog.
+     */
+    inst_t assemble_inst(const std::string& inst) const;
+    std::string disassemble_inst(inst_t inst) const;
 
     // assemble all instructions in txt and add it to this program.
     void assemble(const std::string& txt);
 
-    const InstList& get_prog() const;
+    // get program binary data
+    const ByteList& get_prog() const;
+
+    // get program assembly
+    const std::string& get_prog_asm() const;
 
 private:
     typedef std::map<std::string, addr32_t> SymMap;
+    typedef boost::tokenizer<boost::char_separator<char> > LineTokenizer;
 
     SymMap syms;
-    InstList prog;
+    ByteList prog;
+    std::string prog_asm;
 
     /* remove any comments from the line. */
-    std::string preprocess_line(const std::string& line);
+    static std::string preprocess_line(const std::string& line);
+
+    /*
+     * backend implementation of add_txt.  This function requires its argument
+     * to be a single line of text.  add_txt breaks up its argument into
+     * multiple lines and feeds them to this function.
+     */
+    void add_single_line(const std::string& line);
 
     static TokList tokenize_line(const std::string& line);
+
+    static unsigned to_hex(char ch);
 
     inst_t assemble_tokens(PtrnList toks);
     inst_t assemble_op_noargs(const std::string& inst);
 
     void add_label(const std::string& lbl);
+
+    /*
+     * Regenerate prog_asm.  We do this every time a new ByteList is added
+     * because  there could be a trailing .byte at the end of the last ByteList
+     * that forms a valid instruction when combined with the new ByteList.
+     */
+    void disassemble();
 };

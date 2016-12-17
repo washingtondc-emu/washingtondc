@@ -59,9 +59,9 @@ bool test_inst(std::string const& inst) {
 
     std::cout << "Testing \"" << inst.substr(0, inst.size() - 1) << "\"..." << std::endl;
 
-    inst1 = prog.assemble_line(inst);
-    inst1_as_txt = prog.disassemble_line(inst1);
-    inst2 = prog.assemble_line(inst1_as_txt);
+    inst1 = prog.assemble_inst(inst);
+    inst1_as_txt = prog.disassemble_inst(inst1);
+    inst2 = prog.assemble_inst(inst1_as_txt);
 
     if (inst1 == inst2) {
         std::cout << "success!" << std::endl;

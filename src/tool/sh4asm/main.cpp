@@ -62,14 +62,18 @@ int main(int argc, char **argv) {
     bool disas = false;
     char const *cmd = argv[0];
     char const *filename_in = NULL, *filename_out = NULL;
+    bool bin_mode = false;
 
     std::ostream *output = &std::cout;
     std::istream *input = &std::cin;
     std::ofstream *file_out = NULL;
     std::ifstream *file_in = NULL;
 
-    while ((opt = getopt(argc, argv, "di:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "bdi:o:")) != -1) {
         switch (opt) {
+        case 'b':
+            bin_mode = true;
+            break;
         case 'd':
             disas = true;
             break;
@@ -101,36 +105,65 @@ int main(int argc, char **argv) {
     }
 
     if (disas) {
-        inst_t instr = 0;
-        unsigned count = 0;
-        while (input->good()) {
-            char c = input->get();
-            if (c == std::char_traits<char>::eof())
-                break;
+        Sh4Prog::ByteList bin_dat;
+        uint8_t dat = 0;
+        bool even = true;
 
-            if (isspace(c))
-                continue;
+        if (bin_mode) {
+            while (input->good()) {
+                input->read((char*)&dat, 1);
+                if (!input->fail())
+                    bin_dat.push_back(dat);
+            }
+        } else {
+            while (input->good()) {
+                char c = input->get();
 
-            instr = (instr << 4) | inst_t(to_hex(c));
+                if (c == std::char_traits<char>::eof())
+                    break;
 
-            count++;
-            if (count == 4) {
-                (*output) << prog.disassemble_line(instr) << std::endl;
-                count = 0;
-                instr = 0;
+                if (isspace(c)) {
+                    if (!even)
+                        bin_dat.push_back(dat);
+                    even = true;
+                    continue;
+                }
+
+                if (even) {
+                    dat = to_hex(c);
+                } else {
+                    dat = (dat << 4) | to_hex(c);
+                    bin_dat.push_back(dat);
+                }
+
+                even = !even;
             }
         }
 
-        if (count)
-            (*output) << prog.disassemble_line(instr) << std::endl;
+        if (!even)
+            bin_dat.push_back(dat);
+
+        prog.add_bin(bin_dat);
+        (*output) << prog.get_prog_asm();
     } else {
         while (input->good()) {
             std::string line;
             std::getline(*input, line, '\n');
 
             if (!only_whitespace(line)) {
-                inst_t instr = prog.assemble_line((line + "\n").c_str());
-                (*output) << std::hex << instr << std::endl;
+                line += "\n";
+                prog.add_txt(line);
+            }
+        }
+
+        Sh4Prog::ByteList bin_dat = prog.get_prog();
+        for (Sh4Prog::ByteList::iterator it = bin_dat.begin();
+             it != bin_dat.end(); it++) {
+            if (bin_mode) {
+                char dat = *it;
+                output->write(&dat, 1);
+            } else {
+                (*output) << std::hex << unsigned(*it) << std::endl;
             }
         }
     }

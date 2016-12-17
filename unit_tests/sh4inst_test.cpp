@@ -63,7 +63,7 @@ public:
     static int nop_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
         Sh4Prog test_prog;
         test_prog.assemble("NOP\n");
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -89,7 +89,7 @@ public:
                 std::stringstream ss;
                 ss << "ADD #" << imm_val << ", R" << reg_no << "\n";
                 test_prog.assemble(ss.str());
-                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                const Sh4Prog::ByteList& inst = test_prog.get_prog();
                 mem->load_program(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
@@ -136,7 +136,7 @@ public:
 
                 ss << "ADD R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
-                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                const Sh4Prog::ByteList& inst = test_prog.get_prog();
                 mem->load_program(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
@@ -185,7 +185,7 @@ public:
 
                 ss << "ADDC R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
-                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                const Sh4Prog::ByteList& inst = test_prog.get_prog();
                 mem->load_program(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
@@ -291,7 +291,7 @@ public:
 
                 ss << "ADDV R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
-                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                const Sh4Prog::ByteList& inst = test_prog.get_prog();
                 mem->load_program(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
@@ -434,7 +434,7 @@ public:
 
                 ss << "SUB R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
-                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                const Sh4Prog::ByteList& inst = test_prog.get_prog();
                 mem->load_program(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
@@ -489,7 +489,7 @@ public:
 
                 ss << "SUBC R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
-                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                const Sh4Prog::ByteList& inst = test_prog.get_prog();
                 mem->load_program(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
@@ -608,7 +608,7 @@ public:
 
                 ss << "SUBV R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.assemble(ss.str());
-                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                const Sh4Prog::ByteList& inst = test_prog.get_prog();
                 mem->load_program(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
@@ -736,7 +736,7 @@ public:
 
                 ss << "MOVT R" << reg_no << "\n";
                 test_prog.assemble(ss.str());
-                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                const Sh4Prog::ByteList& inst = test_prog.get_prog();
                 mem->load_program(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
@@ -771,7 +771,7 @@ public:
                 // and an 8-bit integer
                 ss << "MOV #" << (unsigned)imm_val << ", R" << reg_no << "\n";
                 test_prog.assemble(ss.str());
-                const Sh4Prog::InstList& inst = test_prog.get_prog();
+                const Sh4Prog::ByteList& inst = test_prog.get_prog();
                 mem->load_program(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
@@ -799,7 +799,7 @@ public:
         ss << "MOV.W @(" << disp << ", PC), R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(pc, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -860,7 +860,7 @@ public:
         ss << "MOV.L @(" << disp << ", PC), R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(pc, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -923,7 +923,7 @@ public:
         ss << "MOV R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -970,7 +970,7 @@ public:
         ss << "MOV.B R" << reg_src << ", @R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1025,7 +1025,7 @@ public:
         ss << "MOV.W R" << reg_src << ", @R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1080,7 +1080,7 @@ public:
         ss << "MOV.L R" << reg_src << ", @R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1134,7 +1134,7 @@ public:
         ss << "MOV.B @R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1186,7 +1186,7 @@ public:
         ss << "MOV.W @R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1238,7 +1238,7 @@ public:
         ss << "MOV.L @R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1295,7 +1295,7 @@ public:
         ss << "MOV.B R" << reg_src << ", @-R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1371,7 +1371,7 @@ public:
         ss << "MOV.W R" << reg_src << ", @-R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1447,7 +1447,7 @@ public:
         ss << "MOV.L R" << reg_src << ", @-R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1519,7 +1519,7 @@ public:
         ss << "MOV.B @R" << reg_src << "+, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1581,7 +1581,7 @@ public:
         ss << "MOV.W @R" << reg_src << "+, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1645,7 +1645,7 @@ public:
         ss << "MOV.L @R" << reg_src << "+, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1707,7 +1707,7 @@ public:
         ss << "MOV.B R0, @(" << (int)disp << ", R" << reg_base << ")\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1762,7 +1762,7 @@ public:
         ss << "MOV.W R0, @(" << (int)disp << ", R" << reg_base << ")\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1821,7 +1821,7 @@ public:
             reg_base << ")\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1881,7 +1881,7 @@ public:
         ss << "MOV.B @(" << (int)disp << ", R" << reg_base << "), R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1934,7 +1934,7 @@ public:
         ss << "MOV.W @(" << (int)disp << ", R" << reg_base << "), R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -1990,7 +1990,7 @@ public:
             reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2053,7 +2053,7 @@ public:
         ss << "MOV.B R" << reg_src << ", @(R0, R" << reg_base << ")\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2133,7 +2133,7 @@ public:
         ss << "MOV.W R" << reg_src << ", @(R0, R" << reg_base << ")\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2213,7 +2213,7 @@ public:
         ss << "MOV.L R" << reg_src << ", @(R0, R" << reg_base << ")\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2287,7 +2287,7 @@ public:
         ss << "MOV.B @(R0, R" << reg_base << "), R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2361,7 +2361,7 @@ public:
         ss << "MOV.W @(R0, R" << reg_base << "), R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2434,7 +2434,7 @@ public:
         ss << "MOV.L @(R0, R" << reg_base << "), R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2503,7 +2503,7 @@ public:
         ss << "MOV.B R0, @(" << (unsigned)disp << ", GBR)\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2555,7 +2555,7 @@ public:
         ss << "MOV.W R0, @(" << (unsigned)disp << ", GBR)\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2607,7 +2607,7 @@ public:
         ss << "MOV.L R0, @(" << (unsigned)disp << ", GBR)\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2659,7 +2659,7 @@ public:
         ss << "MOV.B @(" << (unsigned)disp << ", GBR), R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2708,7 +2708,7 @@ public:
         ss << "MOV.W @(" << (unsigned)disp << ", GBR), R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2757,7 +2757,7 @@ public:
         ss << "MOV.L @(" << (unsigned)disp << ", GBR), R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2805,7 +2805,7 @@ public:
         ss << "MOVA @(" << (unsigned)disp << ", PC), R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(pc_val, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2851,7 +2851,7 @@ public:
         ss << "LDC R" << reg_no << ", SR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2891,7 +2891,7 @@ public:
         ss << "LDC R" << reg_no << ", GBR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2931,7 +2931,7 @@ public:
         ss << "LDC R" << reg_no << ", VBR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2971,7 +2971,7 @@ public:
         ss << "LDC R" << reg_no << ", SSR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3011,7 +3011,7 @@ public:
         ss << "LDC R" << reg_no << ", SPC\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3051,7 +3051,7 @@ public:
         ss << "LDC R" << reg_no << ", DBR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3092,7 +3092,7 @@ public:
         ss << "LDC R" << reg_no << ", R" << bank_reg_no << "_BANK\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3139,7 +3139,7 @@ public:
         ss << "LDC.L @R" << reg_src << "+, SR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3198,7 +3198,7 @@ public:
         ss << "LDC.L @R" << reg_src << "+, GBR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3250,7 +3250,7 @@ public:
         ss << "LDC.L @R" << reg_src << "+, VBR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3302,7 +3302,7 @@ public:
         ss << "LDC.L @R" << reg_src << "+, SSR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3354,7 +3354,7 @@ public:
         ss << "LDC.L @R" << reg_src << "+, SPC\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3406,7 +3406,7 @@ public:
         ss << "LDC.L @R" << reg_src << "+, DBR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3464,7 +3464,7 @@ public:
         ss << "STC SR, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3505,7 +3505,7 @@ public:
         ss << "STC GBR, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3546,7 +3546,7 @@ public:
         ss << "STC VBR, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3587,7 +3587,7 @@ public:
         ss << "STC SSR, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3628,7 +3628,7 @@ public:
         ss << "STC SPC, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3669,7 +3669,7 @@ public:
         ss << "STC SGR, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3710,7 +3710,7 @@ public:
         ss << "STC DBR, R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3755,7 +3755,7 @@ public:
         ss << "STC.L SR, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3807,7 +3807,7 @@ public:
         ss << "STC.L GBR, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3859,7 +3859,7 @@ public:
         ss << "STC.L VBR, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3911,7 +3911,7 @@ public:
         ss << "STC.L SSR, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -3963,7 +3963,7 @@ public:
         ss << "STC.L SPC, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4015,7 +4015,7 @@ public:
         ss << "STC.L SGR, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4067,7 +4067,7 @@ public:
         ss << "STC.L DBR, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4120,7 +4120,7 @@ public:
         ss << "LDC.L @R" << reg_no << "+, R" << bank_reg_no << "_BANK\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4173,7 +4173,7 @@ public:
         ss << "STC R" << bank_reg_no << "_BANK, R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4219,7 +4219,7 @@ public:
         ss << "STC.L R" << bank_reg_no << "_BANK, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4272,7 +4272,7 @@ public:
         ss << "LDS R" << reg_no << ", MACH\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4314,7 +4314,7 @@ public:
         ss << "LDS R" << reg_no << ", MACL\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4356,7 +4356,7 @@ public:
         ss << "LDS R" << reg_no << ", PR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4398,7 +4398,7 @@ public:
         ss << "STS MACH, R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4440,7 +4440,7 @@ public:
         ss << "STS MACL, R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4482,7 +4482,7 @@ public:
         ss << "STS PR, R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4525,7 +4525,7 @@ public:
         ss << "LDS.L @R" << reg_no << "+, MACH\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4573,7 +4573,7 @@ public:
         ss << "LDS.L @R" << reg_no << "+, MACL\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4621,7 +4621,7 @@ public:
         ss << "LDS.L @R" << reg_no << "+, PR\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4669,7 +4669,7 @@ public:
         ss << "STS.L MACH, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4720,7 +4720,7 @@ public:
         ss << "STS.L MACL, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4771,7 +4771,7 @@ public:
         ss << "STS.L PR, @-R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4821,7 +4821,7 @@ public:
         ss << "CMP/PZ R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4866,7 +4866,7 @@ public:
         ss << "CMP/PL R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4911,7 +4911,7 @@ public:
         ss << "CMP/EQ #" << unsigned(imm_val) << std::dec << ", R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -4965,7 +4965,7 @@ public:
         ss << "CMP/EQ R" << reg1 << ", R" << reg2 << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5028,7 +5028,7 @@ public:
         ss << "CMP/HS R" << reg1 << ", R" << reg2 << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5094,7 +5094,7 @@ public:
         ss << "CMP/GE R" << reg1 << ", R" << reg2 << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5160,7 +5160,7 @@ public:
         ss << "CMP/HI R" << reg1 << ", R" << reg2 << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5226,7 +5226,7 @@ public:
         ss << "CMP/GT R" << reg1 << ", R" << reg2 << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5290,7 +5290,7 @@ public:
         ss << "CMP/STR R" << reg1 << ", R" << reg2 << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5362,7 +5362,7 @@ public:
         ss << "TST R" << reg1_no << ", R" << reg2_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5417,7 +5417,7 @@ public:
         ss << "TAS.B @R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5468,7 +5468,7 @@ public:
         ss << "TST #" << unsigned(imm_val) << ", R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5517,7 +5517,7 @@ public:
         ss << "TST.B #" << unsigned(imm_val) << ", @(R0, GBR)\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5574,7 +5574,7 @@ public:
         ss << "AND R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5627,7 +5627,7 @@ public:
         ss << "AND #" << unsigned(imm_val) << ", R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5670,7 +5670,7 @@ public:
         ss << "AND.B #" << unsigned(imm_val) << ", @(R0, GBR)\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5727,7 +5727,7 @@ public:
         ss << "OR R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5780,7 +5780,7 @@ public:
         ss << "OR #" << unsigned(imm_val) << ", R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5823,7 +5823,7 @@ public:
         ss << "OR.B #" << unsigned(imm_val) << ", @(R0, GBR)\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5880,7 +5880,7 @@ public:
         ss << "XOR R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5933,7 +5933,7 @@ public:
         ss << "XOR #" << unsigned(imm_val) << ", R0\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -5976,7 +5976,7 @@ public:
         ss << "XOR.B #" << unsigned(imm_val) << ", @(R0, GBR)\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6032,7 +6032,7 @@ public:
         ss << "NOT R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6078,7 +6078,7 @@ public:
         ss << "NEG R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6121,7 +6121,7 @@ public:
         ss << "NEGC R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6168,7 +6168,7 @@ public:
         ss << "DT R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6223,7 +6223,7 @@ public:
         ss << "SWAP.B R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6270,7 +6270,7 @@ public:
         ss << "SWAP.W R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6317,7 +6317,7 @@ public:
         ss << "XTRCT R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6368,7 +6368,7 @@ public:
         ss << "EXTS.B R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6415,7 +6415,7 @@ public:
         ss << "EXTS.W R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6462,7 +6462,7 @@ public:
         ss << "EXTU.B R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6509,7 +6509,7 @@ public:
         ss << "EXTU.W R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6554,7 +6554,7 @@ public:
         ss << "ROTL R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6604,7 +6604,7 @@ public:
         ss << "ROTR R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6654,7 +6654,7 @@ public:
         ss << "ROTCL R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6712,7 +6712,7 @@ public:
         ss << "ROTCR R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6771,7 +6771,7 @@ public:
         ss << "SHAD R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6829,7 +6829,7 @@ public:
         ss << "SHAL R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6877,7 +6877,7 @@ public:
         ss << "SHAR R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6926,7 +6926,7 @@ public:
         ss << "SHLD R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -6984,7 +6984,7 @@ public:
         ss << "SHLL R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7032,7 +7032,7 @@ public:
         ss << "SHLR R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7080,7 +7080,7 @@ public:
         ss << "SHLL2 R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7123,7 +7123,7 @@ public:
         ss << "SHLR2 R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7166,7 +7166,7 @@ public:
         ss << "SHLL8 R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7209,7 +7209,7 @@ public:
         ss << "SHLR8 R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7252,7 +7252,7 @@ public:
         ss << "SHLL16 R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7295,7 +7295,7 @@ public:
         ss << "SHLR16 R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7339,7 +7339,7 @@ public:
         ss << "MUL.L R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7391,7 +7391,7 @@ public:
         ss << "MULS.W R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7445,7 +7445,7 @@ public:
         ss << "MULU.W R" << reg_src << ", R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7509,7 +7509,7 @@ public:
         ss << "MAC.L @R" << reg_src << "+, @R" << reg_dst << "+\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7651,7 +7651,7 @@ public:
         ss << "MAC.W @R" << reg_src << "+, @R" << reg_dst << "+\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7779,7 +7779,7 @@ public:
         ss << "CLRMAC\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7807,7 +7807,7 @@ public:
         ss << "CLRS\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7832,7 +7832,7 @@ public:
         ss << "CLRT\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7857,7 +7857,7 @@ public:
         ss << "SETS\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7882,7 +7882,7 @@ public:
         ss << "SETT\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7913,7 +7913,7 @@ public:
         ss << "MOVCA.L R0" << ", @R" << reg_dst << "\n";
         cmd = ss.str();
         test_prog.assemble(cmd);
-        const Sh4Prog::InstList& inst = test_prog.get_prog();
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
         mem->load_program(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
