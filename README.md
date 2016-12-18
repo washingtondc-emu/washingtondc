@@ -11,7 +11,16 @@ partially-complete SH4 interpreter.
 * run washingtondc:
     ./washingtondc -b <path to Dreamcast BIOS file>
 
-if debugging is enabled (it is by default):
+Not much will happen because this is still in a very early stage of development
+
+# remote debugging with gdb
+
+* run washingtondc with the -g option:
+
+    ./washingtondc -b <path to Dreamcast BIOS file>
+
+    It will print:
+
     Awaiting remote GDB connection on port 1999...
 
 * open gdb in another window
