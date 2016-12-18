@@ -47,20 +47,20 @@ public:
      * loads a program into the given address.  the InputIterator's
      * indirect method (overload*) should return an inst_t.
      */
-    template<class InputIterator>
-    void load_program(addr32_t where, InputIterator start, InputIterator end);
+    template<typename data_tp, class InputIterator>
+    void load_binary(addr32_t where, InputIterator start, InputIterator end);
 
 private:
     size_t size;
     boost::uint8_t *mem;
 };
 
-template<class InputIterator>
-void Memory::load_program(addr32_t where, InputIterator start,
-			  InputIterator end) {
-    for (InputIterator it = start; it != end; it++, where += 2) {
-	inst_t tmp = (inst_t)*it;
-	write(&tmp, where, sizeof(tmp));
+template<typename data_tp, class InputIterator>
+void Memory::load_binary(addr32_t where, InputIterator start,
+                          InputIterator end) {
+    for (InputIterator it = start; it != end; it++, where++) {
+        data_tp tmp = *it;
+        write(&tmp, where, sizeof(tmp));
     }
 }
 

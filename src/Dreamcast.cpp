@@ -40,7 +40,7 @@ Dreamcast::Dreamcast(char const *bios_path) {
 #endif
 
     BiosFile bios(bios_path);
-    mem->load_program<inst_t*>(0, (inst_t*)bios.begin(), (inst_t*)bios.end());
+    mem->load_binary<inst_t, inst_t*>(0, (inst_t*)bios.begin(), (inst_t*)bios.end());
 }
 
 Dreamcast::~Dreamcast() {
