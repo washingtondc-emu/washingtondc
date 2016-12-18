@@ -762,7 +762,8 @@ public:
                         TokList::reverse_iterator rend) {
         std::string txt = *rbegin;
 
-        if ((txt.substr(0, 2) == "FV") && (txt.size() == 3)) {
+        if ((txt.substr(0, 2) == "FV") &&
+            ((txt.size() == 3) || (txt.size() == 4))) {
             int reg_no;
             std::stringstream(txt.substr(2)) >> reg_no;
             if (reg_no == 0 || reg_no == 4 || reg_no == 8 || reg_no == 12) {
