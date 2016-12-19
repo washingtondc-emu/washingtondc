@@ -63,7 +63,8 @@ addr32_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
     if (cache_as_ram) {
         // the hardware manual is a little vague on how this effects
         // the half of the cache which is not being used as memory.
-        throw UnimplementedError("Operand Cache as RAM");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("Operand Cache as RAM"));
     }
 
     addr32_t ent_sel = (paddr & 0x1fe0) >> 5;
@@ -465,8 +466,7 @@ int Ocache::cache_read(basic_val_t *out, unsigned len, addr32_t paddr,
                                 cache_as_ram);
     }
 
-    throw InvalidParamError("Ocache::cache_read: trying to read a length other "
-                            "than 1, 2, 4 or 8");
+    BOOST_THROW_EXCEPTION(InvalidParamError() << errinfo_param_name("len"));
 }
 
 int Ocache::cache_write_cb(basic_val_t data, unsigned len, addr32_t paddr,
@@ -482,8 +482,7 @@ int Ocache::cache_write_cb(basic_val_t data, unsigned len, addr32_t paddr,
         return do_cache_write_cb<8>(data, paddr, index_enable, cache_as_ram);
     }
 
-    throw InvalidParamError("Ocache::cache_write_cb: trying to read a length "
-                            "other than 1, 2, 4 or 8");
+    BOOST_THROW_EXCEPTION(InvalidParamError() << errinfo_param_name("len"));
 }
 
 int Ocache::cache_write_wt(basic_val_t data, unsigned len, addr32_t paddr,
@@ -499,8 +498,7 @@ int Ocache::cache_write_wt(basic_val_t data, unsigned len, addr32_t paddr,
         return do_cache_write_wt<8>(data, paddr, index_enable, cache_as_ram);
     }
 
-    throw InvalidParamError("Ocache::cache_write_wt: trying to read a length "
-                            "other than 1, 2, 4 or 8");
+    BOOST_THROW_EXCEPTION(InvalidParamError() << errinfo_param_name("len"));
 }
 
 int Ocache::cache_load(struct cache_line *line, addr32_t paddr) {

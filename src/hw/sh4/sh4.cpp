@@ -34,6 +34,16 @@
 
 #include "sh4.hpp"
 
+typedef boost::error_info<struct tag_excp_code_error_info,
+                          enum Sh4::ExceptionCode> excp_code_error_info;
+
+class UnknownExcpCodeException : public BaseException {
+public:
+    char const *what() const throw() {
+        return "unrecognized sh4 exception code";
+    }
+};
+
 Sh4::Sh4(Memory *mem) {
     this->mem = mem;
 
@@ -169,7 +179,8 @@ void Sh4::enter_exception(enum ExceptionCode vector) {
     }
 
     if (!meta)
-        throw IntegrityError("Unknown CPU exception/interrupt type");
+        BOOST_THROW_EXCEPTION(UnknownExcpCodeException() <<
+                              excp_code_error_info(vector));
 
     reg.spc = reg.pc;
     reg.ssr = reg.sr;

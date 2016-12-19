@@ -43,7 +43,8 @@ addr32_t Sh4::utlb_ent_get_vpn(struct utlb_entry *ent) const {
         // upper 12 bits
         return ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfff00000;
     default:
-        throw IntegrityError("Unrecognized UTLB size value");
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_param_name("UTLB size value"));
     }
 }
 
@@ -63,7 +64,8 @@ addr32_t Sh4::utlb_ent_get_addr_offset(struct utlb_entry *ent,
         // lowr 20 bits
         return addr & 0xfffff;
     default:
-        throw IntegrityError("Unrecognized UTLB size value");
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_param_name("UTLB size value"));
     }
 }
 
@@ -86,7 +88,8 @@ addr32_t Sh4::utlb_ent_get_ppn(struct utlb_entry *ent) const {
         return ((ent->ent & UTLB_ENT_PPN_MASK) >> UTLB_ENT_PPN_SHIFT) &
             0x1ff00000;
     default:
-        throw IntegrityError("Unrecognized UTLB size value");
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_param_name("UTLB size value"));
     }
 }
 
@@ -109,7 +112,8 @@ addr32_t Sh4::utlb_ent_translate(struct utlb_entry *ent, addr32_t vaddr) const {
     case ONE_MEGA:
         return ppn << 20 | offset;
     default:
-        throw IntegrityError("Unrecognized UTLB size value");
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_param_name("UTLB size value"));
     }
 }
 
@@ -128,7 +132,8 @@ addr32_t Sh4::itlb_ent_get_vpn(struct itlb_entry *ent) const {
         // upper 12 bits
         return ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfff00000;
     default:
-        throw IntegrityError("Unrecognized ITLB size value");
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_param_name("ITLB size value"));
     }
 }
 
@@ -151,7 +156,8 @@ addr32_t Sh4::itlb_ent_get_ppn(struct itlb_entry *ent) const {
         return ((ent->ent & ITLB_ENT_PPN_MASK) >> ITLB_ENT_PPN_SHIFT) &
             0x1ff00000;
     default:
-        throw IntegrityError("Unrecognized ITLB size value");
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_param_name("ITLB size value"));
     }
 }
 
@@ -171,7 +177,8 @@ addr32_t Sh4::itlb_ent_get_addr_offset(struct itlb_entry *ent,
         // lowr 20 bits
         return addr & 0xfffff;
     default:
-        throw IntegrityError("Unrecognized OTLB size value");
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_param_name("ITLB size value"));
     }
 }
 
@@ -189,7 +196,8 @@ addr32_t Sh4::itlb_ent_translate(struct itlb_entry *ent, addr32_t vaddr) const {
     case ONE_MEGA:
         return ppn << 20 | offset;
     default:
-        throw IntegrityError("Unrecognized ITLB size value");
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_param_name("ITLB size value"));
     }
 }
 
@@ -226,7 +234,8 @@ struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr,
             vpn_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfff00000;
             break;
         default:
-            throw IntegrityError("Unrecognized UTLB size value");
+            BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                                  errinfo_param_name("UTLB size value"));
         }
 
         if (!(UTLB_ENT_SH_MASK & ent->ent) &&
@@ -283,7 +292,9 @@ struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr,
         case UTLB_READ_ITLB:
             return NULL;
         default:
-            throw InvalidParamError("Unknown access type in utlb_search");
+            BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                                  errinfo_param_name("Unknown access type "
+                                                     "in utlb_search"));
         }
     }
 
@@ -320,7 +331,8 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
             vpn_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfff00000;
             break;
         default:
-            throw IntegrityError("Unrecognized ITLB size value");
+            BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                                  errinfo_param_name("ITLB size value"));
         }
 
         if (!(ITLB_ENT_SH_MASK & ent->ent) &&

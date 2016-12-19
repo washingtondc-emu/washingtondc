@@ -26,7 +26,33 @@
 #include <string>
 #include <exception>
 
-class InitError : public std::exception {
+#include <boost/exception/all.hpp>
+
+#include "types.hpp"
+
+typedef boost::error_info<struct tag_feature_name_error_info, std::string>
+errinfo_feature;
+
+typedef boost::error_info<struct tag_param_name_error_info, std::string>
+errinfo_param_name;
+
+typedef boost::error_info<struct tag_wtf_error_info, std::string> errinfo_wtf;
+
+typedef boost::error_info<struct tag_guest_addr_error_info, addr32_t>
+errinfo_guest_addr;
+
+/*
+ * errinfo_advice - for when the program already
+ * knows what you need to do to fix something.
+ */
+typedef boost::error_info<struct tag_advice_error_info, std::string>
+errinfo_advice;
+
+class BaseException : public virtual std::exception,
+                      public virtual boost::exception {
+};
+
+class InitError : public BaseException {
 public:
     InitError(char const *desc) {
         this->desc = desc;
@@ -40,8 +66,12 @@ private:
 };
 
 // IntegrityError - for things that *should* be impossible
-class IntegrityError : public std::exception {
+class IntegrityError : public BaseException {
 public:
+    IntegrityError() {
+        this->desc = "IntegrityError";
+    }
+
     IntegrityError(char const *desc) {
         this->desc = desc;
     }
@@ -53,22 +83,24 @@ private:
     char const *desc;
 };
 
-class MemBoundsError : public std::exception {
+class MemBoundsError : public BaseException {
 public:
+    MemBoundsError() {
+        this->addr = 0xdeadbeef;
+    }
+
     MemBoundsError(unsigned addr) {
         this->addr = addr;
     }
 
     char const* what() const throw() {
-        // TODO: IDK how to put the addr in the what() output without
-        //       making an allocation that may throw another exception
-        return "Memory access error (bad address)";
+        return "out-of-bounds memory acces";
     }
 private:
     unsigned addr;
 };
 
-class MemAlignError : public std::exception {
+class MemAlignError : public BaseException {
 public:
     MemAlignError(unsigned addr) {
         this->addr = addr;
@@ -82,8 +114,12 @@ private:
     unsigned addr;
 };
 
-class InvalidParamError : public std::exception {
+class InvalidParamError : public BaseException {
 public:
+    InvalidParamError() {
+        this->desc = "Invalid parameter value";
+    }
+
     InvalidParamError(char const *desc) {
         this->desc = desc;
     }
@@ -95,8 +131,13 @@ private:
     char const *desc;
 };
 
-class UnimplementedError : public std::exception {
+class UnimplementedError : public BaseException {
 public:
+    UnimplementedError() {
+        inst_name = "Unable to continue because an unimplemented "
+            "feature is required";
+    }
+
     UnimplementedError(char const *inst_name) {
         this->inst_name = inst_name;
     }
@@ -108,7 +149,7 @@ private:
     char const *inst_name;
 };
 
-class UnimplementedInstructionError : public std::exception {
+class UnimplementedInstructionError : public BaseException {
 public:
     UnimplementedInstructionError(char const *inst_name) {
         this->inst_name = inst_name;
@@ -121,28 +162,28 @@ private:
     char const *inst_name;
 };
 
-class BadOpcodeError : public std::exception {
+class BadOpcodeError : public BaseException {
 public:
     char const *what() const throw() {
         return "Bad opcode";
     }
 };
 
-class StackUnderflowError : public std::exception {
+class StackUnderflowError : public BaseException {
 public:
     char const *what() const throw() {
         return "Stack underflow";
     }
 };
 
-class StackOverflowError : public std::exception {
+class StackOverflowError : public BaseException {
 public:
     char const *what() const throw() {
         return "Stack overflow";
     }
 };
 
-class InvalidRegisterError : public std::exception {
+class InvalidRegisterError : public BaseException {
 public:
     char const *what() const throw() {
         return "Invalid register";

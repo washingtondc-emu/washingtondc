@@ -8158,8 +8158,8 @@ int main(int argc, char **argv) {
             test++;
             n_tests++;
         }
-    } catch (UnimplementedError excp) {
-        std::cerr << "ERROR: " << excp.what() << std::endl;
+    } catch (BaseException& err) {
+        std::cerr << boost::diagnostic_information(err);
         return 1;
     }
 

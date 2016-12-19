@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <iostream>
 
+#include "BaseException.hpp"
 #include "Dreamcast.hpp"
 
 static void print_usage(char const *cmd) {
@@ -52,22 +53,27 @@ int main(int argc, char **argv) {
 
     if (argc != 0 || !bios_path) {
         print_usage(cmd);
-        return 1;
+        exit(1);
     }
 
-    Dreamcast dc(bios_path);
+    try {
+        Dreamcast dc(bios_path);
 
-    if (enable_debugger) {
+        if (enable_debugger) {
 #ifdef ENABLE_DEBUGGER
-        dc.enable_debugger();
+            dc.enable_debugger();
 #else
-        std::cerr << "WARNING: Unable to enable remote gdb stub." <<
-            std::endl << "Please rebuild with -DENABLE_DEBUGGER=On" <<
-            std::endl;
+            std::cerr << "WARNING: Unable to enable remote gdb stub." <<
+                std::endl << "Please rebuild with -DENABLE_DEBUGGER=On" <<
+                std::endl;
 #endif
+        }
+
+        dc.run();
+    } catch (BaseException& err) {
+        std::cerr << boost::diagnostic_information(err);
+        exit(1);
     }
 
-    dc.run();
-
-    return 0;
+    exit(0);
 }

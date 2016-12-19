@@ -30,6 +30,14 @@
 #include "RandGenerator.hpp"
 #include "BaseException.hpp"
 
+typedef boost::error_info<struct tag_inst_template_error_info, std::string>
+errinfo_inst_template;
+
+typedef boost::error_info<struct tag_nbits_error_info, unsigned>
+errinfo_nbits;
+
+typedef boost::error_info<struct tag_scale_error_info, unsigned> errinfo_scale;
+
 /*
  * This function tests assembler and disassembler functionality on the given
  * string by first assembling it, then disassessembling it then reassembling it
@@ -367,7 +375,10 @@ std::string process_inst_str(RandGen *gen, std::string inst) {
             unsigned n_bits = atoi(val_str.c_str());
             unsigned scale = atoi(scale_str.c_str());
             if (n_bits > MASK_MAX)
-                throw InvalidParamError("Too many bits in instruction mask!");
+                BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                                      errinfo_inst_template(inst) <<
+                                      errinfo_scale(scale) <<
+                                      errinfo_nbits(n_bits));
             boost::uint32_t val_mask = masks[n_bits];
             boost::uint32_t rand_val = gen->pick_val(0) & val_mask;
 
@@ -389,10 +400,14 @@ int test_all_insts(unsigned seed) {
     gen.reset();
 
     while (*inst) {
-        std::string processed(process_inst_str(&gen, std::string(*inst)));
+        try {
+            std::string processed(process_inst_str(&gen, std::string(*inst)));
 
-        if (test_inst(processed + "\n"))
-            n_success++;
+            if (test_inst(processed + "\n"))
+                n_success++;
+        } catch (boost::exception& err) {
+            std::cerr << boost::diagnostic_information(err);
+        }
         n_tests++;
 
         inst++;

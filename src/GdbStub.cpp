@@ -115,7 +115,7 @@ void GdbStub::deserialize_regs(std::string input_str, reg32_t regs[N_REGS]) {
         // TODO: better error messages
         std::cout << "sz_expect is " << sz_expect << ", sz_actual is " <<
             sz_actual << std::endl;
-        throw IntegrityError("Some shit with gdb i guess");
+        BOOST_THROW_EXCEPTION(IntegrityError("Some shit with gdb i guess"));
     }
 }
 

@@ -47,14 +47,14 @@ unsigned Sh4Prog::to_hex(char ch) {
     if (ch >= 'A' && ch <= 'F')
         return ch - 'A' + 10;
 
-    throw InvalidParamError("character is not hex");
+    BOOST_THROW_EXCEPTION(InvalidParamError("character is not hex"));
 }
 
 addr32_t Sh4Prog::lookup_sym(const std::string& sym_name) const {
     SymMap::const_iterator it = syms.find(sym_name);
 
     if (it == syms.end())
-        throw BadSymbolError(sym_name.c_str());
+        BOOST_THROW_EXCEPTION(BadSymbolError(sym_name.c_str()));
 
     return it->second;
 }
@@ -72,7 +72,7 @@ void Sh4Prog::add_single_line(const std::string& line) {
 
     if (line.at(0) == '.') {
         if (line.substr(0, 5) != ".byte")
-            throw ParseError("Unrecognized assembler directive");
+            BOOST_THROW_EXCEPTION(ParseError("Unrecognized assembler directive"));
 
         unsigned char_count = 0;
         uint8_t data = 0;
@@ -83,12 +83,14 @@ void Sh4Prog::add_single_line(const std::string& line) {
             if (isspace(*it)) {
                 found_space = true;
             } else if (found_space) {
-                throw ParseError("Garbage data in .byte directive");
+                BOOST_THROW_EXCEPTION(ParseError("Garbage data in "
+                                                 ".byte directive"));
             } else if (char_count < 2) {
                 data = (data << 4) | to_hex(*it);
                 char_count++;
             } else {
-                throw ParseError("more than a byte of data in a .byte directive");
+                BOOST_THROW_EXCEPTION(ParseError("more than a byte of data in "
+                                                 "a .byte directive"));
             }
         }
 
@@ -155,7 +157,7 @@ inst_t Sh4Prog::assemble_inst(const std::string& inst) const {
         }
     }
 
-    throw ParseError("Unrecognized opcode");
+    BOOST_THROW_EXCEPTION(ParseError("Unrecognized opcode"));
 }
 
 std::string Sh4Prog::disassemble_inst(inst_t inst) const {
@@ -168,7 +170,7 @@ std::string Sh4Prog::disassemble_inst(inst_t inst) const {
         }
     }
 
-    throw ParseError("Unrecognized instruction");
+    BOOST_THROW_EXCEPTION(ParseError("Unrecognized instruction"));
 }
 
 std::string Sh4Prog::preprocess_line(const std::string& line) {

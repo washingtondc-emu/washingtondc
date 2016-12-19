@@ -63,8 +63,8 @@ void Dreamcast::run() {
 
             cpu->exec_inst();
         }
-    } catch(const std::exception& exc) {
-        std::cerr << "Exception caught - " << exc.what() << std::endl;
+    } catch(const BaseException& exc) {
+        std::cerr << boost::diagnostic_information(exc);
     }
 }
 

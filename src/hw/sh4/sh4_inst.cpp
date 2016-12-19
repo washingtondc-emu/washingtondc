@@ -31,6 +31,12 @@
 #include "Ocache.hpp"
 #endif
 
+typedef boost::error_info<struct tag_opcode_format_error_info, std::string>
+errinfo_opcode_format;
+
+typedef boost::error_info<struct tag_opcode_name_error_info, std::string>
+errinfo_opcode_name;
+
 struct Sh4::InstOpcode Sh4::opcode_list[] = {
     // RTS
     { "0000000000001011", &Sh4::inst_rts },
@@ -737,7 +743,8 @@ void Sh4::exec_inst() {
 
     if ((exc_pending = read_inst(&inst, reg.pc))) {
         // fuck it, i'll commit now and figure what to do here later
-        throw UnimplementedError("Something to do with exceptions, I guess");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("SH4 CPU exceptions/traps"));
     }
 
     do_exec_inst(inst);
@@ -760,7 +767,9 @@ void Sh4::do_exec_inst(inst_t inst) {
         op++;
     }
 
-    throw UnimplementedError("CPU exception for unrecognized opcode");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("SH4 CPU exception for "
+                                          "unrecognized opcode"));
 }
 
 void Sh4::compile_instructions() {
@@ -777,7 +786,9 @@ void Sh4::compile_instruction(struct Sh4::InstOpcode *op) {
     inst_t mask = 0, val = 0;
 
     if (strlen(fmt) != 16)
-        throw InvalidParamError("Invalid instruction opcode format");
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_param_name("instruction opcode format") <<
+                              errinfo_opcode_format(fmt));
 
     for (int idx = 0; idx < 16; idx++) {
         val <<= 1;
@@ -798,7 +809,10 @@ void Sh4::compile_instruction(struct Sh4::InstOpcode *op) {
 // RTS
 // 0000000000001011
 void Sh4::inst_rts(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0000000000001011") <<
+                          errinfo_opcode_name("RTS"));
 }
 
 
@@ -825,7 +839,10 @@ void Sh4::inst_clrt(OpArgs inst) {
 // LDTLB
 // 0000000000111000
 void Sh4::inst_ldtlb(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0000000000111000") <<
+                          errinfo_opcode_name("LDTLB"));
 }
 
 // NOP
@@ -837,7 +854,10 @@ void Sh4::inst_nop(OpArgs inst) {
 // RTE
 // 0000000000101011
 void Sh4::inst_rte(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0000000000101011") <<
+                          errinfo_opcode_name("RTE"));
 }
 
 // SETS
@@ -855,19 +875,28 @@ void Sh4::inst_sett(OpArgs inst) {
 // SLEEP
 // 0000000000011011
 void Sh4::inst_sleep(OpArgs inst) {
-    throw UnimplementedError("Power-down state (\"SLEEP mode\")");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0000000000011011") <<
+                          errinfo_opcode_name("SLEEP"));
 }
 
 // FRCHG
 // 1111101111111101
 void Sh4::inst_frchg(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111101111111101") <<
+                          errinfo_opcode_name("FRCHG"));
 }
 
 // FSCHG
 // 1111001111111101
 void Sh4::inst_fschg(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111001111111101") <<
+                          errinfo_opcode_name("FSCHG"));
 }
 
 // MOVT Rn
@@ -1073,13 +1102,19 @@ void Sh4::inst_unary_shlr16_gen(OpArgs inst) {
 // BRAF Rn
 // 0000nnnn00100011
 void Sh4::inst_unary_braf_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0000nnnn00100011") <<
+                          errinfo_opcode_name("BRAF Rn"));
 }
 
 // BSRF Rn
 // 0000nnnn00000011
 void Sh4::inst_unary_bsrf_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0000nnnn00000011") <<
+                          errinfo_opcode_name("BSRF Rn"));
 }
 
 // CMP/EQ #imm, R0
@@ -1179,43 +1214,64 @@ void Sh4::inst_binary_xorb_imm_r0_gbr(OpArgs inst) {
 // BF label
 // 10001011dddddddd
 void Sh4::inst_unary_bf_disp(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("10001011dddddddd") <<
+                          errinfo_opcode_name("BF label"));
 }
 
 // BF/S label
 // 10001111dddddddd
 void Sh4::inst_unary_bfs_disp(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("10001111dddddddd") <<
+                          errinfo_opcode_name("BF/S label"));
 }
 
 // BT label
 // 10001001dddddddd
 void Sh4::inst_unary_bt_disp(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("10001001dddddddd") <<
+                          errinfo_opcode_name("BT label"));
 }
 
 // BT/S label
 // 10001101dddddddd
 void Sh4::inst_unary_bts_disp(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("10001101dddddddd") <<
+                          errinfo_opcode_name("BT/S label"));
 }
 
 // BRA label
 // 1010dddddddddddd
 void Sh4::inst_unary_bra_disp(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1010dddddddddddd") <<
+                          errinfo_opcode_name("BRA label"));
 }
 
 // BSR label
 // 1011dddddddddddd
 void Sh4::inst_unary_bsr_disp(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1011dddddddddddd") <<
+                          errinfo_opcode_name("BSR label"));
 }
 
 // TRAPA #immed
 // 11000011iiiiiiii
 void Sh4::inst_unary_trapa_disp(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("11000011iiiiiiii") <<
+                          errinfo_opcode_name("TRAPA #immed"));
 }
 
 // TAS.B @Rn
@@ -1286,8 +1342,11 @@ void Sh4::inst_unary_ocbi_indgen(OpArgs inst) {
             return;
         }
 #else
-        throw UnimplementedError("MMU (run cmake with "
-                                 "-DENABLE_SH4_MMU=ON and rebuild)");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("MMU") <<
+                              errinfo_advice("run cmake with "
+                                             "-DENABLE_SH4_MMU=ON "
+                                             "and rebuild"));
 #endif
     } else {
         paddr = addr;
@@ -1353,8 +1412,11 @@ void Sh4::inst_unary_ocbp_indgen(OpArgs inst) {
             return;
         }
 #else
-        throw UnimplementedError("MMU (run cmake with "
-                                 "-DENABLE_SH4_MMU=ON and rebuild)");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("MMU") <<
+                              errinfo_advice("run cmake with "
+                                             "-DENABLE_SH4_MMU=ON "
+                                             "and rebuild"));
 #endif
     } else {
         paddr = addr;
@@ -1370,19 +1432,28 @@ void Sh4::inst_unary_ocbp_indgen(OpArgs inst) {
 // PREF @Rn
 // 0000nnnn10000011
 void Sh4::inst_unary_pref_indgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0000nnnn10000011") <<
+                          errinfo_opcode_name("PREF @Rn"));
 }
 
 // JMP @Rn
 // 0100nnnn00101011
 void Sh4::inst_unary_jmp_indgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0100nnnn00101011") <<
+                          errinfo_opcode_name("JMP @Rn"));
 }
 
 // JSR @Rn
-//0100nnnn00001011
+// 0100nnnn00001011
 void Sh4::inst_unary_jsr_indgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0100nnnn00001011") <<
+                          errinfo_opcode_name("JSR @Rn"));
 }
 
 // LDC Rm, SR
@@ -1390,8 +1461,10 @@ void Sh4::inst_unary_jsr_indgen(OpArgs inst) {
 void Sh4::inst_binary_ldc_gen_sr(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg.sr = *gen_reg(inst.gen_reg);
@@ -1408,8 +1481,10 @@ void Sh4::inst_binary_ldc_gen_gbr(OpArgs inst) {
 void Sh4::inst_binary_ldc_gen_vbr(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg.vbr = *gen_reg(inst.gen_reg);
@@ -1420,8 +1495,10 @@ void Sh4::inst_binary_ldc_gen_vbr(OpArgs inst) {
 void Sh4::inst_binary_ldc_gen_ssr(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg.ssr = *gen_reg(inst.gen_reg);
@@ -1432,8 +1509,10 @@ void Sh4::inst_binary_ldc_gen_ssr(OpArgs inst) {
 void Sh4::inst_binary_ldc_gen_spc(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg.spc = *gen_reg(inst.gen_reg);
@@ -1444,8 +1523,10 @@ void Sh4::inst_binary_ldc_gen_spc(OpArgs inst) {
 void Sh4::inst_binary_ldc_gen_dbr(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg.dbr = *gen_reg(inst.gen_reg);
@@ -1456,8 +1537,10 @@ void Sh4::inst_binary_ldc_gen_dbr(OpArgs inst) {
 void Sh4::inst_binary_stc_sr_gen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     *gen_reg(inst.gen_reg) = reg.sr;
@@ -1474,8 +1557,10 @@ void Sh4::inst_binary_stc_gbr_gen(OpArgs inst) {
 void Sh4::inst_binary_stc_vbr_gen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     *gen_reg(inst.gen_reg) = reg.vbr;
@@ -1486,8 +1571,10 @@ void Sh4::inst_binary_stc_vbr_gen(OpArgs inst) {
 void Sh4::inst_binary_stc_ssr_gen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     *gen_reg(inst.gen_reg) = reg.ssr;
@@ -1498,8 +1585,10 @@ void Sh4::inst_binary_stc_ssr_gen(OpArgs inst) {
 void Sh4::inst_binary_stc_spc_gen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     *gen_reg(inst.gen_reg) = reg.spc;
@@ -1510,8 +1599,10 @@ void Sh4::inst_binary_stc_spc_gen(OpArgs inst) {
 void Sh4::inst_binary_stc_sgr_gen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     *gen_reg(inst.gen_reg) = reg.sgr;
@@ -1522,8 +1613,10 @@ void Sh4::inst_binary_stc_sgr_gen(OpArgs inst) {
 void Sh4::inst_binary_stc_dbr_gen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     *gen_reg(inst.gen_reg) = reg.dbr;
@@ -1537,8 +1630,10 @@ void Sh4::inst_binary_ldcl_indgeninc_sr(OpArgs inst) {
 
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     src_reg = gen_reg(inst.gen_reg);
@@ -1573,8 +1668,10 @@ void Sh4::inst_binary_ldcl_indgeninc_vbr(OpArgs inst) {
 
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     src_reg = gen_reg(inst.gen_reg);
@@ -1594,8 +1691,10 @@ void Sh4::inst_binary_ldcl_indgenic_ssr(OpArgs inst) {
 
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     src_reg = gen_reg(inst.gen_reg);
@@ -1615,8 +1714,10 @@ void Sh4::inst_binary_ldcl_indgeninc_spc(OpArgs inst) {
 
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     src_reg = gen_reg(inst.gen_reg);
@@ -1636,8 +1737,10 @@ void Sh4::inst_binary_ldcl_indgeninc_dbr(OpArgs inst) {
 
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     src_reg = gen_reg(inst.gen_reg);
@@ -1654,8 +1757,10 @@ void Sh4::inst_binary_ldcl_indgeninc_dbr(OpArgs inst) {
 void Sh4::inst_binary_stcl_sr_inddecgen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg32_t *regp = gen_reg(inst.gen_reg);
@@ -1682,8 +1787,10 @@ void Sh4::inst_binary_stcl_gbr_inddecgen(OpArgs inst) {
 void Sh4::inst_binary_stcl_vbr_inddecgen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg32_t *regp = gen_reg(inst.gen_reg);
@@ -1699,8 +1806,10 @@ void Sh4::inst_binary_stcl_vbr_inddecgen(OpArgs inst) {
 void Sh4::inst_binary_stcl_ssr_inddecgen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg32_t *regp = gen_reg(inst.gen_reg);
@@ -1716,8 +1825,10 @@ void Sh4::inst_binary_stcl_ssr_inddecgen(OpArgs inst) {
 void Sh4::inst_binary_stcl_spc_inddecgen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg32_t *regp = gen_reg(inst.gen_reg);
@@ -1733,8 +1844,10 @@ void Sh4::inst_binary_stcl_spc_inddecgen(OpArgs inst) {
 void Sh4::inst_binary_stcl_sgr_inddecgen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg32_t *regp = gen_reg(inst.gen_reg);
@@ -1750,8 +1863,10 @@ void Sh4::inst_binary_stcl_sgr_inddecgen(OpArgs inst) {
 void Sh4::inst_binary_stcl_dbr_inddecgen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg32_t *regp = gen_reg(inst.gen_reg);
@@ -1960,25 +2075,37 @@ void Sh4::inst_binary_cmpstr_gen_gen(OpArgs inst) {
 // DIV1 Rm, Rn
 // 0011nnnnmmmm0100
 void Sh4::inst_binary_div1_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0011nnnnmmmm0100") <<
+                          errinfo_opcode_name("DIV1 Rm, Rn"));
 }
 
 // DIV0S Rm, Rn
 // 0010nnnnmmmm0111
 void Sh4::inst_binary_div0s_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0010nnnnmmmm0111") <<
+                          errinfo_opcode_name("DIV0S Rm, Rn"));
 }
 
 // DMULS.L Rm, Rn
-//0011nnnnmmmm1101
+// 0011nnnnmmmm1101
 void Sh4::inst_binary_dmulsl_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0011nnnnmmmm1101") <<
+                          errinfo_opcode_name("DMULS.L Rm, Rn"));
 }
 
 // DMULU.L Rm, Rn
 // 0011nnnnmmmm0101
 void Sh4::inst_binary_dmulul_gen_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0011nnnnmmmm0101") <<
+                          errinfo_opcode_name("DMULU.L Rm, Rn"));
 }
 
 // EXTS.B Rm, Rn
@@ -2179,8 +2306,10 @@ void Sh4::inst_binary_shld_gen_gen(OpArgs inst) {
 void Sh4::inst_binary_ldc_gen_bank(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     *bank_reg(inst.bank_reg) = *gen_reg(inst.gen_reg);
@@ -2194,8 +2323,10 @@ void Sh4::inst_binary_ldcl_indgeninc_bank(OpArgs inst) {
 
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     src_reg = gen_reg(inst.gen_reg);
@@ -2212,8 +2343,10 @@ void Sh4::inst_binary_ldcl_indgeninc_bank(OpArgs inst) {
 void Sh4::inst_binary_stc_bank_gen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     *gen_reg(inst.gen_reg) = *bank_reg(inst.bank_reg);
@@ -2224,8 +2357,10 @@ void Sh4::inst_binary_stc_bank_gen(OpArgs inst) {
 void Sh4::inst_binary_stcl_bank_inddecgen(OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
     if (!(reg.sr & SR_MD_MASK))
-        throw UnimplementedError("CPU exception for using a privileged "
-                                 "exception in an unprivileged mode");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for using a "
+                                              "privileged exception in an "
+                                              "unprivileged mode"));
 #endif
 
     reg32_t *addr_reg = gen_reg(inst.gen_reg);
@@ -2839,8 +2974,11 @@ void Sh4::inst_binary_movcal_r0_indgen(OpArgs inst) {
             return;
         }
 #else
-        throw UnimplementedError("MMU (run cmake with "
-                                 "-DENABLE_SH4_MMU=ON and rebuild)");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("MMU") <<
+                              errinfo_advice("run cmake with "
+                                             "-DENABLE_SH4_MMU=ON "
+                                             "and rebuild"));
 #endif
     } else {
         paddr = vaddr;
@@ -2865,371 +3003,557 @@ void Sh4::inst_binary_movcal_r0_indgen(OpArgs inst) {
 // FLDI0 FRn
 // 1111nnnn10001101
 void Sh4::inst_unary_fldi0_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnn10001101") <<
+                          errinfo_opcode_name("FLDI0 FRn"));
 }
 
 // FLDI1 Frn
 // 1111nnnn10011101
 void Sh4::inst_unary_fldi1_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnn10011101") <<
+                          errinfo_opcode_name("FLDI1 Frn"));
 }
 
 // FMOV FRm, FRn
 // 1111nnnnmmmm1100
 void Sh4::inst_binary_fmov_fr_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm1100") <<
+                          errinfo_opcode_name("FMOV FRm, FRn"));
 }
 
 // FMOV.S @Rm, FRn
 // 1111nnnnmmmm1000
 void Sh4::inst_binary_fmovs_indgen_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm1000") <<
+                          errinfo_opcode_name("FMOV.S @Rm, FRn"));
 }
 
 // FMOV.S @(R0,Rm), FRn
 // 1111nnnnmmmm0110
 void Sh4::inst_binary_fmovs_binind_r0_gen_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm0110") <<
+                          errinfo_opcode_name("FMOV.S @(R0,Rm), FRn"));
 }
 
 // FMOV.S @Rm+, FRn
 // 1111nnnnmmmm1001
 void Sh4::inst_binary_fmovs_indgeninc_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm1001") <<
+                          errinfo_opcode_name("FMOV.S @Rm+, FRn"));
 }
 
 // FMOV.S FRm, @Rn
 // 1111nnnnmmmm1010
 void Sh4::inst_binary_fmovs_fr_indgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm1010") <<
+                          errinfo_opcode_name("FMOV.S FRm, @Rn"));
 }
 
 // FMOV.S FRm, @-Rn
 // 1111nnnnmmmm1011
 void Sh4::inst_binary_fmovs_fr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm1011") <<
+                          errinfo_opcode_name("FMOV.S FRm, @-Rn"));
 }
 
 // FMOV.S FRm, @(R0, Rn)
 // 1111nnnnmmmm0111
 void Sh4::inst_binary_fmovs_fr_binind_r0_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm0111") <<
+                          errinfo_opcode_name("FMOV.S FRm, @(R0, Rn)"));
 }
 
 // FMOV DRm, DRn
 // 1111nnn0mmm01100
 void Sh4::inst_binary_fmov_dr_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmm01100") <<
+                          errinfo_opcode_name("FMOV DRm, DRn"));
 }
 
 // FMOV @Rm, DRn
 // 1111nnn0mmmm1000
 void Sh4::inst_binary_fmov_indgen_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmmm1000") <<
+                          errinfo_opcode_name("FMOV @Rm, DRn"));
 }
 
 // FMOV @(R0, Rm), DRn
 // 1111nnn0mmmm0110
 void Sh4::inst_binary_fmov_binind_r0_gen_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmmm0110") <<
+                          errinfo_opcode_name("FMOV @(R0, Rm), DRn"));
 }
 
 // FMOV @Rm+, DRn
 // 1111nnn0mmmm1001
 void Sh4::inst_binary_fmov_indgeninc_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmmm1001") <<
+                          errinfo_opcode_name("FMOV @Rm+, DRn"));
 }
 
 // FMOV DRm, @Rn
 // 1111nnnnmmm01010
 void Sh4::inst_binary_fmov_dr_indgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmm01010") <<
+                          errinfo_opcode_name("FMOV DRm, @Rn"));
 }
 
 // FMOV DRm, @-Rn
 // 1111nnnnmmm01011
 void Sh4::inst_binary_fmov_dr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmm01011") <<
+                          errinfo_opcode_name("FMOV DRm, @-Rn"));
 }
 
-// FMOV DRm, @(R0,Rn)
+// FMOV DRm, @(R0, Rn)
 // 1111nnnnmmm00111
 void Sh4::inst_binary_fmov_dr_binind_r0_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmm00111") <<
+                          errinfo_opcode_name("FMOV DRm, @(R0, Rn)"));
 }
 
 // FLDS FRm, FPUL
 // 1111mmmm00011101
 void Sh4::inst_binary_flds_fr_fpul(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111mmmm00011101") <<
+                          errinfo_opcode_name("FLDS FRm, FPUL"));
 }
 
 // FSTS FPUL, FRn
 // 1111nnnn00001101
 void Sh4::inst_binary_fsts_fpul_fp(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnn00001101") <<
+                          errinfo_opcode_name("FSTS FPUL, FRn"));
 }
 
 // FABS FRn
 // 1111nnnn01011101
 void Sh4::inst_unary_fabs_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnn01011101") <<
+                          errinfo_opcode_name("FABS FRn"));
 }
 
 // FADD FRm, FRn
 // 1111nnnnmmmm0000
 void Sh4::inst_binary_fadd_fr_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm0000") <<
+                          errinfo_opcode_name("FADD FRm, FRn"));
 }
 
 // FCMP/EQ FRm, FRn
 // 1111nnnnmmmm0100
 void Sh4::inst_binary_fcmpeq_fr_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm0100") <<
+                          errinfo_opcode_name("FCMP/EQ FRm, FRn"));
 }
 
 // FCMP/GT FRm, FRn
 // 1111nnnnmmmm0101
 void Sh4::inst_binary_fcmpgt_fr_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm0101") <<
+                          errinfo_opcode_name("FCMP/GT FRm, FRn"));
 }
 
 // FDIV FRm, FRn
 // 1111nnnnmmmm0011
 void Sh4::inst_binary_fdiv_fr_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm0011") <<
+                          errinfo_opcode_name("FDIV FRm, FRn"));
 }
 
 // FLOAT FPUL, FRn
 // 1111nnnn00101101
 void Sh4::inst_binary_float_fpul_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnn00101101") <<
+                          errinfo_opcode_name("FLOAT FPUL, FRn"));
 }
 
 // FMAC FR0, FRm, FRn
 // 1111nnnnmmmm1110
 void Sh4::inst_trinary_fmac_fr0_fr_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm1110") <<
+                          errinfo_opcode_name("FMAC FR0, FRm, FRn"));
 }
 
 // FMUL FRm, FRn
 // 1111nnnnmmmm0010
 void Sh4::inst_binary_fmul_fr_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm0010") <<
+                          errinfo_opcode_name("FMUL FRm, FRn"));
 }
 
 // FNEG FRn
 // 1111nnnn01001101
 void Sh4::inst_unary_fneg_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnn01001101") <<
+                          errinfo_opcode_name("FNEG FRn"));
 }
 
 // FSQRT FRn
 // 1111nnnn01101101
 void Sh4::inst_unary_fsqrt_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnn01101101") <<
+                          errinfo_opcode_name("FSQRT FRn"));
 }
 
 // FSUB FRm, FRn
 // 1111nnnnmmmm0001
 void Sh4::inst_binary_fsub_fr_fr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmmm0001") <<
+                          errinfo_opcode_name("FSUB FRm, FRn"));
 }
 
 // FTRC FRm, FPUL
 // 1111mmmm00111101
 void Sh4::inst_binary_ftrc_fr_fpul(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111mmmm00111101") <<
+                          errinfo_opcode_name("FTRC FRm, FPUL"));
 }
 
 // FABS DRn
 // 1111nnn001011101
 void Sh4::inst_unary_fabs_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn001011101") <<
+                          errinfo_opcode_name("FABS DRn"));
 }
 
 // FADD DRm, DRn
 // 1111nnn0mmm00000
 void Sh4::inst_binary_fadd_dr_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmm00000") <<
+                          errinfo_opcode_name("FADD DRm, DRn"));
 }
 
 // FCMP/EQ DRm, DRn
 // 1111nnn0mmm00100
 void Sh4::inst_binary_fcmpeq_dr_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmm00100") <<
+                          errinfo_opcode_name("FCMP/EQ DRm, DRn"));
 }
 
 // FCMP/GT DRm, DRn
 // 1111nnn0mmm00101
 void Sh4::inst_binary_fcmpgt_dr_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmm00101") <<
+                          errinfo_opcode_name("FCMP/GT DRm, DRn"));
 }
 
 // FDIV DRm, DRn
 // 1111nnn0mmm00011
 void Sh4::inst_binary_fdiv_dr_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmm00011") <<
+                          errinfo_opcode_name("FDIV DRm, DRn"));
 }
 
 // FCNVDS DRm, FPUL
 // 1111mmm010111101
 void Sh4::inst_binary_fcnvds_dr_fpul(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111mmm010111101") <<
+                          errinfo_opcode_name("FCNVDS DRm, FPUL"));
 }
 
 // FCNVSD FPUL, DRn
 // 1111nnn010101101
 void Sh4::inst_binary_fcnvsd_fpul_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn010101101") <<
+                          errinfo_opcode_name("FCNVSD FPUL, DRn"));
 }
 
 // FLOAT FPUL, DRn
 // 1111nnn000101101
 void Sh4::inst_binary_float_fpul_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn000101101") <<
+                          errinfo_opcode_name("FLOAT FPUL, DRn"));
 }
 
 // FMUL DRm, DRn
 // 1111nnn0mmm00010
 void Sh4::inst_binary_fmul_dr_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmm00010") <<
+                          errinfo_opcode_name("FMUL DRm, DRn"));
 }
 
 // FNEG DRn
 // 1111nnn001001101
 void Sh4::inst_unary_fneg_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn001001101") <<
+                          errinfo_opcode_name("FNEG DRn"));
 }
 
 // FSQRT DRn
 // 1111nnn001101101
 void Sh4::inst_unary_fsqrt_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn001101101") <<
+                          errinfo_opcode_name("FSQRT DRn"));
 }
 
 // FSUB DRm, DRn
 // 1111nnn0mmm00001
 void Sh4::inst_binary_fsub_dr_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmm00001") <<
+                          errinfo_opcode_name("FSUB DRm, DRn"));
 }
 
 // FTRC DRm, FPUL
 // 1111mmm000111101
 void Sh4::inst_binary_ftrc_dr_fpul(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111mmm000111101") <<
+                          errinfo_opcode_name("FTRC DRm, FPUL"));
 }
 
 // LDS Rm, FPSCR
 // 0100mmmm01101010
 void Sh4::inst_binary_lds_gen_fpscr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0100mmmm01101010") <<
+                          errinfo_opcode_name("LDS Rm, FPSCR"));
 }
 
 // LDS Rm, FPUL
 // 0100mmmm01011010
 void Sh4::inst_binary_gen_fpul(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0100mmmm01011010") <<
+                          errinfo_opcode_name("LDS Rm, FPUL"));
 }
 
 // LDS.L @Rm+, FPSCR
 // 0100mmmm01100110
 void Sh4::inst_binary_ldsl_indgeninc_fpscr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0100mmmm01100110") <<
+                          errinfo_opcode_name("LDS.L @Rm+, FPSCR"));
 }
 
 // LDS.L @Rm+, FPUL
 // 0100mmmm01010110
 void Sh4::inst_binary_ldsl_indgeninc_fpul(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0100mmmm01010110") <<
+                          errinfo_opcode_name("LDS.L @Rm+, FPUL"));
 }
 
 // STS FPSCR, Rn
 // 0000nnnn01101010
 void Sh4::inst_binary_sts_fpscr_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0000nnnn01101010") <<
+                          errinfo_opcode_name("STS FPSCR, Rn"));
 }
 
 // STS FPUL, Rn
 // 0000nnnn01011010
 void Sh4::inst_binary_sts_fpul_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0000nnnn01011010") <<
+                          errinfo_opcode_name("STS FPUL, Rn"));
 }
 
 // STS.L FPSCR, @-Rn
 // 0100nnnn01100010
 void Sh4::inst_binary_stsl_fpscr_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0100nnnn01100010") <<
+                          errinfo_opcode_name("STS.L FPSCR, @-Rn"));
 }
 
 // STS.L FPUL, @-Rn
 // 0100nnnn01010010
 void Sh4::inst_binary_stsl_fpul_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("0100nnnn01010010") <<
+                          errinfo_opcode_name("STS.L FPUL, @-Rn"));
 }
 
 // FMOV DRm, XDn
 // 1111nnn1mmm01100
 void Sh4::inst_binary_fmove_dr_xd(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn1mmm01100") <<
+                          errinfo_opcode_name("FMOV DRm, XDn"));
 }
 
 // FMOV XDm, DRn
 // 1111nnn0mmm11100
 void Sh4::inst_binary_fmov_xd_dr(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn0mmm11100") <<
+                          errinfo_opcode_name("FMOV XDm, DRn"));
 }
 
 // FMOV XDm, XDn
 // 1111nnn1mmm11100
 void Sh4::inst_binary_fmov_xd_xd(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn1mmm11100") <<
+                          errinfo_opcode_name("FMOV XDm, XDn"));
 }
 
 // FMOV @Rm, XDn
 // 1111nnn1mmmm1000
 void Sh4::inst_binary_fmov_indgen_xd(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn1mmmm1000") <<
+                          errinfo_opcode_name("FMOV @Rm, XDn"));
 }
 
 // FMOV @Rm+, XDn
 // 1111nnn1mmmm1001
 void Sh4::inst_binary_fmov_indgeninc_xd(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn1mmmm1001") <<
+                          errinfo_opcode_name("FMOV @Rm+, XDn"));
 }
 
 // FMOV @(R0, Rn), XDn
 // 1111nnn1mmmm0110
 void Sh4::inst_binary_fmov_binind_r0_gen_xd(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnn1mmmm0110") <<
+                          errinfo_opcode_name("FMOV @(R0, Rn), XDn"));
 }
 
 // FMOV XDm, @Rn
 // 1111nnnnmmm11010
 void Sh4::inst_binary_fmov_xd_indgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmm11010") <<
+                          errinfo_opcode_name("FMOV XDm, @Rn"));
 }
 
 // FMOV XDm, @-Rn
 // 1111nnnnmmm11011
 void Sh4::inst_binary_fmov_xd_inddecgen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmm11011") <<
+                          errinfo_opcode_name("FMOV XDm, @-Rn"));
 }
 
 // FMOV XDm, @(R0, Rn)
 // 1111nnnnmmm10111
 void Sh4::inst_binary_fmov_xs_binind_r0_gen(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnnnmmm10111") <<
+                          errinfo_opcode_name("FMOV XDm, @(R0, Rn)"));
 }
 
 // FIPR FVm, FVn - vector dot product
 // 1111nnmm11101101
 void Sh4::inst_binary_fipr_fv_fv(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nnmm11101101") <<
+                          errinfo_opcode_name("FIPR FVm, FVn"));
 }
 
 // FTRV MXTRX, FVn - multiple vector by matrix
 // 1111nn0111111101
 void Sh4::inst_binary_fitrv_mxtrx_fv(OpArgs inst) {
-    throw UnimplementedError("Instruction handler");
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("opcode implementation") <<
+                          errinfo_opcode_format("1111nn0111111101") <<
+                          errinfo_opcode_name("FTRV MXTRX, FVn"));
 }

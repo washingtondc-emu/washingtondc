@@ -38,7 +38,7 @@ Memory::~Memory() {
 int Memory::read(void *buf, size_t addr, size_t len) const {
     size_t end_addr = addr + (len - 1);
     if (addr >= size || end_addr >= size || end_addr < addr) {
-        throw MemBoundsError(addr);
+        BOOST_THROW_EXCEPTION(MemBoundsError() << errinfo_guest_addr(addr));
     }
 
     memcpy(buf, mem + addr, len);
@@ -49,7 +49,7 @@ int Memory::read(void *buf, size_t addr, size_t len) const {
 int Memory::write(void const *buf, size_t addr, size_t len) {
     size_t end_addr = addr + (len - 1);
     if (addr >= size || end_addr >= size || end_addr < addr) {
-        throw MemBoundsError(addr);
+        BOOST_THROW_EXCEPTION(MemBoundsError() << errinfo_guest_addr(addr));
     }
 
     memcpy(mem + addr, buf, len);

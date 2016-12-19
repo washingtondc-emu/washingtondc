@@ -48,7 +48,7 @@ static unsigned to_hex(char ch) {
     if (ch >= 'A' && ch <= 'F')
         return ch - 'A' + 10;
 
-    throw InvalidParamError("character is not hex");
+    BOOST_THROW_EXCEPTION(InvalidParamError("character is not hex"));
 }
 
 static void print_usage(char const *cmd) {

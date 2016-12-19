@@ -50,8 +50,9 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
          * looks like it's for instances where the page can be looked up in the
          * TLB.
          */
-        throw UnimplementedError("CPU exception for unprivileged access to "
-                                 "high memory areas");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for unprivileged "
+                                              "access to high memory areas"));
     }
 
     switch (virt_area) {
@@ -150,8 +151,11 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                 }
             }
 #else // ifdef ENABLE_SH4_MMU
-                throw UnimplementedError("MMU (run cmake with "
-                                         "-DENABLE_SH4_MMU=ON and rebuild)");
+            BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                  errinfo_feature("MMU") <<
+                                  errinfo_advice("run cmake with "
+                                                 "-DENABLE_SH4_MMU=ON"
+                                                 " and rebuild"));
 #endif
         } else {
 #ifdef ENABLE_SH4_OCACHE
@@ -163,8 +167,8 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                                                 cache_as_ram);
             }
 #else
-	    // don't use the cache
-	    return mem->write(&data, addr & 0x1fffffff, len);
+            // don't use the cache
+            return mem->write(&data, addr & 0x1fffffff, len);
 #endif
         }
         break;
@@ -189,14 +193,17 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
         return mem->write(&data, addr & 0x1fffffff, len);
         break;
     case AREA_P4:
-        throw UnimplementedError("Register access through memory");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("Register access through "
+                                              "memory"));
         break;
     default:
         break;
     }
 
-    throw IntegrityError("I don't believe it should be possible to get here "
-                         "(see Sh4::write_mem)");
+    BOOST_THROW_EXCEPTION(IntegrityError() <<
+                          errinfo_wtf("I don't believe it should be possible "
+                                      "to get here (see Sh4::write_mem)"));
 }
 
 int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
@@ -217,8 +224,9 @@ int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
          * looks like it's for instances where the page can be looked up in the
          * TLB.
          */
-        throw UnimplementedError("CPU exception for unprivileged access to "
-                                 "high memory areas");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for unprivileged "
+                                              "access to high memory areas"));
     }
 
     switch (virt_area) {
@@ -265,8 +273,11 @@ int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
             }
 #endif
 #else // ifdef ENABLE_SH4_MMU
-	    throw UnimplementedError("MMU (run cmake with "
-				     "-DENABLE_SH4_MMU=ON and rebuild)");
+            BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                  errinfo_feature("MMU") <<
+                                  errinfo_advice("run cmake with "
+                                                 "-DENABLE_SH4_MMU=ON "
+                                                 "and rebuild"));
 
 #endif
         } else {
@@ -279,8 +290,8 @@ int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
                                             cache_as_ram);
             }
 #else
-	    // don't use the cache
-	    return mem->read(data, addr & 0x1fffffff, len);
+            // don't use the cache
+            return mem->read(data, addr & 0x1fffffff, len);
 #endif
         }
         break;
@@ -305,7 +316,9 @@ int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
         return mem->read(&data, addr & 0x1fffffff, len);
         break;
     case AREA_P4:
-        throw UnimplementedError("Register access through memory");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("Register access "
+                                              "through memory"));
         break;
     default:
         break;
@@ -328,8 +341,9 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
          * looks like it's for instances where the page can be looked up in the
          * TLB.
          */
-        throw UnimplementedError("CPU exception for unprivileged access to "
-                                 "high memory areas");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for unprivileged "
+                                              "access to high memory areas"));
     }
 
     switch (virt_area) {
@@ -363,8 +377,11 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
 #endif
             }
 #else // ifdef ENABLE_SH4_MMU
-	    throw UnimplementedError("MMU (run cmake with "
-				     "-DENABLE_SH4_MMU=ON and rebuild)");
+            BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                  errinfo_feature("MMU") <<
+                                  errinfo_advice("run cmake with "
+                                                 "-DENABLE_SH4_MMU=ON "
+                                                  "and rebuild"));
 #endif
         } else {
 #ifdef ENABLE_SH4_ICACHE
@@ -400,8 +417,10 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
     case AREA_P2:
         return mem->read(out, addr & 0x1fffffff, sizeof(*out));
     case AREA_P4:
-        throw UnimplementedError("CPU exception for reading instructions from "
-                                 "the P4 memory area");
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("CPU exception for reading "
+                                              "instructions from the P4 "
+                                              "memory area"));
     default:
         break;
     }

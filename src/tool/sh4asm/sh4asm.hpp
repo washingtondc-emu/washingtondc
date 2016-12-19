@@ -26,11 +26,13 @@
 #include <sstream>
 
 #include <boost/tokenizer.hpp>
+#include <boost/exception/exception.hpp>
 
+#include "BaseException.hpp"
 #include "types.hpp"
 #include "Inst.hpp"
 
-class BadSymbolError : public std::exception {
+class BadSymbolError : public BaseException {
 public:
     BadSymbolError(char const *sym) {
         this->sym = sym;
@@ -43,7 +45,7 @@ private:
     char const *sym;
 };
 
-class ParseError : public std::exception {
+class ParseError : public BaseException {
 public:
     ParseError(char const *sym) {
         this->desc = desc;

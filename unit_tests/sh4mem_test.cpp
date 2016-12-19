@@ -31,6 +31,9 @@
 #include "hw/sh4/sh4.hpp"
 #include "RandGenerator.hpp"
 
+typedef boost::error_info<struct tag_utlb_index_error_info, unsigned>
+errinfo_utlb_index;
+
 // Generator that returns the address
 template<typename T>
 class AddrGenerator {
@@ -361,7 +364,9 @@ public:
     void set_utlb(unsigned utlb_idx, boost::uint32_t utlb_key,
                   boost::uint32_t utlb_ent) {
         if (utlb_idx >= Sh4::UTLB_SIZE)
-            throw InvalidParamError("Bad utlb index!");
+            BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                                  errinfo_utlb_index(utlb_idx) <<
+                                  errinfo_param_name("utlb_idx"));
 
         this->cpu->utlb[utlb_idx].key = utlb_key;
         this->cpu->utlb[utlb_idx].ent = utlb_ent;
@@ -575,12 +580,19 @@ int run_tests() {
 int main(int argc, char **argv) {
     Memory mem(16 * 1024 * 1024);
     Sh4 cpu(&mem);
+    int ret_val = 0;
 
-    instantiate_tests(&cpu, &mem);
+    try {
+        instantiate_tests(&cpu, &mem);
 
-    int ret_val = run_tests();
+        ret_val = run_tests();
 
-    cleanup_tests();
+        cleanup_tests();
+    } catch (BaseException& err) {
+        std::cerr << boost::diagnostic_information(err);
+
+        ret_val = 1;
+    }
 
     return ret_val;
 }
