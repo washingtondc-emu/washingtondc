@@ -183,6 +183,10 @@ public:
     // runs the next instruction, modifies CPU state and sets flags accordingly
     void exec_inst();
 
+    inline void next_inst() {
+        reg.pc += 2;
+    }
+
     // returns the program counter
     reg32_t get_pc() const;
 

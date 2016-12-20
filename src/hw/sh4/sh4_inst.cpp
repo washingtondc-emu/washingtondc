@@ -748,8 +748,6 @@ void Sh4::exec_inst() {
     }
 
     do_exec_inst(inst);
-
-    reg.pc += 2;
 }
 
 void Sh4::do_exec_inst(inst_t inst) {
@@ -820,6 +818,8 @@ void Sh4::inst_rts(OpArgs inst) {
 // 0000000000101000
 void Sh4::inst_clrmac(OpArgs inst) {
     reg.macl = reg.mach = 0;
+
+    next_inst();
 }
 
 
@@ -827,6 +827,8 @@ void Sh4::inst_clrmac(OpArgs inst) {
 // 0000000001001000
 void Sh4::inst_clrs(OpArgs inst) {
     reg.sr &= ~SR_FLAG_S_MASK;
+
+    next_inst();
 }
 
 
@@ -834,6 +836,8 @@ void Sh4::inst_clrs(OpArgs inst) {
 // 0000000000001000
 void Sh4::inst_clrt(OpArgs inst) {
     reg.sr &= ~SR_FLAG_T_MASK;
+
+    next_inst();
 }
 
 // LDTLB
@@ -849,6 +853,8 @@ void Sh4::inst_ldtlb(OpArgs inst) {
 // 0000000000001001
 void Sh4::inst_nop(OpArgs inst) {
     // do nothing
+
+    next_inst();
 }
 
 // RTE
@@ -864,12 +870,16 @@ void Sh4::inst_rte(OpArgs inst) {
 // 0000000001011000
 void Sh4::inst_sets(OpArgs inst) {
     reg.sr |= SR_FLAG_S_MASK;
+
+    next_inst();
 }
 
 // SETT
 // 0000000000011000
 void Sh4::inst_sett(OpArgs inst) {
     reg.sr |= SR_FLAG_T_MASK;
+
+    next_inst();
 }
 
 // SLEEP
@@ -904,6 +914,8 @@ void Sh4::inst_fschg(OpArgs inst) {
 void Sh4::inst_unary_movt_gen(OpArgs inst) {
     *gen_reg(inst.gen_reg) =
         (reg32_t)((reg.sr & SR_FLAG_T_MASK) >> SR_FLAG_T_SHIFT);
+
+    next_inst();
 }
 
 // CMP/PZ Rn
@@ -913,6 +925,8 @@ void Sh4::inst_unary_cmppz_gen(OpArgs inst) {
     uint32_t flag = (*gen_reg(inst.gen_reg)) >= 0;
 
     reg.sr |= flag << SR_FLAG_T_SHIFT;
+
+    next_inst();
 }
 
 // CMP/PL Rn
@@ -922,6 +936,8 @@ void Sh4::inst_unary_cmppl_gen(OpArgs inst) {
     uint32_t flag = (*gen_reg(inst.gen_reg)) > 0;
 
     reg.sr |= flag << SR_FLAG_T_SHIFT;
+
+    next_inst();
 }
 
 // DT Rn
@@ -931,6 +947,8 @@ void Sh4::inst_unary_dt_gen(OpArgs inst) {
     (*valp)--;
     reg.sr &= ~SR_FLAG_T_MASK;
     reg.sr |= (!*valp) << SR_FLAG_T_SHIFT;
+
+    next_inst();
 }
 
 // ROTL Rn
@@ -944,6 +962,8 @@ void Sh4::inst_unary_rotl_gen(OpArgs inst) {
     reg.sr = (reg.sr & ~SR_FLAG_T_MASK) | (shift_out << SR_FLAG_T_SHIFT);
 
     *regp = val;
+
+    next_inst();
 }
 
 // ROTR Rn
@@ -957,6 +977,8 @@ void Sh4::inst_unary_rotr_gen(OpArgs inst) {
     reg.sr = (reg.sr & ~SR_FLAG_T_MASK) | (shift_out << SR_FLAG_T_SHIFT);
 
     *regp = val;
+
+    next_inst();
 }
 
 // ROTCL Rn
@@ -971,6 +993,8 @@ void Sh4::inst_unary_rotcl_gen(OpArgs inst) {
     reg.sr = (reg.sr & ~SR_FLAG_T_MASK) | (shift_out << SR_FLAG_T_SHIFT);
 
     *regp = val;
+
+    next_inst();
 }
 
 // ROTCR Rn
@@ -985,6 +1009,8 @@ void Sh4::inst_unary_rotcr_gen(OpArgs inst) {
     reg.sr = (reg.sr & ~SR_FLAG_T_MASK) | (shift_out << SR_FLAG_T_SHIFT);
 
     *regp = val;
+
+    next_inst();
 }
 
 // SHAL Rn
@@ -998,6 +1024,8 @@ void Sh4::inst_unary_shal_gen(OpArgs inst) {
     reg.sr = (reg.sr & ~SR_FLAG_T_MASK) | (shift_out << SR_FLAG_T_SHIFT);
 
     *regp = val;
+
+    next_inst();
 }
 
 // SHAR Rn
@@ -1011,6 +1039,8 @@ void Sh4::inst_unary_shar_gen(OpArgs inst) {
     reg.sr = (reg.sr & ~SR_FLAG_T_MASK) | (shift_out << SR_FLAG_T_SHIFT);
 
     *regp = val;
+
+    next_inst();
 }
 
 // SHLL Rn
@@ -1024,6 +1054,8 @@ void Sh4::inst_unary_shll_gen(OpArgs inst) {
     reg.sr = (reg.sr & ~SR_FLAG_T_MASK) | (shift_out << SR_FLAG_T_SHIFT);
 
     *regp = val;
+
+    next_inst();
 }
 
 // SHLR Rn
@@ -1037,6 +1069,8 @@ void Sh4::inst_unary_shlr_gen(OpArgs inst) {
     reg.sr = (reg.sr & ~SR_FLAG_T_MASK) | (shift_out << SR_FLAG_T_SHIFT);
 
     *regp = val;
+
+    next_inst();
 }
 
 // SHLL2 Rn
@@ -1047,6 +1081,8 @@ void Sh4::inst_unary_shll2_gen(OpArgs inst) {
 
     val <<= 2;
     *regp = val;
+
+    next_inst();
 }
 
 // SHLR2 Rn
@@ -1057,6 +1093,8 @@ void Sh4::inst_unary_shlr2_gen(OpArgs inst) {
 
     val >>= 2;
     *regp = val;
+
+    next_inst();
 }
 
 // SHLL8 Rn
@@ -1067,6 +1105,8 @@ void Sh4::inst_unary_shll8_gen(OpArgs inst) {
 
     val <<= 8;
     *regp = val;
+
+    next_inst();
 }
 
 // SHLR8 Rn
@@ -1077,6 +1117,8 @@ void Sh4::inst_unary_shlr8_gen(OpArgs inst) {
 
     val >>= 8;
     *regp = val;
+
+    next_inst();
 }
 
 // SHLL16 Rn
@@ -1087,6 +1129,8 @@ void Sh4::inst_unary_shll16_gen(OpArgs inst) {
 
     val <<= 16;
     *regp = val;
+
+    next_inst();
 }
 
 // SHLR16 Rn
@@ -1097,6 +1141,8 @@ void Sh4::inst_unary_shlr16_gen(OpArgs inst) {
 
     val >>= 16;
     *regp = val;
+
+    next_inst();
 }
 
 // BRAF Rn
@@ -1123,6 +1169,8 @@ void Sh4::inst_binary_cmpeq_imm_r0(OpArgs inst) {
     reg32_t imm_val = int32_t(int8_t(inst.imm8));
     reg.sr &= ~SR_FLAG_T_MASK;
     reg.sr |= ((*gen_reg(0) == imm_val) << SR_FLAG_T_SHIFT);
+
+    next_inst();
 }
 
 // AND.B #imm, @(R0, GBR)
@@ -1138,12 +1186,16 @@ void Sh4::inst_binary_andb_imm_r0_gbr(OpArgs inst) {
 
     if (write_mem(&val, addr, sizeof(val)) != 0)
         return;
+
+    next_inst();
 }
 
 // AND #imm, R0
 // 11001001iiiiiiii
 void Sh4::inst_binary_and_imm_r0(OpArgs inst) {
     *gen_reg(0) &= inst.imm8;
+
+    next_inst();
 }
 
 // OR.B #imm, @(R0, GBR)
@@ -1159,12 +1211,16 @@ void Sh4::inst_binary_orb_imm_r0_gbr(OpArgs inst) {
 
     if (write_mem(&val, addr, sizeof(val)) != 0)
         return;
+
+    next_inst();
 }
 
 // OR #imm, R0
 // 11001011iiiiiiii
 void Sh4::inst_binary_or_imm_r0(OpArgs inst) {
     *gen_reg(0) |= inst.imm8;
+
+    next_inst();
 }
 
 // TST #imm, R0
@@ -1174,6 +1230,8 @@ void Sh4::inst_binary_tst_imm_r0(OpArgs inst) {
     reg32_t flag = !(inst.imm8 & *gen_reg(0)) <<
         SR_FLAG_T_SHIFT;
     reg.sr |= flag;
+
+    next_inst();
 }
 
 // TST.B #imm, @(R0, GBR)
@@ -1188,12 +1246,16 @@ void Sh4::inst_binary_tstb_imm_r0_gbr(OpArgs inst) {
     reg32_t flag = !(inst.imm8 & val) <<
         SR_FLAG_T_SHIFT;
     reg.sr |= flag;
+
+    next_inst();
 }
 
 // XOR #imm, R0
 // 11001010iiiiiiii
 void Sh4::inst_binary_xor_imm_r0(OpArgs inst) {
     *gen_reg(0) ^= inst.imm8;
+
+    next_inst();
 }
 
 // XOR.B #imm, @(R0, GBR)
@@ -1209,6 +1271,8 @@ void Sh4::inst_binary_xorb_imm_r0_gbr(OpArgs inst) {
 
     if (write_mem(&val, addr, sizeof(val)) != 0)
         return;
+
+    next_inst();
 }
 
 // BF label
@@ -1287,6 +1351,8 @@ void Sh4::inst_unary_tasb_gen(OpArgs inst) {
     reg.sr |= mask;
     val |= 0x80;
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // OCBI @Rn
@@ -1357,6 +1423,8 @@ void Sh4::inst_unary_ocbi_indgen(OpArgs inst) {
 
     op_cache->invalidate(paddr, index_enable, cache_as_ram);
 #endif
+
+    next_inst();
 }
 
 // OCBP @Rn
@@ -1427,6 +1495,8 @@ void Sh4::inst_unary_ocbp_indgen(OpArgs inst) {
 
     op_cache->purge(paddr, index_enable, cache_as_ram);
 #endif
+
+    next_inst();
 }
 
 // PREF @Rn
@@ -1468,12 +1538,16 @@ void Sh4::inst_binary_ldc_gen_sr(OpArgs inst) {
 #endif
 
     reg.sr = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // LDC Rm, GBR
 // 0100mmmm00011110
 void Sh4::inst_binary_ldc_gen_gbr(OpArgs inst) {
     reg.gbr = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // LDC Rm, VBR
@@ -1488,6 +1562,8 @@ void Sh4::inst_binary_ldc_gen_vbr(OpArgs inst) {
 #endif
 
     reg.vbr = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // LDC Rm, SSR
@@ -1502,6 +1578,8 @@ void Sh4::inst_binary_ldc_gen_ssr(OpArgs inst) {
 #endif
 
     reg.ssr = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // LDC Rm, SPC
@@ -1516,6 +1594,8 @@ void Sh4::inst_binary_ldc_gen_spc(OpArgs inst) {
 #endif
 
     reg.spc = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // LDC Rm, DBR
@@ -1530,6 +1610,8 @@ void Sh4::inst_binary_ldc_gen_dbr(OpArgs inst) {
 #endif
 
     reg.dbr = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // STC SR, Rn
@@ -1544,12 +1626,16 @@ void Sh4::inst_binary_stc_sr_gen(OpArgs inst) {
 #endif
 
     *gen_reg(inst.gen_reg) = reg.sr;
+
+    next_inst();
 }
 
 // STC GBR, Rn
 // 0000nnnn00010010
 void Sh4::inst_binary_stc_gbr_gen(OpArgs inst) {
     *gen_reg(inst.gen_reg) = reg.gbr;
+
+    next_inst();
 }
 
 // STC VBR, Rn
@@ -1564,6 +1650,8 @@ void Sh4::inst_binary_stc_vbr_gen(OpArgs inst) {
 #endif
 
     *gen_reg(inst.gen_reg) = reg.vbr;
+
+    next_inst();
 }
 
 // STC SSR, Rn
@@ -1578,6 +1666,8 @@ void Sh4::inst_binary_stc_ssr_gen(OpArgs inst) {
 #endif
 
     *gen_reg(inst.gen_reg) = reg.ssr;
+
+    next_inst();
 }
 
 // STC SPC, Rn
@@ -1592,6 +1682,8 @@ void Sh4::inst_binary_stc_spc_gen(OpArgs inst) {
 #endif
 
     *gen_reg(inst.gen_reg) = reg.spc;
+
+    next_inst();
 }
 
 // STC SGR, Rn
@@ -1606,6 +1698,8 @@ void Sh4::inst_binary_stc_sgr_gen(OpArgs inst) {
 #endif
 
     *gen_reg(inst.gen_reg) = reg.sgr;
+
+    next_inst();
 }
 
 // STC DBR, Rn
@@ -1620,6 +1714,8 @@ void Sh4::inst_binary_stc_dbr_gen(OpArgs inst) {
 #endif
 
     *gen_reg(inst.gen_reg) = reg.dbr;
+
+    next_inst();
 }
 
 // LDC.L @Rm+, SR
@@ -1643,6 +1739,8 @@ void Sh4::inst_binary_ldcl_indgeninc_sr(OpArgs inst) {
 
     (*src_reg) += 4;
     reg.sr = val;
+
+    next_inst();
 }
 
 // LDC.L @Rm+, GBR
@@ -1658,6 +1756,8 @@ void Sh4::inst_binary_ldcl_indgeninc_gbr(OpArgs inst) {
 
     (*src_reg) += 4;
     reg.gbr = val;
+
+    next_inst();
 }
 
 // LDC.L @Rm+, VBR
@@ -1681,6 +1781,8 @@ void Sh4::inst_binary_ldcl_indgeninc_vbr(OpArgs inst) {
 
     (*src_reg) += 4;
     reg.vbr = val;
+
+    next_inst();
 }
 
 // LDC.L @Rm+, SSR
@@ -1704,6 +1806,8 @@ void Sh4::inst_binary_ldcl_indgenic_ssr(OpArgs inst) {
 
     (*src_reg) += 4;
     reg.ssr = val;
+
+    next_inst();
 }
 
 // LDC.L @Rm+, SPC
@@ -1727,6 +1831,8 @@ void Sh4::inst_binary_ldcl_indgeninc_spc(OpArgs inst) {
 
     (*src_reg) += 4;
     reg.spc = val;
+
+    next_inst();
 }
 
 // LDC.L @Rm+, DBR
@@ -1750,6 +1856,8 @@ void Sh4::inst_binary_ldcl_indgeninc_dbr(OpArgs inst) {
 
     (*src_reg) += 4;
     reg.dbr = val;
+
+    next_inst();
 }
 
 // STC.L SR, @-Rn
@@ -1769,6 +1877,8 @@ void Sh4::inst_binary_stcl_sr_inddecgen(OpArgs inst) {
         return;
 
     *regp = addr;
+
+    next_inst();
 }
 
 // STC.L GBR, @-Rn
@@ -1780,6 +1890,8 @@ void Sh4::inst_binary_stcl_gbr_inddecgen(OpArgs inst) {
         return;
 
     *regp = addr;
+
+    next_inst();
 }
 
 // STC.L VBR, @-Rn
@@ -1799,6 +1911,8 @@ void Sh4::inst_binary_stcl_vbr_inddecgen(OpArgs inst) {
         return;
 
     *regp = addr;
+
+    next_inst();
 }
 
 // STC.L SSR, @-Rn
@@ -1818,6 +1932,8 @@ void Sh4::inst_binary_stcl_ssr_inddecgen(OpArgs inst) {
         return;
 
     *regp = addr;
+
+    next_inst();
 }
 
 // STC.L SPC, @-Rn
@@ -1837,6 +1953,8 @@ void Sh4::inst_binary_stcl_spc_inddecgen(OpArgs inst) {
         return;
 
     *regp = addr;
+
+    next_inst();
 }
 
 // STC.L SGR, @-Rn
@@ -1856,6 +1974,8 @@ void Sh4::inst_binary_stcl_sgr_inddecgen(OpArgs inst) {
         return;
 
     *regp = addr;
+
+    next_inst();
 }
 
 // STC.L DBR, @-Rn
@@ -1875,18 +1995,24 @@ void Sh4::inst_binary_stcl_dbr_inddecgen(OpArgs inst) {
         return;
 
     *regp = addr;
+
+    next_inst();
 }
 
 // MOV #imm, Rn
 // 1110nnnniiiiiiii
 void Sh4::inst_binary_mov_imm_gen(OpArgs inst) {
     *gen_reg(inst.gen_reg) = int32_t(int8_t(inst.imm8));
+
+    next_inst();
 }
 
 // ADD #imm, Rn
 // 0111nnnniiiiiiii
 void Sh4::inst_binary_add_imm_gen(OpArgs inst) {
     *gen_reg(inst.gen_reg) += int32_t(int8_t(inst.imm8));
+
+    next_inst();
 }
 
 // MOV.W @(disp, PC), Rn
@@ -1898,6 +2024,8 @@ void Sh4::inst_binary_movw_binind_disp_pc_gen(OpArgs inst) {
 
     read_mem<int16_t>(&mem_in, addr, sizeof(mem_in));
     *gen_reg(reg_no) = (int32_t)mem_in;
+
+    next_inst();
 }
 
 // MOV.L @(disp, PC), Rn
@@ -1909,12 +2037,16 @@ void Sh4::inst_binary_movl_binind_disp_pc_gen(OpArgs inst) {
 
     read_mem(&mem_in, addr, sizeof(mem_in));
     *gen_reg(reg_no) = mem_in;
+
+    next_inst();
 }
 
 // MOV Rm, Rn
 // 0110nnnnmmmm0011
 void Sh4::inst_binary_movw_gen_gen(OpArgs inst) {
     *gen_reg(inst.dst_reg) = *gen_reg(inst.src_reg);
+
+    next_inst();
 }
 
 // SWAP.B Rm, Rn
@@ -1930,6 +2062,8 @@ void Sh4::inst_binary_swapb_gen_gen(OpArgs inst) {
     val_src &= ~0xffff;
     val_src |= byte1 | (byte0 << 8);
     *gen_reg(inst.dst_reg) = val_src;
+
+    next_inst();
 }
 
 // SWAP.W Rm, Rn
@@ -1944,6 +2078,8 @@ void Sh4::inst_binary_swapw_gen_gen(OpArgs inst) {
 
     val_src = word1 | (word0 << 16);
     *gen_reg(inst.dst_reg) = val_src;
+
+    next_inst();
 }
 
 // XTRCT Rm, Rn
@@ -1954,12 +2090,16 @@ void Sh4::inst_binary_xtrct_gen_gen(OpArgs inst) {
 
     *reg_dst = (((*reg_dst) & 0xffff0000) >> 16) |
         (((*reg_src) & 0x0000ffff) << 16);
+
+    next_inst();
 }
 
 // ADD Rm, Rn
 // 0011nnnnmmmm1100
 void Sh4::inst_binary_add_gen_gen(OpArgs inst) {
     *gen_reg(inst.dst_reg) += *gen_reg(inst.src_reg);
+
+    next_inst();
 }
 
 // ADDC Rm, Rn
@@ -1985,6 +2125,8 @@ void Sh4::inst_binary_addc_gen_gen(OpArgs inst) {
     reg.sr |= carry_bit;
 
     *dst_reg = in_dst;
+
+    next_inst();
 }
 
 // ADDV Rm, Rn
@@ -2010,6 +2152,8 @@ void Sh4::inst_binary_addv_gen_gen(OpArgs inst) {
     reg.sr |= overflow_bit;
 
     *dst_reg = in_dst;
+
+    next_inst();
 }
 
 // CMP/EQ Rm, Rn
@@ -2018,6 +2162,8 @@ void Sh4::inst_binary_cmpeq_gen_gen(OpArgs inst) {
     reg.sr &= ~SR_FLAG_T_MASK;
     reg.sr |= ((*gen_reg(inst.src_reg) == *gen_reg(inst.dst_reg)) <<
                SR_FLAG_T_SHIFT);
+
+    next_inst();
 }
 
 // CMP/HS Rm, Rn
@@ -2027,6 +2173,8 @@ void Sh4::inst_binary_cmphs_gen_gen(OpArgs inst) {
     uint32_t lhs = *gen_reg(inst.dst_reg);
     uint32_t rhs = *gen_reg(inst.src_reg);
     reg.sr |= ((lhs >= rhs) << SR_FLAG_T_SHIFT);
+
+    next_inst();
 }
 
 // CMP/GE Rm, Rn
@@ -2036,6 +2184,8 @@ void Sh4::inst_binary_cmpge_gen_gen(OpArgs inst) {
     int32_t lhs = *gen_reg(inst.dst_reg);
     int32_t rhs = *gen_reg(inst.src_reg);
     reg.sr |= ((lhs >= rhs) << SR_FLAG_T_SHIFT);
+
+    next_inst();
 }
 
 // CMP/HI Rm, Rn
@@ -2045,6 +2195,8 @@ void Sh4::inst_binary_cmphi_gen_gen(OpArgs inst) {
     uint32_t lhs = *gen_reg(inst.dst_reg);
     uint32_t rhs = *gen_reg(inst.src_reg);
     reg.sr |= ((lhs > rhs) << SR_FLAG_T_SHIFT);
+
+    next_inst();
 }
 
 // CMP/GT Rm, Rn
@@ -2054,6 +2206,8 @@ void Sh4::inst_binary_cmpgt_gen_gen(OpArgs inst) {
     int32_t lhs = *gen_reg(inst.dst_reg);
     int32_t rhs = *gen_reg(inst.src_reg);
     reg.sr |= ((lhs > rhs) << SR_FLAG_T_SHIFT);
+
+    next_inst();
 }
 
 // CMP/STR Rm, Rn
@@ -2070,6 +2224,8 @@ void Sh4::inst_binary_cmpstr_gen_gen(OpArgs inst) {
 
     reg.sr &= ~SR_FLAG_T_MASK;
     reg.sr |= flag << SR_FLAG_T_SHIFT;
+
+    next_inst();
 }
 
 // DIV1 Rm, Rn
@@ -2113,6 +2269,8 @@ void Sh4::inst_binary_dmulul_gen_gen(OpArgs inst) {
 void Sh4::inst_binary_extsb_gen_gen(OpArgs inst) {
     reg32_t src_val = *gen_reg(inst.src_reg);
     *gen_reg(inst.dst_reg) = int32_t(int8_t(src_val & 0xff));
+
+    next_inst();
 }
 
 // EXTS.W Rm, Rnn
@@ -2120,6 +2278,8 @@ void Sh4::inst_binary_extsb_gen_gen(OpArgs inst) {
 void Sh4::inst_binary_extsw_gen_gen(OpArgs inst) {
     reg32_t src_val = *gen_reg(inst.src_reg);
     *gen_reg(inst.dst_reg) = int32_t(int16_t(src_val & 0xffff));
+
+    next_inst();
 }
 
 // EXTU.B Rm, Rn
@@ -2127,6 +2287,8 @@ void Sh4::inst_binary_extsw_gen_gen(OpArgs inst) {
 void Sh4::inst_binary_extub_gen_gen(OpArgs inst) {
     reg32_t src_val = *gen_reg(inst.src_reg);
     *gen_reg(inst.dst_reg) = src_val & 0xff;
+
+    next_inst();
 }
 
 // EXTU.W Rm, Rn
@@ -2134,12 +2296,16 @@ void Sh4::inst_binary_extub_gen_gen(OpArgs inst) {
 void Sh4::inst_binary_extuw_gen_gen(OpArgs inst) {
     reg32_t src_val = *gen_reg(inst.src_reg);
     *gen_reg(inst.dst_reg) = src_val & 0xffff;
+
+    next_inst();
 }
 
 // MUL.L Rm, Rn
 // 0000nnnnmmmm0111
 void Sh4::inst_binary_mull_gen_gen(OpArgs inst) {
     reg.macl = *gen_reg(inst.dst_reg) * *gen_reg(inst.src_reg);
+
+    next_inst();
 }
 
 // MULS.W Rm, Rn
@@ -2149,6 +2315,8 @@ void Sh4::inst_binary_mulsw_gen_gen(OpArgs inst) {
     int16_t rhs = *gen_reg(inst.src_reg);
 
     reg.macl = int32_t(lhs) * int32_t(rhs);
+
+    next_inst();
 }
 
 // MULU.W Rm, Rn
@@ -2158,12 +2326,16 @@ void Sh4::inst_binary_muluw_gen_gen(OpArgs inst) {
     uint16_t rhs = *gen_reg(inst.src_reg);
 
     reg.macl = uint32_t(lhs) * uint32_t(rhs);
+
+    next_inst();
 }
 
 // NEG Rm, Rn
 // 0110nnnnmmmm1011
 void Sh4::inst_binary_neg_gen_gen(OpArgs inst) {
     *gen_reg(inst.dst_reg) = -*gen_reg(inst.src_reg);
+
+    next_inst();
 }
 
 // NEGC Rm, Rn
@@ -2176,12 +2348,16 @@ void Sh4::inst_binary_negc_gen_gen(OpArgs inst) {
 
     reg.sr &= ~SR_FLAG_T_MASK;
     reg.sr |= carry_bit;
+
+    next_inst();
 }
 
 // SUB Rm, Rn
 // 0011nnnnmmmm1000
 void Sh4::inst_binary_sub_gen_gen(OpArgs inst) {
     *gen_reg(inst.dst_reg) -= *gen_reg(inst.src_reg);
+
+    next_inst();
 }
 
 // SUBC Rm, Rn
@@ -2207,6 +2383,8 @@ void Sh4::inst_binary_subc_gen_gen(OpArgs inst) {
     reg.sr |= carry_bit;
 
     *dst_reg = in_dst;
+
+    next_inst();
 }
 
 // SUBV Rm, Rn
@@ -2232,24 +2410,32 @@ void Sh4::inst_binary_subv_gen_gen(OpArgs inst) {
     reg.sr |= overflow_bit;
 
     *dst_reg = in_dst;
+
+    next_inst();
 }
 
 // AND Rm, Rn
 // 0010nnnnmmmm1001
 void Sh4::inst_binary_and_gen_gen(OpArgs inst) {
     *gen_reg(inst.dst_reg) &= *gen_reg(inst.src_reg);
+
+    next_inst();
 }
 
 // NOT Rm, Rn
 // 0110nnnnmmmm0111
 void Sh4::inst_binary_not_gen_gen(OpArgs inst) {
     *gen_reg(inst.dst_reg) = ~(*gen_reg(inst.src_reg));
+
+    next_inst();
 }
 
 // OR Rm, Rn
 // 0010nnnnmmmm1011
 void Sh4::inst_binary_or_gen_gen(OpArgs inst) {
     *gen_reg(inst.dst_reg) |= *gen_reg(inst.src_reg);
+
+    next_inst();
 }
 
 // TST Rm, Rn
@@ -2259,12 +2445,16 @@ void Sh4::inst_binary_tst_gen_gen(OpArgs inst) {
     reg32_t flag = !(*gen_reg(inst.src_reg) & *gen_reg(inst.dst_reg)) <<
         SR_FLAG_T_SHIFT;
     reg.sr |= flag;
+
+    next_inst();
 }
 
 // XOR Rm, Rn
 // 0010nnnnmmmm1010
 void Sh4::inst_binary_xor_gen_gen(OpArgs inst) {
     *gen_reg(inst.dst_reg) ^= *gen_reg(inst.src_reg);
+
+    next_inst();
 }
 
 // SHAD Rm, Rn
@@ -2282,6 +2472,8 @@ void Sh4::inst_binary_shad_gen_gen(OpArgs inst) {
     }
 
     *dstp = dst;
+
+    next_inst();
 }
 
 // SHLD Rm, Rn
@@ -2299,6 +2491,8 @@ void Sh4::inst_binary_shld_gen_gen(OpArgs inst) {
     }
 
     *dstp = dst;
+
+    next_inst();
 }
 
 // LDC Rm, Rn_BANK
@@ -2313,6 +2507,8 @@ void Sh4::inst_binary_ldc_gen_bank(OpArgs inst) {
 #endif
 
     *bank_reg(inst.bank_reg) = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // LDC.L @Rm+, Rn_BANK
@@ -2336,6 +2532,8 @@ void Sh4::inst_binary_ldcl_indgeninc_bank(OpArgs inst) {
 
     (*src_reg) += 4;
     *bank_reg(inst.bank_reg) = val;
+
+    next_inst();
 }
 
 // STC Rm_BANK, Rn
@@ -2371,42 +2569,56 @@ void Sh4::inst_binary_stcl_bank_inddecgen(OpArgs inst) {
         return;
 
     *addr_reg = addr;
+
+    next_inst();
 }
 
 // LDS Rm, MACH
 // 0100mmmm00001010
 void Sh4::inst_binary_lds_gen_mach(OpArgs inst) {
     reg.mach = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // LDS Rm, MACL
 // 0100mmmm00011010
 void Sh4::inst_binary_lds_gen_macl(OpArgs inst) {
     reg.macl = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // STS MACH, Rn
 // 0000nnnn00001010
 void Sh4::inst_binary_sts_mach_gen(OpArgs inst) {
     *gen_reg(inst.gen_reg) = reg.mach;
+
+    next_inst();
 }
 
 // STS MACL, Rn
 // 0000nnnn00011010
 void Sh4::inst_binary_sts_macl_gen(OpArgs inst) {
     *gen_reg(inst.gen_reg) = reg.macl;
+
+    next_inst();
 }
 
 // LDS Rm, PR
 // 0100mmmm00101010
 void Sh4::inst_binary_lds_gen_pr(OpArgs inst) {
     reg.pr = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // STS PR, Rn
 // 0000nnnn00101010
 void Sh4::inst_binary_sts_pr_gen(OpArgs inst) {
     *gen_reg(inst.gen_reg) = reg.pr;
+
+    next_inst();
 }
 
 // LDS.L @Rm+, MACH
@@ -2421,6 +2633,8 @@ void Sh4::inst_binary_ldsl_indgeninc_mach(OpArgs inst) {
     reg.mach = val;
 
     *addr_reg += 4;
+
+    next_inst();
 }
 
 // LDS.L @Rm+, MACL
@@ -2435,6 +2649,8 @@ void Sh4::inst_binary_ldsl_indgeninc_macl(OpArgs inst) {
     reg.macl = val;
 
     *addr_reg += 4;
+
+    next_inst();
 }
 
 // STS.L MACH, @-Rn
@@ -2447,6 +2663,8 @@ void Sh4::inst_binary_stsl_mach_inddecgen(OpArgs inst) {
         return;
 
     *addr_reg = addr;
+
+    next_inst();
 }
 
 // STS.L MACL, @-Rn
@@ -2459,6 +2677,8 @@ void Sh4::inst_binary_stsl_macl_inddecgen(OpArgs inst) {
         return;
 
     *addr_reg = addr;
+
+    next_inst();
 }
 
 // LDS.L @Rm+, PR
@@ -2473,6 +2693,8 @@ void Sh4::inst_binary_ldsl_indgeninc_pr(OpArgs inst) {
     reg.pr = val;
 
     *addr_reg += 4;
+
+    next_inst();
 }
 
 // STS.L PR, @-Rn
@@ -2485,6 +2707,8 @@ void Sh4::inst_binary_stsl_pr_inddecgen(OpArgs inst) {
         return;
 
     *addr_reg = addr;
+
+    next_inst();
 }
 
 // MOV.B Rm, @Rn
@@ -2494,6 +2718,8 @@ void Sh4::inst_binary_movb_gen_indgen(OpArgs inst) {
     uint8_t mem_val = *gen_reg(inst.src_reg);
 
     write_mem(&mem_val, addr, sizeof(mem_val));
+
+    next_inst();
 }
 
 // MOV.W Rm, @Rn
@@ -2503,6 +2729,8 @@ void Sh4::inst_binary_movw_gen_indgen(OpArgs inst) {
     uint16_t mem_val = *gen_reg(inst.src_reg);
 
     write_mem(&mem_val, addr, sizeof(mem_val));
+
+    next_inst();
 }
 
 // MOV.L Rm, @Rn
@@ -2512,6 +2740,8 @@ void Sh4::inst_binary_movl_gen_indgen(OpArgs inst) {
     uint32_t mem_val = *gen_reg(inst.src_reg);
 
     write_mem(&mem_val, addr, sizeof(mem_val));
+
+    next_inst();
 }
 
 // MOV.B @Rm, Rn
@@ -2523,6 +2753,8 @@ void Sh4::inst_binary_movb_indgen_gen(OpArgs inst) {
     read_mem(&mem_val, addr, sizeof(mem_val));
 
     *gen_reg(inst.dst_reg) = int32_t(mem_val);
+
+    next_inst();
 }
 
 // MOV.W @Rm, Rn
@@ -2534,6 +2766,8 @@ void Sh4::inst_binary_movw_indgen_gen(OpArgs inst) {
     read_mem(&mem_val, addr, sizeof(mem_val));
 
     *gen_reg(inst.dst_reg) = int32_t(mem_val);
+
+    next_inst();
 }
 
 // MOV.L @Rm, Rn
@@ -2545,6 +2779,8 @@ void Sh4::inst_binary_movl_indgen_gen(OpArgs inst) {
     read_mem(&mem_val, addr, sizeof(mem_val));
 
     *gen_reg(inst.dst_reg) = mem_val;
+
+    next_inst();
 }
 
 // MOV.B Rm, @-Rn
@@ -2557,6 +2793,8 @@ void Sh4::inst_binary_movb_gen_inddecgen(OpArgs inst) {
     (*dst_reg)--;
     val = *src_reg;
     write_mem(&val, *dst_reg, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.W Rm, @-Rn
@@ -2569,6 +2807,8 @@ void Sh4::inst_binary_movw_gen_inddecgen(OpArgs inst) {
     (*dst_reg) -= 2;
     val = *src_reg;
     write_mem(&val, *dst_reg, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.L Rm, @-Rn
@@ -2581,6 +2821,8 @@ void Sh4::inst_binary_movl_gen_inddecgen(OpArgs inst) {
     (*dst_reg) -= 4;
     val = *src_reg;
     write_mem(&val, *dst_reg, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.B @Rm+, Rn
@@ -2594,6 +2836,8 @@ void Sh4::inst_binary_movb_indgeninc_gen(OpArgs inst) {
     *dst_reg = int32_t(val);
 
     (*src_reg)++;
+
+    next_inst();
 }
 
 // MOV.W @Rm+, Rn
@@ -2607,6 +2851,8 @@ void Sh4::inst_binary_movw_indgeninc_gen(OpArgs inst) {
     *dst_reg = int32_t(val);
 
     (*src_reg) += 2;
+
+    next_inst();
 }
 
 // MOV.L @Rm+, Rn
@@ -2620,6 +2866,8 @@ void Sh4::inst_binary_movl_indgeninc_gen(OpArgs inst) {
     *dst_reg = int32_t(val);
 
     (*src_reg) += 4;
+
+    next_inst();
 }
 
 // MAC.L @Rm+, @Rn+
@@ -2665,9 +2913,10 @@ void Sh4::inst_binary_macl_indgeninc_indgeninc(OpArgs inst) {
     reg.macl = uint64_t(sum) & 0xffffffff;
     reg.mach = uint64_t(sum) >> 32;
 
-
     (*dst_addrp) += 4;
     (*src_addrp) += 4;
+
+    next_inst();
 }
 
 // MAC.W @Rm+, @Rn+
@@ -2727,6 +2976,8 @@ void Sh4::inst_binary_macw_indgeninc_indgeninc(OpArgs inst) {
 
     (*dst_addrp) += 2;
     (*src_addrp) += 2;
+
+    next_inst();
 }
 
 // MOV.B R0, @(disp, Rn)
@@ -2736,6 +2987,8 @@ void Sh4::inst_binary_movb_r0_binind_disp_gen(OpArgs inst) {
     int8_t val = *gen_reg(0);
 
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.W R0, @(disp, Rn)
@@ -2745,6 +2998,8 @@ void Sh4::inst_binary_movw_r0_binind_disp_gen(OpArgs inst) {
     int16_t val = *gen_reg(0);
 
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.L Rm, @(disp, Rn)
@@ -2754,6 +3009,8 @@ void Sh4::inst_binary_movl_gen_binind_disp_gen(OpArgs inst) {
     int32_t val = *gen_reg(inst.base_reg_src);
 
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.B @(disp, Rm), R0
@@ -2765,6 +3022,8 @@ void Sh4::inst_binary_movb_binind_disp_gen_r0(OpArgs inst) {
     read_mem(&val, addr, sizeof(val));
 
     *gen_reg(0) = int32_t(val);
+
+    next_inst();
 }
 
 // MOV.W @(disp, Rm), R0
@@ -2776,6 +3035,8 @@ void Sh4::inst_binary_movw_binind_disp_gen_r0(OpArgs inst) {
     read_mem(&val, addr, sizeof(val));
 
     *gen_reg(0) = int32_t(val);
+
+    next_inst();
 }
 
 // MOV.L @(disp, Rm), Rn
@@ -2787,6 +3048,8 @@ void Sh4::inst_binary_movl_binind_disp_gen_gen(OpArgs inst) {
     read_mem(&val, addr, sizeof(val));
 
     *gen_reg(inst.base_reg_dst) = val;
+
+    next_inst();
 }
 
 // MOV.B Rm, @(R0, Rn)
@@ -2796,6 +3059,8 @@ void Sh4::inst_binary_movb_gen_binind_r0_gen(OpArgs inst) {
     uint8_t val = *gen_reg(inst.src_reg);
 
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.W Rm, @(R0, Rn)
@@ -2805,6 +3070,8 @@ void Sh4::inst_binary_movw_gen_binind_r0_gen(OpArgs inst) {
     uint16_t val = *gen_reg(inst.src_reg);
 
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.L Rm, @(R0, Rn)
@@ -2814,6 +3081,8 @@ void Sh4::inst_binary_movl_gen_binind_r0_gen(OpArgs inst) {
     uint32_t val = *gen_reg(inst.src_reg);
 
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.B @(R0, Rm), Rn
@@ -2823,6 +3092,8 @@ void Sh4::inst_binary_movb_binind_r0_gen_gen(OpArgs inst) {
     int8_t val;
     read_mem(&val, addr, sizeof(val));
     *gen_reg(inst.dst_reg) = int32_t(val);
+
+    next_inst();
 }
 
 // MOV.W @(R0, Rm), Rn
@@ -2833,6 +3104,8 @@ void Sh4::inst_binary_movw_binind_r0_gen_gen(OpArgs inst) {
 
     read_mem(&val, addr, sizeof(val));
     *gen_reg(inst.dst_reg) = int32_t(val);
+
+    next_inst();
 }
 
 // MOV.L @(R0, Rm), Rn
@@ -2843,6 +3116,8 @@ void Sh4::inst_binary_movl_binind_r0_gen_gen(OpArgs inst) {
 
     read_mem(&val, addr, sizeof(val));
     *gen_reg(inst.dst_reg) = val;
+
+    next_inst();
 }
 
 // MOV.B R0, @(disp, GBR)
@@ -2852,6 +3127,8 @@ void Sh4::inst_binary_movb_r0_binind_disp_gbr(OpArgs inst) {
     int8_t val = *gen_reg(0);
 
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.W R0, @(disp, GBR)
@@ -2861,6 +3138,8 @@ void Sh4::inst_binary_movw_r0_binind_disp_gbr(OpArgs inst) {
     int16_t val = *gen_reg(0);
 
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.L R0, @(disp, GBR)
@@ -2870,6 +3149,8 @@ void Sh4::inst_binary_movl_r0_binind_disp_gbr(OpArgs inst) {
     int32_t val = *gen_reg(0);
 
     write_mem(&val, addr, sizeof(val));
+
+    next_inst();
 }
 
 // MOV.B @(disp, GBR), R0
@@ -2880,6 +3161,8 @@ void Sh4::inst_binary_movb_binind_disp_gbr_r0(OpArgs inst) {
 
     read_mem(&val, addr, sizeof(val));
     *gen_reg(0) = int32_t(val);
+
+    next_inst();
 }
 
 // MOV.W @(disp, GBR), R0
@@ -2890,6 +3173,8 @@ void Sh4::inst_binary_movw_binind_disp_gbr_r0(OpArgs inst) {
 
     read_mem(&val, addr, sizeof(val));
     *gen_reg(0) = int32_t(val);
+
+    next_inst();
 }
 
 // MOV.L @(disp, GBR), R0
@@ -2900,6 +3185,8 @@ void Sh4::inst_binary_movl_binind_disp_gbr_r0(OpArgs inst) {
 
     read_mem(&val, addr, sizeof(val));
     *gen_reg(0) = val;
+
+    next_inst();
 }
 
 // MOVA @(disp, PC), R0
@@ -2913,6 +3200,8 @@ void Sh4::inst_binary_mova_binind_disp_pc_r0(OpArgs inst) {
      * opcodes.
      */
     *gen_reg(0) = (inst.imm8 << 2) + (reg.pc & ~3) + 4;
+
+    next_inst();
 }
 
 // MOVCA.L R0, @Rn
@@ -2998,6 +3287,8 @@ void Sh4::inst_binary_movcal_r0_indgen(OpArgs inst) {
      * change my mind later and decide to cover all my bases.
      */
     write_mem(&src_val, vaddr, sizeof(src_val));
+
+    next_inst();
 }
 
 // FLDI0 FRn
