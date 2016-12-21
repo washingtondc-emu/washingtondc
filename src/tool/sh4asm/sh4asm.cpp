@@ -28,6 +28,12 @@
 
 #include "sh4asm.hpp"
 
+typedef boost::error_info<struct tag_asm_txt_error_info, std::string>
+errinfo_asm_txt;
+
+typedef boost::error_info<struct tag_inst_binary_error_info, inst_t>
+errinfo_inst_binary;
+
 Sh4Prog::Sh4Prog() {
 }
 
@@ -157,7 +163,8 @@ inst_t Sh4Prog::assemble_inst(const std::string& inst) const {
         }
     }
 
-    BOOST_THROW_EXCEPTION(ParseError("Unrecognized opcode"));
+    BOOST_THROW_EXCEPTION(ParseError("Unrecognized opcode") <<
+                          errinfo_asm_txt(inst));
 }
 
 std::string Sh4Prog::disassemble_inst(inst_t inst) const {
@@ -170,7 +177,8 @@ std::string Sh4Prog::disassemble_inst(inst_t inst) const {
         }
     }
 
-    BOOST_THROW_EXCEPTION(ParseError("Unrecognized instruction"));
+    BOOST_THROW_EXCEPTION(ParseError("Unrecognized instruction") <<
+                          errinfo_inst_binary(inst));
 }
 
 std::string Sh4Prog::preprocess_line(const std::string& line) {
