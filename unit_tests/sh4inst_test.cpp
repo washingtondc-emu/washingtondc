@@ -7951,6 +7951,871 @@ public:
 
         return failed;
     }
+
+    // BT label
+    // 10001001dddddddd
+    static int do_bt_label(Sh4 *cpu, Memory *mem, int8_t label,
+                           addr32_t pc_init, bool t_flag) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "BT 0x" << std::hex << unsigned(label) << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        if (t_flag)
+            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+        else
+            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+        cpu->reg.pc = pc_init;
+        cpu->exec_inst();
+
+        addr32_t pc_expect;
+        if (t_flag)
+            pc_expect = int32_t(label) * 2 + 4 + pc_init;
+        else
+            pc_expect = pc_init + 2;
+
+        if (cpu->reg.pc != pc_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << pc_init << std::endl;
+            std::cout << "t flag is " << t_flag << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int bt_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int i = 0; i < 16; i++) {
+            addr32_t pc = randgen32->pick_range(0, mem->get_size() -
+                                                (1 + 256 * 2 + 4));
+            uint8_t label = randgen32->pick_val(0) & 0xff;
+
+            failure = failure ||
+                do_bt_label(cpu, mem, label, pc, false);
+
+            failure = failure ||
+                do_bt_label(cpu, mem, label, pc, true);
+        }
+
+        return failure;
+    }
+
+    // BF label
+    // 10001011dddddddd
+    static int do_bf_label(Sh4 *cpu, Memory *mem, int8_t label,
+                           addr32_t pc_init, bool t_flag) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "BF 0x" << std::hex << unsigned(label) << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        if (t_flag)
+            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+        else
+            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+        cpu->reg.pc = pc_init;
+        cpu->exec_inst();
+
+        addr32_t pc_expect;
+        if (!t_flag)
+            pc_expect = int32_t(label) * 2 + 4 + pc_init;
+        else
+            pc_expect = pc_init + 2;
+
+        if (cpu->reg.pc != pc_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << pc_init << std::endl;
+            std::cout << "t flag is " << t_flag << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int bf_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int i = 0; i < 16; i++) {
+            addr32_t pc = randgen32->pick_range(0, mem->get_size() -
+                                                (1 + 256 * 2 + 4));
+            uint8_t label = randgen32->pick_val(0) & 0xff;
+
+            failure = failure ||
+                do_bf_label(cpu, mem, label, pc, false);
+
+            failure = failure ||
+                do_bf_label(cpu, mem, label, pc, true);
+        }
+
+        return failure;
+    }
+
+    // BRAF Rn
+    // 0000nnnn00100011
+    static int do_braf_label(Sh4 *cpu, Memory *mem, unsigned reg_no,
+                             unsigned reg_src_mov, unsigned reg_dst_mov,
+                             reg32_t reg_val, reg32_t mov_src_val,
+                             reg32_t mov_dst_val, addr32_t pc_init) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "BRAF R" << reg_no << "\n" <<
+            "MOV R" << reg_src_mov << ", R" << reg_dst_mov << "\n" ;
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src_mov) = mov_src_val;
+        *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->reg.pc = pc_init;
+        cpu->exec_inst();
+
+        addr32_t pc_expect = 4 + pc_init + reg_val;
+        reg32_t reg_src_expect = mov_src_val;
+        reg32_t reg_dst_expect = mov_src_val;
+        reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
+        reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
+
+        if (cpu->reg.pc != pc_expect ||
+            reg_src_actual != reg_src_expect ||
+            reg_dst_actual != reg_dst_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << std::hex << pc_init << std::endl;
+            std::cout << "addr is " << reg_val << std::endl;
+            std::cout << "reg_src_mov is " << reg_src_mov << std::endl;
+            std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
+            std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
+            std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
+            std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int braf_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
+            for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
+                for (int reg_no = 0; reg_no < 16; reg_no++) {
+                    addr32_t pc = randgen32->pick_range(
+                        0, (mem->get_size() - 6) / 2);
+                    reg32_t reg_val = randgen32->pick_range(
+                        0, (mem->get_size() - 6) / 2);
+                    reg32_t mov_src_val = randgen32->pick_val(0);
+                    reg32_t mov_dst_val = randgen32->pick_val(0);
+
+                    if (reg_src_mov == reg_no)
+                        mov_src_val = reg_val;
+                    if (reg_dst_mov == reg_no)
+                        mov_dst_val = reg_val;
+                    if (reg_dst_mov == reg_src_mov)
+                        mov_dst_val = mov_src_val;
+
+                    failure = failure ||
+                        do_braf_label(cpu, mem, reg_no, reg_src_mov,
+                                      reg_dst_mov, reg_val, mov_src_val,
+                                      mov_dst_val, pc);
+                }
+            }
+        }
+
+        return failure;
+    }
+
+    // BSRF Rn
+    // 0000nnnn00000011
+    static int do_bsrf_label(Sh4 *cpu, Memory *mem, unsigned reg_no,
+                             unsigned reg_src_mov, unsigned reg_dst_mov,
+                             reg32_t reg_val, reg32_t mov_src_val,
+                             reg32_t mov_dst_val, addr32_t pc_init) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "BSRF R" << reg_no << "\n" <<
+            "MOV R" << reg_src_mov << ", R" << reg_dst_mov << "\n" ;
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src_mov) = mov_src_val;
+        *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->reg.pc = pc_init;
+        cpu->exec_inst();
+
+        addr32_t pc_expect = 4 + pc_init + reg_val;
+        reg32_t reg_src_expect = mov_src_val;
+        reg32_t reg_dst_expect = mov_src_val;
+        reg32_t pr_expect = 4 + pc_init;
+        reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
+        reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
+        reg32_t pr_actual = cpu->reg.pr;
+
+        if (cpu->reg.pc != pc_expect ||
+            reg_src_actual != reg_src_expect ||
+            reg_dst_actual != reg_dst_expect ||
+            pr_actual != pr_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << std::hex << pc_init << std::endl;
+            std::cout << "addr is " << reg_val << std::endl;
+            std::cout << "reg_src_mov is " << reg_src_mov << std::endl;
+            std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
+            std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
+            std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
+            std::cout << "pr_actual is " << pr_actual << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
+            std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
+            std::cout << "pr_expect is " << pr_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int bsrf_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
+            for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
+                for (int reg_no = 0; reg_no < 16; reg_no++) {
+                    addr32_t pc = randgen32->pick_range(
+                        0, (mem->get_size() - 6) / 2);
+                    reg32_t reg_val = randgen32->pick_range(
+                        0, (mem->get_size() - 6) / 2);
+                    reg32_t mov_src_val = randgen32->pick_val(0);
+                    reg32_t mov_dst_val = randgen32->pick_val(0);
+
+                    if (reg_src_mov == reg_no)
+                        mov_src_val = reg_val;
+                    if (reg_dst_mov == reg_no)
+                        mov_dst_val = reg_val;
+                    if (reg_dst_mov == reg_src_mov)
+                        mov_dst_val = mov_src_val;
+
+                    failure = failure ||
+                        do_bsrf_label(cpu, mem, reg_no, reg_src_mov,
+                                      reg_dst_mov, reg_val, mov_src_val,
+                                      mov_dst_val, pc);
+                }
+            }
+        }
+
+        return failure;
+    }
+
+    // RTS
+    // 0000000000001011
+    static int do_rts_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
+                            unsigned reg_dst_mov, reg32_t pr_val,
+                            reg32_t mov_src_val, reg32_t mov_dst_val,
+                            addr32_t pc_init) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "RTS\n" <<
+            "MOV R" << reg_src_mov << ", R" << reg_dst_mov << "\n" ;
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src_mov) = mov_src_val;
+        *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
+        cpu->reg.pc = pc_init;
+        cpu->reg.pr = pr_val;
+        cpu->exec_inst();
+
+        addr32_t pc_expect = pr_val;
+        reg32_t reg_src_expect = mov_src_val;
+        reg32_t reg_dst_expect = mov_src_val;
+        reg32_t pr_expect = pr_val;
+        reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
+        reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
+        reg32_t pr_actual = cpu->reg.pr;
+
+        if (cpu->reg.pc != pc_expect ||
+            reg_src_actual != reg_src_expect ||
+            reg_dst_actual != reg_dst_expect ||
+            pr_actual != pr_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << std::hex << pc_init << std::endl;
+            std::cout << "reg_src_mov is " << reg_src_mov << std::endl;
+            std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
+            std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
+            std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
+            std::cout << "pr_actual is " << pr_actual << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
+            std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
+            std::cout << "pr_expect is " << pr_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int rts_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
+            for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
+                addr32_t pc = randgen32->pick_range(
+                    0, (mem->get_size() - 6) / 2);
+                reg32_t pr_val = randgen32->pick_range(
+                    0, (mem->get_size() - 6) / 2);
+                reg32_t mov_src_val = randgen32->pick_val(0);
+                reg32_t mov_dst_val = randgen32->pick_val(0);
+
+                if (reg_dst_mov == reg_src_mov)
+                    mov_dst_val = mov_src_val;
+
+                failure = failure ||
+                    do_rts_label(cpu, mem, reg_src_mov, reg_dst_mov, pr_val,
+                                 mov_src_val, mov_dst_val, pc);
+            }
+        }
+
+        return failure;
+    }
+
+    // BSR label
+    // 1011dddddddddddd
+    static int do_bsr_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
+                            unsigned reg_dst_mov, int16_t disp12,
+                            reg32_t mov_src_val, reg32_t mov_dst_val,
+                            addr32_t pc_init) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "BSR 0x" << std::hex << (disp12 & 0xfff) << "\n" <<
+            "MOV R" << std::dec << reg_src_mov << ", R" << reg_dst_mov << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src_mov) = mov_src_val;
+        *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
+        cpu->reg.pc = pc_init;
+        cpu->exec_inst();
+
+        addr32_t pc_expect = 4 + pc_init + (disp12 << 1);
+        reg32_t reg_src_expect = mov_src_val;
+        reg32_t reg_dst_expect = mov_src_val;
+        reg32_t pr_expect = 4 + pc_init;
+        reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
+        reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
+        reg32_t pr_actual = cpu->reg.pr;
+
+        if (cpu->reg.pc != pc_expect ||
+            reg_src_actual != reg_src_expect ||
+            reg_dst_actual != reg_dst_expect ||
+            pr_actual != pr_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << std::hex << pc_init << std::endl;
+            std::cout << "disp12 is " << disp12 << std::endl;
+            std::cout << "reg_src_mov is " << reg_src_mov << std::endl;
+            std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
+            std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
+            std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
+            std::cout << "pr_actual is " << pr_actual << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
+            std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
+            std::cout << "pr_expect is " << pr_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int bsr_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
+            for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
+                for (int reg_no = 0; reg_no < 16; reg_no++) {
+                    addr32_t pc = randgen32->pick_range(
+                        0, (mem->get_size() - 6) / 2);
+                    int16_t disp12 = randgen32->pick_val(0) & 0xfff;
+                    if (disp12 & 0x800)
+                        disp12 |= ~0xfff;// sign-extend to 16 bits
+                    reg32_t mov_src_val = randgen32->pick_val(0);
+                    reg32_t mov_dst_val = randgen32->pick_val(0);
+
+                    if (reg_dst_mov == reg_src_mov)
+                        mov_dst_val = mov_src_val;
+
+                    failure = failure ||
+                        do_bsr_label(cpu, mem, reg_src_mov,
+                                      reg_dst_mov, disp12, mov_src_val,
+                                      mov_dst_val, pc);
+                }
+            }
+        }
+
+        return failure;
+    }
+
+    // BRA label
+    // 1010dddddddddddd
+    static int do_bra_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
+                            unsigned reg_dst_mov, int16_t disp12,
+                            reg32_t mov_src_val, reg32_t mov_dst_val,
+                            addr32_t pc_init) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "BRA 0x" << std::hex << (disp12 & 0xfff) << "\n" <<
+            "MOV R" << std::dec << reg_src_mov << ", R" << reg_dst_mov << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src_mov) = mov_src_val;
+        *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
+        cpu->reg.pc = pc_init;
+        cpu->exec_inst();
+
+        addr32_t pc_expect = 4 + pc_init + (disp12 << 1);
+        reg32_t reg_src_expect = mov_src_val;
+        reg32_t reg_dst_expect = mov_src_val;
+        reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
+        reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
+
+        if (cpu->reg.pc != pc_expect ||
+            reg_src_actual != reg_src_expect ||
+            reg_dst_actual != reg_dst_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << std::hex << pc_init << std::endl;
+            std::cout << "disp12 is " << disp12 << std::endl;
+            std::cout << "reg_src_mov is " << reg_src_mov << std::endl;
+            std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
+            std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
+            std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
+            std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int bra_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
+            for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
+                for (int reg_no = 0; reg_no < 16; reg_no++) {
+                    addr32_t pc = randgen32->pick_range(
+                        0, (mem->get_size() - 6) / 2);
+                    int16_t disp12 = randgen32->pick_val(0) & 0xfff;
+                    if (disp12 & 0x800)
+                        disp12 |= ~0xfff;// sign-extend to 16 bits
+                    reg32_t mov_src_val = randgen32->pick_val(0);
+                    reg32_t mov_dst_val = randgen32->pick_val(0);
+
+                    if (reg_dst_mov == reg_src_mov)
+                        mov_dst_val = mov_src_val;
+
+                    failure = failure ||
+                        do_bra_label(cpu, mem, reg_src_mov,
+                                      reg_dst_mov, disp12, mov_src_val,
+                                      mov_dst_val, pc);
+                }
+            }
+        }
+
+        return failure;
+    }
+
+    // BF/S label
+    // 10001111dddddddd
+    static int do_bfs_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
+                            unsigned reg_dst_mov, int8_t disp8, bool t_val,
+                            reg32_t mov_src_val, reg32_t mov_dst_val,
+                            addr32_t pc_init) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "BF/S 0x" << std::hex << int(disp8) << "\n" <<
+            "MOV R" << std::dec << reg_src_mov << ", R" << reg_dst_mov << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src_mov) = mov_src_val;
+        *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
+        cpu->reg.pc = pc_init;
+        if (t_val)
+            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+        else
+            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+        cpu->exec_inst();
+
+        addr32_t pc_expect;
+        if (t_val)
+            pc_expect = pc_init + 4;
+        else
+            pc_expect = 4 + pc_init + (int32_t(disp8) << 1);
+        reg32_t reg_src_expect = mov_src_val;
+        reg32_t reg_dst_expect = mov_src_val;
+        reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
+        reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
+
+        if (cpu->reg.pc != pc_expect ||
+            reg_src_actual != reg_src_expect ||
+            reg_dst_actual != reg_dst_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << std::hex << pc_init << std::endl;
+            std::cout << "disp8 is " << int(disp8) << std::endl;
+            std::cout << "reg_src_mov is " << reg_src_mov << std::endl;
+            std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
+            std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
+            std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
+            std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
+            std::cout << "t flag is " << t_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int bfs_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
+            for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
+                for (int reg_no = 0; reg_no < 16; reg_no++) {
+                    addr32_t pc = randgen32->pick_range(
+                        0, (mem->get_size() - 6) / 2);
+                    int8_t disp8 = randgen32->pick_val(0) & 0xfff;
+                    reg32_t mov_src_val = randgen32->pick_val(0);
+                    reg32_t mov_dst_val = randgen32->pick_val(0);
+
+                    if (reg_dst_mov == reg_src_mov)
+                        mov_dst_val = mov_src_val;
+
+                    failure = failure ||
+                        do_bfs_label(cpu, mem, reg_src_mov,
+                                     reg_dst_mov, disp8, true, mov_src_val,
+                                     mov_dst_val, pc);
+
+                    failure = failure ||
+                        do_bfs_label(cpu, mem, reg_src_mov,
+                                     reg_dst_mov, disp8, true, mov_src_val,
+                                     mov_dst_val, pc);
+                }
+            }
+        }
+
+        return failure;
+    }
+
+    // BT/S label
+    // 10001101dddddddd
+    static int do_bts_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
+                            unsigned reg_dst_mov, int8_t disp8, bool t_val,
+                            reg32_t mov_src_val, reg32_t mov_dst_val,
+                            addr32_t pc_init) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "BT/S 0x" << std::hex << int(disp8) << "\n" <<
+            "MOV R" << std::dec << reg_src_mov << ", R" << reg_dst_mov << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src_mov) = mov_src_val;
+        *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
+        cpu->reg.pc = pc_init;
+        if (t_val)
+            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+        else
+            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+        cpu->exec_inst();
+
+        addr32_t pc_expect;
+        if (t_val)
+            pc_expect = 4 + pc_init + (int32_t(disp8) << 1);
+        else
+            pc_expect = pc_init + 4;
+        reg32_t reg_src_expect = mov_src_val;
+        reg32_t reg_dst_expect = mov_src_val;
+        reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
+        reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
+
+        if (cpu->reg.pc != pc_expect ||
+            reg_src_actual != reg_src_expect ||
+            reg_dst_actual != reg_dst_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << std::hex << pc_init << std::endl;
+            std::cout << "disp8 is " << int(disp8) << std::endl;
+            std::cout << "reg_src_mov is " << reg_src_mov << std::endl;
+            std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
+            std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
+            std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
+            std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
+            std::cout << "t flag is " << t_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int bts_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
+            for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
+                for (int reg_no = 0; reg_no < 16; reg_no++) {
+                    addr32_t pc = randgen32->pick_range(
+                        0, (mem->get_size() - 6) / 2);
+                    int8_t disp8 = randgen32->pick_val(0) & 0xfff;
+                    reg32_t mov_src_val = randgen32->pick_val(0);
+                    reg32_t mov_dst_val = randgen32->pick_val(0);
+
+                    if (reg_dst_mov == reg_src_mov)
+                        mov_dst_val = mov_src_val;
+
+                    failure = failure ||
+                        do_bts_label(cpu, mem, reg_src_mov,
+                                     reg_dst_mov, disp8, true, mov_src_val,
+                                     mov_dst_val, pc);
+
+                    failure = failure ||
+                        do_bts_label(cpu, mem, reg_src_mov,
+                                     reg_dst_mov, disp8, true, mov_src_val,
+                                     mov_dst_val, pc);
+                }
+            }
+        }
+
+        return failure;
+    }
+
+    // JMP @Rn
+    // 0100nnnn00101011
+    static int do_jmp_label(Sh4 *cpu, Memory *mem, unsigned reg_no,
+                            unsigned reg_src_mov, unsigned reg_dst_mov,
+                            reg32_t reg_val, reg32_t mov_src_val,
+                            reg32_t mov_dst_val, addr32_t pc_init) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "JMP @R" << reg_no << "\n" <<
+            "MOV R" << reg_src_mov << ", R" << reg_dst_mov << "\n" ;
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src_mov) = mov_src_val;
+        *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->reg.pc = pc_init;
+        cpu->exec_inst();
+
+        addr32_t pc_expect = reg_val;
+        reg32_t reg_src_expect = mov_src_val;
+        reg32_t reg_dst_expect = mov_src_val;
+        reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
+        reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
+
+        if (cpu->reg.pc != pc_expect ||
+            reg_src_actual != reg_src_expect ||
+            reg_dst_actual != reg_dst_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << std::hex << pc_init << std::endl;
+            std::cout << "addr is " << reg_val << std::endl;
+            std::cout << "reg_src_mov is " << reg_src_mov << std::endl;
+            std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
+            std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
+            std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
+            std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int jmp_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
+            for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
+                for (int reg_no = 0; reg_no < 16; reg_no++) {
+                    addr32_t pc = randgen32->pick_range(
+                        0, mem->get_size() - 4);
+                    reg32_t reg_val = randgen32->pick_range(
+                        0, mem->get_size() - 2);
+                    reg32_t mov_src_val = randgen32->pick_val(0);
+                    reg32_t mov_dst_val = randgen32->pick_val(0);
+
+                    if (reg_src_mov == reg_no)
+                        mov_src_val = reg_val;
+                    if (reg_dst_mov == reg_no)
+                        mov_dst_val = reg_val;
+                    if (reg_dst_mov == reg_src_mov)
+                        mov_dst_val = mov_src_val;
+
+                    failure = failure ||
+                        do_jmp_label(cpu, mem, reg_no, reg_src_mov,
+                                     reg_dst_mov, reg_val, mov_src_val,
+                                     mov_dst_val, pc);
+                }
+            }
+        }
+
+        return failure;
+    }
+
+    // JSR @Rn
+    // 0100nnnn00001011
+    static int do_jsr_label(Sh4 *cpu, Memory *mem, unsigned reg_no,
+                            unsigned reg_src_mov, unsigned reg_dst_mov,
+                            reg32_t reg_val, reg32_t mov_src_val,
+                            reg32_t mov_dst_val, addr32_t pc_init) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "JSR @R" << reg_no << "\n" <<
+            "MOV R" << reg_src_mov << ", R" << reg_dst_mov << "\n" ;
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src_mov) = mov_src_val;
+        *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
+        *cpu->gen_reg(reg_no) = reg_val;
+        cpu->reg.pc = pc_init;
+        cpu->exec_inst();
+
+        addr32_t pc_expect = reg_val;
+        reg32_t reg_src_expect = mov_src_val;
+        reg32_t reg_dst_expect = mov_src_val;
+        reg32_t pr_expect = pc_init + 4;
+        reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
+        reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
+        reg32_t pr_actual = cpu->reg.pr;
+
+        if (cpu->reg.pc != pc_expect ||
+            reg_src_actual != reg_src_expect ||
+            reg_dst_actual != reg_dst_expect ||
+            pr_actual != pr_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "initial pc is " << std::hex << pc_init << std::endl;
+            std::cout << "addr is " << reg_val << std::endl;
+            std::cout << "reg_src_mov is " << reg_src_mov << std::endl;
+            std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
+            std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
+            std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
+            std::cout << "pr_actual is " << pr_actual << std::endl;
+            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "expected pc is " << pc_expect << std::endl;
+            std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
+            std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
+            std::cout << "pr_expect is " << pr_expect;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int jsr_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
+            for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
+                for (int reg_no = 0; reg_no < 16; reg_no++) {
+                    addr32_t pc = randgen32->pick_range(
+                        0, mem->get_size() - 4);
+                    reg32_t reg_val = randgen32->pick_range(
+                        0, mem->get_size() - 2);
+                    reg32_t mov_src_val = randgen32->pick_val(0);
+                    reg32_t mov_dst_val = randgen32->pick_val(0);
+
+                    if (reg_src_mov == reg_no)
+                        mov_src_val = reg_val;
+                    if (reg_dst_mov == reg_no)
+                        mov_dst_val = reg_val;
+                    if (reg_dst_mov == reg_src_mov)
+                        mov_dst_val = mov_src_val;
+
+                    failure = failure ||
+                        do_jsr_label(cpu, mem, reg_no, reg_src_mov,
+                                     reg_dst_mov, reg_val, mov_src_val,
+                                     mov_dst_val, pc);
+                }
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -8123,6 +8988,17 @@ struct inst_test {
     { "noarg_sets", &Sh4InstTests::noarg_sets },
     { "noarg_sett", &Sh4InstTests::noarg_sett },
     { "movcal_binary_r0_indgen", &Sh4InstTests::movcal_binary_r0_indgen },
+    { "bt_label", &Sh4InstTests::bt_label },
+    { "bf_label", &Sh4InstTests::bf_label },
+    { "braf_label", &Sh4InstTests::braf_label },
+    { "bsrf_label", &Sh4InstTests::bsrf_label },
+    { "rts_label", &Sh4InstTests::rts_label },
+    { "bsr_label", &Sh4InstTests::bsr_label },
+    { "bra_label", &Sh4InstTests::bra_label },
+    { "bfs_label", &Sh4InstTests::bfs_label },
+    { "bts_label", &Sh4InstTests::bts_label },
+    { "jmp_label", &Sh4InstTests::jmp_label },
+    { "jsr_label", &Sh4InstTests::jsr_label },
     { NULL }
 };
 
