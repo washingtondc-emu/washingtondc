@@ -39,7 +39,7 @@ errinfo_opcode_name;
 
 struct Sh4::InstOpcode Sh4::opcode_list[] = {
     // RTS
-    { "0000000000001011", &Sh4::inst_rts },
+    { "0000000000001011", &Sh4::inst_rts, true },
 
     // CLRMAC
     { "0000000000101000", &Sh4::inst_clrmac },
@@ -129,10 +129,10 @@ struct Sh4::InstOpcode Sh4::opcode_list[] = {
     { "0100nnnn00101001", &Sh4::inst_unary_shlr16_gen },
 
     // BRAF Rn
-    { "0000nnnn00100011", &Sh4::inst_unary_braf_gen },
+    { "0000nnnn00100011", &Sh4::inst_unary_braf_gen, true },
 
     // BSRF Rn
-    { "0000nnnn00000011", &Sh4::inst_unary_bsrf_gen },
+    { "0000nnnn00000011", &Sh4::inst_unary_bsrf_gen, true },
 
     // CMP/EQ #imm, R0
     { "10001000iiiiiiii", &Sh4::inst_binary_cmpeq_imm_r0 },
@@ -162,22 +162,22 @@ struct Sh4::InstOpcode Sh4::opcode_list[] = {
     { "11001110iiiiiiii", &Sh4::inst_binary_xorb_imm_r0_gbr },
 
     // BF label
-    { "10001011dddddddd", &Sh4::inst_unary_bf_disp },
+    { "10001011dddddddd", &Sh4::inst_unary_bf_disp, true },
 
     // BF/S label
-    { "10001111dddddddd", &Sh4::inst_unary_bfs_disp },
+    { "10001111dddddddd", &Sh4::inst_unary_bfs_disp, true },
 
     // BT label
-    { "10001001dddddddd", &Sh4::inst_unary_bt_disp },
+    { "10001001dddddddd", &Sh4::inst_unary_bt_disp, true },
 
     // BT/S label
-    { "10001101dddddddd", &Sh4::inst_unary_bts_disp },
+    { "10001101dddddddd", &Sh4::inst_unary_bts_disp, true },
 
     // BRA label
-    { "1010dddddddddddd", &Sh4::inst_unary_bra_disp },
+    { "1010dddddddddddd", &Sh4::inst_unary_bra_disp, true },
 
     // BSR label
-    { "1011dddddddddddd", &Sh4::inst_unary_bsr_disp },
+    { "1011dddddddddddd", &Sh4::inst_unary_bsr_disp, true },
 
     // TRAPA #immed
     { "11000011iiiiiiii", &Sh4::inst_unary_trapa_disp },
@@ -195,10 +195,10 @@ struct Sh4::InstOpcode Sh4::opcode_list[] = {
     { "0000nnnn10000011", &Sh4::inst_unary_pref_indgen },
 
     // JMP @Rn
-    { "0100nnnn00101011", &Sh4::inst_unary_jmp_indgen },
+    { "0100nnnn00101011", &Sh4::inst_unary_jmp_indgen, true },
 
     // JSR @Rn
-    { "0100nnnn00001011", &Sh4::inst_unary_jsr_indgen },
+    { "0100nnnn00001011", &Sh4::inst_unary_jsr_indgen, true },
 
     // LDC Rm, SR
     { "0100mmmm00001110", &Sh4::inst_binary_ldc_gen_sr },
@@ -750,7 +750,20 @@ void Sh4::exec_inst() {
     do_exec_inst(inst);
 }
 
-void Sh4::do_exec_inst(inst_t inst) {
+void Sh4::exec_delay_slot(addr32_t addr) {
+    int exc_pending;
+    inst_t inst;
+
+    if ((exc_pending = read_inst(&inst, addr))) {
+        // fuck it, i'll commit now and figure what to do here later
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("SH4 CPU exceptions/traps"));
+    }
+
+    do_exec_inst(inst, false);
+}
+
+void Sh4::do_exec_inst(inst_t inst, bool allow_branch) {
     InstOpcode *op = opcode_list;
     OpArgs oa;
 
@@ -758,8 +771,13 @@ void Sh4::do_exec_inst(inst_t inst) {
 
     while (op->fmt) {
         if ((op->mask & inst) == op->val) {
-            opcode_func_t op_func = op->func;
-            (this->*op_func)(oa);
+            if (!(!allow_branch && op->is_branch)) {
+                opcode_func_t op_func = op->func;
+                (this->*op_func)(oa);
+            } else {
+                // raise exception for illegal slot instruction
+                set_exception(EXCP_SLOT_ILLEGAL_INST);
+            }
             return;
         }
         op++;
@@ -807,10 +825,11 @@ void Sh4::compile_instruction(struct Sh4::InstOpcode *op) {
 // RTS
 // 0000000000001011
 void Sh4::inst_rts(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0000000000001011") <<
-                          errinfo_opcode_name("RTS"));
+    addr32_t delay_slot_addr = reg.pc + 2;
+    reg.pc = reg.pr;
+
+    exec_delay_slot(delay_slot_addr);
+    reg.pc -= 2;
 }
 
 
@@ -1148,19 +1167,25 @@ void Sh4::inst_unary_shlr16_gen(OpArgs inst) {
 // BRAF Rn
 // 0000nnnn00100011
 void Sh4::inst_unary_braf_gen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0000nnnn00100011") <<
-                          errinfo_opcode_name("BRAF Rn"));
+    addr32_t delay_slot_addr = reg.pc + 2;
+
+    reg.pc += *gen_reg(inst.gen_reg) + 4;
+
+    exec_delay_slot(delay_slot_addr);
+    reg.pc -= 2;
 }
 
 // BSRF Rn
 // 0000nnnn00000011
 void Sh4::inst_unary_bsrf_gen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0000nnnn00000011") <<
-                          errinfo_opcode_name("BSRF Rn"));
+    addr32_t delay_slot_addr = reg.pc + 2;
+    addr32_t pr_addr = reg.pc + 4;
+
+    reg.pr = pr_addr;
+    reg.pc += *gen_reg(inst.gen_reg) + 4;
+
+    exec_delay_slot(delay_slot_addr);
+    reg.pc -= 2;
 }
 
 // CMP/EQ #imm, R0
@@ -1278,55 +1303,69 @@ void Sh4::inst_binary_xorb_imm_r0_gbr(OpArgs inst) {
 // BF label
 // 10001011dddddddd
 void Sh4::inst_unary_bf_disp(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("10001011dddddddd") <<
-                          errinfo_opcode_name("BF label"));
+    if (!(reg.sr & SR_FLAG_T_MASK))
+        reg.pc += (int32_t(inst.simm8) << 1) + 4;
+    else
+        next_inst();
 }
 
 // BF/S label
 // 10001111dddddddd
 void Sh4::inst_unary_bfs_disp(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("10001111dddddddd") <<
-                          errinfo_opcode_name("BF/S label"));
+    addr32_t delay_slot_addr = reg.pc + 2;
+
+    if (!(reg.sr & SR_FLAG_T_MASK))
+        reg.pc += (int32_t(inst.simm8) << 1) + 4;
+
+    exec_delay_slot(delay_slot_addr);
+    reg.pc += 2;
 }
 
 // BT label
 // 10001001dddddddd
 void Sh4::inst_unary_bt_disp(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("10001001dddddddd") <<
-                          errinfo_opcode_name("BT label"));
+    if (reg.sr & SR_FLAG_T_MASK)
+        reg.pc += (int32_t(inst.simm8) << 1) + 4;
+    else
+        next_inst();
 }
 
 // BT/S label
 // 10001101dddddddd
 void Sh4::inst_unary_bts_disp(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("10001101dddddddd") <<
-                          errinfo_opcode_name("BT/S label"));
+    addr32_t delay_slot_addr = reg.pc + 2;
+
+    if (reg.sr & SR_FLAG_T_MASK)
+        reg.pc += (int32_t(inst.simm8) << 1) + 4;
+    else
+        reg.pc += 2;
+
+    exec_delay_slot(delay_slot_addr);
+    reg.pc -= 2;
 }
 
 // BRA label
 // 1010dddddddddddd
 void Sh4::inst_unary_bra_disp(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1010dddddddddddd") <<
-                          errinfo_opcode_name("BRA label"));
+    addr32_t delay_slot_addr = reg.pc + 2;
+
+    reg.pc += (int32_t(inst.simm12) << 1) + 4;
+
+    exec_delay_slot(delay_slot_addr);
+    reg.pc -= 2;
 }
 
 // BSR label
 // 1011dddddddddddd
 void Sh4::inst_unary_bsr_disp(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1011dddddddddddd") <<
-                          errinfo_opcode_name("BSR label"));
+    addr32_t delay_slot_addr = reg.pc + 2;
+    addr32_t pr_addr = reg.pc + 4;
+
+    reg.pr = pr_addr;
+    reg.pc += (int32_t(inst.simm12) << 1) + 4;
+
+    exec_delay_slot(delay_slot_addr);
+    reg.pc -= 2;
 }
 
 // TRAPA #immed
@@ -1511,19 +1550,24 @@ void Sh4::inst_unary_pref_indgen(OpArgs inst) {
 // JMP @Rn
 // 0100nnnn00101011
 void Sh4::inst_unary_jmp_indgen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0100nnnn00101011") <<
-                          errinfo_opcode_name("JMP @Rn"));
+    addr32_t delay_slot_addr = reg.pc + 2;
+
+    reg.pc = *gen_reg(inst.gen_reg);
+
+    exec_delay_slot(delay_slot_addr);
+    reg.pc -= 2; // undo the previous instruction's incrementing of pc
 }
 
 // JSR @Rn
 // 0100nnnn00001011
 void Sh4::inst_unary_jsr_indgen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0100nnnn00001011") <<
-                          errinfo_opcode_name("JSR @Rn"));
+    addr32_t delay_slot_addr = reg.pc + 2;
+
+    reg.pr = reg.pc + 4;
+    reg.pc = *gen_reg(inst.gen_reg);
+
+    exec_delay_slot(delay_slot_addr);
+    reg.pc -= 2; // undo the previous instruction's incrementing of pc
 }
 
 // LDC Rm, SR

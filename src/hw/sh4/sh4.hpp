@@ -187,6 +187,11 @@ public:
         reg.pc += 2;
     }
 
+    void do_exec_inst(inst_t inst, bool allow_branch = true);
+
+    // runs inst as a delay slot.
+    void exec_delay_slot(addr32_t addr);
+
     // returns the program counter
     reg32_t get_pc() const;
 
@@ -684,6 +689,12 @@ private:
         inst_t : 4;
         };
 
+        // signed 8-bit immediate value
+        struct {
+            int8_t simm8 : 8;
+        inst_t : 8;
+        };
+
         // operators that take a base register and a 4-bit displacement
         struct {
             inst_t imm4 : 4;
@@ -700,6 +711,12 @@ private:
         // operators that take a 12-bit immediate value
         struct {
             inst_t imm12 : 12;
+        inst_t : 4;
+        };
+
+        // signed 12-bit immediate value
+        struct {
+            int16_t simm12 : 12;
         inst_t : 4;
         };
 
@@ -1714,16 +1731,23 @@ private:
     void inst_binary_fitrv_mxtrx_fv(OpArgs inst);
 
     static struct InstOpcode {
+        // format string compiled to make mask and val
         char const *fmt;
+
+        // opcode handler function
         opcode_func_t func;
+
+        // if this is true, this inst cant be called from a delay slot
+        bool is_branch;
+
+        // instructions are matched to this opcode
+        // by anding with mask and checking for equality with val
         inst_t mask;
         inst_t val;
     } opcode_list[];
 
     static void compile_instructions();
     static void compile_instruction(struct Sh4::InstOpcode *op);
-
-    void do_exec_inst(inst_t inst);
 };
 
 #endif
