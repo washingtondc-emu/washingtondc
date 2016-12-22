@@ -2293,19 +2293,27 @@ void Sh4::inst_binary_div0s_gen_gen(OpArgs inst) {
 // DMULS.L Rm, Rn
 // 0011nnnnmmmm1101
 void Sh4::inst_binary_dmulsl_gen_gen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0011nnnnmmmm1101") <<
-                          errinfo_opcode_name("DMULS.L Rm, Rn"));
+    int64_t val1 = *gen_reg(inst.dst_reg);
+    int64_t val2 = *gen_reg(inst.src_reg);
+    int64_t res = int64_t(val1) * int64_t(val2);
+
+    reg.mach = uint64_t(res) >> 32;
+    reg.macl = uint64_t(res) & 0xffffffff;
+
+    next_inst();
 }
 
 // DMULU.L Rm, Rn
 // 0011nnnnmmmm0101
 void Sh4::inst_binary_dmulul_gen_gen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0011nnnnmmmm0101") <<
-                          errinfo_opcode_name("DMULU.L Rm, Rn"));
+    uint64_t val1 = *gen_reg(inst.dst_reg);
+    uint64_t val2 = *gen_reg(inst.src_reg);
+    uint64_t res = uint64_t(val1) * uint64_t(val2);
+
+    reg.mach = res >> 32;
+    reg.macl = res & 0xffffffff;
+
+    next_inst();
 }
 
 // EXTS.B Rm, Rn
