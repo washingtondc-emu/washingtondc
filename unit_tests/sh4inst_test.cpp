@@ -8816,6 +8816,120 @@ public:
 
         return failure;
     }
+
+    // DMULS.L Rm, Rn
+    // 0011nnnnmmmm1101
+    static int do_dmulsl_gen_gen(Sh4 *cpu, Memory *mem,
+                                 unsigned reg_m, unsigned reg_n,
+                                 reg32_t reg_m_val, reg32_t reg_n_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "DMULS.L R" << reg_m << ", R" << reg_n << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_m) = reg_m_val;
+        *cpu->gen_reg(reg_n) = reg_n_val;
+        cpu->exec_inst();
+
+        int64_t res = int64_t(reg_n_val) * int64_t(reg_m_val);
+        reg32_t mach_expect = uint64_t(res) >> 32;
+        reg32_t macl_expect = res & 0xffffffff;
+
+        if (cpu->reg.mach != mach_expect || cpu->reg.macl != macl_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "reg_m_val is " << std::hex << reg_m_val << std::endl;
+            std::cout << "reg_n_val is " << reg_n_val << std::endl;
+            std::cout << "mach_expect is " << mach_expect << std::endl;
+            std::cout << "macl_expect is " << macl_expect << std::endl;
+            std::cout << "mach is " << cpu->reg.mach << std::endl;
+            std::cout << "macl is " << cpu->reg.macl << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int dmulsl_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_m_no = 0; reg_m_no < 16; reg_m_no++) {
+            for (unsigned reg_n_no = 0; reg_n_no < 16; reg_n_no++) {
+                reg32_t reg_m_val = randgen32->pick_val(0);
+                reg32_t reg_n_val = reg_m_val;
+
+                if (reg_m_no != reg_n_no)
+                    reg_n_val = randgen32->pick_val(0);
+
+                failure = failure ||
+                    do_dmulsl_gen_gen(cpu, mem, reg_m_no, reg_n_no,
+                                      reg_m_val, reg_n_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // DMULU.L Rm, Rn
+    // 0011nnnnmmmm0101
+    static int do_dmulul_gen_gen(Sh4 *cpu, Memory *mem,
+                                 unsigned reg_m, unsigned reg_n,
+                                 reg32_t reg_m_val, reg32_t reg_n_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "DMULU.L R" << reg_m << ", R" << reg_n << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_m) = reg_m_val;
+        *cpu->gen_reg(reg_n) = reg_n_val;
+        cpu->exec_inst();
+
+        uint64_t res = uint64_t(reg_n_val) * uint64_t(reg_m_val);
+        reg32_t mach_expect = res >> 32;
+        reg32_t macl_expect = res & 0xffffffff;
+
+        if (cpu->reg.mach != mach_expect || cpu->reg.macl != macl_expect) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "reg_m_val is " << std::hex << reg_m_val << std::endl;
+            std::cout << "reg_n_val is " << reg_n_val << std::endl;
+            std::cout << "mach_expect is " << mach_expect << std::endl;
+            std::cout << "macl_expect is " << macl_expect << std::endl;
+            std::cout << "mach is " << cpu->reg.mach << std::endl;
+            std::cout << "macl is " << cpu->reg.macl << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int dmulul_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned reg_m_no = 0; reg_m_no < 16; reg_m_no++) {
+            for (unsigned reg_n_no = 0; reg_n_no < 16; reg_n_no++) {
+                reg32_t reg_m_val = randgen32->pick_val(0);
+                reg32_t reg_n_val = reg_m_val;
+
+                if (reg_m_no != reg_n_no)
+                    reg_n_val = randgen32->pick_val(0);
+
+                failure = failure ||
+                    do_dmulul_gen_gen(cpu, mem, reg_m_no, reg_n_no,
+                                      reg_m_val, reg_n_val);
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -8999,6 +9113,8 @@ struct inst_test {
     { "bts_label", &Sh4InstTests::bts_label },
     { "jmp_label", &Sh4InstTests::jmp_label },
     { "jsr_label", &Sh4InstTests::jsr_label },
+    { "dmulsl_gen_gen", &Sh4InstTests::dmulsl_gen_gen },
+    { "dmulul_gen_gen", &Sh4InstTests::dmulul_gen_gen },
     { NULL }
 };
 
