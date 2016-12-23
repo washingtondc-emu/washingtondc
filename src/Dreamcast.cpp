@@ -32,6 +32,8 @@
 #include "Dreamcast.hpp"
 
 Dreamcast::Dreamcast(char const *bios_path) {
+    is_running = true;
+
     mem = new Memory(MEM_SZ);
     cpu = new Sh4(mem);
 
@@ -55,7 +57,7 @@ Dreamcast::~Dreamcast() {
 
 void Dreamcast::run() {
     try {
-        while (true) {
+        while (is_running) {
 #ifdef ENABLE_DEBUGGER
             if (debugger && debugger->step(cpu->get_pc()))
                 continue;
@@ -66,6 +68,13 @@ void Dreamcast::run() {
     } catch(const BaseException& exc) {
         std::cerr << boost::diagnostic_information(exc);
     }
+
+    if (!is_running)
+        std::cout << "program execution ended normally" << std::endl;
+}
+
+void Dreamcast::kill() {
+    is_running = false;
 }
 
 Sh4 *Dreamcast::get_cpu() {

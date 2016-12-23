@@ -41,6 +41,7 @@ public:
 #endif
 
     void run();
+    void kill();
 
     Sh4 *get_cpu();
     Memory *gem_mem();
@@ -49,6 +50,8 @@ private:
 
     Sh4 *cpu;
     Memory *mem;
+
+    bool is_running;
 
 #ifdef ENABLE_DEBUGGER
     Debugger *debugger;

@@ -461,6 +461,12 @@ std::string GdbStub::handle_D_packet(std::string dat) {
     return "OK";
 }
 
+std::string GdbStub::handle_K_packet(std::string dat) {
+    dc->kill();
+
+    return "OK";
+}
+
 void GdbStub::handle_packet(std::string pkt) {
     std::string response;
     std::string dat = extract_packet(pkt);
@@ -490,6 +496,8 @@ void GdbStub::handle_packet(std::string pkt) {
             response = craft_packet(handle_P_packet(dat));
         } else if (dat.at(0) == 'D') {
             response = craft_packet(handle_D_packet(dat));
+        } else if (dat.at(0) == 'k') {
+            response = craft_packet(handle_K_packet(dat));
         }
     }
 
