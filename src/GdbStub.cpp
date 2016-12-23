@@ -453,6 +453,14 @@ std::string GdbStub::handle_M_packet(std::string dat) {
     return "OK";
 }
 
+std::string GdbStub::handle_D_packet(std::string dat) {
+    cur_state = Debugger::STATE_NORM;
+
+    on_detach();
+
+    return "OK";
+}
+
 void GdbStub::handle_packet(std::string pkt) {
     std::string response;
     std::string dat = extract_packet(pkt);
@@ -480,6 +488,8 @@ void GdbStub::handle_packet(std::string pkt) {
             return;
         } else if (dat.at(0) == 'P') {
             response = craft_packet(handle_P_packet(dat));
+        } else if (dat.at(0) == 'D') {
+            response = craft_packet(handle_D_packet(dat));
         }
     }
 

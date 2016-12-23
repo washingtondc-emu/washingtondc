@@ -64,3 +64,8 @@ bool Debugger::should_break(inst_t pc) {
 bool Debugger::step(inst_t pc) {
     return should_break(pc);
 }
+
+void Debugger::on_detach() {
+    for (int i = 0; i < N_BREAKPOINTS; i++)
+        this->breakpoints[i] = -1;
+}

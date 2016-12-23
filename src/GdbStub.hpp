@@ -156,6 +156,7 @@ private:
     std::string handle_G_packet(std::string dat);
     std::string handle_M_packet(std::string dat);
     std::string handle_P_packet(std::string dat);
+    std::string handle_D_packet(std::string dat);
 };
 
 #endif

@@ -60,6 +60,12 @@ protected:
         STATE_BREAK
     };
     State cur_state;
+
+    /*
+     * call this when gdb sends a detach packet.
+     * This clears out break points and such.
+     */
+    void on_detach();
 };
 
 #endif
