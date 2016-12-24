@@ -166,7 +166,7 @@ public:
     // ADDC Rm, Rn
     // 0011nnnnmmmm1110
     static int do_addc_gen_gen_test(Sh4 *cpu, Memory *mem,
-                                    reg32_t src1, reg32_t src2) {
+                                    reg32_t src1, reg32_t src2, bool carry_in) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -194,41 +194,41 @@ public:
 
                 *cpu->gen_reg(reg1_no) = initial_val1;
                 *cpu->gen_reg(reg2_no) = initial_val2;
+
+                if (carry_in)
+                    cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+
                 cpu->exec_inst();
 
-                reg32_t expected_val = (initial_val1 + initial_val2);
-                reg32_t actual_val = *cpu->gen_reg(reg2_no);
-
-                if (actual_val != expected_val) {
-                    std::cout << "ERROR running: " << std::endl
-                              << "\t" << ss.str() << std::endl;
-                    std::cout << "Expected " << std::hex <<
-                        (initial_val1 + initial_val2) << " but got " <<
-                        actual_val << std::endl;
-                    return 1;
+                reg32_t expected_val = (initial_val2 + initial_val1);
+                bool expected_carry = false;
+                if (initial_val2 > expected_val)
+                    expected_carry = true;
+                if (carry_in) {
+                    expected_val++;
+                    if ((initial_val2 + initial_val1) > expected_val)
+                        expected_carry = true;
                 }
 
-                // now check the carry-bit
-                uint64_t expected_val64 = uint64_t(initial_val1) +
-                    uint64_t(initial_val2);
-                if (expected_val64 == uint64_t(actual_val)) {
-                    // there should not be a carry
-                    if (cpu->reg.sr & Sh4::SR_FLAG_T_MASK) {
-                        std::cout << "ERROR running: " << std::endl
-                                  << "\t" << ss.str() << std::endl;
-                        std::cout << "Expected no carry bit "
-                            "(there was a carry)" << std::endl;
-                        return 1;
-                    }
-                } else {
-                    // there should be a carry
-                    if (!(cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {
-                        std::cout << "ERROR running: " << std::endl
-                                  << "\t" << ss.str() << std::endl;
-                        std::cout << "Expected a carry bit "
-                            "(there was no carry)" << std::endl;
-                        return 1;
-                    }
+                reg32_t actual_val = *cpu->gen_reg(reg2_no);
+                bool actual_carry = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+
+                if (actual_val != expected_val || expected_carry != actual_carry) {
+                    std::cout << "ERROR running: " << std::endl
+                              << "\t" << ss.str() << std::endl;
+                    std::cout << "carry_in was " << carry_in << std::endl;
+                    std::cout << "initial_val1 is " << std::hex <<
+                        initial_val1 << std::endl;
+                    std::cout << "initial_val2 is " << std::hex <<
+                        initial_val2 << std::endl;
+                    std::cout << "expected_val is " << expected_val <<
+                        std::endl;
+                    std::cout << "expected_carry is " << expected_carry <<
+                        std::endl;
+                    std::cout << "actual_val is " << actual_val << std::endl;
+                    std::cout << "actual_carry is " << actual_carry <<
+                        std::endl;
+                    return 1;
                 }
             }
         }
@@ -243,25 +243,42 @@ public:
         // run the test with a couple random values
         failed = failed || do_addc_gen_gen_test(cpu, mem,
                                                 randgen32->pick_val(0),
-                                                randgen32->pick_val(0));
+                                                randgen32->pick_val(0), false);
+        failed = failed || do_addc_gen_gen_test(cpu, mem,
+                                                randgen32->pick_val(0),
+                                                randgen32->pick_val(0), true);
 
         // make sure we get at least one value in that should not cause a carry
-        failed = failed || do_addc_gen_gen_test(cpu, mem, 0, 0);
+        failed = failed || do_addc_gen_gen_test(cpu, mem, 0, 0, false);
+        failed = failed || do_addc_gen_gen_test(cpu, mem, 0, 0, true);
 
         // make sure we get at least one value in that should cause a carry
         failed = failed ||
             do_addc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
-                                 std::numeric_limits<reg32_t>::max());
+                                 std::numeric_limits<reg32_t>::max(), false);
+        failed = failed ||
+            do_addc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
+                                 std::numeric_limits<reg32_t>::max(), true);
 
         // test a value that should *almost* cause a carry
         failed = failed ||
             do_addc_gen_gen_test(cpu, mem, 1,
-                                 std::numeric_limits<reg32_t>::max() - 1);
+                                 std::numeric_limits<reg32_t>::max() - 1,
+                                 false);
+        failed = failed ||
+            do_addc_gen_gen_test(cpu, mem, 1,
+                                 std::numeric_limits<reg32_t>::max() - 1,
+                                 true);
 
         // test a value pair that should barely cause a carry
         failed = failed ||
             do_addc_gen_gen_test(cpu, mem,
-                                 std::numeric_limits<reg32_t>::max() - 1, 2);
+                                 std::numeric_limits<reg32_t>::max() - 1, 2,
+                                 false);
+        failed = failed ||
+            do_addc_gen_gen_test(cpu, mem,
+                                 std::numeric_limits<reg32_t>::max() - 1, 2,
+                                 true);
 
         return failed;
     }
@@ -470,7 +487,7 @@ public:
     // SUBC Rm, Rn
     // 0011nnnnmmmm1010
     static int do_subc_gen_gen_test(Sh4 *cpu, Memory *mem,
-                                    reg32_t src1, reg32_t src2) {
+                                    reg32_t src1, reg32_t src2, bool carry_in) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -498,59 +515,40 @@ public:
 
                 *cpu->gen_reg(reg1_no) = initial_val1;
                 *cpu->gen_reg(reg2_no) = initial_val2;
+                if (carry_in)
+                    cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+
                 cpu->exec_inst();
 
                 reg32_t expected_val = initial_val2 - initial_val1;
-                reg32_t actual_val = *cpu->gen_reg(reg2_no);
+                bool expected_carry = false;
 
-                if (actual_val != expected_val) {
-                    std::cout << "ERROR running: " << std::endl
-                              << "\t" << ss.str() << std::endl;
-                    std::cout << "Expected " << std::hex <<
-                        (initial_val2 - initial_val1) << " but got " <<
-                        actual_val << std::endl;
-                    std::cout << "initial value of R" << std::dec <<
-                        reg2_no << ": " << std::hex << initial_val2;
-                    std::cout << "initial value of R" << std::dec <<
-                        reg1_no << ": " << std::hex << initial_val1;
-                    return 1;
+                if (initial_val2 < expected_val)
+                    expected_carry = true;
+                if (carry_in) {
+                    expected_val -= 1;
+                    if ((initial_val2 - initial_val1) < expected_val)
+                        expected_carry = true;
                 }
 
-                // now check the carry-bit
-                uint64_t expected_val64 = uint64_t(initial_val2) -
-                    uint64_t(initial_val1);
-                if (initial_val1 <= initial_val2) {
-                    // there should not be a carry
-                    if (cpu->reg.sr & Sh4::SR_FLAG_T_MASK) {
-                        std::cout << "ERROR running: " << std::endl
-                                  << "\t" << ss.str() << std::endl;
-                        std::cout << "Expected no carry bit "
-                            "(there was a carry)" << std::endl;
-                        std::cout << "initial value of R" << std::dec <<
-                            reg2_no << ": " << std::hex << initial_val2;
-                        std::cout << "initial value of R" << std::dec <<
-                            reg1_no << ": " << std::hex << initial_val1;
-                        std::cout << "output val: " << std::hex <<
-                            actual_val << std::endl;
-                        return 1;
-                    }
-                } else {
-                    // there should be a carry
-                    if (!(cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {
-                        std::cout << "ERROR running: " << std::endl
-                                  << "\t" << ss.str() << std::endl;
-                        std::cout << "Expected a carry bit "
-                            "(there was no carry)" << std::endl;
-                        std::cout << "initial value of R" << std::dec <<
-                            reg2_no << ": " << std::hex << initial_val2 <<
-                            std::endl;
-                        std::cout << "initial value of R" << std::dec <<
-                            reg1_no << ": " << std::hex << initial_val1 <<
-                            std::endl;
-                        std::cout << "output val: " << std::hex <<
-                            actual_val << std::endl;
-                        return 1;
-                    }
+                reg32_t actual_val = *cpu->gen_reg(reg2_no);
+                bool actual_carry = cpu->reg.sr & Sh4::SR_FLAG_T_MASK;
+
+                if ((actual_val != expected_val) ||
+                    (actual_carry != expected_carry)) {
+                    std::cout << "ERROR running: " << std::endl
+                              << "\t" << ss.str() << std::endl;
+                    std::cout << "initial_val1 is " << std::hex <<
+                        initial_val1 << std::endl;
+                    std::cout << "initial_val2 is " << initial_val2 <<
+                        std::endl;
+                    std::cout << "expected_val is " << expected_val <<
+                        std::endl;
+                    std::cout << "expected_carry is " << expected_carry <<
+                        std::endl;
+                    std::cout << "actual_val is " << actual_val << std::endl;
+                    std::cout << "carry_in is " << carry_in << std::endl;
+                    return 1;
                 }
             }
         }
@@ -563,24 +561,40 @@ public:
         // run the test with a couple random values
         failed = failed || do_subc_gen_gen_test(cpu, mem,
                                                 randgen32->pick_val(0),
-                                                randgen32->pick_val(0));
+                                                randgen32->pick_val(0), false);
+        failed = failed || do_subc_gen_gen_test(cpu, mem,
+                                                randgen32->pick_val(0),
+                                                randgen32->pick_val(0), true);
+
 
         // make sure we get at least one value in that should not cause a carry
-        failed = failed || do_subc_gen_gen_test(cpu, mem, 0, 0);
+        failed = failed || do_subc_gen_gen_test(cpu, mem, 0, 0, false);
+        failed = failed || do_subc_gen_gen_test(cpu, mem, 0, 0, true);
 
         // make sure we get at least one value in that should cause a carry
         failed = failed ||
             do_subc_gen_gen_test(cpu, mem,
-                                 std::numeric_limits<reg32_t>::max(), 0);
+                                 std::numeric_limits<reg32_t>::max(), 0, false);
+        failed = failed ||
+            do_subc_gen_gen_test(cpu, mem,
+                                 std::numeric_limits<reg32_t>::max(), 0, true);
+
 
         // test a value that should *almost* cause a carry
         failed = failed ||
             do_subc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
-                                 std::numeric_limits<reg32_t>::max());
+                                 std::numeric_limits<reg32_t>::max(), false);
+        failed = failed ||
+            do_subc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
+                                 std::numeric_limits<reg32_t>::max(), true);
+
 
         // test a value pair that should barely cause a carry
         failed = failed ||
-            do_subc_gen_gen_test(cpu, mem, 1, 0);
+            do_subc_gen_gen_test(cpu, mem, 1, 0, false);
+        failed = failed ||
+            do_subc_gen_gen_test(cpu, mem, 1, 0, true);
+
 
         return failed;
     }
