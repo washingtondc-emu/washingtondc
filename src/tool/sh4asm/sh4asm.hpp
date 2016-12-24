@@ -38,7 +38,7 @@ public:
         this->sym = sym;
     }
 
-    char const *what() {
+    char const *what() const throw() {
         return sym;
     }
 private:
@@ -47,11 +47,11 @@ private:
 
 class ParseError : public BaseException {
 public:
-    ParseError(char const *sym) {
+    ParseError(char const *desc) {
         this->desc = desc;
     }
 
-    char const *what() {
+    char const *what() const throw() {
         return desc;
     }
 private:

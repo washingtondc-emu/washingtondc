@@ -429,7 +429,7 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
 }
 
 enum Sh4::VirtMemArea Sh4::get_mem_area(addr32_t addr) {
-    if (addr >= AREA_P0_FIRST && addr <= AREA_P0_LAST)
+    if (addr <= AREA_P0_LAST)
         return AREA_P0;
     if (addr >= AREA_P1_FIRST && addr <= AREA_P1_LAST)
         return AREA_P1;

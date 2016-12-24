@@ -78,7 +78,7 @@ private:
     boost::asio::ip::tcp::acceptor tcp_acceptor;
     boost::asio::ip::tcp::socket tcp_socket;
 
-    bool is_reading, is_writing;
+    bool is_writing;
     boost::array<char, 1> read_buffer;
     boost::array<char, 128> write_buffer;
 
@@ -132,7 +132,7 @@ private:
                 break;
             }
 
-            *out8++;
+            out8++;
         }
 
         return bytes_written;

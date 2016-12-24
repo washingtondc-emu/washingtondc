@@ -26,6 +26,11 @@ set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 set(CMAKE_CXX_STANDARD 98)
 
+# turn on strict warnings - i have no idea how to do this in windows
+if(UNIX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
+endif()
+
 option(ENABLE_SH4_ICACHE "emulate the sh4's instruction cache" ON)
 option(ENABLE_SH4_OCACHE "emulate the sh4's operand cache" ON)
 option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)

@@ -31,8 +31,12 @@ Debugger::Debugger(Dreamcast *dc) {
     this->cur_state = STATE_BREAK;
     this->dc = dc;
 
-    for (int i = 0; i < N_BREAKPOINTS; i++)
+    for (unsigned i = 0; i < N_BREAKPOINTS; i++)
         this->breakpoints[i] = -1;
+}
+
+Debugger::~Debugger() {
+    // empty placeholder for virtual destructor, nothing to do here...
 }
 
 bool Debugger::should_break(inst_t pc) {
@@ -52,7 +56,7 @@ bool Debugger::should_break(inst_t pc) {
         return false;
     }
 
-    for (int i = 0; i < N_BREAKPOINTS; i++)
+    for (unsigned i = 0; i < N_BREAKPOINTS; i++)
         if (pc == breakpoints[i]) {
             cur_state = STATE_BREAK;
             return true;
@@ -66,6 +70,6 @@ bool Debugger::step(inst_t pc) {
 }
 
 void Debugger::on_detach() {
-    for (int i = 0; i < N_BREAKPOINTS; i++)
+    for (unsigned i = 0; i < N_BREAKPOINTS; i++)
         this->breakpoints[i] = -1;
 }

@@ -32,7 +32,6 @@ static void print_usage(char const *cmd) {
 
 int main(int argc, char **argv) {
     int opt;
-    bool is_running = true;
     char const *bios_path = NULL;
     char const *cmd = argv[0];
     bool enable_debugger = false;

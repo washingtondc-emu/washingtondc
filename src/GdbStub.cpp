@@ -36,9 +36,9 @@
 // #define GDBSTUB_VERBOSE
 
 GdbStub::GdbStub(Dreamcast *dc) : Debugger(dc),
-                                  tcp_acceptor(io_service, tcp_endpoint),
                                   tcp_endpoint(boost::asio::ip::tcp::v4(),
                                                PORT_NO),
+                                  tcp_acceptor(io_service, tcp_endpoint),
                                   tcp_socket(io_service)
 {
     this->dc = dc;
@@ -516,10 +516,6 @@ void GdbStub::transmit_pkt(const std::string& pkt) {
 std::string GdbStub::next_packet() {
     std::string pkt;
     std::string pktbuf_tmp(input_packet);
-
-    unsigned char checksum;
-    unsigned char xmitcsum;
-    int count;
     char ch;
 
     // wait around for the start character, ignore all other characters

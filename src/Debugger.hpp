@@ -37,6 +37,7 @@ class Dreamcast;
 class Debugger {
 public:
     Debugger(Dreamcast *dc);
+    virtual ~Debugger();
 
     bool should_break(inst_t pc);
 

@@ -66,8 +66,8 @@ bool Icache::cache_check(struct cache_line const *line, addr32_t paddr) {
 
     addr32_t line_tag = cache_line_get_tag(line);
     if (line_tag == paddr_tag)
-        return line;
-    return NULL;
+        return true;
+    return false;
 }
 
 int Icache::cache_load(struct cache_line *line, addr32_t paddr) {

@@ -359,19 +359,19 @@ private:
     static const unsigned UTLB_ENT_PR_MASK = 3 << UTLB_ENT_PR_SHIFT;
 
     // UTLB Cacheability bit
-    static const unsigned UTLB_ENT_C_SHIFT = 9;
+    static const unsigned UTLB_ENT_C_SHIFT = 8;
     static const unsigned UTLB_ENT_C_MASK = 1 << UTLB_ENT_C_SHIFT;
 
     // UTLB Share status bit
-    static const unsigned UTLB_ENT_SH_SHIFT = 10;
+    static const unsigned UTLB_ENT_SH_SHIFT = 9;
     static const unsigned UTLB_ENT_SH_MASK = 1 << UTLB_ENT_SH_SHIFT;
 
     // UTLB Page size (see enum PageSize definition)
-    static const unsigned UTLB_ENT_SZ_SHIFT = 11;
+    static const unsigned UTLB_ENT_SZ_SHIFT = 10;
     static const unsigned UTLB_ENT_SZ_MASK = 3 << UTLB_ENT_SZ_SHIFT;
 
     // UTLB Physical Page Number
-    static const unsigned UTLB_ENT_PPN_SHIFT = 14;
+    static const unsigned UTLB_ENT_PPN_SHIFT = 12;
     static const unsigned UTLB_ENT_PPN_MASK = 0x7ffff << UTLB_ENT_PPN_SHIFT;
 
     // ITLB Valid bit

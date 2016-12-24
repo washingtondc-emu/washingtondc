@@ -941,7 +941,7 @@ void Sh4::inst_unary_movt_gen(OpArgs inst) {
 // 0100nnnn00010001
 void Sh4::inst_unary_cmppz_gen(OpArgs inst) {
     reg.sr &= ~SR_FLAG_T_MASK;
-    uint32_t flag = (*gen_reg(inst.gen_reg)) >= 0;
+    uint32_t flag = int32_t(*gen_reg(inst.gen_reg)) >= 0;
 
     reg.sr |= flag << SR_FLAG_T_SHIFT;
 
@@ -952,7 +952,7 @@ void Sh4::inst_unary_cmppz_gen(OpArgs inst) {
 // 0100nnnn00010101
 void Sh4::inst_unary_cmppl_gen(OpArgs inst) {
     reg.sr &= ~SR_FLAG_T_MASK;
-    uint32_t flag = (*gen_reg(inst.gen_reg)) > 0;
+    uint32_t flag = int32_t(*gen_reg(inst.gen_reg)) > 0;
 
     reg.sr |= flag << SR_FLAG_T_SHIFT;
 
