@@ -36,8 +36,11 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
     enum VirtMemArea virt_area = get_mem_area(addr);
 
     bool privileged = reg.sr & SR_MD_MASK ? true : false;
+
+#ifdef ENABLE_SH4_OCACHE
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+#endif
 
     if (virt_area != AREA_P0 && privileged) {
         // TODO: allow user-mode access to the store queue area
@@ -210,8 +213,11 @@ int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
     enum VirtMemArea virt_area = get_mem_area(addr);
 
     bool privileged = reg.sr & SR_MD_MASK ? true : false;
+
+#ifdef ENABLE_SH4_OCACHE
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+#endif
 
     if (virt_area != AREA_P0 && privileged) {
         // TODO: allow user-mode access to the store queue area
@@ -330,7 +336,10 @@ int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
 int Sh4::read_inst(inst_t *out, addr32_t addr) {
     enum VirtMemArea virt_area = get_mem_area(addr);
     bool privileged = reg.sr & SR_MD_MASK ? true : false;
+
+#ifdef ENABLE_SH4_ICACHE
     bool index_enable = cache_reg.ccr & CCR_IIX_MASK ? true : false;
+#endif
 
     if (virt_area != AREA_P0 && !privileged) {
         /*

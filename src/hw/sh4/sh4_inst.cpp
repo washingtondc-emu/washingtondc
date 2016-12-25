@@ -3261,7 +3261,6 @@ void Sh4::inst_binary_mova_binind_disp_pc_r0(OpArgs inst) {
 void Sh4::inst_binary_movcal_r0_indgen(OpArgs inst) {
     uint32_t src_val = *gen_reg(0);
     addr32_t vaddr = *gen_reg(inst.dst_reg);
-    addr32_t paddr;
 
     /*
      * XXX I'm fairly certain that there are ways a program running in
@@ -3269,6 +3268,7 @@ void Sh4::inst_binary_movcal_r0_indgen(OpArgs inst) {
      * this opcode is implemented.
      */
 #ifdef ENABLE_SH4_OCACHE
+    addr32_t paddr;
     if (mmu.mmucr & MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
         /*
