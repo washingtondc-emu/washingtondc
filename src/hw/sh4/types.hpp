@@ -30,16 +30,6 @@ typedef boost::uint32_t addr32_t;
 typedef boost::uint32_t page_no_t;
 typedef boost::uint16_t inst_t; // instruction
 
-/*
- * basic_val_t is the type used for all memory accesses.
- * Any other types will be casted to/from this type.
- *
- * The exception is reading through the instruction path, those
- * components all use inst_t because nothing else would make sense
- * given the context.
- */
-typedef boost::uint64_t basic_val_t;
-
 class Sh4;
 class Icache;
 class Ocache;

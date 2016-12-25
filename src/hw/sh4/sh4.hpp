@@ -201,19 +201,14 @@ public:
 
     template<typename val_t>
     int write_mem(val_t const *val, addr32_t addr, unsigned len) {
-        basic_val_t tmp = *val;
-
-        return do_write_mem(tmp, addr, len);
+        return do_write_mem(val, addr, len);
     }
 
     template<typename val_t>
     int read_mem(val_t *val, addr32_t addr, unsigned len) {
-        basic_val_t tmp;
         int err;
-
-        if ((err = do_read_mem(&tmp, addr, len)) != 0)
+        if ((err = do_read_mem(val, addr, len)) != 0)
             return err;
-        *val = tmp;
         return 0;
     }
 
@@ -504,8 +499,8 @@ private:
      * appropriate CPU flags for an exception and return non-zero.  On success
      * they will return zero.
      */
-    int do_write_mem(basic_val_t val, addr32_t addr, unsigned len);
-    int do_read_mem(basic_val_t *val, addr32_t addr, unsigned len);
+    int do_write_mem(void const *dat, addr32_t addr, unsigned len);
+    int do_read_mem(void *dat, addr32_t addr, unsigned len);
 
     int read_inst(inst_t *out, addr32_t addr);
 

@@ -32,7 +32,7 @@
 
 #include "sh4.hpp"
 
-int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
+int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
     enum VirtMemArea virt_area = get_mem_area(addr);
 
     bool privileged = reg.sr & SR_MD_MASK ? true : false;
@@ -95,7 +95,7 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                         } else {
 #endif
                             // don't use the cache
-                            return mem->write(&data, addr & 0x1fffffff, len);
+                            return mem->write(data, addr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
                         }
 #endif
@@ -143,7 +143,7 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                     } else {
 #endif
                         // don't use the cache
-                        return mem->write(&data, addr & 0x1fffffff, len);
+                        return mem->write(data, addr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
                     }
 #endif
@@ -171,7 +171,7 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
             }
 #else
             // don't use the cache
-            return mem->write(&data, addr & 0x1fffffff, len);
+            return mem->write(data, addr & 0x1fffffff, len);
 #endif
         }
         break;
@@ -187,13 +187,13 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
             }
         } else {
 #endif
-            return mem->write(&data, addr & 0x1fffffff, len);
+            return mem->write(data, addr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
         }
 #endif
         break;
     case AREA_P2:
-        return mem->write(&data, addr & 0x1fffffff, len);
+        return mem->write(data, addr & 0x1fffffff, len);
         break;
     case AREA_P4:
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -209,7 +209,7 @@ int Sh4::do_write_mem(basic_val_t data, addr32_t addr, unsigned len) {
                                       "to get here (see Sh4::write_mem)"));
 }
 
-int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
+int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
     enum VirtMemArea virt_area = get_mem_area(addr);
 
     bool privileged = reg.sr & SR_MD_MASK ? true : false;
@@ -313,13 +313,13 @@ int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
             }
         } else {
 #endif
-            return mem->read(&data, addr & 0x1fffffff, len);
+            return mem->read(data, addr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
         }
 #endif
         break;
     case AREA_P2:
-        return mem->read(&data, addr & 0x1fffffff, len);
+        return mem->read(data, addr & 0x1fffffff, len);
         break;
     case AREA_P4:
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -335,6 +335,7 @@ int Sh4::do_read_mem(basic_val_t *data, addr32_t addr, unsigned len) {
 
 int Sh4::read_inst(inst_t *out, addr32_t addr) {
     enum VirtMemArea virt_area = get_mem_area(addr);
+
     bool privileged = reg.sr & SR_MD_MASK ? true : false;
 
 #ifdef ENABLE_SH4_ICACHE

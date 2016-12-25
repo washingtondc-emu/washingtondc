@@ -68,14 +68,14 @@ public:
     ~Ocache();
 
     // Returns: zero on success, nonzero on failure.
-    int cache_read(basic_val_t *out, unsigned len, addr32_t paddr,
+    int cache_read(void *out, unsigned len, addr32_t paddr,
                    bool index_enable, bool cache_as_ram);
     /*
      * Write the n-byte value pointed to by data to memory through the cache in
      * copy-back mode.
      * Returns: zero on success, nonzero on failure.
      */
-    int cache_write_cb(basic_val_t data, unsigned len, addr32_t paddr,
+    int cache_write_cb(void const *data, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram);
 
     /*
@@ -83,7 +83,7 @@ public:
      * write-through mode.
      * Returns: zero on success, nonzero on failure.
      */
-    int cache_write_wt(basic_val_t data, unsigned len, addr32_t paddr,
+    int cache_write_wt(void const *data, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram);
 
     // reset the cache to its default (empty) state
@@ -107,16 +107,16 @@ private:
     // 16 KB ("Operand Cache" in the hardware manual)
     struct cache_line *op_cache;
 
-    template<int N_BYTES>
-    int do_cache_read(basic_val_t *out, addr32_t paddr, bool index_enable,
+    template<typename buf_t>
+    int do_cache_read(buf_t *out, addr32_t paddr, bool index_enable,
                       bool cache_as_ram);
 
-    template<int N_BYTES>
-    int do_cache_write_cb(basic_val_t data, addr32_t paddr,
+    template<typename buf_t>
+    int do_cache_write_cb(buf_t const *data, addr32_t paddr,
                           bool index_enable, bool cache_as_ram);
 
-    template<int N_BYTES>
-    int do_cache_write_wt(basic_val_t data, addr32_t paddr,
+    template<typename buf_t>
+    int do_cache_write_wt(buf_t const *data, addr32_t paddr,
                           bool index_enable, bool cache_as_ram);
 
     /*

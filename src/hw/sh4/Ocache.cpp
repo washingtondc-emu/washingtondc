@@ -77,8 +77,8 @@ addr32_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
 }
 
 template<>
-int Ocache::do_cache_read<1>(basic_val_t *out, addr32_t paddr,
-                             bool index_enable, bool cache_as_ram) {
+int Ocache::do_cache_read<uint8_t>(uint8_t *out, addr32_t paddr,
+                                   bool index_enable, bool cache_as_ram) {
     int err = 0;
 
     addr32_t line_idx = Ocache::cache_selector(paddr, index_enable,
@@ -126,30 +126,32 @@ int Ocache::do_cache_read<1>(basic_val_t *out, addr32_t paddr,
     return err;
 }
 
-template <int N_BYTES>
-int Ocache::do_cache_read(basic_val_t *out, addr32_t paddr, bool index_enable,
+template <typename buf_t>
+int Ocache::do_cache_read(buf_t *out,
+                          addr32_t paddr, bool index_enable,
                           bool cache_as_ram) {
     int err = 0;
 
-    if (paddr & (N_BYTES - 1)) {
+    if (paddr & (sizeof(buf_t) - 1)) {
         /*
-         * the lazy implementation: do N_BYTES 1-byte reads.
+         * the lazy implementation: do sizeof(buf_t) 1-byte reads.
          * Obviously this is suboptibmal, but for now I'm more concerned with
          * getting things to work than I am with getting things to work well.
          * Also all this caching code will probably go the way of the dinosaurs
          * later when I inevitably decide I don't need to emulate this aspect
          * of the SH4, so it's no big deal if it's slow.
          */
-        basic_val_t out_buf = 0;
-        for (int i = 0; i < N_BYTES; i++) {
-            basic_val_t tmp;
+        buf_t out_buf = 0;
+        for (unsigned i = 0; i < sizeof(buf_t); i++) {
+            uint8_t tmp;
             int err;
 
-            err = do_cache_read<1>(&tmp, paddr + i, index_enable, cache_as_ram);
+            err = do_cache_read<uint8_t>(&tmp, paddr + i,
+                                         index_enable, cache_as_ram);
             if (err)
                 return err;
 
-            out_buf |= tmp << (8 * i);
+            out_buf |= buf_t(tmp) << (8 * i);
         }
 
         *out = out_buf;
@@ -166,7 +168,7 @@ int Ocache::do_cache_read(basic_val_t *out, addr32_t paddr, bool index_enable,
             addr32_t byte_offset = paddr & 0x1f;
 
             *out = 0;
-            memcpy(out, line->byte + byte_offset, N_BYTES);
+            memcpy(out, line->byte + byte_offset, sizeof(buf_t));
             return 0;
         } else {
             // tag does not match, V bit is 1
@@ -196,7 +198,7 @@ int Ocache::do_cache_read(basic_val_t *out, addr32_t paddr, bool index_enable,
         addr32_t byte_offset = paddr & 0x1f;
 
         *out = 0;
-        memcpy(out, line->byte + byte_offset, N_BYTES);
+        memcpy(out, line->byte + byte_offset, sizeof(buf_t));
         return 0;
     }
 
@@ -253,8 +255,8 @@ int Ocache::cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram) {
 }
 
 template<>
-int Ocache::do_cache_write_cb<1>(basic_val_t data, addr32_t paddr,
-                                 bool index_enable, bool cache_as_ram) {
+int Ocache::do_cache_write_cb<uint8_t>(uint8_t const *data, addr32_t paddr,
+                                       bool index_enable, bool cache_as_ram) {
     int err = 0;
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
     struct cache_line *line = line_idx + op_cache;
@@ -263,12 +265,12 @@ int Ocache::do_cache_write_cb<1>(basic_val_t data, addr32_t paddr,
     if (cache_check(line, paddr)) {
         if (line->key & KEY_VALID_MASK) {
             // cache hit, valid bit is 1
-            line->byte[byte_idx] = data;
+            line->byte[byte_idx] = *data;
             line->key |= KEY_DIRTY_MASK;
         } else {
             // overwrite invalid data in cache.
             cache_load(line, paddr);
-            line->byte[byte_idx] = data;
+            line->byte[byte_idx] = *data;
             line->key |= KEY_DIRTY_MASK;
         }
     } else {
@@ -284,18 +286,18 @@ int Ocache::do_cache_write_cb<1>(basic_val_t data, addr32_t paddr,
                 if (err)
                     return err;
                 err = cache_load(line, paddr);
-                line->byte[byte_idx] = data;
+                line->byte[byte_idx] = *data;
                 line->key |= KEY_DIRTY_MASK;
             } else {
                 // clean data in cache can be safely overwritten.
                 cache_load(line, paddr);
-                line->byte[byte_idx] = data;
+                line->byte[byte_idx] = *data;
                 line->key |= KEY_DIRTY_MASK;
             }
         } else {
             // overwrite invalid data in cache.
             cache_load(line, paddr);
-            line->byte[byte_idx] = data;
+            line->byte[byte_idx] = *data;
             line->key |= KEY_DIRTY_MASK;
         }
     }
@@ -303,12 +305,13 @@ int Ocache::do_cache_write_cb<1>(basic_val_t data, addr32_t paddr,
     return 0;
 }
 
-template<int N_BYTES>
-int Ocache::do_cache_write_cb(basic_val_t data, addr32_t paddr,
+template<typename buf_t>
+int Ocache::do_cache_write_cb(buf_t const *data, addr32_t paddr,
                               bool index_enable, bool cache_as_ram) {
     int err = 0;
+    buf_t data_val_nbit = *(buf_t*)data;
 
-    if (paddr & (N_BYTES - 1)) {
+    if (paddr & (sizeof(buf_t) - 1)) {
         /*
          * the lazy implementation: do 2 1-byte writes.
          * Obviously this is suboptibmal, but for now I'm more concerned with
@@ -317,14 +320,13 @@ int Ocache::do_cache_write_cb(basic_val_t data, addr32_t paddr,
          * later when I inevitably decide I don't need to emulate this aspect
          * of the SH4, so it's no big deal if it's slow.
          */
-        for (int i = 0; i < N_BYTES; i++) {
-            basic_val_t tmp;
+        for (unsigned i = 0; i < sizeof(buf_t); i++) {
             int err;
-            basic_val_t mask = basic_val_t(0xff) << (i * 8);
+            buf_t mask = buf_t(0xff) << (i * 8);
 
-            tmp = (mask & data) >> (i * 8);
-            err = do_cache_write_cb<1>(tmp, paddr + i, index_enable,
-                                       cache_as_ram);
+            uint8_t tmp = (mask & data_val_nbit) >> (i * 8);
+            err = do_cache_write_cb<uint8_t>(&tmp, paddr + i, index_enable,
+                                             cache_as_ram);
             if (err)
                 return err;
         }
@@ -339,12 +341,12 @@ int Ocache::do_cache_write_cb(basic_val_t data, addr32_t paddr,
     if (cache_check(line, paddr)) {
         if (line->key & KEY_VALID_MASK) {
             // cache hit, valid bit is 1
-            memcpy(line->byte + byte_idx, &data, N_BYTES);
+            memcpy(line->byte + byte_idx, data, sizeof(buf_t));
             line->key |= KEY_DIRTY_MASK;
         } else {
             // overwrite invalid data in cache.
             cache_load(line, paddr);
-            memcpy(line->byte + byte_idx, &data, N_BYTES);
+            memcpy(line->byte + byte_idx, data, sizeof(buf_t));
             line->key |= KEY_DIRTY_MASK;
         }
     } else {
@@ -360,18 +362,18 @@ int Ocache::do_cache_write_cb(basic_val_t data, addr32_t paddr,
                 if (err)
                     return err;
                 err = cache_load(line, paddr);
-                memcpy(line->byte + byte_idx, &data, N_BYTES);
+                memcpy(line->byte + byte_idx, data, sizeof(buf_t));
                 line->key |= KEY_DIRTY_MASK;
             } else {
                 // clean data in cache can be safely overwritten.
                 cache_load(line, paddr);
-                memcpy(line->byte + byte_idx, &data, N_BYTES);
+                memcpy(line->byte + byte_idx, data, sizeof(buf_t));
                 line->key |= KEY_DIRTY_MASK;
             }
         } else {
             // overwrite invalid data in cache.
             cache_load(line, paddr);
-            memcpy(line->byte + byte_idx, &data, N_BYTES);
+            memcpy(line->byte + byte_idx, data, sizeof(buf_t));
             line->key |= KEY_DIRTY_MASK;
         }
     }
@@ -380,8 +382,8 @@ int Ocache::do_cache_write_cb(basic_val_t data, addr32_t paddr,
 }
 
 template <>
-int Ocache::do_cache_write_wt<1>(basic_val_t data, addr32_t paddr,
-                                 bool index_enable, bool cache_as_ram) {
+int Ocache::do_cache_write_wt<uint8_t>(uint8_t const *data, addr32_t paddr,
+                                       bool index_enable, bool cache_as_ram) {
     int err = 0;
 
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
@@ -390,40 +392,40 @@ int Ocache::do_cache_write_wt<1>(basic_val_t data, addr32_t paddr,
 
     if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
         // write to cache and write-through to main memory
-        line->byte[byte_idx] = data;
-        if ((err = mem->write(&data, paddr, sizeof(data))) != 0)
+        line->byte[byte_idx] = *data;
+        if ((err = mem->write(data, paddr, sizeof(*data))) != 0)
             return err;
     } else {
         // write through to main memory ignoring the cache
-        if ((err = mem->write(&data, paddr, sizeof(data))) != 0)
+        if ((err = mem->write(data, paddr, sizeof(*data))) != 0)
             return err;
     }
 
     return 0;
 }
 
-template<int N_BYTES>
-int Ocache::do_cache_write_wt(basic_val_t data, addr32_t paddr,
+template<typename buf_t>
+int Ocache::do_cache_write_wt(buf_t const *data, addr32_t paddr,
                               bool index_enable, bool cache_as_ram) {
     int err = 0;
 
-    if (paddr & (N_BYTES - 1)) {
+    if (paddr & (sizeof(buf_t) - 1)) {
         /*
-         * the lazy implementation: do N_BYTES 1-byte writes.
+         * the lazy implementation: do sizeof(buf_t) 1-byte writes.
          * Obviously this is suboptibmal, but for now I'm more concerned with
          * getting things to work than I am with getting things to work well.
          * Also all this caching code will probably go the way of the dinosaurs
          * later when I inevitably decide I don't need to emulate this aspect
          * of the SH4, so it's no big deal if it's slow.
          */
-        for (int i = 0; i < N_BYTES; i++) {
-            basic_val_t tmp;
+        for (unsigned i = 0; i < sizeof(buf_t); i++) {
+            buf_t *data_nbit = (buf_t*)data;
             int err;
-            basic_val_t mask = basic_val_t(0xff) << (i * 8);
+            buf_t mask = buf_t(0xff) << (i * 8);
 
-            tmp = (mask & data) >> (i * 8);
-            err = do_cache_write_wt<1>(tmp, paddr + i, index_enable,
-                                       cache_as_ram);
+            uint8_t tmp = uint8_t((mask & *data_nbit) >> (i * 8));
+            err = do_cache_write_wt<uint8_t>(&tmp, paddr + i, index_enable,
+                                             cache_as_ram);
             if (err)
                 return err;
         }
@@ -437,65 +439,73 @@ int Ocache::do_cache_write_wt(basic_val_t data, addr32_t paddr,
 
     if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
         // write to cache and write-through to main memory
-        memcpy(line->byte + byte_idx, &data, N_BYTES);
-        if ((err = mem->write(&data, paddr, sizeof(data))) != 0)
+        memcpy(line->byte + byte_idx, data, sizeof(buf_t));
+        if ((err = mem->write(data, paddr, sizeof(buf_t))) != 0)
             return err;
     } else {
         // write through to main memory ignoring the cache
-        if ((err = mem->write(&data, paddr, sizeof(data))) != 0)
+        if ((err = mem->write(data, paddr, sizeof(buf_t))) != 0)
             return err;
     }
 
     return 0;
 }
 
-int Ocache::cache_read(basic_val_t *out, unsigned len, addr32_t paddr,
+int Ocache::cache_read(void *out, unsigned len, addr32_t paddr,
                        bool index_enable, bool cache_as_ram) {
     switch (len) {
     case 1:
-        return do_cache_read<1>(out, paddr, index_enable,
-                                cache_as_ram);
+        return do_cache_read<uint8_t>((uint8_t*)out, paddr, index_enable,
+                                      cache_as_ram);
     case 2:
-        return do_cache_read<2>(out, paddr, index_enable,
-                                cache_as_ram);
+        return do_cache_read<uint16_t>((uint16_t*)out, paddr, index_enable,
+                                       cache_as_ram);
     case 4:
-        return do_cache_read<4>(out, paddr, index_enable,
-                                cache_as_ram);
+        return do_cache_read<uint32_t>((uint32_t*)out, paddr, index_enable,
+                                       cache_as_ram);
     case 8:
-        return do_cache_read<8>(out, paddr, index_enable,
-                                cache_as_ram);
+        return do_cache_read<uint64_t>((uint64_t*)out, paddr, index_enable,
+                                       cache_as_ram);
     }
 
     BOOST_THROW_EXCEPTION(InvalidParamError() << errinfo_param_name("len"));
 }
 
-int Ocache::cache_write_cb(basic_val_t data, unsigned len, addr32_t paddr,
+int Ocache::cache_write_cb(void const *data, unsigned len, addr32_t paddr,
                            bool index_enable, bool cache_as_ram) {
     switch (len) {
     case 1:
-        return do_cache_write_cb<1>(data, paddr, index_enable, cache_as_ram);
+        return do_cache_write_cb<uint8_t>((uint8_t*)data, paddr,
+                                          index_enable, cache_as_ram);
     case 2:
-        return do_cache_write_cb<2>(data, paddr, index_enable, cache_as_ram);
+        return do_cache_write_cb<uint16_t>((uint16_t*)data, paddr,
+                                           index_enable, cache_as_ram);
     case 4:
-        return do_cache_write_cb<4>(data, paddr, index_enable, cache_as_ram);
+        return do_cache_write_cb<uint32_t>((uint32_t*)data, paddr,
+                                           index_enable, cache_as_ram);
     case 8:
-        return do_cache_write_cb<8>(data, paddr, index_enable, cache_as_ram);
+        return do_cache_write_cb<uint64_t>((uint64_t*)data, paddr,
+                                           index_enable, cache_as_ram);
     }
 
     BOOST_THROW_EXCEPTION(InvalidParamError() << errinfo_param_name("len"));
 }
 
-int Ocache::cache_write_wt(basic_val_t data, unsigned len, addr32_t paddr,
+int Ocache::cache_write_wt(void const *data, unsigned len, addr32_t paddr,
                            bool index_enable, bool cache_as_ram) {
     switch (len) {
     case 1:
-        return do_cache_write_wt<1>(data, paddr, index_enable, cache_as_ram);
+        return do_cache_write_wt<uint8_t>((uint8_t*)data, paddr,
+                                          index_enable, cache_as_ram);
     case 2:
-        return do_cache_write_wt<2>(data, paddr, index_enable, cache_as_ram);
+        return do_cache_write_wt<uint16_t>((uint16_t*)data, paddr,
+                                           index_enable, cache_as_ram);
     case 4:
-        return do_cache_write_wt<4>(data, paddr, index_enable, cache_as_ram);
+        return do_cache_write_wt<uint32_t>((uint32_t*)data, paddr,
+                                           index_enable, cache_as_ram);
     case 8:
-        return do_cache_write_wt<8>(data, paddr, index_enable, cache_as_ram);
+        return do_cache_write_wt<uint64_t>((uint64_t*)data, paddr,
+                                           index_enable, cache_as_ram);
     }
 
     BOOST_THROW_EXCEPTION(InvalidParamError() << errinfo_param_name("len"));
