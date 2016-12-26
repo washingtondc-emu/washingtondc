@@ -194,12 +194,8 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
         break;
     case AREA_P2:
         return mem->write(data, addr & 0x1fffffff, len);
-        break;
     case AREA_P4:
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("Register access through "
-                                              "memory"));
-        break;
+        return do_write_p4(data, addr, len);
     default:
         break;
     }
@@ -320,18 +316,38 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
         break;
     case AREA_P2:
         return mem->read(data, addr & 0x1fffffff, len);
-        break;
     case AREA_P4:
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("Register access "
-                                              "through memory"));
-        break;
+        return do_read_p4(data, addr, len);
     default:
         break;
     }
 
     return 1;
 }
+
+int Sh4::do_read_p4(void *dat, addr32_t addr, unsigned len) {
+    if (addr >= P4_REGSTART && addr < P4_REGEND) {
+        return read_mem_mapped_reg(dat, addr, len);
+    }
+
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("reading from part of the P4 "
+                                          "memory region") <<
+                          errinfo_guest_addr(addr));
+
+}
+
+int Sh4::do_write_p4(void const *dat, addr32_t addr, unsigned len) {
+    if (addr >= P4_REGSTART && addr < P4_REGEND) {
+        return write_mem_mapped_reg(dat, addr, len);
+    }
+
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("writing to part of the P4 "
+                                          "memory region") <<
+                          errinfo_guest_addr(addr));
+}
+
 
 int Sh4::read_inst(inst_t *out, addr32_t addr) {
     enum VirtMemArea virt_area = get_mem_area(addr);

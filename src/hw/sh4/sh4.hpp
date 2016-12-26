@@ -24,6 +24,8 @@
 #define SH4_HPP_
 
 #include <cassert>
+#include <map>
+
 #include <boost/cstdint.hpp>
 #include <boost/static_assert.hpp>
 
@@ -313,6 +315,22 @@ private:
     static const size_t AREA_P4_FIRST = 0xe0000000;
     static const size_t AREA_P4_LAST  = 0xffffffff;
 
+    /*
+     * P4_REGSTART is the addr of the first memory-mapped
+     *     register in area 7
+     * P4_REGEND is the first addr *after* the last memory-mapped
+     *     register in the p4 area.
+     * AREA7_REGSTART is the addr of the first memory-mapped
+     *     register in area 7
+     * AREA7_REGEND is the first addr *after* the last memory-mapped
+     *     register in area 7
+     */
+    static const size_t P4_REGSTART = 0xff000000;
+    static const size_t P4_REGEND = 0xfff00008;
+    static const size_t AREA7_REGSTART = 0x1f000000;
+    static const size_t AREA7_REGEND = 0x1ff00008;
+    BOOST_STATIC_ASSERT((P4_REGEND - P4_REGSTART) == (AREA7_REGEND - AREA7_REGSTART));
+
     enum PageSize {
         ONE_KILO = 0,
         FOUR_KILO = 1,
@@ -503,6 +521,13 @@ private:
     int do_read_mem(void *dat, addr32_t addr, unsigned len);
 
     int read_inst(inst_t *out, addr32_t addr);
+
+    /*
+     * generally you'll call these functions through do_read_mem/do_write_mem
+     * instead of calling these functions directly
+     */
+    int do_read_p4(void *dat, addr32_t addr, unsigned len);
+    int do_write_p4(void const *dat, addr32_t addr, unsigned len);
 
     Memory *mem;
     /*
@@ -1743,6 +1768,71 @@ private:
 
     static void compile_instructions();
     static void compile_instruction(struct Sh4::InstOpcode *op);
+
+    /*
+     * pointer to place where memory-mapped registers are stored.
+     * RegReadHandlers and RegWriteHandlers do not need to use this as long as
+     * they are consistent.
+     */
+    uint8_t *reg_area;
+
+    /*
+     * for the purpose of these handlers, you may assume that the caller has
+     * already checked the permissions.
+     */
+    typedef int(Sh4::*RegReadHandler)(void *buf, addr32_t addr, unsigned len);
+    typedef int(Sh4::*RegWriteHandler)(void const *buf, addr32_t addr,
+                                       unsigned len);
+
+    /*
+     * at run-time, this array gets turned into an std::map (mem_mapped_regs).
+     *
+     * In the future I want to turn this into a simple lookup array; this
+     * would incur a huge memory overhead (hundreds of MB), but it looks like
+     * it would be feasible in the $CURRENT_YEAR and it would net a
+     * beautiful O(1) mapping from addr32_t to MemMappedReg.
+     */
+    static struct MemMappedReg {
+        char const *reg_name;
+
+        // addr shoud be the p4 addr, not the area7 addr
+        addr32_t addr;
+        unsigned len;
+
+        Sh4::RegReadHandler on_p4_read;
+        Sh4::RegWriteHandler on_p4_write;
+
+        /*
+         * if len < 4, then only the lower "len" bytes of
+         * these values will be used.
+         */
+        reg32_t poweron_reset_val;
+        reg32_t manual_reset_val;
+    } mem_mapped_regs[];
+
+    typedef std::map<addr32_t, MemMappedReg> RegMetaMap;
+    RegMetaMap reg_map;
+
+    // default read/write handler callbacks
+    int DefaultRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int DefaultRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    /*
+     * called for P4 area read/write ops that
+     * fall in the memory-mapped register range
+     */
+    int read_mem_mapped_reg(void *buf, addr32_t addr, unsigned len);
+    int write_mem_mapped_reg(void const *buf, addr32_t addr, unsigned len);
+
+    /*
+     * this is called from the sh4 constructor to
+     * initialize all memory-mapped registers
+     */
+    void init_regs();
+
+    // set up the memory-mapped registers for a reset;
+    void poweron_reset_regs();
+    void manual_reset_regs();
 };
 
 #endif

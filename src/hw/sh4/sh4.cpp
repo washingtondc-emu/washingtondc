@@ -47,6 +47,8 @@ public:
 Sh4::Sh4(Memory *mem) {
     this->mem = mem;
 
+    reg_area = new uint8_t[P4_REGEND - P4_REGSTART];
+
 #ifdef ENABLE_SH4_MMU
     memset(utlb, 0, sizeof(utlb));
     memset(itlb, 0, sizeof(itlb));
@@ -64,6 +66,8 @@ Sh4::Sh4(Memory *mem) {
     this->op_cache = new Ocache(this, mem);
 #endif
 
+    init_regs();
+
     compile_instructions();
 }
 
@@ -75,6 +79,8 @@ Sh4::~Sh4() {
 #ifdef ENABLE_SH4_ICACHE
     delete inst_cache;
 #endif
+
+    delete[] reg_area;
 }
 
 reg32_t Sh4::get_pc() const {
