@@ -33,6 +33,8 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x20 },
     { "MMUCR", 0xff000010, 4,
       &Sh4::MmucrRegReadHandler, &Sh4::MmucrRegWriteHandler, 0, 0 },
+    { "CCR", 0xff00001c, 4,
+      &Sh4::CcrRegReadHandler, &Sh4::CcrRegWriteHandler, 0, 0 },
 
     { NULL }
 };
@@ -143,6 +145,18 @@ int Sh4::MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     }
 
     mmu.mmucr = mmucr_tmp;
+
+    return 0;
+}
+
+int Sh4::CcrRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &cache_reg.ccr, sizeof(cache_reg.ccr));
+
+    return 0;
+}
+
+int Sh4::CcrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&cache_reg.ccr, buf, sizeof(cache_reg.ccr));
 
     return 0;
 }
