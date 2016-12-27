@@ -1799,6 +1799,13 @@ private:
         addr32_t addr;
         unsigned len;
 
+        /*
+         * if true, the value will be preserved during a manual ("soft") reset
+         * and manual_reset_val will be ignored; else value will be set to
+         * manual_reset_val during a manual reset.
+         */
+        bool hold_on_reset;
+
         Sh4::RegReadHandler on_p4_read;
         Sh4::RegWriteHandler on_p4_write;
 

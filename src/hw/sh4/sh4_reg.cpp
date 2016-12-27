@@ -29,12 +29,33 @@ typedef boost::error_info<struct tag_feature_name_error_info, std::string>
 errinfo_regname;
 
 struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
-    { "EXPEVT", 0xff000024, 4,
+    { "EXPEVT", 0xff000024, 4, false,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x20 },
-    { "MMUCR", 0xff000010, 4,
+    { "MMUCR", 0xff000010, 4, false,
       &Sh4::MmucrRegReadHandler, &Sh4::MmucrRegWriteHandler, 0, 0 },
-    { "CCR", 0xff00001c, 4,
+    { "CCR", 0xff00001c, 4, false,
       &Sh4::CcrRegReadHandler, &Sh4::CcrRegWriteHandler, 0, 0 },
+
+    /*
+     * Bus-state registers.
+     *
+     * These all seem pretty low-level, so we just blindly let
+     * read/write operations pass through and don't do anything
+     * to react to them.
+     */
+    { "BCR1", 0xff800000, 4, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "BCR2", 0xff800004, 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x3ffc },
+    { "WCR1", 0xff800008, 4, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0x77777777 },
+    { "WCR2", 0xff80000c, 4, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0xfffeefff },
+    { "WCR3", 0xff800010, 4, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0x07777777 },
 
     { NULL }
 };
