@@ -546,3 +546,11 @@ int Ocache::cache_write_back(struct cache_line *line) {
     line->key &= ~KEY_DIRTY_MASK;
     return 0;
 }
+
+void Ocache::pref(addr32_t paddr, bool index_enable, bool cache_as_ram) {
+    addr32_t line_idx = Ocache::cache_selector(paddr, index_enable,
+                                               cache_as_ram);
+    struct cache_line *line = line_idx + op_cache;
+
+    cache_load(line, paddr);
+}

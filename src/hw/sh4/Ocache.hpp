@@ -100,6 +100,12 @@ public:
     // and invalidated.  This is part of the OCBP instruction's implementation
     int purge(addr32_t paddr, bool index_enable, bool cache_as_ram);
 
+    /*
+     * prefetch the cache-line containing paddr.
+     * This is the backend of the PREF instruction.
+     */
+    void pref(addr32_t paddr, bool index_enable, bool cache_as_ram);
+
 private:
     Sh4 *sh4;
     Memory *mem;

@@ -1541,10 +1541,13 @@ void Sh4::inst_unary_ocbp_indgen(OpArgs inst) {
 // PREF @Rn
 // 0000nnnn10000011
 void Sh4::inst_unary_pref_indgen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0000nnnn10000011") <<
-                          errinfo_opcode_name("PREF @Rn"));
+#ifdef ENABLE_SH4_OCACHE
+    bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
+    bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+
+    op_cache->pref(*gen_reg(inst.gen_reg), index_enable, cache_as_ram);
+#endif
+    next_inst();
 }
 
 // JMP @Rn
