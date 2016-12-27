@@ -31,6 +31,8 @@ errinfo_regname;
 struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
     { "EXPEVT", 0xff000024, 4,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x20 },
+    { "MMUCR", 0xff000010, 4,
+      &Sh4::MmucrRegReadHandler, &Sh4::MmucrRegWriteHandler, 0, 0 },
 
     { NULL }
 };
@@ -113,6 +115,34 @@ int Sh4::DefaultRegReadHandler(void *buf, addr32_t addr, unsigned len) {
 
 int Sh4::DefaultRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     memcpy(addr - P4_REGSTART + reg_area, buf, len);
+
+    return 0;
+}
+
+int Sh4::MmucrRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &mmu.mmucr, sizeof(mmu.mmucr));
+
+    return 0;
+}
+
+int Sh4::MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    reg32_t mmucr_tmp;
+    memcpy(&mmucr_tmp, buf, sizeof(mmucr_tmp));
+
+    if (mmucr_tmp & MMUCR_AT_MASK) {
+        /*
+         * The thing is, I have a lot of code to support MMU operation in place,
+         * but it's not all tested and I also don't think I have all the
+         * functionality in place.  MMU support is definitely something I want
+         * to do eventuaally and it's something I always have in mind when
+         * writing new code, but it's just not there yet.
+         */
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_regname("MMUCR") <<
+                              errinfo_guest_addr(addr));
+    }
+
+    mmu.mmucr = mmucr_tmp;
 
     return 0;
 }

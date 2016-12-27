@@ -1817,6 +1817,9 @@ private:
     int DefaultRegReadHandler(void *buf, addr32_t addr, unsigned len);
     int DefaultRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
 
+    int MmucrRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
     /*
      * called for P4 area read/write ops that
      * fall in the memory-mapped register range
