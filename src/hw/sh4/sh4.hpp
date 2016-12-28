@@ -428,6 +428,9 @@ private:
     static const unsigned ITLB_ENT_PPN_SHIFT = 9;
     static const unsigned ITLB_ENT_PPN_MASK = 0x7ffff << ITLB_ENT_PPN_SHIFT;
 
+    // reset all values to their power-on-reset values
+    void on_hard_reset();
+
 #ifdef ENABLE_SH4_ICACHE
     Icache *inst_cache;
 #endif

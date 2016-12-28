@@ -42,7 +42,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
 #endif
 
-    if (virt_area != AREA_P0 && privileged) {
+    if (virt_area != AREA_P0 && !privileged) {
         // TODO: allow user-mode access to the store queue area
 
         /*
@@ -215,7 +215,7 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
 #endif
 
-    if (virt_area != AREA_P0 && privileged) {
+    if (virt_area != AREA_P0 && !privileged) {
         // TODO: allow user-mode access to the store queue area
 
         /*
