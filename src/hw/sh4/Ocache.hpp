@@ -31,11 +31,13 @@
 
 #include "types.hpp"
 
-// SH4 Operand Cache
+// SH4 16 KB Operand Cache
 class Ocache {
 public:
-    static const unsigned LONGS_PER_CACHE_LINE = 8;
-    static const unsigned ENTRY_COUNT = 512;
+    static const size_t LONGS_PER_CACHE_LINE = 8;
+    static const size_t ENTRY_COUNT = 512;
+    static const size_t CACHE_LINE_SIZE = LONGS_PER_CACHE_LINE * 4;
+    static const size_t OP_CACHE_SIZE = ENTRY_COUNT * CACHE_LINE_SIZE;
 
     // The valid flag
     static const unsigned KEY_VALID_SHIFT = 0;
@@ -49,18 +51,8 @@ public:
     static const unsigned KEY_TAG_SHIFT = 2;
     static const unsigned KEY_TAG_MASK = 0x7ffff << KEY_TAG_SHIFT;
 
-    struct cache_line {
-        // contains the tag, dirty bit and valid bit
-        boost::uint32_t key;
-
-        // cache line data array
-        union {
-            boost::uint8_t byte[LONGS_PER_CACHE_LINE * 4];
-            boost::uint16_t sw[LONGS_PER_CACHE_LINE * 2];
-            boost::uint32_t lw[LONGS_PER_CACHE_LINE];
-            boost::uint64_t qw[LONGS_PER_CACHE_LINE / 2];
-        };
-    };
+    typedef size_t cache_line_t;     // index of cache-line (32-bytes/incrment)
+    typedef boost::uint32_t cache_key_t;
 
     // this class does not take ownership of sh4 or mem, so they will not be
     // deleted by the destructor function
@@ -111,7 +103,8 @@ private:
     Memory *mem;
 
     // 16 KB ("Operand Cache" in the hardware manual)
-    struct cache_line *op_cache;
+    uint8_t *op_cache;
+    cache_key_t *op_cache_keys;
 
     template<typename buf_t>
     int do_cache_read(buf_t *out, addr32_t paddr, bool index_enable,
@@ -134,7 +127,7 @@ private:
      *
      * This function does not check the valid bit.
      */
-    bool cache_check(struct cache_line const *line, addr32_t paddr);
+    bool cache_check(cache_line_t line_no, addr32_t paddr);
 
     /*
      * returns the index into the op-cache where paddr
@@ -147,38 +140,34 @@ private:
      * Load the cache-line corresponding to paddr into line.
      * Returns non-zero on failure.
      */
-    int cache_load(struct cache_line *line, addr32_t paddr);
+    int cache_load(cache_line_t line_no, addr32_t paddr);
 
     /*
      * Write the cache-line into memory and clear its dirty-bit.
      * returns non-zero on failure.
      */
-    int cache_write_back(struct cache_line *line);
+    int cache_write_back(cache_line_t line_no);
 
-    static addr32_t
-    cache_line_get_tag(struct cache_line const *line);
+    addr32_t cache_line_get_tag(cache_line_t line);
 
     // sets the line's tag to tag.
-    void cache_line_set_tag(struct cache_line *line,
-                            addr32_t tag);
+    void cache_line_set_tag(cache_line_t line, addr32_t tag);
 
     // extract the tag from the upper 19 bits of the lower 29 bits of paddr
     static addr32_t tag_from_paddr(addr32_t paddr);
 };
 
-inline addr32_t
-Ocache::cache_line_get_tag(struct cache_line const *line) {
-    return (KEY_TAG_MASK & line->key) >> KEY_TAG_SHIFT;
+inline addr32_t Ocache::cache_line_get_tag(cache_line_t line) {
+    return (KEY_TAG_MASK & op_cache_keys[line]) >> KEY_TAG_SHIFT;
 }
 
 inline addr32_t Ocache::tag_from_paddr(addr32_t paddr) {
     return (paddr & 0x1ffffc00) >> 10;
 }
 
-inline void Ocache::cache_line_set_tag(struct cache_line *line,
-                                       addr32_t tag) {
-    line->key &= ~KEY_TAG_MASK;
-    line->key |= tag << KEY_TAG_SHIFT;
+inline void Ocache::cache_line_set_tag(cache_line_t line, addr32_t tag) {
+    cache_key_t key = op_cache_keys[line];
+    op_cache_keys[line] = (key & ~KEY_TAG_MASK) | (tag << KEY_TAG_SHIFT);
 }
 
 #endif

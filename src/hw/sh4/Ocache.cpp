@@ -35,26 +35,28 @@ Ocache::Ocache(Sh4 *sh4, Memory *mem) {
     this->sh4 = sh4;
     this->mem = mem;
 
-    op_cache = new cache_line[ENTRY_COUNT];
+    op_cache_keys = new cache_key_t[ENTRY_COUNT];
+    op_cache = new uint8_t[OP_CACHE_SIZE];
     reset();
 }
 
 Ocache::~Ocache() {
     delete[] op_cache;
+    delete[] op_cache_keys;
 }
 
 void Ocache::reset(void) {
-    memset(op_cache, 0, sizeof(struct cache_line) * ENTRY_COUNT);
+    memset(op_cache_keys, 0, sizeof(op_cache_keys[0]) * ENTRY_COUNT);
+    memset(op_cache, 0, OP_CACHE_SIZE);
 }
 
-bool Ocache::cache_check(struct cache_line const *line,
-                         addr32_t paddr) {
+bool Ocache::cache_check(cache_line_t line_no, addr32_t paddr) {
     addr32_t paddr_tag;
 
     // upper 19 bits (of the lower 29 bits) of paddr
     paddr_tag = tag_from_paddr(paddr);
 
-    addr32_t line_tag = cache_line_get_tag(line);
+    addr32_t line_tag = cache_line_get_tag(line_no);
     return line_tag == paddr_tag;
 }
 
@@ -81,45 +83,46 @@ int Ocache::do_cache_read<uint8_t>(uint8_t *out, addr32_t paddr,
                                    bool index_enable, bool cache_as_ram) {
     int err = 0;
 
-    addr32_t line_idx = Ocache::cache_selector(paddr, index_enable,
+    uint32_t line_idx = Ocache::cache_selector(paddr, index_enable,
                                                cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
+    uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
+    cache_key_t *key = op_cache_keys + line_idx;
 
-    if (line->key & KEY_VALID_MASK) {
-        if (cache_check(line, paddr)) {
+    if (*key & KEY_VALID_MASK) {
+        if (cache_check(line_idx, paddr)) {
             // cache hit
             addr32_t idx = paddr & 0x1f;
 
-            *out = line->byte[idx];
+            *out = line[idx];
             return 0;
         } else {
             // tag does not match, V bit is 1
-            if (line->key & KEY_DIRTY_MASK) {
+            if (*key & KEY_DIRTY_MASK) {
                 // cache miss (with write-back)
                 // The manual says the SH4 should save the cache line to the
                 // write-back buffer.  Since memory writes are effectively
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line);
+                err = cache_write_back(line_idx);
                 if (err)
                     return err;
-                err = cache_load(line, paddr);
+                err = cache_load(line_idx, paddr);
             } else {
                 //cache miss (no write-back)
-                err = cache_load(line, paddr);
+                err = cache_load(line_idx, paddr);
             }
         }
     } else {
         // valid bit is 0, tag may or may not match
         // cache miss (no write-back)
-        err = cache_load(line, paddr);
+        err = cache_load(line_idx, paddr);
     }
 
     if (!err) {
         addr32_t idx = paddr & 0x1f;
 
-        *out = line->byte[idx];
+        *out = line[idx];
         return 0;
     }
 
@@ -160,45 +163,45 @@ int Ocache::do_cache_read(buf_t *out,
 
     addr32_t line_idx = Ocache::cache_selector(paddr, index_enable,
                                                cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
+    uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
 
-    if (line->key & KEY_VALID_MASK) {
-        if (cache_check(line, paddr)) {
+    if (op_cache_keys[line_idx] & KEY_VALID_MASK) {
+        if (cache_check(line_idx, paddr)) {
             // cache hit
             addr32_t byte_offset = paddr & 0x1f;
 
             *out = 0;
-            memcpy(out, line->byte + byte_offset, sizeof(buf_t));
+            memcpy(out, line + byte_offset, sizeof(buf_t));
             return 0;
         } else {
             // tag does not match, V bit is 1
-            if (line->key & KEY_DIRTY_MASK) {
+            if (op_cache_keys[line_idx] & KEY_DIRTY_MASK) {
                 // cache miss (with write-back)
                 // The manual says the SH4 should save the cache line to the
                 // write-back buffer.  Since memory writes are effectively
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line);
+                err = cache_write_back(line_idx);
                 if (err)
                     return err;
-                err = cache_load(line, paddr);
+                err = cache_load(line_idx, paddr);
             } else {
                 //cache miss (no write-back)
-                err = cache_load(line, paddr);
+                err = cache_load(line_idx, paddr);
             }
         }
     } else {
         // valid bit is 0, tag may or may not match
         // cache miss (no write-back)
-        err = cache_load(line, paddr);
+        err = cache_load(line_idx, paddr);
     }
 
     if (!err) {
         addr32_t byte_offset = paddr & 0x1f;
 
         *out = 0;
-        memcpy(out, line->byte + byte_offset, sizeof(buf_t));
+        memcpy(out, line + byte_offset, sizeof(buf_t));
         return 0;
     }
 
@@ -207,21 +210,20 @@ int Ocache::do_cache_read(buf_t *out,
 
 void Ocache::invalidate(addr32_t paddr, bool index_enable, bool cache_as_ram) {
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
 
-    if (cache_check(line, paddr))
-        line->key &= ~KEY_VALID_MASK;
+    if (cache_check(line_idx, paddr))
+        op_cache_keys[line_idx] &= ~KEY_VALID_MASK;
 }
 
 int Ocache::purge(addr32_t paddr, bool index_enable, bool cache_as_ram) {
     int err;
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
 
-    if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
-        if ((err = cache_write_back(line)))
+    if (cache_check(line_idx, paddr) &&
+        (op_cache_keys[line_idx] & KEY_VALID_MASK)) {
+        if ((err = cache_write_back(line_idx)))
             return err;
-        line->key &= ~KEY_VALID_MASK;
+        op_cache_keys[line_idx] &= ~KEY_VALID_MASK;
     }
 
     return 0;
@@ -230,25 +232,25 @@ int Ocache::purge(addr32_t paddr, bool index_enable, bool cache_as_ram) {
 int Ocache::cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram) {
     int err = 0;
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
+    cache_key_t *keyp = op_cache_keys + line_idx;
 
-    if (line->key & KEY_VALID_MASK) {
-        if (cache_check(line, paddr))
+    if (*keyp & KEY_VALID_MASK) {
+        if (cache_check(line_idx, paddr))
             return 0; // cache hit, nothing to see here
 
-        if (line->key & KEY_DIRTY_MASK) {
-            if ((err = cache_write_back(line)))
+        if (*keyp & KEY_DIRTY_MASK) {
+            if ((err = cache_write_back(line_idx)))
                 return err;
         }
 
-        cache_line_set_tag(line, tag_from_paddr(paddr));
-        line->key |= KEY_VALID_MASK;
-        line->key &= ~KEY_DIRTY_MASK;
+        cache_line_set_tag(line_idx, tag_from_paddr(paddr));
+        (*keyp) |= KEY_VALID_MASK;
+        (*keyp) &= ~KEY_DIRTY_MASK;
     } else {
         // cache holds no valid data
-        cache_line_set_tag(line, tag_from_paddr(paddr));
-        line->key |= KEY_VALID_MASK;
-        line->key &= ~KEY_DIRTY_MASK;
+        cache_line_set_tag(line_idx, tag_from_paddr(paddr));
+        (*keyp) |= KEY_VALID_MASK;
+        (*keyp) &= ~KEY_DIRTY_MASK;
     }
 
     return err;
@@ -259,46 +261,47 @@ int Ocache::do_cache_write_cb<uint8_t>(uint8_t const *data, addr32_t paddr,
                                        bool index_enable, bool cache_as_ram) {
     int err = 0;
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
+    uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
     unsigned byte_idx = paddr & 0x1f;
+    cache_key_t *keyp = op_cache_keys + line_idx;
 
-    if (cache_check(line, paddr)) {
-        if (line->key & KEY_VALID_MASK) {
+    if (cache_check(line_idx, paddr)) {
+        if (*keyp & KEY_VALID_MASK) {
             // cache hit, valid bit is 1
-            line->byte[byte_idx] = *data;
-            line->key |= KEY_DIRTY_MASK;
+            line[byte_idx] = *data;
+            *keyp |= KEY_DIRTY_MASK;
         } else {
             // overwrite invalid data in cache.
-            cache_load(line, paddr);
-            line->byte[byte_idx] = *data;
-            line->key |= KEY_DIRTY_MASK;
+            cache_load(line_idx, paddr);
+            line[byte_idx] = *data;
+            *keyp |= KEY_DIRTY_MASK;
         }
     } else {
-        if (line->key & KEY_VALID_MASK) {
-            if (line->key & KEY_DIRTY_MASK) {
+        if (*keyp & KEY_VALID_MASK) {
+            if (*keyp & KEY_DIRTY_MASK) {
                 // cache miss (with write-back)
                 // The manual says the SH4 should save the cache line to the
                 // write-back buffer.  Since memory writes are effectively
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line);
+                err = cache_write_back(line_idx);
                 if (err)
                     return err;
-                err = cache_load(line, paddr);
-                line->byte[byte_idx] = *data;
-                line->key |= KEY_DIRTY_MASK;
+                err = cache_load(line_idx, paddr);
+                line[byte_idx] = *data;
+                *keyp |= KEY_DIRTY_MASK;
             } else {
                 // clean data in cache can be safely overwritten.
-                cache_load(line, paddr);
-                line->byte[byte_idx] = *data;
-                line->key |= KEY_DIRTY_MASK;
+                cache_load(line_idx, paddr);
+                line[byte_idx] = *data;
+                *keyp |= KEY_DIRTY_MASK;
             }
         } else {
             // overwrite invalid data in cache.
-            cache_load(line, paddr);
-            line->byte[byte_idx] = *data;
-            line->key |= KEY_DIRTY_MASK;
+            cache_load(line_idx, paddr);
+            line[byte_idx] = *data;
+            *keyp |= KEY_DIRTY_MASK;
         }
     }
 
@@ -335,46 +338,47 @@ int Ocache::do_cache_write_cb(buf_t const *data, addr32_t paddr,
     }
 
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
+    uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
     unsigned byte_idx = paddr & 0x1f;
+    cache_key_t *keyp = op_cache_keys + line_idx;
 
-    if (cache_check(line, paddr)) {
-        if (line->key & KEY_VALID_MASK) {
+    if (cache_check(line_idx, paddr)) {
+        if (*keyp & KEY_VALID_MASK) {
             // cache hit, valid bit is 1
-            memcpy(line->byte + byte_idx, data, sizeof(buf_t));
-            line->key |= KEY_DIRTY_MASK;
+            memcpy(line + byte_idx, data, sizeof(buf_t));
+            *keyp |= KEY_DIRTY_MASK;
         } else {
             // overwrite invalid data in cache.
-            cache_load(line, paddr);
-            memcpy(line->byte + byte_idx, data, sizeof(buf_t));
-            line->key |= KEY_DIRTY_MASK;
+            cache_load(line_idx, paddr);
+            memcpy(line + byte_idx, data, sizeof(buf_t));
+            *keyp |= KEY_DIRTY_MASK;
         }
     } else {
-        if (line->key & KEY_VALID_MASK) {
-            if (line->key & KEY_DIRTY_MASK) {
+        if (*keyp & KEY_VALID_MASK) {
+            if (*keyp & KEY_DIRTY_MASK) {
                 // cache miss (with write-back)
                 // The manual says the SH4 should save the cache line to the
                 // write-back buffer.  Since memory writes are effectively
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = cache_write_back(line);
+                err = cache_write_back(line_idx);
                 if (err)
                     return err;
-                err = cache_load(line, paddr);
-                memcpy(line->byte + byte_idx, data, sizeof(buf_t));
-                line->key |= KEY_DIRTY_MASK;
+                err = cache_load(line_idx, paddr);
+                memcpy(line + byte_idx, data, sizeof(buf_t));
+                *keyp |= KEY_DIRTY_MASK;
             } else {
                 // clean data in cache can be safely overwritten.
-                cache_load(line, paddr);
-                memcpy(line->byte + byte_idx, data, sizeof(buf_t));
-                line->key |= KEY_DIRTY_MASK;
+                cache_load(line_idx, paddr);
+                memcpy(line + byte_idx, data, sizeof(buf_t));
+                *keyp |= KEY_DIRTY_MASK;
             }
         } else {
             // overwrite invalid data in cache.
-            cache_load(line, paddr);
-            memcpy(line->byte + byte_idx, data, sizeof(buf_t));
-            line->key |= KEY_DIRTY_MASK;
+            cache_load(line_idx, paddr);
+            memcpy(line + byte_idx, data, sizeof(buf_t));
+            *keyp |= KEY_DIRTY_MASK;
         }
     }
 
@@ -387,12 +391,13 @@ int Ocache::do_cache_write_wt<uint8_t>(uint8_t const *data, addr32_t paddr,
     int err = 0;
 
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
+    uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
     unsigned byte_idx = paddr & 0x1f;
+    cache_key_t *keyp = line_idx + op_cache_keys;
 
-    if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
+    if (cache_check(line_idx, paddr) && (*keyp & KEY_VALID_MASK)) {
         // write to cache and write-through to main memory
-        line->byte[byte_idx] = *data;
+        line[byte_idx] = *data;
         if ((err = mem->write(data, paddr, sizeof(*data))) != 0)
             return err;
     } else {
@@ -434,12 +439,13 @@ int Ocache::do_cache_write_wt(buf_t const *data, addr32_t paddr,
     }
 
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
+    uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
     unsigned byte_idx = paddr & 0x1f;
+    cache_key_t *keyp = line_idx + op_cache_keys;
 
-    if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
+    if (cache_check(line_idx, paddr) && (*keyp & KEY_VALID_MASK)) {
         // write to cache and write-through to main memory
-        memcpy(line->byte + byte_idx, data, sizeof(buf_t));
+        memcpy(line + byte_idx, data, sizeof(buf_t));
         if ((err = mem->write(data, paddr, sizeof(buf_t))) != 0)
             return err;
     } else {
@@ -511,26 +517,27 @@ int Ocache::cache_write_wt(void const *data, unsigned len, addr32_t paddr,
     BOOST_THROW_EXCEPTION(InvalidParamError() << errinfo_param_name("len"));
 }
 
-int Ocache::cache_load(struct cache_line *line, addr32_t paddr) {
+int Ocache::cache_load(cache_line_t line_no, addr32_t paddr) {
     int err_code;
 
     size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_CACHE_LINE;
-    if ((err_code = mem->read(line->lw, paddr & ~31, n_bytes)) != 0)
+    if ((err_code = mem->read(op_cache + line_no * CACHE_LINE_SIZE,
+                              paddr & ~31, n_bytes)) != 0)
         return err_code;
 
-    cache_line_set_tag(line, tag_from_paddr(paddr));
-    line->key |= KEY_VALID_MASK;
-    line->key &= ~KEY_DIRTY_MASK;
+    cache_line_set_tag(line_no, tag_from_paddr(paddr));
+    op_cache_keys[line_no] |= KEY_VALID_MASK;
+    op_cache_keys[line_no] &= ~KEY_DIRTY_MASK;
 
     return 0;
 }
 
-int Ocache::cache_write_back(struct cache_line *line) {
+int Ocache::cache_write_back(cache_line_t line_no) {
     int err_code = 0;
-    unsigned ent_sel = line - op_cache;
     size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_CACHE_LINE;
 
-    addr32_t paddr = ((line->key & KEY_TAG_MASK) >> KEY_TAG_SHIFT) << 10;
+    addr32_t paddr = ((op_cache_keys[line_no] & KEY_TAG_MASK) >>
+                      KEY_TAG_SHIFT) << 10;
     paddr &= 0x7ffff << 10;
 
     /* bits 12 and 13 are cleared so thar ORA and OIX don't need to be minded.
@@ -538,19 +545,20 @@ int Ocache::cache_write_back(struct cache_line *line) {
      * In the future, a sanity check to make sure these bits match their
      * counterparts in the tag may be warranted.
      */
-    paddr |= (ent_sel << 5) & ~0x3000;
+    paddr |= (line_no << 5) & ~0x3000;
 
-    if ((err_code = mem->write(line->lw, paddr & ~31, n_bytes)) != 0)
+    if ((err_code = mem->write(op_cache + line_no * CACHE_LINE_SIZE,
+                               paddr & ~31, n_bytes)) != 0) {
         return err_code;
+    }
 
-    line->key &= ~KEY_DIRTY_MASK;
+    op_cache_keys[line_no] &= ~KEY_DIRTY_MASK;
     return 0;
 }
 
 void Ocache::pref(addr32_t paddr, bool index_enable, bool cache_as_ram) {
     addr32_t line_idx = Ocache::cache_selector(paddr, index_enable,
                                                cache_as_ram);
-    struct cache_line *line = line_idx + op_cache;
 
-    cache_load(line, paddr);
+    cache_load(line_idx, paddr);
 }
