@@ -31,11 +31,13 @@
 
 #include "types.hpp"
 
-// SH4 instruction cache
+// SH4 8KB instruction cache
 class Icache {
 public:
     static const unsigned LONGS_PER_CACHE_LINE = 8;
     static const unsigned ENTRY_COUNT = 256;
+    static const size_t CACHE_LINE_SIZE = LONGS_PER_CACHE_LINE * 4;
+    static const size_t INST_CACHE_SIZE = ENTRY_COUNT * CACHE_LINE_SIZE;
 
     // the valid bit of the instruction cache keys
     static const unsigned KEY_VALID_SHIFT = 0;
@@ -45,16 +47,8 @@ public:
     static const unsigned KEY_TAG_SHIFT = 1;
     static const unsigned KEY_TAG_MASK = 0x7ffff << KEY_TAG_SHIFT;
 
-    struct cache_line {
-        // contains the tag and valid bit
-        boost::uint32_t key;
-
-        // cache line instruction array
-        union {
-            boost::uint8_t byte[LONGS_PER_CACHE_LINE * 4];
-            boost::uint16_t sw[LONGS_PER_CACHE_LINE * 2];
-        };
-    };
+    typedef size_t cache_line_t;     // index of cache-line (32-bytes/incrment)
+    typedef boost::uint32_t cache_key_t;
 
     // this class does not take ownership of sh4 or mem, so they will not be
     // deleted by the destructor function
@@ -70,7 +64,9 @@ private:
     Sh4 *sh4;
     Memory *mem;
 
-    struct cache_line *inst_cache;
+    // 8 KB ("Instruction Cache" in the hardware manual)
+    uint8_t *inst_cache;
+    cache_key_t *inst_cache_keys;
 
     int read1(boost::uint32_t *out, addr32_t paddr, bool index_enable);
     int read2(boost::uint32_t *out, addr32_t paddr, bool index_enable);
@@ -90,19 +86,18 @@ private:
      *
      * This function does not check the valid bit.
      */
-    bool cache_check(struct cache_line const *line, addr32_t paddr);
+    bool cache_check(cache_line_t line_idx, addr32_t paddr);
 
     /*
      * Load the cache-line corresponding to paddr into line.
      * Returns non-zero on failure.
      */
-    int cache_load(struct cache_line *line, addr32_t paddr);
+    int cache_load(cache_line_t line_idx, addr32_t paddr);
 
-    static addr32_t
-    cache_line_get_tag(struct cache_line const *line);
+    addr32_t cache_line_get_tag(cache_line_t line_idx);
 
     // sets the line's tag to tag.
-    void cache_line_set_tag(struct cache_line *line, addr32_t tag);
+    void cache_line_set_tag(cache_line_t line_idx, addr32_t tag);
 
     // extract the tag from the upper 19 bits of the lower 29 bits of paddr
     static addr32_t tag_from_paddr(addr32_t paddr);
@@ -114,18 +109,17 @@ Icache::read(boost::uint32_t *out, addr32_t paddr, bool index_enable) {
 }
 
 inline addr32_t
-Icache::cache_line_get_tag(struct cache_line const *line) {
-    return (KEY_TAG_MASK & line->key) >> KEY_TAG_SHIFT;
+Icache::cache_line_get_tag(cache_line_t line_idx) {
+    return (KEY_TAG_MASK & inst_cache_keys[line_idx]) >> KEY_TAG_SHIFT;
 }
 
 inline addr32_t Icache::tag_from_paddr(addr32_t paddr) {
     return (paddr & 0x1ffffc00) >> 10;
 }
 
-inline void Icache::cache_line_set_tag(struct cache_line *line,
-                                       addr32_t tag) {
-    line->key &= ~KEY_TAG_MASK;
-    line->key |= tag << KEY_TAG_SHIFT;
+inline void Icache::cache_line_set_tag(cache_line_t line_idx, addr32_t tag) {
+    cache_key_t *keyp = inst_cache_keys + line_idx;
+    *keyp = (*keyp & ~KEY_TAG_MASK) | (tag << KEY_TAG_SHIFT);
 }
 
 #endif

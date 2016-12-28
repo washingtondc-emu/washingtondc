@@ -35,16 +35,20 @@ Icache::Icache(Sh4 *sh4, Memory *mem) {
     this->sh4 = sh4;
     this->mem = mem;
 
-    inst_cache = new cache_line[ENTRY_COUNT];
+    inst_cache = new uint8_t[INST_CACHE_SIZE];
+    inst_cache_keys = new cache_key_t[ENTRY_COUNT];
+
     reset();
 }
 
 Icache::~Icache() {
+    delete[] inst_cache_keys;
     delete[] inst_cache;
 }
 
 void Icache::reset() {
-    memset(inst_cache, 0, sizeof(struct cache_line) * ENTRY_COUNT);
+    memset(inst_cache, 0, sizeof(inst_cache[0]) * INST_CACHE_SIZE);
+    memset(inst_cache_keys, 0, sizeof(inst_cache_keys[0]) * ENTRY_COUNT);
 }
 
 addr32_t Icache::cache_selector(addr32_t paddr, bool index_enable) const {
@@ -58,27 +62,28 @@ addr32_t Icache::cache_selector(addr32_t paddr, bool index_enable) const {
     return ent_sel;
 }
 
-bool Icache::cache_check(struct cache_line const *line, addr32_t paddr) {
+bool Icache::cache_check(cache_line_t line_idx, addr32_t paddr) {
     addr32_t paddr_tag;
 
     // upper 19 bits (of the lower 29 bits) of paddr
     paddr_tag = tag_from_paddr(paddr);
 
-    addr32_t line_tag = cache_line_get_tag(line);
+    addr32_t line_tag = cache_line_get_tag(line_idx);
     if (line_tag == paddr_tag)
         return true;
     return false;
 }
 
-int Icache::cache_load(struct cache_line *line, addr32_t paddr) {
+int Icache::cache_load(cache_line_t line_idx, addr32_t paddr) {
     int err_code;
     size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_CACHE_LINE;
 
-    if ((err_code = mem->read(line->sw, paddr & ~31, n_bytes)) != 0)
+    if ((err_code = mem->read(inst_cache + line_idx * CACHE_LINE_SIZE,
+                              paddr & ~31, n_bytes)) != 0)
         return err_code;
 
-    cache_line_set_tag(line, tag_from_paddr(paddr));
-    line->key |= KEY_VALID_MASK;
+    cache_line_set_tag(line_idx, tag_from_paddr(paddr));
+    inst_cache_keys[line_idx] |= KEY_VALID_MASK;
 
     return 0;
 }
@@ -86,17 +91,18 @@ int Icache::cache_load(struct cache_line *line, addr32_t paddr) {
 int Icache::read1(boost::uint32_t *out, addr32_t paddr, bool index_enable) {
     int err = 0;
 
-    struct cache_line *line = cache_selector(paddr, index_enable) + inst_cache;
+    cache_line_t line_idx = cache_selector(paddr, index_enable);
+    uint8_t *line = line_idx * CACHE_LINE_SIZE + inst_cache;
     unsigned byte_idx = paddr & 0x1f;
 
-    if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
+    if (cache_check(line_idx, paddr) && (inst_cache_keys[line_idx] & KEY_VALID_MASK)) {
         // cache hit
-        *out = line->byte[byte_idx];
+        *out = line[byte_idx];
         return 0;
     } else {
-        if ((err = cache_load(line, paddr)) != 0)
+        if ((err = cache_load(line_idx, paddr)) != 0)
             return err;
-        *out = line->byte[byte_idx];
+        *out = line[byte_idx];
         return 0;
     }
 }
@@ -122,17 +128,19 @@ int Icache::read2(boost::uint32_t *out, addr32_t paddr, bool index_enable) {
         return 0;
     }
 
-    struct cache_line *line = cache_selector(paddr, index_enable) + inst_cache;
+    cache_line_t line_idx = cache_selector(paddr, index_enable);
+    uint8_t *line = line_idx * CACHE_LINE_SIZE + inst_cache;
     unsigned sw_idx = (paddr & 0x1f) >> 1;
 
-    if (cache_check(line, paddr) && (line->key & KEY_VALID_MASK)) {
+    if (cache_check(line_idx, paddr) &&
+        (inst_cache_keys[line_idx] & KEY_VALID_MASK)) {
         // cache hit
-        *out = line->sw[sw_idx];
+        *out = ((uint16_t*)line)[sw_idx];
         return 0;
     } else {
-        if ((err = cache_load(line, paddr)) != 0)
+        if ((err = cache_load(line_idx, paddr)) != 0)
             return err;
-        *out = line->sw[sw_idx];
+        *out = ((uint16_t*)line)[sw_idx];
         return 0;
     }
 }
