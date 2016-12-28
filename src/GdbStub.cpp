@@ -362,11 +362,12 @@ std::string GdbStub::handle_m_packet(std::string dat) {
     while (len--) {
         uint8_t val;
 
-        // for now don't cooperate if it wants memory-mapped registers
-        if (addr >= 0xe0000000)
-            return std::string("E01"); // EINVAL
-        else
+        try {
             dc->get_cpu()->read_mem(&val, addr++, sizeof(val));
+        } catch (BaseException& exc) {
+            return std::string("E01"); // EINVAL
+        }
+
         ss << std::setfill('0') << std::setw(2) << std::hex << unsigned(val);
     }
 

@@ -88,13 +88,7 @@ Sh4::~Sh4() {
 void Sh4::on_hard_reset() {
     reg.sr = SR_MD_MASK | SR_RB_MASK | SR_BL_MASK | SR_FD_MASK | SR_IMASK_MASK;
     reg.vbr = 0;
-
-    /*
-     * XXX The SH4 hardware manual says that the pc should be initialized to
-     * 0xA0000000 here, but unless I'm mapping the bios to the wrong part of
-     * memory that seems incorrect
-     */
-    reg.pc = 0;
+    reg.pc = 0xa0000000;
 
     reg.fpscr = 0x41;
 }
