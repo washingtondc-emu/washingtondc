@@ -23,6 +23,8 @@
 #include <limits>
 #include <cstring>
 
+#include <boost/tuple/tuple.hpp>
+
 #include "BaseException.hpp"
 
 #include "sh4.hpp"
@@ -36,6 +38,45 @@ errinfo_opcode_format;
 
 typedef boost::error_info<struct tag_opcode_name_error_info, std::string>
 errinfo_opcode_name;
+
+// struct RegFile
+typedef boost::error_info<struct tag_sr_error_info, reg32_t> errinfo_reg_sr;
+typedef boost::error_info<struct tag_ssr_error_info, reg32_t> errinfo_reg_ssr;
+typedef boost::error_info<struct tag_pc_error_info, reg32_t> errinfo_reg_pc;
+typedef boost::error_info<struct tag_spc_error_info, reg32_t> errinfo_reg_spc;
+typedef boost::error_info<struct tag_gbr_error_info, reg32_t> errinfo_reg_gbr;
+typedef boost::error_info<struct tag_vbr_error_info, reg32_t> errinfo_reg_vbr;
+typedef boost::error_info<struct tag_sgr_error_info, reg32_t> errinfo_reg_sgr;
+typedef boost::error_info<struct tag_dbr_error_info, reg32_t> errinfo_reg_dbr;
+typedef boost::error_info<struct tag_mach_error_info, reg32_t> errinfo_reg_mach;
+typedef boost::error_info<struct tag_macl_error_info, reg32_t> errinfo_reg_macl;
+typedef boost::error_info<struct tag_pr_error_info, reg32_t> errinfo_reg_pr;
+typedef boost::error_info<struct tag_fpscr_error_info, reg32_t>
+errinfo_reg_fpscr;
+typedef boost::error_info<struct tag_fpul_error_info, reg32_t> errinfo_reg_fpul;
+
+// general-purpose registers within struct RegFile
+typedef boost::tuple<reg32_t, reg32_t, reg32_t, reg32_t,
+                     reg32_t, reg32_t, reg32_t, reg32_t> RegBankTuple;
+typedef boost::error_info<struct tag_bank0_error_info, RegBankTuple> errinfo_reg_bank0;
+typedef boost::error_info<struct tag_bank1_error_info, RegBankTuple> errinfo_reg_bank1;
+typedef boost::error_info<struct tag_rgen_error_info, RegBankTuple> errinfo_reg_rgen;
+
+// struct CacheReg
+typedef boost::error_info<struct tag_ccr_error_info, reg32_t> errinfo_reg_ccr;
+typedef boost::error_info<struct tag_qacr0_error_info, reg32_t>
+errinfo_reg_qacr0;
+typedef boost::error_info<struct tag_qacr1_error_info, reg32_t>
+errinfo_reg_qacr1;
+
+// struct Mmu
+typedef boost::error_info<struct tag_pteh_error_info, reg32_t> errinfo_reg_pteh;
+typedef boost::error_info<struct tag_ptel_error_info, reg32_t> errinfo_reg_ptel;
+typedef boost::error_info<struct tag_ptea_error_info, reg32_t> errinfo_reg_ptea;
+typedef boost::error_info<struct tag_ttb_error_info, reg32_t> errinfo_reg_ttb;
+typedef boost::error_info<struct tag_tea_error_info, reg32_t> errinfo_reg_tea;
+typedef boost::error_info<struct tag_mmucr_error_info, reg32_t>
+errinfo_reg_mmucr;
 
 struct Sh4::InstOpcode Sh4::opcode_list[] = {
     // RTS
@@ -741,13 +782,52 @@ void Sh4::exec_inst() {
     inst_t inst;
     int exc_pending;
 
-    if ((exc_pending = read_inst(&inst, reg.pc))) {
-        // fuck it, i'll commit now and figure what to do here later
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("SH4 CPU exceptions/traps"));
-    }
+    try {
+        if ((exc_pending = read_inst(&inst, reg.pc))) {
+            // fuck it, i'll commit now and figure what to do here later
+            BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                  errinfo_feature("SH4 CPU exceptions/traps"));
+        }
+        do_exec_inst(inst);
+    } catch (BaseException& exc) {
+        exc << errinfo_reg_sr(reg.sr);
+        exc << errinfo_reg_ssr(reg.ssr);
+        exc << errinfo_reg_pc(reg.pc);
+        exc << errinfo_reg_spc(reg.spc);
+        exc << errinfo_reg_gbr(reg.gbr);
+        exc << errinfo_reg_vbr(reg.vbr);
+        exc << errinfo_reg_sgr(reg.sgr);
+        exc << errinfo_reg_dbr(reg.dbr);
+        exc << errinfo_reg_mach(reg.mach);
+        exc << errinfo_reg_macl(reg.macl);
+        exc << errinfo_reg_pr(reg.pr);
+        exc << errinfo_reg_fpscr(reg.fpscr);
+        exc << errinfo_reg_fpul(reg.fpul);
+        exc << errinfo_reg_bank0(RegBankTuple(reg.r_bank0[0], reg.r_bank0[1],
+                                              reg.r_bank0[2], reg.r_bank0[3],
+                                              reg.r_bank0[4], reg.r_bank0[5],
+                                              reg.r_bank0[6], reg.r_bank0[7]));
+        exc << errinfo_reg_bank1(RegBankTuple(reg.r_bank1[0], reg.r_bank1[1],
+                                              reg.r_bank1[2], reg.r_bank1[3],
+                                              reg.r_bank1[4], reg.r_bank1[5],
+                                              reg.r_bank1[6], reg.r_bank1[7]));
+        exc << errinfo_reg_rgen(RegBankTuple(reg.rgen[0], reg.rgen[1],
+                                              reg.rgen[2], reg.rgen[3],
+                                              reg.rgen[4], reg.rgen[5],
+                                              reg.rgen[6], reg.rgen[7]));
+        exc << errinfo_reg_ccr(cache_reg.ccr);
+        exc << errinfo_reg_qacr0(cache_reg.qacr0);
+        exc << errinfo_reg_qacr1(cache_reg.qacr1);
 
-    do_exec_inst(inst);
+        // struct Mmu
+        exc << errinfo_reg_pteh(mmu.pteh);
+        exc << errinfo_reg_ptel(mmu.ptel);
+        exc << errinfo_reg_ptea(mmu.ptea);
+        exc << errinfo_reg_ttb(mmu.ttb);
+        exc << errinfo_reg_tea(mmu.tea);
+        exc << errinfo_reg_mmucr(mmu.mmucr);
+        throw;
+    }
 }
 
 void Sh4::exec_delay_slot(addr32_t addr) {
