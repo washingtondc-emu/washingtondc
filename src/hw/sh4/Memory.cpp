@@ -29,10 +29,16 @@
 Memory::Memory(size_t size) {
     this->size = size;
     this->mem = new boost::uint8_t[size];
+
+    clear();
 }
 
 Memory::~Memory() {
     delete[] mem;
+}
+
+void Memory::clear() {
+    memset(mem, 0, sizeof(mem[0]) * size);
 }
 
 int Memory::read(void *buf, size_t addr, size_t len) const {
