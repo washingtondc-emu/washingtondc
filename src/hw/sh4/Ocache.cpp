@@ -458,11 +458,11 @@ int Ocache::do_cache_write_wt<uint8_t>(uint8_t const *data, addr32_t paddr,
     if (cache_check(line_idx, paddr) && (*keyp & KEY_VALID_MASK)) {
         // write to cache and write-through to main memory
         line[byte_idx] = *data;
-        if ((err = mem->write(data, paddr, sizeof(*data))) != 0)
+        if ((err = mem->write(data, paddr & 0x1fffffff, sizeof(*data))) != 0)
             return err;
     } else {
         // write through to main memory ignoring the cache
-        if ((err = mem->write(data, paddr, sizeof(*data))) != 0)
+        if ((err = mem->write(data, paddr & 0x1fffffff, sizeof(*data))) != 0)
             return err;
     }
 
@@ -511,11 +511,11 @@ int Ocache::do_cache_write_wt(buf_t const *data, addr32_t paddr,
     if (cache_check(line_idx, paddr) && (*keyp & KEY_VALID_MASK)) {
         // write to cache and write-through to main memory
         memcpy(line + byte_idx, data, sizeof(buf_t));
-        if ((err = mem->write(data, paddr, sizeof(buf_t))) != 0)
+        if ((err = mem->write(data, paddr & 0x1fffffff, sizeof(buf_t))) != 0)
             return err;
     } else {
         // write through to main memory ignoring the cache
-        if ((err = mem->write(data, paddr, sizeof(buf_t))) != 0)
+        if ((err = mem->write(data, paddr & 0x1fffffff, sizeof(buf_t))) != 0)
             return err;
     }
 
@@ -587,7 +587,7 @@ int Ocache::cache_load(cache_line_t line_no, addr32_t paddr) {
 
     size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_CACHE_LINE;
     if ((err_code = mem->read(op_cache + line_no * CACHE_LINE_SIZE,
-                              paddr & ~31, n_bytes)) != 0)
+                              paddr & ~31 & 0x1fffffff, n_bytes)) != 0)
         return err_code;
 
     cache_line_set_tag(line_no, tag_from_paddr(paddr));
@@ -613,7 +613,7 @@ int Ocache::cache_write_back(cache_line_t line_no) {
     paddr |= (line_no << 5) & ~0x3000;
 
     if ((err_code = mem->write(op_cache + line_no * CACHE_LINE_SIZE,
-                               paddr & ~31, n_bytes)) != 0) {
+                               paddr & ~31 & 0x1fffffff, n_bytes)) != 0) {
         return err_code;
     }
 

@@ -79,7 +79,7 @@ int Icache::cache_load(cache_line_t line_idx, addr32_t paddr) {
     size_t n_bytes = sizeof(boost::uint32_t) * LONGS_PER_CACHE_LINE;
 
     if ((err_code = mem->read(inst_cache + line_idx * CACHE_LINE_SIZE,
-                              paddr & ~31, n_bytes)) != 0)
+                              paddr & ~31 & 0x1fffffff, n_bytes)) != 0)
         return err_code;
 
     cache_line_set_tag(line_idx, tag_from_paddr(paddr));
