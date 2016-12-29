@@ -56,6 +56,9 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
     { "WCR3", 0xff800010, 4, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
       0, 0x07777777 },
+    { "MCR", 0xff800014, 4, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
 
     { NULL }
 };
