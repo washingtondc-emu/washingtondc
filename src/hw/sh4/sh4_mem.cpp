@@ -95,7 +95,19 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                         } else {
 #endif
                             // don't use the cache
+                            // XXX - shouldn't this be "paddr" instead of "addr"?
+#ifndef ENABLE_SH4_OCACHE
+                            // handle the case where OCE is enabled and ORA is
+                            // enabled but we don't have Ocache available
+                            if ((cache_reg.ccr & CCR_OCE_MASK) &&
+                                (cache_reg.ccr & CCR_ORA_MASK) &&
+                                in_oc_ram_area(addr)) {
+                                do_write_ora(data, addr, len);
+                                return 0;
+                            }
+#endif
                             return mem->write(data, addr & 0x1fffffff, len);
+
 #ifdef ENABLE_SH4_OCACHE
                         }
 #endif
@@ -141,7 +153,17 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                                                              cache_as_ram);
                         }
                     } else {
+#else
+                        // handle the case where OCE is enabled and ORA is
+                        // enabled but we don't have Ocache available
+                        if ((cache_reg.ccr & CCR_OCE_MASK) &&
+                            (cache_reg.ccr & CCR_ORA_MASK) &&
+                            in_oc_ram_area(addr)) {
+                            do_write_ora(data, addr, len);
+                            return;
+                        }
 #endif
+
                         // don't use the cache
                         return mem->write(data, addr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
@@ -170,6 +192,15 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                                                 cache_as_ram);
             }
 #else
+            // handle the case where OCE is enabled and ORA is
+            // enabled but we don't have Ocache available
+            if ((cache_reg.ccr & CCR_OCE_MASK) &&
+                (cache_reg.ccr & CCR_ORA_MASK) &&
+                in_oc_ram_area(addr)) {
+                do_write_ora(data, addr, len);
+                return 0;
+            }
+
             // don't use the cache
             return mem->write(data, addr & 0x1fffffff, len);
 #endif
@@ -268,7 +299,17 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
                                                 cache_as_ram);
                 }
             } else {
+#else
+                // handle the case where OCE is enabled and ORA is
+                // enabled but we don't have Ocache available
+                if ((cache_reg.ccr & CCR_OCE_MASK) &&
+                    (cache_reg.ccr & CCR_ORA_MASK) &&
+                    in_oc_ram_area(addr)) {
+                    do_read_ora(data, addr, len);
+                    return 0;
+                }
 #endif
+
                 // don't use the cache
                 return mem->read(data, addr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
@@ -292,6 +333,15 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
                                             cache_as_ram);
             }
 #else
+            // handle the case where OCE is enabled and ORA is
+            // enabled but we don't have Ocache available
+            if ((cache_reg.ccr & CCR_OCE_MASK) &&
+                (cache_reg.ccr & CCR_ORA_MASK) &&
+                in_oc_ram_area(addr)) {
+                do_read_ora(data, addr, len);
+                return 0;
+            }
+
             // don't use the cache
             return mem->read(data, addr & 0x1fffffff, len);
 #endif
@@ -465,3 +515,32 @@ enum Sh4::VirtMemArea Sh4::get_mem_area(addr32_t addr) {
         return AREA_P3;
     return AREA_P4;
 }
+
+#ifndef ENABLE_SH4_OCACHE
+
+void *Sh4::get_ora_ram_addr(addr32_t paddr) {
+    addr32_t area_offset = paddr & 0xfff;
+    addr32_t area_start;
+    addr32_t mask;
+    if (cache_reg.ccr & CCR_OIX_MASK)
+        mask = 1 << 25;
+    else
+        mask = 1 << 13;
+    if (paddr & mask)
+        area_start = OC_RAM_AREA_SIZE >> 1;
+    else
+        area_start = 0;
+    return oc_ram_area + area_start + area_offset;
+}
+
+void Sh4::do_write_ora(void const *dat, addr32_t paddr, unsigned len) {
+    void *addr = get_ora_ram_addr(paddr);
+    memcpy(addr, dat, len);
+}
+
+void Sh4::do_read_ora(void *dat, addr32_t paddr, unsigned len) {
+    void *addr = get_ora_ram_addr(paddr);
+    memcpy(dat, addr, len);
+}
+
+#endif

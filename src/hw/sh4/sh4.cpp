@@ -64,6 +64,8 @@ Sh4::Sh4(Memory *mem) {
 
 #ifdef ENABLE_SH4_OCACHE
     this->op_cache = new Ocache(this, mem);
+#else
+    this->oc_ram_area = new uint8_t[OC_RAM_AREA_SIZE];
 #endif
 
     init_regs();
@@ -76,6 +78,8 @@ Sh4::Sh4(Memory *mem) {
 Sh4::~Sh4() {
 #ifdef ENABLE_SH4_OCACHE
     delete op_cache;
+#else
+    delete[] oc_ram_area;
 #endif
 
 #ifdef ENABLE_SH4_ICACHE
@@ -91,6 +95,16 @@ void Sh4::on_hard_reset() {
     reg.pc = 0xa0000000;
 
     reg.fpscr = 0x41;
+
+#ifdef ENABLE_SH4_OCACHE
+    op_cache->reset();
+#else
+    memset(oc_ram_area, 0, sizeof(uint8_t) * OC_RAM_AREA_SIZE);
+#endif
+
+#ifdef ENABLE_SH4_ICACHE
+    inst_cache->reset();
+#endif
 }
 
 reg32_t Sh4::get_pc() const {

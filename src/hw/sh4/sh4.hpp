@@ -294,6 +294,16 @@ public:
 
     const static unsigned EXCP_COUNT = 9 + 16 + 16 + 2 + 16 + 5;
 
+    /*
+     * if ((addr & OC_RAM_AREA_MASK) == OC_RAM_AREA_VAL) and the ORA bit is set
+     * in CCR, then addr is part of the Operand Cache's RAM area
+     */
+    static const addr32_t OC_RAM_AREA_MASK = 0xfc000000;
+    static const addr32_t OC_RAM_AREA_VAL = 0x7c000000;
+    static inline bool in_oc_ram_area(addr32_t addr) {
+        return (addr & OC_RAM_AREA_MASK) == OC_RAM_AREA_VAL;
+    }
+
 private:
     enum VirtMemArea {
         AREA_P0 = 0,
@@ -437,6 +447,28 @@ private:
 
 #ifdef ENABLE_SH4_OCACHE
     Ocache *op_cache;
+#else
+    /*
+     * without an operand cache, we need to supply some other area
+     * to serve as RAM when the ORA bit is enabled.
+     */
+    static const size_t LONGS_PER_OP_CACHE_LINE = 8;
+    static const size_t OP_CACHE_LINE_SIZE = LONGS_PER_OP_CACHE_LINE * 4;
+    static const size_t OC_RAM_AREA_SIZE = 8 * 1024;
+    uint8_t *oc_ram_area;
+
+    /*
+     * read to/write from the operand cache's RAM-space in situations where we
+     * don't actually have a real operand cache available.  It is up to the
+     * caller to make sure that the operand cache is enabled (OCE in the CCR),
+     * that the Operand Cache's RAM switch is enabled (ORA in the CCR) and that
+     * paddr lies within the Operand Cache RAM mapping (in_oc_ram_area returns
+     * true).
+     */
+    void do_write_ora(void const *dat, addr32_t paddr, unsigned len);
+    void do_read_ora(void *dat, addr32_t paddr, unsigned len);
+
+    void *get_ora_ram_addr(addr32_t paddr);
 #endif
 
     enum VirtMemArea get_mem_area(addr32_t addr);

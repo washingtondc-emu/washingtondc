@@ -36,6 +36,7 @@ class Ocache {
 public:
     static const size_t LONGS_PER_CACHE_LINE = 8;
     static const size_t ENTRY_COUNT = 512;
+    static const size_t CACHE_LINE_SHIFT = 5;
     static const size_t CACHE_LINE_SIZE = LONGS_PER_CACHE_LINE * 4;
     static const size_t OP_CACHE_SIZE = ENTRY_COUNT * CACHE_LINE_SIZE;
 
@@ -133,8 +134,8 @@ private:
      * returns the index into the op-cache where paddr
      * would go if it had an entry.
      */
-    addr32_t cache_selector(addr32_t paddr, bool index_enable,
-                            bool cache_as_ram) const;
+    cache_line_t cache_selector(addr32_t paddr, bool index_enable,
+                                bool cache_as_ram) const;
 
     /*
      * Load the cache-line corresponding to paddr into line.
@@ -152,6 +153,18 @@ private:
 
     // sets the line's tag to tag.
     void cache_line_set_tag(cache_line_t line, addr32_t tag);
+
+    /*
+     * returns a pointer to where paddr ought to go if ORA ram is enabled.
+     *
+     * This function does not verify that paddr is actually a valid address,
+     * nor does it handle the possibility that paddr might straddle the border
+     * between RAM area 1 and RAM area 2 (which are not adjacent in the
+     * operand cache).  The caller must make sure that paddr is actually a RAM
+     * address and that the entire length of the read/write operation can be
+     * safely executed.
+     */
+    void *get_ram_addr(addr32_t paddr, bool index_enable);
 
     // extract the tag from the upper 19 bits of the lower 29 bits of paddr
     static addr32_t tag_from_paddr(addr32_t paddr);

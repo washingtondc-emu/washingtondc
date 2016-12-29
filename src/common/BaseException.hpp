@@ -48,6 +48,8 @@ errinfo_guest_addr;
 typedef boost::error_info<struct tag_advice_error_info, std::string>
 errinfo_advice;
 
+typedef boost::error_info<struct tag_length_error_info, size_t> errinfo_length;
+
 class BaseException : public virtual std::exception,
                       public virtual boost::exception {
 };

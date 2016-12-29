@@ -60,29 +60,56 @@ bool Ocache::cache_check(cache_line_t line_no, addr32_t paddr) {
     return line_tag == paddr_tag;
 }
 
-addr32_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
-                                bool cache_as_ram) const {
-    if (cache_as_ram) {
-        // the hardware manual is a little vague on how this effects
-        // the half of the cache which is not being used as memory.
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("Operand Cache as RAM"));
-    }
-
-    addr32_t ent_sel = (paddr & 0x1fe0) >> 5;
+Ocache::cache_line_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
+                                            bool cache_as_ram) const {
+    cache_line_t ent_sel = (paddr & 0x1fe0) >> 5;
     if (index_enable)
         ent_sel |= (paddr & (1 << 25)) >> 12;
     else
         ent_sel |= (paddr & (1 << 13)) >> 5;
 
+    if (cache_as_ram) {
+        /*
+         * The sh4 hardware manual is a little vague on how this effects
+         * the half of the cache which is not being used as memory.
+         * As an educated guess, I discard bit 7 (which is always cleared
+         * for addresses which would reside in a cache area and set for areas
+         * which would reside in a RAM area) and use bit 8 to determine whether
+         * the selector should map to the 0:127 range or the 256:383 range.
+         *
+         * The remaining seven bits of the selector determine which specific
+         * cache line within the given range to use.
+         */
+        ent_sel &= ~(1 << 7);
+    }
+
     return ent_sel;
+}
+
+void *Ocache::get_ram_addr(addr32_t paddr, bool index_enable) {
+    addr32_t area_offset = paddr & 0xfff;
+    addr32_t area_start;
+    addr32_t mask;
+    if (index_enable)
+        mask = 1 << 25;
+    else
+        mask = 1 << 13;
+    if (paddr & mask)
+        area_start = CACHE_LINE_SIZE * 0x180;
+    else
+        area_start = CACHE_LINE_SIZE * 0x80;
+    return op_cache + area_start + area_offset;
 }
 
 template<>
 int Ocache::do_cache_read<uint8_t>(uint8_t *out, addr32_t paddr,
                                    bool index_enable, bool cache_as_ram) {
-    int err = 0;
+    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+        *out = *(uint8_t*)get_ram_addr(paddr, index_enable);
+        return 0;
+    }
 
+    int err = 0;
     uint32_t line_idx = Ocache::cache_selector(paddr, index_enable,
                                                cache_as_ram);
     uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
@@ -161,6 +188,11 @@ int Ocache::do_cache_read(buf_t *out,
         return 0;
     }
 
+    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+        *out = *(buf_t*)get_ram_addr(paddr, index_enable);
+        return 0;
+    }
+
     addr32_t line_idx = Ocache::cache_selector(paddr, index_enable,
                                                cache_as_ram);
     uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
@@ -209,6 +241,9 @@ int Ocache::do_cache_read(buf_t *out,
 }
 
 void Ocache::invalidate(addr32_t paddr, bool index_enable, bool cache_as_ram) {
+    if (cache_as_ram && Sh4::in_oc_ram_area(paddr))
+        return;
+
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
 
     if (cache_check(line_idx, paddr))
@@ -217,6 +252,10 @@ void Ocache::invalidate(addr32_t paddr, bool index_enable, bool cache_as_ram) {
 
 int Ocache::purge(addr32_t paddr, bool index_enable, bool cache_as_ram) {
     int err;
+
+    if (cache_as_ram && Sh4::in_oc_ram_area(paddr))
+        return 0;
+
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
 
     if (cache_check(line_idx, paddr) &&
@@ -231,6 +270,12 @@ int Ocache::purge(addr32_t paddr, bool index_enable, bool cache_as_ram) {
 
 int Ocache::cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram) {
     int err = 0;
+
+    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+        // no need to allocate it, it's always going to be part of the cache
+        return 0;
+    }
+
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
     cache_key_t *keyp = op_cache_keys + line_idx;
 
@@ -259,6 +304,11 @@ int Ocache::cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram) {
 template<>
 int Ocache::do_cache_write_cb<uint8_t>(uint8_t const *data, addr32_t paddr,
                                        bool index_enable, bool cache_as_ram) {
+    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+        *(uint8_t*)get_ram_addr(paddr, index_enable) = *data;
+        return 0;
+    }
+
     int err = 0;
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
     uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
@@ -337,6 +387,11 @@ int Ocache::do_cache_write_cb(buf_t const *data, addr32_t paddr,
         return 0;
     }
 
+    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+        *(buf_t*)get_ram_addr(paddr, index_enable) = *data;
+        return 0;
+    }
+
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
     uint8_t *line = line_idx * CACHE_LINE_SIZE + op_cache;
     unsigned byte_idx = paddr & 0x1f;
@@ -388,6 +443,11 @@ int Ocache::do_cache_write_cb(buf_t const *data, addr32_t paddr,
 template <>
 int Ocache::do_cache_write_wt<uint8_t>(uint8_t const *data, addr32_t paddr,
                                        bool index_enable, bool cache_as_ram) {
+    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+        *(uint8_t*)get_ram_addr(paddr, index_enable) = *data;
+        return 0;
+    }
+
     int err = 0;
 
     addr32_t line_idx = cache_selector(paddr, index_enable, cache_as_ram);
@@ -435,6 +495,11 @@ int Ocache::do_cache_write_wt(buf_t const *data, addr32_t paddr,
                 return err;
         }
 
+        return 0;
+    }
+
+    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+        *(buf_t*)get_ram_addr(paddr, index_enable) = *data;
         return 0;
     }
 
@@ -557,8 +622,10 @@ int Ocache::cache_write_back(cache_line_t line_no) {
 }
 
 void Ocache::pref(addr32_t paddr, bool index_enable, bool cache_as_ram) {
-    addr32_t line_idx = Ocache::cache_selector(paddr, index_enable,
-                                               cache_as_ram);
+    if (!(cache_as_ram && Sh4::in_oc_ram_area(paddr))) {
+        addr32_t line_idx = Ocache::cache_selector(paddr, index_enable,
+                                                   cache_as_ram);
 
-    cache_load(line_idx, paddr);
+        cache_load(line_idx, paddr);
+    }
 }
