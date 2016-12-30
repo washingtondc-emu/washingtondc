@@ -59,6 +59,15 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
     { "MCR", 0xff800014, ~addr32_t(0), 4, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
       0, 0 },
+    { "RFCR", 0xff800028, ~addr32_t(0), 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
+    { "RTCOR", 0xff800024, ~addr32_t(0), 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
+    { "RTCSR", 0xff80001c, ~addr32_t(0), 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
 
     /*
      * These two registers are kind of weird.  When you write to them, the value
