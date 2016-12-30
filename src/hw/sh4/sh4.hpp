@@ -24,7 +24,6 @@
 #define SH4_HPP_
 
 #include <cassert>
-#include <map>
 
 #include <boost/cstdint.hpp>
 #include <boost/static_assert.hpp>
@@ -1820,9 +1819,9 @@ private:
                                        unsigned len);
 
     /*
-     * at run-time, this array gets turned into an std::map (mem_mapped_regs).
+     * TODO: turn this into a radix tree of some sort.
      *
-     * In the future I want to turn this into a simple lookup array; this
+     * Alternatively, I could turn this into a simple lookup array; this
      * would incur a huge memory overhead (hundreds of MB), but it looks like
      * it would be feasible in the $CURRENT_YEAR and it would net a
      * beautiful O(1) mapping from addr32_t to MemMappedReg.
@@ -1830,8 +1829,15 @@ private:
     static struct MemMappedReg {
         char const *reg_name;
 
-        // addr shoud be the p4 addr, not the area7 addr
-        addr32_t addr;
+        /*
+         * Some registers can be referenced over a range of addresses.
+         * To check for equality between this register and a given physical
+         * address, AND the address with addr_mask and then check for equality
+         * with addr
+         */
+        addr32_t addr;  // addr shoud be the p4 addr, not the area7 addr
+        addr32_t addr_mask;
+
         unsigned len;
 
         /*
@@ -1852,12 +1858,20 @@ private:
         reg32_t manual_reset_val;
     } mem_mapped_regs[];
 
-    typedef std::map<addr32_t, MemMappedReg> RegMetaMap;
-    RegMetaMap reg_map;
+    struct MemMappedReg *find_reg_by_addr(addr32_t addr);
 
     // default read/write handler callbacks
     int DefaultRegReadHandler(void *buf, addr32_t addr, unsigned len);
     int DefaultRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    /*
+     * read handle callback that always fails (although currently it throws an
+     * UnimplementedError because I don't know what the proper response is when
+     * the software tries to read from an unreadable register).
+     *
+     * This is used for certain registers which are write-only.
+     */
+    int WriteOnlyRegReadHandler(void *buf, addr32_t addr, unsigned len);
 
     int MmucrRegReadHandler(void *buf, addr32_t addr, unsigned len);
     int MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);

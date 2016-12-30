@@ -29,11 +29,11 @@ typedef boost::error_info<struct tag_feature_name_error_info, std::string>
 errinfo_regname;
 
 struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
-    { "EXPEVT", 0xff000024, 4, false,
+    { "EXPEVT", 0xff000024, ~addr32_t(0), 4, false,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x20 },
-    { "MMUCR", 0xff000010, 4, false,
+    { "MMUCR", 0xff000010, ~addr32_t(0), 4, false,
       &Sh4::MmucrRegReadHandler, &Sh4::MmucrRegWriteHandler, 0, 0 },
-    { "CCR", 0xff00001c, 4, false,
+    { "CCR", 0xff00001c, ~addr32_t(0), 4, false,
       &Sh4::CcrRegReadHandler, &Sh4::CcrRegWriteHandler, 0, 0 },
 
     /*
@@ -43,91 +43,108 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
      * read/write operations pass through and don't do anything
      * to react to them.
      */
-    { "BCR1", 0xff800000, 4, true,
+    { "BCR1", 0xff800000, ~addr32_t(0), 4, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "BCR2", 0xff800004, 2, true,
+    { "BCR2", 0xff800004, ~addr32_t(0), 2, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x3ffc },
-    { "WCR1", 0xff800008, 4, true,
+    { "WCR1", 0xff800008, ~addr32_t(0), 4, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
       0, 0x77777777 },
-    { "WCR2", 0xff80000c, 4, true,
+    { "WCR2", 0xff80000c, ~addr32_t(0), 4, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
       0, 0xfffeefff },
-    { "WCR3", 0xff800010, 4, true,
+    { "WCR3", 0xff800010, ~addr32_t(0), 4, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
       0, 0x07777777 },
-    { "MCR", 0xff800014, 4, true,
+    { "MCR", 0xff800014, ~addr32_t(0), 4, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
       0, 0 },
+
+    /*
+     * These two registers are kind of weird.  When you write to them, the value
+     * is discarded and instead the offset from the beginning of the register
+     * (either 0xff900000 for SDMR2 or 0xff940000 for SDMR3) is right-shifted
+     * by 2 and that is used as the value instead.
+     *
+     * Like the other bus-state control registers, I've decided that these
+     * registers are low-level enough that they can *probably* be ignored.
+     * I've allowed all writes to transparently pass through.
+     * The current implementation does not respect the unusual addressing
+     * described above.  It does make the register write-only (as described in
+     * the spec), which is why I feel like I don't need to bother with the
+     * weird address-as-value semantics of these registers.
+     */
+    { "SDMR2", 0xff900000, 0xffff0000, 1, true,
+      &Sh4::WriteOnlyRegReadHandler, &Sh4::DefaultRegWriteHandler },
+    { "SDMR3", 0xff940000, 0xffff0000, 1, true,
+      &Sh4::WriteOnlyRegReadHandler, &Sh4::DefaultRegWriteHandler },
 
     { NULL }
 };
 
-
 void Sh4::init_regs() {
-    MemMappedReg *curs = mem_mapped_regs;
-
-    while (curs->reg_name) {
-        reg_map[curs->addr] = *curs;
-
-        curs++;
-    }
-
     poweron_reset_regs();
 }
 
 void Sh4::poweron_reset_regs() {
-    for (RegMetaMap::iterator it = reg_map.begin(); it != reg_map.end(); it++) {
-        RegWriteHandler handler = it->second.on_p4_write;
-        if ((this->*handler)(&it->second.poweron_reset_val,
-                             it->second.addr, it->second.len) != 0)
+    MemMappedReg *curs = mem_mapped_regs;
+
+    while (curs->reg_name) {
+        RegWriteHandler handler = curs->on_p4_write;
+        if ((this->*handler)(&curs->poweron_reset_val,
+                             curs->addr, curs->len) != 0)
             BOOST_THROW_EXCEPTION(IntegrityError() <<
                                   errinfo_wtf("the reg write handler returned "
                                               "error during a poweron reset") <<
-                                  errinfo_guest_addr(it->second.addr) <<
-                                  errinfo_regname(it->second.reg_name));
+                                  errinfo_guest_addr(curs->addr) <<
+                                  errinfo_regname(curs->reg_name));
+
+        curs++;
     }
 }
 
 void Sh4::manual_reset_regs() {
-    for (RegMetaMap::iterator it = reg_map.begin(); it != reg_map.end(); it++) {
-        RegWriteHandler handler = it->second.on_p4_write;
-        if ((this->*handler)(&it->second.manual_reset_val,
-                             it->second.addr, it->second.len) != 0)
+    MemMappedReg *curs = mem_mapped_regs;
+
+    while (curs->reg_name) {
+        RegWriteHandler handler = curs->on_p4_write;
+        if ((this->*handler)(&curs->manual_reset_val,
+                             curs->addr, curs->len) != 0)
             BOOST_THROW_EXCEPTION(IntegrityError() <<
                                   errinfo_wtf("the reg write handler returned "
-                                              "error during a manual reset") <<
-                                  errinfo_guest_addr(it->second.addr) <<
-                                  errinfo_regname(it->second.reg_name));
+                                              "error during a poweron reset") <<
+                                  errinfo_guest_addr(curs->addr) <<
+                                  errinfo_regname(curs->reg_name));
+
+        curs++;
     }
 }
 
-int Sh4::read_mem_mapped_reg(void *buf, addr32_t addr, unsigned len) {
-    RegMetaMap::iterator pos = reg_map.find(addr);
+Sh4::MemMappedReg *Sh4::find_reg_by_addr(addr32_t addr) {
+    MemMappedReg *curs = mem_mapped_regs;
 
-    if (pos == reg_map.end()) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("reading from one of the "
-                                              "mem-mapped registers") <<
-                              errinfo_guest_addr(addr));
+    while (curs->reg_name) {
+        if (curs->addr == (addr & curs->addr_mask))
+            return curs;
+        curs++;
     }
 
-    RegReadHandler handler = pos->second.on_p4_read;
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("accessing one of the "
+                                          "mem-mapped registers") <<
+                          errinfo_guest_addr(addr));
+}
+
+int Sh4::read_mem_mapped_reg(void *buf, addr32_t addr, unsigned len) {
+    MemMappedReg *mm_reg = find_reg_by_addr(addr);
+    RegReadHandler handler = mm_reg->on_p4_read;
 
     return (this->*handler)(buf, addr, len);
 }
 
 int Sh4::write_mem_mapped_reg(void const *buf, addr32_t addr, unsigned len) {
-    RegMetaMap::iterator pos = reg_map.find(addr);
-
-    if (pos == reg_map.end()) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("writing to one of the "
-                                              "mem-mapped registers") <<
-                              errinfo_guest_addr(addr));
-    }
-
-    RegWriteHandler handler = pos->second.on_p4_write;
+    MemMappedReg *mm_reg = find_reg_by_addr(addr);
+    RegWriteHandler handler = mm_reg->on_p4_write;
 
     return (this->*handler)(buf, addr, len);
 }
@@ -143,6 +160,14 @@ int Sh4::DefaultRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     memcpy(addr - P4_REGSTART + reg_area, buf, len);
 
     return 0;
+}
+
+int Sh4::WriteOnlyRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("sh4 CPU exception for trying to "
+                                          "read from a write-only CPU "
+                                          "register") <<
+                          errinfo_guest_addr(addr));
 }
 
 int Sh4::MmucrRegReadHandler(void *buf, addr32_t addr, unsigned len) {
