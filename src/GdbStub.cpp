@@ -151,7 +151,10 @@ int GdbStub::decode_hex(char ch)
 bool GdbStub::step(inst_t pc) {
     bool res = Debugger::step(pc);
 
-    io_service.poll();
+    if (!res)
+        io_service.poll();
+    else
+        io_service.run_one();
 
     return res;
 }
