@@ -9,7 +9,7 @@ partially-complete SH4 interpreter.
 # Instructions
 
 * run washingtondc:
-    ./washingtondc -b <path to Dreamcast BIOS file>
+    ./washingtondc -b \<path to Dreamcast BIOS file\>
 
 Not much will happen because this is still in a very early stage of development
 
@@ -17,7 +17,7 @@ Not much will happen because this is still in a very early stage of development
 
 * run washingtondc with the -g option:
 
-    ./washingtondc -b <path to Dreamcast BIOS file>
+    ./washingtondc -b \<path to Dreamcast BIOS file\>
 
     It will print:
 
