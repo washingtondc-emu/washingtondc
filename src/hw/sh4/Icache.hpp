@@ -30,6 +30,7 @@
 #include <boost/cstdint.hpp>
 
 #include "types.hpp"
+#include "MemoryMap.hpp"
 
 // SH4 8KB instruction cache
 class Icache {
@@ -52,7 +53,7 @@ public:
 
     // this class does not take ownership of sh4 or mem, so they will not be
     // deleted by the destructor function
-    Icache(Sh4 *sh4, Memory *mem);
+    Icache(Sh4 *sh4, MemoryMap *mem);
     ~Icache();
 
     // Returns: zero on success, nonzero on failure
@@ -62,7 +63,7 @@ public:
     void reset(void);
 private:
     Sh4 *sh4;
-    Memory *mem;
+    MemoryMap *mem;
 
     // 8 KB ("Instruction Cache" in the hardware manual)
     uint8_t *inst_cache;

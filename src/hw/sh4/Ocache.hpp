@@ -30,6 +30,7 @@
 #include <boost/cstdint.hpp>
 
 #include "types.hpp"
+#include "MemoryMap.hpp"
 
 // SH4 16 KB Operand Cache
 class Ocache {
@@ -57,7 +58,7 @@ public:
 
     // this class does not take ownership of sh4 or mem, so they will not be
     // deleted by the destructor function
-    Ocache(Sh4 *sh4, Memory *mem);
+    Ocache(Sh4 *sh4, MemoryMap *mem);
     ~Ocache();
 
     // Returns: zero on success, nonzero on failure.

@@ -31,7 +31,7 @@
 
 #include "Ocache.hpp"
 
-Ocache::Ocache(Sh4 *sh4, Memory *mem) {
+Ocache::Ocache(Sh4 *sh4, MemoryMap *mem) {
     this->sh4 = sh4;
     this->mem = mem;
 

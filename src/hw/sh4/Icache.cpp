@@ -31,7 +31,7 @@
 
 #include "Icache.hpp"
 
-Icache::Icache(Sh4 *sh4, Memory *mem) {
+Icache::Icache(Sh4 *sh4, MemoryMap *mem) {
     this->sh4 = sh4;
     this->mem = mem;
 
