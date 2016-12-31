@@ -121,6 +121,40 @@ public:
         setup();
 
         gen.reset();
+
+        addr32_t ora_start, ora_end;
+        if (cpu->cache_reg.ccr & Sh4::CCR_ORA_MASK) {
+            /*
+             * now let's screw around a bit with the Operand cache's 8KB RAM
+             *
+             * we'll read these values back later after the regular RAM tests.
+             * that way we know that the ram didn't conflict with the Ocache
+             * RAM somehow.
+             */
+
+            // TODO: randomize start, end
+            if (!(cpu->cache_reg.ccr & Sh4::CCR_OIX_MASK)) {
+                ora_start = 0x7c001000;
+                ora_end   = 0x7c003000;
+            } else {
+                ora_start = 0x7dfff000;
+                ora_end   = 0x7e001000;
+            }
+
+            for (addr32_t addr = ora_start;
+                 addr + sizeof(ValType) < ora_end;
+                 addr += sizeof(ValType)) {
+                ValType val = gen.pick_val(addr);
+
+                if ((err = cpu->do_write_mem(&val, addr, sizeof(val))) != 0) {
+                    std::cout << "Error while writing 0x" << std::hex << addr <<
+                        " to 0x" << std::hex << addr << std::endl;
+                    return err;
+                }
+            }
+        }
+
+        gen.reset();
         addr32_t start = offset + MemoryMap::RAM_FIRST;
         addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff) +
             MemoryMap::RAM_FIRST;
@@ -196,34 +230,13 @@ public:
         }
 
         if (cpu->cache_reg.ccr & Sh4::CCR_ORA_MASK) {
-            // now let's screw around a bit with the Operand cache's 8KB RAM
-
-            // TODO: randomize start, end
-            if (!(cpu->cache_reg.ccr & Sh4::CCR_OIX_MASK)) {
-                start = 0x7c001000;
-                end   = 0x7c003000;
-            } else {
-                start = 0x7dfff000;
-                end   = 0x7e001000;
-            }
-
+            /*
+             * remember when we wroe all that crap to the Ocache's ORA ram?
+             * now's the part where we get to validate it!
+             */
             gen.reset();
-            for (addr32_t addr = start;
-                 addr + sizeof(ValType) < end;
-                 addr += sizeof(ValType)) {
-                ValType val = gen.pick_val(addr);
-
-                if ((err = cpu->do_write_mem(&val, addr, sizeof(val))) != 0) {
-                    std::cout << "Error while writing 0x" << std::hex << addr <<
-                        " to 0x" << std::hex << addr << std::endl;
-                    return err;
-                }
-            }
-
-            // now read back and check to see if things match expectations
-            gen.reset();
-            for (addr32_t addr = start;
-                 addr + sizeof(ValType) < end;
+            for (addr32_t addr = ora_start;
+                 addr + sizeof(ValType) < ora_end;
                  addr += sizeof(ValType)) {
                 ValType val = 0;
                 if ((err = cpu->do_read_mem(&val, addr, sizeof(ValType))) != 0) {
