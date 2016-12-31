@@ -23,7 +23,6 @@
 #include <iostream>
 
 #include "common/BaseException.hpp"
-#include "BiosFile.hpp"
 
 #ifdef ENABLE_DEBUGGER
 #include "GdbStub.hpp"
@@ -34,25 +33,27 @@
 Dreamcast::Dreamcast(char const *bios_path) {
     is_running = true;
 
-    mem = new Memory(MEM_SZ);
-    cpu = new Sh4(mem);
-
 #ifdef ENABLE_DEBUGGER
     debugger = NULL;
 #endif
 
-    BiosFile bios(bios_path);
-    mem->load_binary<uint8_t, uint8_t*>(0, bios.begin(), bios.end());
+    mem = new Memory(MEM_SZ);
+    bios = new BiosFile(bios_path);
+    mem_map = new MemoryMap(bios, mem);
+
+    cpu = new Sh4(mem_map);
 }
 
 Dreamcast::~Dreamcast() {
-    delete mem;
-    delete cpu;
-
 #ifdef ENABLE_DEBUGGER
     if (debugger)
         delete debugger;
 #endif
+
+    delete cpu;
+    delete mem_map;
+    delete bios;
+    delete mem;
 }
 
 void Dreamcast::run() {

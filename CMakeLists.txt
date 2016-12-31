@@ -40,7 +40,12 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mem.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_reg.cpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/sh4/Memory.cpp")
+                "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
+                "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp"
+                "${PROJECT_SOURCE_DIR}/src/Memory.hpp"
+                "${PROJECT_SOURCE_DIR}/src/Memory.cpp"
+                "${PROJECT_SOURCE_DIR}/src/MemoryMap.hpp"
+                "${PROJECT_SOURCE_DIR}/src/MemoryMap.cpp")
 
 if (ENABLE_SH4_ICACHE)
     add_definitions(-DENABLE_SH4_ICACHE)

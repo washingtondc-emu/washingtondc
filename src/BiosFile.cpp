@@ -21,10 +21,17 @@
  ******************************************************************************/
 
 #include <string>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 
 #include "BiosFile.hpp"
+
+BiosFile::BiosFile() {
+    dat = new uint8_t[SZ_EXPECT];
+    dat_len = SZ_EXPECT;
+    clear();
+}
 
 BiosFile::BiosFile(char const *path) {
     do_init(path);
@@ -37,6 +44,10 @@ BiosFile::BiosFile(const std::string &path) {
 BiosFile::~BiosFile() {
     if (dat)
         delete[] dat;
+}
+
+void BiosFile::clear() {
+    memset(dat, 0, dat_len);
 }
 
 void BiosFile::do_init(char const *path) {
@@ -64,4 +75,9 @@ uint8_t *BiosFile::begin() {
 
 uint8_t *BiosFile::end() {
     return dat + dat_len;
+}
+
+int BiosFile::read(void *buf, size_t addr, size_t len) const {
+    memcpy(buf, dat + addr, len);
+    return 0;
 }

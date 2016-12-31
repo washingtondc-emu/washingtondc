@@ -20,45 +20,29 @@
  *
  ******************************************************************************/
 
-#ifndef DREAMCAST_HPP_
-#define DREAMCAST_HPP_
+#ifndef MEMORYMAP_HPP_
+#define MEMORYMAP_HPP_
 
 #include "BiosFile.hpp"
 #include "Memory.hpp"
-#include "hw/sh4/sh4.hpp"
 
-#ifdef ENABLE_DEBUGGER
-#include "Debugger.hpp"
-#endif
-
-class Dreamcast {
+class MemoryMap {
 public:
-    Dreamcast(char const *bios_path);
-    ~Dreamcast();
+    const static size_t BIOS_FIRST = 0;
+    const static size_t BIOS_LAST  = 0x001fffff;
 
-#ifdef ENABLE_DEBUGGER
-    // this must be called before run or not at all
-    void enable_debugger(void);
-#endif
+    const static size_t RAM_FIRST  = 0x0c000000;
+    const static size_t RAM_LAST   = 0x0cffffff;
 
-    void run();
-    void kill();
+    MemoryMap(BiosFile *bios, Memory *mem);
+    ~MemoryMap();
 
-    Sh4 *get_cpu();
-    Memory *gem_mem();
+    int read(void *buf, size_t addr, size_t len) const;
+    int write(void const *buf, size_t addr, size_t len);
+
 private:
-    static const size_t MEM_SZ = 16 * 1024 * 1024;
-
-    Sh4 *cpu;
     BiosFile *bios;
     Memory *mem;
-    MemoryMap *mem_map;
-
-    bool is_running;
-
-#ifdef ENABLE_DEBUGGER
-    Debugger *debugger;
-#endif
 };
 
 #endif

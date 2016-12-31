@@ -27,12 +27,6 @@
 
 #include "types.hpp"
 
-// Temporary memory emulator
-// This module will be used as a "dumb" memory device for the Sh4 interpreter
-// core to interact with during testing while I get this emulator bootstrapped.
-// It does not implement any of the Dreamcast's memory mappings.
-// Later it might stay on as part of some sort of unit testing system.
-
 class Memory {
 public:
     Memory(size_t size);
@@ -59,7 +53,7 @@ private:
 
 template<typename data_tp, class InputIterator>
 void Memory::load_binary(addr32_t where, InputIterator start,
-                          InputIterator end) {
+                         InputIterator end) {
     for (InputIterator it = start; it != end; it++, where++) {
         data_tp tmp = *it;
         write(&tmp, where, sizeof(tmp));

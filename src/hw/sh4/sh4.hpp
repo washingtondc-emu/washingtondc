@@ -29,7 +29,7 @@
 #include <boost/static_assert.hpp>
 
 #include "types.hpp"
-#include "Memory.hpp"
+#include "MemoryMap.hpp"
 
 /* Hitachi SuperH-4 interpreter */
 
@@ -175,7 +175,7 @@ public:
     };
     RegFile reg;
 
-    Sh4(Memory *mem);
+    Sh4(MemoryMap *mem);
     ~Sh4();
 
     void set_exception(unsigned excp_code);
@@ -563,7 +563,7 @@ private:
     int do_read_p4(void *dat, addr32_t addr, unsigned len);
     int do_write_p4(void const *dat, addr32_t addr, unsigned len);
 
-    Memory *mem;
+    MemoryMap *mem;
     /*
      * return a pointer to the given general-purpose register.
      * This function takes bank-switching into account.

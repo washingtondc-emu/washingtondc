@@ -26,7 +26,7 @@
 #include <limits>
 
 #include "BaseException.hpp"
-#include "hw/sh4/Memory.hpp"
+#include "Memory.hpp"
 #include "hw/sh4/sh4.hpp"
 #include "tool/sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
@@ -39,8 +39,35 @@
 #include "hw/sh4/Ocache.hpp"
 #endif
 
+static const size_t MEM_SZ = 16 * 1024 * 1024;
+
 typedef RandGenerator<boost::uint32_t> RandGen32;
-typedef int(*inst_test_func_t)(Sh4 *cpu, Memory *mem, RandGen32 *randgen32);
+typedef int(*inst_test_func_t)(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                               RandGen32 *randgen32);
+
+class AddrRange {
+public:
+    AddrRange(RandGen32 *randgen32,
+              addr32_t min = 0, addr32_t max = MEM_SZ - 1) {
+        this->randgen32 = randgen32;
+        this->min = min;
+        this->max = max;
+    }
+
+    addr32_t operator()() {
+        return randgen32->pick_range(min, max);
+    }
+
+private:
+    RandGen32 *randgen32;
+    addr32_t min;
+    addr32_t max;
+};
+
+template <class AddrFunc>
+static addr32_t pick_addr(AddrFunc func) {
+    return func() + MemoryMap::RAM_FIRST;
+}
 
 class Sh4InstTests {
 public:
@@ -60,11 +87,12 @@ public:
     }
 
     // very basic test that does a whole lot of nothing
-    static int nop_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int nop_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                        RandGen32 *randgen32) {
         Sh4Prog test_prog;
         test_prog.add_txt("NOP\n");
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t,
+        bios->load_binary<uint8_t,
                          Sh4Prog::ByteList::const_iterator>(0, inst.begin(),
                                                             inst.end());
 
@@ -77,7 +105,8 @@ public:
 
     // ADD #imm, Rn
     // 0111nnnniiiiiiii
-    static int add_immed_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int add_immed_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                              RandGen32 *randgen32) {
         reg32_t initial_val = randgen32->pick_val(0);
         /*
          * I don't bother toggling the bank switching flag because if there's a
@@ -92,7 +121,7 @@ public:
                 ss << "ADD #" << imm_val << ", R" << reg_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -117,7 +146,8 @@ public:
 
     // ADD Rm, Rn
     // 0111nnnnmmmm1100
-    static int add_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int add_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                RandGen32 *randgen32) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -139,7 +169,7 @@ public:
                 ss << "ADD R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -165,7 +195,7 @@ public:
 
     // ADDC Rm, Rn
     // 0011nnnnmmmm1110
-    static int do_addc_gen_gen_test(Sh4 *cpu, Memory *mem,
+    static int do_addc_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     reg32_t src1, reg32_t src2, bool carry_in) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
@@ -188,7 +218,7 @@ public:
                 ss << "ADDC R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -237,46 +267,47 @@ public:
 
     // ADDC Rm, Rn
     // 0011nnnnmmmm1110
-    static int addc_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int addc_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
         int failed = 0;
 
         // run the test with a couple random values
-        failed = failed || do_addc_gen_gen_test(cpu, mem,
+        failed = failed || do_addc_gen_gen_test(cpu, bios, mem,
                                                 randgen32->pick_val(0),
                                                 randgen32->pick_val(0), false);
-        failed = failed || do_addc_gen_gen_test(cpu, mem,
+        failed = failed || do_addc_gen_gen_test(cpu, bios, mem,
                                                 randgen32->pick_val(0),
                                                 randgen32->pick_val(0), true);
 
         // make sure we get at least one value in that should not cause a carry
-        failed = failed || do_addc_gen_gen_test(cpu, mem, 0, 0, false);
-        failed = failed || do_addc_gen_gen_test(cpu, mem, 0, 0, true);
+        failed = failed || do_addc_gen_gen_test(cpu, bios, mem, 0, 0, false);
+        failed = failed || do_addc_gen_gen_test(cpu, bios, mem, 0, 0, true);
 
         // make sure we get at least one value in that should cause a carry
         failed = failed ||
-            do_addc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
+            do_addc_gen_gen_test(cpu, bios, mem, std::numeric_limits<reg32_t>::max(),
                                  std::numeric_limits<reg32_t>::max(), false);
         failed = failed ||
-            do_addc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
+            do_addc_gen_gen_test(cpu, bios, mem, std::numeric_limits<reg32_t>::max(),
                                  std::numeric_limits<reg32_t>::max(), true);
 
         // test a value that should *almost* cause a carry
         failed = failed ||
-            do_addc_gen_gen_test(cpu, mem, 1,
+            do_addc_gen_gen_test(cpu, bios, mem, 1,
                                  std::numeric_limits<reg32_t>::max() - 1,
                                  false);
         failed = failed ||
-            do_addc_gen_gen_test(cpu, mem, 1,
+            do_addc_gen_gen_test(cpu, bios, mem, 1,
                                  std::numeric_limits<reg32_t>::max() - 1,
                                  true);
 
         // test a value pair that should barely cause a carry
         failed = failed ||
-            do_addc_gen_gen_test(cpu, mem,
+            do_addc_gen_gen_test(cpu, bios, mem,
                                  std::numeric_limits<reg32_t>::max() - 1, 2,
                                  false);
         failed = failed ||
-            do_addc_gen_gen_test(cpu, mem,
+            do_addc_gen_gen_test(cpu, bios, mem,
                                  std::numeric_limits<reg32_t>::max() - 1, 2,
                                  true);
 
@@ -285,7 +316,7 @@ public:
 
     // ADDV Rm, Rn
     // 0011nnnnmmmm1111
-    static int do_addv_gen_gen_test(Sh4 *cpu, Memory *mem,
+    static int do_addv_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     reg32_t src1, reg32_t src2) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
@@ -311,7 +342,7 @@ public:
                 ss << "ADDV R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -383,47 +414,48 @@ public:
 
     // ADDV Rm, Rn
     // 0011nnnnmmmm1111
-    static int addv_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int addv_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
         int failed = 0;
         randgen32->reset();
 
         // this should not overflow
-        failed = failed || do_addv_gen_gen_test(cpu, mem, 0, 0);
+        failed = failed || do_addv_gen_gen_test(cpu, bios, mem, 0, 0);
 
         // random values for good measure
-        failed = failed || do_addv_gen_gen_test(cpu, mem,
+        failed = failed || do_addv_gen_gen_test(cpu, bios, mem,
                                                 randgen32->pick_val(0),
                                                 randgen32->pick_val(0));
 
         // *almost* overflow positive to negative
         failed = failed ||
-            do_addv_gen_gen_test(cpu, mem, 1,
+            do_addv_gen_gen_test(cpu, bios, mem, 1,
                                  std::numeric_limits<int32_t>::max() - 1);
 
         // slight overflow positive to negative
         failed = failed ||
-            do_addv_gen_gen_test(cpu, mem, 2,
+            do_addv_gen_gen_test(cpu, bios, mem, 2,
                                  std::numeric_limits<int32_t>::max() - 1);
 
         // massive overflow positive to negative
         failed = failed ||
-            do_addv_gen_gen_test(cpu, mem,
+            do_addv_gen_gen_test(cpu, bios, mem,
                                  std::numeric_limits<int32_t>::max(),
                                  std::numeric_limits<int32_t>::max());
 
         // *almost* overflow negative to positive
         failed = failed ||
-            do_addv_gen_gen_test(cpu, mem,
+            do_addv_gen_gen_test(cpu, bios, mem,
                                  std::numeric_limits<int32_t>::min() + 1, 1);
 
         // slight overflow negative to positive
         failed = failed ||
-            do_addv_gen_gen_test(cpu, mem,
+            do_addv_gen_gen_test(cpu, bios, mem,
                                  std::numeric_limits<int32_t>::min() + 1, 2);
 
         // massive overflow negative to positive
         failed = failed ||
-            do_addv_gen_gen_test(cpu, mem,
+            do_addv_gen_gen_test(cpu, bios, mem,
                                  std::numeric_limits<int32_t>::min(),
                                  std::numeric_limits<int32_t>::min());
 
@@ -432,7 +464,8 @@ public:
 
     // SUB Rm, Rn
     // 0011nnnnmmmm1000
-    static int sub_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int sub_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                RandGen32 *randgen32) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
          * problem with that, the root-cause will be in Sh4::gen_reg and if the
@@ -454,7 +487,7 @@ public:
                 ss << "SUB R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -486,7 +519,7 @@ public:
 
     // SUBC Rm, Rn
     // 0011nnnnmmmm1010
-    static int do_subc_gen_gen_test(Sh4 *cpu, Memory *mem,
+    static int do_subc_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     reg32_t src1, reg32_t src2, bool carry_in) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
@@ -509,7 +542,7 @@ public:
                 ss << "SUBC R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -555,51 +588,52 @@ public:
         return 0;
     }
 
-    static int subc_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int subc_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
         int failed = 0;
 
         // run the test with a couple random values
-        failed = failed || do_subc_gen_gen_test(cpu, mem,
+        failed = failed || do_subc_gen_gen_test(cpu, bios, mem,
                                                 randgen32->pick_val(0),
                                                 randgen32->pick_val(0), false);
-        failed = failed || do_subc_gen_gen_test(cpu, mem,
+        failed = failed || do_subc_gen_gen_test(cpu, bios, mem,
                                                 randgen32->pick_val(0),
                                                 randgen32->pick_val(0), true);
 
 
         // make sure we get at least one value in that should not cause a carry
-        failed = failed || do_subc_gen_gen_test(cpu, mem, 0, 0, false);
-        failed = failed || do_subc_gen_gen_test(cpu, mem, 0, 0, true);
+        failed = failed || do_subc_gen_gen_test(cpu, bios, mem, 0, 0, false);
+        failed = failed || do_subc_gen_gen_test(cpu, bios, mem, 0, 0, true);
 
         // make sure we get at least one value in that should cause a carry
         failed = failed ||
-            do_subc_gen_gen_test(cpu, mem,
+            do_subc_gen_gen_test(cpu, bios, mem,
                                  std::numeric_limits<reg32_t>::max(), 0, false);
         failed = failed ||
-            do_subc_gen_gen_test(cpu, mem,
+            do_subc_gen_gen_test(cpu, bios, mem,
                                  std::numeric_limits<reg32_t>::max(), 0, true);
 
 
         // test a value that should *almost* cause a carry
         failed = failed ||
-            do_subc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
+            do_subc_gen_gen_test(cpu, bios, mem, std::numeric_limits<reg32_t>::max(),
                                  std::numeric_limits<reg32_t>::max(), false);
         failed = failed ||
-            do_subc_gen_gen_test(cpu, mem, std::numeric_limits<reg32_t>::max(),
+            do_subc_gen_gen_test(cpu, bios, mem, std::numeric_limits<reg32_t>::max(),
                                  std::numeric_limits<reg32_t>::max(), true);
 
 
         // test a value pair that should barely cause a carry
         failed = failed ||
-            do_subc_gen_gen_test(cpu, mem, 1, 0, false);
+            do_subc_gen_gen_test(cpu, bios, mem, 1, 0, false);
         failed = failed ||
-            do_subc_gen_gen_test(cpu, mem, 1, 0, true);
+            do_subc_gen_gen_test(cpu, bios, mem, 1, 0, true);
 
 
         return failed;
     }
 
-    static int do_subv_gen_gen_test(Sh4 *cpu, Memory *mem,
+    static int do_subv_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     reg32_t src1, reg32_t src2) {
         /*
          * I don't bother toggling the bank switching flag because if there's a
@@ -625,7 +659,7 @@ public:
                 ss << "SUBV R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -695,46 +729,47 @@ public:
         return 0;
     }
 
-    static int subv_gen_gen_test(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int subv_gen_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
         int failed = 0;
 
         // do one at random...
         failed = failed ||
-            do_subv_gen_gen_test(cpu, mem,
+            do_subv_gen_gen_test(cpu, bios, mem,
                                  randgen32->pick_val(0), randgen32->pick_val(0));
 
         // now do one that's trivial
-        failed = failed || do_subv_gen_gen_test(cpu, mem, 0, 0);
+        failed = failed || do_subv_gen_gen_test(cpu, bios, mem, 0, 0);
 
         // now do one that *almost* causes a negative overflow
         failed = failed ||
-            do_subv_gen_gen_test(cpu, mem,
+            do_subv_gen_gen_test(cpu, bios, mem,
                                  -(std::numeric_limits<int32_t>::min() + 1), 0);
 
         // now do one that barely causes a negative overflow
         failed = failed ||
-            do_subv_gen_gen_test(cpu, mem,
+            do_subv_gen_gen_test(cpu, bios, mem,
                                  -(std::numeric_limits<int32_t>::min() + 1), -1);
 
         // now do a massive negative overflow
         failed = failed ||
-            do_subv_gen_gen_test(cpu, mem,
+            do_subv_gen_gen_test(cpu, bios, mem,
                                  -(std::numeric_limits<int32_t>::min() + 1),
                                  std::numeric_limits<int32_t>::min());
 
         // now do one that *almost* causes a positive overflow
         failed = failed ||
-            do_subv_gen_gen_test(cpu, mem,
+            do_subv_gen_gen_test(cpu, bios, mem,
                                  -std::numeric_limits<int32_t>::max(), 0);
 
         // now do one that barely causes a positive overflow
         failed = failed ||
-            do_subv_gen_gen_test(cpu, mem,
+            do_subv_gen_gen_test(cpu, bios, mem,
                                  -std::numeric_limits<int32_t>::max(), 1);
 
         // now do a massive positive overflow
         failed = failed ||
-            do_subv_gen_gen_test(cpu, mem,
+            do_subv_gen_gen_test(cpu, bios, mem,
                                  -std::numeric_limits<int32_t>::max(),
                                  std::numeric_limits<int32_t>::max());
 
@@ -743,7 +778,7 @@ public:
 
     // MOVT Rn
     // 0000nnnn00101001
-    static int movt_unary_gen_test(Sh4 *cpu, Memory *mem,
+    static int movt_unary_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (unsigned t_val = 0; t_val < 2; t_val++) {
@@ -753,7 +788,7 @@ public:
                 ss << "MOVT R" << reg_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -773,7 +808,7 @@ public:
 
     // MOV #imm, Rn
     // 1110nnnniiiiiiii
-    static int mov_binary_imm_gen_test(Sh4 *cpu, Memory *mem,
+    static int mov_binary_imm_gen_test(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        RandGen32 *randgen32) {
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (uint8_t imm_val = 0;
@@ -788,7 +823,7 @@ public:
                 ss << "MOV #" << (unsigned)imm_val << ", R" << reg_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -804,9 +839,9 @@ public:
 
     // MOV.W @(disp, PC), Rn
     // 1001nnnndddddddd
-    static int do_movw_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem,
-                                                 unsigned disp, unsigned pc,
-                                                 unsigned reg_no,
+    static int do_movw_binary_binind_disp_pc_gen(Sh4 *cpu, BiosFile *bios,
+                                                 Memory *mem, unsigned disp,
+                                                 unsigned pc, unsigned reg_no,
                                                  int16_t mem_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -816,7 +851,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.pc = pc;
@@ -837,17 +873,18 @@ public:
         return 0;
     }
 
-    static int movw_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem,
+    static int movw_binary_binind_disp_pc_gen(Sh4 *cpu, BiosFile *bios,
+                                              Memory *mem,
                                               RandGen32 *randgen32) {
         int failed = 0;
 
         for (int disp = 0; disp < 256; disp++) {
             for (int reg_no = 0; reg_no < 16; reg_no++) {
-                addr32_t pc_max = mem->get_size() - 1 - 4 - disp * 2;
-                addr32_t pc_val =
-                    randgen32->pick_range(0, pc_max) & ~1;
+                addr32_t pc_max = MEM_SZ - 1 - 4 - disp * 2;
+                addr32_t pc_val = pick_addr(AddrRange(randgen32, 0, pc_max)) & ~1;
+
                 failed = failed ||
-                    do_movw_binary_binind_disp_pc_gen(cpu, mem, disp,
+                    do_movw_binary_binind_disp_pc_gen(cpu, bios, mem, disp,
                                                       pc_val, reg_no,
                                                       randgen32->pick_val(0) &
                                                       0xffff);
@@ -856,18 +893,18 @@ public:
 
         // not much rhyme or reason to this test case, but it did
         // actually catch a bug once
-        addr32_t pc_val = (randgen32->pick_val(0) % mem->get_size()) & ~1;
+        addr32_t pc_val = pick_addr(AddrRange(randgen32)) & ~1;
         failed = failed ||
-            do_movw_binary_binind_disp_pc_gen(cpu, mem, 48, pc_val, 2,
+            do_movw_binary_binind_disp_pc_gen(cpu, bios, mem, 48, pc_val, 2,
                                               randgen32->pick_val(0) & 0xffff);
         return failed;
     }
 
     // MOV.L @(disp, PC), Rn
     // 1001nnnndddddddd
-    static int do_movl_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem,
-                                                 unsigned disp, unsigned pc,
-                                                 unsigned reg_no,
+    static int do_movl_binary_binind_disp_pc_gen(Sh4 *cpu, BiosFile *bios,
+                                                 Memory *mem, unsigned disp,
+                                                 unsigned pc, unsigned reg_no,
                                                  int32_t mem_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -877,7 +914,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.pc = pc;
@@ -898,8 +936,8 @@ public:
         return 0;
     }
 
-    static int movl_binary_binind_disp_pc_gen(Sh4 *cpu, Memory *mem,
-                                              RandGen32 *randgen32) {
+    static int movl_binary_binind_disp_pc_gen(Sh4 *cpu, BiosFile *bios,
+                                              Memory *mem, RandGen32 *randgen32) {
         int failed = 0;
 
         for (unsigned disp = 0; disp < 256; disp++) {
@@ -909,11 +947,10 @@ public:
              * two bits will get cleared when the instruction calculates the
              * actual address.
              */
-            addr32_t pc_max = (mem->get_size() - 1 - 4 - disp * 4) | 3;
-            addr32_t pc_val =
-                randgen32->pick_range(0, pc_max) & ~1;
+            addr32_t pc_max = (MEM_SZ - 1 - 4 - disp * 4) | 3;
+            addr32_t pc_val = pick_addr(AddrRange(randgen32, 0, pc_max)) & ~1;
             failed = failed ||
-                do_movl_binary_binind_disp_pc_gen(cpu, mem, disp, pc_val,
+                do_movl_binary_binind_disp_pc_gen(cpu, bios, mem, disp, pc_val,
                                                   reg_no,
                                                   randgen32->pick_val(0));
             }
@@ -921,17 +958,18 @@ public:
 
         // not much rhyme or reason to this test case, but it did
         // actually catch a bug once
-        addr32_t pc_val = (randgen32->pick_val(0) % mem->get_size()) & ~1;
+        addr32_t pc_val = pick_addr(AddrRange(randgen32)) & ~1;
         failed = failed ||
-            do_movl_binary_binind_disp_pc_gen(cpu, mem, 48, pc_val, 2,
+            do_movl_binary_binind_disp_pc_gen(cpu, bios, mem, 48, pc_val, 2,
                                               randgen32->pick_val(0));
         return failed;
     }
 
     // MOV Rm, Rn
     // 0110nnnnmmmm0011
-    static int do_mov_binary_gen_gen(Sh4 *cpu, Memory *mem, reg32_t src_val,
-                                     unsigned reg_src, unsigned reg_dst) {
+    static int do_mov_binary_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                     reg32_t src_val, unsigned reg_src,
+                                     unsigned reg_dst) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -940,7 +978,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -957,13 +995,14 @@ public:
         return 0;
     }
 
-    static int mov_binary_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int mov_binary_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                  RandGen32 *randgen32) {
         int failed = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 failed = failed ||
-                    do_mov_binary_gen_gen(cpu, mem, randgen32->pick_val(0),
+                    do_mov_binary_gen_gen(cpu, bios, mem, randgen32->pick_val(0),
                                           reg_src, reg_dst);
             }
         }
@@ -972,7 +1011,7 @@ public:
 
     // MOV.B Rm, @Rn
     // 0010nnnnmmmm0000
-    static int do_movb_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+    static int do_movb_binary_gen_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          unsigned addr, uint8_t val,
                                          unsigned reg_src, unsigned reg_dst) {
         Sh4Prog test_prog;
@@ -987,7 +1026,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -1008,15 +1047,15 @@ public:
         return 0;
     }
 
-    static int movb_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+    static int movb_binary_gen_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       RandGen32 *randgen32) {
         int failed = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_val(0) % mem->get_size();
+                addr32_t addr = pick_addr(AddrRange(randgen32));
                 failed = failed ||
-                    do_movb_binary_gen_indgen(cpu, mem, addr,
+                    do_movb_binary_gen_indgen(cpu, bios, mem, addr,
                                               randgen32->pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
@@ -1027,7 +1066,7 @@ public:
 
     // MOV.W Rm, @Rn
     // 0010nnnnmmmm0001
-    static int do_movw_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+    static int do_movw_binary_gen_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          unsigned addr, uint16_t val,
                                          unsigned reg_src, unsigned reg_dst) {
         Sh4Prog test_prog;
@@ -1042,7 +1081,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -1063,15 +1102,15 @@ public:
         return 0;
     }
 
-    static int movw_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+    static int movw_binary_gen_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       RandGen32 *randgen32) {
         int failed = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 1);
+                addr32_t addr = pick_addr(AddrRange(randgen32));
                 failed = failed ||
-                    do_movw_binary_gen_indgen(cpu, mem, addr,
+                    do_movw_binary_gen_indgen(cpu, bios, mem, addr,
                                               randgen32->pick_val(0) % 0xffff,
                                               reg_src, reg_dst);
             }
@@ -1082,7 +1121,7 @@ public:
 
     // MOV.L Rm, @Rn
     // 0010nnnnmmmm0010
-    static int do_movl_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+    static int do_movl_binary_gen_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          unsigned addr, uint32_t val,
                                          unsigned reg_src, unsigned reg_dst) {
         Sh4Prog test_prog;
@@ -1097,7 +1136,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -1118,15 +1157,15 @@ public:
         return 0;
     }
 
-    static int movl_binary_gen_indgen(Sh4 *cpu, Memory *mem,
+    static int movl_binary_gen_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       RandGen32 *randgen32) {
         int failed = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 3);
+                addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 4));
                 failed = failed ||
-                    do_movl_binary_gen_indgen(cpu, mem, addr,
+                    do_movl_binary_gen_indgen(cpu, bios, mem, addr,
                                               randgen32->pick_val(0),
                                               reg_src, reg_dst);
             }
@@ -1137,7 +1176,7 @@ public:
 
     // MOV.B @Rm, Rn
     // 0110nnnnmmmm0000
-    static int do_movb_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+    static int do_movb_binary_indgen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          unsigned addr, int8_t val,
                                          unsigned reg_src, unsigned reg_dst) {
         Sh4Prog test_prog;
@@ -1151,7 +1190,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
@@ -1170,15 +1209,15 @@ public:
         return 0;
     }
 
-    static int movb_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+    static int movb_binary_indgen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       RandGen32 *randgen32) {
         int failed = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_val(0) % mem->get_size();
+                addr32_t addr = pick_addr(AddrRange(randgen32));
                 failed = failed ||
-                    do_movb_binary_indgen_gen(cpu, mem, addr,
+                    do_movb_binary_indgen_gen(cpu, bios, mem, addr,
                                               randgen32->pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
@@ -1189,7 +1228,7 @@ public:
 
     // MOV.W @Rm, Rn
     // 0110nnnnmmmm0001
-    static int do_movw_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+    static int do_movw_binary_indgen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          unsigned addr, int16_t val,
                                          unsigned reg_src, unsigned reg_dst) {
         Sh4Prog test_prog;
@@ -1203,7 +1242,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
@@ -1222,15 +1261,15 @@ public:
         return 0;
     }
 
-    static int movw_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+    static int movw_binary_indgen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       RandGen32 *randgen32) {
         int failed = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 1);
+                addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 2));
                 failed = failed ||
-                    do_movw_binary_indgen_gen(cpu, mem, addr,
+                    do_movw_binary_indgen_gen(cpu, bios, mem, addr,
                                               randgen32->pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
@@ -1241,7 +1280,7 @@ public:
 
     // MOV.L @Rm, Rn
     // 0110nnnnmmmm0010
-    static int do_movl_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+    static int do_movl_binary_indgen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          unsigned addr, uint32_t val,
                                          unsigned reg_src, unsigned reg_dst) {
         Sh4Prog test_prog;
@@ -1255,7 +1294,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
@@ -1274,15 +1313,16 @@ public:
         return 0;
     }
 
-    static int movl_binary_indgen_gen(Sh4 *cpu, Memory *mem,
+    static int movl_binary_indgen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       RandGen32 *randgen32) {
         int failed = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 3);
+                addr32_t addr = pick_addr(AddrRange(randgen32, 0,
+                                                    mem->get_size() - 4));
                 failed = failed ||
-                    do_movw_binary_indgen_gen(cpu, mem, addr,
+                    do_movw_binary_indgen_gen(cpu, bios, mem, addr,
                                               randgen32->pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
@@ -1293,7 +1333,7 @@ public:
 
     // MOV.B Rm, @-Rn
     // 0010nnnnmmmm0100
-    static int do_movb_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_movb_binary_gen_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned addr, uint8_t val,
                                             unsigned reg_src,
                                             unsigned reg_dst) {
@@ -1312,7 +1352,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -1350,15 +1390,15 @@ public:
         return 0;
     }
 
-    static int movb_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+    static int movb_binary_gen_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_range(1, mem->get_size() - 2);
+                addr32_t addr = pick_addr(AddrRange(randgen32, 1, mem->get_size() - 2));
                 failed = failed ||
-                    do_movb_binary_gen_inddecgen(cpu, mem, addr,
+                    do_movb_binary_gen_inddecgen(cpu, bios, mem, addr,
                                                  randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
@@ -1369,7 +1409,7 @@ public:
 
     // MOV.W Rm, @-Rn
     // 0010nnnnmmmm0101
-    static int do_movw_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_movw_binary_gen_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned addr, uint16_t val,
                                             unsigned reg_src,
                                             unsigned reg_dst) {
@@ -1388,7 +1428,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -1426,15 +1466,15 @@ public:
         return 0;
     }
 
-    static int movw_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+    static int movw_binary_gen_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_range(2, mem->get_size() - 2);
+                addr32_t addr = pick_addr(AddrRange(randgen32, 2, MEM_SZ - 2));
                 failed = failed ||
-                    do_movb_binary_gen_inddecgen(cpu, mem, addr,
+                    do_movb_binary_gen_inddecgen(cpu, bios, mem, addr,
                                                  randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
@@ -1445,7 +1485,7 @@ public:
 
     // MOV.L Rm, @-Rn
     // 0010nnnnmmmm0110
-    static int do_movl_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_movl_binary_gen_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned addr, uint32_t val,
                                             unsigned reg_src,
                                             unsigned reg_dst) {
@@ -1464,7 +1504,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -1502,15 +1542,15 @@ public:
         return 0;
     }
 
-    static int movl_binary_gen_inddecgen(Sh4 *cpu, Memory *mem,
+    static int movl_binary_gen_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+                addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
                 failed = failed ||
-                    do_movb_binary_gen_inddecgen(cpu, mem, addr,
+                    do_movb_binary_gen_inddecgen(cpu, bios, mem, addr,
                                                  randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
@@ -1521,7 +1561,7 @@ public:
 
     // MOV.B @Rm+, Rn
     // 0110nnnnmmmm0100
-    static int do_movb_binary_indgeninc_gen(Sh4 *cpu, Memory *mem,
+    static int do_movb_binary_indgeninc_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned addr, uint8_t val,
                                             unsigned reg_src,
                                             unsigned reg_dst) {
@@ -1536,7 +1576,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
@@ -1564,15 +1604,16 @@ public:
         return 0;
     }
 
-    static int movb_binary_indgeninc_gen(Sh4 *cpu, Memory *mem,
+    static int movb_binary_indgeninc_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_range(0, mem->get_size() - 2);
+                addr32_t addr = pick_addr(AddrRange(randgen32,
+                                                    0, MEM_SZ - 2));
                 failed = failed ||
-                    do_movb_binary_gen_inddecgen(cpu, mem, addr,
+                    do_movb_binary_gen_inddecgen(cpu, bios, mem, addr,
                                                  randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
@@ -1583,7 +1624,7 @@ public:
 
     // MOV.W @Rm+, Rn
     // 0110nnnnmmmm0101
-    static int do_movw_binary_indgeninc_gen(Sh4 *cpu, Memory *mem,
+    static int do_movw_binary_indgeninc_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned addr, uint16_t val,
                                             unsigned reg_src,
                                             unsigned reg_dst) {
@@ -1598,7 +1639,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
@@ -1626,15 +1667,15 @@ public:
         return 0;
     }
 
-    static int movw_binary_indgeninc_gen(Sh4 *cpu, Memory *mem,
+    static int movw_binary_indgeninc_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_range(0, mem->get_size() - 3);
+                addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 3));
                 failed = failed ||
-                    do_movw_binary_gen_inddecgen(cpu, mem,
+                    do_movw_binary_gen_inddecgen(cpu, bios, mem,
                                                  addr, randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
@@ -1645,7 +1686,7 @@ public:
 
     // MOV.L @Rm+, Rn
     // 0110nnnnmmmm0110
-    static int do_movl_binary_indgeninc_gen(Sh4 *cpu, Memory *mem,
+    static int do_movl_binary_indgeninc_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned addr, uint32_t val,
                                             unsigned reg_src,
                                             unsigned reg_dst) {
@@ -1660,7 +1701,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
@@ -1688,15 +1729,15 @@ public:
         return 0;
     }
 
-    static int movl_binary_indgeninc_gen(Sh4 *cpu, Memory *mem,
+    static int movl_binary_indgeninc_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+                addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
                 failed = failed ||
-                    do_movl_binary_gen_inddecgen(cpu, mem, addr,
+                    do_movl_binary_gen_inddecgen(cpu, bios, mem, addr,
                                                  randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
@@ -1707,7 +1748,7 @@ public:
 
     // MOV.B R0, @(disp, Rn)
     // 10000000nnnndddd
-    static int do_movb_binary_r0_binind_disp_gen(Sh4 *cpu, Memory *mem,
+    static int do_movb_binary_r0_binind_disp_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  uint8_t disp, reg32_t base,
                                                  uint8_t val, int reg_base) {
         std::stringstream ss;
@@ -1722,7 +1763,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = val;
@@ -1744,16 +1785,16 @@ public:
         return 0;
     }
 
-    static int movb_binary_r0_binind_disp_gen(Sh4 *cpu, Memory *mem,
+    static int movb_binary_r0_binind_disp_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (int disp = 0; disp < 4; disp++) {
-                reg32_t base =
-                    randgen32->pick_range(0, mem->get_size() - 1 - 0xf);
+                reg32_t base = pick_addr(AddrRange(randgen32,
+                                                   0, MEM_SZ - 1 - 0xf));
                 failed = failed ||
-                    do_movb_binary_r0_binind_disp_gen(cpu, mem, disp, base,
+                    do_movb_binary_r0_binind_disp_gen(cpu, bios, mem, disp, base,
                                                       randgen32->pick_val(0),
                                                       reg_no);
             }
@@ -1762,7 +1803,7 @@ public:
         return failed;
     }
 
-    static int do_movw_binary_r0_binind_disp_gen(Sh4 *cpu, Memory *mem,
+    static int do_movw_binary_r0_binind_disp_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  uint8_t disp, reg32_t base,
                                                  uint16_t val, int reg_base) {
         std::stringstream ss;
@@ -1777,7 +1818,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = val;
@@ -1799,16 +1840,16 @@ public:
         return 0;
     }
 
-    static int movw_binary_r0_binind_disp_gen(Sh4 *cpu, Memory *mem,
+    static int movw_binary_r0_binind_disp_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (int disp = 0; disp < 4; disp++) {
-                reg32_t base =
-                    randgen32->pick_range(0, mem->get_size() - 2 - 0xf * 2);
+                reg32_t base = pick_addr(AddrRange(randgen32,
+                                                   0, MEM_SZ - 2 - 0xf * 2));
                 failed = failed ||
-                    do_movw_binary_r0_binind_disp_gen(cpu, mem, disp, base,
+                    do_movw_binary_r0_binind_disp_gen(cpu, bios, mem, disp, base,
                                                       randgen32->pick_val(0),
                                                       reg_no);
             }
@@ -1817,7 +1858,7 @@ public:
         return failed;
     }
 
-    static int do_movl_binary_gen_binind_disp_gen(Sh4 *cpu, Memory *mem,
+    static int do_movl_binary_gen_binind_disp_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                   uint8_t disp, reg32_t base,
                                                   uint32_t val, int reg_base,
                                                   int reg_src) {
@@ -1834,7 +1875,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -1856,18 +1897,18 @@ public:
         return 0;
     }
 
-    static int movl_binary_gen_binind_disp_gen(Sh4 *cpu, Memory *mem,
+    static int movl_binary_gen_binind_disp_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_base = 0; reg_base < 16; reg_base++) {
                 for (int disp = 0; disp < 4; disp++) {
-                    reg32_t base =
-                        randgen32->pick_range(0, mem->get_size() - 4 - 0xf * 4);
+                    reg32_t base = pick_addr(AddrRange(randgen32, 0,
+                                                       MEM_SZ - 4 - 0xf * 4));
                     reg32_t val = randgen32->pick_val(0);
                     failed = failed ||
-                        do_movl_binary_gen_binind_disp_gen(cpu, mem, disp,
+                        do_movl_binary_gen_binind_disp_gen(cpu, bios, mem, disp,
                                                            base, val,
                                                            reg_base, reg_src);
                 }
@@ -1879,7 +1920,7 @@ public:
 
     // MOV.B @(disp, Rm), R0
     // 10000100mmmmdddd
-    static int do_movb_binary_binind_disp_gen_r0(Sh4 *cpu, Memory *mem,
+    static int do_movb_binary_binind_disp_gen_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  uint8_t disp, reg32_t base,
                                                  int8_t val, int reg_base) {
         std::stringstream ss;
@@ -1894,7 +1935,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
@@ -1913,16 +1954,16 @@ public:
         return 0;
     }
 
-    static int movb_binary_binind_disp_gen_r0(Sh4 *cpu, Memory *mem,
+    static int movb_binary_binind_disp_gen_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (int disp = 0; disp < 4; disp++) {
-                reg32_t base =
-                    randgen32->pick_range(0, mem->get_size() - 1 - 0xf);
+                reg32_t base = pick_addr(AddrRange(randgen32,
+                                                   0, MEM_SZ - 1 - 0xf));
                 failed = failed ||
-                    do_movb_binary_binind_disp_gen_r0(cpu, mem, disp, base,
+                    do_movb_binary_binind_disp_gen_r0(cpu, bios, mem, disp, base,
                                                       randgen32->pick_val(0),
                                                       reg_no);
             }
@@ -1932,7 +1973,7 @@ public:
 
     // MOV.W @(disp, Rm), R0
     // 10000101mmmmdddd
-    static int do_movw_binary_binind_disp_gen_r0(Sh4 *cpu, Memory *mem,
+    static int do_movw_binary_binind_disp_gen_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  uint8_t disp, reg32_t base,
                                                  int16_t val, int reg_base) {
         std::stringstream ss;
@@ -1947,7 +1988,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
@@ -1966,16 +2007,15 @@ public:
         return 0;
     }
 
-    static int movw_binary_binind_disp_gen_r0(Sh4 *cpu, Memory *mem,
+    static int movw_binary_binind_disp_gen_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             for (int disp = 0; disp < 4; disp++) {
-                reg32_t base =
-                    randgen32->pick_range(0, mem->get_size() - 2 - 0xf * 2);
+                reg32_t base = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 2 - 0xf * 2));
                 failed = failed ||
-                    do_movw_binary_binind_disp_gen_r0(cpu, mem, disp, base,
+                    do_movw_binary_binind_disp_gen_r0(cpu, bios, mem, disp, base,
                                                       randgen32->pick_val(0),
                                                       reg_no);
             }
@@ -1985,7 +2025,7 @@ public:
 
     // MOV.L @(disp, Rm), Rn
     // 0101nnnnmmmmdddd
-    static int do_movl_binary_binind_disp_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_movl_binary_binind_disp_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                   uint8_t disp, reg32_t base,
                                                   int32_t val, int reg_base,
                                                   int reg_dst) {
@@ -2003,7 +2043,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
@@ -2023,18 +2063,17 @@ public:
         return 0;
     }
 
-    static int movl_binary_binind_disp_gen_gen(Sh4 *cpu, Memory *mem,
+    static int movl_binary_binind_disp_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                RandGen32 *randgen32) {
         int failed = 0;
 
         for (int reg_base = 0; reg_base < 16; reg_base++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
                     for (int disp = 0; disp < 4; disp++) {
-                        reg32_t base =
-                            randgen32->pick_range(0, mem->get_size() - 4 - 0xf * 4);
+                        reg32_t base = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 4 - 0xf * 4));
                         uint32_t val = randgen32->pick_val(0);
                         failed = failed ||
-                            do_movl_binary_binind_disp_gen_gen(cpu, mem, disp,
+                            do_movl_binary_binind_disp_gen_gen(cpu, bios, mem, disp,
                                                                base, val,
                                                                reg_base,
                                                                reg_dst);
@@ -2046,7 +2085,7 @@ public:
 
     // MOV.B Rm, @(R0, Rn)
     // 0000nnnnmmmm0100
-    static int do_movb_gen_binind_r0_gen(Sh4 *cpu, Memory *mem, reg32_t src_val,
+    static int do_movb_gen_binind_r0_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, reg32_t src_val,
                                          reg32_t r0_val, reg32_t base_val,
                                          int reg_src, int reg_base) {
         std::stringstream ss;
@@ -2066,7 +2105,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -2090,15 +2129,15 @@ public:
         return 0;
     }
 
-    static int movb_gen_binind_r0_gen(Sh4 *cpu, Memory *mem,
+    static int movb_gen_binind_r0_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       RandGen32 *randgen32) {
         int failure = 0;
 
-        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
-        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
+        addr32_t base_addr = (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 1) / 2;
+        addr32_t r0_val = (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 1) / 2;
 
         failure = failure ||
-            do_movb_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
+            do_movb_gen_binind_r0_gen(cpu, bios, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2109,12 +2148,12 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
+                    (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 1) / 2;
                 addr32_t r0_val =
-                    (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
+                    (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 1) / 2;
 
                 failure = failure ||
-                    do_movb_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
+                    do_movb_gen_binind_r0_gen(cpu, bios, mem, randgen32->pick_val(0),
                                               r0_val, base_addr,
                                               reg_src, reg_base);
             }
@@ -2126,7 +2165,7 @@ public:
 
     // MOV.W R0, @(disp, Rn)
     // 10000001nnnndddd
-    static int do_movw_gen_binind_r0_gen(Sh4 *cpu, Memory *mem, reg32_t src_val,
+    static int do_movw_gen_binind_r0_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, reg32_t src_val,
                                          reg32_t r0_val, reg32_t base_val,
                                          int reg_src, int reg_base) {
         std::stringstream ss;
@@ -2146,7 +2185,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -2171,17 +2210,16 @@ public:
         return 0;
     }
 
-    static int movw_gen_binind_r0_gen(Sh4 *cpu, Memory *mem,
+    static int movw_gen_binind_r0_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       RandGen32 *randgen32) {
         int failure = 0;
 
-        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
-        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
+        addr32_t base_addr = (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 2) / 2;
+        addr32_t r0_val = (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 2) / 2;
 
         failure = failure ||
-            do_movw_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
+            do_movw_gen_binind_r0_gen(cpu, bios, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
-
 
         for (int reg_base = 0; reg_base < 16; reg_base++) {
             for (int reg_src = 0; reg_src < 16; reg_src++) {
@@ -2190,12 +2228,12 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
+                    (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 2) / 2;
                 addr32_t r0_val =
-                    (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
+                    (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 2) / 2;
 
                 failure = failure ||
-                    do_movw_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
+                    do_movw_gen_binind_r0_gen(cpu, bios, mem, randgen32->pick_val(0),
                                               r0_val, base_addr,
                                               reg_src, reg_base);
             }
@@ -2206,7 +2244,7 @@ public:
 
     // MOV.L Rm, @(disp, Rn)
     // 0001nnnnmmmmdddd
-    static int do_movl_gen_binind_r0_gen(Sh4 *cpu, Memory *mem, reg32_t src_val,
+    static int do_movl_gen_binind_r0_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, reg32_t src_val,
                                          reg32_t r0_val, reg32_t base_val,
                                          int reg_src, int reg_base) {
         std::stringstream ss;
@@ -2226,7 +2264,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -2250,15 +2288,15 @@ public:
         return 0;
     }
 
-    static int movl_gen_binind_r0_gen(Sh4 *cpu, Memory *mem,
+    static int movl_gen_binind_r0_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       RandGen32 *randgen32) {
         int failure = 0;
 
-        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
-        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
+        addr32_t base_addr = (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 4) / 2;
+        addr32_t r0_val = (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 4) / 2;
 
         failure = failure ||
-            do_movl_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
+            do_movl_gen_binind_r0_gen(cpu, bios, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2269,12 +2307,12 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
+                    (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 4) / 2;
                 addr32_t r0_val =
-                    (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
+                    (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 4) / 2;
 
                 failure = failure ||
-                    do_movl_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
+                    do_movl_gen_binind_r0_gen(cpu, bios, mem, randgen32->pick_val(0),
                                               r0_val, base_addr,
                                               reg_src, reg_base);
             }
@@ -2285,7 +2323,7 @@ public:
 
     // MOV.B @(R0, Rm), Rn
     // 0000nnnnmmmm1100
-    static int do_binary_movb_binind_r0_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_movb_binind_r0_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                 int8_t src_val, reg32_t r0_val,
                                                 reg32_t base_val, int reg_dst,
                                                 int reg_base) {
@@ -2300,7 +2338,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base_val;
@@ -2323,15 +2361,15 @@ public:
         return 0;
     }
 
-    static int binary_movb_binind_r0_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_movb_binind_r0_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              RandGen32 *randgen32) {
         int failure = 0;
 
-        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
-        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
+        addr32_t base_addr = (pick_addr(AddrRange(randgen32)) - 1) / 2;
+        addr32_t r0_val = (pick_addr(AddrRange(randgen32)) - 1) / 2;
 
         failure = failure ||
-            do_movb_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
+            do_movb_gen_binind_r0_gen(cpu, bios, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2342,12 +2380,12 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
+                    (pick_addr(AddrRange(randgen32)) - 1) / 2;
                 addr32_t r0_val =
-                    (randgen32->pick_range(0, mem->get_size()) - 1) / 2;
+                    (pick_addr(AddrRange(randgen32)) - 1) / 2;
 
                 failure = failure ||
-                    do_binary_movb_binind_r0_gen_gen(cpu, mem,
+                    do_binary_movb_binind_r0_gen_gen(cpu, bios, mem,
                                                      randgen32->pick_val(0),
                                                      r0_val, base_addr,
                                                      reg_dst, reg_base);
@@ -2359,7 +2397,7 @@ public:
 
     // MOV.W @(R0, Rm), Rn
     // 0000nnnnmmmm1101
-    static int do_binary_movw_binind_r0_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_movw_binind_r0_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                 int16_t src_val, reg32_t r0_val,
                                                 reg32_t base_val, int reg_dst,
                                                 int reg_base) {
@@ -2374,7 +2412,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base_val;
@@ -2397,14 +2435,14 @@ public:
         return 0;
     }
 
-    static int binary_movw_binind_r0_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_movw_binind_r0_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              RandGen32 *randgen32) {
         int failure = 0;
 
-        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
-        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
+        addr32_t base_addr = (pick_addr(AddrRange(randgen32)) - 2) / 2;
+        addr32_t r0_val = (pick_addr(AddrRange(randgen32)) - 2) / 2;
         failure = failure ||
-            do_movw_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
+            do_movw_gen_binind_r0_gen(cpu, bios, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2415,12 +2453,12 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
+                    (pick_addr(AddrRange(randgen32)) - 2) / 2;
                 addr32_t r0_val =
-                    (randgen32->pick_range(0, mem->get_size()) - 2) / 2;
+                    (pick_addr(AddrRange(randgen32)) - 2) / 2;
 
                 failure = failure ||
-                    do_binary_movw_binind_r0_gen_gen(cpu, mem,
+                    do_binary_movw_binind_r0_gen_gen(cpu, bios, mem,
                                                      randgen32->pick_val(0),
                                                      r0_val, base_addr,
                                                      reg_dst, reg_base);
@@ -2432,7 +2470,7 @@ public:
 
     // MOV.L @(R0, Rm), Rn
     // 0000nnnnmmmm1110
-    static int do_binary_movl_binind_r0_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_movl_binind_r0_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                 uint32_t src_val,
                                                 reg32_t r0_val,
                                                 reg32_t base_val, int reg_dst,
@@ -2448,7 +2486,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base_val;
@@ -2471,14 +2509,16 @@ public:
         return 0;
     }
 
-    static int binary_movl_binind_r0_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_movl_binind_r0_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              RandGen32 *randgen32) {
         int failure = 0;
 
-        addr32_t base_addr = (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
-        addr32_t r0_val = (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
+        addr32_t base_addr =
+            (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 4) / 2;
+        addr32_t r0_val =
+            (pick_addr(AddrRange(randgen32, 0, MEM_SZ)) - 4) / 2;
         failure = failure ||
-            do_movl_gen_binind_r0_gen(cpu, mem, randgen32->pick_val(0),
+            do_movl_gen_binind_r0_gen(cpu, bios, mem, randgen32->pick_val(0),
                                       r0_val, base_addr, 1, 1);
 
 
@@ -2489,12 +2529,12 @@ public:
                  * add up to be more than 16MB
                  */
                 addr32_t base_addr =
-                    (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
+                    (pick_addr(AddrRange(randgen32)) - 4) / 2;
                 addr32_t r0_val =
-                    (randgen32->pick_range(0, mem->get_size()) - 4) / 2;
+                    (pick_addr(AddrRange(randgen32)) - 4) / 2;
 
                 failure = failure ||
-                    do_binary_movl_binind_r0_gen_gen(cpu, mem,
+                    do_binary_movl_binind_r0_gen_gen(cpu, bios, mem,
                                                      randgen32->pick_val(0),
                                                      r0_val, base_addr,
                                                      reg_dst, reg_base);
@@ -2506,7 +2546,7 @@ public:
 
     // MOV.B R0, @(disp, GBR)
     // 11000000dddddddd
-    static int do_binary_movb_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_movb_r0_binind_disp_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  reg32_t r0_val, uint8_t disp,
                                                  reg32_t gbr_val) {
         std::stringstream ss;
@@ -2517,7 +2557,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = r0_val;
@@ -2540,16 +2580,15 @@ public:
         return 0;
     }
 
-    static int binary_movb_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+    static int binary_movb_r0_binind_disp_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failure = 0;
 
         for (int disp = 0; disp <= 0xff; disp++) {
             reg32_t r0_val = randgen32->pick_val(0);
-            reg32_t gbr_val =
-                randgen32->pick_range(0, mem->get_size() - 1 - disp);
+            reg32_t gbr_val = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 1 - disp));
             failure = failure ||
-                do_binary_movb_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
+                do_binary_movb_r0_binind_disp_gbr(cpu, bios, mem, r0_val, disp,
                                                   gbr_val);
         }
 
@@ -2558,7 +2597,7 @@ public:
 
     // MOV.W R0, @(disp, GBR)
     // 11000001dddddddd
-    static int do_binary_movw_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_movw_r0_binind_disp_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  reg32_t r0_val, uint8_t disp,
                                                  reg32_t gbr_val) {
         std::stringstream ss;
@@ -2569,7 +2608,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = r0_val;
@@ -2592,16 +2631,16 @@ public:
         return 0;
     }
 
-    static int binary_movw_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+    static int binary_movw_r0_binind_disp_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failure = 0;
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t r0_val = randgen32->pick_val(0) % mem->get_size();
+            reg32_t r0_val = pick_addr(AddrRange(randgen32, 0, MEM_SZ));
             reg32_t gbr_val =
-                randgen32->pick_range(0, mem->get_size() - 2 - disp * 2);
+                pick_addr(AddrRange(randgen32, 0, MEM_SZ - 2 - disp * 2));
             failure = failure ||
-                do_binary_movw_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
+                do_binary_movw_r0_binind_disp_gbr(cpu, bios, mem, r0_val, disp,
                                                   gbr_val);
         }
 
@@ -2610,7 +2649,7 @@ public:
 
     // MOV.L R0, @(disp, GBR)
     // 11000010dddddddd
-    static int do_binary_movl_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_movl_r0_binind_disp_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  reg32_t r0_val, uint8_t disp,
                                                  reg32_t gbr_val) {
         std::stringstream ss;
@@ -2621,7 +2660,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = r0_val;
@@ -2644,16 +2683,16 @@ public:
         return 0;
     }
 
-    static int binary_movl_r0_binind_disp_gbr(Sh4 *cpu, Memory *mem,
+    static int binary_movl_r0_binind_disp_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failure = 0;
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t r0_val = randgen32->pick_val(0) % mem->get_size();
+            reg32_t r0_val = pick_addr(AddrRange(randgen32));
             reg32_t gbr_val =
-                randgen32->pick_range(0, mem->get_size() - 4 - disp * 4);
+                pick_addr(AddrRange(randgen32, 0, MEM_SZ - 4 - disp * 4));
             failure = failure ||
-                do_binary_movl_r0_binind_disp_gbr(cpu, mem, r0_val, disp,
+                do_binary_movl_r0_binind_disp_gbr(cpu, bios, mem, r0_val, disp,
                                                   gbr_val);
         }
 
@@ -2662,7 +2701,7 @@ public:
 
     // MOV.B @(disp, GBR), R0
     // 11000100dddddddd
-    static int do_binary_movb_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem,
+    static int do_binary_movb_binind_disp_gbr_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  int8_t src_val, uint8_t disp,
                                                  reg32_t gbr_val) {
         std::stringstream ss;
@@ -2673,7 +2712,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.gbr = gbr_val;
@@ -2693,16 +2732,16 @@ public:
         return 0;
     }
 
-    static int binary_movb_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem,
+    static int binary_movb_binind_disp_gbr_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failure = 0;
 
         for (int disp = 0; disp <= 0xff; disp++) {
             int8_t src_val = randgen32->pick_val(0);
             reg32_t gbr_val =
-                randgen32->pick_range(0, mem->get_size() - 1 - disp);
+                pick_addr(AddrRange(randgen32, 0, MEM_SZ - 1 - disp));
             failure = failure ||
-                do_binary_movb_binind_disp_gbr_r0(cpu, mem, src_val, disp,
+                do_binary_movb_binind_disp_gbr_r0(cpu, bios, mem, src_val, disp,
                                                   gbr_val);
         }
 
@@ -2711,7 +2750,7 @@ public:
 
     // MOV.W @(disp, GBR), R0
     // 11000101dddddddd
-    static int do_binary_movw_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem,
+    static int do_binary_movw_binind_disp_gbr_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  int16_t src_val, uint8_t disp,
                                                  reg32_t gbr_val) {
         std::stringstream ss;
@@ -2722,7 +2761,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.gbr = gbr_val;
@@ -2742,16 +2781,16 @@ public:
         return 0;
     }
 
-    static int binary_movw_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem,
+    static int binary_movw_binind_disp_gbr_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failure = 0;
 
         for (int disp = 0; disp <= 0xff; disp++) {
             int8_t src_val = randgen32->pick_val(0);
             reg32_t gbr_val =
-                randgen32->pick_range(0, mem->get_size() - 2 - disp * 2);
+                pick_addr(AddrRange(randgen32, 0, MEM_SZ - 2 - disp * 2));
             failure = failure ||
-                do_binary_movw_binind_disp_gbr_r0(cpu, mem, src_val, disp,
+                do_binary_movw_binind_disp_gbr_r0(cpu, bios, mem, src_val, disp,
                                                   gbr_val);
         }
 
@@ -2760,7 +2799,7 @@ public:
 
     // MOV.L @(disp, GBR), R0
     // 11000110dddddddd
-    static int do_binary_movl_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem,
+    static int do_binary_movl_binind_disp_gbr_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                  uint32_t src_val, uint8_t disp,
                                                  reg32_t gbr_val) {
         std::stringstream ss;
@@ -2771,7 +2810,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.gbr = gbr_val;
@@ -2791,16 +2830,16 @@ public:
         return 0;
     }
 
-    static int binary_movl_binind_disp_gbr_r0(Sh4 *cpu, Memory *mem,
+    static int binary_movl_binind_disp_gbr_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                               RandGen32 *randgen32) {
         int failure = 0;
 
         for (int disp = 0; disp <= 0xff; disp++) {
             int8_t src_val = randgen32->pick_val(0);
             reg32_t gbr_val =
-                randgen32->pick_range(0, mem->get_size() - 4 - disp * 4);
+                pick_addr(AddrRange(randgen32, 0, MEM_SZ - 4 - disp * 4));
             failure = failure ||
-                do_binary_movl_binind_disp_gbr_r0(cpu, mem, src_val, disp,
+                do_binary_movl_binind_disp_gbr_r0(cpu, bios, mem, src_val, disp,
                                                   gbr_val);
         }
 
@@ -2809,7 +2848,7 @@ public:
 
     // MOVA @(disp, PC), R0
     // 11000111dddddddd
-    static int do_binary_mova_binind_disp_pc_r0(Sh4 *cpu, Memory *mem,
+    static int do_binary_mova_binind_disp_pc_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                 uint8_t disp, reg32_t pc_val) {
         std::stringstream ss;
         std::string cmd;
@@ -2819,7 +2858,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_val, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_val - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.pc = pc_val;
@@ -2840,14 +2880,14 @@ public:
         return 0;
     }
 
-    static int binary_mova_binind_disp_pc_r0(Sh4 *cpu, Memory *mem,
+    static int binary_mova_binind_disp_pc_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              RandGen32 *randgen32) {
         int failure = 0;
 
         for (int disp = 0; disp <= 0xff; disp++) {
-            reg32_t pc_val = randgen32->pick_range(0, (mem->get_size() - 4 - disp * 4) & ~1);
+            reg32_t pc_val = pick_addr(AddrRange(randgen32, 0, (MEM_SZ - 4 - disp * 4) & ~1));
             failure = failure ||
-                do_binary_mova_binind_disp_pc_r0(cpu, mem, disp, pc_val);
+                do_binary_mova_binind_disp_pc_r0(cpu, bios, mem, disp, pc_val);
         }
 
         return failure;
@@ -2855,7 +2895,7 @@ public:
 
     // LDC Rm, SR
     // 0100mmmm00001110
-    static int do_binary_ldc_gen_sr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldc_gen_sr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     unsigned reg_no, reg32_t reg_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -2865,7 +2905,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = reg_val;
@@ -2882,12 +2922,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_sr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_ldc_gen_sr(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_sr(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_ldc_gen_sr(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -2895,7 +2935,7 @@ public:
 
     // LDC Rm, GBR
     // 0100mmmm00011110
-    static int do_binary_ldc_gen_gbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldc_gen_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                      unsigned reg_no, reg32_t reg_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -2905,7 +2945,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = reg_val;
@@ -2922,12 +2962,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_gbr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_ldc_gen_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_gbr(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_ldc_gen_gbr(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -2935,7 +2975,7 @@ public:
 
     // LDC Rm, VBR
     // 0100mmmm00101110
-    static int do_binary_ldc_gen_vbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldc_gen_vbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                      unsigned reg_no, reg32_t reg_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -2945,7 +2985,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = reg_val;
@@ -2962,12 +3002,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_vbr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_ldc_gen_vbr(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_vbr(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_ldc_gen_vbr(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -2975,7 +3015,7 @@ public:
 
     // LDC Rm, SSR
     // 0100mmmm00111110
-    static int do_binary_ldc_gen_ssr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldc_gen_ssr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                      unsigned reg_no, reg32_t reg_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -2985,7 +3025,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = reg_val;
@@ -3002,12 +3042,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_ssr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_ldc_gen_ssr(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_ssr(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_ldc_gen_ssr(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3015,7 +3055,7 @@ public:
 
     // LDC Rm, SPC
     // 0100mmmm01001110
-    static int do_binary_ldc_gen_spc(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldc_gen_spc(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                      unsigned reg_no, reg32_t reg_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -3025,7 +3065,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = reg_val;
@@ -3042,12 +3082,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_spc(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_ldc_gen_spc(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_spc(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_ldc_gen_spc(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3055,7 +3095,7 @@ public:
 
     // LDC Rm, DBR
     // 0100mmmm11111010
-    static int do_binary_ldc_gen_dbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldc_gen_dbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                      unsigned reg_no, reg32_t reg_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -3065,7 +3105,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = reg_val;
@@ -3082,12 +3122,12 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_dbr(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_ldc_gen_dbr(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_ldc_gen_dbr(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_ldc_gen_dbr(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3095,7 +3135,7 @@ public:
 
     // LDC Rm, Rn_BANK
     // 0100mmmm1nnn1110
-    static int do_binary_ldc_gen_bank(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldc_gen_bank(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned reg_no, unsigned bank_reg_no,
                                       reg32_t reg_val) {
         Sh4Prog test_prog;
@@ -3106,7 +3146,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = reg_val;
@@ -3125,14 +3165,14 @@ public:
         return 0;
     }
 
-    static int binary_ldc_gen_bank(Sh4 *cpu, Memory *mem,
+    static int binary_ldc_gen_bank(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             for (unsigned bank_reg_no = 0; bank_reg_no < 8; bank_reg_no++) {
                 failure = failure ||
-                    do_binary_ldc_gen_bank(cpu, mem, reg_no, bank_reg_no,
+                    do_binary_ldc_gen_bank(cpu, bios, mem, reg_no, bank_reg_no,
                                            randgen32->pick_val(0));
             }
         }
@@ -3142,7 +3182,7 @@ public:
 
     // LDC.L @Rm+, SR
     // 0100mmmm00000111
-    static int do_binary_ldcl_indgeninc_sr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldcl_indgeninc_sr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                            unsigned reg_src, addr32_t addr,
                                            uint32_t val) {
         Sh4Prog test_prog;
@@ -3153,7 +3193,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3184,16 +3224,16 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_sr(Sh4 *cpu, Memory *mem,
+    static int binary_ldcl_indgeninc_sr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                         RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
             addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
-                do_binary_ldcl_indgeninc_sr(cpu, mem, reg_src, addr, val);
+                do_binary_ldcl_indgeninc_sr(cpu, bios, mem, reg_src, addr, val);
         }
 
         return failure;
@@ -3201,7 +3241,7 @@ public:
 
     // LDC.L @Rm+, GBR
     // 0100mmmm00010111
-    static int do_binary_ldcl_indgeninc_gbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldcl_indgeninc_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_src, addr32_t addr,
                                             uint32_t val) {
         Sh4Prog test_prog;
@@ -3212,7 +3252,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3236,16 +3276,16 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_gbr(Sh4 *cpu, Memory *mem,
+    static int binary_ldcl_indgeninc_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
             addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
-                do_binary_ldcl_indgeninc_gbr(cpu, mem, reg_src, addr, val);
+                do_binary_ldcl_indgeninc_gbr(cpu, bios, mem, reg_src, addr, val);
         }
 
         return failure;
@@ -3253,7 +3293,7 @@ public:
 
     // LDC.L @Rm+, VBR
     // 0100mmmm00100111
-    static int do_binary_ldcl_indgeninc_vbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldcl_indgeninc_vbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_src, addr32_t addr,
                                             uint32_t val) {
         Sh4Prog test_prog;
@@ -3264,7 +3304,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3288,16 +3328,16 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_vbr(Sh4 *cpu, Memory *mem,
+    static int binary_ldcl_indgeninc_vbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
             addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
-                do_binary_ldcl_indgeninc_vbr(cpu, mem, reg_src, addr, val);
+                do_binary_ldcl_indgeninc_vbr(cpu, bios, mem, reg_src, addr, val);
         }
 
         return failure;
@@ -3305,7 +3345,7 @@ public:
 
     // LDC.L @Rm+, SSR
     // 0100mmmm00110111
-    static int do_binary_ldcl_indgeninc_ssr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldcl_indgeninc_ssr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_src, addr32_t addr,
                                             uint32_t val) {
         Sh4Prog test_prog;
@@ -3316,7 +3356,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3340,16 +3380,16 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_ssr(Sh4 *cpu, Memory *mem,
+    static int binary_ldcl_indgeninc_ssr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
             addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
-                do_binary_ldcl_indgeninc_ssr(cpu, mem, reg_src, addr, val);
+                do_binary_ldcl_indgeninc_ssr(cpu, bios, mem, reg_src, addr, val);
         }
 
         return failure;
@@ -3357,7 +3397,7 @@ public:
 
     // LDC.L @Rm+, SPC
     // 0100mmmm01000111
-    static int do_binary_ldcl_indgeninc_spc(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldcl_indgeninc_spc(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_src, addr32_t addr,
                                             uint32_t val) {
         Sh4Prog test_prog;
@@ -3368,7 +3408,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3392,16 +3432,16 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_spc(Sh4 *cpu, Memory *mem,
+    static int binary_ldcl_indgeninc_spc(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
             addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
-                do_binary_ldcl_indgeninc_spc(cpu, mem, reg_src, addr, val);
+                do_binary_ldcl_indgeninc_spc(cpu, bios, mem, reg_src, addr, val);
         }
 
         return failure;
@@ -3409,7 +3449,7 @@ public:
 
     // LDC.L @Rm+, DBR
     // 0100mmmm11110110
-    static int do_binary_ldcl_indgeninc_dbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldcl_indgeninc_dbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_src, addr32_t addr,
                                             uint32_t val) {
         Sh4Prog test_prog;
@@ -3420,7 +3460,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3444,16 +3484,16 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_dbr(Sh4 *cpu, Memory *mem,
+    static int binary_ldcl_indgeninc_dbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
             addr32_t val = randgen32->pick_val(0);
 
             failure = failure ||
-                do_binary_ldcl_indgeninc_dbr(cpu, mem, reg_src, addr, val);
+                do_binary_ldcl_indgeninc_dbr(cpu, bios, mem, reg_src, addr, val);
         }
 
         return failure;
@@ -3461,8 +3501,8 @@ public:
 
     // STC SR, Rn
     // 0000nnnn00000010
-    static int do_binary_stc_sr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
-                                    reg32_t sr_val) {
+    static int do_binary_stc_sr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                    unsigned reg_dst, reg32_t sr_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -3478,7 +3518,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3496,12 +3536,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_sr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_stc_sr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_sr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_stc_sr_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3509,7 +3549,7 @@ public:
 
     // STC GBR, Rn
     // 0000nnnn00010010
-    static int do_binary_stc_gbr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+    static int do_binary_stc_gbr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_dst,
                                      reg32_t gbr_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -3519,7 +3559,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3537,12 +3577,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_gbr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_stc_gbr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_gbr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_stc_gbr_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3550,7 +3590,7 @@ public:
 
     // STC VBR, Rn
     // 0000nnnn00100010
-    static int do_binary_stc_vbr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+    static int do_binary_stc_vbr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_dst,
                                      reg32_t vbr_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -3560,7 +3600,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3578,12 +3618,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_vbr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_stc_vbr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_vbr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_stc_vbr_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3591,7 +3631,7 @@ public:
 
     // STC SSR, Rn
     // 0000nnnn00110010
-    static int do_binary_stc_ssr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+    static int do_binary_stc_ssr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_dst,
                                      reg32_t ssr_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -3601,7 +3641,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3619,12 +3659,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_ssr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_stc_ssr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_ssr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_stc_ssr_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3632,7 +3672,7 @@ public:
 
     // STC SPC, Rn
     // 0000nnnn01000010
-    static int do_binary_stc_spc_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+    static int do_binary_stc_spc_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_dst,
                                      reg32_t spc_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -3642,7 +3682,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3660,12 +3700,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_spc_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_stc_spc_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_spc_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_stc_spc_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3673,7 +3713,7 @@ public:
 
     // STC SGR, Rn
     // 0000nnnn00111010
-    static int do_binary_stc_sgr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+    static int do_binary_stc_sgr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_dst,
                                      reg32_t sgr_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -3683,7 +3723,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3701,12 +3741,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_sgr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_stc_sgr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_sgr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_stc_sgr_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3714,7 +3754,7 @@ public:
 
     // STC DBR, Rn
     // 0000nnnn11111010
-    static int do_binary_stc_dbr_gen(Sh4 *cpu, Memory *mem, unsigned reg_dst,
+    static int do_binary_stc_dbr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_dst,
                                      reg32_t dbr_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -3724,7 +3764,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3742,12 +3782,12 @@ public:
         return 0;
     }
 
-    static int binary_stc_dbr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_stc_dbr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_stc_dbr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_binary_stc_dbr_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -3755,7 +3795,7 @@ public:
 
     // STC.L SR, @-Rn
     // 0100nnnn00000011
-    static int do_binary_stcl_sr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stcl_sr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                            unsigned reg_no, reg32_t sr_val,
                                            addr32_t addr) {
         Sh4Prog test_prog;
@@ -3769,7 +3809,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3794,14 +3834,14 @@ public:
         return 0;
     }
 
-    static int binary_stcl_sr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stcl_sr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                         RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
             failure = failure ||
-                do_binary_stcl_sr_inddecgen(cpu, mem, reg_no,
+                do_binary_stcl_sr_inddecgen(cpu, bios, mem, reg_no,
                                             randgen32->pick_val(0), addr);
         }
 
@@ -3810,7 +3850,7 @@ public:
 
     // STC.L GBR, @-Rn
     // 0100nnnn00010011
-    static int do_binary_stcl_gbr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stcl_gbr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_no, reg32_t gbr_val,
                                             addr32_t addr) {
         Sh4Prog test_prog;
@@ -3821,7 +3861,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3846,14 +3886,14 @@ public:
         return 0;
     }
 
-    static int binary_stcl_gbr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stcl_gbr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
             failure = failure ||
-                do_binary_stcl_gbr_inddecgen(cpu, mem, reg_no,
+                do_binary_stcl_gbr_inddecgen(cpu, bios, mem, reg_no,
                                              randgen32->pick_val(0), addr);
         }
 
@@ -3862,7 +3902,7 @@ public:
 
     // STC.L VBR, @-Rn
     // 01n00nnnn00100011
-    static int do_binary_stcl_vbr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stcl_vbr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_no, reg32_t vbr_val,
                                             addr32_t addr) {
         Sh4Prog test_prog;
@@ -3873,7 +3913,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3898,14 +3938,14 @@ public:
         return 0;
     }
 
-    static int binary_stcl_vbr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stcl_vbr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
             failure = failure ||
-                do_binary_stcl_vbr_inddecgen(cpu, mem, reg_no,
+                do_binary_stcl_vbr_inddecgen(cpu, bios, mem, reg_no,
                                              randgen32->pick_val(0), addr);
         }
 
@@ -3914,7 +3954,7 @@ public:
 
     // STC.L SSR, @-Rn
     // 0100nnnn00110011
-    static int do_binary_stcl_ssr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stcl_ssr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_no, reg32_t ssr_val,
                                             addr32_t addr) {
         Sh4Prog test_prog;
@@ -3925,7 +3965,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3950,14 +3990,14 @@ public:
         return 0;
     }
 
-    static int binary_stcl_ssr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stcl_ssr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
             failure = failure ||
-                do_binary_stcl_ssr_inddecgen(cpu, mem, reg_no,
+                do_binary_stcl_ssr_inddecgen(cpu, bios, mem, reg_no,
                                              randgen32->pick_val(0), addr);
         }
 
@@ -3966,7 +4006,7 @@ public:
 
     // STC.L SPC, @-Rn
     // 0100nnnn01000011
-    static int do_binary_stcl_spc_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stcl_spc_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_no, reg32_t spc_val,
                                             addr32_t addr) {
         Sh4Prog test_prog;
@@ -3977,7 +4017,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4002,14 +4042,14 @@ public:
         return 0;
     }
 
-    static int binary_stcl_spc_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stcl_spc_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
             failure = failure ||
-                do_binary_stcl_spc_inddecgen(cpu, mem, reg_no,
+                do_binary_stcl_spc_inddecgen(cpu, bios, mem, reg_no,
                                              randgen32->pick_val(0), addr);
         }
 
@@ -4018,7 +4058,7 @@ public:
 
     // STC.L SGR, @-Rn
     // 0100nnnn00110010
-    static int do_binary_stcl_sgr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stcl_sgr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_no, reg32_t sgr_val,
                                             addr32_t addr) {
         Sh4Prog test_prog;
@@ -4029,7 +4069,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4054,14 +4094,14 @@ public:
         return 0;
     }
 
-    static int binary_stcl_sgr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stcl_sgr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
             failure = failure ||
-                do_binary_stcl_sgr_inddecgen(cpu, mem, reg_no,
+                do_binary_stcl_sgr_inddecgen(cpu, bios, mem, reg_no,
                                              randgen32->pick_val(0), addr);
         }
 
@@ -4070,7 +4110,7 @@ public:
 
     // STC.L DBR, @-Rn
     // 0100nnnn11110010
-    static int do_binary_stcl_dbr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stcl_dbr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                             unsigned reg_no, reg32_t dbr_val,
                                             addr32_t addr) {
         Sh4Prog test_prog;
@@ -4081,7 +4121,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4106,14 +4146,14 @@ public:
         return 0;
     }
 
-    static int binary_stcl_dbr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stcl_dbr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                          RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
             failure = failure ||
-                do_binary_stcl_dbr_inddecgen(cpu, mem, reg_no,
+                do_binary_stcl_dbr_inddecgen(cpu, bios, mem, reg_no,
                                              randgen32->pick_val(0), addr);
         }
 
@@ -4122,7 +4162,7 @@ public:
 
     // LDC.L @Rm+, Rn_BANK
     // 0100mmmm1nnn0111
-    static int do_binary_ldcl_indgeninc_bank(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldcl_indgeninc_bank(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              unsigned reg_no,
                                              unsigned bank_reg_no,
                                              addr32_t addr, uint32_t val) {
@@ -4134,7 +4174,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = addr;
@@ -4158,15 +4198,15 @@ public:
         return 0;
     }
 
-    static int binary_ldcl_indgeninc_bank(Sh4 *cpu, Memory *mem,
+    static int binary_ldcl_indgeninc_bank(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                           RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             for (unsigned bank_reg_no = 0; bank_reg_no < 8; bank_reg_no++) {
-                addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
                 failure = failure ||
-                    do_binary_ldcl_indgeninc_bank(cpu, mem, reg_no, bank_reg_no,
+                    do_binary_ldcl_indgeninc_bank(cpu, bios, mem, reg_no, bank_reg_no,
                                                   addr, randgen32->pick_val(0));
             }
         }
@@ -4176,7 +4216,7 @@ public:
 
     // STC Rm_BANK, Rn
     // 0000nnnn1mmm0010
-    static int do_binary_stc_bank_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stc_bank_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned bank_reg_no, unsigned reg_no,
                                       reg32_t val) {
         Sh4Prog test_prog;
@@ -4187,7 +4227,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4206,13 +4246,13 @@ public:
         return 0;
     }
 
-    static int binary_stc_bank_gen(Sh4 *cpu, Memory *mem,
+    static int binary_stc_bank_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             for (unsigned bank_reg_no = 0; bank_reg_no < 8; bank_reg_no++) {
                 failure = failure ||
-                    do_binary_stc_bank_gen(cpu, mem, bank_reg_no, reg_no,
+                    do_binary_stc_bank_gen(cpu, bios, mem, bank_reg_no, reg_no,
                                            randgen32->pick_val(0));
             }
         }
@@ -4221,7 +4261,7 @@ public:
 
     // STC.L Rm_BANK, @-Rn
     // 0100nnnn1mmm0011
-    static int do_binary_stcl_bank_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stcl_bank_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              unsigned bank_reg_no,
                                              unsigned reg_no, reg32_t val,
                                              addr32_t addr) {
@@ -4233,7 +4273,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4258,15 +4298,15 @@ public:
         return 0;
     }
 
-    static int binary_stcl_bank_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stcl_bank_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                           RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             for (unsigned bank_reg_no = 0; bank_reg_no < 8; bank_reg_no++) {
-                addr32_t addr = randgen32->pick_range(4, mem->get_size() - 4);
+                addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
                 failure = failure ||
-                    do_binary_stcl_bank_inddecgen(cpu, mem, bank_reg_no, reg_no,
+                    do_binary_stcl_bank_inddecgen(cpu, bios, mem, bank_reg_no, reg_no,
                                                   randgen32->pick_val(0), addr);
             }
         }
@@ -4276,7 +4316,7 @@ public:
 
     // LDS Rm, MACH
     // 0100mmmm00001010
-    static int do_binary_lds_gen_mach(Sh4 *cpu, Memory *mem,
+    static int do_binary_lds_gen_mach(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned reg_no, reg32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -4286,7 +4326,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4303,13 +4343,13 @@ public:
         return 0;
     }
 
-    static int binary_lds_gen_mach(Sh4 *cpu, Memory *mem,
+    static int binary_lds_gen_mach(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_lds_gen_mach(cpu, mem, reg_no,
+                do_binary_lds_gen_mach(cpu, bios, mem, reg_no,
                                        randgen32->pick_val(0));
         }
 
@@ -4318,7 +4358,7 @@ public:
 
     // LDS Rm, MACL
     // 0100mmmm00011010
-    static int do_binary_lds_gen_macl(Sh4 *cpu, Memory *mem,
+    static int do_binary_lds_gen_macl(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned reg_no, reg32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -4328,7 +4368,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4345,13 +4385,13 @@ public:
         return 0;
     }
 
-    static int binary_lds_gen_macl(Sh4 *cpu, Memory *mem,
+    static int binary_lds_gen_macl(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_lds_gen_macl(cpu, mem, reg_no,
+                do_binary_lds_gen_macl(cpu, bios, mem, reg_no,
                                        randgen32->pick_val(0));
         }
 
@@ -4360,7 +4400,7 @@ public:
 
     // LDS Rm, PR
     // 0100mmmm00101010
-    static int do_binary_lds_gen_pr(Sh4 *cpu, Memory *mem,
+    static int do_binary_lds_gen_pr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned reg_no, reg32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -4370,7 +4410,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4387,13 +4427,13 @@ public:
         return 0;
     }
 
-    static int binary_lds_gen_pr(Sh4 *cpu, Memory *mem,
+    static int binary_lds_gen_pr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_lds_gen_pr(cpu, mem, reg_no,
+                do_binary_lds_gen_pr(cpu, bios, mem, reg_no,
                                        randgen32->pick_val(0));
         }
 
@@ -4402,7 +4442,7 @@ public:
 
     // STS MACH, Rn
     // 0000nnnn00001010
-    static int do_binary_sts_mach_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_sts_mach_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned reg_no, reg32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -4412,7 +4452,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4429,13 +4469,13 @@ public:
         return 0;
     }
 
-    static int binary_sts_mach_gen(Sh4 *cpu, Memory *mem,
+    static int binary_sts_mach_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_sts_mach_gen(cpu, mem, reg_no,
+                do_binary_sts_mach_gen(cpu, bios, mem, reg_no,
                                        randgen32->pick_val(0));
         }
 
@@ -4444,7 +4484,7 @@ public:
 
     // STS MACL, Rn
     // 0000nnnn00011010
-    static int do_binary_sts_macl_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_sts_macl_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned reg_no, reg32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -4454,7 +4494,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4471,13 +4511,13 @@ public:
         return 0;
     }
 
-    static int binary_sts_macl_gen(Sh4 *cpu, Memory *mem,
+    static int binary_sts_macl_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_sts_macl_gen(cpu, mem, reg_no,
+                do_binary_sts_macl_gen(cpu, bios, mem, reg_no,
                                        randgen32->pick_val(0));
         }
 
@@ -4486,7 +4526,7 @@ public:
 
     // STS PR, Rn
     // 0000nnnn00101010
-    static int do_binary_sts_pr_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_sts_pr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     unsigned reg_no, reg32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -4496,7 +4536,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4513,13 +4553,13 @@ public:
         return 0;
     }
 
-    static int binary_sts_pr_gen(Sh4 *cpu, Memory *mem,
+    static int binary_sts_pr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_binary_sts_pr_gen(cpu, mem, reg_no,
+                do_binary_sts_pr_gen(cpu, bios, mem, reg_no,
                                      randgen32->pick_val(0));
         }
 
@@ -4528,7 +4568,7 @@ public:
 
     // LDS.L @Rm+, MACH
     // 0100mmmm00000110
-    static int do_binary_ldsl_indgeninc_mach(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldsl_indgeninc_mach(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              unsigned reg_no, addr32_t addr,
                                              uint32_t val) {
         Sh4Prog test_prog;
@@ -4539,7 +4579,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4560,15 +4600,15 @@ public:
         return 0;
     }
 
-    static int binary_ldsl_indgeninc_mach(Sh4 *cpu, Memory *mem,
+    static int binary_ldsl_indgeninc_mach(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                           RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
             uint32_t val = randgen32->pick_val(0);
             failure = failure ||
-                do_binary_ldsl_indgeninc_mach(cpu, mem, reg_no, addr, val);
+                do_binary_ldsl_indgeninc_mach(cpu, bios, mem, reg_no, addr, val);
         }
 
         return failure;
@@ -4576,7 +4616,7 @@ public:
 
     // LDS.L @Rm+, MACL
     // 0100mmmm00010110
-    static int do_binary_ldsl_indgeninc_macl(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldsl_indgeninc_macl(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              unsigned reg_no, addr32_t addr,
                                              uint32_t val) {
         Sh4Prog test_prog;
@@ -4587,7 +4627,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4608,15 +4648,15 @@ public:
         return 0;
     }
 
-    static int binary_ldsl_indgeninc_macl(Sh4 *cpu, Memory *mem,
+    static int binary_ldsl_indgeninc_macl(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                           RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
             uint32_t val = randgen32->pick_val(0);
             failure = failure ||
-                do_binary_ldsl_indgeninc_macl(cpu, mem, reg_no, addr, val);
+                do_binary_ldsl_indgeninc_macl(cpu, bios, mem, reg_no, addr, val);
         }
 
         return failure;
@@ -4624,7 +4664,7 @@ public:
 
     // LDS.L @Rm+, PR
     // 0100mmmm00100110
-    static int do_binary_ldsl_indgeninc_pr(Sh4 *cpu, Memory *mem,
+    static int do_binary_ldsl_indgeninc_pr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                            unsigned reg_no, addr32_t addr,
                                            uint32_t val) {
         Sh4Prog test_prog;
@@ -4635,7 +4675,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4656,15 +4696,15 @@ public:
         return 0;
     }
 
-    static int binary_ldsl_indgeninc_pr(Sh4 *cpu, Memory *mem,
+    static int binary_ldsl_indgeninc_pr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                         RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 5);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
             uint32_t val = randgen32->pick_val(0);
             failure = failure ||
-                do_binary_ldsl_indgeninc_pr(cpu, mem, reg_no, addr, val);
+                do_binary_ldsl_indgeninc_pr(cpu, bios, mem, reg_no, addr, val);
         }
 
         return failure;
@@ -4672,7 +4712,7 @@ public:
 
     // STS.L MACH, @-Rn
     // 0100mmmm00000010
-    static int do_binary_stsl_mach_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stsl_mach_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              unsigned reg_no, reg32_t mach_val,
                                              addr32_t addr) {
         Sh4Prog test_prog;
@@ -4683,7 +4723,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4706,15 +4746,15 @@ public:
         return 0;
     }
 
-    static int binary_stsl_mach_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stsl_mach_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                           RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 1);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 1));
             reg32_t mach_val = randgen32->pick_val(0);
             failure = failure ||
-                do_binary_stsl_mach_inddecgen(cpu, mem, reg_no,
+                do_binary_stsl_mach_inddecgen(cpu, bios, mem, reg_no,
                                               mach_val, addr);
         }
 
@@ -4723,7 +4763,7 @@ public:
 
     // STS.L MACL, @-Rn
     // 0100mmmm00010010
-    static int do_binary_stsl_macl_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stsl_macl_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              unsigned reg_no, reg32_t macl_val,
                                              addr32_t addr) {
         Sh4Prog test_prog;
@@ -4734,7 +4774,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4757,15 +4797,15 @@ public:
         return 0;
     }
 
-    static int binary_stsl_macl_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stsl_macl_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                           RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 1);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 1));
             reg32_t macl_val = randgen32->pick_val(0);
             failure = failure ||
-                do_binary_stsl_macl_inddecgen(cpu, mem, reg_no,
+                do_binary_stsl_macl_inddecgen(cpu, bios, mem, reg_no,
                                               macl_val, addr);
         }
 
@@ -4774,7 +4814,7 @@ public:
 
     // STS.L PR, @-Rn
     // 0100nnnn00100010
-    static int do_binary_stsl_pr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int do_binary_stsl_pr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                            unsigned reg_no, reg32_t pr_val,
                                            addr32_t addr) {
         Sh4Prog test_prog;
@@ -4785,7 +4825,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4808,15 +4848,15 @@ public:
         return 0;
     }
 
-    static int binary_stsl_pr_inddecgen(Sh4 *cpu, Memory *mem,
+    static int binary_stsl_pr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                         RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(4, mem->get_size() - 1);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 1));
             reg32_t pr_val = randgen32->pick_val(0);
             failure = failure ||
-                do_binary_stsl_pr_inddecgen(cpu, mem, reg_no,
+                do_binary_stsl_pr_inddecgen(cpu, bios, mem, reg_no,
                                               pr_val, addr);
         }
 
@@ -4825,7 +4865,7 @@ public:
 
     // CMP/PZ Rn
     // 0100nnnn00010001
-    static int do_unary_cmppz_gen(Sh4 *cpu, Memory *mem, unsigned reg_no,
+    static int do_unary_cmppz_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_no,
                                   int32_t reg_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -4835,7 +4875,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4856,12 +4896,12 @@ public:
         return 0;
     }
 
-    static int unary_cmppz_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_cmppz_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_cmppz_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_cmppz_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -4869,7 +4909,7 @@ public:
 
     // CMP/PL Rn
     // 0100nnnn00010101
-    static int do_unary_cmppl_gen(Sh4 *cpu, Memory *mem, unsigned reg_no,
+    static int do_unary_cmppl_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_no,
                                   int32_t reg_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -4879,7 +4919,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4900,12 +4940,12 @@ public:
         return 0;
     }
 
-    static int unary_cmppl_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_cmppl_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_cmppl_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_cmppl_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -4913,7 +4953,7 @@ public:
 
     // CMP/EQ #imm, R0
     // 10001000iiiiiiii
-    static int do_binary_cmpeq_imm_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_cmpeq_imm_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        uint8_t imm_val, reg32_t r0_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -4923,7 +4963,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4944,7 +4984,7 @@ public:
         return 0;
     }
 
-    static int binary_cmpeq_imm_gen(Sh4 *cpu, Memory *mem,
+    static int binary_cmpeq_imm_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
 
@@ -4952,11 +4992,11 @@ public:
             uint8_t imm_val = val;
             // test equality
             failure = failure ||
-                do_binary_cmpeq_imm_gen(cpu, mem, imm_val, imm_val);
+                do_binary_cmpeq_imm_gen(cpu, bios, mem, imm_val, imm_val);
 
             // test inequality
             failure = failure ||
-                do_binary_cmpeq_imm_gen(cpu, mem, imm_val,
+                do_binary_cmpeq_imm_gen(cpu, bios, mem, imm_val,
                                         int32_t(int8_t(imm_val)));
         }
 
@@ -4965,7 +5005,7 @@ public:
 
     // CMP/EQ Rm, Rn
     // 0011nnnnmmmm0000
-    static int do_binary_cmpeq_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_cmpeq_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg1, unsigned reg2,
                                        reg32_t reg1_val, reg32_t reg2_val) {
         Sh4Prog test_prog;
@@ -4976,7 +5016,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4999,7 +5039,7 @@ public:
         return 0;
     }
 
-    static int binary_cmpeq_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_cmpeq_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
 
@@ -5014,11 +5054,11 @@ public:
 
                 // test equality
                 failure = failure ||
-                    do_binary_cmpeq_gen_gen(cpu, mem, reg1, reg2, val2, val2);
+                    do_binary_cmpeq_gen_gen(cpu, bios, mem, reg1, reg2, val2, val2);
 
                 // test (probable) inequality
                 failure = failure ||
-                    do_binary_cmpeq_gen_gen(cpu, mem, reg1, reg2, val1, val2);
+                    do_binary_cmpeq_gen_gen(cpu, bios, mem, reg1, reg2, val1, val2);
             }
         }
 
@@ -5027,7 +5067,7 @@ public:
 
     // CMP/HS Rm, Rn
     // 0011nnnnmmmm0010
-    static int do_binary_cmphs_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_cmphs_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg1, unsigned reg2,
                                        reg32_t reg1_val, reg32_t reg2_val) {
         Sh4Prog test_prog;
@@ -5038,7 +5078,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5061,7 +5101,7 @@ public:
         return 0;
     }
 
-    static int binary_cmphs_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_cmphs_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
 
@@ -5071,17 +5111,17 @@ public:
 
                 // test equality
                 failure = failure ||
-                    do_binary_cmphs_gen_gen(cpu, mem, reg1, reg2, val2, val2);
+                    do_binary_cmphs_gen_gen(cpu, bios, mem, reg1, reg2, val2, val2);
 
                 if (reg1 != reg2) {
                     // test val1 < val2
                     failure = failure ||
-                        do_binary_cmphs_gen_gen(cpu, mem, reg1, reg2,
+                        do_binary_cmphs_gen_gen(cpu, bios, mem, reg1, reg2,
                                                 val2 - 1, val2);
 
                     // test val1 > val2
                     failure = failure ||
-                        do_binary_cmphs_gen_gen(cpu, mem, reg1, reg2,
+                        do_binary_cmphs_gen_gen(cpu, bios, mem, reg1, reg2,
                                                 val2 + 1, val2);
                 }
             }
@@ -5092,7 +5132,7 @@ public:
 
     // CMP/GE Rm, Rn
     // 0011nnnnmmmm0011
-    static int do_binary_cmpge_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_cmpge_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg1, unsigned reg2,
                                        reg32_t reg1_val, reg32_t reg2_val) {
         Sh4Prog test_prog;
@@ -5103,7 +5143,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5126,7 +5166,7 @@ public:
         return 0;
     }
 
-    static int binary_cmpge_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_cmpge_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
 
@@ -5136,17 +5176,17 @@ public:
 
                 // test equality
                 failure = failure ||
-                    do_binary_cmpge_gen_gen(cpu, mem, reg1, reg2, val2, val2);
+                    do_binary_cmpge_gen_gen(cpu, bios, mem, reg1, reg2, val2, val2);
 
                 if (reg1 != reg2) {
                     // test val1 < val2
                     failure = failure ||
-                        do_binary_cmpge_gen_gen(cpu, mem, reg1, reg2,
+                        do_binary_cmpge_gen_gen(cpu, bios, mem, reg1, reg2,
                                                 val2 - 1, val2);
 
                     // test val1 > val2
                     failure = failure ||
-                        do_binary_cmpge_gen_gen(cpu, mem, reg1, reg2,
+                        do_binary_cmpge_gen_gen(cpu, bios, mem, reg1, reg2,
                                                 val2 + 1, val2);
                 }
             }
@@ -5157,7 +5197,7 @@ public:
 
     // CMP/HI Rm, Rn
     // 0011nnnnmmmm0110
-    static int do_binary_cmphi_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_cmphi_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg1, unsigned reg2,
                                        reg32_t reg1_val, reg32_t reg2_val) {
         Sh4Prog test_prog;
@@ -5168,7 +5208,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5191,7 +5231,7 @@ public:
         return 0;
     }
 
-    static int binary_cmphi_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_cmphi_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
 
@@ -5201,17 +5241,17 @@ public:
 
                 // test equality
                 failure = failure ||
-                    do_binary_cmphi_gen_gen(cpu, mem, reg1, reg2, val2, val2);
+                    do_binary_cmphi_gen_gen(cpu, bios, mem, reg1, reg2, val2, val2);
 
                 if (reg1 != reg2) {
                     // test val1 < val2
                     failure = failure ||
-                        do_binary_cmphi_gen_gen(cpu, mem, reg1, reg2,
+                        do_binary_cmphi_gen_gen(cpu, bios, mem, reg1, reg2,
                                                 val2 - 1, val2);
 
                     // test val1 > val2
                     failure = failure ||
-                        do_binary_cmphi_gen_gen(cpu, mem, reg1, reg2,
+                        do_binary_cmphi_gen_gen(cpu, bios, mem, reg1, reg2,
                                                 val2 + 1, val2);
                 }
             }
@@ -5222,7 +5262,7 @@ public:
 
     // CMP/GT Rm, Rn
     // 0011nnnnmmmm0111
-    static int do_binary_cmpgt_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_cmpgt_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg1, unsigned reg2,
                                        reg32_t reg1_val, reg32_t reg2_val) {
         Sh4Prog test_prog;
@@ -5233,7 +5273,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5256,7 +5296,7 @@ public:
         return 0;
     }
 
-    static int binary_cmpgt_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_cmpgt_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
 
@@ -5266,17 +5306,17 @@ public:
 
                 // test equality
                 failure = failure ||
-                    do_binary_cmpgt_gen_gen(cpu, mem, reg1, reg2, val2, val2);
+                    do_binary_cmpgt_gen_gen(cpu, bios, mem, reg1, reg2, val2, val2);
 
                 if (reg1 != reg2) {
                     // test val1 < val2
                     failure = failure ||
-                        do_binary_cmpgt_gen_gen(cpu, mem, reg1, reg2,
+                        do_binary_cmpgt_gen_gen(cpu, bios, mem, reg1, reg2,
                                                 val2 - 1, val2);
 
                     // test val1 > val2
                     failure = failure ||
-                        do_binary_cmpgt_gen_gen(cpu, mem, reg1, reg2,
+                        do_binary_cmpgt_gen_gen(cpu, bios, mem, reg1, reg2,
                                                 val2 + 1, val2);
                 }
             }
@@ -5285,7 +5325,7 @@ public:
         return failure;
     }
 
-    static int do_binary_cmpstr_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_cmpstr_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                         unsigned reg1, unsigned reg2,
                                         reg32_t reg1_val, reg32_t reg2_val) {
         Sh4Prog test_prog;
@@ -5296,7 +5336,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5324,7 +5364,7 @@ public:
         return 0;
     }
 
-    static int binary_cmpstr_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_cmpstr_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                      RandGen32 *randgen32) {
         int failure = 0;
 
@@ -5334,18 +5374,18 @@ public:
 
                 // test equality
                 failure = failure ||
-                    do_binary_cmpstr_gen_gen(cpu, mem, reg1, reg2, val2, val2);
+                    do_binary_cmpstr_gen_gen(cpu, bios, mem, reg1, reg2, val2, val2);
 
                 // test partial equality
                 reg32_t val_tmp =
                     val2 ^ ~(0xff << (8 * randgen32->pick_range(0, 3)));
                 failure = failure ||
-                    do_binary_cmpstr_gen_gen(cpu, mem, reg1, reg2, val2, val_tmp);
+                    do_binary_cmpstr_gen_gen(cpu, bios, mem, reg1, reg2, val2, val_tmp);
 
                 // test (probable) inequality
                 if (reg1 != reg2) {
                     failure = failure ||
-                        do_binary_cmpstr_gen_gen(cpu, mem, reg1, reg2,
+                        do_binary_cmpstr_gen_gen(cpu, bios, mem, reg1, reg2,
                                                  val2, randgen32->pick_val(0));
                 }
             }
@@ -5356,7 +5396,7 @@ public:
 
     // TST Rm, Rn
     // 0010nnnnmmmm1000
-    static int do_binary_tst_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_tst_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                      unsigned reg1_no, unsigned reg2_no,
                                      reg32_t reg1_val, reg32_t reg2_val) {
         Sh4Prog test_prog;
@@ -5367,7 +5407,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5389,7 +5429,7 @@ public:
         return 0;
     }
 
-    static int binary_tst_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_tst_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg1_no = 0; reg1_no < 16; reg1_no++) {
@@ -5401,7 +5441,7 @@ public:
                     reg2_val = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_binary_tst_gen_gen(cpu, mem, reg1_no, reg2_no,
+                    do_binary_tst_gen_gen(cpu, bios, mem, reg1_no, reg2_no,
                                           reg1_val, reg2_val);
             }
         }
@@ -5411,7 +5451,7 @@ public:
 
     // TAS.B @Rn
     // 0100nnnn00011011
-    static int do_unary_tasb_indgen(Sh4 *cpu, Memory *mem, unsigned reg_no,
+    static int do_unary_tasb_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_no,
                                     addr32_t addr, uint8_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -5421,7 +5461,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5445,26 +5485,26 @@ public:
         return 0;
     }
 
-    static int unary_tasb_indgen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_tasb_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
-            addr32_t addr = randgen32->pick_range(0, mem->get_size() - 1);
+            addr32_t addr = pick_addr(AddrRange(randgen32));
             uint8_t val = randgen32->pick_val(0);
 
             // make sure 0 gets tested
             failure = failure ||
-                do_unary_tasb_indgen(cpu, mem, reg_no, addr, 0);
+                do_unary_tasb_indgen(cpu, bios, mem, reg_no, addr, 0);
 
             failure = failure ||
-                do_unary_tasb_indgen(cpu, mem, reg_no, addr, val);
+                do_unary_tasb_indgen(cpu, bios, mem, reg_no, addr, val);
         }
         return failure;
     }
 
     // TST #imm, R0
     // 11001000iiiiiiii
-    static int do_binary_tst_imm_r0(Sh4 *cpu, Memory *mem, uint8_t imm_val,
-                                    reg32_t r0_val) {
+    static int do_binary_tst_imm_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                    uint8_t imm_val, reg32_t r0_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -5473,7 +5513,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5496,12 +5536,14 @@ public:
         return 0;
     }
 
-    static int binary_tst_imm_r0(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_tst_imm_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
             failure = failure ||
-                do_binary_tst_imm_r0(cpu, mem, imm_val, randgen32->pick_val(0));
+                do_binary_tst_imm_r0(cpu, bios, mem, imm_val,
+                                     randgen32->pick_val(0));
         }
 
         return failure;
@@ -5509,7 +5551,7 @@ public:
 
     // TST.B #imm, @(R0, GBR)
     // 11001100iiiiiiii
-    static int do_binary_tstb_imm_binind_r0_gbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_tstb_imm_binind_r0_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                 uint8_t imm_val, reg32_t r0_val,
                                                 reg32_t gbr_val,
                                                 uint8_t mem_val) {
@@ -5522,7 +5564,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5548,16 +5590,16 @@ public:
         return 0;
     }
 
-    static int binary_tstb_imm_ind_r0_gbr(Sh4 *cpu, Memory *mem,
+    static int binary_tstb_imm_ind_r0_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                           RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
-            reg32_t gbr_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
-            reg32_t r0_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
+            reg32_t gbr_val = pick_addr(AddrRange(randgen32)) / 2;
+            reg32_t r0_val = pick_addr(AddrRange(randgen32)) / 2;
 
             failure = failure ||
-                do_binary_tstb_imm_binind_r0_gbr(cpu, mem, imm_val, r0_val,
+                do_binary_tstb_imm_binind_r0_gbr(cpu, bios, mem, imm_val, r0_val,
                                                  gbr_val,
                                                  randgen32->pick_val(0));
         }
@@ -5567,7 +5609,7 @@ public:
 
     // AND Rm, Rn
     // 0010nnnnmmmm1001
-    static int do_binary_and_gen_gen(Sh4 *cpu, Memory *mem, unsigned reg_src,
+    static int do_binary_and_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_src,
                                      unsigned reg_dst, uint32_t src_val,
                                      uint32_t dst_val) {
         Sh4Prog test_prog;
@@ -5578,7 +5620,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -5598,7 +5640,8 @@ public:
         return 0;
     }
 
-    static int binary_and_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_and_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                  RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
@@ -5610,7 +5653,7 @@ public:
                 }
 
                 failure = failure ||
-                    do_binary_and_gen_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_and_gen_gen(cpu, bios, mem, reg_src, reg_dst,
                                           src_val, dst_val);
             }
         }
@@ -5620,7 +5663,7 @@ public:
 
     // AND #imm, R0
     // 11001001iiiiiiii
-    static int do_binary_and_imm_r0(Sh4 *cpu, Memory  *mem,
+    static int do_binary_and_imm_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     uint8_t imm_val, uint32_t r0_val) {
 
         Sh4Prog test_prog;
@@ -5631,7 +5674,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = r0_val;
@@ -5648,12 +5691,14 @@ public:
         return 0;
     }
 
-    static int binary_and_imm_r0(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_and_imm_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
             failure =  failure ||
-                do_binary_and_imm_r0(cpu, mem, imm_val, randgen32->pick_val(0));
+                do_binary_and_imm_r0(cpu, bios, mem, imm_val,
+                                     randgen32->pick_val(0));
         }
 
         return failure;
@@ -5661,7 +5706,7 @@ public:
 
     // AND.B #imm, @(R0, GBR)
     // 11001101iiiiiiii
-    static int do_binary_andb_imm_binind_r0_gbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_andb_imm_binind_r0_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                 uint8_t imm_val, reg32_t r0_val,
                                                 reg32_t gbr_val,
                                                 uint8_t mem_val) {
@@ -5674,7 +5719,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5701,16 +5746,16 @@ public:
         return 0;
     }
 
-    static int binary_andb_imm_binind_r0_gbr(Sh4 *cpu, Memory *mem,
+    static int binary_andb_imm_binind_r0_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
-            reg32_t gbr_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
-            reg32_t r0_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
+            reg32_t gbr_val = pick_addr(AddrRange(randgen32)) / 2;
+            reg32_t r0_val = pick_addr(AddrRange(randgen32)) / 2;
 
             failure = failure ||
-                do_binary_andb_imm_binind_r0_gbr(cpu, mem, imm_val, r0_val,
+                do_binary_andb_imm_binind_r0_gbr(cpu, bios, mem, imm_val, r0_val,
                                                  gbr_val,
                                                  randgen32->pick_val(0));
         }
@@ -5720,7 +5765,7 @@ public:
 
     // OR Rm, Rn
     // 0010nnnnmmmm1011
-    static int do_binary_or_gen_gen(Sh4 *cpu, Memory *mem, unsigned reg_src,
+    static int do_binary_or_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_src,
                                     unsigned reg_dst, uint32_t src_val,
                                     uint32_t dst_val) {
         Sh4Prog test_prog;
@@ -5731,7 +5776,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -5751,7 +5796,7 @@ public:
         return 0;
     }
 
-    static int binary_or_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_or_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
@@ -5763,7 +5808,7 @@ public:
                 }
 
                 failure = failure ||
-                    do_binary_or_gen_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_or_gen_gen(cpu, bios, mem, reg_src, reg_dst,
                                           src_val, dst_val);
             }
         }
@@ -5773,7 +5818,7 @@ public:
 
     // OR #imm, R0
     // 11001011iiiiiiii
-    static int do_binary_or_imm_r0(Sh4 *cpu, Memory  *mem,
+    static int do_binary_or_imm_r0(Sh4 *cpu, BiosFile *bios, Memory  *mem,
                                     uint8_t imm_val, uint32_t r0_val) {
 
         Sh4Prog test_prog;
@@ -5784,7 +5829,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = r0_val;
@@ -5801,12 +5846,13 @@ public:
         return 0;
     }
 
-    static int binary_or_imm_r0(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_or_imm_r0(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
             failure =  failure ||
-                do_binary_or_imm_r0(cpu, mem, imm_val, randgen32->pick_val(0));
+                do_binary_or_imm_r0(cpu, bios, mem, imm_val, randgen32->pick_val(0));
         }
 
         return failure;
@@ -5814,10 +5860,10 @@ public:
 
     // OR.B #imm, @(R0, GBR)
     // 11001111iiiiiiii
-    static int do_binary_orb_imm_binind_r0_gbr(Sh4 *cpu, Memory *mem,
-                                                uint8_t imm_val, reg32_t r0_val,
-                                                reg32_t gbr_val,
-                                                uint8_t mem_val) {
+    static int do_binary_orb_imm_binind_r0_gbr(Sh4 *cpu, BiosFile *bios,
+                                               Memory *mem, uint8_t imm_val,
+                                               reg32_t r0_val, reg32_t gbr_val,
+                                               uint8_t mem_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -5827,7 +5873,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5854,16 +5900,16 @@ public:
         return 0;
     }
 
-    static int binary_orb_imm_binind_r0_gbr(Sh4 *cpu, Memory *mem,
-                                            RandGen32 *randgen32) {
+    static int binary_orb_imm_binind_r0_gbr(Sh4 *cpu, BiosFile *bios,
+                                            Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
-            reg32_t gbr_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
-            reg32_t r0_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
+            reg32_t gbr_val = pick_addr(AddrRange(randgen32)) / 2;
+            reg32_t r0_val = pick_addr(AddrRange(randgen32)) / 2;
 
             failure = failure ||
-                do_binary_orb_imm_binind_r0_gbr(cpu, mem, imm_val, r0_val,
+                do_binary_orb_imm_binind_r0_gbr(cpu, bios, mem, imm_val, r0_val,
                                                 gbr_val,
                                                 randgen32->pick_val(0));
         }
@@ -5873,9 +5919,9 @@ public:
 
     // XOR Rm, Rn
     // 0010nnnnmmmm1010
-    static int do_binary_xor_gen_gen(Sh4 *cpu, Memory *mem, unsigned reg_src,
-                                    unsigned reg_dst, uint32_t src_val,
-                                    uint32_t dst_val) {
+    static int do_binary_xor_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                     unsigned reg_src, unsigned reg_dst,
+                                     uint32_t src_val, uint32_t dst_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -5884,7 +5930,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -5904,7 +5950,7 @@ public:
         return 0;
     }
 
-    static int binary_xor_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_xor_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
@@ -5916,7 +5962,7 @@ public:
                 }
 
                 failure = failure ||
-                    do_binary_xor_gen_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_xor_gen_gen(cpu, bios, mem, reg_src, reg_dst,
                                           src_val, dst_val);
             }
         }
@@ -5926,7 +5972,7 @@ public:
 
     // XOR #imm, R0
     // 11001010iiiiiiii
-    static int do_binary_xor_imm_r0(Sh4 *cpu, Memory  *mem,
+    static int do_binary_xor_imm_r0(Sh4 *cpu, BiosFile *bios, Memory  *mem,
                                     uint8_t imm_val, uint32_t r0_val) {
 
         Sh4Prog test_prog;
@@ -5937,7 +5983,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = r0_val;
@@ -5954,12 +6000,12 @@ public:
         return 0;
     }
 
-    static int binary_xor_imm_r0(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_xor_imm_r0(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
             failure =  failure ||
-                do_binary_xor_imm_r0(cpu, mem, imm_val, randgen32->pick_val(0));
+                do_binary_xor_imm_r0(cpu, bios, mem, imm_val, randgen32->pick_val(0));
         }
 
         return failure;
@@ -5967,7 +6013,7 @@ public:
 
     // XOR.B #imm, @(R0, GBR)
     // 11001110iiiiiiii
-    static int do_binary_xorb_imm_binind_r0_gbr(Sh4 *cpu, Memory *mem,
+    static int do_binary_xorb_imm_binind_r0_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                 uint8_t imm_val, reg32_t r0_val,
                                                 reg32_t gbr_val,
                                                 uint8_t mem_val) {
@@ -5980,7 +6026,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -6007,16 +6053,16 @@ public:
         return 0;
     }
 
-    static int binary_xorb_imm_binind_r0_gbr(Sh4 *cpu, Memory *mem,
+    static int binary_xorb_imm_binind_r0_gbr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                              RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned imm_val = 0; imm_val < 256; imm_val++) {
-            reg32_t gbr_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
-            reg32_t r0_val = randgen32->pick_range(0, mem->get_size() - 1) / 2;
+            reg32_t gbr_val = pick_addr(AddrRange(randgen32)) / 2;
+            reg32_t r0_val = pick_addr(AddrRange(randgen32)) / 2;
 
             failure = failure ||
-                do_binary_xorb_imm_binind_r0_gbr(cpu, mem, imm_val, r0_val,
+                do_binary_xorb_imm_binind_r0_gbr(cpu, bios, mem, imm_val, r0_val,
                                                  gbr_val,
                                                  randgen32->pick_val(0));
         }
@@ -6026,7 +6072,7 @@ public:
 
     // NOT Rm, Rn
     // 0110nnnnmmmm0111
-    static int do_binary_not_gen_gen(Sh4 *cpu, Memory *mem, unsigned reg_src,
+    static int do_binary_not_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_src,
                                     unsigned reg_dst, uint32_t src_val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -6036,7 +6082,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -6054,7 +6100,7 @@ public:
         return 0;
     }
 
-    static int binary_not_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_not_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
@@ -6062,7 +6108,7 @@ public:
                 uint32_t src_val = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_binary_not_gen_gen(cpu, mem, reg_src, reg_dst, src_val);
+                    do_binary_not_gen_gen(cpu, bios, mem, reg_src, reg_dst, src_val);
             }
         }
 
@@ -6071,7 +6117,7 @@ public:
 
     // NEG Rm, Rn
     // 0110nnnnmmmm1011
-    static int do_binary_neg_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_neg_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                      unsigned reg_src, unsigned reg_dst,
                                      uint32_t val) {
         Sh4Prog test_prog;
@@ -6082,7 +6128,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -6100,13 +6146,13 @@ public:
         return 0;
     }
 
-    static int binary_neg_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_neg_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 uint32_t val = randgen32->pick_val(0);
                 failure = failure ||
-                    do_binary_neg_gen_gen(cpu, mem, reg_src, reg_dst, val);
+                    do_binary_neg_gen_gen(cpu, bios, mem, reg_src, reg_dst, val);
             }
         }
         return failure;
@@ -6114,7 +6160,7 @@ public:
 
     // NEGC Rm, Rn
     // 0110nnnnmmmm1010
-    static int do_binary_negc_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_negc_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned reg_src, unsigned reg_dst,
                                       uint32_t val) {
         Sh4Prog test_prog;
@@ -6125,7 +6171,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -6148,13 +6194,13 @@ public:
         return 0;
     }
 
-    static int binary_negc_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_negc_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 uint32_t val = randgen32->pick_val(0);
                 failure = failure ||
-                    do_binary_negc_gen_gen(cpu, mem, reg_src, reg_dst, val);
+                    do_binary_negc_gen_gen(cpu, bios, mem, reg_src, reg_dst, val);
             }
         }
         return failure;
@@ -6162,7 +6208,7 @@ public:
 
     // DT Rn
     // 0100nnnn00010000
-    static int do_unary_dt_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32,
+    static int do_unary_dt_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32,
                                unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -6172,7 +6218,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -6198,12 +6244,12 @@ public:
         return 0;
     }
 
-    static int unary_dt_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_dt_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_dt_gen(cpu, mem, randgen32,
+                do_unary_dt_gen(cpu, bios, mem, randgen32,
                                 reg_no, randgen32->pick_val(0));
         }
 
@@ -6212,7 +6258,7 @@ public:
 
     // SWAP.B Rm, Rn
     // 0110nnnnmmmm1000
-    static int do_binary_swapb_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_swapb_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg_src, unsigned reg_dst,
                                        unsigned val) {
         Sh4Prog test_prog;
@@ -6227,7 +6273,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -6245,13 +6291,13 @@ public:
         return 0;
     }
 
-    static int binary_swapb_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_swapb_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++)
             for (unsigned reg_dst = 0;reg_dst < 16; reg_dst++) {
                 failure = failure ||
-                    do_binary_swapb_gen_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_swapb_gen_gen(cpu, bios, mem, reg_src, reg_dst,
                                             randgen32->pick_val(0));
             }
         return failure;
@@ -6259,7 +6305,7 @@ public:
 
     // SWAP.W Rm, Rn
     // 0110nnnnmmmm1001
-    static int do_binary_swapw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_swapw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg_src, unsigned reg_dst,
                                        unsigned val) {
         Sh4Prog test_prog;
@@ -6274,7 +6320,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val;
@@ -6292,13 +6338,13 @@ public:
         return 0;
     }
 
-    static int binary_swapw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_swapw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++)
             for (unsigned reg_dst = 0;reg_dst < 16; reg_dst++) {
                 failure = failure ||
-                    do_binary_swapw_gen_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_swapw_gen_gen(cpu, bios, mem, reg_src, reg_dst,
                                             randgen32->pick_val(0));
             }
         return failure;
@@ -6306,7 +6352,7 @@ public:
 
     // XTRCT Rm, Rn
     // 0110nnnnmmmm1101
-    static int do_binary_xtrct_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_xtrct_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg_src, unsigned reg_dst,
                                        unsigned val_src, unsigned val_dst) {
         Sh4Prog test_prog;
@@ -6321,7 +6367,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val_src;
@@ -6341,7 +6387,7 @@ public:
         return 0;
     }
 
-    static int binary_xtrct_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_xtrct_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++)
@@ -6352,7 +6398,7 @@ public:
                 if (reg_src != reg_dst)
                     randgen32->pick_val(0);
                 failure = failure ||
-                    do_binary_xtrct_gen_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_xtrct_gen_gen(cpu, bios, mem, reg_src, reg_dst,
                                             val_src, val_dst);
             }
         return failure;
@@ -6360,7 +6406,7 @@ public:
 
     // EXTS.B Rm, Rn
     // 0110nnnnmmmm1110
-    static int do_binary_extsb_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_extsb_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg_src, unsigned reg_dst,
                                        unsigned val_src) {
         Sh4Prog test_prog;
@@ -6372,7 +6418,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val_src;
@@ -6391,7 +6437,7 @@ public:
         return 0;
     }
 
-    static int binary_extsb_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_extsb_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++)
@@ -6399,7 +6445,7 @@ public:
                 unsigned val_src = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_binary_extsb_gen_gen(cpu, mem, reg_src,
+                    do_binary_extsb_gen_gen(cpu, bios, mem, reg_src,
                                             reg_dst, val_src);
             }
         return failure;
@@ -6407,7 +6453,7 @@ public:
 
     // EXTS.W Rm, Rnn
     // 0110nnnnmmmm1111
-    static int do_binary_extsw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_extsw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg_src, unsigned reg_dst,
                                        unsigned val_src) {
         Sh4Prog test_prog;
@@ -6419,7 +6465,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val_src;
@@ -6438,7 +6484,7 @@ public:
         return 0;
     }
 
-    static int binary_extsw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_extsw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++)
@@ -6446,7 +6492,7 @@ public:
                 unsigned val_src = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_binary_extsw_gen_gen(cpu, mem, reg_src,
+                    do_binary_extsw_gen_gen(cpu, bios, mem, reg_src,
                                             reg_dst, val_src);
             }
         return failure;
@@ -6454,7 +6500,7 @@ public:
 
     // EXTU.B Rm, Rn
     // 0110nnnnmmmm1100
-    static int do_binary_extub_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_extub_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg_src, unsigned reg_dst,
                                        unsigned val_src) {
         Sh4Prog test_prog;
@@ -6466,7 +6512,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val_src;
@@ -6485,7 +6531,7 @@ public:
         return 0;
     }
 
-    static int binary_extub_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_extub_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++)
@@ -6493,7 +6539,7 @@ public:
                 unsigned val_src = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_binary_extub_gen_gen(cpu, mem, reg_src,
+                    do_binary_extub_gen_gen(cpu, bios, mem, reg_src,
                                             reg_dst, val_src);
             }
         return failure;
@@ -6501,7 +6547,7 @@ public:
 
     // EXTU.W Rm, Rn
     // 0110nnnnmmmm1101
-    static int do_binary_extuw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_extuw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg_src, unsigned reg_dst,
                                        unsigned val_src) {
         Sh4Prog test_prog;
@@ -6513,7 +6559,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val_src;
@@ -6532,7 +6578,7 @@ public:
         return 0;
     }
 
-    static int binary_extuw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_extuw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++)
@@ -6540,7 +6586,7 @@ public:
                 unsigned val_src = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_binary_extuw_gen_gen(cpu, mem, reg_src,
+                    do_binary_extuw_gen_gen(cpu, bios, mem, reg_src,
                                             reg_dst, val_src);
             }
         return failure;
@@ -6548,7 +6594,7 @@ public:
 
     // ROTL Rn
     // 0100nnnn00000100
-    static int do_unary_rotl_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_rotl_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                  unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -6558,7 +6604,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -6585,12 +6631,12 @@ public:
         return 0;
     }
 
-    static int unary_rotl_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_rotl_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_rotl_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_rotl_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -6598,7 +6644,7 @@ public:
 
     // ROTR Rn
     // 0100nnnn00000101
-    static int do_unary_rotr_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_rotr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                  unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -6608,7 +6654,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -6635,12 +6681,12 @@ public:
         return 0;
     }
 
-    static int unary_rotr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_rotr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_rotr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_rotr_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -6648,7 +6694,7 @@ public:
 
     // ROTCL Rn
     // 0100nnnn00100100
-    static int do_unary_rotcl_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_rotcl_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                   unsigned reg_no, uint32_t val, bool t_flag) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -6658,7 +6704,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -6689,15 +6735,15 @@ public:
         return 0;
     }
 
-    static int unary_rotcl_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_rotcl_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_rotcl_gen(cpu, mem, reg_no,
+                do_unary_rotcl_gen(cpu, bios, mem, reg_no,
                                    randgen32->pick_val(0), false);
             failure = failure ||
-                do_unary_rotcl_gen(cpu, mem, reg_no,
+                do_unary_rotcl_gen(cpu, bios, mem, reg_no,
                                    randgen32->pick_val(0), true);
         }
 
@@ -6706,7 +6752,7 @@ public:
 
     // ROTCR Rn
     // 0100nnnn00100101
-    static int do_unary_rotcr_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_rotcr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                   unsigned reg_no, uint32_t val, bool t_flag) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -6716,7 +6762,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -6747,15 +6793,15 @@ public:
         return 0;
     }
 
-    static int unary_rotcr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_rotcr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_rotcr_gen(cpu, mem, reg_no,
+                do_unary_rotcr_gen(cpu, bios, mem, reg_no,
                                    randgen32->pick_val(0), false);
             failure = failure ||
-                do_unary_rotcr_gen(cpu, mem, reg_no,
+                do_unary_rotcr_gen(cpu, bios, mem, reg_no,
                                    randgen32->pick_val(0), true);
         }
 
@@ -6764,7 +6810,7 @@ public:
 
     // SHAD Rm, Rn
     // 0100nnnnmmmm1100
-    static int do_binary_shad_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_shad_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                   unsigned reg_src, unsigned reg_dst,
                                   uint32_t val_src, uint32_t val_dst) {
         Sh4Prog test_prog;
@@ -6775,7 +6821,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val_src;
@@ -6803,7 +6849,7 @@ public:
         return 0;
     }
 
-    static int binary_shad_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_shad_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
@@ -6813,7 +6859,7 @@ public:
                 if (reg_src != reg_dst)
                     dst_val = randgen32->pick_val(0);
                 failure = failure ||
-                    do_binary_shad_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_shad_gen(cpu, bios, mem, reg_src, reg_dst,
                                        src_val, dst_val);
             }
         }
@@ -6823,7 +6869,7 @@ public:
 
     // SHAL Rn
     // 0100nnnn00100000
-    static int do_unary_shal_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shal_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                  unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -6833,7 +6879,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -6858,12 +6904,12 @@ public:
         return 0;
     }
 
-    static int unary_shal_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shal_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shal_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shal_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -6871,7 +6917,7 @@ public:
 
     // SHAR Rn
     // 0100nnnn00100001
-    static int do_unary_shar_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shar_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                  unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -6881,7 +6927,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -6906,12 +6952,12 @@ public:
         return 0;
     }
 
-    static int unary_shar_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shar_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shar_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shar_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -6919,7 +6965,7 @@ public:
 
     // SHLD Rm, Rn
     // 0100nnnnmmmm1101
-    static int do_binary_shld_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_shld_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                   unsigned reg_src, unsigned reg_dst,
                                   uint32_t val_src, uint32_t val_dst) {
         Sh4Prog test_prog;
@@ -6930,7 +6976,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = val_src;
@@ -6958,7 +7004,7 @@ public:
         return 0;
     }
 
-    static int binary_shld_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int binary_shld_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
@@ -6968,7 +7014,7 @@ public:
                 if (reg_src != reg_dst)
                     dst_val = randgen32->pick_val(0);
                 failure = failure ||
-                    do_binary_shld_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_shld_gen(cpu, bios, mem, reg_src, reg_dst,
                                        src_val, dst_val);
             }
         }
@@ -6978,7 +7024,7 @@ public:
 
     // SHLL Rn
     // 0100nnnn00000000
-    static int do_unary_shll_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shll_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                  unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -6988,7 +7034,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -7013,12 +7059,12 @@ public:
         return 0;
     }
 
-    static int unary_shll_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shll_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shll_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shll_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -7026,7 +7072,7 @@ public:
 
     // SHLR Rn
     // 0100nnnn00000001
-    static int do_unary_shlr_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shlr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                  unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -7036,7 +7082,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -7061,12 +7107,12 @@ public:
         return 0;
     }
 
-    static int unary_shlr_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shlr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shlr_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shlr_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -7074,7 +7120,7 @@ public:
 
     // SHLL2 Rn
     // 0100nnnn00001000
-    static int do_unary_shll2_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shll2_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                   unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -7084,7 +7130,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -7104,12 +7150,12 @@ public:
         return 0;
     }
 
-    static int unary_shll2_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shll2_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shll2_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shll2_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -7117,7 +7163,7 @@ public:
 
     // SHLR2 Rn
     // 0100nnnn00001001
-    static int do_unary_shlr2_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shlr2_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                   unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -7127,7 +7173,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -7147,12 +7193,12 @@ public:
         return 0;
     }
 
-    static int unary_shlr2_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shlr2_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shlr2_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shlr2_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -7160,7 +7206,7 @@ public:
 
     // SHLL8 Rn
     // 0100nnnn00011000
-    static int do_unary_shll8_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shll8_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                   unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -7170,7 +7216,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -7190,12 +7236,12 @@ public:
         return 0;
     }
 
-    static int unary_shll8_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shll8_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shll8_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shll8_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -7203,7 +7249,7 @@ public:
 
     // SHLR8 Rn
     // 0100nnnn00011001
-    static int do_unary_shlr8_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shlr8_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                   unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -7213,7 +7259,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -7233,12 +7279,12 @@ public:
         return 0;
     }
 
-    static int unary_shlr8_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shlr8_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shlr8_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shlr8_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -7246,7 +7292,7 @@ public:
 
     // SHLL16 Rn
     // 0100nnnn00101000
-    static int do_unary_shll16_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shll16_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -7256,7 +7302,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -7276,12 +7322,12 @@ public:
         return 0;
     }
 
-    static int unary_shll16_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shll16_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shll16_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shll16_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -7289,7 +7335,7 @@ public:
 
     // SHLR16 Rn
     // 0100nnnn00101001
-    static int do_unary_shlr16_gen(Sh4 *cpu, Memory *mem,
+    static int do_unary_shlr16_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    unsigned reg_no, uint32_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -7299,7 +7345,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
@@ -7319,12 +7365,12 @@ public:
         return 0;
     }
 
-    static int unary_shlr16_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int unary_shlr16_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
             failure = failure ||
-                do_unary_shlr16_gen(cpu, mem, reg_no, randgen32->pick_val(0));
+                do_unary_shlr16_gen(cpu, bios, mem, reg_no, randgen32->pick_val(0));
         }
 
         return failure;
@@ -7332,7 +7378,7 @@ public:
 
     // MUL.L Rm, Rn
     // 0000nnnnmmmm0111
-    static int do_binary_mull_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_mull_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned reg_src, unsigned reg_dst,
                                       reg32_t src_val, reg32_t dst_val) {
         Sh4Prog test_prog;
@@ -7343,7 +7389,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -7363,7 +7409,7 @@ public:
         return 0;
     }
 
-    static int binary_mull_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_mull_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                    RandGen32 *randgen32) {
         int failure = 0;
 
@@ -7374,7 +7420,7 @@ public:
                 if (reg_src != reg_dst)
                     dst_val = randgen32->pick_val(0);
                 failure = failure ||
-                    do_binary_mull_gen_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_mull_gen_gen(cpu, bios, mem, reg_src, reg_dst,
                                            src_val, dst_val);
             }
         }
@@ -7384,7 +7430,7 @@ public:
 
     // MULS.W Rm, Rn
     // 0010nnnnmmmm1111
-    static int do_binary_mulsw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_mulsw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg_src, unsigned reg_dst,
                                        reg32_t src_val, reg32_t dst_val) {
         Sh4Prog test_prog;
@@ -7395,7 +7441,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -7417,7 +7463,7 @@ public:
         return 0;
     }
 
-    static int binary_mulsw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_mulsw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
 
@@ -7428,7 +7474,7 @@ public:
                 if (reg_src != reg_dst)
                     dst_val = randgen32->pick_val(0);
                 failure = failure ||
-                    do_binary_mulsw_gen_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_mulsw_gen_gen(cpu, bios, mem, reg_src, reg_dst,
                                             src_val, dst_val);
             }
         }
@@ -7438,7 +7484,7 @@ public:
 
     // MULU.W Rm, Rn
     // 0010nnnnmmmm1110
-    static int do_binary_muluw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_binary_muluw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        unsigned reg_src, unsigned reg_dst,
                                        reg32_t src_val, reg32_t dst_val) {
         Sh4Prog test_prog;
@@ -7449,7 +7495,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
@@ -7471,7 +7517,7 @@ public:
         return 0;
     }
 
-    static int binary_muluw_gen_gen(Sh4 *cpu, Memory *mem,
+    static int binary_muluw_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                     RandGen32 *randgen32) {
         int failure = 0;
 
@@ -7482,7 +7528,7 @@ public:
                 if (reg_src != reg_dst)
                     dst_val = randgen32->pick_val(0);
                 failure = failure ||
-                    do_binary_muluw_gen_gen(cpu, mem, reg_src, reg_dst,
+                    do_binary_muluw_gen_gen(cpu, bios, mem, reg_src, reg_dst,
                                             src_val, dst_val);
             }
         }
@@ -7492,7 +7538,7 @@ public:
 
     // MAC.L @Rm+, @Rn+
     // 0000nnnnmmmm1111
-    static int do_binary_macl_indgeninc_indgeninc(Sh4 *cpu, Memory *mem,
+    static int do_binary_macl_indgeninc_indgeninc(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                   unsigned reg_src,
                                                   unsigned reg_dst,
                                                   addr32_t src_addr,
@@ -7513,7 +7559,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_addr;
@@ -7594,7 +7640,7 @@ public:
         return 0;
     }
 
-    static int binary_macl_indgeninc_indgeninc(Sh4 *cpu, Memory *mem,
+    static int binary_macl_indgeninc_indgeninc(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                RandGen32 *randgen32) {
         int failure = 0;
 
@@ -7602,26 +7648,26 @@ public:
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 addr32_t src_addr =
-                    randgen32->pick_range(0, mem->get_size() - 5);
+                    pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
                 addr32_t dst_addr = src_addr;
                 reg32_t src_val = randgen32->pick_val(0);
                 reg32_t dst_val = src_val;
                 if (reg_src != reg_dst) {
-                    dst_addr = randgen32->pick_range(0, mem->get_size() - 5);
+                    dst_addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
                     dst_val = randgen32->pick_val(0);
                 }
                 uint32_t macl_init = randgen32->pick_val(0);
                 uint32_t mach_init = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_binary_macl_indgeninc_indgeninc(cpu, mem, reg_src,
+                    do_binary_macl_indgeninc_indgeninc(cpu, bios, mem, reg_src,
                                                        reg_dst, src_addr,
                                                        dst_addr, src_val,
                                                        dst_val, macl_init,
                                                        mach_init, false);
 
                 failure = failure ||
-                    do_binary_macl_indgeninc_indgeninc(cpu, mem, reg_src,
+                    do_binary_macl_indgeninc_indgeninc(cpu, bios, mem, reg_src,
                                                        reg_dst, src_addr,
                                                        dst_addr, src_val,
                                                        dst_val, macl_init,
@@ -7634,7 +7680,7 @@ public:
 
     // MAC.W @Rm+, @Rn+
     // 0100nnnnmmmm1111
-    static int do_binary_macw_indgeninc_indgeninc(Sh4 *cpu, Memory *mem,
+    static int do_binary_macw_indgeninc_indgeninc(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                   unsigned reg_src,
                                                   unsigned reg_dst,
                                                   addr32_t src_addr,
@@ -7655,7 +7701,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_addr;
@@ -7734,7 +7780,7 @@ public:
         return 0;
     }
 
-    static int binary_macw_indgeninc_indgeninc(Sh4 *cpu, Memory *mem,
+    static int binary_macw_indgeninc_indgeninc(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                                RandGen32 *randgen32) {
         int failure = 0;
 
@@ -7742,26 +7788,26 @@ public:
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 addr32_t src_addr =
-                    randgen32->pick_range(0, mem->get_size() - 5);
+                    pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
                 addr32_t dst_addr = src_addr;
                 reg32_t src_val = randgen32->pick_val(0);
                 reg32_t dst_val = src_val;
                 if (reg_src != reg_dst) {
-                    dst_addr = randgen32->pick_range(0, mem->get_size() - 5);
+                    dst_addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
                     dst_val = randgen32->pick_val(0);
                 }
                 uint32_t macl_init = randgen32->pick_val(0);
                 uint32_t mach_init = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_binary_macw_indgeninc_indgeninc(cpu, mem, reg_src,
+                    do_binary_macw_indgeninc_indgeninc(cpu, bios, mem, reg_src,
                                                        reg_dst, src_addr,
                                                        dst_addr, src_val,
                                                        dst_val, macl_init,
                                                        mach_init, false);
 
                 failure = failure ||
-                    do_binary_macw_indgeninc_indgeninc(cpu, mem, reg_src,
+                    do_binary_macw_indgeninc_indgeninc(cpu, bios, mem, reg_src,
                                                        reg_dst, src_addr,
                                                        dst_addr, src_val,
                                                        dst_val, macl_init,
@@ -7774,7 +7820,7 @@ public:
 
     // CLRMAC
     // 0000000000101000
-    static int noarg_clrmac(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int noarg_clrmac(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -7783,7 +7829,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.mach = randgen32->pick_val(0);
@@ -7802,7 +7848,7 @@ public:
 
     // CLRS
     // 0000000001001000
-    static int noarg_clrs(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int noarg_clrs(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -7811,7 +7857,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
@@ -7827,7 +7873,7 @@ public:
 
     // CLRT
     // 0000000000001000
-    static int noarg_clrt(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int noarg_clrt(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -7836,7 +7882,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
@@ -7852,7 +7898,7 @@ public:
 
     // SETS
     // 0000000001011000
-    static int noarg_sets(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int noarg_sets(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -7861,7 +7907,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
@@ -7877,7 +7923,7 @@ public:
 
     // SETT
     // 0000000000011000
-    static int noarg_sett(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int noarg_sett(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -7886,7 +7932,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
@@ -7902,7 +7948,7 @@ public:
 
     // MOVCA.L R0, @Rn
     // 0000nnnn11000011
-    static int do_movcal_binary_r0_indgen(Sh4 *cpu, Memory *mem,
+    static int do_movcal_binary_r0_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                           unsigned addr, uint32_t val,
                                           unsigned reg_dst) {
         Sh4Prog test_prog;
@@ -7917,7 +7963,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = val;
@@ -7938,14 +7984,14 @@ public:
         return 0;
     }
 
-    static int movcal_binary_r0_indgen(Sh4 *cpu, Memory *mem,
+    static int movcal_binary_r0_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                        RandGen32 *randgen32) {
         int failed = 0;
 
         for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
-            addr32_t addr = randgen32->pick_val(0) % (mem->get_size() - 3);
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 4));
             failed = failed ||
-                do_movcal_binary_r0_indgen(cpu, mem, addr,
+                do_movcal_binary_r0_indgen(cpu, bios, mem, addr,
                                            randgen32->pick_val(0),
                                            reg_dst);
         }
@@ -7955,7 +8001,7 @@ public:
 
     // BT label
     // 10001001dddddddd
-    static int do_bt_label(Sh4 *cpu, Memory *mem, int8_t label,
+    static int do_bt_label(Sh4 *cpu, BiosFile *bios, Memory *mem, int8_t label,
                            addr32_t pc_init, bool t_flag) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -7965,7 +8011,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         if (t_flag)
@@ -7993,19 +8040,19 @@ public:
         return 0;
     }
 
-    static int bt_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int bt_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int i = 0; i < 16; i++) {
-            addr32_t pc = randgen32->pick_range(0, mem->get_size() -
-                                                (1 + 256 * 2 + 4));
+            addr32_t pc = pick_addr(AddrRange(randgen32, 0,
+                                              MEM_SZ - (1 + 256 * 2 + 4)));
             uint8_t label = randgen32->pick_val(0) & 0xff;
 
             failure = failure ||
-                do_bt_label(cpu, mem, label, pc, false);
+                do_bt_label(cpu, bios, mem, label, pc, false);
 
             failure = failure ||
-                do_bt_label(cpu, mem, label, pc, true);
+                do_bt_label(cpu, bios, mem, label, pc, true);
         }
 
         return failure;
@@ -8013,7 +8060,7 @@ public:
 
     // BF label
     // 10001011dddddddd
-    static int do_bf_label(Sh4 *cpu, Memory *mem, int8_t label,
+    static int do_bf_label(Sh4 *cpu, BiosFile *bios, Memory *mem, int8_t label,
                            addr32_t pc_init, bool t_flag) {
         Sh4Prog test_prog;
         std::stringstream ss;
@@ -8023,7 +8070,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         if (t_flag)
@@ -8051,19 +8099,19 @@ public:
         return 0;
     }
 
-    static int bf_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int bf_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int i = 0; i < 16; i++) {
-            addr32_t pc = randgen32->pick_range(0, mem->get_size() -
-                                                (1 + 256 * 2 + 4));
+            addr32_t pc = pick_addr(AddrRange(randgen32, 0,
+                                              MEM_SZ - (1 + 256 * 2 + 4)));
             uint8_t label = randgen32->pick_val(0) & 0xff;
 
             failure = failure ||
-                do_bf_label(cpu, mem, label, pc, false);
+                do_bf_label(cpu, bios, mem, label, pc, false);
 
             failure = failure ||
-                do_bf_label(cpu, mem, label, pc, true);
+                do_bf_label(cpu, bios, mem, label, pc, true);
         }
 
         return failure;
@@ -8071,7 +8119,7 @@ public:
 
     // BRAF Rn
     // 0000nnnn00100011
-    static int do_braf_label(Sh4 *cpu, Memory *mem, unsigned reg_no,
+    static int do_braf_label(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_no,
                              unsigned reg_src_mov, unsigned reg_dst_mov,
                              reg32_t reg_val, reg32_t mov_src_val,
                              reg32_t mov_dst_val, addr32_t pc_init) {
@@ -8084,7 +8132,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8119,16 +8168,16 @@ public:
         return 0;
     }
 
-    static int braf_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int braf_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
             for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
                 for (int reg_no = 0; reg_no < 16; reg_no++) {
-                    addr32_t pc = randgen32->pick_range(
-                        0, (mem->get_size() - 6) / 2);
-                    reg32_t reg_val = randgen32->pick_range(
-                        0, (mem->get_size() - 6) / 2);
+                    addr32_t pc = pick_addr(AddrRange(randgen32, 0,
+                                                      (MEM_SZ - 6) / 2));
+                    reg32_t reg_val = pick_addr(AddrRange(randgen32, 0,
+                                                          (MEM_SZ - 6) / 2));
                     reg32_t mov_src_val = randgen32->pick_val(0);
                     reg32_t mov_dst_val = randgen32->pick_val(0);
 
@@ -8140,7 +8189,7 @@ public:
                         mov_dst_val = mov_src_val;
 
                     failure = failure ||
-                        do_braf_label(cpu, mem, reg_no, reg_src_mov,
+                        do_braf_label(cpu, bios, mem, reg_no, reg_src_mov,
                                       reg_dst_mov, reg_val, mov_src_val,
                                       mov_dst_val, pc);
                 }
@@ -8152,7 +8201,7 @@ public:
 
     // BSRF Rn
     // 0000nnnn00000011
-    static int do_bsrf_label(Sh4 *cpu, Memory *mem, unsigned reg_no,
+    static int do_bsrf_label(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_no,
                              unsigned reg_src_mov, unsigned reg_dst_mov,
                              reg32_t reg_val, reg32_t mov_src_val,
                              reg32_t mov_dst_val, addr32_t pc_init) {
@@ -8165,7 +8214,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8205,16 +8255,16 @@ public:
         return 0;
     }
 
-    static int bsrf_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int bsrf_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
             for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
                 for (int reg_no = 0; reg_no < 16; reg_no++) {
-                    addr32_t pc = randgen32->pick_range(
-                        0, (mem->get_size() - 6) / 2);
-                    reg32_t reg_val = randgen32->pick_range(
-                        0, (mem->get_size() - 6) / 2);
+                    addr32_t pc = pick_addr(AddrRange(randgen32,
+                                                      0, (MEM_SZ - 6) / 2));
+                    reg32_t reg_val = pick_addr(AddrRange(randgen32,
+                                                          0, (MEM_SZ - 6) / 2));
                     reg32_t mov_src_val = randgen32->pick_val(0);
                     reg32_t mov_dst_val = randgen32->pick_val(0);
 
@@ -8226,7 +8276,7 @@ public:
                         mov_dst_val = mov_src_val;
 
                     failure = failure ||
-                        do_bsrf_label(cpu, mem, reg_no, reg_src_mov,
+                        do_bsrf_label(cpu, bios, mem, reg_no, reg_src_mov,
                                       reg_dst_mov, reg_val, mov_src_val,
                                       mov_dst_val, pc);
                 }
@@ -8238,10 +8288,10 @@ public:
 
     // RTS
     // 0000000000001011
-    static int do_rts_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
-                            unsigned reg_dst_mov, reg32_t pr_val,
-                            reg32_t mov_src_val, reg32_t mov_dst_val,
-                            addr32_t pc_init) {
+    static int do_rts_label(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                            unsigned reg_src_mov, unsigned reg_dst_mov,
+                            reg32_t pr_val, reg32_t mov_src_val,
+                            reg32_t mov_dst_val, addr32_t pc_init) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -8251,7 +8301,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8290,15 +8341,15 @@ public:
         return 0;
     }
 
-    static int rts_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int rts_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
             for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
-                addr32_t pc = randgen32->pick_range(
-                    0, (mem->get_size() - 6) / 2);
-                reg32_t pr_val = randgen32->pick_range(
-                    0, (mem->get_size() - 6) / 2);
+                addr32_t pc = pick_addr(AddrRange(randgen32,
+                                                  0, (MEM_SZ - 6) / 2));
+                reg32_t pr_val = pick_addr(AddrRange(randgen32,
+                                                  0, (MEM_SZ - 6) / 2));
                 reg32_t mov_src_val = randgen32->pick_val(0);
                 reg32_t mov_dst_val = randgen32->pick_val(0);
 
@@ -8306,7 +8357,7 @@ public:
                     mov_dst_val = mov_src_val;
 
                 failure = failure ||
-                    do_rts_label(cpu, mem, reg_src_mov, reg_dst_mov, pr_val,
+                    do_rts_label(cpu, bios, mem, reg_src_mov, reg_dst_mov, pr_val,
                                  mov_src_val, mov_dst_val, pc);
             }
         }
@@ -8316,10 +8367,10 @@ public:
 
     // BSR label
     // 1011dddddddddddd
-    static int do_bsr_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
-                            unsigned reg_dst_mov, int16_t disp12,
-                            reg32_t mov_src_val, reg32_t mov_dst_val,
-                            addr32_t pc_init) {
+    static int do_bsr_label(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                            unsigned reg_src_mov, unsigned reg_dst_mov,
+                            int16_t disp12, reg32_t mov_src_val,
+                            reg32_t mov_dst_val, addr32_t pc_init) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -8329,7 +8380,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8368,14 +8420,13 @@ public:
         return 0;
     }
 
-    static int bsr_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int bsr_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
             for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
                 for (int reg_no = 0; reg_no < 16; reg_no++) {
-                    addr32_t pc = randgen32->pick_range(
-                        0, (mem->get_size() - 6) / 2);
+                    addr32_t pc = pick_addr(AddrRange(0, (MEM_SZ - 6) / 2));
                     int16_t disp12 = randgen32->pick_val(0) & 0xfff;
                     if (disp12 & 0x800)
                         disp12 |= ~0xfff;// sign-extend to 16 bits
@@ -8386,7 +8437,7 @@ public:
                         mov_dst_val = mov_src_val;
 
                     failure = failure ||
-                        do_bsr_label(cpu, mem, reg_src_mov,
+                        do_bsr_label(cpu, bios, mem, reg_src_mov,
                                       reg_dst_mov, disp12, mov_src_val,
                                       mov_dst_val, pc);
                 }
@@ -8398,10 +8449,10 @@ public:
 
     // BRA label
     // 1010dddddddddddd
-    static int do_bra_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
-                            unsigned reg_dst_mov, int16_t disp12,
-                            reg32_t mov_src_val, reg32_t mov_dst_val,
-                            addr32_t pc_init) {
+    static int do_bra_label(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                            unsigned reg_src_mov, unsigned reg_dst_mov,
+                            int16_t disp12, reg32_t mov_src_val,
+                            reg32_t mov_dst_val, addr32_t pc_init) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -8411,7 +8462,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8445,14 +8497,13 @@ public:
         return 0;
     }
 
-    static int bra_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int bra_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
             for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
                 for (int reg_no = 0; reg_no < 16; reg_no++) {
-                    addr32_t pc = randgen32->pick_range(
-                        0, (mem->get_size() - 6) / 2);
+                    addr32_t pc = pick_addr(AddrRange(0, (MEM_SZ - 6) / 2));
                     int16_t disp12 = randgen32->pick_val(0) & 0xfff;
                     if (disp12 & 0x800)
                         disp12 |= ~0xfff;// sign-extend to 16 bits
@@ -8463,7 +8514,7 @@ public:
                         mov_dst_val = mov_src_val;
 
                     failure = failure ||
-                        do_bra_label(cpu, mem, reg_src_mov,
+                        do_bra_label(cpu, bios, mem, reg_src_mov,
                                       reg_dst_mov, disp12, mov_src_val,
                                       mov_dst_val, pc);
                 }
@@ -8475,7 +8526,7 @@ public:
 
     // BF/S label
     // 10001111dddddddd
-    static int do_bfs_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
+    static int do_bfs_label(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_src_mov,
                             unsigned reg_dst_mov, int8_t disp8, bool t_val,
                             reg32_t mov_src_val, reg32_t mov_dst_val,
                             addr32_t pc_init) {
@@ -8488,7 +8539,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8531,14 +8583,14 @@ public:
         return 0;
     }
 
-    static int bfs_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int bfs_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
             for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
                 for (int reg_no = 0; reg_no < 16; reg_no++) {
-                    addr32_t pc = randgen32->pick_range(
-                        0, (mem->get_size() - 6) / 2);
+                    addr32_t pc = pick_addr(AddrRange(randgen32, 0,
+                                                      (MEM_SZ - 6) / 2));
                     int8_t disp8 = randgen32->pick_val(0) & 0xfff;
                     reg32_t mov_src_val = randgen32->pick_val(0);
                     reg32_t mov_dst_val = randgen32->pick_val(0);
@@ -8547,12 +8599,12 @@ public:
                         mov_dst_val = mov_src_val;
 
                     failure = failure ||
-                        do_bfs_label(cpu, mem, reg_src_mov,
+                        do_bfs_label(cpu, bios, mem, reg_src_mov,
                                      reg_dst_mov, disp8, true, mov_src_val,
                                      mov_dst_val, pc);
 
                     failure = failure ||
-                        do_bfs_label(cpu, mem, reg_src_mov,
+                        do_bfs_label(cpu, bios, mem, reg_src_mov,
                                      reg_dst_mov, disp8, true, mov_src_val,
                                      mov_dst_val, pc);
                 }
@@ -8564,7 +8616,7 @@ public:
 
     // BT/S label
     // 10001101dddddddd
-    static int do_bts_label(Sh4 *cpu, Memory *mem, unsigned reg_src_mov,
+    static int do_bts_label(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_src_mov,
                             unsigned reg_dst_mov, int8_t disp8, bool t_val,
                             reg32_t mov_src_val, reg32_t mov_dst_val,
                             addr32_t pc_init) {
@@ -8577,7 +8629,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8620,14 +8673,14 @@ public:
         return 0;
     }
 
-    static int bts_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int bts_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
             for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
                 for (int reg_no = 0; reg_no < 16; reg_no++) {
-                    addr32_t pc = randgen32->pick_range(
-                        0, (mem->get_size() - 6) / 2);
+                    addr32_t pc = pick_addr(AddrRange(randgen32, 0,
+                                                      (MEM_SZ - 6) / 2));
                     int8_t disp8 = randgen32->pick_val(0) & 0xfff;
                     reg32_t mov_src_val = randgen32->pick_val(0);
                     reg32_t mov_dst_val = randgen32->pick_val(0);
@@ -8636,12 +8689,12 @@ public:
                         mov_dst_val = mov_src_val;
 
                     failure = failure ||
-                        do_bts_label(cpu, mem, reg_src_mov,
+                        do_bts_label(cpu, bios, mem, reg_src_mov,
                                      reg_dst_mov, disp8, true, mov_src_val,
                                      mov_dst_val, pc);
 
                     failure = failure ||
-                        do_bts_label(cpu, mem, reg_src_mov,
+                        do_bts_label(cpu, bios, mem, reg_src_mov,
                                      reg_dst_mov, disp8, true, mov_src_val,
                                      mov_dst_val, pc);
                 }
@@ -8653,7 +8706,7 @@ public:
 
     // JMP @Rn
     // 0100nnnn00101011
-    static int do_jmp_label(Sh4 *cpu, Memory *mem, unsigned reg_no,
+    static int do_jmp_label(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_no,
                             unsigned reg_src_mov, unsigned reg_dst_mov,
                             reg32_t reg_val, reg32_t mov_src_val,
                             reg32_t mov_dst_val, addr32_t pc_init) {
@@ -8666,7 +8719,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8701,16 +8755,16 @@ public:
         return 0;
     }
 
-    static int jmp_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int jmp_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
             for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
                 for (int reg_no = 0; reg_no < 16; reg_no++) {
-                    addr32_t pc = randgen32->pick_range(
-                        0, mem->get_size() - 4);
-                    reg32_t reg_val = randgen32->pick_range(
-                        0, mem->get_size() - 2);
+                    addr32_t pc = pick_addr(AddrRange(randgen32,
+                                                      0, MEM_SZ - 4));
+                    reg32_t reg_val = pick_addr(AddrRange(randgen32,
+                                                          0, MEM_SZ - 4));
                     reg32_t mov_src_val = randgen32->pick_val(0);
                     reg32_t mov_dst_val = randgen32->pick_val(0);
 
@@ -8722,7 +8776,7 @@ public:
                         mov_dst_val = mov_src_val;
 
                     failure = failure ||
-                        do_jmp_label(cpu, mem, reg_no, reg_src_mov,
+                        do_jmp_label(cpu, bios, mem, reg_no, reg_src_mov,
                                      reg_dst_mov, reg_val, mov_src_val,
                                      mov_dst_val, pc);
                 }
@@ -8734,7 +8788,7 @@ public:
 
     // JSR @Rn
     // 0100nnnn00001011
-    static int do_jsr_label(Sh4 *cpu, Memory *mem, unsigned reg_no,
+    static int do_jsr_label(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_no,
                             unsigned reg_src_mov, unsigned reg_dst_mov,
                             reg32_t reg_val, reg32_t mov_src_val,
                             reg32_t mov_dst_val, addr32_t pc_init) {
@@ -8747,7 +8801,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init, inst.begin(), inst.end());
+        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
+                                  inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8787,16 +8842,16 @@ public:
         return 0;
     }
 
-    static int jsr_label(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int jsr_label(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
         int failure = 0;
 
         for (int reg_src_mov = 0; reg_src_mov < 16; reg_src_mov++) {
             for (int reg_dst_mov = 0; reg_dst_mov < 16; reg_dst_mov++) {
                 for (int reg_no = 0; reg_no < 16; reg_no++) {
-                    addr32_t pc = randgen32->pick_range(
-                        0, mem->get_size() - 4);
-                    reg32_t reg_val = randgen32->pick_range(
-                        0, mem->get_size() - 2);
+                    addr32_t pc = pick_addr(AddrRange(randgen32,
+                                                      0, MEM_SZ - 4));
+                    reg32_t reg_val = pick_addr(AddrRange(randgen32,
+                                                          0, MEM_SZ - 2));
                     reg32_t mov_src_val = randgen32->pick_val(0);
                     reg32_t mov_dst_val = randgen32->pick_val(0);
 
@@ -8808,7 +8863,7 @@ public:
                         mov_dst_val = mov_src_val;
 
                     failure = failure ||
-                        do_jsr_label(cpu, mem, reg_no, reg_src_mov,
+                        do_jsr_label(cpu, bios, mem, reg_no, reg_src_mov,
                                      reg_dst_mov, reg_val, mov_src_val,
                                      mov_dst_val, pc);
                 }
@@ -8820,7 +8875,7 @@ public:
 
     // DMULS.L Rm, Rn
     // 0011nnnnmmmm1101
-    static int do_dmulsl_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_dmulsl_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                  unsigned reg_m, unsigned reg_n,
                                  reg32_t reg_m_val, reg32_t reg_n_val) {
         Sh4Prog test_prog;
@@ -8831,7 +8886,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_m) = reg_m_val;
@@ -8856,7 +8911,8 @@ public:
         return 0;
     }
 
-    static int dmulsl_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int dmulsl_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                              RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_m_no = 0; reg_m_no < 16; reg_m_no++) {
             for (unsigned reg_n_no = 0; reg_n_no < 16; reg_n_no++) {
@@ -8867,7 +8923,7 @@ public:
                     reg_n_val = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_dmulsl_gen_gen(cpu, mem, reg_m_no, reg_n_no,
+                    do_dmulsl_gen_gen(cpu, bios, mem, reg_m_no, reg_n_no,
                                       reg_m_val, reg_n_val);
             }
         }
@@ -8877,7 +8933,7 @@ public:
 
     // DMULU.L Rm, Rn
     // 0011nnnnmmmm0101
-    static int do_dmulul_gen_gen(Sh4 *cpu, Memory *mem,
+    static int do_dmulul_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                  unsigned reg_m, unsigned reg_n,
                                  reg32_t reg_m_val, reg32_t reg_n_val) {
         Sh4Prog test_prog;
@@ -8888,7 +8944,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_m) = reg_m_val;
@@ -8913,7 +8969,8 @@ public:
         return 0;
     }
 
-    static int dmulul_gen_gen(Sh4 *cpu, Memory *mem, RandGen32 *randgen32) {
+    static int dmulul_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                              RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_m_no = 0; reg_m_no < 16; reg_m_no++) {
             for (unsigned reg_n_no = 0; reg_n_no < 16; reg_n_no++) {
@@ -8924,7 +8981,7 @@ public:
                     reg_n_val = randgen32->pick_val(0);
 
                 failure = failure ||
-                    do_dmulul_gen_gen(cpu, mem, reg_m_no, reg_n_no,
+                    do_dmulul_gen_gen(cpu, bios, mem, reg_m_no, reg_n_no,
                                       reg_m_val, reg_n_val);
             }
         }
@@ -9121,7 +9178,9 @@ struct inst_test {
 
 int main(int argc, char **argv) {
     Memory mem(16 * 1024 * 1024);
-    Sh4 cpu(&mem);
+    BiosFile bios;
+    MemoryMap mem_map(&bios, &mem);
+    Sh4 cpu(&mem_map);
     struct inst_test *test = inst_tests;
     int n_success = 0, n_tests = 0;
     unsigned int seed = time(NULL);
@@ -9139,7 +9198,7 @@ int main(int argc, char **argv) {
         while (test->name) {
             std::cout << "Trying " << test->name << "..." << std::endl;
 
-            int test_ret = test->func(&cpu, &mem, &randgen32);
+            int test_ret = test->func(&cpu, &bios, &mem, &randgen32);
 
             if (test_ret != 0)
                 std::cout << test->name << " FAIL" << std::endl;

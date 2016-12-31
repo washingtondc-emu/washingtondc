@@ -44,7 +44,7 @@ public:
     }
 };
 
-Sh4::Sh4(Memory *mem) {
+Sh4::Sh4(MemoryMap *mem) {
     this->mem = mem;
 
     reg_area = new uint8_t[P4_REGEND - P4_REGSTART];

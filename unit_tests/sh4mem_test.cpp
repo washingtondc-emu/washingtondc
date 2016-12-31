@@ -27,7 +27,8 @@
 #include <list>
 
 #include "BaseException.hpp"
-#include "hw/sh4/Memory.hpp"
+#include "Memory.hpp"
+#include "MemoryMap.hpp"
 #include "hw/sh4/sh4.hpp"
 #include "RandGenerator.hpp"
 
@@ -120,8 +121,9 @@ public:
         setup();
 
         gen.reset();
-        addr32_t start = offset;
-        addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff);
+        addr32_t start = offset + MemoryMap::RAM_FIRST;
+        addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff) +
+            MemoryMap::RAM_FIRST;
         static const addr32_t CACHELINE_MASK = ~0x1f;
         for (addr32_t addr = start;
              ((addr + sizeof(ValType)) & CACHELINE_MASK) + 32 < end;
@@ -709,7 +711,9 @@ int run_tests() {
 
 int main(int argc, char **argv) {
     Memory mem(16 * 1024 * 1024);
-    Sh4 cpu(&mem);
+    BiosFile bios;
+    MemoryMap mem_map(&bios, &mem);
+    Sh4 cpu(&mem_map);
     int ret_val = 0;
 
     try {

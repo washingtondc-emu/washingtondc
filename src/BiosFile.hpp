@@ -27,14 +27,33 @@
 #include <vector>
 #include <boost/cstdint.hpp>
 
+#include "types.hpp"
+#include "BaseException.hpp"
+
 class BiosFile {
 public:
+    /*
+     * default constructor allocates SZ_EXPECT bytes and zeroes it out.
+     * the other constructors load the file indicated by path.
+     */
+    BiosFile();
     BiosFile(char const *path);
     BiosFile(const std::string &path);
     ~BiosFile();
 
     uint8_t *begin();
     uint8_t *end();
+
+    int read(void *buf, size_t addr, size_t len) const;
+
+    /*
+     * loads a program into the given address.  the InputIterator's
+     * indirect method (overload*) should return a data_tp.
+     */
+    template<typename data_tp, class InputIterator>
+    void load_binary(addr32_t where, InputIterator start, InputIterator end);
+
+    void clear();
 
 private:
     static const size_t SZ_EXPECT = 0x1fffff + 1;
@@ -44,5 +63,23 @@ private:
     size_t dat_len;
     uint8_t *dat;
 };
+
+template<typename data_tp, class InputIterator>
+void BiosFile::load_binary(addr32_t where, InputIterator start,
+                           InputIterator end) {
+    size_t bytes_written = 0;
+
+    clear();
+
+    for (InputIterator it = start; it != end; it++) {
+        data_tp tmp = *it;
+
+        if (bytes_written + sizeof(data_tp) >= dat_len)
+            BOOST_THROW_EXCEPTION(InvalidParamError());
+
+        memcpy(dat + bytes_written, &tmp, sizeof(tmp));
+        bytes_written += sizeof(tmp);
+    }
+}
 
 #endif
