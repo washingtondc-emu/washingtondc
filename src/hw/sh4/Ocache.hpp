@@ -102,7 +102,7 @@ public:
 
 private:
     Sh4 *sh4;
-    Memory *mem;
+    MemoryMap *mem;
 
     // 16 KB ("Operand Cache" in the hardware manual)
     uint8_t *op_cache;
