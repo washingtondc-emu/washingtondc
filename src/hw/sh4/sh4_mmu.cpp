@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -73,20 +73,16 @@ addr32_t Sh4::utlb_ent_get_ppn(struct utlb_entry *ent) const {
     switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
     case ONE_KILO:
         // upper 19 bits (of upper 29 bits)
-        return ((ent->ent & UTLB_ENT_PPN_MASK) >> UTLB_ENT_PPN_SHIFT) &
-            0x1ffffc00;
+        return ent->ent & UTLB_ENT_PPN_MASK & 0xfffffc00;
     case FOUR_KILO:
         // upper 17 bits (of upper 29 bits)
-        return ((ent->ent & UTLB_ENT_PPN_MASK) >> UTLB_ENT_PPN_SHIFT) &
-            0x1ffff000;
+        return ent->ent & UTLB_ENT_PPN_MASK & 0xfffff000;
     case SIXTYFOUR_KILO:
         // upper 13 bits (of upper 29 bits)
-        return ((ent->ent & UTLB_ENT_PPN_MASK) >> UTLB_ENT_PPN_SHIFT) &
-            0x1fff0000;
+        return ent->ent & UTLB_ENT_PPN_MASK & 0xffff0000;
     case ONE_MEGA:
         // upper 9 bits (of upper 29 bits)
-        return ((ent->ent & UTLB_ENT_PPN_MASK) >> UTLB_ENT_PPN_SHIFT) &
-            0x1ff00000;
+        return ent->ent & UTLB_ENT_PPN_MASK & 0xfff00000;
     default:
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
                               errinfo_param_name("UTLB size value"));
@@ -104,13 +100,13 @@ addr32_t Sh4::utlb_ent_translate(struct utlb_entry *ent, addr32_t vaddr) const {
 
     switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
     case ONE_KILO:
-        return ppn << 10 | offset;
+        return ppn | offset;
     case FOUR_KILO:
-        return ppn << 12 | offset;
+        return ppn | offset;
     case SIXTYFOUR_KILO:
-        return ppn << 16 | offset;
+        return ppn | offset;
     case ONE_MEGA:
-        return ppn << 20 | offset;
+        return ppn | offset;
     default:
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
                               errinfo_param_name("UTLB size value"));

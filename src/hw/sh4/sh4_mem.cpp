@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -94,19 +94,18 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                             }
                         } else {
 #endif
-                            // don't use the cache
-                            // XXX - shouldn't this be "paddr" instead of "addr"?
+
 #ifndef ENABLE_SH4_OCACHE
                             // handle the case where OCE is enabled and ORA is
                             // enabled but we don't have Ocache available
                             if ((cache_reg.ccr & CCR_OCE_MASK) &&
                                 (cache_reg.ccr & CCR_ORA_MASK) &&
-                                in_oc_ram_area(addr)) {
-                                do_write_ora(data, addr, len);
+                                in_oc_ram_area(paddr)) {
+                                do_write_ora(data, paddr, len);
                                 return 0;
                             }
 #endif
-                            return mem->write(data, addr & 0x1fffffff, len);
+                            return mem->write(data, paddr & 0x1fffffff, len);
 
 #ifdef ENABLE_SH4_OCACHE
                         }
@@ -158,14 +157,14 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                         // enabled but we don't have Ocache available
                         if ((cache_reg.ccr & CCR_OCE_MASK) &&
                             (cache_reg.ccr & CCR_ORA_MASK) &&
-                            in_oc_ram_area(addr)) {
-                            do_write_ora(data, addr, len);
+                            in_oc_ram_area(paddr)) {
+                            do_write_ora(data, paddr, len);
                             return;
                         }
 #endif
 
                         // don't use the cache
-                        return mem->write(data, addr & 0x1fffffff, len);
+                        return mem->write(data, paddr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
                     }
 #endif
@@ -304,14 +303,14 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
                 // enabled but we don't have Ocache available
                 if ((cache_reg.ccr & CCR_OCE_MASK) &&
                     (cache_reg.ccr & CCR_ORA_MASK) &&
-                    in_oc_ram_area(addr)) {
-                    do_read_ora(data, addr, len);
+                    in_oc_ram_area(paddr)) {
+                    do_read_ora(data, paddr, len);
                     return 0;
                 }
 #endif
 
                 // don't use the cache
-                return mem->read(data, addr & 0x1fffffff, len);
+                return mem->read(data, paddr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
             }
 #endif

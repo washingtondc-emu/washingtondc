@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -390,9 +390,10 @@ public:
         this->cpu->mmu.mmucr |= Sh4::MMUCR_AT_MASK;
 
         // map (0xf000 + page_sz) into the first page_sz bytes of virtual memory
-        addr32_t phys_addr = 0x0000ffff; // TODO: this ought to be randomized
+        // TODO: this ought to be randomized
+        addr32_t phys_addr = MemoryMap::RAM_FIRST + page_sz;
         unsigned sz = page_sz;
-        addr32_t ppn = phys_addr & ~(sz_tbl[page_sz] - 1) & 0x1fffffff;
+        addr32_t ppn = phys_addr & ~(sz_tbl[page_sz] - 1);
         bool shared = false;
         bool cacheable = false;
         unsigned priv = 3;
@@ -468,8 +469,8 @@ public:
         int d = dirty ? 1 : 0;
         int wt = write_through ? 1 : 0;
 
-        boost::uint32_t ret = (ppn << Sh4::UTLB_ENT_PPN_SHIFT) &
-            Sh4::UTLB_ENT_PPN_MASK;
+        boost::uint32_t ret = ppn & Sh4::UTLB_ENT_PPN_MASK;
+
         ret |= (sz << Sh4::UTLB_ENT_SZ_SHIFT) & Sh4::UTLB_ENT_SZ_MASK;
         ret |= (sh << Sh4::UTLB_ENT_SH_SHIFT) & Sh4::UTLB_ENT_SH_MASK;
         ret |= (c << Sh4::UTLB_ENT_C_SHIFT) & Sh4::UTLB_ENT_C_MASK;
@@ -677,7 +678,6 @@ void instantiate_tests(Sh4 *cpu, Memory *ram) {
                     (RandGen8(), cpu, ram, 2, true, true, true, true));
     tests.push_back(new BasicMemTestWithFlags<boost::uint8_t, RandGen8>
                     (RandGen8(), cpu, ram, 3, true, true, true, true));
-
 #ifdef ENABLE_SH4_MMU
     for (int page_sz = 0; page_sz < 4; page_sz++) {
         tests.push_back(new MmuUtlbMissTest<boost::uint8_t, RandGen8>(
