@@ -50,7 +50,7 @@ public:
 
     void attach();
 
-    bool step(inst_t pc);
+    bool step(addr32_t pc);
 
     void on_break();
 
@@ -153,11 +153,13 @@ private:
     std::string handle_g_packet(std::string dat);
     std::string handle_m_packet(std::string dat);
     std::string handle_q_packet(std::string dat);
+    std::string handle_z_packet(std::string dat);
     std::string handle_G_packet(std::string dat);
     std::string handle_M_packet(std::string dat);
     std::string handle_P_packet(std::string dat);
     std::string handle_D_packet(std::string dat);
     std::string handle_K_packet(std::string dat);
+    std::string handle_Z_packet(std::string dat);
 };
 
 #endif

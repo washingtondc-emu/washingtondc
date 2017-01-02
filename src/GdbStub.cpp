@@ -148,7 +148,7 @@ int GdbStub::decode_hex(char ch)
     return -1;
 }
 
-bool GdbStub::step(inst_t pc) {
+bool GdbStub::step(addr32_t pc) {
     bool res = Debugger::step(pc);
 
     if (!res)
@@ -471,6 +471,64 @@ std::string GdbStub::handle_K_packet(std::string dat) {
     return "OK";
 }
 
+std::string GdbStub::handle_Z_packet(std::string dat) {
+    if (dat.at(1) != '1')
+        return std::string();
+
+    if (dat.find_first_of(';') != std::string::npos)
+        return std::string(); // we don't support conditions
+
+    size_t first_comma_idx = dat.find_first_of(',');
+    if ((first_comma_idx == std::string::npos) ||
+        (first_comma_idx == dat.size() - 1)) {
+        return std::string(); // something is wrong and/or unexpected
+    }
+
+    size_t last_comma_idx = dat.find_last_of(',');
+    if (last_comma_idx == std::string::npos)
+        return std::string(); // something is wrong and/or unexpected
+
+    dat = dat.substr(first_comma_idx + 1, last_comma_idx - first_comma_idx);
+
+    addr32_t break_addr;
+    std::stringstream(dat) >> std::hex >> break_addr;
+
+    int err_code = add_break(break_addr);
+
+    if (err_code == 0)
+        return std::string("OK");
+
+    return std::string("E01");
+}
+
+std::string GdbStub::handle_z_packet(std::string dat) {
+    if (dat.at(1) != '1')
+        return std::string();
+
+    if (dat.find_first_of(';') != std::string::npos)
+        return std::string(); // we don't support conditions
+
+    size_t first_comma_idx = dat.find_first_of(',');
+    if (first_comma_idx == std::string::npos)
+        return std::string(); // something is wrong and/or unexpected
+
+    size_t last_comma_idx = dat.find_last_of(',');
+    if (last_comma_idx == std::string::npos)
+        return std::string(); // something is wrong and/or unexpected
+
+    dat = dat.substr(first_comma_idx + 1, last_comma_idx - first_comma_idx);
+
+    addr32_t break_addr;
+    std::stringstream(dat) >> std::hex >> break_addr;
+
+    int err_code = remove_break(break_addr);
+
+    if (err_code == 0)
+        return "OK";
+
+    return std::string("E01");
+}
+
 void GdbStub::handle_packet(std::string pkt) {
     std::string response;
     std::string dat = extract_packet(pkt);
@@ -502,6 +560,10 @@ void GdbStub::handle_packet(std::string pkt) {
             response = craft_packet(handle_D_packet(dat));
         } else if (dat.at(0) == 'k') {
             response = craft_packet(handle_K_packet(dat));
+        } else if (dat.at(0) == 'z') {
+            response = craft_packet(handle_z_packet(dat));
+        } else if (dat.at(0) == 'Z') {
+            response = craft_packet(handle_Z_packet(dat));
         }
     }
 

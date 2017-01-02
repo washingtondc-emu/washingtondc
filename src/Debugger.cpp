@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include <algorithm>
+
 #include "Debugger.hpp"
 #include "GdbStub.hpp"
 
@@ -31,18 +33,18 @@ Debugger::Debugger(Dreamcast *dc) {
     this->cur_state = STATE_BREAK;
     this->dc = dc;
 
-    for (unsigned i = 0; i < N_BREAKPOINTS; i++)
-        this->breakpoints[i] = -1;
+    std::fill(breakpoint_enable, breakpoint_enable + N_BREAKPOINTS, false);
 }
 
 Debugger::~Debugger() {
     // empty placeholder for virtual destructor, nothing to do here...
 }
 
-bool Debugger::should_break(inst_t pc) {
+bool Debugger::should_break(addr32_t pc) {
     // hold at a breakpoint for user interaction
-    if (cur_state == STATE_BREAK)
+    if (cur_state == STATE_BREAK) {
         return true;
+    }
 
     if (cur_state == STATE_POST_STEP) {
         on_break();
@@ -56,20 +58,42 @@ bool Debugger::should_break(inst_t pc) {
         return false;
     }
 
-    for (unsigned i = 0; i < N_BREAKPOINTS; i++)
-        if (pc == breakpoints[i]) {
+    for (unsigned i = 0; i < N_BREAKPOINTS; i++) {
+        if (breakpoint_enable[i] && pc == breakpoints[i]) {
+            on_break();
             cur_state = STATE_BREAK;
             return true;
         }
+    }
 
     return false;
 }
 
-bool Debugger::step(inst_t pc) {
+bool Debugger::step(addr32_t pc) {
     return should_break(pc);
 }
 
 void Debugger::on_detach() {
-    for (unsigned i = 0; i < N_BREAKPOINTS; i++)
-        this->breakpoints[i] = -1;
+    std::fill(breakpoint_enable, breakpoint_enable + N_BREAKPOINTS, false);
+}
+
+int Debugger::add_break(addr32_t addr) {
+    for (unsigned idx = 0; idx < N_BREAKPOINTS; idx++)
+        if (!breakpoint_enable[idx]) {
+            breakpoints[idx] = addr;
+            breakpoint_enable[idx] = true;
+            return 0;
+        }
+
+    return ENOBUFS;
+}
+
+int Debugger::remove_break(addr32_t addr) {
+    for (unsigned idx = 0; idx < N_BREAKPOINTS; idx++)
+        if (breakpoint_enable[idx] && breakpoints[idx] == addr) {
+            breakpoint_enable[idx] = false;
+            return 0;
+        }
+
+    return EINVAL;
 }

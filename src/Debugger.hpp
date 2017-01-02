@@ -39,18 +39,21 @@ public:
     Debugger(Dreamcast *dc);
     virtual ~Debugger();
 
-    bool should_break(inst_t pc);
+    bool should_break(addr32_t pc);
 
-    virtual bool step(inst_t pc);
+    virtual bool step(addr32_t pc);
 
     virtual void attach() = 0;
 
     virtual void on_break() = 0;
+
+    // these functions return 0 on success, nonzer on failure
+    int add_break(addr32_t addr);
+    int remove_break(addr32_t addr);
 private:
-    // I store breakpoints as int instead of inst_t because I want to be able
-    // to set them to -1 when they're disabled.
     static const unsigned N_BREAKPOINTS = 10;
-    int breakpoints[N_BREAKPOINTS];
+    addr32_t breakpoints[N_BREAKPOINTS];
+    bool breakpoint_enable[N_BREAKPOINTS];
 
     Dreamcast *dc;
 protected:
