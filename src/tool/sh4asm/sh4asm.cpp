@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -73,7 +73,8 @@ void Sh4Prog::add_txt(const std::string& line) {
     }
 }
 
-void Sh4Prog::add_single_line(const std::string& line) {
+Sh4Prog::ByteList Sh4Prog::assemble_single_line(const std::string& line,
+                                                SymMap *syms) {
     ByteList ret;
 
     if (line.at(0) == '.') {
@@ -102,13 +103,58 @@ void Sh4Prog::add_single_line(const std::string& line) {
 
         ret.push_back(data);
     } else {
-        inst_t inst = assemble_inst(line);
+        inst_t inst = assemble_inst(line, syms);
 
         ret.push_back(uint8_t(inst & 0xff));
         ret.push_back(uint8_t(inst >> 8));
     }
 
-    prog.insert(prog.end(), ret.begin(), ret.end());
+    return ret;
+}
+
+std::string Sh4Prog::disassemble_single(const ByteList& bin, size_t *idx_next) {
+    size_t idx = *idx_next;
+    std::string ret;
+
+    while (idx < bin.size()) {
+        uint8_t byte1 = bin.at(idx);
+        if ((idx + 1) < bin.size()) {
+            uint8_t byte2 = bin.at(idx + 1);
+
+            try {
+                // try to assemble the two bytes
+                inst_t inst = inst_t(byte1) | (inst_t(byte2) << 8);
+                std::string instr_txt = disassemble_inst(inst);
+
+                // if disassemble_inst did not throw a ParseError, then this
+                // was a valid instruction
+                ret += instr_txt;
+                idx += 2;
+            } catch (ParseError& err) {
+                // unrecognized opcode, go put this in as a .byte
+                std::stringstream byte_txt;
+                byte_txt << ".byte " << std::hex << unsigned(byte1) << "\n";
+                ret += byte_txt.str();
+                idx++;
+            }
+        } else {
+            // only one byte in the stream
+            std::stringstream byte_txt;
+            byte_txt << ".byte " << std::hex << unsigned(byte1) << "\n";
+            ret += byte_txt.str();
+            idx++;
+        }
+    }
+
+    *idx_next = idx;
+    return ret;
+}
+
+
+void Sh4Prog::add_single_line(const std::string& line) {
+    ByteList dat = assemble_single_line(line);
+
+    prog.insert(prog.end(), dat.begin(), dat.end());
     prog_asm += line;
 }
 
@@ -122,37 +168,11 @@ void Sh4Prog::disassemble() {
     prog_asm.clear();
 
     while (idx < prog.size()) {
-        uint8_t byte1 = prog.at(idx);
-        if ((idx + 1) < prog.size()) {
-            uint8_t byte2 = prog.at(idx + 1);
-
-            try {
-                // try to assemble the two bytes
-                inst_t inst = inst_t(byte1) | (inst_t(byte2) << 8);
-                std::string instr_txt = disassemble_inst(inst);
-
-                // if disassemble_inst did not throw a ParseError, then this
-                // was a valid instruction
-                prog_asm += instr_txt;
-                idx += 2;
-            } catch (ParseError& err) {
-                // unrecognized opcode, go put this in as a .byte
-                std::stringstream byte_txt;
-                byte_txt << ".byte " << std::hex << unsigned(byte1) << "\n";
-                prog_asm += byte_txt.str();
-                idx++;
-            }
-        } else {
-            // only one byte in the stream
-            std::stringstream byte_txt;
-            byte_txt << ".byte " << std::hex << unsigned(byte1) << "\n";
-            prog_asm += byte_txt.str();
-            idx++;
-        }
+        prog_asm += disassemble_single(prog, &idx);
     }
 }
 
-inst_t Sh4Prog::assemble_inst(const std::string& inst) const {
+inst_t Sh4Prog::assemble_inst(const std::string& inst, SymMap *syms) {
     TokList toks = tokenize_line(preprocess_line(inst));
     PtrnList patterns = get_patterns();
 
@@ -167,7 +187,7 @@ inst_t Sh4Prog::assemble_inst(const std::string& inst) const {
                           errinfo_asm_txt(inst));
 }
 
-std::string Sh4Prog::disassemble_inst(inst_t inst) const {
+std::string Sh4Prog::disassemble_inst(inst_t inst) {
     PtrnList patterns = get_patterns();
 
     for (PtrnList::iterator it = patterns.begin(); it != patterns.end();
@@ -242,6 +262,6 @@ void Sh4Prog::assemble(const std::string& txt) {
     LineTokenizer tok(txt, boost::char_separator<char>("\n"));
 
     for (LineTokenizer::iterator it = tok.begin(); it != tok.end(); it++) {
-        prog.push_back(assemble_inst(*it));
+        prog.push_back(assemble_inst(*it, &syms));
     }
 }

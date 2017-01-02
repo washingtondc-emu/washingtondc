@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -61,6 +61,7 @@ private:
 class Sh4Prog {
 public:
     typedef std::vector<uint8_t> ByteList;
+    typedef std::map<std::string, addr32_t> SymMap;
 
     Sh4Prog();
     Sh4Prog(ByteList const& prog);
@@ -87,8 +88,12 @@ public:
      * assemble or disassemble a single instruction.
      * This does not add the instruction to this Sh4Prog.
      */
-    inst_t assemble_inst(const std::string& inst) const;
-    std::string disassemble_inst(inst_t inst) const;
+    static ByteList assemble_single_line(const std::string& inst,
+                                         SymMap *syms = NULL);
+    static std::string disassemble_single(const ByteList& bin,
+                                          size_t *idx_next);
+    static inst_t assemble_inst(const std::string& inst, SymMap *syms = NULL);
+    static std::string disassemble_inst(inst_t inst);
 
     // assemble all instructions in txt and add it to this program.
     void assemble(const std::string& txt);
@@ -100,7 +105,6 @@ public:
     const std::string& get_prog_asm() const;
 
 private:
-    typedef std::map<std::string, addr32_t> SymMap;
     typedef boost::tokenizer<boost::char_separator<char> > LineTokenizer;
 
     SymMap syms;

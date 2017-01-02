@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -57,7 +57,6 @@ static void print_usage(char const *cmd) {
 }
 
 int main(int argc, char **argv) {
-    Sh4Prog prog;
     int opt;
     bool disas = false;
     char const *cmd = argv[0];
@@ -114,6 +113,22 @@ int main(int argc, char **argv) {
                 input->read((char*)&dat, 1);
                 if (!input->fail())
                     bin_dat.push_back(dat);
+
+                if (bin_dat.size() >= 2) {
+                    size_t idx = 0;
+                    do {
+                        (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                    } while (idx < bin_dat.size());
+
+                    bin_dat.clear();
+                }
+            }
+
+            if (bin_dat.size()) {
+                size_t idx = 0;
+                do {
+                    (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                } while (idx < bin_dat.size());
             }
         } else {
             while (input->good()) {
@@ -137,33 +152,46 @@ int main(int argc, char **argv) {
                 }
 
                 even = !even;
+
+                if (bin_dat.size() >= 2) {
+                    size_t idx = 0;
+                    do {
+                        (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                    } while (idx < bin_dat.size());
+
+                    bin_dat.clear();
+                }
+            }
+
+            if (!even)
+                bin_dat.push_back(dat);
+
+            if (bin_dat.size()) {
+                size_t idx = 0;
+                do {
+                    (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                } while (idx < bin_dat.size());
             }
         }
-
-        if (!even)
-            bin_dat.push_back(dat);
-
-        prog.add_bin(bin_dat);
-        (*output) << prog.get_prog_asm();
     } else {
         while (input->good()) {
             std::string line;
             std::getline(*input, line, '\n');
 
-            if (!only_whitespace(line)) {
+            if (!only_whitespace(line))
                 line += "\n";
-                prog.add_txt(line);
-            }
-        }
 
-        Sh4Prog::ByteList bin_dat = prog.get_prog();
-        for (Sh4Prog::ByteList::iterator it = bin_dat.begin();
-             it != bin_dat.end(); it++) {
-            if (bin_mode) {
-                char dat = *it;
-                output->write(&dat, 1);
-            } else {
-                (*output) << std::hex << unsigned(*it) << std::endl;
+            if (line.size()) {
+                Sh4Prog::ByteList bin_dat = Sh4Prog::assemble_single_line(line);
+                for (Sh4Prog::ByteList::iterator it = bin_dat.begin();
+                     it != bin_dat.end(); it++) {
+                    if (bin_mode) {
+                        char dat = *it;
+                        output->write(&dat, 1);
+                    } else {
+                        (*output) << std::hex << unsigned(*it) << std::endl;
+                    }
+                }
             }
         }
     }
