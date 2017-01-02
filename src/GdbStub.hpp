@@ -105,6 +105,8 @@ private:
     std::string craft_packet(std::string data_in);
     std::string extract_packet(std::string packet_in);
 
+    static std::string err_str(unsigned err_val);
+
     Dreamcast *dc;
 
     static int decode_hex(char ch);

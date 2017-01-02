@@ -339,6 +339,23 @@ int GdbStub::set_reg(Sh4::RegFile *file, unsigned reg_no,
     return 0;
 }
 
+std::string GdbStub::err_str(unsigned err_val) {
+    static char const hex_chars[] = {
+        '0', '1', '2', '3',
+        '4', '5', '6', '7',
+        '8', '9', 'a', 'b',
+        'c', 'd', 'e', 'f'
+    };
+
+    // dont print more than 2 digits
+    err_val &= 0xff;
+    std::string err_str = std::string() + hex_chars[err_val >> 4];
+    err_val &= 0x0f;
+    err_str += hex_chars[err_val];
+
+    return "E" + err_str;
+}
+
 void GdbStub::handle_c_packet(std::string dat) {
     cur_state = Debugger::STATE_NORM;
 }
@@ -368,7 +385,7 @@ std::string GdbStub::handle_m_packet(std::string dat) {
         try {
             dc->get_cpu()->read_mem(&val, addr++, sizeof(val));
         } catch (BaseException& exc) {
-            return std::string("E01"); // EINVAL
+            return err_str(EINVAL);
         }
 
         ss << std::setfill('0') << std::setw(2) << std::hex << unsigned(val);
@@ -498,7 +515,7 @@ std::string GdbStub::handle_Z_packet(std::string dat) {
     if (err_code == 0)
         return std::string("OK");
 
-    return std::string("E01");
+    return err_str(err_code);
 }
 
 std::string GdbStub::handle_z_packet(std::string dat) {
@@ -526,7 +543,7 @@ std::string GdbStub::handle_z_packet(std::string dat) {
     if (err_code == 0)
         return "OK";
 
-    return std::string("E01");
+    return err_str(err_code);
 }
 
 void GdbStub::handle_packet(std::string pkt) {
