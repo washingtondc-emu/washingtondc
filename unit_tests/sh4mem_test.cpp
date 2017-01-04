@@ -122,7 +122,7 @@ public:
 
         gen.reset();
 
-        addr32_t ora_start, ora_end;
+        addr32_t ora_start = 0, ora_end = 0;
         if (cpu->cache_reg.ccr & Sh4::CCR_ORA_MASK) {
             /*
              * now let's screw around a bit with the Operand cache's 8KB RAM

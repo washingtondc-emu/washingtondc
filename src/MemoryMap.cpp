@@ -37,7 +37,11 @@ int MemoryMap::read(void *buf, size_t addr, size_t len) const {
         // check RAM first because that's the case we want to optimize for
         if (addr >= RAM_FIRST && addr <= RAM_LAST) {
             return mem->read(buf, addr - RAM_FIRST, len);
-        } else if (addr >= BIOS_FIRST && addr <= BIOS_LAST) {
+        } else if (addr <= BIOS_LAST) {
+            /*
+             * XXX In case you were wondering: we don't check to see if
+             * addr >= BIOS_FIRST because BIOS_FIRST is 0
+             */
             if (addr + len > BIOS_LAST)
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
@@ -61,7 +65,11 @@ int MemoryMap::write(void const *buf, size_t addr, size_t len) {
         // check RAM first because that's the case we want to optimize for
         if (addr >= RAM_FIRST && addr <= RAM_LAST) {
             return mem->write(buf, addr - RAM_FIRST, len);
-        } else if (addr >= BIOS_FIRST && addr <= BIOS_LAST) {
+        } else if (addr <= BIOS_LAST) {
+            /*
+             * XXX In case you were wondering: we don't check to see if
+             * addr >= BIOS_FIRST because BIOS_FIRST is 0
+             */
             BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                   errinfo_feature("Proper response for when "
                                                   "the guest tries to write to "
