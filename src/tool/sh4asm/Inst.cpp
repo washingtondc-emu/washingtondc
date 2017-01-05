@@ -488,13 +488,13 @@ PtrnList get_patterns() {
     // MOV.W @(disp, PC), Rn
     // 1001nnnndddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw), Ptrn_BinaryInd<
-                           Ptrn_Disp<0x00ff>, Ptrn_PcReg, 0x0000, 0, 0>,
+                           Ptrn_Disp<0x00ff, 1, false>, Ptrn_PcReg, 0x0000, 0, 0>,
                            Ptrn_GenReg, 0x9000, 0xf000, 0, 8>));
 
     // MOV.L @(disp, PC), Rn
     // 1101nnnndddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movl), Ptrn_BinaryInd<
-                           Ptrn_Disp<0x00ff>, Ptrn_PcReg, 0x0000, 0, 0>,
+                           Ptrn_Disp<0x00ff, 2, false>, Ptrn_PcReg, 0x0000, 0, 0>,
                            Ptrn_GenReg, 0xd000, 0xf000, 0, 8>));
 
     /***************************************************************************
@@ -895,13 +895,13 @@ PtrnList get_patterns() {
     // MOV.B R0, @(disp, Rn)
     // 10000000nnnndddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movb), Ptrn_R0Reg,
-                           Ptrn_BinaryInd<Ptrn_Disp<0xf>, Ptrn_GenReg, 0, 0, 4>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xf, 0, false>, Ptrn_GenReg, 0, 0, 4>,
                            0x8000, 0xff00, 0, 0>));
 
     // MOV.W R0, @(disp, Rn)
     // 10000001nnnndddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw), Ptrn_R0Reg,
-                           Ptrn_BinaryInd<Ptrn_Disp<0xf>, Ptrn_GenReg, 0, 0, 4>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xf, 1, false>, Ptrn_GenReg, 0, 0, 4>,
                            0x8100, 0xff00, 0, 0>));
 
     /***************************************************************************
@@ -913,7 +913,7 @@ PtrnList get_patterns() {
     // MOV.L Rm, @(disp, Rn)
     // 0001nnnnmmmmdddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movl), Ptrn_GenReg,
-                           Ptrn_BinaryInd<Ptrn_Disp<0xf>, Ptrn_GenReg, 0, 0, 8>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xf, 2, false>, Ptrn_GenReg, 0, 0, 8>,
                            0x1000, 0xf000, 4, 0>));
 
     /***************************************************************************
@@ -924,13 +924,13 @@ PtrnList get_patterns() {
     // MOV.B @(disp, Rm), R0
     // 10000100mmmmdddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movb),
-                           Ptrn_BinaryInd<Ptrn_Disp<0xf>, Ptrn_GenReg, 0, 0, 4>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xf, 0, false>, Ptrn_GenReg, 0, 0, 4>,
                            Ptrn_R0Reg, 0x8400, 0xff00, 0, 0>));
 
     // MOV.W @(disp, Rm), R0
     // 10000101mmmmdddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw),
-                           Ptrn_BinaryInd<Ptrn_Disp<0xf>, Ptrn_GenReg, 0, 0, 4>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xf, 1, false>, Ptrn_GenReg, 0, 0, 4>,
                            Ptrn_R0Reg, 0x8500, 0xff00, 0, 0>));
 
     /***************************************************************************
@@ -942,7 +942,7 @@ PtrnList get_patterns() {
     // MOV.L @(disp, Rm), Rn
     // 0101nnnnmmmmdddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movl),
-                           Ptrn_BinaryInd<Ptrn_Disp<0xf>, Ptrn_GenReg, 0, 0, 4>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xf, 2, false>, Ptrn_GenReg, 0, 0, 4>,
                            Ptrn_GenReg, 0x5000, 0xf000, 0, 8>));
 
     /***************************************************************************
@@ -1001,19 +1001,19 @@ PtrnList get_patterns() {
     // MOV.B R0, @(disp, GBR)
     // 11000000dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movb), Ptrn_R0Reg,
-                           Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_GbrReg, 0, 0, 0>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xff, 0, false>, Ptrn_GbrReg, 0, 0, 0>,
                            0xc000, 0xff00, 0, 0>));
 
     // MOV.W R0, @(disp, GBR)
     // 11000001dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw), Ptrn_R0Reg,
-                           Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_GbrReg, 0, 0, 0>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xff, 1, false>, Ptrn_GbrReg, 0, 0, 0>,
                            0xc100, 0xff00, 0, 0>));
 
     // MOV.L R0, @(disp, GBR)
     // 11000010dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movl), Ptrn_R0Reg,
-                           Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_GbrReg, 0, 0, 0>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xff, 2, false>, Ptrn_GbrReg, 0, 0, 0>,
                            0xc200, 0xff00, 0, 0>));
 
     /***************************************************************************
@@ -1024,19 +1024,19 @@ PtrnList get_patterns() {
     // MOV.B @(disp, GBR), R0
     // 11000100dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movb),
-                           Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_GbrReg, 0, 0, 0>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xff, 0, false>, Ptrn_GbrReg, 0, 0, 0>,
                            Ptrn_R0Reg, 0xc400, 0xff00, 0, 0>));
 
     // MOV.W @(disp, GBR), R0
     // 11000101dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movw),
-                           Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_GbrReg, 0, 0, 0>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xff, 1, false>, Ptrn_GbrReg, 0, 0, 0>,
                            Ptrn_R0Reg, 0xc500, 0xff00, 0, 0>));
 
     // MOV.L @(disp, GBR), R0
     // 11000110dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(movl),
-                           Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_GbrReg, 0, 0, 0>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xff, 2, false>, Ptrn_GbrReg, 0, 0, 0>,
                            Ptrn_R0Reg, 0xc600, 0xff00, 0, 0>));
 
     /***************************************************************************
@@ -1047,7 +1047,7 @@ PtrnList get_patterns() {
     // MOVA @(disp, PC), R0
     // 11000111dddddddd
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(mova),
-                           Ptrn_BinaryInd<Ptrn_Disp<0xff>, Ptrn_PcReg, 0, 0, 0>,
+                           Ptrn_BinaryInd<Ptrn_Disp<0xff, 2, false>, Ptrn_PcReg, 0, 0, 0>,
                            Ptrn_R0Reg, 0xc700, 0xff00, 0, 0>));
 
     /***************************************************************************

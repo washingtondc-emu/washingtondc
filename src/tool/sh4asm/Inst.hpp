@@ -847,10 +847,18 @@ private:
  * Displacement values, which are like immediates but they don't
  * begin with #-symbols.
  *
+ * SCALE_SHIFT is how many bits the displacement is left-shifted by (when
+ * converting from binary to asm form) or right-shifted by (when converting
+ * from asm form to binary)
+ *
+ * HEX_PREF should be true if the value should be in hex notation when
+ * disassembling; otherwise it will be in decimal notation.  This has no bearing
+ * on how the value is assembled
+ *
  * TODO: add support for labels here (wherein you reference an address by a
  *       string of ascii letters).
  */
-template <unsigned MASK>
+template <unsigned MASK, unsigned SCALE_SHIFT = 0, bool HEX_PREF=true>
 class Ptrn_Disp : public Pattern {
 public:
     virtual int matches(TokList::reverse_iterator rbegin,
@@ -893,12 +901,15 @@ public:
     }
 
     inst_t assemble() const {
-        return imm & MASK;
+        return (imm >> SCALE_SHIFT) & MASK;
     }
 
     Token disassemble(inst_t opcode) const {
         std::stringstream ss;
-        ss << "0x" << std::hex << (opcode & MASK);
+        if (HEX_PREF)
+            ss << "0x" << std::hex << ((opcode & MASK) << SCALE_SHIFT);
+        else
+            ss << std::dec << ((opcode & MASK) << SCALE_SHIFT);
         return ss.str();
     }
 private:
