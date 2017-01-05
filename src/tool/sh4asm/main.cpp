@@ -56,25 +56,35 @@ static void print_usage(char const *cmd) {
         "instruction" << std::endl;
 }
 
+// used to print the program address of a given instruction (if enabled)
+static void print_addr(std::ostream *output, addr32_t addr) {
+    (*output) << std::hex << std::setfill('0') <<
+        std::setw(8) << addr << ":    ";
+}
+
 int main(int argc, char **argv) {
     int opt;
     bool disas = false;
     char const *cmd = argv[0];
     char const *filename_in = NULL, *filename_out = NULL;
     bool bin_mode = false;
+    bool print_addrs = false;
 
     std::ostream *output = &std::cout;
     std::istream *input = &std::cin;
     std::ofstream *file_out = NULL;
     std::ifstream *file_in = NULL;
 
-    while ((opt = getopt(argc, argv, "bdi:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "bdli:o:")) != -1) {
         switch (opt) {
         case 'b':
             bin_mode = true;
             break;
         case 'd':
             disas = true;
+            break;
+        case 'l':
+            print_addrs = true;
             break;
         case 'i':
             filename_in = optarg;
@@ -107,6 +117,7 @@ int main(int argc, char **argv) {
         Sh4Prog::ByteList bin_dat;
         uint8_t dat = 0;
         bool even = true;
+        addr32_t pc = 0;
 
         if (bin_mode) {
             while (input->good()) {
@@ -117,7 +128,13 @@ int main(int argc, char **argv) {
                 if (bin_dat.size() >= 2) {
                     size_t idx = 0;
                     do {
+                        if (print_addrs)
+                            print_addr(output, pc);
+
+                        size_t old_idx = idx;
                         (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                        size_t adv = idx - old_idx;
+                        pc += adv;
                     } while (idx < bin_dat.size());
 
                     bin_dat.clear();
@@ -127,7 +144,13 @@ int main(int argc, char **argv) {
             if (bin_dat.size()) {
                 size_t idx = 0;
                 do {
+                    if (print_addrs)
+                        print_addr(output, pc);
+
+                    size_t old_idx = idx;
                     (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                    size_t adv = idx - old_idx;
+                    pc += adv;
                 } while (idx < bin_dat.size());
             }
         } else {
@@ -156,7 +179,13 @@ int main(int argc, char **argv) {
                 if (bin_dat.size() >= 2) {
                     size_t idx = 0;
                     do {
+                        if (print_addrs)
+                            print_addr(output, pc);
+
+                        size_t old_idx = idx;
                         (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                        size_t adv = idx - old_idx;
+                        pc += adv;
                     } while (idx < bin_dat.size());
 
                     bin_dat.clear();
@@ -169,7 +198,13 @@ int main(int argc, char **argv) {
             if (bin_dat.size()) {
                 size_t idx = 0;
                 do {
+                    if (print_addrs)
+                        print_addr(output, pc);
+
+                    size_t old_idx = idx;
                     (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                    size_t adv = idx - old_idx;
+                    pc += adv;
                 } while (idx < bin_dat.size());
             }
         }
@@ -177,6 +212,24 @@ int main(int argc, char **argv) {
         while (input->good()) {
             std::string line;
             std::getline(*input, line, '\n');
+
+            /*
+             * filter out addresses left by the -l option in disassembler mode
+             * The way this is implemented effectively turns everything before
+             * the colon into a comment (because we ignore it), but users
+             * should not actually use rely on this behavior because eventually
+             * it may change.  Colons will probably be used as a suffix for
+             * labels at some point since that seems to be the standard way to
+             * implement labels across most assemblers.
+             */
+            size_t colon_idx = line.find_first_of(':');
+            if (colon_idx != std::string::npos)
+                line = line.substr(colon_idx + 1);
+
+            // trim leading whitespace
+            size_t first_non_whitespace_idx = line.find_first_not_of(" \t");
+            if (first_non_whitespace_idx != std::string::npos)
+                line = line.substr(first_non_whitespace_idx);
 
             if (!only_whitespace(line))
                 line += "\n";

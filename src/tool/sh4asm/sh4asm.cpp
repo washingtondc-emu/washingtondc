@@ -116,7 +116,7 @@ std::string Sh4Prog::disassemble_single(const ByteList& bin, size_t *idx_next) {
     size_t idx = *idx_next;
     std::string ret;
 
-    while (idx < bin.size()) {
+    if (idx < bin.size()) {
         uint8_t byte1 = bin.at(idx);
         if ((idx + 1) < bin.size()) {
             uint8_t byte2 = bin.at(idx + 1);
