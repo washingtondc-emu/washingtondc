@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <iterator>
 
 #include <boost/shared_ptr.hpp>
 
@@ -39,19 +40,9 @@ typedef std::vector<Token> TokList;
 PtrnList get_patterns();
 
 template <class IteratorType>
-static bool safe_to_advance(IteratorType begin, IteratorType end, int adv) {
-    /*
-     * This is certainly the "wrong" way to do this and I would fail any job
-     * interview where I submitted this code, but I'm not at a job interview
-     * and I'm not in the mood for algebra either.
-     */
-    while (adv) {
-        if (begin == end)
-            return false;
-        begin++;
-        adv--;
-    }
-    return true;
+static inline bool
+safe_to_advance(IteratorType begin, IteratorType end, int adv) {
+    return std::distance(begin, end) >= adv;
 }
 
 class Pattern {
