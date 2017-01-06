@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "BiosFile.hpp"
 #include "Memory.hpp"
 #include "hw/sh4/sh4.hpp"
+#include "hw/g1/g1.hpp"
 
 #ifdef ENABLE_DEBUGGER
 #include "Debugger.hpp"
@@ -52,6 +53,8 @@ private:
     Sh4 *cpu;
     BiosFile *bios;
     Memory *mem;
+    G1Bus *g1;
+
     MemoryMap *mem_map;
 
     bool is_running;

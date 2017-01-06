@@ -2,7 +2,7 @@
 #
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2016 snickerbockers
+#    Copyright (C) 2016, 2017 snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -40,6 +40,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mem.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_reg.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/g1/g1.hpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/g1/g1_reg.cpp"
                 "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
                 "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp"
                 "${PROJECT_SOURCE_DIR}/src/Memory.hpp"

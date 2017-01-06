@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -39,7 +39,9 @@ Dreamcast::Dreamcast(char const *bios_path) {
 
     mem = new Memory(MEM_SZ);
     bios = new BiosFile(bios_path);
-    mem_map = new MemoryMap(bios, mem);
+    g1 = new G1Bus();
+
+    mem_map = new MemoryMap(bios, mem, g1);
 
     cpu = new Sh4(mem_map);
 }
@@ -52,6 +54,7 @@ Dreamcast::~Dreamcast() {
 
     delete cpu;
     delete mem_map;
+    delete g1;
     delete bios;
     delete mem;
 }

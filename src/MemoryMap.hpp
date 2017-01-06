@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,16 +25,23 @@
 
 #include "BiosFile.hpp"
 #include "Memory.hpp"
+#include "hw/g1/g1.hpp"
 
 class MemoryMap {
 public:
+    // System Boot ROM
     const static size_t BIOS_FIRST = 0;
     const static size_t BIOS_LAST  = 0x001fffff;
 
+    // main system memory
     const static size_t RAM_FIRST  = 0x0c000000;
     const static size_t RAM_LAST   = 0x0cffffff;
 
-    MemoryMap(BiosFile *bios, Memory *mem);
+    // G1 bus control registers
+    const static size_t G1_FIRST = 0x005F7400;
+    const static size_t G1_LAST  = 0x005F74FF;
+
+    MemoryMap(BiosFile *bios, Memory *mem, G1Bus *g1);
     ~MemoryMap();
 
     int read(void *buf, size_t addr, size_t len) const;
@@ -43,6 +50,7 @@ public:
 private:
     BiosFile *bios;
     Memory *mem;
+    G1Bus *g1;
 };
 
 #endif

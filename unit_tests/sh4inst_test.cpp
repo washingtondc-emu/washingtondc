@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -9179,7 +9179,7 @@ struct inst_test {
 int main(int argc, char **argv) {
     Memory mem(16 * 1024 * 1024);
     BiosFile bios;
-    MemoryMap mem_map(&bios, &mem);
+    MemoryMap mem_map(&bios, &mem, NULL);
     Sh4 cpu(&mem_map);
     struct inst_test *test = inst_tests;
     int n_success = 0, n_tests = 0;

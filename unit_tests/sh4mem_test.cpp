@@ -725,7 +725,7 @@ int run_tests() {
 int main(int argc, char **argv) {
     Memory mem(16 * 1024 * 1024);
     BiosFile bios;
-    MemoryMap mem_map(&bios, &mem);
+    MemoryMap mem_map(&bios, &mem, NULL);
     Sh4 cpu(&mem_map);
     int ret_val = 0;
 
