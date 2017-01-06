@@ -847,7 +847,7 @@ public:
         std::stringstream ss;
         std::string cmd;
 
-        ss << "MOV.W @(" << disp << ", PC), R" << reg_no << "\n";
+        ss << "MOV.W @(" << (disp * 2) << ", PC), R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
@@ -910,7 +910,7 @@ public:
         std::stringstream ss;
         std::string cmd;
 
-        ss << "MOV.L @(" << disp << ", PC), R" << reg_no << "\n";
+        ss << "MOV.L @(" << (disp * 4) << ", PC), R" << reg_no << "\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
@@ -1814,7 +1814,7 @@ public:
             val = base;
         }
 
-        ss << "MOV.W R0, @(" << (int)disp << ", R" << reg_base << ")\n";
+        ss << "MOV.W R0, @(" << int(disp * 2) << ", R" << reg_base << ")\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
@@ -1870,7 +1870,7 @@ public:
             val = base;
         }
 
-        ss << "MOV.L R" << reg_src << ", @(" << (int)disp << ", R" <<
+        ss << "MOV.L R" << reg_src << ", @(" << int(disp * 4) << ", R" <<
             reg_base << ")\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
@@ -1984,7 +1984,7 @@ public:
             val = base;
         }
 
-        ss << "MOV.W @(" << (int)disp << ", R" << reg_base << "), R0\n";
+        ss << "MOV.W @(" << int(disp * 2) << ", R" << reg_base << "), R0\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
@@ -2038,7 +2038,7 @@ public:
             val = base;
         }
 
-        ss << "MOV.L @(" << (int)disp << ", R" << reg_base << "), R" <<
+        ss << "MOV.L @(" << int(disp * 4) << ", R" << reg_base << "), R" <<
             reg_dst << "\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
@@ -2604,7 +2604,7 @@ public:
         std::string cmd;
         Sh4Prog test_prog;
 
-        ss << "MOV.W R0, @(" << (unsigned)disp << ", GBR)\n";
+        ss << "MOV.W R0, @(" << unsigned(disp * 2) << ", GBR)\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
@@ -2656,7 +2656,7 @@ public:
         std::string cmd;
         Sh4Prog test_prog;
 
-        ss << "MOV.L R0, @(" << (unsigned)disp << ", GBR)\n";
+        ss << "MOV.L R0, @(" << unsigned(disp * 4) << ", GBR)\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
@@ -2757,7 +2757,7 @@ public:
         std::string cmd;
         Sh4Prog test_prog;
 
-        ss << "MOV.W @(" << (unsigned)disp << ", GBR), R0\n";
+        ss << "MOV.W @(" << unsigned(disp * 2) << ", GBR), R0\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
@@ -2806,7 +2806,7 @@ public:
         std::string cmd;
         Sh4Prog test_prog;
 
-        ss << "MOV.L @(" << (unsigned)disp << ", GBR), R0\n";
+        ss << "MOV.L @(" << unsigned(disp * 4) << ", GBR), R0\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
@@ -2854,7 +2854,7 @@ public:
         std::string cmd;
         Sh4Prog test_prog;
 
-        ss << "MOVA @(" << (unsigned)disp << ", PC), R0\n";
+        ss << "MOVA @(" << unsigned(disp * 4) << ", PC), R0\n";
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
