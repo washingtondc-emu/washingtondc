@@ -907,7 +907,7 @@ public:
     Token disassemble(inst_t opcode) const {
         std::stringstream ss;
         if (HEX_PREF)
-            ss << "0x" << std::hex << ((opcode & MASK) << SCALE_SHIFT);
+            ss << "0x" << std::hex << unsigned((opcode & MASK) << SCALE_SHIFT);
         else
             ss << std::dec << ((opcode & MASK) << SCALE_SHIFT);
         return ss.str();
