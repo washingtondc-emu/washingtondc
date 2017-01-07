@@ -41,6 +41,9 @@ typedef boost::error_info<struct tag_wtf_error_info, std::string> errinfo_wtf;
 typedef boost::error_info<struct tag_guest_addr_error_info, addr32_t>
 errinfo_guest_addr;
 
+typedef boost::error_info<struct tag_op_type_error_info, std::string>
+errinfo_op_type;
+
 /*
  * errinfo_advice - for when the program already
  * knows what you need to do to fix something.
@@ -49,6 +52,11 @@ typedef boost::error_info<struct tag_advice_error_info, std::string>
 errinfo_advice;
 
 typedef boost::error_info<struct tag_length_error_info, size_t> errinfo_length;
+
+typedef boost::error_info<struct tag_val32_error_info, uint8_t> errinfo_val8;
+typedef boost::error_info<struct tag_val32_error_info, uint16_t> errinfo_val16;
+typedef boost::error_info<struct tag_val32_error_info, uint32_t> errinfo_val32;
+typedef boost::error_info<struct tag_val32_error_info, uint64_t> errinfo_val64;
 
 class BaseException : public virtual std::exception,
                       public virtual boost::exception {

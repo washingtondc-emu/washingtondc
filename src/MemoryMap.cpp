@@ -67,6 +67,7 @@ int MemoryMap::read(void *buf, size_t addr, size_t len) const {
                               errinfo_guest_addr(addr));
     } catch(BaseException& exc) {
         exc << errinfo_guest_addr(addr);
+        exc << errinfo_op_type("read");
         throw;
     }
 }
@@ -97,6 +98,25 @@ int MemoryMap::write(void const *buf, size_t addr, size_t len) {
         }
     } catch(BaseException& exc) {
         exc << errinfo_guest_addr(addr);
+        exc << errinfo_op_type("write");
+
+        switch (len) {
+        case 1:
+            exc << errinfo_val8(*(uint8_t*)buf);
+            break;
+        case 2:
+            exc << errinfo_val16(*(uint16_t*)buf);
+            break;
+        case 4:
+            exc << errinfo_val32(*(uint32_t*)buf);
+            break;
+        case 8:
+            exc << errinfo_val64(*(uint64_t*)buf);
+            break;
+        default:
+            break; // do nothing
+        }
+
         throw;
     }
 
