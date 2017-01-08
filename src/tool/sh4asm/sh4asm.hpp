@@ -91,7 +91,8 @@ public:
     static ByteList assemble_single_line(const std::string& inst,
                                          SymMap *syms = NULL);
     static std::string disassemble_single(const ByteList& bin,
-                                          size_t *idx_next);
+                                          size_t *idx_next,
+                                          bool hex_comments = false);
     static inst_t assemble_inst(const std::string& inst, SymMap *syms = NULL);
     static std::string disassemble_inst(inst_t inst);
 
@@ -123,7 +124,11 @@ private:
 
     static TokList tokenize_line(const std::string& line);
 
-    static unsigned to_hex(char ch);
+    // given a hex-character, return its value
+    static unsigned hex_to_bin(char ch);
+
+    // given a value, return it as an ascii hexadecimal character
+    static char bin_to_hex(uint8_t val);
 
     inst_t assemble_tokens(PtrnList toks);
     inst_t assemble_op_noargs(const std::string& inst);
@@ -136,4 +141,8 @@ private:
      * that forms a valid instruction when combined with the new ByteList.
      */
     void disassemble();
+
+    static const unsigned COMMENT_COL = 20;
+    static std::string hex_comment(uint8_t val);
+    static std::string hex_comment(uint16_t val);
 };

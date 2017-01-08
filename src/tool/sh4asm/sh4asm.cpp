@@ -45,7 +45,7 @@ Sh4Prog::Sh4Prog(std::string const& asm_txt) {
     add_txt(asm_txt);
 }
 
-unsigned Sh4Prog::to_hex(char ch) {
+unsigned Sh4Prog::hex_to_bin(char ch) {
     if (ch >= '0' && ch <= '9')
         return ch - '0';
     if (ch >= 'a' && ch <= 'f')
@@ -54,6 +54,17 @@ unsigned Sh4Prog::to_hex(char ch) {
         return ch - 'A' + 10;
 
     BOOST_THROW_EXCEPTION(InvalidParamError("character is not hex"));
+}
+
+char Sh4Prog::bin_to_hex(uint8_t val) {
+    static char const tbl[16] = {
+        '0', '1', '2', '3',
+        '4', '5', '6', '7',
+        '8', '9', 'a', 'b',
+        'c', 'd', 'e', 'f'
+    };
+
+    return tbl[val];
 }
 
 addr32_t Sh4Prog::lookup_sym(const std::string& sym_name) const {
@@ -93,7 +104,7 @@ Sh4Prog::ByteList Sh4Prog::assemble_single_line(const std::string& line,
                 BOOST_THROW_EXCEPTION(ParseError("Garbage data in "
                                                  ".byte directive"));
             } else if (char_count < 2) {
-                data = (data << 4) | to_hex(*it);
+                data = (data << 4) | hex_to_bin(*it);
                 char_count++;
             } else {
                 BOOST_THROW_EXCEPTION(ParseError("more than a byte of data in "
@@ -112,9 +123,10 @@ Sh4Prog::ByteList Sh4Prog::assemble_single_line(const std::string& line,
     return ret;
 }
 
-std::string Sh4Prog::disassemble_single(const ByteList& bin, size_t *idx_next) {
+std::string Sh4Prog::disassemble_single(const ByteList& bin, size_t *idx_next,
+                                        bool hex_comments) {
     size_t idx = *idx_next;
-    std::string ret;
+    std::stringstream ret;
 
     if (idx < bin.size()) {
         uint8_t byte1 = bin.at(idx);
@@ -128,26 +140,47 @@ std::string Sh4Prog::disassemble_single(const ByteList& bin, size_t *idx_next) {
 
                 // if disassemble_inst did not throw a ParseError, then this
                 // was a valid instruction
-                ret += instr_txt;
+                ret << std::left << std::setw(COMMENT_COL) <<
+                    std::setfill(' ') << instr_txt;
+
+                if (hex_comments)
+                    ret << hex_comment(inst);
+
+                ret << "\n";
+
                 idx += 2;
             } catch (ParseError& err) {
                 // unrecognized opcode, go put this in as a .byte
                 std::stringstream byte_txt;
-                byte_txt << ".byte " << std::hex << unsigned(byte1) << "\n";
-                ret += byte_txt.str();
+                byte_txt << ".byte " << std::hex << unsigned(byte1);
+
+                ret << std::left << std::setw(COMMENT_COL) <<
+                    std::setfill(' ') << byte_txt.str();
+
+                if (hex_comments)
+                    ret << hex_comment(byte1);
+
+                ret << "\n";
                 idx++;
             }
         } else {
             // only one byte in the stream
             std::stringstream byte_txt;
-            byte_txt << ".byte " << std::hex << unsigned(byte1) << "\n";
-            ret += byte_txt.str();
+            byte_txt << ".byte " << std::hex << unsigned(byte1);
+
+            ret << std::left << std::setw(COMMENT_COL) <<
+                std::setfill(' ') << byte_txt.str();
+
+            if (hex_comments)
+                ret << hex_comment(byte1);
+
+            ret << "\n";
             idx++;
         }
     }
 
     *idx_next = idx;
-    return ret;
+    return ret.str();
 }
 
 
@@ -264,4 +297,29 @@ void Sh4Prog::assemble(const std::string& txt) {
     for (LineTokenizer::iterator it = tok.begin(); it != tok.end(); it++) {
         prog.push_back(assemble_inst(*it, &syms));
     }
+}
+
+std::string Sh4Prog::hex_comment(uint8_t val) {
+    char val_as_txt[3];
+
+    val_as_txt[0] = bin_to_hex((val & 0xf0) >> 4);
+    val_as_txt[1] = bin_to_hex(val & 0xf);
+    val_as_txt[2] = '\0';
+
+    return std::string(";;    ") + val_as_txt;
+}
+
+std::string Sh4Prog::hex_comment(uint16_t val) {
+    char val_high_as_txt[3];
+    char val_low_as_txt[3];
+
+    val_high_as_txt[0] = bin_to_hex((val & 0xf000) >> 12);
+    val_high_as_txt[1] = bin_to_hex((val & 0x0f00) >> 8);
+    val_high_as_txt[2] = '\0';
+
+    val_low_as_txt[0] = bin_to_hex((val & 0x00f0) >> 4);
+    val_low_as_txt[1] = bin_to_hex(val & 0x000f);
+    val_low_as_txt[2] = '\0';
+
+    return std::string(";;    ") + val_high_as_txt + " " + val_low_as_txt;
 }

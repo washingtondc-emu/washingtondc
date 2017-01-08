@@ -56,10 +56,11 @@ struct options {
     bool bin_mode;
     bool print_addrs;
     bool disas;
+    bool hex_comments;
 };
 
 static void print_usage(char const *cmd) {
-    std::cerr << "Usage: " << cmd << " [-i input] [-o output] " <<
+    std::cerr << "Usage: " << cmd << " -[bdlc] [-i input] [-o output] " <<
         "instruction" << std::endl;
 }
 
@@ -75,6 +76,7 @@ void do_disasm(std::istream *input, std::ostream *output,
     uint8_t dat = 0;
     bool even = true;
     addr32_t pc = 0;
+    bool const hex_comments = options->hex_comments;
 
     if (options->bin_mode) {
         while (input->good()) {
@@ -89,7 +91,8 @@ void do_disasm(std::istream *input, std::ostream *output,
                         print_addr(output, pc);
 
                     size_t old_idx = idx;
-                    (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                    (*output) << Sh4Prog::disassemble_single(bin_dat, &idx,
+                                                             hex_comments);
                     size_t adv = idx - old_idx;
                     pc += adv;
                 } while (idx < bin_dat.size());
@@ -105,7 +108,8 @@ void do_disasm(std::istream *input, std::ostream *output,
                     print_addr(output, pc);
 
                 size_t old_idx = idx;
-                (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                (*output) << Sh4Prog::disassemble_single(bin_dat, &idx,
+                                                         hex_comments);
                 size_t adv = idx - old_idx;
                 pc += adv;
             } while (idx < bin_dat.size());
@@ -140,7 +144,8 @@ void do_disasm(std::istream *input, std::ostream *output,
                         print_addr(output, pc);
 
                     size_t old_idx = idx;
-                    (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                    (*output) << Sh4Prog::disassemble_single(bin_dat, &idx,
+                                                             hex_comments);
                     size_t adv = idx - old_idx;
                     pc += adv;
                 } while (idx < bin_dat.size());
@@ -159,7 +164,8 @@ void do_disasm(std::istream *input, std::ostream *output,
                     print_addr(output, pc);
 
                 size_t old_idx = idx;
-                (*output) << Sh4Prog::disassemble_single(bin_dat, &idx);
+                (*output) << Sh4Prog::disassemble_single(bin_dat, &idx,
+                                                         hex_comments);
                 size_t adv = idx - old_idx;
                 pc += adv;
             } while (idx < bin_dat.size());
@@ -185,6 +191,10 @@ void do_asm(std::istream *input, std::ostream *output,
         size_t colon_idx = line.find_first_of(':');
         if (colon_idx != std::string::npos)
             line = line.substr(colon_idx + 1);
+
+        size_t comment_idx = line.find_first_of(';');
+        if (colon_idx != std::string::npos)
+            line = line.substr(0, comment_idx);
 
         // trim leading whitespace
         size_t first_non_whitespace_idx = line.find_first_not_of(" \t");
@@ -222,10 +232,13 @@ int main(int argc, char **argv) {
     std::ofstream *file_out = NULL;
     std::ifstream *file_in = NULL;
 
-    while ((opt = getopt(argc, argv, "bdli:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "bcdli:o:")) != -1) {
         switch (opt) {
         case 'b':
             options.bin_mode = true;
+            break;
+        case 'c':
+            options.hex_comments = true;
             break;
         case 'd':
             options.disas = true;
@@ -256,9 +269,8 @@ int main(int argc, char **argv) {
     if (options.filename_in)
         input = file_in = new std::ifstream(options.filename_in);
 
-    if (options.filename_out) {
+    if (options.filename_out)
         output = file_out = new std::ofstream(options.filename_out);
-    }
 
     try {
         if (options.disas) {

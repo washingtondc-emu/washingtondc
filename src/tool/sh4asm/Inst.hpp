@@ -248,7 +248,7 @@ struct NoArgOperator : public Pattern {
     }
 
     Token disassemble(inst_t opcode) const {
-        return inst.disassemble(opcode) + "\n";
+        return inst.disassemble(opcode);
     }
 
     virtual int matches(inst_t opcode) {
@@ -294,7 +294,7 @@ struct UnaryOperator : public Pattern {
 
     Token disassemble(inst_t opcode) const {
         return inst.disassemble(opcode) + " " +
-            src.disassemble(opcode >> SRC_SHIFT) + "\n";
+            src.disassemble(opcode >> SRC_SHIFT);
     }
 };
 
@@ -357,7 +357,7 @@ struct BinaryOperator : public Pattern {
     Token disassemble(inst_t opcode) const {
         return inst.disassemble(opcode) + " " +
             src.disassemble(opcode >> SRC_SHIFT) + ", " +
-            dst.disassemble(opcode >> DST_SHIFT) + "\n";
+            dst.disassemble(opcode >> DST_SHIFT);
     }
 };
 
@@ -442,7 +442,7 @@ struct TrinaryOperator : public Pattern {
         return inst.disassemble(opcode) + " " +
             src1.disassemble(opcode >> SRC1_SHIFT) + ", " +
             src2.disassemble(opcode >> SRC2_SHIFT) + ", " +
-            dst.disassemble(opcode >> DST_SHIFT) + "\n";
+            dst.disassemble(opcode >> DST_SHIFT);
     }
 };
 
