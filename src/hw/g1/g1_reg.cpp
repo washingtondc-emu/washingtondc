@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <cstring>
+#include <iostream>
 
 #include "g1.hpp"
 
@@ -32,6 +33,8 @@ struct G1Bus::MemMappedReg G1Bus::mem_mapped_regs[] = {
     // XXX this is supposed to be write-only, but currently it's readable
     { "SB_G1RRC", 0x005f7480, 0xffffffff, 4,
     &G1Bus::DefaultRegReadHandler, &G1Bus::DefaultRegWriteHandler },
+    { "UNKNOWN", 0x005f74e4, 0xffffffff, 4,
+      &G1Bus::WarnRegReadHandler, &G1Bus::WarnRegWriteHandler },
     { NULL }
 };
 
@@ -86,3 +89,14 @@ int G1Bus::DefaultRegWriteHandler(void const *buf, addr32_t addr,
     return 0;
 }
 
+int G1Bus::WarnRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    std::cerr << "WARNING: attempted " << len << "-byte read from G1 bus "
+        "register 0x" << std::hex << addr << std::endl;
+    return DefaultRegReadHandler(buf, addr, len);
+}
+
+int G1Bus::WarnRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    std::cerr << "WARNING: attempted " << len << "-byte write to G1 bus "
+        "register 0x" << std::hex << addr << std::endl;
+    return DefaultRegWriteHandler(buf, addr, len);
+}

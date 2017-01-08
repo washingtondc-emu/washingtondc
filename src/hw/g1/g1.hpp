@@ -52,6 +52,13 @@ private:
     int DefaultRegReadHandler(void *buf, addr32_t addr, unsigned len);
     int DefaultRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
 
+    /*
+     * functionally identical to DefaultRegReadHandler and
+     * DefaultRegWriteHandler except they also log a warning message.
+     */
+    int WarnRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int WarnRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
     static struct MemMappedReg {
         char const *reg_name;
 
