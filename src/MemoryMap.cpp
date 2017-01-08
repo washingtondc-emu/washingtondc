@@ -43,12 +43,13 @@ int MemoryMap::read(void *buf, size_t addr, size_t len) const {
              * XXX In case you were wondering: we don't check to see if
              * addr >= BIOS_FIRST because BIOS_FIRST is 0
              */
-            if (addr + len > BIOS_LAST) {
+            if ((addr - 1 + len) > BIOS_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
                                                       "past a memory map's "
-                                                      "end"));
+                                                      "end") <<
+                                      errinfo_length(len));
             }
             return bios->read(buf, addr - BIOS_FIRST, len);
         } else if (addr >= G1_FIRST && addr <= G1_LAST) {
@@ -57,7 +58,8 @@ int MemoryMap::read(void *buf, size_t addr, size_t len) const {
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
                                                       "past a memory map's "
-                                                      "end"));
+                                                      "end") <<
+                                      errinfo_length(len));
             }
             return g1->read(buf, addr - G1_FIRST, len);
         }
@@ -85,14 +87,16 @@ int MemoryMap::write(void const *buf, size_t addr, size_t len) {
             BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                   errinfo_feature("Proper response for when "
                                                   "the guest tries to write to "
-                                                  "read-only memory"));
+                                                  "read-only memory") <<
+                                  errinfo_length(len));
         } else if (addr >= G1_FIRST && addr <= G1_LAST) {
             if (addr + len > G1_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
                                                       "past a memory map's "
-                                                      "end"));
+                                                      "end") <<
+                                      errinfo_length(len));
             }
             return g1->write(buf, addr, len);
         }
