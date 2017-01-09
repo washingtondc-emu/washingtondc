@@ -8988,6 +8988,191 @@ public:
 
         return failure;
     }
+
+    // LDS Rm, FPSCR
+    // 0100mmmm01101010
+    static int do_binary_lds_gen_fpscr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                       unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS R" << reg_no << ", FPSCR\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        if (cpu->fpu.fpscr != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << cpu->fpu.fpscr << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_lds_gen_fpscr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_lds_gen_fpscr(cpu, bios, mem, reg_no,
+                                        randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDS.L @Rm+, FPSCR
+    // 0100mmmm01100110
+    static int do_binary_ldsl_indgeninc_fpscr(Sh4 *cpu, BiosFile *bios,
+                                              Memory *mem, unsigned reg_no,
+                                              addr32_t addr, uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS.L @R" << reg_no << "+, FPSCR\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        if (cpu->fpu.fpscr != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << val << std::endl;
+            std::cout << "actual val is " << cpu->fpu.fpscr << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr + 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldsl_indgeninc_fpscr(Sh4 *cpu, BiosFile *bios,
+                                           Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
+            uint32_t val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_ldsl_indgeninc_fpscr(cpu, bios, mem,
+                                               reg_no, addr, val);
+        }
+
+        return failure;
+    }
+
+    // STS FPSCR, Rn
+    // 0000nnnn01101010
+    static int do_binary_sts_fpscr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                      unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS FPSCR, R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->fpu.fpscr = val;
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_no) != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << *cpu->gen_reg(reg_no) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_sts_fpscr_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_sts_fpscr_gen(cpu, bios, mem, reg_no,
+                                        randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STS.L FPSCR, @-Rn
+    // 0100nnnn01100010
+    static int do_binary_stsl_fpscr_inddecgen(Sh4 *cpu, BiosFile *bios,
+                                              Memory *mem, unsigned reg_no,
+                                              reg32_t fpscr_val, addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS.L FPSCR, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->fpu.fpscr = fpscr_val;
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (mem_val != fpscr_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << fpscr_val <<
+                std::endl;
+            std::cout << "actual val is " << mem_val << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr - 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stsl_fpscr_inddecgen(Sh4 *cpu, BiosFile *bios,
+                                           Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 1));
+            reg32_t fpscr_val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_stsl_fpscr_inddecgen(cpu, bios, mem, reg_no,
+                                               fpscr_val, addr);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -9173,6 +9358,12 @@ struct inst_test {
     { "jsr_label", &Sh4InstTests::jsr_label },
     { "dmulsl_gen_gen", &Sh4InstTests::dmulsl_gen_gen },
     { "dmulul_gen_gen", &Sh4InstTests::dmulul_gen_gen },
+    { "binary_lds_gen_fpscr", &Sh4InstTests::binary_lds_gen_fpscr },
+    { "binary_ldsl_indgeninc_fpscr",
+      &Sh4InstTests::binary_ldsl_indgeninc_fpscr },
+    { "binary_sts_fpscr_gen", &Sh4InstTests::binary_sts_fpscr_gen },
+    { "binary_stsl_fpscr_inddecgen",
+      &Sh4InstTests::binary_stsl_fpscr_inddecgen },
     { NULL }
 };
 
