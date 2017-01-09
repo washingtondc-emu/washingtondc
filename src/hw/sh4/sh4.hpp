@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -166,14 +166,17 @@ public:
 
         // program counter
         reg32_t pc;
+    };
+    RegFile reg;
 
+    struct FpuReg {
         // floating point status/control register
         reg32_t fpscr;
 
         // floating-point communication register
         reg32_t fpul;
     };
-    RegFile reg;
+    FpuReg fpu;
 
     Sh4(MemoryMap *mem);
     ~Sh4();
@@ -196,9 +199,11 @@ public:
     // returns the program counter
     reg32_t get_pc() const;
 
-    // these two APIs are intended primarily for debuggers to use
+    // these four APIs are intended primarily for debuggers to use
     RegFile get_regs() const;
+    FpuReg get_fpu() const;
     void set_regs(const RegFile& src);
+    void set_fpu(const FpuReg& src);
 
     template<typename val_t>
     int write_mem(val_t const *val, addr32_t addr, unsigned len) {

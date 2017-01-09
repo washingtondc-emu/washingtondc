@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -801,8 +801,8 @@ void Sh4::exec_inst() {
         exc << errinfo_reg_mach(reg.mach);
         exc << errinfo_reg_macl(reg.macl);
         exc << errinfo_reg_pr(reg.pr);
-        exc << errinfo_reg_fpscr(reg.fpscr);
-        exc << errinfo_reg_fpul(reg.fpul);
+        exc << errinfo_reg_fpscr(fpu.fpscr);
+        exc << errinfo_reg_fpul(fpu.fpul);
         exc << errinfo_reg_bank0(RegBankTuple(reg.r_bank0[0], reg.r_bank0[1],
                                               reg.r_bank0[2], reg.r_bank0[3],
                                               reg.r_bank0[4], reg.r_bank0[5],
@@ -3816,10 +3816,9 @@ void Sh4::inst_binary_ftrc_dr_fpul(OpArgs inst) {
 // LDS Rm, FPSCR
 // 0100mmmm01101010
 void Sh4::inst_binary_lds_gen_fpscr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0100mmmm01101010") <<
-                          errinfo_opcode_name("LDS Rm, FPSCR"));
+    fpu.fpscr = *gen_reg(inst.gen_reg);
+
+    next_inst();
 }
 
 // LDS Rm, FPUL
@@ -3834,10 +3833,17 @@ void Sh4::inst_binary_gen_fpul(OpArgs inst) {
 // LDS.L @Rm+, FPSCR
 // 0100mmmm01100110
 void Sh4::inst_binary_ldsl_indgeninc_fpscr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0100mmmm01100110") <<
-                          errinfo_opcode_name("LDS.L @Rm+, FPSCR"));
+    uint32_t val;
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+
+    if (read_mem(&val, *addr_reg, sizeof(val)) != 0)
+        return;
+
+    fpu.fpscr = val;
+
+    *addr_reg += 4;
+
+    next_inst();
 }
 
 // LDS.L @Rm+, FPUL
@@ -3852,10 +3858,9 @@ void Sh4::inst_binary_ldsl_indgeninc_fpul(OpArgs inst) {
 // STS FPSCR, Rn
 // 0000nnnn01101010
 void Sh4::inst_binary_sts_fpscr_gen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0000nnnn01101010") <<
-                          errinfo_opcode_name("STS FPSCR, Rn"));
+    *gen_reg(inst.gen_reg) = fpu.fpscr;
+
+    next_inst();
 }
 
 // STS FPUL, Rn
@@ -3870,10 +3875,15 @@ void Sh4::inst_binary_sts_fpul_gen(OpArgs inst) {
 // STS.L FPSCR, @-Rn
 // 0100nnnn01100010
 void Sh4::inst_binary_stsl_fpscr_inddecgen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0100nnnn01100010") <<
-                          errinfo_opcode_name("STS.L FPSCR, @-Rn"));
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+    addr32_t addr = *addr_reg - 4;
+
+    if (write_mem(&fpu.fpscr, addr, sizeof(fpu.fpscr)) != 0)
+        return;
+
+    *addr_reg = addr;
+
+    next_inst();
 }
 
 // STS.L FPUL, @-Rn

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@ void GdbStub::on_break() {
 std::string GdbStub::serialize_regs() const {
     Sh4 *cpu = dc->get_cpu();
     Sh4::RegFile reg_file = cpu->get_regs();
+    Sh4::FpuReg fpu_reg = cpu->get_fpu();
     reg32_t regs[N_REGS] = { 0 };
 
     // general-purpose registers
@@ -98,8 +99,8 @@ std::string GdbStub::serialize_regs() const {
     regs[SPC] = reg_file.spc;
 
     // FPU system/control registers
-    regs[FPUL] = reg_file.fpul;
-    regs[FPSCR] = reg_file.fpscr;
+    regs[FPUL] = fpu_reg.fpul;
+    regs[FPSCR] = fpu_reg.fpscr;
 
     return serialize_data(regs, sizeof(regs));
 }
@@ -285,8 +286,8 @@ std::string GdbStub::extract_packet(std::string packet_in) {
     return packet_in.substr(dollar_idx + 1, pound_idx - dollar_idx - 1);
 }
 
-int GdbStub::set_reg(Sh4::RegFile *file, unsigned reg_no,
-                      reg32_t reg_val, bool bank) {
+int GdbStub::set_reg(Sh4::RegFile *file, Sh4::FpuReg *fpu, unsigned reg_no,
+                     reg32_t reg_val, bool bank) {
     // there is some ambiguity over whether register banking should be based off
     // of the old sr or the new sr.  For now, it's based off of the old sr.
 
@@ -325,9 +326,9 @@ int GdbStub::set_reg(Sh4::RegFile *file, unsigned reg_no,
     } else if (reg_no == SPC) {
         file->spc = reg_val;
     } else if (reg_no == FPUL) {
-        file->fpul = reg_val;
+        fpu->fpul = reg_val;
     } else if (reg_no == FPSCR) {
-        file->fpscr = reg_val;
+        fpu->fpscr = reg_val;
     } else {
 #ifdef GDBSTUB_VERBOSE
         std::cout << "WARNING: GdbStub unable to set value of register " <<
@@ -404,10 +405,11 @@ std::string GdbStub::handle_G_packet(std::string dat) {
     deserialize_regs(dat.substr(1), regs);
 
     Sh4::RegFile new_regs = dc->get_cpu()->get_regs();
+    Sh4::FpuReg new_fpu = dc->get_cpu()->get_fpu();
     bool bank = new_regs.sr & Sh4::SR_RB_MASK;
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
-        set_reg(&new_regs, reg_no, regs[reg_no], bank);
+        set_reg(&new_regs, &new_fpu, reg_no, regs[reg_no], bank);
     return "OK";
 }
 
@@ -441,8 +443,10 @@ std::string GdbStub::handle_P_packet(std::string dat) {
         return "E16";
     }
 
-    Sh4::RegFile regs = dc->get_cpu()->get_regs();
-    set_reg(&regs, reg_no, reg_val, bool(regs.sr & Sh4::SR_RB_MASK));
+    Sh4 *cpu = dc->get_cpu();
+    Sh4::RegFile regs = cpu->get_regs();
+    Sh4::FpuReg fpu = cpu->get_fpu();
+    set_reg(&regs, &fpu, reg_no, reg_val, bool(regs.sr & Sh4::SR_RB_MASK));
     dc->get_cpu()->set_regs(regs);
 
     return "OK";

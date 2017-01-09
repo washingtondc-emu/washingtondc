@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -94,7 +94,7 @@ void Sh4::on_hard_reset() {
     reg.vbr = 0;
     reg.pc = 0xa0000000;
 
-    reg.fpscr = 0x41;
+    fpu.fpscr = 0x41;
 
 #ifdef ENABLE_SH4_OCACHE
     op_cache->reset();
@@ -127,8 +127,16 @@ Sh4::RegFile Sh4::get_regs() const {
     return reg;
 }
 
+Sh4::FpuReg Sh4::get_fpu() const {
+    return fpu;
+}
+
 void Sh4::set_regs(const Sh4::RegFile& src) {
     this->reg = src;
+}
+
+void Sh4::set_fpu(const Sh4::FpuReg& src) {
+    this->fpu = src;
 }
 
 const Sh4::ExcpMeta Sh4::excp_meta[Sh4::EXCP_COUNT] = {

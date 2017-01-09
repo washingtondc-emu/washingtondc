@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -143,7 +143,7 @@ private:
     void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]);
 
     // returns 0 on success, 1 on failure
-    int set_reg(Sh4::RegFile *file, unsigned reg_no,
+    int set_reg(Sh4::RegFile *file, Sh4::FpuReg *fpu, unsigned reg_no,
                 reg32_t reg_val, bool bank);
 
     void handle_read(const boost::system::error_code& error);
