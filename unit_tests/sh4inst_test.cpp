@@ -84,6 +84,8 @@ public:
 #ifdef ENABLE_SH4_ICACHE
         cpu->inst_cache->reset();
 #endif
+
+        cpu->sh4_enter();
     }
 
     // very basic test that does a whole lot of nothing

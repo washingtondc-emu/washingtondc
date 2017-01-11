@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include <fenv.h>
+
 #include <cstring>
 
 #ifdef ENABLE_SH4_ICACHE
@@ -242,4 +244,19 @@ void Sh4::enter_exception(enum ExceptionCode vector) {
     } else {
         reg.pc = reg.vbr + meta->offset;
     }
+}
+
+void Sh4::sh4_enter() {
+    if (fpu.fpscr & FR_RM_MASK)
+        fesetround(FE_TOWARDZERO);
+    else
+        fesetround(FE_TONEAREST);
+}
+
+void Sh4::set_fpscr(reg32_t new_val) {
+    fpu.fpscr = new_val;
+    if (fpu.fpscr & FR_RM_MASK)
+        fesetround(FE_TOWARDZERO);
+    else
+        fesetround(FE_TONEAREST);
 }

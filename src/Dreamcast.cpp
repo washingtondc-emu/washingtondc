@@ -60,6 +60,13 @@ Dreamcast::~Dreamcast() {
 }
 
 void Dreamcast::run() {
+    /*
+     * TODO: later when I'm emulating more than just the CPU,
+     * I'll need to remember to call this every time I re-enter
+     * the CPU's context.
+     */
+    cpu->sh4_enter();
+
     try {
         while (is_running) {
 #ifdef ENABLE_DEBUGGER

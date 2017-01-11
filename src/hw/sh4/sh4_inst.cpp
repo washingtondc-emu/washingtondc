@@ -3816,7 +3816,7 @@ void Sh4::inst_binary_ftrc_dr_fpul(OpArgs inst) {
 // LDS Rm, FPSCR
 // 0100mmmm01101010
 void Sh4::inst_binary_lds_gen_fpscr(OpArgs inst) {
-    fpu.fpscr = *gen_reg(inst.gen_reg);
+    set_fpscr(*gen_reg(inst.gen_reg));
 
     next_inst();
 }
@@ -3839,7 +3839,7 @@ void Sh4::inst_binary_ldsl_indgeninc_fpscr(OpArgs inst) {
     if (read_mem(&val, *addr_reg, sizeof(val)) != 0)
         return;
 
-    fpu.fpscr = val;
+    set_fpscr(val);
 
     *addr_reg += 4;
 

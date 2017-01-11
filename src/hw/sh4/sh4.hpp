@@ -178,8 +178,26 @@ public:
     };
     FpuReg fpu;
 
+    /*
+     * call this function instead of setting the value directly to make sure
+     * that any state changes are immediately processed.
+     */
+    void set_fpscr(reg32_t new_val);
+
     Sh4(MemoryMap *mem);
     ~Sh4();
+
+    /*
+     * This function should be called every time the emulator is about to
+     * start emulating sh4 code after having emulated something else.
+     * The purpose is to make sure that the host CPU's state is in sync with
+     * the virtual sh4's state for operations which have some associated state.
+     *
+     * For example, one of the things  this function does is make sure that the
+     * host CPU's floating-point rounding mode matches the FPSCR register's
+     * RM bit.
+     */
+    void sh4_enter();
 
     void set_exception(unsigned excp_code);
     void set_interrupt(unsigned intp_code);
