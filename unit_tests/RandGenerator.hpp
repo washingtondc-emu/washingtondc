@@ -58,6 +58,13 @@ public:
         return (T)rand();
     }
 
+    double pick_double(double max = std::numeric_limits<double>::max(),
+                       addr32_t addr = 0) {
+        T tmp = pick_val(addr);
+
+        return (double(tmp) / double(std::numeric_limits<T>::max())) * max;
+    }
+
     /*
      * return a value that is greater than or equal to min and
      * less than or equal to max

@@ -9175,6 +9175,408 @@ public:
 
         return failure;
     }
+
+    // FMOV FRm, FRn
+    // 1111nnnnmmmm1100
+    static int do_binary_fmov_fr_fr(Sh4 *cpu, BiosFile *bios,
+                                    Memory *mem, unsigned src_reg_no,
+                                    unsigned dst_reg_no, float val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FMOV FR" << src_reg_no << ", FR" << dst_reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->fpu_fr(src_reg_no) = val;
+        cpu->exec_inst();
+
+        float actual_val = *cpu->fpu_fr(dst_reg_no);
+        if (actual_val != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected value of FR" << dst_reg_no << " is " <<
+                val << std::endl;
+            std::cout << "actual value is " << actual_val << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_fmov_fr_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned src_reg = 0; src_reg < Sh4::N_FLOAT_REGS; src_reg++) {
+            for (unsigned dst_reg = 0; dst_reg < Sh4::N_FLOAT_REGS; dst_reg++) {
+                float f_val = randgen32->pick_double();
+
+                failure = failure ||
+                    do_binary_fmov_fr_fr(cpu, bios, mem, src_reg, dst_reg,
+                                         f_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // FMOV.S @Rm, FRn
+    // 1111nnnnmmmm1000
+    static int do_binary_fmovs_indgen_fr(Sh4 *cpu, BiosFile *bios,
+                                         Memory *mem, unsigned src_reg_no,
+                                         unsigned dst_reg_no, addr32_t addr,
+                                         float val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FMOV.S @R" << src_reg_no << ", FR" << dst_reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(src_reg_no) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+        cpu->exec_inst();
+
+        float actual_val = *cpu->fpu_fr(dst_reg_no);
+        if (actual_val != val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex << actual_val <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_fmovs_indgen_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                      RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned src_reg = 0; src_reg < 16; src_reg++) {
+            for (unsigned dst_reg = 0; dst_reg < Sh4::N_FLOAT_REGS; dst_reg++) {
+                addr32_t addr = pick_addr(AddrRange(randgen32, 0,
+                                                    mem->get_size() - 4));
+                float f_val = randgen32->pick_double();
+                failure = failure ||
+                    do_binary_fmovs_indgen_fr(cpu, bios, mem, src_reg,
+                                              dst_reg, addr, f_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // FMOV.S @(R0,Rm), FRn
+    // 1111nnnnmmmm0110
+    static int do_binary_fmovs_ind_r0_gen_fr(Sh4 *cpu, BiosFile *bios,
+                                             Memory *mem, unsigned reg_src,
+                                             unsigned reg_dst, unsigned r0_val,
+                                             unsigned src_val, float f_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FMOV.S @(R0, R" << reg_src << "), FR" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = src_val;
+        *cpu->gen_reg(0) = r0_val;
+        cpu->write_mem(&f_val, r0_val + src_val, sizeof(f_val));
+        cpu->exec_inst();
+
+        float val_actual = *cpu->fpu_fr(reg_dst);
+
+        if (val_actual != f_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "r0_val is " << std::hex << r0_val << std::endl;
+            std::cout << "src_val is " << src_val << std::endl;
+            std::cout << "f_val is " << f_val << std::endl;
+            std::cout << "actual output is " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_fmovs_ind_r0_gen_fr(Sh4 *cpu, BiosFile *bios,
+                                          Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < Sh4::N_FLOAT_REGS; reg_dst++) {
+                float f_val = randgen32->pick_double();
+                /*
+                 * the reason for the divide-by-two is so that they don't
+                 * add up to be more than 16MB
+                 */
+                addr32_t base_addr =
+                    (pick_addr(AddrRange(randgen32)) - 4) / 2;
+                addr32_t r0_val =
+                    (pick_addr(AddrRange(randgen32)) - 4) / 2;
+
+                if (reg_src == 0)
+                    base_addr = r0_val;
+
+                failure = failure ||
+                    do_binary_fmovs_ind_r0_gen_fr(cpu, bios, mem, reg_src,
+                                                  reg_dst, r0_val, base_addr,
+                                                  f_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // FMOV.S @Rm+, FRn
+    // 1111nnnnmmmm1001
+    static int do_fmovs_binary_indgeninc_fr(Sh4 *cpu, BiosFile *bios,
+                                            Memory *mem, unsigned reg_src,
+                                            unsigned reg_dst, addr32_t addr,
+                                            float f_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FMOV.S @R" << reg_src << "+, FR" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = addr;
+        cpu->write_mem(&f_val, addr, sizeof(f_val));
+        cpu->exec_inst();
+
+        reg32_t expected_addr_out = addr + 4;
+        reg32_t actual_addr_out = *cpu->gen_reg(reg_src);
+
+        float actual_val = *cpu->fpu_fr(reg_dst);
+
+        if ((actual_val != f_val) || (expected_addr_out != actual_addr_out)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "expected val is " << f_val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << *cpu->fpu_fr(reg_dst) << std::endl;
+            std::cout << "expected_addr_out is " << expected_addr_out <<
+                std::endl;
+            std::cout << "actual_addr_out is " << actual_addr_out << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int fmovs_binary_indgeninc_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                         RandGen32 *randgen32) {
+        int failed = 0;
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < Sh4::N_FLOAT_REGS; reg_dst++) {
+                addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
+                float f_val = randgen32->pick_double();
+                failed = failed ||
+                    do_fmovs_binary_indgeninc_fr(cpu, bios, mem, reg_src,
+                                                 reg_dst, addr, f_val);
+            }
+        }
+
+        return failed;
+    }
+
+    // FMOV.S FRm, @Rn
+    // 1111nnnnmmmm1010
+    static int do_binary_fmovs_fr_indgen(Sh4 *cpu, BiosFile *bios,
+                                         Memory *mem, unsigned src_reg_no,
+                                         unsigned dst_reg_no, addr32_t addr,
+                                         float f_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FMOV.S FR" << src_reg_no << ", @R" << dst_reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(dst_reg_no) = addr;
+        *cpu->fpu_fr(src_reg_no) = f_val;
+        cpu->exec_inst();
+
+        float val_actual;
+        cpu->read_mem(&val_actual, addr, sizeof(val_actual));
+
+        if (val_actual != f_val) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "f_val is " << f_val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << std::hex << val_actual <<
+                std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_fmovs_fr_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                      RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned src_reg = 0; src_reg < 16; src_reg++) {
+            for (unsigned dst_reg = 0; dst_reg < Sh4::N_FLOAT_REGS; dst_reg++) {
+                addr32_t addr = pick_addr(AddrRange(randgen32, 0,
+                                                    mem->get_size() - 4));
+                float f_val = randgen32->pick_double();
+                failure = failure ||
+                    do_binary_fmovs_fr_indgen(cpu, bios, mem, src_reg,
+                                              dst_reg, addr, f_val);
+            }
+        }
+
+        return failure;
+    }
+
+    // FMOV.S FRm, @-Rn
+    // 1111nnnnmmmm1011
+    static int do_fmovs_binary_fr_inddecgen(Sh4 *cpu, BiosFile *bios,
+                                            Memory *mem, unsigned reg_src,
+                                            unsigned reg_dst, addr32_t addr,
+                                            float f_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        // increment addr 'cause the opcode is going to decrement it
+        addr += 4;
+
+        ss << "FMOV.S FR" << reg_src << ", @-R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_src) = f_val;
+        *cpu->gen_reg(reg_dst) = addr;
+        cpu->exec_inst();
+
+        float val_actual;
+        cpu->read_mem(&val_actual, addr - 4, sizeof(val_actual));
+
+        addr32_t addr_out_expect = addr - 4;
+        addr32_t addr_out_actual = *cpu->gen_reg(reg_dst);
+
+        if ((val_actual != f_val) || (addr_out_actual != addr_out_expect)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << f_val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            std::cout << "addr_out_actual is " << addr_out_actual << std::endl;
+            std::cout << "addr_out_expect is " << addr_out_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int fmovs_binary_fr_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                         RandGen32 *randgen32) {
+        int failed = 0;
+
+        for (unsigned reg_src = 0; reg_src < Sh4::N_FLOAT_REGS; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
+                float f_val = randgen32->pick_double();
+                failed = failed ||
+                    do_fmovs_binary_fr_inddecgen(cpu, bios, mem, reg_src,
+                                                 reg_dst, addr, f_val);
+            }
+        }
+
+        return failed;
+    }
+
+    // FMOV.S FRm, @(R0, Rn)
+    // 1111nnnnmmmm0111
+    static int do_binary_fmovs_fr_ind_r0_gen(Sh4 *cpu, BiosFile *bios,
+                                             Memory *mem, unsigned reg_src,
+                                             unsigned reg_dst, unsigned r0_val,
+                                             unsigned dst_val, float f_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FMOV.S FR" << reg_src << ", @(R0, R" << reg_dst << ")\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->gen_reg(reg_dst) = dst_val;
+        *cpu->gen_reg(0) = r0_val;
+        *cpu->fpu_fr(reg_src) = f_val;
+        cpu->exec_inst();
+
+        float val_actual;
+        cpu->read_mem(&val_actual, r0_val + dst_val, sizeof(val_actual));
+
+        if (val_actual != f_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "r0_val is " << std::hex << r0_val << std::endl;
+            std::cout << "dst_val is " << dst_val << std::endl;
+            std::cout << "f_val is " << f_val << std::endl;
+            std::cout << "actual output val is " << val_actual << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_fmovs_fr_ind_r0_gen(Sh4 *cpu, BiosFile *bios,
+                                          Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < Sh4::N_FLOAT_REGS; reg_dst++) {
+                float f_val = randgen32->pick_double();
+                /*
+                 * the reason for the divide-by-two is so that they don't
+                 * add up to be more than 16MB
+                 */
+                addr32_t base_addr =
+                    (pick_addr(AddrRange(randgen32)) - 4) / 2;
+                addr32_t r0_val =
+                    (pick_addr(AddrRange(randgen32)) - 4) / 2;
+
+                if (reg_dst == 0)
+                    base_addr = r0_val;
+
+                failure = failure ||
+                    do_binary_fmovs_fr_ind_r0_gen(cpu, bios, mem, reg_src,
+                                                  reg_dst, r0_val, base_addr,
+                                                  f_val);
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -9366,6 +9768,13 @@ struct inst_test {
     { "binary_sts_fpscr_gen", &Sh4InstTests::binary_sts_fpscr_gen },
     { "binary_stsl_fpscr_inddecgen",
       &Sh4InstTests::binary_stsl_fpscr_inddecgen },
+    { "binary_fmov_fr_fr", &Sh4InstTests::binary_fmov_fr_fr },
+    { "binary_fmovs_indgen_fr", &Sh4InstTests::binary_fmovs_indgen_fr },
+    { "binary_fmovs_ind_r0_gen_fr", &Sh4InstTests::binary_fmovs_ind_r0_gen_fr },
+    { "fmovs_binary_indgeninc_fr", &Sh4InstTests::fmovs_binary_indgeninc_fr },
+    { "binary_fmovs_fr_indgen", &Sh4InstTests::binary_fmovs_fr_indgen },
+    { "fmovs_binary_fr_inddecgen", &Sh4InstTests::fmovs_binary_fr_inddecgen },
+    { "binary_fmovs_fr_ind_r0_gen", &Sh4InstTests::binary_fmovs_fr_ind_r0_gen },
     { NULL }
 };
 
