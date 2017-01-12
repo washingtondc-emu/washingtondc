@@ -260,8 +260,9 @@ int Ocache::purge(addr32_t paddr, bool index_enable, bool cache_as_ram) {
 
     if (cache_check(line_idx, paddr) &&
         (op_cache_keys[line_idx] & KEY_VALID_MASK)) {
-        if ((err = cache_write_back(line_idx)))
-            return err;
+        if (op_cache_keys[line_idx] & KEY_DIRTY_MASK)
+            if ((err = cache_write_back(line_idx)))
+                return err;
         op_cache_keys[line_idx] &= ~KEY_VALID_MASK;
     }
 

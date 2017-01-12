@@ -1466,6 +1466,14 @@ void Sh4::inst_unary_tasb_gen(OpArgs inst) {
     uint8_t val_new, val_old;
     reg32_t mask;
 
+#ifdef ENABLE_SH4_OCACHE
+    bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
+    bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+
+    if (op_cache->purge(addr, index_enable, cache_as_ram) != 0)
+        return;
+#endif
+
     if (read_mem(&val_old, addr, sizeof(val_old)) != 0)
         return;
     val_new = val_old | 0x80;
@@ -1617,7 +1625,8 @@ void Sh4::inst_unary_ocbp_indgen(OpArgs inst) {
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
 
-    op_cache->purge(paddr, index_enable, cache_as_ram);
+    if (op_cache->purge(paddr, index_enable, cache_as_ram) != 0)
+        return;
 #endif
 
     next_inst();
