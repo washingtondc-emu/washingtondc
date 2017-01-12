@@ -1363,12 +1363,6 @@ public:
 
         cpu->read_mem(&mem_val, addr-1, sizeof(mem_val));
 
-        if (reg_src == reg_dst) {
-            // special case - val will be decremented because the source and
-            // destination are the same register
-            val -= 1;
-        }
-
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "val is " << std::hex << (unsigned)val << std::endl;
@@ -1439,12 +1433,6 @@ public:
 
         cpu->read_mem(&mem_val, addr-2, sizeof(mem_val));
 
-        if (reg_src == reg_dst) {
-            // special case - val will be decremented because the source and
-            // destination are the same register
-            val -= 2;
-        }
-
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "val is " << std::hex << (unsigned)val << std::endl;
@@ -1514,12 +1502,6 @@ public:
         cpu->exec_inst();
 
         cpu->read_mem(&mem_val, addr-4, sizeof(mem_val));
-
-        if (reg_src == reg_dst) {
-            // special case - val will be decremented because the source and
-            // destination are the same register
-            val -= 4;
-        }
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -5453,8 +5435,9 @@ public:
 
     // TAS.B @Rn
     // 0100nnnn00011011
-    static int do_unary_tasb_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem, unsigned reg_no,
-                                    addr32_t addr, uint8_t val) {
+    static int do_unary_tasb_indgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                    unsigned reg_no, addr32_t addr,
+                                    uint8_t val) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -5479,7 +5462,7 @@ public:
             std::cout << "expected t val is " << t_expect << std::endl;
             std::cout << "actual t val is " <<
                 bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) << std::endl;
-            std::cout << "val is " << std::hex << val << std::endl;
+            std::cout << "val is " << std::hex << unsigned(val) << std::endl;
             std::cout << "addr is " << addr << std::endl;
             return 1;
         }
