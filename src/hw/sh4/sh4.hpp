@@ -87,36 +87,36 @@ public:
     static const unsigned SR_MD_MASK = 1 << SR_MD_SHIFT;
 
     // floating-point rounding mode
-    static const unsigned FR_RM_SHIFT = 0;
-    static const unsigned FR_RM_MASK = 3 << FR_RM_SHIFT;
+    static const unsigned FPSCR_RM_SHIFT = 0;
+    static const unsigned FPSCR_RM_MASK = 3 << FPSCR_RM_SHIFT;
 
     // FPU exception flags
-    static const unsigned FR_FLAG_SHIFT = 2;
-    static const unsigned FR_FLAG_MASK = 0x1f << FR_FLAG_SHIFT;
+    static const unsigned FPSCR_FLAG_SHIFT = 2;
+    static const unsigned FPSCR_FLAG_MASK = 0x1f << FPSCR_FLAG_SHIFT;
 
     // FPU exception enable
-    static const unsigned FR_ENABLE_SHIFT = 7;
-    static const unsigned FR_ENABLE_MASK = 0x1f << FR_FLAG_SHIFT;
+    static const unsigned FPSCR_ENABLE_SHIFT = 7;
+    static const unsigned FPSCR_ENABLE_MASK = 0x1f << FPSCR_FLAG_SHIFT;
 
     // FPU exception cause
-    static const unsigned FR_CAUSE_SHIFT = 12;
-    static const unsigned FR_CAUSE_MASK = 0x1f << FR_CAUSE_SHIFT;
+    static const unsigned FPSCR_CAUSE_SHIFT = 12;
+    static const unsigned FPSCR_CAUSE_MASK = 0x1f << FPSCR_CAUSE_SHIFT;
 
     // FPU Denormalization mode
-    static const unsigned FR_DN_SHIFT = 18;
-    static const unsigned FR_DN_MASK = 1 << FR_DN_SHIFT;
+    static const unsigned FPSCR_DN_SHIFT = 18;
+    static const unsigned FPSCR_DN_MASK = 1 << FPSCR_DN_SHIFT;
 
     // FPU Precision mode
-    static const unsigned FR_PR_SHIFT = 19;
-    static const unsigned FR_PR_MASK = 1 << FR_PR_SHIFT;
+    static const unsigned FPSCR_PR_SHIFT = 19;
+    static const unsigned FPSCR_PR_MASK = 1 << FPSCR_PR_SHIFT;
 
     // FPU Transfer size mode
-    static const unsigned FR_SZ_SHIFT = 20;
-    static const unsigned FR_SZ_MASK = 1 << FR_SZ_SHIFT;
+    static const unsigned FPSCR_SZ_SHIFT = 20;
+    static const unsigned FPSCR_SZ_MASK = 1 << FPSCR_SZ_SHIFT;
 
     // FPU bank switch
-    static const unsigned FR_FR_SHIFT = 21;
-    static const unsigned FR_FR_MASK = 1 << FR_FR_SHIFT;
+    static const unsigned FPSCR_FR_SHIFT = 21;
+    static const unsigned FPSCR_FR_MASK = 1 << FPSCR_FR_SHIFT;
 
     struct RegFile {
         // general-purpose registers R0_BANK0-R7_BANK0
@@ -169,12 +169,24 @@ public:
     };
     RegFile reg;
 
+    static const size_t N_FLOAT_REGS = 16;
+    static const size_t N_DOUBLE_REGS = 8;
+
+    union FpuRegFile {
+        float fr[N_FLOAT_REGS];
+        double dr[N_DOUBLE_REGS];
+    };
+    BOOST_STATIC_ASSERT(sizeof(FpuRegFile) == (N_FLOAT_REGS * sizeof(float)));
+
     struct FpuReg {
         // floating point status/control register
         reg32_t fpscr;
 
         // floating-point communication register
         reg32_t fpul;
+
+        FpuRegFile reg_bank0;
+        FpuRegFile reg_bank1;
     };
     FpuReg fpu;
 
@@ -183,6 +195,16 @@ public:
      * that any state changes are immediately processed.
      */
     void set_fpscr(reg32_t new_val);
+
+    /*
+     * access single-precision floating-point register,
+     * taking bank-switching into account
+     */
+    float *fpu_fr(unsigned reg_no) {
+        if (fpu.fpscr & FPSCR_FR_MASK)
+            return fpu.reg_bank1.fr + reg_no;
+        return fpu.reg_bank0.fr + reg_no;
+    }
 
     Sh4(MemoryMap *mem);
     ~Sh4();
@@ -1821,6 +1843,18 @@ private:
         // by anding with mask and checking for equality with val
         inst_t mask;
         inst_t val;
+
+        /*
+         * These two fields are used for the sake of differemtiating the float
+         * and double versions of opcodes from each other in the fpu.
+         *
+         * In order for a given opcode to match fpscr, fpscr & fpscr_mask must
+         * equal fpscr_val.
+         *
+         * instructions that don't care should set them both to zero.
+         */
+        reg32_t fpscr_val;
+        reg32_t fpscr_mask;
     } opcode_list[];
 
     static void compile_instructions();

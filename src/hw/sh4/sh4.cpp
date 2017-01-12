@@ -98,6 +98,9 @@ void Sh4::on_hard_reset() {
 
     fpu.fpscr = 0x41;
 
+    std::fill(fpu.reg_bank0.fr, fpu.reg_bank0.fr + N_FLOAT_REGS, 0.0f);
+    std::fill(fpu.reg_bank1.fr, fpu.reg_bank1.fr + N_FLOAT_REGS, 0.0f);
+
 #ifdef ENABLE_SH4_OCACHE
     op_cache->reset();
 #else
@@ -247,7 +250,7 @@ void Sh4::enter_exception(enum ExceptionCode vector) {
 }
 
 void Sh4::sh4_enter() {
-    if (fpu.fpscr & FR_RM_MASK)
+    if (fpu.fpscr & FPSCR_RM_MASK)
         fesetround(FE_TOWARDZERO);
     else
         fesetround(FE_TONEAREST);
@@ -255,7 +258,7 @@ void Sh4::sh4_enter() {
 
 void Sh4::set_fpscr(reg32_t new_val) {
     fpu.fpscr = new_val;
-    if (fpu.fpscr & FR_RM_MASK)
+    if (fpu.fpscr & FPSCR_RM_MASK)
         fesetround(FE_TOWARDZERO);
     else
         fesetround(FE_TONEAREST);

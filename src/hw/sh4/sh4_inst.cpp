@@ -850,7 +850,8 @@ void Sh4::do_exec_inst(inst_t inst, bool allow_branch) {
     oa.inst = inst;
 
     while (op->fmt) {
-        if ((op->mask & inst) == op->val) {
+        if (((op->mask & inst) == op->val) &&
+            ((op->fpscr_mask & fpu.fpscr) == op->fpscr_val)) {
             if (!(!allow_branch && op->is_branch)) {
                 opcode_func_t op_func = op->func;
                 (this->*op_func)(oa);
@@ -3447,64 +3448,84 @@ void Sh4::inst_unary_fldi1_fr(OpArgs inst) {
 // FMOV FRm, FRn
 // 1111nnnnmmmm1100
 void Sh4::inst_binary_fmov_fr_fr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm1100") <<
-                          errinfo_opcode_name("FMOV FRm, FRn"));
+    *fpu_fr(inst.dst_reg) = *fpu_fr(inst.src_reg);
+
+    next_inst();
 }
 
 // FMOV.S @Rm, FRn
 // 1111nnnnmmmm1000
 void Sh4::inst_binary_fmovs_indgen_fr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm1000") <<
-                          errinfo_opcode_name("FMOV.S @Rm, FRn"));
+    reg32_t addr = *gen_reg(inst.src_reg);
+    float *dst_ptr = fpu_fr(inst.dst_reg);
+
+    if (read_mem(dst_ptr, addr, sizeof(*dst_ptr)) != 0)
+        return;
+
+    next_inst();
 }
 
 // FMOV.S @(R0,Rm), FRn
 // 1111nnnnmmmm0110
 void Sh4::inst_binary_fmovs_binind_r0_gen_fr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm0110") <<
-                          errinfo_opcode_name("FMOV.S @(R0,Rm), FRn"));
+    reg32_t addr = *gen_reg(0) + * gen_reg(inst.src_reg);
+    float *dst_ptr = fpu_fr(inst.dst_reg);
+
+    if (read_mem(dst_ptr, addr, sizeof(*dst_ptr)) != 0)
+        return;
+
+    next_inst();
 }
 
 // FMOV.S @Rm+, FRn
 // 1111nnnnmmmm1001
 void Sh4::inst_binary_fmovs_indgeninc_fr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm1001") <<
-                          errinfo_opcode_name("FMOV.S @Rm+, FRn"));
+    reg32_t *addr_p = gen_reg(inst.src_reg);
+    float *dst_ptr = fpu_fr(inst.dst_reg);
+
+    if (read_mem(dst_ptr, *addr_p, sizeof(*dst_ptr)) != 0)
+        return;
+
+    *addr_p += 4;
+    next_inst();
 }
 
 // FMOV.S FRm, @Rn
 // 1111nnnnmmmm1010
 void Sh4::inst_binary_fmovs_fr_indgen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm1010") <<
-                          errinfo_opcode_name("FMOV.S FRm, @Rn"));
+    reg32_t addr = *gen_reg(inst.dst_reg);
+    float *src_p = fpu_fr(inst.src_reg);
+
+    if (write_mem(src_p, addr, sizeof(*src_p)) != 0)
+        return;
+
+    next_inst();
 }
 
 // FMOV.S FRm, @-Rn
 // 1111nnnnmmmm1011
 void Sh4::inst_binary_fmovs_fr_inddecgen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm1011") <<
-                          errinfo_opcode_name("FMOV.S FRm, @-Rn"));
+    reg32_t *addr_p = gen_reg(inst.dst_reg);
+    reg32_t addr = *addr_p - 4;
+    float *src_p = fpu_fr(inst.src_reg);
+
+    if (write_mem(src_p, addr, sizeof(*src_p)) != 0)
+        return;
+
+    *addr_p = addr;
+    next_inst();
 }
 
 // FMOV.S FRm, @(R0, Rn)
 // 1111nnnnmmmm0111
 void Sh4::inst_binary_fmovs_fr_binind_r0_gen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm0111") <<
-                          errinfo_opcode_name("FMOV.S FRm, @(R0, Rn)"));
+    addr32_t addr = *gen_reg(0) + *gen_reg(inst.dst_reg);
+    float *src_p = fpu_fr(inst.src_reg);
+
+    if (write_mem(src_p, addr, sizeof(*src_p)) != 0)
+        return;
+
+    next_inst();
 }
 
 // FMOV DRm, DRn
