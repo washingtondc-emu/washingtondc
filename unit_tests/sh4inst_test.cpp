@@ -1324,7 +1324,7 @@ public:
                 addr32_t addr = pick_addr(AddrRange(randgen32, 0,
                                                     mem->get_size() - 4));
                 failed = failed ||
-                    do_movw_binary_indgen_gen(cpu, bios, mem, addr,
+                    do_movl_binary_indgen_gen(cpu, bios, mem, addr,
                                               randgen32->pick_val(0) % 0xff,
                                               reg_src, reg_dst);
             }
@@ -1476,7 +1476,7 @@ public:
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
                 addr32_t addr = pick_addr(AddrRange(randgen32, 2, MEM_SZ - 2));
                 failed = failed ||
-                    do_movb_binary_gen_inddecgen(cpu, bios, mem, addr,
+                    do_movw_binary_gen_inddecgen(cpu, bios, mem, addr,
                                                  randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
@@ -1552,7 +1552,7 @@ public:
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
                 addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 4));
                 failed = failed ||
-                    do_movb_binary_gen_inddecgen(cpu, bios, mem, addr,
+                    do_movl_binary_gen_inddecgen(cpu, bios, mem, addr,
                                                  randgen32->pick_val(0),
                                                  reg_src, reg_dst);
             }
