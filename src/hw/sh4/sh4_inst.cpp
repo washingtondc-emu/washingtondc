@@ -994,19 +994,29 @@ void Sh4::inst_sleep(OpArgs inst) {
 // FRCHG
 // 1111101111111101
 void Sh4::inst_frchg(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111101111111101") <<
-                          errinfo_opcode_name("FRCHG"));
+    /*
+     * TODO: the software manual says the behavior is undefined if the PR bit
+     * is not set in FPSCR.  This means I need to figure out what the acutal
+     * hardware does when the PR bit is not set and mimc that here.  For now I
+     * just let the operation go through so I can avoid branching.
+     */
+
+    fpu.fpscr ^= FPSCR_FR_MASK;
+    next_inst();
 }
 
 // FSCHG
 // 1111001111111101
 void Sh4::inst_fschg(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111001111111101") <<
-                          errinfo_opcode_name("FSCHG"));
+    /*
+     * TODO: the software manual says the behavior is undefined if the PR bit
+     * is not set in FPSCR.  This means I need to figure out what the acutal
+     * hardware does when the PR bit is not set and mimc that here.  For now I
+     * just let the operation go through so I can avoid branching.
+     */
+
+    fpu.fpscr ^= FPSCR_SZ_MASK;
+    next_inst();
 }
 
 // MOVT Rn
