@@ -75,8 +75,7 @@ public:
      * Put the cpu in a "clean" default state.
      */
     static void reset_cpu(Sh4 *cpu) {
-        cpu->reg.pc = 0;
-        cpu->reg.sr = Sh4::SR_MD_MASK;
+        cpu->on_hard_reset();
 
 #ifdef ENABLE_SH4_OCACHE
         cpu->op_cache->reset();
@@ -9455,7 +9454,7 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        *cpu->gen_reg(reg_src) = f_val;
+        *cpu->fpu_fr(reg_src) = f_val;
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
@@ -9559,6 +9558,128 @@ public:
         }
 
         return failure;
+    }
+
+    /*
+     * test the frchg opcode by filling up both banks, switching them, checking
+     * the values for correctness then filling them up again and switching them
+     * again and checking for correctness again.
+     */
+    static int noarg_frchg(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                           RandGen32 *randgen32) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+        float val_bank0[Sh4::N_FLOAT_REGS], val_bank1[Sh4::N_FLOAT_REGS];
+        static const addr32_t FVAL_START = 0x0c000000;
+        int ret_val = 0;
+
+        static const addr32_t FVAL_START_BYTE0 =  FVAL_START & 0x000000ff;
+        static const addr32_t FVAL_START_BYTE1 = (FVAL_START & 0x0000ff00) >> 8;
+        static const addr32_t FVAL_START_BYTE2 = (FVAL_START & 0x00ff0000) >> 16;
+        static const addr32_t FVAL_START_BYTE3 = (FVAL_START & 0xff000000) >> 24;
+        ss << "MOV #0x" << std::hex << FVAL_START_BYTE3 << ", R0\n" <<
+            "SHLL8 R0\n" <<
+            "OR #0x" << std::hex << FVAL_START_BYTE2 << ", R0\n" <<
+            "SHLL8 R0\n" <<
+            "OR #0x" << std::hex << FVAL_START_BYTE1 << ", R0\n" <<
+            "SHLL8 R0\n" <<
+            "OR #0x" << std::hex << FVAL_START_BYTE0 << ", R0\n" <<
+
+            // load first bank
+            "FMOV.S @R0+, FR0\n" <<
+            "FMOV.S @R0+, FR1\n" <<
+            "FMOV.S @R0+, FR2\n" <<
+            "FMOV.S @R0+, FR3\n" <<
+            "FMOV.S @R0+, FR4\n" <<
+            "FMOV.S @R0+, FR5\n" <<
+            "FMOV.S @R0+, FR6\n" <<
+            "FMOV.S @R0+, FR7\n" <<
+            "FMOV.S @R0+, FR8\n" <<
+            "FMOV.S @R0+, FR9\n" <<
+            "FMOV.S @R0+, FR10\n" <<
+            "FMOV.S @R0+, FR11\n" <<
+            "FMOV.S @R0+, FR12\n" <<
+            "FMOV.S @R0+, FR13\n" <<
+            "FMOV.S @R0+, FR14\n" <<
+            "FMOV.S @R0+, FR15\n" <<
+
+            // load second bank
+            "FRCHG\n" <<
+            "FMOV.S @R0+, FR0\n" <<
+            "FMOV.S @R0+, FR1\n" <<
+            "FMOV.S @R0+, FR2\n" <<
+            "FMOV.S @R0+, FR3\n" <<
+            "FMOV.S @R0+, FR4\n" <<
+            "FMOV.S @R0+, FR5\n" <<
+            "FMOV.S @R0+, FR6\n" <<
+            "FMOV.S @R0+, FR7\n" <<
+            "FMOV.S @R0+, FR8\n" <<
+            "FMOV.S @R0+, FR9\n" <<
+            "FMOV.S @R0+, FR10\n" <<
+            "FMOV.S @R0+, FR11\n" <<
+            "FMOV.S @R0+, FR12\n" <<
+            "FMOV.S @R0+, FR13\n" <<
+            "FMOV.S @R0+, FR14\n" <<
+            "FMOV.S @R0+, FR15\n" <<
+
+            "FRCHG\n"
+            ;
+
+        test_prog.add_txt(ss.str());
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        static const unsigned N_INSTS = 41;
+        /*
+         * Yes, I did actually hardcode the number of instructions
+         * to execute.
+         *
+         * Deal with it.
+         */
+        reset_cpu(cpu);
+
+        for (unsigned idx = 0; idx < Sh4::N_FLOAT_REGS; idx++) {
+            val_bank0[idx] = randgen32->pick_double();
+            val_bank1[idx] = randgen32->pick_double();
+
+            cpu->write_mem(val_bank0 + idx,
+                           idx * sizeof(val_bank0[0]) + FVAL_START,
+                           sizeof(val_bank0[0]));
+            cpu->write_mem(val_bank1 + idx,
+                           idx * sizeof(val_bank1[0]) + FVAL_START +
+                           Sh4::N_FLOAT_REGS * sizeof(val_bank0[0]),
+                           sizeof(val_bank1[0]));
+        }
+
+        for (unsigned count = 0; count < N_INSTS; count++)
+            cpu->exec_inst();
+
+        if (cpu->fpu.fpscr & Sh4::FPSCR_FR_MASK) {
+            std::cout << "While testing FRCHG: the FR bit in FPSCR was set "
+                "(it should have been cleared)" << std::endl;
+            ret_val = 1;
+        }
+
+        for (unsigned idx = 0; idx < Sh4::N_FLOAT_REGS; idx++) {
+            if (val_bank0[idx] != cpu->fpu.reg_bank0.fr[idx]) {
+                std::cout << "While testing FRCHG: bank0, register " << idx <<
+                    " was expected to be " << val_bank0[idx] << "; the " <<
+                    "actual value is " << cpu->fpu.reg_bank0.fr[idx] <<
+                    std::endl;
+                ret_val = 1;
+            }
+
+            if (val_bank1[idx] != cpu->fpu.reg_bank1.fr[idx]) {
+                std::cout << "While testing FRCHG: bank1, register " << idx <<
+                    " was expected to be " << val_bank1[idx] << "; the " <<
+                    "actual value is " << cpu->fpu.reg_bank1.fr[idx] <<
+                    std::endl;
+                ret_val = 1;
+            }
+        }
+
+        return ret_val;
     }
 };
 
@@ -9758,6 +9879,7 @@ struct inst_test {
     { "binary_fmovs_fr_indgen", &Sh4InstTests::binary_fmovs_fr_indgen },
     { "fmovs_binary_fr_inddecgen", &Sh4InstTests::fmovs_binary_fr_inddecgen },
     { "binary_fmovs_fr_ind_r0_gen", &Sh4InstTests::binary_fmovs_fr_ind_r0_gen },
+    { "noarg_frchg", &Sh4InstTests::noarg_frchg },
     { NULL }
 };
 
