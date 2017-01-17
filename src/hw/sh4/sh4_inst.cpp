@@ -596,46 +596,59 @@ struct Sh4::InstOpcode Sh4::opcode_list[] = {
     { "1111nnnn10011101", &Sh4::inst_unary_fldi1_fr },
 
     // FMOV FRm, FRn
-    { "1111nnnnmmmm1100", &Sh4::inst_binary_fmov_fr_fr },
+    { "1111nnnnmmmm1100", &Sh4::inst_binary_fmov_fr_fr, false, FPSCR_SZ_MASK, 0 },
 
     // FMOV.S @Rm, FRn
-    { "1111nnnnmmmm1000", &Sh4::inst_binary_fmovs_indgen_fr },
+    { "1111nnnnmmmm1000", &Sh4::inst_binary_fmovs_indgen_fr,
+      false, FPSCR_SZ_MASK, 0 },
 
     // FMOV.S @(R0,Rm), FRn
-    { "1111nnnnmmmm0110", &Sh4::inst_binary_fmovs_binind_r0_gen_fr },
+    { "1111nnnnmmmm0110", &Sh4::inst_binary_fmovs_binind_r0_gen_fr,
+      false, FPSCR_SZ_MASK, 0 },
 
     // FMOV.S @Rm+, FRn
-    { "1111nnnnmmmm1001", &Sh4::inst_binary_fmovs_indgeninc_fr },
+    { "1111nnnnmmmm1001", &Sh4::inst_binary_fmovs_indgeninc_fr,
+      false, FPSCR_SZ_MASK, 0 },
 
     // FMOV.S FRm, @Rn
-    { "1111nnnnmmmm1010", &Sh4::inst_binary_fmovs_fr_indgen },
+    { "1111nnnnmmmm1010", &Sh4::inst_binary_fmovs_fr_indgen,
+      false,  FPSCR_SZ_MASK, 0 },
 
     // FMOV.S FRm, @-Rn
-    { "1111nnnnmmmm1011", &Sh4::inst_binary_fmovs_fr_inddecgen },
+    { "1111nnnnmmmm1011", &Sh4::inst_binary_fmovs_fr_inddecgen,
+      false,  FPSCR_SZ_MASK, 0 },
 
     // FMOV.S FRm, @(R0, Rn)
-    { "1111nnnnmmmm0111", &Sh4::inst_binary_fmovs_fr_binind_r0_gen },
+    { "1111nnnnmmmm0111", &Sh4::inst_binary_fmovs_fr_binind_r0_gen,
+      false, FPSCR_SZ_MASK, 0 },
 
     // FMOV DRm, DRn
-    { "1111nnn0mmm01100", &Sh4::inst_binary_fmov_dr_dr },
+    { "1111nnn0mmm01100", &Sh4::inst_binary_fmov_dr_dr,
+      false, FPSCR_SZ_MASK, FPSCR_SZ_MASK },
 
     // FMOV @Rm, DRn
-    { "1111nnn0mmmm1000", &Sh4::inst_binary_fmov_indgen_dr },
+    { "1111nnn0mmmm1000", &Sh4::inst_binary_fmov_indgen_dr,
+      false, FPSCR_SZ_MASK, FPSCR_SZ_MASK },
 
     // FMOV @(R0, Rm), DRn
-    { "1111nnn0mmmm0110", &Sh4::inst_binary_fmov_binind_r0_gen_dr },
+    { "1111nnn0mmmm0110", &Sh4::inst_binary_fmov_binind_r0_gen_dr,
+      false, FPSCR_SZ_MASK, FPSCR_SZ_MASK },
 
     // FMOV @Rm+, DRn
-    { "1111nnn0mmmm1001", &Sh4::inst_binary_fmov_indgeninc_dr },
+    { "1111nnn0mmmm1001", &Sh4::inst_binary_fmov_indgeninc_dr,
+      false, FPSCR_SZ_MASK, FPSCR_SZ_MASK },
 
     // FMOV DRm, @Rn
-    { "1111nnnnmmm01010", &Sh4::inst_binary_fmov_dr_indgen },
+    { "1111nnnnmmm01010", &Sh4::inst_binary_fmov_dr_indgen,
+      false, FPSCR_SZ_MASK, FPSCR_SZ_MASK },
 
     // FMOV DRm, @-Rn
-    { "1111nnnnmmm01011", &Sh4::inst_binary_fmov_dr_inddecgen },
+    { "1111nnnnmmm01011", &Sh4::inst_binary_fmov_dr_inddecgen,
+      false, FPSCR_SZ_MASK, FPSCR_SZ_MASK },
 
     // FMOV DRm, @(R0,Rn)
-    { "1111nnnnmmm00111", &Sh4::inst_binary_fmov_dr_binind_r0_gen },
+    { "1111nnnnmmm00111", &Sh4::inst_binary_fmov_dr_binind_r0_gen,
+      false, FPSCR_SZ_MASK, FPSCR_SZ_MASK },
 
     // FLDS FRm, FPUL
     { "1111mmmm00011101", &Sh4::inst_binary_flds_fr_fpul },
@@ -3617,64 +3630,84 @@ void Sh4::inst_binary_fmovs_fr_binind_r0_gen(OpArgs inst) {
 // FMOV DRm, DRn
 // 1111nnn0mmm01100
 void Sh4::inst_binary_fmov_dr_dr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmm01100") <<
-                          errinfo_opcode_name("FMOV DRm, DRn"));
+    *fpu_dr(inst.dst_reg) = *fpu_dr(inst.src_reg);
+
+    next_inst();
 }
 
 // FMOV @Rm, DRn
 // 1111nnn0mmmm1000
 void Sh4::inst_binary_fmov_indgen_dr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmmm1000") <<
-                          errinfo_opcode_name("FMOV @Rm, DRn"));
+    reg32_t addr = *gen_reg(inst.src_reg);
+    double *dst_ptr = fpu_dr(inst.dst_reg);
+
+    if (read_mem(dst_ptr, addr, sizeof(*dst_ptr)) != 0)
+        return;
+
+    next_inst();
 }
 
 // FMOV @(R0, Rm), DRn
 // 1111nnn0mmmm0110
 void Sh4::inst_binary_fmov_binind_r0_gen_dr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmmm0110") <<
-                          errinfo_opcode_name("FMOV @(R0, Rm), DRn"));
+    reg32_t addr = *gen_reg(0) + * gen_reg(inst.src_reg);
+    double *dst_ptr = fpu_dr(inst.dst_reg);
+
+    if (read_mem(dst_ptr, addr, sizeof(*dst_ptr)) != 0)
+        return;
+
+    next_inst();
 }
 
 // FMOV @Rm+, DRn
 // 1111nnn0mmmm1001
 void Sh4::inst_binary_fmov_indgeninc_dr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmmm1001") <<
-                          errinfo_opcode_name("FMOV @Rm+, DRn"));
+    reg32_t *addr_p = gen_reg(inst.src_reg);
+    double *dst_ptr = fpu_dr(inst.dst_reg);
+
+    if (read_mem(dst_ptr, *addr_p, sizeof(*dst_ptr)) != 0)
+        return;
+
+    *addr_p += 8;
+    next_inst();
 }
 
 // FMOV DRm, @Rn
 // 1111nnnnmmm01010
 void Sh4::inst_binary_fmov_dr_indgen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmm01010") <<
-                          errinfo_opcode_name("FMOV DRm, @Rn"));
+    reg32_t addr = *gen_reg(inst.dst_reg);
+    double *src_p = fpu_dr(inst.src_reg);
+
+    if (write_mem(src_p, addr, sizeof(*src_p)) != 0)
+        return;
+
+    next_inst();
 }
 
 // FMOV DRm, @-Rn
 // 1111nnnnmmm01011
 void Sh4::inst_binary_fmov_dr_inddecgen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmm01011") <<
-                          errinfo_opcode_name("FMOV DRm, @-Rn"));
+    reg32_t *addr_p = gen_reg(inst.dst_reg);
+    reg32_t addr = *addr_p - 8;
+    double *src_p = fpu_dr(inst.src_reg);
+
+    if (write_mem(src_p, addr, sizeof(*src_p)) != 0)
+        return;
+
+    *addr_p = addr;
+    next_inst();
 }
 
 // FMOV DRm, @(R0, Rn)
 // 1111nnnnmmm00111
 void Sh4::inst_binary_fmov_dr_binind_r0_gen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmm00111") <<
-                          errinfo_opcode_name("FMOV DRm, @(R0, Rn)"));
+    addr32_t addr = *gen_reg(0) + *gen_reg(inst.dst_reg);
+    double *src_p = fpu_dr(inst.src_reg);
+
+    if (write_mem(src_p, addr, sizeof(*src_p)) != 0)
+        return;
+
+    next_inst();
 }
 
 // FLDS FRm, FPUL

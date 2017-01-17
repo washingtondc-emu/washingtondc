@@ -206,6 +206,16 @@ public:
         return fpu.reg_bank0.fr + reg_no;
     }
 
+    /*
+     * access double-precision floating-point register,
+     * taking bank-switching into account
+     */
+    double *fpu_dr(unsigned reg_no) {
+        if (fpu.fpscr & FPSCR_FR_MASK)
+            return fpu.reg_bank1.dr + reg_no;
+        return fpu.reg_bank0.dr + reg_no;
+    }
+
     Sh4(MemoryMap *mem);
     ~Sh4();
 
@@ -1839,11 +1849,6 @@ private:
         // if this is true, this inst cant be called from a delay slot
         bool is_branch;
 
-        // instructions are matched to this opcode
-        // by anding with mask and checking for equality with val
-        inst_t mask;
-        inst_t val;
-
         /*
          * These two fields are used for the sake of differemtiating the float
          * and double versions of opcodes from each other in the fpu.
@@ -1853,8 +1858,13 @@ private:
          *
          * instructions that don't care should set them both to zero.
          */
-        reg32_t fpscr_val;
         reg32_t fpscr_mask;
+        reg32_t fpscr_val;
+
+        // instructions are matched to this opcode
+        // by anding with mask and checking for equality with val
+        inst_t mask;
+        inst_t val;
     } opcode_list[];
 
     static void compile_instructions();
