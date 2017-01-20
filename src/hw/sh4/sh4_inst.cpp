@@ -3630,7 +3630,7 @@ void Sh4::inst_binary_fmovs_fr_binind_r0_gen(OpArgs inst) {
 // FMOV DRm, DRn
 // 1111nnn0mmm01100
 void Sh4::inst_binary_fmov_dr_dr(OpArgs inst) {
-    *fpu_dr(inst.dst_reg) = *fpu_dr(inst.src_reg);
+    *fpu_dr(inst.dr_dst) = *fpu_dr(inst.dr_src);
 
     next_inst();
 }
@@ -3639,7 +3639,7 @@ void Sh4::inst_binary_fmov_dr_dr(OpArgs inst) {
 // 1111nnn0mmmm1000
 void Sh4::inst_binary_fmov_indgen_dr(OpArgs inst) {
     reg32_t addr = *gen_reg(inst.src_reg);
-    double *dst_ptr = fpu_dr(inst.dst_reg);
+    double *dst_ptr = fpu_dr(inst.dr_dst);
 
     if (read_mem(dst_ptr, addr, sizeof(*dst_ptr)) != 0)
         return;
@@ -3651,7 +3651,7 @@ void Sh4::inst_binary_fmov_indgen_dr(OpArgs inst) {
 // 1111nnn0mmmm0110
 void Sh4::inst_binary_fmov_binind_r0_gen_dr(OpArgs inst) {
     reg32_t addr = *gen_reg(0) + * gen_reg(inst.src_reg);
-    double *dst_ptr = fpu_dr(inst.dst_reg);
+    double *dst_ptr = fpu_dr(inst.dr_dst);
 
     if (read_mem(dst_ptr, addr, sizeof(*dst_ptr)) != 0)
         return;
@@ -3663,7 +3663,7 @@ void Sh4::inst_binary_fmov_binind_r0_gen_dr(OpArgs inst) {
 // 1111nnn0mmmm1001
 void Sh4::inst_binary_fmov_indgeninc_dr(OpArgs inst) {
     reg32_t *addr_p = gen_reg(inst.src_reg);
-    double *dst_ptr = fpu_dr(inst.dst_reg);
+    double *dst_ptr = fpu_dr(inst.dr_dst);
 
     if (read_mem(dst_ptr, *addr_p, sizeof(*dst_ptr)) != 0)
         return;
@@ -3676,7 +3676,7 @@ void Sh4::inst_binary_fmov_indgeninc_dr(OpArgs inst) {
 // 1111nnnnmmm01010
 void Sh4::inst_binary_fmov_dr_indgen(OpArgs inst) {
     reg32_t addr = *gen_reg(inst.dst_reg);
-    double *src_p = fpu_dr(inst.src_reg);
+    double *src_p = fpu_dr(inst.dr_src);
 
     if (write_mem(src_p, addr, sizeof(*src_p)) != 0)
         return;
@@ -3689,7 +3689,7 @@ void Sh4::inst_binary_fmov_dr_indgen(OpArgs inst) {
 void Sh4::inst_binary_fmov_dr_inddecgen(OpArgs inst) {
     reg32_t *addr_p = gen_reg(inst.dst_reg);
     reg32_t addr = *addr_p - 8;
-    double *src_p = fpu_dr(inst.src_reg);
+    double *src_p = fpu_dr(inst.dr_src);
 
     if (write_mem(src_p, addr, sizeof(*src_p)) != 0)
         return;
@@ -3702,7 +3702,7 @@ void Sh4::inst_binary_fmov_dr_inddecgen(OpArgs inst) {
 // 1111nnnnmmm00111
 void Sh4::inst_binary_fmov_dr_binind_r0_gen(OpArgs inst) {
     addr32_t addr = *gen_reg(0) + *gen_reg(inst.dst_reg);
-    double *src_p = fpu_dr(inst.src_reg);
+    double *src_p = fpu_dr(inst.dr_src);
 
     if (write_mem(src_p, addr, sizeof(*src_p)) != 0)
         return;
