@@ -9700,12 +9700,12 @@ public:
 
         reset_cpu(cpu);
 
-        *cpu->fpu_dr(src_reg_no) = val;
+        *cpu->fpu_dr(src_reg_no >> 1) = val;
 
         cpu->exec_inst();
         cpu->exec_inst();
 
-        double actual_val = *cpu->fpu_dr(dst_reg_no);
+        double actual_val = *cpu->fpu_dr(dst_reg_no >> 1);
         if (actual_val != val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected value of DR" << dst_reg_no << " is " <<
@@ -9756,7 +9756,7 @@ public:
         cpu->exec_inst();
         cpu->exec_inst();
 
-        double actual_val = *cpu->fpu_dr(dst_reg_no);
+        double actual_val = *cpu->fpu_dr(dst_reg_no >> 1);
         if (actual_val != val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "val is " << val << std::endl;
@@ -9812,7 +9812,7 @@ public:
         cpu->exec_inst();
         cpu->exec_inst();
 
-        double val_actual = *cpu->fpu_dr(reg_dst);
+        double val_actual = *cpu->fpu_dr(reg_dst >> 1);
 
         if (val_actual != val) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -9883,7 +9883,7 @@ public:
         reg32_t expected_addr_out = addr + 8;
         reg32_t actual_addr_out = *cpu->gen_reg(reg_src);
 
-        double actual_val = *cpu->fpu_dr(reg_dst);
+        double actual_val = *cpu->fpu_dr(reg_dst >> 1);
 
         if ((actual_val != val) || (expected_addr_out != actual_addr_out)) {
             std::cout << "While running: " << cmd << std::endl;
@@ -9936,7 +9936,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(dst_reg_no) = addr;
-        *cpu->fpu_dr(src_reg_no) = val;
+        *cpu->fpu_dr(src_reg_no >> 1) = val;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -9995,7 +9995,7 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        *cpu->fpu_dr(reg_src) = val;
+        *cpu->fpu_dr(reg_src >> 1) = val;
         *cpu->gen_reg(reg_dst) = addr;
 
         cpu->exec_inst();
@@ -10057,7 +10057,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_dst) = dst_val;
         *cpu->gen_reg(0) = r0_val;
-        *cpu->fpu_dr(reg_src) = val;
+        *cpu->fpu_dr(reg_src >> 1) = val;
 
         cpu->exec_inst();
         cpu->exec_inst();
