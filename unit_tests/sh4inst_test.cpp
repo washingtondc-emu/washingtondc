@@ -24,6 +24,7 @@
 #include <iostream>
 #include <sstream>
 #include <limits>
+#include <cfenv>
 
 #include "BaseException.hpp"
 #include "Memory.hpp"
@@ -10105,6 +10106,615 @@ public:
 
         return failure;
     }
+
+    // FLDS FRm, FPUL
+    // 1111mmmm00011101
+    static int do_binary_flds_fr_fpul(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                      unsigned reg_src, float src_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FLDS FR" << reg_src << ", FPUL\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->fpu_fr(reg_src) = src_val;
+
+        cpu->exec_inst();
+
+        float val_actual;
+        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+
+        if (val_actual != src_val) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "expected val is " << src_val << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_flds_fr_fpul(Sh4 *cpu, BiosFile *bios,
+                                   Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < Sh4::N_FLOAT_REGS; reg_no++) {
+            failure = failure ||
+                do_binary_flds_fr_fpul(cpu, bios, mem, reg_no,
+                                       randgen32->pick_double());
+        }
+
+        return failure;
+    }
+
+    // FSTS FPUL, FRn
+    // 1111nnnn00001101
+    static int do_binary_fsts_fpul_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                      unsigned reg_dst, float src_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FSTS FPUL, FR" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
+
+        cpu->exec_inst();
+
+        float val_actual = *cpu->fpu_fr(reg_dst);
+
+        if (val_actual != src_val) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "expected val is " << src_val << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_fsts_fpul_fr(Sh4 *cpu, BiosFile *bios,
+                                   Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < Sh4::N_FLOAT_REGS; reg_no++) {
+            failure = failure ||
+                do_binary_fsts_fpul_fr(cpu, bios, mem, reg_no,
+                                       randgen32->pick_double());
+        }
+
+        return failure;
+    }
+
+    // FLOAT FPUL, FRn
+    // 1111nnnn00101101
+    static int do_binary_float_fpul_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                       unsigned reg_dst, reg32_t src_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FLOAT FPUL, FR" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
+
+        cpu->exec_inst();
+
+        float val_actual = *cpu->fpu_fr(reg_dst);
+
+        if (val_actual != float(src_val)) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "expected val is " << src_val << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_float_fpul_fr(Sh4 *cpu, BiosFile *bios,
+                                    Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < Sh4::N_FLOAT_REGS; reg_no++) {
+            failure = failure ||
+                do_binary_float_fpul_fr(cpu, bios, mem, reg_no,
+                                        randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // FTRC FRm, FPUL
+    // 1111mmmm00111101
+    static int do_binary_ftrc_fr_fpul(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                      unsigned reg_src, float src_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FTRC FR" << reg_src << ", FPUL\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->fpu_fr(reg_src) = src_val;
+
+        cpu->exec_inst();
+
+        reg32_t val_actual, val_expect;
+        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+
+        int round_mode = fegetround();
+        fesetround(FE_TOWARDZERO);
+        val_expect = src_val;
+        fesetround(round_mode);
+
+        if (val_actual != val_expect) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "expected val is " << val_expect << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_ftrc_fr_fpul(Sh4 *cpu, BiosFile *bios,
+                                   Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < Sh4::N_FLOAT_REGS; reg_no++) {
+            failure = failure ||
+                do_binary_ftrc_fr_fpul(cpu, bios, mem, reg_no,
+                                       randgen32->pick_double());
+        }
+
+        return failure;
+    }
+
+    // FCNVDS DRm, FPUL
+    // 1111mmm010111101
+    static int do_binary_fcnvds_dr_fpul(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                        unsigned reg_src, double src_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        // set the PR bit in FPSCR
+        ss <<
+            "STS FPSCR, R0\n"
+            "XOR R1, R1\n"
+            "MOV #1, R1\n"
+            "SHLL8 R1\n"
+            "SHLL8 R1\n"
+            "SHLL R1\n"
+            "SHLL R1\n"
+            "SHLL R1\n"
+            "OR R1, R0\n"
+            "LDS R0, FPSCR\n";
+        ss << "FCNVDS DR" << reg_src << ", FPUL\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->fpu_dr(reg_src >> 1) = src_val;
+
+        for (int i = 0; i < 11; i++)
+            cpu->exec_inst();
+
+        float val_actual, val_expect;
+        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+
+        val_expect = float(src_val);
+
+        if (val_actual != val_expect) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "expected val is " << val_expect << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_fcnvds_dr_fpul(Sh4 *cpu, BiosFile *bios,
+                                     Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < Sh4::N_DOUBLE_REGS; reg_no++) {
+            failure = failure ||
+                do_binary_fcnvds_dr_fpul(cpu, bios, mem, reg_no * 2,
+                                         randgen32->pick_double());
+        }
+
+        return failure;
+    }
+
+    // FCNVSD FPUL, DRn
+    // 1111nnn010101101
+    static int do_binary_fcnvsd_fpul_dr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                        unsigned reg_dst, float src_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        // set the PR bit in FPSCR
+        ss <<
+            "STS FPSCR, R0\n"
+            "XOR R1, R1\n"
+            "MOV #1, R1\n"
+            "SHLL8 R1\n"
+            "SHLL8 R1\n"
+            "SHLL R1\n"
+            "SHLL R1\n"
+            "SHLL R1\n"
+            "OR R1, R0\n"
+            "LDS R0, FPSCR\n";
+        ss << "FCNVSD FPUL, DR" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
+
+        for (int i = 0; i < 11; i++)
+            cpu->exec_inst();
+
+        double val_actual, val_expect;
+        val_actual = *cpu->fpu_dr(reg_dst >> 1);
+        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+
+        val_expect = double(src_val);
+
+        if (val_actual != val_expect) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "expected val is " << val_expect << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_fcnvsd_fpul_dr(Sh4 *cpu, BiosFile *bios,
+                                     Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < Sh4::N_DOUBLE_REGS; reg_no++) {
+            failure = failure ||
+                do_binary_fcnvds_dr_fpul(cpu, bios, mem, reg_no * 2,
+                                         randgen32->pick_double());
+        }
+
+        return failure;
+    }
+
+    // FLOAT FPUL, DRn
+    // 1111nnn000101101
+    static int do_binary_float_fpul_dr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                       unsigned reg_dst, uint32_t src_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        // set the PR bit in FPSCR
+        ss <<
+            "STS FPSCR, R0\n"
+            "XOR R1, R1\n"
+            "MOV #1, R1\n"
+            "SHLL8 R1\n"
+            "SHLL8 R1\n"
+            "SHLL R1\n"
+            "SHLL R1\n"
+            "SHLL R1\n"
+            "OR R1, R0\n"
+            "LDS R0, FPSCR\n";
+        ss << "FLOAT FPUL, DR" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
+
+        for (int i = 0; i < 11; i++)
+            cpu->exec_inst();
+
+        double val_actual, val_expect;
+        val_actual = *cpu->fpu_dr(reg_dst >> 1);
+        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+
+        val_expect = double(src_val);
+
+        if (val_actual != val_expect) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "expected val is " << val_expect << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_float_fpul_dr(Sh4 *cpu, BiosFile *bios,
+                                    Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < Sh4::N_DOUBLE_REGS; reg_no++) {
+            failure = failure ||
+                do_binary_fcnvds_dr_fpul(cpu, bios, mem, reg_no * 2,
+                                         randgen32->pick_double());
+        }
+
+        return failure;
+    }
+
+    // FTRC DRm, FPUL
+    // 1111mmm000111101
+    static int do_binary_ftrc_dr_fpul(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                      unsigned reg_src, double src_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        // set the PR bit in FPSCR
+        ss <<
+            "STS FPSCR, R0\n"
+            "XOR R1, R1\n"
+            "MOV #1, R1\n"
+            "SHLL8 R1\n"
+            "SHLL8 R1\n"
+            "SHLL R1\n"
+            "SHLL R1\n"
+            "SHLL R1\n"
+            "OR R1, R0\n"
+            "LDS R0, FPSCR\n";
+        ss << "FTRC DR" << reg_src << ", FPUL\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *cpu->fpu_dr(reg_src >> 1) = src_val;
+
+        for (int i = 0; i < 11; i++)
+            cpu->exec_inst();
+
+        reg32_t val_actual, val_expect;
+        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+
+        int round_mode = fegetround();
+        fesetround(FE_TOWARDZERO);
+        val_expect = src_val;
+        fesetround(round_mode);
+
+        if (val_actual != val_expect) {
+            std::cout << "ERROR: while running " << cmd << std::endl;
+            std::cout << "expected val is " << val_expect << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_ftrc_dr_fpul(Sh4 *cpu, BiosFile *bios,
+                                   Memory *mem, RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < Sh4::N_DOUBLE_REGS; reg_no++) {
+            failure = failure ||
+                do_binary_ftrc_dr_fpul(cpu, bios, mem, reg_no << 1,
+                                       randgen32->pick_double());
+        }
+
+        return failure;
+    }
+
+    // LDS Rm, FPUL
+    // 0100mmmm01011010
+    static int do_binary_lds_gen_fpul(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                      unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS R" << reg_no << ", FPUL\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = val;
+        cpu->exec_inst();
+
+        reg32_t val_actual;
+        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+
+        if (val_actual != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << cpu->reg.mach << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_lds_gen_fpul(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_lds_gen_fpul(cpu, bios, mem, reg_no,
+                                       randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // LDS.L @Rm+, FPUL
+    // 0100mmmm01010110
+    static int do_binary_ldsl_indgeninc_fpul(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                             unsigned reg_no, addr32_t addr,
+                                             uint32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "LDS.L @R" << reg_no << "+, FPUL\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        cpu->write_mem(&val, addr, sizeof(val));
+
+        cpu->exec_inst();
+
+        reg32_t val_actual;
+        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+
+        if (val_actual != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << val << std::endl;
+            std::cout << "actual val is " << cpu->reg.mach << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr + 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_ldsl_indgeninc_fpul(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                          RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = pick_addr(AddrRange(randgen32, 0, MEM_SZ - 5));
+            uint32_t val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_ldsl_indgeninc_fpul(cpu, bios, mem, reg_no, addr, val);
+        }
+
+        return failure;
+    }
+
+    // STS FPUL, Rn
+    // 0000nnnn01011010
+    static int do_binary_sts_fpul_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                      unsigned reg_no, reg32_t val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS FPUL, R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        memcpy(&cpu->fpu.fpul, &val, sizeof(cpu->fpu.fpul));
+        cpu->exec_inst();
+
+        if (*cpu->gen_reg(reg_no) != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val << std::endl;
+            std::cout << "actual val is " << *cpu->gen_reg(reg_no) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_sts_fpul_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                   RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_binary_sts_fpul_gen(cpu, bios, mem, reg_no,
+                                       randgen32->pick_val(0));
+        }
+
+        return failure;
+    }
+
+    // STS.L FPUL, @-Rn
+    // 0100nnnn01010010
+    static int do_binary_stsl_fpul_inddecgen(Sh4 *cpu, BiosFile *bios,
+                                             Memory *mem, unsigned reg_no,
+                                             reg32_t fpul_val, addr32_t addr) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "STS.L FPUL, @-R" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *cpu->gen_reg(reg_no) = addr;
+        memcpy(&cpu->fpu.fpul, &fpul_val, sizeof(cpu->fpu.fpul));
+        cpu->exec_inst();
+
+        uint32_t mem_val;
+        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+
+        if (mem_val != fpul_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << std::hex << fpul_val << std::endl;
+            std::cout << "actual val is " << mem_val << std::endl;
+            std::cout << "input addr is " << addr << std::endl;
+            std::cout << "output addr is " << (addr - 4) << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_stsl_fpul_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                          RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned reg_no = 0; reg_no < 16; reg_no++) {
+            addr32_t addr = pick_addr(AddrRange(randgen32, 4, MEM_SZ - 1));
+            reg32_t fpul_val = randgen32->pick_val(0);
+            failure = failure ||
+                do_binary_stsl_fpul_inddecgen(cpu, bios, mem, reg_no,
+                                              fpul_val, addr);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -10311,6 +10921,18 @@ struct inst_test {
     { "binary_fmov_dr_indgen", &Sh4InstTests::binary_fmov_dr_indgen },
     { "fmov_binary_dr_inddecgen", &Sh4InstTests::fmov_binary_dr_inddecgen },
     { "binary_fmov_dr_ind_r0_gen", &Sh4InstTests::binary_fmov_dr_ind_r0_gen },
+    { "binary_flds_fr_fpul", &Sh4InstTests::binary_flds_fr_fpul },
+    { "binary_fsts_fpul_fr", &Sh4InstTests::binary_fsts_fpul_fr },
+    { "binary_float_fpul_fr", &Sh4InstTests::binary_float_fpul_fr },
+    { "binary_ftrc_fr_fpul", &Sh4InstTests::binary_ftrc_fr_fpul },
+    { "binary_fcnvds_dr_fpul", &Sh4InstTests::binary_fcnvds_dr_fpul },
+    { "binary_fcnvsd_fpul_dr", &Sh4InstTests::binary_fcnvsd_fpul_dr },
+    { "binary_float_fpul_dr", &Sh4InstTests::binary_float_fpul_dr },
+    { "binary_ftrc_dr_fpul", &Sh4InstTests::binary_ftrc_dr_fpul },
+    { "binary_lds_gen_fpul", &Sh4InstTests::binary_lds_gen_fpul },
+    { "binary_ldsl_indgeninc_fpul", &Sh4InstTests::binary_ldsl_indgeninc_fpul },
+    { "binary_sts_fpul_gen", &Sh4InstTests::binary_sts_fpul_gen },
+    { "binary_stsl_fpul_inddecgen", &Sh4InstTests::binary_stsl_fpul_inddecgen },
     { NULL }
 };
 
