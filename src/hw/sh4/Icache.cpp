@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -52,12 +52,12 @@ void Icache::reset() {
 }
 
 addr32_t Icache::cache_selector(addr32_t paddr, bool index_enable) const {
-    addr32_t ent_sel = paddr & 0x7f0;
+    addr32_t ent_sel = paddr & 0xfe0;
     if (index_enable)
         ent_sel |= (paddr & (1 << 25)) >> 13;
     else
         ent_sel |= paddr & (1 << 12);
-    ent_sel >>= 4;
+    ent_sel >>= 5;
 
     return ent_sel;
 }
