@@ -201,6 +201,8 @@ public:
      * taking bank-switching into account
      */
     float *fpu_fr(unsigned reg_no) {
+        assert(reg_no < N_FLOAT_REGS);
+
         if (fpu.fpscr & FPSCR_FR_MASK)
             return fpu.reg_bank1.fr + reg_no;
         return fpu.reg_bank0.fr + reg_no;
@@ -211,6 +213,8 @@ public:
      * taking bank-switching into account
      */
     double *fpu_dr(unsigned reg_no) {
+        assert(reg_no < N_DOUBLE_REGS);
+
         if (fpu.fpscr & FPSCR_FR_MASK)
             return fpu.reg_bank1.dr + reg_no;
         return fpu.reg_bank0.dr + reg_no;

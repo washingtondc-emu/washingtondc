@@ -24,6 +24,7 @@
 #error this file cannot be built with the sh4 instruction cache disabled!
 #endif
 
+#include <cassert>
 #include <cstring>
 
 #include "sh4.hpp"
@@ -58,6 +59,8 @@ addr32_t Icache::cache_selector(addr32_t paddr, bool index_enable) const {
     else
         ent_sel |= paddr & (1 << 12);
     ent_sel >>= 5;
+
+    assert(ent_sel < ENTRY_COUNT);
 
     return ent_sel;
 }

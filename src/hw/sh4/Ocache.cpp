@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #error this file cannot be built with the sh4 operand cache disabled!
 #endif
 
+#include <cassert>
 #include <cstring>
 
 #include "sh4.hpp"
@@ -81,7 +82,10 @@ Ocache::cache_line_t Ocache::cache_selector(addr32_t paddr, bool index_enable,
          * cache line within the given range to use.
          */
         ent_sel &= ~(1 << 7);
+        assert((ent_sel <= 127) || ((ent_sel >= 256) && (ent_sel <= 383)));
     }
+
+    assert(ent_sel < ENTRY_COUNT);
 
     return ent_sel;
 }
