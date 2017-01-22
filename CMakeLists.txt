@@ -24,7 +24,11 @@ cmake_minimum_required(VERSION 2.6)
 project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
-set(CMAKE_CXX_STANDARD 98)
+
+# I was hoping to avoid using C++11, but it seems I need it for some of the
+# lower-level floating point features it brings in from C99 (such as being able
+# to set the rounding mode and determine if a value is infinite)
+set(CMAKE_CXX_STANDARD 11)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)

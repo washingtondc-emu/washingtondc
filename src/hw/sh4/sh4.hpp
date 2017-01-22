@@ -1661,7 +1661,7 @@ private:
 
     // FSTS FPUL, FRn
     // 1111nnnn00001101
-    void inst_binary_fsts_fpul_fp(OpArgs inst);
+    void inst_binary_fsts_fpul_fr(OpArgs inst);
 
     // FABS FRn
     // 1111nnnn01011101

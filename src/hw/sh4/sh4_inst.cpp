@@ -22,6 +22,8 @@
 
 #include <limits>
 #include <cstring>
+#include <cfenv>
+#include <cmath>
 
 #include <boost/tuple/tuple.hpp>
 
@@ -683,7 +685,7 @@ struct Sh4::InstOpcode Sh4::opcode_list[] = {
 
     // FSTS FPUL, FRn
     // XXX Should this check the SZ or PR bits of FPSCR ?
-    { "1111nnnn00001101", &Sh4::inst_binary_fsts_fpul_fp, false, 0, 0 },
+    { "1111nnnn00001101", &Sh4::inst_binary_fsts_fpul_fr, false, 0, 0 },
 
     // FABS FRn
     { "1111nnnn01011101", &Sh4::inst_unary_fabs_fr, false, FPSCR_PR_MASK, 0 },
@@ -3766,19 +3768,21 @@ void Sh4::inst_binary_fmov_dr_binind_r0_gen(OpArgs inst) {
 // FLDS FRm, FPUL
 // 1111mmmm00011101
 void Sh4::inst_binary_flds_fr_fpul(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111mmmm00011101") <<
-                          errinfo_opcode_name("FLDS FRm, FPUL"));
+    float *src_reg = fpu_fr(inst.gen_reg);
+
+    memcpy(&fpu.fpul, src_reg, sizeof(fpu.fpul));
+
+    next_inst();
 }
 
 // FSTS FPUL, FRn
 // 1111nnnn00001101
-void Sh4::inst_binary_fsts_fpul_fp(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnn00001101") <<
-                          errinfo_opcode_name("FSTS FPUL, FRn"));
+void Sh4::inst_binary_fsts_fpul_fr(OpArgs inst) {
+    float *dst_reg = fpu_fr(inst.gen_reg);
+
+    memcpy(dst_reg, &fpu.fpul, sizeof(*dst_reg));
+
+    next_inst();
 }
 
 // FABS FRn
@@ -3829,10 +3833,11 @@ void Sh4::inst_binary_fdiv_fr_fr(OpArgs inst) {
 // FLOAT FPUL, FRn
 // 1111nnnn00101101
 void Sh4::inst_binary_float_fpul_fr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnn00101101") <<
-                          errinfo_opcode_name("FLOAT FPUL, FRn"));
+    float *dst_reg = fpu_fr(inst.gen_reg);
+
+    *dst_reg = (float)fpu.fpul;
+
+    next_inst();
 }
 
 // FMAC FR0, FRm, FRn
@@ -3883,10 +3888,25 @@ void Sh4::inst_binary_fsub_fr_fr(OpArgs inst) {
 // FTRC FRm, FPUL
 // 1111mmmm00111101
 void Sh4::inst_binary_ftrc_fr_fpul(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111mmmm00111101") <<
-                          errinfo_opcode_name("FTRC FRm, FPUL"));
+    /*
+     * TODO: The spec says there's some pretty complicated error-checking that
+     * should be done here.  I'm just going to implement this the naive way
+     * instead
+     */
+    float const *val_in_p = fpu_fr(inst.gen_reg);
+    float val = *val_in_p;
+    uint32_t val_int;
+
+    next_inst();
+    fpu.fpscr &= ~FPSCR_CAUSE_MASK;
+
+    int round_mode = fegetround();
+    fesetround(FE_TOWARDZERO);
+
+    val_int = val;
+    memcpy(&fpu.fpul, &val_int, sizeof(fpu.fpul));
+
+    fesetround(round_mode);
 }
 
 // FABS DRn
@@ -3937,28 +3957,46 @@ void Sh4::inst_binary_fdiv_dr_dr(OpArgs inst) {
 // FCNVDS DRm, FPUL
 // 1111mmm010111101
 void Sh4::inst_binary_fcnvds_dr_fpul(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111mmm010111101") <<
-                          errinfo_opcode_name("FCNVDS DRm, FPUL"));
+    /*
+     * TODO: The spec says there's some pretty complicated error-checking that
+     * should be done here.  I'm just going to implement this the naive way
+     * instead
+     */
+    next_inst();
+    fpu.fpscr &= ~FPSCR_CAUSE_MASK;
+
+    double in_val = *fpu_dr(inst.dr_reg);
+    float out_val = in_val;
+
+    memcpy(&fpu.fpul, &out_val, sizeof(fpu.fpul));
 }
 
 // FCNVSD FPUL, DRn
 // 1111nnn010101101
 void Sh4::inst_binary_fcnvsd_fpul_dr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn010101101") <<
-                          errinfo_opcode_name("FCNVSD FPUL, DRn"));
+    /*
+     * TODO: The spec says there's some pretty complicated error-checking that
+     * should be done here.  I'm just going to implement this the naive way
+     * instead
+     */
+    next_inst();
+    fpu.fpscr &= ~FPSCR_CAUSE_MASK;
+
+    float in_val;
+    memcpy(&in_val, &fpu.fpul, sizeof(in_val));
+    double out_val = in_val;
+
+    *fpu_dr(inst.dr_reg) = out_val;
 }
 
 // FLOAT FPUL, DRn
 // 1111nnn000101101
 void Sh4::inst_binary_float_fpul_dr(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn000101101") <<
-                          errinfo_opcode_name("FLOAT FPUL, DRn"));
+    double *dst_reg = fpu_dr(inst.dr_reg);
+
+    *dst_reg = (double)fpu.fpul;
+
+    next_inst();
 }
 
 // FMUL DRm, DRn
@@ -4000,10 +4038,24 @@ void Sh4::inst_binary_fsub_dr_dr(OpArgs inst) {
 // FTRC DRm, FPUL
 // 1111mmm000111101
 void Sh4::inst_binary_ftrc_dr_fpul(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111mmm000111101") <<
-                          errinfo_opcode_name("FTRC DRm, FPUL"));
+    /*
+     * TODO: The spec says there's some pretty complicated error-checking that
+     * should be done here.  I'm just going to implement this the naive way
+     * instead
+     */
+    double val_in = *fpu_dr(inst.dr_src);
+    uint32_t val_int;
+
+    next_inst();
+    fpu.fpscr &= ~FPSCR_CAUSE_MASK;
+
+    int round_mode = fegetround();
+    fesetround(FE_TOWARDZERO);
+
+    val_int = val_in;
+    memcpy(&fpu.fpul, &val_int, sizeof(fpu.fpul));
+
+    fesetround(round_mode);
 }
 
 // LDS Rm, FPSCR
@@ -4017,10 +4069,9 @@ void Sh4::inst_binary_lds_gen_fpscr(OpArgs inst) {
 // LDS Rm, FPUL
 // 0100mmmm01011010
 void Sh4::inst_binary_gen_fpul(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0100mmmm01011010") <<
-                          errinfo_opcode_name("LDS Rm, FPUL"));
+    memcpy(&fpu.fpul, gen_reg(inst.gen_reg), sizeof(fpu.fpul));
+
+    next_inst();
 }
 
 // LDS.L @Rm+, FPSCR
@@ -4042,10 +4093,17 @@ void Sh4::inst_binary_ldsl_indgeninc_fpscr(OpArgs inst) {
 // LDS.L @Rm+, FPUL
 // 0100mmmm01010110
 void Sh4::inst_binary_ldsl_indgeninc_fpul(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0100mmmm01010110") <<
-                          errinfo_opcode_name("LDS.L @Rm+, FPUL"));
+    uint32_t val;
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+
+    if (read_mem(&val, *addr_reg, sizeof(val)) != 0)
+        return;
+
+    memcpy(&fpu.fpul, &val, sizeof(fpu.fpul));
+
+    *addr_reg += 4;
+
+    next_inst();
 }
 
 // STS FPSCR, Rn
@@ -4059,10 +4117,9 @@ void Sh4::inst_binary_sts_fpscr_gen(OpArgs inst) {
 // STS FPUL, Rn
 // 0000nnnn01011010
 void Sh4::inst_binary_sts_fpul_gen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0000nnnn01011010") <<
-                          errinfo_opcode_name("STS FPUL, Rn"));
+    memcpy(gen_reg(inst.gen_reg), &fpu.fpul, sizeof(fpu.fpul));
+
+    next_inst();
 }
 
 // STS.L FPSCR, @-Rn
@@ -4082,10 +4139,15 @@ void Sh4::inst_binary_stsl_fpscr_inddecgen(OpArgs inst) {
 // STS.L FPUL, @-Rn
 // 0100nnnn01010010
 void Sh4::inst_binary_stsl_fpul_inddecgen(OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0100nnnn01010010") <<
-                          errinfo_opcode_name("STS.L FPUL, @-Rn"));
+    reg32_t *addr_reg = gen_reg(inst.gen_reg);
+    addr32_t addr = *addr_reg - 4;
+
+    if (write_mem(&fpu.fpul, addr, sizeof(fpu.fpul)) != 0)
+        return;
+
+    *addr_reg = addr;
+
+    next_inst();
 }
 
 // FMOV DRm, XDn
