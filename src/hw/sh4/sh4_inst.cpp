@@ -898,20 +898,7 @@ void Sh4::exec_inst() {
     }
 }
 
-void Sh4::exec_delay_slot(addr32_t addr) {
-    int exc_pending;
-    inst_t inst;
-
-    if ((exc_pending = read_inst(&inst, addr))) {
-        // fuck it, i'll commit now and figure what to do here later
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("SH4 CPU exceptions/traps"));
-    }
-
-    do_exec_inst(inst, false);
-}
-
-void Sh4::do_exec_inst(inst_t inst, bool allow_branch) {
+void Sh4::do_exec_inst(inst_t inst) {
     InstOpcode *op = opcode_list;
     OpArgs oa;
 
@@ -920,9 +907,17 @@ void Sh4::do_exec_inst(inst_t inst, bool allow_branch) {
     while (op->fmt) {
         if (((op->mask & inst) == op->val) &&
             ((op->fpscr_mask & fpu.fpscr) == op->fpscr_val)) {
-            if (!(!allow_branch && op->is_branch)) {
+            if (!(delayed_branch && op->is_branch)) {
                 opcode_func_t op_func = op->func;
+                bool delayed_branch_tmp = delayed_branch;
+                addr32_t delayed_branch_addr_tmp = delayed_branch_addr;
+
                 (this->*op_func)(oa);
+
+                if (delayed_branch_tmp) {
+                    reg.pc = delayed_branch_addr_tmp;
+                    delayed_branch = false;
+                }
             } else {
                 // raise exception for illegal slot instruction
                 set_exception(EXCP_SLOT_ILLEGAL_INST);
@@ -974,11 +969,10 @@ void Sh4::compile_instruction(struct Sh4::InstOpcode *op) {
 // RTS
 // 0000000000001011
 void Sh4::inst_rts(OpArgs inst) {
-    addr32_t delay_slot_addr = reg.pc + 2;
-    reg.pc = reg.pr;
+    delayed_branch = true;
+    delayed_branch_addr = reg.pr;
 
-    exec_delay_slot(delay_slot_addr);
-    reg.pc -= 2;
+    next_inst();
 }
 
 
@@ -1326,25 +1320,20 @@ void Sh4::inst_unary_shlr16_gen(OpArgs inst) {
 // BRAF Rn
 // 0000nnnn00100011
 void Sh4::inst_unary_braf_gen(OpArgs inst) {
-    addr32_t delay_slot_addr = reg.pc + 2;
+    delayed_branch = true;
+    delayed_branch_addr = reg.pc + *gen_reg(inst.gen_reg) + 4;
 
-    reg.pc += *gen_reg(inst.gen_reg) + 4;
-
-    exec_delay_slot(delay_slot_addr);
-    reg.pc -= 2;
+    next_inst();
 }
 
 // BSRF Rn
 // 0000nnnn00000011
 void Sh4::inst_unary_bsrf_gen(OpArgs inst) {
-    addr32_t delay_slot_addr = reg.pc + 2;
-    addr32_t pr_addr = reg.pc + 4;
+    delayed_branch = true;
+    reg.pr = reg.pc + 4;
+    delayed_branch_addr = reg.pc + *gen_reg(inst.gen_reg) + 4;
 
-    reg.pr = pr_addr;
-    reg.pc += *gen_reg(inst.gen_reg) + 4;
-
-    exec_delay_slot(delay_slot_addr);
-    reg.pc -= 2;
+    next_inst();
 }
 
 // CMP/EQ #imm, R0
@@ -1472,13 +1461,12 @@ void Sh4::inst_unary_bf_disp(OpArgs inst) {
 // BF/S label
 // 10001111dddddddd
 void Sh4::inst_unary_bfs_disp(OpArgs inst) {
-    addr32_t delay_slot_addr = reg.pc + 2;
+    if (!(reg.sr & SR_FLAG_T_MASK)) {
+        delayed_branch_addr = reg.pc + (int32_t(inst.simm8) << 1) + 4;
+        delayed_branch = true;
+    }
 
-    if (!(reg.sr & SR_FLAG_T_MASK))
-        reg.pc += (int32_t(inst.simm8) << 1) + 4;
-
-    exec_delay_slot(delay_slot_addr);
-    reg.pc += 2;
+    next_inst();
 }
 
 // BT label
@@ -1493,39 +1481,31 @@ void Sh4::inst_unary_bt_disp(OpArgs inst) {
 // BT/S label
 // 10001101dddddddd
 void Sh4::inst_unary_bts_disp(OpArgs inst) {
-    addr32_t delay_slot_addr = reg.pc + 2;
+    if (reg.sr & SR_FLAG_T_MASK) {
+        delayed_branch_addr = reg.pc + (int32_t(inst.simm8) << 1) + 4;;
+        delayed_branch = true;
+    }
 
-    if (reg.sr & SR_FLAG_T_MASK)
-        reg.pc += (int32_t(inst.simm8) << 1) + 4;
-    else
-        reg.pc += 2;
-
-    exec_delay_slot(delay_slot_addr);
-    reg.pc -= 2;
+    next_inst();
 }
 
 // BRA label
 // 1010dddddddddddd
 void Sh4::inst_unary_bra_disp(OpArgs inst) {
-    addr32_t delay_slot_addr = reg.pc + 2;
+    delayed_branch = true;
+    delayed_branch_addr = reg.pc + (int32_t(inst.simm12) << 1) + 4;
 
-    reg.pc += (int32_t(inst.simm12) << 1) + 4;
-
-    exec_delay_slot(delay_slot_addr);
-    reg.pc -= 2;
+    next_inst();
 }
 
 // BSR label
 // 1011dddddddddddd
 void Sh4::inst_unary_bsr_disp(OpArgs inst) {
-    addr32_t delay_slot_addr = reg.pc + 2;
-    addr32_t pr_addr = reg.pc + 4;
+    reg.pr = reg.pc + 4;
+    delayed_branch_addr = reg.pc + (int32_t(inst.simm12) << 1) + 4;
+    delayed_branch = true;
 
-    reg.pr = pr_addr;
-    reg.pc += (int32_t(inst.simm12) << 1) + 4;
-
-    exec_delay_slot(delay_slot_addr);
-    reg.pc -= 2;
+    next_inst();
 }
 
 // TRAPA #immed
@@ -1725,24 +1705,20 @@ void Sh4::inst_unary_pref_indgen(OpArgs inst) {
 // JMP @Rn
 // 0100nnnn00101011
 void Sh4::inst_unary_jmp_indgen(OpArgs inst) {
-    addr32_t delay_slot_addr = reg.pc + 2;
+    delayed_branch_addr = *gen_reg(inst.gen_reg);
+    delayed_branch = true;
 
-    reg.pc = *gen_reg(inst.gen_reg);
-
-    exec_delay_slot(delay_slot_addr);
-    reg.pc -= 2; // undo the previous instruction's incrementing of pc
+    next_inst();
 }
 
 // JSR @Rn
 // 0100nnnn00001011
 void Sh4::inst_unary_jsr_indgen(OpArgs inst) {
-    addr32_t delay_slot_addr = reg.pc + 2;
-
     reg.pr = reg.pc + 4;
-    reg.pc = *gen_reg(inst.gen_reg);
+    delayed_branch_addr = *gen_reg(inst.gen_reg);
+    delayed_branch = true;
 
-    exec_delay_slot(delay_slot_addr);
-    reg.pc -= 2; // undo the previous instruction's incrementing of pc
+    next_inst();
 }
 
 // LDC Rm, SR

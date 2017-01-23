@@ -101,6 +101,9 @@ void Sh4::on_hard_reset() {
     std::fill(fpu.reg_bank0.fr, fpu.reg_bank0.fr + N_FLOAT_REGS, 0.0f);
     std::fill(fpu.reg_bank1.fr, fpu.reg_bank1.fr + N_FLOAT_REGS, 0.0f);
 
+    delayed_branch = false;
+    delayed_branch_addr = 0;
+
 #ifdef ENABLE_SH4_OCACHE
     op_cache->reset();
 #else

@@ -169,6 +169,21 @@ public:
     };
     RegFile reg;
 
+    /*
+     * If the CPU is executing a delayed branch instruction, then
+     * delayed_branch will be true and delayed_branch_addr will point to the
+     * address to branch to.  After executing one instruction, delayed_branch
+     * will be set to false and the CPU will jump to delayed_branch_addr.
+     *
+     * If the branch instruction evaluates to false (ie, there is not a delayed
+     * branch) then delayed_branch will never be set to true.  This means that
+     * the interpreter will not raise any exceptions caused by executing a
+     * branch instruction in a delay slot; this is an inaccuracy which may need
+     * to be revisited in the future.
+     */
+    bool delayed_branch;
+    addr32_t delayed_branch_addr;
+
     static const size_t N_FLOAT_REGS = 16;
     static const size_t N_DOUBLE_REGS = 8;
 
@@ -245,7 +260,7 @@ public:
         reg.pc += 2;
     }
 
-    void do_exec_inst(inst_t inst, bool allow_branch = true);
+    void do_exec_inst(inst_t inst);
 
     // runs inst as a delay slot.
     void exec_delay_slot(addr32_t addr);

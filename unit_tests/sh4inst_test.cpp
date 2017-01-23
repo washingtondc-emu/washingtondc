@@ -8125,6 +8125,8 @@ public:
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->reg.pc = pc_init;
+
+        cpu->exec_inst();
         cpu->exec_inst();
 
         addr32_t pc_expect = 4 + pc_init + reg_val;
@@ -8207,6 +8209,8 @@ public:
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->reg.pc = pc_init;
+
+        cpu->exec_inst();
         cpu->exec_inst();
 
         addr32_t pc_expect = 4 + pc_init + reg_val;
@@ -8294,6 +8298,8 @@ public:
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         cpu->reg.pc = pc_init;
         cpu->reg.pr = pr_val;
+
+        cpu->exec_inst();
         cpu->exec_inst();
 
         addr32_t pc_expect = pr_val;
@@ -8372,6 +8378,8 @@ public:
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         cpu->reg.pc = pc_init;
+
+        cpu->exec_inst();
         cpu->exec_inst();
 
         addr32_t pc_expect = 4 + pc_init + (disp12 << 1);
@@ -8454,6 +8462,8 @@ public:
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         cpu->reg.pc = pc_init;
+
+        cpu->exec_inst();
         cpu->exec_inst();
 
         addr32_t pc_expect = 4 + pc_init + (disp12 << 1);
@@ -8535,6 +8545,8 @@ public:
             cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
         else
             cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+
+        cpu->exec_inst();
         cpu->exec_inst();
 
         addr32_t pc_expect;
@@ -8625,6 +8637,8 @@ public:
             cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
         else
             cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+
+        cpu->exec_inst();
         cpu->exec_inst();
 
         addr32_t pc_expect;
@@ -8712,6 +8726,8 @@ public:
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->reg.pc = pc_init;
+
+        cpu->exec_inst();
         cpu->exec_inst();
 
         addr32_t pc_expect = reg_val;
@@ -8794,6 +8810,8 @@ public:
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->reg.pc = pc_init;
+
+        cpu->exec_inst();
         cpu->exec_inst();
 
         addr32_t pc_expect = reg_val;
