@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -42,6 +42,10 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
      * These all seem pretty low-level, so we just blindly let
      * read/write operations pass through and don't do anything
      * to react to them.
+     *
+     * I *am* a bit worried about ignoring GPIOIC, though.  It sounds like that
+     * one might be important, but I'm just not show how (or if) I should
+     * handle it at this point.
      */
     { "BCR1", 0xff800000, ~addr32_t(0), 4, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
@@ -57,6 +61,24 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
       0, 0x07777777 },
     { "MCR", 0xff800014, ~addr32_t(0), 4, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
+    { "PCR", 0xff800018, ~addr32_t(0), 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
+    { "PCTRA", 0xff80002c, ~addr32_t(0), 4, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
+    { "PDTRA", 0xff800030, ~addr32_t(0), 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
+    { "PCTRB", 0xff800040, ~addr32_t(0), 4, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
+    { "PDTRB", 0xff800044, ~addr32_t(0), 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+      0, 0 },
+    { "GPIOIC", 0xff800048, ~addr32_t(0), 2, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
       0, 0 },
     { "RFCR", 0xff800028, ~addr32_t(0), 2, true,
