@@ -15,54 +15,62 @@
    License along with the GNU C Library; if not, see
    <http://www.gnu.org/licenses/>.  */
 
-#ifndef _FENV_H
-# error "Never use <bits/fenv.h> directly; include <fenv.h> instead."
-#endif
+// #ifndef _FENV_H
+// # error "Never use <bits/fenv.h> directly; include <fenv.h> instead."
+// #endif
 
 /* Define bits representing the exception.  We use the bit positions
    of the appropriate bits in the FPU control word.  */
 enum
   {
-    FE_INVALID =
-#define FE_INVALID	0x01
-      FE_INVALID,
-    __FE_DENORM = 0x02,
-    FE_DIVBYZERO =
-#define FE_DIVBYZERO	0x04
-      FE_DIVBYZERO,
-    FE_OVERFLOW =
-#define FE_OVERFLOW	0x08
-      FE_OVERFLOW,
-    FE_UNDERFLOW =
-#define FE_UNDERFLOW	0x10
-      FE_UNDERFLOW,
-    FE_INEXACT =
-#define FE_INEXACT	0x20
-      FE_INEXACT
+    ARCH_FE_INVALID =
+#define ARCH_FE_INVALID	0x01
+    ARCH_FE_INVALID,
+    ARCH_FE_DENORM = 0x02,
+    ARCH_FE_DIVBYZERO =
+#define ARCH_FE_DIVBYZERO	0x04
+      ARCH_FE_DIVBYZERO,
+    ARCH_FE_OVERFLOW =
+#define ARCH_FE_OVERFLOW	0x08
+      ARCH_FE_OVERFLOW,
+    ARCH_FE_UNDERFLOW =
+#define ARCH_FE_UNDERFLOW	0x10
+    ARCH_FE_UNDERFLOW,
+    ARCH_FE_INEXACT =
+#define ARCH_FE_INEXACT	0x20
+      ARCH_FE_INEXACT
   };
 
-#define FE_ALL_EXCEPT \
-	(FE_INEXACT | FE_DIVBYZERO | FE_UNDERFLOW | FE_OVERFLOW | FE_INVALID)
+#define ARCH_FE_ALL_EXCEPT \
+	(ARCH_FE_INEXACT | ARCH_FE_DIVBYZERO | ARCH_FE_UNDERFLOW | \
+         ARCH_FE_OVERFLOW | ARCH_FE_INVALID)
 
 /* The ix87 FPU supports all of the four defined rounding modes.  We
    use again the bit positions in the FPU control word as the values
    for the appropriate macros.  */
 enum
   {
-    FE_TONEAREST =
-#define FE_TONEAREST	0
-      FE_TONEAREST,
-    FE_DOWNWARD =
-#define FE_DOWNWARD	0x400
-      FE_DOWNWARD,
-    FE_UPWARD =
-#define FE_UPWARD	0x800
-      FE_UPWARD,
-    FE_TOWARDZERO =
-#define FE_TOWARDZERO	0xc00
-      FE_TOWARDZERO
+    ARCH_FE_TONEAREST =
+#define ARCH_FE_TONEAREST	0
+    ARCH_FE_TONEAREST,
+    ARCH_FE_DOWNWARD =
+#define ARCH_FE_DOWNWARD	0x400
+      ARCH_FE_DOWNWARD,
+    ARCH_FE_UPWARD =
+#define ARCH_FE_UPWARD	0x800
+      ARCH_FE_UPWARD,
+    ARCH_FE_TOWARDZERO =
+#define ARCH_FE_TOWARDZERO	0xc00
+      ARCH_FE_TOWARDZERO
   };
 
+
+/*
+ * WashingtonDC - let's not include these parts for now because I don't need
+ *                them and I don't want to go to the trouble of adding arch_ to
+ *                the beginning of every symbol.
+ */
+#if 0
 
 /* Type representing exception flags.  */
 typedef unsigned short int fexcept_t;
@@ -165,4 +173,7 @@ __NTH (feraiseexcept (int __excepts))
 }
 
 __END_DECLS
+
+#endif // #if 0
+
 #endif

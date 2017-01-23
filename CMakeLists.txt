@@ -24,11 +24,7 @@ cmake_minimum_required(VERSION 2.6)
 project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
-
-# I was hoping to avoid using C++11, but it seems I need it for some of the
-# lower-level floating point features it brings in from C99 (such as being able
-# to set the rounding mode and determine if a value is infinite)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 98)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
@@ -51,7 +47,11 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/Memory.hpp"
                 "${PROJECT_SOURCE_DIR}/src/Memory.cpp"
                 "${PROJECT_SOURCE_DIR}/src/MemoryMap.hpp"
-                "${PROJECT_SOURCE_DIR}/src/MemoryMap.cpp")
+                "${PROJECT_SOURCE_DIR}/src/MemoryMap.cpp"
+                "${PROJECT_SOURCE_DIR}/src/arch/arch_fpu.hpp"
+                "${PROJECT_SOURCE_DIR}/src/arch/x86_64/arch_fenv.hpp"
+                "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fesetround.cpp"
+                "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fegetround.cpp")
 
 if (ENABLE_SH4_ICACHE)
     add_definitions(-DENABLE_SH4_ICACHE)

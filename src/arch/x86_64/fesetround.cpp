@@ -16,10 +16,8 @@
    License along with the GNU C Library; if not, see
    <http://www.gnu.org/licenses/>.  */
 
-#include <fenv.h>
-
 int
-__fesetround (int round)
+arch_fesetround (int round)
 {
   unsigned short int cw;
   int mxcsr;
@@ -43,6 +41,3 @@ __fesetround (int round)
 
   return 0;
 }
-libm_hidden_def (__fesetround)
-weak_alias (__fesetround, fesetround)
-libm_hidden_weak (fesetround)

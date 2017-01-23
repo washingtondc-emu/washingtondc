@@ -22,11 +22,11 @@
 
 #include <limits>
 #include <cstring>
-#include <cfenv>
 #include <cmath>
 
 #include <boost/tuple/tuple.hpp>
 
+#include "arch/arch_fpu.hpp"
 #include "BaseException.hpp"
 
 #include "sh4.hpp"
@@ -3876,13 +3876,13 @@ void Sh4::inst_binary_ftrc_fr_fpul(OpArgs inst) {
     next_inst();
     fpu.fpscr &= ~FPSCR_CAUSE_MASK;
 
-    int round_mode = fegetround();
-    fesetround(FE_TOWARDZERO);
+    int round_mode = arch_fegetround();
+    arch_fesetround(ARCH_FE_TOWARDZERO);
 
     val_int = val;
     memcpy(&fpu.fpul, &val_int, sizeof(fpu.fpul));
 
-    fesetround(round_mode);
+    arch_fesetround(round_mode);
 }
 
 // FABS DRn
@@ -4025,13 +4025,13 @@ void Sh4::inst_binary_ftrc_dr_fpul(OpArgs inst) {
     next_inst();
     fpu.fpscr &= ~FPSCR_CAUSE_MASK;
 
-    int round_mode = fegetround();
-    fesetround(FE_TOWARDZERO);
+    int round_mode = arch_fegetround();
+    arch_fesetround(ARCH_FE_TOWARDZERO);
 
     val_int = val_in;
     memcpy(&fpu.fpul, &val_int, sizeof(fpu.fpul));
 
-    fesetround(round_mode);
+    arch_fesetround(round_mode);
 }
 
 // LDS Rm, FPSCR

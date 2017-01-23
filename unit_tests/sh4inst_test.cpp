@@ -24,13 +24,13 @@
 #include <iostream>
 #include <sstream>
 #include <limits>
-#include <cfenv>
 
 #include "BaseException.hpp"
 #include "Memory.hpp"
 #include "hw/sh4/sh4.hpp"
 #include "tool/sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
+#include "arch/arch_fpu.hpp"
 
 #ifdef ENABLE_SH4_ICACHE
 #include "hw/sh4/Icache.hpp"
@@ -10277,10 +10277,10 @@ public:
         reg32_t val_actual, val_expect;
         memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
 
-        int round_mode = fegetround();
-        fesetround(FE_TOWARDZERO);
+        int round_mode = arch_fegetround();
+        arch_fesetround(ARCH_FE_TOWARDZERO);
         val_expect = src_val;
-        fesetround(round_mode);
+        arch_fesetround(round_mode);
 
         if (val_actual != val_expect) {
             std::cout << "ERROR: while running " << cmd << std::endl;
@@ -10518,10 +10518,10 @@ public:
         reg32_t val_actual, val_expect;
         memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
 
-        int round_mode = fegetround();
-        fesetround(FE_TOWARDZERO);
+        int round_mode = arch_fegetround();
+        arch_fesetround(ARCH_FE_TOWARDZERO);
         val_expect = src_val;
-        fesetround(round_mode);
+        arch_fesetround(round_mode);
 
         if (val_actual != val_expect) {
             std::cout << "ERROR: while running " << cmd << std::endl;

@@ -17,10 +17,8 @@
    License along with the GNU C Library; if not, see
    <http://www.gnu.org/licenses/>.  */
 
-#include <fenv.h>
-
 int
-__fegetround (void)
+arch_fegetround (void)
 {
   int cw;
   /* We only check the x87 FPU unit.  The SSE unit should be the same
@@ -30,6 +28,3 @@ __fegetround (void)
 
   return cw & 0xc00;
 }
-libm_hidden_def (__fegetround)
-weak_alias (__fegetround, fegetround)
-libm_hidden_weak (fegetround)
