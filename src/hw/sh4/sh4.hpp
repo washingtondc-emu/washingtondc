@@ -1965,6 +1965,35 @@ private:
     int CcrRegReadHandler(void *buf, addr32_t addr, unsigned len);
     int CcrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
 
+    int PtehRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int PtehRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int PtelRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int PtelRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int TtbRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int TtbRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int TeaRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int TeaRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int PteaRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int PteaRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int TraRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int TraRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int ExpevtRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int ExpevtRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int IntevtRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int IntevtRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Qacr0RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Qacr0RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Qacr1RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Qacr1RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
     /*
      * called for P4 area read/write ops that
      * fall in the memory-mapped register range

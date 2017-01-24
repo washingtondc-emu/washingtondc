@@ -31,10 +31,29 @@ errinfo_regname;
 struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
     { "EXPEVT", 0xff000024, ~addr32_t(0), 4, false,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x20 },
+    { "INTEVT", 0xff000028, ~addr32_t(0), 4, false,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x20 },
     { "MMUCR", 0xff000010, ~addr32_t(0), 4, false,
       &Sh4::MmucrRegReadHandler, &Sh4::MmucrRegWriteHandler, 0, 0 },
     { "CCR", 0xff00001c, ~addr32_t(0), 4, false,
       &Sh4::CcrRegReadHandler, &Sh4::CcrRegWriteHandler, 0, 0 },
+    { "QACR0", 0xff000038, ~addr32_t(0), 4, false,
+      &Sh4::Qacr0RegReadHandler, &Sh4::Qacr0RegWriteHandler, 0, 0 },
+    { "QACR1", 0xff00003c, ~addr32_t(0), 4, false,
+      &Sh4::Qacr1RegReadHandler, &Sh4::Qacr1RegWriteHandler, 0, 0 },
+    { "PTEH", 0xff000000, ~addr32_t(0), 4, false,
+      &Sh4::PtehRegReadHandler, &Sh4::PtehRegWriteHandler, 0, 0 },
+    { "PTEL", 0xff000004, ~addr32_t(0), 4, false,
+      &Sh4::PtelRegReadHandler, &Sh4::PtelRegWriteHandler, 0, 0 },
+    { "TTB", 0xff000008, ~addr32_t(0), 4, false,
+      &Sh4::TtbRegReadHandler, &Sh4::TtbRegWriteHandler, 0, 0 },
+    { "TEA", 0xff00000c, ~addr32_t(0), 4, false,
+      &Sh4::TeaRegReadHandler, &Sh4::TeaRegWriteHandler, 0, 0 },
+    { "PTEA", 0xff000034, ~addr32_t(0), 4, false,
+      &Sh4::PteaRegReadHandler, &Sh4::PteaRegWriteHandler, 0, 0 },
+    { "TRA", 0xff000020, ~addr32_t(0), 4, false,
+      &Sh4::TraRegReadHandler, &Sh4::TraRegWriteHandler, 0, 0 },
+
 
     /*
      * Bus-state registers.
@@ -237,6 +256,126 @@ int Sh4::CcrRegReadHandler(void *buf, addr32_t addr, unsigned len) {
 
 int Sh4::CcrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     memcpy(&cache_reg.ccr, buf, sizeof(cache_reg.ccr));
+
+    return 0;
+}
+
+int Sh4::PtehRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &mmu.pteh, sizeof(mmu.pteh));
+
+    return 0;
+}
+
+int Sh4::PtehRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&mmu.pteh, buf, sizeof(mmu.pteh));
+
+    return 0;
+}
+
+int Sh4::PtelRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &mmu.ptel, sizeof(mmu.ptel));
+
+    return 0;
+}
+
+int Sh4::PtelRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&mmu.ptel, buf, sizeof(mmu.ptel));
+
+    return 0;
+}
+
+int Sh4::TtbRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &mmu.ttb, sizeof(mmu.ttb));
+
+    return 0;
+}
+
+int Sh4::TtbRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&mmu.ttb, buf, sizeof(mmu.ttb));
+
+    return 0;
+}
+
+int Sh4::TeaRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &mmu.tea, sizeof(mmu.tea));
+
+    return 0;
+}
+
+int Sh4::TeaRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&mmu.tea, buf, sizeof(mmu.tea));
+
+    return 0;
+}
+
+int Sh4::TraRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &excp_reg.tra, sizeof(excp_reg.tra));
+
+    return 0;
+}
+
+int Sh4::TraRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&excp_reg.tra, buf, sizeof(excp_reg.tra));
+
+    return 0;
+}
+
+int Sh4::ExpevtRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &excp_reg.expevt, sizeof(excp_reg.expevt));
+
+    return 0;
+}
+
+int Sh4::ExpevtRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&excp_reg.expevt, buf, sizeof(excp_reg.expevt));
+
+    return 0;
+}
+
+int Sh4::IntevtRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &excp_reg.intevt, sizeof(excp_reg.intevt));
+
+    return 0;
+}
+
+int Sh4::IntevtRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&excp_reg.intevt, buf, sizeof(excp_reg.intevt));
+
+    return 0;
+}
+
+int Sh4::PteaRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &mmu.ptea, sizeof(mmu.ptea));
+
+    return 0;
+}
+
+int Sh4::PteaRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&mmu.ptea, buf, sizeof(mmu.ptea));
+
+    return 0;
+}
+
+int Sh4::Qacr0RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &cache_reg.qacr0, sizeof(cache_reg.qacr0));
+
+    return 0;
+}
+
+int Sh4::Qacr0RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&cache_reg.qacr0, buf, sizeof(cache_reg.qacr0));
+
+    return 0;
+}
+
+int Sh4::Qacr1RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &cache_reg.qacr1, sizeof(cache_reg.qacr1));
+
+    return 0;
+}
+
+int Sh4::Qacr1RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&cache_reg.qacr1, buf, sizeof(cache_reg.qacr1));
 
     return 0;
 }
