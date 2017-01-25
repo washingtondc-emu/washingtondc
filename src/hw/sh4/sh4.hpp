@@ -1959,6 +1959,12 @@ private:
      */
     int WriteOnlyRegReadHandler(void *buf, addr32_t addr, unsigned len);
 
+    /*
+     * likewise, this is a write handler for read-only registers.
+     * It will also raise an exception whenever it is invokled.
+     */
+    int ReadOnlyRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
     int MmucrRegReadHandler(void *buf, addr32_t addr, unsigned len);
     int MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
 

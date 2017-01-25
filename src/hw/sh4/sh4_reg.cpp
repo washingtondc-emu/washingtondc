@@ -129,6 +129,44 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
     { "SDMR3", 0xff940000, 0xffff0000, 1, true,
       &Sh4::WriteOnlyRegReadHandler, &Sh4::DefaultRegWriteHandler },
 
+    /*
+     * RTC registers
+     * From what I can tell, it doesn't look like these actually get used
+     * because they refer to the Sh4's internal RTC and not the Dreamcast's own
+     * battery-powered RTC.
+     */
+    { "R64CNT", 0xffc80000, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::ReadOnlyRegWriteHandler, 0, 0 },
+    { "RSECCNT", 0xffc80004, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RMINCNT", 0xffc80008, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RHRCNT", 0xffc8000c, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RWKCNT", 0xffc80010, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RDAYCNT", 0xffc80014, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RMONCNT", 0xffc80018, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RYRCNT", 0xffc8001c, ~addr32_t(0), 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RSECAR", 0xffc80020, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RMINAR", 0xffc80024, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RHRAR", 0xffc80028, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RWKAR", 0xffc8002c, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RDAYAR", 0xffc80030, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RMONAR", 0xffc80034, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RCR1", 0xffc80038, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "RCR2", 0xffc8003c, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
     { NULL }
 };
 
@@ -141,14 +179,17 @@ void Sh4::poweron_reset_regs() {
 
     while (curs->reg_name) {
         RegWriteHandler handler = curs->on_p4_write;
-        if ((this->*handler)(&curs->poweron_reset_val,
-                             curs->addr, curs->len) != 0)
-            BOOST_THROW_EXCEPTION(IntegrityError() <<
-                                  errinfo_wtf("the reg write handler returned "
-                                              "error during a poweron reset") <<
-                                  errinfo_guest_addr(curs->addr) <<
-                                  errinfo_regname(curs->reg_name));
 
+        if (handler != &Sh4::ReadOnlyRegWriteHandler) {
+            if ((this->*handler)(&curs->poweron_reset_val,
+                                 curs->addr, curs->len) != 0)
+                BOOST_THROW_EXCEPTION(IntegrityError() <<
+                                      errinfo_wtf("the reg write handler "
+                                                  "returned error during a "
+                                                  "poweron reset") <<
+                                      errinfo_guest_addr(curs->addr) <<
+                                      errinfo_regname(curs->reg_name));
+        }
         curs++;
     }
 }
@@ -216,6 +257,14 @@ int Sh4::WriteOnlyRegReadHandler(void *buf, addr32_t addr, unsigned len) {
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
                           errinfo_feature("sh4 CPU exception for trying to "
                                           "read from a write-only CPU "
+                                          "register") <<
+                          errinfo_guest_addr(addr));
+}
+
+int Sh4::ReadOnlyRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("sh4 CPU exception for trying to "
+                                          "write to a read-only CPU "
                                           "register") <<
                           errinfo_guest_addr(addr));
 }
