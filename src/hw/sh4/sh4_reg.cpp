@@ -167,6 +167,31 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
     { "RCR2", 0xffc8003c, ~addr32_t(0), 1, true,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+
+    /*
+     * I'm not sure what this does - something to do with standby mode (which is
+     * prohibited) and low-power-consumption mode (which isn't prohibited...?),
+     * but the bios always writes 3 to it, which disables the clock source for
+     * the RTC and the SCI.
+     */
+    { "STBCR", 0xffc00004, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "STBCR2", 0xffc00010, ~addr32_t(0), 1, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+
+    /*
+     * watchdog timer - IDK if this is needed.
+     * If it's like other watchdog timers I've encountered in my travels then
+     * all it does is it resets the system when it thinks it might be hanging.
+     *
+     * These two registers are supposed to be 16-bits when reading and 8-bits
+     * when writing - I only support 16-bit accesses right now which is wrong
+     * but hopefully inconsequential.
+     */
+    { "WTCNT", 0xffc00008, ~addr32_t(0), 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "WTCSR", 0xffc0000c, ~addr32_t(0), 2, true,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
     { NULL }
 };
 
