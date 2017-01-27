@@ -187,6 +187,36 @@ public:
     static const size_t N_FLOAT_REGS = 16;
     static const size_t N_DOUBLE_REGS = 8;
 
+    typedef struct TmuChannel {
+        uint32_t tcor; // Timer Constant Register
+        uint32_t tcnt; // Timer Counter
+        uint16_t tcr;  // Timer control register
+    } TmuChannel;
+
+    struct TmuReg {
+        uint8_t tocr; // Timer Output Control Register
+        uint8_t tstr; // Timer Start Register
+
+        TmuChannel channels[3];
+
+        uint32_t tcpr2; // input capture register (Channel 2 only?)
+    };
+    TmuReg tmu;
+
+    void setTmuTocr(uint8_t new_val);
+    uint8_t getTmuTocr();
+    void setTmuTstr(uint8_t new_val);
+    uint8_t getTmuTstr();
+    void setTmuTcor(unsigned chan, uint32_t new_val);
+    uint32_t getTmuTcor(unsigned chan);
+    void setTmuTcnt(unsigned chan, uint32_t new_val);
+    uint32_t getTmuTcnt(unsigned chan);
+    void setTmuTcr(unsigned chan, uint16_t new_val);
+    uint32_t getTmuTcr(unsigned chan);
+    void setTmuTcpr2(uint32_t new_val);
+    uint32_t getTmuTcpr2();
+
+
     union FpuRegFile {
         float fr[N_FLOAT_REGS];
         double dr[N_DOUBLE_REGS];
@@ -1999,6 +2029,42 @@ private:
 
     int Qacr1RegReadHandler(void *buf, addr32_t addr, unsigned len);
     int Qacr1RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int TocrRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int TocrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int TstrRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int TstrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcor0RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcor0RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcnt0RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcnt0RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcr0RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcr0RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcor1RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcor1RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcnt1RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcnt1RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcr1RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcr1RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcor2RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcor2RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcnt2RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcnt2RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcr2RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcr2RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+
+    int Tcpr2RegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int Tcpr2RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
 
     /*
      * called for P4 area read/write ops that
