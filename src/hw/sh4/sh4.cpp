@@ -65,7 +65,7 @@ Sh4::Sh4(MemoryMap *mem) {
 #endif
 
 #ifdef ENABLE_SH4_OCACHE
-    this->op_cache = new Ocache(this, mem);
+    this->op_cache = new Ocache(mem);
 #else
     this->oc_ram_area = new uint8_t[OC_RAM_AREA_SIZE];
 #endif
