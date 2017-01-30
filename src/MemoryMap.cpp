@@ -37,7 +37,7 @@ int MemoryMap::read(void *buf, size_t addr, size_t len) const {
     try {
         // check RAM first because that's the case we want to optimize for
         if (addr >= RAM_FIRST && addr <= RAM_LAST) {
-            return mem->read(buf, addr - RAM_FIRST, len);
+            return memory_read(mem, buf, addr - RAM_FIRST, len);
         } else if (addr <= BIOS_LAST) {
             /*
              * XXX In case you were wondering: we don't check to see if
@@ -78,7 +78,7 @@ int MemoryMap::write(void const *buf, size_t addr, size_t len) {
     try {
         // check RAM first because that's the case we want to optimize for
         if (addr >= RAM_FIRST && addr <= RAM_LAST) {
-            return mem->write(buf, addr - RAM_FIRST, len);
+            return memory_write(mem, buf, addr - RAM_FIRST, len);
         } else if (addr <= BIOS_LAST) {
             /*
              * XXX In case you were wondering: we don't check to see if

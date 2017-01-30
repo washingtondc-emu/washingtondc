@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,43 +26,45 @@
 
 #include "Memory.hpp"
 
-Memory::Memory(size_t size) {
-    this->size = size;
-    this->mem = new boost::uint8_t[size];
+void memory_init(struct Memory *mem, size_t size) {
+    mem->mem = new boost::uint8_t[size];
+    mem->size = size;
 
-    clear();
+    memory_clear(mem);
 }
 
-Memory::~Memory() {
-    delete[] mem;
+void memory_cleanup(struct Memory *mem) {
+    delete[] mem->mem;
 }
 
-void Memory::clear() {
-    memset(mem, 0, sizeof(mem[0]) * size);
+void memory_clear(struct Memory *mem) {
+    memset(mem->mem, 0, sizeof(mem->mem[0]) * mem->size);
 }
 
-int Memory::read(void *buf, size_t addr, size_t len) const {
+size_t memory_size(struct Memory const *mem) {
+    return mem->size;
+}
+
+int memory_read(struct Memory const *mem, void *buf,
+                size_t addr, size_t len) {
     size_t end_addr = addr + (len - 1);
-    if (addr >= size || end_addr >= size || end_addr < addr) {
+    if (addr >= mem->size || end_addr >= mem->size || end_addr < addr) {
         BOOST_THROW_EXCEPTION(MemBoundsError() << errinfo_guest_addr(addr));
     }
 
-    memcpy(buf, mem + addr, len);
+    memcpy(buf, mem->mem + addr, len);
 
     return 0;
 }
 
-int Memory::write(void const *buf, size_t addr, size_t len) {
+int memory_write(struct Memory *mem, void const *buf,
+                 size_t addr, size_t len) {
     size_t end_addr = addr + (len - 1);
-    if (addr >= size || end_addr >= size || end_addr < addr) {
+    if (addr >= mem->size || end_addr >= mem->size || end_addr < addr) {
         BOOST_THROW_EXCEPTION(MemBoundsError() << errinfo_guest_addr(addr));
     }
 
-    memcpy(mem + addr, buf, len);
+    memcpy(mem->mem + addr, buf, len);
 
     return 0;
-}
-
-size_t Memory::get_size() const {
-    return size;
 }

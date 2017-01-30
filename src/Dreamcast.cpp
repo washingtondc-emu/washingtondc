@@ -37,11 +37,11 @@ Dreamcast::Dreamcast(char const *bios_path) {
     debugger = NULL;
 #endif
 
-    mem = new Memory(MEM_SZ);
+    memory_init(&mem, MEM_SZ);
     bios = new BiosFile(bios_path);
     g1 = new G1Bus();
 
-    mem_map = new MemoryMap(bios, mem, g1);
+    mem_map = new MemoryMap(bios, &mem, g1);
 
     cpu = new Sh4(mem_map);
 }
@@ -56,7 +56,7 @@ Dreamcast::~Dreamcast() {
     delete mem_map;
     delete g1;
     delete bios;
-    delete mem;
+    memory_cleanup(&mem);
 }
 
 void Dreamcast::run() {
@@ -93,7 +93,7 @@ Sh4 *Dreamcast::get_cpu() {
 }
 
 Memory *Dreamcast::gem_mem() {
-    return mem;
+    return &mem;
 }
 
 #ifdef ENABLE_DEBUGGER

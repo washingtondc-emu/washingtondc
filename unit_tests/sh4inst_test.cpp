@@ -853,8 +853,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.pc = pc;
@@ -916,8 +916,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.pc = pc;
@@ -1322,7 +1322,7 @@ public:
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 addr32_t addr = pick_addr(AddrRange(randgen32, 0,
-                                                    mem->get_size() - 4));
+                                                    memory_size(mem) - 4));
                 failed = failed ||
                     do_movl_binary_indgen_gen(cpu, bios, mem, addr,
                                               randgen32->pick_val(0) % 0xff,
@@ -1392,7 +1392,8 @@ public:
 
         for (int reg_src = 0; reg_src < 16; reg_src++) {
             for (int reg_dst = 0; reg_dst < 16; reg_dst++) {
-                addr32_t addr = pick_addr(AddrRange(randgen32, 1, mem->get_size() - 2));
+                addr32_t addr = pick_addr(AddrRange(randgen32, 1,
+                                                    memory_size(mem) - 2));
                 failed = failed ||
                     do_movb_binary_gen_inddecgen(cpu, bios, mem, addr,
                                                  randgen32->pick_val(0),
@@ -2842,8 +2843,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_val - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_val - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg.pc = pc_val;
@@ -7996,8 +7997,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         if (t_flag)
@@ -8055,8 +8056,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         if (t_flag)
@@ -8117,8 +8118,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8201,8 +8202,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8290,8 +8291,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8371,8 +8372,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8455,8 +8456,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8534,8 +8535,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8626,8 +8627,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8718,8 +8719,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -8802,8 +8803,8 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        mem->load_binary<uint8_t>(pc_init - MemoryMap::RAM_FIRST,
-                                  inst.begin(), inst.end());
+        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+                                    inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
@@ -9266,7 +9267,7 @@ public:
         for (unsigned src_reg = 0; src_reg < 16; src_reg++) {
             for (unsigned dst_reg = 0; dst_reg < Sh4::N_FLOAT_REGS; dst_reg++) {
                 addr32_t addr = pick_addr(AddrRange(randgen32, 0,
-                                                    mem->get_size() - 4));
+                                                    memory_size(mem) - 4));
                 float f_val = randgen32->pick_double();
                 failure = failure ||
                     do_binary_fmovs_indgen_fr(cpu, bios, mem, src_reg,
@@ -9442,7 +9443,7 @@ public:
         for (unsigned src_reg = 0; src_reg < 16; src_reg++) {
             for (unsigned dst_reg = 0; dst_reg < Sh4::N_FLOAT_REGS; dst_reg++) {
                 addr32_t addr = pick_addr(AddrRange(randgen32, 0,
-                                                    mem->get_size() - 4));
+                                                    memory_size(mem) - 4));
                 float f_val = randgen32->pick_double();
                 failure = failure ||
                     do_binary_fmovs_fr_indgen(cpu, bios, mem, src_reg,
@@ -9793,9 +9794,10 @@ public:
         int failure = 0;
 
         for (unsigned src_reg = 0; src_reg < 16; src_reg++) {
-            for (unsigned dst_reg = 0; dst_reg < Sh4::N_DOUBLE_REGS; dst_reg++) {
+            for (unsigned dst_reg = 0; dst_reg < Sh4::N_DOUBLE_REGS;
+                 dst_reg++) {
                 addr32_t addr = pick_addr(AddrRange(randgen32, 0,
-                                                    mem->get_size() - 8));
+                                                    memory_size(mem) - 8));
                 double val = randgen32->pick_double();
                 failure = failure ||
                     do_binary_fmov_indgen_dr(cpu, bios, mem, src_reg,
@@ -9982,7 +9984,7 @@ public:
         for (unsigned src_reg = 0; src_reg < Sh4::N_DOUBLE_REGS; src_reg++) {
             for (unsigned dst_reg = 0; dst_reg < 16; dst_reg++) {
                 addr32_t addr = pick_addr(AddrRange(randgen32, 0,
-                                                    mem->get_size() - 8));
+                                                    memory_size(mem) - 8));
                 double val = randgen32->pick_double();
                 failure = failure ||
                     do_binary_fmov_dr_indgen(cpu, bios, mem, src_reg * 2,
@@ -10955,7 +10957,8 @@ struct inst_test {
 };
 
 int main(int argc, char **argv) {
-    Memory mem(16 * 1024 * 1024);
+    struct Memory mem;
+    memory_init(&mem, 16 * 1024 * 1024);
     BiosFile bios;
     MemoryMap mem_map(&bios, &mem, NULL);
     Sh4 cpu(&mem_map);

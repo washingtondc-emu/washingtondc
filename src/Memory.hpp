@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,37 +27,30 @@
 
 #include "types.hpp"
 
-class Memory {
-public:
-    Memory(size_t size);
-    ~Memory();
-
-    int read(void *buf, size_t addr, size_t len) const;
-    int write(void const *buf, size_t addr, size_t len);
-
-    void clear();
-
-    size_t get_size() const;
-
-    /*
-     * loads a program into the given address.  the InputIterator's
-     * indirect method (overload*) should return an inst_t.
-     */
-    template<typename data_tp, class InputIterator>
-    void load_binary(addr32_t where, InputIterator start, InputIterator end);
-
-private:
+struct Memory {
     size_t size;
-    boost::uint8_t *mem;
+    uint8_t *mem;
 };
 
 template<typename data_tp, class InputIterator>
-void Memory::load_binary(addr32_t where, InputIterator start,
-                         InputIterator end) {
+void memory_load_binary(struct Memory *mem, addr32_t where, InputIterator start,
+                        InputIterator end) {
     for (InputIterator it = start; it != end; it++, where++) {
         data_tp tmp = *it;
-        write(&tmp, where, sizeof(tmp));
+        memory_write(mem, &tmp, where, sizeof(tmp));
     }
 }
+
+void memory_init(struct Memory *mem, size_t size);
+
+void memory_cleanup(struct Memory *mem);
+
+/* zero out all the memory */
+void memory_clear(struct Memory *mem);
+
+size_t memory_size(struct Memory const *mem);
+
+int memory_read(struct Memory const *mem, void *buf, size_t addr, size_t len);
+int memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len);
 
 #endif

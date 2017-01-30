@@ -41,7 +41,7 @@ public:
     const static size_t G1_FIRST = 0x005F7400;
     const static size_t G1_LAST  = 0x005F74FF;
 
-    MemoryMap(BiosFile *bios, Memory *mem, G1Bus *g1);
+    MemoryMap(BiosFile *bios, struct Memory *mem, G1Bus *g1);
     ~MemoryMap();
 
     int read(void *buf, size_t addr, size_t len) const;
@@ -49,7 +49,7 @@ public:
 
 private:
     BiosFile *bios;
-    Memory *mem;
+    struct Memory *mem;
     G1Bus *g1;
 };
 

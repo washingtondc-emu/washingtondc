@@ -156,7 +156,7 @@ public:
 
         gen.reset();
         addr32_t start = offset + MemoryMap::RAM_FIRST;
-        addr32_t end = std::min(ram->get_size(), (size_t)0x1fffffff) +
+        addr32_t end = std::min(memory_size(ram), (size_t)0x1fffffff) +
             MemoryMap::RAM_FIRST;
         static const addr32_t CACHELINE_MASK = ~0x1f;
         for (addr32_t addr = start;
@@ -406,7 +406,7 @@ public:
         set_utlb(0, utlb_key, utlb_ent);
 
         addr32_t start = this->offset;
-        addr32_t end = std::min(this->ram->get_size(), (size_t)0xffffffff);
+        addr32_t end = std::min(memory_size(ram), (size_t)0xffffffff);
 
         for (addr32_t addr = start; addr < end; addr += sizeof(ValType)) {
             ValType val = this->gen.pick_val(addr);
@@ -723,7 +723,8 @@ int run_tests() {
 }
 
 int main(int argc, char **argv) {
-    Memory mem(16 * 1024 * 1024);
+    Memory mem;
+    memory_init(&mem, 16 * 1024 * 1024);
     BiosFile bios;
     MemoryMap mem_map(&bios, &mem, NULL);
     Sh4 cpu(&mem_map);

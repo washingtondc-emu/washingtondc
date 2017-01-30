@@ -52,7 +52,7 @@ private:
 
     Sh4 *cpu;
     BiosFile *bios;
-    Memory *mem;
+    struct Memory mem;
     G1Bus *g1;
 
     MemoryMap *mem_map;
