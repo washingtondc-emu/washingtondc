@@ -65,7 +65,7 @@ Sh4::Sh4(MemoryMap *mem) {
 #endif
 
 #ifdef ENABLE_SH4_OCACHE
-    this->op_cache = new Ocache(mem);
+    sh4_ocache_init(&this->op_cache);
 #else
     this->oc_ram_area = new uint8_t[OC_RAM_AREA_SIZE];
 #endif
@@ -79,7 +79,7 @@ Sh4::Sh4(MemoryMap *mem) {
 
 Sh4::~Sh4() {
 #ifdef ENABLE_SH4_OCACHE
-    delete op_cache;
+    sh4_ocache_cleanup(&op_cache);
 #else
     delete[] oc_ram_area;
 #endif
@@ -105,7 +105,7 @@ void Sh4::on_hard_reset() {
     delayed_branch_addr = 0;
 
 #ifdef ENABLE_SH4_OCACHE
-    op_cache->reset();
+    sh4_ocache_reset(&op_cache);
 #else
     memset(oc_ram_area, 0, sizeof(uint8_t) * OC_RAM_AREA_SIZE);
 #endif

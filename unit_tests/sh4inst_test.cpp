@@ -79,7 +79,7 @@ public:
         cpu->on_hard_reset();
 
 #ifdef ENABLE_SH4_OCACHE
-        cpu->op_cache->reset();
+        sh4_ocache_reset(&cpu->op_cache);
 #endif
 #ifdef ENABLE_SH4_ICACHE
         cpu->inst_cache->reset();

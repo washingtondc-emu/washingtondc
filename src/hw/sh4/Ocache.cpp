@@ -51,42 +51,34 @@ static const unsigned SH4_OCACHE_KEY_DIRTY_MASK = 1 << SH4_OCACHE_KEY_DIRTY_SHIF
 static const unsigned SH4_OCACHE_KEY_TAG_SHIFT = 2;
 static const unsigned SH4_OCACHE_KEY_TAG_MASK = 0x7ffff << SH4_OCACHE_KEY_TAG_SHIFT;
 
-static bool sh4_ocache_check(Sh4Ocache *sh4_ocache, sh4_ocache_line_t line_no,
+static bool sh4_ocache_check(Sh4Ocache *ocache, sh4_ocache_line_t line_no,
                              addr32_t paddr);
 static sh4_ocache_line_t sh4_ocache_selector(addr32_t paddr, bool index_enable,
                                              bool cache_as_ram);
-static int sh4_ocache_load(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+static int sh4_ocache_load(Sh4Ocache *ocache, MemoryMap *mem,
                            sh4_ocache_line_t line_no, addr32_t paddr);
-static int sh4_ocache_write_back(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+static int sh4_ocache_write_back(Sh4Ocache *ocache, MemoryMap *mem,
                                  sh4_ocache_line_t line_no);
 static addr32_t sh4_ocache_line_get_tag(Sh4Ocache const *state,
                                         sh4_ocache_line_t line);
 static addr32_t sh4_ocache_tag_from_paddr(addr32_t paddr);
 static void sh4_ocache_line_set_tag(Sh4Ocache *state, sh4_ocache_line_t line,
                                     addr32_t tag);
-static void* sh4_ocache_get_ram_addr(Sh4Ocache *sh4_ocache, addr32_t paddr,
+static void* sh4_ocache_get_ram_addr(Sh4Ocache *ocache, addr32_t paddr,
                                      bool index_enable);
-static int sh4_ocache_alloc(Sh4Ocache *sh4_ocache, MemoryMap *mem,
-                            addr32_t paddr, bool index_enable,
-                            bool cache_as_ram);
-static void sh4_ocache_invalidate(Sh4Ocache *sh4_ocache, addr32_t paddr,
-                                  bool index_enable, bool cache_as_ram);
-static int sh4_ocache_purge(Sh4Ocache *sh4_ocache, MemoryMap *mem,
-                            addr32_t paddr, bool index_enable,
-                            bool cache_as_ram);
 
 template<typename buf_t>
-static int sh4_ocache_do_cache_read(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+static int sh4_ocache_do_cache_read(Sh4Ocache *ocache, MemoryMap *mem,
                                     buf_t *out, addr32_t paddr,
                                     bool index_enable, bool cache_as_ram);
 
 template<typename buf_t>
-static int sh4_ocache_do_cache_write_cb(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+static int sh4_ocache_do_cache_write_cb(Sh4Ocache *ocache, MemoryMap *mem,
                                         buf_t const *data, addr32_t paddr,
                                         bool index_enable, bool cache_as_ram);
 
 template<typename buf_t>
-static int sh4_ocache_do_cache_write_wt(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+static int sh4_ocache_do_cache_write_wt(Sh4Ocache *ocache, MemoryMap *mem,
                                         buf_t const *data, addr32_t paddr,
                                         bool index_enable, bool cache_as_ram);
 
@@ -116,14 +108,14 @@ void sh4_ocache_reset(Sh4Ocache *sh4_ocache) {
  *
  * This function does not check the valid bit.
  */
-static bool sh4_ocache_check(Sh4Ocache *sh4_ocache, sh4_ocache_line_t line_no,
+static bool sh4_ocache_check(Sh4Ocache *ocache, sh4_ocache_line_t line_no,
                              addr32_t paddr) {
     addr32_t paddr_tag;
 
     // upper 19 bits (of the lower 29 bits) of paddr
     paddr_tag = sh4_ocache_tag_from_paddr(paddr);
 
-    addr32_t line_tag = sh4_ocache_line_get_tag(sh4_ocache, line_no);
+    addr32_t line_tag = sh4_ocache_line_get_tag(ocache, line_no);
     return line_tag == paddr_tag;
 }
 
@@ -164,19 +156,18 @@ static sh4_ocache_line_t sh4_ocache_selector(addr32_t paddr, bool index_enable,
  * Load the cache-line corresponding to paddr into line.
  * Returns non-zero on failure.
  */
-static int sh4_ocache_load(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+static int sh4_ocache_load(Sh4Ocache *ocache, MemoryMap *mem,
                            sh4_ocache_line_t line_no, addr32_t paddr) {
     size_t n_bytes = sizeof(boost::uint32_t) * SH4_OCACHE_LONGS_PER_CACHE_LINE;
-    void *read_dst = sh4_ocache->op_cache + line_no * SH4_OCACHE_LINE_SIZE;
+    void *read_dst = ocache->op_cache + line_no * SH4_OCACHE_LINE_SIZE;
     int err_code = mem->read(read_dst, paddr & ~31 & 0x1fffffff, n_bytes);
 
     if (err_code != 0)
         return err_code;
 
-    sh4_ocache_line_set_tag(sh4_ocache, line_no,
-                            sh4_ocache_tag_from_paddr(paddr));
-    sh4_ocache->op_cache_keys[line_no] |= SH4_OCACHE_KEY_VALID_MASK;
-    sh4_ocache->op_cache_keys[line_no] &= ~SH4_OCACHE_KEY_DIRTY_MASK;
+    sh4_ocache_line_set_tag(ocache, line_no, sh4_ocache_tag_from_paddr(paddr));
+    ocache->op_cache_keys[line_no] |= SH4_OCACHE_KEY_VALID_MASK;
+    ocache->op_cache_keys[line_no] &= ~SH4_OCACHE_KEY_DIRTY_MASK;
 
     return 0;
 }
@@ -185,12 +176,12 @@ static int sh4_ocache_load(Sh4Ocache *sh4_ocache, MemoryMap *mem,
  * Write the cache-line into memory and clear its dirty-bit.
  * returns non-zero on failure.
  */
-static int sh4_ocache_write_back(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+static int sh4_ocache_write_back(Sh4Ocache *ocache, MemoryMap *mem,
                                  sh4_ocache_line_t line_no) {
     size_t n_bytes = sizeof(boost::uint32_t) * SH4_OCACHE_LONGS_PER_CACHE_LINE;
 
     addr32_t paddr =
-        ((sh4_ocache->op_cache_keys[line_no] & SH4_OCACHE_KEY_TAG_MASK) >>
+        ((ocache->op_cache_keys[line_no] & SH4_OCACHE_KEY_TAG_MASK) >>
          SH4_OCACHE_KEY_TAG_SHIFT) << 10;
     paddr &= 0x7ffff << 10;
 
@@ -201,13 +192,13 @@ static int sh4_ocache_write_back(Sh4Ocache *sh4_ocache, MemoryMap *mem,
      */
     paddr |= (line_no << 5) & ~0x3000;
 
-    void *write_dst = sh4_ocache->op_cache + line_no * SH4_OCACHE_LINE_SIZE;
+    void *write_dst = ocache->op_cache + line_no * SH4_OCACHE_LINE_SIZE;
     int err_code = mem->write(write_dst, paddr & ~31 & 0x1fffffff, n_bytes);
     if (err_code != 0) {
         return err_code;
     }
 
-    sh4_ocache->op_cache_keys[line_no] &= ~SH4_OCACHE_KEY_DIRTY_MASK;
+    ocache->op_cache_keys[line_no] &= ~SH4_OCACHE_KEY_DIRTY_MASK;
     return 0;
 }
 
@@ -238,7 +229,7 @@ static void sh4_ocache_line_set_tag(Sh4Ocache *state, sh4_ocache_line_t line,
  * address and that the entire length of the read/write operation can be
  * safely executed.
  */
-static void* sh4_ocache_get_ram_addr(Sh4Ocache *sh4_ocache, addr32_t paddr,
+static void* sh4_ocache_get_ram_addr(Sh4Ocache *ocache, addr32_t paddr,
                                      bool index_enable) {
     addr32_t area_offset = paddr & 0xfff;
     addr32_t area_start;
@@ -251,12 +242,12 @@ static void* sh4_ocache_get_ram_addr(Sh4Ocache *sh4_ocache, addr32_t paddr,
         area_start = SH4_OCACHE_LINE_SIZE * 0x180;
     else
         area_start = SH4_OCACHE_LINE_SIZE * 0x80;
-    return sh4_ocache->op_cache + area_start + area_offset;
+    return ocache->op_cache + area_start + area_offset;
 }
 
-static int sh4_ocache_alloc(Sh4Ocache *sh4_ocache, MemoryMap *mem,
-                            addr32_t paddr, bool index_enable,
-                            bool cache_as_ram) {
+int sh4_ocache_alloc(Sh4Ocache *ocache, MemoryMap *mem,
+                     addr32_t paddr, bool index_enable,
+                     bool cache_as_ram) {
     int err = 0;
 
     if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
@@ -265,24 +256,24 @@ static int sh4_ocache_alloc(Sh4Ocache *sh4_ocache, MemoryMap *mem,
     }
 
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
-    sh4_ocache_key_t *keyp = sh4_ocache->op_cache_keys + line_idx;
+    sh4_ocache_key_t *keyp = ocache->op_cache_keys + line_idx;
 
     if (*keyp & SH4_OCACHE_KEY_VALID_MASK) {
-        if (sh4_ocache_check(sh4_ocache, line_idx, paddr))
+        if (sh4_ocache_check(ocache, line_idx, paddr))
             return 0; // cache hit, nothing to see here
 
         if (*keyp & SH4_OCACHE_KEY_DIRTY_MASK) {
-            if ((err = sh4_ocache_write_back(sh4_ocache, mem, line_idx)))
+            if ((err = sh4_ocache_write_back(ocache, mem, line_idx)))
                 return err;
         }
 
-        sh4_ocache_line_set_tag(sh4_ocache, line_idx,
+        sh4_ocache_line_set_tag(ocache, line_idx,
                                 sh4_ocache_tag_from_paddr(paddr));
         (*keyp) |= SH4_OCACHE_KEY_VALID_MASK;
         (*keyp) &= ~SH4_OCACHE_KEY_DIRTY_MASK;
     } else {
         // cache holds no valid data
-        sh4_ocache_line_set_tag(sh4_ocache, line_idx,
+        sh4_ocache_line_set_tag(ocache, line_idx,
                                 sh4_ocache_tag_from_paddr(paddr));
         (*keyp) |= SH4_OCACHE_KEY_VALID_MASK;
         (*keyp) &= ~SH4_OCACHE_KEY_DIRTY_MASK;
@@ -291,20 +282,20 @@ static int sh4_ocache_alloc(Sh4Ocache *sh4_ocache, MemoryMap *mem,
     return err;
 }
 
-static void sh4_ocache_invalidate(Sh4Ocache *sh4_ocache, addr32_t paddr,
-                                  bool index_enable, bool cache_as_ram) {
+void sh4_ocache_invalidate(Sh4Ocache *ocache, addr32_t paddr,
+                           bool index_enable, bool cache_as_ram) {
     if (cache_as_ram && Sh4::in_oc_ram_area(paddr))
         return;
 
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
 
-    if (sh4_ocache_check(sh4_ocache, line_idx, paddr))
-        sh4_ocache->op_cache_keys[line_idx] &= ~SH4_OCACHE_KEY_VALID_MASK;
+    if (sh4_ocache_check(ocache, line_idx, paddr))
+        ocache->op_cache_keys[line_idx] &= ~SH4_OCACHE_KEY_VALID_MASK;
 }
 
-static int sh4_ocache_purge(Sh4Ocache *sh4_ocache, MemoryMap *mem,
-                            addr32_t paddr, bool index_enable,
-                            bool cache_as_ram) {
+int sh4_ocache_purge(Sh4Ocache *ocache, MemoryMap *mem,
+                     addr32_t paddr, bool index_enable,
+                     bool cache_as_ram) {
     int err;
 
     if (cache_as_ram && Sh4::in_oc_ram_area(paddr))
@@ -312,19 +303,19 @@ static int sh4_ocache_purge(Sh4Ocache *sh4_ocache, MemoryMap *mem,
 
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
 
-    if (sh4_ocache_check(sh4_ocache, line_idx, paddr) &&
-        (sh4_ocache->op_cache_keys[line_idx] & SH4_OCACHE_KEY_VALID_MASK)) {
-        if (sh4_ocache->op_cache_keys[line_idx] & SH4_OCACHE_KEY_DIRTY_MASK)
-            if ((err = sh4_ocache_write_back(sh4_ocache, mem, line_idx)))
+    if (sh4_ocache_check(ocache, line_idx, paddr) &&
+        (ocache->op_cache_keys[line_idx] & SH4_OCACHE_KEY_VALID_MASK)) {
+        if (ocache->op_cache_keys[line_idx] & SH4_OCACHE_KEY_DIRTY_MASK)
+            if ((err = sh4_ocache_write_back(ocache, mem, line_idx)))
                 return err;
-        sh4_ocache->op_cache_keys[line_idx] &= ~SH4_OCACHE_KEY_VALID_MASK;
+        ocache->op_cache_keys[line_idx] &= ~SH4_OCACHE_KEY_VALID_MASK;
     }
 
     return 0;
 }
 
 template<typename buf_t>
-int sh4_ocache_do_cache_read(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+int sh4_ocache_do_cache_read(Sh4Ocache *ocache, MemoryMap *mem,
                              buf_t *out, addr32_t paddr, bool index_enable,
                              bool cache_as_ram) {
     int err = 0;
@@ -343,7 +334,7 @@ int sh4_ocache_do_cache_read(Sh4Ocache *sh4_ocache, MemoryMap *mem,
             uint8_t tmp;
             int err;
 
-            err = sh4_ocache_do_cache_read<uint8_t>(sh4_ocache, mem,
+            err = sh4_ocache_do_cache_read<uint8_t>(ocache, mem,
                                                     &tmp, paddr + i,
                                                     index_enable,
                                                     cache_as_ram);
@@ -358,16 +349,15 @@ int sh4_ocache_do_cache_read(Sh4Ocache *sh4_ocache, MemoryMap *mem,
     }
 
     if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
-        *out = *(buf_t*)sh4_ocache_get_ram_addr(sh4_ocache,
-                                                paddr, index_enable);
+        *out = *(buf_t*)sh4_ocache_get_ram_addr(ocache, paddr, index_enable);
         return 0;
     }
 
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
-    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + sh4_ocache->op_cache;
+    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + ocache->op_cache;
 
-    if (sh4_ocache->op_cache_keys[line_idx] & SH4_OCACHE_KEY_VALID_MASK) {
-        if (sh4_ocache_check(sh4_ocache, line_idx, paddr)) {
+    if (ocache->op_cache_keys[line_idx] & SH4_OCACHE_KEY_VALID_MASK) {
+        if (sh4_ocache_check(ocache, line_idx, paddr)) {
             // cache hit
             addr32_t byte_offset = paddr & 0x1f;
 
@@ -376,26 +366,26 @@ int sh4_ocache_do_cache_read(Sh4Ocache *sh4_ocache, MemoryMap *mem,
             return 0;
         } else {
             // tag does not match, V bit is 1
-            if (sh4_ocache->op_cache_keys[line_idx] & SH4_OCACHE_KEY_DIRTY_MASK) {
+            if (ocache->op_cache_keys[line_idx] & SH4_OCACHE_KEY_DIRTY_MASK) {
                 // cache miss (with write-back)
                 // The manual says the SH4 should save the cache line to the
                 // write-back buffer.  Since memory writes are effectively
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = sh4_ocache_write_back(sh4_ocache, mem, line_idx);
+                err = sh4_ocache_write_back(ocache, mem, line_idx);
                 if (err)
                     return err;
-                err = sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+                err = sh4_ocache_load(ocache, mem, line_idx, paddr);
             } else {
                 //cache miss (no write-back)
-                err = sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+                err = sh4_ocache_load(ocache, mem, line_idx, paddr);
             }
         }
     } else {
         // valid bit is 0, tag may or may not match
         // cache miss (no write-back)
-        err = sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+        err = sh4_ocache_load(ocache, mem, line_idx, paddr);
     }
 
     if (!err) {
@@ -410,23 +400,23 @@ int sh4_ocache_do_cache_read(Sh4Ocache *sh4_ocache, MemoryMap *mem,
 }
 
 template<>
-int sh4_ocache_do_cache_read<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+int sh4_ocache_do_cache_read<uint8_t>(Sh4Ocache *ocache, MemoryMap *mem,
                                       uint8_t *out, addr32_t paddr,
                                       bool index_enable,
                                       bool cache_as_ram) {
     if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
-        *out = *(uint8_t*)sh4_ocache_get_ram_addr(sh4_ocache, paddr,
+        *out = *(uint8_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                   index_enable);
         return 0;
     }
 
     int err = 0;
     uint32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
-    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + sh4_ocache->op_cache;
-    sh4_ocache_key_t *key = sh4_ocache->op_cache_keys + line_idx;
+    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + ocache->op_cache;
+    sh4_ocache_key_t *key = ocache->op_cache_keys + line_idx;
 
     if (*key & SH4_OCACHE_KEY_VALID_MASK) {
-        if (sh4_ocache_check(sh4_ocache, line_idx, paddr)) {
+        if (sh4_ocache_check(ocache, line_idx, paddr)) {
             // cache hit
             addr32_t idx = paddr & 0x1f;
 
@@ -441,19 +431,19 @@ int sh4_ocache_do_cache_read<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = sh4_ocache_write_back(sh4_ocache, mem, line_idx);
+                err = sh4_ocache_write_back(ocache, mem, line_idx);
                 if (err)
                     return err;
-                err = sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+                err = sh4_ocache_load(ocache, mem, line_idx, paddr);
             } else {
                 //cache miss (no write-back)
-                err = sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+                err = sh4_ocache_load(ocache, mem, line_idx, paddr);
             }
         }
     } else {
         // valid bit is 0, tag may or may not match
         // cache miss (no write-back)
-        err = sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+        err = sh4_ocache_load(ocache, mem, line_idx, paddr);
     }
 
     if (!err) {
@@ -467,12 +457,12 @@ int sh4_ocache_do_cache_read<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
 }
 
 template<>
-int sh4_ocache_do_cache_write_cb<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+int sh4_ocache_do_cache_write_cb<uint8_t>(Sh4Ocache *ocache, MemoryMap *mem,
                                           uint8_t const *data, addr32_t paddr,
                                           bool index_enable,
                                           bool cache_as_ram) {
     if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
-        uint8_t *ptr = (uint8_t*)sh4_ocache_get_ram_addr(sh4_ocache, paddr,
+        uint8_t *ptr = (uint8_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                          index_enable);
         *ptr = *data;
         return 0;
@@ -480,18 +470,18 @@ int sh4_ocache_do_cache_write_cb<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
 
     int err = 0;
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
-    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + sh4_ocache->op_cache;
+    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + ocache->op_cache;
     unsigned byte_idx = paddr & 0x1f;
-    sh4_ocache_key_t *keyp = sh4_ocache->op_cache_keys + line_idx;
+    sh4_ocache_key_t *keyp = ocache->op_cache_keys + line_idx;
 
-    if (sh4_ocache_check(sh4_ocache, line_idx, paddr)) {
+    if (sh4_ocache_check(ocache, line_idx, paddr)) {
         if (*keyp & SH4_OCACHE_KEY_VALID_MASK) {
             // cache hit, valid bit is 1
             line[byte_idx] = *data;
             *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
         } else {
             // overwrite invalid data in cache.
-            sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+            sh4_ocache_load(ocache, mem, line_idx, paddr);
             line[byte_idx] = *data;
             *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
         }
@@ -504,21 +494,21 @@ int sh4_ocache_do_cache_write_cb<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = sh4_ocache_write_back(sh4_ocache, mem, line_idx);
+                err = sh4_ocache_write_back(ocache, mem, line_idx);
                 if (err)
                     return err;
-                err = sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+                err = sh4_ocache_load(ocache, mem, line_idx, paddr);
                 line[byte_idx] = *data;
                 *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
             } else {
                 // clean data in cache can be safely overwritten.
-                sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+                sh4_ocache_load(ocache, mem, line_idx, paddr);
                 line[byte_idx] = *data;
                 *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
             }
         } else {
             // overwrite invalid data in cache.
-            sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+            sh4_ocache_load(ocache, mem, line_idx, paddr);
             line[byte_idx] = *data;
             *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
         }
@@ -528,7 +518,7 @@ int sh4_ocache_do_cache_write_cb<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
 }
 
 template<typename buf_t>
-int sh4_ocache_do_cache_write_cb(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+int sh4_ocache_do_cache_write_cb(Sh4Ocache *ocache, MemoryMap *mem,
                                  buf_t const *data, addr32_t paddr,
                                  bool index_enable, bool cache_as_ram) {
     int err = 0;
@@ -548,7 +538,7 @@ int sh4_ocache_do_cache_write_cb(Sh4Ocache *sh4_ocache, MemoryMap *mem,
             buf_t mask = buf_t(0xff) << (i * 8);
 
             uint8_t tmp = (mask & data_val_nbit) >> (i * 8);
-            err = sh4_ocache_do_cache_write_cb<uint8_t>(sh4_ocache, mem, &tmp,
+            err = sh4_ocache_do_cache_write_cb<uint8_t>(ocache, mem, &tmp,
                                                         paddr + i, index_enable,
                                                         cache_as_ram);
             if (err)
@@ -559,25 +549,25 @@ int sh4_ocache_do_cache_write_cb(Sh4Ocache *sh4_ocache, MemoryMap *mem,
     }
 
     if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
-        buf_t *ptr = (buf_t*)sh4_ocache_get_ram_addr(sh4_ocache, paddr,
+        buf_t *ptr = (buf_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                      index_enable);
         *ptr = *data;
         return 0;
     }
 
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
-    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + sh4_ocache->op_cache;
+    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + ocache->op_cache;
     unsigned byte_idx = paddr & 0x1f;
-    sh4_ocache_key_t *keyp = sh4_ocache->op_cache_keys + line_idx;
+    sh4_ocache_key_t *keyp = ocache->op_cache_keys + line_idx;
 
-    if (sh4_ocache_check(sh4_ocache, line_idx, paddr)) {
+    if (sh4_ocache_check(ocache, line_idx, paddr)) {
         if (*keyp & SH4_OCACHE_KEY_VALID_MASK) {
             // cache hit, valid bit is 1
             memcpy(line + byte_idx, data, sizeof(buf_t));
             *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
         } else {
             // overwrite invalid data in cache.
-            sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+            sh4_ocache_load(ocache, mem, line_idx, paddr);
             memcpy(line + byte_idx, data, sizeof(buf_t));
             *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
         }
@@ -590,21 +580,21 @@ int sh4_ocache_do_cache_write_cb(Sh4Ocache *sh4_ocache, MemoryMap *mem,
                 // instant for the emulator and since I *think* the write-back
                 // buffer is invisible from the software's perspective, I don't
                 // implement that.
-                err = sh4_ocache_write_back(sh4_ocache, mem, line_idx);
+                err = sh4_ocache_write_back(ocache, mem, line_idx);
                 if (err)
                     return err;
-                err = sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+                err = sh4_ocache_load(ocache, mem, line_idx, paddr);
                 memcpy(line + byte_idx, data, sizeof(buf_t));
                 *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
             } else {
                 // clean data in cache can be safely overwritten.
-                sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+                sh4_ocache_load(ocache, mem, line_idx, paddr);
                 memcpy(line + byte_idx, data, sizeof(buf_t));
                 *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
             }
         } else {
             // overwrite invalid data in cache.
-            sh4_ocache_load(sh4_ocache, mem, line_idx, paddr);
+            sh4_ocache_load(ocache, mem, line_idx, paddr);
             memcpy(line + byte_idx, data, sizeof(buf_t));
             *keyp |= SH4_OCACHE_KEY_DIRTY_MASK;
         }
@@ -614,12 +604,12 @@ int sh4_ocache_do_cache_write_cb(Sh4Ocache *sh4_ocache, MemoryMap *mem,
 }
 
 template <>
-int sh4_ocache_do_cache_write_wt<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+int sh4_ocache_do_cache_write_wt<uint8_t>(Sh4Ocache *ocache, MemoryMap *mem,
                                           uint8_t const *data, addr32_t paddr,
                                           bool index_enable,
                                           bool cache_as_ram) {
     if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
-        uint8_t *ptr  = (uint8_t*)sh4_ocache_get_ram_addr(sh4_ocache, paddr,
+        uint8_t *ptr  = (uint8_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                           index_enable);
         *ptr = *data;
         return 0;
@@ -628,11 +618,11 @@ int sh4_ocache_do_cache_write_wt<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
     int err = 0;
 
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
-    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + sh4_ocache->op_cache;
+    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + ocache->op_cache;
     unsigned byte_idx = paddr & 0x1f;
-    sh4_ocache_key_t *keyp = line_idx + sh4_ocache->op_cache_keys;
+    sh4_ocache_key_t *keyp = line_idx + ocache->op_cache_keys;
 
-    if (sh4_ocache_check(sh4_ocache, line_idx, paddr) &&
+    if (sh4_ocache_check(ocache, line_idx, paddr) &&
         (*keyp & SH4_OCACHE_KEY_VALID_MASK)) {
         // write to cache and write-through to main memory
         line[byte_idx] = *data;
@@ -648,7 +638,7 @@ int sh4_ocache_do_cache_write_wt<uint8_t>(Sh4Ocache *sh4_ocache, MemoryMap *mem,
 }
 
 template<typename buf_t>
-static int sh4_ocache_do_cache_write_wt(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+static int sh4_ocache_do_cache_write_wt(Sh4Ocache *ocache, MemoryMap *mem,
                                         buf_t const *data, addr32_t paddr,
                                         bool index_enable, bool cache_as_ram) {
     int err = 0;
@@ -668,7 +658,7 @@ static int sh4_ocache_do_cache_write_wt(Sh4Ocache *sh4_ocache, MemoryMap *mem,
             buf_t mask = buf_t(0xff) << (i * 8);
 
             uint8_t tmp = uint8_t((mask & *data_nbit) >> (i * 8));
-            err = sh4_ocache_do_cache_write_wt<uint8_t>(sh4_ocache, mem, &tmp,
+            err = sh4_ocache_do_cache_write_wt<uint8_t>(ocache, mem, &tmp,
                                                         paddr + i, index_enable,
                                                         cache_as_ram);
             if (err)
@@ -679,18 +669,18 @@ static int sh4_ocache_do_cache_write_wt(Sh4Ocache *sh4_ocache, MemoryMap *mem,
     }
 
     if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
-        buf_t *ptr = (buf_t*)sh4_ocache_get_ram_addr(sh4_ocache, paddr,
+        buf_t *ptr = (buf_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                      index_enable);
         *ptr = *data;
         return 0;
     }
 
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
-    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + sh4_ocache->op_cache;
+    uint8_t *line = line_idx * SH4_OCACHE_LINE_SIZE + ocache->op_cache;
     unsigned byte_idx = paddr & 0x1f;
-    sh4_ocache_key_t *keyp = line_idx + sh4_ocache->op_cache_keys;
+    sh4_ocache_key_t *keyp = line_idx + ocache->op_cache_keys;
 
-    if (sh4_ocache_check(sh4_ocache, line_idx, paddr) &&
+    if (sh4_ocache_check(ocache, line_idx, paddr) &&
         (*keyp & SH4_OCACHE_KEY_VALID_MASK)) {
         // write to cache and write-through to main memory
         memcpy(line + byte_idx, data, sizeof(buf_t));
@@ -787,56 +777,12 @@ int sh4_ocache_write_wt(Sh4Ocache *state, MemoryMap *mem, void const *data,
     BOOST_THROW_EXCEPTION(InvalidParamError() << errinfo_param_name("len"));
 }
 
-Ocache::Ocache(MemoryMap *mem) {
-    this->mem = mem;
-
-    sh4_ocache_init(&state);
-    reset();
-}
-
-Ocache::~Ocache() {
-    sh4_ocache_cleanup(&state);
-}
-
-void Ocache::reset(void) {
-    sh4_ocache_reset(&state);
-}
-
-void Ocache::invalidate(addr32_t paddr, bool index_enable, bool cache_as_ram) {
-    sh4_ocache_invalidate(&state, paddr, index_enable, cache_as_ram);
-}
-
-int Ocache::purge(addr32_t paddr, bool index_enable, bool cache_as_ram) {
-    return sh4_ocache_purge(&state, mem, paddr, index_enable, cache_as_ram);
-}
-
-int Ocache::cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram) {
-    return sh4_ocache_alloc(&state, mem, paddr, index_enable, cache_as_ram);
-}
-
-int Ocache::cache_read(void *out, unsigned len, addr32_t paddr,
-                       bool index_enable, bool cache_as_ram) {
-    return sh4_ocache_read(&state, mem, out, len, paddr,
-                           index_enable, cache_as_ram);
-}
-
-int Ocache::cache_write_cb(void const *data, unsigned len, addr32_t paddr,
-                           bool index_enable, bool cache_as_ram) {
-    return sh4_ocache_write_cb(&state, mem, data, len, paddr, index_enable,
-                               cache_as_ram);
-}
-
-int Ocache::cache_write_wt(void const *data, unsigned len, addr32_t paddr,
-                           bool index_enable, bool cache_as_ram) {
-    return sh4_ocache_write_wt(&state, mem, data, len, paddr,
-                               index_enable, cache_as_ram);
-}
-
-void Ocache::pref(addr32_t paddr, bool index_enable, bool cache_as_ram) {
+void sh4_ocache_pref(Sh4Ocache *ocache, MemoryMap *mem, addr32_t paddr,
+                     bool index_enable, bool cache_as_ram) {
     if (!(cache_as_ram && Sh4::in_oc_ram_area(paddr))) {
         addr32_t line_idx = sh4_ocache_selector(paddr, index_enable,
                                                 cache_as_ram);
 
-        sh4_ocache_load(&state, mem, line_idx, paddr);
+        sh4_ocache_load(ocache, mem, line_idx, paddr);
     }
 }

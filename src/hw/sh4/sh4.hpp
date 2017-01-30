@@ -30,6 +30,7 @@
 
 #include "types.hpp"
 #include "MemoryMap.hpp"
+#include "Ocache.hpp"
 
 /* Hitachi SuperH-4 interpreter */
 
@@ -549,7 +550,7 @@ private:
 #endif
 
 #ifdef ENABLE_SH4_OCACHE
-    Ocache *op_cache;
+    struct Sh4Ocache op_cache;
 #else
     /*
      * without an operand cache, we need to supply some other area

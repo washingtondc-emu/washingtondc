@@ -82,15 +82,15 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                             (cache_reg.ccr & CCR_OCE_MASK)) {
                             // page is cacheable and the cache is enabled
                             if (cache_reg.ccr & CCR_WT_MASK) {
-                                return op_cache->cache_write_wt(data, len,
-                                                                paddr,
-                                                                index_enable,
-                                                                cache_as_ram);
+                                return sh4_ocache_write_wt(&op_cache, mem,
+                                                           data, len, paddr,
+                                                           index_enable,
+                                                           cache_as_ram);
                             } else {
-                                return op_cache->cache_write_cb(data, len,
-                                                                paddr,
-                                                                index_enable,
-                                                                cache_as_ram);
+                                return sh4_ocache_write_cb(&op_cache, mem,
+                                                           data, len, paddr,
+                                                           index_enable,
+                                                           cache_as_ram);
                             }
                         } else {
 #endif
@@ -143,13 +143,13 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                         (cache_reg.ccr & CCR_OCE_MASK)) {
                         // page is cacheable and the cache is enabled
                         if (cache_reg.ccr & CCR_WT_MASK) {
-                            return op_cache->cache_write_wt(data, len, paddr,
-                                                             index_enable,
-                                                             cache_as_ram);
+                            return sh4_ocache_write_wt(&op_cache, mem, data,
+                                                       len, paddr, index_enable,
+                                                       cache_as_ram);
                         } else {
-                            return op_cache->cache_write_cb(data, len, paddr,
-                                                             index_enable,
-                                                             cache_as_ram);
+                            return sh4_ocache_write_cb(&op_cache, mem, data,
+                                                       len, paddr, index_enable,
+                                                       cache_as_ram);
                         }
                     } else {
 #else
@@ -184,11 +184,11 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
         } else {
 #ifdef ENABLE_SH4_OCACHE
             if (cache_reg.ccr & CCR_WT_MASK) {
-                return op_cache->cache_write_wt(data, len, addr, index_enable,
-                                                cache_as_ram);
+                return sh4_ocache_write_wt(&op_cache, mem, data, len, addr,
+                                           index_enable, cache_as_ram);
             } else {
-                return op_cache->cache_write_cb(data, len, addr, index_enable,
-                                                cache_as_ram);
+                return sh4_ocache_write_cb(&op_cache, mem, data, len, addr,
+                                           index_enable, cache_as_ram);
             }
 #else
             // handle the case where OCE is enabled and ORA is
@@ -209,11 +209,11 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_SH4_OCACHE
         if (cache_reg.ccr & CCR_OCE_MASK) {
             if (cache_reg.ccr & CCR_CB_MASK) {
-                return op_cache->cache_write_cb(data, len, addr, index_enable,
-                                                 cache_as_ram);
+                return sh4_ocache_write_cb(&op_cache, mem, data, len, addr,
+                                           index_enable, cache_as_ram);
             } else {
-                return op_cache->cache_write_wt(data, len, addr, index_enable,
-                                                 cache_as_ram);
+                return sh4_ocache_write_wt(&op_cache, mem, data, len, addr,
+                                           index_enable, cache_as_ram);
             }
         } else {
 #endif
@@ -291,11 +291,11 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
                 (cache_reg.ccr & CCR_OCE_MASK)) {
                 // page is cacheable and the cache is enabled
                 if (cache_reg.ccr & CCR_WT_MASK) {
-                    return op_cache->cache_read(data, len, paddr, index_enable,
-                                                cache_as_ram);
+                    return sh4_ocache_read(&op_cache, mem, data, len, paddr,
+                                           index_enable, cache_as_ram);
                 } else {
-                    return op_cache->cache_read(data, len, paddr, index_enable,
-                                                cache_as_ram);
+                    return sh4_ocache_read(&op_cache, mem, data, len, paddr,
+                                           index_enable, cache_as_ram);
                 }
             } else {
 #else
@@ -325,11 +325,11 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
         } else {
 #ifdef ENABLE_SH4_OCACHE
             if (cache_reg.ccr & CCR_WT_MASK) {
-                return op_cache->cache_read(data, len, addr, index_enable,
-                                            cache_as_ram);
+                return sh4_ocache_read(&op_cache, mem, data, len, addr,
+                                       index_enable, cache_as_ram);
             } else {
-                return op_cache->cache_read(data, len, addr, index_enable,
-                                            cache_as_ram);
+                return sh4_ocache_read(&op_cache, mem, data, len, addr,
+                                       index_enable, cache_as_ram);
             }
 #else
             // handle the case where OCE is enabled and ORA is
@@ -350,11 +350,11 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_SH4_OCACHE
         if (cache_reg.ccr & CCR_OCE_MASK) {
             if (cache_reg.ccr & CCR_CB_MASK) {
-                return op_cache->cache_read(data, len, addr, index_enable,
-                                            cache_as_ram);
+                return sh4_ocache_read(&op_cache, mem, data, len, addr,
+                                       index_enable, cache_as_ram);
             } else {
-                return op_cache->cache_read(data, len, addr, index_enable,
-                                            cache_as_ram);
+                return sh4_ocache_read(&op_cache, mem, data, len, addr,
+                                       index_enable, cache_as_ram);
             }
         } else {
 #endif

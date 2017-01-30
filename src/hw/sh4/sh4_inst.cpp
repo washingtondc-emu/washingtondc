@@ -1528,7 +1528,7 @@ void Sh4::inst_unary_tasb_gen(OpArgs inst) {
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
 
-    if (op_cache->purge(addr, index_enable, cache_as_ram) != 0)
+    if (sh4_ocache_purge(&op_cache, mem, addr, index_enable, cache_as_ram) != 0)
         return;
 #endif
 
@@ -1611,7 +1611,7 @@ void Sh4::inst_unary_ocbi_indgen(OpArgs inst) {
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
 
-    op_cache->invalidate(paddr, index_enable, cache_as_ram);
+    sh4_ocache_invalidate(&op_cache, paddr, index_enable, cache_as_ram);
 #endif
 
     next_inst();
@@ -1683,7 +1683,8 @@ void Sh4::inst_unary_ocbp_indgen(OpArgs inst) {
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
 
-    if (op_cache->purge(paddr, index_enable, cache_as_ram) != 0)
+    if (sh4_ocache_purge(&op_cache, mem,
+                         paddr, index_enable, cache_as_ram) != 0)
         return;
 #endif
 
@@ -1697,7 +1698,7 @@ void Sh4::inst_unary_pref_indgen(OpArgs inst) {
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
 
-    op_cache->pref(*gen_reg(inst.gen_reg), index_enable, cache_as_ram);
+    sh4_ocache_pref(&op_cache, mem, *gen_reg(inst.gen_reg), index_enable, cache_as_ram);
 #endif
     next_inst();
 }
@@ -3541,7 +3542,7 @@ void Sh4::inst_binary_movcal_r0_indgen(OpArgs inst) {
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
     bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
 
-    if (op_cache->cache_alloc(paddr, index_enable, cache_as_ram))
+    if (sh4_ocache_alloc(&op_cache, mem, paddr, index_enable, cache_as_ram))
         return;
 #endif
 

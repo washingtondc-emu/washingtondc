@@ -33,68 +33,13 @@
 #include "MemoryMap.hpp"
 
 typedef size_t sh4_ocache_line_t;     // index of cache-line (32-bytes/incrment)
-typedef boost::uint32_t sh4_ocache_key_t;
+typedef uint32_t sh4_ocache_key_t;
 
 // SH4 16 KB Operand Cache
 struct Sh4Ocache {
     // 16 KB ("Operand Cache" in the hardware manual)
     uint8_t *op_cache;
     sh4_ocache_key_t *op_cache_keys;
-};
-
-class Ocache {
-public:
-    // this class does not take ownership of sh4 or mem, so they will not be
-    // deleted by the destructor function
-    Ocache(MemoryMap *mem);
-    ~Ocache();
-
-    // Returns: zero on success, nonzero on failure.
-    int cache_read(void *out, unsigned len, addr32_t paddr,
-                   bool index_enable, bool cache_as_ram);
-    /*
-     * Write the n-byte value pointed to by data to memory through the cache in
-     * copy-back mode.
-     * Returns: zero on success, nonzero on failure.
-     */
-    int cache_write_cb(void const *data, unsigned len, addr32_t paddr,
-                       bool index_enable, bool cache_as_ram);
-
-    /*
-     * Write the n-byte value pointed to by data to memory through the cache in
-     * write-through mode.
-     * Returns: zero on success, nonzero on failure.
-     */
-    int cache_write_wt(void const *data, unsigned len, addr32_t paddr,
-                       bool index_enable, bool cache_as_ram);
-
-    // reset the cache to its default (empty) state
-    void reset(void);
-
-    int cache_alloc(addr32_t paddr, bool index_enable, bool cache_as_ram);
-
-    // if paddr is in the cache, paddr's entire cache line will be invalidated
-    // no data will be written back.  This is part of the OCBI instruction's
-    // implementation
-    void invalidate(addr32_t paddr, bool index_enable, bool cache_as_ram);
-
-    // if paddr is in the cache, paddr's entire cache line will be written back
-    // and invalidated.  This is part of the OCBP instruction's implementation
-    int purge(addr32_t paddr, bool index_enable, bool cache_as_ram);
-
-    /*
-     * prefetch the cache-line containing paddr.
-     * This is the backend of the PREF instruction.
-     */
-    void pref(addr32_t paddr, bool index_enable, bool cache_as_ram);
-
-private:
-    MemoryMap *mem;
-
-    Sh4Ocache state;
-
-    // sets the line's tag to tag.
-    void cache_line_set_tag(sh4_ocache_line_t line, addr32_t tag);
 };
 
 /* Returns: zero on success, nonzero on failure */
@@ -135,5 +80,25 @@ void sh4_ocache_cleanup(Sh4Ocache *sh4_ocache);
  */
 void sh4_ocache_pref(Sh4Ocache *sh4_ocache, MemoryMap *mem, addr32_t paddr,
                      bool index_enable, bool cache_as_ram);
+
+/*
+ * if paddr is in the cache, paddr's entire cache line will be written back
+ * and invalidated.  This is part of the OCBP instruction's implementation
+ */
+int sh4_ocache_purge(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+                     addr32_t paddr, bool index_enable,
+                     bool cache_as_ram);
+
+/*
+ * if paddr is in the cache, paddr's entire cache line will be invalidated
+ * no data will be written back.  This is part of the OCBI instruction's
+ * implementation
+ */
+void sh4_ocache_invalidate(Sh4Ocache *sh4_ocache, addr32_t paddr,
+                           bool index_enable, bool cache_as_ram);
+
+int sh4_ocache_alloc(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+                     addr32_t paddr, bool index_enable,
+                     bool cache_as_ram);
 
 #endif
