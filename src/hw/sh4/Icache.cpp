@@ -220,21 +220,3 @@ int sh4_icache_read(Sh4Icache *icache, MemoryMap *mem, uint32_t *out,
                     addr32_t paddr, bool index_enable) {
     return sh4_icache_read2(icache, mem, out, paddr, index_enable);
 }
-
-Icache::Icache(MemoryMap *mem) {
-    this->mem = mem;
-
-    sh4_icache_init(&state);
-}
-
-Icache::~Icache() {
-    sh4_icache_cleanup(&state);
-}
-
-void Icache::reset() {
-    sh4_icache_reset(&state);
-}
-
-int Icache::read(uint32_t *out, addr32_t paddr, bool index_enable) {
-    return sh4_icache_read(&state, mem, out, paddr, index_enable);
-}

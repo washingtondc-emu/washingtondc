@@ -31,6 +31,7 @@
 #include "types.hpp"
 #include "MemoryMap.hpp"
 #include "Ocache.hpp"
+#include "Icache.hpp"
 
 /* Hitachi SuperH-4 interpreter */
 
@@ -546,7 +547,7 @@ private:
     void on_hard_reset();
 
 #ifdef ENABLE_SH4_ICACHE
-    Icache *inst_cache;
+    struct Sh4Icache inst_cache;
 #endif
 
 #ifdef ENABLE_SH4_OCACHE

@@ -440,7 +440,8 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
                     // use the cache
                     boost::uint32_t buf;
                     int ret;
-                    ret = inst_cache->read(&buf, paddr, index_enable);
+                    ret = sh4_icache_read(&inst_cache, mem, &buf,
+                                         paddr, index_enable);
                     *out = buf;
                     return ret;
                 } else {
@@ -463,7 +464,8 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
             if (cache_reg.ccr & CCR_ICE_MASK) {
                 boost::uint32_t buf;
                 int ret;
-                ret = inst_cache->read(&buf, addr, index_enable);
+                ret = sh4_icache_read(&inst_cache, mem, &buf,
+                                      addr, index_enable);
                 *out = buf;
                 return ret;
             } else {
@@ -479,7 +481,8 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
         if (cache_reg.ccr & CCR_ICE_MASK) {
             boost::uint32_t buf;
             int ret;
-            ret = inst_cache->read(&buf, addr, index_enable);
+            ret = sh4_icache_read(&inst_cache, mem, &buf,
+                                  addr, index_enable);
             *out = buf;
             return ret;
         } else {

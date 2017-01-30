@@ -82,7 +82,7 @@ public:
         sh4_ocache_reset(&cpu->op_cache);
 #endif
 #ifdef ENABLE_SH4_ICACHE
-        cpu->inst_cache->reset();
+        sh4_icache_reset(&cpu->inst_cache);
 #endif
 
         cpu->sh4_enter();

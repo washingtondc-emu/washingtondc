@@ -61,7 +61,7 @@ Sh4::Sh4(MemoryMap *mem) {
     memset(&cache_reg, 0, sizeof(cache_reg));
 
 #ifdef ENABLE_SH4_ICACHE
-    this->inst_cache = new Icache(mem);
+    sh4_icache_init(&this->inst_cache);
 #endif
 
 #ifdef ENABLE_SH4_OCACHE
@@ -85,7 +85,7 @@ Sh4::~Sh4() {
 #endif
 
 #ifdef ENABLE_SH4_ICACHE
-    delete inst_cache;
+    sh4_icache_cleanup(&inst_cache);
 #endif
 
     delete[] reg_area;
@@ -111,7 +111,7 @@ void Sh4::on_hard_reset() {
 #endif
 
 #ifdef ENABLE_SH4_ICACHE
-    inst_cache->reset();
+    sh4_icache_reset(&inst_cache);
 #endif
 }
 

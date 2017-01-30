@@ -41,24 +41,6 @@ struct Sh4Icache {
     sh4_icache_key_t *inst_cache_keys;
 };
 
-// SH4 8KB instruction cache
-class Icache {
-public:
-    // this class does not take ownership of sh4 or mem, so they will not be
-    // deleted by the destructor function
-    Icache(MemoryMap *mem);
-    ~Icache();
-
-    // Returns: zero on success, nonzero on failure
-    int read(uint32_t *out, addr32_t paddr, bool index_enable);
-
-    // reset the cache to its default (empty) state
-    void reset(void);
-private:
-    MemoryMap *mem;
-    Sh4Icache state;
-};
-
 int sh4_icache_read(Sh4Icache *icache, MemoryMap *mem, uint32_t *out,
                     addr32_t paddr, bool index_enable);
 
