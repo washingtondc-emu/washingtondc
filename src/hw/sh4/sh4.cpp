@@ -61,7 +61,7 @@ Sh4::Sh4(MemoryMap *mem) {
     memset(&cache_reg, 0, sizeof(cache_reg));
 
 #ifdef ENABLE_SH4_ICACHE
-    this->inst_cache = new Icache(this, mem);
+    this->inst_cache = new Icache(mem);
 #endif
 
 #ifdef ENABLE_SH4_OCACHE

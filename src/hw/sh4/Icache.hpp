@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -32,95 +32,43 @@
 #include "types.hpp"
 #include "MemoryMap.hpp"
 
+typedef size_t sh4_icache_line_t;     // index of cache-line (32-bytes/incrment)
+typedef uint32_t sh4_icache_key_t;
+
+struct Sh4Icache {
+    // 8 KB ("Instruction Cache" in the hardware manual)
+    uint8_t *inst_cache;
+    sh4_icache_key_t *inst_cache_keys;
+};
+
 // SH4 8KB instruction cache
 class Icache {
 public:
-    static const unsigned LONGS_PER_CACHE_LINE = 8;
-    static const unsigned ENTRY_COUNT = 256;
-    static const size_t CACHE_LINE_SIZE = LONGS_PER_CACHE_LINE * 4;
-    static const size_t INST_CACHE_SIZE = ENTRY_COUNT * CACHE_LINE_SIZE;
-
-    // the valid bit of the instruction cache keys
-    static const unsigned KEY_VALID_SHIFT = 0;
-    static const unsigned KEY_VALID_MASK = 1 << KEY_VALID_SHIFT;
-
-    // 19-bit tag of the instruction cache keys
-    static const unsigned KEY_TAG_SHIFT = 1;
-    static const unsigned KEY_TAG_MASK = 0x7ffff << KEY_TAG_SHIFT;
-
-    typedef size_t cache_line_t;     // index of cache-line (32-bytes/incrment)
-    typedef boost::uint32_t cache_key_t;
-
     // this class does not take ownership of sh4 or mem, so they will not be
     // deleted by the destructor function
-    Icache(Sh4 *sh4, MemoryMap *mem);
+    Icache(MemoryMap *mem);
     ~Icache();
 
     // Returns: zero on success, nonzero on failure
-    int read(boost::uint32_t *out, addr32_t paddr, bool index_enable);
+    int read(uint32_t *out, addr32_t paddr, bool index_enable);
 
     // reset the cache to its default (empty) state
     void reset(void);
 private:
-    Sh4 *sh4;
     MemoryMap *mem;
-
-    // 8 KB ("Instruction Cache" in the hardware manual)
-    uint8_t *inst_cache;
-    cache_key_t *inst_cache_keys;
-
-    int read1(boost::uint32_t *out, addr32_t paddr, bool index_enable);
-    int read2(boost::uint32_t *out, addr32_t paddr, bool index_enable);
-
-    /*
-     * returns the index into the inst-cache where paddr
-     * would go if it had an entry.
-     */
-    addr32_t cache_selector(addr32_t paddr, bool index_enable) const;
-
-    /*
-     * Return true if line matches paddr; else return false.
-     *
-     * This function does not verify that the cache is enabled; nor does it
-     * verify that paddr is even in an area which can be cached.  The callee
-     * should do that before calling this function.
-     *
-     * This function does not check the valid bit.
-     */
-    bool cache_check(cache_line_t line_idx, addr32_t paddr);
-
-    /*
-     * Load the cache-line corresponding to paddr into line.
-     * Returns non-zero on failure.
-     */
-    int cache_load(cache_line_t line_idx, addr32_t paddr);
-
-    addr32_t cache_line_get_tag(cache_line_t line_idx);
-
-    // sets the line's tag to tag.
-    void cache_line_set_tag(cache_line_t line_idx, addr32_t tag);
-
-    // extract the tag from the upper 19 bits of the lower 29 bits of paddr
-    static addr32_t tag_from_paddr(addr32_t paddr);
+    Sh4Icache state;
 };
 
-inline int
-Icache::read(boost::uint32_t *out, addr32_t paddr, bool index_enable) {
-    return read2(out, paddr, index_enable);
-}
+int sh4_icache_read(Sh4Icache *icache, MemoryMap *mem, uint32_t *out,
+                    addr32_t paddr, bool index_enable);
 
-inline addr32_t
-Icache::cache_line_get_tag(cache_line_t line_idx) {
-    return (KEY_TAG_MASK & inst_cache_keys[line_idx]) >> KEY_TAG_SHIFT;
-}
+/* reset the cache to its default (empty) state */
+void sh4_icache_reset(Sh4Icache *icache);
 
-inline addr32_t Icache::tag_from_paddr(addr32_t paddr) {
-    return (paddr & 0x1ffffc00) >> 10;
-}
+/* initialize Sh4Icache */
+void sh4_icache_init(Sh4Icache *icache);
 
-inline void Icache::cache_line_set_tag(cache_line_t line_idx, addr32_t tag) {
-    cache_key_t *keyp = inst_cache_keys + line_idx;
-    *keyp = (*keyp & ~KEY_TAG_MASK) | (tag << KEY_TAG_SHIFT);
-}
+/* cleanup icache and release resources */
+void sh4_icache_cleanup(Sh4Icache *icache);
 
 #endif
