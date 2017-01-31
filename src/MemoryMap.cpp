@@ -24,26 +24,40 @@
 
 #include "MemoryMap.hpp"
 
-MemoryMap::MemoryMap(BiosFile *bios, Memory *mem, G1Bus *g1) {
-    this->bios = bios;
-    this->mem = mem;
-    this->g1 = g1;
+static BiosFile *bios;
+static struct Memory *mem;
+G1Bus *g1;
+
+void memory_map_init(BiosFile *bios_new, struct Memory *mem_new,
+                     G1Bus *g1_new) {
+    memory_map_set_bios(bios_new);
+    memory_map_set_mem(mem_new);
+    memory_map_set_g1(g1_new);
 }
 
-MemoryMap::~MemoryMap() {
+void memory_map_set_bios(BiosFile *bios_new) {
+    bios = bios_new;
 }
 
-int MemoryMap::read(void *buf, size_t addr, size_t len) const {
+void memory_map_set_mem(struct Memory *mem_new) {
+    mem = mem_new;
+}
+
+void memory_map_set_g1(G1Bus *g1_new) {
+    g1 = g1_new;
+}
+
+int memory_map_read(void *buf, size_t addr, size_t len) {
     try {
         // check RAM first because that's the case we want to optimize for
-        if (addr >= RAM_FIRST && addr <= RAM_LAST) {
-            return memory_read(mem, buf, addr - RAM_FIRST, len);
-        } else if (addr <= BIOS_LAST) {
+        if (addr >= ADDR_RAM_FIRST && addr <= ADDR_RAM_LAST) {
+            return memory_read(mem, buf, addr - ADDR_RAM_FIRST, len);
+        } else if (addr <= ADDR_BIOS_LAST) {
             /*
              * XXX In case you were wondering: we don't check to see if
-             * addr >= BIOS_FIRST because BIOS_FIRST is 0
+             * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
              */
-            if ((addr - 1 + len) > BIOS_LAST) {
+            if ((addr - 1 + len) > ADDR_BIOS_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -51,9 +65,9 @@ int MemoryMap::read(void *buf, size_t addr, size_t len) const {
                                                       "end") <<
                                       errinfo_length(len));
             }
-            return bios->read(buf, addr - BIOS_FIRST, len);
-        } else if (addr >= G1_FIRST && addr <= G1_LAST) {
-            if (addr + len > G1_LAST) {
+            return bios->read(buf, addr - ADDR_BIOS_FIRST, len);
+        } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
+            if (addr + len > ADDR_G1_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -61,7 +75,7 @@ int MemoryMap::read(void *buf, size_t addr, size_t len) const {
                                                       "end") <<
                                       errinfo_length(len));
             }
-            return g1->read(buf, addr - G1_FIRST, len);
+            return g1->read(buf, addr - ADDR_G1_FIRST, len);
         }
 
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -74,23 +88,23 @@ int MemoryMap::read(void *buf, size_t addr, size_t len) const {
     }
 }
 
-int MemoryMap::write(void const *buf, size_t addr, size_t len) {
+int memory_map_write(void const *buf, size_t addr, size_t len) {
     try {
         // check RAM first because that's the case we want to optimize for
-        if (addr >= RAM_FIRST && addr <= RAM_LAST) {
-            return memory_write(mem, buf, addr - RAM_FIRST, len);
-        } else if (addr <= BIOS_LAST) {
+        if (addr >= ADDR_RAM_FIRST && addr <= ADDR_RAM_LAST) {
+            return memory_write(mem, buf, addr - ADDR_RAM_FIRST, len);
+        } else if (addr <= ADDR_BIOS_LAST) {
             /*
              * XXX In case you were wondering: we don't check to see if
-             * addr >= BIOS_FIRST because BIOS_FIRST is 0
+             * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
              */
             BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                   errinfo_feature("Proper response for when "
                                                   "the guest tries to write to "
                                                   "read-only memory") <<
                                   errinfo_length(len));
-        } else if (addr >= G1_FIRST && addr <= G1_LAST) {
-            if (addr + len > G1_LAST) {
+        } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
+            if (addr + len > ADDR_G1_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "

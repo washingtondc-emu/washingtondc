@@ -77,14 +77,14 @@ int G1Bus::write(void const *buf, size_t addr, size_t len) {
 }
 
 int G1Bus::DefaultRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, addr - MemoryMap::G1_FIRST + reg_area, len);
+    memcpy(buf, addr - ADDR_G1_FIRST + reg_area, len);
 
     return 0;
 }
 
 int G1Bus::DefaultRegWriteHandler(void const *buf, addr32_t addr,
                                   unsigned len) {
-    memcpy(addr - MemoryMap::G1_FIRST  + reg_area, buf, len);
+    memcpy(addr - ADDR_G1_FIRST  + reg_area, buf, len);
 
     return 0;
 }

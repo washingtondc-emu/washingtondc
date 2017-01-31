@@ -55,8 +55,6 @@ private:
     struct Memory mem;
     G1Bus *g1;
 
-    MemoryMap *mem_map;
-
     bool is_running;
 
 #ifdef ENABLE_DEBUGGER

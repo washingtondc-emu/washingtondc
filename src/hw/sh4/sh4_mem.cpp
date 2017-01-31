@@ -82,12 +82,12 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                             (cache_reg.ccr & CCR_OCE_MASK)) {
                             // page is cacheable and the cache is enabled
                             if (cache_reg.ccr & CCR_WT_MASK) {
-                                return sh4_ocache_write_wt(&op_cache, mem,
+                                return sh4_ocache_write_wt(&op_cache,
                                                            data, len, paddr,
                                                            index_enable,
                                                            cache_as_ram);
                             } else {
-                                return sh4_ocache_write_cb(&op_cache, mem,
+                                return sh4_ocache_write_cb(&op_cache,
                                                            data, len, paddr,
                                                            index_enable,
                                                            cache_as_ram);
@@ -105,7 +105,8 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                                 return 0;
                             }
 #endif
-                            return mem->write(data, paddr & 0x1fffffff, len);
+                            return memory_map_write(data, paddr & 0x1fffffff,
+                                                    len);
 
 #ifdef ENABLE_SH4_OCACHE
                         }
@@ -143,11 +144,11 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                         (cache_reg.ccr & CCR_OCE_MASK)) {
                         // page is cacheable and the cache is enabled
                         if (cache_reg.ccr & CCR_WT_MASK) {
-                            return sh4_ocache_write_wt(&op_cache, mem, data,
+                            return sh4_ocache_write_wt(&op_cache, data,
                                                        len, paddr, index_enable,
                                                        cache_as_ram);
                         } else {
-                            return sh4_ocache_write_cb(&op_cache, mem, data,
+                            return sh4_ocache_write_cb(&op_cache, data,
                                                        len, paddr, index_enable,
                                                        cache_as_ram);
                         }
@@ -164,7 +165,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #endif
 
                         // don't use the cache
-                        return mem->write(data, paddr & 0x1fffffff, len);
+                        return memory_map_write(data, paddr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
                     }
 #endif
@@ -184,10 +185,10 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
         } else {
 #ifdef ENABLE_SH4_OCACHE
             if (cache_reg.ccr & CCR_WT_MASK) {
-                return sh4_ocache_write_wt(&op_cache, mem, data, len, addr,
+                return sh4_ocache_write_wt(&op_cache, data, len, addr,
                                            index_enable, cache_as_ram);
             } else {
-                return sh4_ocache_write_cb(&op_cache, mem, data, len, addr,
+                return sh4_ocache_write_cb(&op_cache, data, len, addr,
                                            index_enable, cache_as_ram);
             }
 #else
@@ -201,7 +202,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
             }
 
             // don't use the cache
-            return mem->write(data, addr & 0x1fffffff, len);
+            return memory_map_write(data, addr & 0x1fffffff, len);
 #endif
         }
         break;
@@ -209,21 +210,21 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_SH4_OCACHE
         if (cache_reg.ccr & CCR_OCE_MASK) {
             if (cache_reg.ccr & CCR_CB_MASK) {
-                return sh4_ocache_write_cb(&op_cache, mem, data, len, addr,
+                return sh4_ocache_write_cb(&op_cache, data, len, addr,
                                            index_enable, cache_as_ram);
             } else {
-                return sh4_ocache_write_wt(&op_cache, mem, data, len, addr,
+                return sh4_ocache_write_wt(&op_cache, data, len, addr,
                                            index_enable, cache_as_ram);
             }
         } else {
 #endif
-            return mem->write(data, addr & 0x1fffffff, len);
+            return memory_map_write(data, addr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
         }
 #endif
         break;
     case AREA_P2:
-        return mem->write(data, addr & 0x1fffffff, len);
+        return memory_map_write(data, addr & 0x1fffffff, len);
     case AREA_P4:
         return do_write_p4(data, addr, len);
     default:
@@ -291,10 +292,10 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
                 (cache_reg.ccr & CCR_OCE_MASK)) {
                 // page is cacheable and the cache is enabled
                 if (cache_reg.ccr & CCR_WT_MASK) {
-                    return sh4_ocache_read(&op_cache, mem, data, len, paddr,
+                    return sh4_ocache_read(&op_cache, data, len, paddr,
                                            index_enable, cache_as_ram);
                 } else {
-                    return sh4_ocache_read(&op_cache, mem, data, len, paddr,
+                    return sh4_ocache_read(&op_cache, data, len, paddr,
                                            index_enable, cache_as_ram);
                 }
             } else {
@@ -310,7 +311,7 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
 #endif
 
                 // don't use the cache
-                return mem->read(data, paddr & 0x1fffffff, len);
+                return memory_map_read(data, paddr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
             }
 #endif
@@ -325,10 +326,10 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
         } else {
 #ifdef ENABLE_SH4_OCACHE
             if (cache_reg.ccr & CCR_WT_MASK) {
-                return sh4_ocache_read(&op_cache, mem, data, len, addr,
+                return sh4_ocache_read(&op_cache, data, len, addr,
                                        index_enable, cache_as_ram);
             } else {
-                return sh4_ocache_read(&op_cache, mem, data, len, addr,
+                return sh4_ocache_read(&op_cache, data, len, addr,
                                        index_enable, cache_as_ram);
             }
 #else
@@ -342,7 +343,7 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
             }
 
             // don't use the cache
-            return mem->read(data, addr & 0x1fffffff, len);
+            return memory_map_read(data, addr & 0x1fffffff, len);
 #endif
         }
         break;
@@ -350,21 +351,21 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_SH4_OCACHE
         if (cache_reg.ccr & CCR_OCE_MASK) {
             if (cache_reg.ccr & CCR_CB_MASK) {
-                return sh4_ocache_read(&op_cache, mem, data, len, addr,
+                return sh4_ocache_read(&op_cache, data, len, addr,
                                        index_enable, cache_as_ram);
             } else {
-                return sh4_ocache_read(&op_cache, mem, data, len, addr,
+                return sh4_ocache_read(&op_cache, data, len, addr,
                                        index_enable, cache_as_ram);
             }
         } else {
 #endif
-            return mem->read(data, addr & 0x1fffffff, len);
+            return memory_map_read(data, addr & 0x1fffffff, len);
 #ifdef ENABLE_SH4_OCACHE
         }
 #endif
         break;
     case AREA_P2:
-        return mem->read(data, addr & 0x1fffffff, len);
+        return memory_map_read(data, addr & 0x1fffffff, len);
     case AREA_P4:
         return do_read_p4(data, addr, len);
     default:
@@ -440,14 +441,15 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
                     // use the cache
                     boost::uint32_t buf;
                     int ret;
-                    ret = sh4_icache_read(&inst_cache, mem, &buf,
+                    ret = sh4_icache_read(&inst_cache, &buf,
                                          paddr, index_enable);
                     *out = buf;
                     return ret;
                 } else {
 #endif
                     // don't use the cache
-                    return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+                    return memory_map_read(out, addr & 0x1fffffff,
+                                           sizeof(*out));
 #ifdef ENABLE_SH4_ICACHE
                 }
 #endif
@@ -464,13 +466,13 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
             if (cache_reg.ccr & CCR_ICE_MASK) {
                 boost::uint32_t buf;
                 int ret;
-                ret = sh4_icache_read(&inst_cache, mem, &buf,
+                ret = sh4_icache_read(&inst_cache, &buf,
                                       addr, index_enable);
                 *out = buf;
                 return ret;
             } else {
 #endif
-                return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+                return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
 #ifdef ENABLE_SH4_ICACHE
             }
 #endif
@@ -481,19 +483,19 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
         if (cache_reg.ccr & CCR_ICE_MASK) {
             boost::uint32_t buf;
             int ret;
-            ret = sh4_icache_read(&inst_cache, mem, &buf,
+            ret = sh4_icache_read(&inst_cache, &buf,
                                   addr, index_enable);
             *out = buf;
             return ret;
         } else {
 #endif
-            return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+            return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
 #ifdef ENABLE_SH4_ICACHE
         }
 #endif
         break;
     case AREA_P2:
-        return mem->read(out, addr & 0x1fffffff, sizeof(*out));
+        return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
     case AREA_P4:
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for reading "

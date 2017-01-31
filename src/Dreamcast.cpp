@@ -40,10 +40,8 @@ Dreamcast::Dreamcast(char const *bios_path) {
     memory_init(&mem, MEM_SZ);
     bios = new BiosFile(bios_path);
     g1 = new G1Bus();
-
-    mem_map = new MemoryMap(bios, &mem, g1);
-
-    cpu = new Sh4(mem_map);
+    memory_map_init(bios, &mem, g1);
+    cpu = new Sh4();
 }
 
 Dreamcast::~Dreamcast() {
@@ -53,7 +51,6 @@ Dreamcast::~Dreamcast() {
 #endif
 
     delete cpu;
-    delete mem_map;
     delete g1;
     delete bios;
     memory_cleanup(&mem);

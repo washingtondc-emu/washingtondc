@@ -155,9 +155,9 @@ public:
         }
 
         gen.reset();
-        addr32_t start = offset + MemoryMap::RAM_FIRST;
+        addr32_t start = offset + ADDR_RAM_FIRST;
         addr32_t end = std::min(memory_size(ram), (size_t)0x1fffffff) +
-            MemoryMap::RAM_FIRST;
+            ADDR_RAM_FIRST;
         static const addr32_t CACHELINE_MASK = ~0x1f;
         for (addr32_t addr = start;
              ((addr + sizeof(ValType)) & CACHELINE_MASK) + 32 < end;
@@ -391,7 +391,7 @@ public:
 
         // map (0xf000 + page_sz) into the first page_sz bytes of virtual memory
         // TODO: this ought to be randomized
-        addr32_t phys_addr = MemoryMap::RAM_FIRST + page_sz;
+        addr32_t phys_addr = ADDR_RAM_FIRST + page_sz;
         unsigned sz = page_sz;
         addr32_t ppn = phys_addr & ~(sz_tbl[page_sz] - 1);
         bool shared = false;
@@ -726,8 +726,8 @@ int main(int argc, char **argv) {
     Memory mem;
     memory_init(&mem, 16 * 1024 * 1024);
     BiosFile bios;
-    MemoryMap mem_map(&bios, &mem, NULL);
-    Sh4 cpu(&mem_map);
+    memory_map_init(&bios, &mem, NULL);
+    Sh4 cpu;
     int ret_val = 0;
 
     try {

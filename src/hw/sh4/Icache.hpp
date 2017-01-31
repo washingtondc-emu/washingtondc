@@ -41,7 +41,7 @@ struct Sh4Icache {
     sh4_icache_key_t *inst_cache_keys;
 };
 
-int sh4_icache_read(Sh4Icache *icache, MemoryMap *mem, uint32_t *out,
+int sh4_icache_read(Sh4Icache *icache, uint32_t *out,
                     addr32_t paddr, bool index_enable);
 
 /* reset the cache to its default (empty) state */

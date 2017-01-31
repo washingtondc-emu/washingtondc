@@ -267,7 +267,7 @@ public:
         return fpu.reg_bank0.dr + reg_no;
     }
 
-    Sh4(MemoryMap *mem);
+    Sh4();
     ~Sh4();
 
     /*
@@ -669,7 +669,6 @@ private:
     int do_read_p4(void *dat, addr32_t addr, unsigned len);
     int do_write_p4(void const *dat, addr32_t addr, unsigned len);
 
-    MemoryMap *mem;
     /*
      * return a pointer to the given general-purpose register.
      * This function takes bank-switching into account.

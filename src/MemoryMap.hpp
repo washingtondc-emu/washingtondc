@@ -27,30 +27,24 @@
 #include "Memory.hpp"
 #include "hw/g1/g1.hpp"
 
-class MemoryMap {
-public:
-    // System Boot ROM
-    const static size_t BIOS_FIRST = 0;
-    const static size_t BIOS_LAST  = 0x001fffff;
+// System Boot ROM
+const static size_t ADDR_BIOS_FIRST = 0;
+const static size_t ADDR_BIOS_LAST  = 0x001fffff;
 
-    // main system memory
-    const static size_t RAM_FIRST  = 0x0c000000;
-    const static size_t RAM_LAST   = 0x0cffffff;
+// main system memory
+const static size_t ADDR_RAM_FIRST  = 0x0c000000;
+const static size_t ADDR_RAM_LAST   = 0x0cffffff;
 
-    // G1 bus control registers
-    const static size_t G1_FIRST = 0x005F7400;
-    const static size_t G1_LAST  = 0x005F74FF;
+// G1 bus control registers
+const static size_t ADDR_G1_FIRST = 0x005F7400;
+const static size_t ADDR_G1_LAST  = 0x005F74FF;
 
-    MemoryMap(BiosFile *bios, struct Memory *mem, G1Bus *g1);
-    ~MemoryMap();
+void memory_map_init(BiosFile *bios_new, struct Memory *mem_new, G1Bus *g1_new);
+void memory_map_set_bios(BiosFile *bios_new);
+void memory_map_set_mem(struct Memory *mem_new);
+void memory_map_set_g1(G1Bus *g1_new);
 
-    int read(void *buf, size_t addr, size_t len) const;
-    int write(void const *buf, size_t addr, size_t len);
-
-private:
-    BiosFile *bios;
-    struct Memory *mem;
-    G1Bus *g1;
-};
+int memory_map_read(void *buf, size_t addr, size_t len);
+int memory_map_write(void const *buf, size_t addr, size_t len);
 
 #endif

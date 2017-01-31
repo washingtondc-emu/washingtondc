@@ -67,7 +67,7 @@ private:
 
 template <class AddrFunc>
 static addr32_t pick_addr(AddrFunc func) {
-    return func() + MemoryMap::RAM_FIRST;
+    return func() + ADDR_RAM_FIRST;
 }
 
 class Sh4InstTests {
@@ -853,7 +853,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -916,7 +916,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2843,7 +2843,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_val - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_val - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -7997,7 +7997,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8056,7 +8056,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8118,7 +8118,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8202,7 +8202,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8291,7 +8291,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8372,7 +8372,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8456,7 +8456,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8535,7 +8535,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8627,7 +8627,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8719,7 +8719,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8803,7 +8803,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - MemoryMap::RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -10960,8 +10960,8 @@ int main(int argc, char **argv) {
     struct Memory mem;
     memory_init(&mem, 16 * 1024 * 1024);
     BiosFile bios;
-    MemoryMap mem_map(&bios, &mem, NULL);
-    Sh4 cpu(&mem_map);
+    memory_map_init(&bios, &mem, NULL);
+    Sh4 cpu;
     struct inst_test *test = inst_tests;
     int n_success = 0, n_tests = 0;
     unsigned int seed = time(NULL);

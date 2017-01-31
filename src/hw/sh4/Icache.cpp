@@ -37,14 +37,14 @@ static addr32_t sh4_icache_line_get_tag(Sh4Icache *icache,
                                         sh4_icache_line_t line_idx);
 static void sh4_icache_line_set_tag(Sh4Icache *icache,
                                     sh4_icache_line_t line_idx, addr32_t tag);
-static int sh4_icache_load(Sh4Icache *icache, MemoryMap *mem,
+static int sh4_icache_load(Sh4Icache *icache,
                            sh4_icache_line_t line_idx, addr32_t paddr);
 static bool sh4_icache_check(Sh4Icache *icache, sh4_icache_line_t line_idx,
                              addr32_t paddr);
-static int sh4_icache_read1(Sh4Icache *icache, MemoryMap *mem,
+static int sh4_icache_read1(Sh4Icache *icache,
                             uint32_t *out, addr32_t paddr,
                             bool index_enable);
-static int sh4_icache_read2(Sh4Icache *icache, MemoryMap *mem, uint32_t *out,
+static int sh4_icache_read2(Sh4Icache *icache, uint32_t *out,
                             addr32_t paddr, bool index_enable);
 
 static const unsigned SH4_ICACHE_LONGS_PER_CACHE_LINE = 8;
@@ -118,12 +118,13 @@ static void sh4_icache_line_set_tag(Sh4Icache *icache,
         (tag << SH4_ICACHE_KEY_TAG_SHIFT);
 }
 
-static int sh4_icache_load(Sh4Icache *icache, MemoryMap *mem,
+static int sh4_icache_load(Sh4Icache *icache,
                            sh4_icache_line_t line_idx, addr32_t paddr) {
     size_t n_bytes = sizeof(uint32_t) * SH4_ICACHE_LONGS_PER_CACHE_LINE;
 
     void *cache_ptr = icache->inst_cache + line_idx * SH4_ICACHE_LINE_SIZE;
-    int err_code = mem->read(cache_ptr, paddr & ~31 & 0x1fffffff, n_bytes);
+    int err_code = memory_map_read(cache_ptr, paddr & ~31 & 0x1fffffff,
+                                   n_bytes);
     if (err_code != 0)
         return err_code;
 
@@ -155,7 +156,7 @@ static bool sh4_icache_check(Sh4Icache *icache, sh4_icache_line_t line_idx,
     return false;
 }
 
-static int sh4_icache_read1(Sh4Icache *icache, MemoryMap *mem,
+static int sh4_icache_read1(Sh4Icache *icache,
                             uint32_t *out, addr32_t paddr,
                             bool index_enable) {
     int err = 0;
@@ -170,14 +171,14 @@ static int sh4_icache_read1(Sh4Icache *icache, MemoryMap *mem,
         *out = line[byte_idx];
         return 0;
     } else {
-        if ((err = sh4_icache_load(icache, mem, line_idx, paddr)) != 0)
+        if ((err = sh4_icache_load(icache, line_idx, paddr)) != 0)
             return err;
         *out = line[byte_idx];
         return 0;
     }
 }
 
-static int sh4_icache_read2(Sh4Icache *icache, MemoryMap *mem, uint32_t *out,
+static int sh4_icache_read2(Sh4Icache *icache, uint32_t *out,
                             addr32_t paddr, bool index_enable) {
     int err = 0;
 
@@ -188,7 +189,7 @@ static int sh4_icache_read2(Sh4Icache *icache, MemoryMap *mem, uint32_t *out,
             uint32_t tmp;
             int err;
 
-            err = sh4_icache_read1(icache, mem, &tmp, paddr + i, index_enable);
+            err = sh4_icache_read1(icache, &tmp, paddr + i, index_enable);
             if (err)
                 return err;
 
@@ -209,14 +210,14 @@ static int sh4_icache_read2(Sh4Icache *icache, MemoryMap *mem, uint32_t *out,
         *out = ((uint16_t*)line)[sw_idx];
         return 0;
     } else {
-        if ((err = sh4_icache_load(icache, mem, line_idx, paddr)) != 0)
+        if ((err = sh4_icache_load(icache, line_idx, paddr)) != 0)
             return err;
         *out = ((uint16_t*)line)[sw_idx];
         return 0;
     }
 }
 
-int sh4_icache_read(Sh4Icache *icache, MemoryMap *mem, uint32_t *out,
+int sh4_icache_read(Sh4Icache *icache, uint32_t *out,
                     addr32_t paddr, bool index_enable) {
-    return sh4_icache_read2(icache, mem, out, paddr, index_enable);
+    return sh4_icache_read2(icache, out, paddr, index_enable);
 }

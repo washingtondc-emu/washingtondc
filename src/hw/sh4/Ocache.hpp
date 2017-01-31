@@ -43,7 +43,7 @@ struct Sh4Ocache {
 };
 
 /* Returns: zero on success, nonzero on failure */
-int sh4_ocache_read(Sh4Ocache *state, MemoryMap *mem, void *out,
+int sh4_ocache_read(Sh4Ocache *state, void *out,
                     unsigned len, addr32_t paddr, bool index_enable,
                     bool cache_as_ram);
 
@@ -52,7 +52,7 @@ int sh4_ocache_read(Sh4Ocache *state, MemoryMap *mem, void *out,
  * copy-back mode.
  * Returns: zero on success, nonzero on failure.
  */
-int sh4_ocache_write_cb(Sh4Ocache *state, MemoryMap *mem, void const *data,
+int sh4_ocache_write_cb(Sh4Ocache *state, void const *data,
                         unsigned len, addr32_t paddr, bool index_enable,
                         bool cache_as_ram);
 
@@ -61,7 +61,7 @@ int sh4_ocache_write_cb(Sh4Ocache *state, MemoryMap *mem, void const *data,
  * write-through mode.
  * Returns: zero on success, nonzero on failure.
  */
-int sh4_ocache_write_wt(Sh4Ocache *state, MemoryMap *mem, void const *data,
+int sh4_ocache_write_wt(Sh4Ocache *state, void const *data,
                         unsigned len, addr32_t paddr, bool index_enable,
                         bool cache_as_ram);
 
@@ -78,14 +78,14 @@ void sh4_ocache_cleanup(Sh4Ocache *sh4_ocache);
  * prefetch the cache-line containing paddr.
  * This is the backend of the PREF instruction.
  */
-void sh4_ocache_pref(Sh4Ocache *sh4_ocache, MemoryMap *mem, addr32_t paddr,
+void sh4_ocache_pref(Sh4Ocache *sh4_ocache, addr32_t paddr,
                      bool index_enable, bool cache_as_ram);
 
 /*
  * if paddr is in the cache, paddr's entire cache line will be written back
  * and invalidated.  This is part of the OCBP instruction's implementation
  */
-int sh4_ocache_purge(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+int sh4_ocache_purge(Sh4Ocache *sh4_ocache,
                      addr32_t paddr, bool index_enable,
                      bool cache_as_ram);
 
@@ -97,7 +97,7 @@ int sh4_ocache_purge(Sh4Ocache *sh4_ocache, MemoryMap *mem,
 void sh4_ocache_invalidate(Sh4Ocache *sh4_ocache, addr32_t paddr,
                            bool index_enable, bool cache_as_ram);
 
-int sh4_ocache_alloc(Sh4Ocache *sh4_ocache, MemoryMap *mem,
+int sh4_ocache_alloc(Sh4Ocache *sh4_ocache,
                      addr32_t paddr, bool index_enable,
                      bool cache_as_ram);
 
