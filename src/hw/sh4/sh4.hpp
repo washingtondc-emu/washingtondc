@@ -32,6 +32,7 @@
 #include "MemoryMap.hpp"
 #include "Ocache.hpp"
 #include "Icache.hpp"
+#include "sh4_mmu.hpp"
 
 /* Hitachi SuperH-4 interpreter */
 
@@ -54,6 +55,59 @@ class Sh4 {
     friend class Sh4InstTests;
 
 public:
+    struct RegFile {
+        // general-purpose registers R0_BANK0-R7_BANK0
+        reg32_t r_bank0[8];
+
+        // general-purpose registers R0_BANK1-R7_BANK1
+        reg32_t r_bank1[8];
+
+        // general-purpose registers R8-R15
+        reg32_t rgen[8];
+
+        // floating point bank0 registers FPR0_BANK0-FPR15_BANK0
+        reg32_t fpr_bank0;
+
+        // floating point bank1 registers FPR0_BANK1-FPR15_BANK1
+        reg32_t fpr_bank1;
+
+        // status register
+        reg32_t sr;
+
+        // saved-status register
+        reg32_t ssr;
+
+        // saved program counter
+        reg32_t spc;
+
+        // global base register
+        reg32_t gbr;
+
+        // vector base register
+        reg32_t vbr;
+
+        // saved general register 15
+        reg32_t sgr;
+
+        // debug base register
+        reg32_t dbr;
+
+        // Multiply-and-accumulate register high
+        reg32_t mach;
+
+        // multiply-and-accumulate register low
+        reg32_t macl;
+
+        // procedure register
+        reg32_t pr;
+
+        // program counter
+        reg32_t pc;
+    };
+    RegFile reg;
+
+    struct sh4_mmu mmu;
+
     // true/false condition or carry/borrow bit
     static const unsigned SR_FLAG_T_SHIFT = 0;
     static const unsigned SR_FLAG_T_MASK = 1 << SR_FLAG_T_SHIFT;
@@ -119,57 +173,6 @@ public:
     // FPU bank switch
     static const unsigned FPSCR_FR_SHIFT = 21;
     static const unsigned FPSCR_FR_MASK = 1 << FPSCR_FR_SHIFT;
-
-    struct RegFile {
-        // general-purpose registers R0_BANK0-R7_BANK0
-        reg32_t r_bank0[8];
-
-        // general-purpose registers R0_BANK1-R7_BANK1
-        reg32_t r_bank1[8];
-
-        // general-purpose registers R8-R15
-        reg32_t rgen[8];
-
-        // floating point bank0 registers FPR0_BANK0-FPR15_BANK0
-        reg32_t fpr_bank0;
-
-        // floating point bank1 registers FPR0_BANK1-FPR15_BANK1
-        reg32_t fpr_bank1;
-
-        // status register
-        reg32_t sr;
-
-        // saved-status register
-        reg32_t ssr;
-
-        // saved program counter
-        reg32_t spc;
-
-        // global base register
-        reg32_t gbr;
-
-        // vector base register
-        reg32_t vbr;
-
-        // saved general register 15
-        reg32_t sgr;
-
-        // debug base register
-        reg32_t dbr;
-
-        // Multiply-and-accumulate register high
-        reg32_t mach;
-
-        // multiply-and-accumulate register low
-        reg32_t macl;
-
-        // procedure register
-        reg32_t pr;
-
-        // program counter
-        reg32_t pc;
-    };
-    RegFile reg;
 
     /*
      * If the CPU is executing a delayed branch instruction, then
@@ -446,103 +449,6 @@ private:
     static const size_t AREA7_REGEND = 0x1ff00008;
     BOOST_STATIC_ASSERT((P4_REGEND - P4_REGSTART) == (AREA7_REGEND - AREA7_REGSTART));
 
-    enum PageSize {
-        ONE_KILO = 0,
-        FOUR_KILO = 1,
-        SIXTYFOUR_KILO = 2,
-        ONE_MEGA = 3
-    };
-
-    // UTLB Valid bit
-    static const unsigned UTLB_KEY_VALID_SHIFT = 0;
-    static const unsigned UTLB_KEY_VALID_MASK = 1 << UTLB_KEY_VALID_SHIFT;
-
-    // UTLB Virtual Page Number
-    static const unsigned UTLB_KEY_VPN_SHIFT = 1;
-    static const unsigned UTLB_KEY_VPN_MASK = 0x3fffff << UTLB_KEY_VPN_SHIFT;
-
-    // UTLB Address-Space Identifier
-    static const unsigned UTLB_KEY_ASID_SHIFT = 23;
-    static const unsigned UTLB_KEY_ASID_MASK = 0xff << UTLB_KEY_ASID_SHIFT;
-
-    // UTLB Timing Control - I have no idea what this is
-    // (see page 41 of the sh7750 hardware manual)
-    static const unsigned UTLB_ENT_TC_SHIFT = 0;
-    static const unsigned UTLB_ENT_TC_MASK = 1 << UTLB_ENT_TC_SHIFT;
-
-    // UTLB Space Attribute
-    static const unsigned UTLB_ENT_SA_SHIFT = 1;
-    static const unsigned UTLB_ENT_SA_MASK = 0x7 << UTLB_ENT_SA_SHIFT;
-
-    // UTLB Write-Through
-    static const unsigned UTLB_ENT_WT_SHIFT = 4;
-    static const unsigned UTLB_ENT_WT_MASK = 1 << UTLB_ENT_WT_SHIFT;
-
-    // UTLB Dirty Bit
-    static const unsigned UTLB_ENT_D_SHIFT = 5;
-    static const unsigned UTLB_ENT_D_MASK = 1 << UTLB_ENT_D_SHIFT;
-
-    // UTLB Protection-Key data
-    static const unsigned UTLB_ENT_PR_SHIFT = 6;
-    static const unsigned UTLB_ENT_PR_MASK = 3 << UTLB_ENT_PR_SHIFT;
-
-    // UTLB Cacheability bit
-    static const unsigned UTLB_ENT_C_SHIFT = 8;
-    static const unsigned UTLB_ENT_C_MASK = 1 << UTLB_ENT_C_SHIFT;
-
-    // UTLB Share status bit
-    static const unsigned UTLB_ENT_SH_SHIFT = 9;
-    static const unsigned UTLB_ENT_SH_MASK = 1 << UTLB_ENT_SH_SHIFT;
-
-    // UTLB Page size (see enum PageSize definition)
-    static const unsigned UTLB_ENT_SZ_SHIFT = 10;
-    static const unsigned UTLB_ENT_SZ_MASK = 3 << UTLB_ENT_SZ_SHIFT;
-
-    // UTLB Physical Page Number
-    static const unsigned UTLB_ENT_PPN_SHIFT = 12;
-    static const unsigned UTLB_ENT_PPN_MASK = 0x7ffff << UTLB_ENT_PPN_SHIFT;
-
-    // ITLB Valid bit
-    static const unsigned ITLB_KEY_VALID_SHIFT = 0;
-    static const unsigned ITLB_KEY_VALID_MASK = 1 << ITLB_KEY_VALID_SHIFT;
-
-    // ITLB Virtual Page Number
-    static const unsigned ITLB_KEY_VPN_SHIFT = 1;
-    static const unsigned ITLB_KEY_VPN_MASK = 0x3fffff << ITLB_KEY_VPN_SHIFT;
-
-    // ITLB Address-Space Identifier
-    static const unsigned ITLB_KEY_ASID_SHIFT = 23;
-    static const unsigned ITLB_KEY_ASID_MASK = 0xff << ITLB_KEY_ASID_SHIFT;
-
-    // ITLB Timing Control - I have no idea what this is
-    // (see page 41 of the sh7750 hardware manual)
-    static const unsigned ITLB_ENT_TC_SHIFT = 0;
-    static const unsigned ITLB_ENT_TC_MASK = 1 << ITLB_ENT_TC_SHIFT;
-
-    // ITLB Space Attribute
-    static const unsigned ITLB_ENT_SA_SHIFT = 1;
-    static const unsigned ITLB_ENT_SA_MASK = 0x7 << ITLB_ENT_SA_SHIFT;
-
-    // ITLB Protection Key data (0=priveleged, 1=user or priveleged)
-    static const unsigned ITLB_ENT_PR_SHIFT = 4;
-    static const unsigned ITLB_ENT_PR_MASK = 1 << ITLB_ENT_PR_SHIFT;
-
-    // ITLB Cacheability flag
-    static const unsigned ITLB_ENT_C_SHIFT = 5;
-    static const unsigned ITLB_ENT_C_MASK = 1 << ITLB_ENT_C_SHIFT;
-
-    // ITLB Share status Bit
-    static const unsigned ITLB_ENT_SH_SHIFT = 6;
-    static const unsigned ITLB_ENT_SH_MASK = 1 << ITLB_ENT_SH_SHIFT;
-
-    // ITLB Page size (see enum PageSize definition)
-    static const unsigned ITLB_ENT_SZ_SHIFT = 7;
-    static const unsigned ITLB_ENT_SZ_MASK = 0x3 << ITLB_ENT_SZ_SHIFT;
-
-    // ITLB Physical Page Number
-    static const unsigned ITLB_ENT_PPN_SHIFT = 9;
-    static const unsigned ITLB_ENT_PPN_MASK = 0x7ffff << ITLB_ENT_PPN_SHIFT;
-
     // reset all values to their power-on-reset values
     void on_hard_reset();
 
@@ -577,78 +483,6 @@ private:
 #endif
 
     enum VirtMemArea get_mem_area(addr32_t addr);
-
-#ifdef ENABLE_SH4_MMU
-    struct utlb_entry {
-        boost::uint32_t key;
-        boost::uint32_t ent;
-    };
-
-    struct itlb_entry {
-        boost::uint32_t key;
-        boost::uint32_t ent;
-    };
-
-    static const size_t UTLB_SIZE = 64;
-    struct utlb_entry utlb[UTLB_SIZE];
-
-    static const size_t ITLB_SIZE = 4;
-    struct itlb_entry itlb[ITLB_SIZE];
-
-    /*
-     * Parameter to utlb_search that tells it what kind of exception to raise
-     * in the event of a utlb miss.  This does not have any effect on what it
-     * does for a multiple hit (which is to raise EXCP_DATA_TLB_MULT_HIT).  Even
-     * UTLB_READ_ITLB doesn not stop it from raising EXCP_DATA_TLB_MULT_HIT if
-     * there is a multiple-hit.
-     */
-    typedef enum utlb_access {
-        UTLB_READ,     // generate EXCP_DATA_TLB_READ_MISS
-        UTLB_WRITE,    // generate EXCP_DATA_TLB_WRITE_MISS
-        UTLB_READ_ITLB // do not generate exceptions for TLB misses
-    } utlb_access_t;
-
-    /*
-     * return the utlb entry for vaddr.
-     * On failure, this will return NULL and set the appropriate CPU
-     * flags to signal an exception of some sort.
-     *
-     * access_type should be either UTLB_READ, UTLB_WRITE or UTLB_READ_ITLB.
-     * It is only used for setting the appropriate exception type in the event
-     * of a utlb cache miss.  Other than that, it has no real effect on what
-     * this function does.
-     *
-     * This function does not check to see if the CPU actually has privelege to
-     * access the page referenced by the returned utlb_entry.
-     */
-    struct utlb_entry *utlb_search(addr32_t vaddr, utlb_access_t access_type);
-
-    addr32_t utlb_ent_get_vpn(struct utlb_entry *ent) const;
-    addr32_t utlb_ent_get_ppn(struct utlb_entry *ent) const;
-    addr32_t utlb_ent_get_addr_offset(struct utlb_entry *ent,
-                                      addr32_t addr) const;
-    addr32_t utlb_ent_translate(struct utlb_entry *ent, addr32_t vaddr) const;
-
-    addr32_t itlb_ent_get_vpn(struct itlb_entry *ent) const;
-    addr32_t itlb_ent_get_ppn(struct itlb_entry *ent) const;
-    addr32_t itlb_ent_get_addr_offset(struct itlb_entry *ent,
-                                      addr32_t addr) const;
-    addr32_t itlb_ent_translate(struct itlb_entry *ent, addr32_t vaddr) const;
-
-    /*
-     * Return the itlb entry for vaddr.
-     * On failure this will return NULL and set the appropriate CPU
-     * flags to signal an exception of some sort.
-     * On miss, this function will search the utlb and if it finds what it was
-     * looking for there, it will replace one of the itlb entries with the utlb
-     * entry as outlined on pade 44 of the SH7750 Hardware Manual.
-     *
-     * This function does not check to see if the CPU actually has privelege to
-     * access the page referenced by the returned itlb_entry.
-     */
-    struct itlb_entry *itlb_search(addr32_t vaddr);
-
-#endif
 
     /*
      * From within the CPU, these functions should be called instead of
@@ -695,54 +529,6 @@ private:
         else
             return &reg.r_bank1[idx];
     }
-
-    static const unsigned MMUPTEH_ASID_SHIFT = 0;
-    static const unsigned MMUPTEH_ASID_MASK = 0xff << MMUPTEH_ASID_SHIFT;
-
-    static const unsigned MMUPTEH_VPN_SHIFT = 10;
-    static const unsigned MMUPTEH_VPN_MASK = 0x3fffff << MMUPTEH_VPN_SHIFT;
-
-    static const unsigned MMUCR_AT_SHIFT = 0;
-    static const unsigned MMUCR_AT_MASK = 1 << MMUCR_AT_SHIFT;
-
-    static const unsigned MMUCR_TI_SHIFT = 2;
-    static const unsigned MMUCR_TI_MASK = 1 << MMUCR_TI_SHIFT;
-
-    // Single (=1)/Multiple(=0) Virtual Memory switch bit
-    static const unsigned MMUCR_SV_SHIFT = 8;
-    static const unsigned MMUCR_SV_MASK = 1 << MMUCR_SV_SHIFT;
-
-    static const unsigned MMUCR_SQMD_SHIFT = 9;
-    static const unsigned MMUCR_SQMD_MASK = 1 << MMUCR_SQMD_SHIFT;
-
-    static const unsigned MMUCR_URC_SHIFT = 10;
-    static const unsigned MMUCR_URC_MASK = 0x3f << MMUCR_URC_SHIFT;
-
-    static const unsigned MMUCR_URB_SHIFT = 18;
-    static const unsigned MMUCR_URB_MASK = 0x3f << MMUCR_URB_SHIFT;
-
-    static const unsigned MMUCR_LRUI_SHIFT = 26;
-    static const unsigned MMUCR_LRUI_MASK = 0x3f << MMUCR_LRUI_SHIFT;
-
-    struct Mmu {
-        // Page table entry high
-        reg32_t pteh;
-
-        // Page table entry low
-        reg32_t ptel;
-
-        // Page table entry assisstance
-        reg32_t ptea;
-
-        // Translation table base
-        reg32_t ttb;
-
-        // TLB exception address
-        reg32_t tea;
-
-        // MMU control
-        reg32_t mmucr;
-    } mmu;
 
     // IC index enable
     static const unsigned CCR_IIX_SHIFT = 15;

@@ -30,6 +30,7 @@
 #include "Ocache.hpp"
 #endif
 
+#include "sh4_mmu.hpp"
 #include "sh4.hpp"
 
 int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
@@ -61,24 +62,25 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
     switch (virt_area) {
     case AREA_P0:
     case AREA_P3:
-        if (mmu.mmucr & MMUCR_AT_MASK) {
+        if (mmu.reg.mmucr & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
-            struct utlb_entry *utlb_ent = utlb_search(addr, UTLB_WRITE);
+            struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(this, addr,
+                                                              SH4_UTLB_WRITE);
 
             if (!utlb_ent)
-                return 1; // exception set by utlb_search
+                return 1; // exception set by sh4_utlb_search
 
-            unsigned pr = (utlb_ent->ent & UTLB_ENT_PR_MASK) >>
-                UTLB_ENT_PR_SHIFT;
+            unsigned pr = (utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
+                SH4_UTLB_ENT_PR_SHIFT;
 
-            addr32_t paddr = utlb_ent_translate(utlb_ent, addr);
+            addr32_t paddr = sh4_utlb_ent_translate(utlb_ent, addr);
             if (privileged) {
                 if (pr & 1) {
                     // page is marked as read-write
 
-                    if (utlb_ent->ent & UTLB_ENT_D_MASK) {
+                    if (utlb_ent->ent & SH4_UTLB_ENT_D_MASK) {
 #ifdef ENABLE_SH4_OCACHE
-                        if ((utlb_ent->ent & UTLB_ENT_C_MASK) &&
+                        if ((utlb_ent->ent & SH4_UTLB_ENT_C_MASK) &&
                             (cache_reg.ccr & CCR_OCE_MASK)) {
                             // page is cacheable and the cache is enabled
                             if (cache_reg.ccr & CCR_WT_MASK) {
@@ -113,34 +115,34 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #endif
                     } else {
                         set_exception(EXCP_INITIAL_PAGE_WRITE);
-                        mmu.tea = addr;
+                        mmu.reg.tea = addr;
                         return 1;
                     }
                 } else {
                     // page is marked as read-only
-                    unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
-                        UTLB_KEY_VPN_SHIFT;
+                    unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
+                        SH4_UTLB_KEY_VPN_SHIFT;
                     set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                    mmu.pteh &= ~MMUPTEH_VPN_MASK;
-                    mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
-                    mmu.tea = addr;
+                    mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
+                    mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+                    mmu.reg.tea = addr;
                     return 1;
                 }
             } else {
                 if (pr != 3) {
                     // page is marked as read-only OR we don't have permissions
-                    unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
-                        UTLB_KEY_VPN_SHIFT;
+                    unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
+                        SH4_UTLB_KEY_VPN_SHIFT;
                     set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                    mmu.pteh &= ~MMUPTEH_VPN_MASK;
-                    mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
-                    mmu.tea = addr;
+                    mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
+                    mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+                    mmu.reg.tea = addr;
                     return 1;
                 }
 
-                if (utlb_ent->ent & UTLB_ENT_D_MASK) {
+                if (utlb_ent->ent & SH4_UTLB_ENT_D_MASK) {
 #ifdef ENABLE_SH4_OCACHE
-                    if ((utlb_ent->ent & UTLB_ENT_C_MASK) &&
+                    if ((utlb_ent->ent & SH4_UTLB_ENT_C_MASK) &&
                         (cache_reg.ccr & CCR_OCE_MASK)) {
                         // page is cacheable and the cache is enabled
                         if (cache_reg.ccr & CCR_WT_MASK) {
@@ -171,7 +173,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #endif
                 } else {
                     set_exception(EXCP_INITIAL_PAGE_WRITE);
-                    mmu.tea = addr;
+                    mmu.reg.tea = addr;
                     return 1;
                 }
             }
@@ -265,30 +267,31 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
     switch (virt_area) {
     case AREA_P0:
     case AREA_P3:
-        if (mmu.mmucr & MMUCR_AT_MASK) {
+        if (mmu.reg.mmucr & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
-            struct utlb_entry *utlb_ent = utlb_search(addr, UTLB_READ);
+            struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(this, addr,
+                                                              SH4_UTLB_READ);
 
             if (!utlb_ent)
-                return 1; // exception set by utlb_search
+                return 1; // exception set by sh4_utlb_search
 
-            unsigned pr = (utlb_ent->ent & UTLB_ENT_PR_MASK) >>
-                UTLB_ENT_PR_SHIFT;
+            unsigned pr = (utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
+                SH4_UTLB_ENT_PR_SHIFT;
 
-            addr32_t paddr = utlb_ent_translate(utlb_ent, addr);
+            addr32_t paddr = sh4_utlb_ent_translate(utlb_ent, addr);
             if (!privileged && !(pr & 2)) {
                 // we don't have permissions
-                unsigned vpn = (utlb_ent->key & UTLB_KEY_VPN_MASK) >>
-                    UTLB_KEY_VPN_SHIFT;
+                unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
+                    SH4_UTLB_KEY_VPN_SHIFT;
                 set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                mmu.pteh &= ~MMUPTEH_VPN_MASK;
-                mmu.pteh |= vpn << MMUPTEH_VPN_SHIFT;
-                mmu.tea = addr;
+                mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
+                mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+                mmu.reg.tea = addr;
                 return 1;
             }
 
 #ifdef ENABLE_SH4_OCACHE
-            if ((utlb_ent->ent & UTLB_ENT_C_MASK) &&
+            if ((utlb_ent->ent & SH4_UTLB_ENT_C_MASK) &&
                 (cache_reg.ccr & CCR_OCE_MASK)) {
                 // page is cacheable and the cache is enabled
                 if (cache_reg.ccr & CCR_WT_MASK) {
@@ -425,18 +428,18 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
     switch (virt_area) {
     case AREA_P0:
     case AREA_P3:
-        if (mmu.mmucr & MMUCR_AT_MASK) {
+        if (mmu.reg.mmucr & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
-            struct itlb_entry *itlb_ent = itlb_search(addr);
+            struct sh4_itlb_entry *itlb_ent = sh4_itlb_search(this, addr);
 
             if (!itlb_ent)
-                return 1;  // exception set by itlb_search
+                return 1;  // exception set by sh4_itlb_search
 
-            if (privileged || (itlb_ent->ent & ITLB_ENT_PR_MASK)) {
-                addr32_t paddr = itlb_ent_translate(itlb_ent, addr);
+            if (privileged || (itlb_ent->ent & SH4_ITLB_ENT_PR_MASK)) {
+                addr32_t paddr = sh4_itlb_ent_translate(itlb_ent, addr);
 
 #ifdef ENABLE_SH4_ICACHE
-                if ((itlb_ent->ent & ITLB_ENT_C_MASK) &&
+                if ((itlb_ent->ent & SH4_ITLB_ENT_C_MASK) &&
                     (cache_reg.ccr & CCR_ICE_MASK)) {
                     // use the cache
                     boost::uint32_t buf;

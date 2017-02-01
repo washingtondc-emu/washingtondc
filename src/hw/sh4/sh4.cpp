@@ -33,6 +33,7 @@
 #endif
 
 #include "BaseException.hpp"
+#include "sh4_mmu.hpp"
 
 #include "sh4.hpp"
 
@@ -49,13 +50,9 @@ public:
 Sh4::Sh4() {
     reg_area = new uint8_t[P4_REGEND - P4_REGSTART];
 
-#ifdef ENABLE_SH4_MMU
-    memset(utlb, 0, sizeof(utlb));
-    memset(itlb, 0, sizeof(itlb));
-#endif
+    sh4_mmu_init(&mmu);
 
     memset(&reg, 0, sizeof(reg));
-    memset(&mmu, 0, sizeof(mmu));
     memset(&cache_reg, 0, sizeof(cache_reg));
 
 #ifdef ENABLE_SH4_ICACHE

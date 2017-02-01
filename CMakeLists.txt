@@ -39,6 +39,8 @@ option(ENABLE_DEBUGGER "Enable the debugger" ON)
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mem.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.hpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_reg.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_tmu.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/g1/g1.hpp"

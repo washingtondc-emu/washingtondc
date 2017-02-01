@@ -331,7 +331,7 @@ int Sh4::ReadOnlyRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
 }
 
 int Sh4::MmucrRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.mmucr, sizeof(mmu.mmucr));
+    memcpy(buf, &mmu.reg.mmucr, sizeof(mmu.reg.mmucr));
 
     return 0;
 }
@@ -340,7 +340,7 @@ int Sh4::MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     reg32_t mmucr_tmp;
     memcpy(&mmucr_tmp, buf, sizeof(mmucr_tmp));
 
-    if (mmucr_tmp & MMUCR_AT_MASK) {
+    if (mmucr_tmp & SH4_MMUCR_AT_MASK) {
         /*
          * The thing is, I have a lot of code to support MMU operation in place,
          * but it's not all tested and I also don't think I have all the
@@ -353,7 +353,7 @@ int Sh4::MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
                               errinfo_guest_addr(addr));
     }
 
-    mmu.mmucr = mmucr_tmp;
+    mmu.reg.mmucr = mmucr_tmp;
 
     return 0;
 }
@@ -371,49 +371,49 @@ int Sh4::CcrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
 }
 
 int Sh4::PtehRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.pteh, sizeof(mmu.pteh));
+    memcpy(buf, &mmu.reg.pteh, sizeof(mmu.reg.pteh));
 
     return 0;
 }
 
 int Sh4::PtehRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.pteh, buf, sizeof(mmu.pteh));
+    memcpy(&mmu.reg.pteh, buf, sizeof(mmu.reg.pteh));
 
     return 0;
 }
 
 int Sh4::PtelRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.ptel, sizeof(mmu.ptel));
+    memcpy(buf, &mmu.reg.ptel, sizeof(mmu.reg.ptel));
 
     return 0;
 }
 
 int Sh4::PtelRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.ptel, buf, sizeof(mmu.ptel));
+    memcpy(&mmu.reg.ptel, buf, sizeof(mmu.reg.ptel));
 
     return 0;
 }
 
 int Sh4::TtbRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.ttb, sizeof(mmu.ttb));
+    memcpy(buf, &mmu.reg.ttb, sizeof(mmu.reg.ttb));
 
     return 0;
 }
 
 int Sh4::TtbRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.ttb, buf, sizeof(mmu.ttb));
+    memcpy(&mmu.reg.ttb, buf, sizeof(mmu.reg.ttb));
 
     return 0;
 }
 
 int Sh4::TeaRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.tea, sizeof(mmu.tea));
+    memcpy(buf, &mmu.reg.tea, sizeof(mmu.reg.tea));
 
     return 0;
 }
 
 int Sh4::TeaRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.tea, buf, sizeof(mmu.tea));
+    memcpy(&mmu.reg.tea, buf, sizeof(mmu.reg.tea));
 
     return 0;
 }
@@ -455,13 +455,13 @@ int Sh4::IntevtRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
 }
 
 int Sh4::PteaRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.ptea, sizeof(mmu.ptea));
+    memcpy(buf, &mmu.reg.ptea, sizeof(mmu.reg.ptea));
 
     return 0;
 }
 
 int Sh4::PteaRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.ptea, buf, sizeof(mmu.ptea));
+    memcpy(&mmu.reg.ptea, buf, sizeof(mmu.reg.ptea));
 
     return 0;
 }

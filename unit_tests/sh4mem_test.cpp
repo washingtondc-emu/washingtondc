@@ -386,8 +386,8 @@ public:
         unsigned sz_tbl[] = { 1024, 4 * 1024, 64 * 1024, 1024 * 1024 };
 
         this->gen.reset();
-        memset(this->cpu->utlb, 0, sizeof(this->cpu->utlb));
-        this->cpu->mmu.mmucr |= Sh4::MMUCR_AT_MASK;
+        memset(this->cpu->mmu.utlb, 0, sizeof(this->cpu->mmu.utlb));
+        this->cpu->mmu.reg.mmucr |= SH4_MMUCR_AT_MASK;
 
         // map (0xf000 + page_sz) into the first page_sz bytes of virtual memory
         // TODO: this ought to be randomized
@@ -445,20 +445,20 @@ public:
 
     void set_utlb(unsigned utlb_idx, boost::uint32_t utlb_key,
                   boost::uint32_t utlb_ent) {
-        if (utlb_idx >= Sh4::UTLB_SIZE)
+        if (utlb_idx >= SH4_UTLB_SIZE)
             BOOST_THROW_EXCEPTION(InvalidParamError() <<
                                   errinfo_utlb_index(utlb_idx) <<
                                   errinfo_param_name("utlb_idx"));
 
-        this->cpu->utlb[utlb_idx].key = utlb_key;
-        this->cpu->utlb[utlb_idx].ent = utlb_ent;
+        this->cpu->mmu.utlb[utlb_idx].key = utlb_key;
+        this->cpu->mmu.utlb[utlb_idx].ent = utlb_ent;
     }
 
     boost::uint32_t gen_utlb_key(unsigned asid, unsigned vpn, bool valid=true) {
-        return ((asid << Sh4::UTLB_KEY_ASID_SHIFT) & Sh4::UTLB_KEY_ASID_MASK) |
-            ((vpn << Sh4::UTLB_KEY_VPN_SHIFT) & Sh4::UTLB_KEY_VPN_MASK) |
-            (((valid ? 1 : 0) << Sh4::UTLB_KEY_VALID_SHIFT) &
-             Sh4::UTLB_KEY_VALID_MASK);
+        return ((asid << SH4_UTLB_KEY_ASID_SHIFT) & SH4_UTLB_KEY_ASID_MASK) |
+            ((vpn << SH4_UTLB_KEY_VPN_SHIFT) & SH4_UTLB_KEY_VPN_MASK) |
+            (((valid ? 1 : 0) << SH4_UTLB_KEY_VALID_SHIFT) &
+             SH4_UTLB_KEY_VALID_MASK);
     }
 
     boost::uint32_t gen_utlb_ent(unsigned ppn, unsigned sz, bool shared,
@@ -469,14 +469,14 @@ public:
         int d = dirty ? 1 : 0;
         int wt = write_through ? 1 : 0;
 
-        boost::uint32_t ret = ppn & Sh4::UTLB_ENT_PPN_MASK;
+        boost::uint32_t ret = ppn & SH4_UTLB_ENT_PPN_MASK;
 
-        ret |= (sz << Sh4::UTLB_ENT_SZ_SHIFT) & Sh4::UTLB_ENT_SZ_MASK;
-        ret |= (sh << Sh4::UTLB_ENT_SH_SHIFT) & Sh4::UTLB_ENT_SH_MASK;
-        ret |= (c << Sh4::UTLB_ENT_C_SHIFT) & Sh4::UTLB_ENT_C_MASK;
-        ret |= (priv << Sh4::UTLB_ENT_PR_SHIFT) & Sh4::UTLB_ENT_PR_MASK;
-        ret |= (d << Sh4::UTLB_ENT_D_SHIFT) & Sh4::UTLB_ENT_D_MASK;
-        ret |= (wt << Sh4::UTLB_ENT_WT_SHIFT) & Sh4::UTLB_ENT_WT_MASK;
+        ret |= (sz << SH4_UTLB_ENT_SZ_SHIFT) & SH4_UTLB_ENT_SZ_MASK;
+        ret |= (sh << SH4_UTLB_ENT_SH_SHIFT) & SH4_UTLB_ENT_SH_MASK;
+        ret |= (c << SH4_UTLB_ENT_C_SHIFT) & SH4_UTLB_ENT_C_MASK;
+        ret |= (priv << SH4_UTLB_ENT_PR_SHIFT) & SH4_UTLB_ENT_PR_MASK;
+        ret |= (d << SH4_UTLB_ENT_D_SHIFT) & SH4_UTLB_ENT_D_MASK;
+        ret |= (wt << SH4_UTLB_ENT_WT_SHIFT) & SH4_UTLB_ENT_WT_MASK;
 
         return ret;
     }

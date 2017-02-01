@@ -28,39 +28,39 @@
 
 #include "sh4.hpp"
 
-addr32_t Sh4::utlb_ent_get_vpn(struct utlb_entry *ent) const {
-    switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
-    case ONE_KILO:
+addr32_t sh4_utlb_ent_get_vpn(struct sh4_utlb_entry *ent) {
+    switch ((ent->ent & SH4_UTLB_ENT_SZ_MASK) >> SH4_UTLB_ENT_SZ_SHIFT) {
+    case SH4_MMU_ONE_KILO:
         // upper 22 bits
-        return ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
-    case FOUR_KILO:
+        return ((ent->key & SH4_UTLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
+    case SH4_MMU_FOUR_KILO:
         // upper 20 bits
-        return ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffff000;
-    case SIXTYFOUR_KILO:
+        return ((ent->key & SH4_UTLB_KEY_VPN_MASK) << 8) & 0xfffff000;
+    case SH4_MMU_SIXTYFOUR_KILO:
         // upper 16 bits
-        return ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xffff0000;
-    case ONE_MEGA:
+        return ((ent->key & SH4_UTLB_KEY_VPN_MASK) << 8) & 0xffff0000;
+    case SH4_MMU_ONE_MEGA:
         // upper 12 bits
-        return ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfff00000;
+        return ((ent->key & SH4_UTLB_KEY_VPN_MASK) << 8) & 0xfff00000;
     default:
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
                               errinfo_param_name("UTLB size value"));
     }
 }
 
-addr32_t Sh4::utlb_ent_get_addr_offset(struct utlb_entry *ent,
-                                       addr32_t addr) const {
-    switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
-    case ONE_KILO:
+addr32_t sh4_utlb_ent_get_addr_offset(struct sh4_utlb_entry const *ent,
+                                      addr32_t addr) {
+    switch ((ent->ent & SH4_UTLB_ENT_SZ_MASK) >> SH4_UTLB_ENT_SZ_SHIFT) {
+    case SH4_MMU_ONE_KILO:
         // lower 10 bits
         return addr & 0x3ff;
-    case FOUR_KILO:
+    case SH4_MMU_FOUR_KILO:
         // lower 12 bits
         return addr & 0xfff;
-    case SIXTYFOUR_KILO:
+    case SH4_MMU_SIXTYFOUR_KILO:
         // lower 16 bits
         return addr & 0xffff;
-    case ONE_MEGA:
+    case SH4_MMU_ONE_MEGA:
         // lowr 20 bits
         return addr & 0xfffff;
     default:
@@ -69,20 +69,20 @@ addr32_t Sh4::utlb_ent_get_addr_offset(struct utlb_entry *ent,
     }
 }
 
-addr32_t Sh4::utlb_ent_get_ppn(struct utlb_entry *ent) const {
-    switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
-    case ONE_KILO:
+addr32_t sh4_utlb_ent_get_ppn(struct sh4_utlb_entry const *ent) {
+    switch ((ent->ent & SH4_UTLB_ENT_SZ_MASK) >> SH4_UTLB_ENT_SZ_SHIFT) {
+    case SH4_MMU_ONE_KILO:
         // upper 19 bits (of upper 29 bits)
-        return ent->ent & UTLB_ENT_PPN_MASK & 0xfffffc00;
-    case FOUR_KILO:
+        return ent->ent & SH4_UTLB_ENT_PPN_MASK & 0xfffffc00;
+    case SH4_MMU_FOUR_KILO:
         // upper 17 bits (of upper 29 bits)
-        return ent->ent & UTLB_ENT_PPN_MASK & 0xfffff000;
-    case SIXTYFOUR_KILO:
+        return ent->ent & SH4_UTLB_ENT_PPN_MASK & 0xfffff000;
+    case SH4_MMU_SIXTYFOUR_KILO:
         // upper 13 bits (of upper 29 bits)
-        return ent->ent & UTLB_ENT_PPN_MASK & 0xffff0000;
-    case ONE_MEGA:
+        return ent->ent & SH4_UTLB_ENT_PPN_MASK & 0xffff0000;
+    case SH4_MMU_ONE_MEGA:
         // upper 9 bits (of upper 29 bits)
-        return ent->ent & UTLB_ENT_PPN_MASK & 0xfff00000;
+        return ent->ent & SH4_UTLB_ENT_PPN_MASK & 0xfff00000;
     default:
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
                               errinfo_param_name("UTLB size value"));
@@ -94,18 +94,19 @@ addr32_t Sh4::utlb_ent_get_ppn(struct utlb_entry *ent) const {
  *       calls work, it becomes apparent that the exact same switch statement
  *       gets done 3 times in a row (suboptimal branching).
  */
-addr32_t Sh4::utlb_ent_translate(struct utlb_entry *ent, addr32_t vaddr) const {
-    addr32_t ppn = utlb_ent_get_ppn(ent);
-    addr32_t offset = utlb_ent_get_addr_offset(ent, vaddr);
+addr32_t sh4_utlb_ent_translate(struct sh4_utlb_entry const *ent,
+                                addr32_t vaddr) {
+    addr32_t ppn = sh4_utlb_ent_get_ppn(ent);
+    addr32_t offset = sh4_utlb_ent_get_addr_offset(ent, vaddr);
 
-    switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
-    case ONE_KILO:
+    switch ((ent->ent & SH4_UTLB_ENT_SZ_MASK) >> SH4_UTLB_ENT_SZ_SHIFT) {
+    case SH4_MMU_ONE_KILO:
         return ppn | offset;
-    case FOUR_KILO:
+    case SH4_MMU_FOUR_KILO:
         return ppn | offset;
-    case SIXTYFOUR_KILO:
+    case SH4_MMU_SIXTYFOUR_KILO:
         return ppn | offset;
-    case ONE_MEGA:
+    case SH4_MMU_ONE_MEGA:
         return ppn | offset;
     default:
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
@@ -113,43 +114,43 @@ addr32_t Sh4::utlb_ent_translate(struct utlb_entry *ent, addr32_t vaddr) const {
     }
 }
 
-addr32_t Sh4::itlb_ent_get_vpn(struct itlb_entry *ent) const {
-    switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
-    case ONE_KILO:
+addr32_t sh4_itlb_ent_get_vpn(struct sh4_itlb_entry const *ent) {
+    switch ((ent->ent & SH4_ITLB_ENT_SZ_MASK) >> SH4_ITLB_ENT_SZ_SHIFT) {
+    case SH4_MMU_ONE_KILO:
         // upper 22 bits
-        return ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
-    case FOUR_KILO:
+        return ((ent->key & SH4_ITLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
+    case SH4_MMU_FOUR_KILO:
         // upper 20 bits
-        return ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffff000;
-    case SIXTYFOUR_KILO:
+        return ((ent->key & SH4_ITLB_KEY_VPN_MASK) << 8) & 0xfffff000;
+    case SH4_MMU_SIXTYFOUR_KILO:
         // upper 16 bits
-        return ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xffff0000;
-    case ONE_MEGA:
+        return ((ent->key & SH4_ITLB_KEY_VPN_MASK) << 8) & 0xffff0000;
+    case SH4_MMU_ONE_MEGA:
         // upper 12 bits
-        return ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfff00000;
+        return ((ent->key & SH4_ITLB_KEY_VPN_MASK) << 8) & 0xfff00000;
     default:
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
                               errinfo_param_name("ITLB size value"));
     }
 }
 
-addr32_t Sh4::itlb_ent_get_ppn(struct itlb_entry *ent) const {
-    switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
-    case ONE_KILO:
+addr32_t sh4_itlb_ent_get_ppn(struct sh4_itlb_entry const *ent) {
+    switch ((ent->ent & SH4_ITLB_ENT_SZ_MASK) >> SH4_ITLB_ENT_SZ_SHIFT) {
+    case SH4_MMU_ONE_KILO:
         // upper 19 bits (of upper 29 bits)
-        return ((ent->ent & ITLB_ENT_PPN_MASK) >> ITLB_ENT_PPN_SHIFT) &
+        return ((ent->ent & SH4_ITLB_ENT_PPN_MASK) >> SH4_ITLB_ENT_PPN_SHIFT) &
             0x1ffffc00;
-    case FOUR_KILO:
+    case SH4_MMU_FOUR_KILO:
         // upper 17 bits (of upper 29 bits)
-        return ((ent->ent & ITLB_ENT_PPN_MASK) >> ITLB_ENT_PPN_SHIFT) &
+        return ((ent->ent & SH4_ITLB_ENT_PPN_MASK) >> SH4_ITLB_ENT_PPN_SHIFT) &
             0x1ffff000;
-    case SIXTYFOUR_KILO:
+    case SH4_MMU_SIXTYFOUR_KILO:
         // upper 13 bits (of upper 29 bits)
-        return ((ent->ent & ITLB_ENT_PPN_MASK) >> ITLB_ENT_PPN_SHIFT) &
+        return ((ent->ent & SH4_ITLB_ENT_PPN_MASK) >> SH4_ITLB_ENT_PPN_SHIFT) &
             0x1fff0000;
-    case ONE_MEGA:
+    case SH4_MMU_ONE_MEGA:
         // upper 9 bits (of upper 29 bits)
-        return ((ent->ent & ITLB_ENT_PPN_MASK) >> ITLB_ENT_PPN_SHIFT) &
+        return ((ent->ent & SH4_ITLB_ENT_PPN_MASK) >> SH4_ITLB_ENT_PPN_SHIFT) &
             0x1ff00000;
     default:
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
@@ -157,19 +158,19 @@ addr32_t Sh4::itlb_ent_get_ppn(struct itlb_entry *ent) const {
     }
 }
 
-addr32_t Sh4::itlb_ent_get_addr_offset(struct itlb_entry *ent,
-                                       addr32_t addr) const {
-    switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
-    case ONE_KILO:
+addr32_t sh4_itlb_ent_get_addr_offset(struct sh4_itlb_entry const *ent,
+                                      addr32_t addr) {
+    switch ((ent->ent & SH4_ITLB_ENT_SZ_MASK) >> SH4_ITLB_ENT_SZ_SHIFT) {
+    case SH4_MMU_ONE_KILO:
         // lower 10 bits
         return addr & 0x3ff;
-    case FOUR_KILO:
+    case SH4_MMU_FOUR_KILO:
         // lower 12 bits
         return addr & 0xfff;
-    case SIXTYFOUR_KILO:
+    case SH4_MMU_SIXTYFOUR_KILO:
         // lower 16 bits
         return addr & 0xffff;
-    case ONE_MEGA:
+    case SH4_MMU_ONE_MEGA:
         // lowr 20 bits
         return addr & 0xfffff;
     default:
@@ -178,18 +179,19 @@ addr32_t Sh4::itlb_ent_get_addr_offset(struct itlb_entry *ent,
     }
 }
 
-addr32_t Sh4::itlb_ent_translate(struct itlb_entry *ent, addr32_t vaddr) const {
-    addr32_t ppn = itlb_ent_get_ppn(ent);
-    addr32_t offset = itlb_ent_get_addr_offset(ent, vaddr);
+addr32_t sh4_itlb_ent_translate(struct sh4_itlb_entry const *ent,
+                                addr32_t vaddr) {
+    addr32_t ppn = sh4_itlb_ent_get_ppn(ent);
+    addr32_t offset = sh4_itlb_ent_get_addr_offset(ent, vaddr);
 
-    switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
-    case ONE_KILO:
+    switch ((ent->ent & SH4_ITLB_ENT_SZ_MASK) >> SH4_ITLB_ENT_SZ_SHIFT) {
+    case SH4_MMU_ONE_KILO:
         return ppn << 10 | offset;
-    case FOUR_KILO:
+    case SH4_MMU_FOUR_KILO:
         return ppn << 12 | offset;
-    case SIXTYFOUR_KILO:
+    case SH4_MMU_SIXTYFOUR_KILO:
         return ppn << 16 | offset;
-    case ONE_MEGA:
+    case SH4_MMU_ONE_MEGA:
         return ppn << 20 | offset;
     default:
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
@@ -199,64 +201,66 @@ addr32_t Sh4::itlb_ent_translate(struct itlb_entry *ent, addr32_t vaddr) const {
 
 
 // find entry with matching VPN
-struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr,
-                                         utlb_access_t access_type) {
-    struct Sh4::utlb_entry *ret = NULL;
+struct sh4_utlb_entry *sh4_utlb_search(Sh4 *sh4, addr32_t vaddr,
+                                       sh4_utlb_access_t access_type) {
+    struct sh4_utlb_entry *ret = NULL;
     addr32_t vpn_vaddr;
+    struct sh4_mmu *mmu = &sh4->mmu;
 
-    for (unsigned i = 0; i < UTLB_SIZE; i++) {
-        struct utlb_entry *ent = utlb + i;
+    for (unsigned i = 0; i < SH4_UTLB_SIZE; i++) {
+        struct sh4_utlb_entry *ent = mmu->utlb + i;
         addr32_t vpn_ent;
 
-        switch ((ent->ent & UTLB_ENT_SZ_MASK) >> UTLB_ENT_SZ_SHIFT) {
-        case ONE_KILO:
+        switch ((ent->ent & SH4_UTLB_ENT_SZ_MASK) >> SH4_UTLB_ENT_SZ_SHIFT) {
+        case SH4_MMU_ONE_KILO:
             // upper 22 bits
             vpn_vaddr = vaddr & 0xfffffc00;
-            vpn_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
+            vpn_ent = ((ent->key & SH4_UTLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
             break;
-        case FOUR_KILO:
+        case SH4_MMU_FOUR_KILO:
             // upper 20 bits
             vpn_vaddr = vaddr & 0xfffff000;
-            vpn_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfffff000;
+            vpn_ent = ((ent->key & SH4_UTLB_KEY_VPN_MASK) << 8) & 0xfffff000;
             break;
-        case SIXTYFOUR_KILO:
+        case SH4_MMU_SIXTYFOUR_KILO:
             // upper 16 bits
             vpn_vaddr = vaddr & 0xffff0000;
-            vpn_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xffff0000;
+            vpn_ent = ((ent->key & SH4_UTLB_KEY_VPN_MASK) << 8) & 0xffff0000;
             break;
-        case ONE_MEGA:
+        case SH4_MMU_ONE_MEGA:
             // upper 12 bits
             vpn_vaddr = vaddr & 0xfff00000;
-            vpn_ent = ((ent->key & UTLB_KEY_VPN_MASK) << 8) & 0xfff00000;
+            vpn_ent = ((ent->key & SH4_UTLB_KEY_VPN_MASK) << 8) & 0xfff00000;
             break;
         default:
             BOOST_THROW_EXCEPTION(InvalidParamError() <<
                                   errinfo_param_name("UTLB size value"));
         }
 
-        if (!(UTLB_ENT_SH_MASK & ent->ent) &&
-            (!(mmu.mmucr & MMUCR_SV_MASK) || !(reg.sr & SR_MD_MASK))) {
+        if (!(SH4_UTLB_ENT_SH_MASK & ent->ent) &&
+            (!(mmu->reg.mmucr & SH4_MMUCR_SV_MASK) ||
+             !(sh4->reg.sr & Sh4::SR_MD_MASK))) {
             // (not sharing pages) and (single-VM space or user-mode mode)
 
-            unsigned utlb_asid = (ent->key & UTLB_KEY_ASID_MASK) >>
-                UTLB_KEY_ASID_SHIFT;
-            unsigned mmu_asid = (mmu.pteh & MMUPTEH_ASID_MASK) >>
-                MMUPTEH_ASID_SHIFT;
-            if (vpn_vaddr == vpn_ent && (ent->key & UTLB_KEY_VALID_MASK) &&
+            unsigned utlb_asid = (ent->key & SH4_UTLB_KEY_ASID_MASK) >>
+                SH4_UTLB_KEY_ASID_SHIFT;
+            unsigned mmu_asid = (mmu->reg.pteh & SH4_MMUPTEH_ASID_MASK) >>
+                SH4_MMUPTEH_ASID_SHIFT;
+            if (vpn_vaddr == vpn_ent && (ent->key & SH4_UTLB_KEY_VALID_MASK) &&
                 utlb_asid == mmu_asid) {
                 // UTLB hit
                 if (ret) {
-                    set_exception(EXCP_DATA_TLB_MULT_HIT);
+                    sh4->set_exception(Sh4::EXCP_DATA_TLB_MULT_HIT);
                     return NULL;
                 } else {
                     ret = ent;
                 }
             }
         } else {
-            if (vpn_vaddr == vpn_ent && (ent->key & UTLB_KEY_VALID_MASK)) {
+            if (vpn_vaddr == vpn_ent && (ent->key & SH4_UTLB_KEY_VALID_MASK)) {
                 // UTLB hit
                 if (ret) {
-                    set_exception(EXCP_DATA_TLB_MULT_HIT);
+                    sh4->set_exception(Sh4::EXCP_DATA_TLB_MULT_HIT);
                     return NULL;
                 } else {
                     ret = ent;
@@ -267,25 +271,25 @@ struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr,
 
     /*
      * TODO: Make sure the vpn is being set properly for
-     *       UTLB_READ and UTLB_WRITE below.  I wonder if I am confused because
+     *       SH4_UTLB_READ and SH4_UTLB_WRITE below.  I wonder if I am confused because
      *       it seems weird to me that different VPN pages can have different
      *       sizes.
      */
     if (!ret) {
         switch (access_type) {
-        case UTLB_READ:
-            set_exception(EXCP_DATA_TLB_READ_MISS);
-            mmu.pteh &= ~MMUPTEH_VPN_MASK;
-            mmu.pteh |= vpn_vaddr << MMUPTEH_VPN_SHIFT;
-            mmu.tea = vaddr;
+        case SH4_UTLB_READ:
+            sh4->set_exception(Sh4::EXCP_DATA_TLB_READ_MISS);
+            mmu->reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
+            mmu->reg.pteh |= vpn_vaddr << SH4_MMUPTEH_VPN_SHIFT;
+            mmu->reg.tea = vaddr;
             return NULL;
-        case UTLB_WRITE:
-            set_exception(EXCP_DATA_TLB_WRITE_MISS);
-            mmu.pteh &= ~MMUPTEH_VPN_MASK;
-            mmu.pteh |= vpn_vaddr << MMUPTEH_VPN_SHIFT;
-            mmu.tea = vaddr;
+        case SH4_UTLB_WRITE:
+            sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_MISS);
+            mmu->reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
+            mmu->reg.pteh |= vpn_vaddr << SH4_MMUPTEH_VPN_SHIFT;
+            mmu->reg.tea = vaddr;
             return NULL;
-        case UTLB_READ_ITLB:
+        case SH4_UTLB_READ_ITLB:
             return NULL;
         default:
             BOOST_THROW_EXCEPTION(InvalidParamError() <<
@@ -297,48 +301,50 @@ struct Sh4::utlb_entry *Sh4::utlb_search(addr32_t vaddr,
     return ret;
 }
 
-struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
-    struct Sh4::itlb_entry *ret = NULL;
+struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
+    struct sh4_itlb_entry *ret = NULL;
     addr32_t vpn_vaddr;
+    struct sh4_mmu *mmu = &sh4->mmu;
 
-    for (unsigned i = 0; i < ITLB_SIZE; i++) {
-        struct itlb_entry *ent = itlb + i;
+    for (unsigned i = 0; i < SH4_ITLB_SIZE; i++) {
+        struct sh4_itlb_entry *ent = mmu->itlb + i;
         addr32_t vpn_ent;
 
-        switch ((ent->ent & ITLB_ENT_SZ_MASK) >> ITLB_ENT_SZ_SHIFT) {
-        case ONE_KILO:
+        switch ((ent->ent & SH4_ITLB_ENT_SZ_MASK) >> SH4_ITLB_ENT_SZ_SHIFT) {
+        case SH4_MMU_ONE_KILO:
             // upper 22 bits
             vpn_vaddr = vaddr & 0xfffffc00;
-            vpn_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
+            vpn_ent = ((ent->key & SH4_ITLB_KEY_VPN_MASK) << 8) & 0xfffffc00;
             break;
-        case FOUR_KILO:
+        case SH4_MMU_FOUR_KILO:
             // upper 20 bits
             vpn_vaddr = vaddr & 0xfffff000;
-            vpn_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfffff000;
+            vpn_ent = ((ent->key & SH4_ITLB_KEY_VPN_MASK) << 8) & 0xfffff000;
             break;
-        case SIXTYFOUR_KILO:
+        case SH4_MMU_SIXTYFOUR_KILO:
             // upper 16 bits
             vpn_vaddr = vaddr & 0xffff0000;
-            vpn_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xffff0000;
+            vpn_ent = ((ent->key & SH4_ITLB_KEY_VPN_MASK) << 8) & 0xffff0000;
             break;
-        case ONE_MEGA:
+        case SH4_MMU_ONE_MEGA:
             // upper 12 bits
             vpn_vaddr = vaddr & 0xfff00000;
-            vpn_ent = ((ent->key & ITLB_KEY_VPN_MASK) << 8) & 0xfff00000;
+            vpn_ent = ((ent->key & SH4_ITLB_KEY_VPN_MASK) << 8) & 0xfff00000;
             break;
         default:
             BOOST_THROW_EXCEPTION(InvalidParamError() <<
                                   errinfo_param_name("ITLB size value"));
         }
 
-        if (!(ITLB_ENT_SH_MASK & ent->ent) &&
-            (!(mmu.mmucr & MMUCR_SV_MASK) || !(reg.sr & SR_MD_MASK))) {
+        if (!(SH4_ITLB_ENT_SH_MASK & ent->ent) &&
+            (!(mmu->reg.mmucr & SH4_MMUCR_SV_MASK) ||
+             !(sh4->reg.sr & Sh4::SR_MD_MASK))) {
             // (not sharing pages) and (single-VM space or user-mode mode)
-            unsigned itlb_asid = (ent->key & ITLB_KEY_ASID_MASK) >>
-                ITLB_KEY_ASID_SHIFT;
-            unsigned mmu_asid = (mmu.pteh & MMUPTEH_ASID_MASK) >>
-                MMUPTEH_ASID_SHIFT;
-            if (vpn_vaddr == vpn_ent && (ent->key & ITLB_KEY_VALID_MASK) &&
+            unsigned itlb_asid = (ent->key & SH4_ITLB_KEY_ASID_MASK) >>
+                SH4_ITLB_KEY_ASID_SHIFT;
+            unsigned mmu_asid = (mmu->reg.pteh & SH4_MMUPTEH_ASID_MASK) >>
+                SH4_MMUPTEH_ASID_SHIFT;
+            if (vpn_vaddr == vpn_ent && (ent->key & SH4_ITLB_KEY_VALID_MASK) &&
                 itlb_asid == mmu_asid) {
                 // ITLB hit
                 if (ret) {
@@ -347,15 +353,15 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
                      *        necessary in this scenario; the manual is a
                      *        little vague on how this is supposed to work.
                      */
-                    mmu.tea = vaddr;
-                    set_exception(EXCP_INST_TLB_MULT_HIT);
+                    mmu->reg.tea = vaddr;
+                    sh4->set_exception(Sh4::EXCP_INST_TLB_MULT_HIT);
                     return NULL;
                 } else {
                     ret = ent;
                 }
             }
         } else {
-            if (vpn_vaddr == vpn_ent && (ent->key & ITLB_KEY_VALID_MASK)) {
+            if (vpn_vaddr == vpn_ent && (ent->key & SH4_ITLB_KEY_VALID_MASK)) {
                 // ITLB hit
                 if (ret) {
                     /*
@@ -363,8 +369,8 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
                      *        necessary in this scenario; the manual is a
                      *        little vague on how this is supposed to work.
                      */
-                    mmu.tea = vaddr;
-                    set_exception(EXCP_INST_TLB_MULT_HIT);
+                    mmu->reg.tea = vaddr;
+                    sh4->set_exception(Sh4::EXCP_INST_TLB_MULT_HIT);
                     return NULL;
                 } else {
                     ret = ent;
@@ -377,14 +383,14 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
         return ret;
 
     // ITLB miss - check the UTLB
-    struct utlb_entry *utlb_ent;
-    utlb_ent = utlb_search(vaddr, UTLB_READ_ITLB);
+    struct sh4_utlb_entry *utlb_ent;
+    utlb_ent = sh4_utlb_search(sh4, vaddr, SH4_UTLB_READ_ITLB);
 
     if (!utlb_ent) {
-        set_exception(EXCP_INST_TLB_MISS);
-        mmu.pteh &= ~MMUPTEH_VPN_MASK;
-        mmu.pteh |= vpn_vaddr << MMUPTEH_VPN_SHIFT;
-        mmu.tea = vaddr;
+        sh4->set_exception(Sh4::EXCP_INST_TLB_MISS);
+        mmu->reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
+        mmu->reg.pteh |= vpn_vaddr << SH4_MMUPTEH_VPN_SHIFT;
+        mmu->reg.tea = vaddr;
         return NULL;
     }
 
@@ -393,26 +399,26 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
     unsigned which = vaddr & (4 - 1);
 
     // the key formats are exactly the same, so this is safe.
-    itlb[which].key = utlb_ent->key;
+    mmu->itlb[which].key = utlb_ent->key;
 
     // Notice how the PR gets AND'd with 2.  That is because the ITLB version of
     // PR is only 1 bit, while the UTLB version of PR is two bits.  ITLB's PR
     // corresponds to the upper bit of UTLB's PR.
-    itlb[which].ent = 0;
-    itlb[which].ent |= ((utlb_ent->ent & UTLB_ENT_PPN_MASK) >>
-                        UTLB_ENT_PPN_SHIFT) << ITLB_ENT_PPN_SHIFT;
-    itlb[which].ent |= ((utlb_ent->ent & UTLB_ENT_SZ_MASK) >>
-                        UTLB_ENT_SZ_SHIFT) << ITLB_ENT_SZ_SHIFT;
-    itlb[which].ent |= ((utlb_ent->ent & UTLB_ENT_SH_MASK) >>
-                        UTLB_ENT_SH_SHIFT) << ITLB_ENT_SH_SHIFT;
-    itlb[which].ent |= ((utlb_ent->ent & UTLB_ENT_C_MASK) >>
-                        UTLB_ENT_C_SHIFT) << ITLB_ENT_C_SHIFT;
-    itlb[which].ent |= ((((utlb_ent->ent & UTLB_ENT_PR_MASK) >>
-                         UTLB_ENT_PR_SHIFT) & 2) << ITLB_ENT_PR_SHIFT);
-    itlb[which].ent |= ((utlb_ent->ent & UTLB_ENT_SA_MASK) >>
-                        UTLB_ENT_SA_SHIFT) << ITLB_ENT_SA_SHIFT;
-    itlb[which].ent |= ((utlb_ent->ent & UTLB_ENT_TC_MASK) >>
-                        UTLB_ENT_TC_SHIFT) << ITLB_ENT_TC_SHIFT;
+    mmu->itlb[which].ent = 0;
+    mmu->itlb[which].ent |= ((utlb_ent->ent & SH4_UTLB_ENT_PPN_MASK) >>
+                             SH4_UTLB_ENT_PPN_SHIFT) << SH4_ITLB_ENT_PPN_SHIFT;
+    mmu->itlb[which].ent |= ((utlb_ent->ent & SH4_UTLB_ENT_SZ_MASK) >>
+                             SH4_UTLB_ENT_SZ_SHIFT) << SH4_ITLB_ENT_SZ_SHIFT;
+    mmu->itlb[which].ent |= ((utlb_ent->ent & SH4_UTLB_ENT_SH_MASK) >>
+                             SH4_UTLB_ENT_SH_SHIFT) << SH4_ITLB_ENT_SH_SHIFT;
+    mmu->itlb[which].ent |= ((utlb_ent->ent & SH4_UTLB_ENT_C_MASK) >>
+                             SH4_UTLB_ENT_C_SHIFT) << SH4_ITLB_ENT_C_SHIFT;
+    mmu->itlb[which].ent |= ((((utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
+                               SH4_UTLB_ENT_PR_SHIFT) & 2) << SH4_ITLB_ENT_PR_SHIFT);
+    mmu->itlb[which].ent |= ((utlb_ent->ent & SH4_UTLB_ENT_SA_MASK) >>
+                             SH4_UTLB_ENT_SA_SHIFT) << SH4_ITLB_ENT_SA_SHIFT;
+    mmu->itlb[which].ent |= ((utlb_ent->ent & SH4_UTLB_ENT_TC_MASK) >>
+                             SH4_UTLB_ENT_TC_SHIFT) << SH4_ITLB_ENT_TC_SHIFT;
 
     /*
      * The SH7750 Hardware Manual says to loop back to the beginning (see the
@@ -420,5 +426,5 @@ struct Sh4::itlb_entry *Sh4::itlb_search(addr32_t vaddr) {
      * function.  Some sort of infinite-recursion detection may be warranted
      * here just in case.
      */
-    return itlb_search(vaddr);
+    return sh4_itlb_search(sh4, vaddr);
 }
