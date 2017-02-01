@@ -30,9 +30,17 @@
 
 #include "types.hpp"
 #include "MemoryMap.hpp"
-#include "Ocache.hpp"
-#include "Icache.hpp"
 #include "sh4_mmu.hpp"
+
+#ifdef ENABLE_SH4_ICACHE
+#include "Icache.hpp"
+#endif
+
+#ifdef ENABLE_SH4_OCACHE
+#include "Ocache.hpp"
+#endif
+
+
 
 /* Hitachi SuperH-4 interpreter */
 
