@@ -67,7 +67,7 @@ Sh4::Sh4() {
 
     init_regs();
 
-    compile_instructions();
+    sh4_compile_instructions();
 
     on_hard_reset();
 }
