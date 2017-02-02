@@ -37,6 +37,7 @@ option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)
 option(ENABLE_DEBUGGER "Enable the debugger" ON)
 
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.hpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mem.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.hpp"
@@ -58,11 +59,13 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
 if (ENABLE_SH4_ICACHE)
     add_definitions(-DENABLE_SH4_ICACHE)
     set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Icache.cpp")
+    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Icache.hpp")
 endif()
 
 if (ENABLE_SH4_OCACHE)
     add_definitions(-DENABLE_SH4_OCACHE)
     set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.cpp")
+    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.hpp")
 endif()
 
 if (ENABLE_SH4_MMU)
