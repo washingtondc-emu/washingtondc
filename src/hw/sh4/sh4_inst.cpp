@@ -1564,7 +1564,7 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
          * would already be exercising it.
          */
         bool privileged = sh4->reg.sr & Sh4::SR_MD_MASK ? true : false;
-        struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(this, addr,
+        struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
                                                           SH4_UTLB_WRITE);
 
         if (!utlb_ent)
@@ -1585,7 +1585,7 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
                 // page is marked as read-only
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
-                set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
                 sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
                 sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
                 sh4->mmu.reg.tea = addr;
@@ -1595,7 +1595,7 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
             // page is marked as read-only OR we don't have permissions
             unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                 SH4_UTLB_KEY_VPN_SHIFT;
-            set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
             sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
             sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
             sh4->mmu.reg.tea = addr;
@@ -1637,7 +1637,7 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
          * would already be exercising it.
          */
         bool privileged = sh4->reg.sr & Sh4::SR_MD_MASK ? true : false;
-        struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(this, addr,
+        struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
                                                           SH4_UTLB_WRITE);
 
         if (!utlb_ent)
@@ -1658,7 +1658,7 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
                 // page is marked as read-only
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
-                set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
                 sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
                 sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
                 sh4->mmu.reg.tea = addr;
@@ -1668,7 +1668,7 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
             // page is marked as read-only OR we don't have permissions
             unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                 SH4_UTLB_KEY_VPN_SHIFT;
-            set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
             sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
             sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
             sh4->mmu.reg.tea = addr;
@@ -3497,7 +3497,7 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
          * would already be exercising it.
          */
         bool privileged = sh4->reg.sr & Sh4::SR_MD_MASK ? true : false;
-        struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(this, vaddr,
+        struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, vaddr,
                                                           SH4_UTLB_WRITE);
 
         if (!utlb_ent)
@@ -3518,7 +3518,7 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
                 // page is marked as read-only
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
-                set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
                 sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
                 sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
                 sh4->mmu.reg.tea = vaddr;
@@ -3528,7 +3528,7 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
             // page is marked as read-only OR we don't have permissions
             unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                 SH4_UTLB_KEY_VPN_SHIFT;
-            set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
             sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
             sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
             sh4->mmu.reg.tea = vaddr;
