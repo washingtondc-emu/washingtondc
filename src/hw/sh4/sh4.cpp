@@ -55,7 +55,6 @@ Sh4::Sh4() {
 #endif
 
     memset(reg, 0, sizeof(reg));
-    memset(&cache_reg, 0, sizeof(cache_reg));
 
 #ifdef ENABLE_SH4_ICACHE
     sh4_icache_init(&this->inst_cache);

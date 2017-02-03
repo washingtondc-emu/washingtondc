@@ -35,12 +35,12 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
       &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0x20 },
     { "MMUCR", 0xff000010, ~addr32_t(0), 4, SH4_REG_MMUCR, false,
       &Sh4::MmucrRegReadHandler, &Sh4::MmucrRegWriteHandler, 0, 0 },
-    { "CCR", 0xff00001c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
-      &Sh4::CcrRegReadHandler, &Sh4::CcrRegWriteHandler, 0, 0 },
-    { "QACR0", 0xff000038, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
-      &Sh4::Qacr0RegReadHandler, &Sh4::Qacr0RegWriteHandler, 0, 0 },
-    { "QACR1", 0xff00003c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
-      &Sh4::Qacr1RegReadHandler, &Sh4::Qacr1RegWriteHandler, 0, 0 },
+    { "CCR", 0xff00001c, ~addr32_t(0), 4, SH4_REG_CCR, false,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "QACR0", 0xff000038, ~addr32_t(0), 4, SH4_REG_QACR0, false,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "QACR1", 0xff00003c, ~addr32_t(0), 4, SH4_REG_QACR1, false,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
     { "PTEH", 0xff000000, ~addr32_t(0), 4, SH4_REG_PTEH, false,
       &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
     { "PTEL", 0xff000004, ~addr32_t(0), 4, SH4_REG_PTEL, false,
@@ -372,19 +372,6 @@ int Sh4::MmucrRegWriteHandler(void const *buf, struct Sh4::MemMappedReg const *r
     return 0;
 }
 
-int Sh4::CcrRegReadHandler(void *buf, struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(buf, &cache_reg.ccr, sizeof(cache_reg.ccr));
-
-    return 0;
-}
-
-int Sh4::CcrRegWriteHandler(void const *buf,
-                            struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(&cache_reg.ccr, buf, sizeof(cache_reg.ccr));
-
-    return 0;
-}
-
 int Sh4::TraRegReadHandler(void *buf,
                            struct Sh4::MemMappedReg const *reg_info) {
     memcpy(buf, &excp_reg.tra, sizeof(excp_reg.tra));
@@ -423,34 +410,6 @@ int Sh4::IntevtRegReadHandler(void *buf,
 int Sh4::IntevtRegWriteHandler(void const *buf,
                                struct Sh4::MemMappedReg const *reg_info) {
     memcpy(&excp_reg.intevt, buf, sizeof(excp_reg.intevt));
-
-    return 0;
-}
-
-int Sh4::Qacr0RegReadHandler(void *buf,
-                             struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(buf, &cache_reg.qacr0, sizeof(cache_reg.qacr0));
-
-    return 0;
-}
-
-int Sh4::Qacr0RegWriteHandler(void const *buf,
-                              struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(&cache_reg.qacr0, buf, sizeof(cache_reg.qacr0));
-
-    return 0;
-}
-
-int Sh4::Qacr1RegReadHandler(void *buf,
-                             struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(buf, &cache_reg.qacr1, sizeof(cache_reg.qacr1));
-
-    return 0;
-}
-
-int Sh4::Qacr1RegWriteHandler(void const *buf,
-                              struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(&cache_reg.qacr1, buf, sizeof(cache_reg.qacr1));
 
     return 0;
 }

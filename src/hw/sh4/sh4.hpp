@@ -448,17 +448,6 @@ public:
     static const unsigned CCR_OCE_SHIFT = 0;
     static const unsigned CCR_OCE_MASK = 1 << CCR_OCE_SHIFT;
 
-    struct CacheReg {
-        // Cache control register
-        reg32_t ccr;
-
-        // Queue address control register 0
-        reg32_t qacr0;
-
-        // Queue address control register 1
-        reg32_t qacr1;
-    } cache_reg;
-
     // exception code in the expevt register
     static const unsigned EXPEVT_CODE_SHIFT = 0;
     static const unsigned EXPEVT_CODE_MASK = 0xfff << EXPEVT_CODE_SHIFT;
@@ -690,10 +679,6 @@ private:
     int MmucrRegWriteHandler(void const *buf,
                              struct MemMappedReg const *reg_info);
 
-    int CcrRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
-    int CcrRegWriteHandler(void const *buf,
-                           struct MemMappedReg const *reg_info);
-
     int TraRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
     int TraRegWriteHandler(void const *buf,
                            struct MemMappedReg const *reg_info);
@@ -705,14 +690,6 @@ private:
     int IntevtRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
     int IntevtRegWriteHandler(void const *buf,
                               struct MemMappedReg const *reg_info);
-
-    int Qacr0RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
-    int Qacr0RegWriteHandler(void const *buf,
-                             struct MemMappedReg const *reg_info);
-
-    int Qacr1RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
-    int Qacr1RegWriteHandler(void const *buf,
-                             struct MemMappedReg const *reg_info);
 
     int TocrRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
     int TocrRegWriteHandler(void const *buf,

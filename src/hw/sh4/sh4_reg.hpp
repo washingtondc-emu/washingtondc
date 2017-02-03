@@ -105,6 +105,15 @@ typedef enum sh4_reg_idx {
     /* MMU control */
     SH4_REG_MMUCR,
 
+    /* Cache control register */
+    SH4_REG_CCR,
+
+    /* Queue address control register 0 */
+    SH4_REG_QACR0,
+
+    /* Queue address control register 1 */
+    SH4_REG_QACR1,
+
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
 

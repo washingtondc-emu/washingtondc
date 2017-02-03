@@ -39,8 +39,8 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
     bool privileged = reg[SH4_REG_SR] & SR_MD_MASK ? true : false;
 
 #ifdef ENABLE_SH4_OCACHE
-    bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
-    bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+    bool index_enable = reg[SH4_REG_CCR] & CCR_OIX_MASK ? true : false;
+    bool cache_as_ram = reg[SH4_REG_CCR] & CCR_ORA_MASK ? true : false;
 #endif
 
     if (virt_area != AREA_P0 && !privileged) {
@@ -81,9 +81,9 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                     if (utlb_ent->ent & SH4_UTLB_ENT_D_MASK) {
 #ifdef ENABLE_SH4_OCACHE
                         if ((utlb_ent->ent & SH4_UTLB_ENT_C_MASK) &&
-                            (cache_reg.ccr & CCR_OCE_MASK)) {
+                            (reg[SH4_REG_CCR] & CCR_OCE_MASK)) {
                             // page is cacheable and the cache is enabled
-                            if (cache_reg.ccr & CCR_WT_MASK) {
+                            if (reg[SH4_REG_CCR] & CCR_WT_MASK) {
                                 return sh4_ocache_write_wt(&op_cache,
                                                            data, len, paddr,
                                                            index_enable,
@@ -100,8 +100,8 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #ifndef ENABLE_SH4_OCACHE
                             // handle the case where OCE is enabled and ORA is
                             // enabled but we don't have Ocache available
-                            if ((cache_reg.ccr & CCR_OCE_MASK) &&
-                                (cache_reg.ccr & CCR_ORA_MASK) &&
+                            if ((reg[SH4_REG_CCR] & CCR_OCE_MASK) &&
+                                (reg[SH4_REG_CCR] & CCR_ORA_MASK) &&
                                 in_oc_ram_area(paddr)) {
                                 do_write_ora(data, paddr, len);
                                 return 0;
@@ -143,9 +143,9 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                 if (utlb_ent->ent & SH4_UTLB_ENT_D_MASK) {
 #ifdef ENABLE_SH4_OCACHE
                     if ((utlb_ent->ent & SH4_UTLB_ENT_C_MASK) &&
-                        (cache_reg.ccr & CCR_OCE_MASK)) {
+                        (reg[SH4_REG_CCR] & CCR_OCE_MASK)) {
                         // page is cacheable and the cache is enabled
-                        if (cache_reg.ccr & CCR_WT_MASK) {
+                        if (reg[SH4_REG_CCR] & CCR_WT_MASK) {
                             return sh4_ocache_write_wt(&op_cache, data,
                                                        len, paddr, index_enable,
                                                        cache_as_ram);
@@ -158,8 +158,8 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #else
                         // handle the case where OCE is enabled and ORA is
                         // enabled but we don't have Ocache available
-                        if ((cache_reg.ccr & CCR_OCE_MASK) &&
-                            (cache_reg.ccr & CCR_ORA_MASK) &&
+                        if ((reg[SH4_REG_CCR] & CCR_OCE_MASK) &&
+                            (reg[SH4_REG_CCR] & CCR_ORA_MASK) &&
                             in_oc_ram_area(paddr)) {
                             do_write_ora(data, paddr, len);
                             return;
@@ -186,7 +186,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #endif
         } else {
 #ifdef ENABLE_SH4_OCACHE
-            if (cache_reg.ccr & CCR_WT_MASK) {
+            if (reg[SH4_REG_CCR] & CCR_WT_MASK) {
                 return sh4_ocache_write_wt(&op_cache, data, len, addr,
                                            index_enable, cache_as_ram);
             } else {
@@ -196,8 +196,8 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #else
             // handle the case where OCE is enabled and ORA is
             // enabled but we don't have Ocache available
-            if ((cache_reg.ccr & CCR_OCE_MASK) &&
-                (cache_reg.ccr & CCR_ORA_MASK) &&
+            if ((reg[SH4_REG_CCR] & CCR_OCE_MASK) &&
+                (reg[SH4_REG_CCR] & CCR_ORA_MASK) &&
                 in_oc_ram_area(addr)) {
                 do_write_ora(data, addr, len);
                 return 0;
@@ -210,8 +210,8 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
         break;
     case AREA_P1:
 #ifdef ENABLE_SH4_OCACHE
-        if (cache_reg.ccr & CCR_OCE_MASK) {
-            if (cache_reg.ccr & CCR_CB_MASK) {
+        if (reg[SH4_REG_CCR] & CCR_OCE_MASK) {
+            if (reg[SH4_REG_CCR] & CCR_CB_MASK) {
                 return sh4_ocache_write_cb(&op_cache, data, len, addr,
                                            index_enable, cache_as_ram);
             } else {
@@ -244,8 +244,8 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
     bool privileged = reg[SH4_REG_SR] & SR_MD_MASK ? true : false;
 
 #ifdef ENABLE_SH4_OCACHE
-    bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
-    bool cache_as_ram = cache_reg.ccr & CCR_ORA_MASK ? true : false;
+    bool index_enable = reg[SH4_REG_CCR] & CCR_OIX_MASK ? true : false;
+    bool cache_as_ram = reg[SH4_REG_CCR] & CCR_ORA_MASK ? true : false;
 #endif
 
     if (virt_area != AREA_P0 && !privileged) {
@@ -292,9 +292,9 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
 
 #ifdef ENABLE_SH4_OCACHE
             if ((utlb_ent->ent & SH4_UTLB_ENT_C_MASK) &&
-                (cache_reg.ccr & CCR_OCE_MASK)) {
+                (reg[SH4_REG_CCR] & CCR_OCE_MASK)) {
                 // page is cacheable and the cache is enabled
-                if (cache_reg.ccr & CCR_WT_MASK) {
+                if (reg[SH4_REG_CCR] & CCR_WT_MASK) {
                     return sh4_ocache_read(&op_cache, data, len, paddr,
                                            index_enable, cache_as_ram);
                 } else {
@@ -305,8 +305,8 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
 #else
                 // handle the case where OCE is enabled and ORA is
                 // enabled but we don't have Ocache available
-                if ((cache_reg.ccr & CCR_OCE_MASK) &&
-                    (cache_reg.ccr & CCR_ORA_MASK) &&
+                if ((reg[SH4_REG_CCR] & CCR_OCE_MASK) &&
+                    (reg[SH4_REG_CCR] & CCR_ORA_MASK) &&
                     in_oc_ram_area(paddr)) {
                     do_read_ora(data, paddr, len);
                     return 0;
@@ -328,7 +328,7 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
 #endif
         } else {
 #ifdef ENABLE_SH4_OCACHE
-            if (cache_reg.ccr & CCR_WT_MASK) {
+            if (reg[SH4_REG_CCR] & CCR_WT_MASK) {
                 return sh4_ocache_read(&op_cache, data, len, addr,
                                        index_enable, cache_as_ram);
             } else {
@@ -338,8 +338,8 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
 #else
             // handle the case where OCE is enabled and ORA is
             // enabled but we don't have Ocache available
-            if ((cache_reg.ccr & CCR_OCE_MASK) &&
-                (cache_reg.ccr & CCR_ORA_MASK) &&
+            if ((reg[SH4_REG_CCR] & CCR_OCE_MASK) &&
+                (reg[SH4_REG_CCR] & CCR_ORA_MASK) &&
                 in_oc_ram_area(addr)) {
                 do_read_ora(data, addr, len);
                 return 0;
@@ -352,8 +352,8 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
         break;
     case AREA_P1:
 #ifdef ENABLE_SH4_OCACHE
-        if (cache_reg.ccr & CCR_OCE_MASK) {
-            if (cache_reg.ccr & CCR_CB_MASK) {
+        if (reg[SH4_REG_CCR] & CCR_OCE_MASK) {
+            if (reg[SH4_REG_CCR] & CCR_CB_MASK) {
                 return sh4_ocache_read(&op_cache, data, len, addr,
                                        index_enable, cache_as_ram);
             } else {
@@ -408,7 +408,7 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
     bool privileged = reg[SH4_REG_SR] & SR_MD_MASK ? true : false;
 
 #ifdef ENABLE_SH4_ICACHE
-    bool index_enable = cache_reg.ccr & CCR_IIX_MASK ? true : false;
+    bool index_enable = reg[SH4_REG_CCR] & CCR_IIX_MASK ? true : false;
 #endif
 
     if (virt_area != AREA_P0 && !privileged) {
@@ -440,7 +440,7 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
 
 #ifdef ENABLE_SH4_ICACHE
                 if ((itlb_ent->ent & SH4_ITLB_ENT_C_MASK) &&
-                    (cache_reg.ccr & CCR_ICE_MASK)) {
+                    (reg[SH4_REG_CCR] & CCR_ICE_MASK)) {
                     // use the cache
                     boost::uint32_t buf;
                     int ret;
@@ -466,7 +466,7 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
 #endif
         } else {
 #ifdef ENABLE_SH4_ICACHE
-            if (cache_reg.ccr & CCR_ICE_MASK) {
+            if (reg[SH4_REG_CCR] & CCR_ICE_MASK) {
                 boost::uint32_t buf;
                 int ret;
                 ret = sh4_icache_read(&inst_cache, &buf,
@@ -483,7 +483,7 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
         break;
     case AREA_P1:
 #ifdef ENABLE_SH4_ICACHE
-        if (cache_reg.ccr & CCR_ICE_MASK) {
+        if (reg[SH4_REG_CCR] & CCR_ICE_MASK) {
             boost::uint32_t buf;
             int ret;
             ret = sh4_icache_read(&inst_cache, &buf,
@@ -529,7 +529,7 @@ void *Sh4::get_ora_ram_addr(addr32_t paddr) {
     addr32_t area_offset = paddr & 0xfff;
     addr32_t area_start;
     addr32_t mask;
-    if (cache_reg.ccr & CCR_OIX_MASK)
+    if (reg[SH4_REG_CCR] & CCR_OIX_MASK)
         mask = 1 << 25;
     else
         mask = 1 << 13;

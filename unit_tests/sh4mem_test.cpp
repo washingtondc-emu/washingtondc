@@ -123,7 +123,7 @@ public:
         gen.reset();
 
         addr32_t ora_start = 0, ora_end = 0;
-        if (cpu->cache_reg.ccr & Sh4::CCR_ORA_MASK) {
+        if (cpu->reg[SH4_REG_CCR] & Sh4::CCR_ORA_MASK) {
             /*
              * now let's screw around a bit with the Operand cache's 8KB RAM
              *
@@ -133,7 +133,7 @@ public:
              */
 
             // TODO: randomize start, end
-            if (!(cpu->cache_reg.ccr & Sh4::CCR_OIX_MASK)) {
+            if (!(cpu->reg[SH4_REG_CCR] & Sh4::CCR_OIX_MASK)) {
                 ora_start = 0x7c001000;
                 ora_end   = 0x7c003000;
             } else {
@@ -229,7 +229,7 @@ public:
             }
         }
 
-        if (cpu->cache_reg.ccr & Sh4::CCR_ORA_MASK) {
+        if (cpu->reg[SH4_REG_CCR] & Sh4::CCR_ORA_MASK) {
             /*
              * remember when we wroe all that crap to the Ocache's ORA ram?
              * now's the part where we get to validate it!
@@ -267,16 +267,16 @@ public:
 
     void set_oix(bool enable) {
         if (enable)
-            this->cpu->cache_reg.ccr |= Sh4::CCR_OIX_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_OIX_MASK;
         else
-            this->cpu->cache_reg.ccr &= ~Sh4::CCR_OIX_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_OIX_MASK;
     }
 
     void set_iix(bool enable) {
         if (enable)
-            this->cpu->cache_reg.ccr |= Sh4::CCR_IIX_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_IIX_MASK;
         else
-            this->cpu->cache_reg.ccr &= ~Sh4::CCR_IIX_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_IIX_MASK;
     }
 
     /*
@@ -287,33 +287,33 @@ public:
      */
     void set_wt(bool enable) {
         if (enable) {
-            this->cpu->cache_reg.ccr |= Sh4::CCR_WT_MASK;
-            this->cpu->cache_reg.ccr &= ~Sh4::CCR_CB_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_WT_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_CB_MASK;
         } else {
-            this->cpu->cache_reg.ccr &= ~Sh4::CCR_WT_MASK;
-            this->cpu->cache_reg.ccr |= Sh4::CCR_CB_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_WT_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_CB_MASK;
         }
     }
 
     void set_ora(bool enable) {
         if (enable)
-            this->cpu->cache_reg.ccr |= Sh4::CCR_ORA_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_ORA_MASK;
         else
-            this->cpu->cache_reg.ccr &= ~Sh4::CCR_ORA_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_ORA_MASK;
     }
 
     void set_oce(bool enable) {
         if (enable)
-            this->cpu->cache_reg.ccr |= Sh4::CCR_OCE_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_OCE_MASK;
         else
-            this->cpu->cache_reg.ccr &= ~Sh4::CCR_OCE_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_OCE_MASK;
     }
 
     void set_ice(bool enable) {
         if (enable)
-            this->cpu->cache_reg.ccr |= Sh4::CCR_ICE_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_ICE_MASK;
         else
-            this->cpu->cache_reg.ccr &= ~Sh4::CCR_ICE_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_ICE_MASK;
     }
 
 };
