@@ -903,12 +903,12 @@ void Sh4::exec_inst() {
         exc << errinfo_reg_qacr1(cache_reg.qacr1);
 
         // struct Mmu
-        exc << errinfo_reg_pteh(mmu.reg.pteh);
-        exc << errinfo_reg_ptel(mmu.reg.ptel);
-        exc << errinfo_reg_ptea(mmu.reg.ptea);
-        exc << errinfo_reg_ttb(mmu.reg.ttb);
-        exc << errinfo_reg_tea(mmu.reg.tea);
-        exc << errinfo_reg_mmucr(mmu.reg.mmucr);
+        exc << errinfo_reg_pteh(reg[SH4_REG_PTEH]);
+        exc << errinfo_reg_ptel(reg[SH4_REG_PTEL]);
+        exc << errinfo_reg_ptea(reg[SH4_REG_PTEA]);
+        exc << errinfo_reg_ttb(reg[SH4_REG_TTB]);
+        exc << errinfo_reg_tea(reg[SH4_REG_TEA]);
+        exc << errinfo_reg_mmucr(reg[SH4_REG_MMUCR]);
         throw;
     }
 }
@@ -1567,7 +1567,7 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4->gen_reg(inst.dst_reg);
     addr32_t paddr;
 
-    if (sh4->mmu.reg.mmucr & SH4_MMUCR_AT_MASK) {
+    if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
         /*
          * TODO: ideally there would be some function we call here that is also
@@ -1598,9 +1598,9 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
                 sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
-                sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                sh4->mmu.reg.tea = addr;
+                sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+                sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+                sh4->reg[SH4_REG_TEA] = addr;
                 return;
             }
         } else if (pr != 3) {
@@ -1608,9 +1608,9 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
             unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                 SH4_UTLB_KEY_VPN_SHIFT;
             sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
-            sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
-            sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-            sh4->mmu.reg.tea = addr;
+            sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+            sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+            sh4->reg[SH4_REG_TEA] = addr;
             return;
         }
 #else
@@ -1640,7 +1640,7 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4->gen_reg(inst.dst_reg);
     addr32_t paddr;
 
-    if (sh4->mmu.reg.mmucr & SH4_MMUCR_AT_MASK) {
+    if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
         /*
          * TODO: ideally there would be some function we call here that is also
@@ -1671,9 +1671,9 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
                 sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
-                sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                sh4->mmu.reg.tea = addr;
+                sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+                sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+                sh4->reg[SH4_REG_TEA] = addr;
                 return;
             }
         } else if (pr != 3) {
@@ -1681,9 +1681,9 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
             unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                 SH4_UTLB_KEY_VPN_SHIFT;
             sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
-            sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
-            sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-            sh4->mmu.reg.tea = addr;
+            sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+            sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+            sh4->reg[SH4_REG_TEA] = addr;
             return;
         }
 #else
@@ -3507,7 +3507,7 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
      */
 #ifdef ENABLE_SH4_OCACHE
     addr32_t paddr;
-    if (sh4->mmu.reg.mmucr & SH4_MMUCR_AT_MASK) {
+    if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
         /*
          * TODO: ideally there would be some function we call here that is also
@@ -3538,9 +3538,9 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
                 sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
-                sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                sh4->mmu.reg.tea = vaddr;
+                sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+                sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+                sh4->reg[SH4_REG_TEA] = vaddr;
                 return;
             }
         } else if (pr != 3) {
@@ -3548,9 +3548,9 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
             unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                 SH4_UTLB_KEY_VPN_SHIFT;
             sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
-            sh4->mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
-            sh4->mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-            sh4->mmu.reg.tea = vaddr;
+            sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+            sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+            sh4->reg[SH4_REG_TEA] = vaddr;
             return;
         }
 #else

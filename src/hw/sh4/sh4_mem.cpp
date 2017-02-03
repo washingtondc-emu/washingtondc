@@ -62,7 +62,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
     switch (virt_area) {
     case AREA_P0:
     case AREA_P3:
-        if (mmu.reg.mmucr & SH4_MMUCR_AT_MASK) {
+        if (reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
             struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(this, addr,
                                                               SH4_UTLB_WRITE);
@@ -115,7 +115,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #endif
                     } else {
                         set_exception(EXCP_INITIAL_PAGE_WRITE);
-                        mmu.reg.tea = addr;
+                        reg[SH4_REG_TEA] = addr;
                         return 1;
                     }
                 } else {
@@ -123,9 +123,9 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                     unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                         SH4_UTLB_KEY_VPN_SHIFT;
                     set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                    mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
-                    mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                    mmu.reg.tea = addr;
+                    reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+                    reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+                    reg[SH4_REG_TEA] = addr;
                     return 1;
                 }
             } else {
@@ -134,9 +134,9 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                     unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                         SH4_UTLB_KEY_VPN_SHIFT;
                     set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                    mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
-                    mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                    mmu.reg.tea = addr;
+                    reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+                    reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+                    reg[SH4_REG_TEA] = addr;
                     return 1;
                 }
 
@@ -173,7 +173,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 #endif
                 } else {
                     set_exception(EXCP_INITIAL_PAGE_WRITE);
-                    mmu.reg.tea = addr;
+                    reg[SH4_REG_TEA] = addr;
                     return 1;
                 }
             }
@@ -267,7 +267,7 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
     switch (virt_area) {
     case AREA_P0:
     case AREA_P3:
-        if (mmu.reg.mmucr & SH4_MMUCR_AT_MASK) {
+        if (reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
             struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(this, addr,
                                                               SH4_UTLB_READ);
@@ -284,9 +284,9 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
                 set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                mmu.reg.pteh &= ~SH4_MMUPTEH_VPN_MASK;
-                mmu.reg.pteh |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                mmu.reg.tea = addr;
+                reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+                reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+                reg[SH4_REG_TEA] = addr;
                 return 1;
             }
 
@@ -428,7 +428,7 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
     switch (virt_area) {
     case AREA_P0:
     case AREA_P3:
-        if (mmu.reg.mmucr & SH4_MMUCR_AT_MASK) {
+        if (reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
             struct sh4_itlb_entry *itlb_ent = sh4_itlb_search(this, addr);
 

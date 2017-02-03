@@ -50,9 +50,11 @@ public:
 Sh4::Sh4() {
     reg_area = new uint8_t[P4_REGEND - P4_REGSTART];
 
-    sh4_mmu_init(&mmu);
+#ifdef ENABLE_SH4_MMU
+    sh4_mmu_init(this);
+#endif
 
-    memset(&reg, 0, sizeof(reg));
+    memset(reg, 0, sizeof(reg));
     memset(&cache_reg, 0, sizeof(cache_reg));
 
 #ifdef ENABLE_SH4_ICACHE

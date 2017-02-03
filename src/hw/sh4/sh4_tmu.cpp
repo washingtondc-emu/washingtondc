@@ -77,25 +77,25 @@ uint32_t Sh4::getTmuTcpr2() {
     return tmu.tcpr2;
 }
 
-int Sh4::TocrRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::TocrRegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint8_t tmp = getTmuTocr();
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
                                               "reading from or writing to a "
                                               "memory-mapped register"));
 
-    memcpy(buf, &tmp, len);
+    memcpy(buf, &tmp, reg_info->len);
 
     return 0;
 }
 
-int Sh4::TocrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::TocrRegWriteHandler(void const *buf, struct MemMappedReg const *reg_info) {
     uint8_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -109,25 +109,25 @@ int Sh4::TocrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::TstrRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::TstrRegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint8_t tmp = getTmuTstr();
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
                                               "reading from or writing to a "
                                               "memory-mapped register"));
 
-    memcpy(buf, &tmp, len);
+    memcpy(buf, &tmp, reg_info->len);
 
     return 0;
 }
 
-int Sh4::TstrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::TstrRegWriteHandler(void const *buf, struct MemMappedReg const *reg_info) {
     uint8_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -141,10 +141,10 @@ int Sh4::TstrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcor0RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcor0RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -157,10 +157,10 @@ int Sh4::Tcor0RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcor0RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcor0RegWriteHandler(void const *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -174,10 +174,10 @@ int Sh4::Tcor0RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcnt0RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcnt0RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -190,10 +190,10 @@ int Sh4::Tcnt0RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcnt0RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcnt0RegWriteHandler(void const *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -207,10 +207,10 @@ int Sh4::Tcnt0RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcr0RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcr0RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint16_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -223,10 +223,10 @@ int Sh4::Tcr0RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcr0RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcr0RegWriteHandler(void const *buf, struct MemMappedReg const *reg_info) {
     uint16_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -240,10 +240,10 @@ int Sh4::Tcr0RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcor1RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcor1RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -256,10 +256,10 @@ int Sh4::Tcor1RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcor1RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcor1RegWriteHandler(void const *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -273,10 +273,10 @@ int Sh4::Tcor1RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcnt1RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcnt1RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -289,10 +289,11 @@ int Sh4::Tcnt1RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcnt1RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcnt1RegWriteHandler(void const *buf,
+                              struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -306,10 +307,10 @@ int Sh4::Tcnt1RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcr1RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcr1RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint16_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -322,10 +323,11 @@ int Sh4::Tcr1RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcr1RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcr1RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info) {
     uint16_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -339,10 +341,10 @@ int Sh4::Tcr1RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcor2RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcor2RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -355,10 +357,11 @@ int Sh4::Tcor2RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcor2RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcor2RegWriteHandler(void const *buf,
+                              struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -372,10 +375,10 @@ int Sh4::Tcor2RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcnt2RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcnt2RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -388,10 +391,11 @@ int Sh4::Tcnt2RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcnt2RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcnt2RegWriteHandler(void const *buf,
+                              struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -405,10 +409,10 @@ int Sh4::Tcnt2RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcr2RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcr2RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint16_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -421,10 +425,11 @@ int Sh4::Tcr2RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcr2RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcr2RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info) {
     uint16_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -438,10 +443,10 @@ int Sh4::Tcr2RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcpr2RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcpr2RegReadHandler(void *buf, struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "
@@ -454,10 +459,11 @@ int Sh4::Tcpr2RegReadHandler(void *buf, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int Sh4::Tcpr2RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Tcpr2RegWriteHandler(void const *buf,
+                              struct MemMappedReg const *reg_info) {
     uint32_t tmp;
 
-    if (len != sizeof(tmp))
+    if (reg_info->len != sizeof(tmp))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("Whatever happens when you don't "
                                               "supply the correct size while "

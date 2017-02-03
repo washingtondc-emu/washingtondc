@@ -65,7 +65,9 @@ class Sh4 {
 public:
     reg32_t reg[SH4_REGISTER_COUNT];
 
+#ifdef ENABLE_SH4_MMU
     struct sh4_mmu mmu;
+#endif
 
     // true/false condition or carry/borrow bit
     static const unsigned SR_FLAG_T_SHIFT = 0;
@@ -606,9 +608,11 @@ private:
      * for the purpose of these handlers, you may assume that the caller has
      * already checked the permissions.
      */
-    typedef int(Sh4::*RegReadHandler)(void *buf, addr32_t addr, unsigned len);
-    typedef int(Sh4::*RegWriteHandler)(void const *buf, addr32_t addr,
-                                       unsigned len);
+    struct MemMappedReg;
+    typedef int(Sh4::*RegReadHandler)(void *buf,
+                                      struct Sh4::MemMappedReg const *reg_info);
+    typedef int(Sh4::*RegWriteHandler)(void const *buf,
+                                       struct Sh4::MemMappedReg const *reg_info);
 
     /*
      * TODO: turn this into a radix tree of some sort.
@@ -632,6 +636,9 @@ private:
 
         unsigned len;
 
+        /* index of the register in the register file */
+        sh4_reg_idx_t reg_idx;
+
         /*
          * if true, the value will be preserved during a manual ("soft") reset
          * and manual_reset_val will be ignored; else value will be set to
@@ -652,9 +659,15 @@ private:
 
     struct MemMappedReg *find_reg_by_addr(addr32_t addr);
 
-    // default read/write handler callbacks
-    int DefaultRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int DefaultRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    /* read/write handler callbacks for when you don't give a fuck */
+    int IgnoreRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int IgnoreRegWriteHandler(void const *buf,
+                              struct MemMappedReg const *reg_info);
+
+    /* default reg reg/write handler callbacks */
+    int DefaultRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int DefaultRegWriteHandler(void const *buf,
+                               struct MemMappedReg const *reg_info);
 
     /*
      * read handle callback that always fails (although currently it throws an
@@ -663,84 +676,91 @@ private:
      *
      * This is used for certain registers which are write-only.
      */
-    int WriteOnlyRegReadHandler(void *buf, addr32_t addr, unsigned len);
+    int WriteOnlyRegReadHandler(void *buf,
+                                struct MemMappedReg const *reg_info);
 
     /*
      * likewise, this is a write handler for read-only registers.
      * It will also raise an exception whenever it is invokled.
      */
-    int ReadOnlyRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int ReadOnlyRegWriteHandler(void const *buf,
+                                struct MemMappedReg const *reg_info);
 
-    int MmucrRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int MmucrRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int MmucrRegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
-    int CcrRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int CcrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int CcrRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int CcrRegWriteHandler(void const *buf,
+                           struct MemMappedReg const *reg_info);
 
-    int PtehRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int PtehRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
-    int PtelRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int PtelRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int TraRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int TraRegWriteHandler(void const *buf,
+                           struct MemMappedReg const *reg_info);
 
-    int TtbRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int TtbRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int ExpevtRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int ExpevtRegWriteHandler(void const *buf,
+                              struct MemMappedReg const *reg_info);
 
-    int TeaRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int TeaRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int IntevtRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int IntevtRegWriteHandler(void const *buf,
+                              struct MemMappedReg const *reg_info);
 
-    int PteaRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int PteaRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Qacr0RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Qacr0RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
-    int TraRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int TraRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Qacr1RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Qacr1RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
-    int ExpevtRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int ExpevtRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int TocrRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int TocrRegWriteHandler(void const *buf,
+                            struct MemMappedReg const *reg_info);
 
-    int IntevtRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int IntevtRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int TstrRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int TstrRegWriteHandler(void const *buf,
+                            struct MemMappedReg const *reg_info);
 
-    int Qacr0RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Qacr0RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcor0RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcor0RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
-    int Qacr1RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Qacr1RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcnt0RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcnt0RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
-    int TocrRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int TocrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcr0RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcr0RegWriteHandler(void const *buf,
+                            struct MemMappedReg const *reg_info);
 
-    int TstrRegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int TstrRegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcor1RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcor1RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
-    int Tcor0RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcor0RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcnt1RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcnt1RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
-    int Tcnt0RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcnt0RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcr1RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcr1RegWriteHandler(void const *buf,
+                            struct MemMappedReg const *reg_info);
 
-    int Tcr0RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcr0RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcor2RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcor2RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
-    int Tcor1RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcor1RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcnt2RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcnt2RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
-    int Tcnt1RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcnt1RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcr2RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcr2RegWriteHandler(void const *buf,
+                            struct MemMappedReg const *reg_info);
 
-    int Tcr1RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcr1RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
-
-    int Tcor2RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcor2RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
-
-    int Tcnt2RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcnt2RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
-
-    int Tcr2RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcr2RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
-
-    int Tcpr2RegReadHandler(void *buf, addr32_t addr, unsigned len);
-    int Tcpr2RegWriteHandler(void const *buf, addr32_t addr, unsigned len);
+    int Tcpr2RegReadHandler(void *buf, struct MemMappedReg const *reg_info);
+    int Tcpr2RegWriteHandler(void const *buf,
+                             struct MemMappedReg const *reg_info);
 
     /*
      * called for P4 area read/write ops that

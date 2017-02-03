@@ -160,26 +160,6 @@ struct sh4_itlb_entry {
     uint32_t ent;
 };
 
-struct sh4_mmu_reg {
-    // Page table entry high
-    reg32_t pteh;
-
-    // Page table entry low
-    reg32_t ptel;
-
-    // Page table entry assisstance
-    reg32_t ptea;
-
-    // Translation table base
-    reg32_t ttb;
-
-    // TLB exception address
-    reg32_t tea;
-
-    // MMU control
-    reg32_t mmucr;
-};
-
 static const size_t SH4_UTLB_SIZE = 64;
 static const size_t SH4_ITLB_SIZE = 4;
 
@@ -188,8 +168,6 @@ struct sh4_mmu {
     struct sh4_utlb_entry utlb[SH4_UTLB_SIZE];
     struct sh4_itlb_entry itlb[SH4_ITLB_SIZE];
 #endif
-
-    struct sh4_mmu_reg reg;
 };
 
 /*
@@ -249,8 +227,6 @@ addr32_t sh4_itlb_ent_translate(struct sh4_itlb_entry const *ent,
  */
 struct sh4_itlb_entry *sh4_itlb_search(Sh4 *sh4, addr32_t vaddr);
 
-static inline void sh4_mmu_init(struct sh4_mmu *mmu) {
-    memset(mmu, 0, sizeof(*mmu));
-}
+void sh4_mmu_init(Sh4 *sh4);
 
 #endif

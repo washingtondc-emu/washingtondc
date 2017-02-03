@@ -387,7 +387,7 @@ public:
 
         this->gen.reset();
         memset(this->cpu->mmu.utlb, 0, sizeof(this->cpu->mmu.utlb));
-        this->cpu->mmu.reg.mmucr |= SH4_MMUCR_AT_MASK;
+        this->cpu->reg[SH4_REG_MMUCR] |= SH4_MMUCR_AT_MASK;
 
         // map (0xf000 + page_sz) into the first page_sz bytes of virtual memory
         // TODO: this ought to be randomized

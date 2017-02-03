@@ -87,6 +87,24 @@ typedef enum sh4_reg_idx {
     /* program counter */
     SH4_REG_PC,
 
+    /* Page table entry high */
+    SH4_REG_PTEH,
+
+    /* Page table entry low */
+    SH4_REG_PTEL,
+
+    /* Page table entry assisstance */
+    SH4_REG_PTEA,
+
+    /* Translation table base */
+    SH4_REG_TTB,
+
+    /* TLB exception address */
+    SH4_REG_TEA,
+
+    /* MMU control */
+    SH4_REG_MMUCR,
+
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
 

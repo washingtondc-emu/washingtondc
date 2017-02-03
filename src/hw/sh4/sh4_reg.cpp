@@ -29,29 +29,29 @@ typedef boost::error_info<struct tag_feature_name_error_info, std::string>
 errinfo_regname;
 
 struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
-    { "EXPEVT", 0xff000024, ~addr32_t(0), 4, false,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x20 },
-    { "INTEVT", 0xff000028, ~addr32_t(0), 4, false,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x20 },
-    { "MMUCR", 0xff000010, ~addr32_t(0), 4, false,
+    { "EXPEVT", 0xff000024, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0x20 },
+    { "INTEVT", 0xff000028, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0x20 },
+    { "MMUCR", 0xff000010, ~addr32_t(0), 4, SH4_REG_MMUCR, false,
       &Sh4::MmucrRegReadHandler, &Sh4::MmucrRegWriteHandler, 0, 0 },
-    { "CCR", 0xff00001c, ~addr32_t(0), 4, false,
+    { "CCR", 0xff00001c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
       &Sh4::CcrRegReadHandler, &Sh4::CcrRegWriteHandler, 0, 0 },
-    { "QACR0", 0xff000038, ~addr32_t(0), 4, false,
+    { "QACR0", 0xff000038, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
       &Sh4::Qacr0RegReadHandler, &Sh4::Qacr0RegWriteHandler, 0, 0 },
-    { "QACR1", 0xff00003c, ~addr32_t(0), 4, false,
+    { "QACR1", 0xff00003c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
       &Sh4::Qacr1RegReadHandler, &Sh4::Qacr1RegWriteHandler, 0, 0 },
-    { "PTEH", 0xff000000, ~addr32_t(0), 4, false,
-      &Sh4::PtehRegReadHandler, &Sh4::PtehRegWriteHandler, 0, 0 },
-    { "PTEL", 0xff000004, ~addr32_t(0), 4, false,
-      &Sh4::PtelRegReadHandler, &Sh4::PtelRegWriteHandler, 0, 0 },
-    { "TTB", 0xff000008, ~addr32_t(0), 4, false,
-      &Sh4::TtbRegReadHandler, &Sh4::TtbRegWriteHandler, 0, 0 },
-    { "TEA", 0xff00000c, ~addr32_t(0), 4, false,
-      &Sh4::TeaRegReadHandler, &Sh4::TeaRegWriteHandler, 0, 0 },
-    { "PTEA", 0xff000034, ~addr32_t(0), 4, false,
-      &Sh4::PteaRegReadHandler, &Sh4::PteaRegWriteHandler, 0, 0 },
-    { "TRA", 0xff000020, ~addr32_t(0), 4, false,
+    { "PTEH", 0xff000000, ~addr32_t(0), 4, SH4_REG_PTEH, false,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "PTEL", 0xff000004, ~addr32_t(0), 4, SH4_REG_PTEL, false,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "TTB", 0xff000008, ~addr32_t(0), 4, SH4_REG_TTB, false,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "TEA", 0xff00000c, ~addr32_t(0), 4, SH4_REG_TEA, false,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "PTEA", 0xff000034, ~addr32_t(0), 4, SH4_REG_PTEA, false,
+      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "TRA", 0xff000020, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
       &Sh4::TraRegReadHandler, &Sh4::TraRegWriteHandler, 0, 0 },
 
 
@@ -66,48 +66,48 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
      * one might be important, but I'm just not show how (or if) I should
      * handle it at this point.
      */
-    { "BCR1", 0xff800000, ~addr32_t(0), 4, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "BCR2", 0xff800004, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0x3ffc },
-    { "WCR1", 0xff800008, ~addr32_t(0), 4, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "BCR1", 0xff800000, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "BCR2", 0xff800004, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0x3ffc },
+    { "WCR1", 0xff800008, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0x77777777 },
-    { "WCR2", 0xff80000c, ~addr32_t(0), 4, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "WCR2", 0xff80000c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0xfffeefff },
-    { "WCR3", 0xff800010, ~addr32_t(0), 4, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "WCR3", 0xff800010, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0x07777777 },
-    { "MCR", 0xff800014, ~addr32_t(0), 4, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "MCR", 0xff800014, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
-    { "PCR", 0xff800018, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "PCR", 0xff800018, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
-    { "PCTRA", 0xff80002c, ~addr32_t(0), 4, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "PCTRA", 0xff80002c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
-    { "PDTRA", 0xff800030, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "PDTRA", 0xff800030, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
-    { "PCTRB", 0xff800040, ~addr32_t(0), 4, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "PCTRB", 0xff800040, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
-    { "PDTRB", 0xff800044, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "PDTRB", 0xff800044, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
-    { "GPIOIC", 0xff800048, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "GPIOIC", 0xff800048, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
-    { "RFCR", 0xff800028, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "RFCR", 0xff800028, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
-    { "RTCOR", 0xff800024, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "RTCOR", 0xff800024, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
-    { "RTCSR", 0xff80001c, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler,
+    { "RTCSR", 0xff80001c, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler,
       0, 0 },
 
     /*
@@ -124,10 +124,10 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
      * the spec), which is why I feel like I don't need to bother with the
      * weird address-as-value semantics of these registers.
      */
-    { "SDMR2", 0xff900000, 0xffff0000, 1, true,
-      &Sh4::WriteOnlyRegReadHandler, &Sh4::DefaultRegWriteHandler },
-    { "SDMR3", 0xff940000, 0xffff0000, 1, true,
-      &Sh4::WriteOnlyRegReadHandler, &Sh4::DefaultRegWriteHandler },
+    { "SDMR2", 0xff900000, 0xffff0000, 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::WriteOnlyRegReadHandler, &Sh4::IgnoreRegWriteHandler },
+    { "SDMR3", 0xff940000, 0xffff0000, 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::WriteOnlyRegReadHandler, &Sh4::IgnoreRegWriteHandler },
 
     /*
      * RTC registers
@@ -135,38 +135,38 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
      * because they refer to the Sh4's internal RTC and not the Dreamcast's own
      * battery-powered RTC.
      */
-    { "R64CNT", 0xffc80000, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::ReadOnlyRegWriteHandler, 0, 0 },
-    { "RSECCNT", 0xffc80004, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RMINCNT", 0xffc80008, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RHRCNT", 0xffc8000c, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RWKCNT", 0xffc80010, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RDAYCNT", 0xffc80014, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RMONCNT", 0xffc80018, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RYRCNT", 0xffc8001c, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RSECAR", 0xffc80020, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RMINAR", 0xffc80024, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RHRAR", 0xffc80028, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RWKAR", 0xffc8002c, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RDAYAR", 0xffc80030, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RMONAR", 0xffc80034, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RCR1", 0xffc80038, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "RCR2", 0xffc8003c, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "R64CNT", 0xffc80000, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::ReadOnlyRegWriteHandler, 0, 0 },
+    { "RSECCNT", 0xffc80004, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RMINCNT", 0xffc80008, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RHRCNT", 0xffc8000c, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RWKCNT", 0xffc80010, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RDAYCNT", 0xffc80014, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RMONCNT", 0xffc80018, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RYRCNT", 0xffc8001c, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RSECAR", 0xffc80020, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RMINAR", 0xffc80024, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RHRAR", 0xffc80028, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RWKAR", 0xffc8002c, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RDAYAR", 0xffc80030, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RMONAR", 0xffc80034, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RCR1", 0xffc80038, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "RCR2", 0xffc8003c, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
 
     /*
      * I'm not sure what this does - something to do with standby mode (which is
@@ -174,10 +174,10 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
      * but the bios always writes 3 to it, which disables the clock source for
      * the RTC and the SCI.
      */
-    { "STBCR", 0xffc00004, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "STBCR2", 0xffc00010, ~addr32_t(0), 1, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "STBCR", 0xffc00004, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "STBCR2", 0xffc00010, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
 
     /*
      * watchdog timer - IDK if this is needed.
@@ -188,44 +188,44 @@ struct Sh4::MemMappedReg Sh4::mem_mapped_regs[] = {
      * when writing - I only support 16-bit accesses right now which is wrong
      * but hopefully inconsequential.
      */
-    { "WTCNT", 0xffc00008, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
-    { "WTCSR", 0xffc0000c, ~addr32_t(0), 2, true,
-      &Sh4::DefaultRegReadHandler, &Sh4::DefaultRegWriteHandler, 0, 0 },
+    { "WTCNT", 0xffc00008, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
+    { "WTCSR", 0xffc0000c, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      &Sh4::IgnoreRegReadHandler, &Sh4::IgnoreRegWriteHandler, 0, 0 },
 
     //The Timer Unit
-    { "TOCR", 0xffd80000, ~addr32_t(0), 1, true,
+    { "TOCR", 0xffd80000, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
       &Sh4::TocrRegReadHandler, &Sh4::TocrRegWriteHandler, 0, 0 },
-    { "TSTR", 0xffd80004, ~addr32_t(0), 1, true,
+    { "TSTR", 0xffd80004, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
       &Sh4::TstrRegReadHandler, &Sh4::TstrRegWriteHandler, 0, 0 },
-    { "TCOR0", 0xffd80008, ~addr32_t(0), 4, true,
+    { "TCOR0", 0xffd80008, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcor0RegReadHandler, &Sh4::Tcor0RegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
-    { "TCNT0", 0xffd8000c, ~addr32_t(0), 4, true,
+    { "TCNT0", 0xffd8000c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcnt0RegReadHandler, &Sh4::Tcnt0RegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
-    { "TCR0", 0xffd80010, ~addr32_t(0), 2, true,
+    { "TCR0", 0xffd80010, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcr0RegReadHandler, &Sh4::Tcr0RegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
-    { "TCOR1", 0xffd80014, ~addr32_t(0), 4, true,
+    { "TCOR1", 0xffd80014, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcor1RegReadHandler, &Sh4::Tcor1RegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
-    { "TCNT1", 0xffd80018, ~addr32_t(0), 4, true,
+    { "TCNT1", 0xffd80018, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcnt1RegReadHandler, &Sh4::Tcnt1RegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
-    { "TCR1", 0xffd8001c, ~addr32_t(0), 2, true,
+    { "TCR1", 0xffd8001c, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcr1RegReadHandler, &Sh4::Tcr1RegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
-    { "TCOR2", 0xffd80020, ~addr32_t(0), 4, true,
+    { "TCOR2", 0xffd80020, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcor2RegReadHandler, &Sh4::Tcor2RegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
-    { "TCNT2", 0xffd80024, ~addr32_t(0), 4, true,
+    { "TCNT2", 0xffd80024, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcnt2RegReadHandler, &Sh4::Tcnt2RegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
-    { "TCR2", 0xffd80028, ~addr32_t(0), 2, true,
+    { "TCR2", 0xffd80028, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcr2RegReadHandler, &Sh4::Tcr2RegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
-    { "TCPR2", 0xffd8002c, ~addr32_t(0), 4, true,
+    { "TCPR2", 0xffd8002c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
       &Sh4::Tcpr2RegReadHandler, &Sh4::ReadOnlyRegWriteHandler, 0, 0 },
 
     { NULL }
@@ -242,8 +242,7 @@ void Sh4::poweron_reset_regs() {
         RegWriteHandler handler = curs->on_p4_write;
 
         if (handler != &Sh4::ReadOnlyRegWriteHandler) {
-            if ((this->*handler)(&curs->poweron_reset_val,
-                                 curs->addr, curs->len) != 0)
+            if ((this->*handler)(&curs->poweron_reset_val, curs) != 0)
                 BOOST_THROW_EXCEPTION(IntegrityError() <<
                                       errinfo_wtf("the reg write handler "
                                                   "returned error during a "
@@ -260,8 +259,7 @@ void Sh4::manual_reset_regs() {
 
     while (curs->reg_name) {
         RegWriteHandler handler = curs->on_p4_write;
-        if ((this->*handler)(&curs->manual_reset_val,
-                             curs->addr, curs->len) != 0)
+        if ((this->*handler)(&curs->manual_reset_val, curs) != 0)
             BOOST_THROW_EXCEPTION(IntegrityError() <<
                                   errinfo_wtf("the reg write handler returned "
                                               "error during a poweron reset") <<
@@ -291,52 +289,68 @@ int Sh4::read_mem_mapped_reg(void *buf, addr32_t addr, unsigned len) {
     MemMappedReg *mm_reg = find_reg_by_addr(addr);
     RegReadHandler handler = mm_reg->on_p4_read;
 
-    return (this->*handler)(buf, addr, len);
+    return (this->*handler)(buf, mm_reg);
 }
 
 int Sh4::write_mem_mapped_reg(void const *buf, addr32_t addr, unsigned len) {
     MemMappedReg *mm_reg = find_reg_by_addr(addr);
     RegWriteHandler handler = mm_reg->on_p4_write;
 
-    return (this->*handler)(buf, addr, len);
+    return (this->*handler)(buf, mm_reg);
 }
 
+int Sh4::DefaultRegReadHandler(void *buf, struct Sh4::MemMappedReg const *reg_info) {
+    assert(reg_info->len <= sizeof(reg32_t));
 
-int Sh4::DefaultRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, addr - P4_REGSTART + reg_area, len);
+    memcpy(buf, reg + reg_info->reg_idx, reg_info->len);
 
     return 0;
 }
 
-int Sh4::DefaultRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(addr - P4_REGSTART + reg_area, buf, len);
+int Sh4::DefaultRegWriteHandler(void const *buf,
+                                struct Sh4::MemMappedReg const *reg_info) {
+    assert(reg_info->len <= sizeof(reg32_t));
+
+    memcpy(reg + reg_info->reg_idx, buf, reg_info->len);
 
     return 0;
 }
 
-int Sh4::WriteOnlyRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::IgnoreRegReadHandler(void *buf, struct Sh4::MemMappedReg const *reg_info) {
+    memcpy(buf, reg_info->addr - P4_REGSTART + reg_area, reg_info->len);
+
+    return 0;
+}
+
+int Sh4::IgnoreRegWriteHandler(void const *buf, struct Sh4::MemMappedReg const *reg_info) {
+    memcpy(reg_info->addr - P4_REGSTART + reg_area, buf, reg_info->len);
+
+    return 0;
+}
+
+int Sh4::WriteOnlyRegReadHandler(void *buf, struct Sh4::MemMappedReg const *reg_info) {
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
                           errinfo_feature("sh4 CPU exception for trying to "
                                           "read from a write-only CPU "
                                           "register") <<
-                          errinfo_guest_addr(addr));
+                          errinfo_guest_addr(reg_info->addr));
 }
 
-int Sh4::ReadOnlyRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::ReadOnlyRegWriteHandler(void const *buf, struct Sh4::MemMappedReg const *reg_info) {
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
                           errinfo_feature("sh4 CPU exception for trying to "
                                           "write to a read-only CPU "
                                           "register") <<
-                          errinfo_guest_addr(addr));
+                          errinfo_guest_addr(reg_info->addr));
 }
 
-int Sh4::MmucrRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.reg.mmucr, sizeof(mmu.reg.mmucr));
+int Sh4::MmucrRegReadHandler(void *buf, struct Sh4::MemMappedReg const *reg_info) {
+    memcpy(buf, reg + SH4_REG_MMUCR, sizeof(reg[SH4_REG_MMUCR]));
 
     return 0;
 }
 
-int Sh4::MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::MmucrRegWriteHandler(void const *buf, struct Sh4::MemMappedReg const *reg_info) {
     reg32_t mmucr_tmp;
     memcpy(&mmucr_tmp, buf, sizeof(mmucr_tmp));
 
@@ -350,141 +364,92 @@ int Sh4::MmucrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
          */
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_regname("MMUCR") <<
-                              errinfo_guest_addr(addr));
+                              errinfo_guest_addr(reg_info->addr));
     }
 
-    mmu.reg.mmucr = mmucr_tmp;
+    reg[SH4_REG_MMUCR] = mmucr_tmp;
 
     return 0;
 }
 
-int Sh4::CcrRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::CcrRegReadHandler(void *buf, struct Sh4::MemMappedReg const *reg_info) {
     memcpy(buf, &cache_reg.ccr, sizeof(cache_reg.ccr));
 
     return 0;
 }
 
-int Sh4::CcrRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::CcrRegWriteHandler(void const *buf,
+                            struct Sh4::MemMappedReg const *reg_info) {
     memcpy(&cache_reg.ccr, buf, sizeof(cache_reg.ccr));
 
     return 0;
 }
 
-int Sh4::PtehRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.reg.pteh, sizeof(mmu.reg.pteh));
-
-    return 0;
-}
-
-int Sh4::PtehRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.reg.pteh, buf, sizeof(mmu.reg.pteh));
-
-    return 0;
-}
-
-int Sh4::PtelRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.reg.ptel, sizeof(mmu.reg.ptel));
-
-    return 0;
-}
-
-int Sh4::PtelRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.reg.ptel, buf, sizeof(mmu.reg.ptel));
-
-    return 0;
-}
-
-int Sh4::TtbRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.reg.ttb, sizeof(mmu.reg.ttb));
-
-    return 0;
-}
-
-int Sh4::TtbRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.reg.ttb, buf, sizeof(mmu.reg.ttb));
-
-    return 0;
-}
-
-int Sh4::TeaRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.reg.tea, sizeof(mmu.reg.tea));
-
-    return 0;
-}
-
-int Sh4::TeaRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.reg.tea, buf, sizeof(mmu.reg.tea));
-
-    return 0;
-}
-
-int Sh4::TraRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::TraRegReadHandler(void *buf,
+                           struct Sh4::MemMappedReg const *reg_info) {
     memcpy(buf, &excp_reg.tra, sizeof(excp_reg.tra));
 
     return 0;
 }
 
-int Sh4::TraRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::TraRegWriteHandler(void const *buf,
+                            struct Sh4::MemMappedReg const *reg_info) {
     memcpy(&excp_reg.tra, buf, sizeof(excp_reg.tra));
 
     return 0;
 }
 
-int Sh4::ExpevtRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::ExpevtRegReadHandler(void *buf,
+                              struct Sh4::MemMappedReg const *reg_info) {
     memcpy(buf, &excp_reg.expevt, sizeof(excp_reg.expevt));
 
     return 0;
 }
 
-int Sh4::ExpevtRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::ExpevtRegWriteHandler(void const *buf,
+                               struct Sh4::MemMappedReg const *reg_info) {
     memcpy(&excp_reg.expevt, buf, sizeof(excp_reg.expevt));
 
     return 0;
 }
 
-int Sh4::IntevtRegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::IntevtRegReadHandler(void *buf,
+                              struct Sh4::MemMappedReg const *reg_info) {
     memcpy(buf, &excp_reg.intevt, sizeof(excp_reg.intevt));
 
     return 0;
 }
 
-int Sh4::IntevtRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::IntevtRegWriteHandler(void const *buf,
+                               struct Sh4::MemMappedReg const *reg_info) {
     memcpy(&excp_reg.intevt, buf, sizeof(excp_reg.intevt));
 
     return 0;
 }
 
-int Sh4::PteaRegReadHandler(void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &mmu.reg.ptea, sizeof(mmu.reg.ptea));
-
-    return 0;
-}
-
-int Sh4::PteaRegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&mmu.reg.ptea, buf, sizeof(mmu.reg.ptea));
-
-    return 0;
-}
-
-int Sh4::Qacr0RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Qacr0RegReadHandler(void *buf,
+                             struct Sh4::MemMappedReg const *reg_info) {
     memcpy(buf, &cache_reg.qacr0, sizeof(cache_reg.qacr0));
 
     return 0;
 }
 
-int Sh4::Qacr0RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Qacr0RegWriteHandler(void const *buf,
+                              struct Sh4::MemMappedReg const *reg_info) {
     memcpy(&cache_reg.qacr0, buf, sizeof(cache_reg.qacr0));
 
     return 0;
 }
 
-int Sh4::Qacr1RegReadHandler(void *buf, addr32_t addr, unsigned len) {
+int Sh4::Qacr1RegReadHandler(void *buf,
+                             struct Sh4::MemMappedReg const *reg_info) {
     memcpy(buf, &cache_reg.qacr1, sizeof(cache_reg.qacr1));
 
     return 0;
 }
 
-int Sh4::Qacr1RegWriteHandler(void const *buf, addr32_t addr, unsigned len) {
+int Sh4::Qacr1RegWriteHandler(void const *buf,
+                              struct Sh4::MemMappedReg const *reg_info) {
     memcpy(&cache_reg.qacr1, buf, sizeof(cache_reg.qacr1));
 
     return 0;
