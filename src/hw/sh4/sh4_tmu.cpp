@@ -26,7 +26,7 @@
 #include "sh4.hpp"
 
 void Sh4::setTmuTocr(uint8_t new_val) {
-    if (tmu.tocr != 0)
+    if (new_val != 0)
         std::cerr << "WARNING: writing non-zero value to sh4 TOCR register" <<
             std::endl;
 
