@@ -114,6 +114,42 @@ typedef enum sh4_reg_idx {
     /* Queue address control register 1 */
     SH4_REG_QACR1,
 
+    /* Timer output control register */
+    SH4_REG_TOCR,
+
+    /* Timer start register */
+    SH4_REG_TSTR,
+
+    /* Timer channel 0 constant register */
+    SH4_REG_TCOR0,
+
+    /* Timer channel 0 counter */
+    SH4_REG_TCNT0,
+
+    /* Timer channel 0 control register */
+    SH4_REG_TCR0,
+
+    /* Timer channel 1 constant register */
+    SH4_REG_TCOR1,
+
+    /* Timer channel 1 counter */
+    SH4_REG_TCNT1,
+
+    /* Timer channel 1 control register */
+    SH4_REG_TCR1,
+
+    /* Timer channel 2 constant register */
+    SH4_REG_TCOR2,
+
+    /* Timer channel 2 counter */
+    SH4_REG_TCNT2,
+
+    /* Timer channel 2 control register */
+    SH4_REG_TCR2,
+
+    /* Timer channel 2 input capture register */
+    SH4_REG_TCPR2,
+
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
 
