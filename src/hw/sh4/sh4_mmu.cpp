@@ -239,7 +239,7 @@ struct sh4_utlb_entry *sh4_utlb_search(Sh4 *sh4, addr32_t vaddr,
 
         if (!(SH4_UTLB_ENT_SH_MASK & ent->ent) &&
             (!(mmu->reg.mmucr & SH4_MMUCR_SV_MASK) ||
-             !(sh4->reg.sr & Sh4::SR_MD_MASK))) {
+             !(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))) {
             // (not sharing pages) and (single-VM space or user-mode mode)
 
             unsigned utlb_asid = (ent->key & SH4_UTLB_KEY_ASID_MASK) >>
@@ -338,7 +338,7 @@ struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
 
         if (!(SH4_ITLB_ENT_SH_MASK & ent->ent) &&
             (!(mmu->reg.mmucr & SH4_MMUCR_SV_MASK) ||
-             !(sh4->reg.sr & Sh4::SR_MD_MASK))) {
+             !(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))) {
             // (not sharing pages) and (single-VM space or user-mode mode)
             unsigned itlb_asid = (ent->key & SH4_ITLB_KEY_ASID_MASK) >>
                 SH4_ITLB_KEY_ASID_SHIFT;

@@ -32,6 +32,7 @@
 #include "MemoryMap.hpp"
 #include "sh4_inst.hpp"
 #include "sh4_mmu.hpp"
+#include "sh4_reg.hpp"
 
 #ifdef ENABLE_SH4_OCACHE
 #include "Ocache.hpp"
@@ -62,56 +63,7 @@ class Sh4 {
     friend class Sh4InstTests;
 
 public:
-    struct RegFile {
-        // general-purpose registers R0_BANK0-R7_BANK0
-        reg32_t r_bank0[8];
-
-        // general-purpose registers R0_BANK1-R7_BANK1
-        reg32_t r_bank1[8];
-
-        // general-purpose registers R8-R15
-        reg32_t rgen[8];
-
-        // floating point bank0 registers FPR0_BANK0-FPR15_BANK0
-        reg32_t fpr_bank0;
-
-        // floating point bank1 registers FPR0_BANK1-FPR15_BANK1
-        reg32_t fpr_bank1;
-
-        // status register
-        reg32_t sr;
-
-        // saved-status register
-        reg32_t ssr;
-
-        // saved program counter
-        reg32_t spc;
-
-        // global base register
-        reg32_t gbr;
-
-        // vector base register
-        reg32_t vbr;
-
-        // saved general register 15
-        reg32_t sgr;
-
-        // debug base register
-        reg32_t dbr;
-
-        // Multiply-and-accumulate register high
-        reg32_t mach;
-
-        // multiply-and-accumulate register low
-        reg32_t macl;
-
-        // procedure register
-        reg32_t pr;
-
-        // program counter
-        reg32_t pc;
-    };
-    RegFile reg;
+    reg32_t reg[SH4_REGISTER_COUNT];
 
     struct sh4_mmu mmu;
 
@@ -298,7 +250,7 @@ public:
     void exec_inst();
 
     inline void next_inst() {
-        reg.pc += 2;
+        reg[SH4_REG_PC] += 2;
     }
 
     void do_exec_inst(inst_t inst);
@@ -310,9 +262,9 @@ public:
     reg32_t get_pc() const;
 
     // these four APIs are intended primarily for debuggers to use
-    RegFile get_regs() const;
+    void get_regs(reg32_t reg_out[SH4_REGISTER_COUNT]) const;
     FpuReg get_fpu() const;
-    void set_regs(const RegFile& src);
+    void set_regs(reg32_t const reg_out[SH4_REGISTER_COUNT]);
     void set_fpu(const FpuReg& src);
 
     template<typename val_t>
@@ -419,30 +371,43 @@ public:
     }
 
     /*
+     * return the index of the given general-purpose register.
+     * This function takes bank-switching into account.
+     */
+    sh4_reg_idx_t gen_reg_idx(int reg_no) {
+        assert(!(reg_no & ~0xf));
+
+        if (reg_no <= 7) {
+            if (reg[SH4_REG_SR] & SR_RB_MASK)
+                return (sh4_reg_idx_t)(SH4_REG_R0_BANK1 + reg_no);
+            else
+                return (sh4_reg_idx_t)(SH4_REG_R0_BANK0 + reg_no);
+        } else {
+            return (sh4_reg_idx_t)(SH4_REG_R8 + (reg_no - 8));
+        }
+    }
+
+    /*
      * return a pointer to the given general-purpose register.
      * This function takes bank-switching into account.
      */
     reg32_t *gen_reg(int idx) {
-        assert(!(idx & ~0xf));
+        return reg + gen_reg_idx(idx);
+    }
 
-        if (idx <= 7) {
-            if (reg.sr & SR_RB_MASK)
-                return &reg.r_bank1[idx];
-            else
-                return &reg.r_bank0[idx];
-        } else {
-            return &reg.rgen[idx - 8];
-        }
+    /* return an index to the given banked general-purpose register */
+    sh4_reg_idx_t bank_reg_idx(int idx) {
+        assert(!(idx & ~0x7));
+
+        if (reg[SH4_REG_SR] & SR_RB_MASK)
+            return (sh4_reg_idx_t)(SH4_REG_R0_BANK0 + idx);
+        else
+            return (sh4_reg_idx_t)(SH4_REG_R0_BANK1 + idx);
     }
 
     // return a pointer to the given banked general-purpose register
     reg32_t *bank_reg(int idx) {
-        assert(!(idx & ~0x7));
-
-        if (reg.sr & SR_RB_MASK)
-            return &reg.r_bank0[idx];
-        else
-            return &reg.r_bank1[idx];
+        return reg + bank_reg_idx(idx);
     }
 
     // IC index enable

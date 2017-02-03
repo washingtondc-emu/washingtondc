@@ -854,38 +854,50 @@ void Sh4::exec_inst() {
     int exc_pending;
 
     try {
-        if ((exc_pending = read_inst(&inst, reg.pc))) {
+        if ((exc_pending = read_inst(&inst, reg[SH4_REG_PC]))) {
             // fuck it, i'll commit now and figure what to do here later
             BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                   errinfo_feature("SH4 CPU exceptions/traps"));
         }
         do_exec_inst(inst);
     } catch (BaseException& exc) {
-        exc << errinfo_reg_sr(reg.sr);
-        exc << errinfo_reg_ssr(reg.ssr);
-        exc << errinfo_reg_pc(reg.pc);
-        exc << errinfo_reg_spc(reg.spc);
-        exc << errinfo_reg_gbr(reg.gbr);
-        exc << errinfo_reg_vbr(reg.vbr);
-        exc << errinfo_reg_sgr(reg.sgr);
-        exc << errinfo_reg_dbr(reg.dbr);
-        exc << errinfo_reg_mach(reg.mach);
-        exc << errinfo_reg_macl(reg.macl);
-        exc << errinfo_reg_pr(reg.pr);
+        exc << errinfo_reg_sr(reg[SH4_REG_SR]);
+        exc << errinfo_reg_ssr(reg[SH4_REG_SSR]);
+        exc << errinfo_reg_pc(reg[SH4_REG_PC]);
+        exc << errinfo_reg_spc(reg[SH4_REG_SPC]);
+        exc << errinfo_reg_gbr(reg[SH4_REG_GBR]);
+        exc << errinfo_reg_vbr(reg[SH4_REG_VBR]);
+        exc << errinfo_reg_sgr(reg[SH4_REG_SGR]);
+        exc << errinfo_reg_dbr(reg[SH4_REG_DBR]);
+        exc << errinfo_reg_mach(reg[SH4_REG_MACH]);
+        exc << errinfo_reg_macl(reg[SH4_REG_MACL]);
+        exc << errinfo_reg_pr(reg[SH4_REG_PR]);
         exc << errinfo_reg_fpscr(fpu.fpscr);
         exc << errinfo_reg_fpul(fpu.fpul);
-        exc << errinfo_reg_bank0(RegBankTuple(reg.r_bank0[0], reg.r_bank0[1],
-                                              reg.r_bank0[2], reg.r_bank0[3],
-                                              reg.r_bank0[4], reg.r_bank0[5],
-                                              reg.r_bank0[6], reg.r_bank0[7]));
-        exc << errinfo_reg_bank1(RegBankTuple(reg.r_bank1[0], reg.r_bank1[1],
-                                              reg.r_bank1[2], reg.r_bank1[3],
-                                              reg.r_bank1[4], reg.r_bank1[5],
-                                              reg.r_bank1[6], reg.r_bank1[7]));
-        exc << errinfo_reg_rgen(RegBankTuple(reg.rgen[0], reg.rgen[1],
-                                              reg.rgen[2], reg.rgen[3],
-                                              reg.rgen[4], reg.rgen[5],
-                                              reg.rgen[6], reg.rgen[7]));
+        exc << errinfo_reg_bank0(RegBankTuple(reg[SH4_REG_R0_BANK0],
+                                              reg[SH4_REG_R1_BANK0],
+                                              reg[SH4_REG_R2_BANK0],
+                                              reg[SH4_REG_R3_BANK0],
+                                              reg[SH4_REG_R4_BANK0],
+                                              reg[SH4_REG_R5_BANK0],
+                                              reg[SH4_REG_R6_BANK0],
+                                              reg[SH4_REG_R7_BANK0]));
+        exc << errinfo_reg_bank1(RegBankTuple(reg[SH4_REG_R0_BANK1],
+                                              reg[SH4_REG_R1_BANK1],
+                                              reg[SH4_REG_R2_BANK1],
+                                              reg[SH4_REG_R3_BANK1],
+                                              reg[SH4_REG_R4_BANK1],
+                                              reg[SH4_REG_R5_BANK1],
+                                              reg[SH4_REG_R6_BANK1],
+                                              reg[SH4_REG_R7_BANK1]));
+        exc << errinfo_reg_rgen(RegBankTuple(reg[SH4_REG_R8],
+                                             reg[SH4_REG_R9],
+                                             reg[SH4_REG_R10],
+                                             reg[SH4_REG_R11],
+                                             reg[SH4_REG_R12],
+                                             reg[SH4_REG_R13],
+                                             reg[SH4_REG_R14],
+                                             reg[SH4_REG_R15]));
         exc << errinfo_reg_ccr(cache_reg.ccr);
         exc << errinfo_reg_qacr0(cache_reg.qacr0);
         exc << errinfo_reg_qacr1(cache_reg.qacr1);
@@ -918,7 +930,7 @@ void Sh4::do_exec_inst(inst_t inst) {
                 op_func(this, oa);
 
                 if (delayed_branch_tmp) {
-                    reg.pc = delayed_branch_addr_tmp;
+                    reg[SH4_REG_PC] = delayed_branch_addr_tmp;
                     delayed_branch = false;
                 }
             } else {
@@ -973,7 +985,7 @@ void sh4_compile_instruction(struct InstOpcode *op) {
 // 0000000000001011
 void sh4_inst_rts(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->delayed_branch = true;
-    sh4->delayed_branch_addr = sh4->reg.pr;
+    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PR];
 
     sh4->next_inst();
 }
@@ -982,7 +994,7 @@ void sh4_inst_rts(Sh4 *sh4, Sh4OpArgs inst) {
 // CLRMAC
 // 0000000000101000
 void sh4_inst_clrmac(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.macl = sh4->reg.mach = 0;
+    sh4->reg[SH4_REG_MACL] = sh4->reg[SH4_REG_MACH] = 0;
 
     sh4->next_inst();
 }
@@ -991,7 +1003,7 @@ void sh4_inst_clrmac(Sh4 *sh4, Sh4OpArgs inst) {
 // CLRS
 // 0000000001001000
 void sh4_inst_clrs(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_S_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_S_MASK;
 
     sh4->next_inst();
 }
@@ -1000,7 +1012,7 @@ void sh4_inst_clrs(Sh4 *sh4, Sh4OpArgs inst) {
 // CLRT
 // 0000000000001000
 void sh4_inst_clrt(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
 
     sh4->next_inst();
 }
@@ -1034,7 +1046,7 @@ void sh4_inst_rte(Sh4 *sh4, Sh4OpArgs inst) {
 // SETS
 // 0000000001011000
 void sh4_inst_sets(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr |= Sh4::SR_FLAG_S_MASK;
+    sh4->reg[SH4_REG_SR] |= Sh4::SR_FLAG_S_MASK;
 
     sh4->next_inst();
 }
@@ -1042,7 +1054,7 @@ void sh4_inst_sets(Sh4 *sh4, Sh4OpArgs inst) {
 // SETT
 // 0000000000011000
 void sh4_inst_sett(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr |= Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
 
     sh4->next_inst();
 }
@@ -1088,7 +1100,7 @@ void sh4_inst_fschg(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00101001
 void sh4_inst_unary_movt_gen(Sh4 *sh4, Sh4OpArgs inst) {
     *sh4->gen_reg(inst.gen_reg) =
-        (reg32_t)((sh4->reg.sr & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT);
+        (reg32_t)((sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT);
 
     sh4->next_inst();
 }
@@ -1096,10 +1108,10 @@ void sh4_inst_unary_movt_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // CMP/PZ Rn
 // 0100nnnn00010001
 void sh4_inst_unary_cmppz_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     uint32_t flag = int32_t(*sh4->gen_reg(inst.gen_reg)) >= 0;
 
-    sh4->reg.sr |= flag << Sh4::SR_FLAG_T_SHIFT;
+    sh4->reg[SH4_REG_SR] |= flag << Sh4::SR_FLAG_T_SHIFT;
 
     sh4->next_inst();
 }
@@ -1107,10 +1119,10 @@ void sh4_inst_unary_cmppz_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // CMP/PL Rn
 // 0100nnnn00010101
 void sh4_inst_unary_cmppl_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     uint32_t flag = int32_t(*sh4->gen_reg(inst.gen_reg)) > 0;
 
-    sh4->reg.sr |= flag << Sh4::SR_FLAG_T_SHIFT;
+    sh4->reg[SH4_REG_SR] |= flag << Sh4::SR_FLAG_T_SHIFT;
 
     sh4->next_inst();
 }
@@ -1120,8 +1132,8 @@ void sh4_inst_unary_cmppl_gen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_dt_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *valp = sh4->gen_reg(inst.gen_reg);
     (*valp)--;
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-    sh4->reg.sr |= (!*valp) << Sh4::SR_FLAG_T_SHIFT;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= (!*valp) << Sh4::SR_FLAG_T_SHIFT;
 
     sh4->next_inst();
 }
@@ -1134,7 +1146,7 @@ void sh4_inst_unary_rotl_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t shift_out = (val & 0x80000000) >> 31;
 
     val = (val << 1) | shift_out;
-    sh4->reg.sr = (sh4->reg.sr & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
 
     *regp = val;
 
@@ -1149,7 +1161,7 @@ void sh4_inst_unary_rotr_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t shift_out = val & 1;
 
     val = (val >> 1) | (shift_out << 31);
-    sh4->reg.sr = (sh4->reg.sr & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
 
     *regp = val;
 
@@ -1162,10 +1174,10 @@ void sh4_inst_unary_rotcl_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *regp = sh4->gen_reg(inst.gen_reg);
     reg32_t val = *regp;
     reg32_t shift_out = (val & 0x80000000) >> 31;
-    reg32_t shift_in = (sh4->reg.sr & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT;
+    reg32_t shift_in = (sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT;
 
     val = (val << 1) | shift_in;
-    sh4->reg.sr = (sh4->reg.sr & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
 
     *regp = val;
 
@@ -1178,10 +1190,10 @@ void sh4_inst_unary_rotcr_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *regp = sh4->gen_reg(inst.gen_reg);
     reg32_t val = *regp;
     reg32_t shift_out = val & 1;
-    reg32_t shift_in = (sh4->reg.sr & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT;
+    reg32_t shift_in = (sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT;
 
     val = (val >> 1) | (shift_in << 31);
-    sh4->reg.sr = (sh4->reg.sr & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
 
     *regp = val;
 
@@ -1196,7 +1208,7 @@ void sh4_inst_unary_shal_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t shift_out = (val & 0x80000000) >> 31;
 
     val <<= 1;
-    sh4->reg.sr = (sh4->reg.sr & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
 
     *regp = val;
 
@@ -1211,7 +1223,7 @@ void sh4_inst_unary_shar_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t shift_out = val & 1;
 
     val >>= 1;
-    sh4->reg.sr = (sh4->reg.sr & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
 
     *regp = val;
 
@@ -1226,7 +1238,7 @@ void sh4_inst_unary_shll_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t shift_out = (val & 0x80000000) >> 31;
 
     val <<= 1;
-    sh4->reg.sr = (sh4->reg.sr & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
 
     *regp = val;
 
@@ -1241,7 +1253,7 @@ void sh4_inst_unary_shlr_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t shift_out = val & 1;
 
     val >>= 1;
-    sh4->reg.sr = (sh4->reg.sr & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~Sh4::SR_FLAG_T_MASK) | (shift_out << Sh4::SR_FLAG_T_SHIFT);
 
     *regp = val;
 
@@ -1324,7 +1336,7 @@ void sh4_inst_unary_shlr16_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00100011
 void sh4_inst_unary_braf_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->delayed_branch = true;
-    sh4->delayed_branch_addr = sh4->reg.pc + *sh4->gen_reg(inst.gen_reg) + 4;
+    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4->gen_reg(inst.gen_reg) + 4;
 
     sh4->next_inst();
 }
@@ -1333,8 +1345,8 @@ void sh4_inst_unary_braf_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00000011
 void sh4_inst_unary_bsrf_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->delayed_branch = true;
-    sh4->reg.pr = sh4->reg.pc + 4;
-    sh4->delayed_branch_addr = sh4->reg.pc + *sh4->gen_reg(inst.gen_reg) + 4;
+    sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
+    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4->gen_reg(inst.gen_reg) + 4;
 
     sh4->next_inst();
 }
@@ -1343,8 +1355,8 @@ void sh4_inst_unary_bsrf_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 10001000iiiiiiii
 void sh4_inst_binary_cmpeq_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t imm_val = int32_t(int8_t(inst.imm8));
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-    sh4->reg.sr |= ((*sh4->gen_reg(0) == imm_val) << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= ((*sh4->gen_reg(0) == imm_val) << Sh4::SR_FLAG_T_SHIFT);
 
     sh4->next_inst();
 }
@@ -1352,7 +1364,7 @@ void sh4_inst_binary_cmpeq_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
 // AND.B #imm, @(R0, GBR)
 // 11001101iiiiiiii
 void sh4_inst_binary_andb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = *sh4->gen_reg(0) + sh4->reg.gbr;
+    addr32_t addr = *sh4->gen_reg(0) + sh4->reg[SH4_REG_GBR];
     uint8_t val;
 
     if (sh4->read_mem(&val, addr, sizeof(val)) != 0)
@@ -1377,7 +1389,7 @@ void sh4_inst_binary_and_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
 // OR.B #imm, @(R0, GBR)
 // 11001111iiiiiiii
 void sh4_inst_binary_orb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = *sh4->gen_reg(0) + sh4->reg.gbr;
+    addr32_t addr = *sh4->gen_reg(0) + sh4->reg[SH4_REG_GBR];
     uint8_t val;
 
     if (sh4->read_mem(&val, addr, sizeof(val)) != 0)
@@ -1402,10 +1414,10 @@ void sh4_inst_binary_or_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
 // TST #imm, R0
 // 11001000iiiiiiii
 void sh4_inst_binary_tst_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     reg32_t flag = !(inst.imm8 & *sh4->gen_reg(0)) <<
         Sh4::SR_FLAG_T_SHIFT;
-    sh4->reg.sr |= flag;
+    sh4->reg[SH4_REG_SR] |= flag;
 
     sh4->next_inst();
 }
@@ -1413,16 +1425,16 @@ void sh4_inst_binary_tst_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
 // TST.B #imm, @(R0, GBR)
 // 11001100iiiiiiii
 void sh4_inst_binary_tstb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = *sh4->gen_reg(0) + sh4->reg.gbr;
+    addr32_t addr = *sh4->gen_reg(0) + sh4->reg[SH4_REG_GBR];
     uint8_t val;
 
     if (sh4->read_mem(&val, addr, sizeof(val)) != 0)
         return;
 
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     reg32_t flag = !(inst.imm8 & val) <<
         Sh4::SR_FLAG_T_SHIFT;
-    sh4->reg.sr |= flag;
+    sh4->reg[SH4_REG_SR] |= flag;
 
     sh4->next_inst();
 }
@@ -1438,7 +1450,7 @@ void sh4_inst_binary_xor_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
 // XOR.B #imm, @(R0, GBR)
 // 11001110iiiiiiii
 void sh4_inst_binary_xorb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = *sh4->gen_reg(0) + sh4->reg.gbr;
+    addr32_t addr = *sh4->gen_reg(0) + sh4->reg[SH4_REG_GBR];
     uint8_t val;
 
     if (sh4->read_mem(&val, addr, sizeof(val)) != 0)
@@ -1455,8 +1467,8 @@ void sh4_inst_binary_xorb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 // BF label
 // 10001011dddddddd
 void sh4_inst_unary_bf_disp(Sh4 *sh4, Sh4OpArgs inst) {
-    if (!(sh4->reg.sr & Sh4::SR_FLAG_T_MASK))
-        sh4->reg.pc += (int32_t(inst.simm8) << 1) + 4;
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK))
+        sh4->reg[SH4_REG_PC] += (int32_t(inst.simm8) << 1) + 4;
     else
         sh4->next_inst();
 }
@@ -1464,8 +1476,8 @@ void sh4_inst_unary_bf_disp(Sh4 *sh4, Sh4OpArgs inst) {
 // BF/S label
 // 10001111dddddddd
 void sh4_inst_unary_bfs_disp(Sh4 *sh4, Sh4OpArgs inst) {
-    if (!(sh4->reg.sr & Sh4::SR_FLAG_T_MASK)) {
-        sh4->delayed_branch_addr = sh4->reg.pc + (int32_t(inst.simm8) << 1) + 4;
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK)) {
+        sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (int32_t(inst.simm8) << 1) + 4;
         sh4->delayed_branch = true;
     }
 
@@ -1475,8 +1487,8 @@ void sh4_inst_unary_bfs_disp(Sh4 *sh4, Sh4OpArgs inst) {
 // BT label
 // 10001001dddddddd
 void sh4_inst_unary_bt_disp(Sh4 *sh4, Sh4OpArgs inst) {
-    if (sh4->reg.sr & Sh4::SR_FLAG_T_MASK)
-        sh4->reg.pc += (int32_t(inst.simm8) << 1) + 4;
+    if (sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK)
+        sh4->reg[SH4_REG_PC] += (int32_t(inst.simm8) << 1) + 4;
     else
         sh4->next_inst();
 }
@@ -1484,8 +1496,8 @@ void sh4_inst_unary_bt_disp(Sh4 *sh4, Sh4OpArgs inst) {
 // BT/S label
 // 10001101dddddddd
 void sh4_inst_unary_bts_disp(Sh4 *sh4, Sh4OpArgs inst) {
-    if (sh4->reg.sr & Sh4::SR_FLAG_T_MASK) {
-        sh4->delayed_branch_addr = sh4->reg.pc + (int32_t(inst.simm8) << 1) + 4;;
+    if (sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK) {
+        sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (int32_t(inst.simm8) << 1) + 4;;
         sh4->delayed_branch = true;
     }
 
@@ -1496,7 +1508,7 @@ void sh4_inst_unary_bts_disp(Sh4 *sh4, Sh4OpArgs inst) {
 // 1010dddddddddddd
 void sh4_inst_unary_bra_disp(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->delayed_branch = true;
-    sh4->delayed_branch_addr = sh4->reg.pc + (int32_t(inst.simm12) << 1) + 4;
+    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (int32_t(inst.simm12) << 1) + 4;
 
     sh4->next_inst();
 }
@@ -1504,8 +1516,8 @@ void sh4_inst_unary_bra_disp(Sh4 *sh4, Sh4OpArgs inst) {
 // BSR label
 // 1011dddddddddddd
 void sh4_inst_unary_bsr_disp(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.pr = sh4->reg.pc + 4;
-    sh4->delayed_branch_addr = sh4->reg.pc + (int32_t(inst.simm12) << 1) + 4;
+    sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
+    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (int32_t(inst.simm12) << 1) + 4;
     sh4->delayed_branch = true;
 
     sh4->next_inst();
@@ -1541,9 +1553,9 @@ void sh4_inst_unary_tasb_gen(Sh4 *sh4, Sh4OpArgs inst) {
     if (sh4->write_mem(&val_new, addr, sizeof(val_new)) != 0)
         return;
 
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     mask = (!val_old) << Sh4::SR_FLAG_T_SHIFT;
-    sh4->reg.sr |= mask;
+    sh4->reg[SH4_REG_SR] |= mask;
 
     sh4->next_inst();
 }
@@ -1563,7 +1575,7 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
          * I could rest assured that this actually works because the sh4mem_test
          * would already be exercising it.
          */
-        bool privileged = sh4->reg.sr & Sh4::SR_MD_MASK ? true : false;
+        bool privileged = sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK ? true : false;
         struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
                                                           SH4_UTLB_WRITE);
 
@@ -1636,7 +1648,7 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
          * I could rest assured that this actually works because the sh4mem_test
          * would already be exercising it.
          */
-        bool privileged = sh4->reg.sr & Sh4::SR_MD_MASK ? true : false;
+        bool privileged = sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK ? true : false;
         struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
                                                           SH4_UTLB_WRITE);
 
@@ -1720,7 +1732,7 @@ void sh4_inst_unary_jmp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 // JSR @Rn
 // 0100nnnn00001011
 void sh4_inst_unary_jsr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.pr = sh4->reg.pc + 4;
+    sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
     sh4->delayed_branch_addr = *sh4->gen_reg(inst.gen_reg);
     sh4->delayed_branch = true;
 
@@ -1731,14 +1743,14 @@ void sh4_inst_unary_jsr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm00001110
 void sh4_inst_binary_ldc_gen_sr(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    sh4->reg.sr = *sh4->gen_reg(inst.gen_reg);
+    sh4->reg[SH4_REG_SR] = *sh4->gen_reg(inst.gen_reg);
 
     sh4->next_inst();
 }
@@ -1746,7 +1758,7 @@ void sh4_inst_binary_ldc_gen_sr(Sh4 *sh4, Sh4OpArgs inst) {
 // LDC Rm, GBR
 // 0100mmmm00011110
 void sh4_inst_binary_ldc_gen_gbr(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.gbr = *sh4->gen_reg(inst.gen_reg);
+    sh4->reg[SH4_REG_GBR] = *sh4->gen_reg(inst.gen_reg);
 
     sh4->next_inst();
 }
@@ -1755,14 +1767,14 @@ void sh4_inst_binary_ldc_gen_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm00101110
 void sh4_inst_binary_ldc_gen_vbr(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    sh4->reg.vbr = *sh4->gen_reg(inst.gen_reg);
+    sh4->reg[SH4_REG_VBR] = *sh4->gen_reg(inst.gen_reg);
 
     sh4->next_inst();
 }
@@ -1771,14 +1783,14 @@ void sh4_inst_binary_ldc_gen_vbr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm00111110
 void sh4_inst_binary_ldc_gen_ssr(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    sh4->reg.ssr = *sh4->gen_reg(inst.gen_reg);
+    sh4->reg[SH4_REG_SSR] = *sh4->gen_reg(inst.gen_reg);
 
     sh4->next_inst();
 }
@@ -1787,14 +1799,14 @@ void sh4_inst_binary_ldc_gen_ssr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm01001110
 void sh4_inst_binary_ldc_gen_spc(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    sh4->reg.spc = *sh4->gen_reg(inst.gen_reg);
+    sh4->reg[SH4_REG_SPC] = *sh4->gen_reg(inst.gen_reg);
 
     sh4->next_inst();
 }
@@ -1803,14 +1815,14 @@ void sh4_inst_binary_ldc_gen_spc(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm11111010
 void sh4_inst_binary_ldc_gen_dbr(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    sh4->reg.dbr = *sh4->gen_reg(inst.gen_reg);
+    sh4->reg[SH4_REG_DBR] = *sh4->gen_reg(inst.gen_reg);
 
     sh4->next_inst();
 }
@@ -1819,14 +1831,14 @@ void sh4_inst_binary_ldc_gen_dbr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00000010
 void sh4_inst_binary_stc_sr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.sr;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_SR];
 
     sh4->next_inst();
 }
@@ -1834,7 +1846,7 @@ void sh4_inst_binary_stc_sr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // STC GBR, Rn
 // 0000nnnn00010010
 void sh4_inst_binary_stc_gbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.gbr;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_GBR];
 
     sh4->next_inst();
 }
@@ -1843,14 +1855,14 @@ void sh4_inst_binary_stc_gbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00100010
 void sh4_inst_binary_stc_vbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.vbr;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_VBR];
 
     sh4->next_inst();
 }
@@ -1859,14 +1871,14 @@ void sh4_inst_binary_stc_vbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00110010
 void sh4_inst_binary_stc_ssr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.ssr;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_SSR];
 
     sh4->next_inst();
 }
@@ -1875,14 +1887,14 @@ void sh4_inst_binary_stc_ssr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn01000010
 void sh4_inst_binary_stc_spc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.spc;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_SPC];
 
     sh4->next_inst();
 }
@@ -1891,14 +1903,14 @@ void sh4_inst_binary_stc_spc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00111010
 void sh4_inst_binary_stc_sgr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.sgr;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_SGR];
 
     sh4->next_inst();
 }
@@ -1907,14 +1919,14 @@ void sh4_inst_binary_stc_sgr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn11111010
 void sh4_inst_binary_stc_dbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
                                               "unprivileged mode"));
 #endif
 
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.dbr;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_DBR];
 
     sh4->next_inst();
 }
@@ -1926,7 +1938,7 @@ void sh4_inst_binary_ldcl_indgeninc_sr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -1939,7 +1951,7 @@ void sh4_inst_binary_ldcl_indgeninc_sr(Sh4 *sh4, Sh4OpArgs inst) {
     }
 
     (*src_reg) += 4;
-    sh4->reg.sr = val;
+    sh4->reg[SH4_REG_SR] = val;
 
     sh4->next_inst();
 }
@@ -1956,7 +1968,7 @@ void sh4_inst_binary_ldcl_indgeninc_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     }
 
     (*src_reg) += 4;
-    sh4->reg.gbr = val;
+    sh4->reg[SH4_REG_GBR] = val;
 
     sh4->next_inst();
 }
@@ -1968,7 +1980,7 @@ void sh4_inst_binary_ldcl_indgeninc_vbr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -1981,7 +1993,7 @@ void sh4_inst_binary_ldcl_indgeninc_vbr(Sh4 *sh4, Sh4OpArgs inst) {
     }
 
     (*src_reg) += 4;
-    sh4->reg.vbr = val;
+    sh4->reg[SH4_REG_VBR] = val;
 
     sh4->next_inst();
 }
@@ -1993,7 +2005,7 @@ void sh4_inst_binary_ldcl_indgenic_ssr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2006,7 +2018,7 @@ void sh4_inst_binary_ldcl_indgenic_ssr(Sh4 *sh4, Sh4OpArgs inst) {
     }
 
     (*src_reg) += 4;
-    sh4->reg.ssr = val;
+    sh4->reg[SH4_REG_SSR] = val;
 
     sh4->next_inst();
 }
@@ -2018,7 +2030,7 @@ void sh4_inst_binary_ldcl_indgeninc_spc(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2031,7 +2043,7 @@ void sh4_inst_binary_ldcl_indgeninc_spc(Sh4 *sh4, Sh4OpArgs inst) {
     }
 
     (*src_reg) += 4;
-    sh4->reg.spc = val;
+    sh4->reg[SH4_REG_SPC] = val;
 
     sh4->next_inst();
 }
@@ -2043,7 +2055,7 @@ void sh4_inst_binary_ldcl_indgeninc_dbr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2056,7 +2068,7 @@ void sh4_inst_binary_ldcl_indgeninc_dbr(Sh4 *sh4, Sh4OpArgs inst) {
     }
 
     (*src_reg) += 4;
-    sh4->reg.dbr = val;
+    sh4->reg[SH4_REG_DBR] = val;
 
     sh4->next_inst();
 }
@@ -2065,7 +2077,7 @@ void sh4_inst_binary_ldcl_indgeninc_dbr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn00000011
 void sh4_inst_binary_stcl_sr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2074,7 +2086,8 @@ void sh4_inst_binary_stcl_sr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4->write_mem(&sh4->reg.sr, addr, sizeof(sh4->reg.sr)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_SR], addr,
+                       sizeof(sh4->reg[SH4_REG_SR])) != 0)
         return;
 
     *regp = addr;
@@ -2087,7 +2100,8 @@ void sh4_inst_binary_stcl_sr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_stcl_gbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *regp = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4->write_mem(&sh4->reg.gbr, addr, sizeof(sh4->reg.gbr)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_GBR], addr,
+                       sizeof(sh4->reg[SH4_REG_GBR])) != 0)
         return;
 
     *regp = addr;
@@ -2099,7 +2113,7 @@ void sh4_inst_binary_stcl_gbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn00100011
 void sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2108,7 +2122,8 @@ void sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4->write_mem(&sh4->reg.vbr, addr, sizeof(sh4->reg.vbr)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_VBR], addr,
+                       sizeof(sh4->reg[SH4_REG_VBR])) != 0)
         return;
 
     *regp = addr;
@@ -2120,7 +2135,7 @@ void sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn00110011
 void sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2129,7 +2144,8 @@ void sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4->write_mem(&sh4->reg.ssr, addr, sizeof(sh4->reg.ssr)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_SSR], addr,
+                       sizeof(sh4->reg[SH4_REG_SSR])) != 0)
         return;
 
     *regp = addr;
@@ -2141,7 +2157,7 @@ void sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn01000011
 void sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2150,7 +2166,8 @@ void sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4->write_mem(&sh4->reg.spc, addr, sizeof(sh4->reg.spc)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_SPC], addr,
+                       sizeof(sh4->reg[SH4_REG_SPC])) != 0)
         return;
 
     *regp = addr;
@@ -2162,7 +2179,7 @@ void sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn00110010
 void sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2171,7 +2188,8 @@ void sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4->write_mem(&sh4->reg.sgr, addr, sizeof(sh4->reg.sgr)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_SGR], addr,
+                       sizeof(sh4->reg[SH4_REG_SGR])) != 0)
         return;
 
     *regp = addr;
@@ -2183,7 +2201,7 @@ void sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn11110010
 void sh4_inst_binary_stcl_dbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2192,7 +2210,8 @@ void sh4_inst_binary_stcl_dbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4->write_mem(&sh4->reg.dbr, addr, sizeof(sh4->reg.dbr)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_DBR], addr,
+                       sizeof(sh4->reg[SH4_REG_DBR])) != 0)
         return;
 
     *regp = addr;
@@ -2219,7 +2238,7 @@ void sh4_inst_binary_add_imm_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // MOV.W @(disp, PC), Rn
 // 1001nnnndddddddd
 void sh4_inst_binary_movw_binind_disp_pc_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = (inst.imm8 << 1) + sh4->reg.pc + 4;
+    addr32_t addr = (inst.imm8 << 1) + sh4->reg[SH4_REG_PC] + 4;
     int reg_no = inst.gen_reg;
     int16_t mem_in;
 
@@ -2233,7 +2252,7 @@ void sh4_inst_binary_movw_binind_disp_pc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // MOV.L @(disp, PC), Rn
 // 1101nnnndddddddd
 void sh4_inst_binary_movl_binind_disp_pc_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = (inst.imm8 << 2) + (sh4->reg.pc & ~3) + 4;
+    addr32_t addr = (inst.imm8 << 2) + (sh4->reg[SH4_REG_PC] & ~3) + 4;
     int reg_no = inst.gen_reg;
     int32_t mem_in;
 
@@ -2321,11 +2340,11 @@ void sh4_inst_binary_addc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     assert(!(in_src & 0xffffffff00000000));
     assert(!(in_dst & 0xffffffff00000000));
 
-    in_dst += in_src + ((sh4->reg.sr & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT);
+    in_dst += in_src + ((sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT);
 
     unsigned carry_bit = ((in_dst & 0x100000000) >> 32) << Sh4::SR_FLAG_T_SHIFT;
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-    sh4->reg.sr |= carry_bit;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= carry_bit;
 
     *dst_reg = in_dst;
 
@@ -2351,8 +2370,8 @@ void sh4_inst_binary_addv_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     in_dst += in_src;
 
     unsigned overflow_bit = (in_dst != int32_t(in_dst)) << Sh4::SR_FLAG_T_SHIFT;
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-    sh4->reg.sr |= overflow_bit;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= overflow_bit;
 
     *dst_reg = in_dst;
 
@@ -2362,8 +2381,8 @@ void sh4_inst_binary_addv_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // CMP/EQ Rm, Rn
 // 0011nnnnmmmm0000
 void sh4_inst_binary_cmpeq_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-    sh4->reg.sr |= ((*sh4->gen_reg(inst.src_reg) == *sh4->gen_reg(inst.dst_reg)) <<
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= ((*sh4->gen_reg(inst.src_reg) == *sh4->gen_reg(inst.dst_reg)) <<
                Sh4::SR_FLAG_T_SHIFT);
 
     sh4->next_inst();
@@ -2372,10 +2391,10 @@ void sh4_inst_binary_cmpeq_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // CMP/HS Rm, Rn
 // 0011nnnnmmmm0010
 void sh4_inst_binary_cmphs_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     uint32_t lhs = *sh4->gen_reg(inst.dst_reg);
     uint32_t rhs = *sh4->gen_reg(inst.src_reg);
-    sh4->reg.sr |= ((lhs >= rhs) << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] |= ((lhs >= rhs) << Sh4::SR_FLAG_T_SHIFT);
 
     sh4->next_inst();
 }
@@ -2383,10 +2402,10 @@ void sh4_inst_binary_cmphs_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // CMP/GE Rm, Rn
 // 0011nnnnmmmm0011
 void sh4_inst_binary_cmpge_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     int32_t lhs = *sh4->gen_reg(inst.dst_reg);
     int32_t rhs = *sh4->gen_reg(inst.src_reg);
-    sh4->reg.sr |= ((lhs >= rhs) << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] |= ((lhs >= rhs) << Sh4::SR_FLAG_T_SHIFT);
 
     sh4->next_inst();
 }
@@ -2394,10 +2413,10 @@ void sh4_inst_binary_cmpge_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // CMP/HI Rm, Rn
 // 0011nnnnmmmm0110
 void sh4_inst_binary_cmphi_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     uint32_t lhs = *sh4->gen_reg(inst.dst_reg);
     uint32_t rhs = *sh4->gen_reg(inst.src_reg);
-    sh4->reg.sr |= ((lhs > rhs) << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] |= ((lhs > rhs) << Sh4::SR_FLAG_T_SHIFT);
 
     sh4->next_inst();
 }
@@ -2405,10 +2424,10 @@ void sh4_inst_binary_cmphi_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // CMP/GT Rm, Rn
 // 0011nnnnmmmm0111
 void sh4_inst_binary_cmpgt_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     int32_t lhs = *sh4->gen_reg(inst.dst_reg);
     int32_t rhs = *sh4->gen_reg(inst.src_reg);
-    sh4->reg.sr |= ((lhs > rhs) << Sh4::SR_FLAG_T_SHIFT);
+    sh4->reg[SH4_REG_SR] |= ((lhs > rhs) << Sh4::SR_FLAG_T_SHIFT);
 
     sh4->next_inst();
 }
@@ -2425,8 +2444,8 @@ void sh4_inst_binary_cmpstr_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
               ((lhs & 0x00ff0000) == (rhs & 0x00ff0000)) ||
               ((lhs & 0xff000000) == (rhs & 0xff000000)));
 
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-    sh4->reg.sr |= flag << Sh4::SR_FLAG_T_SHIFT;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= flag << Sh4::SR_FLAG_T_SHIFT;
 
     sh4->next_inst();
 }
@@ -2456,8 +2475,8 @@ void sh4_inst_binary_dmulsl_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int64_t val2 = *sh4->gen_reg(inst.src_reg);
     int64_t res = int64_t(val1) * int64_t(val2);
 
-    sh4->reg.mach = uint64_t(res) >> 32;
-    sh4->reg.macl = uint64_t(res) & 0xffffffff;
+    sh4->reg[SH4_REG_MACH] = uint64_t(res) >> 32;
+    sh4->reg[SH4_REG_MACL] = uint64_t(res) & 0xffffffff;
 
     sh4->next_inst();
 }
@@ -2469,8 +2488,8 @@ void sh4_inst_binary_dmulul_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint64_t val2 = *sh4->gen_reg(inst.src_reg);
     uint64_t res = uint64_t(val1) * uint64_t(val2);
 
-    sh4->reg.mach = res >> 32;
-    sh4->reg.macl = res & 0xffffffff;
+    sh4->reg[SH4_REG_MACH] = res >> 32;
+    sh4->reg[SH4_REG_MACL] = res & 0xffffffff;
 
     sh4->next_inst();
 }
@@ -2514,7 +2533,7 @@ void sh4_inst_binary_extuw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // MUL.L Rm, Rn
 // 0000nnnnmmmm0111
 void sh4_inst_binary_mull_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.macl = *sh4->gen_reg(inst.dst_reg) * *sh4->gen_reg(inst.src_reg);
+    sh4->reg[SH4_REG_MACL] = *sh4->gen_reg(inst.dst_reg) * *sh4->gen_reg(inst.src_reg);
 
     sh4->next_inst();
 }
@@ -2525,7 +2544,7 @@ void sh4_inst_binary_mulsw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int16_t lhs = *sh4->gen_reg(inst.dst_reg);
     int16_t rhs = *sh4->gen_reg(inst.src_reg);
 
-    sh4->reg.macl = int32_t(lhs) * int32_t(rhs);
+    sh4->reg[SH4_REG_MACL] = int32_t(lhs) * int32_t(rhs);
 
     sh4->next_inst();
 }
@@ -2536,7 +2555,7 @@ void sh4_inst_binary_muluw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint16_t lhs = *sh4->gen_reg(inst.dst_reg);
     uint16_t rhs = *sh4->gen_reg(inst.src_reg);
 
-    sh4->reg.macl = uint32_t(lhs) * uint32_t(rhs);
+    sh4->reg[SH4_REG_MACL] = uint32_t(lhs) * uint32_t(rhs);
 
     sh4->next_inst();
 }
@@ -2557,8 +2576,8 @@ void sh4_inst_binary_negc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     *sh4->gen_reg(inst.dst_reg) = val;
 
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-    sh4->reg.sr |= carry_bit;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= carry_bit;
 
     sh4->next_inst();
 }
@@ -2587,11 +2606,11 @@ void sh4_inst_binary_subc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     assert(!(in_src & 0xffffffff00000000));
     assert(!(in_dst & 0xffffffff00000000));
 
-    in_dst -= in_src + ((sh4->reg.sr & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT);
+    in_dst -= in_src + ((sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK) >> Sh4::SR_FLAG_T_SHIFT);
 
     unsigned carry_bit = ((in_dst & 0x100000000) >> 32) << Sh4::SR_FLAG_T_SHIFT;
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-    sh4->reg.sr |= carry_bit;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= carry_bit;
 
     *dst_reg = in_dst;
 
@@ -2617,8 +2636,8 @@ void sh4_inst_binary_subv_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     unsigned overflow_bit = (in_dst > std::numeric_limits<int32_t>::max()) ||
         (in_dst < std::numeric_limits<int32_t>::min());
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-    sh4->reg.sr |= overflow_bit;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= overflow_bit;
 
     *dst_reg = in_dst;
 
@@ -2652,10 +2671,10 @@ void sh4_inst_binary_or_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // TST Rm, Rn
 // 0010nnnnmmmm1000
 void sh4_inst_binary_tst_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
     reg32_t flag = !(*sh4->gen_reg(inst.src_reg) & *sh4->gen_reg(inst.dst_reg)) <<
         Sh4::SR_FLAG_T_SHIFT;
-    sh4->reg.sr |= flag;
+    sh4->reg[SH4_REG_SR] |= flag;
 
     sh4->next_inst();
 }
@@ -2710,7 +2729,7 @@ void sh4_inst_binary_shld_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm1nnn1110
 void sh4_inst_binary_ldc_gen_bank(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2729,7 +2748,7 @@ void sh4_inst_binary_ldcl_indgeninc_bank(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2751,7 +2770,7 @@ void sh4_inst_binary_ldcl_indgeninc_bank(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn1mmm0010
 void sh4_inst_binary_stc_bank_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2765,7 +2784,7 @@ void sh4_inst_binary_stc_bank_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn1mmm0011
 void sh4_inst_binary_stcl_bank_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg.sr & Sh4::SR_MD_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
                               errinfo_feature("CPU exception for using a "
                                               "privileged exception in an "
@@ -2787,7 +2806,7 @@ void sh4_inst_binary_stcl_bank_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // LDS Rm, MACH
 // 0100mmmm00001010
 void sh4_inst_binary_lds_gen_mach(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.mach = *sh4->gen_reg(inst.gen_reg);
+    sh4->reg[SH4_REG_MACH] = *sh4->gen_reg(inst.gen_reg);
 
     sh4->next_inst();
 }
@@ -2795,7 +2814,7 @@ void sh4_inst_binary_lds_gen_mach(Sh4 *sh4, Sh4OpArgs inst) {
 // LDS Rm, MACL
 // 0100mmmm00011010
 void sh4_inst_binary_lds_gen_macl(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.macl = *sh4->gen_reg(inst.gen_reg);
+    sh4->reg[SH4_REG_MACL] = *sh4->gen_reg(inst.gen_reg);
 
     sh4->next_inst();
 }
@@ -2803,7 +2822,7 @@ void sh4_inst_binary_lds_gen_macl(Sh4 *sh4, Sh4OpArgs inst) {
 // STS MACH, Rn
 // 0000nnnn00001010
 void sh4_inst_binary_sts_mach_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.mach;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_MACH];
 
     sh4->next_inst();
 }
@@ -2811,7 +2830,7 @@ void sh4_inst_binary_sts_mach_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // STS MACL, Rn
 // 0000nnnn00011010
 void sh4_inst_binary_sts_macl_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.macl;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_MACL];
 
     sh4->next_inst();
 }
@@ -2819,7 +2838,7 @@ void sh4_inst_binary_sts_macl_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // LDS Rm, PR
 // 0100mmmm00101010
 void sh4_inst_binary_lds_gen_pr(Sh4 *sh4, Sh4OpArgs inst) {
-    sh4->reg.pr = *sh4->gen_reg(inst.gen_reg);
+    sh4->reg[SH4_REG_PR] = *sh4->gen_reg(inst.gen_reg);
 
     sh4->next_inst();
 }
@@ -2827,7 +2846,7 @@ void sh4_inst_binary_lds_gen_pr(Sh4 *sh4, Sh4OpArgs inst) {
 // STS PR, Rn
 // 0000nnnn00101010
 void sh4_inst_binary_sts_pr_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    *sh4->gen_reg(inst.gen_reg) = sh4->reg.pr;
+    *sh4->gen_reg(inst.gen_reg) = sh4->reg[SH4_REG_PR];
 
     sh4->next_inst();
 }
@@ -2841,7 +2860,7 @@ void sh4_inst_binary_ldsl_indgeninc_mach(Sh4 *sh4, Sh4OpArgs inst) {
     if (sh4->read_mem(&val, *addr_reg, sizeof(val)) != 0)
         return;
 
-    sh4->reg.mach = val;
+    sh4->reg[SH4_REG_MACH] = val;
 
     *addr_reg += 4;
 
@@ -2857,7 +2876,7 @@ void sh4_inst_binary_ldsl_indgeninc_macl(Sh4 *sh4, Sh4OpArgs inst) {
     if (sh4->read_mem(&val, *addr_reg, sizeof(val)) != 0)
         return;
 
-    sh4->reg.macl = val;
+    sh4->reg[SH4_REG_MACL] = val;
 
     *addr_reg += 4;
 
@@ -2870,7 +2889,7 @@ void sh4_inst_binary_stsl_mach_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4->write_mem(&sh4->reg.mach, addr, sizeof(sh4->reg.mach)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_MACH], addr, sizeof(sh4->reg[SH4_REG_MACH])) != 0)
         return;
 
     *addr_reg = addr;
@@ -2884,7 +2903,7 @@ void sh4_inst_binary_stsl_macl_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4->write_mem(&sh4->reg.macl, addr, sizeof(sh4->reg.macl)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_MACL], addr, sizeof(sh4->reg[SH4_REG_MACL])) != 0)
         return;
 
     *addr_reg = addr;
@@ -2901,7 +2920,7 @@ void sh4_inst_binary_ldsl_indgeninc_pr(Sh4 *sh4, Sh4OpArgs inst) {
     if (sh4->read_mem(&val, *addr_reg, sizeof(val)) != 0)
         return;
 
-    sh4->reg.pr = val;
+    sh4->reg[SH4_REG_PR] = val;
 
     *addr_reg += 4;
 
@@ -2914,7 +2933,7 @@ void sh4_inst_binary_stsl_pr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4->gen_reg(inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4->write_mem(&sh4->reg.pr, addr, sizeof(sh4->reg.pr)) != 0)
+    if (sh4->write_mem(&sh4->reg[SH4_REG_PR], addr, sizeof(sh4->reg[SH4_REG_PR])) != 0)
         return;
 
     *addr_reg = addr;
@@ -3123,12 +3142,12 @@ void sh4_inst_binary_macl_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
     int64_t product = int64_t(int32_t(lhs)) * int64_t(int32_t(rhs));
     int64_t sum;
 
-    if (!(sh4->reg.sr & Sh4::SR_FLAG_S_MASK)) {
+    if (!(sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_S_MASK)) {
         sum = product +
-            int64_t(uint64_t(sh4->reg.macl) | (uint64_t(sh4->reg.mach) << 32));
+            int64_t(uint64_t(sh4->reg[SH4_REG_MACL]) | (uint64_t(sh4->reg[SH4_REG_MACH]) << 32));
     } else {
         // 48-bit saturation addition
-        int64_t mac = int64_t(uint64_t(sh4->reg.macl) | (uint64_t(sh4->reg.mach) << 32));
+        int64_t mac = int64_t(uint64_t(sh4->reg[SH4_REG_MACL]) | (uint64_t(sh4->reg[SH4_REG_MACH]) << 32));
         sum = mac + product;
         if (sum < 0) {
             if (mac >= 0 && product >= 0) {
@@ -3147,8 +3166,8 @@ void sh4_inst_binary_macl_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
         }
     }
 
-    sh4->reg.macl = uint64_t(sum) & 0xffffffff;
-    sh4->reg.mach = uint64_t(sum) >> 32;
+    sh4->reg[SH4_REG_MACL] = uint64_t(sum) & 0xffffffff;
+    sh4->reg[SH4_REG_MACH] = uint64_t(sum) >> 32;
 
     (*dst_addrp) += 4;
     (*src_addrp) += 4;
@@ -3171,7 +3190,7 @@ void sh4_inst_binary_macw_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
 
     int64_t result = int64_t(lhs) * int64_t(rhs);
 
-    if (sh4->reg.sr & Sh4::SR_FLAG_S_MASK) {
+    if (sh4->reg[SH4_REG_SR] & Sh4::SR_FLAG_S_MASK) {
         /*
          * handle overflow
          *
@@ -3193,22 +3212,22 @@ void sh4_inst_binary_macw_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
          * test this out on real hardware to see how this opcode effects the
          * mach register when the saturation bit is set in the SR register.
          */
-        result += int64_t(sh4->reg.macl);
+        result += int64_t(sh4->reg[SH4_REG_MACL]);
 
         if (result < MIN32) {
             result = MIN32;
-            sh4->reg.mach |= 1;
+            sh4->reg[SH4_REG_MACH] |= 1;
         } else if (result > MAX32) {
             result = MAX32;
-            sh4->reg.mach |= 1;
+            sh4->reg[SH4_REG_MACH] |= 1;
         }
 
-        sh4->reg.macl = result;
+        sh4->reg[SH4_REG_MACL] = result;
     } else {
         // saturation arithmetic is disabled
-        result += int64_t(uint64_t(sh4->reg.macl) | (uint64_t(sh4->reg.mach) << 32));
-        sh4->reg.macl = uint64_t(result) & 0xffffffff;
-        sh4->reg.mach = uint64_t(result) >> 32;
+        result += int64_t(uint64_t(sh4->reg[SH4_REG_MACL]) | (uint64_t(sh4->reg[SH4_REG_MACH]) << 32));
+        sh4->reg[SH4_REG_MACL] = uint64_t(result) & 0xffffffff;
+        sh4->reg[SH4_REG_MACH] = uint64_t(result) >> 32;
     }
 
     (*dst_addrp) += 2;
@@ -3376,7 +3395,7 @@ void sh4_inst_binary_movl_binind_r0_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // MOV.B R0, @(disp, GBR)
 // 11000000dddddddd
 void sh4_inst_binary_movb_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = inst.imm8 + sh4->reg.gbr;
+    addr32_t addr = inst.imm8 + sh4->reg[SH4_REG_GBR];
     int8_t val = *sh4->gen_reg(0);
 
     if (sh4->write_mem(&val, addr, sizeof(val)) != 0)
@@ -3388,7 +3407,7 @@ void sh4_inst_binary_movb_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 // MOV.W R0, @(disp, GBR)
 // 11000001dddddddd
 void sh4_inst_binary_movw_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = (inst.imm8 << 1) + sh4->reg.gbr;
+    addr32_t addr = (inst.imm8 << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val = *sh4->gen_reg(0);
 
     if (sh4->write_mem(&val, addr, sizeof(val)) != 0)
@@ -3400,7 +3419,7 @@ void sh4_inst_binary_movw_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 // MOV.L R0, @(disp, GBR)
 // 11000010dddddddd
 void sh4_inst_binary_movl_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = (inst.imm8 << 2) + sh4->reg.gbr;
+    addr32_t addr = (inst.imm8 << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val = *sh4->gen_reg(0);
 
     if (sh4->write_mem(&val, addr, sizeof(val)) != 0)
@@ -3412,7 +3431,7 @@ void sh4_inst_binary_movl_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 // MOV.B @(disp, GBR), R0
 // 11000100dddddddd
 void sh4_inst_binary_movb_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = inst.imm8 + sh4->reg.gbr;
+    addr32_t addr = inst.imm8 + sh4->reg[SH4_REG_GBR];
     int8_t val;
 
     if (sh4->read_mem(&val, addr, sizeof(val)) != 0)
@@ -3426,7 +3445,7 @@ void sh4_inst_binary_movb_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
 // MOV.W @(disp, GBR), R0
 // 11000101dddddddd
 void sh4_inst_binary_movw_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = (inst.imm8 << 1) + sh4->reg.gbr;
+    addr32_t addr = (inst.imm8 << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val;
 
     if (sh4->read_mem(&val, addr, sizeof(val)) != 0)
@@ -3440,7 +3459,7 @@ void sh4_inst_binary_movw_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
 // MOV.L @(disp, GBR), R0
 // 11000110dddddddd
 void sh4_inst_binary_movl_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
-    addr32_t addr = (inst.imm8 << 2) + sh4->reg.gbr;
+    addr32_t addr = (inst.imm8 << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val;
 
     if (sh4->read_mem(&val, addr, sizeof(val)) != 0)
@@ -3461,7 +3480,7 @@ void sh4_inst_binary_mova_binind_disp_pc_r0(Sh4 *sh4, Sh4OpArgs inst) {
      * address.  It is roughly analagous to the x86 architectures lea family of
      * opcodes.
      */
-    *sh4->gen_reg(0) = (inst.imm8 << 2) + (sh4->reg.pc & ~3) + 4;
+    *sh4->gen_reg(0) = (inst.imm8 << 2) + (sh4->reg[SH4_REG_PC] & ~3) + 4;
 
     sh4->next_inst();
 }
@@ -3496,7 +3515,7 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
          * I could rest assured that this actually works because the sh4mem_test
          * would already be exercising it.
          */
-        bool privileged = sh4->reg.sr & Sh4::SR_MD_MASK ? true : false;
+        bool privileged = sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK ? true : false;
         struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, vaddr,
                                                           SH4_UTLB_WRITE);
 

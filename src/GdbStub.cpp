@@ -63,40 +63,41 @@ void GdbStub::on_break() {
 
 std::string GdbStub::serialize_regs() const {
     Sh4 *cpu = dc->get_cpu();
-    Sh4::RegFile reg_file = cpu->get_regs();
+    reg32_t reg_file[SH4_REGISTER_COUNT];
+    cpu->get_regs(reg_file);
     Sh4::FpuReg fpu_reg = cpu->get_fpu();
     reg32_t regs[N_REGS] = { 0 };
 
     // general-purpose registers
     for (int i = 0; i < 16; i++) {
         if (i < 8) {
-            if (reg_file.sr & Sh4::SR_RB_MASK)
-                regs[R0 + i] = reg_file.r_bank1[i];
+            if (reg_file[SH4_REG_SR] & Sh4::SR_RB_MASK)
+                regs[R0 + i] = reg_file[SH4_REG_R0_BANK1 + i];
             else
-                regs[R0 + i] = reg_file.r_bank0[i];
+                regs[R0 + i] = reg_file[SH4_REG_R0_BANK0 + i];
         }else {
-            regs[R0 + i] = reg_file.rgen[i - 8];
+            regs[R0 + i] = reg_file[SH4_REG_R8 + (i - 8)];
         }
     }
 
     // banked registers
     for (int i = 0; i < 8; i++) {
-        regs[R0B0 + i] = reg_file.r_bank0[i];
-        regs[R0B1 + i] = reg_file.r_bank1[i];
+        regs[R0B0 + i] = reg_file[SH4_REG_R0_BANK0 + i];
+        regs[R0B1 + i] = reg_file[SH4_REG_R0_BANK1 + i];
     }
 
     // TODO: floating point registers
 
     // system/control registers
-    regs[PC] = reg_file.pc;
-    regs[PR] = reg_file.pr;
-    regs[GBR] = reg_file.gbr;
-    regs[VBR] = reg_file.vbr;
-    regs[MACH] = reg_file.mach;
-    regs[MACL] = reg_file.macl;
-    regs[SR] = reg_file.sr;
-    regs[SSR] = reg_file.ssr;
-    regs[SPC] = reg_file.spc;
+    regs[PC] = reg_file[SH4_REG_PC];
+    regs[PR] = reg_file[SH4_REG_PR];
+    regs[GBR] = reg_file[SH4_REG_GBR];
+    regs[VBR] = reg_file[SH4_REG_VBR];
+    regs[MACH] = reg_file[SH4_REG_MACH];
+    regs[MACL] = reg_file[SH4_REG_MACL];
+    regs[SR] = reg_file[SH4_REG_SR];
+    regs[SSR] = reg_file[SH4_REG_SSR];
+    regs[SPC] = reg_file[SH4_REG_SPC];
 
     // FPU system/control registers
     regs[FPUL] = fpu_reg.fpul;
@@ -286,8 +287,8 @@ std::string GdbStub::extract_packet(std::string packet_in) {
     return packet_in.substr(dollar_idx + 1, pound_idx - dollar_idx - 1);
 }
 
-int GdbStub::set_reg(Sh4::RegFile *file, Sh4::FpuReg *fpu, unsigned reg_no,
-                     reg32_t reg_val, bool bank) {
+int GdbStub::set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
+                     unsigned reg_no, reg32_t reg_val, bool bank) {
     // there is some ambiguity over whether register banking should be based off
     // of the old sr or the new sr.  For now, it's based off of the old sr.
 
@@ -297,34 +298,34 @@ int GdbStub::set_reg(Sh4::RegFile *file, Sh4::FpuReg *fpu, unsigned reg_no,
 
         if (idx < 8) {
             if (bank)
-                file->r_bank1[idx] = reg_val;
+                reg_file[SH4_REG_R0_BANK1 + idx] = reg_val;
             else
-                file->r_bank0[idx] = reg_val;
+                reg_file[SH4_REG_R0_BANK0 + idx] = reg_val;
         } else {
-            file->rgen[idx - 8] = reg_val;
+            reg_file[SH4_REG_R8 + (idx + 8)] = reg_val;
         }
     } else if (reg_no >= R0B0 && reg_no <= R7B0) {
-        file->r_bank0[reg_no - R0B0] = reg_val;
+        reg_file[reg_no - R0B0 + SH4_REG_R0_BANK0] = reg_val;
     } else if (reg_no >= R0B1 && reg_no <= R7B1) {
-        file->r_bank1[reg_no - R0B1] = reg_val;
+        reg_file[reg_no - R0B1 + SH4_REG_R0_BANK1] = reg_val;
     } else if (reg_no == PC) {
-        file->pc = reg_val;
+        reg_file[SH4_REG_PC] =reg_val;
     } else if (reg_no == PR) {
-        file->pr = reg_val;
+        reg_file[SH4_REG_PR] = reg_val;
     } else if (reg_no == GBR) {
-        file->gbr = reg_val;
+        reg_file[SH4_REG_GBR] = reg_val;
     } else if (reg_no == VBR) {
-        file->vbr = reg_val;
+        reg_file[SH4_REG_VBR] = reg_val;
     } else if (reg_no == MACH) {
-        file->mach = reg_val;
+        reg_file[SH4_REG_MACH] = reg_val;
     } else if (reg_no == MACL) {
-        file->macl = reg_val;
+        reg_file[SH4_REG_MACL] = reg_val;
     } else if (reg_no == SR) {
-        file->sr = reg_val;
+        reg_file[SH4_REG_SR] = reg_val;
     } else if (reg_no == SSR) {
-        file->ssr = reg_val;
+        reg_file[SH4_REG_SSR] = reg_val;
     } else if (reg_no == SPC) {
-        file->spc = reg_val;
+        reg_file[SH4_REG_SPC] = reg_val;
     } else if (reg_no == FPUL) {
         fpu->fpul = reg_val;
     } else if (reg_no == FPSCR) {
@@ -404,12 +405,13 @@ std::string GdbStub::handle_G_packet(std::string dat) {
 
     deserialize_regs(dat.substr(1), regs);
 
-    Sh4::RegFile new_regs = dc->get_cpu()->get_regs();
+    reg32_t new_regs[SH4_REGISTER_COUNT];
+    dc->get_cpu()->get_regs(new_regs);
     Sh4::FpuReg new_fpu = dc->get_cpu()->get_fpu();
-    bool bank = new_regs.sr & Sh4::SR_RB_MASK;
+    bool bank = new_regs[SH4_REG_SR] & Sh4::SR_RB_MASK;
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
-        set_reg(&new_regs, &new_fpu, reg_no, regs[reg_no], bank);
+        set_reg(new_regs, &new_fpu, reg_no, regs[reg_no], bank);
     return "OK";
 }
 
@@ -433,7 +435,8 @@ std::string GdbStub::handle_P_packet(std::string dat) {
     std::stringstream reg_no_stream(reg_no_str);
     std::stringstream reg_val_stream(reg_val_str);
     deserialize_data<std::stringstream>(reg_no_stream, &reg_no, sizeof(reg_no));
-    deserialize_data<std::stringstream>(reg_val_stream, &reg_val, sizeof(reg_val));
+    deserialize_data<std::stringstream>(reg_val_stream, &reg_val,
+                                        sizeof(reg_val));
 
     if (reg_no >= N_REGS) {
 #ifdef GDBSTUB_VERBOSE
@@ -444,9 +447,11 @@ std::string GdbStub::handle_P_packet(std::string dat) {
     }
 
     Sh4 *cpu = dc->get_cpu();
-    Sh4::RegFile regs = cpu->get_regs();
+    reg32_t regs[SH4_REGISTER_COUNT];
+    cpu->get_regs(regs);
     Sh4::FpuReg fpu = cpu->get_fpu();
-    set_reg(&regs, &fpu, reg_no, reg_val, bool(regs.sr & Sh4::SR_RB_MASK));
+    set_reg(regs, &fpu, reg_no, reg_val,
+            bool(regs[SH4_REG_SR] & Sh4::SR_RB_MASK));
     dc->get_cpu()->set_regs(regs);
 
     return "OK";

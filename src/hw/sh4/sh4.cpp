@@ -87,9 +87,10 @@ Sh4::~Sh4() {
 }
 
 void Sh4::on_hard_reset() {
-    reg.sr = SR_MD_MASK | SR_RB_MASK | SR_BL_MASK | SR_FD_MASK | SR_IMASK_MASK;
-    reg.vbr = 0;
-    reg.pc = 0xa0000000;
+    reg[SH4_REG_SR] = SR_MD_MASK | SR_RB_MASK | SR_BL_MASK |
+        SR_FD_MASK | SR_IMASK_MASK;
+    reg[SH4_REG_VBR] = 0;
+    reg[SH4_REG_PC] = 0xa0000000;
 
     fpu.fpscr = 0x41;
 
@@ -111,7 +112,7 @@ void Sh4::on_hard_reset() {
 }
 
 reg32_t Sh4::get_pc() const {
-    return reg.pc;
+    return reg[SH4_REG_PC];
 }
 
 void Sh4::set_exception(unsigned excp_code) {
@@ -126,16 +127,16 @@ void Sh4::set_interrupt(unsigned intp_code) {
     enter_exception((ExceptionCode)intp_code);
 }
 
-Sh4::RegFile Sh4::get_regs() const {
-    return reg;
+void Sh4::get_regs(reg32_t reg_out[SH4_REGISTER_COUNT]) const {
+    memcpy(reg_out, reg, sizeof(reg_out[0]) * SH4_REGISTER_COUNT);
 }
 
 Sh4::FpuReg Sh4::get_fpu() const {
     return fpu;
 }
 
-void Sh4::set_regs(const Sh4::RegFile& src) {
-    this->reg = src;
+void Sh4::set_regs(reg32_t const reg_in[SH4_REGISTER_COUNT]) {
+    memcpy(reg, reg_in, sizeof(reg[0]) * SH4_REGISTER_COUNT);
 }
 
 void Sh4::set_fpu(const Sh4::FpuReg& src) {
@@ -223,27 +224,27 @@ void Sh4::enter_exception(enum ExceptionCode vector) {
         BOOST_THROW_EXCEPTION(UnknownExcpCodeException() <<
                               excp_code_error_info(vector));
 
-    reg.spc = reg.pc;
-    reg.ssr = reg.sr;
-    reg.sgr = reg.rgen[7];
+    reg[SH4_REG_SPC] = reg[SH4_REG_PC];
+    reg[SH4_REG_SSR] = reg[SH4_REG_SR];
+    reg[SH4_REG_SGR] = reg[SH4_REG_R15];
 
-    reg.sr |= SR_BL_MASK;
-    reg.sr |= SR_MD_MASK;
-    reg.sr |= SR_RB_MASK;
-    reg.sr &= ~SR_FD_MASK;
+    reg[SH4_REG_SR] |= SR_BL_MASK;
+    reg[SH4_REG_SR] |= SR_MD_MASK;
+    reg[SH4_REG_SR] |= SR_RB_MASK;
+    reg[SH4_REG_SR] &= ~SR_FD_MASK;
 
     if (vector == EXCP_POWER_ON_RESET ||
         vector == EXCP_MANUAL_RESET ||
         vector == EXCP_HUDI_RESET ||
         vector == EXCP_INST_TLB_MULT_HIT ||
         vector == EXCP_INST_TLB_MULT_HIT) {
-        reg.pc = 0xa0000000;
+        reg[SH4_REG_PC] = 0xa0000000;
     } else if (vector == EXCP_USER_BREAK_BEFORE ||
                vector == EXCP_USER_BREAK_AFTER) {
         // TODO: check brcr.ubde and use DBR instead of VBR if it is set
-        reg.pc = reg.vbr + meta->offset;
+        reg[SH4_REG_PC] = reg[SH4_REG_VBR] + meta->offset;
     } else {
-        reg.pc = reg.vbr + meta->offset;
+        reg[SH4_REG_PC] = reg[SH4_REG_VBR] + meta->offset;
     }
 }
 

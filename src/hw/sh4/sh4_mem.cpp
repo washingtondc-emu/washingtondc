@@ -36,7 +36,7 @@
 int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
     enum VirtMemArea virt_area = get_mem_area(addr);
 
-    bool privileged = reg.sr & SR_MD_MASK ? true : false;
+    bool privileged = reg[SH4_REG_SR] & SR_MD_MASK ? true : false;
 
 #ifdef ENABLE_SH4_OCACHE
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
@@ -241,7 +241,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
 int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
     enum VirtMemArea virt_area = get_mem_area(addr);
 
-    bool privileged = reg.sr & SR_MD_MASK ? true : false;
+    bool privileged = reg[SH4_REG_SR] & SR_MD_MASK ? true : false;
 
 #ifdef ENABLE_SH4_OCACHE
     bool index_enable = cache_reg.ccr & CCR_OIX_MASK ? true : false;
@@ -405,7 +405,7 @@ int Sh4::do_write_p4(void const *dat, addr32_t addr, unsigned len) {
 int Sh4::read_inst(inst_t *out, addr32_t addr) {
     enum VirtMemArea virt_area = get_mem_area(addr);
 
-    bool privileged = reg.sr & SR_MD_MASK ? true : false;
+    bool privileged = reg[SH4_REG_SR] & SR_MD_MASK ? true : false;
 
 #ifdef ENABLE_SH4_ICACHE
     bool index_enable = cache_reg.ccr & CCR_IIX_MASK ? true : false;

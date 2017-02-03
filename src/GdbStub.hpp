@@ -143,8 +143,8 @@ private:
     void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]);
 
     // returns 0 on success, 1 on failure
-    int set_reg(Sh4::RegFile *file, Sh4::FpuReg *fpu, unsigned reg_no,
-                reg32_t reg_val, bool bank);
+    int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
+                unsigned reg_no, reg32_t reg_val, bool bank);
 
     void handle_read(const boost::system::error_code& error);
 

@@ -228,7 +228,7 @@ public:
                 *cpu->gen_reg(reg2_no) = initial_val2;
 
                 if (carry_in)
-                    cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+                    cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
 
                 cpu->exec_inst();
 
@@ -243,7 +243,7 @@ public:
                 }
 
                 reg32_t actual_val = *cpu->gen_reg(reg2_no);
-                bool actual_carry = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+                bool actual_carry = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
                 if (actual_val != expected_val || expected_carry != actual_carry) {
                     std::cout << "ERROR running: " << std::endl
@@ -365,7 +365,7 @@ public:
                 }
 
                 // now check the overflow-bit
-                bool overflow_flag = cpu->reg.sr & Sh4::SR_FLAG_T_MASK;
+                bool overflow_flag = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK;
                 if (initial_val1 >= 0 && initial_val2 >= 0) {
                     if (std::numeric_limits<int32_t>::max() - initial_val1 <
                         initial_val2) {
@@ -551,7 +551,7 @@ public:
                 *cpu->gen_reg(reg1_no) = initial_val1;
                 *cpu->gen_reg(reg2_no) = initial_val2;
                 if (carry_in)
-                    cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+                    cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
 
                 cpu->exec_inst();
 
@@ -567,7 +567,7 @@ public:
                 }
 
                 reg32_t actual_val = *cpu->gen_reg(reg2_no);
-                bool actual_carry = cpu->reg.sr & Sh4::SR_FLAG_T_MASK;
+                bool actual_carry = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK;
 
                 if ((actual_val != expected_val) ||
                     (actual_carry != expected_carry)) {
@@ -682,7 +682,7 @@ public:
                 }
 
                 // now check the overflow-bit
-                bool overflow_flag = cpu->reg.sr & Sh4::SR_FLAG_T_MASK;
+                bool overflow_flag = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK;
                 if (int32_t(initial_val2) >= 0 &&
                     int32_t(initial_val1) < 0) {
                     if (int32_t(actual_val) < 0) {
@@ -794,9 +794,9 @@ public:
 
                 reset_cpu(cpu);
 
-                cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+                cpu->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
                 if (t_val)
-                    cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+                    cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
 
                  cpu->exec_inst();
 
@@ -857,7 +857,7 @@ public:
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.pc = pc;
+        cpu->reg[SH4_REG_PC] = pc;
         cpu->write_mem(&mem_val, disp * 2 + pc + 4, sizeof(mem_val));
 
         cpu->exec_inst();
@@ -920,7 +920,7 @@ public:
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.pc = pc;
+        cpu->reg[SH4_REG_PC] = pc;
         cpu->write_mem(&mem_val, disp * 4 + (pc & ~3) + 4, sizeof(mem_val));
 
         cpu->exec_inst();
@@ -2546,7 +2546,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = r0_val;
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->exec_inst();
 
         int8_t mem_val;
@@ -2597,7 +2597,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = r0_val;
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->exec_inst();
 
         int16_t mem_val;
@@ -2649,7 +2649,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(0) = r0_val;
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->exec_inst();
 
         int32_t mem_val;
@@ -2700,7 +2700,7 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->write_mem(&src_val, disp + gbr_val, sizeof(src_val));
         cpu->exec_inst();
 
@@ -2749,7 +2749,7 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->write_mem(&src_val, disp * 2 + gbr_val, sizeof(src_val));
         cpu->exec_inst();
 
@@ -2798,7 +2798,7 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->write_mem(&src_val, disp * 4 + gbr_val, sizeof(src_val));
         cpu->exec_inst();
 
@@ -2847,7 +2847,7 @@ public:
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.pc = pc_val;
+        cpu->reg[SH4_REG_PC] = pc_val;
         cpu->exec_inst();
 
         reg32_t expected_val = disp * 4 + (pc_val & ~3) + 4;
@@ -2896,11 +2896,11 @@ public:
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->exec_inst();
 
-        if (cpu->reg.sr != reg_val) {
+        if (cpu->reg[SH4_REG_SR] != reg_val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "reg_val is " << std::hex << reg_val << std::endl;
             std::cout << "actual val is " << std::hex <<
-                cpu->reg.sr << std::endl;
+                cpu->reg[SH4_REG_SR] << std::endl;
             return 1;
         }
 
@@ -2936,11 +2936,11 @@ public:
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->exec_inst();
 
-        if (cpu->reg.gbr != reg_val) {
+        if (cpu->reg[SH4_REG_GBR] != reg_val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "reg_val is " << std::hex << reg_val << std::endl;
             std::cout << "actual val is " << std::hex <<
-                cpu->reg.gbr << std::endl;
+                cpu->reg[SH4_REG_GBR] << std::endl;
             return 1;
         }
 
@@ -2976,11 +2976,11 @@ public:
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->exec_inst();
 
-        if (cpu->reg.vbr != reg_val) {
+        if (cpu->reg[SH4_REG_VBR] != reg_val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "reg_val is " << std::hex << reg_val << std::endl;
             std::cout << "actual val is " << std::hex <<
-                cpu->reg.vbr << std::endl;
+                cpu->reg[SH4_REG_VBR] << std::endl;
             return 1;
         }
 
@@ -3016,11 +3016,11 @@ public:
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->exec_inst();
 
-        if (cpu->reg.ssr != reg_val) {
+        if (cpu->reg[SH4_REG_SSR] != reg_val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "reg_val is " << std::hex << reg_val << std::endl;
             std::cout << "actual val is " << std::hex <<
-                cpu->reg.ssr << std::endl;
+                cpu->reg[SH4_REG_SSR] << std::endl;
             return 1;
         }
 
@@ -3056,11 +3056,11 @@ public:
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->exec_inst();
 
-        if (cpu->reg.spc != reg_val) {
+        if (cpu->reg[SH4_REG_SPC] != reg_val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "reg_val is " << std::hex << reg_val << std::endl;
             std::cout << "actual val is " << std::hex <<
-                cpu->reg.spc << std::endl;
+                cpu->reg[SH4_REG_SPC] << std::endl;
             return 1;
         }
 
@@ -3096,11 +3096,11 @@ public:
         *cpu->gen_reg(reg_no) = reg_val;
         cpu->exec_inst();
 
-        if (cpu->reg.dbr != reg_val) {
+        if (cpu->reg[SH4_REG_DBR] != reg_val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "reg_val is " << std::hex << reg_val << std::endl;
             std::cout << "actual val is " << std::hex <<
-                cpu->reg.dbr << std::endl;
+                cpu->reg[SH4_REG_DBR] << std::endl;
             return 1;
         }
 
@@ -3189,10 +3189,10 @@ public:
          * Need to restore the original SR because editing SR can cause us to
          * do things that interfere with the test (such as bank-switching).
          */
-        reg32_t old_sr = cpu->reg.sr;
+        reg32_t old_sr = cpu->reg[SH4_REG_SR];
         cpu->exec_inst();
-        reg32_t new_sr = cpu->reg.sr;
-        cpu->reg.sr = old_sr;
+        reg32_t new_sr = cpu->reg[SH4_REG_SR];
+        cpu->reg[SH4_REG_SR] = old_sr;
 
         if ((new_sr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -3246,11 +3246,11 @@ public:
 
         cpu->exec_inst();
 
-        if ((cpu->reg.gbr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+        if ((cpu->reg[SH4_REG_GBR] != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "address is " << std::hex << addr << std::endl;
             std::cout << "expected value is " << val << std::endl;
-            std::cout << "actual value is " << cpu->reg.gbr << std::endl;
+            std::cout << "actual value is " << cpu->reg[SH4_REG_GBR] << std::endl;
             std::cout << "expected output address is " << (4 + addr) <<
                 std::endl;
             std::cout << "actual output address is " <<
@@ -3298,11 +3298,11 @@ public:
 
         cpu->exec_inst();
 
-        if ((cpu->reg.vbr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+        if ((cpu->reg[SH4_REG_VBR] != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "address is " << std::hex << addr << std::endl;
             std::cout << "expected value is " << val << std::endl;
-            std::cout << "actual value is " << cpu->reg.vbr << std::endl;
+            std::cout << "actual value is " << cpu->reg[SH4_REG_VBR] << std::endl;
             std::cout << "expected output address is " << (4 + addr) <<
                 std::endl;
             std::cout << "actual output address is " <<
@@ -3350,11 +3350,11 @@ public:
 
         cpu->exec_inst();
 
-        if ((cpu->reg.ssr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+        if ((cpu->reg[SH4_REG_SSR] != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "address is " << std::hex << addr << std::endl;
             std::cout << "expected value is " << val << std::endl;
-            std::cout << "actual value is " << cpu->reg.ssr << std::endl;
+            std::cout << "actual value is " << cpu->reg[SH4_REG_SSR] << std::endl;
             std::cout << "expected output address is " << (4 + addr) <<
                 std::endl;
             std::cout << "actual output address is " <<
@@ -3402,11 +3402,11 @@ public:
 
         cpu->exec_inst();
 
-        if ((cpu->reg.spc != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+        if ((cpu->reg[SH4_REG_SPC] != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "address is " << std::hex << addr << std::endl;
             std::cout << "expected value is " << val << std::endl;
-            std::cout << "actual value is " << cpu->reg.spc << std::endl;
+            std::cout << "actual value is " << cpu->reg[SH4_REG_SPC] << std::endl;
             std::cout << "expected output address is " << (4 + addr) <<
                 std::endl;
             std::cout << "actual output address is " <<
@@ -3454,11 +3454,11 @@ public:
 
         cpu->exec_inst();
 
-        if ((cpu->reg.dbr != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
+        if ((cpu->reg[SH4_REG_DBR] != val) || (*cpu->gen_reg(reg_src) != 4 + addr)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "address is " << std::hex << addr << std::endl;
             std::cout << "expected value is " << val << std::endl;
-            std::cout << "actual value is " << cpu->reg.dbr << std::endl;
+            std::cout << "actual value is " << cpu->reg[SH4_REG_DBR] << std::endl;
             std::cout << "expected output address is " << (4 + addr) <<
                 std::endl;
             std::cout << "actual output address is " <<
@@ -3507,14 +3507,14 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.sr = sr_val;
+        cpu->reg[SH4_REG_SR] = sr_val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != sr_val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "Expected value was " << std::hex << sr_val <<
                 std::endl;
-            std::cout << "Actual value is " << cpu->reg.sr << std::endl;
+            std::cout << "Actual value is " << cpu->reg[SH4_REG_SR] << std::endl;
             return 1;
         }
 
@@ -3548,14 +3548,14 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != gbr_val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "Expected value was " << std::hex << gbr_val <<
                 std::endl;
-            std::cout << "Actual value is " << cpu->reg.gbr << std::endl;
+            std::cout << "Actual value is " << cpu->reg[SH4_REG_GBR] << std::endl;
             return 1;
         }
 
@@ -3589,14 +3589,14 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.vbr = vbr_val;
+        cpu->reg[SH4_REG_VBR] = vbr_val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != vbr_val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "Expected value was " << std::hex << vbr_val <<
                 std::endl;
-            std::cout << "Actual value is " << cpu->reg.vbr << std::endl;
+            std::cout << "Actual value is " << cpu->reg[SH4_REG_VBR] << std::endl;
             return 1;
         }
 
@@ -3630,14 +3630,14 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.ssr = ssr_val;
+        cpu->reg[SH4_REG_SSR] = ssr_val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != ssr_val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "Expected value was " << std::hex << ssr_val <<
                 std::endl;
-            std::cout << "Actual value is " << cpu->reg.ssr << std::endl;
+            std::cout << "Actual value is " << cpu->reg[SH4_REG_SSR] << std::endl;
             return 1;
         }
 
@@ -3671,14 +3671,14 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.spc = spc_val;
+        cpu->reg[SH4_REG_SPC] = spc_val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != spc_val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "Expected value was " << std::hex << spc_val <<
                 std::endl;
-            std::cout << "Actual value is " << cpu->reg.spc << std::endl;
+            std::cout << "Actual value is " << cpu->reg[SH4_REG_SPC] << std::endl;
             return 1;
         }
 
@@ -3712,14 +3712,14 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.sgr = sgr_val;
+        cpu->reg[SH4_REG_SGR] = sgr_val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != sgr_val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "Expected value was " << std::hex << sgr_val <<
                 std::endl;
-            std::cout << "Actual value is " << cpu->reg.sgr << std::endl;
+            std::cout << "Actual value is " << cpu->reg[SH4_REG_SGR] << std::endl;
             return 1;
         }
 
@@ -3753,14 +3753,14 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.dbr = dbr_val;
+        cpu->reg[SH4_REG_DBR] = dbr_val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != dbr_val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "Expected value was " << std::hex << dbr_val <<
                 std::endl;
-            std::cout << "Actual value is " << cpu->reg.dbr << std::endl;
+            std::cout << "Actual value is " << cpu->reg[SH4_REG_DBR] << std::endl;
             return 1;
         }
 
@@ -3798,7 +3798,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.sr = sr_val;
+        cpu->reg[SH4_REG_SR] = sr_val;
         *cpu->gen_reg(reg_no) = addr;
         cpu->exec_inst();
 
@@ -3850,7 +3850,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         *cpu->gen_reg(reg_no) = addr;
         cpu->exec_inst();
 
@@ -3902,7 +3902,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.vbr = vbr_val;
+        cpu->reg[SH4_REG_VBR] = vbr_val;
         *cpu->gen_reg(reg_no) = addr;
         cpu->exec_inst();
 
@@ -3954,7 +3954,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.ssr = ssr_val;
+        cpu->reg[SH4_REG_SSR] = ssr_val;
         *cpu->gen_reg(reg_no) = addr;
         cpu->exec_inst();
 
@@ -4006,7 +4006,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.spc = spc_val;
+        cpu->reg[SH4_REG_SPC] = spc_val;
         *cpu->gen_reg(reg_no) = addr;
         cpu->exec_inst();
 
@@ -4058,7 +4058,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.sgr = sgr_val;
+        cpu->reg[SH4_REG_SGR] = sgr_val;
         *cpu->gen_reg(reg_no) = addr;
         cpu->exec_inst();
 
@@ -4110,7 +4110,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.dbr = dbr_val;
+        cpu->reg[SH4_REG_DBR] = dbr_val;
         *cpu->gen_reg(reg_no) = addr;
         cpu->exec_inst();
 
@@ -4318,10 +4318,10 @@ public:
         *cpu->gen_reg(reg_no) = val;
         cpu->exec_inst();
 
-        if (cpu->reg.mach != val) {
+        if (cpu->reg[SH4_REG_MACH] != val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << val << std::endl;
-            std::cout << "actual val is " << cpu->reg.mach << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_MACH] << std::endl;
             return 1;
         }
 
@@ -4360,10 +4360,10 @@ public:
         *cpu->gen_reg(reg_no) = val;
         cpu->exec_inst();
 
-        if (cpu->reg.macl != val) {
+        if (cpu->reg[SH4_REG_MACL] != val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << val << std::endl;
-            std::cout << "actual val is " << cpu->reg.macl << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_MACL] << std::endl;
             return 1;
         }
 
@@ -4402,10 +4402,10 @@ public:
         *cpu->gen_reg(reg_no) = val;
         cpu->exec_inst();
 
-        if (cpu->reg.pr != val) {
+        if (cpu->reg[SH4_REG_PR] != val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << val << std::endl;
-            std::cout << "actual val is " << cpu->reg.pr << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_PR] << std::endl;
             return 1;
         }
 
@@ -4441,7 +4441,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.mach = val;
+        cpu->reg[SH4_REG_MACH] = val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_no) != val) {
@@ -4483,7 +4483,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.macl = val;
+        cpu->reg[SH4_REG_MACL] = val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_no) != val) {
@@ -4525,7 +4525,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->reg.pr = val;
+        cpu->reg[SH4_REG_PR] = val;
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_no) != val) {
@@ -4573,10 +4573,10 @@ public:
 
         cpu->exec_inst();
 
-        if (cpu->reg.mach != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
+        if (cpu->reg[SH4_REG_MACH] != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << std::hex << val << std::endl;
-            std::cout << "actual val is " << cpu->reg.mach << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_MACH] << std::endl;
             std::cout << "input addr is " << addr << std::endl;
             std::cout << "output addr is " << (addr + 4) << std::endl;
             return 1;
@@ -4621,10 +4621,10 @@ public:
 
         cpu->exec_inst();
 
-        if (cpu->reg.macl != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
+        if (cpu->reg[SH4_REG_MACL] != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << std::hex << val << std::endl;
-            std::cout << "actual val is " << cpu->reg.macl << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_MACL] << std::endl;
             std::cout << "input addr is " << addr << std::endl;
             std::cout << "output addr is " << (addr + 4) << std::endl;
             return 1;
@@ -4669,10 +4669,10 @@ public:
 
         cpu->exec_inst();
 
-        if (cpu->reg.pr != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
+        if (cpu->reg[SH4_REG_PR] != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << std::hex << val << std::endl;
-            std::cout << "actual val is " << cpu->reg.pr << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_PR] << std::endl;
             std::cout << "input addr is " << addr << std::endl;
             std::cout << "output addr is " << (addr + 4) << std::endl;
             return 1;
@@ -4713,7 +4713,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_no) = addr;
-        cpu->reg.mach = mach_val;
+        cpu->reg[SH4_REG_MACH] = mach_val;
         cpu->exec_inst();
 
         uint32_t mem_val;
@@ -4764,7 +4764,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_no) = addr;
-        cpu->reg.macl = macl_val;
+        cpu->reg[SH4_REG_MACL] = macl_val;
         cpu->exec_inst();
 
         uint32_t mem_val;
@@ -4815,7 +4815,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_no) = addr;
-        cpu->reg.pr = pr_val;
+        cpu->reg[SH4_REG_PR] = pr_val;
         cpu->exec_inst();
 
         uint32_t mem_val;
@@ -4868,7 +4868,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = (reg_val >= 0);
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -4912,7 +4912,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = (reg_val > 0);
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -4956,7 +4956,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = (r0_val == reg32_t(int32_t(int8_t(imm_val))));
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5010,7 +5010,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = (reg2_val == reg1_val);
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5072,7 +5072,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = (reg2_val >= reg1_val);
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5137,7 +5137,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = (int32_t(reg2_val) >= int32_t(reg1_val));
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5202,7 +5202,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = (reg2_val > reg1_val);
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5267,7 +5267,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = (int32_t(reg2_val) > int32_t(reg1_val));
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5330,7 +5330,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = false;
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         for (int i = 0; i < 4; i++)
             if ((reg1_val & (0xff << (i * 8))) ==
@@ -5400,7 +5400,7 @@ public:
         *cpu->gen_reg(reg2_no) = reg2_val;
         cpu->exec_inst();
         bool t_expect = !(reg1_val & reg2_val);
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5456,13 +5456,13 @@ public:
         cpu->exec_inst();
 
         bool t_expect = !val;
-        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK;
+        bool t_actual = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK;
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected t val is " << t_expect << std::endl;
             std::cout << "actual t val is " <<
-                bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK) << std::endl;
+                bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK) << std::endl;
             std::cout << "val is " << std::hex << unsigned(val) << std::endl;
             std::cout << "addr is " << addr << std::endl;
             return 1;
@@ -5507,7 +5507,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = !(r0_val & imm_val);
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5555,13 +5555,13 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(0) = r0_val;
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->write_mem(&mem_val, addr, sizeof(mem_val));
 
         cpu->exec_inst();
 
         bool t_expect = !(mem_val & imm_val);
-        bool t_actual = bool(cpu->reg.sr & Sh4::SR_FLAG_T_MASK);
+        bool t_actual = bool(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK);
 
         if ((t_expect && !t_actual) || (!t_expect && t_actual)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5710,7 +5710,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(0) = r0_val;
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->write_mem(&mem_val, addr, sizeof(mem_val));
 
         cpu->exec_inst();
@@ -5864,7 +5864,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(0) = r0_val;
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->write_mem(&mem_val, addr, sizeof(mem_val));
 
         cpu->exec_inst();
@@ -6017,7 +6017,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(0) = r0_val;
-        cpu->reg.gbr = gbr_val;
+        cpu->reg[SH4_REG_GBR] = gbr_val;
         cpu->write_mem(&mem_val, addr, sizeof(mem_val));
 
         cpu->exec_inst();
@@ -6164,7 +6164,7 @@ public:
         cpu->exec_inst();
 
         bool t_expect = val > 0;
-        bool t_actual = bool(!!(cpu->reg.sr & Sh4::SR_FLAG_T_MASK));
+        bool t_actual = bool(!!(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK));
 
         if ((*cpu->gen_reg(reg_dst) != -val) || (t_expect != t_actual)) {
             std::cout << "While running: " << cmd << std::endl;
@@ -6212,7 +6212,7 @@ public:
 
         uint32_t output_expect = val - 1;
         bool t_expect = !val;
-        bool t_actual = bool(!!(cpu->reg.sr & Sh4::SR_FLAG_T_MASK));
+        bool t_actual = bool(!!(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK));
 
         if ((*cpu->gen_reg(reg_no) != output_expect) ||
             (t_expect != t_actual)) {
@@ -6602,7 +6602,7 @@ public:
         uint32_t val_actual = *cpu->gen_reg(reg_no);
 
         bool t_expect = val & 0x80000000 ? true : false;
-        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+        bool t_actual = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK ? true : false;
 
         if (val_actual != val_expect || t_actual != t_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -6652,7 +6652,7 @@ public:
         uint32_t val_actual = *cpu->gen_reg(reg_no);
 
         bool t_expect = val & 1 ? true : false;
-        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+        bool t_actual = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK ? true : false;
 
         if (val_actual != val_expect || t_actual != t_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -6695,9 +6695,9 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
         if (t_flag)
-            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
         else
-            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
         cpu->exec_inst();
 
         uint32_t val_expect = val << 1;
@@ -6706,7 +6706,7 @@ public:
         uint32_t val_actual = *cpu->gen_reg(reg_no);
 
         bool t_expect = val & 0x80000000 ? true : false;
-        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+        bool t_actual = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK ? true : false;
 
         if (val_actual != val_expect || t_actual != t_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -6753,9 +6753,9 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = val;
         if (t_flag)
-            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
         else
-            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
         cpu->exec_inst();
 
         uint32_t val_expect = val >> 1;
@@ -6764,7 +6764,7 @@ public:
         uint32_t val_actual = *cpu->gen_reg(reg_no);
 
         bool t_expect = val & 1 ? true : false;
-        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+        bool t_actual = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK ? true : false;
 
         if (val_actual != val_expect || t_actual != t_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -6875,7 +6875,7 @@ public:
         uint32_t val_actual = *cpu->gen_reg(reg_no);
 
         bool t_expect = val & 0x80000000 ? true : false;
-        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+        bool t_actual = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK ? true : false;
 
         if (val_actual != val_expect || t_actual != t_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -6923,7 +6923,7 @@ public:
         uint32_t val_actual = *cpu->gen_reg(reg_no);
 
         bool t_expect = val & 1 ? true : false;
-        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+        bool t_actual = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK ? true : false;
 
         if (val_actual != val_expect || t_actual != t_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -7030,7 +7030,7 @@ public:
         uint32_t val_actual = *cpu->gen_reg(reg_no);
 
         bool t_expect = val & 0x80000000 ? true : false;
-        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+        bool t_actual = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK ? true : false;
 
         if (val_actual != val_expect || t_actual != t_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -7078,7 +7078,7 @@ public:
         uint32_t val_actual = *cpu->gen_reg(reg_no);
 
         bool t_expect = val & 1 ? true : false;
-        bool t_actual = cpu->reg.sr & Sh4::SR_FLAG_T_MASK ? true : false;
+        bool t_actual = cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK ? true : false;
 
         if (val_actual != val_expect || t_actual != t_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -7383,12 +7383,12 @@ public:
         cpu->exec_inst();
 
         reg32_t val_expect = dst_val * src_val;
-        if (cpu->reg.macl != val_expect) {
+        if (cpu->reg[SH4_REG_MACL] != val_expect) {
             std::cout << "ERROR: while running " << cmd << std::endl;
             std::cout << "inputs are " << std::hex <<
                 src_val << ", " << dst_val << std::endl;
             std::cout << "expected output is " << val_expect << std::endl;
-            std::cout << "actual output is " << cpu->reg.macl << std::endl;
+            std::cout << "actual output is " << cpu->reg[SH4_REG_MACL] << std::endl;
             return 1;
         }
 
@@ -7437,12 +7437,12 @@ public:
         reg32_t val_expect = int32_t(int16_t(dst_val)) *
             int32_t(int16_t(src_val));
 
-        if (cpu->reg.macl != val_expect) {
+        if (cpu->reg[SH4_REG_MACL] != val_expect) {
             std::cout << "ERROR: while running " << cmd << std::endl;
             std::cout << "inputs are " << std::hex <<
                 src_val << ", " << dst_val << std::endl;
             std::cout << "expected output is " << val_expect << std::endl;
-            std::cout << "actual output is " << cpu->reg.macl << std::endl;
+            std::cout << "actual output is " << cpu->reg[SH4_REG_MACL] << std::endl;
             return 1;
         }
 
@@ -7491,12 +7491,12 @@ public:
         reg32_t val_expect = uint32_t(uint16_t(dst_val)) *
             uint32_t(uint16_t(src_val));
 
-        if (cpu->reg.macl != val_expect) {
+        if (cpu->reg[SH4_REG_MACL] != val_expect) {
             std::cout << "ERROR: while running " << cmd << std::endl;
             std::cout << "inputs are " << std::hex <<
                 src_val << ", " << dst_val << std::endl;
             std::cout << "expected output is " << val_expect << std::endl;
-            std::cout << "actual output is " << cpu->reg.macl << std::endl;
+            std::cout << "actual output is " << cpu->reg[SH4_REG_MACL] << std::endl;
             return 1;
         }
 
@@ -7550,14 +7550,14 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_addr;
         *cpu->gen_reg(reg_dst) = dst_addr;
-        cpu->reg.macl = macl_init;
-        cpu->reg.mach = mach_init;
+        cpu->reg[SH4_REG_MACL] = macl_init;
+        cpu->reg[SH4_REG_MACH] = mach_init;
         cpu->write_mem(&src_val, src_addr, sizeof(src_val));
         cpu->write_mem(&dst_val, dst_addr, sizeof(dst_val));
         if (sat_flag)
-            cpu->reg.sr |= Sh4::SR_FLAG_S_MASK;
+            cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_S_MASK;
         else
-            cpu->reg.sr &= ~Sh4::SR_FLAG_S_MASK;
+            cpu->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_S_MASK;
         cpu->exec_inst();
 
         /*
@@ -7601,7 +7601,7 @@ public:
         if (reg_src == reg_dst)
             out_src_addr_expect = out_dst_addr_expect = src_addr + 8;
 
-        if (cpu->reg.macl != macl_expect || cpu->reg.mach != mach_expect ||
+        if (cpu->reg[SH4_REG_MACL] != macl_expect || cpu->reg[SH4_REG_MACH] != mach_expect ||
             (*cpu->gen_reg(reg_src) != out_src_addr_expect) ||
             (*cpu->gen_reg(reg_dst) != out_dst_addr_expect)) {
             std::cout << "ERROR: while running " << cmd << std::endl;
@@ -7616,8 +7616,8 @@ public:
             std::cout << "expected mach is " << mach_expect << std::endl;
             std::cout << "expected output addresses are " <<
                 out_src_addr_expect << ", " << out_dst_addr_expect << std::endl;
-            std::cout << "output macl is " << cpu->reg.macl << std::endl;
-            std::cout << "output mach is " << cpu->reg.mach << std::endl;
+            std::cout << "output macl is " << cpu->reg[SH4_REG_MACL] << std::endl;
+            std::cout << "output mach is " << cpu->reg[SH4_REG_MACH] << std::endl;
             std::cout << "output addresses are " << *cpu->gen_reg(reg_src) <<
                 ", " << *cpu->gen_reg(reg_dst) << std::endl;
             return 1;
@@ -7692,14 +7692,14 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_addr;
         *cpu->gen_reg(reg_dst) = dst_addr;
-        cpu->reg.macl = macl_init;
-        cpu->reg.mach = mach_init;
+        cpu->reg[SH4_REG_MACL] = macl_init;
+        cpu->reg[SH4_REG_MACH] = mach_init;
         cpu->write_mem(&src_val, src_addr, sizeof(src_val));
         cpu->write_mem(&dst_val, dst_addr, sizeof(dst_val));
         if (sat_flag)
-            cpu->reg.sr |= Sh4::SR_FLAG_S_MASK;
+            cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_S_MASK;
         else
-            cpu->reg.sr &= ~Sh4::SR_FLAG_S_MASK;
+            cpu->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_S_MASK;
         cpu->exec_inst();
 
         reg32_t macl_expect, mach_expect;
@@ -7740,8 +7740,8 @@ public:
         if (reg_src == reg_dst)
             out_src_addr_expect = out_dst_addr_expect = src_addr + 4;
 
-        if (cpu->reg.macl != macl_expect ||
-            (cpu->reg.mach & 1) != (mach_expect & 1) || // only check the LSB
+        if (cpu->reg[SH4_REG_MACL] != macl_expect ||
+            (cpu->reg[SH4_REG_MACH] & 1) != (mach_expect & 1) || // only check the LSB
             (*cpu->gen_reg(reg_src) != out_src_addr_expect) ||
             (*cpu->gen_reg(reg_dst) != out_dst_addr_expect)) {
             std::cout << "ERROR: while running " << cmd << std::endl;
@@ -7756,8 +7756,8 @@ public:
             std::cout << "expected mach is " << mach_expect << std::endl;
             std::cout << "expected output addresses are " <<
                 out_src_addr_expect << ", " << out_dst_addr_expect << std::endl;
-            std::cout << "output macl is " << cpu->reg.macl << std::endl;
-            std::cout << "output mach is " << cpu->reg.mach << std::endl;
+            std::cout << "output macl is " << cpu->reg[SH4_REG_MACL] << std::endl;
+            std::cout << "output mach is " << cpu->reg[SH4_REG_MACH] << std::endl;
             std::cout << "output addresses are " << *cpu->gen_reg(reg_src) <<
                 ", " << *cpu->gen_reg(reg_dst) << std::endl;
             return 1;
@@ -7818,15 +7818,15 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.mach = randgen32->pick_val(0);
-        cpu->reg.macl = randgen32->pick_val(0);
+        cpu->reg[SH4_REG_MACH] = randgen32->pick_val(0);
+        cpu->reg[SH4_REG_MACL] = randgen32->pick_val(0);
         cpu->exec_inst();
 
-        if (cpu->reg.mach || cpu->reg.macl) {
+        if (cpu->reg[SH4_REG_MACH] || cpu->reg[SH4_REG_MACL]) {
             std::cout << "ERROR: While running " << cmd << std::endl;
-            std::cout << "value of MACH is " << std::hex << cpu->reg.mach <<
+            std::cout << "value of MACH is " << std::hex << cpu->reg[SH4_REG_MACH] <<
                 std::endl;
-            std::cout << "value of MACL is " << cpu->reg.macl << std::endl;
+            std::cout << "value of MACL is " << cpu->reg[SH4_REG_MACL] << std::endl;
             return 1;
         }
         return 0;
@@ -7846,12 +7846,12 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
+        cpu->reg[SH4_REG_SR] = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
         cpu->exec_inst();
 
-        if (cpu->reg.sr & Sh4::SR_FLAG_S_MASK) {
+        if (cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_S_MASK) {
             std::cout << "ERROR: While running " << cmd << std::endl;
-            std::cout << "value of SR is " << cpu->reg.sr << std::endl;
+            std::cout << "value of SR is " << cpu->reg[SH4_REG_SR] << std::endl;
             return 1;
         }
         return 0;
@@ -7871,12 +7871,12 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
+        cpu->reg[SH4_REG_SR] = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
         cpu->exec_inst();
 
-        if (cpu->reg.sr & Sh4::SR_FLAG_T_MASK) {
+        if (cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK) {
             std::cout << "ERROR: While running " << cmd << std::endl;
-            std::cout << "value of SR is " << cpu->reg.sr << std::endl;
+            std::cout << "value of SR is " << cpu->reg[SH4_REG_SR] << std::endl;
             return 1;
         }
         return 0;
@@ -7896,12 +7896,12 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
+        cpu->reg[SH4_REG_SR] = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
         cpu->exec_inst();
 
-        if (!(cpu->reg.sr & Sh4::SR_FLAG_S_MASK)) {
+        if (!(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_S_MASK)) {
             std::cout << "ERROR: While running " << cmd << std::endl;
-            std::cout << "value of SR is " << cpu->reg.sr << std::endl;
+            std::cout << "value of SR is " << cpu->reg[SH4_REG_SR] << std::endl;
             return 1;
         }
         return 0;
@@ -7921,12 +7921,12 @@ public:
         bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        cpu->reg.sr = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
+        cpu->reg[SH4_REG_SR] = randgen32->pick_val(0) | Sh4::SR_MD_MASK;
         cpu->exec_inst();
 
-        if (!(cpu->reg.sr & Sh4::SR_FLAG_T_MASK)) {
+        if (!(cpu->reg[SH4_REG_SR] & Sh4::SR_FLAG_T_MASK)) {
             std::cout << "ERROR: While running " << cmd << std::endl;
-            std::cout << "value of SR is " << cpu->reg.sr << std::endl;
+            std::cout << "value of SR is " << cpu->reg[SH4_REG_SR] << std::endl;
             return 1;
         }
         return 0;
@@ -8002,10 +8002,10 @@ public:
 
         reset_cpu(cpu);
         if (t_flag)
-            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
         else
-            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-        cpu->reg.pc = pc_init;
+            cpu->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+        cpu->reg[SH4_REG_PC] = pc_init;
         cpu->exec_inst();
 
         addr32_t pc_expect;
@@ -8014,11 +8014,11 @@ public:
         else
             pc_expect = pc_init + 2;
 
-        if (cpu->reg.pc != pc_expect) {
+        if (cpu->reg[SH4_REG_PC] != pc_expect) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "initial pc is " << pc_init << std::endl;
             std::cout << "t flag is " << t_flag << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             return 1;
         }
@@ -8061,10 +8061,10 @@ public:
 
         reset_cpu(cpu);
         if (t_flag)
-            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
         else
-            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
-        cpu->reg.pc = pc_init;
+            cpu->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
+        cpu->reg[SH4_REG_PC] = pc_init;
         cpu->exec_inst();
 
         addr32_t pc_expect;
@@ -8073,11 +8073,11 @@ public:
         else
             pc_expect = pc_init + 2;
 
-        if (cpu->reg.pc != pc_expect) {
+        if (cpu->reg[SH4_REG_PC] != pc_expect) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "initial pc is " << pc_init << std::endl;
             std::cout << "t flag is " << t_flag << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             return 1;
         }
@@ -8125,7 +8125,7 @@ public:
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         *cpu->gen_reg(reg_no) = reg_val;
-        cpu->reg.pc = pc_init;
+        cpu->reg[SH4_REG_PC] = pc_init;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -8136,7 +8136,7 @@ public:
         reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
         reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
 
-        if (cpu->reg.pc != pc_expect ||
+        if (cpu->reg[SH4_REG_PC] != pc_expect ||
             reg_src_actual != reg_src_expect ||
             reg_dst_actual != reg_dst_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -8146,7 +8146,7 @@ public:
             std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
             std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
             std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
             std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
@@ -8209,7 +8209,7 @@ public:
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         *cpu->gen_reg(reg_no) = reg_val;
-        cpu->reg.pc = pc_init;
+        cpu->reg[SH4_REG_PC] = pc_init;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -8220,9 +8220,9 @@ public:
         reg32_t pr_expect = 4 + pc_init;
         reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
         reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
-        reg32_t pr_actual = cpu->reg.pr;
+        reg32_t pr_actual = cpu->reg[SH4_REG_PR];
 
-        if (cpu->reg.pc != pc_expect ||
+        if (cpu->reg[SH4_REG_PC] != pc_expect ||
             reg_src_actual != reg_src_expect ||
             reg_dst_actual != reg_dst_expect ||
             pr_actual != pr_expect) {
@@ -8234,7 +8234,7 @@ public:
             std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
             std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
             std::cout << "pr_actual is " << pr_actual << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
             std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
@@ -8297,8 +8297,8 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
-        cpu->reg.pc = pc_init;
-        cpu->reg.pr = pr_val;
+        cpu->reg[SH4_REG_PC] = pc_init;
+        cpu->reg[SH4_REG_PR] = pr_val;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -8309,9 +8309,9 @@ public:
         reg32_t pr_expect = pr_val;
         reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
         reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
-        reg32_t pr_actual = cpu->reg.pr;
+        reg32_t pr_actual = cpu->reg[SH4_REG_PR];
 
-        if (cpu->reg.pc != pc_expect ||
+        if (cpu->reg[SH4_REG_PC] != pc_expect ||
             reg_src_actual != reg_src_expect ||
             reg_dst_actual != reg_dst_expect ||
             pr_actual != pr_expect) {
@@ -8322,7 +8322,7 @@ public:
             std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
             std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
             std::cout << "pr_actual is " << pr_actual << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
             std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
@@ -8378,7 +8378,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
-        cpu->reg.pc = pc_init;
+        cpu->reg[SH4_REG_PC] = pc_init;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -8389,9 +8389,9 @@ public:
         reg32_t pr_expect = 4 + pc_init;
         reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
         reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
-        reg32_t pr_actual = cpu->reg.pr;
+        reg32_t pr_actual = cpu->reg[SH4_REG_PR];
 
-        if (cpu->reg.pc != pc_expect ||
+        if (cpu->reg[SH4_REG_PC] != pc_expect ||
             reg_src_actual != reg_src_expect ||
             reg_dst_actual != reg_dst_expect ||
             pr_actual != pr_expect) {
@@ -8403,7 +8403,7 @@ public:
             std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
             std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
             std::cout << "pr_actual is " << pr_actual << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
             std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
@@ -8462,7 +8462,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
-        cpu->reg.pc = pc_init;
+        cpu->reg[SH4_REG_PC] = pc_init;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -8473,7 +8473,7 @@ public:
         reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
         reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
 
-        if (cpu->reg.pc != pc_expect ||
+        if (cpu->reg[SH4_REG_PC] != pc_expect ||
             reg_src_actual != reg_src_expect ||
             reg_dst_actual != reg_dst_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -8483,7 +8483,7 @@ public:
             std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
             std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
             std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
             std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
@@ -8541,11 +8541,11 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
-        cpu->reg.pc = pc_init;
+        cpu->reg[SH4_REG_PC] = pc_init;
         if (t_val)
-            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
         else
-            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -8560,7 +8560,7 @@ public:
         reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
         reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
 
-        if (cpu->reg.pc != pc_expect ||
+        if (cpu->reg[SH4_REG_PC] != pc_expect ||
             reg_src_actual != reg_src_expect ||
             reg_dst_actual != reg_dst_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -8570,7 +8570,7 @@ public:
             std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
             std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
             std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
             std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
@@ -8633,11 +8633,11 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
-        cpu->reg.pc = pc_init;
+        cpu->reg[SH4_REG_PC] = pc_init;
         if (t_val)
-            cpu->reg.sr |= Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_T_MASK;
         else
-            cpu->reg.sr &= ~Sh4::SR_FLAG_T_MASK;
+            cpu->reg[SH4_REG_SR] &= ~Sh4::SR_FLAG_T_MASK;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -8652,7 +8652,7 @@ public:
         reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
         reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
 
-        if (cpu->reg.pc != pc_expect ||
+        if (cpu->reg[SH4_REG_PC] != pc_expect ||
             reg_src_actual != reg_src_expect ||
             reg_dst_actual != reg_dst_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -8662,7 +8662,7 @@ public:
             std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
             std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
             std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
             std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
@@ -8726,7 +8726,7 @@ public:
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         *cpu->gen_reg(reg_no) = reg_val;
-        cpu->reg.pc = pc_init;
+        cpu->reg[SH4_REG_PC] = pc_init;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -8737,7 +8737,7 @@ public:
         reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
         reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
 
-        if (cpu->reg.pc != pc_expect ||
+        if (cpu->reg[SH4_REG_PC] != pc_expect ||
             reg_src_actual != reg_src_expect ||
             reg_dst_actual != reg_dst_expect) {
             std::cout << "While running: " << cmd << std::endl;
@@ -8747,7 +8747,7 @@ public:
             std::cout << "reg_dst_mov is " << reg_dst_mov << std::endl;
             std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
             std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
             std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
@@ -8810,7 +8810,7 @@ public:
         *cpu->gen_reg(reg_src_mov) = mov_src_val;
         *cpu->gen_reg(reg_dst_mov) = mov_dst_val;
         *cpu->gen_reg(reg_no) = reg_val;
-        cpu->reg.pc = pc_init;
+        cpu->reg[SH4_REG_PC] = pc_init;
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -8821,9 +8821,9 @@ public:
         reg32_t pr_expect = pc_init + 4;
         reg32_t reg_src_actual = *cpu->gen_reg(reg_src_mov);
         reg32_t reg_dst_actual = *cpu->gen_reg(reg_dst_mov);
-        reg32_t pr_actual = cpu->reg.pr;
+        reg32_t pr_actual = cpu->reg[SH4_REG_PR];
 
-        if (cpu->reg.pc != pc_expect ||
+        if (cpu->reg[SH4_REG_PC] != pc_expect ||
             reg_src_actual != reg_src_expect ||
             reg_dst_actual != reg_dst_expect ||
             pr_actual != pr_expect) {
@@ -8835,7 +8835,7 @@ public:
             std::cout << "reg_src_actual is " << reg_src_actual << std::endl;
             std::cout << "reg_dst_actual is " << reg_dst_actual << std::endl;
             std::cout << "pr_actual is " << pr_actual << std::endl;
-            std::cout << "pc is " << cpu->reg.pc << std::endl;
+            std::cout << "pc is " << cpu->reg[SH4_REG_PC] << std::endl;
             std::cout << "expected pc is " << pc_expect << std::endl;
             std::cout << "reg_src_expect is " << reg_src_expect << std::endl;
             std::cout << "reg_dst_expect is " << reg_dst_expect << std::endl;
@@ -8901,14 +8901,14 @@ public:
         reg32_t mach_expect = uint64_t(res) >> 32;
         reg32_t macl_expect = res & 0xffffffff;
 
-        if (cpu->reg.mach != mach_expect || cpu->reg.macl != macl_expect) {
+        if (cpu->reg[SH4_REG_MACH] != mach_expect || cpu->reg[SH4_REG_MACL] != macl_expect) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "reg_m_val is " << std::hex << reg_m_val << std::endl;
             std::cout << "reg_n_val is " << reg_n_val << std::endl;
             std::cout << "mach_expect is " << mach_expect << std::endl;
             std::cout << "macl_expect is " << macl_expect << std::endl;
-            std::cout << "mach is " << cpu->reg.mach << std::endl;
-            std::cout << "macl is " << cpu->reg.macl << std::endl;
+            std::cout << "mach is " << cpu->reg[SH4_REG_MACH] << std::endl;
+            std::cout << "macl is " << cpu->reg[SH4_REG_MACL] << std::endl;
             return 1;
         }
 
@@ -8959,14 +8959,14 @@ public:
         reg32_t mach_expect = res >> 32;
         reg32_t macl_expect = res & 0xffffffff;
 
-        if (cpu->reg.mach != mach_expect || cpu->reg.macl != macl_expect) {
+        if (cpu->reg[SH4_REG_MACH] != mach_expect || cpu->reg[SH4_REG_MACL] != macl_expect) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "reg_m_val is " << std::hex << reg_m_val << std::endl;
             std::cout << "reg_n_val is " << reg_n_val << std::endl;
             std::cout << "mach_expect is " << mach_expect << std::endl;
             std::cout << "macl_expect is " << macl_expect << std::endl;
-            std::cout << "mach is " << cpu->reg.mach << std::endl;
-            std::cout << "macl is " << cpu->reg.macl << std::endl;
+            std::cout << "mach is " << cpu->reg[SH4_REG_MACH] << std::endl;
+            std::cout << "macl is " << cpu->reg[SH4_REG_MACL] << std::endl;
             return 1;
         }
 
@@ -10572,7 +10572,7 @@ public:
         if (val_actual != val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << val << std::endl;
-            std::cout << "actual val is " << cpu->reg.mach << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_MACH] << std::endl;
             return 1;
         }
 
@@ -10620,7 +10620,7 @@ public:
         if (val_actual != val || *cpu->gen_reg(reg_no) != (addr + 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << std::hex << val << std::endl;
-            std::cout << "actual val is " << cpu->reg.mach << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_MACH] << std::endl;
             std::cout << "input addr is " << addr << std::endl;
             std::cout << "output addr is " << (addr + 4) << std::endl;
             return 1;
