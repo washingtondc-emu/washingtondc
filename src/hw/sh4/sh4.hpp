@@ -216,9 +216,6 @@ public:
      */
     void sh4_enter();
 
-    void set_exception(unsigned excp_code);
-    void set_interrupt(unsigned intp_code);
-
     // runs the next instruction, modifies CPU state and sets flags accordingly
     void exec_inst();
 
@@ -252,86 +249,6 @@ public:
             return err;
         return 0;
     }
-
-    enum ExceptionCode {
-        // reset-type exceptions
-        EXCP_POWER_ON_RESET           = 0x000,
-        EXCP_MANUAL_RESET             = 0x020,
-        EXCP_HUDI_RESET               = 0x000,
-        EXCP_INST_TLB_MULT_HIT        = 0x140,
-        EXCP_DATA_TLB_MULT_HIT        = 0x140,
-
-        // general exceptions (re-execution type)
-        EXCP_USER_BREAK_BEFORE        = 0x1e0,
-        EXCP_INST_ADDR_ERR            = 0x0e0,
-        EXCP_INST_TLB_MISS            = 0x040,
-        EXCP_INST_TLB_PROT_VIOL       = 0x0a0,
-        EXCP_GEN_ILLEGAL_INST         = 0x180,
-        EXCP_SLOT_ILLEGAL_INST        = 0x1a0,
-        EXCP_GEN_FPU_DISABLE          = 0x800,
-        EXCP_SLOT_FPU_DISABLE         = 0x820,
-        EXCP_DATA_ADDR_READ           = 0x0e0,
-        EXCP_DATA_ADDR_WRITE          = 0x100,
-        EXCP_DATA_TLB_READ_MISS       = 0x040,
-        EXCP_DATA_TLB_WRITE_MISS      = 0x060,
-        EXCP_DATA_TLB_READ_PROT_VIOL  = 0x0a0,
-        EXCP_DATA_TLB_WRITE_PROT_VIOL = 0x0c0,
-        EXCP_FPU                      = 0x120,
-        EXCP_INITIAL_PAGE_WRITE       = 0x080,
-
-        // general exceptions (completion type)
-        EXCP_UNCONDITIONAL_TRAP       = 0x160,
-        EXCP_USER_BREAK_AFTER         = 0x1e0,
-
-        // interrupt (completion type)
-        EXCP_NMI                      = 0x1c0,
-        EXCP_EXT_0                    = 0x200,
-        EXCP_EXT_1                    = 0x220,
-        EXCP_EXT_2                    = 0x240,
-        EXCP_EXT_3                    = 0x260,
-        EXCP_EXT_4                    = 0x280,
-        EXCP_EXT_5                    = 0x2a0,
-        EXCP_EXT_6                    = 0x2c0,
-        EXCP_EXT_7                    = 0x2e0,
-        EXCP_EXT_8                    = 0x300,
-        EXCP_EXT_9                    = 0x320,
-        EXCP_EXT_A                    = 0x340,
-        EXCP_EXT_B                    = 0x360,
-        EXCP_EXT_C                    = 0x380,
-        EXCP_EXT_D                    = 0x3a0,
-        EXCP_EXT_E                    = 0x3c0,
-
-        //peripheral module interrupts (completion type)
-        EXCP_TMU0_TUNI0               = 0x400,
-        EXCP_TMU1_TUNI1               = 0x420,
-        EXCP_TMU2_TUNI2               = 0x440,
-        EXCP_TMU2_TICPI2              = 0x460,
-        EXCP_RTC_ATI                  = 0x480,
-        EXCP_RTC_PRI                  = 0x4a0,
-        EXCP_RTC_CUI                  = 0x4c0,
-        EXCP_SCI_ERI                  = 0x4e0,
-        EXCP_SCI_RXI                  = 0x500,
-        EXCP_SCI_TXI                  = 0x520,
-        EXCP_SCI_TEI                  = 0x540,
-        EXCP_WDT_ITI                  = 0x560,
-        EXCP_REF_RCMI                 = 0x580,
-        EXCP_REF_ROVI                 = 0x5a0,
-        EXCP_HUDI_HUDI                = 0x600,
-        EXCP_GPIO_GPIOI               = 0x620,
-
-        // Peripheral module interrupt
-        EXCP_DMAC_DMTE0               = 0x640,
-        EXCP_DMAC_DMTE1               = 0x660,
-        EXCP_DMAC_DMTE2               = 0x680,
-        EXCP_DMAC_DMTE3               = 0x6a0,
-        EXCP_DMAC_DMAE                = 0x6c0,
-        EXCP_SCIF_ERI                 = 0x700,
-        EXCP_SCIF_RXI                 = 0x720,
-        EXCP_SCIF_BRI                 = 0x740,
-        EXCP_SCIF_TXI                 = 0x760
-    };
-
-    const static unsigned EXCP_COUNT = 9 + 16 + 16 + 2 + 16 + 5;
 
     /*
      * if ((addr & OC_RAM_AREA_MASK) == OC_RAM_AREA_VAL) and the ORA bit is set
@@ -522,40 +439,6 @@ private:
      */
     int do_read_p4(void *dat, addr32_t addr, unsigned len);
     int do_write_p4(void const *dat, addr32_t addr, unsigned len);
-
-    struct ExcpMeta {
-        /*
-         * there's no field for the vector base address because I couldn't
-         * figure out an elegant way to express that (since it can be either a
-         * constant or a register) and also because it's pretty easy to
-         * hardcode this into enter_exception (since there's only one constant
-         * and two registers that can be used)
-         */
-
-        enum ExceptionCode code;
-        int prio_level;
-        int prio_order;
-        addr32_t offset;
-    };
-
-    static const struct ExcpMeta excp_meta[EXCP_COUNT];
-
-    struct ExceptionReg {
-        // TRAPA immediate data     - 0xff000020
-        reg32_t tra;
-
-        // exception event register - 0xff000024
-        reg32_t expevt;
-
-        // interrupt event register - 0xff000028
-        reg32_t intevt;
-    } excp_reg;
-
-    /*
-     * called by set_exception and set_interrupt.  This function configures
-     * the CPU registers to enter an exception state.
-     */
-    void enter_exception(enum ExceptionCode vector);
 
     /*
      * pointer to place where memory-mapped registers are stored.

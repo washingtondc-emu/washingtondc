@@ -27,6 +27,8 @@
 #include "BaseException.hpp"
 
 #include "sh4_reg.hpp"
+#include "sh4_excp.hpp"
+
 #include "sh4.hpp"
 
 void sh4_mmu_init(Sh4 *sh4) {
@@ -256,7 +258,7 @@ struct sh4_utlb_entry *sh4_utlb_search(Sh4 *sh4, addr32_t vaddr,
                 utlb_asid == mmu_asid) {
                 // UTLB hit
                 if (ret) {
-                    sh4->set_exception(Sh4::EXCP_DATA_TLB_MULT_HIT);
+                    sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_MULT_HIT);
                     return NULL;
                 } else {
                     ret = ent;
@@ -266,7 +268,7 @@ struct sh4_utlb_entry *sh4_utlb_search(Sh4 *sh4, addr32_t vaddr,
             if (vpn_vaddr == vpn_ent && (ent->key & SH4_UTLB_KEY_VALID_MASK)) {
                 // UTLB hit
                 if (ret) {
-                    sh4->set_exception(Sh4::EXCP_DATA_TLB_MULT_HIT);
+                    sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_MULT_HIT);
                     return NULL;
                 } else {
                     ret = ent;
@@ -284,13 +286,13 @@ struct sh4_utlb_entry *sh4_utlb_search(Sh4 *sh4, addr32_t vaddr,
     if (!ret) {
         switch (access_type) {
         case SH4_UTLB_READ:
-            sh4->set_exception(Sh4::EXCP_DATA_TLB_READ_MISS);
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
             sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
             sh4->reg[SH4_REG_PTEH] |= vpn_vaddr << SH4_MMUPTEH_VPN_SHIFT;
             sh4->reg[SH4_REG_PTEA] = vaddr;
             return NULL;
         case SH4_UTLB_WRITE:
-            sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_MISS);
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
             sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
             sh4->reg[SH4_REG_PTEH] |= vpn_vaddr << SH4_MMUPTEH_VPN_SHIFT;
             sh4->reg[SH4_REG_PTEA] = vaddr;
@@ -361,7 +363,7 @@ struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
                      *        little vague on how this is supposed to work.
                      */
                     sh4->reg[SH4_REG_TEA] = vaddr;
-                    sh4->set_exception(Sh4::EXCP_INST_TLB_MULT_HIT);
+                    sh4_set_exception(sh4, SH4_EXCP_INST_TLB_MULT_HIT);
                     return NULL;
                 } else {
                     ret = ent;
@@ -377,7 +379,7 @@ struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
                      *        little vague on how this is supposed to work.
                      */
                     sh4->reg[SH4_REG_TEA] = vaddr;
-                    sh4->set_exception(Sh4::EXCP_INST_TLB_MULT_HIT);
+                    sh4_set_exception(sh4, SH4_EXCP_INST_TLB_MULT_HIT);
                     return NULL;
                 } else {
                     ret = ent;
@@ -394,7 +396,7 @@ struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
     utlb_ent = sh4_utlb_search(sh4, vaddr, SH4_UTLB_READ_ITLB);
 
     if (!utlb_ent) {
-        sh4->set_exception(Sh4::EXCP_INST_TLB_MISS);
+        sh4_set_exception(sh4, SH4_EXCP_INST_TLB_MISS);
         sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
         sh4->reg[SH4_REG_PTEH] |= vpn_vaddr << SH4_MMUPTEH_VPN_SHIFT;
         sh4->reg[SH4_REG_TEA] = vaddr;

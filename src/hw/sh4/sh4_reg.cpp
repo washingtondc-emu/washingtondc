@@ -374,42 +374,42 @@ int Sh4::MmucrRegWriteHandler(void const *buf, struct Sh4::MemMappedReg const *r
 
 int Sh4::TraRegReadHandler(void *buf,
                            struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(buf, &excp_reg.tra, sizeof(excp_reg.tra));
+    memcpy(buf, &reg[SH4_REG_TRA], sizeof(reg[SH4_REG_TRA]));
 
     return 0;
 }
 
 int Sh4::TraRegWriteHandler(void const *buf,
                             struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(&excp_reg.tra, buf, sizeof(excp_reg.tra));
+    memcpy(&reg[SH4_REG_TRA], buf, sizeof(reg[SH4_REG_TRA]));
 
     return 0;
 }
 
 int Sh4::ExpevtRegReadHandler(void *buf,
                               struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(buf, &excp_reg.expevt, sizeof(excp_reg.expevt));
+    memcpy(buf, &reg[SH4_REG_EXPEVT], sizeof(reg[SH4_REG_EXPEVT]));
 
     return 0;
 }
 
 int Sh4::ExpevtRegWriteHandler(void const *buf,
                                struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(&excp_reg.expevt, buf, sizeof(excp_reg.expevt));
+    memcpy(&reg[SH4_REG_EXPEVT], buf, sizeof(reg[SH4_REG_EXPEVT]));
 
     return 0;
 }
 
 int Sh4::IntevtRegReadHandler(void *buf,
                               struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(buf, &excp_reg.intevt, sizeof(excp_reg.intevt));
+    memcpy(buf, &reg[SH4_REG_INTEVT], sizeof(reg[SH4_REG_INTEVT]));
 
     return 0;
 }
 
 int Sh4::IntevtRegWriteHandler(void const *buf,
                                struct Sh4::MemMappedReg const *reg_info) {
-    memcpy(&excp_reg.intevt, buf, sizeof(excp_reg.intevt));
+    memcpy(&reg[SH4_REG_INTEVT], buf, sizeof(reg[SH4_REG_INTEVT]));
 
     return 0;
 }

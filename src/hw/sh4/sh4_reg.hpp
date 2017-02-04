@@ -114,6 +114,15 @@ typedef enum sh4_reg_idx {
     /* Queue address control register 1 */
     SH4_REG_QACR1,
 
+    /* TRAPA immediate data     - 0xff000020 */
+    SH4_REG_TRA,
+
+    /* exception event register - 0xff000024 */
+    SH4_REG_EXPEVT,
+
+    /* interrupt event register - 0xff000028 */
+    SH4_REG_INTEVT,
+
     /* Timer output control register */
     SH4_REG_TOCR,
 

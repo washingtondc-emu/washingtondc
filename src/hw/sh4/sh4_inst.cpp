@@ -31,6 +31,7 @@
 
 #include "sh4_mmu.hpp"
 #include "sh4.hpp"
+#include "sh4_excp.hpp"
 
 #ifdef ENABLE_SH4_OCACHE
 #include "Ocache.hpp"
@@ -935,7 +936,7 @@ void Sh4::do_exec_inst(inst_t inst) {
                 }
             } else {
                 // raise exception for illegal slot instruction
-                set_exception(EXCP_SLOT_ILLEGAL_INST);
+                sh4_set_exception(this, SH4_EXCP_SLOT_ILLEGAL_INST);
             }
             return;
         }
@@ -1597,7 +1598,7 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
                 // page is marked as read-only
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
-                sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
                 sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
                 sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
                 sh4->reg[SH4_REG_TEA] = addr;
@@ -1607,7 +1608,7 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
             // page is marked as read-only OR we don't have permissions
             unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                 SH4_UTLB_KEY_VPN_SHIFT;
-            sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
             sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
             sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
             sh4->reg[SH4_REG_TEA] = addr;
@@ -1670,7 +1671,7 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
                 // page is marked as read-only
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
-                sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
                 sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
                 sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
                 sh4->reg[SH4_REG_TEA] = addr;
@@ -1680,7 +1681,7 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
             // page is marked as read-only OR we don't have permissions
             unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                 SH4_UTLB_KEY_VPN_SHIFT;
-            sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
             sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
             sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
             sh4->reg[SH4_REG_TEA] = addr;
@@ -3537,7 +3538,7 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
                 // page is marked as read-only
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
-                sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
                 sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
                 sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
                 sh4->reg[SH4_REG_TEA] = vaddr;
@@ -3547,7 +3548,7 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
             // page is marked as read-only OR we don't have permissions
             unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                 SH4_UTLB_KEY_VPN_SHIFT;
-            sh4->set_exception(Sh4::EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
             sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
             sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
             sh4->reg[SH4_REG_TEA] = vaddr;

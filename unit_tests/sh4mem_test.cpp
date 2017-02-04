@@ -30,6 +30,7 @@
 #include "Memory.hpp"
 #include "MemoryMap.hpp"
 #include "hw/sh4/sh4.hpp"
+#include "hw/sh4/sh4_excp.hpp"
 #include "RandGenerator.hpp"
 
 typedef boost::error_info<struct tag_utlb_index_error_info, unsigned>
@@ -427,12 +428,12 @@ public:
                 } else {
                     // make sure it's the right kind of error
                     reg32_t excp =
-                        (this->cpu->excp_reg.expevt & Sh4::EXPEVT_CODE_MASK) >>
+                        (this->cpu->reg[SH4_REG_EXPEVT] & Sh4::EXPEVT_CODE_MASK) >>
                         Sh4::EXPEVT_CODE_SHIFT;
-                    if (excp != Sh4::EXCP_DATA_TLB_WRITE_MISS) {
+                    if (excp != SH4_EXCP_DATA_TLB_WRITE_MISS) {
                         std::cout << "Error: The wrong kind of error!" << std::endl;
                         std::cout << "Was expecting 0x" << std::hex <<
-                            Sh4::EXCP_DATA_TLB_WRITE_MISS << " but got 0x" <<
+                            SH4_EXCP_DATA_TLB_WRITE_MISS << " but got 0x" <<
                             std::hex << excp << std::endl;
                         return 1;
                     }

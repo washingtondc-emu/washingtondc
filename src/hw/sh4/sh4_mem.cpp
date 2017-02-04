@@ -31,6 +31,8 @@
 #endif
 
 #include "sh4_mmu.hpp"
+#include "sh4_excp.hpp"
+
 #include "sh4.hpp"
 
 int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
@@ -50,7 +52,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
          * The spec says user-mode processes can only write to the U0 area
          * (which overlaps with P0) and the store queue area but I can't find
          * the part where it describes what needs to be done.  Raising the
-         * EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
+         * SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
          * looks like it's for instances where the page can be looked up in the
          * TLB.
          */
@@ -114,7 +116,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                         }
 #endif
                     } else {
-                        set_exception(EXCP_INITIAL_PAGE_WRITE);
+                        sh4_set_exception(this, SH4_EXCP_INITIAL_PAGE_WRITE);
                         reg[SH4_REG_TEA] = addr;
                         return 1;
                     }
@@ -122,7 +124,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                     // page is marked as read-only
                     unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                         SH4_UTLB_KEY_VPN_SHIFT;
-                    set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                    sh4_set_exception(this, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
                     reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
                     reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
                     reg[SH4_REG_TEA] = addr;
@@ -133,7 +135,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                     // page is marked as read-only OR we don't have permissions
                     unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                         SH4_UTLB_KEY_VPN_SHIFT;
-                    set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                    sh4_set_exception(this, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
                     reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
                     reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
                     reg[SH4_REG_TEA] = addr;
@@ -172,7 +174,7 @@ int Sh4::do_write_mem(void const *data, addr32_t addr, unsigned len) {
                     }
 #endif
                 } else {
-                    set_exception(EXCP_INITIAL_PAGE_WRITE);
+                    sh4_set_exception(this, SH4_EXCP_INITIAL_PAGE_WRITE);
                     reg[SH4_REG_TEA] = addr;
                     return 1;
                 }
@@ -255,7 +257,7 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
          * The spec says user-mode processes can only write to the U0 area
          * (which overlaps with P0) and the store queue area but I can't find
          * the part where it describes what needs to be done.  Raising the
-         * EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
+         * SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
          * looks like it's for instances where the page can be looked up in the
          * TLB.
          */
@@ -283,7 +285,7 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
                 // we don't have permissions
                 unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
                     SH4_UTLB_KEY_VPN_SHIFT;
-                set_exception(EXCP_DATA_TLB_WRITE_PROT_VIOL);
+                sh4_set_exception(this, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
                 reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
                 reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
                 reg[SH4_REG_TEA] = addr;
@@ -416,7 +418,7 @@ int Sh4::read_inst(inst_t *out, addr32_t addr) {
          * The spec says user-mode processes can only access the U0 area
          * (which overlaps with P0) and the store queue area but I can't find
          * the part where it describes what needs to be done.  Raising the
-         * EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
+         * SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
          * looks like it's for instances where the page can be looked up in the
          * TLB.
          */
