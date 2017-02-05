@@ -858,7 +858,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_PC] = pc;
-        cpu->write_mem(&mem_val, disp * 2 + pc + 4, sizeof(mem_val));
+        sh4_write_mem(cpu, &mem_val, disp * 2 + pc + 4, sizeof(mem_val));
 
         cpu->exec_inst();
 
@@ -921,7 +921,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_PC] = pc;
-        cpu->write_mem(&mem_val, disp * 4 + (pc & ~3) + 4, sizeof(mem_val));
+        sh4_write_mem(cpu, &mem_val, disp * 4 + (pc & ~3) + 4, sizeof(mem_val));
 
         cpu->exec_inst();
 
@@ -1035,7 +1035,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        cpu->read_mem(&mem_val, addr, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -1090,7 +1090,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        cpu->read_mem(&mem_val, addr, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -1145,7 +1145,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        cpu->read_mem(&mem_val, addr, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -1196,7 +1196,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != reg32_t(int32_t(val))) {
@@ -1248,7 +1248,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != reg32_t(int32_t(val))) {
@@ -1300,7 +1300,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != val) {
@@ -1361,7 +1361,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        cpu->read_mem(&mem_val, addr-1, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr-1, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -1432,7 +1432,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        cpu->read_mem(&mem_val, addr-2, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr-2, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -1502,7 +1502,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        cpu->read_mem(&mem_val, addr-4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr-4, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -1565,7 +1565,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
@@ -1628,7 +1628,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != int32_t(val)) {
@@ -1690,7 +1690,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != reg32_t(int32_t(val))) {
@@ -1756,7 +1756,7 @@ public:
         cpu->exec_inst();
 
         uint8_t mem_val;
-        cpu->read_mem(&mem_val, disp + base, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, disp + base, sizeof(mem_val));
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "val is " << std::hex << (unsigned)val << std::endl;
@@ -1811,7 +1811,7 @@ public:
         cpu->exec_inst();
 
         uint16_t mem_val;
-        cpu->read_mem(&mem_val, disp * 2 + base, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, disp * 2 + base, sizeof(mem_val));
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "val is " << std::hex << (unsigned)val << std::endl;
@@ -1868,7 +1868,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, disp * 4 + base, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, disp * 4 + base, sizeof(mem_val));
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "val is " << std::hex << (unsigned)val << std::endl;
@@ -1924,7 +1924,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
-        cpu->write_mem(&val, disp + base, sizeof(val));
+        sh4_write_mem(cpu, &val, disp + base, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != reg32_t(int32_t(val))) {
@@ -1977,7 +1977,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
-        cpu->write_mem(&val, disp * 2 + base, sizeof(val));
+        sh4_write_mem(cpu, &val, disp * 2 + base, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != reg32_t(int32_t(val))) {
@@ -2032,7 +2032,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != reg32_t(int32_t(val))) {
@@ -2099,7 +2099,7 @@ public:
         cpu->exec_inst();
 
         uint8_t mem_val;
-        cpu->read_mem(&mem_val, r0_val + base_val, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, r0_val + base_val, sizeof(mem_val));
 
         if (mem_val != uint8_t(src_val)) {
             std::cout << "While running: " << cmd << std::endl;
@@ -2179,7 +2179,7 @@ public:
         cpu->exec_inst();
 
         uint16_t mem_val;
-        cpu->read_mem(&mem_val, r0_val + base_val, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, r0_val + base_val, sizeof(mem_val));
 
         if (mem_val != uint16_t(src_val)) {
             std::cout << "While running: " << cmd << std::endl;
@@ -2258,7 +2258,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, r0_val + base_val, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, r0_val + base_val, sizeof(mem_val));
 
         if (mem_val != uint32_t(src_val)) {
             std::cout << "While running: " << cmd << std::endl;
@@ -2328,7 +2328,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base_val;
         *cpu->gen_reg(0) = r0_val;
-        cpu->write_mem(&src_val, r0_val + base_val, sizeof(src_val));
+        sh4_write_mem(cpu, &src_val, r0_val + base_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != reg32_t(int32_t(src_val))) {
@@ -2402,7 +2402,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base_val;
         *cpu->gen_reg(0) = r0_val;
-        cpu->write_mem(&src_val, r0_val + base_val, sizeof(src_val));
+        sh4_write_mem(cpu, &src_val, r0_val + base_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != reg32_t(int32_t(src_val))) {
@@ -2476,7 +2476,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_base) = base_val;
         *cpu->gen_reg(0) = r0_val;
-        cpu->write_mem(&src_val, r0_val + base_val, sizeof(src_val));
+        sh4_write_mem(cpu, &src_val, r0_val + base_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(reg_dst) != src_val) {
@@ -2550,7 +2550,7 @@ public:
         cpu->exec_inst();
 
         int8_t mem_val;
-        cpu->read_mem(&mem_val, disp + gbr_val, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, disp + gbr_val, sizeof(mem_val));
         if (mem_val != int8_t(r0_val)) {
             std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
             std::cout << "expected value was " << std::hex << r0_val <<
@@ -2601,7 +2601,7 @@ public:
         cpu->exec_inst();
 
         int16_t mem_val;
-        cpu->read_mem(&mem_val, disp * 2 + gbr_val, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, disp * 2 + gbr_val, sizeof(mem_val));
         if (mem_val != int16_t(r0_val)) {
             std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
             std::cout << "expected value was " << std::hex << r0_val <<
@@ -2653,7 +2653,7 @@ public:
         cpu->exec_inst();
 
         int32_t mem_val;
-        cpu->read_mem(&mem_val, disp * 4 + gbr_val, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, disp * 4 + gbr_val, sizeof(mem_val));
         if (mem_val != int32_t(r0_val)) {
             std::cout << "ERROR while running \"" << cmd << "\"" << std::endl;
             std::cout << "expected value was " << std::hex << r0_val <<
@@ -2701,7 +2701,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_GBR] = gbr_val;
-        cpu->write_mem(&src_val, disp + gbr_val, sizeof(src_val));
+        sh4_write_mem(cpu, &src_val, disp + gbr_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != reg32_t(int32_t(src_val))) {
@@ -2750,7 +2750,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_GBR] = gbr_val;
-        cpu->write_mem(&src_val, disp * 2 + gbr_val, sizeof(src_val));
+        sh4_write_mem(cpu, &src_val, disp * 2 + gbr_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != reg32_t(int32_t(src_val))) {
@@ -2799,7 +2799,7 @@ public:
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_GBR] = gbr_val;
-        cpu->write_mem(&src_val, disp * 4 + gbr_val, sizeof(src_val));
+        sh4_write_mem(cpu, &src_val, disp * 4 + gbr_val, sizeof(src_val));
         cpu->exec_inst();
 
         if (*cpu->gen_reg(0) != src_val) {
@@ -3183,7 +3183,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         /*
          * Need to restore the original SR because editing SR can cause us to
@@ -3242,7 +3242,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -3294,7 +3294,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -3346,7 +3346,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -3398,7 +3398,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -3450,7 +3450,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -3803,7 +3803,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (sr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -3855,7 +3855,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (gbr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -3907,7 +3907,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (vbr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -3959,7 +3959,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (ssr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -4011,7 +4011,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (spc_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -4063,7 +4063,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (sgr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -4115,7 +4115,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (dbr_val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -4163,7 +4163,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_no) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         reg32_t bank_reg_val = *cpu->bank_reg(bank_reg_no);
@@ -4267,7 +4267,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (val != mem_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -4569,7 +4569,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_no) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -4617,7 +4617,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_no) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -4665,7 +4665,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_no) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -4717,7 +4717,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (mem_val != mach_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -4768,7 +4768,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (mem_val != macl_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -4819,7 +4819,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (mem_val != pr_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5452,7 +5452,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_no) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         bool t_expect = !val;
@@ -5556,7 +5556,7 @@ public:
 
         *cpu->gen_reg(0) = r0_val;
         cpu->reg[SH4_REG_GBR] = gbr_val;
-        cpu->write_mem(&mem_val, addr, sizeof(mem_val));
+        sh4_write_mem(cpu, &mem_val, addr, sizeof(mem_val));
 
         cpu->exec_inst();
 
@@ -5711,12 +5711,12 @@ public:
 
         *cpu->gen_reg(0) = r0_val;
         cpu->reg[SH4_REG_GBR] = gbr_val;
-        cpu->write_mem(&mem_val, addr, sizeof(mem_val));
+        sh4_write_mem(cpu, &mem_val, addr, sizeof(mem_val));
 
         cpu->exec_inst();
 
         uint8_t result;
-        cpu->read_mem(&result, addr, sizeof(result));
+        sh4_read_mem(cpu, &result, addr, sizeof(result));
 
         if (result != (mem_val & imm_val)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -5865,12 +5865,12 @@ public:
 
         *cpu->gen_reg(0) = r0_val;
         cpu->reg[SH4_REG_GBR] = gbr_val;
-        cpu->write_mem(&mem_val, addr, sizeof(mem_val));
+        sh4_write_mem(cpu, &mem_val, addr, sizeof(mem_val));
 
         cpu->exec_inst();
 
         uint8_t result;
-        cpu->read_mem(&result, addr, sizeof(result));
+        sh4_read_mem(cpu, &result, addr, sizeof(result));
 
         if (result != (mem_val | imm_val)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -6018,12 +6018,12 @@ public:
 
         *cpu->gen_reg(0) = r0_val;
         cpu->reg[SH4_REG_GBR] = gbr_val;
-        cpu->write_mem(&mem_val, addr, sizeof(mem_val));
+        sh4_write_mem(cpu, &mem_val, addr, sizeof(mem_val));
 
         cpu->exec_inst();
 
         uint8_t result;
-        cpu->read_mem(&result, addr, sizeof(result));
+        sh4_read_mem(cpu, &result, addr, sizeof(result));
 
         if (result != (mem_val ^ imm_val)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -7552,8 +7552,8 @@ public:
         *cpu->gen_reg(reg_dst) = dst_addr;
         cpu->reg[SH4_REG_MACL] = macl_init;
         cpu->reg[SH4_REG_MACH] = mach_init;
-        cpu->write_mem(&src_val, src_addr, sizeof(src_val));
-        cpu->write_mem(&dst_val, dst_addr, sizeof(dst_val));
+        sh4_write_mem(cpu, &src_val, src_addr, sizeof(src_val));
+        sh4_write_mem(cpu, &dst_val, dst_addr, sizeof(dst_val));
         if (sat_flag)
             cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_S_MASK;
         else
@@ -7694,8 +7694,8 @@ public:
         *cpu->gen_reg(reg_dst) = dst_addr;
         cpu->reg[SH4_REG_MACL] = macl_init;
         cpu->reg[SH4_REG_MACH] = mach_init;
-        cpu->write_mem(&src_val, src_addr, sizeof(src_val));
-        cpu->write_mem(&dst_val, dst_addr, sizeof(dst_val));
+        sh4_write_mem(cpu, &src_val, src_addr, sizeof(src_val));
+        sh4_write_mem(cpu, &dst_val, dst_addr, sizeof(dst_val));
         if (sat_flag)
             cpu->reg[SH4_REG_SR] |= Sh4::SR_FLAG_S_MASK;
         else
@@ -7956,7 +7956,7 @@ public:
         *cpu->gen_reg(reg_dst) = addr;
         cpu->exec_inst();
 
-        cpu->read_mem(&mem_val, addr, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr, sizeof(mem_val));
 
         if (mem_val != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -9053,7 +9053,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_no) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -9148,7 +9148,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (mem_val != fpscr_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -9244,7 +9244,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(src_reg_no) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
 
         float actual_val = *cpu->fpu_fr(dst_reg_no);
@@ -9297,7 +9297,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
         *cpu->gen_reg(0) = r0_val;
-        cpu->write_mem(&f_val, r0_val + src_val, sizeof(f_val));
+        sh4_write_mem(cpu, &f_val, r0_val + src_val, sizeof(f_val));
         cpu->exec_inst();
 
         float val_actual = *cpu->fpu_fr(reg_dst);
@@ -9361,7 +9361,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&f_val, addr, sizeof(f_val));
+        sh4_write_mem(cpu, &f_val, addr, sizeof(f_val));
         cpu->exec_inst();
 
         reg32_t expected_addr_out = addr + 4;
@@ -9422,7 +9422,7 @@ public:
         cpu->exec_inst();
 
         float val_actual;
-        cpu->read_mem(&val_actual, addr, sizeof(val_actual));
+        sh4_read_mem(cpu, &val_actual, addr, sizeof(val_actual));
 
         if (val_actual != f_val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -9479,7 +9479,7 @@ public:
         cpu->exec_inst();
 
         float val_actual;
-        cpu->read_mem(&val_actual, addr - 4, sizeof(val_actual));
+        sh4_read_mem(cpu, &val_actual, addr - 4, sizeof(val_actual));
 
         addr32_t addr_out_expect = addr - 4;
         addr32_t addr_out_actual = *cpu->gen_reg(reg_dst);
@@ -9537,7 +9537,7 @@ public:
         cpu->exec_inst();
 
         float val_actual;
-        cpu->read_mem(&val_actual, r0_val + dst_val, sizeof(val_actual));
+        sh4_read_mem(cpu, &val_actual, r0_val + dst_val, sizeof(val_actual));
 
         if (val_actual != f_val) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -9663,10 +9663,10 @@ public:
             val_bank0[idx] = randgen32->pick_double();
             val_bank1[idx] = randgen32->pick_double();
 
-            cpu->write_mem(val_bank0 + idx,
+            sh4_write_mem(cpu, val_bank0 + idx,
                            idx * sizeof(val_bank0[0]) + FVAL_START,
                            sizeof(val_bank0[0]));
-            cpu->write_mem(val_bank1 + idx,
+            sh4_write_mem(cpu, val_bank1 + idx,
                            idx * sizeof(val_bank1[0]) + FVAL_START +
                            Sh4::N_FLOAT_REGS * sizeof(val_bank0[0]),
                            sizeof(val_bank1[0]));
@@ -9772,7 +9772,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(src_reg_no) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
         cpu->exec_inst();
         cpu->exec_inst();
 
@@ -9828,7 +9828,7 @@ public:
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = src_val;
         *cpu->gen_reg(0) = r0_val;
-        cpu->write_mem(&val, r0_val + src_val, sizeof(val));
+        sh4_write_mem(cpu, &val, r0_val + src_val, sizeof(val));
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -9896,7 +9896,7 @@ public:
 
         reset_cpu(cpu);
         *cpu->gen_reg(reg_src) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
         cpu->exec_inst();
@@ -9963,7 +9963,7 @@ public:
         cpu->exec_inst();
 
         double val_actual;
-        cpu->read_mem(&val_actual, addr, sizeof(val_actual));
+        sh4_read_mem(cpu, &val_actual, addr, sizeof(val_actual));
 
         if (val_actual != val) {
             std::cout << "While running: " << cmd << std::endl;
@@ -10023,7 +10023,7 @@ public:
         cpu->exec_inst();
 
         double val_actual;
-        cpu->read_mem(&val_actual, addr - 8, sizeof(val_actual));
+        sh4_read_mem(cpu, &val_actual, addr - 8, sizeof(val_actual));
 
         addr32_t addr_out_expect = addr - 8;
         addr32_t addr_out_actual = *cpu->gen_reg(reg_dst);
@@ -10084,7 +10084,7 @@ public:
         cpu->exec_inst();
 
         double val_actual;
-        cpu->read_mem(&val_actual, r0_val + dst_val, sizeof(val_actual));
+        sh4_read_mem(cpu, &val_actual, r0_val + dst_val, sizeof(val_actual));
 
         if (val_actual != val) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -10610,7 +10610,7 @@ public:
         reset_cpu(cpu);
 
         *cpu->gen_reg(reg_no) = addr;
-        cpu->write_mem(&val, addr, sizeof(val));
+        sh4_write_mem(cpu, &val, addr, sizeof(val));
 
         cpu->exec_inst();
 
@@ -10707,7 +10707,7 @@ public:
         cpu->exec_inst();
 
         uint32_t mem_val;
-        cpu->read_mem(&mem_val, addr - 4, sizeof(mem_val));
+        sh4_read_mem(cpu, &mem_val, addr - 4, sizeof(mem_val));
 
         if (mem_val != fpul_val || *cpu->gen_reg(reg_no) != (addr - 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;

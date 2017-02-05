@@ -33,6 +33,7 @@
 #include "sh4_inst.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4_reg.hpp"
+#include "sh4_mem.hpp"
 
 #ifdef ENABLE_SH4_OCACHE
 #include "Ocache.hpp"
@@ -220,19 +221,6 @@ public:
     void set_regs(reg32_t const reg_out[SH4_REGISTER_COUNT]);
     void set_fpu(const FpuReg& src);
 
-    template<typename val_t>
-    int write_mem(val_t const *val, addr32_t addr, unsigned len) {
-        return do_write_mem(val, addr, len);
-    }
-
-    template<typename val_t>
-    int read_mem(val_t *val, addr32_t addr, unsigned len) {
-        int err;
-        if ((err = do_read_mem(val, addr, len)) != 0)
-            return err;
-        return 0;
-    }
-
     /*
      * if ((addr & OC_RAM_AREA_MASK) == OC_RAM_AREA_VAL) and the ORA bit is set
      * in CCR, then addr is part of the Operand Cache's RAM area
@@ -346,80 +334,10 @@ public:
     static const size_t OP_CACHE_LINE_SIZE = LONGS_PER_OP_CACHE_LINE * 4;
     static const size_t OC_RAM_AREA_SIZE = 8 * 1024;
     uint8_t *oc_ram_area;
-
-    /*
-     * read to/write from the operand cache's RAM-space in situations where we
-     * don't actually have a real operand cache available.  It is up to the
-     * caller to make sure that the operand cache is enabled (OCE in the CCR),
-     * that the Operand Cache's RAM switch is enabled (ORA in the CCR) and that
-     * paddr lies within the Operand Cache RAM mapping (in_oc_ram_area returns
-     * true).
-     */
-    void do_write_ora(void const *dat, addr32_t paddr, unsigned len);
-    void do_read_ora(void *dat, addr32_t paddr, unsigned len);
-
-    void *get_ora_ram_addr(addr32_t paddr);
 #endif
-
-    // Physical memory aread boundaries
-    static const size_t AREA_P0_FIRST = 0x00000000;
-    static const size_t AREA_P0_LAST  = 0x7fffffff;
-    static const size_t AREA_P1_FIRST = 0x80000000;
-    static const size_t AREA_P1_LAST  = 0x9fffffff;
-    static const size_t AREA_P2_FIRST = 0xa0000000;
-    static const size_t AREA_P2_LAST  = 0xbfffffff;
-    static const size_t AREA_P3_FIRST = 0xc0000000;
-    static const size_t AREA_P3_LAST  = 0xdfffffff;
-    static const size_t AREA_P4_FIRST = 0xe0000000;
-    static const size_t AREA_P4_LAST  = 0xffffffff;
-
-    /*
-     * P4_REGSTART is the addr of the first memory-mapped
-     *     register in area 7
-     * P4_REGEND is the first addr *after* the last memory-mapped
-     *     register in the p4 area.
-     * AREA7_REGSTART is the addr of the first memory-mapped
-     *     register in area 7
-     * AREA7_REGEND is the first addr *after* the last memory-mapped
-     *     register in area 7
-     */
-    static const size_t P4_REGSTART = 0xff000000;
-    static const size_t P4_REGEND = 0xfff00008;
-    static const size_t AREA7_REGSTART = 0x1f000000;
-    static const size_t AREA7_REGEND = 0x1ff00008;
-    BOOST_STATIC_ASSERT((P4_REGEND - P4_REGSTART) == (AREA7_REGEND - AREA7_REGSTART));
 
     // reset all values to their power-on-reset values
     void on_hard_reset();
-
-    enum VirtMemArea {
-        AREA_P0 = 0,
-        AREA_P1,
-        AREA_P2,
-        AREA_P3,
-        AREA_P4
-    };
-
-    enum VirtMemArea get_mem_area(addr32_t addr);
-
-    /*
-     * From within the CPU, these functions should be called instead of
-     * the memory's read/write functions because these implement the MMU
-     * functionality.  In the event of a failure, these functions will set the
-     * appropriate CPU flags for an exception and return non-zero.  On success
-     * they will return zero.
-     */
-    int do_write_mem(void const *dat, addr32_t addr, unsigned len);
-    int do_read_mem(void *dat, addr32_t addr, unsigned len);
-
-    int read_inst(inst_t *out, addr32_t addr);
-
-    /*
-     * generally you'll call these functions through do_read_mem/do_write_mem
-     * instead of calling these functions directly
-     */
-    int do_read_p4(void *dat, addr32_t addr, unsigned len);
-    int do_write_p4(void const *dat, addr32_t addr, unsigned len);
 
     /*
      * pointer to place where memory-mapped registers are stored.

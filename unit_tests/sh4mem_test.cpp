@@ -147,7 +147,7 @@ public:
                  addr += sizeof(ValType)) {
                 ValType val = gen.pick_val(addr);
 
-                if ((err = cpu->do_write_mem(&val, addr, sizeof(val))) != 0) {
+                if ((err = sh4_write_mem(cpu, &val, addr, sizeof(val))) != 0) {
                     std::cout << "Error while writing 0x" << std::hex << addr <<
                         " to 0x" << std::hex << addr << std::endl;
                     return err;
@@ -165,7 +165,7 @@ public:
              addr += sizeof(ValType)) {
             ValType val = gen.pick_val(addr);
 
-            if ((err = cpu->do_write_mem(&val, addr, sizeof(val))) != 0) {
+            if ((err = sh4_write_mem(cpu, &val, addr, sizeof(val))) != 0) {
                 std::cout << "Error while writing 0x" << std::hex << addr <<
                     " to 0x" << std::hex << addr << std::endl;
                 return err;
@@ -182,7 +182,7 @@ public:
              ((addr + sizeof(ValType)) & CACHELINE_MASK) + 32 < end;
              addr += sizeof(ValType)) {
             ValType val = 0;
-            if ((err = cpu->do_read_mem(&val, addr, sizeof(ValType))) != 0) {
+            if ((err = sh4_read_mem(cpu, &val, addr, sizeof(ValType))) != 0) {
                 std::cout << "Error while reading four bytes from 0x" <<
                     addr << std::endl;
                 return err;
@@ -209,7 +209,7 @@ public:
              addr += sizeof(ValType)) {
             inst_t inst;
 
-            if ((err = cpu->read_inst(&inst, addr)) != 0) {
+            if ((err = sh4_read_inst(cpu, &inst, addr)) != 0) {
                 std::cout << "Error while reading instruction from 0x" <<
                     addr << std::endl;
                 return err;
@@ -240,7 +240,7 @@ public:
                  addr + sizeof(ValType) < ora_end;
                  addr += sizeof(ValType)) {
                 ValType val = 0;
-                if ((err = cpu->do_read_mem(&val, addr, sizeof(ValType))) != 0) {
+                if ((err = sh4_read_mem(cpu, &val, addr, sizeof(ValType))) != 0) {
                     std::cout << "Error while reading four bytes from 0x" <<
                         addr << std::endl;
                     return err;
@@ -411,7 +411,7 @@ public:
 
         for (addr32_t addr = start; addr < end; addr += sizeof(ValType)) {
             ValType val = this->gen.pick_val(addr);
-            err = this->cpu->do_write_mem(&val, addr, sizeof(ValType));
+            err = sh4_write_mem(cpu, &val, addr, sizeof(ValType));
             if (err == 0) {
                 if (addr >= sz_tbl[page_sz]) {
                     std::cout << "Error while writing 0x" << std::hex << addr <<

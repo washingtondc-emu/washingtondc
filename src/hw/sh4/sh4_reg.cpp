@@ -321,7 +321,7 @@ int Sh4DefaultRegWriteHandler(Sh4 *sh4, void const *buf,
 
 int Sh4IgnoreRegReadHandler(Sh4 *sh4, void *buf,
                             struct Sh4MemMappedReg const *reg_info) {
-    memcpy(buf, reg_info->addr - Sh4::P4_REGSTART + sh4->reg_area,
+    memcpy(buf, reg_info->addr - SH4_P4_REGSTART + sh4->reg_area,
            reg_info->len);
 
     return 0;
@@ -329,7 +329,7 @@ int Sh4IgnoreRegReadHandler(Sh4 *sh4, void *buf,
 
 int Sh4IgnoreRegWriteHandler(Sh4 *sh4, void const *buf,
                              struct Sh4MemMappedReg const *reg_info) {
-    memcpy(reg_info->addr - Sh4::P4_REGSTART + sh4->reg_area,
+    memcpy(reg_info->addr - SH4_P4_REGSTART + sh4->reg_area,
            buf, reg_info->len);
 
     return 0;

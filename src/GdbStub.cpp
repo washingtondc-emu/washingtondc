@@ -385,7 +385,7 @@ std::string GdbStub::handle_m_packet(std::string dat) {
         uint8_t val;
 
         try {
-            dc->get_cpu()->read_mem(&val, addr++, sizeof(val));
+            sh4_read_mem(dc->get_cpu(), &val, addr++, sizeof(val));
         } catch (BaseException& exc) {
             return err_str(EINVAL);
         }
@@ -477,7 +477,7 @@ std::string GdbStub::handle_M_packet(std::string dat) {
             uint8_t(atoi(dat.substr(dat_idx, dat_idx + 1).c_str()) << 4) |
             uint8_t(atoi(dat.substr(dat_idx + 1, dat_idx + 2).c_str()));
 
-        dc->get_cpu()->write_mem(&val, addr++, sizeof(val));
+        sh4_write_mem(dc->get_cpu(), &val, addr++, sizeof(val));
     }
 
     return "OK";

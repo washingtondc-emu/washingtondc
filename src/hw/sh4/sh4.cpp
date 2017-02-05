@@ -39,7 +39,7 @@
 #include "sh4.hpp"
 
 Sh4::Sh4() {
-    reg_area = new uint8_t[P4_REGEND - P4_REGSTART];
+    reg_area = new uint8_t[SH4_P4_REGEND - SH4_P4_REGSTART];
 
 #ifdef ENABLE_SH4_MMU
     sh4_mmu_init(this);
