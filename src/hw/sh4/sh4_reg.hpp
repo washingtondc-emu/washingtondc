@@ -23,6 +23,11 @@
 #ifndef SH4_REG_HPP_
 #define SH4_REG_HPP_
 
+#include "BaseException.hpp"
+
+typedef boost::error_info<struct tag_feature_name_error_info, std::string>
+errinfo_regname;
+
 typedef enum sh4_reg_idx {
     /* general-purpose registers 0-7, bank 0 */
     SH4_REG_R0_BANK0,
@@ -161,5 +166,105 @@ typedef enum sh4_reg_idx {
 
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
+
+/*
+ * for the purpose of these handlers, you may assume that the caller has
+ * already checked the permissions.
+ */
+struct Sh4MemMappedReg;
+typedef int(*Sh4RegReadHandler)(Sh4 *sh4, void *buf,
+                                struct Sh4MemMappedReg const *reg_info);
+typedef int(*Sh4RegWriteHandler)(Sh4 *sh4, void const *buf,
+                                 struct Sh4MemMappedReg const *reg_info);
+
+/*
+ * TODO: turn this into a radix tree of some sort.
+ *
+ * Alternatively, I could turn this into a simple lookup array; this
+ * would incur a huge memory overhead (hundreds of MB), but it looks like
+ * it would be feasible in the $CURRENT_YEAR and it would net a
+ * beautiful O(1) mapping from addr32_t to MemMappedReg.
+ */
+struct Sh4MemMappedReg {
+    char const *reg_name;
+
+    /*
+     * Some registers can be referenced over a range of addresses.
+     * To check for equality between this register and a given physical
+     * address, AND the address with addr_mask and then check for equality
+     * with addr
+     */
+    addr32_t addr;  // addr shoud be the p4 addr, not the area7 addr
+    addr32_t addr_mask;
+
+    unsigned len;
+
+    /* index of the register in the register file */
+    sh4_reg_idx_t reg_idx;
+
+    /*
+     * if true, the value will be preserved during a manual ("soft") reset
+     * and manual_reset_val will be ignored; else value will be set to
+     * manual_reset_val during a manual reset.
+     */
+    bool hold_on_reset;
+
+    Sh4RegReadHandler on_p4_read;
+    Sh4RegWriteHandler on_p4_write;
+
+    /*
+     * if len < 4, then only the lower "len" bytes of
+     * these values will be used.
+     */
+    reg32_t poweron_reset_val;
+    reg32_t manual_reset_val;
+};
+
+/*
+ * this is called from the sh4 constructor to
+ * initialize all memory-mapped registers
+ */
+void sh4_init_regs(Sh4 *sh4);
+
+// set up the memory-mapped registers for a reset;
+void sh4_poweron_reset_regs(Sh4 *sh4);
+void sh4_manual_reset_regs(Sh4 *sh4);
+
+/* read/write handler callbacks for when you don't give a fuck */
+int Sh4IgnoreRegReadHandler(Sh4 *sh4, void *buf,
+                            struct Sh4MemMappedReg const *reg_info);
+int Sh4IgnoreRegWriteHandler(Sh4 *sh4, void const *buf,
+                             struct Sh4MemMappedReg const *reg_info);
+
+/* default reg reg/write handler callbacks */
+int Sh4DefaultRegReadHandler(Sh4 *sh4, void *buf,
+                             struct Sh4MemMappedReg const *reg_info);
+int Sh4DefaultRegWriteHandler(Sh4 *sh4, void const *buf,
+                              struct Sh4MemMappedReg const *reg_info);
+
+/*
+ * read handle callback that always fails (although currently it throws an
+ * UnimplementedError because I don't know what the proper response is when
+ * the software tries to read from an unreadable register).
+ *
+ * This is used for certain registers which are write-only.
+ */
+int Sh4WriteOnlyRegReadHandler(Sh4 *sh4, void *buf,
+                               struct Sh4MemMappedReg const *reg_info);
+
+/*
+ * likewise, this is a write handler for read-only registers.
+ * It will also raise an exception whenever it is invokled.
+ */
+int Sh4ReadOnlyRegWriteHandler(Sh4 *sh4, void const *buf,
+                               struct Sh4MemMappedReg const *reg_info);
+/*
+ * called for P4 area read/write ops that
+ * fall in the memory-mapped register range
+ */
+int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
+                            addr32_t addr, unsigned len);
+int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
+                             addr32_t addr, unsigned len);
 
 #endif

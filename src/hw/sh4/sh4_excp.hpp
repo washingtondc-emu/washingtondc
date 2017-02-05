@@ -23,6 +23,8 @@
 #ifndef SH4_EXCP_HPP_
 #define SH4_EXCP_HPP_
 
+#include "sh4_reg.hpp"
+
 enum Sh4ExceptionCode {
     // reset-type exceptions
     SH4_EXCP_POWER_ON_RESET           = 0x000,
@@ -118,8 +120,6 @@ struct Sh4ExcpMeta {
     addr32_t offset;
 };
 
-// static const struct Sh4ExcpMeta excp_meta[EXCP_COUNT];
-
 /*
  * called by set_exception and set_interrupt.  This function configures
  * the CPU registers to enter an exception state.
@@ -128,5 +128,19 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector);
 
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code);
 void sh4_set_interrupt(Sh4 *sh4, unsigned intp_code);
+
+/* Memory-mapped register read/write callbacks */
+int Sh4TraRegReadHandler(Sh4 *sh4, void *buf,
+                         struct Sh4MemMappedReg const *reg_info);
+int Sh4TraRegWriteHandler(Sh4 *sh4, void const *buf,
+                          struct Sh4MemMappedReg const *reg_info);
+int Sh4ExpevtRegReadHandler(Sh4 *sh4, void *buf,
+                            struct Sh4MemMappedReg const *reg_info);
+int Sh4ExpevtRegWriteHandler(Sh4 *sh4, void const *buf,
+                             struct Sh4MemMappedReg const *reg_info);
+int Sh4IntevtRegReadHandler(Sh4 *sh4, void *buf,
+                            struct Sh4MemMappedReg const *reg_info);
+int Sh4IntevtRegWriteHandler(Sh4 *sh4, void const *buf,
+                             struct Sh4MemMappedReg const *reg_info);
 
 #endif

@@ -382,7 +382,7 @@ int Sh4::do_read_mem(void *data, addr32_t addr, unsigned len) {
 
 int Sh4::do_read_p4(void *dat, addr32_t addr, unsigned len) {
     if (addr >= P4_REGSTART && addr < P4_REGEND) {
-        return read_mem_mapped_reg(dat, addr, len);
+        return sh4_read_mem_mapped_reg(this, dat, addr, len);
     }
 
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -394,7 +394,7 @@ int Sh4::do_read_p4(void *dat, addr32_t addr, unsigned len) {
 
 int Sh4::do_write_p4(void const *dat, addr32_t addr, unsigned len) {
     if (addr >= P4_REGSTART && addr < P4_REGEND) {
-        return write_mem_mapped_reg(dat, addr, len);
+        return sh4_write_mem_mapped_reg(this, dat, addr, len);
     }
 
     BOOST_THROW_EXCEPTION(UnimplementedError() <<

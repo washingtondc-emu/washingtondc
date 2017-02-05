@@ -25,6 +25,8 @@
 
 #include <boost/cstdint.hpp>
 
+#include "sh4_reg.hpp"
+
 static const unsigned SH4_MMUPTEH_ASID_SHIFT = 0;
 static const unsigned SH4_MMUPTEH_ASID_MASK = 0xff << SH4_MMUPTEH_ASID_SHIFT;
 
@@ -228,5 +230,12 @@ addr32_t sh4_itlb_ent_translate(struct sh4_itlb_entry const *ent,
 struct sh4_itlb_entry *sh4_itlb_search(Sh4 *sh4, addr32_t vaddr);
 
 void sh4_mmu_init(Sh4 *sh4);
+
+/* memory-mapped register read/write handlers for MMUCR */
+int Sh4MmucrRegReadHandler(Sh4 *sh4, void *buf,
+                           struct Sh4MemMappedReg const *reg_info);
+int Sh4MmucrRegWriteHandler(Sh4 *sh4, void const *buf,
+                            struct Sh4MemMappedReg const *reg_info);
+
 
 #endif

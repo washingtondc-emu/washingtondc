@@ -153,3 +153,45 @@ void sh4_set_interrupt(Sh4 *sh4, unsigned intp_code) {
 
     sh4_enter_exception(sh4, (Sh4ExceptionCode)intp_code);
 }
+
+int Sh4TraRegReadHandler(Sh4 *sh4, void *buf,
+                         struct Sh4MemMappedReg const *reg_info) {
+    memcpy(buf, &sh4->reg[SH4_REG_TRA], sizeof(sh4->reg[SH4_REG_TRA]));
+
+    return 0;
+}
+
+int Sh4TraRegWriteHandler(Sh4 *sh4, void const *buf,
+                          struct Sh4MemMappedReg const *reg_info) {
+    memcpy(&sh4->reg[SH4_REG_TRA], buf, sizeof(sh4->reg[SH4_REG_TRA]));
+
+    return 0;
+}
+
+int Sh4ExpevtRegReadHandler(Sh4 *sh4, void *buf,
+                            struct Sh4MemMappedReg const *reg_info) {
+    memcpy(buf, &sh4->reg[SH4_REG_EXPEVT], sizeof(sh4->reg[SH4_REG_EXPEVT]));
+
+    return 0;
+}
+
+int Sh4ExpevtRegWriteHandler(Sh4 *sh4, void const *buf,
+                             struct Sh4MemMappedReg const *reg_info) {
+    memcpy(&sh4->reg[SH4_REG_EXPEVT], buf, sizeof(sh4->reg[SH4_REG_EXPEVT]));
+
+    return 0;
+}
+
+int Sh4IntevtRegReadHandler(Sh4 *sh4, void *buf,
+                            struct Sh4MemMappedReg const *reg_info) {
+    memcpy(buf, &sh4->reg[SH4_REG_INTEVT], sizeof(sh4->reg[SH4_REG_INTEVT]));
+
+    return 0;
+}
+
+int Sh4IntevtRegWriteHandler(Sh4 *sh4, void const *buf,
+                             struct Sh4MemMappedReg const *reg_info) {
+    memcpy(&sh4->reg[SH4_REG_INTEVT], buf, sizeof(sh4->reg[SH4_REG_INTEVT]));
+
+    return 0;
+}

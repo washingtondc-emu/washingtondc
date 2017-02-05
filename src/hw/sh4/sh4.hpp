@@ -45,23 +45,6 @@
 /* Hitachi SuperH-4 interpreter */
 
 class Sh4 {
-    /*
-     * This is kinda lame, but I have to declare all the testing classes as
-     * friends so they can access the sh4's private members.  I consider this to
-     * be unfortunate, but still better than writing a get/set method for
-     * everything in this class
-     */
-    template<typename ValType, class Generator>
-    friend class BasicMemTest;
-
-    template<typename ValType, class Generator>
-    friend class BasicMemTestWithIndexEnable;
-
-    template <typename ValType, class Generator>
-    friend class MmuUtlbMissTest;
-
-    friend class Sh4InstTests;
-
 public:
     reg32_t reg[SH4_REGISTER_COUNT];
 
@@ -378,8 +361,6 @@ public:
     void *get_ora_ram_addr(addr32_t paddr);
 #endif
 
-private:
-
     // Physical memory aread boundaries
     static const size_t AREA_P0_FIRST = 0x00000000;
     static const size_t AREA_P0_LAST  = 0x7fffffff;
@@ -446,121 +427,6 @@ private:
      * they are consistent.
      */
     uint8_t *reg_area;
-
-    /*
-     * for the purpose of these handlers, you may assume that the caller has
-     * already checked the permissions.
-     */
-    struct MemMappedReg;
-    typedef int(Sh4::*RegReadHandler)(void *buf,
-                                      struct Sh4::MemMappedReg const *reg_info);
-    typedef int(Sh4::*RegWriteHandler)(void const *buf,
-                                       struct Sh4::MemMappedReg const *reg_info);
-
-    /*
-     * TODO: turn this into a radix tree of some sort.
-     *
-     * Alternatively, I could turn this into a simple lookup array; this
-     * would incur a huge memory overhead (hundreds of MB), but it looks like
-     * it would be feasible in the $CURRENT_YEAR and it would net a
-     * beautiful O(1) mapping from addr32_t to MemMappedReg.
-     */
-    static struct MemMappedReg {
-        char const *reg_name;
-
-        /*
-         * Some registers can be referenced over a range of addresses.
-         * To check for equality between this register and a given physical
-         * address, AND the address with addr_mask and then check for equality
-         * with addr
-         */
-        addr32_t addr;  // addr shoud be the p4 addr, not the area7 addr
-        addr32_t addr_mask;
-
-        unsigned len;
-
-        /* index of the register in the register file */
-        sh4_reg_idx_t reg_idx;
-
-        /*
-         * if true, the value will be preserved during a manual ("soft") reset
-         * and manual_reset_val will be ignored; else value will be set to
-         * manual_reset_val during a manual reset.
-         */
-        bool hold_on_reset;
-
-        Sh4::RegReadHandler on_p4_read;
-        Sh4::RegWriteHandler on_p4_write;
-
-        /*
-         * if len < 4, then only the lower "len" bytes of
-         * these values will be used.
-         */
-        reg32_t poweron_reset_val;
-        reg32_t manual_reset_val;
-    } mem_mapped_regs[];
-
-    struct MemMappedReg *find_reg_by_addr(addr32_t addr);
-
-    /* read/write handler callbacks for when you don't give a fuck */
-    int IgnoreRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
-    int IgnoreRegWriteHandler(void const *buf,
-                              struct MemMappedReg const *reg_info);
-
-    /* default reg reg/write handler callbacks */
-    int DefaultRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
-    int DefaultRegWriteHandler(void const *buf,
-                               struct MemMappedReg const *reg_info);
-
-    /*
-     * read handle callback that always fails (although currently it throws an
-     * UnimplementedError because I don't know what the proper response is when
-     * the software tries to read from an unreadable register).
-     *
-     * This is used for certain registers which are write-only.
-     */
-    int WriteOnlyRegReadHandler(void *buf,
-                                struct MemMappedReg const *reg_info);
-
-    /*
-     * likewise, this is a write handler for read-only registers.
-     * It will also raise an exception whenever it is invokled.
-     */
-    int ReadOnlyRegWriteHandler(void const *buf,
-                                struct MemMappedReg const *reg_info);
-
-    int MmucrRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
-    int MmucrRegWriteHandler(void const *buf,
-                             struct MemMappedReg const *reg_info);
-
-    int TraRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
-    int TraRegWriteHandler(void const *buf,
-                           struct MemMappedReg const *reg_info);
-
-    int ExpevtRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
-    int ExpevtRegWriteHandler(void const *buf,
-                              struct MemMappedReg const *reg_info);
-
-    int IntevtRegReadHandler(void *buf, struct MemMappedReg const *reg_info);
-    int IntevtRegWriteHandler(void const *buf,
-                              struct MemMappedReg const *reg_info);
-
-    /*
-     * called for P4 area read/write ops that
-     * fall in the memory-mapped register range
-     */
-    int read_mem_mapped_reg(void *buf, addr32_t addr, unsigned len);
-    int write_mem_mapped_reg(void const *buf, addr32_t addr, unsigned len);
-
-    /*
-     * this is called from the sh4 constructor to
-     * initialize all memory-mapped registers
-     */
-    void init_regs();
-
-    // set up the memory-mapped registers for a reset;
-    void poweron_reset_regs();
-    void manual_reset_regs();
 };
 
 #endif

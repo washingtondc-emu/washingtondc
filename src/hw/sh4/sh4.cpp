@@ -35,7 +35,7 @@
 #include "BaseException.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4_excp.hpp"
-
+#include "sh4_reg.hpp"
 #include "sh4.hpp"
 
 Sh4::Sh4() {
@@ -57,7 +57,7 @@ Sh4::Sh4() {
     this->oc_ram_area = new uint8_t[OC_RAM_AREA_SIZE];
 #endif
 
-    init_regs();
+    sh4_init_regs(this);
 
     sh4_compile_instructions();
 
