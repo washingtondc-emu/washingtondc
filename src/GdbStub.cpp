@@ -64,14 +64,14 @@ void GdbStub::on_break() {
 std::string GdbStub::serialize_regs() const {
     Sh4 *cpu = dc->get_cpu();
     reg32_t reg_file[SH4_REGISTER_COUNT];
-    cpu->get_regs(reg_file);
-    Sh4::FpuReg fpu_reg = cpu->get_fpu();
+    sh4_get_regs(cpu, reg_file);
+    Sh4::FpuReg fpu_reg = sh4_get_fpu(cpu);
     reg32_t regs[N_REGS] = { 0 };
 
     // general-purpose registers
     for (int i = 0; i < 16; i++) {
         if (i < 8) {
-            if (reg_file[SH4_REG_SR] & Sh4::SR_RB_MASK)
+            if (reg_file[SH4_REG_SR] & SH4_SR_RB_MASK)
                 regs[R0 + i] = reg_file[SH4_REG_R0_BANK1 + i];
             else
                 regs[R0 + i] = reg_file[SH4_REG_R0_BANK0 + i];
@@ -406,9 +406,9 @@ std::string GdbStub::handle_G_packet(std::string dat) {
     deserialize_regs(dat.substr(1), regs);
 
     reg32_t new_regs[SH4_REGISTER_COUNT];
-    dc->get_cpu()->get_regs(new_regs);
-    Sh4::FpuReg new_fpu = dc->get_cpu()->get_fpu();
-    bool bank = new_regs[SH4_REG_SR] & Sh4::SR_RB_MASK;
+    sh4_get_regs(dc->get_cpu(), new_regs);
+    Sh4::FpuReg new_fpu = sh4_get_fpu(dc->get_cpu());
+    bool bank = new_regs[SH4_REG_SR] & SH4_SR_RB_MASK;
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
         set_reg(new_regs, &new_fpu, reg_no, regs[reg_no], bank);
@@ -448,11 +448,11 @@ std::string GdbStub::handle_P_packet(std::string dat) {
 
     Sh4 *cpu = dc->get_cpu();
     reg32_t regs[SH4_REGISTER_COUNT];
-    cpu->get_regs(regs);
-    Sh4::FpuReg fpu = cpu->get_fpu();
+    sh4_get_regs(cpu, regs);
+    Sh4::FpuReg fpu = sh4_get_fpu(cpu);
     set_reg(regs, &fpu, reg_no, reg_val,
-            bool(regs[SH4_REG_SR] & Sh4::SR_RB_MASK));
-    dc->get_cpu()->set_regs(regs);
+            bool(regs[SH4_REG_SR] & SH4_SR_RB_MASK));
+    sh4_set_regs(cpu, regs);
 
     return "OK";
 }

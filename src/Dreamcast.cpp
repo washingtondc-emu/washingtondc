@@ -41,7 +41,7 @@ Dreamcast::Dreamcast(char const *bios_path) {
     bios = new BiosFile(bios_path);
     g1 = new G1Bus();
     memory_map_init(bios, &mem, g1);
-    cpu = new Sh4();
+    sh4_init(&cpu);
 }
 
 Dreamcast::~Dreamcast() {
@@ -50,7 +50,7 @@ Dreamcast::~Dreamcast() {
         delete debugger;
 #endif
 
-    delete cpu;
+    sh4_cleanup(&cpu);
     delete g1;
     delete bios;
     memory_cleanup(&mem);
@@ -62,16 +62,16 @@ void Dreamcast::run() {
      * I'll need to remember to call this every time I re-enter
      * the CPU's context.
      */
-    cpu->sh4_enter();
+    sh4_enter(&cpu);
 
     try {
         while (is_running) {
 #ifdef ENABLE_DEBUGGER
-            if (debugger && debugger->step(cpu->get_pc()))
+            if (debugger && debugger->step(sh4_get_pc(&cpu)))
                 continue;
 #endif
 
-            cpu->exec_inst();
+            sh4_exec_inst(&cpu);
         }
     } catch(const BaseException& exc) {
         std::cerr << boost::diagnostic_information(exc);
@@ -86,7 +86,7 @@ void Dreamcast::kill() {
 }
 
 Sh4 *Dreamcast::get_cpu() {
-    return cpu;
+    return &cpu;
 }
 
 Memory *Dreamcast::gem_mem() {

@@ -124,7 +124,7 @@ public:
         gen.reset();
 
         addr32_t ora_start = 0, ora_end = 0;
-        if (cpu->reg[SH4_REG_CCR] & Sh4::CCR_ORA_MASK) {
+        if (cpu->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) {
             /*
              * now let's screw around a bit with the Operand cache's 8KB RAM
              *
@@ -134,7 +134,7 @@ public:
              */
 
             // TODO: randomize start, end
-            if (!(cpu->reg[SH4_REG_CCR] & Sh4::CCR_OIX_MASK)) {
+            if (!(cpu->reg[SH4_REG_CCR] & SH4_CCR_OIX_MASK)) {
                 ora_start = 0x7c001000;
                 ora_end   = 0x7c003000;
             } else {
@@ -230,7 +230,7 @@ public:
             }
         }
 
-        if (cpu->reg[SH4_REG_CCR] & Sh4::CCR_ORA_MASK) {
+        if (cpu->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) {
             /*
              * remember when we wroe all that crap to the Ocache's ORA ram?
              * now's the part where we get to validate it!
@@ -268,16 +268,16 @@ public:
 
     void set_oix(bool enable) {
         if (enable)
-            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_OIX_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= SH4_CCR_OIX_MASK;
         else
-            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_OIX_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~SH4_CCR_OIX_MASK;
     }
 
     void set_iix(bool enable) {
         if (enable)
-            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_IIX_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= SH4_CCR_IIX_MASK;
         else
-            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_IIX_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~SH4_CCR_IIX_MASK;
     }
 
     /*
@@ -288,33 +288,33 @@ public:
      */
     void set_wt(bool enable) {
         if (enable) {
-            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_WT_MASK;
-            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_CB_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= SH4_CCR_WT_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~SH4_CCR_CB_MASK;
         } else {
-            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_WT_MASK;
-            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_CB_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~SH4_CCR_WT_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= SH4_CCR_CB_MASK;
         }
     }
 
     void set_ora(bool enable) {
         if (enable)
-            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_ORA_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= SH4_CCR_ORA_MASK;
         else
-            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_ORA_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~SH4_CCR_ORA_MASK;
     }
 
     void set_oce(bool enable) {
         if (enable)
-            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_OCE_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= SH4_CCR_OCE_MASK;
         else
-            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_OCE_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~SH4_CCR_OCE_MASK;
     }
 
     void set_ice(bool enable) {
         if (enable)
-            this->cpu->reg[SH4_REG_CCR] |= Sh4::CCR_ICE_MASK;
+            this->cpu->reg[SH4_REG_CCR] |= SH4_CCR_ICE_MASK;
         else
-            this->cpu->reg[SH4_REG_CCR] &= ~Sh4::CCR_ICE_MASK;
+            this->cpu->reg[SH4_REG_CCR] &= ~SH4_CCR_ICE_MASK;
     }
 
 };
@@ -428,8 +428,8 @@ public:
                 } else {
                     // make sure it's the right kind of error
                     reg32_t excp =
-                        (this->cpu->reg[SH4_REG_EXPEVT] & Sh4::EXPEVT_CODE_MASK) >>
-                        Sh4::EXPEVT_CODE_SHIFT;
+                        (this->cpu->reg[SH4_REG_EXPEVT] & SH4_EXPEVT_CODE_MASK) >>
+                        SH4_EXPEVT_CODE_SHIFT;
                     if (excp != SH4_EXCP_DATA_TLB_WRITE_MISS) {
                         std::cout << "Error: The wrong kind of error!" << std::endl;
                         std::cout << "Was expecting 0x" << std::hex <<
@@ -731,6 +731,8 @@ int main(int argc, char **argv) {
     Sh4 cpu;
     int ret_val = 0;
 
+    sh4_init(&cpu);
+
     try {
         instantiate_tests(&cpu, &mem);
 
@@ -742,6 +744,8 @@ int main(int argc, char **argv) {
 
         ret_val = 1;
     }
+
+    sh4_cleanup(&cpu);
 
     return ret_val;
 }

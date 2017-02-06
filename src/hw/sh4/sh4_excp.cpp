@@ -120,10 +120,10 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     reg[SH4_REG_SSR] = reg[SH4_REG_SR];
     reg[SH4_REG_SGR] = reg[SH4_REG_R15];
 
-    reg[SH4_REG_SR] |= Sh4::SR_BL_MASK;
-    reg[SH4_REG_SR] |= Sh4::SR_MD_MASK;
-    reg[SH4_REG_SR] |= Sh4::SR_RB_MASK;
-    reg[SH4_REG_SR] &= ~Sh4::SR_FD_MASK;
+    reg[SH4_REG_SR] |= SH4_SR_BL_MASK;
+    reg[SH4_REG_SR] |= SH4_SR_MD_MASK;
+    reg[SH4_REG_SR] |= SH4_SR_RB_MASK;
+    reg[SH4_REG_SR] &= ~SH4_SR_FD_MASK;
 
     if (vector == SH4_EXCP_POWER_ON_RESET ||
         vector == SH4_EXCP_MANUAL_RESET ||
@@ -141,15 +141,15 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
 }
 
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
-    sh4->reg[SH4_REG_EXPEVT] = (excp_code << Sh4::EXPEVT_CODE_SHIFT) &
-        Sh4::EXPEVT_CODE_MASK;
+    sh4->reg[SH4_REG_EXPEVT] = (excp_code << SH4_EXPEVT_CODE_SHIFT) &
+        SH4_EXPEVT_CODE_MASK;
 
     sh4_enter_exception(sh4, (Sh4ExceptionCode)excp_code);
 }
 
 void sh4_set_interrupt(Sh4 *sh4, unsigned intp_code) {
-    sh4->reg[SH4_REG_INTEVT] = (intp_code << Sh4::INTEVT_CODE_SHIFT) &
-        Sh4::INTEVT_CODE_MASK;
+    sh4->reg[SH4_REG_INTEVT] = (intp_code << SH4_INTEVT_CODE_SHIFT) &
+        SH4_INTEVT_CODE_MASK;
 
     sh4_enter_exception(sh4, (Sh4ExceptionCode)intp_code);
 }

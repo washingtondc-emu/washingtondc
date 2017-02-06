@@ -20,16 +20,44 @@
  *
  ******************************************************************************/
 
-#ifndef ENABLE_SH4_MMU
-#error this file cannot be built with the sh4 MMU disabled!
-#endif
-
 #include "BaseException.hpp"
 
 #include "sh4_reg.hpp"
 #include "sh4_excp.hpp"
 
 #include "sh4.hpp"
+
+int Sh4MmucrRegReadHandler(Sh4 *sh4, void *buf,
+                           struct Sh4MemMappedReg const *reg_info) {
+    memcpy(buf, sh4->reg + SH4_REG_MMUCR, sizeof(sh4->reg[SH4_REG_MMUCR]));
+
+    return 0;
+}
+
+int Sh4MmucrRegWriteHandler(Sh4 *sh4, void const *buf,
+                            struct Sh4MemMappedReg const *reg_info) {
+    reg32_t mmucr_tmp;
+    memcpy(&mmucr_tmp, buf, sizeof(mmucr_tmp));
+
+    if (mmucr_tmp & SH4_MMUCR_AT_MASK) {
+        /*
+         * The thing is, I have a lot of code to support MMU operation in place,
+         * but it's not all tested and I also don't think I have all the
+         * functionality in place.  MMU support is definitely something I want
+         * to do eventuaally and it's something I always have in mind when
+         * writing new code, but it's just not there yet.
+         */
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_regname("MMUCR") <<
+                              errinfo_guest_addr(reg_info->addr));
+    }
+
+    sh4->reg[SH4_REG_MMUCR] = mmucr_tmp;
+
+    return 0;
+}
+
+#ifdef ENABLE_SH4_MMU
 
 void sh4_mmu_init(Sh4 *sh4) {
     memset(&sh4->mmu, 0, sizeof(sh4->mmu));
@@ -246,7 +274,7 @@ struct sh4_utlb_entry *sh4_utlb_search(Sh4 *sh4, addr32_t vaddr,
 
         if (!(SH4_UTLB_ENT_SH_MASK & ent->ent) &&
             (!(sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SV_MASK) ||
-             !(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))) {
+             !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))) {
             // (not sharing pages) and (single-VM space or user-mode mode)
 
             unsigned utlb_asid = (ent->key & SH4_UTLB_KEY_ASID_MASK) >>
@@ -346,7 +374,7 @@ struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
 
         if (!(SH4_ITLB_ENT_SH_MASK & ent->ent) &&
             (!(sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SV_MASK) ||
-             !(sh4->reg[SH4_REG_SR] & Sh4::SR_MD_MASK))) {
+             !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))) {
             // (not sharing pages) and (single-VM space or user-mode mode)
             unsigned itlb_asid = (ent->key & SH4_ITLB_KEY_ASID_MASK) >>
                 SH4_ITLB_KEY_ASID_SHIFT;
@@ -438,32 +466,4 @@ struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
     return sh4_itlb_search(sh4, vaddr);
 }
 
-int Sh4MmucrRegReadHandler(Sh4 *sh4, void *buf,
-                           struct Sh4MemMappedReg const *reg_info) {
-    memcpy(buf, sh4->reg + SH4_REG_MMUCR, sizeof(sh4->reg[SH4_REG_MMUCR]));
-
-    return 0;
-}
-
-int Sh4MmucrRegWriteHandler(Sh4 *sh4, void const *buf,
-                            struct Sh4MemMappedReg const *reg_info) {
-    reg32_t mmucr_tmp;
-    memcpy(&mmucr_tmp, buf, sizeof(mmucr_tmp));
-
-    if (mmucr_tmp & SH4_MMUCR_AT_MASK) {
-        /*
-         * The thing is, I have a lot of code to support MMU operation in place,
-         * but it's not all tested and I also don't think I have all the
-         * functionality in place.  MMU support is definitely something I want
-         * to do eventuaally and it's something I always have in mind when
-         * writing new code, but it's just not there yet.
-         */
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_regname("MMUCR") <<
-                              errinfo_guest_addr(reg_info->addr));
-    }
-
-    sh4->reg[SH4_REG_MMUCR] = mmucr_tmp;
-
-    return 0;
-}
+#endif

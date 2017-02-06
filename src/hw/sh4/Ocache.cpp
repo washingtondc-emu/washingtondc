@@ -249,7 +249,7 @@ int sh4_ocache_alloc(Sh4Ocache *ocache,
                      bool cache_as_ram) {
     int err = 0;
 
-    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+    if (cache_as_ram && sh4_in_oc_ram_area(paddr)) {
         // no need to allocate it, it's always going to be part of the cache
         return 0;
     }
@@ -283,7 +283,7 @@ int sh4_ocache_alloc(Sh4Ocache *ocache,
 
 void sh4_ocache_invalidate(Sh4Ocache *ocache, addr32_t paddr,
                            bool index_enable, bool cache_as_ram) {
-    if (cache_as_ram && Sh4::in_oc_ram_area(paddr))
+    if (cache_as_ram && sh4_in_oc_ram_area(paddr))
         return;
 
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
@@ -297,7 +297,7 @@ int sh4_ocache_purge(Sh4Ocache *ocache,
                      bool cache_as_ram) {
     int err;
 
-    if (cache_as_ram && Sh4::in_oc_ram_area(paddr))
+    if (cache_as_ram && sh4_in_oc_ram_area(paddr))
         return 0;
 
     addr32_t line_idx = sh4_ocache_selector(paddr, index_enable, cache_as_ram);
@@ -345,7 +345,7 @@ int sh4_ocache_do_cache_read(Sh4Ocache *ocache,
         return 0;
     }
 
-    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+    if (cache_as_ram && sh4_in_oc_ram_area(paddr)) {
         *out = *(buf_t*)sh4_ocache_get_ram_addr(ocache, paddr, index_enable);
         return 0;
     }
@@ -400,7 +400,7 @@ template<>
 int sh4_ocache_do_cache_read<uint8_t>(Sh4Ocache *ocache, uint8_t *out,
                                       addr32_t paddr, bool index_enable,
                                       bool cache_as_ram) {
-    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+    if (cache_as_ram && sh4_in_oc_ram_area(paddr)) {
         *out = *(uint8_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                   index_enable);
         return 0;
@@ -457,7 +457,7 @@ int sh4_ocache_do_cache_write_cb<uint8_t>(Sh4Ocache *ocache,
                                           uint8_t const *data, addr32_t paddr,
                                           bool index_enable,
                                           bool cache_as_ram) {
-    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+    if (cache_as_ram && sh4_in_oc_ram_area(paddr)) {
         uint8_t *ptr = (uint8_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                          index_enable);
         *ptr = *data;
@@ -544,7 +544,7 @@ int sh4_ocache_do_cache_write_cb(Sh4Ocache *ocache, buf_t const *data,
         return 0;
     }
 
-    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+    if (cache_as_ram && sh4_in_oc_ram_area(paddr)) {
         buf_t *ptr = (buf_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                      index_enable);
         *ptr = *data;
@@ -604,7 +604,7 @@ int sh4_ocache_do_cache_write_wt<uint8_t>(Sh4Ocache *ocache,
                                           uint8_t const *data, addr32_t paddr,
                                           bool index_enable,
                                           bool cache_as_ram) {
-    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+    if (cache_as_ram && sh4_in_oc_ram_area(paddr)) {
         uint8_t *ptr  = (uint8_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                           index_enable);
         *ptr = *data;
@@ -666,7 +666,7 @@ static int sh4_ocache_do_cache_write_wt(Sh4Ocache *ocache, buf_t const *data,
         return 0;
     }
 
-    if (cache_as_ram && Sh4::in_oc_ram_area(paddr)) {
+    if (cache_as_ram && sh4_in_oc_ram_area(paddr)) {
         buf_t *ptr = (buf_t*)sh4_ocache_get_ram_addr(ocache, paddr,
                                                      index_enable);
         *ptr = *data;
@@ -769,7 +769,7 @@ int sh4_ocache_write_wt(Sh4Ocache *state, void const *data, unsigned len,
 
 void sh4_ocache_pref(Sh4Ocache *ocache, addr32_t paddr,
                      bool index_enable, bool cache_as_ram) {
-    if (!(cache_as_ram && Sh4::in_oc_ram_area(paddr))) {
+    if (!(cache_as_ram && sh4_in_oc_ram_area(paddr))) {
         addr32_t line_idx = sh4_ocache_selector(paddr, index_enable,
                                                 cache_as_ram);
 

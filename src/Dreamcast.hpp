@@ -50,7 +50,7 @@ public:
 private:
     static const size_t MEM_SZ = 16 * 1024 * 1024;
 
-    Sh4 *cpu;
+    Sh4 cpu;
     BiosFile *bios;
     struct Memory mem;
     G1Bus *g1;

@@ -43,7 +43,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mem.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.hpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_reg.hpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_reg_flags.hpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_reg.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_tmu.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/g1/g1.hpp"
@@ -73,7 +75,6 @@ endif()
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
-    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.cpp")
 endif()
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
