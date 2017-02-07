@@ -259,6 +259,7 @@ int Sh4WriteOnlyRegReadHandler(Sh4 *sh4, void *buf,
  */
 int Sh4ReadOnlyRegWriteHandler(Sh4 *sh4, void const *buf,
                                struct Sh4MemMappedReg const *reg_info);
+
 /*
  * called for P4 area read/write ops that
  * fall in the memory-mapped register range

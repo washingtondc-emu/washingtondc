@@ -34,6 +34,7 @@
 #include "sh4_mmu.hpp"
 #include "sh4_reg.hpp"
 #include "sh4_mem.hpp"
+#include "sh4_tmu.hpp"
 
 #ifdef ENABLE_SH4_OCACHE
 #include "Ocache.hpp"
@@ -88,6 +89,8 @@ struct Sh4 {
     };
     FpuReg fpu;
 
+    struct sh4_tmu tmu;
+
 #ifdef ENABLE_SH4_ICACHE
     struct Sh4Icache inst_cache;
 #endif
@@ -113,11 +116,11 @@ struct Sh4 {
 void sh4_init(Sh4 *sh4);
 void sh4_cleanup(Sh4 *sh4);
 
-// runs the next instruction, modifies CPU state and sets flags accordingly
-void sh4_exec_inst(Sh4 *sh4);
-
 // reset all values to their power-on-reset values
 void sh4_on_hard_reset(Sh4 *sh4);
+
+/* executes a single instruction and maybe ticks the clock. */
+void sh4_run_once(Sh4 *sh4);
 
 /*
  * This function should be called every time the emulator is about to

@@ -26,6 +26,9 @@
 #include "sh4.hpp"
 #include "types.hpp"
 
+// runs the next instruction, modifies CPU state and sets flags accordingly
+void sh4_exec_inst(Sh4 *sh4);
+
 union Sh4OpArgs {
     inst_t inst;
 

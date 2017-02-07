@@ -25,6 +25,7 @@
 #include "BaseException.hpp"
 #include "sh4_excp.hpp"
 #include "sh4_reg.hpp"
+#include "sh4_tmu.hpp"
 #include "sh4.hpp"
 
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);
@@ -195,9 +196,9 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
 
     //The Timer Unit
     { "TOCR", 0xffd80000, ~addr32_t(0), 1, SH4_REG_TOCR, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_tmu_tocr_read_handler, sh4_tmu_tocr_write_handler, 1, 1 },
     { "TSTR", 0xffd80004, ~addr32_t(0), 1, SH4_REG_TSTR, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_tmu_tstr_read_handler, sh4_tmu_tstr_write_handler, 0, 0 },
     { "TCOR0", 0xffd80008, ~addr32_t(0), 4, SH4_REG_TCOR0, true,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
@@ -205,7 +206,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
     { "TCR0", 0xffd80010, ~addr32_t(0), 2, SH4_REG_TCR0, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
+      sh4_tmu_tcr_read_handler, sh4_tmu_tcr_write_handler,
       ~reg32_t(0), ~reg32_t(0) },
     { "TCOR1", 0xffd80014, ~addr32_t(0), 4, SH4_REG_TCOR1, true,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
@@ -214,7 +215,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
     { "TCR1", 0xffd8001c, ~addr32_t(0), 2, SH4_REG_TCR1, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
+      sh4_tmu_tcr_read_handler, sh4_tmu_tcr_write_handler,
       ~reg32_t(0), ~reg32_t(0) },
     { "TCOR2", 0xffd80020, ~addr32_t(0), 4, SH4_REG_TCOR2, true,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
@@ -223,7 +224,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
       ~reg32_t(0), ~reg32_t(0) },
     { "TCR2", 0xffd80028, ~addr32_t(0), 2, SH4_REG_TCR2, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
+      sh4_tmu_tcr_read_handler, sh4_tmu_tcr_write_handler,
       ~reg32_t(0), ~reg32_t(0) },
     { "TCPR2", 0xffd8002c, ~addr32_t(0), 4, SH4_REG_TCPR2, true,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
