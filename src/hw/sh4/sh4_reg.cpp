@@ -290,6 +290,12 @@ int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
     struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);
     Sh4RegReadHandler handler = mm_reg->on_p4_read;
 
+    if (len != mm_reg->len) {
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_length(len) <<
+                              errinfo_guest_addr(addr));
+    }
+
     return handler(sh4, buf, mm_reg);
 }
 
@@ -297,6 +303,12 @@ int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
                              addr32_t addr, unsigned len) {
     struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);
     Sh4RegWriteHandler handler = mm_reg->on_p4_write;
+
+    if (len != mm_reg->len) {
+        BOOST_THROW_EXCEPTION(InvalidParamError() <<
+                              errinfo_length(len) <<
+                              errinfo_guest_addr(addr));
+    }
 
     return handler(sh4, buf, mm_reg);
 }
