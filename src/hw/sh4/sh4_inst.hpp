@@ -191,6 +191,16 @@ struct InstOpcode {
      */
     sh4_inst_group_t group;
 
+    /*
+     * Number of cycles after each instruction before the next instruction can
+     * be issued within the same pipeline.  The other constraining factor that
+     * can delay is the latency (how long it takes an instruction's output to
+     * become available), but I don't store that because some opcodes don't have
+     * uniform latency, and some opcodes have multiple latencies for different
+     * outputs
+     */
+    unsigned issue;
+
     // instructions are matched to this opcode
     // by anding with mask and checking for equality with val
     inst_t mask;
