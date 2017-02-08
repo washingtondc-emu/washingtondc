@@ -153,6 +153,15 @@ BOOST_STATIC_ASSERT(sizeof(Sh4OpArgs) == 2);
 
 typedef void (*opcode_func_t)(Sh4*, Sh4OpArgs oa);
 
+typedef enum sh4_inst_group {
+    SH4_GROUP_MT,
+    SH4_GROUP_EX,
+    SH4_GROUP_BR,
+    SH4_GROUP_LS,
+    SH4_GROUP_FE,
+    SH4_GROUP_CO
+} sh4_inst_group_t;
+
 struct InstOpcode {
     // format string compiled to make mask and val
     char const *fmt;
@@ -174,6 +183,13 @@ struct InstOpcode {
      */
     reg32_t fpscr_mask;
     reg32_t fpscr_val;
+
+    /*
+     * execution group.  If I was emulating the dual-issue nature of the
+     * pipeline, this would determine which instruction could execute
+     * simoltaneously
+     */
+    sh4_inst_group_t group;
 
     // instructions are matched to this opcode
     // by anding with mask and checking for equality with val
