@@ -51,6 +51,8 @@ void sh4_tmu_cleanup(sh4_tmu *tmu) {
 void sh4_tmu_tick(Sh4 *sh4) {
     unsigned ticks_per_countdown;
 
+    sh4->tmu.last_tick = sh4->cycle_stamp;
+
     for (int chan = 0; chan < 3; chan++) {
 
         if (!(sh4->reg[SH4_REG_TSTR] & (1 << chan)))

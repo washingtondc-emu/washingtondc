@@ -28,6 +28,7 @@
 #include <boost/cstdint.hpp>
 #include <boost/static_assert.hpp>
 
+#include "BaseException.hpp"
 #include "types.hpp"
 #include "MemoryMap.hpp"
 #include "sh4_inst.hpp"
@@ -111,6 +112,11 @@ struct Sh4 {
      * they are consistent.
      */
     uint8_t *reg_area;
+
+    unsigned cycles_accum;
+
+    /* the total number of cycles that have been run thus far */
+    uint64_t cycle_stamp;
 };
 
 void sh4_init(Sh4 *sh4);
@@ -119,8 +125,21 @@ void sh4_cleanup(Sh4 *sh4);
 // reset all values to their power-on-reset values
 void sh4_on_hard_reset(Sh4 *sh4);
 
+/*
+ * run the sh4 for the given number of cycles.
+ * This function will not tick the tmu.
+ *
+ * In general, the number of cycles each instruction takes is equal to its issue
+ * delay.  We do not take pipeline stalling into account, nor do we take the
+ * dual-issue nature of the pipeline into account.
+ *
+ * Any leftover cycles will be stored in the cycles_accum member of struct Sh4
+ * and added to the cycle count next time you call sh4_run_cycles.
+ */
+void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles);
+
 /* executes a single instruction and maybe ticks the clock. */
-void sh4_run_once(Sh4 *sh4);
+void sh4_single_step(Sh4 *sh4);
 
 /*
  * This function should be called every time the emulator is about to
@@ -226,5 +245,7 @@ static const addr32_t SH4_OC_RAM_AREA_VAL = 0x7c000000;
 static inline bool sh4_in_oc_ram_area(addr32_t addr) {
     return (addr & SH4_OC_RAM_AREA_MASK) == SH4_OC_RAM_AREA_VAL;
 }
+
+void sh4_add_regs_to_exc(Sh4 *sh4, BaseException& exc);
 
 #endif

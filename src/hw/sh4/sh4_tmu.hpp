@@ -29,6 +29,9 @@ struct Sh4;
 
 struct sh4_tmu {
     unsigned tchan_accum[3];
+
+    /* the sh4's cycle_stamp last time sh4_tmu_tick was called. */
+    uint64_t last_tick;
 };
 
 void sh4_tmu_init(sh4_tmu *tmu);

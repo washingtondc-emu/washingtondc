@@ -29,6 +29,7 @@
 // runs the next instruction, modifies CPU state and sets flags accordingly
 void sh4_exec_inst(Sh4 *sh4);
 
+
 union Sh4OpArgs {
     inst_t inst;
 
@@ -206,6 +207,10 @@ struct InstOpcode {
     inst_t mask;
     inst_t val;
 };
+
+InstOpcode const* sh4_decode_inst(Sh4 *sh4, inst_t inst);
+
+void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op);
 
 void sh4_compile_instructions();
 void sh4_compile_instruction(struct InstOpcode *op);

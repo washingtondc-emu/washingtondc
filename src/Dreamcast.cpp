@@ -69,9 +69,16 @@ void Dreamcast::run() {
 #ifdef ENABLE_DEBUGGER
             if (debugger && debugger->step(sh4_get_pc(&cpu)))
                 continue;
-#endif
 
-            sh4_exec_inst(&cpu);
+            /*
+             * TODO: don't single-step if there's no
+             * chance of us hitting a breakpoint
+             */
+            sh4_single_step(&cpu);
+#else
+            sh4_run_cycles(&cpu, 4);
+            sh4_tmu_tick(&cpu);
+#endif
         }
     } catch(const BaseException& exc) {
         std::cerr << boost::diagnostic_information(exc);

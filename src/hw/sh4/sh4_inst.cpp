@@ -39,52 +39,11 @@
 
 #include "sh4_inst.hpp"
 
-static void sh4_do_exec_inst(Sh4 *sh4, inst_t inst);
-
 typedef boost::error_info<struct tag_opcode_format_error_info, std::string>
 errinfo_opcode_format;
 
 typedef boost::error_info<struct tag_opcode_name_error_info, std::string>
 errinfo_opcode_name;
-
-// struct RegFile
-typedef boost::error_info<struct tag_sr_error_info, reg32_t> errinfo_reg_sr;
-typedef boost::error_info<struct tag_ssr_error_info, reg32_t> errinfo_reg_ssr;
-typedef boost::error_info<struct tag_pc_error_info, reg32_t> errinfo_reg_pc;
-typedef boost::error_info<struct tag_spc_error_info, reg32_t> errinfo_reg_spc;
-typedef boost::error_info<struct tag_gbr_error_info, reg32_t> errinfo_reg_gbr;
-typedef boost::error_info<struct tag_vbr_error_info, reg32_t> errinfo_reg_vbr;
-typedef boost::error_info<struct tag_sgr_error_info, reg32_t> errinfo_reg_sgr;
-typedef boost::error_info<struct tag_dbr_error_info, reg32_t> errinfo_reg_dbr;
-typedef boost::error_info<struct tag_mach_error_info, reg32_t> errinfo_reg_mach;
-typedef boost::error_info<struct tag_macl_error_info, reg32_t> errinfo_reg_macl;
-typedef boost::error_info<struct tag_pr_error_info, reg32_t> errinfo_reg_pr;
-typedef boost::error_info<struct tag_fpscr_error_info, reg32_t>
-errinfo_reg_fpscr;
-typedef boost::error_info<struct tag_fpul_error_info, reg32_t> errinfo_reg_fpul;
-
-// general-purpose registers within struct RegFile
-typedef boost::tuple<reg32_t, reg32_t, reg32_t, reg32_t,
-                     reg32_t, reg32_t, reg32_t, reg32_t> RegBankTuple;
-typedef boost::error_info<struct tag_bank0_error_info, RegBankTuple> errinfo_reg_bank0;
-typedef boost::error_info<struct tag_bank1_error_info, RegBankTuple> errinfo_reg_bank1;
-typedef boost::error_info<struct tag_rgen_error_info, RegBankTuple> errinfo_reg_rgen;
-
-// struct CacheReg
-typedef boost::error_info<struct tag_ccr_error_info, reg32_t> errinfo_reg_ccr;
-typedef boost::error_info<struct tag_qacr0_error_info, reg32_t>
-errinfo_reg_qacr0;
-typedef boost::error_info<struct tag_qacr1_error_info, reg32_t>
-errinfo_reg_qacr1;
-
-// struct Mmu
-typedef boost::error_info<struct tag_pteh_error_info, reg32_t> errinfo_reg_pteh;
-typedef boost::error_info<struct tag_ptel_error_info, reg32_t> errinfo_reg_ptel;
-typedef boost::error_info<struct tag_ptea_error_info, reg32_t> errinfo_reg_ptea;
-typedef boost::error_info<struct tag_ttb_error_info, reg32_t> errinfo_reg_ttb;
-typedef boost::error_info<struct tag_tea_error_info, reg32_t> errinfo_reg_tea;
-typedef boost::error_info<struct tag_mmucr_error_info, reg32_t>
-errinfo_reg_mmucr;
 
 static struct InstOpcode opcode_list[] = {
     // RTS
@@ -1018,85 +977,21 @@ void sh4_exec_inst(Sh4 *sh4) {
             BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                   errinfo_feature("SH4 CPU exceptions/traps"));
         }
-        sh4_do_exec_inst(sh4, inst);
-    } catch (BaseException& exc) {
-        exc << errinfo_reg_sr(sh4->reg[SH4_REG_SR]);
-        exc << errinfo_reg_ssr(sh4->reg[SH4_REG_SSR]);
-        exc << errinfo_reg_pc(sh4->reg[SH4_REG_PC]);
-        exc << errinfo_reg_spc(sh4->reg[SH4_REG_SPC]);
-        exc << errinfo_reg_gbr(sh4->reg[SH4_REG_GBR]);
-        exc << errinfo_reg_vbr(sh4->reg[SH4_REG_VBR]);
-        exc << errinfo_reg_sgr(sh4->reg[SH4_REG_SGR]);
-        exc << errinfo_reg_dbr(sh4->reg[SH4_REG_DBR]);
-        exc << errinfo_reg_mach(sh4->reg[SH4_REG_MACH]);
-        exc << errinfo_reg_macl(sh4->reg[SH4_REG_MACL]);
-        exc << errinfo_reg_pr(sh4->reg[SH4_REG_PR]);
-        exc << errinfo_reg_fpscr(sh4->fpu.fpscr);
-        exc << errinfo_reg_fpul(sh4->fpu.fpul);
-        exc << errinfo_reg_bank0(RegBankTuple(sh4->reg[SH4_REG_R0_BANK0],
-                                              sh4->reg[SH4_REG_R1_BANK0],
-                                              sh4->reg[SH4_REG_R2_BANK0],
-                                              sh4->reg[SH4_REG_R3_BANK0],
-                                              sh4->reg[SH4_REG_R4_BANK0],
-                                              sh4->reg[SH4_REG_R5_BANK0],
-                                              sh4->reg[SH4_REG_R6_BANK0],
-                                              sh4->reg[SH4_REG_R7_BANK0]));
-        exc << errinfo_reg_bank1(RegBankTuple(sh4->reg[SH4_REG_R0_BANK1],
-                                              sh4->reg[SH4_REG_R1_BANK1],
-                                              sh4->reg[SH4_REG_R2_BANK1],
-                                              sh4->reg[SH4_REG_R3_BANK1],
-                                              sh4->reg[SH4_REG_R4_BANK1],
-                                              sh4->reg[SH4_REG_R5_BANK1],
-                                              sh4->reg[SH4_REG_R6_BANK1],
-                                              sh4->reg[SH4_REG_R7_BANK1]));
-        exc << errinfo_reg_rgen(RegBankTuple(sh4->reg[SH4_REG_R8],
-                                             sh4->reg[SH4_REG_R9],
-                                             sh4->reg[SH4_REG_R10],
-                                             sh4->reg[SH4_REG_R11],
-                                             sh4->reg[SH4_REG_R12],
-                                             sh4->reg[SH4_REG_R13],
-                                             sh4->reg[SH4_REG_R14],
-                                             sh4->reg[SH4_REG_R15]));
-        exc << errinfo_reg_ccr(sh4->reg[SH4_REG_CCR]);
-        exc << errinfo_reg_qacr0(sh4->reg[SH4_REG_QACR0]);
-        exc << errinfo_reg_qacr1(sh4->reg[SH4_REG_QACR1]);
 
-        // struct Mmu
-        exc << errinfo_reg_pteh(sh4->reg[SH4_REG_PTEH]);
-        exc << errinfo_reg_ptel(sh4->reg[SH4_REG_PTEL]);
-        exc << errinfo_reg_ptea(sh4->reg[SH4_REG_PTEA]);
-        exc << errinfo_reg_ttb(sh4->reg[SH4_REG_TTB]);
-        exc << errinfo_reg_tea(sh4->reg[SH4_REG_TEA]);
-        exc << errinfo_reg_mmucr(sh4->reg[SH4_REG_MMUCR]);
+        sh4_do_exec_inst(sh4, inst, sh4_decode_inst(sh4, inst));
+    } catch (BaseException& exc) {
+        sh4_add_regs_to_exc(sh4, exc);
         throw;
     }
 }
 
-static void sh4_do_exec_inst(Sh4 *sh4, inst_t inst) {
-    InstOpcode *op = opcode_list;
-    Sh4OpArgs oa;
-
-    oa.inst = inst;
+InstOpcode const* sh4_decode_inst(Sh4 *sh4, inst_t inst) {
+    InstOpcode const *op = opcode_list;
 
     while (op->fmt) {
         if (((op->mask & inst) == op->val) &&
             ((op->fpscr_mask & sh4->fpu.fpscr) == op->fpscr_val)) {
-            if (!(sh4->delayed_branch && op->is_branch)) {
-                opcode_func_t op_func = op->func;
-                bool delayed_branch_tmp = sh4->delayed_branch;
-                addr32_t delayed_branch_addr_tmp = sh4->delayed_branch_addr;
-
-                op_func(sh4, oa);
-
-                if (delayed_branch_tmp) {
-                    sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
-                    sh4->delayed_branch = false;
-                }
-            } else {
-                // raise exception for illegal slot instruction
-                sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
-            }
-            return;
+            return op;
         }
         op++;
     }
@@ -1104,6 +999,27 @@ static void sh4_do_exec_inst(Sh4 *sh4, inst_t inst) {
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
                           errinfo_feature("SH4 CPU exception for "
                                           "unrecognized opcode"));
+}
+
+void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
+    Sh4OpArgs oa;
+    oa.inst = inst;
+
+    if (!(sh4->delayed_branch && op->is_branch)) {
+        opcode_func_t op_func = op->func;
+        bool delayed_branch_tmp = sh4->delayed_branch;
+        addr32_t delayed_branch_addr_tmp = sh4->delayed_branch_addr;
+
+        op_func(sh4, oa);
+
+        if (delayed_branch_tmp) {
+            sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
+            sh4->delayed_branch = false;
+        }
+    } else {
+        // raise exception for illegal slot instruction
+        sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
+    }
 }
 
 void sh4_compile_instructions() {
