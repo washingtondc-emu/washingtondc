@@ -143,6 +143,17 @@ int sh4_tmu_tstr_write_handler(Sh4 *sh4, void const *buf,
     uint8_t tmp;
     memcpy(&tmp, buf, reg_info->len);
     tmp &= 7;
+
+    if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN0_MASK) ^
+        (tmp & SH4_TSTR_CHAN0_MASK))
+        sh4->tmu.tchan_accum[0] = 0;
+    if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN1_MASK) ^
+        (tmp & SH4_TSTR_CHAN1_MASK))
+        sh4->tmu.tchan_accum[1] = 0;
+    if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN2_MASK) ^
+        (tmp & SH4_TSTR_CHAN2_MASK))
+        sh4->tmu.tchan_accum[2] = 0;
+
     memcpy(sh4->reg + SH4_REG_TSTR, &tmp, reg_info->len);
 
     return 0;

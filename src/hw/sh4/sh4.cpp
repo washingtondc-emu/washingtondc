@@ -78,7 +78,9 @@ typedef boost::error_info<struct tag_mmucr_error_info, reg32_t>
 errinfo_reg_mmucr;
 
 void sh4_init(Sh4 *sh4) {
+    memset(sh4, 0, sizeof(*sh4));
     sh4->reg_area = new uint8_t[SH4_P4_REGEND - SH4_P4_REGSTART];
+    sh4->cycle_stamp = 0;
 
 #ifdef ENABLE_SH4_MMU
     sh4_mmu_init(sh4);
@@ -123,6 +125,7 @@ void sh4_cleanup(Sh4 *sh4) {
 }
 
 void sh4_on_hard_reset(Sh4 *sh4) {
+    memset(sh4->reg, 0, sizeof(sh4->reg));
     sh4->reg[SH4_REG_SR] = SH4_SR_MD_MASK | SH4_SR_RB_MASK | SH4_SR_BL_MASK |
         SH4_SR_FD_MASK | SH4_SR_IMASK_MASK;
     sh4->reg[SH4_REG_VBR] = 0;
@@ -191,12 +194,12 @@ void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles) {
     n_cycles += sh4->cycles_accum;
     sh4->cycles_accum = 0;
 
+mulligan:
     try {
         do {
             if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
-                // fuck it, i'll commit now and figure what to do here later
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("SH4 CPU exceptions/traps"));
+                // TODO: some sort of logic to detect infinite loops here
+                goto mulligan;
             }
 
             InstOpcode const *op = sh4_decode_inst(sh4, inst);
@@ -223,11 +226,11 @@ void sh4_single_step(Sh4 *sh4) {
     inst_t inst;
     int exc_pending;
 
+mulligan:
     try {
         if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
-            // fuck it, i'll commit now and figure what to do here later
-            BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                  errinfo_feature("SH4 CPU exceptions/traps"));
+            // TODO: some sort of logic to detect infinite loops here
+            goto mulligan;
         }
 
         InstOpcode const *op = sh4_decode_inst(sh4, inst);
@@ -243,6 +246,11 @@ void sh4_single_step(Sh4 *sh4) {
         sh4_add_regs_to_exc(sh4, exc);
         throw;
     }
+}
+
+void sh4_run_until(Sh4 *sh4, addr32_t stop_addr) {
+    while (sh4->reg[SH4_REG_PC] != stop_addr)
+        sh4_single_step(sh4);
 }
 
 void sh4_add_regs_to_exc(Sh4 *sh4, BaseException& exc) {

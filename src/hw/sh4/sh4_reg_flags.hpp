@@ -168,27 +168,38 @@ static const unsigned SH4_TRA_IMM_MASK = 0xff << SH4_TRA_IMM_SHIFT;
  ******************************************************************************/
 
 /* input capture control flag */
-const static uint16_t SH4_TCR_ICPF_SHIFT = 9;
+const static unsigned SH4_TCR_ICPF_SHIFT = 9;
 const static uint16_t SH4_TCR_ICPF_MASK = 1 << 9;
 
 /* underflow flag */
-const static uint16_t SH4_TCR_UNF_SHIFT = 8;
+const static unsigned SH4_TCR_UNF_SHIFT = 8;
 const static uint16_t SH4_TCR_UNF_MASK = 1 << SH4_TCR_UNF_SHIFT;
 
 /* input capture control */
-const static uint16_t SH4_TCR_ICPE_SHIFT = 6;
+const static unsigned SH4_TCR_ICPE_SHIFT = 6;
 const static uint16_t SH4_TCR_ICPE_MASK = 3 << SH4_TCR_ICPE_SHIFT;
 
 /* underflow interrupt enable */
-const static uint16_t SH4_TCR_UNIE_SHIFT = 5;
+const static unsigned SH4_TCR_UNIE_SHIFT = 5;
 const static uint16_t SH4_TCR_UNIE_MASK = 1 << SH4_TCR_UNIE_SHIFT;
 
 /* clock edge selector, I don't think this matters for internal bus clock */
-const static uint16_t SH4_TCR_CKEG_SHIFT = 3;
+const static unsigned SH4_TCR_CKEG_SHIFT = 3;
 const static uint16_t SH4_TCR_CKEG_MASK = 1 << SH4_TCR_CKEG_SHIFT;
 
 /* timer prescaler */
-const static uint16_t SH4_TCR_TPSC_SHIFT = 0;
+const static unsigned SH4_TCR_TPSC_SHIFT = 0;
 const static uint16_t SH4_TCR_TPSC_MASK = 7 << SH4_TCR_TPSC_SHIFT;
 
+/* TSTR channel 0 enable */
+const static unsigned SH4_TSTR_CHAN0_SHIFT = 0;
+const static uint8_t SH4_TSTR_CHAN0_MASK = 1 << SH4_TSTR_CHAN0_SHIFT;
+
+/* TSTR channel 1 enable */
+const static unsigned SH4_TSTR_CHAN1_SHIFT = 0;
+const static uint8_t SH4_TSTR_CHAN1_MASK = 1 << SH4_TSTR_CHAN1_SHIFT;
+
+/* TSTR channel 2 enable */
+const static unsigned SH4_TSTR_CHAN2_SHIFT = 0;
+const static uint8_t SH4_TSTR_CHAN2_MASK = 1 << SH4_TSTR_CHAN2_SHIFT;
 #endif

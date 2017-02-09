@@ -142,6 +142,15 @@ void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles);
 void sh4_single_step(Sh4 *sh4);
 
 /*
+ * run until pc == stop_addr.
+ * This is primarily intended for unit testing code.
+ *
+ * if pc is already equal to stop_addr when the function is first called
+ * then no instructions will be executed
+ */
+void sh4_run_until(Sh4 *sh4, addr32_t stop_addr);
+
+/*
  * This function should be called every time the emulator is about to
  * start emulating sh4 code after having emulated something else.
  * The purpose is to make sure that the host CPU's state is in sync with

@@ -112,6 +112,9 @@ target_link_libraries(sh4mem_test sh4)
 add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp")
 target_link_libraries(sh4inst_test sh4 sh4asm_core)
 
+add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.cpp")
+target_link_libraries(sh4tmu_test sh4 sh4asm_core)
+
 add_executable(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp")
 target_link_libraries(sh4asm sh4asm_core)
 
