@@ -22,10 +22,6 @@
 
 #include "BaseException.hpp"
 
-#ifdef ENABLE_SH4_ICACHE
-#include "Icache.hpp"
-#endif
-
 #include "sh4_mmu.hpp"
 #include "sh4_excp.hpp"
 #include "sh4_mem.hpp"
@@ -287,11 +283,6 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
 
     bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
 
-#ifdef ENABLE_SH4_ICACHE
-    bool index_enable = sh4->reg[SH4_REG_CCR] &
-        SH4_CCR_IIX_MASK ? true : false;
-#endif
-
     if (virt_area != SH4_AREA_P0 && !privileged) {
         /*
          * The spec says user-mode processes can only access the U0 area
@@ -319,24 +310,9 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
             if (privileged || (itlb_ent->ent & SH4_ITLB_ENT_PR_MASK)) {
                 addr32_t paddr = sh4_itlb_ent_translate(itlb_ent, addr);
 
-#ifdef ENABLE_SH4_ICACHE
-                if ((itlb_ent->ent & SH4_ITLB_ENT_C_MASK) &&
-                    (sh4->reg[SH4_REG_CCR] & SH4_CCR_ICE_MASK)) {
-                    // use the cache
-                    boost::uint32_t buf;
-                    int ret;
-                    ret = sh4_icache_read(&sh4->inst_cache, &buf,
-                                          paddr, index_enable);
-                    *out = buf;
-                    return ret;
-                } else {
-#endif
-                    // don't use the cache
-                    return memory_map_read(out, addr & 0x1fffffff,
-                                           sizeof(*out));
-#ifdef ENABLE_SH4_ICACHE
-                }
-#endif
+                // don't use the cache
+                return memory_map_read(out, paddr & 0x1fffffff,
+                                       sizeof(*out));
             }
 #else // ifdef ENABLE_SH4_MMU
             BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -346,37 +322,11 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
                                                   "and rebuild"));
 #endif
         } else {
-#ifdef ENABLE_SH4_ICACHE
-            if (sh4->reg[SH4_REG_CCR] & SH4_CCR_ICE_MASK) {
-                boost::uint32_t buf;
-                int ret;
-                ret = sh4_icache_read(&sh4->inst_cache, &buf,
-                                      addr, index_enable);
-                *out = buf;
-                return ret;
-            } else {
-#endif
-                return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
-#ifdef ENABLE_SH4_ICACHE
-            }
-#endif
+            return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
         }
         break;
     case SH4_AREA_P1:
-#ifdef ENABLE_SH4_ICACHE
-        if (sh4->reg[SH4_REG_CCR] & SH4_CCR_ICE_MASK) {
-            boost::uint32_t buf;
-            int ret;
-            ret = sh4_icache_read(&sh4->inst_cache, &buf,
-                                  addr, index_enable);
-            *out = buf;
-            return ret;
-        } else {
-#endif
-            return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
-#ifdef ENABLE_SH4_ICACHE
-        }
-#endif
+        return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
         break;
     case SH4_AREA_P2:
         return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));

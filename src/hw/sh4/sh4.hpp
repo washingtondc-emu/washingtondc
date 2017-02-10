@@ -38,10 +38,6 @@
 #include "sh4_tmu.hpp"
 #include "sh4_ocache.hpp"
 
-#ifdef ENABLE_SH4_ICACHE
-#include "Icache.hpp"
-#endif
-
 /* Hitachi SuperH-4 interpreter */
 
 
@@ -88,10 +84,6 @@ struct Sh4 {
     FpuReg fpu;
 
     struct sh4_tmu tmu;
-
-#ifdef ENABLE_SH4_ICACHE
-    struct Sh4Icache inst_cache;
-#endif
 
     /*
      * operand cache - this is really only here to be used as RAM

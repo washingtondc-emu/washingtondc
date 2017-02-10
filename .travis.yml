@@ -6,14 +6,11 @@ os:
 git:
   submodules: true
 env:
-  - DO_ENABLE_SH4_MMU=OFF DO_ENABLE_SH4_ICACHE=OFF
-  - DO_ENABLE_SH4_MMU=OFF DO_ENABLE_SH4_ICACHE=ON
-  - DO_ENABLE_SH4_MMU=ON DO_ENABLE_SH4_ICACHE=OFF
-  - DO_ENABLE_SH4_MMU=ON DO_ENABLE_SH4_ICACHE=ON
+  - DO_ENABLE_SH4_MMU=OFF
+  - DO_ENABLE_SH4_MMU=ON
 script:
   mkdir build ;
   cd build ;
-  cmake -DENABLE_SH4_MMU=$DO_ENABLE_SH4_MMU \
-        -DENABLE_SH4_ICACHE=$DO_ENABLE_SH4_ICACHE .. ;
+  cmake -DENABLE_SH4_MMU=$DO_ENABLE_SH4_MMU .. ;
   make ;
   ./sh4asm_test && ./sh4mem_test && ./sh4inst_test && ./sh4tmu_test

@@ -24,10 +24,6 @@
 
 #include <cstring>
 
-#ifdef ENABLE_SH4_ICACHE
-#include "Icache.hpp"
-#endif
-
 #include "BaseException.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4_excp.hpp"
@@ -85,10 +81,6 @@ void sh4_init(Sh4 *sh4) {
     sh4->cycles_accum = 0;
     memset(sh4->reg, 0, sizeof(sh4->reg));
 
-#ifdef ENABLE_SH4_ICACHE
-    sh4_icache_init(&sh4->inst_cache);
-#endif
-
     sh4_ocache_init(&sh4->ocache);
 
     sh4_init_regs(sh4);
@@ -104,10 +96,6 @@ void sh4_cleanup(Sh4 *sh4) {
     sh4_tmu_cleanup(&sh4->tmu);
 
     sh4_ocache_cleanup(&sh4->ocache);
-
-#ifdef ENABLE_SH4_ICACHE
-    sh4_icache_cleanup(&sh4->inst_cache);
-#endif
 
     delete[] sh4->reg_area;
 }
@@ -130,10 +118,6 @@ void sh4_on_hard_reset(Sh4 *sh4) {
     sh4->delayed_branch_addr = 0;
 
     sh4_ocache_clear(&sh4->ocache);
-
-#ifdef ENABLE_SH4_ICACHE
-    sh4_icache_reset(&sh4->inst_cache);
-#endif
 }
 
 reg32_t sh4_get_pc(Sh4 *sh4) {

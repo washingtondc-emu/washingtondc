@@ -31,7 +31,6 @@ if(UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
 endif()
 
-option(ENABLE_SH4_ICACHE "emulate the sh4's instruction cache" ON)
 option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)
 option(ENABLE_DEBUGGER "Enable the debugger" ON)
 
@@ -62,12 +61,6 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/arch/x86_64/arch_fenv.hpp"
                 "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fesetround.cpp"
                 "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fegetround.cpp")
-
-if (ENABLE_SH4_ICACHE)
-    add_definitions(-DENABLE_SH4_ICACHE)
-    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Icache.cpp")
-    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Icache.hpp")
-endif()
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
