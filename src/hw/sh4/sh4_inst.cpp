@@ -33,10 +33,6 @@
 #include "sh4.hpp"
 #include "sh4_excp.hpp"
 
-#ifdef ENABLE_SH4_OCACHE
-#include "Ocache.hpp"
-#endif
-
 #include "sh4_inst.hpp"
 
 typedef boost::error_info<struct tag_opcode_format_error_info, std::string>
@@ -1614,14 +1610,6 @@ void sh4_inst_unary_tasb_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint8_t val_new, val_old;
     reg32_t mask;
 
-#ifdef ENABLE_SH4_OCACHE
-    bool index_enable = sh4->reg[SH4_REG_CCR] & SH4_CCR_OIX_MASK ? true : false;
-    bool cache_as_ram = sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK ? true : false;
-
-    if (sh4_ocache_purge(&sh4->op_cache, addr, index_enable, cache_as_ram) != 0)
-        return;
-#endif
-
     if (sh4_read_mem(sh4, &val_old, addr, sizeof(val_old)) != 0)
         return;
     val_new = val_old | 0x80;
@@ -1638,72 +1626,7 @@ void sh4_inst_unary_tasb_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // OCBI @Rn
 // 0000nnnn10100011
 void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
-#ifdef ENABLE_SH4_OCACHE
-    addr32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
-    addr32_t paddr;
-
-    if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
-#ifdef ENABLE_SH4_MMU
-        /*
-         * TODO: ideally there would be some function we call here that is also
-         * called by the code in sh4_mem.cpp that touches the utlb.  That way,
-         * I could rest assured that this actually works because the sh4mem_test
-         * would already be exercising it.
-         */
-        bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
-        struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
-                                                          SH4_UTLB_WRITE);
-
-        if (!utlb_ent)
-            return; // exception set by utlb_search
-
-        unsigned pr = (utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
-            SH4_UTLB_ENT_PR_SHIFT;
-
-        paddr = sh4_utlb_ent_translate(utlb_ent, addr);
-
-        /*
-         * Check privileges.  For all intents and purposes this is a write operation
-         * because whatever pending writes in the cache will be dropped, meaning
-         * that from the software's perspective the memory has been written to.
-         */
-        if (privileged) {
-            if (!(pr & 1)) {
-                // page is marked as read-only
-                unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
-                    SH4_UTLB_KEY_VPN_SHIFT;
-                sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
-                sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                sh4->reg[SH4_REG_TEA] = addr;
-                return;
-            }
-        } else if (pr != 3) {
-            // page is marked as read-only OR we don't have permissions
-            unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
-                SH4_UTLB_KEY_VPN_SHIFT;
-            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
-            sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
-            sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-            sh4->reg[SH4_REG_TEA] = addr;
-            return;
-        }
-#else
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("MMU") <<
-                              errinfo_advice("run cmake with "
-                                             "-DENABLE_SH4_MMU=ON "
-                                             "and rebuild"));
-#endif
-    } else {
-        paddr = addr;
-    }
-
-    bool index_enable = sh4->reg[SH4_REG_CCR] & SH4_CCR_OIX_MASK ? true : false;
-    bool cache_as_ram = sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK ? true : false;
-
-    sh4_ocache_invalidate(&sh4->op_cache, paddr, index_enable, cache_as_ram);
-#endif
+    /* TODO: if mmu is enabled, this inst can generate exceptions */
 
     sh4_next_inst(sh4);
 }
@@ -1711,73 +1634,7 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 // OCBP @Rn
 // 0000nnnn10100011
 void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
-#ifdef ENABLE_SH4_OCACHE
-    addr32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
-    addr32_t paddr;
-
-    if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
-#ifdef ENABLE_SH4_MMU
-        /*
-         * TODO: ideally there would be some function we call here that is also
-         * called by the code in sh4_mem.cpp that touches the utlb.  That way,
-         * I could rest assured that this actually works because the sh4mem_test
-         * would already be exercising it.
-         */
-        bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
-        struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
-                                                          SH4_UTLB_WRITE);
-
-        if (!utlb_ent)
-            return; // exception set by utlb_search
-
-        unsigned pr = (utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
-            SH4_UTLB_ENT_PR_SHIFT;
-
-        paddr = sh4_utlb_ent_translate(utlb_ent, addr);
-
-        /*
-         * Check privileges.  For all intents and purposes this is a write operation
-         * because whatever pending writes in the cache will be dropped, meaning
-         * that from the software's perspective the memory has been written to.
-         */
-        if (privileged) {
-            if (!(pr & 1)) {
-                // page is marked as read-only
-                unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
-                    SH4_UTLB_KEY_VPN_SHIFT;
-                sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
-                sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                sh4->reg[SH4_REG_TEA] = addr;
-                return;
-            }
-        } else if (pr != 3) {
-            // page is marked as read-only OR we don't have permissions
-            unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
-                SH4_UTLB_KEY_VPN_SHIFT;
-            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
-            sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
-            sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-            sh4->reg[SH4_REG_TEA] = addr;
-            return;
-        }
-#else
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("MMU") <<
-                              errinfo_advice("run cmake with "
-                                             "-DENABLE_SH4_MMU=ON "
-                                             "and rebuild"));
-#endif
-    } else {
-        paddr = addr;
-    }
-
-    bool index_enable = sh4->reg[SH4_REG_CCR] & SH4_CCR_OIX_MASK ? true : false;
-    bool cache_as_ram = sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK ? true : false;
-
-    if (sh4_ocache_purge(&sh4->op_cache, paddr, index_enable, cache_as_ram) != 0)
-        return;
-#endif
+    /* TODO: if mmu is enabled, this inst can generate exceptions */
 
     sh4_next_inst(sh4);
 }
@@ -1785,13 +1642,6 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 // PREF @Rn
 // 0000nnnn10000011
 void sh4_inst_unary_pref_indgen(Sh4 *sh4, Sh4OpArgs inst) {
-#ifdef ENABLE_SH4_OCACHE
-    bool index_enable = sh4->reg[SH4_REG_CCR] & SH4_CCR_OIX_MASK ? true : false;
-    bool cache_as_ram = sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK ? true : false;
-
-    sh4_ocache_pref(&sh4->op_cache, *sh4_gen_reg(sh4, inst.gen_reg),
-                    index_enable, cache_as_ram);
-#endif
     sh4_next_inst(sh4);
 }
 
@@ -3575,83 +3425,6 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t src_val = *sh4_gen_reg(sh4, 0);
     addr32_t vaddr = *sh4_gen_reg(sh4, inst.dst_reg);
 
-    /*
-     * XXX I'm fairly certain that there are ways a program running in
-     * un-privileged mode could fuck with protected memory due to the way
-     * this opcode is implemented.
-     */
-#ifdef ENABLE_SH4_OCACHE
-    addr32_t paddr;
-    if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
-#ifdef ENABLE_SH4_MMU
-        /*
-         * TODO: ideally there would be some function we call here that is also
-         * called by the code in sh4_mem.cpp that touches the utlb.  That way,
-         * I could rest assured that this actually works because the sh4mem_test
-         * would already be exercising it.
-         */
-        bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
-        struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, vaddr,
-                                                          SH4_UTLB_WRITE);
-
-        if (!utlb_ent)
-            return; // exception set by utlb_search
-
-        unsigned pr = (utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
-            SH4_UTLB_ENT_PR_SHIFT;
-
-        paddr = sh4_utlb_ent_translate(utlb_ent, vaddr);
-
-        /*
-         * Check privileges.  This is necessary because if the call to sh4->write_mem
-         * below raises a protection violation, there will still be invalid data
-         * in the operand cache which be marked as valid
-         */
-        if (privileged) {
-            if (!(pr & 1)) {
-                // page is marked as read-only
-                unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
-                    SH4_UTLB_KEY_VPN_SHIFT;
-                sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
-                sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                sh4->reg[SH4_REG_TEA] = vaddr;
-                return;
-            }
-        } else if (pr != 3) {
-            // page is marked as read-only OR we don't have permissions
-            unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
-                SH4_UTLB_KEY_VPN_SHIFT;
-            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
-            sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
-            sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-            sh4->reg[SH4_REG_TEA] = vaddr;
-            return;
-        }
-#else
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("MMU") <<
-                              errinfo_advice("run cmake with "
-                                             "-DENABLE_SH4_MMU=ON "
-                                             "and rebuild"));
-#endif
-    } else {
-        paddr = vaddr;
-    }
-
-    bool index_enable = sh4->reg[SH4_REG_CCR] & SH4_CCR_OIX_MASK ? true : false;
-    bool cache_as_ram = sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK ? true : false;
-
-    if (sh4_ocache_alloc(&sh4->op_cache, paddr, index_enable, cache_as_ram))
-        return;
-#endif
-
-    /*
-     * TODO: when the Ocache is enabled it may be a good idea to mark the
-     * operand cache line which was allocated above as invalid if this function
-     * fails.  Checking the privilege bits above should be enough, but I may
-     * change my mind later and decide to cover all my bases.
-     */
     if (sh4_write_mem(sh4, &src_val, vaddr, sizeof(src_val)) != 0)
         return;
 

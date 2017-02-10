@@ -28,10 +28,6 @@
 #include "Icache.hpp"
 #endif
 
-#ifdef ENABLE_SH4_OCACHE
-#include "Ocache.hpp"
-#endif
-
 #include "BaseException.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4_excp.hpp"
@@ -93,11 +89,7 @@ void sh4_init(Sh4 *sh4) {
     sh4_icache_init(&sh4->inst_cache);
 #endif
 
-#ifdef ENABLE_SH4_OCACHE
-    sh4_ocache_init(&sh4->op_cache);
-#else
-    sh4->oc_ram_area = new uint8_t[SH4_OC_RAM_AREA_SIZE];
-#endif
+    sh4_ocache_init(&sh4->ocache);
 
     sh4_init_regs(sh4);
 
@@ -111,11 +103,7 @@ void sh4_init(Sh4 *sh4) {
 void sh4_cleanup(Sh4 *sh4) {
     sh4_tmu_cleanup(&sh4->tmu);
 
-#ifdef ENABLE_SH4_OCACHE
-    sh4_ocache_cleanup(&sh4->op_cache);
-#else
-    delete[] sh4->oc_ram_area;
-#endif
+    sh4_ocache_cleanup(&sh4->ocache);
 
 #ifdef ENABLE_SH4_ICACHE
     sh4_icache_cleanup(&sh4->inst_cache);
@@ -141,11 +129,7 @@ void sh4_on_hard_reset(Sh4 *sh4) {
     sh4->delayed_branch = false;
     sh4->delayed_branch_addr = 0;
 
-#ifdef ENABLE_SH4_OCACHE
-    sh4_ocache_reset(&sh4->op_cache);
-#else
-    memset(sh4->oc_ram_area, 0, sizeof(uint8_t) * SH4_OC_RAM_AREA_SIZE);
-#endif
+    sh4_ocache_clear(&sh4->ocache);
 
 #ifdef ENABLE_SH4_ICACHE
     sh4_icache_reset(&sh4->inst_cache);

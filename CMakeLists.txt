@@ -32,7 +32,6 @@ if(UNIX)
 endif()
 
 option(ENABLE_SH4_ICACHE "emulate the sh4's instruction cache" ON)
-option(ENABLE_SH4_OCACHE "emulate the sh4's operand cache" ON)
 option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)
 option(ENABLE_DEBUGGER "Enable the debugger" ON)
 
@@ -49,6 +48,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_reg.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_tmu.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_tmu.hpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_ocache.hpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_ocache.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/g1/g1.hpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/g1/g1_reg.cpp"
                 "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
@@ -66,12 +67,6 @@ if (ENABLE_SH4_ICACHE)
     add_definitions(-DENABLE_SH4_ICACHE)
     set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Icache.cpp")
     set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Icache.hpp")
-endif()
-
-if (ENABLE_SH4_OCACHE)
-    add_definitions(-DENABLE_SH4_OCACHE)
-    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.cpp")
-    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/hw/sh4/Ocache.hpp")
 endif()
 
 if (ENABLE_SH4_MMU)

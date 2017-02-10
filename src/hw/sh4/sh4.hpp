@@ -36,10 +36,7 @@
 #include "sh4_reg.hpp"
 #include "sh4_mem.hpp"
 #include "sh4_tmu.hpp"
-
-#ifdef ENABLE_SH4_OCACHE
-#include "Ocache.hpp"
-#endif
+#include "sh4_ocache.hpp"
 
 #ifdef ENABLE_SH4_ICACHE
 #include "Icache.hpp"
@@ -96,15 +93,11 @@ struct Sh4 {
     struct Sh4Icache inst_cache;
 #endif
 
-#ifdef ENABLE_SH4_OCACHE
-    struct Sh4Ocache op_cache;
-#else
     /*
-     * without an operand cache, we need to supply some other area
-     * to serve as RAM when the ORA bit is enabled.
+     * operand cache - this is really only here to be used as RAM
+     * when the ORA bit is set in CCR
      */
-    uint8_t *oc_ram_area;
-#endif
+    struct sh4_ocache ocache;
 
     /*
      * pointer to place where memory-mapped registers are stored.
@@ -243,16 +236,6 @@ static inline double *sh4_fpu_dr(Sh4 *sh4, unsigned reg_no) {
     if (sh4->fpu.fpscr & SH4_FPSCR_FR_MASK)
         return sh4->fpu.reg_bank1.dr + reg_no;
     return sh4->fpu.reg_bank0.dr + reg_no;
-}
-
-/*
- * if ((addr & OC_RAM_AREA_MASK) == OC_RAM_AREA_VAL) and the ORA bit is set
- * in CCR, then addr is part of the Operand Cache's RAM area
- */
-static const addr32_t SH4_OC_RAM_AREA_MASK = 0xfc000000;
-static const addr32_t SH4_OC_RAM_AREA_VAL = 0x7c000000;
-static inline bool sh4_in_oc_ram_area(addr32_t addr) {
-    return (addr & SH4_OC_RAM_AREA_MASK) == SH4_OC_RAM_AREA_VAL;
 }
 
 void sh4_add_regs_to_exc(Sh4 *sh4, BaseException& exc);

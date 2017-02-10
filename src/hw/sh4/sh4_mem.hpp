@@ -62,12 +62,10 @@ static const size_t SH4_AREA7_REGEND = 0x1ff00008;
 BOOST_STATIC_ASSERT((SH4_P4_REGEND - SH4_P4_REGSTART) ==
                     (SH4_AREA7_REGEND - SH4_AREA7_REGSTART));
 
-#ifndef ENABLE_SH4_OCACHE
 /* constants needed for opcache as ram */
 static const size_t SH4_LONGS_PER_OP_CACHE_LINE = 8;
 static const size_t SH4_OP_CACHE_LINE_SIZE = SH4_LONGS_PER_OP_CACHE_LINE * 4;
 static const size_t SH4_OC_RAM_AREA_SIZE = 8 * 1024;
-#endif
 
 /*
  * From within the CPU, these functions should be called instead of
@@ -82,19 +80,6 @@ int sh4_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
 int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr);
 
 enum VirtMemArea sh4_get_mem_area(addr32_t addr);
-
-void *sh4_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr);
-
-/*
- * read to/write from the operand cache's RAM-space in situations where we
- * don't actually have a real operand cache available.  It is up to the
- * caller to make sure that the operand cache is enabled (OCE in the CCR),
- * that the Operand Cache's RAM switch is enabled (ORA in the CCR) and that
- * paddr lies within the Operand Cache RAM mapping (in_oc_ram_area returns
- * true).
- */
-void sh4_do_write_ora(Sh4 *sh4, void const *dat, addr32_t paddr, unsigned len);
-void sh4_do_read_ora(Sh4 *sh4, void *dat, addr32_t paddr, unsigned len);
 
 /*
  * generally you'll call these functions through do_read_mem/do_write_mem
