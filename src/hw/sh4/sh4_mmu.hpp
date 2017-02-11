@@ -152,6 +152,14 @@ enum PageSize {
     SH4_MMU_ONE_MEGA = 3
 };
 
+/* memory-mapped register read/write handlers for MMUCR */
+int Sh4MmucrRegReadHandler(Sh4 *sh4, void *buf,
+                           struct Sh4MemMappedReg const *reg_info);
+int Sh4MmucrRegWriteHandler(Sh4 *sh4, void const *buf,
+                            struct Sh4MemMappedReg const *reg_info);
+
+#ifdef ENABLE_SH4_MMU
+
 struct sh4_utlb_entry {
     uint32_t key;
     uint32_t ent;
@@ -166,10 +174,8 @@ static const size_t SH4_UTLB_SIZE = 64;
 static const size_t SH4_ITLB_SIZE = 4;
 
 struct sh4_mmu {
-#ifdef ENABLE_SH4_MMU
     struct sh4_utlb_entry utlb[SH4_UTLB_SIZE];
     struct sh4_itlb_entry itlb[SH4_ITLB_SIZE];
-#endif
 };
 
 /*
@@ -231,11 +237,14 @@ struct sh4_itlb_entry *sh4_itlb_search(Sh4 *sh4, addr32_t vaddr);
 
 void sh4_mmu_init(Sh4 *sh4);
 
-/* memory-mapped register read/write handlers for MMUCR */
-int Sh4MmucrRegReadHandler(Sh4 *sh4, void *buf,
-                           struct Sh4MemMappedReg const *reg_info);
-int Sh4MmucrRegWriteHandler(Sh4 *sh4, void const *buf,
-                            struct Sh4MemMappedReg const *reg_info);
+/*
+ * impelements MMU functionaliry of the
+ * sh4_read_mem/sh4_write_mem/sh4_read_inst functions for areas P0 and P3
+ */
+int sh4_mmu_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len);
+int sh4_mmu_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len);
+int sh4_mmu_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr);
 
+#endif
 
 #endif

@@ -466,4 +466,146 @@ struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
     return sh4_itlb_search(sh4, vaddr);
 }
 
+int sh4_mmu_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
+    bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
+
+    struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
+                                                      SH4_UTLB_READ);
+
+    if (!utlb_ent)
+        return 1; // exception set by sh4_utlb_search
+
+    unsigned pr = (utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
+        SH4_UTLB_ENT_PR_SHIFT;
+
+    addr32_t paddr = sh4_utlb_ent_translate(utlb_ent, addr);
+    if (!privileged && !(pr & 2)) {
+        // we don't have permissions
+        unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
+            SH4_UTLB_KEY_VPN_SHIFT;
+        sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
+        sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+        sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+        sh4->reg[SH4_REG_TEA] = addr;
+        return 1;
+    }
+
+    // handle the case where OCE is enabled and ORA is
+    // enabled but we don't have Ocache available
+    if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
+        (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
+        sh4_ocache_in_ram_area(paddr)) {
+        sh4_ocache_do_read_ora(sh4, data, paddr, len);
+        return 0;
+    }
+
+    // don't use the cache
+    return memory_map_read(data, paddr & 0x1fffffff, len);
+}
+
+int sh4_mmu_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
+    bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
+
+    struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
+                                                      SH4_UTLB_WRITE);
+
+    if (!utlb_ent)
+        return 1; // exception set by sh4_utlb_search
+
+    unsigned pr = (utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
+        SH4_UTLB_ENT_PR_SHIFT;
+
+    addr32_t paddr = sh4_utlb_ent_translate(utlb_ent, addr);
+    if (privileged) {
+        if (pr & 1) {
+            // page is marked as read-write
+
+            if (utlb_ent->ent & SH4_UTLB_ENT_D_MASK) {
+                // handle the case where OCE is enabled and ORA is
+                // enabled but we don't have Ocache available
+                if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
+                    (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
+                    sh4_ocache_in_ram_area(paddr)) {
+                    sh4_ocache_do_write_ora(sh4, data, paddr, len);
+                    return 0;
+                }
+                return memory_map_write(data, paddr & 0x1fffffff,
+                                        len);
+            } else {
+                sh4_set_exception(sh4, SH4_EXCP_INITIAL_PAGE_WRITE);
+                sh4->reg[SH4_REG_TEA] = addr;
+                return 1;
+            }
+        } else {
+            // page is marked as read-only
+            unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
+                SH4_UTLB_KEY_VPN_SHIFT;
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+            sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+            sh4->reg[SH4_REG_TEA] = addr;
+            return 1;
+        }
+    } else {
+        if (pr != 3) {
+            // page is marked as read-only OR we don't have permissions
+            unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
+                SH4_UTLB_KEY_VPN_SHIFT;
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
+            sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+            sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+            sh4->reg[SH4_REG_TEA] = addr;
+            return 1;
+        }
+
+        if (utlb_ent->ent & SH4_UTLB_ENT_D_MASK) {
+            // handle the case where OCE is enabled and ORA is
+            // enabled but we don't have Ocache available
+            if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
+                (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
+                sh4_ocache_in_ram_area(paddr)) {
+                sh4_ocache_do_write_ora(sh4, data, paddr, len);
+                return 0;
+            }
+
+            // don't use the cache
+            return memory_map_write(data, paddr & 0x1fffffff, len);
+        } else {
+            sh4_set_exception(sh4, SH4_EXCP_INITIAL_PAGE_WRITE);
+            sh4->reg[SH4_REG_TEA] = addr;
+            return 1;
+        }
+    }
+
+    BOOST_THROW_EXCEPTION(IntegrityError() <<
+                          errinfo_wtf("I don't believe it should be possible "
+                                      "to get here"));
+}
+
+int sh4_mmu_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
+    bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
+
+    struct sh4_itlb_entry *itlb_ent = sh4_itlb_search(sh4, addr);
+
+    if (!itlb_ent)
+        return 1;  // exception set by sh4_itlb_search
+
+    if (privileged || (itlb_ent->ent & SH4_ITLB_ENT_PR_MASK)) {
+        addr32_t paddr = sh4_itlb_ent_translate(itlb_ent, addr);
+
+        // don't use the cache
+        return memory_map_read(out, paddr & 0x1fffffff,
+                               sizeof(*out));
+    }
+
+    // we don't have permissions
+    unsigned vpn = (itlb_ent->key & SH4_ITLB_KEY_VPN_MASK) >>
+        SH4_ITLB_KEY_VPN_SHIFT;
+    sh4_set_exception(sh4, SH4_EXCP_INST_TLB_PROT_VIOL);
+    sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
+    sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
+    sh4->reg[SH4_REG_TEA] = addr;
+    return 1;
+}
+
 #endif

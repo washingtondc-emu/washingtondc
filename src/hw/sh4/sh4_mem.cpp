@@ -53,76 +53,7 @@ int sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
     case SH4_AREA_P3:
         if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
-            struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
-                                                              SH4_UTLB_WRITE);
-
-            if (!utlb_ent)
-                return 1; // exception set by sh4_utlb_search
-
-            unsigned pr = (utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
-                SH4_UTLB_ENT_PR_SHIFT;
-
-            addr32_t paddr = sh4_utlb_ent_translate(utlb_ent, addr);
-            if (privileged) {
-                if (pr & 1) {
-                    // page is marked as read-write
-
-                    if (utlb_ent->ent & SH4_UTLB_ENT_D_MASK) {
-                        // handle the case where OCE is enabled and ORA is
-                        // enabled but we don't have Ocache available
-                        if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
-                            (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
-                            sh4_ocache_in_ram_area(paddr)) {
-                            sh4_ocache_do_write_ora(sh4, data, paddr, len);
-                            return 0;
-                        }
-                        return memory_map_write(data, paddr & 0x1fffffff,
-                                                len);
-                    } else {
-                        sh4_set_exception(sh4, SH4_EXCP_INITIAL_PAGE_WRITE);
-                        sh4->reg[SH4_REG_TEA] = addr;
-                        return 1;
-                    }
-                } else {
-                    // page is marked as read-only
-                    unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
-                        SH4_UTLB_KEY_VPN_SHIFT;
-                    sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                    sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
-                    sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                    sh4->reg[SH4_REG_TEA] = addr;
-                    return 1;
-                }
-            } else {
-                if (pr != 3) {
-                    // page is marked as read-only OR we don't have permissions
-                    unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
-                        SH4_UTLB_KEY_VPN_SHIFT;
-                    sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                    sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
-                    sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                    sh4->reg[SH4_REG_TEA] = addr;
-                    return 1;
-                }
-
-                if (utlb_ent->ent & SH4_UTLB_ENT_D_MASK) {
-                    // handle the case where OCE is enabled and ORA is
-                    // enabled but we don't have Ocache available
-                    if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
-                        (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
-                        sh4_ocache_in_ram_area(paddr)) {
-                        sh4_ocache_do_write_ora(sh4, data, paddr, len);
-                        return 0;
-                    }
-
-                        // don't use the cache
-                        return memory_map_write(data, paddr & 0x1fffffff, len);
-                } else {
-                    sh4_set_exception(sh4, SH4_EXCP_INITIAL_PAGE_WRITE);
-                    sh4->reg[SH4_REG_TEA] = addr;
-                    return 1;
-                }
-            }
+            return sh4_mmu_write_mem(sh4, data, addr, len);
 #else // ifdef ENABLE_SH4_MMU
             BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                   errinfo_feature("MMU") <<
@@ -186,38 +117,7 @@ int sh4_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
     case SH4_AREA_P3:
         if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
-            struct sh4_utlb_entry *utlb_ent = sh4_utlb_search(sh4, addr,
-                                                              SH4_UTLB_READ);
-
-            if (!utlb_ent)
-                return 1; // exception set by sh4_utlb_search
-
-            unsigned pr = (utlb_ent->ent & SH4_UTLB_ENT_PR_MASK) >>
-                SH4_UTLB_ENT_PR_SHIFT;
-
-            addr32_t paddr = sh4_utlb_ent_translate(utlb_ent, addr);
-            if (!privileged && !(pr & 2)) {
-                // we don't have permissions
-                unsigned vpn = (utlb_ent->key & SH4_UTLB_KEY_VPN_MASK) >>
-                    SH4_UTLB_KEY_VPN_SHIFT;
-                sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
-                sh4->reg[SH4_REG_PTEH] &= ~SH4_MMUPTEH_VPN_MASK;
-                sh4->reg[SH4_REG_PTEH] |= vpn << SH4_MMUPTEH_VPN_SHIFT;
-                sh4->reg[SH4_REG_TEA] = addr;
-                return 1;
-            }
-
-            // handle the case where OCE is enabled and ORA is
-            // enabled but we don't have Ocache available
-            if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
-                (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
-                sh4_ocache_in_ram_area(paddr)) {
-                sh4_ocache_do_read_ora(sh4, data, paddr, len);
-                return 0;
-            }
-
-            // don't use the cache
-            return memory_map_read(data, paddr & 0x1fffffff, len);
+            return sh4_mmu_read_mem(sh4, data, addr, len);
 #else // ifdef ENABLE_SH4_MMU
             BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                   errinfo_feature("MMU") <<
@@ -302,18 +202,7 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
     case SH4_AREA_P3:
         if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_SH4_MMU
-            struct sh4_itlb_entry *itlb_ent = sh4_itlb_search(sh4, addr);
-
-            if (!itlb_ent)
-                return 1;  // exception set by sh4_itlb_search
-
-            if (privileged || (itlb_ent->ent & SH4_ITLB_ENT_PR_MASK)) {
-                addr32_t paddr = sh4_itlb_ent_translate(itlb_ent, addr);
-
-                // don't use the cache
-                return memory_map_read(out, paddr & 0x1fffffff,
-                                       sizeof(*out));
-            }
+            return sh4_mmu_read_inst(sh4, out, addr);
 #else // ifdef ENABLE_SH4_MMU
             BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                   errinfo_feature("MMU") <<
