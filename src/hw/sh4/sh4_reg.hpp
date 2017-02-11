@@ -165,6 +165,45 @@ typedef enum sh4_reg_idx {
     /* Timer channel 2 input capture register */
     SH4_REG_TCPR2,
 
+    /* DMAC Source Address Register 1 */
+    SH4_REG_SAR1,
+
+    /* DMAC Destination Address Register 1 */
+    SH4_REG_DAR1,
+
+    /* DMAC transfer count register 1 */
+    SH4_REG_DMATCR1,
+
+    /* DMAC channel control register 1 */
+    SH4_REG_CHCR1,
+
+    /* DMAC Source Address Register 2 */
+    SH4_REG_SAR2,
+
+    /* DMAC Destination Address Register 2 */
+    SH4_REG_DAR2,
+
+    /* DMAC transfer count register 2 */
+    SH4_REG_DMATCR2,
+
+    /* DMAC channel control register 2 */
+    SH4_REG_CHCR2,
+
+    /* DMAC Source Address Register 3 */
+    SH4_REG_SAR3,
+
+    /* DMAC Destination Address Register 3 */
+    SH4_REG_DAR3,
+
+    /* DMAC transfer count register 3 */
+    SH4_REG_DMATCR3,
+
+    /* DMAC channel control register 3 */
+    SH4_REG_CHCR3,
+
+    /* DMAC Operation Register */
+    SH4_REG_DMAOR,
+
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
 
@@ -259,6 +298,15 @@ int Sh4WriteOnlyRegReadHandler(Sh4 *sh4, void *buf,
  */
 int Sh4ReadOnlyRegWriteHandler(Sh4 *sh4, void const *buf,
                                struct Sh4MemMappedReg const *reg_info);
+
+/*
+ * These handlers are functionally equivalent to the default read/write
+ * handlers, except they log a warning to std::cerr every time they are called.
+ */
+int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
+                          struct Sh4MemMappedReg const *reg_info);
+int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
+                           struct Sh4MemMappedReg const *reg_info);
 
 /*
  * called for P4 area read/write ops that

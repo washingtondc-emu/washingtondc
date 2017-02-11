@@ -21,6 +21,8 @@
  ******************************************************************************/
 
 #include <cstring>
+#include <iostream>
+#include <iomanip>
 
 #include "BaseException.hpp"
 #include "sh4_excp.hpp"
@@ -226,6 +228,34 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "TCPR2", 0xffd8002c, ~addr32_t(0), 4, SH4_REG_TCPR2, true,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
 
+    /* DMA Controller (DMAC) */
+    { "SAR1", 0xffa00010, ~addr32_t(0), 4, SH4_REG_SAR1, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "DAR1", 0xffa00014, ~addr32_t(0), 4, SH4_REG_DAR1, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "DMATCR1", 0xffa00018, ~addr32_t(0), 4, SH4_REG_DMATCR1, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "CHCR1", 0xffa0001c, ~addr32_t(0), 4, SH4_REG_CHCR1, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "SAR2", 0xffa00020, ~addr32_t(0), 4, SH4_REG_SAR2, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "DAR2", 0xffa00024, ~addr32_t(0), 4, SH4_REG_DAR2, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "DMATCR2", 0xffa00028, ~addr32_t(0), 4, SH4_REG_DMATCR2, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "CHCR2", 0xffa0002c, ~addr32_t(0), 4, SH4_REG_CHCR2, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "SAR3", 0xffa00030, ~addr32_t(0), 4, SH4_REG_SAR3, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "DAR2", 0xffa00034, ~addr32_t(0), 4, SH4_REG_DAR3, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "DMATCR3", 0xffa00038, ~addr32_t(0), 4, SH4_REG_DMATCR3, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "CHCR3", 0xffa0003c, ~addr32_t(0), 4, SH4_REG_CHCR3, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+    { "DMAOR", 0xffa00040, ~addr32_t(0), 4, SH4_REG_DMAOR, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+
     { NULL }
 };
 
@@ -361,4 +391,83 @@ int Sh4ReadOnlyRegWriteHandler(Sh4 *sh4, void const *buf,
                                           "write to a read-only CPU "
                                           "register") <<
                           errinfo_guest_addr(reg_info->addr));
+}
+
+int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
+                          struct Sh4MemMappedReg const *reg_info) {
+    uint8_t val8;
+    uint16_t val16;
+    uint32_t val32;
+
+    int ret_code = Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
+
+    if (ret_code) {
+        std::cerr << "WARNING: read from register " <<
+            reg_info->reg_name << std::endl;
+    } else {
+        switch (reg_info->len) {
+        case 1:
+            memcpy(&val8, buf, sizeof(val8));
+            std::cerr << "WARNING: read 0x" <<
+                std::hex << std::setfill('0') << std::setw(2) <<
+                unsigned(val8) << " from register " <<
+                reg_info->reg_name << std::endl;
+            break;
+        case 2:
+            memcpy(&val16, buf, sizeof(val16));
+            std::cerr << "WARNING: read 0x" <<
+                std::hex << std::setfill('0') << std::setw(4) <<
+                unsigned(val16) << " from register " <<
+                reg_info->reg_name << std::endl;
+            break;
+        case 4:
+            memcpy(&val32, buf, sizeof(val32));
+            std::cerr << "WARNING: read 0x" <<
+                std::hex << std::setfill('0') << std::setw(8) <<
+                unsigned(val32) << " from register " <<
+                reg_info->reg_name << std::endl;
+            break;
+        default:
+            std::cerr << "WARNING: read from register " <<
+                reg_info->reg_name << std::endl;
+        }
+    }
+
+    return ret_code;
+}
+
+int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
+                           struct Sh4MemMappedReg const *reg_info) {
+    uint8_t val8;
+    uint16_t val16;
+    uint32_t val32;
+
+    switch (reg_info->len) {
+    case 1:
+        memcpy(&val8, buf, sizeof(val8));
+        std::cerr << "WARNING: writing 0x" <<
+            std::hex << std::setfill('0') << std::setw(2) <<
+            unsigned(val8) << " to register " <<
+            reg_info->reg_name << std::endl;
+        break;
+    case 2:
+        memcpy(&val16, buf, sizeof(val16));
+        std::cerr << "WARNING: writing 0x" <<
+            std::hex << std::setfill('0') << std::setw(4) <<
+            unsigned(val16) << " to register " <<
+            reg_info->reg_name << std::endl;
+        break;
+    case 4:
+        memcpy(&val32, buf, sizeof(val32));
+        std::cerr << "WARNING: writing 0x" <<
+            std::hex << std::setfill('0') << std::setw(8) <<
+            unsigned(val32) << " to register " <<
+            reg_info->reg_name << std::endl;
+        break;
+    default:
+        std::cerr << "WARNING: reading from register " <<
+            reg_info->reg_name << std::endl;
+    }
+
+    return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
 }
