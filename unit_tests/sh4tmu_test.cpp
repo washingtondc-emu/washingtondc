@@ -115,6 +115,40 @@ char const prog_asm[] =
     "SHLL R0\n"
     "MOV R0, R3\n"
 
+    /* set TMU0 priority to 1 (lowest) */
+    "MOV #0xfd, R1\n"
+    "SHLL8 R1\n"
+    "SHLL8 R1\n"
+    "SHLL R1\n"
+    "SHLL R1\n"
+    "SHLL R1\n"
+    "SHLL R1\n"
+    /* R1 now holds ICR address (0xffd00000) */
+    "MOV.W @(4, R1), R0\n" /* move IPRA into R0 */
+    /* R5 will hold the new value for the TMU priority (0x1000) */
+    "MOV #0x10, R5\n"
+    "SHLL8 R5\n"
+    /* no need to clear the old TMU prio because it defautls to 0 */
+    "OR R5, R0\n"
+    "MOV.W R0, @(4, R1)\n"
+
+    /* now unmask the TMU0 interrupt and clear the BL bit */
+    "STC SR, R5\n"
+    "MOV #0xf, R0\n"
+    "SHLL R0\n"
+    "SHLL R0\n"
+    "SHLL R0\n"
+    "SHLL R0\n"
+    "NOT R0, R0\n"
+    "AND R0, R5\n"
+    "MOV #0x10, R0\n"
+    "SHLL8 R0\n"
+    "SHLL8 R0\n"
+    "SHLL8 R0\n"
+    "NOT R0, R0\n"
+    "AND R0, R5\n"
+    "LDC R5, SR\n"
+
     /* now move 16 into TCNT0 */
     "MOV #0x10, R0\n"
     "MOV.L R0, @(12, R2)\n"
@@ -203,12 +237,12 @@ int main(int argc, char **argv) {
                 ret_code = 1;
             }
 
-            if (((sh4.reg[SH4_REG_EXPEVT] & SH4_EXPEVT_CODE_MASK) >>
-                 SH4_EXPEVT_CODE_SHIFT) != SH4_EXCP_TMU0_TUNI0) {
-                std::cerr << "bad expevt code value (exception reason "
+            if (((sh4.reg[SH4_REG_INTEVT] & SH4_INTEVT_CODE_MASK) >>
+                 SH4_INTEVT_CODE_SHIFT) != SH4_EXCP_TMU0_TUNI0) {
+                std::cerr << "bad intevt code value (interrupt reason "
                     "is not TUNI0)!" << std::endl;
-                std::cerr << "expevt value is " << std::hex <<
-                    sh4.reg[SH4_REG_EXPEVT] << std::endl;
+                std::cerr << "intevt value is " << std::hex <<
+                    sh4.reg[SH4_REG_INTEVT] << std::endl;
                 ret_code = 1;
             }
         }

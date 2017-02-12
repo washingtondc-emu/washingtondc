@@ -204,6 +204,15 @@ typedef enum sh4_reg_idx {
     /* DMAC Operation Register */
     SH4_REG_DMAOR,
 
+    /* Interrupt Control Register */
+    SH4_REG_ICR,
+
+    /* Interrupt Priority Registers A-D */
+    SH4_REG_IPRA,
+    SH4_REG_IPRB,
+    SH4_REG_IPRC,
+    SH4_REG_IPRD,
+
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
 

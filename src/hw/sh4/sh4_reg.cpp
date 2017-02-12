@@ -284,6 +284,18 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "SCLSR2", 0xffe80024, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, false,
       Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
 
+    /* interrupt controller */
+    { "ICR", 0xffd00000, ~addr32_t(0), 2, SH4_REG_ICR, true,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+    { "IPRA", 0xffd00004, ~addr32_t(0), 2, SH4_REG_IPRA, true,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+    { "IPRB", 0xffd00008, ~addr32_t(0), 2, SH4_REG_IPRB, true,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+    { "IPRC", 0xffd0000c, ~addr32_t(0), 2, SH4_REG_IPRC, true,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+    { "IPRD", 0xffd0000d, ~addr32_t(0), 2, SH4_REG_IPRD, true,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0xda74, 0xda74 },
+
     { NULL }
 };
 

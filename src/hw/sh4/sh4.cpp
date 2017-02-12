@@ -164,6 +164,7 @@ void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles) {
 
 mulligan:
     try {
+        sh4_check_interrupts(sh4);
         do {
             if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
                 // TODO: some sort of logic to detect infinite loops here
@@ -196,6 +197,7 @@ void sh4_single_step(Sh4 *sh4) {
 
 mulligan:
     try {
+        sh4_check_interrupts(sh4);
         if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
             // TODO: some sort of logic to detect infinite loops here
             goto mulligan;

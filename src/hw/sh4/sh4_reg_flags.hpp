@@ -202,4 +202,70 @@ const static uint8_t SH4_TSTR_CHAN1_MASK = 1 << SH4_TSTR_CHAN1_SHIFT;
 /* TSTR channel 2 enable */
 const static unsigned SH4_TSTR_CHAN2_SHIFT = 0;
 const static uint8_t SH4_TSTR_CHAN2_MASK = 1 << SH4_TSTR_CHAN2_SHIFT;
+
+/*******************************************************************************
+ *
+ * SH4 Interrupt Controller
+ *
+ ******************************************************************************/
+const static unsigned SH4_ICR_NMIL_SHIFT = 15;
+const static uint16_t SH4_ICR_NMIL_MASK = 1 << SH4_ICR_NMIL_SHIFT;
+
+const static unsigned SH4_ICR_MAI_SHIFT = 14;
+const static uint16_t SH4_ICR_MAI_MASK = 1 << SH4_ICR_MAI_SHIFT;
+
+const static unsigned SH4_ICR_NMIB_SHIFT = 9;
+const static uint16_t SH4_ICR_NMIB_MASK = 1 << SH4_ICR_NMIB_SHIFT;
+
+const static unsigned SH4_ICR_NMIE_SHIFT = 8;
+const static uint16_t SH4_ICR_NMIE_MASK = 1 << SH4_ICR_NMIE_SHIFT;
+
+const static unsigned SH4_ICR_IRLM_SHIFT = 7;
+const static uint16_t SH4_ICR_IRLM_MASK = 1 << SH4_ICR_IRLM_SHIFT;
+
+const static unsigned SH4_IPRA_TMU0_SHIFT = 12;
+const static uint16_t SH4_IPRA_TMU0_MASK = 0xf << SH4_IPRA_TMU0_SHIFT;
+
+const static unsigned SH4_IPRA_TMU1_SHIFT = 8;
+const static uint16_t SH4_IPRA_TMU1_MASK = 0xf << SH4_IPRA_TMU1_SHIFT;
+
+const static unsigned SH4_IPRA_TMU2_SHIFT = 4;
+const static uint16_t SH4_IPRA_TMU2_MASK = 0xf << SH4_IPRA_TMU2_SHIFT;
+
+const static unsigned SH4_IPRA_RTC_SHIFT = 0;
+const static uint16_t SH4_IPRA_RTC_MASK = 0xf << SH4_IPRA_RTC_SHIFT;
+
+const static unsigned SH4_IPRB_WDT_SHIFT = 12;
+const static uint16_t SH4_IPRB_WDT_MASK = 0xf << SH4_IPRB_WDT_SHIFT;
+
+const static unsigned SH4_IPRB_REF_SHIFT = 8;
+const static uint16_t SH4_IPRB_REF_MASK = 0xf << SH4_IPRB_REF_SHIFT;
+
+const static unsigned SH4_IPRB_SCI1_SHIFT = 4;
+const static uint16_t SH4_IPRB_SCI1_MASK = 0xf << SH4_IPRB_SCI1_SHIFT;
+
+const static unsigned SH4_IPRC_GPIO_SHIFT = 12;
+const static uint16_t SH4_IPRC_GPIO_MASK = 0xf << SH4_IPRC_GPIO_SHIFT;
+
+const static unsigned SH4_IPRC_DMAC_SHIFT = 8;
+const static uint16_t SH4_IPRC_DMAC_MASK = 0xf << SH4_IPRC_DMAC_SHIFT;
+
+const static unsigned SH4_IPRC_SCIF_SHIFT = 4;
+const static uint16_t SH4_IPRC_SCIF_MASK = 0xf << SH4_IPRC_SCIF_SHIFT;
+
+const static unsigned SH4_IPRC_HUDI_SHIFT = 0;
+const static uint16_t SH4_IPRC_HUDI_MASK = 0xf << SH4_IPRC_HUDI_SHIFT;
+
+const static unsigned SH4_IPRD_IRL0_SHIFT = 12;
+const static uint16_t SH4_IPRD_IRL0_MASK = 0xf << SH4_IPRD_IRL0_SHIFT;
+
+const static unsigned SH4_IPRD_IRL1_SHIFT = 8;
+const static uint16_t SH4_IPRD_IRL1_MASK = 0xf << SH4_IPRD_IRL1_MASK;
+
+const static unsigned SH4_IPRD_IRL2_SHIFT = 4;
+const static unsigned SH4_IPRD_IRL2_MASK = 0xf << SH4_IPRD_IRL2_SHIFT;
+
+const static unsigned SH4_IPRD_IRL3_SHIFT = 0;
+const static unsigned SH4_IPRD_IRL3_MASK = 0xf << SH4_IPRD_IRL3_SHIFT;
+
 #endif

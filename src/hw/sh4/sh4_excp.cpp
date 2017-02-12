@@ -147,11 +147,47 @@ void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
     sh4_enter_exception(sh4, (Sh4ExceptionCode)excp_code);
 }
 
-void sh4_set_interrupt(Sh4 *sh4, unsigned intp_code) {
-    sh4->reg[SH4_REG_INTEVT] = (intp_code << SH4_INTEVT_CODE_SHIFT) &
-        SH4_INTEVT_CODE_MASK;
+void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line,
+                       Sh4ExceptionCode intp_code) {
+    sh4->intc.irq_lines[irq_line] = intp_code;
+}
 
-    sh4_enter_exception(sh4, (Sh4ExceptionCode)intp_code);
+void sh4_check_interrupts(Sh4 *sh4) {
+    if (sh4->reg[SH4_REG_SR] & SH4_SR_BL_MASK)
+        return;
+
+    /* TODO - NMIs */
+
+    int max_prio = -1;
+    unsigned max_prio_line;
+
+    unsigned line;
+    for (line = 0; line < SH4_IRQ_COUNT; line++) {
+        unsigned ipr_reg_idx = SH4_REG_IPRA + line / 4;
+        unsigned prio_shift_amt = 4 * (line % 4);
+        unsigned mask = 0xf << prio_shift_amt;
+        int prio = (mask & sh4->reg[ipr_reg_idx]) >> prio_shift_amt;
+
+        /* check the sh4's interrupt mask */
+        if (prio > int((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
+                       SH4_SR_IMASK_SHIFT)) {
+            /* only take the highest priority irq */
+            if (sh4->intc.irq_lines[line] && (prio > max_prio)) {
+                max_prio = prio;
+                max_prio_line = line;
+            }
+        }
+    }
+
+    if (max_prio >= 0) {
+        sh4->reg[SH4_REG_INTEVT] =
+            (sh4->intc.irq_lines[max_prio_line] << SH4_INTEVT_CODE_SHIFT) &
+            SH4_INTEVT_CODE_MASK;
+
+        sh4_enter_exception(
+            sh4, (Sh4ExceptionCode)sh4->intc.irq_lines[max_prio_line]);
+        sh4->intc.irq_lines[max_prio_line] = (Sh4ExceptionCode)0;
+    }
 }
 
 int Sh4TraRegReadHandler(Sh4 *sh4, void *buf,

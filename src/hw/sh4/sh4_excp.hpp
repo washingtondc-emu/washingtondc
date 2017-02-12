@@ -105,6 +105,27 @@ enum Sh4ExceptionCode {
 
 const static unsigned SH4_EXCP_COUNT = 9 + 16 + 16 + 2 + 16 + 5;
 
+enum {
+    SH4_IRQ_RTC,
+    SH4_IRQ_TMU2,
+    SH4_IRQ_TMU1,
+    SH4_IRQ_TMU0,
+    SH4_IRQ_RESERVED,
+    SH4_IRQ_SCI1,
+    SH4_IRQ_REF,
+    SH4_IRQ_WDT,
+    SH4_IRQ_HUDI,
+    SH4_IRQ_SCIF,
+    SH4_IRQ_DMAC,
+    SH4_IRQ_GPIO,
+    SH4_IRQ_IRL3,
+    SH4_IRQ_IRL2,
+    SH4_IRQ_IRL1,
+    SH4_IRQ_IRL0,
+
+    SH4_IRQ_COUNT
+};
+
 struct Sh4ExcpMeta {
     /*
      * there's no field for the vector base address because I couldn't
@@ -120,14 +141,23 @@ struct Sh4ExcpMeta {
     addr32_t offset;
 };
 
+struct sh4_intc {
+    Sh4ExceptionCode irq_lines[SH4_IRQ_COUNT];
+};
+
 /*
  * called by set_exception and set_interrupt.  This function configures
  * the CPU registers to enter an exception state.
  */
 void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector);
 
+void sh4_enter_interrupt(Sh4 *sh4, enum Sh4ExceptionCode vector);
+
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code);
-void sh4_set_interrupt(Sh4 *sh4, unsigned intp_code);
+void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line, Sh4ExceptionCode intp_code);
+
+/* check IRQ lines and enter interrupt state if necessary */
+void sh4_check_interrupts(Sh4 *sh4);
 
 /* Memory-mapped register read/write callbacks */
 int Sh4TraRegReadHandler(Sh4 *sh4, void *buf,

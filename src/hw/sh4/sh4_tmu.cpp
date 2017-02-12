@@ -21,7 +21,6 @@
  ******************************************************************************/
 
 #include <cstring>
-#include <iostream>
 
 #include "sh4_excp.hpp"
 #include "sh4.hpp"
@@ -94,21 +93,25 @@ void sh4_tmu_tick(Sh4 *sh4) {
 
                 if (sh4->reg[chan_tcr[chan]] & SH4_TCR_UNIE_MASK) {
                     Sh4ExceptionCode code;
+                    int line = SH4_IRQ_TMU0;
                     switch (chan) {
                     case 0:
                         code = SH4_EXCP_TMU0_TUNI0;
+                        line = SH4_IRQ_TMU0;
                         break;
                     case 1:
                         code = SH4_EXCP_TMU1_TUNI1;
+                        line = SH4_IRQ_TMU1;
                         break;
                     case 2:
                         code = SH4_EXCP_TMU2_TUNI2;
+                        line = SH4_IRQ_TMU2;
                         break;
                     default:
                         break;
                     }
 
-                    sh4_set_exception(sh4, code);
+                    sh4_set_interrupt(sh4, line, code);
                 }
             }
         }
