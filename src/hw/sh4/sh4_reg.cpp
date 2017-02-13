@@ -296,6 +296,26 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "IPRD", 0xffd0000d, ~addr32_t(0), 2, SH4_REG_IPRD, true,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0xda74, 0xda74 },
 
+    /* User Break Controller - I don't need this, I got my own debugger */
+    { "BARA", 0xff200000, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    { "BAMRA", 0xff200004, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    { "BBRA", 0xff200008, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    { "BARB", 0xff20000c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    { "BAMRB", 0xff200010, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
+      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    { "BBRB", 0xff200014, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    { "BDRB", 0xff200018, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    { "BDMRB", 0xff20001c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
+      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    { "BRCR", 0xff200020, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
+      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+
     { NULL }
 };
 
