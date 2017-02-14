@@ -39,6 +39,10 @@ const static size_t ADDR_RAM_LAST   = 0x0cffffff;
 const static size_t ADDR_G1_FIRST = 0x005F7400;
 const static size_t ADDR_G1_LAST  = 0x005F74FF;
 
+// system block registers
+const static size_t ADDR_SYS_FIRST = 0x005f6800;
+const static size_t ADDR_SYS_LAST  = 0x005F69FF;
+
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new, G1Bus *g1_new);
 void memory_map_set_bios(BiosFile *bios_new);
 void memory_map_set_mem(struct Memory *mem_new);
