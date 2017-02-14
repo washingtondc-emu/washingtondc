@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <time.h>
 #include <iostream>
 
 #include "common/BaseException.hpp"
@@ -64,6 +65,13 @@ void Dreamcast::run() {
      */
     sh4_enter(&cpu);
 
+    /*
+     * store the irl timestamp right before execution begins.
+     * This exists for performance profiling purposes only.
+     */
+    struct timespec start_time, end_time, delta_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
     try {
         while (is_running) {
 #ifdef ENABLE_DEBUGGER
@@ -83,9 +91,32 @@ void Dreamcast::run() {
     } catch(const BaseException& exc) {
         std::cerr << boost::diagnostic_information(exc);
     }
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+
+    /* subtract delta_time = end_time - start_time */
+    if (end_time.tv_nsec < start_time.tv_nsec) {
+        delta_time.tv_nsec = 1000000000 - start_time.tv_nsec + end_time.tv_nsec;
+        delta_time.tv_sec = end_time.tv_sec - 1 - start_time.tv_sec;
+    } else {
+        delta_time.tv_nsec = end_time.tv_nsec - start_time.tv_nsec;
+        delta_time.tv_sec = end_time.tv_sec - start_time.tv_sec;
+    }
 
     if (!is_running)
         std::cout << "program execution ended normally" << std::endl;
+
+    std::cout << "Total elapsed time: " << delta_time.tv_sec <<
+        " seconds and " << delta_time.tv_nsec << " nanoseconds." << std::endl;
+
+    std::cout << cpu.cycle_stamp << " SH4 CPU cycles executed." << std::endl;
+
+    double seconds = delta_time.tv_sec +
+        double(delta_time.tv_nsec) / 1000000000.0;
+    double hz = double(cpu.cycle_stamp) / seconds;
+    double hz_ratio = hz / 200000000.0;
+
+    std::cout << "Performance is " << (hz / 1000000.0) << " MHz (" <<
+        (hz_ratio * 100.0) << "%)" << std::endl;
 }
 
 void Dreamcast::kill() {
