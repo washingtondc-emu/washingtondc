@@ -63,11 +63,51 @@ static struct g1_mem_mapped_reg {
     g1_reg_read_handler_t on_read;
     g1_reg_write_handler_t on_write;
 } g1_reg_info[] = {
+    /* GD-ROM DMA registers */
+    { "SB_GDSTAR", 0x5f7404, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+    { "SB_GDLEN", 0x5f7408, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+    { "SB_GDDIR", 0x5f740c, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+    { "SB_GDEN", 0x5f7414, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+    { "SB_GDST", 0x5f7418, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+
+    /* system boot-rom registers */
     // XXX this is supposed to be write-only, but currently it's readable
     { "SB_G1RRC", 0x005f7480, 4,
       warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+    { "SB_G1RWC", 0x5f7484, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+
+    /* flash rom registers */
+    { "SB_G1FRC", 0x5f7488, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+    { "SB_G1FWC", 0x5f748c, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+
+    /* GD PIO timing registers - I guess this is related to GD-ROM ? */
+    { "SB_G1CRC", 0x5f7490, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+    { "SB_G1CWC", 0x5f7494, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+
+    /* GD-DMA timing registers - *probably* related to GD-ROM */
+    { "SB_G1GDRC", 0x5f74a0, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+    { "SB_G1GDWC", 0x5f74a4, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+
+    { "SB_G1CRDYC", 0x5f74b4, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+    { "SB_GDAPRO", 0x5f74b8, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+
     { "UNKNOWN", 0x005f74e4, 4,
       warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+
     { NULL }
 };
 
