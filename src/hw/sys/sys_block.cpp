@@ -155,7 +155,7 @@ static int warn_sys_reg_read_handler(struct sys_mapped_reg const *reg_info,
     int ret_code = default_sys_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        std::cerr << "WARNING: read from register " <<
+        std::cerr << "WARNING: read from system register " <<
             reg_info->reg_name << std::endl;
     } else {
         switch (reg_info->len) {
@@ -201,25 +201,25 @@ static int warn_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
         memcpy(&val8, buf, sizeof(val8));
         std::cerr << "WARNING: writing 0x" <<
             std::hex << std::setfill('0') << std::setw(2) <<
-            unsigned(val8) << " to register " <<
+            unsigned(val8) << " to system register " <<
             reg_info->reg_name << std::endl;
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
         std::cerr << "WARNING: writing 0x" <<
             std::hex << std::setfill('0') << std::setw(4) <<
-            unsigned(val16) << " to register " <<
+            unsigned(val16) << " to system register " <<
             reg_info->reg_name << std::endl;
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
         std::cerr << "WARNING: writing 0x" <<
             std::hex << std::setfill('0') << std::setw(8) <<
-            unsigned(val32) << " to register " <<
+            unsigned(val32) << " to system register " <<
             reg_info->reg_name << std::endl;
         break;
     default:
-        std::cerr << "WARNING: reading from register " <<
+        std::cerr << "WARNING: writing to system register " <<
             reg_info->reg_name << std::endl;
     }
 
@@ -231,7 +231,17 @@ int sys_block_read(void *buf, size_t addr, size_t len) {
 
     while (curs->reg_name) {
         if (curs->addr == addr) {
-            return curs->on_read(curs, buf, addr, len);
+            if (curs->len == len) {
+                return curs->on_read(curs, buf, addr, len);
+            } else {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("Whatever happens when "
+                                                      "you use an inapproriate "
+                                                      "length while writing to "
+                                                      "a system register") <<
+                                      errinfo_guest_addr(addr) <<
+                                      errinfo_length(len));
+            }
         }
         curs++;
     }
@@ -247,7 +257,18 @@ int sys_block_write(void const *buf, size_t addr, size_t len) {
 
     while (curs->reg_name) {
         if (curs->addr == addr) {
-            return curs->on_write(curs, buf, addr, len);
+            if (curs->len == len) {
+                return curs->on_write(curs, buf, addr, len);
+            } else {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("Whatever happens when "
+                                                      "you use an inapproriate "
+                                                      "length while reading "
+                                                      "from a system "
+                                                      "register") <<
+                                      errinfo_guest_addr(addr) <<
+                                      errinfo_length(len));
+            }
         }
         curs++;
     }
