@@ -23,18 +23,16 @@
 #include "BaseException.hpp"
 #include "hw/sys/sys_block.hpp"
 #include "hw/maple/maple_reg.hpp"
+#include "hw/g1/g1_reg.hpp"
 
 #include "MemoryMap.hpp"
 
 static BiosFile *bios;
 static struct Memory *mem;
-G1Bus *g1;
 
-void memory_map_init(BiosFile *bios_new, struct Memory *mem_new,
-                     G1Bus *g1_new) {
+void memory_map_init(BiosFile *bios_new, struct Memory *mem_new) {
     memory_map_set_bios(bios_new);
     memory_map_set_mem(mem_new);
-    memory_map_set_g1(g1_new);
 }
 
 void memory_map_set_bios(BiosFile *bios_new) {
@@ -43,10 +41,6 @@ void memory_map_set_bios(BiosFile *bios_new) {
 
 void memory_map_set_mem(struct Memory *mem_new) {
     mem = mem_new;
-}
-
-void memory_map_set_g1(G1Bus *g1_new) {
-    g1 = g1_new;
 }
 
 int memory_map_read(void *buf, size_t addr, size_t len) {
@@ -77,7 +71,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
                                                       "end") <<
                                       errinfo_length(len));
             }
-            return g1->read(buf, addr - ADDR_G1_FIRST, len);
+            return g1_reg_read(buf, addr - ADDR_G1_FIRST, len);
         } else if (addr >= ADDR_SYS_FIRST && addr <= ADDR_SYS_LAST) {
             if (addr + len > ADDR_SYS_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -134,7 +128,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
                                                       "end") <<
                                       errinfo_length(len));
             }
-            return g1->write(buf, addr, len);
+            return g1_reg_write(buf, addr, len);
         } else if (addr >= ADDR_SYS_FIRST && addr <= ADDR_SYS_LAST) {
             if (addr + len > ADDR_SYS_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<

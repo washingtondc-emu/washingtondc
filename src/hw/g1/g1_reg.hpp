@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,44 +20,10 @@
  *
  ******************************************************************************/
 
-#ifndef DREAMCAST_HPP_
-#define DREAMCAST_HPP_
+#ifndef G1_HPP_
+#define G1_HPP_
 
-#include "BiosFile.hpp"
-#include "Memory.hpp"
-#include "hw/sh4/sh4.hpp"
-
-#ifdef ENABLE_DEBUGGER
-#include "Debugger.hpp"
-#endif
-
-class Dreamcast {
-public:
-    Dreamcast(char const *bios_path);
-    ~Dreamcast();
-
-#ifdef ENABLE_DEBUGGER
-    // this must be called before run or not at all
-    void enable_debugger(void);
-#endif
-
-    void run();
-    void kill();
-
-    Sh4 *get_cpu();
-    Memory *gem_mem();
-private:
-    static const size_t MEM_SZ = 16 * 1024 * 1024;
-
-    Sh4 cpu;
-    BiosFile *bios;
-    struct Memory mem;
-
-    bool is_running;
-
-#ifdef ENABLE_DEBUGGER
-    Debugger *debugger;
-#endif
-};
+int g1_reg_read(void *buf, size_t addr, size_t len);
+int g1_reg_write(void const *buf, size_t addr, size_t len);
 
 #endif

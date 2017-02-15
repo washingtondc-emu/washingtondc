@@ -10960,7 +10960,7 @@ int main(int argc, char **argv) {
     struct Memory mem;
     memory_init(&mem, 16 * 1024 * 1024);
     BiosFile bios;
-    memory_map_init(&bios, &mem, NULL);
+    memory_map_init(&bios, &mem);
     Sh4 cpu;
     struct inst_test *test = inst_tests;
     int n_success = 0, n_tests = 0;

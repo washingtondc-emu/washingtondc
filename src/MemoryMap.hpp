@@ -25,7 +25,6 @@
 
 #include "BiosFile.hpp"
 #include "Memory.hpp"
-#include "hw/g1/g1.hpp"
 
 // System Boot ROM
 const static size_t ADDR_BIOS_FIRST = 0;
@@ -47,10 +46,9 @@ const static size_t ADDR_SYS_LAST  = 0x005F69FF;
 const static size_t ADDR_MAPLE_FIRST = 0x5f6c00;
 const static size_t ADDR_MAPLE_LAST = 0x5f6cff;
 
-void memory_map_init(BiosFile *bios_new, struct Memory *mem_new, G1Bus *g1_new);
+void memory_map_init(BiosFile *bios_new, struct Memory *mem_new);
 void memory_map_set_bios(BiosFile *bios_new);
 void memory_map_set_mem(struct Memory *mem_new);
-void memory_map_set_g1(G1Bus *g1_new);
 
 int memory_map_read(void *buf, size_t addr, size_t len);
 int memory_map_write(void const *buf, size_t addr, size_t len);

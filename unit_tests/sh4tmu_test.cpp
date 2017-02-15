@@ -197,7 +197,7 @@ int main(int argc, char **argv) {
         int ret_code = 0;
 
         memory_init(&mem, 16 * 1024 * 1024);
-        memory_map_init(&bios, &mem, NULL);
+        memory_map_init(&bios, &mem);
         sh4_init(&sh4);
 
         test_prog.add_txt(std::string(prog_asm));

@@ -727,7 +727,7 @@ int main(int argc, char **argv) {
     Memory mem;
     memory_init(&mem, 16 * 1024 * 1024);
     BiosFile bios;
-    memory_map_init(&bios, &mem, NULL);
+    memory_map_init(&bios, &mem);
     Sh4 cpu;
     int ret_val = 0;
 
