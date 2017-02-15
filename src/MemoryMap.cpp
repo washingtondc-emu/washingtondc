@@ -24,6 +24,7 @@
 #include "hw/sys/sys_block.hpp"
 #include "hw/maple/maple_reg.hpp"
 #include "hw/g1/g1_reg.hpp"
+#include "hw/g2/g2_reg.hpp"
 
 #include "MemoryMap.hpp"
 
@@ -92,6 +93,16 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
                                       errinfo_length(len));
             }
             return maple_reg_read(buf, addr, len);
+        } else if (addr >= ADDR_G2_FIRST && addr <= ADDR_G2_LAST) {
+            if (addr + len > ADDR_G2_LAST) {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("proper response for "
+                                                      "when the guest reads "
+                                                      "past a memory map's "
+                                                      "end") <<
+                                      errinfo_length(len));
+            }
+            return g2_reg_read(buf, addr, len);
         }
 
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -149,6 +160,16 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
                                       errinfo_length(len));
             }
             return maple_reg_write(buf, addr, len);
+        } else if (addr >= ADDR_G2_FIRST && addr <= ADDR_G2_LAST) {
+            if (addr + len > ADDR_G2_LAST) {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("proper response for "
+                                                      "when the guest writes "
+                                                      "past a memory map's "
+                                                      "end") <<
+                                      errinfo_length(len));
+            }
+            return g2_reg_write(buf, addr, len);
         }
     } catch(BaseException& exc) {
         exc << errinfo_guest_addr(addr);
