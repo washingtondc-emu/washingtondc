@@ -43,6 +43,10 @@ const static size_t ADDR_G1_LAST  = 0x005F74FF;
 const static size_t ADDR_SYS_FIRST = 0x005f6800;
 const static size_t ADDR_SYS_LAST  = 0x005F69FF;
 
+// maple bus registers
+const static size_t ADDR_MAPLE_FIRST = 0x5f6c00;
+const static size_t ADDR_MAPLE_LAST = 0x5f6cff;
+
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new, G1Bus *g1_new);
 void memory_map_set_bios(BiosFile *bios_new);
 void memory_map_set_mem(struct Memory *mem_new);
