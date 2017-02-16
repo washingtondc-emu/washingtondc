@@ -25,6 +25,7 @@
 #include "hw/maple/maple_reg.hpp"
 #include "hw/g1/g1_reg.hpp"
 #include "hw/g2/g2_reg.hpp"
+#include "hw/g2/modem.hpp"
 #include "hw/pvr2/pvr2_reg.hpp"
 
 #include "MemoryMap.hpp"
@@ -114,6 +115,8 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
                                       errinfo_length(len));
             }
             return pvr2_reg_read(buf, addr, len);
+        } else if (addr >= ADDR_MODEM_FIRST && addr <= ADDR_MODEM_LAST) {
+            return modem_read(buf, addr, len);
         }
 
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -191,7 +194,10 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
                                       errinfo_length(len));
             }
             return pvr2_reg_write(buf, addr, len);
+        } else if (addr >= ADDR_MODEM_FIRST && addr <= ADDR_MODEM_LAST) {
+            return modem_write(buf, addr, len);
         }
+
     } catch(BaseException& exc) {
         exc << errinfo_guest_addr(addr);
         exc << errinfo_op_type("write");
