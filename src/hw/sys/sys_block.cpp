@@ -127,6 +127,12 @@ static struct sys_mapped_reg {
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
     { "SB_G2DTEXT", 0x5f6954, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
+
+    { "SB_ISTNRM", 0x5f6900, 4,
+      warn_sys_reg_read_handler, warn_sys_reg_write_handler },
+    { "SB_ISTERR", 0x5f6908, 4,
+      warn_sys_reg_read_handler, warn_sys_reg_write_handler },
+
     { NULL }
 };
 
