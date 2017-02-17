@@ -27,6 +27,7 @@
 #include "hw/g2/g2_reg.hpp"
 #include "hw/g2/modem.hpp"
 #include "hw/pvr2/pvr2_reg.hpp"
+#include "hw/pvr2/pvr2_core_reg.hpp"
 
 #include "MemoryMap.hpp"
 
@@ -117,6 +118,9 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             return pvr2_reg_read(buf, addr, len);
         } else if (addr >= ADDR_MODEM_FIRST && addr <= ADDR_MODEM_LAST) {
             return modem_read(buf, addr, len);
+        } else if (addr >= ADDR_PVR2_CORE_FIRST &&
+                   addr <= ADDR_PVR2_CORE_LAST) {
+            return pvr2_core_reg_read(buf, addr, len);
         }
 
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -196,6 +200,9 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             return pvr2_reg_write(buf, addr, len);
         } else if (addr >= ADDR_MODEM_FIRST && addr <= ADDR_MODEM_LAST) {
             return modem_write(buf, addr, len);
+        } else if (addr >= ADDR_PVR2_CORE_FIRST &&
+                   addr <= ADDR_PVR2_CORE_LAST) {
+            return pvr2_core_reg_write(buf, addr, len);
         }
 
     } catch(BaseException& exc) {
