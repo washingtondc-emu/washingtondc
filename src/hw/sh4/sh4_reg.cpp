@@ -32,6 +32,11 @@
 
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);
 
+static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
+                                      struct Sh4MemMappedReg const *reg_info);
+static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
+                                      struct Sh4MemMappedReg const *reg_info);
+
 static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "EXPEVT", 0xff000024, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
       Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0x20 },
@@ -88,17 +93,17 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "PCR", 0xff800018, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
       Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
       0, 0 },
-    { "PCTRA", 0xff80002c, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+    { "PCTRA", 0xff80002c, ~addr32_t(0), 4, SH4_REG_PCTRA, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler,
       0, 0 },
-    { "PDTRA", 0xff800030, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+    { "PDTRA", 0xff800030, ~addr32_t(0), 2, SH4_REG_PDTRA, true,
+      sh4_pdtra_reg_read_handler, sh4_pdtra_reg_write_handler,
       0, 0 },
-    { "PCTRB", 0xff800040, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+    { "PCTRB", 0xff800040, ~addr32_t(0), 4, SH4_REG_PCTRB, true,
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler,
       0, 0 },
-    { "PDTRB", 0xff800044, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+    { "PDTRB", 0xff800044, ~addr32_t(0), 2, SH4_REG_PDTRB, true,
+      Sh4IgnoreRegReadHandler, Sh4WarnRegWriteHandler,
       0, 0 },
     { "GPIOIC", 0xff800048, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, true,
       Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
@@ -492,6 +497,7 @@ int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
                 reg_info->reg_name << std::endl;
         }
     }
+    std::cerr << "(PC is " << std::hex << sh4->reg[SH4_REG_PC] << ")" << std::endl;
 
     return ret_code;
 }
@@ -530,4 +536,125 @@ int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
     }
 
     return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
+}
+
+static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
+                                      struct Sh4MemMappedReg const *reg_info) {
+    /*
+     * HACK - prevent infinite loop during bios boot at pc=0x8c00b94e
+     * I'm not 100% sure what I'm doing here, I *think* PDTRA has something to
+     * do with the display adapter.
+     *
+     * Basically, the boot rom writes a sequence of values to PDTRA (with
+     * pctra's i/o selects toggling occasionally) and it expects a certain
+     * sequence of values when it reads back from pdtra.  I mask in the values
+     * it writes as outputs into the value of pdtra which is read back (because
+     * according to the sh4 spec, output bits can be read as inputs and they
+     * will have the value which was last written to them) and send it either 0
+     * or 3 on the input bits based on the address in the PR register.
+     * Hopefully this is good enough.
+     *
+     * If the boot rom doesn't get a value it wants to see after 10 attempts,
+     * then it branches to GBR (0x8c000000), where it will put the processor to
+     * sleep with interrupts disabled (ie forever).  Presumably this is all it
+     * can due to handle an error at such an early stage in the boot process.
+     */
+
+    /*
+     * n_pup = "not pullup"
+     * n_input = "not input"
+     */
+    uint16_t n_pup_mask = 0, n_input_mask = 0;
+    uint32_t pctra = sh4->reg[SH4_REG_PCTRA];
+
+    /* parse out the PCTRA register */
+    unsigned bit_no;
+    for (bit_no = 0; bit_no < 16; bit_no++) {
+        uint32_t n_input = (1 << (bit_no * 2) & pctra) >> (bit_no * 2);
+        uint32_t n_pup = (1 << (bit_no * 2 + 1) & pctra) >> (bit_no * 2 + 1);
+
+        n_pup_mask |= n_pup << bit_no;
+        n_input_mask |= n_input << bit_no;
+    }
+
+    /* show the bios what (i think) it wants to see... */
+    uint16_t out_val;
+    switch (sh4->reg[SH4_REG_PR]) {
+    case 0x8c00b97a:
+    case 0x8c00b996:
+        out_val = 0;
+        break;
+    case 0x8c00b964:
+    case 0x8c00b96e:
+    case 0x8c00b980:
+    case 0x8c00b98a:
+    default:
+        out_val = 3;
+    }
+
+    /*
+     * Set cable type - for now I hardcode to composite video (because that's
+     * the only one games are required to support).  In the future, there should
+     * be a way to select different video output types.
+     */
+    out_val |= 0x0300;
+
+    /*
+     * I also need to add in a way to select the TV video type in bits 4:2.  For
+     * now I leave those three bits at zero, which corresponds to NTSC.  For PAL
+     * formats, some of those bits are supposed to be non-zero.
+     */
+
+    /*
+     * Now combine this with the values previously written to PDTRA - remember
+     * that bits set to output can be read back, and that they should have the
+     * same values that were written to them.
+     */
+    out_val = (out_val & ~n_input_mask) |
+        (sh4->reg[SH4_REG_PDTRA] & n_input_mask);
+
+    memcpy(buf, &out_val, sizeof(out_val));
+
+    /* I got my eye on you...*/
+    std::cerr << "WARNING: reading 0x" <<
+        std::hex << std::setfill('0') << std::setw(4) <<
+        unsigned(out_val) << " from register " <<
+        reg_info->reg_name << std::endl;
+
+    return 0;
+}
+
+static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
+                                       struct Sh4MemMappedReg const *reg_info) {
+    uint16_t val;
+    memcpy(&val, buf, sizeof(val));
+    uint16_t val_orig = val;
+
+    /*
+     * n_pup = "not pullup"
+     * n_input = "not input"
+     */
+    uint16_t n_pup_mask = 0, n_input_mask = 0;
+    uint32_t pctra = sh4->reg[SH4_REG_PCTRA];
+
+    /* parse out the PCTRA register */
+    unsigned bit_no;
+    for (bit_no = 0; bit_no < 16; bit_no++) {
+        uint32_t n_input = (1 << (bit_no * 2) & pctra) >> (bit_no * 2);
+        uint32_t n_pup = (1 << (bit_no * 2 + 1) & pctra) >> (bit_no * 2 + 1);
+
+        n_pup_mask |= n_pup << bit_no;
+        n_input_mask |= n_input << bit_no;
+    }
+
+    /* I got my eye on you...*/
+    std::cerr << "WARNING: writing 0x" <<
+        std::hex << std::setfill('0') << std::setw(4) <<
+        unsigned(val) << " to register " <<
+        reg_info->reg_name << " (attempted write was " <<
+        unsigned(val_orig) << ")" << std::endl;
+
+    sh4->reg[SH4_REG_PDTRA] = val;
+
+    return 0;
 }

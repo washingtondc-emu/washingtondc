@@ -213,6 +213,11 @@ typedef enum sh4_reg_idx {
     SH4_REG_IPRC,
     SH4_REG_IPRD,
 
+    SH4_REG_PCTRA,
+    SH4_REG_PDTRA,
+    SH4_REG_PCTRB,
+    SH4_REG_PDTRB,
+
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
 
