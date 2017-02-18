@@ -459,7 +459,7 @@ int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
     uint16_t val16;
     uint32_t val32;
 
-    int ret_code = Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
+    int ret_code = Sh4DefaultRegReadHandler(sh4, buf, reg_info);
 
     if (ret_code) {
         std::cerr << "WARNING: read from register " <<
