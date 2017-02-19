@@ -57,6 +57,7 @@ static struct aica_mapped_reg {
     addr32_t addr;
 
     unsigned len;
+    unsigned n_elem;
 
     aica_reg_read_handler_t on_read;
     aica_reg_write_handler_t on_write;
@@ -65,7 +66,75 @@ static struct aica_mapped_reg {
      * two-byte register containing VREG and some other weird unrelated stuff
      * that is part of AICA for reasons which I cannot fathom
      */
-    { "AICA_00702C00", 0x00702c00, 4,
+    { "AICA_00700000", 0x00700000, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700004", 0x00700004, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700008", 0x00700008, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_0070000c", 0x0070000c, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700010", 0x00700010, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700014", 0x00700014, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700018", 0x00700018, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_0070001c", 0x0070001c, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700020", 0x00700020, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700024", 0x00700024, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700028", 0x00700028, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_FLV0", 0x0070002c, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_FLV1", 0x00700030, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_FLV2", 0x00700034, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_FLV3", 0x00700038, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_FLV4", 0x0070003c, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700040", 0x00700040, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00700044", 0x00700044, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_SLOT_CONTROL", 0x700080, 4, 0x7d2,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_DSP_OUT", 0x702000, 4, 18,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_COEF",     0x00703000, 4, 128,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_MADDRS", 0x703200, 4, 64,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_MPRO", 0x703400, 4, 4 * 128,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_TEMP", 0x704000, 4, 0x100,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_MEMS", 0x704400, 4, 0x40,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_MIXS", 0x704500, 4, 0x20,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_EFREG", 0x704580, 4, 0x10,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_EXTS", 0x7045c0, 4, 0x2,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00702c00", 0x00702c00, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_00702800", 0x00702800, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_0070289c", 0x0070289c, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_007028a0", 0x007028a0, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_007028a4", 0x007028a4, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_007028b4", 0x007028b4, 4, 1,
+      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    { "AICA_007028bc", 0x007028bc, 4, 1,
       warn_aica_reg_read_handler, warn_aica_reg_write_handler },
     { NULL }
 };
@@ -74,7 +143,8 @@ int aica_reg_read(void *buf, size_t addr, size_t len) {
     struct aica_mapped_reg *curs = aica_reg_info;
 
     while (curs->reg_name) {
-        if (curs->addr == addr) {
+        if ((addr >= curs->addr) &&
+            (addr < (curs->addr + curs->len * curs->n_elem))) {
             if (curs->len == len) {
                 return curs->on_read(curs, buf, addr, len);
             } else {
@@ -94,14 +164,16 @@ int aica_reg_read(void *buf, size_t addr, size_t len) {
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
                           errinfo_feature("reading from one of the "
                                           "aica registers") <<
-                          errinfo_guest_addr(addr));
+                          errinfo_guest_addr(addr) <<
+                          errinfo_length(len));
 }
 
 int aica_reg_write(void const *buf, size_t addr, size_t len) {
     struct aica_mapped_reg *curs = aica_reg_info;
 
     while (curs->reg_name) {
-        if (curs->addr == addr) {
+        if ((addr >= curs->addr) &&
+            (addr < (curs->addr + curs->len * curs->n_elem))) {
             if (curs->len == len) {
                 return curs->on_write(curs, buf, addr, len);
             } else {
@@ -120,7 +192,8 @@ int aica_reg_write(void const *buf, size_t addr, size_t len) {
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
                           errinfo_feature("writing to one of the "
                                           "aica registers") <<
-                          errinfo_guest_addr(addr));
+                          errinfo_guest_addr(addr) <<
+                          errinfo_length(len));
 }
 
 static int
@@ -150,7 +223,8 @@ warn_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
 
     if (ret_code) {
         std::cerr << "WARNING: read from aica register " <<
-            reg_info->reg_name << std::endl;
+            reg_info->reg_name << "(offset is " <<
+            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
     } else {
         switch (reg_info->len) {
         case 1:
@@ -158,25 +232,29 @@ warn_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
             std::cerr << "WARNING: read 0x" <<
                 std::hex << std::setfill('0') << std::setw(2) <<
                 unsigned(val8) << " from aica register " <<
-                reg_info->reg_name << std::endl;
+                reg_info->reg_name << "(offset is " <<
+            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
             std::cerr << "WARNING: read 0x" <<
                 std::hex << std::setfill('0') << std::setw(4) <<
                 unsigned(val16) << " from aica register " <<
-                reg_info->reg_name << std::endl;
+                reg_info->reg_name << "(offset is " <<
+            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
             std::cerr << "WARNING: read 0x" <<
                 std::hex << std::setfill('0') << std::setw(8) <<
                 unsigned(val32) << " from aica register " <<
-                reg_info->reg_name << std::endl;
+                reg_info->reg_name << "(offset is " <<
+            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
             break;
         default:
             std::cerr << "WARNING: read from aica register " <<
-                reg_info->reg_name << std::endl;
+                reg_info->reg_name << "(offset is " <<
+            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
         }
     }
 
@@ -196,25 +274,29 @@ warn_aica_reg_write_handler(struct aica_mapped_reg const *reg_info,
         std::cerr << "WARNING: writing 0x" <<
             std::hex << std::setfill('0') << std::setw(2) <<
             unsigned(val8) << " to aica register " <<
-            reg_info->reg_name << std::endl;
+            reg_info->reg_name << "(offset is " <<
+            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
         std::cerr << "WARNING: writing 0x" <<
             std::hex << std::setfill('0') << std::setw(4) <<
             unsigned(val16) << " to aica register " <<
-            reg_info->reg_name << std::endl;
+            reg_info->reg_name << "(offset is " <<
+            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
         std::cerr << "WARNING: writing 0x" <<
             std::hex << std::setfill('0') << std::setw(8) <<
             unsigned(val32) << " to aica register " <<
-            reg_info->reg_name << std::endl;
+            reg_info->reg_name << "(offset is " <<
+            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
         break;
     default:
         std::cerr << "WARNING: reading from aica register " <<
-            reg_info->reg_name << std::endl;
+            reg_info->reg_name << "(offset is " <<
+            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
     }
 
     return default_aica_reg_write_handler(reg_info, buf, addr, len);

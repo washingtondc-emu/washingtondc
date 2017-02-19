@@ -49,6 +49,11 @@ static int warn_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                       void const *buf, addr32_t addr,
                                       unsigned len);
 
+/* write handler for registers that should be read-only */
+static int sys_read_only_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                           void const *buf, addr32_t addr,
+                                           unsigned len);
+
 static struct sys_mapped_reg {
     char const *reg_name;
 
@@ -88,6 +93,8 @@ static struct sys_mapped_reg {
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
     { "SB_LMMODE1", 0x5f6888, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
+    { "SB_FFST", 0x5f688c, 4,
+      warn_sys_reg_read_handler, sys_read_only_reg_write_handler },
     /* TODO: spec says default val if SB_RBSPLT's MSB is 0, but bios writes 1 */
     { "SB_RBSPLT", 0x5f68a0, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
@@ -283,4 +290,15 @@ int sys_block_write(void const *buf, size_t addr, size_t len) {
                           errinfo_feature("accessing one of the "
                                           "system block registers") <<
                           errinfo_guest_addr(addr));
+}
+
+static int sys_read_only_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                           void const *buf, addr32_t addr,
+                                           unsigned len) {
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("Whatever happens when you try to "
+                                          "write to a read-only system-block "
+                                          "register") <<
+                          errinfo_guest_addr(addr) <<
+                          errinfo_length(len));
 }
