@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include "common/BaseException.hpp"
+#include "flash_memory.hpp"
 
 #ifdef ENABLE_DEBUGGER
 #include "GdbStub.hpp"
@@ -31,7 +32,7 @@
 
 #include "Dreamcast.hpp"
 
-Dreamcast::Dreamcast(char const *bios_path) {
+Dreamcast::Dreamcast(char const *bios_path, char const *flash_path) {
     is_running = true;
 
 #ifdef ENABLE_DEBUGGER
@@ -39,6 +40,8 @@ Dreamcast::Dreamcast(char const *bios_path) {
 #endif
 
     memory_init(&mem, MEM_SZ);
+    if (flash_path)
+        flash_mem_load(flash_path);
     bios = new BiosFile(bios_path);
     memory_map_init(bios, &mem);
     sh4_init(&cpu);

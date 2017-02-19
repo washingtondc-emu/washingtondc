@@ -30,6 +30,10 @@
 const static size_t ADDR_BIOS_FIRST = 0;
 const static size_t ADDR_BIOS_LAST  = 0x001fffff;
 
+// flash memory
+const static size_t ADDR_FLASH_FIRST = 0x00200000;
+const static size_t ADDR_FLASH_LAST = 0x0021ffff;
+
 // main system memory
 const static size_t ADDR_RAM_FIRST  = 0x0c000000;
 const static size_t ADDR_RAM_LAST   = 0x0cffffff;

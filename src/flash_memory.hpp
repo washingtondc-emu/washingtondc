@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,44 +20,16 @@
  *
  ******************************************************************************/
 
-#ifndef DREAMCAST_HPP_
-#define DREAMCAST_HPP_
+#ifndef FLASH_MEMORY_HPP_
+#define FLASH_MEMORY_HPP_
 
-#include "BiosFile.hpp"
-#include "Memory.hpp"
-#include "hw/sh4/sh4.hpp"
+#include "MemoryMap.hpp"
 
-#ifdef ENABLE_DEBUGGER
-#include "Debugger.hpp"
-#endif
+static const size_t FLASH_MEM_SZ = ADDR_FLASH_LAST - ADDR_FLASH_FIRST + 1;
 
-class Dreamcast {
-public:
-    Dreamcast(char const *bios_path, char const *flash_path = NULL);
-    ~Dreamcast();
+void flash_mem_load(char const *path);
 
-#ifdef ENABLE_DEBUGGER
-    // this must be called before run or not at all
-    void enable_debugger(void);
-#endif
-
-    void run();
-    void kill();
-
-    Sh4 *get_cpu();
-    Memory *gem_mem();
-private:
-    static const size_t MEM_SZ = 16 * 1024 * 1024;
-
-    Sh4 cpu;
-    BiosFile *bios;
-    struct Memory mem;
-
-    bool is_running;
-
-#ifdef ENABLE_DEBUGGER
-    Debugger *debugger;
-#endif
-};
+int flash_mem_read(void *buf, size_t addr, size_t len);
+int flash_mem_write(void const *buf, size_t addr, size_t len);
 
 #endif

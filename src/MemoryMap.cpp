@@ -29,6 +29,7 @@
 #include "hw/pvr2/pvr2_reg.hpp"
 #include "hw/pvr2/pvr2_core_reg.hpp"
 #include "hw/aica/aica_reg.hpp"
+#include "flash_memory.hpp"
 
 #include "MemoryMap.hpp"
 
@@ -67,6 +68,16 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
                                       errinfo_length(len));
             }
             return bios->read(buf, addr - ADDR_BIOS_FIRST, len);
+        } else if (addr >= ADDR_FLASH_FIRST && addr <= ADDR_FLASH_LAST) {
+            if ((addr + len - 1 > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("proper response for "
+                                                      "when the guest reads "
+                                                      "past a memory map's "
+                                                      "end") <<
+                                      errinfo_length(len));
+            }
+            return flash_mem_read(buf, addr, len);
         } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
             if (addr + len > ADDR_G1_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -151,6 +162,16 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
                                                   "the guest tries to write to "
                                                   "read-only memory") <<
                                   errinfo_length(len));
+        } else if (addr >= ADDR_FLASH_FIRST && addr <= ADDR_FLASH_LAST) {
+            if ((addr + len - 1 > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("proper response for "
+                                                      "when the guest tries to "
+                                                      "write past a memory "
+                                                      "map's end") <<
+                                      errinfo_length(len));
+            }
+            return flash_mem_write(buf, addr, len);
         } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
             if (addr + len > ADDR_G1_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<

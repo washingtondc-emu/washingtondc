@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016. 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -32,14 +32,17 @@ static void print_usage(char const *cmd) {
 
 int main(int argc, char **argv) {
     int opt;
-    char const *bios_path = NULL;
+    char const *bios_path = NULL, *flash_path = NULL;
     char const *cmd = argv[0];
     bool enable_debugger = false;
 
-    while ((opt = getopt(argc, argv, "b:g")) != -1) {
+    while ((opt = getopt(argc, argv, "b:f:g")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
+            break;
+        case 'f':
+            flash_path = optarg;
             break;
         case 'g':
             enable_debugger = true;
@@ -56,7 +59,7 @@ int main(int argc, char **argv) {
     }
 
     try {
-        Dreamcast dc(bios_path);
+        Dreamcast dc(bios_path, flash_path);
 
         if (enable_debugger) {
 #ifdef ENABLE_DEBUGGER
