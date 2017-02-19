@@ -136,6 +136,7 @@ static struct aica_mapped_reg {
       warn_aica_reg_read_handler, warn_aica_reg_write_handler },
     { "AICA_007028bc", 0x007028bc, 4, 1,
       warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+
     { NULL }
 };
 
