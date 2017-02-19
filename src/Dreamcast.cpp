@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <time.h>
+#include <fstream>
 #include <iostream>
 
 #include "common/BaseException.hpp"
@@ -58,6 +59,55 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     memory_map_init(bios, &mem);
     sh4_init(&cpu);
 }
+
+#ifdef ENABLE_HLE_BOOT
+void dreamcast_init_hle(char const *path_ip_bin,
+                        char const *path_1st_read_bin,
+                        char const *bios_path,
+                        char const *flash_path) {
+    std::ifstream file_ip_bin(path_ip_bin,
+                              std::ifstream::in | std::ifstream::binary);
+    std::ifstream file_1st_read_bin(path_1st_read_bin,
+                                    std::ifstream::in | std::ifstream::binary);
+    is_running = true;
+
+#ifdef ENABLE_DEBUGGER
+    debugger = NULL;
+#endif
+
+    memory_init(&mem, MEM_SZ);
+    if (flash_path)
+        flash_mem_load(flash_path);
+    if (bios_path)
+        bios = new BiosFile(bios_path);
+    else
+        bios = new BiosFile();
+    memory_map_init(bios, &mem);
+
+    file_ip_bin.seekg(0, file_ip_bin.end);
+    size_t len_ip_bin = file_ip_bin.tellg();
+    file_ip_bin.seekg(0, file_ip_bin.beg);
+
+    file_1st_read_bin.seekg(0, file_1st_read_bin.end);
+    size_t len_1st_read_bin = file_1st_read_bin.tellg();
+    file_1st_read_bin.seekg(0, file_1st_read_bin.beg);
+
+    uint8_t *dat = new uint8_t[len_ip_bin];
+    file_ip_bin.read((char*)dat, sizeof(uint8_t) * len_ip_bin);
+    memory_map_write(dat, ADDR_IP_BIN & ~0xe0000000, len_ip_bin);
+    delete[] dat;
+
+    dat = new uint8_t[len_1st_read_bin];
+    file_1st_read_bin.read((char*)dat, sizeof(uint8_t) * len_1st_read_bin);
+    memory_map_write(dat, ADDR_1ST_READ_BIN & ~0xe0000000, len_1st_read_bin);
+    delete[] dat;
+
+    sh4_init(&cpu);
+
+    /* set the PC to the booststrap code within IP.BIN */
+    cpu.reg[SH4_REG_PC] = ADDR_BOOTSTRAP;
+}
+#endif
 
 void dreamcast_cleanup() {
 #ifdef ENABLE_DEBUGGER

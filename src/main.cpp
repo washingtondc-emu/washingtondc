@@ -35,8 +35,10 @@ int main(int argc, char **argv) {
     char const *bios_path = NULL, *flash_path = NULL;
     char const *cmd = argv[0];
     bool enable_debugger = false;
+    bool boot_hle = false;
+    char const *path_1st_read_bin = NULL, *path_ip_bin = NULL;
 
-    while ((opt = getopt(argc, argv, "b:f:g")) != -1) {
+    while ((opt = getopt(argc, argv, "b:f:gh")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -47,19 +49,48 @@ int main(int argc, char **argv) {
         case 'g':
             enable_debugger = true;
             break;
+        case 'h':
+#ifdef ENABLE_HLE_BOOT
+            boot_hle = true;
+#else
+            std::cerr << "ERROR: unable to boot HLE: it's not enabled!" <<
+                std::endl <<
+                "rebuild with -DENABLE_HLE_BOOT" << std::endl;
+            exit(1);
+#endif
         }
     }
 
     argv += optind;
     argc -= optind;
 
-    if (argc != 0 || !bios_path) {
+    if (boot_hle) {
+        if (argc != 2) {
+            print_usage(cmd);
+            exit(1);
+        }
+
+        path_ip_bin = argv[0];
+        path_1st_read_bin = argv[1];
+
+        std::cout << "HLE boot enabled, loading IP.BIN from " << path_ip_bin <<
+            " and loading 1ST_READ.BIN from " << path_1st_read_bin << std::endl;
+    } else if (argc != 0 || !bios_path) {
         print_usage(cmd);
         exit(1);
     }
 
     try {
-        dreamcast_init(bios_path, flash_path);
+#ifdef ENABLE_HLE_BOOT
+        if (boot_hle) {
+            dreamcast_init_hle(path_ip_bin, path_1st_read_bin,
+                               bios_path, flash_path);
+        } else {
+#endif
+            dreamcast_init(bios_path, flash_path);
+#ifdef ENABLE_HLE_BOOT
+        }
+#endif
 
         if (enable_debugger) {
 #ifdef ENABLE_DEBUGGER

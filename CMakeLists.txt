@@ -33,6 +33,11 @@ endif()
 
 option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)
 option(ENABLE_DEBUGGER "Enable the debugger" ON)
+option(ENABLE_HLE_BOOT "Enable HLE boot mode" OFF)
+
+if (ENABLE_HLE_BOOT)
+   add_definitions(-DENABLE_HLE_BOOT)
+endif()
 
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.hpp"
