@@ -28,6 +28,7 @@
 #include "hw/g2/modem.hpp"
 #include "hw/pvr2/pvr2_reg.hpp"
 #include "hw/pvr2/pvr2_core_reg.hpp"
+#include "hw/aica/aica_reg.hpp"
 
 #include "MemoryMap.hpp"
 
@@ -121,6 +122,8 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
         } else if (addr >= ADDR_PVR2_CORE_FIRST &&
                    addr <= ADDR_PVR2_CORE_LAST) {
             return pvr2_core_reg_read(buf, addr, len);
+        } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
+            return aica_reg_read(buf, addr, len);
         }
 
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -203,6 +206,8 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
         } else if (addr >= ADDR_PVR2_CORE_FIRST &&
                    addr <= ADDR_PVR2_CORE_LAST) {
             return pvr2_core_reg_write(buf, addr, len);
+        } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
+            return aica_reg_write(buf, addr, len);
         }
 
     } catch(BaseException& exc) {
