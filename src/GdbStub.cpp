@@ -35,13 +35,12 @@
 // uncomment this to log all traffic in/out of the debugger to stdout
 // #define GDBSTUB_VERBOSE
 
-GdbStub::GdbStub(Dreamcast *dc) : Debugger(dc),
-                                  tcp_endpoint(boost::asio::ip::tcp::v4(),
-                                               PORT_NO),
-                                  tcp_acceptor(io_service, tcp_endpoint),
-                                  tcp_socket(io_service)
+GdbStub::GdbStub() : Debugger(),
+                     tcp_endpoint(boost::asio::ip::tcp::v4(),
+                                  PORT_NO),
+                     tcp_acceptor(io_service, tcp_endpoint),
+                     tcp_socket(io_service)
 {
-    this->dc = dc;
 }
 
 GdbStub::~GdbStub() {
@@ -62,7 +61,7 @@ void GdbStub::on_break() {
 }
 
 std::string GdbStub::serialize_regs() const {
-    Sh4 *cpu = dc->get_cpu();
+    Sh4 *cpu = dreamcast_get_cpu();
     reg32_t reg_file[SH4_REGISTER_COUNT];
     sh4_get_regs(cpu, reg_file);
     Sh4::FpuReg fpu_reg = sh4_get_fpu(cpu);
@@ -385,7 +384,7 @@ std::string GdbStub::handle_m_packet(std::string dat) {
         uint8_t val;
 
         try {
-            sh4_read_mem(dc->get_cpu(), &val, addr++, sizeof(val));
+            sh4_read_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
         } catch (BaseException& exc) {
             return err_str(EINVAL);
         }
@@ -406,8 +405,8 @@ std::string GdbStub::handle_G_packet(std::string dat) {
     deserialize_regs(dat.substr(1), regs);
 
     reg32_t new_regs[SH4_REGISTER_COUNT];
-    sh4_get_regs(dc->get_cpu(), new_regs);
-    Sh4::FpuReg new_fpu = sh4_get_fpu(dc->get_cpu());
+    sh4_get_regs(dreamcast_get_cpu(), new_regs);
+    Sh4::FpuReg new_fpu = sh4_get_fpu(dreamcast_get_cpu());
     bool bank = new_regs[SH4_REG_SR] & SH4_SR_RB_MASK;
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
@@ -446,7 +445,7 @@ std::string GdbStub::handle_P_packet(std::string dat) {
         return "E16";
     }
 
-    Sh4 *cpu = dc->get_cpu();
+    Sh4 *cpu = dreamcast_get_cpu();
     reg32_t regs[SH4_REGISTER_COUNT];
     sh4_get_regs(cpu, regs);
     Sh4::FpuReg fpu = sh4_get_fpu(cpu);
@@ -477,7 +476,7 @@ std::string GdbStub::handle_M_packet(std::string dat) {
             uint8_t(atoi(dat.substr(dat_idx, dat_idx + 1).c_str()) << 4) |
             uint8_t(atoi(dat.substr(dat_idx + 1, dat_idx + 2).c_str()));
 
-        sh4_write_mem(dc->get_cpu(), &val, addr++, sizeof(val));
+        sh4_write_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
     }
 
     return "OK";
@@ -492,7 +491,7 @@ std::string GdbStub::handle_D_packet(std::string dat) {
 }
 
 std::string GdbStub::handle_K_packet(std::string dat) {
-    dc->kill();
+    dreamcast_kill();
 
     return "OK";
 }

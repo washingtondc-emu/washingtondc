@@ -59,11 +59,11 @@ int main(int argc, char **argv) {
     }
 
     try {
-        Dreamcast dc(bios_path, flash_path);
+        dreamcast_init(bios_path, flash_path);
 
         if (enable_debugger) {
 #ifdef ENABLE_DEBUGGER
-            dc.enable_debugger();
+            dreamcast_enable_debugger();
 #else
             std::cerr << "WARNING: Unable to enable remote gdb stub." <<
                 std::endl << "Please rebuild with -DENABLE_DEBUGGER=On" <<
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
 #endif
         }
 
-        dc.run();
+        dreamcast_run();
     } catch (BaseException& err) {
         std::cerr << boost::diagnostic_information(err);
         exit(1);

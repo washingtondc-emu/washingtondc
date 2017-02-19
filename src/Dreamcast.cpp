@@ -32,7 +32,19 @@
 
 #include "Dreamcast.hpp"
 
-Dreamcast::Dreamcast(char const *bios_path, char const *flash_path) {
+static const size_t MEM_SZ = 16 * 1024 * 1024;
+
+static Sh4 cpu;
+static BiosFile *bios;
+static struct Memory mem;
+
+static bool is_running;
+
+#ifdef ENABLE_DEBUGGER
+static Debugger *debugger;
+#endif
+
+void dreamcast_init(char const *bios_path, char const *flash_path) {
     is_running = true;
 
 #ifdef ENABLE_DEBUGGER
@@ -47,7 +59,7 @@ Dreamcast::Dreamcast(char const *bios_path, char const *flash_path) {
     sh4_init(&cpu);
 }
 
-Dreamcast::~Dreamcast() {
+void dreamcast_cleanup() {
 #ifdef ENABLE_DEBUGGER
     if (debugger)
         delete debugger;
@@ -58,7 +70,7 @@ Dreamcast::~Dreamcast() {
     memory_cleanup(&mem);
 }
 
-void Dreamcast::run() {
+void dreamcast_run() {
     /*
      * TODO: later when I'm emulating more than just the CPU,
      * I'll need to remember to call this every time I re-enter
@@ -120,21 +132,17 @@ void Dreamcast::run() {
         (hz_ratio * 100.0) << "%)" << std::endl;
 }
 
-void Dreamcast::kill() {
+void dreamcast_kill() {
     is_running = false;
 }
 
-Sh4 *Dreamcast::get_cpu() {
+Sh4 *dreamcast_get_cpu() {
     return &cpu;
 }
 
-Memory *Dreamcast::gem_mem() {
-    return &mem;
-}
-
 #ifdef ENABLE_DEBUGGER
-void Dreamcast::enable_debugger(void) {
-    debugger = new GdbStub(this);
+void dreamcast_enable_debugger(void) {
+    debugger = new GdbStub();
     debugger->attach();
 }
 #endif

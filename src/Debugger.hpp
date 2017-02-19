@@ -32,11 +32,9 @@
 
 #include "types.hpp"
 
-class Dreamcast;
-
 class Debugger {
 public:
-    Debugger(Dreamcast *dc);
+    Debugger();
     virtual ~Debugger();
 
     bool should_break(addr32_t pc);
@@ -55,7 +53,6 @@ private:
     addr32_t breakpoints[N_BREAKPOINTS];
     bool breakpoint_enable[N_BREAKPOINTS];
 
-    Dreamcast *dc;
 protected:
     enum State {
         STATE_NORM,

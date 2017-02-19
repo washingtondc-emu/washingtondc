@@ -45,7 +45,7 @@ public:
     // it's 'cause 1999 is the year the Dreamcast came out in America
     static const unsigned PORT_NO = 1999;
 
-    GdbStub(Dreamcast *dc);
+    GdbStub();
     ~GdbStub();
 
     void attach();
@@ -106,8 +106,6 @@ private:
     std::string extract_packet(std::string packet_in);
 
     static std::string err_str(unsigned err_val);
-
-    Dreamcast *dc;
 
     static int decode_hex(char ch);
     

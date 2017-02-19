@@ -31,33 +31,17 @@
 #include "Debugger.hpp"
 #endif
 
-class Dreamcast {
-public:
-    Dreamcast(char const *bios_path, char const *flash_path = NULL);
-    ~Dreamcast();
+void dreamcast_init(char const *bios_path, char const *flash_path = NULL);
+void dreamcast_cleanup();
 
 #ifdef ENABLE_DEBUGGER
-    // this must be called before run or not at all
-    void enable_debugger(void);
+// this must be called before run or not at all
+void dreamcast_enable_debugger(void);
 #endif
 
-    void run();
-    void kill();
+void dreamcast_run();
+void dreamcast_kill();
 
-    Sh4 *get_cpu();
-    Memory *gem_mem();
-private:
-    static const size_t MEM_SZ = 16 * 1024 * 1024;
-
-    Sh4 cpu;
-    BiosFile *bios;
-    struct Memory mem;
-
-    bool is_running;
-
-#ifdef ENABLE_DEBUGGER
-    Debugger *debugger;
-#endif
-};
+Sh4 *dreamcast_get_cpu();
 
 #endif

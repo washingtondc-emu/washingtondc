@@ -29,9 +29,8 @@
 #error This file should not be included unless the debugger is enabled
 #endif
 
-Debugger::Debugger(Dreamcast *dc) {
+Debugger::Debugger() {
     this->cur_state = STATE_BREAK;
-    this->dc = dc;
 
     std::fill(breakpoint_enable, breakpoint_enable + N_BREAKPOINTS, false);
 }
