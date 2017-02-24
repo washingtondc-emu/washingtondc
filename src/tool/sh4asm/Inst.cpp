@@ -30,7 +30,7 @@ PtrnList get_patterns() {
      ** operators which take no arguments
      **
      **************************************************************************/
-    // DIVOU
+    // DIV0U
     // 0000000000011001
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(divou), 0x0019>));
 

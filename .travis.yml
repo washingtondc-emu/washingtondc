@@ -13,4 +13,4 @@ script:
   cd build ;
   cmake -DENABLE_SH4_MMU=$DO_ENABLE_SH4_MMU .. ;
   make ;
-  ./sh4asm_test && ./sh4mem_test && ./sh4inst_test && ./sh4tmu_test
+  ./sh4asm_test && ./sh4mem_test && ./sh4inst_test && ./sh4tmu_test && ./sh4div_test
