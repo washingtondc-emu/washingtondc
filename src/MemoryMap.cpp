@@ -28,6 +28,7 @@
 #include "hw/g2/modem.hpp"
 #include "hw/pvr2/pvr2_reg.hpp"
 #include "hw/pvr2/pvr2_core_reg.hpp"
+#include "hw/pvr2/pvr2_tex_mem.hpp"
 #include "hw/aica/aica_reg.hpp"
 #include "flash_memory.hpp"
 
@@ -135,6 +136,16 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             return pvr2_core_reg_read(buf, addr, len);
         } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
             return aica_reg_read(buf, addr, len);
+        } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
+            if (addr + len > ADDR_TEX_LAST) {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("proper response for "
+                                                      "when the guest reads "
+                                                      "past a memory map's "
+                                                      "end") <<
+                                      errinfo_length(len));
+            }
+            return pvr2_tex_mem_read(buf, addr, len);
         }
 
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -229,6 +240,16 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             return pvr2_core_reg_write(buf, addr, len);
         } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
             return aica_reg_write(buf, addr, len);
+        } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
+            if (addr + len > ADDR_TEX_LAST) {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("proper response for "
+                                                      "when the guest writes "
+                                                      "past a memory map's "
+                                                      "end") <<
+                                      errinfo_length(len));
+            }
+            return pvr2_tex_mem_write(buf, addr, len);
         }
 
     } catch(BaseException& exc) {

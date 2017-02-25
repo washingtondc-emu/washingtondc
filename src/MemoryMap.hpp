@@ -69,6 +69,12 @@ const static size_t ADDR_MODEM_LAST = 0x60048c;
 const static size_t ADDR_AICA_FIRST = 0x00700000;
 const static size_t ADDR_AICA_LAST  = 0x00707FFF;
 
+// texture memory.
+// This represents both the 32-bit area and the 64-bit area because
+// I don't know what the difference between them is supposed to be
+const static size_t ADDR_TEX_FIRST = 0x04000000;
+const static size_t ADDR_TEX_LAST = 0x5fffffff;
+
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new);
 void memory_map_set_bios(BiosFile *bios_new);
 void memory_map_set_mem(struct Memory *mem_new);
