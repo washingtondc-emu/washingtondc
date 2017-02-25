@@ -129,4 +129,4 @@ add_executable(washingtondc ${washingtondc_sources})
 
 add_library(boost_system "${PROJECT_SOURCE_DIR}/external/washingtondc-boost/libs/system/src/error_code.cpp")
 
-target_link_libraries(washingtondc sh4 boost_system)
+target_link_libraries(washingtondc sh4 boost_system rt)
