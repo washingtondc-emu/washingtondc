@@ -69,6 +69,9 @@ const static size_t ADDR_MODEM_LAST = 0x60048c;
 const static size_t ADDR_AICA_FIRST = 0x00700000;
 const static size_t ADDR_AICA_LAST  = 0x00707FFF;
 
+const static size_t ADDR_AICA_WAVE_FIRST = 0x00800000;
+const static size_t ADDR_AICA_WAVE_LAST = 0x00ffffff;
+
 // texture memory.
 // This represents both the 32-bit area and the 64-bit area because
 // I don't know what the difference between them is supposed to be
