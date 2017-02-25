@@ -611,6 +611,10 @@ void sh4_inst_binary_div1_gen_gen(Sh4 *sh4, Sh4OpArgs inst);
 // 0010nnnnmmmm0111
 void sh4_inst_binary_div0s_gen_gen(Sh4 *sh4, Sh4OpArgs inst);
 
+// DIV0U
+// 0000000000011001
+void sh4_inst_noarg_div0u(Sh4 *sh4, Sh4OpArgs inst);
+
 // DMULS.L Rm, Rn
 //0011nnnnmmmm1101
 void sh4_inst_binary_dmulsl_gen_gen(Sh4 *sh4, Sh4OpArgs inst);

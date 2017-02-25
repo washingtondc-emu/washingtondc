@@ -86,7 +86,7 @@ bool test_inst(std::string const& inst) {
  * Obviously N cannot be greater than 16
  */
 char const *insts_to_test[] = {
-    "DIVOU",
+    "DIV0U",
     "RTS",
     "CLRMAC",
     "CLRS",

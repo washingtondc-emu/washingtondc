@@ -426,6 +426,9 @@ static struct InstOpcode opcode_list[] = {
     { "0010nnnnmmmm0111", &sh4_inst_binary_div0s_gen_gen, false,
       0, 0, SH4_GROUP_EX, 1 },
 
+    // DIV0U
+    { "0000000000011001", &sh4_inst_noarg_div0u, false, 0, 0, SH4_GROUP_EX, 1 },
+
     // DMULS.L Rm, Rn
     { "0011nnnnmmmm1101", &sh4_inst_binary_dmulsl_gen_gen, false,
       0, 0, SH4_GROUP_CO, 2 },
@@ -2378,19 +2381,121 @@ void sh4_inst_binary_cmpstr_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // DIV1 Rm, Rn
 // 0011nnnnmmmm0100
 void sh4_inst_binary_div1_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0011nnnnmmmm0100") <<
-                          errinfo_opcode_name("DIV1 Rm, Rn"));
+    reg32_t *dividend_p = sh4_gen_reg(sh4, inst.dst_reg);
+    reg32_t *divisor_p  = sh4_gen_reg(sh4, inst.src_reg);
+    reg32_t dividend = *dividend_p;
+    reg32_t divisor = *divisor_p;
+
+    reg32_t carry_flag = dividend & 0x80000000;
+    reg32_t t_flag = (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) >>
+        SH4_SR_FLAG_T_SHIFT;
+    reg32_t q_flag = (sh4->reg[SH4_REG_SR] & SH4_SR_Q_MASK) >> SH4_SR_Q_SHIFT;
+    reg32_t m_flag = (sh4->reg[SH4_REG_SR] & SH4_SR_M_MASK) >> SH4_SR_M_SHIFT;
+
+    /* shift in the T-val from the last invocation */
+    dividend = (dividend << 1) | t_flag;
+
+    /* q_flag is the carry-bit from the previous iteration of DIV1 */
+    if (q_flag) {
+        if (m_flag) {
+            /*
+             * the previous iteration's subtraction was less than zero.
+             * the divisor is negative, so subtracting it will actually
+             * add to the quotient and bring it closer to zero
+             */
+            reg32_t dividend_orig = dividend;
+            dividend -= divisor;
+            bool sub_carry = (dividend > dividend_orig);
+
+            if (carry_flag)
+                carry_flag = sub_carry;
+            else
+                carry_flag = !sub_carry;
+        } else {
+            /*
+             * the previous iteration's subtraction yielded a negative result.
+             * divisor is positive, so add it to bring the dividend closer to
+             * zero
+             */
+            reg32_t dividend_orig = dividend;
+            dividend += divisor;
+            bool add_carry = (dividend < dividend_orig);
+
+            if (carry_flag)
+                carry_flag = !add_carry;
+            else
+                carry_flag = add_carry;
+        }
+    } else {
+        if (m_flag) {
+            /*
+             * the previous iteration yielded a positive result.  The divisor
+             * is negative, so adding it will bring the dividend closer to zero
+             */
+            reg32_t dividend_orig = dividend;
+            dividend += divisor;
+            bool add_carry = (dividend < dividend_orig);
+
+            if (carry_flag)
+                carry_flag = add_carry;
+            else
+                carry_flag = !add_carry;
+        } else {
+            /*
+             * The previous iteration yielded a positive result.  The divisor is
+             * positive, so subtracting it will bring the dividend closer to
+             * zero
+             */
+            reg32_t dividend_orig = dividend;
+            dividend -= divisor;
+            bool sub_carry = (dividend > dividend_orig);
+
+            if (carry_flag)
+                carry_flag = !sub_carry;
+            else
+                carry_flag = sub_carry;
+        }
+    }
+
+    q_flag = carry_flag;
+    t_flag = (q_flag == m_flag);
+
+    sh4->reg[SH4_REG_SR] &= ~(SH4_SR_Q_MASK | SH4_SR_FLAG_T_MASK);
+    sh4->reg[SH4_REG_SR] |= ((t_flag << SH4_SR_FLAG_T_SHIFT) |
+                             (q_flag << SH4_SR_Q_SHIFT));
+
+    *dividend_p = dividend;
+
+    sh4_next_inst(sh4);
 }
 
 // DIV0S Rm, Rn
 // 0010nnnnmmmm0111
 void sh4_inst_binary_div0s_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0010nnnnmmmm0111") <<
-                          errinfo_opcode_name("DIV0S Rm, Rn"));
+    reg32_t divisor = *sh4_gen_reg(sh4, inst.dst_reg);
+    reg32_t dividend = *sh4_gen_reg(sh4, inst.src_reg);
+
+    reg32_t new_q = (divisor & 0x80000000) >> 31;
+    reg32_t new_m = (dividend & 0x80000000) >> 31;
+    reg32_t new_t = new_q ^ new_m;
+
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_Q_MASK) |
+        (new_q << SH4_SR_Q_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_M_MASK) |
+        (new_m << SH4_SR_M_SHIFT);
+    sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) |
+        (new_t << SH4_SR_FLAG_T_SHIFT);
+
+    sh4_next_inst(sh4);
+}
+
+// DIV0U
+// 0000000000011001
+void sh4_inst_noarg_div0u(Sh4 *sh4, Sh4OpArgs inst) {
+    sh4->reg[SH4_REG_SR] &=
+        ~(SH4_SR_M_MASK | SH4_SR_Q_MASK | SH4_SR_FLAG_T_MASK);
+
+    sh4_next_inst(sh4);
 }
 
 // DMULS.L Rm, Rn
