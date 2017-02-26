@@ -87,7 +87,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
                                                       "end") <<
                                       errinfo_length(len));
             }
-            return g1_reg_read(buf, addr - ADDR_G1_FIRST, len);
+            return g1_reg_read(buf, addr, len);
         } else if (addr >= ADDR_SYS_FIRST && addr <= ADDR_SYS_LAST) {
             if (addr + len > ADDR_SYS_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
