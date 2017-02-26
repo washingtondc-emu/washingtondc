@@ -162,6 +162,9 @@ int Debugger::remove_w_watch(addr32_t addr, unsigned len) {
 }
 
 bool Debugger::is_w_watch(addr32_t addr, unsigned len) {
+    if (cur_state != STATE_NORM)
+        return false;
+
     addr32_t access_first = addr;
     addr32_t access_last = addr + (len - 1);
 
@@ -183,6 +186,9 @@ bool Debugger::is_w_watch(addr32_t addr, unsigned len) {
 }
 
 bool Debugger::is_r_watch(addr32_t addr, unsigned len) {
+    if (cur_state != STATE_NORM)
+        return false;
+
     addr32_t access_first = addr;
     addr32_t access_last = addr + (len - 1);
 
