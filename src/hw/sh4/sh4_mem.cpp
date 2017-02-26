@@ -26,8 +26,26 @@
 #include "sh4_excp.hpp"
 #include "sh4_mem.hpp"
 #include "sh4.hpp"
+#include "Dreamcast.hpp"
+
+#ifdef ENABLE_DEBUGGER
+#include "Debugger.hpp"
+#endif
 
 int sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
+#ifdef ENABLE_DEBUGGER
+    Debugger *dbg = dreamcast_get_debugger();
+    if (dbg && dbg->is_w_watch(addr, len)) {
+        sh4->aborted_operation = true;
+        return 1;
+    }
+#endif
+
+    return sh4_do_write_mem(sh4, data, addr, len);
+}
+
+int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
+
     enum VirtMemArea virt_area = sh4_get_mem_area(addr);
 
     bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
@@ -92,6 +110,19 @@ int sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 }
 
 int sh4_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
+#ifdef ENABLE_DEBUGGER
+    Debugger *dbg = dreamcast_get_debugger();
+    if (dbg && dbg->is_r_watch(addr, len)) {
+        sh4->aborted_operation = true;
+        return 1;
+    }
+#endif
+
+    return sh4_do_read_mem(sh4, data, addr, len);
+}
+
+int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
+
     enum VirtMemArea virt_area = sh4_get_mem_area(addr);
 
     bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;

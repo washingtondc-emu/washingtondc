@@ -1011,9 +1011,13 @@ void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
 
         op_func(sh4, oa);
 
-        if (delayed_branch_tmp) {
-            sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
-            sh4->delayed_branch = false;
+        if (!sh4->aborted_operation) {
+            if (delayed_branch_tmp) {
+                sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
+                sh4->delayed_branch = false;
+            }
+        } else {
+            sh4->aborted_operation = false;
         }
     } else {
         // raise exception for illegal slot instruction

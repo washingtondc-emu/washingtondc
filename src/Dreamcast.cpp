@@ -70,6 +70,12 @@ void dreamcast_cleanup() {
     memory_cleanup(&mem);
 }
 
+#ifdef ENABLE_DEBUGGER
+Debugger *dreamcast_get_debugger() {
+    return debugger;
+}
+#endif
+
 void dreamcast_run() {
     /*
      * TODO: later when I'm emulating more than just the CPU,

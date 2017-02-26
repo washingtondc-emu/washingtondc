@@ -60,6 +60,25 @@ void GdbStub::on_break() {
     transmit_pkt(craft_packet(std::string("S05")));
 }
 
+void GdbStub::on_read_watchpoint(addr32_t addr) {
+    std::stringstream pkt_txt;
+
+    // pkt_txt << "T05rwatch:" << std::hex << addr << ";";
+    pkt_txt << "S05";
+
+    transmit_pkt(craft_packet(pkt_txt.str()));
+}
+
+void GdbStub::on_write_watchpoint(addr32_t addr) {
+    std::stringstream pkt_txt;
+
+    // pkt_txt << "T05watch:" << std::hex << addr << ";";
+    pkt_txt << "S05";
+
+    transmit_pkt(craft_packet(pkt_txt.str()));
+}
+
+
 std::string GdbStub::serialize_regs() const {
     Sh4 *cpu = dreamcast_get_cpu();
     reg32_t reg_file[SH4_REGISTER_COUNT];
@@ -386,6 +405,7 @@ std::string GdbStub::handle_m_packet(std::string dat) {
         try {
             sh4_read_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
         } catch (BaseException& exc) {
+            std::cerr << boost::diagnostic_information(exc);
             return err_str(EINVAL);
         }
 
@@ -393,6 +413,32 @@ std::string GdbStub::handle_m_packet(std::string dat) {
     }
 
     return ss.str();
+}
+
+/*
+ * TODO: bounds checking (not that I expect there to be any hackers going in
+ * through the debugger of all places)
+ */
+std::string GdbStub::handle_M_packet(std::string dat) {
+    size_t addr_idx = dat.find_last_of('M') + 1;
+    size_t comma_idx = dat.find_last_of(',');
+    size_t colon_idx = dat.find_last_of(':');
+    size_t len_idx = comma_idx + 1;
+    size_t dat_idx = colon_idx + 1;
+
+    unsigned addr = atoi(dat.substr(addr_idx, comma_idx).c_str());
+    unsigned len = atoi(dat.substr(len_idx, colon_idx).c_str());
+
+    std::stringstream ss;
+    while (len--) {
+        uint8_t val =
+            uint8_t(atoi(dat.substr(dat_idx, dat_idx + 1).c_str()) << 4) |
+            uint8_t(atoi(dat.substr(dat_idx + 1, dat_idx + 2).c_str()));
+
+        sh4_write_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
+    }
+
+    return "OK";
 }
 
 void GdbStub::handle_s_packet(std::string dat) {
@@ -456,32 +502,6 @@ std::string GdbStub::handle_P_packet(std::string dat) {
     return "OK";
 }
 
-/*
- * TODO: bounds checking (not that I expect there to be any hackers going in
- * through the debugger of all places)
- */
-std::string GdbStub::handle_M_packet(std::string dat) {
-    size_t addr_idx = dat.find_last_of('M') + 1;
-    size_t comma_idx = dat.find_last_of(',');
-    size_t colon_idx = dat.find_last_of(':');
-    size_t len_idx = comma_idx + 1;
-    size_t dat_idx = colon_idx + 1;
-
-    unsigned addr = atoi(dat.substr(addr_idx, comma_idx).c_str());
-    unsigned len = atoi(dat.substr(len_idx, colon_idx).c_str());
-
-    std::stringstream ss;
-    while (len--) {
-        uint8_t val =
-            uint8_t(atoi(dat.substr(dat_idx, dat_idx + 1).c_str()) << 4) |
-            uint8_t(atoi(dat.substr(dat_idx + 1, dat_idx + 2).c_str()));
-
-        sh4_write_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
-    }
-
-    return "OK";
-}
-
 std::string GdbStub::handle_D_packet(std::string dat) {
     cur_state = Debugger::STATE_NORM;
 
@@ -497,61 +517,201 @@ std::string GdbStub::handle_K_packet(std::string dat) {
 }
 
 std::string GdbStub::handle_Z_packet(std::string dat) {
-    if (dat.at(1) != '1')
+    if (dat.at(1) == '1') {
+        //hardware breakpoint
+
+        if (dat.find_first_of(';') != std::string::npos)
+            return std::string(); // we don't support conditions
+
+        size_t first_comma_idx = dat.find_first_of(',');
+        if ((first_comma_idx == std::string::npos) ||
+            (first_comma_idx == dat.size() - 1)) {
+            return std::string(); // something is wrong and/or unexpected
+        }
+
+        size_t last_comma_idx = dat.find_last_of(',');
+        if (last_comma_idx == std::string::npos)
+            return std::string(); // something is wrong and/or unexpected
+
+        dat = dat.substr(first_comma_idx + 1, last_comma_idx - first_comma_idx);
+
+        addr32_t break_addr;
+        std::stringstream(dat) >> std::hex >> break_addr;
+
+        int err_code = add_break(break_addr);
+
+        if (err_code == 0)
+            return std::string("OK");
+
+        return err_str(err_code);
+    } else if (dat.at(1) == '2') {
+        // write watchpoint
+
+        if (dat.find_first_of(';') != std::string::npos)
+            return std::string(); // we don't support conditions
+
+        size_t first_comma_idx = dat.find_first_of(',');
+        if ((first_comma_idx == std::string::npos) ||
+            (first_comma_idx == dat.size() - 1)) {
+            return std::string(); // something is wrong and/or unexpected
+        }
+
+        size_t last_comma_idx = dat.find_last_of(',');
+        if (last_comma_idx == std::string::npos)
+            return std::string(); // something is wrong and/or unexpected
+
+        size_t last_hash_idx = dat.find_last_of('#');
+        std::string len_str = dat.substr(last_comma_idx + 1,
+                                         last_hash_idx - last_comma_idx);
+        std::string addr_str = dat.substr(first_comma_idx + 1,
+                                          last_comma_idx - first_comma_idx);
+
+        unsigned length;
+        addr32_t watch_addr;
+        std::stringstream(addr_str) >> std::hex >> watch_addr;
+        std::stringstream(len_str) >> std::hex >> length;
+
+        int err_code = add_w_watch(watch_addr, length);
+
+        if (err_code == 0)
+            return std::string("OK");
+
+        return err_str(err_code);
+    } else if (dat.at(1) == '3') {
+        // read watchpoint
+
+        if (dat.find_first_of(';') != std::string::npos)
+            return std::string(); // we don't support conditions
+
+        size_t first_comma_idx = dat.find_first_of(',');
+        if ((first_comma_idx == std::string::npos) ||
+            (first_comma_idx == dat.size() - 1)) {
+            return std::string(); // something is wrong and/or unexpected
+        }
+
+        size_t last_comma_idx = dat.find_last_of(',');
+        if (last_comma_idx == std::string::npos)
+            return std::string(); // something is wrong and/or unexpected
+
+        size_t last_hash_idx = dat.find_last_of('#');
+        std::string len_str = dat.substr(last_comma_idx + 1,
+                                         last_hash_idx - last_comma_idx);
+        std::string addr_str = dat.substr(first_comma_idx + 1,
+                                          last_comma_idx - first_comma_idx);
+
+        unsigned length;
+        addr32_t watch_addr;
+        std::stringstream(addr_str) >> std::hex >> watch_addr;
+        std::stringstream(len_str) >> std::hex >> length;
+
+        int err_code = add_r_watch(watch_addr, length);
+
+        if (err_code == 0)
+            return std::string("OK");
+
+        return err_str(err_code);
+    } else {
+        // unsupported
         return std::string();
-
-    if (dat.find_first_of(';') != std::string::npos)
-        return std::string(); // we don't support conditions
-
-    size_t first_comma_idx = dat.find_first_of(',');
-    if ((first_comma_idx == std::string::npos) ||
-        (first_comma_idx == dat.size() - 1)) {
-        return std::string(); // something is wrong and/or unexpected
     }
-
-    size_t last_comma_idx = dat.find_last_of(',');
-    if (last_comma_idx == std::string::npos)
-        return std::string(); // something is wrong and/or unexpected
-
-    dat = dat.substr(first_comma_idx + 1, last_comma_idx - first_comma_idx);
-
-    addr32_t break_addr;
-    std::stringstream(dat) >> std::hex >> break_addr;
-
-    int err_code = add_break(break_addr);
-
-    if (err_code == 0)
-        return std::string("OK");
-
-    return err_str(err_code);
 }
 
 std::string GdbStub::handle_z_packet(std::string dat) {
-    if (dat.at(1) != '1')
+    if (dat.at(1) == '1') {
+        //hardware breakpoint
+
+        if (dat.find_first_of(';') != std::string::npos)
+            return std::string(); // we don't support conditions
+
+        size_t first_comma_idx = dat.find_first_of(',');
+        if (first_comma_idx == std::string::npos)
+            return std::string(); // something is wrong and/or unexpected
+
+        size_t last_comma_idx = dat.find_last_of(',');
+        if (last_comma_idx == std::string::npos)
+            return std::string(); // something is wrong and/or unexpected
+
+        dat = dat.substr(first_comma_idx + 1, last_comma_idx - first_comma_idx);
+
+        addr32_t break_addr;
+        std::stringstream(dat) >> std::hex >> break_addr;
+
+        int err_code = remove_break(break_addr);
+
+        if (err_code == 0)
+            return "OK";
+
+        return err_str(err_code);
+    } else if (dat.at(1) == '2') {
+        // write watchpoint
+
+        if (dat.find_first_of(';') != std::string::npos)
+            return std::string(); // we don't support conditions
+
+        size_t first_comma_idx = dat.find_first_of(',');
+        if ((first_comma_idx == std::string::npos) ||
+            (first_comma_idx == dat.size() - 1)) {
+            return std::string(); // something is wrong and/or unexpected
+        }
+
+        size_t last_comma_idx = dat.find_last_of(',');
+        if (last_comma_idx == std::string::npos)
+            return std::string(); // something is wrong and/or unexpected
+
+        size_t last_hash_idx = dat.find_last_of('#');
+        std::string len_str = dat.substr(last_comma_idx + 1,
+                                         last_hash_idx - last_comma_idx);
+        std::string addr_str = dat.substr(first_comma_idx + 1,
+                                          last_comma_idx - first_comma_idx);
+
+        unsigned length;
+        addr32_t watch_addr;
+        std::stringstream(addr_str) >> std::hex >> watch_addr;
+        std::stringstream(len_str) >> std::hex >> length;
+
+        int err_code = remove_w_watch(watch_addr, length);
+
+        if (err_code == 0)
+            return std::string("OK");
+
+        return err_str(err_code);
+    } else if (dat.at(1) == '3') {
+        // read watchpoint
+
+        if (dat.find_first_of(';') != std::string::npos)
+            return std::string(); // we don't support conditions
+
+        size_t first_comma_idx = dat.find_first_of(',');
+        if ((first_comma_idx == std::string::npos) ||
+            (first_comma_idx == dat.size() - 1)) {
+            return std::string(); // something is wrong and/or unexpected
+        }
+
+        size_t last_comma_idx = dat.find_last_of(',');
+        if (last_comma_idx == std::string::npos)
+            return std::string(); // something is wrong and/or unexpected
+
+        size_t last_hash_idx = dat.find_last_of('#');
+        std::string len_str = dat.substr(last_comma_idx + 1,
+                                         last_hash_idx - last_comma_idx);
+        std::string addr_str = dat.substr(first_comma_idx + 1,
+                                          last_comma_idx - first_comma_idx);
+
+        unsigned length;
+        addr32_t watch_addr;
+        std::stringstream(addr_str) >> std::hex >> watch_addr;
+        std::stringstream(len_str) >> std::hex >> length;
+
+        int err_code = remove_r_watch(watch_addr, length);
+
+        if (err_code == 0)
+            return std::string("OK");
+
+        return err_str(err_code);
+    } else {
+        // unsupported
         return std::string();
-
-    if (dat.find_first_of(';') != std::string::npos)
-        return std::string(); // we don't support conditions
-
-    size_t first_comma_idx = dat.find_first_of(',');
-    if (first_comma_idx == std::string::npos)
-        return std::string(); // something is wrong and/or unexpected
-
-    size_t last_comma_idx = dat.find_last_of(',');
-    if (last_comma_idx == std::string::npos)
-        return std::string(); // something is wrong and/or unexpected
-
-    dat = dat.substr(first_comma_idx + 1, last_comma_idx - first_comma_idx);
-
-    addr32_t break_addr;
-    std::stringstream(dat) >> std::hex >> break_addr;
-
-    int err_code = remove_break(break_addr);
-
-    if (err_code == 0)
-        return "OK";
-
-    return err_str(err_code);
+    }
 }
 
 void GdbStub::handle_packet(std::string pkt) {

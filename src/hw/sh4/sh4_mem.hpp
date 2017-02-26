@@ -77,6 +77,16 @@ static const size_t SH4_OC_RAM_AREA_SIZE = 8 * 1024;
 int sh4_write_mem(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
 int sh4_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
 
+
+/*
+ * same as sh4_write_mem/sh4_read_mem, except they don't check for debugger
+ * watchpoints when the debugger is enabled.
+ */
+int sh4_do_write_mem(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
+int sh4_do_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
+
+
+
 int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr);
 
 enum VirtMemArea sh4_get_mem_area(addr32_t addr);

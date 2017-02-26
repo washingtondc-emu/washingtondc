@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -44,14 +44,48 @@ public:
     virtual void attach() = 0;
 
     virtual void on_break() = 0;
+    virtual void on_read_watchpoint(addr32_t addr) = 0;
+    virtual void on_write_watchpoint(addr32_t addr) = 0;
 
     // these functions return 0 on success, nonzer on failure
     int add_break(addr32_t addr);
     int remove_break(addr32_t addr);
+
+    // these functions return 0 on success, nonzer on failure
+    int add_r_watch(addr32_t addr, unsigned len);
+    int remove_r_watch(addr32_t addr, unsigned len);
+
+    // these functions return 0 on success, nonzer on failure
+    int add_w_watch(addr32_t addr, unsigned len);
+    int remove_w_watch(addr32_t addr, unsigned len);
+
+    // return true if the given addr and len trigger a watchpoint
+    bool is_w_watch(addr32_t addr, unsigned len);
+    bool is_r_watch(addr32_t addr, unsigned len);
+
 private:
     static const unsigned N_BREAKPOINTS = 10;
     addr32_t breakpoints[N_BREAKPOINTS];
     bool breakpoint_enable[N_BREAKPOINTS];
+
+    static const unsigned N_W_WATCHPOINTS = 10;
+    addr32_t w_watchpoints[N_W_WATCHPOINTS];
+    unsigned w_watchpoint_len[N_W_WATCHPOINTS];
+    bool w_watchpoint_enable[N_W_WATCHPOINTS];
+
+    static const unsigned N_R_WATCHPOINTS = 10;
+    addr32_t r_watchpoints[N_R_WATCHPOINTS];
+    unsigned r_watchpoint_len[N_R_WATCHPOINTS];
+    bool r_watchpoint_enable[N_R_WATCHPOINTS];
+
+    // when a watchpoint gets triggered, at_watchpoint is set to true
+    // and the memory address is placed in watchpoint_addr
+    bool at_watchpoint;
+    addr32_t watchpoint_addr;
+
+    // when this is true and at_watchpoint is true: read-watchpoint
+    // when this is false and at_watchpoint is true: write-watchpoint
+    bool is_read_watchpoint;
 
 protected:
     enum State {

@@ -105,6 +105,16 @@ struct Sh4 {
 
     /* the total number of cycles that have been run thus far */
     uint64_t cycle_stamp;
+
+#ifdef ENABLE_DEBUGGER
+    /*
+     * this member is used to implement watchpoints.  When a watchpoint
+     * is hit by sh4_write_mem or sh4_read_mem, this will be set to true
+     * so that lower layers in the call-stack know the operation was aborted.
+     * This is needed to handle watchpoints that happen in delayed-branch slots.
+     */
+    bool aborted_operation;
+#endif
 };
 
 void sh4_init(Sh4 *sh4);

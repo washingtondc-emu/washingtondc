@@ -53,6 +53,8 @@ public:
     bool step(addr32_t pc);
 
     void on_break();
+    void on_read_watchpoint(addr32_t addr);
+    void on_write_watchpoint(addr32_t addr);
 
     // see sh_sh4_register_name in gdb/sh-tdep.c in the gdb source code
     enum RegOrder {
