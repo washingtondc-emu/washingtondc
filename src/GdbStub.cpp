@@ -405,7 +405,7 @@ std::string GdbStub::handle_m_packet(std::string dat) {
         try {
             sh4_read_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
         } catch (BaseException& exc) {
-            std::cerr << boost::diagnostic_information(exc);
+            // std::cerr << boost::diagnostic_information(exc);
             return err_str(EINVAL);
         }
 
