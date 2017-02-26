@@ -39,6 +39,8 @@ if (ENABLE_HLE_BOOT)
    add_definitions(-DENABLE_HLE_BOOT)
 endif()
 
+# TODO: this was originally supposed to be just the sh4-related code,
+# but somehow it has swollen to encompass almost everything...
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.hpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_excp.hpp"
@@ -85,7 +87,11 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/arch/arch_fpu.hpp"
                 "${PROJECT_SOURCE_DIR}/src/arch/x86_64/arch_fenv.hpp"
                 "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fesetround.cpp"
-                "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fegetround.cpp")
+                "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fegetround.cpp"
+                "${PROJECT_SOURCE_DIR}/src/Dreamcast.hpp"
+                "${PROJECT_SOURCE_DIR}/src/Dreamcast.cpp"
+                "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
+                "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
@@ -93,8 +99,6 @@ endif()
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
                          "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp"
-                         "${PROJECT_SOURCE_DIR}/src/Dreamcast.hpp"
-                         "${PROJECT_SOURCE_DIR}/src/Dreamcast.cpp"
                          "${PROJECT_SOURCE_DIR}/src/main.cpp")
 
 if (ENABLE_DEBUGGER)
@@ -115,27 +119,26 @@ include_directories("${PROJECT_SOURCE_DIR}/src/"
 
 add_library(sh4asm_core ${sh4asm_core_sources})
 add_library(sh4 ${sh4_sources})
+add_library(boost_system "${PROJECT_SOURCE_DIR}/external/washingtondc-boost/libs/system/src/error_code.cpp")
 
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp")
-target_link_libraries(sh4asm_test sh4asm_core)
+target_link_libraries(sh4asm_test sh4asm_core boost_system)
 
 add_executable(sh4mem_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4mem_test.cpp")
-target_link_libraries(sh4mem_test sh4)
+target_link_libraries(sh4mem_test sh4 boost_system)
 
 add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp")
-target_link_libraries(sh4inst_test sh4 sh4asm_core)
+target_link_libraries(sh4inst_test sh4 sh4asm_core boost_system)
 
 add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.cpp")
-target_link_libraries(sh4tmu_test sh4 sh4asm_core)
+target_link_libraries(sh4tmu_test sh4 sh4asm_core boost_system)
 
 add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.cpp")
-target_link_libraries(sh4div_test sh4 sh4asm_core)
+target_link_libraries(sh4div_test sh4 sh4asm_core boost_system)
 
 add_executable(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp")
 target_link_libraries(sh4asm sh4asm_core)
 
 add_executable(washingtondc ${washingtondc_sources})
-
-add_library(boost_system "${PROJECT_SOURCE_DIR}/external/washingtondc-boost/libs/system/src/error_code.cpp")
 
 target_link_libraries(washingtondc sh4 boost_system rt)
