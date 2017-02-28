@@ -178,6 +178,7 @@ bool Debugger::is_w_watch(addr32_t addr, unsigned len) {
                 (watch_last >= access_first && watch_last <= access_last)) {
                 at_watchpoint = true;
                 watchpoint_addr = addr;
+                is_read_watchpoint = false;
                 return true;
             }
         }
@@ -202,6 +203,7 @@ bool Debugger::is_r_watch(addr32_t addr, unsigned len) {
                 (watch_last >= access_first && watch_last <= access_last)) {
                 at_watchpoint = true;
                 watchpoint_addr = addr;
+                is_read_watchpoint = true;
                 return true;
             }
         }
