@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     char const *bios_path = NULL, *flash_path = NULL;
     char const *cmd = argv[0];
     bool enable_debugger = false;
-    bool boot_hle = false;
+    bool boot_hle = false, skip_ip_bin = false;
     char const *path_1st_read_bin = NULL, *path_ip_bin = NULL;
 
     while ((opt = getopt(argc, argv, "b:f:gh")) != -1) {
@@ -58,11 +58,25 @@ int main(int argc, char **argv) {
                 "rebuild with -DENABLE_HLE_BOOT" << std::endl;
             exit(1);
 #endif
+        case 'u':
+#ifdef ENABLE_HLE_BOOT
+            skip_ip_bin = true;
+#else
+            std::cerr << "ERROR: unable to boot HLE: it's not enabled!" <<
+                std::endl <<
+                "rebuild with -DENABLE_HLE_BOOT" << std::endl;
+            exit(1);
+#endif
         }
     }
 
     argv += optind;
     argc -= optind;
+
+    if (skip_ip_bin && !boot_hle) {
+        std::cerr << "Error: -u option is meaningless without -h!" << std::endl;
+        exit(1);
+    }
 
     if (boot_hle) {
         if (argc != 2) {
@@ -84,7 +98,7 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_HLE_BOOT
         if (boot_hle) {
             dreamcast_init_hle(path_ip_bin, path_1st_read_bin,
-                               bios_path, flash_path);
+                               bios_path, flash_path, skip_ip_bin);
         } else {
 #endif
             dreamcast_init(bios_path, flash_path);

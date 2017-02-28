@@ -64,7 +64,8 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
 void dreamcast_init_hle(char const *path_ip_bin,
                         char const *path_1st_read_bin,
                         char const *bios_path,
-                        char const *flash_path) {
+                        char const *flash_path,
+                        bool skip_ip_bin) {
     std::ifstream file_ip_bin(path_ip_bin,
                               std::ifstream::in | std::ifstream::binary);
     std::ifstream file_1st_read_bin(path_1st_read_bin,
@@ -105,7 +106,10 @@ void dreamcast_init_hle(char const *path_ip_bin,
     sh4_init(&cpu);
 
     /* set the PC to the booststrap code within IP.BIN */
-    cpu.reg[SH4_REG_PC] = ADDR_BOOTSTRAP;
+    if (skip_ip_bin)
+        cpu.reg[SH4_REG_PC] = ADDR_1ST_READ_BIN;
+    else
+        cpu.reg[SH4_REG_PC] = ADDR_BOOTSTRAP;
 }
 #endif
 
