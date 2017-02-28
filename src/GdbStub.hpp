@@ -162,6 +162,14 @@ private:
     std::string handle_D_packet(std::string dat);
     std::string handle_K_packet(std::string dat);
     std::string handle_Z_packet(std::string dat);
+
+    /*
+     * read memory in 4, 2, or 1 byte increments and return it as a hex-string.
+     * len must be evenly-divisible by 4/2/1.
+     */
+    std::string read_mem_4(addr32_t addr, unsigned len);
+    std::string read_mem_2(addr32_t addr, unsigned len);
+    std::string read_mem_1(addr32_t addr, unsigned len);
 };
 
 #endif

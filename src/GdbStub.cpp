@@ -398,18 +398,69 @@ std::string GdbStub::handle_m_packet(std::string dat) {
     std::stringstream(dat.substr(addr_idx, comma_idx)) >> std::hex >> addr;
     std::stringstream(dat.substr(len_idx)) >> std::hex >> len;
 
+    if (len % 4 == 0)
+        return read_mem_4(addr, len);
+    else if (len % 2 == 0)
+        return read_mem_2(addr, len);
+    else
+        return read_mem_1(addr, len);
+}
+
+std::string GdbStub::read_mem_4(addr32_t addr, unsigned len) {
     std::stringstream ss;
-    while (len--) {
-        uint8_t val;
+    while (len) {
+        uint32_t val;
 
         try {
-            sh4_read_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
+            sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
+            addr += 4;
         } catch (BaseException& exc) {
             // std::cerr << boost::diagnostic_information(exc);
             return err_str(EINVAL);
         }
 
-        ss << std::setfill('0') << std::setw(2) << std::hex << unsigned(val);
+        ss << serialize_data(&val, sizeof(val));
+        len -= 4;
+    }
+
+    return ss.str();
+}
+
+std::string GdbStub::read_mem_2(addr32_t addr, unsigned len) {
+    std::stringstream ss;
+    while (len) {
+        uint16_t val;
+
+        try {
+            sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
+            addr += 2;
+        } catch (BaseException& exc) {
+            // std::cerr << boost::diagnostic_information(exc);
+            return err_str(EINVAL);
+        }
+
+        ss << serialize_data(&val, sizeof(val));
+        len -= 2;
+    }
+
+    return ss.str();
+}
+
+std::string GdbStub::read_mem_1(addr32_t addr, unsigned len) {
+    std::stringstream ss;
+    while (len--) {
+        uint8_t val;
+
+        try {
+            sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
+            addr++;
+        } catch (BaseException& exc) {
+            // std::cerr << boost::diagnostic_information(exc);
+            return err_str(EINVAL);
+        }
+
+        // val = boost::endian::endian_reverse(val);
+        ss << serialize_data(&val, sizeof(val));
     }
 
     return ss.str();

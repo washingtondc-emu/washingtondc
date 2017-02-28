@@ -47,9 +47,9 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "CCR", 0xff00001c, ~addr32_t(0), 4, SH4_REG_CCR, false,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
     { "QACR0", 0xff000038, ~addr32_t(0), 4, SH4_REG_QACR0, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
     { "QACR1", 0xff00003c, ~addr32_t(0), 4, SH4_REG_QACR1, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
     { "PTEH", 0xff000000, ~addr32_t(0), 4, SH4_REG_PTEH, false,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
     { "PTEL", 0xff000004, ~addr32_t(0), 4, SH4_REG_PTEL, false,
@@ -386,6 +386,7 @@ int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
     if (len != mm_reg->len) {
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
                               errinfo_length(len) <<
+                              errinfo_length_expect(mm_reg->len) <<
                               errinfo_guest_addr(addr));
     }
 
@@ -400,6 +401,7 @@ int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
     if (len != mm_reg->len) {
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
                               errinfo_length(len) <<
+                              errinfo_length_expect(mm_reg->len) <<
                               errinfo_guest_addr(addr));
     }
 

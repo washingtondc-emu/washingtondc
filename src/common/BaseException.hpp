@@ -52,6 +52,8 @@ typedef boost::error_info<struct tag_advice_error_info, std::string>
 errinfo_advice;
 
 typedef boost::error_info<struct tag_length_error_info, size_t> errinfo_length;
+typedef boost::error_info<struct tag_length_error_info, size_t>
+errinfo_length_expect;
 
 typedef boost::error_info<struct tag_val32_error_info, uint8_t> errinfo_val8;
 typedef boost::error_info<struct tag_val32_error_info, uint16_t> errinfo_val16;
