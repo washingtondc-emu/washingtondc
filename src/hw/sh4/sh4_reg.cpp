@@ -386,6 +386,7 @@ int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
     if (len != mm_reg->len) {
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
                               errinfo_length(len) <<
+                              errinfo_length_expect(mm_reg->len) <<
                               errinfo_guest_addr(addr));
     }
 
@@ -400,6 +401,7 @@ int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
     if (len != mm_reg->len) {
         BOOST_THROW_EXCEPTION(InvalidParamError() <<
                               errinfo_length(len) <<
+                              errinfo_length_expect(mm_reg->len) <<
                               errinfo_guest_addr(addr));
     }
 
