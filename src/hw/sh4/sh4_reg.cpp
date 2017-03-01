@@ -30,6 +30,8 @@
 #include "sh4_tmu.hpp"
 #include "sh4.hpp"
 
+static bool squelch_warnings;
+
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);
 
 static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
@@ -329,6 +331,18 @@ void sh4_init_regs(Sh4 *sh4) {
 }
 
 void sh4_poweron_reset_regs(Sh4 *sh4) {
+
+    /*
+     * HACK - set this variable to true on reset to stop all the registers
+     * that use Sh4WarnRegWriteHandler from flooding the console with crap.
+     *
+     * this is needed mainly for the unit tests; they call sh4_on_hard_reset
+     * often, which means that the warnings slow down tests significantly and
+     * also that they piss off travis-ci by generating logs greater than 4MB
+     * long.
+     */
+    squelch_warnings = true;
+
     Sh4MemMappedReg *curs = mem_mapped_regs;
 
     while (curs->reg_name) {
@@ -345,6 +359,8 @@ void sh4_poweron_reset_regs(Sh4 *sh4) {
         }
         curs++;
     }
+
+    squelch_warnings = false;
 }
 
 void sh4_manual_reset_regs(Sh4 *sh4) {
@@ -469,34 +485,44 @@ int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
     int ret_code = Sh4DefaultRegReadHandler(sh4, buf, reg_info);
 
     if (ret_code) {
-        std::cerr << "WARNING: read from register " <<
-            reg_info->reg_name << std::endl;
+            if (!squelch_warnings) {
+                std::cerr << "WARNING: read from register " <<
+                    reg_info->reg_name << std::endl;
+            }
     } else {
         switch (reg_info->len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(2) <<
-                unsigned(val8) << " from register " <<
-                reg_info->reg_name << std::endl;
+            if (!squelch_warnings) {
+                std::cerr << "WARNING: read 0x" <<
+                    std::hex << std::setfill('0') << std::setw(2) <<
+                    unsigned(val8) << " from register " <<
+                    reg_info->reg_name << std::endl;
+            }
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(4) <<
-                unsigned(val16) << " from register " <<
-                reg_info->reg_name << std::endl;
+            if (!squelch_warnings) {
+                std::cerr << "WARNING: read 0x" <<
+                    std::hex << std::setfill('0') << std::setw(4) <<
+                    unsigned(val16) << " from register " <<
+                    reg_info->reg_name << std::endl;
+            }
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(8) <<
-                unsigned(val32) << " from register " <<
-                reg_info->reg_name << std::endl;
+            if (!squelch_warnings) {
+                std::cerr << "WARNING: read 0x" <<
+                    std::hex << std::setfill('0') << std::setw(8) <<
+                    unsigned(val32) << " from register " <<
+                    reg_info->reg_name << std::endl;
+            }
             break;
         default:
-            std::cerr << "WARNING: read from register " <<
-                reg_info->reg_name << std::endl;
+            if (!squelch_warnings) {
+                std::cerr << "WARNING: read from register " <<
+                    reg_info->reg_name << std::endl;
+            }
         }
     }
     std::cerr << "(PC is " << std::hex << sh4->reg[SH4_REG_PC] << ")" << std::endl;
@@ -513,28 +539,36 @@ int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
     switch (reg_info->len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(2) <<
-            unsigned(val8) << " to register " <<
-            reg_info->reg_name << std::endl;
+        if (!squelch_warnings) {
+            std::cerr << "WARNING: writing 0x" <<
+                std::hex << std::setfill('0') << std::setw(2) <<
+                unsigned(val8) << " to register " <<
+                reg_info->reg_name << std::endl;
+        }
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(4) <<
-            unsigned(val16) << " to register " <<
-            reg_info->reg_name << std::endl;
+        if (!squelch_warnings) {
+            std::cerr << "WARNING: writing 0x" <<
+                std::hex << std::setfill('0') << std::setw(4) <<
+                unsigned(val16) << " to register " <<
+                reg_info->reg_name << std::endl;
+        }
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(8) <<
-            unsigned(val32) << " to register " <<
-            reg_info->reg_name << std::endl;
+        if (!squelch_warnings) {
+            std::cerr << "WARNING: writing 0x" <<
+                std::hex << std::setfill('0') << std::setw(8) <<
+                unsigned(val32) << " to register " <<
+                reg_info->reg_name << std::endl;
+        }
         break;
     default:
-        std::cerr << "WARNING: reading from register " <<
-            reg_info->reg_name << std::endl;
+        if (!squelch_warnings) {
+            std::cerr << "WARNING: reading from register " <<
+                reg_info->reg_name << std::endl;
+        }
     }
 
     return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
@@ -618,10 +652,12 @@ static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
     memcpy(buf, &out_val, sizeof(out_val));
 
     /* I got my eye on you...*/
-    std::cerr << "WARNING: reading 0x" <<
-        std::hex << std::setfill('0') << std::setw(4) <<
-        unsigned(out_val) << " from register " <<
-        reg_info->reg_name << std::endl;
+    if (!squelch_warnings) {
+        std::cerr << "WARNING: reading 0x" <<
+            std::hex << std::setfill('0') << std::setw(4) <<
+            unsigned(out_val) << " from register " <<
+            reg_info->reg_name << std::endl;
+    }
 
     return 0;
 }
@@ -650,11 +686,13 @@ static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
     }
 
     /* I got my eye on you...*/
-    std::cerr << "WARNING: writing 0x" <<
-        std::hex << std::setfill('0') << std::setw(4) <<
-        unsigned(val) << " to register " <<
-        reg_info->reg_name << " (attempted write was " <<
-        unsigned(val_orig) << ")" << std::endl;
+    if (!squelch_warnings) {
+        std::cerr << "WARNING: writing 0x" <<
+            std::hex << std::setfill('0') << std::setw(4) <<
+            unsigned(val) << " to register " <<
+            reg_info->reg_name << " (attempted write was " <<
+            unsigned(val_orig) << ")" << std::endl;
+    }
 
     sh4->reg[SH4_REG_PDTRA] = val;
 
