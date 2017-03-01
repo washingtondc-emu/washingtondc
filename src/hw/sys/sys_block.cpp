@@ -137,6 +137,8 @@ static struct sys_mapped_reg {
 
     { "SB_ISTNRM", 0x5f6900, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
+    { "SB_ISTEXT", 0x5f6904, 4,
+      warn_sys_reg_read_handler, warn_sys_reg_write_handler },
     { "SB_ISTERR", 0x5f6908, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
 
