@@ -69,6 +69,9 @@ const static size_t ADDR_MODEM_LAST = 0x60048c;
 const static size_t ADDR_AICA_FIRST = 0x00700000;
 const static size_t ADDR_AICA_LAST  = 0x00707FFF;
 
+const static size_t ADDR_AICA_RTC_FIRST = 0x00710000;
+const static size_t ADDR_AICA_RTC_LAST = 0x0071000b;
+
 const static size_t ADDR_AICA_WAVE_FIRST = 0x00800000;
 const static size_t ADDR_AICA_WAVE_LAST = 0x00ffffff;
 
