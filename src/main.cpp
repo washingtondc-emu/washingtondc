@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     bool boot_hle = false, skip_ip_bin = false;
     char const *path_1st_read_bin = NULL, *path_ip_bin = NULL;
 
-    while ((opt = getopt(argc, argv, "b:f:gh")) != -1) {
+    while ((opt = getopt(argc, argv, "b:f:ghu")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -58,6 +58,7 @@ int main(int argc, char **argv) {
                 "rebuild with -DENABLE_HLE_BOOT" << std::endl;
             exit(1);
 #endif
+            break;
         case 'u':
 #ifdef ENABLE_HLE_BOOT
             skip_ip_bin = true;
