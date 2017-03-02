@@ -6148,7 +6148,7 @@ public:
     // 0110nnnnmmmm1010
     static int do_binary_negc_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                       unsigned reg_src, unsigned reg_dst,
-                                      uint32_t val) {
+                                      uint32_t val, bool t_flag_in) {
         Sh4Prog test_prog;
         std::stringstream ss;
         std::string cmd;
@@ -6161,15 +6161,26 @@ public:
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
+        if (t_flag_in)
+            cpu->reg[SH4_REG_SR] |= SH4_SR_FLAG_T_MASK;
+        else
+            cpu->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
         sh4_exec_inst(cpu);
 
         bool t_expect = val > 0;
         bool t_actual = bool(!!(cpu->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK));
 
-        if ((*sh4_gen_reg(cpu, reg_dst) != -val) || (t_expect != t_actual)) {
+        reg32_t val_expect;
+        val_expect = 0 - val;
+        if (t_flag_in)
+            val_expect--;
+
+        if ((*sh4_gen_reg(cpu, reg_dst) != val_expect) ||
+            (t_expect != t_actual)) {
             std::cout << "While running: " << cmd << std::endl;
             std::cout << "input val is " << std::hex << val << std::endl;
-            std::cout << "expected output val is " << (-val) << std::endl;
+            std::cout << "input T flag is " << (int)t_flag_in << std::endl;
+            std::cout << "expected output val is " << val_expect << std::endl;
             std::cout << "actual val is " << std::hex <<
                 *sh4_gen_reg(cpu, reg_dst) << std::endl;
             std::cout << "expected t val is " << t_expect << std::endl;
@@ -6180,13 +6191,18 @@ public:
         return 0;
     }
 
-    static int binary_negc_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem, RandGen32 *randgen32) {
+    static int binary_negc_gen_gen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                   RandGen32 *randgen32) {
         int failure = 0;
         for (unsigned reg_src = 0; reg_src < 16; reg_src++) {
             for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
                 uint32_t val = randgen32->pick_val(0);
                 failure = failure ||
-                    do_binary_negc_gen_gen(cpu, bios, mem, reg_src, reg_dst, val);
+                    do_binary_negc_gen_gen(cpu, bios, mem, reg_src,
+                                           reg_dst, val, false);
+                failure = failure ||
+                    do_binary_negc_gen_gen(cpu, bios, mem, reg_src,
+                                           reg_dst, val, true);
             }
         }
         return failure;
