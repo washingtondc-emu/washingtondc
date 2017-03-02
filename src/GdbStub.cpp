@@ -477,8 +477,14 @@ std::string GdbStub::handle_M_packet(std::string dat) {
     size_t len_idx = comma_idx + 1;
     size_t dat_idx = colon_idx + 1;
 
-    unsigned addr = atoi(dat.substr(addr_idx, comma_idx).c_str());
-    unsigned len = atoi(dat.substr(len_idx, colon_idx).c_str());
+    std::string addr_substr = dat.substr(addr_idx, comma_idx - addr_idx);
+    std::string len_substr = dat.substr(len_idx, colon_idx - len_idx);
+
+    unsigned addr;
+    unsigned len;
+
+    std::stringstream(addr_substr) >> std::hex >> addr;
+    std::stringstream(len_substr) >> std::hex >> len;
 
     std::stringstream ss;
     while (len--) {
@@ -486,7 +492,13 @@ std::string GdbStub::handle_M_packet(std::string dat) {
             uint8_t(atoi(dat.substr(dat_idx, dat_idx + 1).c_str()) << 4) |
             uint8_t(atoi(dat.substr(dat_idx + 1, dat_idx + 2).c_str()));
 
-        sh4_write_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
+        try {
+            sh4_write_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
+        } catch (BaseException& exc) {
+            std::cerr << boost::diagnostic_information(exc);
+            return err_str(EINVAL);
+        }
+
     }
 
     return "OK";
