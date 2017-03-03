@@ -54,6 +54,10 @@ const static size_t ADDR_MAPLE_LAST = 0x5f6cff;
 const static size_t ADDR_G2_FIRST = 0x5f7800;
 const static size_t ADDR_G2_LAST = 0x5f78ff;
 
+// GD-ROM drive control registers
+const static size_t ADDR_GDROM_FIRST = 0x5f7000;
+const static size_t ADDR_GDROM_LAST = 0x5f70ff;
+
 // NEC PowerVR 2 control registers
 const static size_t ADDR_PVR2_FIRST = 0x5f7c00;
 const static size_t ADDR_PVR2_LAST = 0x5f7cff;

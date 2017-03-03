@@ -32,6 +32,7 @@
 #include "hw/aica/aica_reg.hpp"
 #include "hw/aica/aica_rtc.hpp"
 #include "hw/aica/aica_wave_mem.hpp"
+#include "hw/gdrom/gdrom_reg.hpp"
 #include "flash_memory.hpp"
 
 #include "MemoryMap.hpp"
@@ -170,6 +171,16 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
                                       errinfo_length(len));
             }
             return aica_rtc_read(buf, addr, len);
+        } else if (addr >= ADDR_GDROM_FIRST && addr <= ADDR_GDROM_LAST) {
+            if (addr + len > ADDR_GDROM_LAST) {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("proper response for "
+                                                      "when the guest reads "
+                                                      "past a memory map's "
+                                                      "end") <<
+                                      errinfo_length(len));
+            }
+            return gdrom_reg_read(buf, addr, len);
         }
 
         BOOST_THROW_EXCEPTION(UnimplementedError() <<
@@ -296,8 +307,17 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
                                       errinfo_length(len));
             }
             return aica_rtc_write(buf, addr, len);
+        } else if (addr >= ADDR_GDROM_FIRST && addr <= ADDR_GDROM_LAST) {
+            if (addr + len > ADDR_GDROM_LAST) {
+                BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                      errinfo_feature("proper response for "
+                                                      "when the guest writes "
+                                                      "past a memory map's "
+                                                      "end") <<
+                                      errinfo_length(len));
+            }
+            return gdrom_reg_write(buf, addr, len);
         }
-
     } catch(BaseException& exc) {
         exc << errinfo_guest_addr(addr);
         exc << errinfo_op_type("write");
