@@ -259,7 +259,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "DMATCR3", 0xffa00038, ~addr32_t(0), 4, SH4_REG_DMATCR3, true,
       Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
     { "CHCR3", 0xffa0003c, ~addr32_t(0), 4, SH4_REG_CHCR3, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
     { "DMAOR", 0xffa00040, ~addr32_t(0), 4, SH4_REG_DMAOR, true,
       Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
 

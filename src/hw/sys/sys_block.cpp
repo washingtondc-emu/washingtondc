@@ -94,7 +94,7 @@ static struct sys_mapped_reg {
     { "SB_LMMODE1", 0x5f6888, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
     { "SB_FFST", 0x5f688c, 4,
-      warn_sys_reg_read_handler, sys_read_only_reg_write_handler },
+      default_sys_reg_read_handler, sys_read_only_reg_write_handler },
     /* TODO: spec says default val if SB_RBSPLT's MSB is 0, but bios writes 1 */
     { "SB_RBSPLT", 0x5f68a0, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
