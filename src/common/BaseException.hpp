@@ -60,6 +60,8 @@ typedef boost::error_info<struct tag_val32_error_info, uint16_t> errinfo_val16;
 typedef boost::error_info<struct tag_val32_error_info, uint32_t> errinfo_val32;
 typedef boost::error_info<struct tag_val32_error_info, uint64_t> errinfo_val64;
 
+typedef boost::error_info<struct tag_path_error_info, std::string> errinfo_path;
+
 class BaseException : public virtual std::exception,
                       public virtual boost::exception {
 };
@@ -75,6 +77,12 @@ public:
     }
 private:
     char const *desc;
+};
+
+class InvalidFileLengthError : public BaseException {
+    char const *what() const throw() {
+        return "Invalid file length";
+    }
 };
 
 // IntegrityError - for things that *should* be impossible

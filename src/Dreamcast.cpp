@@ -65,6 +65,7 @@ void dreamcast_init_hle(char const *path_ip_bin,
                         char const *path_1st_read_bin,
                         char const *bios_path,
                         char const *flash_path,
+                        char const *syscalls_path,
                         bool skip_ip_bin) {
     std::ifstream file_ip_bin(path_ip_bin,
                               std::ifstream::in | std::ifstream::binary);
@@ -102,6 +103,24 @@ void dreamcast_init_hle(char const *path_ip_bin,
     file_1st_read_bin.read((char*)dat, sizeof(uint8_t) * len_1st_read_bin);
     memory_map_write(dat, ADDR_1ST_READ_BIN & ~0xe0000000, len_1st_read_bin);
     delete[] dat;
+
+    if (syscalls_path) {
+        size_t syscalls_len;
+        std::ifstream file_syscalls(syscalls_path,
+                                    std::ifstream::in | std::ifstream::binary);
+        file_syscalls.seekg(0, file_syscalls.end);
+        syscalls_len = file_syscalls.tellg();
+        file_syscalls.seekg(0, file_syscalls.beg);
+
+        if (syscalls_len != LEN_SYSCALLS)
+            BOOST_THROW_EXCEPTION(InvalidFileLengthError() <<
+                                  errinfo_length(syscalls_len) <<
+                                  errinfo_length_expect(LEN_SYSCALLS));
+        uint8_t *dat = new uint8_t[syscalls_len];
+        file_syscalls.read((char*)dat, sizeof(uint8_t) * syscalls_len);
+        memory_map_write(dat, ADDR_SYSCALLS & ~0xe0000000, syscalls_len);
+        delete[] dat;
+    }
 
     sh4_init(&cpu);
 

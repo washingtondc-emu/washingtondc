@@ -37,11 +37,14 @@ void dreamcast_init(char const *bios_path, char const *flash_path = NULL);
 static const size_t ADDR_IP_BIN = 0x8c008000;
 static const size_t ADDR_1ST_READ_BIN = 0x8c010000;
 static const size_t ADDR_BOOTSTRAP = 0x8c008300;
+static const size_t ADDR_SYSCALLS = 0x8c000000;
+static const size_t LEN_SYSCALLS = 0x8000;
 
 void dreamcast_init_hle(char const *path_ip_bin,
                         char const *path_1st_read_bin,
                         char const *bios_path = NULL,
                         char const *flash_path = NULL,
+                        char const *syscalls_path = NULL,
                         bool skip_ip_bin = false);
 #endif
 
