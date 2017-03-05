@@ -1115,10 +1115,42 @@ void sh4_inst_nop(Sh4 *sh4, Sh4OpArgs inst) {
 // RTE
 // 0000000000101011
 void sh4_inst_rte(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0000000000101011") <<
-                          errinfo_opcode_name("RTE"));
+    sh4->delayed_branch = true;
+
+    /*
+     * TODO: this, along with all other delayed branch instructions, may have
+     * an inaccuracy involving the way the the PC is set to its new value after
+     * the delay slot instead of before it.  The SH4 software manual makes it
+     * seem like the PC should be set to its new value before the delay slot.
+     * I've been acting under the assumption that the software manual is
+     * incorrect because that seems like a really weird way to implement it
+     * whether in hardware or in software.  Also, the sh4 software manual adds
+     * 2 to the PC at the end of every instruction instead of implying that the
+     * CPU does that automatically.  This is significant because if the SH4
+     * software manual is interpreted literally, then it should skip the
+     * instruction pointed to by PR every time there's a delayed branch since
+     * the instruction in the delay slot would move the PC forward
+     * uncondtionally.
+     *
+     * The only way to know for sure is to write a hardware test, and I plan on
+     * doing that someday, just not today.
+     *
+     * ANYWAYS, the reason I bring this up now is that this opcode restores SR
+     * from SSR before the delay slot gets executed, which is inconsistent with
+     * the way I handle the PC.  This means that either way you interpret this
+     * ambiguity, I'm getting something wrong.  This is something that should be
+     * cleared up, but right now I don't have the bandwidth to write a hardware
+     * test, and I'm hoping that the low-level boot programs in the bios and
+     * IP.BIN do not rely on the correct implementation of this idiosyncracy
+     * (why would anybody need to read back the SR or the PC right after they
+     * just set it?).  Obviously I will get this fixed after the system is
+     * booting since any one of 600+ dreamcast games could have something weird
+     * that needs this to work right.
+     */
+    sh4->delayed_branch_addr = sh4->reg[SH4_REG_SPC];
+    sh4->reg[SH4_REG_SR] = SH4_REG_SSR;
+
+    sh4_next_inst(sh4);
 }
 
 // SETS
