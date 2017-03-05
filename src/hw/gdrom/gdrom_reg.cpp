@@ -41,17 +41,26 @@ typedef int(*gdrom_reg_write_handler_t)(
 
 static int
 default_gdrom_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len);
+                               void *buf, addr32_t addr, unsigned len);
 static int
 default_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len);
+                                void const *buf, addr32_t addr, unsigned len);
 static int
 warn_gdrom_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
-                         void *buf, addr32_t addr, unsigned len);
+                            void *buf, addr32_t addr, unsigned len);
 static int
 warn_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
-                          void const *buf, addr32_t addr, unsigned len);
+                             void const *buf, addr32_t addr, unsigned len);
+static int
+ignore_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len);
 
+static int
+gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len);
+static int
+gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                          void *buf, addr32_t addr, unsigned len);
 
 static struct gdrom_mem_mapped_reg {
     char const *reg_name;
@@ -65,6 +74,14 @@ static struct gdrom_mem_mapped_reg {
 } gdrom_reg_info[] = {
     { "Drive Select", 0x5f7098, 4,
       warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
+    { "Alt status/device control", 0x5f7018, 4,
+      gdrom_alt_status_read_handler, ignore_gdrom_reg_write_handler },
+    { "status/command", 0x5f709c, 4,
+      gdrom_status_read_handler, ignore_gdrom_reg_write_handler },
+    { "Error/features", 0x5f7084, 4,
+      default_gdrom_reg_read_handler, ignore_gdrom_reg_write_handler },
+    { "Interrupt reason/sector count", 0x5f7088, 4,
+      default_gdrom_reg_read_handler, ignore_gdrom_reg_write_handler },
     { NULL }
 };
 
@@ -123,7 +140,7 @@ int gdrom_reg_write(void const *buf, size_t addr, size_t len) {
 
 static int
 default_gdrom_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len) {
+                               void *buf, addr32_t addr, unsigned len) {
     size_t idx = addr - ADDR_GDROM_FIRST;
     memcpy(buf, idx + gdrom_regs, len);
     return 0;
@@ -131,7 +148,7 @@ default_gdrom_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
 static int
 default_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len) {
+                                void const *buf, addr32_t addr, unsigned len) {
     size_t idx = addr - ADDR_GDROM_FIRST;
     memcpy(idx + gdrom_regs, buf, len);
     return 0;
@@ -216,4 +233,23 @@ warn_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     }
 
     return default_gdrom_reg_write_handler(reg_info, buf, addr, len);
+}
+
+static int
+ignore_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len) {
+    /* do nothing */
+    return 0;
+}
+
+static int
+gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len) {
+    return gdrom_status_read_handler(reg_info, buf, addr, len);
+}
+
+static int
+gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                          void *buf, addr32_t addr, unsigned len) {
+    return default_gdrom_reg_read_handler(reg_info, buf, addr, len);
 }
