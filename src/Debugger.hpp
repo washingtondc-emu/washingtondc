@@ -47,6 +47,13 @@ public:
     virtual void on_read_watchpoint(addr32_t addr) = 0;
     virtual void on_write_watchpoint(addr32_t addr) = 0;
 
+    /*
+     * called by the sh4 instruction decoder when it doesn't recognize an
+     * opcode or it hits a TRAPA.  This generally means that we stumbled
+     * across a softbreak.
+     */
+    virtual void on_softbreak(inst_t inst, addr32_t addr) = 0;
+
     // these functions return 0 on success, nonzer on failure
     int add_break(addr32_t addr);
     int remove_break(addr32_t addr);

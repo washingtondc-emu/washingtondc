@@ -34,9 +34,14 @@ endif()
 option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)
 option(ENABLE_DEBUGGER "Enable the debugger" ON)
 option(ENABLE_HLE_BOOT "Enable HLE boot mode" OFF)
+option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
 
 if (ENABLE_HLE_BOOT)
    add_definitions(-DENABLE_HLE_BOOT)
+endif()
+
+if (DBG_EXIT_ON_UNDEFINED_OPCODE)
+   add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
 endif()
 
 # TODO: this was originally supposed to be just the sh4-related code,

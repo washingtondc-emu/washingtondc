@@ -28,6 +28,8 @@
 
 #include "arch/arch_fpu.hpp"
 #include "BaseException.hpp"
+#include "Debugger.hpp"
+#include "Dreamcast.hpp"
 
 #include "sh4_mmu.hpp"
 #include "sh4.hpp"
@@ -40,6 +42,9 @@ errinfo_opcode_format;
 
 typedef boost::error_info<struct tag_opcode_name_error_info, std::string>
 errinfo_opcode_name;
+
+typedef boost::error_info<struct tag_opcode_val_name_error_info, inst_t>
+errinfo_opcode_val;
 
 static struct InstOpcode opcode_list[] = {
     // RTS
@@ -966,6 +971,13 @@ static struct InstOpcode opcode_list[] = {
     { NULL }
 };
 
+#ifdef ENABLE_DEBUGGER
+static InstOpcode softbreak_opcode = {
+    "0000000000000000", &sh4_inst_softbreak, false,
+    0, 0, (sh4_inst_group_t)0, 0, 0, 0
+};
+#endif
+
 void sh4_exec_inst(Sh4 *sh4) {
     inst_t inst;
     int exc_pending;
@@ -995,9 +1007,40 @@ InstOpcode const* sh4_decode_inst(Sh4 *sh4, inst_t inst) {
         op++;
     }
 
+#ifdef DBG_EXIT_ON_UNDEFINED_OPCODE
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
                           errinfo_feature("SH4 CPU exception for "
-                                          "unrecognized opcode"));
+                                          "unrecognized opcode") <<
+                          errinfo_opcode_val(inst));
+#else
+#ifdef ENABLE_DEBUGGER
+    /*
+     * Send this to the gdb backend if it's running.  else, fall through to the
+     * next case, where we raise an sh4 CPU exception.
+     */
+    Debugger *dbg = dreamcast_get_debugger();
+    if (dbg) {
+        dbg->on_softbreak(inst, sh4->reg[SH4_REG_PC]);
+        return &softbreak_opcode;
+    }
+
+#endif /* ifdef ENABLE_DEBUGGER */
+    /*
+     * raise an sh4 CPU exception, this case is
+     * what's actually supposed to happen on real hardware.
+     */
+
+    /*
+     * Slot Illegal Instruction Exception supersedes General Illegal
+     * Instruction Exception.
+     */
+    if (sh4->delayed_branch)
+        sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
+    else
+        sh4_set_exception(sh4, SH4_EXCP_GEN_ILLEGAL_INST);
+#endif /* ifdef DBG_EXIT_ON_UNDEFINED_OPCODE */
+
+    return NULL;
 }
 
 void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
@@ -1636,6 +1679,18 @@ void sh4_inst_unary_bsr_disp(Sh4 *sh4, Sh4OpArgs inst) {
 // TRAPA #immed
 // 11000011iiiiiiii
 void sh4_inst_unary_trapa_disp(Sh4 *sh4, Sh4OpArgs inst) {
+#ifdef ENABLE_DEBUGGER
+    /*
+     * Send this to the gdb backend if it's running.  else, fall through to the
+     * next case, which would jump to exception handling code if I had bothered
+     * to implement it.
+     */
+    Debugger *dbg = dreamcast_get_debugger();
+    if (dbg) {
+        dbg->on_softbreak(inst.inst, sh4->reg[SH4_REG_PC]);
+        return;
+    }
+#endif /* ifdef ENABLE_DEBUGGER */
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
                           errinfo_feature("opcode implementation") <<
                           errinfo_opcode_format("11000011iiiiiiii") <<
@@ -4241,3 +4296,8 @@ void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst) {
                           errinfo_opcode_format("1111nn0111111101") <<
                           errinfo_opcode_name("FTRV MXTRX, FVn"));
 }
+
+#ifdef ENABLE_DEBUGGER
+void sh4_inst_softbreak(Sh4 *sh4, Sh4OpArgs inst) {
+}
+#endif
