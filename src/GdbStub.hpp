@@ -56,6 +56,8 @@ public:
     void on_read_watchpoint(addr32_t addr);
     void on_write_watchpoint(addr32_t addr);
 
+    void on_softbreak(inst_t inst, addr32_t addr);
+
     // see sh_sh4_register_name in gdb/sh-tdep.c in the gdb source code
     enum RegOrder {
         R0, R1, R2, R3, R4, R5, R6, R7,
@@ -91,6 +93,8 @@ private:
     std::string unack_packet;
 
     std::string input_packet;
+
+    bool frontend_supports_swbreak;
 
     // enqueue data for transmit
     void transmit(const std::string& data);

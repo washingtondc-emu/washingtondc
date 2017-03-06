@@ -25,7 +25,8 @@
 #include <iomanip>
 
 #include <boost/bind.hpp>
-#include <boost/tokenizer.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 #include "hw/sh4/sh4.hpp"
 #include "Dreamcast.hpp"
@@ -39,8 +40,8 @@ GdbStub::GdbStub() : Debugger(),
                      tcp_endpoint(boost::asio::ip::tcp::v4(),
                                   PORT_NO),
                      tcp_acceptor(io_service, tcp_endpoint),
-                     tcp_socket(io_service)
-{
+                     tcp_socket(io_service) {
+    frontend_supports_swbreak = false;
 }
 
 GdbStub::~GdbStub() {
@@ -58,6 +59,20 @@ void GdbStub::attach() {
 
 void GdbStub::on_break() {
     transmit_pkt(craft_packet(std::string("S05")));
+}
+
+
+void GdbStub::on_softbreak(inst_t inst, addr32_t addr) {
+    std::stringstream pkt_txt;
+
+    if (frontend_supports_swbreak)
+        pkt_txt << "T05swbreak:" << std::hex << addr << ";";
+    else
+        pkt_txt << "S05";
+
+    cur_state = STATE_BREAK;
+
+    transmit_pkt(craft_packet(pkt_txt.str()));
 }
 
 void GdbStub::on_read_watchpoint(addr32_t addr) {
@@ -381,6 +396,51 @@ void GdbStub::handle_c_packet(std::string dat) {
 }
 
 std::string GdbStub::handle_q_packet(std::string dat) {
+    if (dat.substr(0, 10) == "qSupported") {
+        std::string reply;
+        size_t semicolon_idx = dat.find_first_of(';');
+
+        if (semicolon_idx == std::string::npos)
+            return std::string();
+
+        dat = dat.substr(semicolon_idx + 1);
+
+        std::vector<std::string> features;
+        boost::algorithm::split(features, dat,
+                                boost::algorithm::is_any_of(";"));
+        for (std::vector<std::string>::iterator it = features.begin();
+             it != features.end(); it++) {
+            std::string feat = *it;
+            bool supported = false;
+
+            size_t plus_or_minus_idx = feat.find_last_of("+-");
+
+            /*
+             * ignore all the settings that try to set variables,
+             * we're really only here for swbreak.
+             */
+
+            if (plus_or_minus_idx != std::string::npos) {
+                if (feat.at(plus_or_minus_idx) == '+')
+                    supported = true;
+                feat = feat.substr(0, plus_or_minus_idx);
+            }
+
+            if (feat == "swbreak") {
+                if (supported) {
+                    frontend_supports_swbreak = true;
+                    reply += "swbreak+;";
+                } else {
+                    reply += "swbreak-;";
+                }
+            } else {
+                reply += feat + "-;";
+            }
+        }
+
+        return reply;
+    }
+
     return std::string();
 }
 
@@ -486,19 +546,24 @@ std::string GdbStub::handle_M_packet(std::string dat) {
     std::stringstream(addr_substr) >> std::hex >> addr;
     std::stringstream(len_substr) >> std::hex >> len;
 
-    std::stringstream ss;
-    while (len--) {
-        uint8_t val =
-            uint8_t(atoi(dat.substr(dat_idx, dat_idx + 1).c_str()) << 4) |
-            uint8_t(atoi(dat.substr(dat_idx + 1, dat_idx + 2).c_str()));
-
-        try {
-            sh4_write_mem(dreamcast_get_cpu(), &val, addr++, sizeof(val));
-        } catch (BaseException& exc) {
-            std::cerr << boost::diagnostic_information(exc);
-            return err_str(EINVAL);
+    try {
+        std::stringstream ss(dat.substr(dat_idx));
+        if (len < 1024) {
+            uint8_t *buf = new uint8_t[len];
+            try {
+                deserialize_data(ss, buf, len);
+                sh4_write_mem(dreamcast_get_cpu(), buf, addr, len);
+            } catch (BaseException& exc) {
+                delete[] buf;
+                throw;
+            }
+            delete[] buf;
+        } else {
+            BOOST_THROW_EXCEPTION(InvalidParamError());
         }
-
+    } catch (BaseException& exc) {
+        std::cerr << boost::diagnostic_information(exc);
+        return err_str(EINVAL);
     }
 
     return "OK";
