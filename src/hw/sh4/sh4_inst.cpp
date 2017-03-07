@@ -2901,6 +2901,8 @@ void sh4_inst_binary_stc_bank_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = *sh4_bank_reg(sh4, inst.bank_reg);
+
+    sh4_next_inst(sh4);
 }
 
 // STC.L Rm_BANK, @-Rn
