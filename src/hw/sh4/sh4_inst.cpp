@@ -1191,7 +1191,7 @@ void sh4_inst_rte(Sh4 *sh4, Sh4OpArgs inst) {
      * that needs this to work right.
      */
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_SPC];
-    sh4->reg[SH4_REG_SR] = SH4_REG_SSR;
+    sh4->reg[SH4_REG_SR] = sh4->reg[SH4_REG_SSR];
 
     sh4_next_inst(sh4);
 }
