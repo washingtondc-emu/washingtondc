@@ -368,21 +368,16 @@ void sh4_poweron_reset_regs(Sh4 *sh4) {
      * it is with the other general-purpose registers), but when wash boots
      * in hle mode with the -u flag, some software will expect it to be set.
      *
-     * I'm not sure what state it's in after bios and the IP.BIN bootstrap have
-     * both taken their turns, but the individual particular situation which I'm
-     * working around here is that kallistios' startup code uses it like a stack
-     * pointer and immediately subtracts from it.
-     *
-     * Here I set it to the maximum possible value, the top of the ram.  I do
-     * not know if this is correct (it probably isn't) and I do not know if this
-     * is safe (it could get overwritten if software expects it to be elsewhere).
-     * This is something that needs to be revisited in the future.
+     * This value was obtained empirically by observing the value of
+     * _arch_old_stack in KallistiOS; this value was 0x8c00f3fc.  KallistiOS
+     * pushes pr onto the stack before moving r15 into _arch_old_stack, so the
+     * actual initial value should be 0x8c00f400.
      *
      * The good news is that this still fits within the definition of
      * "undefined", so this won't effect bios boots and it *probably* won't
      * effect hle boots that don't use the -u flag.
      */
-    *sh4_gen_reg(sh4, 15) = 0x0cffffff;
+    *sh4_gen_reg(sh4, 15) = 0x8c00f400;
 }
 
 void sh4_manual_reset_regs(Sh4 *sh4) {
