@@ -153,6 +153,20 @@ void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line,
 }
 
 void sh4_check_interrupts(Sh4 *sh4) {
+    /*
+     * for the purposes of interrupt handling, I treat delayed-branch slots
+     * as atomic units because if I allowed an interrupt to happen between the
+     * two instructions then I would need a way to track the delayed branch slot
+     * until the interrupt handler returns, and I would need to account for
+     * situations such as interrupt handlers that never return and interrupt
+     * handlers that enable interrupts.
+     *
+     * And the hardware would have to do that too if that was the way it was
+     * implemented, so I'm *assuming* that it doesn't allow interrupts in the
+     * middle of delay slots either.
+     */
+    if (sh4->delayed_branch)
+        return;
     if (sh4->reg[SH4_REG_SR] & SH4_SR_BL_MASK)
         return;
 
