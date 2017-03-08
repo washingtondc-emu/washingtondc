@@ -71,16 +71,16 @@ public:
     bool is_r_watch(addr32_t addr, unsigned len);
 
 private:
-    static const unsigned N_BREAKPOINTS = 10;
+    static const unsigned N_BREAKPOINTS = 16;
     addr32_t breakpoints[N_BREAKPOINTS];
     bool breakpoint_enable[N_BREAKPOINTS];
 
-    static const unsigned N_W_WATCHPOINTS = 10;
+    static const unsigned N_W_WATCHPOINTS = 16;
     addr32_t w_watchpoints[N_W_WATCHPOINTS];
     unsigned w_watchpoint_len[N_W_WATCHPOINTS];
     bool w_watchpoint_enable[N_W_WATCHPOINTS];
 
-    static const unsigned N_R_WATCHPOINTS = 10;
+    static const unsigned N_R_WATCHPOINTS = 16;
     addr32_t r_watchpoints[N_R_WATCHPOINTS];
     unsigned r_watchpoint_len[N_R_WATCHPOINTS];
     bool r_watchpoint_enable[N_R_WATCHPOINTS];
