@@ -40,10 +40,10 @@ static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
                                       struct Sh4MemMappedReg const *reg_info);
 
 static struct Sh4MemMappedReg mem_mapped_regs[] = {
-    { "EXPEVT", 0xff000024, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0x20 },
-    { "INTEVT", 0xff000028, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0x20 },
+    { "EXPEVT", 0xff000024, ~addr32_t(0), 4, SH4_REG_EXPEVT, false,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0x20 },
+    { "INTEVT", 0xff000028, ~addr32_t(0), 4, SH4_REG_INTEVT, false,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0x20 },
     { "MMUCR", 0xff000010, ~addr32_t(0), 4, SH4_REG_MMUCR, false,
       Sh4MmucrRegReadHandler, Sh4MmucrRegWriteHandler, 0, 0 },
     { "CCR", 0xff00001c, ~addr32_t(0), 4, SH4_REG_CCR, false,
