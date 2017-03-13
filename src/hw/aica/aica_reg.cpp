@@ -200,7 +200,7 @@ int aica_reg_write(void const *buf, size_t addr, size_t len) {
 static int
 default_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
                               void *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_AICA_FIRST;
+    size_t idx = (addr - ADDR_AICA_FIRST) >> 2;
     memcpy(buf, idx + aica_regs, len);
     return 0;
 }
@@ -208,7 +208,7 @@ default_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
 static int
 default_aica_reg_write_handler(struct aica_mapped_reg const *reg_info,
                                void const *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_AICA_FIRST;
+    size_t idx = (addr - ADDR_AICA_FIRST) >> 2;
     memcpy(idx + aica_regs, buf, len);
     return 0;
 }

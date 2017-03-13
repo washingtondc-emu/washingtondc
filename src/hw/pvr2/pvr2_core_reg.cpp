@@ -245,7 +245,7 @@ static int
 default_pvr2_core_reg_read_handler(
     struct pvr2_core_mem_mapped_reg const *reg_info,
     void *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_PVR2_CORE_FIRST;
+    size_t idx = (addr - ADDR_PVR2_CORE_FIRST) >> 2;
     memcpy(buf, idx + pvr2_core_regs, len);
     return 0;
 }
@@ -254,7 +254,7 @@ static int
 default_pvr2_core_reg_write_handler(
     struct pvr2_core_mem_mapped_reg const *reg_info,
     void const *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_PVR2_CORE_FIRST;
+    size_t idx = (addr - ADDR_PVR2_CORE_FIRST) >> 2;
     memcpy(idx + pvr2_core_regs, buf, len);
     return 0;
 }

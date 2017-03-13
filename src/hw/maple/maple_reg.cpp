@@ -134,7 +134,7 @@ int maple_reg_write(void const *buf, size_t addr, size_t len) {
 static int
 default_maple_reg_read_handler(struct maple_mapped_reg const *reg_info,
                                void *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_MAPLE_FIRST;
+    size_t idx = (addr - ADDR_MAPLE_FIRST) >> 2;
     memcpy(buf, idx + maple_regs, len);
     return 0;
 }
@@ -142,7 +142,7 @@ default_maple_reg_read_handler(struct maple_mapped_reg const *reg_info,
 static int
 default_maple_reg_write_handler(struct maple_mapped_reg const *reg_info,
                                 void const *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_MAPLE_FIRST;
+    size_t idx = (addr - ADDR_MAPLE_FIRST) >> 2;
     memcpy(idx + maple_regs, buf, len);
     return 0;
 }

@@ -29,6 +29,11 @@
 
 #include "gdrom_reg.hpp"
 
+bool bsy_signal; /* get off the phone! */
+bool drq_signal;
+
+unsigned n_bytes_received;
+
 static const size_t N_GDROM_REGS = ADDR_GDROM_LAST - ADDR_GDROM_FIRST + 1;
 static reg32_t gdrom_regs[N_GDROM_REGS];
 
@@ -53,7 +58,8 @@ warn_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len);
 static int
 ignore_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len);
+                               void const *buf, addr32_t addr, unsigned len)
+    __attribute__((unused));
 
 static int
 gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
@@ -61,6 +67,21 @@ gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                           void *buf, addr32_t addr, unsigned len);
+
+static int
+gdrom_error_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                             void *buf, addr32_t addr, unsigned len);
+
+static int
+gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len);
+
+static int
+gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                             void const *buf, addr32_t addr, unsigned len);
+
+
+static bool pending_gdrom_irq = false;
 
 static struct gdrom_mem_mapped_reg {
     char const *reg_name;
@@ -75,13 +96,21 @@ static struct gdrom_mem_mapped_reg {
     { "Drive Select", 0x5f7098, 4,
       warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
     { "Alt status/device control", 0x5f7018, 4,
-      gdrom_alt_status_read_handler, ignore_gdrom_reg_write_handler },
+      gdrom_alt_status_read_handler, warn_gdrom_reg_write_handler },
     { "status/command", 0x5f709c, 4,
-      gdrom_status_read_handler, ignore_gdrom_reg_write_handler },
+      gdrom_status_read_handler, gdrom_cmd_reg_write_handler },
+    { "GD-ROM Data", 0x5f7080, 4,
+      warn_gdrom_reg_read_handler, gdrom_data_reg_write_handler },
     { "Error/features", 0x5f7084, 4,
-      default_gdrom_reg_read_handler, ignore_gdrom_reg_write_handler },
+      gdrom_error_reg_read_handler, warn_gdrom_reg_write_handler },
     { "Interrupt reason/sector count", 0x5f7088, 4,
-      default_gdrom_reg_read_handler, ignore_gdrom_reg_write_handler },
+      warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
+    { "Sector number", 0x5f708c, 4,
+      warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
+    { "Byte Count (low)", 0x5f7090, 4,
+      warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
+    { "Byte Count (high)", 0x5f7094, 4,
+      warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
     { NULL }
 };
 
@@ -141,7 +170,7 @@ int gdrom_reg_write(void const *buf, size_t addr, size_t len) {
 static int
 default_gdrom_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                void *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_GDROM_FIRST;
+    size_t idx = (addr - ADDR_GDROM_FIRST) >> 2;
     memcpy(buf, idx + gdrom_regs, len);
     return 0;
 }
@@ -149,7 +178,7 @@ default_gdrom_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 default_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                 void const *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_GDROM_FIRST;
+    size_t idx = (addr - ADDR_GDROM_FIRST) >> 2;
     memcpy(idx + gdrom_regs, buf, len);
     return 0;
 }
@@ -245,11 +274,90 @@ ignore_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                               void *buf, addr32_t addr, unsigned len) {
-    return gdrom_status_read_handler(reg_info, buf, addr, len);
+    // immediately acknowledge receipt of everything for now
+    // uint32_t val =  0 /*int(!pending_gdrom_irq)*//*1*/ << 7; // BSY
+    // val |= 1 << 6; // DRDY
+    // val |= 1 << 3; // DRQ
+    uint32_t val = (int(bsy_signal) << 7) | (int(drq_signal) << 3);
+
+    std::cout << "WARNING: read " << val << " from alternate GDROM status " <<
+        "register" << std::endl;
+
+    memcpy(buf, &val, len > 4 ? 4 : len);
+
+    return 0;
 }
 
 static int
 gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                           void *buf, addr32_t addr, unsigned len) {
-    return default_gdrom_reg_read_handler(reg_info, buf, addr, len);
+    // immediately acknowledge receipt of everything for now
+    // uint32_t val =  0 /*int(!pending_gdrom_irq)*//*1*/ << 7; // BSY
+    // val |= 1 << 6; // DRDY
+    // val |= 1 << 3; // DRQ
+    uint32_t val = (int(bsy_signal) << 7) | (int(drq_signal) << 3);
+
+    pending_gdrom_irq = false;
+
+    std::cout << "WARNING: read " << val << " from GDROM status register"
+              << std::endl;
+
+    memcpy(buf, &val, len > 4 ? 4 : len);
+
+    return 0;
+}
+
+static int
+gdrom_error_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                             void *buf, addr32_t addr, unsigned len) {
+    uint32_t val = 0;
+
+    memcpy(buf, &val, len > 4 ? 4 : len);
+
+    return 0;
+}
+
+static int
+gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len) {
+    reg32_t val = 0;
+    size_t n_bytes = len < sizeof(val) ? len : sizeof(val);
+
+    memcpy(&val, buf, n_bytes);
+    std::cout << "WARNING: write " << std::hex << val <<
+        " to gd-rom command register (" << n_bytes << " bytes)" << std::endl;
+
+    if (val == 0xa0) {
+        drq_signal = true;
+    }
+    pending_gdrom_irq = true;
+
+    return 0;
+}
+
+static int
+gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                             void const *buf, addr32_t addr, unsigned len) {
+    uint32_t dat = 0;
+    size_t n_bytes = len < sizeof(dat) ? len : sizeof(dat);
+
+    memcpy(&dat, buf, n_bytes);
+
+    std::cout << "WARNING: write " << std::hex << dat << "to gdrom data "
+        "register (" << len << " bytes)" << std::endl;
+
+    n_bytes_received += 2;
+
+    if (n_bytes_received >= 12) {
+        n_bytes_received = 0;
+        drq_signal = false;
+        bsy_signal = false;
+        pending_gdrom_irq = true;
+    }
+
+    return 0;
+}
+
+bool gdrom_irq() {
+    return pending_gdrom_irq;
 }

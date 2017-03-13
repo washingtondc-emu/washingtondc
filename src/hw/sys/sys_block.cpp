@@ -24,6 +24,7 @@
 
 #include "BaseException.hpp"
 #include "MemoryMap.hpp"
+#include "hw/gdrom/gdrom_reg.hpp"
 
 #include "sys_block.hpp"
 
@@ -53,6 +54,13 @@ static int warn_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
 static int sys_read_only_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                            void const *buf, addr32_t addr,
                                            unsigned len);
+
+static int ignore_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                        void const *buf, addr32_t addr,
+                                        unsigned len);
+
+static int sys_reg_istext_read_handler(struct sys_mapped_reg const *reg_info,
+                                       void *buf, addr32_t addr, unsigned len);
 
 static struct sys_mapped_reg {
     char const *reg_name;
@@ -138,7 +146,7 @@ static struct sys_mapped_reg {
     { "SB_ISTNRM", 0x5f6900, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
     { "SB_ISTEXT", 0x5f6904, 4,
-      warn_sys_reg_read_handler, warn_sys_reg_write_handler },
+      sys_reg_istext_read_handler, ignore_sys_reg_write_handler },
     { "SB_ISTERR", 0x5f6908, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
 
@@ -148,7 +156,7 @@ static struct sys_mapped_reg {
 static int default_sys_reg_read_handler(struct sys_mapped_reg const *reg_info,
                                         void *buf, addr32_t addr,
                                         unsigned len) {
-    size_t idx = addr - ADDR_SYS_FIRST;
+    size_t idx = (addr - ADDR_SYS_FIRST) >> 2;
     memcpy(buf, idx + sys_regs, len);
     return 0;
 }
@@ -156,7 +164,7 @@ static int default_sys_reg_read_handler(struct sys_mapped_reg const *reg_info,
 static int default_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                          void const *buf, addr32_t addr,
                                          unsigned len) {
-    size_t idx = addr - ADDR_SYS_FIRST;
+    size_t idx = (addr - ADDR_SYS_FIRST) >> 2;
     memcpy(idx + sys_regs, buf, len);
     return 0;
 }
@@ -303,4 +311,21 @@ static int sys_read_only_reg_write_handler(struct sys_mapped_reg const *reg_info
                                           "register") <<
                           errinfo_guest_addr(addr) <<
                           errinfo_length(len));
+}
+
+static int ignore_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                        void const *buf, addr32_t addr,
+                                        unsigned len) {
+    return 0;
+}
+
+static int sys_reg_istext_read_handler(struct sys_mapped_reg const *reg_info,
+                                       void *buf, addr32_t addr, unsigned len) {
+    reg32_t val = gdrom_irq() ? 1 : 0;
+
+    memcpy(buf, &val, len < sizeof(val) ? len : sizeof(val));
+
+    std::cout << "reading " << std::hex << val << " from ISTEXT" << std::endl;
+
+    return 0;
 }

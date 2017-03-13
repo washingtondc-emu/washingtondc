@@ -170,7 +170,7 @@ int g1_reg_write(void const *buf, size_t addr, size_t len) {
 static int
 default_g1_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                             void *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_G1_FIRST;
+    size_t idx = (addr - ADDR_G1_FIRST) >> 2;
     memcpy(buf, idx + g1_regs, len);
     return 0;
 }
@@ -178,7 +178,7 @@ default_g1_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
 static int
 default_g1_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len) {
-    size_t idx = addr - ADDR_G1_FIRST;
+    size_t idx = (addr - ADDR_G1_FIRST) >> 2;
     memcpy(idx + g1_regs, buf, len);
     return 0;
 }
