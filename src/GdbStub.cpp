@@ -282,7 +282,15 @@ void GdbStub::handle_read(const boost::system::error_code& error) {
                 }
             } else if (c == '$') {
                 // new packet
-                input_packet += c;
+                input_packet = '$';
+            } else if (c == 3) {
+                // user pressed ctrl+c (^C) on the gdb frontend
+                std::cout << "GDBSTUB: user requested breakpoint (ctrl-C)" <<
+                    std::endl;
+                if (cur_state == STATE_NORM) {
+                    on_break();
+                    cur_state = STATE_BREAK;
+                }
             } else {
                 std::cerr << "WARNING: ignoring unexpected character " << c <<
                     std::endl;

@@ -10751,6 +10751,79 @@ public:
 
         return failure;
     }
+
+    // RTE
+    // 0000000000101011
+    static int do_noarg_rte(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                            reg32_t ssr_val, reg32_t spc_val, reg32_t r3_val) {
+        char const *prog_txt =
+            "RTE\n"
+            "MOV R3, R4\n";
+
+        Sh4Prog test_prog;
+        std::stringstream ss(prog_txt);
+        std::string cmd;
+
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        cpu->reg[SH4_REG_SSR] = ssr_val;
+        cpu->reg[SH4_REG_SPC] = spc_val;
+
+        // set r3, taking register bank switching into account
+        if ((ssr_val & SH4_SR_RB_MASK) !=
+            (cpu->reg[SH4_REG_SR] & SH4_SR_RB_MASK))
+            *sh4_bank_reg(cpu, 3) = r3_val;
+        else
+            *sh4_gen_reg(cpu, 3) = r3_val;
+
+        sh4_exec_inst(cpu);
+        sh4_exec_inst(cpu);
+
+        if (cpu->reg[SH4_REG_SR] != ssr_val ||
+            cpu->reg[SH4_REG_PC] != spc_val ||
+            *sh4_gen_reg(cpu, 4) != r3_val) {
+            std::cout << "ERROR: While running " << cmd << std::endl;
+            std::cout << "value of SR is " << std::hex <<
+                cpu->reg[SH4_REG_SR] << std::endl;
+            std::cout << "value of PC is " << cpu->reg[SH4_REG_PC] << std::endl;
+            std::cout << "value of r4 is " << *sh4_gen_reg(cpu, 4) << std::endl;
+            std::cout << "expected value of SR is " << ssr_val << std::endl;
+            std::cout << "expected value of PC is " << spc_val << std::endl;
+            std::cout << "expected value of r4 is " << r3_val << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int noarg_rte(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                         RandGen32 *randgen32) {
+        int failure = 0;
+        for (unsigned i = 0; i < 256; i++) {
+            reg32_t ssr_val = randgen32->pick_val(0);
+            reg32_t spc_val = pick_addr(AddrRange(randgen32,
+                                                  0, MEM_SZ - 4));
+            reg32_t r3_val = randgen32->pick_val(0);
+
+            /*
+             * this is needed because the PC value set by reset_cpu is
+             * 0xa0000000, and the new SR value is applied before the delay
+             * slot is executed (as mandated by the sh4 software manual); if
+             * the MD flag is not set then it will fail to read the delay slot
+             * instruction.
+             */
+            ssr_val |= SH4_SR_MD_MASK;
+
+            failure = failure ||
+                do_noarg_rte(cpu, bios, mem, ssr_val, spc_val, r3_val);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -10969,6 +11042,7 @@ struct inst_test {
     { "binary_ldsl_indgeninc_fpul", &Sh4InstTests::binary_ldsl_indgeninc_fpul },
     { "binary_sts_fpul_gen", &Sh4InstTests::binary_sts_fpul_gen },
     { "binary_stsl_fpul_inddecgen", &Sh4InstTests::binary_stsl_fpul_inddecgen },
+    { "noarg_rte", &Sh4InstTests::noarg_rte },
     { NULL }
 };
 
