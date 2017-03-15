@@ -268,4 +268,39 @@ const static unsigned SH4_IPRD_IRL2_MASK = 0xf << SH4_IPRD_IRL2_SHIFT;
 const static unsigned SH4_IPRD_IRL3_SHIFT = 0;
 const static unsigned SH4_IPRD_IRL3_MASK = 0xf << SH4_IPRD_IRL3_SHIFT;
 
+/*******************************************************************************
+ *
+ * Store Queue Addr Control
+ *
+ ******************************************************************************/
+const static unsigned SH4_QACR_SHIFT = 2;
+const static reg32_t SH4_QACR_MASK = 0x7 << SH4_QACR_SHIFT;
+
+static const unsigned SH4_MMUCR_AT_SHIFT = 0;
+static const unsigned SH4_MMUCR_AT_MASK = 1 << SH4_MMUCR_AT_SHIFT;
+
+static const unsigned SH4_MMUCR_TI_SHIFT = 2;
+static const unsigned SH4_MMUCR_TI_MASK = 1 << SH4_MMUCR_TI_SHIFT;
+
+/*******************************************************************************
+ *
+ * MMU Control Register
+ *
+ ******************************************************************************/
+// Single (=1)/Multiple(=0) Virtual Memory switch bit
+static const unsigned SH4_MMUCR_SV_SHIFT = 8;
+static const unsigned SH4_MMUCR_SV_MASK = 1 << SH4_MMUCR_SV_SHIFT;
+
+static const unsigned SH4_MMUCR_SQMD_SHIFT = 9;
+static const unsigned SH4_MMUCR_SQMD_MASK = 1 << SH4_MMUCR_SQMD_SHIFT;
+
+static const unsigned SH4_MMUCR_URC_SHIFT = 10;
+static const unsigned SH4_MMUCR_URC_MASK = 0x3f << SH4_MMUCR_URC_SHIFT;
+
+static const unsigned SH4_MMUCR_URB_SHIFT = 18;
+static const unsigned SH4_MMUCR_URB_MASK = 0x3f << SH4_MMUCR_URB_SHIFT;
+
+static const unsigned SH4_MMUCR_LRUI_SHIFT = 26;
+static const unsigned SH4_MMUCR_LRUI_MASK = 0x3f << SH4_MMUCR_LRUI_SHIFT;
+
 #endif

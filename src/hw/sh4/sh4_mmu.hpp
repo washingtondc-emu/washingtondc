@@ -26,34 +26,13 @@
 #include <boost/cstdint.hpp>
 
 #include "sh4_reg.hpp"
+#include "sh4_reg_flags.hpp"
 
 static const unsigned SH4_MMUPTEH_ASID_SHIFT = 0;
 static const unsigned SH4_MMUPTEH_ASID_MASK = 0xff << SH4_MMUPTEH_ASID_SHIFT;
 
 static const unsigned SH4_MMUPTEH_VPN_SHIFT = 10;
 static const unsigned SH4_MMUPTEH_VPN_MASK = 0x3fffff << SH4_MMUPTEH_VPN_SHIFT;
-
-static const unsigned SH4_MMUCR_AT_SHIFT = 0;
-static const unsigned SH4_MMUCR_AT_MASK = 1 << SH4_MMUCR_AT_SHIFT;
-
-static const unsigned SH4_MMUCR_TI_SHIFT = 2;
-static const unsigned SH4_MMUCR_TI_MASK = 1 << SH4_MMUCR_TI_SHIFT;
-
-// Single (=1)/Multiple(=0) Virtual Memory switch bit
-static const unsigned SH4_MMUCR_SV_SHIFT = 8;
-static const unsigned SH4_MMUCR_SV_MASK = 1 << SH4_MMUCR_SV_SHIFT;
-
-static const unsigned SH4_MMUCR_SQMD_SHIFT = 9;
-static const unsigned SH4_MMUCR_SQMD_MASK = 1 << SH4_MMUCR_SQMD_SHIFT;
-
-static const unsigned SH4_MMUCR_URC_SHIFT = 10;
-static const unsigned SH4_MMUCR_URC_MASK = 0x3f << SH4_MMUCR_URC_SHIFT;
-
-static const unsigned SH4_MMUCR_URB_SHIFT = 18;
-static const unsigned SH4_MMUCR_URB_MASK = 0x3f << SH4_MMUCR_URB_SHIFT;
-
-static const unsigned SH4_MMUCR_LRUI_SHIFT = 26;
-static const unsigned SH4_MMUCR_LRUI_MASK = 0x3f << SH4_MMUCR_LRUI_SHIFT;
 
 // UTLB Valid bit
 static const unsigned SH4_UTLB_KEY_VALID_SHIFT = 0;
