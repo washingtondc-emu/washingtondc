@@ -22,9 +22,11 @@
 
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include <boost/cstdint.hpp>
 
 #include "sh4.hpp"
+#include "sh4_excp.hpp"
 #include "BaseException.hpp"
 
 #include "sh4_ocache.hpp"
@@ -86,4 +88,57 @@ void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr) {
     else
         area_start = 0;
     return sh4->ocache.oc_ram_area + area_start + area_offset;
+}
+
+int sh4_sq_write(Sh4 *sh4, void const *buf,
+                 addr32_t addr, unsigned len) {
+    /*
+     * TODO: implement MMU functionality
+     *
+     * Also get the timing right, I'm not confident store-queues are supposed
+     * to be as instantaneous as I'm making them...
+     */
+#ifdef ENABLE_SH4_MMU
+    if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("MMU support for store queues"));
+    }
+#endif
+
+    if ((sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK) &&
+        !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        std::cout << __func__ << ": Address error raised" << std::endl;
+        sh4_set_exception(sh4, SH4_EXCP_INST_ADDR_ERR);
+        return 1;
+    }
+
+    unsigned n_words = len >> 2;
+    unsigned sq_idx = (addr >> 2) & 0x7;
+    unsigned sq_sel = ((addr & 0x20) >> 5) << 3;
+    if ((n_words + sq_idx > 8) || (len & 3)) {
+        // the spec doesn't say what kind of error to raise here
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("whatever happens when you "
+                                              "provide an inappropriate length "
+                                              "during a store-queue write") <<
+                              errinfo_length(len));
+    }
+
+    if (addr & SH4_SQ_SELECT_MASK)
+        sq_idx += 8;
+
+    memcpy(sh4->ocache.sq + sq_idx + sq_sel, buf, len);
+
+    return 0;
+}
+
+int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
+    unsigned sq_sel = (addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT;
+    unsigned sq_idx = sq_sel << 3;
+    reg32_t qacr = sh4->reg[SH4_REG_QACR0 + sq_sel];
+    addr32_t addr_actual = (addr & SH4_SQ_ADDR_MASK) |
+        (((qacr & SH4_QACR_MASK) >> SH4_QACR_SHIFT) << 26);
+
+    return sh4_write_mem(sh4, sh4->ocache.sq + sq_idx,
+                         addr_actual, 8 * sizeof(uint32_t));
 }

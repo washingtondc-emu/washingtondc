@@ -44,6 +44,12 @@ struct sh4_ocache {
      * to serve as RAM when the ORA bit is enabled.
      */
     uint8_t *oc_ram_area;
+
+    /*
+     * sq[0] through sq[7] correspond to store queue 0
+     * sq[8] through sq[15] correspond to store queue 1
+     */
+    uint32_t sq[16];
 };
 
 void sh4_ocache_init(struct sh4_ocache *ocache);
@@ -61,8 +67,29 @@ void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr);
  * paddr lies within the Operand Cache RAM mapping (in_oc_ram_area returns
  * true).
  */
-void sh4_ocache_do_write_ora(Sh4 *sh4, void const *dat, addr32_t paddr, unsigned len);
+void sh4_ocache_do_write_ora(Sh4 *sh4, void const *dat,
+                             addr32_t paddr, unsigned len);
 void sh4_ocache_do_read_ora(Sh4 *sh4, void *dat, addr32_t paddr, unsigned len);
+
+/*
+ * if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL), then the address is a
+ * store queue address.
+ */
+static const addr32_t SH4_SQ_AREA_MASK = 0xfc000000;
+static const addr32_t SH4_SQ_AREA_VAL  = 0xe0000000;
+
+// it is not a mistake that this overlaps with SH4_SQ_SELECT_MASK by 1 bit
+static const addr32_t SH4_SQ_ADDR_MASK = 0x03ffffe0;
+
+// bit 5 in a store-queue address decides between SQ0 and SQ1
+static const addr32_t SH4_SQ_SELECT_SHIFT = 5;
+static const addr32_t SH4_SQ_SELECT_MASK = (1 << SH4_SQ_SELECT_SHIFT);
+
+// write to a store-queue.  len should be in terms of bytes.
+int sh4_sq_write(Sh4 *sh4, void const *buf, addr32_t addr, unsigned len);
+
+// implement the store queues' version of the pref instruction
+int sh4_sq_pref(Sh4 *sh4, addr32_t addr);
 
 /*
  * if ((addr & OC_RAM_AREA_MASK) == OC_RAM_AREA_VAL) and the ORA bit is set

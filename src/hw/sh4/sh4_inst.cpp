@@ -30,7 +30,7 @@
 #include "BaseException.hpp"
 #include "Debugger.hpp"
 #include "Dreamcast.hpp"
-
+#include "sh4_ocache.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4.hpp"
 #include "sh4_excp.hpp"
@@ -1736,6 +1736,12 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 // PREF @Rn
 // 0000nnnn10000011
 void sh4_inst_unary_pref_indgen(Sh4 *sh4, Sh4OpArgs inst) {
+    unsigned reg_no = inst.gen_reg;
+    addr32_t addr = *sh4_gen_reg(sh4, reg_no);
+
+    if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL)
+        sh4_sq_pref(sh4, addr);
+
     sh4_next_inst(sh4);
 }
 
