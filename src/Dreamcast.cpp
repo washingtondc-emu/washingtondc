@@ -60,13 +60,13 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     sh4_init(&cpu);
 }
 
-#ifdef ENABLE_HLE_BOOT
-void dreamcast_init_hle(char const *path_ip_bin,
-                        char const *path_1st_read_bin,
-                        char const *bios_path,
-                        char const *flash_path,
-                        char const *syscalls_path,
-                        bool skip_ip_bin) {
+#ifdef ENABLE_DIRECT_BOOT
+void dreamcast_init_direct(char const *path_ip_bin,
+                           char const *path_1st_read_bin,
+                           char const *bios_path,
+                           char const *flash_path,
+                           char const *syscalls_path,
+                           bool skip_ip_bin) {
     std::ifstream file_ip_bin(path_ip_bin,
                               std::ifstream::in | std::ifstream::binary);
     std::ifstream file_1st_read_bin(path_1st_read_bin,

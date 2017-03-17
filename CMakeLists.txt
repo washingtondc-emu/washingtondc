@@ -33,11 +33,12 @@ endif()
 
 option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)
 option(ENABLE_DEBUGGER "Enable the debugger" ON)
-option(ENABLE_HLE_BOOT "Enable HLE boot mode" OFF)
+option(ENABLE_DIRECT_BOOT "Enable direct boot mode (skip boot rom and \
+immediately load IP.BIN or 1ST_READ.BIN)" ON)
 option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
 
-if (ENABLE_HLE_BOOT)
-   add_definitions(-DENABLE_HLE_BOOT)
+if (ENABLE_DIRECT_BOOT)
+   add_definitions(-DENABLE_DIRECT_BOOT)
 endif()
 
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)

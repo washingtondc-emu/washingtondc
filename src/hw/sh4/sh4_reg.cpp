@@ -366,7 +366,8 @@ void sh4_poweron_reset_regs(Sh4 *sh4) {
      *
      * *technically* the value of r15 is supposed to be undefined at startup (as
      * it is with the other general-purpose registers), but when wash boots
-     * in hle mode with the -u flag, some software will expect it to be set.
+     * in direct-boot mode with the -u flag, some software will expect it to be
+     * set.
      *
      * This value was obtained empirically by observing the value of
      * _arch_old_stack in KallistiOS; this value was 0x8c00f3fc.  KallistiOS
@@ -375,7 +376,7 @@ void sh4_poweron_reset_regs(Sh4 *sh4) {
      *
      * The good news is that this still fits within the definition of
      * "undefined", so this won't effect bios boots and it *probably* won't
-     * effect hle boots that don't use the -u flag.
+     * effect direct boots that don't use the -u flag.
      */
     *sh4_gen_reg(sh4, 15) = 0x8c00f400;
 }

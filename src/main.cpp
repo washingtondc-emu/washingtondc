@@ -35,11 +35,11 @@ int main(int argc, char **argv) {
     char const *bios_path = NULL, *flash_path = NULL;
     char const *cmd = argv[0];
     bool enable_debugger = false;
-    bool boot_hle = false, skip_ip_bin = false;
+    bool boot_direct = false, skip_ip_bin = false;
     char const *path_1st_read_bin = NULL, *path_ip_bin = NULL;
     char const *path_syscalls_bin = NULL;
 
-    while ((opt = getopt(argc, argv, "b:f:s:ghu")) != -1) {
+    while ((opt = getopt(argc, argv, "b:f:s:gdu")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -50,23 +50,23 @@ int main(int argc, char **argv) {
         case 'g':
             enable_debugger = true;
             break;
-        case 'h':
-#ifdef ENABLE_HLE_BOOT
-            boot_hle = true;
+        case 'd':
+#ifdef ENABLE_DIRECT_BOOT
+            boot_direct = true;
 #else
-            std::cerr << "ERROR: unable to boot HLE: it's not enabled!" <<
-                std::endl <<
-                "rebuild with -DENABLE_HLE_BOOT" << std::endl;
+            std::cerr << "ERROR: unable to boot in direct-mode: it's "
+                "not enabled!" << std::endl <<
+                "rebuild with -DENABLE_DIRECT_BOOT" << std::endl;
             exit(1);
 #endif
             break;
         case 'u':
-#ifdef ENABLE_HLE_BOOT
+#ifdef ENABLE_DIRECT_BOOT
             skip_ip_bin = true;
 #else
-            std::cerr << "ERROR: unable to boot HLE: it's not enabled!" <<
-                std::endl <<
-                "rebuild with -DENABLE_HLE_BOOT" << std::endl;
+            std::cerr << "ERROR: unable to boot in direct-mode: it's "
+                "not enabled!" << std::endl <<
+                "rebuild with -DENABLE_DIRECT_BOOT" << std::endl;
             exit(1);
 #endif
             break;
@@ -79,16 +79,16 @@ int main(int argc, char **argv) {
     argv += optind;
     argc -= optind;
 
-    if (skip_ip_bin && !boot_hle) {
-        std::cerr << "Error: -u option is meaningless without -h!" << std::endl;
+    if (skip_ip_bin && !boot_direct) {
+        std::cerr << "Error: -u option is meaningless without -d!" << std::endl;
         exit(1);
     }
 
-    if (path_syscalls_bin && !boot_hle)
-        std::cerr << "Warning: -s option is meaningless when not performing an "
-            "HLE boot (-h option)" << std::endl;
+    if (path_syscalls_bin && !boot_direct)
+        std::cerr << "Warning: -s option is meaningless when not performing a "
+            "direct boot (-d option)" << std::endl;
 
-    if (boot_hle) {
+    if (boot_direct) {
         if (argc != 2) {
             print_usage(cmd);
             exit(1);
@@ -97,23 +97,24 @@ int main(int argc, char **argv) {
         path_ip_bin = argv[0];
         path_1st_read_bin = argv[1];
 
-        std::cout << "HLE boot enabled, loading IP.BIN from " << path_ip_bin <<
-            " and loading 1ST_READ.BIN from " << path_1st_read_bin << std::endl;
+        std::cout << "direct boot enabled, loading IP.BIN from " <<
+            path_ip_bin << " and loading 1ST_READ.BIN from " <<
+            path_1st_read_bin << std::endl;
     } else if (argc != 0 || !bios_path) {
         print_usage(cmd);
         exit(1);
     }
 
     try {
-#ifdef ENABLE_HLE_BOOT
-        if (boot_hle) {
-            dreamcast_init_hle(path_ip_bin, path_1st_read_bin,
-                               bios_path, flash_path, path_syscalls_bin,
-                               skip_ip_bin);
+#ifdef ENABLE_DIRECT_BOOT
+        if (boot_direct) {
+            dreamcast_init_direct(path_ip_bin, path_1st_read_bin,
+                                  bios_path, flash_path, path_syscalls_bin,
+                                  skip_ip_bin);
         } else {
 #endif
             dreamcast_init(bios_path, flash_path);
-#ifdef ENABLE_HLE_BOOT
+#ifdef ENABLE_DIRECT_BOOT
         }
 #endif
 
