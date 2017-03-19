@@ -72,6 +72,10 @@ enum Sh4ExceptionCode {
     SH4_EXCP_EXT_C                    = 0x380,
     SH4_EXCP_EXT_D                    = 0x3a0,
     SH4_EXCP_EXT_E                    = 0x3c0,
+    SH4_EXCP_IRL0                     = 0x240,
+    SH4_EXCP_IRL1                     = 0x2a0,
+    SH4_EXCP_IRL2                     = 0x300,
+    SH4_EXCP_IRL3                     = 0x360,
 
     //peripheral module interrupts (completion type)
     SH4_EXCP_TMU0_TUNI0               = 0x400,
@@ -154,6 +158,15 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector);
 void sh4_enter_interrupt(Sh4 *sh4, enum Sh4ExceptionCode vector);
 
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code);
+
+/*
+ * set all four IRL lines at once.  the interrupt code is implied to be
+ * SH4_EXCP_EXT_0..SH4_EXCP_EXT_E depending on the value of irl_val.
+ *
+ * irl_val is expected to be in active-low format
+ */
+void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val);
+
 void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line, Sh4ExceptionCode intp_code);
 
 /* check IRQ lines and enter interrupt state if necessary */

@@ -152,6 +152,30 @@ void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line,
     sh4->intc.irq_lines[irq_line] = intp_code;
 }
 
+void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
+    irl_val = ~irl_val;
+
+    if (irl_val & 0x1)
+        sh4->intc.irq_lines[SH4_IRQ_IRL0] = SH4_EXCP_IRL0;
+    else
+        sh4->intc.irq_lines[SH4_IRQ_IRL0] = (Sh4ExceptionCode)0;
+
+    if (irl_val & 0x2)
+        sh4->intc.irq_lines[SH4_IRQ_IRL1] = SH4_EXCP_IRL1;
+    else
+        sh4->intc.irq_lines[SH4_IRQ_IRL1] = (Sh4ExceptionCode)0;
+
+    if (irl_val & 0x4)
+        sh4->intc.irq_lines[SH4_IRQ_IRL2] = SH4_EXCP_IRL2;
+    else
+        sh4->intc.irq_lines[SH4_IRQ_IRL2] = (Sh4ExceptionCode)0;
+
+    if (irl_val & 0x8)
+        sh4->intc.irq_lines[SH4_IRQ_IRL3] = SH4_EXCP_IRL3;
+    else
+        sh4->intc.irq_lines[SH4_IRQ_IRL3] = (Sh4ExceptionCode)0;
+}
+
 void sh4_check_interrupts(Sh4 *sh4) {
     /*
      * for the purposes of interrupt handling, I treat delayed-branch slots
@@ -175,8 +199,16 @@ void sh4_check_interrupts(Sh4 *sh4) {
     int max_prio = -1;
     unsigned max_prio_line;
 
+    /*
+     * Skip over SH4_IRQ_IRL3 through SH4_IRQ_IRL0 if those four bits are
+     * configured as a 4-bit IRQ bus.
+     */
+    unsigned last_line = SH4_IRQ_COUNT - 1;
+    if (!(sh4->reg[SH4_REG_ICR] & SH4_ICR_IRLM_MASK))
+        last_line = SH4_IRQ_GPIO;
+
     unsigned line;
-    for (line = 0; line < SH4_IRQ_COUNT; line++) {
+    for (line = 0; line <= last_line; line++) {
         unsigned ipr_reg_idx = SH4_REG_IPRA + line / 4;
         unsigned prio_shift_amt = 4 * (line % 4);
         unsigned mask = 0xf << prio_shift_amt;
@@ -185,7 +217,8 @@ void sh4_check_interrupts(Sh4 *sh4) {
         /* check the sh4's interrupt mask */
         if (prio > int((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
                        SH4_SR_IMASK_SHIFT)) {
-            /* only take the highest priority irq */
+            // only take the highest priority irq
+            // TODO: priority order
             if (sh4->intc.irq_lines[line] && (prio > max_prio)) {
                 max_prio = prio;
                 max_prio_line = line;
@@ -193,7 +226,128 @@ void sh4_check_interrupts(Sh4 *sh4) {
         }
     }
 
+    // Now handle the four-bit IRL interrupt as a special case if it's enabled
+    if (!(sh4->reg[SH4_REG_ICR] & SH4_ICR_IRLM_MASK)) {
+        unsigned irl_val = 0;
+
+        if (sh4->intc.irq_lines[SH4_IRQ_IRL0])
+            irl_val |= 1;
+        if (sh4->intc.irq_lines[SH4_IRQ_IRL1])
+            irl_val |= 2;
+        if (sh4->intc.irq_lines[SH4_IRQ_IRL2])
+            irl_val |= 4;
+        if (sh4->intc.irq_lines[SH4_IRQ_IRL3])
+            irl_val |= 8;
+
+        // now make it active-low as it should be
+        irl_val = (~irl_val) & 0xf;
+
+        // since it's active-low, 0xf == no interrupt
+        if (irl_val != 0xf) {
+            int prio;
+            reg32_t intevt_val;
+
+            /*
+             * Yeah, yeah I know that a switch statement
+             * isn't the best way to do this...
+             */
+            switch (irl_val) {
+            case 0x0:
+                prio = 15;
+                intevt_val = SH4_EXCP_EXT_0;
+                break;
+            case 0x1:
+                prio = 14;
+                intevt_val = SH4_EXCP_EXT_1;
+                break;
+            case 0x2:
+                prio = 13;
+                intevt_val = SH4_EXCP_EXT_2;
+                break;
+            case 0x3:
+                prio = 12;
+                intevt_val = SH4_EXCP_EXT_3;
+                break;
+            case 0x4:
+                prio = 11;
+                intevt_val = SH4_EXCP_EXT_4;
+                break;
+            case 0x5:
+                prio = 10;
+                intevt_val = SH4_EXCP_EXT_5;
+                break;
+            case 0x6:
+                prio = 9;
+                intevt_val = SH4_EXCP_EXT_6;
+                break;
+            case 0x7:
+                prio = 8;
+                intevt_val = SH4_EXCP_EXT_7;
+                break;
+            case 0x8:
+                prio = 7;
+                intevt_val = SH4_EXCP_EXT_8;
+                break;
+            case 0x9:
+                prio = 6;
+                intevt_val = SH4_EXCP_EXT_9;
+                break;
+            case 0xa:
+                prio = 5;
+                intevt_val = SH4_EXCP_EXT_A;
+                break;
+            case 0xb:
+                prio = 4;
+                intevt_val = SH4_EXCP_EXT_B;
+                break;
+            case 0xc:
+                prio = 3;
+                intevt_val = SH4_EXCP_EXT_C;
+                break;
+            case 0xd:
+                prio = 2;
+                intevt_val = SH4_EXCP_EXT_D;
+                break;
+            case 0xe:
+                prio = 1;
+                intevt_val = SH4_EXCP_EXT_E;
+                break;
+            default:
+                BOOST_THROW_EXCEPTION(IntegrityError());
+            }
+
+            // TODO: priority order
+            if (prio > max_prio) {
+                /*
+                 * TODO: instead of accepting the INTEVT value from whoever
+                 * raised the interrupt, we should be figuring out what it
+                 * should be ourselves based on the IRQ line.
+                 *
+                 * (the value currently being used here ultimately originates
+                 * from the intp_code parameter sent to sh4_set_interrupt).
+                 */
+                sh4->reg[SH4_REG_INTEVT] =
+                    (intevt_val << SH4_INTEVT_CODE_SHIFT) &
+                    SH4_INTEVT_CODE_MASK;
+
+                sh4_enter_exception(
+                    sh4, (Sh4ExceptionCode)sh4->intc.irq_lines[max_prio_line]);
+                sh4->intc.irq_lines[max_prio_line] = (Sh4ExceptionCode)0;
+
+                return;
+            }
+        }
+    }
+
     if (max_prio >= 0) {
+        /*
+         * TODO: instead of accepting the INTEVT value from whoever raised the
+         * interrupt, we should be figuring out what it should be ourselves
+         * based on the IRQ line.
+         *
+         * (the value currently being used here ultimately originates from the
+         * intp_code parameter sent to sh4_set_interrupt).
+         */
         sh4->reg[SH4_REG_INTEVT] =
             (sh4->intc.irq_lines[max_prio_line] << SH4_INTEVT_CODE_SHIFT) &
             SH4_INTEVT_CODE_MASK;
