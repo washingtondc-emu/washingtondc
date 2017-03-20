@@ -245,7 +245,7 @@ void sh4_check_interrupts(Sh4 *sh4) {
         // since it's active-low, 0xf == no interrupt
         if (irl_val != 0xf) {
             int prio;
-            reg32_t intevt_val;
+            Sh4ExceptionCode code;
 
             /*
              * Yeah, yeah I know that a switch statement
@@ -254,63 +254,63 @@ void sh4_check_interrupts(Sh4 *sh4) {
             switch (irl_val) {
             case 0x0:
                 prio = 15;
-                intevt_val = SH4_EXCP_EXT_0;
+                code = SH4_EXCP_EXT_0;
                 break;
             case 0x1:
                 prio = 14;
-                intevt_val = SH4_EXCP_EXT_1;
+                code = SH4_EXCP_EXT_1;
                 break;
             case 0x2:
                 prio = 13;
-                intevt_val = SH4_EXCP_EXT_2;
+                code = SH4_EXCP_EXT_2;
                 break;
             case 0x3:
                 prio = 12;
-                intevt_val = SH4_EXCP_EXT_3;
+                code = SH4_EXCP_EXT_3;
                 break;
             case 0x4:
                 prio = 11;
-                intevt_val = SH4_EXCP_EXT_4;
+                code = SH4_EXCP_EXT_4;
                 break;
             case 0x5:
                 prio = 10;
-                intevt_val = SH4_EXCP_EXT_5;
+                code = SH4_EXCP_EXT_5;
                 break;
             case 0x6:
                 prio = 9;
-                intevt_val = SH4_EXCP_EXT_6;
+                code = SH4_EXCP_EXT_6;
                 break;
             case 0x7:
                 prio = 8;
-                intevt_val = SH4_EXCP_EXT_7;
+                code = SH4_EXCP_EXT_7;
                 break;
             case 0x8:
                 prio = 7;
-                intevt_val = SH4_EXCP_EXT_8;
+                code = SH4_EXCP_EXT_8;
                 break;
             case 0x9:
                 prio = 6;
-                intevt_val = SH4_EXCP_EXT_9;
+                code = SH4_EXCP_EXT_9;
                 break;
             case 0xa:
                 prio = 5;
-                intevt_val = SH4_EXCP_EXT_A;
+                code = SH4_EXCP_EXT_A;
                 break;
             case 0xb:
                 prio = 4;
-                intevt_val = SH4_EXCP_EXT_B;
+                code = SH4_EXCP_EXT_B;
                 break;
             case 0xc:
                 prio = 3;
-                intevt_val = SH4_EXCP_EXT_C;
+                code = SH4_EXCP_EXT_C;
                 break;
             case 0xd:
                 prio = 2;
-                intevt_val = SH4_EXCP_EXT_D;
+                code = SH4_EXCP_EXT_D;
                 break;
             case 0xe:
                 prio = 1;
-                intevt_val = SH4_EXCP_EXT_E;
+                code = SH4_EXCP_EXT_E;
                 break;
             default:
                 BOOST_THROW_EXCEPTION(IntegrityError());
@@ -326,14 +326,14 @@ void sh4_check_interrupts(Sh4 *sh4) {
                  * (the value currently being used here ultimately originates
                  * from the intp_code parameter sent to sh4_set_interrupt).
                  */
-                sh4->reg[SH4_REG_INTEVT] =
-                    (intevt_val << SH4_INTEVT_CODE_SHIFT) &
+                sh4->reg[SH4_REG_INTEVT] = (code << SH4_INTEVT_CODE_SHIFT) &
                     SH4_INTEVT_CODE_MASK;
 
-                sh4_enter_exception(
-                    sh4, (Sh4ExceptionCode)sh4->intc.irq_lines[max_prio_line]);
-                sh4->intc.irq_lines[max_prio_line] = (Sh4ExceptionCode)0;
+                sh4_enter_exception(sh4, code);
 
+                // TODO: is it right to clear the irl lines like
+                //       this after an IRQ has been served?
+                sh4_set_irl_interrupt(sh4, 0xf);
                 return;
             }
         }

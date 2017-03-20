@@ -23,18 +23,46 @@
 #ifndef HOLLY_INTC_HPP_
 #define HOLLY_INTC_HPP_
 
-enum HollyInt {
-    HOLLY_INT_GDROM,
+enum HollyExtInt {
+    HOLLY_EXT_INT_GDROM,
 
-    HOLLY_INT_COUNT
+    HOLLY_EXT_INT_COUNT
 };
+
+enum HollyNrmInt {
+    HOLLY_NRM_INT_HBLANK,
+    HOLLY_NRM_INT_VBLANK_OUT,
+    HOLLY_NRM_INT_VBLANK_IN,
+
+    HOLLY_NRM_INT_COUNT
+};
+
+/*
+ * Ugh.  All the documentation I've seen points to bit 5 being hblank,
+ * but all the homebrew I've see uses it as a vblank interrupt.  IDK how it
+ * even relates to the other two vblank interrupts.
+ */
+const static unsigned HOLLY_REG_ISTNRM_HBLANK_SHIFT = 5;
+const static reg32_t HOLLY_REG_ISTNRM_HBLANK_MASK =
+    1 << HOLLY_REG_ISTNRM_HBLANK_SHIFT;
+
+const static unsigned HOLLY_REG_ISTNRM_VBLANK_OUT_SHIFT = 4;
+const static reg32_t HOLLY_REG_ISTNRM_VBLANK_OUT_MASK =
+         1 << HOLLY_REG_ISTNRM_VBLANK_OUT_SHIFT;
+
+const static unsigned HOLLY_REG_ISTNRM_VBLANK_IN_SHIFT = 3;
+const static reg32_t HOLLY_REG_ISTNRM_VBLANK_IN_MASK =
+              1 << HOLLY_REG_ISTNRM_VBLANK_IN_SHIFT;
 
 const static unsigned HOLLY_REG_ISTEXT_GDROM_SHIFT = 0;
 const static reg32_t HOLLY_REG_ISTEXT_GDROM_MASK =
     1 << HOLLY_REG_ISTEXT_GDROM_SHIFT;
 
-void holly_raise_ext_int(HollyInt int_type);
-void holly_clear_ext_int(HollyInt int_type);
+void holly_raise_nrm_int(HollyNrmInt int_type);
+void holly_clear_nrm_int(HollyNrmInt int_type);
+
+void holly_raise_ext_int(HollyExtInt int_type);
+void holly_clear_ext_int(HollyExtInt int_type);
 
 int holly_reg_istnrm_read_handler(struct sys_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len);

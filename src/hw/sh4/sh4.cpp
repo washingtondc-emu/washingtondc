@@ -24,6 +24,7 @@
 
 #include <cstring>
 
+#include "hw/pvr2/spg.hpp"
 #include "BaseException.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4_excp.hpp"
@@ -213,6 +214,32 @@ mulligan:
         /* TODO: maybe prevent drift by accounting for remainder ? */
         if ((sh4->cycle_stamp - sh4->tmu.last_tick) >= 4)
             sh4_tmu_tick(sh4);
+
+        /*
+         * Ugh.  This if statement is really painful to write.  the video clock
+         * is supposed to be 27 MHz, which doesn't evenly divide from 200 MHz.
+         * I tick it on every 7th cycle, which means that the video clock is
+         * actually running a little fast at approx 28.57 MHz.
+         *
+         * A better way to do this would probably be to track the missed cycles
+         * and let them accumulate so that sometimes the video clock ticks
+         * after 7 cycles and sometimes it ticks after 8 cycles.  This is not
+         * that complicated to do, but my head is in no state to do Algebra
+         * right now.
+         *
+         * The perfect way to do this would be to divide both 27 MHz and
+         * 200 MHz from their LCD (which is 5400 MHz according to
+         * Wolfram Alpha).  *Maybe* this will be feasible later when I have a
+         * scheduler implemented; I can't think of a good reason why it wouldn't
+         * be, but it does sound too good to be true.  I'm a mess right now
+         * after spending an entire weekend stressing out over this and
+         * VBLANK/HBLANK timings so I'm in no mood to contemplate the
+         * possibilities.
+         */
+        if ((sh4->cycle_stamp - sh4->last_vclk_tick) >= 7) {
+            sh4->last_vclk_tick = sh4->cycle_stamp;
+            spg_tick();
+        }
     } catch (BaseException& exc) {
         sh4_add_regs_to_exc(sh4, exc);
         throw;

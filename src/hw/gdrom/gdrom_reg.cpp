@@ -296,7 +296,7 @@ gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     // val |= 1 << 3; // DRQ
     uint32_t val = (int(bsy_signal) << 7) | (int(drq_signal) << 3);
 
-    holly_clear_ext_int(HOLLY_INT_GDROM);
+    holly_clear_ext_int(HOLLY_EXT_INT_GDROM);
 
     std::cout << "WARNING: read " << val << " from GDROM status register"
               << std::endl;
@@ -329,7 +329,7 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     if (val == 0xa0) {
         drq_signal = true;
     }
-    holly_raise_ext_int(HOLLY_INT_GDROM);
+    holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     return 0;
 }
@@ -351,7 +351,7 @@ gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
         n_bytes_received = 0;
         drq_signal = false;
         bsy_signal = false;
-        holly_raise_ext_int(HOLLY_INT_GDROM);
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
     }
 
     return 0;

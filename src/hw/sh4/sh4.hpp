@@ -106,6 +106,15 @@ struct Sh4 {
     /* the total number of cycles that have been run thus far */
     uint64_t cycle_stamp;
 
+    /*
+     * cycle_stamp last time we ticked the video clock.
+     *
+     * Keeping track of this here is a hackish thing to do because it is not
+     * related to the CPU.  Eventually when I implement a scheduler things
+     * will be cleaner (hopefully)
+     */
+    uint64_t last_vclk_tick;
+
 #ifdef ENABLE_DEBUGGER
     /*
      * this member is used to implement watchpoints.  When a watchpoint
@@ -125,7 +134,7 @@ void sh4_on_hard_reset(Sh4 *sh4);
 
 /*
  * run the sh4 for the given number of cycles.
- * This function will not tick the tmu.
+ * This function will not tick the tmu or any external clocks (such as pvr2).
  *
  * In general, the number of cycles each instruction takes is equal to its issue
  * delay.  We do not take pipeline stalling into account, nor do we take the

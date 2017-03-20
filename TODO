@@ -2,6 +2,10 @@ This file is mostly for things which need to be done eventually but are
 subtle enough to be forgotten.  There are many more things I need to do which
 are not recorded here.
 
+General:
+* Implement a scheduler instead of ticking down the clock of every component on every cycle
+
+sh4:
 * MMU support for Store Queues
 * Store queue timing (Is it really supposed to be instant?)
 * Unit test for store queues
@@ -12,3 +16,12 @@ are not recorded here.
   The current implementation assumes that the number of cycles to execute
   each instruction will always be equal to the issue for that instruction.
   There is no emulation of stalls/latency/interdependency.
+* Get a real interrupt controller written, I don't even have priorities working right
+* the sh4 spec says that when two exceptions of equal priority happen at the same time, the sh4
+  will chose the one with a higher priority order.  Currently I don't have this implemented.
+
+Sync Pulse Generator:
+* Take interlacing into account (this effects the number of lines per field
+  amongst other things)
+* Get the clock division right, current implementation is a bit off because of integer divison
+  (200 / 27 does not divide evenly)

@@ -39,16 +39,49 @@ struct holly_intp_info {
     reg32_t mask;
 };
 
-static struct holly_intp_info ext_intp_tbl[HOLLY_INT_COUNT] = {
+static struct holly_intp_info ext_intp_tbl[HOLLY_EXT_INT_COUNT] = {
     {
         "GD-ROM",
         HOLLY_REG_ISTEXT_GDROM_MASK
     }
 };
 
-// TODO: what happens if another lower priority interrupt overwirtes the IRL
+static struct holly_intp_info nrm_intp_tbl[HOLLY_NRM_INT_COUNT] = {
+    {
+        "H-BLANK",
+        HOLLY_REG_ISTNRM_HBLANK_MASK
+    },
+    {
+        "V-BLANK OUT",
+        HOLLY_REG_ISTNRM_VBLANK_OUT_MASK
+    },
+    {
+        "V-BLANK IN",
+        HOLLY_REG_ISTNRM_VBLANK_IN_MASK
+    }
+};
+
+void holly_raise_nrm_int(HollyNrmInt int_type) {
+    reg32_t mask = nrm_intp_tbl[int_type].mask;
+
+    reg_istnrm |= mask;
+
+    if (reg_iml6nrm & mask)
+        sh4_set_irl_interrupt(dreamcast_get_cpu(), 0x9);
+    else if (reg_iml4nrm & mask)
+        sh4_set_irl_interrupt(dreamcast_get_cpu(), 0xb);
+    else if (reg_iml2nrm & mask)
+        sh4_set_irl_interrupt(dreamcast_get_cpu(), 0xd);
+}
+
+void holly_clear_nrm_int(HollyNrmInt int_type) {
+    reg32_t mask = nrm_intp_tbl[int_type].mask;
+    reg_istnrm &= ~mask;
+}
+
+// TODO: what happens if another lower priority interrupt overwrites the IRL
 // level before the higher priority interrupt has been cleared?
-void holly_raise_ext_int(HollyInt int_type) {
+void holly_raise_ext_int(HollyExtInt int_type) {
     reg32_t mask = ext_intp_tbl[int_type].mask;
 
     reg_istext |= mask;
@@ -61,7 +94,7 @@ void holly_raise_ext_int(HollyInt int_type) {
         sh4_set_irl_interrupt(dreamcast_get_cpu(), 0xd);
 }
 
-void holly_clear_ext_int(HollyInt int_type) {
+void holly_clear_ext_int(HollyExtInt int_type) {
     reg32_t mask = ext_intp_tbl[int_type].mask;
     reg_istext &= ~mask;
 }
@@ -76,16 +109,6 @@ holly_reg_istext_read_handler(struct sys_mapped_reg const *reg_info,
     std::cout << "Reading " << std::hex << istext_out << " from ISTEXT" << std::endl;
 
     return 0;
-    /*
-    // TODO: actually read/write from/to reg_istext
-    reg32_t val = gdrom_irq() ? 1 : 0;
-
-    memcpy(buf, &val, len < sizeof(val) ? len : sizeof(val));
-
-    std::cout << "reading " << std::hex << val << " from ISTEXT" << std::endl;
-
-    return 0;
-     */
 }
 
 int

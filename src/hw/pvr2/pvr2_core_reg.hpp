@@ -23,6 +23,18 @@
 #ifndef PVR2_CORE_REG_HPP_
 #define PVR2_CORE_REG_HPP_
 
+// vlck divider bit for the FB_R_CTRL register
+const static unsigned PVR2_VCLK_DIV_SHIFT = 23;
+const static reg32_t PVR2_VCLK_DIV_MASK = 1 << PVR2_VCLK_DIV_SHIFT;
+
+// bit in the FB_R_CTRL register that causes each scanline to be sent twice
+const static unsigned PVR2_LINE_DOUBLE_SHIFT = 1;
+const static reg32_t PVR2_LINE_DOUBLE_MASK = 1 << PVR2_LINE_DOUBLE_SHIFT;
+
+// bit in the VO_CONTROL register that causes each pixel to be sent twice
+const static unsigned PVR2_PIXEL_DOUBLE_SHIFT = 8;
+const static reg32_t PVR2_PIXEL_DOUBLE_MASK = 1 << PVR2_PIXEL_DOUBLE_SHIFT;
+
 int pvr2_core_reg_read(void *buf, size_t addr, size_t len);
 int pvr2_core_reg_write(void const *buf, size_t addr, size_t len);
 
