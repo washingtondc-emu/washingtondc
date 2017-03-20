@@ -242,6 +242,7 @@ mulligan:
         }
     } catch (BaseException& exc) {
         sh4_add_regs_to_exc(sh4, exc);
+        exc << errinfo_cycle_stamp(sh4->cycle_stamp);
         throw;
     }
 }

@@ -317,7 +317,9 @@ void sh4_check_interrupts(Sh4 *sh4) {
             }
 
             // TODO: priority order
-            if (prio > max_prio) {
+            if (prio > max_prio &&
+                (prio > int((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
+                            SH4_SR_IMASK_SHIFT))) {
                 /*
                  * TODO: instead of accepting the INTEVT value from whoever
                  * raised the interrupt, we should be figuring out what it

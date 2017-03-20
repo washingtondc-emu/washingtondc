@@ -41,6 +41,7 @@
 
 /* Hitachi SuperH-4 interpreter */
 
+typedef boost::error_info<struct tag_sh4_cycle_stamp, uint64_t> errinfo_cycle_stamp;
 
 static const size_t SH4_N_FLOAT_REGS = 16;
 static const size_t SH4_N_DOUBLE_REGS = 8;
