@@ -25,16 +25,12 @@
 #include "BaseException.hpp"
 #include "MemoryMap.hpp"
 #include "hw/gdrom/gdrom_reg.hpp"
+#include "holly_intc.hpp"
 
 #include "sys_block.hpp"
 
 static const size_t N_SYS_REGS = ADDR_SYS_LAST - ADDR_SYS_FIRST + 1;
 static reg32_t sys_regs[N_SYS_REGS];
-
-static reg32_t reg_istnrm, reg_istext, reg_isterr;
-static reg32_t reg_iml2nrm, reg_iml2ext, reg_iml2err;
-static reg32_t reg_iml4nrm, reg_iml4ext, reg_iml4err;
-static reg32_t reg_iml6nrm, reg_iml6ext, reg_iml6err;
 
 struct sys_mapped_reg;
 
@@ -65,67 +61,6 @@ static int ignore_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                         unsigned len);
 
 /* yay, interrrupt registers */
-static int sys_reg_istnrm_read_handler(struct sys_mapped_reg const *reg_info,
-                                       void *buf, addr32_t addr, unsigned len);
-static int sys_reg_istnrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                        void const *buf, addr32_t addr,
-                                        unsigned len);
-static int sys_reg_istext_read_handler(struct sys_mapped_reg const *reg_info,
-                                       void *buf, addr32_t addr, unsigned len);
-static int sys_reg_istext_write_handler(struct sys_mapped_reg const *reg_info,
-                                        void const *buf, addr32_t addr,
-                                        unsigned len);
-static int sys_reg_isterr_read_handler(struct sys_mapped_reg const *reg_info,
-                                       void *buf, addr32_t addr, unsigned len);
-static int sys_reg_isterr_write_handler(struct sys_mapped_reg const *reg_info,
-                                        void const *buf, addr32_t addr,
-                                        unsigned len);
-static int sys_reg_iml2nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                                        void *buf, addr32_t addr, unsigned len);
-static int sys_reg_iml2nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                         void const *buf, addr32_t addr,
-                                         unsigned len);
-static int sys_reg_iml2err_read_handler(struct sys_mapped_reg const *reg_info,
-                                        void *buf, addr32_t addr, unsigned len);
-static int sys_reg_iml2err_write_handler(struct sys_mapped_reg const *reg_info,
-                                         void const *buf, addr32_t addr,
-                                         unsigned len);
-static int sys_reg_iml2ext_read_handler(struct sys_mapped_reg const *reg_info,
-                                        void *buf, addr32_t addr, unsigned len);
-static int sys_reg_iml2ext_write_handler(struct sys_mapped_reg const *reg_info,
-                                         void const *buf, addr32_t addr,
-                                         unsigned len);
-static int sys_reg_iml4nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                                        void *buf, addr32_t addr, unsigned len);
-static int sys_reg_iml4nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                         void const *buf, addr32_t addr,
-                                         unsigned len);
-static int sys_reg_iml4err_read_handler(struct sys_mapped_reg const *reg_info,
-                                        void *buf, addr32_t addr, unsigned len);
-static int sys_reg_iml4err_write_handler(struct sys_mapped_reg const *reg_info,
-                                         void const *buf, addr32_t addr,
-                                         unsigned len);
-static int sys_reg_iml4ext_read_handler(struct sys_mapped_reg const *reg_info,
-                                        void *buf, addr32_t addr, unsigned len);
-static int sys_reg_iml4ext_write_handler(struct sys_mapped_reg const *reg_info,
-                                         void const *buf, addr32_t addr,
-                                         unsigned len);
-static int sys_reg_iml6nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                                        void *buf, addr32_t addr, unsigned len);
-static int sys_reg_iml6nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                         void const *buf, addr32_t addr,
-                                         unsigned len);
-static int sys_reg_iml6err_read_handler(struct sys_mapped_reg const *reg_info,
-                                        void *buf, addr32_t addr, unsigned len);
-static int sys_reg_iml6err_write_handler(struct sys_mapped_reg const *reg_info,
-                                         void const *buf, addr32_t addr,
-                                         unsigned len);
-static int sys_reg_iml6ext_read_handler(struct sys_mapped_reg const *reg_info,
-                                        void *buf, addr32_t addr, unsigned len);
-static int sys_reg_iml6ext_write_handler(struct sys_mapped_reg const *reg_info,
-                                         void const *buf, addr32_t addr,
-                                         unsigned len);
-
 static struct sys_mapped_reg {
     char const *reg_name;
 
@@ -178,23 +113,23 @@ static struct sys_mapped_reg {
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
 
     { "SB_IML2NRM", 0x5f6910, 4,
-      sys_reg_iml2nrm_read_handler, sys_reg_iml2nrm_write_handler },
+      holly_reg_iml2nrm_read_handler, holly_reg_iml2nrm_write_handler },
     { "SB_IML2EXT", 0x5f6914, 4,
-      sys_reg_iml2ext_read_handler, sys_reg_iml2ext_write_handler },
+      holly_reg_iml2ext_read_handler, holly_reg_iml2ext_write_handler },
     { "SB_IML2ERR", 0x5f6918, 4,
-      sys_reg_iml2err_read_handler, sys_reg_iml2err_write_handler },
+      holly_reg_iml2err_read_handler, holly_reg_iml2err_write_handler },
     { "SB_IML4NRM", 0x5f6920, 4,
-      sys_reg_iml4nrm_read_handler, sys_reg_iml4nrm_write_handler },
+      holly_reg_iml4nrm_read_handler, holly_reg_iml4nrm_write_handler },
     { "SB_IML4EXT", 0x5f6924, 4,
-      sys_reg_iml4ext_read_handler, sys_reg_iml4ext_write_handler },
+      holly_reg_iml4ext_read_handler, holly_reg_iml4ext_write_handler },
     { "SB_IML4ERR", 0x5f6928, 4,
-      sys_reg_iml4err_read_handler, sys_reg_iml4err_write_handler },
+      holly_reg_iml4err_read_handler, holly_reg_iml4err_write_handler },
     { "SB_IML6NRM", 0x5f6930, 4,
-      sys_reg_iml6nrm_read_handler, sys_reg_iml6nrm_write_handler },
+      holly_reg_iml6nrm_read_handler, holly_reg_iml6nrm_write_handler },
     { "SB_IML6EXT", 0x5f6934, 4,
-      sys_reg_iml6ext_read_handler, sys_reg_iml6ext_write_handler },
+      holly_reg_iml6ext_read_handler, holly_reg_iml6ext_write_handler },
     { "SB_IML6ERR", 0x5f6938, 4,
-      sys_reg_iml6err_read_handler, sys_reg_iml6err_write_handler },
+      holly_reg_iml6err_read_handler, holly_reg_iml6err_write_handler },
 
     { "SB_PDTNRM", 0x5f6940, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
@@ -208,11 +143,11 @@ static struct sys_mapped_reg {
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
 
     { "SB_ISTNRM", 0x5f6900, 4,
-      sys_reg_istnrm_read_handler, sys_reg_istnrm_write_handler },
+      holly_reg_istnrm_read_handler, holly_reg_istnrm_write_handler },
     { "SB_ISTEXT", 0x5f6904, 4,
-      sys_reg_istext_read_handler, sys_reg_istext_write_handler },
+      holly_reg_istext_read_handler, holly_reg_istext_write_handler },
     { "SB_ISTERR", 0x5f6908, 4,
-      sys_reg_isterr_read_handler, sys_reg_isterr_write_handler },
+      holly_reg_isterr_read_handler, holly_reg_isterr_write_handler },
 
     { NULL }
 };
@@ -380,215 +315,5 @@ static int sys_read_only_reg_write_handler(struct sys_mapped_reg const *reg_info
 __attribute__((unused)) static int
 ignore_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len) {
-    return 0;
-}
-
-static int
-sys_reg_istext_read_handler(struct sys_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len) {
-    // TODO: actually read/write from/to reg_istext
-    reg32_t val = gdrom_irq() ? 1 : 0;
-
-    memcpy(buf, &val, len < sizeof(val) ? len : sizeof(val));
-
-    std::cout << "reading " << std::hex << val << " from ISTEXT" << std::endl;
-
-    return 0;
-}
-
-static int
-sys_reg_istnrm_read_handler(struct sys_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len) {
-    reg32_t istnrm_out = reg_istnrm & 0x3fffff;
-
-    istnrm_out |= (!!reg_istext) << 30;
-    istnrm_out |= (!!reg_isterr) << 31;
-
-    memcpy(buf, &istnrm_out, sizeof(istnrm_out));
-
-    return 0;
-}
-
-static int
-sys_reg_istnrm_write_handler(struct sys_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len) {
-    reg32_t in_val;
-
-    memcpy(&in_val, buf, sizeof(in_val));
-    reg_istnrm &= ~in_val;
-
-    return 0;
-}
-
-static int
-sys_reg_istext_write_handler(struct sys_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len) {
-    reg32_t in_val;
-
-    memcpy(&in_val, buf, sizeof(in_val));
-    reg_istext &= ~in_val;
-
-    return 0;
-}
-
-static int
-sys_reg_isterr_read_handler(struct sys_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_isterr, sizeof(reg_isterr));
-
-    return 0;
-}
-
-static int
-sys_reg_isterr_write_handler(struct sys_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len) {
-    reg32_t in_val;
-
-    memcpy(&in_val, buf, sizeof(in_val));
-    reg_isterr &= ~in_val;
-
-    return 0;
-}
-
-static int
-sys_reg_iml2nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml2nrm, sizeof(reg_iml2nrm));
-
-    return 0;
-}
-
-static int
-sys_reg_iml2nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml2nrm, buf, sizeof(reg_iml2nrm));
-    reg_iml2nrm &= 0x3fffff;
-    return 0;
-}
-
-static int
-sys_reg_iml2err_read_handler(struct sys_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml2err, sizeof(reg_iml2err));
-
-    return 0;
-}
-
-
-static int
-sys_reg_iml2err_write_handler(struct sys_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml2err, buf, sizeof(reg_iml2err));
-    return 0;
-}
-
-static int
-sys_reg_iml2ext_read_handler(struct sys_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml2ext, sizeof(reg_iml2ext));
-
-    return 0;
-}
-
-static int
-sys_reg_iml2ext_write_handler(struct sys_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml2ext, buf, sizeof(reg_iml2ext));
-    reg_iml2ext &= 0xf;
-    return 0;
-}
-
-static int
-sys_reg_iml4nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml4nrm, sizeof(reg_iml4nrm));
-
-    return 0;
-}
-
-static int
-sys_reg_iml4nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml4nrm, buf, sizeof(reg_iml4nrm));
-    reg_iml4nrm &= 0x3fffff;
-    return 0;
-}
-
-static int
-sys_reg_iml4err_read_handler(struct sys_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml4err, sizeof(reg_iml4err));
-
-    return 0;
-}
-
-static int
-sys_reg_iml4err_write_handler(struct sys_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml4err, buf, sizeof(reg_iml4err));
-    return 0;
-}
-
-
-static int
-sys_reg_iml4ext_read_handler(struct sys_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml4ext, sizeof(reg_iml4ext));
-
-    return 0;
-}
-
-static int
-sys_reg_iml4ext_write_handler(struct sys_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml4ext, buf, sizeof(reg_iml4ext));
-    reg_iml4ext &= 0xf;
-    return 0;
-}
-
-static int
-sys_reg_iml6nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml6nrm, sizeof(reg_iml6nrm));
-
-    return 0;
-}
-
-static int
-sys_reg_iml6nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml6nrm, buf, sizeof(reg_iml6nrm));
-    reg_iml6nrm &= 0x3fffff;
-    return 0;
-}
-
-static int
-sys_reg_iml6err_read_handler(struct sys_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml6err, sizeof(reg_iml6err));
-
-    return 0;
-}
-
-static int
-sys_reg_iml6err_write_handler(struct sys_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml6err, buf, sizeof(reg_iml6err));
-    return 0;
-}
-
-static int
-sys_reg_iml6ext_read_handler(struct sys_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml6ext, sizeof(reg_iml6ext));
-
-    return 0;
-}
-
-static int
-sys_reg_iml6ext_write_handler(struct sys_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml6ext, buf, sizeof(reg_iml6ext));
-    reg_iml6ext &= 0xf;
     return 0;
 }
