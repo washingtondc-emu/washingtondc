@@ -50,8 +50,6 @@ public:
 
     void attach();
 
-    bool step(addr32_t pc);
-
     void on_break();
     void on_read_watchpoint(addr32_t addr);
     void on_write_watchpoint(addr32_t addr);
@@ -77,7 +75,6 @@ public:
     };
 
 private:
-    boost::asio::io_service io_service;
     boost::asio::ip::tcp::endpoint tcp_endpoint;
     boost::asio::ip::tcp::acceptor tcp_acceptor;
     boost::asio::ip::tcp::socket tcp_socket;

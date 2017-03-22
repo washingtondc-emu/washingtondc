@@ -39,8 +39,8 @@
 GdbStub::GdbStub() : Debugger(),
                      tcp_endpoint(boost::asio::ip::tcp::v4(),
                                   PORT_NO),
-                     tcp_acceptor(io_service, tcp_endpoint),
-                     tcp_socket(io_service) {
+                     tcp_acceptor(dc_io_service, tcp_endpoint),
+                     tcp_socket(dc_io_service) {
     frontend_supports_swbreak = false;
 }
 
@@ -181,17 +181,6 @@ int GdbStub::decode_hex(char ch)
     if ((ch >= 'A') && (ch <= 'F'))
         return ch - 'A' + 10;
     return -1;
-}
-
-bool GdbStub::step(addr32_t pc) {
-    bool res = Debugger::step(pc);
-
-    if (!res)
-        io_service.poll();
-    else
-        io_service.run_one();
-
-    return res;
 }
 
 void GdbStub::transmit(const std::string& data) {

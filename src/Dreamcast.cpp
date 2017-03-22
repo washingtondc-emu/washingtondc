@@ -43,6 +43,9 @@ static bool is_running;
 
 #ifdef ENABLE_DEBUGGER
 static Debugger *debugger;
+
+// Used by the GdbStub (if it's enabled) to do async network I/O
+boost::asio::io_service dc_io_service;
 #endif
 
 void dreamcast_init(char const *bios_path, char const *flash_path) {
@@ -167,8 +170,21 @@ void dreamcast_run() {
     try {
         while (is_running) {
 #ifdef ENABLE_DEBUGGER
-            if (debugger && debugger->step(sh4_get_pc(&cpu)))
+            /*
+             * If the debugger is enabled, make sure we have its permission to single-step;
+             * if we don't then we call dc_io_service.run_one to block until
+             * something interresting happens, and then we skip the rest of the loop.
+             *
+             * If we do have permission to single-step, then we call
+             * dc_io_service.poll instead because we don't want to block.
+             */
+            if (debugger && debugger->step(sh4_get_pc(&cpu))) {
+                dc_io_service.run_one();
+
                 continue;
+            } else {
+                dc_io_service.poll();
+            }
 
             /*
              * TODO: don't single-step if there's no

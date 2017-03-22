@@ -23,6 +23,8 @@
 #ifndef DREAMCAST_HPP_
 #define DREAMCAST_HPP_
 
+#include <boost/asio.hpp>
+
 #include "BiosFile.hpp"
 #include "Memory.hpp"
 #include "hw/sh4/sh4.hpp"
@@ -65,6 +67,9 @@ void dreamcast_kill();
 Sh4 *dreamcast_get_cpu();
 
 #ifdef ENABLE_DEBUGGER
+
+extern boost::asio::io_service dc_io_service;
+
 Debugger *dreamcast_get_debugger();
 #endif
 
