@@ -42,6 +42,7 @@ static void print_usage(char const *cmd) {
         "valid for direct boot)" << std::endl;
     std::cerr << "\t-s\t\tpath to dreamcast system call image (only needed for "
         "direct boot)" << std::endl;
+    std::cerr << "\t-t\t\testablish serial server over TCP port 1998" << std::endl;
     std::cerr << "\t-h\t\tdisplay this message and exit" << std::endl;
 }
 
@@ -53,8 +54,9 @@ int main(int argc, char **argv) {
     bool boot_direct = false, skip_ip_bin = false;
     char const *path_1st_read_bin = NULL, *path_ip_bin = NULL;
     char const *path_syscalls_bin = NULL;
+    bool enable_serial = false;
 
-    while ((opt = getopt(argc, argv, "b:f:s:gduh")) != -1) {
+    while ((opt = getopt(argc, argv, "b:f:s:gduht")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -87,6 +89,9 @@ int main(int argc, char **argv) {
             break;
         case 's':
             path_syscalls_bin = optarg;
+            break;
+        case 't':
+            enable_serial = true;
             break;
         case 'h':
             print_usage(cmd);
@@ -135,6 +140,16 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_DIRECT_BOOT
         }
 #endif
+
+        if (enable_serial) {
+#ifdef ENABLE_SERIAL_SERVER
+            dreamcast_enable_serial_server();
+#else
+            std::cerr << "WARNING: Unable to enable TCP serial server." <<
+                std::endl << "Please rebuild with -DENABLE_SERIAL_SERVER" <<
+                std::endl;
+#endif
+        }
 
         if (enable_debugger) {
 #ifdef ENABLE_DEBUGGER

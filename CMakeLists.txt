@@ -36,6 +36,7 @@ option(ENABLE_DEBUGGER "Enable the debugger" ON)
 option(ENABLE_DIRECT_BOOT "Enable direct boot mode (skip boot rom and \
 immediately load IP.BIN or 1ST_READ.BIN)" ON)
 option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
+option(ENABLE_SERIAL_SERVER "Enable serial server over TCP port 1998" ON)
 
 if (ENABLE_DIRECT_BOOT)
    add_definitions(-DENABLE_DIRECT_BOOT)
@@ -121,6 +122,12 @@ if (ENABLE_DEBUGGER)
                                    "${PROJECT_SOURCE_DIR}/src/Debugger.cpp"
                                    "${PROJECT_SOURCE_DIR}/src/GdbStub.hpp"
                                    "${PROJECT_SOURCE_DIR}/src/GdbStub.cpp")
+endif()
+
+if (ENABLE_SERIAL_SERVER)
+  add_definitions(-DENABLE_SERIAL_SERVER)
+  set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/SerialServer.hpp"
+                                 "${PROJECT_SOURCE_DIR}/src/SerialServer.cpp")
 endif()
 
 set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"

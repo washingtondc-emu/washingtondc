@@ -61,6 +61,11 @@ void dreamcast_cleanup();
 void dreamcast_enable_debugger(void);
 #endif
 
+#ifdef ENABLE_SERIAL_SERVER
+// this must be called before run or not at all
+void dreamcast_enable_serial_server(void);
+#endif
+
 void dreamcast_run();
 void dreamcast_kill();
 

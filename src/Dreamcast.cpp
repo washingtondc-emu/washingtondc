@@ -31,6 +31,10 @@
 #include "GdbStub.hpp"
 #endif
 
+#ifdef ENABLE_SERIAL_SERVER
+#include "SerialServer.hpp"
+#endif
+
 #include "Dreamcast.hpp"
 
 static const size_t MEM_SZ = 16 * 1024 * 1024;
@@ -43,8 +47,14 @@ static bool is_running;
 
 #ifdef ENABLE_DEBUGGER
 static Debugger *debugger;
+#endif
 
-// Used by the GdbStub (if it's enabled) to do async network I/O
+#ifdef ENABLE_SERIAL_SERVER
+static SerialServer *serial_server;
+#endif
+
+#if defined ENABLE_DEBUGGER || defined ENABLE_SERIAL_SERVER
+// Used by the GdbStub and SerialServer (if enabled) to do async network I/O
 boost::asio::io_service dc_io_service;
 #endif
 
@@ -141,6 +151,11 @@ void dreamcast_cleanup() {
         delete debugger;
 #endif
 
+#ifdef ENABLE_SERIAL_SERVER
+    if (serial_server)
+        delete serial_server;
+#endif
+
     sh4_cleanup(&cpu);
     delete bios;
     memory_cleanup(&mem);
@@ -169,6 +184,15 @@ void dreamcast_run() {
 
     try {
         while (is_running) {
+            /*
+             * The below logic will run the dc_io_service if the debugger is
+             * enabled or if the serial server is enabled.  If only the
+             * debugger is enabled *or* both the debugger and the serial server
+             * are enabled then it will pick either run_one or poll depending
+             * on whether the debugger has suspended execution.  If only the
+             * serial server is enabled, then it will unconditionally run
+             * dc_ios_service.poll.
+             */
 #ifdef ENABLE_DEBUGGER
             /*
              * If the debugger is enabled, make sure we have its permission to single-step;
@@ -185,7 +209,13 @@ void dreamcast_run() {
             } else {
                 dc_io_service.poll();
             }
+#else
+#ifdef ENABLE_SERIAL_SERVER
+            dc_io_service.poll();
+#endif
+#endif
 
+#ifdef ENABLE_DEBUGGER
             /*
              * TODO: don't single-step if there's no
              * chance of us hitting a breakpoint
@@ -239,5 +269,12 @@ Sh4 *dreamcast_get_cpu() {
 void dreamcast_enable_debugger(void) {
     debugger = new GdbStub();
     debugger->attach();
+}
+#endif
+
+#ifdef ENABLE_SERIAL_SERVER
+void dreamcast_enable_serial_server(void) {
+    serial_server = new SerialServer();
+    serial_server->attach();
 }
 #endif
