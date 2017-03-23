@@ -42,6 +42,7 @@ GdbStub::GdbStub() : Debugger(),
                      tcp_acceptor(dc_io_service, tcp_endpoint),
                      tcp_socket(dc_io_service) {
     frontend_supports_swbreak = false;
+    is_writing = false;
 }
 
 GdbStub::~GdbStub() {
