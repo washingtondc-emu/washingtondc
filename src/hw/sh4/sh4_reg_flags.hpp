@@ -303,4 +303,102 @@ static const unsigned SH4_MMUCR_URB_MASK = 0x3f << SH4_MMUCR_URB_SHIFT;
 static const unsigned SH4_MMUCR_LRUI_SHIFT = 26;
 static const unsigned SH4_MMUCR_LRUI_MASK = 0x3f << SH4_MMUCR_LRUI_SHIFT;
 
+/*******************************************************************************
+ *
+ * SCIF (Serial Port with FIFO)
+ *
+ ******************************************************************************/
+
+// Transmit Interrupt Enable
+static const unsigned SH4_SCSCR2_TIE_SHIFT = 7;
+static const reg32_t SH4_SCSCR2_TIE_MASK = 1 << SH4_SCSCR2_TIE_SHIFT;
+
+// Receive Interrupt Enable
+static const unsigned SH4_SCSCR2_RIE_SHIFT = 6;
+static const reg32_t SH4_SCSCR2_RIE_MASK = 1 << SH4_SCSCR2_RIE_SHIFT;
+
+// Transmit Enable
+static const unsigned SH4_SCSCR2_TE_SHIFT = 5;
+static const reg32_t SH4_SCSCR2_TE_MASK = 1 << SH4_SCSCR2_TE_SHIFT;
+
+// Receive Enable
+static const unsigned SH4_SCSCR2_RE_SHIFT = 4;
+static const reg32_t SH4_SCSCR2_RE_MASK = 1 << SH4_SCSCR2_RE_SHIFT;
+
+// Receive Error Interrupt Enable
+static const unsigned SH4_SCSCR2_REIE_SHIFT = 3;
+static const reg32_t SH4_SCSCR2_REIE_MASK = 1 << SH4_SCSCR2_REIE_SHIFT;
+
+// Clock Enable
+static const unsigned SH4_SCSCR2_CKE1_SHIFT = 1;
+static const reg32_t SH4_SCSCR2_CKE1_MASK = 1 << SH4_SCSCR2_CKE1_SHIFT;
+
+// Number of Parity Errors
+static const unsigned SH4_SCFSR2_N_PER_SHIFT = 12;
+static const reg32_t SH4_SCFSR2_N_PER_MASK = 0xf << SH4_SCFSR2_N_PER_SHIFT;
+
+// Number of Framing Errors
+static const unsigned SH4_SCFSR2_N_FER_SHIFT = 8;
+static const reg32_t SH4_SCFSR2_N_FER_MASK = 0xf << SH4_SCFSR2_N_FER_SHIFT;
+
+// Receive Error flag
+static const unsigned SH4_SCFSR2_ER_SHIFT = 7;
+static const reg32_t SH4_SCFSR2_ER_MASK = 1 << SH4_SCFSR2_ER_SHIFT;
+
+// Transmit End
+static const unsigned SH4_SCFSR2_TEND_SHIFT = 6;
+static const reg32_t SH4_SCFSR2_TEND_MASK = 1 << SH4_SCFSR2_TEND_SHIFT;
+
+// Transmit FIFO Data Empty
+static const unsigned SH4_SCFSR2_TDFE_SHIFT = 5;
+static const reg32_t SH4_SCFSR2_TDFE_MASK = 1 << SH4_SCFSR2_TDFE_SHIFT;
+
+// Break Detect
+static const unsigned SH4_SCFSR2_BRK_SHIFT = 4;
+static const reg32_t SH4_SCFSR2_BRK_MASK = 1 << SH4_SCFSR2_BRK_SHIFT;
+
+// Framing Error
+static const unsigned SH4_SCFSR2_FER_SHIFT = 3;
+static const reg32_t SH4_SCFSR2_FER_MASK = 1 << SH4_SCFSR2_FER_SHIFT;
+
+// Parity Error
+static const unsigned SH4_SCFSR2_PER_SHIFT = 2;
+static const reg32_t SH4_SCFSR2_PER_MASK = 1 << SH4_SCFSR2_PER_SHIFT;
+
+// Receive FIFO Data Full
+static const unsigned SH4_SCFSR2_RDF_SHIFT = 1;
+static const reg32_t SH4_SCFSR2_RDF_MASK = 1 << SH4_SCFSR2_RDF_SHIFT;
+
+// Receive Data Ready
+static const unsigned SH4_SCFSR2_DR_SHIFT = 0;
+static const reg32_t SH4_SCFSR2_DR_MASK = 1 << SH4_SCFSR2_DR_SHIFT;
+
+// RTS2 Output Active Trigger
+static const unsigned SH4_SCFCR2_RSTRG_SHIFT = 8;
+static const reg32_t SH4_SCFCR2_RSTRG_MASK = 0x7 << SH4_SCFCR2_RSTRG_SHIFT;
+
+// Receive FIFO Data Number Trigger
+static const unsigned SH4_SCFCR2_RTRG_SHIFT = 6;
+static const reg32_t SH4_SCFCR2_RTRG_MASK = 0x3 << SH4_SCFCR2_RTRG_SHIFT;
+
+// Transmit FIFO Data Number Trigger
+static const unsigned SH4_SCFCR2_TTRG_SHIFT = 4;
+static const reg32_t SH4_SCFCR2_TTRG_MASK = 0x3 << SH4_SCFCR2_TTRG_SHIFT;
+
+// Modem Control Enable
+static const unsigned SH4_SCFCR2_MCE_SHIFT = 3;
+static const reg32_t SH4_SCFCR2_MCE_MASK = 1 << SH4_SCFCR2_MCE_SHIFT;
+
+// Transmit FIFO Data Register Reset
+static const unsigned SH4_SCFCR2_TFRST_SHIFT = 2;
+static const reg32_t SH4_SCFCR2_TFRST_MASK = 1 << SH4_SCFCR2_TFRST_SHIFT;
+
+// Receive FIFO Data Register Reset
+static const unsigned SH4_SCFCR2_RFRST_SHIFT = 1;
+static const reg32_t SH4_SCFCR2_RFRST_MASK = 1 << SH4_SCFCR2_RFRST_SHIFT;
+
+// Loopback Test
+static const unsigned SH4_SCFCR2_LOOP_SHIFT = 0;
+static const reg32_t SH4_SCFCR2_LOOP_MASK = 1 << SH4_SCFCR2_LOOP_SHIFT;
+
 #endif

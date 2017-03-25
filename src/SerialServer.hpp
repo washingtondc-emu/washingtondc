@@ -30,6 +30,8 @@
 #include <boost/array.hpp>
 #include <boost/asio/buffer.hpp>
 
+#include "hw/sh4/sh4.hpp"
+
 #ifndef ENABLE_SERIAL_SERVER
 #error This file should not be included unless the serial server is enabled
 #endif
@@ -39,12 +41,22 @@ public:
     // it's 'cause 1998 is the year the Dreamcast came out in Japan
     static const unsigned PORT_NO = 1998;
 
-    SerialServer();
+    SerialServer(Sh4 *cpu);
     ~SerialServer();
 
     void attach();
 
     void put(uint8_t dat);
+
+    /*
+     * The SCIF calls this to let us know that it has data ready to transmit.
+     * If the SerialServer is idling, it will immediately call sh4_scif_cts, and the
+     * sh4 will send the data to the SerialServer via the SerialServer's put method
+     *
+     * If the SerialServer is active, this function does nothing and the server will call
+     * sh4_scif_cts later when it is ready.
+     */
+    void notify_tx_ready();
 
 private:
     boost::asio::ip::tcp::endpoint tcp_endpoint;
@@ -58,6 +70,8 @@ private:
     std::queue<uint8_t> output_queue;
 
     bool is_writing;
+
+    Sh4 *cpu;
 
     void handle_read(const boost::system::error_code& error);
     void handle_write(const boost::system::error_code& error);

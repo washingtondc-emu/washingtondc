@@ -263,33 +263,27 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "DMAOR", 0xffa00040, ~addr32_t(0), 4, SH4_REG_DMAOR, true,
       Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
 
-    /*
-     * Serial port - I know some of the homebrew stuff uses this, but AFAIK
-     * it's not critical
-     *
-     * SCFSR2 and SCLSR2 are only supposed to be writeable if you write 0,
-     * but I made them fully R/W
-     */
-    { "SCSMR2", 0xffe80000, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
-    { "SCBRR2", 0xffe80004, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0xff, 0xff },
-    { "SCSCR2", 0xffe80008, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    /* Serial port */
+    { "SCSMR2", 0xffe80000, ~addr32_t(0), 2, SH4_REG_SCSMR2, false,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+    { "SCBRR2", 0xffe80004, ~addr32_t(0), 1, SH4_REG_SCBRR2, false,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0xff, 0xff },
+    { "SCSCR2", 0xffe80008, ~addr32_t(0), 2, SH4_REG_SCSCR2, false,
+      sh4_scscr2_reg_read_handler, sh4_scscr2_reg_write_handler, 0, 0 },
     { "SCFTDR2", 0xffe8000c, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, false,
-      Sh4WriteOnlyRegReadHandler, Sh4IgnoreRegWriteHandler, 0xff, 0xff },
-    { "SCFSR2", 0xffe80010, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0x0060, 0x0060 },
+      Sh4WriteOnlyRegReadHandler, sh4_scftdr2_reg_write_handler, 0xff, 0xff },
+    { "SCFSR2", 0xffe80010, ~addr32_t(0), 2, SH4_REG_SCFSR2, false,
+      sh4_scfsr2_reg_read_handler, sh4_scfsr2_reg_write_handler, 0x0060, 0x0060 },
     { "SCFRDR2", 0xffe80014, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4ReadOnlyRegWriteHandler, 0, 0 },
-    { "SCFCR2", 0xffe80018, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_scfrdr2_reg_read_handler, Sh4ReadOnlyRegWriteHandler, 0, 0 },
+    { "SCFCR2", 0xffe80018, ~addr32_t(0), 2, SH4_REG_SCFCR2, false,
+      sh4_scfcr2_reg_read_handler, sh4_scfcr2_reg_write_handler, 0, 0 },
     { "SCFDR2", 0xffe8001c, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4ReadOnlyRegWriteHandler, 0, 0 },
-    { "SCSPTR2", 0xffe80020, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
-    { "SCLSR2", 0xffe80024, ~addr32_t(0), 2, (sh4_reg_idx_t)-1, false,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_scfdr2_reg_read_handler, Sh4ReadOnlyRegWriteHandler, 0, 0 },
+    { "SCSPTR2", 0xffe80020, ~addr32_t(0), 2, SH4_REG_SCSPTR2, false,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+    { "SCLSR2", 0xffe80024, ~addr32_t(0), 2, SH4_REG_SCLSR2, false,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
 
     /* interrupt controller */
     { "ICR", 0xffd00000, ~addr32_t(0), 2, SH4_REG_ICR, true,

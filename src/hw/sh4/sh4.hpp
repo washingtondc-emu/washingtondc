@@ -38,6 +38,7 @@
 #include "sh4_tmu.hpp"
 #include "sh4_ocache.hpp"
 #include "sh4_excp.hpp"
+#include "sh4_scif.hpp"
 
 /* Hitachi SuperH-4 interpreter */
 
@@ -94,6 +95,8 @@ struct Sh4 {
     struct sh4_ocache ocache;
 
     struct sh4_intc intc;
+
+    struct sh4_scif scif;
 
     /*
      * pointer to place where memory-mapped registers are stored.

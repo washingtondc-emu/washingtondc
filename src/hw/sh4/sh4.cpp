@@ -84,9 +84,11 @@ void sh4_init(Sh4 *sh4) {
 
     sh4_ocache_init(&sh4->ocache);
 
-    sh4_init_regs(sh4);
-
     sh4_tmu_init(&sh4->tmu);
+
+    sh4_scif_init(&sh4->scif);
+
+    sh4_init_regs(sh4);
 
     sh4_compile_instructions();
 

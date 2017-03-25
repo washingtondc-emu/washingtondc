@@ -167,6 +167,12 @@ Debugger *dreamcast_get_debugger() {
 }
 #endif
 
+#ifdef ENABLE_SERIAL_SERVER
+SerialServer *dreamcast_get_serial_server() {
+    return serial_server;
+}
+#endif
+
 void dreamcast_run() {
     /*
      * TODO: later when I'm emulating more than just the CPU,
@@ -274,7 +280,7 @@ void dreamcast_enable_debugger(void) {
 
 #ifdef ENABLE_SERIAL_SERVER
 void dreamcast_enable_serial_server(void) {
-    serial_server = new SerialServer();
+    serial_server = new SerialServer(&cpu);
     serial_server->attach();
 }
 #endif

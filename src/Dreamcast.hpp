@@ -33,6 +33,10 @@
 #include "Debugger.hpp"
 #endif
 
+#ifdef ENABLE_SERIAL_SERVER
+#include "SerialServer.hpp"
+#endif
+
 void dreamcast_init(char const *bios_path, char const *flash_path = NULL);
 
 #ifdef ENABLE_DIRECT_BOOT
@@ -72,10 +76,15 @@ void dreamcast_kill();
 Sh4 *dreamcast_get_cpu();
 
 #ifdef ENABLE_DEBUGGER
-
-extern boost::asio::io_service dc_io_service;
-
 Debugger *dreamcast_get_debugger();
+#endif
+
+#ifdef ENABLE_SERIAL_SERVER
+SerialServer *dreamcast_get_serial_server();
+#endif
+
+#if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
+extern boost::asio::io_service dc_io_service;
 #endif
 
 #endif

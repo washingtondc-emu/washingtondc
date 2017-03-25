@@ -129,6 +129,16 @@ int main(int argc, char **argv) {
     }
 
     try {
+        if (enable_serial) {
+#ifdef ENABLE_SERIAL_SERVER
+            dreamcast_enable_serial_server();
+#else
+            std::cerr << "WARNING: Unable to enable TCP serial server." <<
+                std::endl << "Please rebuild with -DENABLE_SERIAL_SERVER" <<
+                std::endl;
+#endif
+        }
+
 #ifdef ENABLE_DIRECT_BOOT
         if (boot_direct) {
             dreamcast_init_direct(path_ip_bin, path_1st_read_bin,
@@ -140,16 +150,6 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_DIRECT_BOOT
         }
 #endif
-
-        if (enable_serial) {
-#ifdef ENABLE_SERIAL_SERVER
-            dreamcast_enable_serial_server();
-#else
-            std::cerr << "WARNING: Unable to enable TCP serial server." <<
-                std::endl << "Please rebuild with -DENABLE_SERIAL_SERVER" <<
-                std::endl;
-#endif
-        }
 
         if (enable_debugger) {
 #ifdef ENABLE_DEBUGGER

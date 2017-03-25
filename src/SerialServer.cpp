@@ -32,11 +32,13 @@
 #error This file should not be built unless the serial server is enabled
 #endif
 
-SerialServer::SerialServer() : tcp_endpoint(boost::asio::ip::tcp::v4(),
-                                            PORT_NO),
-                               tcp_acceptor(dc_io_service, tcp_endpoint),
-                               tcp_socket(dc_io_service) {
+SerialServer::SerialServer(Sh4 *cpu) : tcp_endpoint(boost::asio::ip::tcp::v4(),
+                                                    PORT_NO),
+                                       tcp_acceptor(dc_io_service,
+                                                    tcp_endpoint),
+                                       tcp_socket(dc_io_service) {
     is_writing = false;
+    this->cpu = cpu;
 }
 
 SerialServer::~SerialServer() {
@@ -59,16 +61,14 @@ void SerialServer::attach() {
 void SerialServer::handle_read(const boost::system::error_code& error) {
     if (error)
         return;
-    for (unsigned idx = 0; idx < read_buffer.size(); idx++) {
-        input_queue.push(read_buffer.at(idx));
-    }
 
-    /*
-     * TODO: send data to the SCIF.  For now we just echo back
-     * 'cause there is no SCIF yet
-     */
+    // TODO: input_queue doesn't actually need to exist, does it ?
+    for (unsigned idx = 0; idx < read_buffer.size(); idx++)
+        input_queue.push(read_buffer.at(idx));
+
+    // now send the data to the SCIF one char at a time
     while (input_queue.size()) {
-        put(input_queue.front());
+        sh4_scif_rx(cpu, input_queue.front());
         input_queue.pop();
     }
 
@@ -101,8 +101,12 @@ void SerialServer::write_start() {
 void SerialServer::handle_write(const boost::system::error_code& error) {
     is_writing = false;
 
-    if (output_queue.empty())
-        return;
+    if (output_queue.empty()) {
+        sh4_scif_cts(cpu);
+
+        if (output_queue.empty())
+            return;
+    }
 
     write_start();
 }
@@ -111,4 +115,9 @@ void SerialServer::put(uint8_t dat) {
     output_queue.push(dat);
 
     write_start();
+}
+
+void SerialServer::notify_tx_ready() {
+    if (output_queue.empty())
+        sh4_scif_cts(cpu);
 }

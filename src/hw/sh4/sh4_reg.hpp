@@ -218,6 +218,33 @@ typedef enum sh4_reg_idx {
     SH4_REG_PCTRB,
     SH4_REG_PDTRB,
 
+    /* SCIF Serial Mode Register */
+    SH4_REG_SCSMR2,
+
+    /* SCIF Bitrate Register */
+    SH4_REG_SCBRR2,
+
+    /* SCIF Serial Control Register */
+    SH4_REG_SCSCR2,
+
+    /* SCIF Transmit FIFO Data Register */
+    // SH4_REG_SCFTDR2,
+
+    /* SCIF Serial Status Register */
+    SH4_REG_SCFSR2,
+
+    /* SCIF Receive FIFO Data Register */
+    // SH4_REG_SCFRDR2,
+
+    /* SCIF FIFO Control Register */
+    SH4_REG_SCFCR2,
+
+    /* SCIF Serial Port Register */
+    SH4_REG_SCSPTR2,
+
+    /* SCIF Line Status Register */
+    SH4_REG_SCLSR2,
+
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
 
