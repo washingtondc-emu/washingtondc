@@ -27,6 +27,8 @@
 
 #include <boost/cstdint.hpp>
 
+class SerialServer;
+
 /*
  * SH4 SCIF (Serial Port) emulation
  *
@@ -78,21 +80,15 @@ struct sh4_scif {
      */
     bool tend_read, dr_read, tdfe_read, rdf_read;
 
-    /*
-     * size of scfrdr2 and scftdr2.  These only count up to 16 since that's
-     * all the software is aware of.  If you want to know how much data is
-     * actually queued for transmit/receive, check out how long tx_queue and
-     * rx_queue are.
-     *
-     * This is the same data that goes in the SCFDR2 register.
-     */
-    // unsigned scfrdr2_sz, scftdr2_sz;
+    SerialServer *ser_srv;
 };
 
 struct Sh4;
 
 void sh4_scif_init(sh4_scif *scif);
 void sh4_scif_cleanup(sh4_scif *scif);
+
+void sh4_scif_connect_server(Sh4 *sh4, SerialServer *ser_srv);
 
 int
 sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,

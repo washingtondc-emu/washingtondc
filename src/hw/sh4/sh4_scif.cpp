@@ -105,6 +105,10 @@ void sh4_scif_cleanup(sh4_scif *scif) {
     memset(scif, 0, sizeof(*scif));
 }
 
+void sh4_scif_connect_server(Sh4 *sh4, SerialServer *ser_srv) {
+    sh4->scif.ser_srv = ser_srv;
+}
+
 int
 sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,
                             struct Sh4MemMappedReg const *reg_info) {
@@ -155,11 +159,13 @@ int
 sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
                               struct Sh4MemMappedReg const *reg_info) {
 #ifdef ENABLE_SERIAL_SERVER
-    uint8_t dat;
+    if (sh4->scif.ser_srv) {
+        uint8_t dat;
 
-    memcpy(&dat, buf, sizeof(dat));
-    sh4->scif.tx_queue->push(dat);
-    dreamcast_get_serial_server()->notify_tx_ready();
+        memcpy(&dat, buf, sizeof(dat));
+        sh4->scif.tx_queue->push(dat);
+        sh4->scif.ser_srv->notify_tx_ready();
+    }
 #endif
 
     return 0;
@@ -168,16 +174,18 @@ sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
 #ifdef ENABLE_SERIAL_SERVER
 
 void sh4_scif_cts(Sh4 *sh4) {
-    std::queue<uint8_t> *tx_queue = sh4->scif.tx_queue;
+    if (sh4->scif.ser_srv) {
+        std::queue<uint8_t> *tx_queue = sh4->scif.tx_queue;
 
-    check_tx_reset(sh4);
+        check_tx_reset(sh4);
 
-    if (tx_queue->size()) {
-        dreamcast_get_serial_server()->put(tx_queue->front());
-        tx_queue->pop();
-        check_tx_trig(sh4);
-    } else {
-        sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_TEND_MASK;
+        if (tx_queue->size()) {
+            sh4->scif.ser_srv->put(tx_queue->front());
+            tx_queue->pop();
+            check_tx_trig(sh4);
+        } else {
+            sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_TEND_MASK;
+        }
     }
 }
 

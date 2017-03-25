@@ -79,10 +79,6 @@ Sh4 *dreamcast_get_cpu();
 Debugger *dreamcast_get_debugger();
 #endif
 
-#ifdef ENABLE_SERIAL_SERVER
-SerialServer *dreamcast_get_serial_server();
-#endif
-
 #if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
 extern boost::asio::io_service dc_io_service;
 #endif

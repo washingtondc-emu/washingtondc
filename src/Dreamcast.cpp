@@ -71,6 +71,11 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     bios = new BiosFile(bios_path);
     memory_map_init(bios, &mem);
     sh4_init(&cpu);
+
+#ifdef ENABLE_SERIAL_SERVER
+    if (serial_server)
+        sh4_scif_connect_server(&cpu, serial_server);
+#endif
 }
 
 #ifdef ENABLE_DIRECT_BOOT
@@ -137,6 +142,11 @@ void dreamcast_init_direct(char const *path_ip_bin,
 
     sh4_init(&cpu);
 
+#ifdef ENABLE_SERIAL_SERVER
+    if (serial_server)
+        sh4_scif_connect_server(&cpu, serial_server);
+#endif
+
     /* set the PC to the booststrap code within IP.BIN */
     if (skip_ip_bin)
         cpu.reg[SH4_REG_PC] = ADDR_1ST_READ_BIN;
@@ -164,12 +174,6 @@ void dreamcast_cleanup() {
 #ifdef ENABLE_DEBUGGER
 Debugger *dreamcast_get_debugger() {
     return debugger;
-}
-#endif
-
-#ifdef ENABLE_SERIAL_SERVER
-SerialServer *dreamcast_get_serial_server() {
-    return serial_server;
 }
 #endif
 
