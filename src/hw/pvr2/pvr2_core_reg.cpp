@@ -136,6 +136,8 @@ static struct pvr2_core_mem_mapped_reg {
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "ISP_BACKGND_T", 0x5f808c, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+    { "ISP_FEED_CFG", 0x5f8098, 4, 1,
+      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "FOG_CLAMP_MAX", 0x5f80bc, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "FOG_CLAMP_MIN", 0x5f80c0, 4, 1,
