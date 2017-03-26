@@ -63,7 +63,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
              * XXX In case you were wondering: we don't check to see if
              * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
              */
-            if ((addr - 1 + len) > ADDR_BIOS_LAST) {
+            if ((addr + (len - 1)) > ADDR_BIOS_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -73,7 +73,8 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             }
             return bios->read(buf, addr - ADDR_BIOS_FIRST, len);
         } else if (addr >= ADDR_FLASH_FIRST && addr <= ADDR_FLASH_LAST) {
-            if ((addr + len - 1 > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
+            if ((addr + (len - 1) > ADDR_FLASH_LAST) ||
+                (addr < ADDR_FLASH_FIRST)) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -83,7 +84,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             }
             return flash_mem_read(buf, addr, len);
         } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
-            if (addr + len > ADDR_G1_LAST) {
+            if (addr + (len - 1) > ADDR_G1_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -93,7 +94,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             }
             return g1_reg_read(buf, addr, len);
         } else if (addr >= ADDR_SYS_FIRST && addr <= ADDR_SYS_LAST) {
-            if (addr + len > ADDR_SYS_LAST) {
+            if (addr + (len - 1) > ADDR_SYS_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -103,7 +104,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             }
             return sys_block_read(buf, addr, len);
         } else if (addr >= ADDR_MAPLE_FIRST && addr <= ADDR_MAPLE_LAST) {
-            if (addr + len > ADDR_MAPLE_LAST) {
+            if (addr + (len - 1) > ADDR_MAPLE_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -113,7 +114,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             }
             return maple_reg_read(buf, addr, len);
         } else if (addr >= ADDR_G2_FIRST && addr <= ADDR_G2_LAST) {
-            if (addr + len > ADDR_G2_LAST) {
+            if (addr + (len - 1) > ADDR_G2_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -123,7 +124,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             }
             return g2_reg_read(buf, addr, len);
         } else if (addr >= ADDR_PVR2_FIRST && addr <= ADDR_PVR2_LAST) {
-            if (addr + len > ADDR_PVR2_LAST) {
+            if (addr + (len - 1) > ADDR_PVR2_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -140,7 +141,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
         } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
             return aica_reg_read(buf, addr, len);
         } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
-            if (addr + len > ADDR_TEX_LAST) {
+            if (addr + (len - 1) > ADDR_TEX_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -151,7 +152,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             return pvr2_tex_mem_read(buf, addr, len);
         } else if (addr >= ADDR_AICA_WAVE_FIRST &&
                    addr <= ADDR_AICA_WAVE_FIRST) {
-            if (addr + len > ADDR_AICA_WAVE_LAST) {
+            if (addr + (len - 1) > ADDR_AICA_WAVE_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -162,7 +163,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             return aica_wave_mem_read(buf, addr, len);
         } else if (addr >= ADDR_AICA_RTC_FIRST &&
                    addr <= ADDR_AICA_RTC_LAST) {
-            if (addr + len > ADDR_AICA_RTC_LAST) {
+            if (addr + (len - 1) > ADDR_AICA_RTC_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -172,7 +173,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             }
             return aica_rtc_read(buf, addr, len);
         } else if (addr >= ADDR_GDROM_FIRST && addr <= ADDR_GDROM_LAST) {
-            if (addr + len > ADDR_GDROM_LAST) {
+            if (addr + (len - 1) > ADDR_GDROM_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest reads "
@@ -209,7 +210,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
                                                   "read-only memory") <<
                                   errinfo_length(len));
         } else if (addr >= ADDR_FLASH_FIRST && addr <= ADDR_FLASH_LAST) {
-            if ((addr + len - 1 > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
+            if ((addr + (len - 1) > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest tries to "
@@ -219,7 +220,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             }
             return flash_mem_write(buf, addr, len);
         } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
-            if (addr + len > ADDR_G1_LAST) {
+            if (addr + (len - 1) > ADDR_G1_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
@@ -229,7 +230,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             }
             return g1_reg_write(buf, addr, len);
         } else if (addr >= ADDR_SYS_FIRST && addr <= ADDR_SYS_LAST) {
-            if (addr + len > ADDR_SYS_LAST) {
+            if (addr + (len - 1) > ADDR_SYS_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
@@ -239,7 +240,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             }
             return sys_block_write(buf, addr, len);
         } else if (addr >= ADDR_MAPLE_FIRST && addr <= ADDR_MAPLE_LAST) {
-            if (addr + len > ADDR_MAPLE_LAST) {
+            if (addr + (len - 1) > ADDR_MAPLE_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
@@ -249,7 +250,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             }
             return maple_reg_write(buf, addr, len);
         } else if (addr >= ADDR_G2_FIRST && addr <= ADDR_G2_LAST) {
-            if (addr + len > ADDR_G2_LAST) {
+            if (addr + (len - 1) > ADDR_G2_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
@@ -259,7 +260,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             }
             return g2_reg_write(buf, addr, len);
         } else if (addr >= ADDR_PVR2_FIRST && addr <= ADDR_PVR2_LAST) {
-            if (addr + len > ADDR_PVR2_LAST) {
+            if (addr + (len - 1) > ADDR_PVR2_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
@@ -276,7 +277,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
         } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
             return aica_reg_write(buf, addr, len);
         } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
-            if (addr + len > ADDR_TEX_LAST) {
+            if (addr + (len - 1) > ADDR_TEX_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
@@ -287,7 +288,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             return pvr2_tex_mem_write(buf, addr, len);
         } else if (addr >= ADDR_AICA_WAVE_FIRST &&
                    addr <= ADDR_AICA_WAVE_LAST) {
-            if (addr + len > ADDR_AICA_WAVE_LAST) {
+            if (addr + (len - 1) > ADDR_AICA_WAVE_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
@@ -298,7 +299,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             return aica_wave_mem_write(buf, addr, len);
         } else if (addr >= ADDR_AICA_RTC_FIRST &&
                    addr <= ADDR_AICA_RTC_LAST) {
-            if (addr + len > ADDR_AICA_RTC_LAST) {
+            if (addr + (len - 1) > ADDR_AICA_RTC_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
@@ -308,7 +309,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             }
             return aica_rtc_write(buf, addr, len);
         } else if (addr >= ADDR_GDROM_FIRST && addr <= ADDR_GDROM_LAST) {
-            if (addr + len > ADDR_GDROM_LAST) {
+            if (addr + (len - 1) > ADDR_GDROM_LAST) {
                 BOOST_THROW_EXCEPTION(UnimplementedError() <<
                                       errinfo_feature("proper response for "
                                                       "when the guest writes "
