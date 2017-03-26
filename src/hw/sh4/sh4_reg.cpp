@@ -184,8 +184,8 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
      * but the bios always writes 3 to it, which disables the clock source for
      * the RTC and the SCI.
      */
-    { "STBCR", 0xffc00004, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+    { "STBCR", 0xffc00004, ~addr32_t(0), 1, SH4_REG_STBCR, true,
+      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
     { "STBCR2", 0xffc00010, ~addr32_t(0), 1, (sh4_reg_idx_t)-1, true,
       Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
 

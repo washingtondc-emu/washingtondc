@@ -122,6 +122,8 @@ void sh4_on_hard_reset(Sh4 *sh4) {
     sh4->delayed_branch_addr = 0;
 
     sh4_ocache_clear(&sh4->ocache);
+
+    sh4->exec_state = SH4_EXEC_STATE_NORM;
 }
 
 reg32_t sh4_get_pc(Sh4 *sh4) {
@@ -202,20 +204,29 @@ void sh4_single_step(Sh4 *sh4) {
 mulligan:
     try {
         sh4_check_interrupts(sh4);
-        if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
-            // TODO: some sort of logic to detect infinite loops here
-            goto mulligan;
+
+        // don't run the main CPU core for sleep or standby mode
+        if (sh4->exec_state == SH4_EXEC_STATE_NORM) {
+            if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
+                // TODO: some sort of logic to detect infinite loops here
+                goto mulligan;
+            }
+
+            InstOpcode const *op = sh4_decode_inst(sh4, inst);
+
+            sh4_do_exec_inst(sh4, inst, op);
+
+            sh4->cycle_stamp += op->issue;
+        } else {
+            sh4->cycle_stamp++;
         }
 
-        InstOpcode const *op = sh4_decode_inst(sh4, inst);
-
-        sh4_do_exec_inst(sh4, inst, op);
-
-        sh4->cycle_stamp += op->issue;
-
-        /* TODO: maybe prevent drift by accounting for remainder ? */
-        if ((sh4->cycle_stamp - sh4->tmu.last_tick) >= 4)
-            sh4_tmu_tick(sh4);
+        // don't run on-chip modules for standby mode
+        if (sh4->exec_state != SH4_EXEC_STATE_STANDBY) {
+            /* TODO: maybe prevent drift by accounting for remainder ? */
+            if ((sh4->cycle_stamp - sh4->tmu.last_tick) >= 4)
+                sh4_tmu_tick(sh4);
+        }
 
         /*
          * Ugh.  This if statement is really painful to write.  the video clock

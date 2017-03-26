@@ -336,6 +336,10 @@ void sh4_check_interrupts(Sh4 *sh4) {
                 // TODO: is it right to clear the irl lines like
                 //       this after an IRQ has been served?
                 sh4_set_irl_interrupt(sh4, 0xf);
+
+                // exit sleep/standby mode
+                sh4->exec_state = SH4_EXEC_STATE_NORM;
+
                 return;
             }
         }
@@ -357,6 +361,9 @@ void sh4_check_interrupts(Sh4 *sh4) {
         sh4_enter_exception(
             sh4, (Sh4ExceptionCode)sh4->intc.irq_lines[max_prio_line]);
         sh4->intc.irq_lines[max_prio_line] = (Sh4ExceptionCode)0;
+
+        // exit sleep/standby mode
+        sh4->exec_state = SH4_EXEC_STATE_NORM;
     }
 }
 

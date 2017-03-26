@@ -401,4 +401,42 @@ static const reg32_t SH4_SCFCR2_RFRST_MASK = 1 << SH4_SCFCR2_RFRST_SHIFT;
 static const unsigned SH4_SCFCR2_LOOP_SHIFT = 0;
 static const reg32_t SH4_SCFCR2_LOOP_MASK = 1 << SH4_SCFCR2_LOOP_SHIFT;
 
+/*******************************************************************************
+ *
+ * SH-4 Standby Control Register
+ *
+ ******************************************************************************/
+
+// Standby mode
+static const unsigned SH4_STBCR_STBY_SHIFT = 7;
+static const uint8_t SH4_STBCR_STBY_MASK = 1 << SH4_STBCR_STBY_SHIFT;
+
+// Peripheral Module Pin High Impedance Control
+static const unsigned SH4_STBCR_PHZ_SHIFT = 6;
+static const uint8_t SH4_STBCR_PHZ_MASK = 1 << SH4_STBCR_PHZ_SHIFT;
+
+// Peripheral Module Pin Pull-Up Control
+static const unsigned SH4_STBCR_PPU_SHIFT = 5;
+static const uint8_t SH4_STBCR_PPU_MASK = 1 << SH4_STBCR_PPU_SHIFT;
+
+// Module Stop 4
+static const unsigned SH4_STBCR_MSTP4_SHIFT = 4;
+static const uint8_t SH4_STBCR_MSTP4_MASK = 1 << SH4_STBCR_MSTP4_SHIFT;
+
+// Module Stop 3
+static const unsigned SH4_STBCR_MSTP3_SHIFT = 3;
+static const uint8_t SH4_STBCR_MSTP3_MASK = 1 << SH4_STBCR_MSTP3_SHIFT;
+
+// Module Stop 2
+static const unsigned SH4_STBCR_MSTP2_SHIFT = 2;
+static const uint8_t SH4_STBCR_MSTP2_MASK = 1 << SH4_STBCR_MSTP2_SHIFT;
+
+// Module Stop 1
+static const unsigned SH4_STBCR_MSTP1_SHIFT = 1;
+static const uint8_t SH4_STBCR_MSTP1_MASK = 1 << SH4_STBCR_MSTP1_SHIFT;
+
+// Module Stop 0
+static const unsigned SH4_STBCR_MSTP0_SHIFT = 0;
+static const uint8_t SH4_STBCR_MSTP0_MASK = 1 << SH4_STBCR_MSTP0_SHIFT;
+
 #endif

@@ -47,7 +47,15 @@ typedef boost::error_info<struct tag_sh4_cycle_stamp, uint64_t> errinfo_cycle_st
 static const size_t SH4_N_FLOAT_REGS = 16;
 static const size_t SH4_N_DOUBLE_REGS = 8;
 
+enum Sh4ExecState {
+    SH4_EXEC_STATE_NORM,
+    SH4_EXEC_STATE_SLEEP,
+    SH4_EXEC_STATE_STANDBY
+};
+
 struct Sh4 {
+    Sh4ExecState exec_state;
+
     reg32_t reg[SH4_REGISTER_COUNT];
 
 #ifdef ENABLE_SH4_MMU

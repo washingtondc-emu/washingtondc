@@ -245,6 +245,9 @@ typedef enum sh4_reg_idx {
     /* SCIF Line Status Register */
     SH4_REG_SCLSR2,
 
+    /* Standby Control Register */
+    SH4_REG_STBCR,
+
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
 
