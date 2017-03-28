@@ -20,7 +20,8 @@
  *
  ******************************************************************************/
 
-#include <time.h>
+#include <ctime>
+#include <csignal>
 #include <fstream>
 #include <iostream>
 
@@ -57,6 +58,17 @@ static SerialServer *serial_server;
 // Used by the GdbStub and SerialServer (if enabled) to do async network I/O
 boost::asio::io_service dc_io_service;
 #endif
+
+enum TermReason {
+    TERM_REASON_NORM,   // normal program exit
+    TERM_REASON_SIGINT, // received SIGINT
+    TERM_REASON_ERROR   // usually this means somebody threw a c++ exception
+};
+
+// this stores the reason the dreamcast suspended execution
+TermReason term_reason = TERM_REASON_NORM;
+
+static void dc_sigint_handler(int param);
 
 void dreamcast_init(char const *bios_path, char const *flash_path) {
     is_running = true;
@@ -178,6 +190,8 @@ Debugger *dreamcast_get_debugger() {
 #endif
 
 void dreamcast_run() {
+    signal(SIGINT, dc_sigint_handler);
+
     /*
      * TODO: later when I'm emulating more than just the CPU,
      * I'll need to remember to call this every time I re-enter
@@ -238,6 +252,7 @@ void dreamcast_run() {
         }
     } catch(const BaseException& exc) {
         std::cerr << boost::diagnostic_information(exc);
+        term_reason = TERM_REASON_ERROR;
     }
     clock_gettime(CLOCK_MONOTONIC, &end_time);
 
@@ -250,10 +265,24 @@ void dreamcast_run() {
         delta_time.tv_sec = end_time.tv_sec - start_time.tv_sec;
     }
 
-    if (!is_running)
+    switch (term_reason) {
+    case TERM_REASON_NORM:
         std::cout << "program execution ended normally" << std::endl;
+        break;
+    case TERM_REASON_ERROR:
+        std::cout << "program execution ended due to an unrecoverable " <<
+            "error" << std::endl;
+        break;
+    case TERM_REASON_SIGINT:
+        std::cout << "program execution ended due to user-initiated " <<
+            "interruption" << std::endl;
+        break;
+    default:
+        std::cout << "program execution ended for unknown reasons" << std::endl;
+        break;
+    }
 
-    std::cout << "Total elapsed time: " << delta_time.tv_sec <<
+    std::cout << "Total elapsed time: " << std::dec << delta_time.tv_sec <<
         " seconds and " << delta_time.tv_nsec << " nanoseconds." << std::endl;
 
     std::cout << cpu.cycle_stamp << " SH4 CPU cycles executed." << std::endl;
@@ -288,3 +317,8 @@ void dreamcast_enable_serial_server(void) {
     serial_server->attach();
 }
 #endif
+
+static void dc_sigint_handler(int param) {
+    is_running = false;
+    term_reason = TERM_REASON_SIGINT;
+}
