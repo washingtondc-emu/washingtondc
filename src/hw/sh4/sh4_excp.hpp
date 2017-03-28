@@ -172,18 +172,4 @@ void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line, Sh4ExceptionCode intp_code);
 /* check IRQ lines and enter interrupt state if necessary */
 void sh4_check_interrupts(Sh4 *sh4);
 
-/* Memory-mapped register read/write callbacks */
-int Sh4TraRegReadHandler(Sh4 *sh4, void *buf,
-                         struct Sh4MemMappedReg const *reg_info);
-int Sh4TraRegWriteHandler(Sh4 *sh4, void const *buf,
-                          struct Sh4MemMappedReg const *reg_info);
-int Sh4ExpevtRegReadHandler(Sh4 *sh4, void *buf,
-                            struct Sh4MemMappedReg const *reg_info);
-int Sh4ExpevtRegWriteHandler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info);
-int Sh4IntevtRegReadHandler(Sh4 *sh4, void *buf,
-                            struct Sh4MemMappedReg const *reg_info);
-int Sh4IntevtRegWriteHandler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info);
-
 #endif

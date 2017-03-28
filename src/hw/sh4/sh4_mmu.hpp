@@ -131,12 +131,6 @@ enum PageSize {
     SH4_MMU_ONE_MEGA = 3
 };
 
-/* memory-mapped register read/write handlers for MMUCR */
-int Sh4MmucrRegReadHandler(Sh4 *sh4, void *buf,
-                           struct Sh4MemMappedReg const *reg_info);
-int Sh4MmucrRegWriteHandler(Sh4 *sh4, void const *buf,
-                            struct Sh4MemMappedReg const *reg_info);
-
 #ifdef ENABLE_SH4_MMU
 
 struct sh4_utlb_entry {

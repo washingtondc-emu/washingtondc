@@ -27,36 +27,6 @@
 
 #include "sh4.hpp"
 
-int Sh4MmucrRegReadHandler(Sh4 *sh4, void *buf,
-                           struct Sh4MemMappedReg const *reg_info) {
-    memcpy(buf, sh4->reg + SH4_REG_MMUCR, sizeof(sh4->reg[SH4_REG_MMUCR]));
-
-    return 0;
-}
-
-int Sh4MmucrRegWriteHandler(Sh4 *sh4, void const *buf,
-                            struct Sh4MemMappedReg const *reg_info) {
-    reg32_t mmucr_tmp;
-    memcpy(&mmucr_tmp, buf, sizeof(mmucr_tmp));
-
-    if (mmucr_tmp & SH4_MMUCR_AT_MASK) {
-        /*
-         * The thing is, I have a lot of code to support MMU operation in place,
-         * but it's not all tested and I also don't think I have all the
-         * functionality in place.  MMU support is definitely something I want
-         * to do eventuaally and it's something I always have in mind when
-         * writing new code, but it's just not there yet.
-         */
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_regname("MMUCR") <<
-                              errinfo_guest_addr(reg_info->addr));
-    }
-
-    sh4->reg[SH4_REG_MMUCR] = mmucr_tmp;
-
-    return 0;
-}
-
 #ifdef ENABLE_SH4_MMU
 
 void sh4_mmu_init(Sh4 *sh4) {
