@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include "BaseException.hpp"
+#include "Dreamcast.hpp"
 #include "hw/sh4/sh4.hpp"
 #include "hw/sys/holly_intc.hpp"
 
@@ -34,14 +35,14 @@
  *
  * It corresponds to bit 23 of FB_R_CTRL (vclk_div)
  */
-__attribute__((unused)) static unsigned vclk_div = 2;
+static unsigned vclk_div = 2;
 
 /*
  * This increments once per tick (should be 27 MHz).
  *
  * when it's equal to vclk_div, the pixel clock ticks.
  */
-__attribute__((unused)) static unsigned vclk;
+static unsigned vclk;
 
 // whether to double pixels horizontally/vertically
 static bool pix_double_x, pix_double_y;
@@ -67,10 +68,48 @@ static reg32_t spg_reg[SPG_REG_COUNT] = {
 
 static unsigned raster_x, raster_y;
 
+static SchedEvent spg_tick_event;
+
 // pixel clock, called every vclk_div or vclk_div / 2 cycles of vclck
 static void spg_pclk_tick();
 
-void spg_tick() {
+static void spg_tick(SchedEvent *event);
+
+void spg_init() {
+    spg_tick_event.when = dc_cycle_stamp() + 7;
+    spg_tick_event.handler = spg_tick;
+
+    sched_event(&spg_tick_event);
+}
+
+void spg_cleanup() {
+}
+
+static void spg_tick(SchedEvent *event) {
+    /*
+     * Ugh.  This if statement is really painful to write.  the video clock
+     * is supposed to be 27 MHz, which doesn't evenly divide from 200 MHz.
+     * I tick it on every 7th cycle, which means that the video clock is
+     * actually running a little fast at approx 28.57 MHz.
+     *
+     * A better way to do this would probably be to track the missed cycles
+     * and let them accumulate so that sometimes the video clock ticks
+     * after 7 cycles and sometimes it ticks after 8 cycles.  This is not
+     * that complicated to do, but my head is in no state to do Algebra
+     * right now.
+     *
+     * The perfect way to do this would be to divide both 27 MHz and
+     * 200 MHz from their LCD (which is 5400 MHz according to
+     * Wolfram Alpha).  *Maybe* this will be feasible later when I have a
+     * scheduler implemented; I can't think of a good reason why it wouldn't
+     * be, but it does sound too good to be true.  I'm a mess right now
+     * after spending an entire weekend stressing out over this and
+     * VBLANK/HBLANK timings so I'm in no mood to contemplate the
+     * possibilities.
+     */
+    spg_tick_event.when = dc_cycle_stamp() + 7;
+    sched_event(&spg_tick_event);
+
     vclk++;
     if (vclk < vclk_div)
         return;

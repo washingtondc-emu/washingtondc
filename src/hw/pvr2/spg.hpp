@@ -24,14 +24,16 @@
 #define SPG_HPP_
 
 #include "types.hpp"
+#include "dc_sched.hpp"
+
+void spg_init();
+void spg_cleanup();
 
 // val should be either 1 or 2
 void spg_set_vclk_div(unsigned val);
 
 void spg_set_pix_double_x(bool val);
 void spg_set_pix_double_y(bool val);
-
-void spg_tick();
 
 int
 read_spg_hblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,

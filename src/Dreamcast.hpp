@@ -28,6 +28,7 @@
 #include "BiosFile.hpp"
 #include "Memory.hpp"
 #include "hw/sh4/sh4.hpp"
+#include "dc_sched.hpp"
 
 #ifdef ENABLE_DEBUGGER
 #include "Debugger.hpp"
@@ -82,5 +83,21 @@ Debugger *dreamcast_get_debugger();
 #if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
 extern boost::asio::io_service dc_io_service;
 #endif
+
+/*
+ * This is being made extern so that dc_cycle_stamp() can be an inline function.
+ * This variable should not be read from or written to from outside of
+ * Dreamcast.cpp.
+ */
+extern dc_cycle_stamp_t dc_cycle_stamp_priv_;
+
+static inline dc_cycle_stamp_t dc_cycle_stamp() {
+    return dc_cycle_stamp_priv_;
+}
+
+// advance the cycle stmap by n_cycles.  This will not run any scheduled events.
+static inline void dc_cycle_advance(dc_cycle_stamp_t n_cycles) {
+    dc_cycle_stamp_priv_ += n_cycles;
+}
 
 #endif

@@ -24,6 +24,12 @@
 
 #include "sh4_excp.hpp"
 #include "sh4.hpp"
+#include "dc_sched.hpp"
+#include "Dreamcast.hpp"
+
+#include "sh4_tmu.hpp"
+
+static struct SchedEvent tmu_tick_event;
 
 // lookup table for TCR register indices
 static sh4_reg_idx_t const chan_tcr[3] = {
@@ -40,17 +46,32 @@ static sh4_reg_idx_t const chan_tcor[3] = {
     SH4_REG_TCOR0, SH4_REG_TCOR1, SH4_REG_TCOR2
 };
 
-void sh4_tmu_init(sh4_tmu *tmu) {
+void sh4_tmu_init(Sh4 *sh4) {
+    sh4_tmu *tmu = &sh4->tmu;
+
     memset(tmu, 0, sizeof(*tmu));
+
+    tmu_tick_event.when = dc_cycle_stamp() + 4;
+    tmu_tick_event.handler = sh4_tmu_tick;
+    tmu_tick_event.arg_ptr = sh4;
+
+    sched_event(&tmu_tick_event);
 }
 
-void sh4_tmu_cleanup(sh4_tmu *tmu) {
+void sh4_tmu_cleanup(Sh4 *sh4) {
 }
 
-void sh4_tmu_tick(Sh4 *sh4) {
+void sh4_tmu_tick(SchedEvent *event) {
+    Sh4 *sh4 = (Sh4*)event->arg_ptr;
+
     unsigned ticks_per_countdown;
 
-    sh4->tmu.last_tick = sh4->cycle_stamp;
+    tmu_tick_event.when = dc_cycle_stamp() + 4;
+    sched_event(&tmu_tick_event);
+
+    // don't run on-chip modules for standby mode
+    if (sh4->exec_state == SH4_EXEC_STATE_STANDBY)
+        return;
 
     for (int chan = 0; chan < 3; chan++) {
 

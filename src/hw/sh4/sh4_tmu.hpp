@@ -24,18 +24,16 @@
 #define SH4_TMU_HPP_
 
 #include "sh4_reg.hpp"
+#include "dc_sched.hpp"
 
 struct Sh4;
 
 struct sh4_tmu {
     unsigned tchan_accum[3];
-
-    /* the sh4's cycle_stamp last time sh4_tmu_tick was called. */
-    uint64_t last_tick;
 };
 
-void sh4_tmu_init(sh4_tmu *tmu);
-void sh4_tmu_cleanup(sh4_tmu *tmu);
+void sh4_tmu_init(Sh4 *sh4);
+void sh4_tmu_cleanup(Sh4 *sh4);
 
 int sh4_tmu_tocr_read_handler(Sh4 *sh4, void *buf,
                               struct Sh4MemMappedReg const *reg_info);
@@ -52,6 +50,6 @@ int sh4_tmu_tcr_read_handler(Sh4 *sh4, void *buf,
 int sh4_tmu_tcr_write_handler(Sh4 *sh4, void const *buf,
                               struct Sh4MemMappedReg const *reg_info);
 
-void sh4_tmu_tick(Sh4 *sh4);
+void sh4_tmu_tick(SchedEvent *event);
 
 #endif

@@ -26,6 +26,7 @@
 
 #include "hw/pvr2/spg.hpp"
 #include "BaseException.hpp"
+#include "Dreamcast.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4_excp.hpp"
 #include "sh4_reg.hpp"
@@ -73,7 +74,6 @@ errinfo_reg_mmucr;
 void sh4_init(Sh4 *sh4) {
     memset(sh4, 0, sizeof(*sh4));
     sh4->reg_area = new uint8_t[SH4_P4_REGEND - SH4_P4_REGSTART];
-    sh4->cycle_stamp = 0;
 
 #ifdef ENABLE_SH4_MMU
     sh4_mmu_init(sh4);
@@ -84,7 +84,7 @@ void sh4_init(Sh4 *sh4) {
 
     sh4_ocache_init(&sh4->ocache);
 
-    sh4_tmu_init(&sh4->tmu);
+    sh4_tmu_init(sh4);
 
     sh4_scif_init(&sh4->scif);
 
@@ -96,7 +96,7 @@ void sh4_init(Sh4 *sh4) {
 }
 
 void sh4_cleanup(Sh4 *sh4) {
-    sh4_tmu_cleanup(&sh4->tmu);
+    sh4_tmu_cleanup(sh4);
 
     sh4_ocache_cleanup(&sh4->ocache);
 
@@ -166,7 +166,6 @@ void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles) {
     int exc_pending;
 
     n_cycles += sh4->cycles_accum;
-    sh4->cycles_accum = 0;
 
 mulligan:
     try {
@@ -179,21 +178,31 @@ mulligan:
 
             InstOpcode const *op = sh4_decode_inst(sh4, inst);
 
+            /*
+             * The reason why this function subtracts sh4->cycles_accum both
+             * times that can call dc_cycle_advance is that sh4->cycles_accum
+             * would have been included in a previous call to dc_cycle_advance.
+             */
             if (op->issue > n_cycles) {
+                dc_cycle_advance(n_cycles - sh4->cycles_accum);
                 sh4->cycles_accum = n_cycles;
                 return;
             }
 
             n_cycles -= op->issue;
-            sh4->cycle_stamp += op->issue;
+            dc_cycle_advance(op->issue - sh4->cycles_accum);
+            sh4->cycles_accum = 0;
 
             sh4_do_exec_inst(sh4, inst, op);
 
         } while (n_cycles);
     } catch (BaseException& exc) {
         sh4_add_regs_to_exc(sh4, exc);
+        sh4->cycles_accum = 0;
         throw;
     }
+
+    sh4->cycles_accum = 0;
 }
 
 /* executes a single instruction and maybe ticks the clock. */
@@ -214,48 +223,34 @@ mulligan:
 
             InstOpcode const *op = sh4_decode_inst(sh4, inst);
 
+            // I *wish* I could find a way to keep  this code in Dreamcast.cpp...
+            SchedEvent *next_event;
+            dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp() + op->issue;
+            while ((next_event = peek_event()) &&
+                   (next_event->when <= tgt_stamp)) {
+                pop_event();
+                dc_cycle_advance(next_event->when - dc_cycle_stamp());
+                next_event->handler(next_event);
+            }
+
             sh4_do_exec_inst(sh4, inst, op);
 
-            sh4->cycle_stamp += op->issue;
+            dc_cycle_advance(tgt_stamp - dc_cycle_stamp());
         } else {
-            sh4->cycle_stamp++;
-        }
+            // I *wish* I could find a way to keep  this code in Dreamcast.cpp...
+            SchedEvent *next_event;
+            while ((next_event = peek_event()) &&
+                   (next_event->when <= (dc_cycle_stamp() + 1))) {
+                // dc_cycle_advance(next_event->when - dc_cycle_stamp());
+                next_event->handler(next_event);
+                pop_event();
+            }
 
-        // don't run on-chip modules for standby mode
-        if (sh4->exec_state != SH4_EXEC_STATE_STANDBY) {
-            /* TODO: maybe prevent drift by accounting for remainder ? */
-            if ((sh4->cycle_stamp - sh4->tmu.last_tick) >= 4)
-                sh4_tmu_tick(sh4);
-        }
-
-        /*
-         * Ugh.  This if statement is really painful to write.  the video clock
-         * is supposed to be 27 MHz, which doesn't evenly divide from 200 MHz.
-         * I tick it on every 7th cycle, which means that the video clock is
-         * actually running a little fast at approx 28.57 MHz.
-         *
-         * A better way to do this would probably be to track the missed cycles
-         * and let them accumulate so that sometimes the video clock ticks
-         * after 7 cycles and sometimes it ticks after 8 cycles.  This is not
-         * that complicated to do, but my head is in no state to do Algebra
-         * right now.
-         *
-         * The perfect way to do this would be to divide both 27 MHz and
-         * 200 MHz from their LCD (which is 5400 MHz according to
-         * Wolfram Alpha).  *Maybe* this will be feasible later when I have a
-         * scheduler implemented; I can't think of a good reason why it wouldn't
-         * be, but it does sound too good to be true.  I'm a mess right now
-         * after spending an entire weekend stressing out over this and
-         * VBLANK/HBLANK timings so I'm in no mood to contemplate the
-         * possibilities.
-         */
-        if ((sh4->cycle_stamp - sh4->last_vclk_tick) >= 7) {
-            sh4->last_vclk_tick = sh4->cycle_stamp;
-            spg_tick();
+            dc_cycle_advance(1);
         }
     } catch (BaseException& exc) {
         sh4_add_regs_to_exc(sh4, exc);
-        exc << errinfo_cycle_stamp(sh4->cycle_stamp);
+        exc << errinfo_cycle_stamp(dc_cycle_stamp());
         throw;
     }
 }

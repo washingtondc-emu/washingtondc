@@ -27,6 +27,8 @@
 
 #include "common/BaseException.hpp"
 #include "flash_memory.hpp"
+#include "dc_sched.hpp"
+#include "hw/pvr2/spg.hpp"
 
 #ifdef ENABLE_DEBUGGER
 #include "GdbStub.hpp"
@@ -59,6 +61,8 @@ static SerialServer *serial_server;
 boost::asio::io_service dc_io_service;
 #endif
 
+dc_cycle_stamp_t dc_cycle_stamp_priv_;
+
 enum TermReason {
     TERM_REASON_NORM,   // normal program exit
     TERM_REASON_SIGINT, // received SIGINT
@@ -83,6 +87,7 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     bios = new BiosFile(bios_path);
     memory_map_init(bios, &mem);
     sh4_init(&cpu);
+    spg_init();
 
 #ifdef ENABLE_SERIAL_SERVER
     if (serial_server)
@@ -154,6 +159,8 @@ void dreamcast_init_direct(char const *path_ip_bin,
 
     sh4_init(&cpu);
 
+    spg_init();
+
 #ifdef ENABLE_SERIAL_SERVER
     if (serial_server)
         sh4_scif_connect_server(&cpu, serial_server);
@@ -168,6 +175,8 @@ void dreamcast_init_direct(char const *path_ip_bin,
 #endif
 
 void dreamcast_cleanup() {
+    spg_cleanup();
+
 #ifdef ENABLE_DEBUGGER
     if (debugger)
         delete debugger;
@@ -246,8 +255,31 @@ void dreamcast_run() {
              */
             sh4_single_step(&cpu);
 #else
-            sh4_run_cycles(&cpu, 4);
-            sh4_tmu_tick(&cpu);
+            SchedEvent *next_event = pop_event();
+
+            /*
+             * if, during the last big chunk of SH4 instructions, there was an
+             * event pushed that predated what was originally the next event,
+             * then we will have accidentally skipped over it.
+             * In this case, we want to run that event immediately without
+             * running the CPU
+             */
+            if (next_event) {
+                if (dc_cycle_stamp_priv_ < next_event->when)
+                    sh4_run_cycles(&cpu, next_event->when - dc_cycle_stamp_priv_);
+                next_event->handler(next_event);
+            } else {
+                /*
+                 * Hard to say what to do here.  Constantly checking to see if
+                 * a new event got pushed would be costly.  Instead I just run
+                 * the cpu a little, but not so much that I drastically overrun
+                 * anything that might get scheduled.  The number of cycles to
+                 * run here is arbitrary, but if it's too low then performance
+                 * will be negatively impacted and if it's too high then
+                 * accuracy will be negatively impacted.
+                 */
+                sh4_run_cycles(&cpu, 16);
+            }
 #endif
         }
     } catch(const BaseException& exc) {
@@ -285,11 +317,11 @@ void dreamcast_run() {
     std::cout << "Total elapsed time: " << std::dec << delta_time.tv_sec <<
         " seconds and " << delta_time.tv_nsec << " nanoseconds." << std::endl;
 
-    std::cout << cpu.cycle_stamp << " SH4 CPU cycles executed." << std::endl;
+    std::cout << dc_cycle_stamp() << " SH4 CPU cycles executed." << std::endl;
 
     double seconds = delta_time.tv_sec +
         double(delta_time.tv_nsec) / 1000000000.0;
-    double hz = double(cpu.cycle_stamp) / seconds;
+    double hz = double(dc_cycle_stamp()) / seconds;
     double hz_ratio = hz / 200000000.0;
 
     std::cout << "Performance is " << (hz / 1000000.0) << " MHz (" <<

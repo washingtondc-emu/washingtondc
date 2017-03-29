@@ -115,9 +115,6 @@ struct Sh4 {
 
     unsigned cycles_accum;
 
-    /* the total number of cycles that have been run thus far */
-    uint64_t cycle_stamp;
-
     /*
      * cycle_stamp last time we ticked the video clock.
      *

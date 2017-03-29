@@ -107,6 +107,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fegetround.cpp"
                 "${PROJECT_SOURCE_DIR}/src/Dreamcast.hpp"
                 "${PROJECT_SOURCE_DIR}/src/Dreamcast.cpp"
+                "${PROJECT_SOURCE_DIR}/src/dc_sched.hpp"
+                "${PROJECT_SOURCE_DIR}/src/dc_sched.cpp"
                 "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
                 "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp")
 
