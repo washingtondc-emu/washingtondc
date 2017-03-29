@@ -28,12 +28,15 @@
 
 #include "arch/arch_fpu.hpp"
 #include "BaseException.hpp"
-#include "Debugger.hpp"
 #include "Dreamcast.hpp"
 #include "sh4_ocache.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4.hpp"
 #include "sh4_excp.hpp"
+
+#ifdef ENABLE_DEBUGGER
+#include "Debugger.hpp"
+#endif
 
 #include "sh4_inst.hpp"
 
@@ -1054,6 +1057,7 @@ void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
 
         op_func(sh4, oa);
 
+#ifdef ENABLE_DEBUGGER
         if (!sh4->aborted_operation) {
             if (delayed_branch_tmp) {
                 sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
@@ -1062,6 +1066,12 @@ void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
         } else {
             sh4->aborted_operation = false;
         }
+#else
+        if (delayed_branch_tmp) {
+            sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
+            sh4->delayed_branch = false;
+        }
+#endif
     } else {
         // raise exception for illegal slot instruction
         sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
