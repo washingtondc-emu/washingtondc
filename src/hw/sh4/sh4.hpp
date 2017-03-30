@@ -115,15 +115,6 @@ struct Sh4 {
 
     unsigned cycles_accum;
 
-    /*
-     * cycle_stamp last time we ticked the video clock.
-     *
-     * Keeping track of this here is a hackish thing to do because it is not
-     * related to the CPU.  Eventually when I implement a scheduler things
-     * will be cleaner (hopefully)
-     */
-    uint64_t last_vclk_tick;
-
 #ifdef ENABLE_DEBUGGER
     /*
      * this member is used to implement watchpoints.  When a watchpoint
