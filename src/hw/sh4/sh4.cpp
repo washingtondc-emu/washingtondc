@@ -194,7 +194,6 @@ mulligan:
             sh4->cycles_accum = 0;
 
             sh4_do_exec_inst(sh4, inst, op);
-
         } while (n_cycles);
     } catch (BaseException& exc) {
         sh4_add_regs_to_exc(sh4, exc);
@@ -214,40 +213,26 @@ mulligan:
     try {
         sh4_check_interrupts(sh4);
 
-        // don't run the main CPU core for sleep or standby mode
-        if (sh4->exec_state == SH4_EXEC_STATE_NORM) {
-            if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
-                // TODO: some sort of logic to detect infinite loops here
-                goto mulligan;
-            }
-
-            InstOpcode const *op = sh4_decode_inst(sh4, inst);
-
-            // I *wish* I could find a way to keep  this code in Dreamcast.cpp...
-            SchedEvent *next_event;
-            dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp() + op->issue;
-            while ((next_event = peek_event()) &&
-                   (next_event->when <= tgt_stamp)) {
-                pop_event();
-                dc_cycle_advance(next_event->when - dc_cycle_stamp());
-                next_event->handler(next_event);
-            }
-
-            sh4_do_exec_inst(sh4, inst, op);
-
-            dc_cycle_advance(tgt_stamp - dc_cycle_stamp());
-        } else {
-            // I *wish* I could find a way to keep  this code in Dreamcast.cpp...
-            SchedEvent *next_event;
-            while ((next_event = peek_event()) &&
-                   (next_event->when <= (dc_cycle_stamp() + 1))) {
-                // dc_cycle_advance(next_event->when - dc_cycle_stamp());
-                next_event->handler(next_event);
-                pop_event();
-            }
-
-            dc_cycle_advance(1);
+        if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
+            // TODO: some sort of logic to detect infinite loops here
+            goto mulligan;
         }
+
+        InstOpcode const *op = sh4_decode_inst(sh4, inst);
+
+        // I *wish* I could find a way to keep  this code in Dreamcast.cpp...
+        SchedEvent *next_event;
+        dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp() + op->issue;
+        while ((next_event = peek_event()) &&
+               (next_event->when <= tgt_stamp)) {
+            pop_event();
+            dc_cycle_advance(next_event->when - dc_cycle_stamp());
+            next_event->handler(next_event);
+        }
+
+        sh4_do_exec_inst(sh4, inst, op);
+
+        dc_cycle_advance(tgt_stamp - dc_cycle_stamp());
     } catch (BaseException& exc) {
         sh4_add_regs_to_exc(sh4, exc);
         exc << errinfo_cycle_stamp(dc_cycle_stamp());

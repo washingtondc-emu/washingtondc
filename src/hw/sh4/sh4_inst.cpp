@@ -1225,20 +1225,22 @@ void sh4_inst_sett(Sh4 *sh4, Sh4OpArgs inst) {
 // SLEEP
 // 0000000000011011
 void sh4_inst_sleep(Sh4 *sh4, Sh4OpArgs inst) {
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
-        sh4_set_exception(sh4, SH4_EXCP_GEN_ILLEGAL_INST);
-        return;
-    }
+    if (sh4->exec_state == SH4_EXEC_STATE_NORM) {
+        if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+            sh4_set_exception(sh4, SH4_EXCP_GEN_ILLEGAL_INST);
+            return;
+        }
 
-    /*
-     * TODO: There are supposed to be four standby modes, not just two.
-     * I didn't implement Deep Sleep and module standby because I don't
-     * think I have everything I need for those yet.
-     */
-    if (sh4->reg[SH4_REG_STBCR] & SH4_STBCR_STBY_MASK)
-        sh4->exec_state = SH4_EXEC_STATE_STANDBY;
-    else
-        sh4->exec_state = SH4_EXEC_STATE_SLEEP;
+        /*
+         * TODO: There are supposed to be four standby modes, not just two.
+         * I didn't implement Deep Sleep and module standby because I don't
+         * think I have everything I need for those yet.
+         */
+        if (sh4->reg[SH4_REG_STBCR] & SH4_STBCR_STBY_MASK)
+            sh4->exec_state = SH4_EXEC_STATE_STANDBY;
+        else
+            sh4->exec_state = SH4_EXEC_STATE_SLEEP;
+    }
 }
 
 // FRCHG
