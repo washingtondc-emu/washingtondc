@@ -29,6 +29,12 @@ set(CMAKE_CXX_STANDARD 98)
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
+
+    # stupid hack to get around unused static variables in boost/asio/error.hpp
+    if (CMAKE_BUILD_TYPE MATCHES "Release")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable")
+    endif()
+
 endif()
 
 option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)

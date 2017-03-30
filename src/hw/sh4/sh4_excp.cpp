@@ -197,7 +197,7 @@ void sh4_check_interrupts(Sh4 *sh4) {
     /* TODO - NMIs */
 
     int max_prio = -1;
-    unsigned max_prio_line;
+    unsigned max_prio_line = -1;
 
     /*
      * Skip over SH4_IRQ_IRL3 through SH4_IRQ_IRL0 if those four bits are
