@@ -190,8 +190,12 @@ mulligan:
             }
 
             n_cycles -= op->issue;
-            dc_cycle_advance(op->issue - sh4->cycles_accum);
-            sh4->cycles_accum = 0;
+            if (sh4->cycles_accum >= op->issue) {
+                sh4->cycles_accum -= op->issue;
+            } else {
+                dc_cycle_advance(op->issue - sh4->cycles_accum);
+                sh4->cycles_accum = 0;
+            }
 
             sh4_do_exec_inst(sh4, inst, op);
         } while (n_cycles);
