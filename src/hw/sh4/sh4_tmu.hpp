@@ -50,6 +50,11 @@ int sh4_tmu_tcr_read_handler(Sh4 *sh4, void *buf,
 int sh4_tmu_tcr_write_handler(Sh4 *sh4, void const *buf,
                               struct Sh4MemMappedReg const *reg_info);
 
+int sh4_tmu_tcnt_read_handler(Sh4 *sh4, void *buf,
+                              struct Sh4MemMappedReg const *reg_info);
+int sh4_tmu_tcnt_write_handler(Sh4 *sh4, void const *buf,
+                               struct Sh4MemMappedReg const *reg_info);
+
 void sh4_tmu_tick(SchedEvent *event);
 
 #endif

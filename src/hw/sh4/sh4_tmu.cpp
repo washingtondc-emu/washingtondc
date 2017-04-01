@@ -21,6 +21,9 @@
  ******************************************************************************/
 
 #include <cstring>
+#include <iostream>
+
+#include <boost/cstdint.hpp>
 
 #include "sh4_excp.hpp"
 #include "sh4.hpp"
@@ -29,7 +32,42 @@
 
 #include "sh4_tmu.hpp"
 
+typedef uint64_t tmu_cycle_t;
+
 static struct SchedEvent tmu_tick_event;
+
+static struct SchedEvent tmu_chan_event[3];
+
+// number of SH4 ticks per TMU tick
+static const unsigned TMU_DIV_SHIFT = 2;
+static const unsigned TMU_DIV = (1 << TMU_DIV_SHIFT);
+
+// this is the cycle count from the last time we updated the chan_accum values
+static tmu_cycle_t stamp_last_sync;
+
+static unsigned chan_accum[3];
+
+/*
+ * Very Important, this method updates all the tmu accumulators.
+ * it does not raise interrupts or set the underflow flag but it will
+ * set chan_unf if there is an undeflow in the corresponding channel
+ */
+static void tmu_sync(Sh4 *sh4);
+
+static bool chan_unf[3];
+
+static void tmu_chan_event_handler(SchedEvent *ev);
+__attribute__((unused)) static void chan_sched_event(unsigned chan, tmu_cycle_t tmu_cycle_count);
+static inline tmu_cycle_t tmu_cycle_stamp();
+static inline bool chan_enabled(Sh4 *sh4, unsigned chan);
+static inline bool chan_int_enabled(Sh4 *sh4, unsigned chan);
+static inline void chan_raise_int(Sh4 *sh4, unsigned chan);
+static inline unsigned chan_clock_div(Sh4 *sh4, unsigned chan);
+static void tmu_chan_event_handler(SchedEvent *ev);
+
+static inline tmu_cycle_t tmu_cycle_stamp() {
+    return dc_cycle_stamp() >> TMU_DIV_SHIFT;
+}
 
 // lookup table for TCR register indices
 static sh4_reg_idx_t const chan_tcr[3] = {
@@ -46,16 +84,134 @@ static sh4_reg_idx_t const chan_tcor[3] = {
     SH4_REG_TCOR0, SH4_REG_TCOR1, SH4_REG_TCOR2
 };
 
+static inline uint32_t chan_get_tcnt(Sh4 *sh4, unsigned chan) {
+    return sh4->reg[chan_tcnt[chan]];
+}
+
+static void chan_set_tcnt(Sh4 *sh4, unsigned chan, uint32_t val) {
+    sh4->reg[chan_tcnt[chan]] = val;
+}
+
+__attribute__((unused)) static void chan_dec_tcnt(Sh4 *sh4, unsigned chan) {
+    chan_set_tcnt(sh4, chan, chan_get_tcnt(sh4, chan) - 1);
+}
+
+static void chan_sched_event(unsigned chan, tmu_cycle_t tmu_cycle_count) {
+    tmu_chan_event[chan].when = tmu_cycle_count << TMU_DIV_SHIFT;
+    sched_event(&tmu_chan_event[chan]);
+}
+
+static inline bool chan_enabled(Sh4 *sh4, unsigned chan) {
+    return bool(sh4->reg[SH4_REG_TSTR] & (1 << chan));
+}
+
+static inline bool chan_int_enabled(Sh4 *sh4, unsigned chan) {
+    return sh4->reg[chan_tcr[chan]] & SH4_TCR_UNIE_MASK;
+}
+
+static inline void chan_raise_int(Sh4 *sh4, unsigned chan) {
+    Sh4ExceptionCode code;
+    int line = SH4_IRQ_TMU0;
+    switch (chan) {
+    case 0:
+        code = SH4_EXCP_TMU0_TUNI0;
+        line = SH4_IRQ_TMU0;
+        break;
+    case 1:
+        code = SH4_EXCP_TMU1_TUNI1;
+        line = SH4_IRQ_TMU1;
+        break;
+    case 2:
+        code = SH4_EXCP_TMU2_TUNI2;
+        line = SH4_IRQ_TMU2;
+        break;
+    default:
+        BOOST_THROW_EXCEPTION(InvalidParamError());
+    }
+
+    sh4_set_interrupt(sh4, line, code);
+}
+
+/*
+ * returns the amount by which the TMU clock divides to get he channel clock.
+ * multiply this by TMU_DIV to get the SH4 clock.
+ */
+static inline unsigned chan_clock_div(Sh4 *sh4, unsigned chan) {
+    switch(sh4->reg[chan_tcr[chan]] & SH4_TCR_TPSC_MASK) {
+    case 0:
+        return 4;
+    case 1:
+        return 16;
+    case 2:
+        return 64;
+    case 3:
+        return 256;
+    case 5:
+        return 1024;
+    default:
+        // software shouldn't be doing this anyways
+        BOOST_THROW_EXCEPTION(UnimplementedError());
+    }
+}
+
+static void tmu_chan_event_handler(SchedEvent *ev) {
+    // unsigned chan = ev - tmu_chan_event;
+}
+
+/*
+ * TODO: need to hook into the sh4->exec_state so we know to do a tmu_sync
+ * when it enters standby, and also not to sync again (other than updating
+ * stamp_last_sync) until it leaves standby mode.
+ */
+static void tmu_sync(Sh4 *sh4) {
+    tmu_cycle_t stamp_cur = tmu_cycle_stamp();
+    tmu_cycle_t elapsed = stamp_cur - stamp_last_sync;
+
+    if (!elapsed)
+        return; // nothing to do here
+
+    unsigned chan;
+    for (chan = 0; chan < 3; chan++) {
+        chan_unf[chan] = false;
+        if (!chan_enabled(sh4, chan))
+            continue;
+
+        /*
+         * TODO: These clock dividers are all powers of two,
+         * I could be right-shifting here instead of dividing
+         */
+        unsigned div = chan_clock_div(sh4, chan);
+        chan_accum[chan] += elapsed;
+        tmu_cycle_t chan_cycles = chan_accum[chan] / div;
+
+        if (chan_cycles >= 1) {
+            if (chan_cycles > chan_get_tcnt(sh4, chan)) {
+                chan_unf[chan] = true;
+                chan_set_tcnt(sh4, chan, chan_tcor[chan]);
+            } else {
+                chan_set_tcnt(sh4, chan, chan_get_tcnt(sh4, chan) - chan_cycles);
+            }
+            chan_accum[chan] %= div;
+        }
+    }
+
+    stamp_last_sync = stamp_cur;
+}
+
 void sh4_tmu_init(Sh4 *sh4) {
     sh4_tmu *tmu = &sh4->tmu;
 
     memset(tmu, 0, sizeof(*tmu));
 
-    tmu_tick_event.when = dc_cycle_stamp() + 4;
+    tmu_tick_event.when = dc_cycle_stamp() + TMU_DIV;
     tmu_tick_event.handler = sh4_tmu_tick;
     tmu_tick_event.arg_ptr = sh4;
 
     sched_event(&tmu_tick_event);
+
+    unsigned chan;
+    for (chan = 0; chan < 3; chan++)
+        tmu_chan_event[chan].handler = tmu_chan_event_handler;
 }
 
 void sh4_tmu_cleanup(Sh4 *sh4) {
@@ -64,77 +220,20 @@ void sh4_tmu_cleanup(Sh4 *sh4) {
 void sh4_tmu_tick(SchedEvent *event) {
     Sh4 *sh4 = (Sh4*)event->arg_ptr;
 
-    unsigned ticks_per_countdown;
-
-    tmu_tick_event.when = dc_cycle_stamp() + 4;
+    tmu_tick_event.when = dc_cycle_stamp() + TMU_DIV;
     sched_event(&tmu_tick_event);
 
     // don't run on-chip modules for standby mode
     if (sh4->exec_state == SH4_EXEC_STATE_STANDBY)
         return;
 
+    tmu_sync(sh4);
     for (int chan = 0; chan < 3; chan++) {
+        if (chan_unf[chan]) {
+            sh4->reg[chan_tcr[chan]] |= SH4_TCR_UNF_MASK;
 
-        if (!(sh4->reg[SH4_REG_TSTR] & (1 << chan)))
-            continue;
-
-        sh4->tmu.tchan_accum[chan]++;
-
-        switch(sh4->reg[chan_tcr[chan]] & SH4_TCR_TPSC_MASK) {
-        case 0:
-            ticks_per_countdown = 4;
-            break;
-        case 1:
-            ticks_per_countdown = 16;
-            break;
-        case 2:
-            ticks_per_countdown = 64;
-            break;
-        case 3:
-            ticks_per_countdown = 256;
-            break;
-        case 5:
-            ticks_per_countdown = 1024;
-            break;
-        default:
-            // software shouldn't be doing this anyways
-            return;
-        }
-
-        if (sh4->tmu.tchan_accum[chan] >= ticks_per_countdown) {
-            sh4->tmu.tchan_accum[chan] = 0;
-
-            // now actually do a single countdown
-            // possible corner-case to watch out for: what if TCOR == 0?
-            sh4->reg[chan_tcnt[chan]]--;
-            if (!sh4->reg[chan_tcnt[chan]]) {
-                sh4->reg[chan_tcnt[chan]] = sh4->reg[chan_tcor[chan]];
-
-                sh4->reg[chan_tcr[chan]] |= SH4_TCR_UNF_MASK;
-
-                if (sh4->reg[chan_tcr[chan]] & SH4_TCR_UNIE_MASK) {
-                    Sh4ExceptionCode code;
-                    int line = SH4_IRQ_TMU0;
-                    switch (chan) {
-                    case 0:
-                        code = SH4_EXCP_TMU0_TUNI0;
-                        line = SH4_IRQ_TMU0;
-                        break;
-                    case 1:
-                        code = SH4_EXCP_TMU1_TUNI1;
-                        line = SH4_IRQ_TMU1;
-                        break;
-                    case 2:
-                        code = SH4_EXCP_TMU2_TUNI2;
-                        line = SH4_IRQ_TMU2;
-                        break;
-                    default:
-                        break;
-                    }
-
-                    sh4_set_interrupt(sh4, line, code);
-                }
-            }
+            if (chan_int_enabled(sh4, chan))
+                chan_raise_int(sh4, chan);
         }
     }
 }
@@ -168,15 +267,22 @@ int sh4_tmu_tstr_write_handler(Sh4 *sh4, void const *buf,
     memcpy(&tmp, buf, reg_info->len);
     tmp &= 7;
 
+    /*
+     * If we don't do a tmu_sync immediately before setting TSTR, then on the
+     * next call to tmu_sync, it will think that TSR was set for the entire
+     * duration from the last call of tmu_sync to the next call to tmu_sync.
+     */
+    tmu_sync(sh4);
+
     if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN0_MASK) ^
         (tmp & SH4_TSTR_CHAN0_MASK))
-        sh4->tmu.tchan_accum[0] = 0;
+        chan_accum[0] = 0;
     if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN1_MASK) ^
         (tmp & SH4_TSTR_CHAN1_MASK))
-        sh4->tmu.tchan_accum[1] = 0;
+        chan_accum[1] = 0;
     if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN2_MASK) ^
         (tmp & SH4_TSTR_CHAN2_MASK))
-        sh4->tmu.tchan_accum[2] = 0;
+        chan_accum[2] = 0;
 
     memcpy(sh4->reg + SH4_REG_TSTR, &tmp, reg_info->len);
 
@@ -197,6 +303,8 @@ int sh4_tmu_tcr_write_handler(Sh4 *sh4, void const *buf,
 
     uint16_t old_val = sh4->reg[reg_info->reg_idx];
 
+    tmu_sync(sh4);
+
     if ((new_val & SH4_TCR_ICPF_MASK) && !(old_val & SH4_TCR_ICPF_MASK))
         new_val &= ~SH4_TCR_ICPF_MASK;
 
@@ -207,13 +315,13 @@ int sh4_tmu_tcr_write_handler(Sh4 *sh4, void const *buf,
         // changing clock source; clear accumulated ticks
         switch (reg_info->reg_idx) {
         case SH4_REG_TCR0:
-            sh4->tmu.tchan_accum[0] = 0;
+            chan_accum[0] = 0;
             break;
         case SH4_REG_TCR1:
-            sh4->tmu.tchan_accum[1] = 0;
+            chan_accum[1] = 0;
             break;
         case SH4_REG_TCR2:
-            sh4->tmu.tchan_accum[2] = 0;
+            chan_accum[2] = 0;
             break;
         default:
             BOOST_THROW_EXCEPTION(InvalidParamError());
