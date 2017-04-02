@@ -255,7 +255,7 @@ void dreamcast_run() {
              */
             sh4_single_step(&cpu);
 #else
-            SchedEvent *next_event = pop_event();
+            SchedEvent *next_event = peek_event();
 
             /*
              * if, during the last big chunk of SH4 instructions, there was an
@@ -265,9 +265,12 @@ void dreamcast_run() {
              * running the CPU
              */
             if (next_event) {
-                if (dc_cycle_stamp_priv_ < next_event->when)
+                if (dc_cycle_stamp_priv_ < next_event->when) {
                     sh4_run_cycles(&cpu, next_event->when - dc_cycle_stamp_priv_);
-                next_event->handler(next_event);
+                } else {
+                    pop_event();
+                    next_event->handler(next_event);
+                }
             } else {
                 /*
                  * Hard to say what to do here.  Constantly checking to see if
