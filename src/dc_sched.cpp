@@ -23,34 +23,19 @@
 #include "dc_sched.hpp"
 
 static SchedEvent *ev_next;
-static SchedEvent **ev_last; // pointer to the last event's next_event
 
 void sched_event(SchedEvent *event) {
-    if (ev_next) {
-        SchedEvent *curs = ev_next;
-
-        while (curs->next_event && curs->next_event->when < event->when)
-            curs = curs->next_event;
-
-        /*
-         * curs should now point to the last event with a
-         * lower cycle stamp than event->when.
-         * This might mean it points to the last event.
-         */
-
-        event->next_event = curs->next_event;
-        event->pprev_event = &curs->next_event;
-        curs->next_event = event;
-        if (event->next_event)
-            event->next_event->pprev_event = &event->next_event;
-    } else {
-        // nothing scheduled - this will be the first, last and only event
-        ev_next = event;
-        ev_last = &event->next_event;
-
-        event->pprev_event = &ev_next;
-        event->next_event = NULL;
+    SchedEvent *next_ptr = ev_next;
+    SchedEvent **pprev_ptr = &ev_next;
+    while (next_ptr && next_ptr->when < event->when) {
+        pprev_ptr = &next_ptr->next_event;
+        next_ptr = next_ptr->next_event;
     }
+    *pprev_ptr = event;
+    if (next_ptr)
+        next_ptr->pprev_event = &event->next_event;
+    event->next_event = next_ptr;
+    event->pprev_event = pprev_ptr;
 }
 
 void cancel_event(SchedEvent *event) {
