@@ -196,7 +196,7 @@ static void tmu_chan_sync(Sh4 *sh4, unsigned chan) {
     if (chan_cycles >= 1) {
         if (chan_cycles > chan_get_tcnt(sh4, chan)) {
             chan_unf[chan] = true;
-            chan_set_tcnt(sh4, chan, chan_tcor[chan]);
+            chan_set_tcnt(sh4, chan, sh4->reg[chan_tcor[chan]]);
             sh4->reg[chan_tcr[chan]] |= SH4_TCR_UNF_MASK;
         } else {
             chan_set_tcnt(sh4, chan, chan_get_tcnt(sh4, chan) - chan_cycles);
