@@ -247,7 +247,14 @@ static tmu_cycle_t next_chan_event(Sh4 *sh4, unsigned chan) {
 static void chan_event_sched_next(Sh4 *sh4, unsigned chan) {
     SchedEvent *ev = tmu_chan_event + chan;
 
-    if (!(chan_int_enabled(sh4, chan) && chan_enabled(sh4, chan))) {
+    /*
+     * It is not a mistake that the following line checks chan_enabled but not
+     * chan_int_enabled.  If the use has enabled the timer channel but not
+     * interrupts for the timer channel, then we want to schedule an event to
+     * reset the TCNT and set the underflow flag.  It's up to the handler to
+     * decide if there needs to be an interrupt when the timer underflows.
+     */
+    if (!chan_enabled(sh4, chan)) {
         chan_event_scheduled[chan] = false;
         return;
     }
