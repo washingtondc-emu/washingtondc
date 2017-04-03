@@ -78,8 +78,9 @@ char const prog_asm[] =
      * divided by four.  The peripheral clock is 1/4 the CPU clock.
      * Ergo, there will be one tmu tick every 16 cycles.
      *
-     * We'll have it count down from 16, so there should be 16*16 = 256 cycles
-     * until the interrupt occurs.
+     * We'll have it count down from 16, so there should be 16*17 = 272 cycles
+     * until the interrupt occurs (because the interrupt occurs after the
+     * value in TCNT undeflows)
      *
      * first move 0xffd80000 into R2, this is the base we'll use to
      * reference the TMU registers.
@@ -105,14 +106,15 @@ char const prog_asm[] =
     "XOR R15, R15\n"
 
     /*
-     * R3 is the number of times to loop.  This should be 128 rather than
-     * 256 because I execute two instructions on every iteration of the loop
+     * R3 is the number of times to loop.  This should be 136 rather than
+     * 272 because I execute two instructions on every iteration of the loop
      */
     "MOV #0x8, R0\n"
     "SHLL R0\n"
     "SHLL R0\n"
     "SHLL R0\n"
     "SHLL R0\n"
+    "ADD #8, R0\n"
     "MOV R0, R3\n"
 
     /* set TMU0 priority to 1 (lowest) */
