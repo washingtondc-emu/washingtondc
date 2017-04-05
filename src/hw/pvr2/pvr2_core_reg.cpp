@@ -164,17 +164,22 @@ static struct pvr2_core_mem_mapped_reg {
       read_spg_hblank_int, write_spg_hblank_int },
     { "SPG_VBLANK_INT", 0x5f80cc, 4, 1,
       read_spg_vblank_int, write_spg_vblank_int },
-    { "SPG_CONTROL", 0x5f80d0, 4, 1, read_spg_control, write_spg_control },
-    { "SPG_HBLANK", 0x5f80d4, 4, 1, read_spg_hblank, write_spg_hblank },
+    { "SPG_CONTROL", 0x5f80d0, 4, 1,
+      default_pvr2_core_reg_read_handler, default_pvr2_core_reg_write_handler },
+    { "SPG_HBLANK", 0x5f80d4, 4, 1,
+      default_pvr2_core_reg_read_handler, default_pvr2_core_reg_write_handler },
     { "SPG_LOAD", 0x5f80d8, 4, 1,
       read_spg_load, write_spg_load },
-    { "SPG_VBLANK", 0x5f80dc, 4, 1, read_spg_vblank, write_spg_vblank },
+    { "SPG_VBLANK", 0x5f80dc, 4, 1,
+      default_pvr2_core_reg_read_handler, default_pvr2_core_reg_write_handler },
     { "SPG_WIDTH", 0x5f80e0, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "VO_CONTROL", 0x5f80e8, 4, 1,
       vo_control_reg_read_handler, vo_control_reg_write_handler },
-    { "VO_STARTX", 0x5f80ec, 4, 1, read_spg_vo_startx, write_spg_vo_startx },
-    { "VO_STARTY", 0x5f80f0, 4, 1, read_spg_vo_starty, write_spg_vo_starty },
+    { "VO_STARTX", 0x5f80ec, 4, 1,
+      default_pvr2_core_reg_read_handler, default_pvr2_core_reg_write_handler },
+    { "VO_STARTY", 0x5f80f0, 4, 1,
+      default_pvr2_core_reg_read_handler, default_pvr2_core_reg_write_handler },
     { "TA_OL_BASE", 0x5f8124, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "TA_ISP_BASE", 0x5f8128, 4, 1,
@@ -387,9 +392,9 @@ fb_r_ctrl_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     memcpy(&new_val, buf, sizeof(new_val));
 
     if (new_val & PVR2_VCLK_DIV_MASK)
-        spg_set_vclk_div(1);
+        spg_set_pclk_div(1);
     else
-        spg_set_vclk_div(2);
+        spg_set_pclk_div(2);
 
     spg_set_pix_double_y(bool(new_val & PVR2_LINE_DOUBLE_MASK));
 

@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include <boost/cstdint.hpp>
+
 #include "BaseException.hpp"
 #include "Dreamcast.hpp"
 #include "hw/sh4/sh4.hpp"
@@ -29,20 +31,26 @@
 
 /* This is the code which generates the H-BLANK and V-BLANK interrupts */
 
+typedef uint64_t spg_vclk_cycle_t;
+
+static const unsigned SPG_VCLK_DIV = 7;
+
 /*
  * this should be either 1 (for 27 MHz pixel clock) or
  * 2 (for 13.5 MHz pixel clock).
  *
- * It corresponds to bit 23 of FB_R_CTRL (vclk_div)
+ * It corresponds to bit 23 of FB_R_CTRL (pclk_div)
  */
-static unsigned vclk_div = 2;
+static unsigned pclk_div = 2;
 
 /*
  * This increments once per tick (should be 27 MHz).
  *
- * when it's equal to vclk_div, the pixel clock ticks.
+ * when it's equal to pclk_div, the pixel clock ticks.
  */
 static unsigned vclk;
+
+static spg_vclk_cycle_t last_sync;
 
 // whether to double pixels horizontally/vertically
 static bool pix_double_x, pix_double_y;
@@ -50,11 +58,6 @@ static bool pix_double_x, pix_double_y;
 enum {
     SPG_HBLANK_INT,
     SPG_VBLANK_INT,
-    SPG_CONTROL,
-    SPG_HBLANK,
-    SPG_VBLANK,
-    SPG_VO_STARTX,
-    SPG_VO_STARTY,
     SPG_LOAD,
 
     SPG_REG_COUNT
@@ -64,11 +67,6 @@ enum {
 static reg32_t spg_reg[SPG_REG_COUNT] = {
     0x31d << 16,          // SPG_HBLANK_INT
     0x00150104,           // SPG_VBLANK_INT
-    0,                    // SPG_CONTROL
-    0,                    // SPG_HBLANK
-    0,                    // SPG_VBLANK
-    0,                    // SPG_VO_STARTX
-    0,                    // SPG_VO_STARTY
     (0x106 << 16) | 0x359 // SPG_LOAD
 };
 
@@ -76,19 +74,42 @@ static unsigned raster_x, raster_y;
 
 static SchedEvent spg_tick_event;
 
-// pixel clock, called every vclk_div or vclk_div / 2 cycles of vclck
+// pixel clock, called every pclk_div or pclk_div / 2 cycles of vclck
 static void spg_pclk_tick();
 
 static void spg_tick(SchedEvent *event);
 
+static void spg_sync();
+
+static inline unsigned get_hcount();
+static inline unsigned get_vcount();
+static inline unsigned get_hblank_int_pix();
+static inline unsigned get_hblank_int_mode();
+static inline unsigned get_hblank_int_comp_val();
+static inline unsigned get_vblank_in_int_line();
+static inline unsigned get_vblank_out_int_line();
+
 void spg_init() {
-    spg_tick_event.when = dc_cycle_stamp() + 7;
+    spg_tick_event.when = dc_cycle_stamp() + SPG_VCLK_DIV;
     spg_tick_event.handler = spg_tick;
 
     sched_event(&spg_tick_event);
 }
 
 void spg_cleanup() {
+}
+
+static void spg_sync() {
+    unsigned hcount = get_hcount();
+    unsigned vcount = get_vcount();
+    spg_vclk_cycle_t cur_time = dc_cycle_stamp() / SPG_VCLK_DIV;
+    spg_vclk_cycle_t delta_cycles = cur_time - last_sync;
+    last_sync = cur_time;
+
+    raster_x += delta_cycles / pclk_div;
+    raster_y += raster_x / hcount;
+    raster_x %= hcount;
+    raster_y %= vcount;
 }
 
 static void spg_tick(SchedEvent *event) {
@@ -113,11 +134,11 @@ static void spg_tick(SchedEvent *event) {
      * VBLANK/HBLANK timings so I'm in no mood to contemplate the
      * possibilities.
      */
-    spg_tick_event.when = dc_cycle_stamp() + 7;
+    spg_tick_event.when = dc_cycle_stamp() + SPG_VCLK_DIV;
     sched_event(&spg_tick_event);
 
     vclk++;
-    if (vclk < vclk_div)
+    if (vclk < pclk_div)
         return;
 
     vclk = 0;
@@ -126,13 +147,11 @@ static void spg_tick(SchedEvent *event) {
 
 static void spg_pclk_tick() {
     // TODO: take interlacing into account
-    unsigned hcount = (spg_reg[SPG_LOAD] & 0x3ff) + 1;
-    unsigned vcount = ((spg_reg[SPG_LOAD] >> 16) & 0x3ff) + 1;
-    unsigned hblank_int_pix_no = (spg_reg[SPG_HBLANK_INT] >> 16) & 0x3ff;
-    unsigned hblank_int_mode = (spg_reg[SPG_HBLANK_INT] >> 12) & 0x3;
-    unsigned hblank_int_comp_val = spg_reg[SPG_HBLANK_INT] & 0x3ff;
-    unsigned vblank_in_int_line_no = spg_reg[SPG_VBLANK_INT] & 0x3ff;
-    unsigned vblank_out_int_line_no = (spg_reg[SPG_VBLANK_INT] >> 16) & 0x3ff;
+    unsigned hblank_int_pix_no = get_hblank_int_pix();
+    unsigned hblank_int_mode = get_hblank_int_mode();
+    unsigned hblank_int_comp_val = get_hblank_int_comp_val();
+    unsigned vblank_in_int_line_no = get_vblank_in_int_line();
+    unsigned vblank_out_int_line_no = get_vblank_out_int_line();
 
     /*
      * algorithm:
@@ -155,6 +174,8 @@ static void spg_pclk_tick() {
      * However, the actuall interrupts happen based on the SPG_HBLANK_INT and SPG_VBLANK_INT registers?
      */
 
+    spg_sync();
+
     if (raster_x == hblank_int_pix_no) {
         switch (hblank_int_mode) {
         case 0:
@@ -163,8 +184,7 @@ static void spg_pclk_tick() {
             }
             break;
         case 1:
-            // TODO: check for divide by zero here
-            if (raster_y % hblank_int_comp_val == 0) {
+            if (hblank_int_comp_val && (raster_y % hblank_int_comp_val == 0)) {
                 holly_raise_nrm_int(HOLLY_NRM_INT_HBLANK);
             }
             break;
@@ -176,9 +196,7 @@ static void spg_pclk_tick() {
         }
     }
 
-    if (raster_x >= hcount) {
-        raster_x = 0;
-
+    if (raster_x == 0) {
         if (raster_y == vblank_in_int_line_no) {
             holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_IN);
         }
@@ -186,21 +204,14 @@ static void spg_pclk_tick() {
         if (raster_y == vblank_out_int_line_no) {
             holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_OUT);
         }
-
-        if (raster_y >= vcount)
-            raster_y = 0;
-        else
-            raster_y++;
-    } else {
-        raster_x++;
     }
 }
 
-void spg_set_vclk_div(unsigned val) {
+void spg_set_pclk_div(unsigned val) {
     if (val != 1 && val != 2)
         BOOST_THROW_EXCEPTION(InvalidParamError());
 
-    vclk_div = val;
+    pclk_div = val;
 }
 
 void spg_set_pix_double_x(bool val) {
@@ -209,6 +220,34 @@ void spg_set_pix_double_x(bool val) {
 
 void spg_set_pix_double_y(bool val) {
     pix_double_y = val;
+}
+
+static inline unsigned get_hblank_int_pix() {
+    return (spg_reg[SPG_HBLANK_INT] >> 16) & 0x3ff;
+}
+
+static inline unsigned get_hcount() {
+    return (spg_reg[SPG_LOAD] & 0x3ff) + 1;
+}
+
+static inline unsigned get_vcount() {
+    return ((spg_reg[SPG_LOAD] >> 16) & 0x3ff) + 1;
+}
+
+static inline unsigned get_hblank_int_mode() {
+    return (spg_reg[SPG_HBLANK_INT] >> 12) & 0x3;
+}
+
+static inline unsigned get_hblank_int_comp_val() {
+    return spg_reg[SPG_HBLANK_INT] & 0x3ff;
+}
+
+static inline unsigned get_vblank_in_int_line() {
+    return spg_reg[SPG_VBLANK_INT] & 0x3ff;
+}
+
+static inline unsigned get_vblank_out_int_line() {
+    return (spg_reg[SPG_VBLANK_INT] >> 16) & 0x3ff;
 }
 
 int
@@ -221,7 +260,9 @@ read_spg_hblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
 int
 write_spg_hblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
                      void const *buf, addr32_t addr, unsigned len) {
+    spg_sync();
     memcpy(spg_reg + SPG_HBLANK_INT, buf, sizeof(reg32_t));
+    spg_sync();
     return 0;
 }
 
@@ -235,77 +276,9 @@ read_spg_vblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
 int
 write_spg_vblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
                      void const *buf, addr32_t addr, unsigned len) {
+    spg_sync();
     memcpy(spg_reg + SPG_VBLANK_INT, buf, sizeof(reg32_t));
-    return 0;
-}
-
-int
-read_spg_control(struct pvr2_core_mem_mapped_reg const *reg_info,
-                 void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_CONTROL, len);
-    return 0;
-}
-
-int
-write_spg_control(struct pvr2_core_mem_mapped_reg const *reg_info,
-                  void const *buf, addr32_t addr, unsigned len) {
-    memcpy(spg_reg + SPG_CONTROL, buf, sizeof(reg32_t));
-    return 0;
-}
-
-int
-read_spg_hblank(struct pvr2_core_mem_mapped_reg const *reg_info,
-                void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_HBLANK, len);
-    return 0;
-}
-
-int
-write_spg_hblank(struct pvr2_core_mem_mapped_reg const *reg_info,
-                 void const *buf, addr32_t addr, unsigned len) {
-    memcpy(spg_reg + SPG_HBLANK, buf, sizeof(reg32_t));
-    return 0;
-}
-
-int
-read_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
-                void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_VBLANK, len);
-    return 0;
-}
-
-int
-write_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
-                 void const *buf, addr32_t addr, unsigned len) {
-    memcpy(spg_reg + SPG_VBLANK, buf, sizeof(reg32_t));
-    return 0;
-}
-
-int
-read_spg_vo_startx(struct pvr2_core_mem_mapped_reg const *reg_info,
-                   void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_VO_STARTX, len);
-    return 0;
-}
-
-int
-write_spg_vo_startx(struct pvr2_core_mem_mapped_reg const *reg_info,
-                    void const *buf, addr32_t addr, unsigned len) {
-    memcpy(spg_reg + SPG_VO_STARTX, buf, sizeof(reg32_t));
-    return 0;
-}
-
-int
-read_spg_vo_starty(struct pvr2_core_mem_mapped_reg const *reg_info,
-                   void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_VO_STARTY, len);
-    return 0;
-}
-
-int
-write_spg_vo_starty(struct pvr2_core_mem_mapped_reg const *reg_info,
-                    void const *buf, addr32_t addr, unsigned len) {
-    memcpy(spg_reg + SPG_VO_STARTY, buf, sizeof(reg32_t));
+    spg_sync();
     return 0;
 }
 
@@ -319,6 +292,8 @@ read_spg_load(struct pvr2_core_mem_mapped_reg const *reg_info,
 int
 write_spg_load(struct pvr2_core_mem_mapped_reg const *reg_info,
                void const *buf, addr32_t addr, unsigned len) {
+    spg_sync();
     memcpy(spg_reg + SPG_LOAD, buf, sizeof(reg32_t));
+    spg_sync();
     return 0;
 }
