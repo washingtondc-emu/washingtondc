@@ -259,7 +259,8 @@ static void chan_event_sched_next(Sh4 *sh4, unsigned chan) {
         return;
     }
 
-    ev->when = next_chan_event(sh4, chan) * TMU_DIV + dc_cycle_stamp();
+    ev->when = (next_chan_event(sh4, chan) + dc_cycle_stamp() / TMU_DIV) *
+        TMU_DIV;
     chan_event_scheduled[chan] = true;
     sched_event(ev);
 }
