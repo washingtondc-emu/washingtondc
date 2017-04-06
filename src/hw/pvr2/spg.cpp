@@ -62,8 +62,14 @@ enum {
 
 // TODO: put in an initialization function
 static reg32_t spg_reg[SPG_REG_COUNT] = {
-    0x31d << 16, // SPG_HBLANK_INT
-    0x00150104   // SPG_VBLANK_INT
+    0x31d << 16,          // SPG_HBLANK_INT
+    0x00150104,           // SPG_VBLANK_INT
+    0,                    // SPG_CONTROL
+    0,                    // SPG_HBLANK
+    0,                    // SPG_VBLANK
+    0,                    // SPG_VO_STARTX
+    0,                    // SPG_VO_STARTY
+    (0x106 << 16) | 0x359 // SPG_LOAD
 };
 
 static unsigned raster_x, raster_y;
