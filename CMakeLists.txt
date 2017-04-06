@@ -43,6 +43,7 @@ option(ENABLE_DIRECT_BOOT "Enable direct boot mode (skip boot rom and \
 immediately load IP.BIN or 1ST_READ.BIN)" ON)
 option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
 option(ENABLE_SERIAL_SERVER "Enable serial server over TCP port 1998" ON)
+option(INVARIANTS "runtime sanity checks that should never fail" ON)
 
 if (ENABLE_DIRECT_BOOT)
    add_definitions(-DENABLE_DIRECT_BOOT)
