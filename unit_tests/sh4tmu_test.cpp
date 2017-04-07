@@ -227,15 +227,15 @@ int main(int argc, char **argv) {
              * since it depends on what the value of sh4->tmu.last_tick, and
              * the value of that going into the loop can change if I add more
              * code to the beginning of the loop.  Because of this, I just make
-             * sure it seems low enough.  Being within 2 iterations means that
+             * sure it seems low enough.  Being within 3 iterations means that
              * it was within one tick of the bus clock that feeds the tmu.
              */
             unsigned rem_loops = *sh4_gen_reg(&sh4, 3);
             std::cout << "There were " << rem_loops << " remaining "
                 "iterations of the loop" << std::endl;
-            if (rem_loops > 2) {
+            if (rem_loops > 3) {
                 std::cerr << "Lower is always better, but I don't accept more "
-                    "than 2 iterations!" << std::endl;
+                    "than 3 iterations!" << std::endl;
                 ret_code = 1;
             }
 
