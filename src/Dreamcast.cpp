@@ -90,8 +90,10 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     spg_init();
 
 #ifdef ENABLE_SERIAL_SERVER
-    if (serial_server)
+    if (serial_server) {
+        serial_server->attach();
         sh4_scif_connect_server(&cpu, serial_server);
+    }
 #endif
 }
 
@@ -160,11 +162,6 @@ void dreamcast_init_direct(char const *path_ip_bin,
     sh4_init(&cpu);
 
     spg_init();
-
-#ifdef ENABLE_SERIAL_SERVER
-    if (serial_server)
-        sh4_scif_connect_server(&cpu, serial_server);
-#endif
 
     /* set the PC to the booststrap code within IP.BIN */
     if (skip_ip_bin)
@@ -350,6 +347,7 @@ void dreamcast_enable_debugger(void) {
 void dreamcast_enable_serial_server(void) {
     serial_server = new SerialServer(&cpu);
     serial_server->attach();
+    sh4_scif_connect_server(&cpu, serial_server);
 }
 #endif
 
