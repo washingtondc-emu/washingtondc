@@ -20,27 +20,19 @@
  *
  ******************************************************************************/
 
-#ifndef PVR2_CORE_REG_HPP_
-#define PVR2_CORE_REG_HPP_
+#include <GL/gl.h>
 
-// vlck divider bit for the FB_R_CTRL register
-const static unsigned PVR2_VCLK_DIV_SHIFT = 23;
-const static reg32_t PVR2_VCLK_DIV_MASK = 1 << PVR2_VCLK_DIV_SHIFT;
+struct shader {
+    GLuint vert_shader;
+    GLuint frag_shader;
+    GLuint shader_prog_obj;
+};
 
-// bit in the FB_R_CTRL register that causes each scanline to be sent twice
-const static unsigned PVR2_LINE_DOUBLE_SHIFT = 1;
-const static reg32_t PVR2_LINE_DOUBLE_MASK = 1 << PVR2_LINE_DOUBLE_SHIFT;
+void shader_init_from_file(struct shader *out,
+                           char const *vert_shader_path,
+                           char const *frag_shader_path);
 
-// bit in the VO_CONTROL register that causes each pixel to be sent twice
-const static unsigned PVR2_PIXEL_DOUBLE_SHIFT = 8;
-const static reg32_t PVR2_PIXEL_DOUBLE_MASK = 1 << PVR2_PIXEL_DOUBLE_SHIFT;
-
-int pvr2_core_reg_read(void *buf, size_t addr, size_t len);
-int pvr2_core_reg_write(void const *buf, size_t addr, size_t len);
-
-uint32_t get_fb_r_sof1();
-uint32_t get_fb_r_sof2();
-uint32_t get_fb_r_ctrl();
-uint32_t get_fb_r_size();
-
-#endif
+void shader_init(struct shader *out,
+                 char const *vert_shader_src,
+                 char const *frag_shader_src);
+void shader_cleanup(struct shader const *shader);

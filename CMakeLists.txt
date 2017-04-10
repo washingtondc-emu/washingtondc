@@ -28,7 +28,7 @@ set(CMAKE_CXX_STANDARD 98)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -g")
 
     # stupid hack to get around unused static variables in boost/asio/error.hpp
     if (CMAKE_BUILD_TYPE MATCHES "Release")
@@ -119,7 +119,11 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
                 "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp"
                 "${PROJECT_SOURCE_DIR}/src/window.cpp"
-                "${PROJECT_SOURCE_DIR}/src/window.hpp")
+                "${PROJECT_SOURCE_DIR}/src/window.hpp"
+                "${PROJECT_SOURCE_DIR}/src/video/opengl/framebuffer.cpp"
+                "${PROJECT_SOURCE_DIR}/src/video/opengl/framebuffer.hpp"
+                "${PROJECT_SOURCE_DIR}/src/video/opengl/shader.cpp"
+                "${PROJECT_SOURCE_DIR}/src/video/opengl/shader.hpp")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
@@ -154,6 +158,10 @@ include_directories("${PROJECT_SOURCE_DIR}/src/"
 add_library(sh4asm_core ${sh4asm_core_sources})
 add_library(sh4 ${sh4_sources})
 add_library(boost_system "${PROJECT_SOURCE_DIR}/external/washingtondc-boost/libs/system/src/error_code.cpp")
+
+# TODO: I wish there was an easy way to do this as a dependency like in make...
+configure_file("src/video/opengl/final_frag.glsl" "final_frag.glsl")
+configure_file("src/video/opengl/final_vert.glsl" "final_vert.glsl")
 
 # TODO: These shouldn't all need to be linked against GLFW, but there are some
 # GLFW function calls in Dreamcast.cpp, and since that's linked into libsh4

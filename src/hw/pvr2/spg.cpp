@@ -24,6 +24,8 @@
 
 #include "BaseException.hpp"
 #include "Dreamcast.hpp"
+#include "video/opengl/framebuffer.hpp"
+#include "window.hpp"
 #include "hw/sh4/sh4.hpp"
 #include "hw/sys/holly_intc.hpp"
 
@@ -107,6 +109,7 @@ enum {
     SPG_HBLANK_INT,
     SPG_VBLANK_INT,
     SPG_LOAD,
+    SPG_CONTROL,
 
     SPG_REG_COUNT
 };
@@ -240,6 +243,9 @@ static void spg_handle_vblank_in(SchedEvent *event) {
     spg_sync();
     holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_IN);
     sched_next_vblank_in_event();
+
+    framebuffer_render();
+    win_update();
 }
 
 static void spg_handle_vblank_out(SchedEvent *event) {
@@ -360,6 +366,10 @@ void spg_set_pix_double_y(bool val) {
     pix_double_y = val;
 }
 
+uint32_t get_spg_control() {
+    return spg_reg[SPG_CONTROL];
+}
+
 static inline unsigned get_hblank_int_pix() {
     return (spg_reg[SPG_HBLANK_INT] >> 16) & 0x3ff;
 }
@@ -458,5 +468,19 @@ write_spg_load(struct pvr2_core_mem_mapped_reg const *reg_info,
     sched_next_vblank_in_event();
     sched_next_vblank_out_event();
 
+    return 0;
+}
+
+int
+read_spg_control(struct pvr2_core_mem_mapped_reg const *reg_info,
+                 void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, spg_reg + SPG_CONTROL, len);
+    return 0;
+}
+
+int
+write_spg_control(struct pvr2_core_mem_mapped_reg const *reg_info,
+                  void const *buf, addr32_t addr, unsigned len) {
+    memcpy(spg_reg + SPG_CONTROL, buf, len);
     return 0;
 }

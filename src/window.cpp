@@ -43,13 +43,27 @@ void win_init(unsigned width, unsigned height) {
 
     atexit(glfwTerminate); // TODO: this is the lazy way to implement cleanup
 
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+
     win = glfwCreateWindow(res_x, res_y, "WashingtonDC Dreamcast Emulator", NULL, NULL);
     if (!win)
         BOOST_THROW_EXCEPTION(IntegrityError());
 
     glfwMakeContextCurrent(win);
+
+    glewExperimental = GL_TRUE;
+    glewInit();
+
+    glViewport(0, 0, res_x, res_y);
 }
 
 bool win_check_events() {
     return !glfwWindowShouldClose(win);
+}
+
+void win_update() {
+    glfwSwapBuffers(win);
 }

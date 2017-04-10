@@ -26,6 +26,7 @@
 #include "BaseException.hpp"
 #include "Dreamcast.hpp"
 #include "window.hpp"
+#include "video/opengl/framebuffer.hpp"
 
 static void print_usage(char const *cmd) {
     std::cerr << "USAGE: " << cmd << " [options] [IP.BIN 1ST_READ.BIN]" <<
@@ -162,7 +163,8 @@ int main(int argc, char **argv) {
 #endif
         }
 
-        win_init(320, 240);
+        win_init(640, 480);
+        framebuffer_init(640, 480);
 
         dreamcast_run();
     } catch (BaseException& err) {

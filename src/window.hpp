@@ -28,4 +28,6 @@ void win_init(unsigned width, unsigned height);
 // returns false if the window has been closed, true if it is still running
 bool win_check_events();
 
+void win_update();
+
 #endif

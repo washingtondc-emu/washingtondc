@@ -23,6 +23,10 @@
 #ifndef PVR2_TEX_MEM_HPP_
 #define PVR2_TEX_MEM_HPP_
 
+#include "MemoryMap.hpp"
+
+extern uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];
+
 int pvr2_tex_mem_read(void *buf, size_t addr, size_t len);
 int pvr2_tex_mem_write(void const *buf, size_t addr, size_t len);
 

@@ -23,7 +23,7 @@
 #include "MemoryMap.hpp"
 #include "BaseException.hpp"
 
-static uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];
+uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];
 
 int pvr2_tex_mem_read(void *buf, size_t addr, size_t len) {
     void const *start_addr = pvr2_tex_mem + (addr - ADDR_TEX_FIRST);
