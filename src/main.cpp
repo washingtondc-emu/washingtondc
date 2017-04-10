@@ -25,6 +25,7 @@
 
 #include "BaseException.hpp"
 #include "Dreamcast.hpp"
+#include "window.hpp"
 
 static void print_usage(char const *cmd) {
     std::cerr << "USAGE: " << cmd << " [options] [IP.BIN 1ST_READ.BIN]" <<
@@ -160,6 +161,8 @@ int main(int argc, char **argv) {
                 std::endl;
 #endif
         }
+
+        win_init(320, 240);
 
         dreamcast_run();
     } catch (BaseException& err) {

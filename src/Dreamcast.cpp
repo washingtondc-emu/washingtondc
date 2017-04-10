@@ -29,6 +29,7 @@
 #include "flash_memory.hpp"
 #include "dc_sched.hpp"
 #include "hw/pvr2/spg.hpp"
+#include "window.hpp"
 
 #ifdef ENABLE_DEBUGGER
 #include "GdbStub.hpp"
@@ -214,6 +215,8 @@ void dreamcast_run() {
 
     try {
         while (is_running) {
+            is_running = is_running && win_check_events();
+
             /*
              * The below logic will run the dc_io_service if the debugger is
              * enabled or if the serial server is enabled.  If only the
