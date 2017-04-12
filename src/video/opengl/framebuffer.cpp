@@ -52,11 +52,17 @@ static unsigned fb_width, fb_height;
 const static unsigned FB_VERT_LEN = 5;
 const static unsigned FB_VERT_COUNT = 4;
 static GLfloat fb_quad_verts[FB_VERT_LEN * FB_VERT_COUNT] = {
+    /*
+     * it is not a mistake that the texture-coordinates are upside-down
+     * this is because dreamcast puts the origin at upper-left corner,
+     * but opengl textures put the origin at the lower-left corner
+     */
+
     // position            // texture coordinates
-    -1.0f, -1.0f, 0.0f,    0.0f, 0.0f,
-    -1.0f,  1.0f, 0.0f,    0.0f, 1.0f,
-     1.0f,  1.0f, 0.0f,    1.0f, 1.0f,
-     1.0f, -1.0f, 0.0f,    1.0f, 0.0f
+    -1.0f, -1.0f, 0.0f,    0.0f, 1.0f,
+    -1.0f,  1.0f, 0.0f,    0.0f, 0.0f,
+     1.0f,  1.0f, 0.0f,    1.0f, 0.0f,
+     1.0f, -1.0f, 0.0f,    1.0f, 1.0f
 };
 
 const static unsigned FB_QUAD_IDX_COUNT = 4;
@@ -93,7 +99,7 @@ static uint8_t *fb_tex_mem;
  * to convert that component from 5/6 bits to 8 bits.
  *
  * One "gotcha" to note about the below functions is that
- * conv_rgb555_to_argb8888 and conv_rgb565_to_argb8888 expect their inputs to be
+ * conv_rgb555_to_argb8888 and conv_rgb565_to_rgb8888 expect their inputs to be
  * arrays of uint16_t with each element representing one pixel, and
  * conv_rgb0888_to_argb8888 expects its input to be uint32_t with each element
  * representing one pixel BUT conv_rgb888_to_argb8888 expects its input to be
@@ -104,7 +110,7 @@ conv_rgb555_to_argb8888(uint32_t *pixels_out,
                         uint16_t const *pixels_in,
                         unsigned n_pixels, uint8_t concat);
 static void
-conv_rgb565_to_argb8888(uint32_t *pixels_out,
+conv_rgb565_to_rgba8888(uint32_t *pixels_out,
                         uint16_t const *pixels_in,
                         unsigned n_pixels, uint8_t concat);
 __attribute__((unused))
@@ -127,19 +133,21 @@ static void conv_rgb555_to_argb8888(uint32_t *pixels_out,
         uint32_t r = ((pix & (0x1f << 10)) << 3) | concat;
         uint32_t g = ((pix & (0x1f << 5)) << 3) | concat;
         uint32_t b = ((pix & 0x1f) << 3) | concat;
-        pixels_out[idx] = (255 << 24) | (r << 16) | (g << 8) | b;
+        pixels_out[idx] = (255 // << 24
+            ) | (r << 24) | (g << 16) | (b << 8);
     }
 }
 
-static void conv_rgb565_to_argb8888(uint32_t *pixels_out,
+static void conv_rgb565_to_rgba8888(uint32_t *pixels_out,
                                     uint16_t const *pixels_in,
                                     unsigned n_pixels, uint8_t concat) {
     for (unsigned idx = 0; idx < n_pixels; idx++) {
         uint16_t pix = pixels_in[idx];
-        uint32_t r = ((pix & (0x1f << 10)) << 3) | concat;
-        uint32_t g = ((pix & (0x1f << 5)) << 2) | (concat & 0x3);
-        uint32_t b = ((pix & 0x1f) << 3) | concat;
-        pixels_out[idx] = (255 << 24) | (r << 16) | (g << 8) | b;
+        uint32_t r = (((pix & 0xf800) >> 11) << 3) | concat;
+        uint32_t g = (((pix & 0x07e0) >> 5) << 2) | (concat & 0x3);
+        uint32_t b = ((pix & 0x001f) << 3) | concat;
+
+        pixels_out[idx] = (255 << 24) | (b << 16) | (g << 8) | r;
     }
 }
 
@@ -178,7 +186,7 @@ void read_framebuffer_rgb565(uint32_t *pixels_out, void const *pixels_in,
         // uint16_t const *in_col_start = pixels_in + stride * row;
         uint32_t *out_col_start = pixels_out + row * width;
 
-        conv_rgb565_to_argb8888(out_col_start,
+        conv_rgb565_to_rgba8888(out_col_start,
                                 (uint16_t const*)cur_row_start,
                                 width, concat);
 
@@ -196,7 +204,7 @@ void read_framebuffer_rgb565(uint32_t *pixels_out, uint16_t const *pixels_in,
         uint16_t const *in_col_start = pixels_in + stride * row;
         uint32_t *out_col_start = pixels_out + row * width;
 
-        conv_rgb565_to_argb8888(out_col_start, in_col_start, width, concat);
+        conv_rgb565_to_rgba8888(out_col_start, in_col_start, width, concat);
     }
 }
 
@@ -283,6 +291,17 @@ void framebuffer_render() {
 
     std::cout << "modulus is " << std::hex << modulus << std::endl;
 
+    switch ((fb_r_ctrl & 0xc) >> 2) {
+    case 0:
+    case 1:
+        // we double width because width is in terms of 32-bits,
+        // and this format uses 16-bit pixels
+        width <<= 1;
+        break;
+    default:
+        break;
+    }
+
     if (fb_width != width || fb_height != height) {
         delete[] fb_tex_mem;
         fb_width = width;
@@ -298,7 +317,8 @@ void framebuffer_render() {
         // 16-bit 565 RGB
         read_framebuffer_rgb565((uint32_t*)fb_tex_mem,
                                 (uint16_t*)(pvr2_tex_mem + fb_r_sof1),
-                                fb_width, fb_height, fb_width, (fb_r_ctrl >> 4) & 7);
+                                fb_width, fb_height, fb_width,
+                                (fb_r_ctrl >> 4) & 7);
         break;
     case 2:
         // 24-bit 888 RGB
