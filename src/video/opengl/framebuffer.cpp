@@ -284,6 +284,13 @@ void framebuffer_render() {
     unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
     unsigned modulus = (fb_r_size >> 20) & 0x3ff;
 
+    if (!(fb_r_ctrl & 1)) {
+        // framebuffer is not enabled.
+        // TODO: display all-white or all black here instead of letting
+        // the screen look corrupted?
+        return;
+    }
+
     if (interlace)
         std::cout << "ITNERLACED DISPLAY" << std::endl;
     else
@@ -309,12 +316,32 @@ void framebuffer_render() {
         fb_tex_mem = new uint8_t[fb_width * fb_height * 4];
     }
 
+    addr32_t first_byte, last_byte;
     switch ((fb_r_ctrl & 0xc) >> 2) {
     case 0:
         // 16-bit 555 RGB
         break;
     case 1:
         // 16-bit 565 RGB
+
+        /*
+         * bounds checking
+         *
+         * TODO: is it really necessary to test for
+         * (last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) ?
+         */
+        last_byte = fb_r_sof1 + ADDR_TEX_FIRST + fb_width * fb_height * 2;
+        first_byte = fb_r_sof1 + ADDR_TEX_FIRST;
+        if (last_byte > ADDR_TEX_LAST || first_byte < ADDR_TEX_FIRST ||
+            last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) {
+            BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                                  errinfo_feature("whatever happens when "
+                                                  "FB_R_SOF1 is configured to "
+                                                  "read outside of texture "
+                                                  "memory") <<
+                                  errinfo_guest_addr(fb_r_sof1));
+        }
+
         read_framebuffer_rgb565((uint32_t*)fb_tex_mem,
                                 (uint16_t*)(pvr2_tex_mem + fb_r_sof1),
                                 fb_width, fb_height, fb_width,
