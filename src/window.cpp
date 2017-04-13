@@ -61,6 +61,10 @@ void win_init(unsigned width, unsigned height) {
 }
 
 bool win_check_events() {
+    // TODO: this is a massive performance killer.
+    //       window/opengl functions belong in a separate thread
+    //       from the emulation core.
+    glfwPollEvents();
     return !glfwWindowShouldClose(win);
 }
 
