@@ -187,7 +187,7 @@ static struct pvr2_core_mem_mapped_reg {
     { "SPG_VBLANK_INT", 0x5f80cc, 4, 1,
       read_spg_vblank_int, write_spg_vblank_int },
     { "SPG_CONTROL", 0x5f80d0, 4, 1,
-      default_pvr2_core_reg_read_handler, default_pvr2_core_reg_write_handler },
+      read_spg_control, write_spg_control },
     { "SPG_HBLANK", 0x5f80d4, 4, 1,
       default_pvr2_core_reg_read_handler, default_pvr2_core_reg_write_handler },
     { "SPG_LOAD", 0x5f80d8, 4, 1,
@@ -466,7 +466,7 @@ fb_r_sof2_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 fb_r_sof2_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&fb_r_sof2, buf, sizeof(fb_r_sof1));
+    memcpy(&fb_r_sof2, buf, sizeof(fb_r_sof2));
     return 0;
 }
 

@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <iostream>
 #include <boost/cstdint.hpp>
 
 #include "BaseException.hpp"
@@ -244,6 +245,7 @@ static void spg_handle_vblank_in(SchedEvent *event) {
     holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_IN);
     sched_next_vblank_in_event();
 
+    std::cout << "vcount is " << std::dec << get_vcount() << std::endl;
     framebuffer_render();
     win_update();
 }

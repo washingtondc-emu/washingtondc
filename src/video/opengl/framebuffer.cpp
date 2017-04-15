@@ -175,36 +175,98 @@ conv_rgb0888_to_argb8888(uint32_t *pixels_out,
     }
 }
 
-#if 0
-void read_framebuffer_rgb565(uint32_t *pixels_out, void const *pixels_in,
-                             unsigned width, unsigned height, unsigned mod,
-                             uint16_t concat) {
-    unsigned row;
-    uint8_t const *cur_row_start = (uint8_t const*)pixels_in;
-
-    for (row = 0; row < height; row++) {
-        // uint16_t const *in_col_start = pixels_in + stride * row;
-        uint32_t *out_col_start = pixels_out + row * width;
-
-        conv_rgb565_to_rgba8888(out_col_start,
-                                (uint16_t const*)cur_row_start,
-                                width, concat);
-
-        cur_row_start += width;
-        cur_row_start += 4 * mod;
+void read_framebuffer_rgb565_prog(uint32_t *pixels_out, addr32_t start_addr,
+                                  unsigned width, unsigned height, unsigned stride,
+                                  uint16_t concat) {
+    uint16_t const *pixels_in = (uint16_t*)(pvr2_tex_mem + start_addr);
+    /*
+     * bounds checking
+     *
+     * TODO: is it really necessary to test for
+     * (last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) ?
+     */
+    addr32_t last_byte = start_addr + ADDR_TEX_FIRST + width * height * 2;
+    addr32_t first_byte = start_addr + ADDR_TEX_FIRST;
+    if (last_byte > ADDR_TEX_LAST || first_byte < ADDR_TEX_FIRST ||
+        last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) {
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("whatever happens when "
+                                              "START_ADDR is configured to "
+                                              "read outside of texture "
+                                              "memory") <<
+                              errinfo_guest_addr(start_addr));
     }
-}
-#endif
 
-void read_framebuffer_rgb565(uint32_t *pixels_out, uint16_t const *pixels_in,
-                             unsigned width, unsigned height, unsigned stride,
-                             uint16_t concat) {
     unsigned row;
     for (row = 0; row < height; row++) {
         uint16_t const *in_col_start = pixels_in + stride * row;
         uint32_t *out_col_start = pixels_out + row * width;
 
         conv_rgb565_to_rgba8888(out_col_start, in_col_start, width, concat);
+    }
+}
+
+/*
+ * The way I handle interlace-scan here isn't terribly accurate.
+ * instead of alternating between the two different fields on every frame
+ * like a real TV would do, this function will read both fields every frame
+ * and construct a full image.
+ *
+ * fb_width is expected to be the width of the framebuffer image *and* the
+ * width of the texture in terms of pixels.
+ * fb_height is expected to be the height of a single field in terms of pixels;
+ * the full height of the framebuffer and also the height of the texture must
+ * therefore be equal to fb_height*2.
+ */
+void read_framebuffer_rgb565_intl(uint32_t *pixels_out,
+                                  unsigned fb_width, unsigned fb_height,
+                                  uint32_t row_start_field1, uint32_t row_start_field2,
+                                  unsigned modulus, unsigned concat) {
+    /*
+     * field_adv represents the distand between the start of one row and the
+     * start of the next row in the same field in terms of bytes.
+     */
+    unsigned field_adv = (fb_width << 1) + (modulus << 2) - 4;
+
+    /*
+     * bounds checking.
+     *
+     * TODO: it is not impossible that the algebra for last_addr_field1 and
+     * last_addr_field2 are a little off here, I'm *kinda* drunk.
+     */
+    addr32_t first_addr_field1 = ADDR_TEX_FIRST + row_start_field1;
+    addr32_t last_addr_field1 = ADDR_TEX_FIRST + row_start_field1 +
+        field_adv * (fb_height - 1) + 2 * (fb_width - 1);
+    addr32_t first_addr_field2 = ADDR_TEX_FIRST + row_start_field2;
+    addr32_t last_addr_field2 = ADDR_TEX_FIRST + row_start_field2 +
+        field_adv * (fb_height - 1) + 2 * (fb_width - 1);
+    if (first_addr_field1 < ADDR_TEX_FIRST ||
+        first_addr_field1 > ADDR_TEX_LAST ||
+        last_addr_field1 < ADDR_TEX_FIRST ||
+        last_addr_field1 > ADDR_TEX_LAST ||
+        first_addr_field2 < ADDR_TEX_FIRST ||
+        first_addr_field2 > ADDR_TEX_LAST ||
+        last_addr_field2 < ADDR_TEX_FIRST ||
+        last_addr_field2 > ADDR_TEX_LAST) {
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("whatever happens when "
+                                              "a framebuffer is configured to "
+                                              "read outside of texture "
+                                              "memory"));
+    }
+
+    unsigned row;
+    for (row = 0; row < fb_height; row++) {
+        uint16_t *ptr_row1 = (uint16_t*)(pvr2_tex_mem + row_start_field1);
+        uint16_t *ptr_row2 = (uint16_t*)(pvr2_tex_mem + row_start_field2);
+
+        conv_rgb565_to_rgba8888(pixels_out + (row << 1) * fb_width,
+                                ptr_row1, fb_width, concat);
+        conv_rgb565_to_rgba8888(pixels_out + ((row << 1) + 1) * fb_width,
+                                ptr_row2, fb_width, concat);
+
+        row_start_field1 += field_adv;
+        row_start_field2 += field_adv;
     }
 }
 
@@ -278,11 +340,10 @@ void framebuffer_render() {
     uint32_t fb_r_ctrl = get_fb_r_ctrl();
     uint32_t fb_r_size = get_fb_r_size();
     uint32_t fb_r_sof1 = get_fb_r_sof1() & ~3;
-    // uint32_t fb_r_sof2 = get_fb_r_sof2() & ~3;
+    uint32_t fb_r_sof2 = get_fb_r_sof2() & ~3;
 
     unsigned width = (fb_r_size & 0x3ff) + 1;
     unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
-    unsigned modulus = (fb_r_size >> 20) & 0x3ff;
 
     if (!(fb_r_ctrl & 1)) {
         // framebuffer is not enabled.
@@ -290,13 +351,6 @@ void framebuffer_render() {
         // the screen look corrupted?
         return;
     }
-
-    if (interlace)
-        std::cout << "ITNERLACED DISPLAY" << std::endl;
-    else
-        std::cout << "NOT ITNERLACED DISPLAY" << std::endl;
-
-    std::cout << "modulus is " << std::hex << modulus << std::endl;
 
     switch ((fb_r_ctrl & 0xc) >> 2) {
     case 0:
@@ -309,6 +363,9 @@ void framebuffer_render() {
         break;
     }
 
+    if (interlace)
+        height <<= 1;
+
     if (fb_width != width || fb_height != height) {
         delete[] fb_tex_mem;
         fb_width = width;
@@ -316,36 +373,25 @@ void framebuffer_render() {
         fb_tex_mem = new uint8_t[fb_width * fb_height * 4];
     }
 
-    addr32_t first_byte, last_byte;
     switch ((fb_r_ctrl & 0xc) >> 2) {
     case 0:
         // 16-bit 555 RGB
         break;
     case 1:
         // 16-bit 565 RGB
-
-        /*
-         * bounds checking
-         *
-         * TODO: is it really necessary to test for
-         * (last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) ?
-         */
-        last_byte = fb_r_sof1 + ADDR_TEX_FIRST + fb_width * fb_height * 2;
-        first_byte = fb_r_sof1 + ADDR_TEX_FIRST;
-        if (last_byte > ADDR_TEX_LAST || first_byte < ADDR_TEX_FIRST ||
-            last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) {
-            BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                  errinfo_feature("whatever happens when "
-                                                  "FB_R_SOF1 is configured to "
-                                                  "read outside of texture "
-                                                  "memory") <<
-                                  errinfo_guest_addr(fb_r_sof1));
+        if (interlace) {
+            unsigned modulus = (fb_r_size >> 20) & 0x3ff;
+            uint16_t concat = (fb_r_ctrl >> 4) & 7;
+            read_framebuffer_rgb565_intl((uint32_t*)fb_tex_mem,
+                                         fb_width, fb_height >> 1,
+                                         fb_r_sof1, fb_r_sof2,
+                                         modulus, concat);
+        } else {
+            read_framebuffer_rgb565_prog((uint32_t*)fb_tex_mem,
+                                         fb_r_sof1,
+                                         fb_width, fb_height, fb_width,
+                                         (fb_r_ctrl >> 4) & 7);
         }
-
-        read_framebuffer_rgb565((uint32_t*)fb_tex_mem,
-                                (uint16_t*)(pvr2_tex_mem + fb_r_sof1),
-                                fb_width, fb_height, fb_width,
-                                (fb_r_ctrl >> 4) & 7);
         break;
     case 2:
         // 24-bit 888 RGB
