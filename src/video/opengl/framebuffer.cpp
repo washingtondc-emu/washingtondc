@@ -118,9 +118,8 @@ static void
 conv_rgb888_to_argb8888(uint32_t *pixels_out,
                         uint8_t const *pixels_in,
                         unsigned n_pixels);
-__attribute__((unused))
 static void
-conv_rgb0888_to_argb8888(uint32_t *pixels_out,
+conv_rgb0888_to_rgba8888(uint32_t *pixels_out,
                          uint32_t const *pixels_in,
                          unsigned n_pixels);
 
@@ -166,12 +165,15 @@ conv_rgb888_to_argb8888(uint32_t *pixels_out,
 }
 
 static void
-conv_rgb0888_to_argb8888(uint32_t *pixels_out,
+conv_rgb0888_to_rgba8888(uint32_t *pixels_out,
                          uint32_t const *pixels_in,
                          unsigned n_pixels) {
     for (unsigned idx = 0; idx < n_pixels; idx++) {
         uint32_t pix = pixels_in[idx];
-        pixels_out[idx] = pix | (255 << 24);
+        uint32_t r = (pix & 0x00ff0000) >> 16;
+        uint32_t g = (pix & 0x0000ff00) >> 8;
+        uint32_t b = (pix & 0x000000ff);
+        pixels_out[idx] = (255 << 24) | (b << 16) | (g << 8) | r;
     }
 }
 
@@ -264,6 +266,89 @@ void read_framebuffer_rgb565_intl(uint32_t *pixels_out,
                                 ptr_row1, fb_width, concat);
         conv_rgb565_to_rgba8888(pixels_out + ((row << 1) + 1) * fb_width,
                                 ptr_row2, fb_width, concat);
+
+        row_start_field1 += field_adv;
+        row_start_field2 += field_adv;
+    }
+}
+
+void read_framebuffer_rgb0888_prog(uint32_t *pixels_out, addr32_t start_addr,
+                                   unsigned width, unsigned height) {
+    uint32_t const *pixels_in = (uint32_t*)(pvr2_tex_mem + start_addr);
+    /*
+     * bounds checking
+     *
+     * TODO: is it really necessary to test for
+     * (last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) ?
+     */
+    addr32_t last_byte = start_addr + ADDR_TEX_FIRST + width * height * 4;
+    addr32_t first_byte = start_addr + ADDR_TEX_FIRST;
+    if (last_byte > ADDR_TEX_LAST || first_byte < ADDR_TEX_FIRST ||
+        last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) {
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("whatever happens when "
+                                              "START_ADDR is configured to "
+                                              "read outside of texture "
+                                              "memory") <<
+                              errinfo_guest_addr(start_addr));
+    }
+
+    unsigned row;
+    for (row = 0; row < height; row++) {
+        uint32_t const *in_col_start = pixels_in + width * row;
+        uint32_t *out_col_start = pixels_out + row * width;
+
+        conv_rgb0888_to_rgba8888(out_col_start, in_col_start, width);
+    }
+}
+
+void read_framebuffer_rgb0888_intl(uint32_t *pixels_out,
+                                   unsigned fb_width, unsigned fb_height,
+                                   uint32_t row_start_field1,
+                                   uint32_t row_start_field2,
+                                   unsigned modulus) {
+    /*
+     * field_adv represents the distand between the start of one row and the
+     * start of the next row in the same field in terms of bytes.
+     */
+    unsigned field_adv = (fb_width << 2) + (modulus << 2) - 4;
+
+    /*
+     * bounds checking.
+     *
+     * TODO: it is not impossible that the algebra for last_addr_field1 and
+     * last_addr_field2 are a little off here, I'm *kinda* drunk.
+     */
+    addr32_t first_addr_field1 = ADDR_TEX_FIRST + row_start_field1;
+    addr32_t last_addr_field1 = ADDR_TEX_FIRST + row_start_field1 +
+        field_adv * (fb_height - 1) + 4 * (fb_width - 1);
+    addr32_t first_addr_field2 = ADDR_TEX_FIRST + row_start_field2;
+    addr32_t last_addr_field2 = ADDR_TEX_FIRST + row_start_field2 +
+        field_adv * (fb_height - 1) + 4 * (fb_width - 1);
+    if (first_addr_field1 < ADDR_TEX_FIRST ||
+        first_addr_field1 > ADDR_TEX_LAST ||
+        last_addr_field1 < ADDR_TEX_FIRST ||
+        last_addr_field1 > ADDR_TEX_LAST ||
+        first_addr_field2 < ADDR_TEX_FIRST ||
+        first_addr_field2 > ADDR_TEX_LAST ||
+        last_addr_field2 < ADDR_TEX_FIRST ||
+        last_addr_field2 > ADDR_TEX_LAST) {
+        BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                              errinfo_feature("whatever happens when "
+                                              "a framebuffer is configured to "
+                                              "read outside of texture "
+                                              "memory"));
+    }
+
+    unsigned row;
+    for (row = 0; row < fb_height; row++) {
+        uint32_t *ptr_row1 = (uint32_t*)(pvr2_tex_mem + row_start_field1);
+        uint32_t *ptr_row2 = (uint32_t*)(pvr2_tex_mem + row_start_field2);
+
+        conv_rgb0888_to_rgba8888(pixels_out + (row << 1) * fb_width,
+                                 ptr_row1, fb_width);
+        conv_rgb0888_to_rgba8888(pixels_out + ((row << 1) + 1) * fb_width,
+                                 ptr_row2, fb_width);
 
         row_start_field1 += field_adv;
         row_start_field2 += field_adv;
@@ -376,6 +461,7 @@ void framebuffer_render() {
     switch ((fb_r_ctrl & 0xc) >> 2) {
     case 0:
         // 16-bit 555 RGB
+        std::cout << "Warning: unsupported video mode RGB555" << std::endl;
         break;
     case 1:
         // 16-bit 565 RGB
@@ -395,9 +481,19 @@ void framebuffer_render() {
         break;
     case 2:
         // 24-bit 888 RGB
+        std::cout << "Warning: unsupported video mode RGB888" << std::endl;
         break;
     case 3:
         // 32-bit 08888 RGB
+        if (interlace) {
+            unsigned modulus = (fb_r_size >> 20) & 0x3ff;
+            read_framebuffer_rgb0888_intl((uint32_t*)fb_tex_mem,
+                                          fb_width, fb_height >> 1,
+                                          fb_r_sof1, fb_r_sof2, modulus);
+        } else {
+            read_framebuffer_rgb0888_prog((uint32_t*)fb_tex_mem, fb_r_sof1,
+                                          fb_width, fb_height);
+        }
         break;
     }
 
