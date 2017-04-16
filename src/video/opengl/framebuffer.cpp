@@ -26,72 +26,19 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "shader.hpp"
 #include "hw/pvr2/spg.hpp"
 #include "hw/pvr2/pvr2_core_reg.hpp"
 #include "hw/pvr2/pvr2_tex_mem.hpp"
+#include "opengl_backend.hpp"
 
 #include "framebuffer.hpp"
-
-// vertex position (x, y, z)
-static const unsigned SLOT_VERT_POS = 0;
-
-// vertex texture coordinates (s, t)
-static const unsigned SLOT_VERT_ST = 1;
-
-/*
- * this shader represents the final stage of output, where a single textured
- * quad is drawn covering the entirety of the screen.
- */
-static struct shader fb_shader;
-
-static unsigned fb_width, fb_height;
-
-// number of floats per vertex.
-// that's 3 floats for the position and 2 for the texture coords
-const static unsigned FB_VERT_LEN = 5;
-const static unsigned FB_VERT_COUNT = 4;
-static GLfloat fb_quad_verts[FB_VERT_LEN * FB_VERT_COUNT] = {
-    /*
-     * it is not a mistake that the texture-coordinates are upside-down
-     * this is because dreamcast puts the origin at upper-left corner,
-     * but opengl textures put the origin at the lower-left corner
-     */
-
-    // position            // texture coordinates
-    -1.0f, -1.0f, 0.0f,    0.0f, 1.0f,
-    -1.0f,  1.0f, 0.0f,    0.0f, 0.0f,
-     1.0f,  1.0f, 0.0f,    1.0f, 0.0f,
-     1.0f, -1.0f, 0.0f,    1.0f, 1.0f
-};
-
-const static unsigned FB_QUAD_IDX_COUNT = 4;
-GLuint fb_quad_idx[FB_QUAD_IDX_COUNT] = {
-    1, 0, 2, 3
-};
-
-/*
- * container for the poly's vertex array and its associated buffer objects.
- * this is created by fb_init_poly and never modified.
- *
- * The tex_obj, on the other hand, is modified frequently, as it is OpenGL's
- * view of our framebuffer.
- */
-struct fb_poly {
-    GLuint vbo; // vertex buffer object
-    GLuint vao; // vertex array object
-    GLuint ebo; // element buffer object
-
-    GLuint tex_obj; // texture object
-} fb_poly;
-
-static void fb_init_poly();
 
 /*
  * this is where we store the client-side version
  * of what becomes the opengl texture
  */
 static uint8_t *fb_tex_mem;
+static unsigned fb_width, fb_height;
 
 /*
  * The concat parameter in these functions corresponds to the fb_concat value
@@ -367,56 +314,11 @@ void read_framebuffer_rgb555(uint32_t *pixels_out, uint16_t const *pixels_in,
     }
 }
 
-static void fb_init_poly() {
-    GLuint vbo, vao, ebo, tex_obj;
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 FB_VERT_LEN * FB_VERT_COUNT * sizeof(GLfloat),
-                 fb_quad_verts, GL_STATIC_DRAW);
-    glVertexAttribPointer(SLOT_VERT_POS, 3, GL_FLOAT, GL_FALSE,
-                          FB_VERT_LEN * sizeof(GLfloat),
-                          (GLvoid*)0);
-    glEnableVertexAttribArray(SLOT_VERT_POS);
-    glVertexAttribPointer(SLOT_VERT_ST, 2, GL_FLOAT, GL_FALSE,
-                          FB_VERT_LEN * sizeof(GL_FLOAT),
-                          (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(SLOT_VERT_ST);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, FB_QUAD_IDX_COUNT * sizeof(GLuint),
-                 fb_quad_idx, GL_STATIC_DRAW);
-
-    glBindVertexArray(0);
-
-    // create texture object
-    glGenTextures(1, &tex_obj);
-    glBindTexture(GL_TEXTURE_2D, tex_obj);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    fb_poly.vbo = vbo;
-    fb_poly.vao = vao;
-    fb_poly.ebo = ebo;
-    fb_poly.tex_obj = tex_obj;
-}
-
 void framebuffer_init(unsigned width, unsigned height) {
     fb_width = width;
     fb_height = height;
 
     fb_tex_mem = new uint8_t[fb_width * fb_height * 4];
-
-    shader_init_from_file(&fb_shader, "final_vert.glsl", "final_frag.glsl");
-    fb_init_poly();
 }
 
 void framebuffer_render() {
@@ -497,39 +399,5 @@ void framebuffer_render() {
         break;
     }
 
-    // if (interlace) {
-    // } else {
-    //     for (
-    // }
-
-    // for (unsigned row = 0; row < fb_height; row++)
-    //     for (unsigned col = 0; col < fb_width; col++) {
-    //         uint8_t *pix = fb_tex_mem + (row * fb_width + col) * 4;
-    //         pix[0] = 0;
-    //         pix[1] = 255;
-    //         pix[2] = 0;
-    //         pix[3] = 255;
-    //     }
-
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    glUseProgram(fb_shader.shader_prog_obj);
-    glBindTexture(GL_TEXTURE_2D, fb_poly.tex_obj);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_width, fb_height, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, fb_tex_mem);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glUniform1i(glGetUniformLocation(fb_shader.shader_prog_obj, "fb_tex"), 0);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindVertexArray(fb_poly.vao);
-    glDrawElements(GL_TRIANGLE_STRIP, FB_QUAD_IDX_COUNT, GL_UNSIGNED_INT, 0);
-
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    // glFlush();
-
-    // glClearColor((float)0x17 / 255.0f,
-    //              (float)0x56 / 255.0f,
-    //              (float)0x9b / 255.0f, 1.0f);
-    // glClear(GL_COLOR_BUFFER_BIT);
+    backend_new_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
 }

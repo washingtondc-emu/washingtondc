@@ -27,6 +27,7 @@
 #include "Dreamcast.hpp"
 #include "window.hpp"
 #include "video/opengl/framebuffer.hpp"
+#include "video/opengl/opengl_backend.hpp"
 
 static void print_usage(char const *cmd) {
     std::cerr << "USAGE: " << cmd << " [options] [IP.BIN 1ST_READ.BIN]" <<
@@ -165,6 +166,7 @@ int main(int argc, char **argv) {
 
         win_init(640, 480);
         framebuffer_init(640, 480);
+        opengl_backend_init();
 
         dreamcast_run();
     } catch (BaseException& err) {

@@ -22,6 +22,13 @@
 
 #include <boost/cstdint.hpp>
 
+/*
+ * The framebuffer runs in the Dreamcast thread.  On vsync events, it is called
+ * to copy data from the Dreamcast's framebuffer (in texture memory) to host
+ * memory and them wake up the opengl backend (which runs in the windowing
+ * thread) so that it  renders the framebuffer as a textured quad.
+ */
+
 enum FramebufferFormat {
     RGB_555,
     RGB_565,

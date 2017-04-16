@@ -123,7 +123,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/video/opengl/framebuffer.cpp"
                 "${PROJECT_SOURCE_DIR}/src/video/opengl/framebuffer.hpp"
                 "${PROJECT_SOURCE_DIR}/src/video/opengl/shader.cpp"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/shader.hpp")
+                "${PROJECT_SOURCE_DIR}/src/video/opengl/shader.hpp"
+                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_backend.hpp"
+                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_backend.cpp")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
@@ -171,23 +173,23 @@ configure_file("src/video/opengl/final_vert.glsl" "final_vert.glsl")
 # Ideally, only washingtondc should need GLFW
 
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp")
-target_link_libraries(sh4asm_test sh4asm_core boost_system rt GL glfw GLEW)
+target_link_libraries(sh4asm_test sh4asm_core boost_system rt GL glfw GLEW pthread)
 
 add_executable(sh4mem_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4mem_test.cpp")
-target_link_libraries(sh4mem_test sh4 boost_system rt GL glfw GLEW)
+target_link_libraries(sh4mem_test sh4 boost_system rt GL glfw GLEW pthread)
 
 add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp")
-target_link_libraries(sh4inst_test sh4 sh4asm_core boost_system rt GL glfw GLEW)
+target_link_libraries(sh4inst_test sh4 sh4asm_core boost_system rt GL glfw GLEW pthread)
 
 add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.cpp")
-target_link_libraries(sh4tmu_test sh4 sh4asm_core boost_system rt GL glfw GLEW)
+target_link_libraries(sh4tmu_test sh4 sh4asm_core boost_system rt GL glfw GLEW pthread)
 
 add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.cpp")
-target_link_libraries(sh4div_test sh4 sh4asm_core boost_system rt GL glfw GLEW)
+target_link_libraries(sh4div_test sh4 sh4asm_core boost_system rt GL glfw GLEW pthread)
 
 add_executable(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp")
 target_link_libraries(sh4asm sh4asm_core rt)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-target_link_libraries(washingtondc sh4 boost_system rt GL glfw GLEW)
+target_link_libraries(washingtondc sh4 boost_system rt GL glfw GLEW pthread)
