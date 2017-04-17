@@ -47,7 +47,7 @@ static Sh4 cpu;
 static BiosFile *bios;
 static struct Memory mem;
 
-static bool is_running;
+static volatile bool is_running;
 
 #ifdef ENABLE_DEBUGGER
 static Debugger *debugger;
@@ -215,8 +215,6 @@ void dreamcast_run() {
 
     try {
         while (is_running) {
-            is_running = is_running && win_check_events();
-
             /*
              * The below logic will run the dc_io_service if the debugger is
              * enabled or if the serial server is enabled.  If only the

@@ -32,11 +32,17 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <cstdio>
 #include <err.h>
 #include <pthread.h>
 
+#define GL3_PROTOTYPES 1
+#include <GL/glew.h>
+#include <GL/gl.h>
+
 #include "opengl_backend.hpp"
 #include "shader.hpp"
+#include "gfx_thread.hpp"
 
 static void init_poly();
 
@@ -99,12 +105,9 @@ struct fb_poly {
  * some sort of a ringbuffer wherein there are multiple fb_reads and only the
  * newest one is valid
  */
-static uint32_t *fb_read;
-static unsigned fb_read_width, fb_read_height;
+static uint32_t * volatile fb_read;
+static unsigned volatile fb_read_width, fb_read_height;
 static pthread_mutex_t fb_read_lock = PTHREAD_MUTEX_INITIALIZER;
-
-static void backend_update_framebuffer();
-static void backend_present();
 
 void opengl_backend_init() {
     shader_init_from_file(&fb_shader, "final_vert.glsl", "final_frag.glsl");
@@ -160,15 +163,10 @@ void backend_new_framebuffer(uint32_t const *fb_new,
     if ((ret_code = pthread_mutex_unlock(&fb_read_lock)) != 0)
         err(errno, "unable to release fb_read_lock");
 
-    /*
-     * TODO: move this into the thread's main loop when the separate window
-     * thread gets implemented
-     */
-    backend_update_framebuffer();
-    backend_present();
+    gfx_thread_redraw();
 }
 
-static void backend_update_framebuffer() {
+void backend_update_framebuffer() {
     int ret_code;
     unsigned img_width, img_height;
     uint32_t *img_data;
@@ -199,7 +197,7 @@ static void backend_update_framebuffer() {
     free(img_data);
 }
 
-static void backend_present() {
+void backend_present() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(fb_shader.shader_prog_obj);

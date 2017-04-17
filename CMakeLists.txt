@@ -125,7 +125,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/video/opengl/shader.cpp"
                 "${PROJECT_SOURCE_DIR}/src/video/opengl/shader.hpp"
                 "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_backend.hpp"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_backend.cpp")
+                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_backend.cpp"
+                "${PROJECT_SOURCE_DIR}/src/gfx_thread.hpp"
+                "${PROJECT_SOURCE_DIR}/src/gfx_thread.cpp")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)

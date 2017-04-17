@@ -26,6 +26,7 @@
 #include "BaseException.hpp"
 #include "Dreamcast.hpp"
 #include "window.hpp"
+#include "gfx_thread.hpp"
 #include "video/opengl/framebuffer.hpp"
 #include "video/opengl/opengl_backend.hpp"
 
@@ -164,9 +165,8 @@ int main(int argc, char **argv) {
 #endif
         }
 
-        win_init(640, 480);
         framebuffer_init(640, 480);
-        opengl_backend_init();
+        gfx_thread_launch(640, 480);
 
         dreamcast_run();
     } catch (BaseException& err) {

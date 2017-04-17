@@ -72,6 +72,11 @@ void dreamcast_enable_serial_server(void);
 #endif
 
 void dreamcast_run();
+
+/*
+ * Kill the emulator.  This function can be safely called
+ * from any thread.
+ */
 void dreamcast_kill();
 
 Sh4 *dreamcast_get_cpu();

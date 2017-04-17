@@ -247,7 +247,6 @@ static void spg_handle_vblank_in(SchedEvent *event) {
 
     std::cout << "vcount is " << std::dec << get_vcount() << std::endl;
     framebuffer_render();
-    win_update();
 }
 
 static void spg_handle_vblank_out(SchedEvent *event) {

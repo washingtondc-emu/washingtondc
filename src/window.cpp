@@ -41,8 +41,6 @@ void win_init(unsigned width, unsigned height) {
     if (!glfwInit())
         BOOST_THROW_EXCEPTION(IntegrityError());
 
-    atexit(glfwTerminate); // TODO: this is the lazy way to implement cleanup
-
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -60,11 +58,12 @@ void win_init(unsigned width, unsigned height) {
     glViewport(0, 0, res_x, res_y);
 }
 
+void win_cleanup() {
+    glfwTerminate();
+}
+
 bool win_check_events() {
-    // TODO: this is a massive performance killer.
-    //       window/opengl functions belong in a separate thread
-    //       from the emulation core.
-    glfwPollEvents();
+    glfwWaitEvents();
     return !glfwWindowShouldClose(win);
 }
 
