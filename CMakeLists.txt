@@ -28,7 +28,7 @@ set(CMAKE_CXX_STANDARD 98)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -g")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
 
     # stupid hack to get around unused static variables in boost/asio/error.hpp
     if (CMAKE_BUILD_TYPE MATCHES "Release")
