@@ -113,7 +113,20 @@ struct Sh4 {
      */
     uint8_t *reg_area;
 
+    /*
+     * cycles_accum stores unused cycles for situations where the CPU has to
+     * run a multi-cycle instruciton but  it hasn't been given enough cycles
+     * to do so.  See sh4_run_cycles.
+     */
     unsigned cycles_accum;
+
+    /*
+     * this is used by sh4_single_step to track the type of the last
+     * instruction that was executed.  This is used to determine if the next
+     * instruction to be executed should advance the cycle count, or if it
+     * would have been executed by the second pipeline on a real sh4.
+     */
+     sh4_inst_group_t last_inst_type;
 
 #ifdef ENABLE_DEBUGGER
     /*

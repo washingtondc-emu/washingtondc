@@ -121,6 +121,12 @@ void sh4_on_hard_reset(Sh4 *sh4) {
     sh4->delayed_branch = false;
     sh4->delayed_branch_addr = 0;
 
+    /*
+     * default to CO-type instructions so that the first instruction executed
+     * costs a CPU cycle.
+     */
+    sh4->last_inst_type = SH4_GROUP_CO;
+
     sh4_ocache_clear(&sh4->ocache);
 
     sh4->exec_state = SH4_EXEC_STATE_NORM;
@@ -198,6 +204,32 @@ mulligan:
             }
 
             sh4_do_exec_inst(sh4, inst, op);
+
+            if (op->group != SH4_GROUP_CO) {
+                /*
+                 * fetch the next instruction and potentially execute it.
+                 * the rule is that CO can never execute in parallel with anything,
+                 * MT can execute in parallel with anything but CO, and every other
+                 * group can execute in parallel with anything but itself and CO.
+                 */
+
+                /*
+                 * if there's an exception we'll deal with it next time this
+                 * function gets called
+                 */
+                if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC])))
+                    goto mulligan;
+
+                InstOpcode const *second_op = sh4_decode_inst(sh4, inst);
+
+                if (second_op->group == SH4_GROUP_CO)
+                    continue;
+
+                if ((op->group != second_op->group) ||
+                    (op->group == SH4_GROUP_MT)) {
+                    sh4_do_exec_inst(sh4, inst, second_op);
+                }
+            }
         } while (n_cycles);
     } catch (BaseException& exc) {
         sh4_add_regs_to_exc(sh4, exc);
@@ -224,9 +256,15 @@ mulligan:
 
         InstOpcode const *op = sh4_decode_inst(sh4, inst);
 
+        dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp();
+        if ((op->group == SH4_GROUP_CO) ||
+            (sh4->last_inst_type == SH4_GROUP_CO) ||
+            ((sh4->last_inst_type != op->group) && (op->group != SH4_GROUP_MT))) {
+            tgt_stamp += op->issue;
+        }
+
         // I *wish* I could find a way to keep  this code in Dreamcast.cpp...
         SchedEvent *next_event;
-        dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp() + op->issue;
         while ((next_event = peek_event()) &&
                (next_event->when <= tgt_stamp)) {
             pop_event();
@@ -235,6 +273,8 @@ mulligan:
         }
 
         sh4_do_exec_inst(sh4, inst, op);
+
+        sh4->last_inst_type = op->group;
 
         dc_cycle_advance(tgt_stamp - dc_cycle_stamp());
     } catch (BaseException& exc) {

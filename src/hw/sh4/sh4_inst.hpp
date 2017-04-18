@@ -154,6 +154,27 @@ BOOST_STATIC_ASSERT(sizeof(Sh4OpArgs) == 2);
 
 typedef void (*opcode_func_t)(Sh4*, Sh4OpArgs oa);
 
+/*
+ * The Hitach SH-4 is a dual-issue CPU, meaning that there are two separate
+ * pipelines capable of executing instructions simultaneously.  From the
+ * software's perspective, instruction execution is sequential, so normal
+ * pipeline limitations such as stalls can still apply.
+ *
+ * Assuming that there are no stalls, the rule is that there are 6 distinct
+ * groups of instructions (see the group member of InstOpcode) and that what
+ * group an instruction is in determines which other groups it can execute in
+ * parallel with.  The MT group can execute in parallel with any instruction
+ * group except for CO (even itself), CO cannot execute in parallel with any
+ * group (not even itself) and all every group is capable of executing in
+ * parallel with any group except for itself and CO.
+ *
+ * OBSERVATION:
+ * every instruction that takes more than 1 cycle to execute is part of group
+ * CO.  CO instructions never execute in parallel.  This makes the
+ * cycle-counting significantly simpler because I know that I will never need to
+ * model a situation where one of the pipelines is executing an instruction that takes
+ * long that what the other pipeline is executing.
+ */
 typedef enum sh4_inst_group {
     SH4_GROUP_MT,
     SH4_GROUP_EX,
