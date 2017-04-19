@@ -974,12 +974,10 @@ static struct InstOpcode opcode_list[] = {
     { NULL }
 };
 
-#ifdef ENABLE_DEBUGGER
-static InstOpcode softbreak_opcode = {
-    "0000000000000000", &sh4_inst_softbreak, false,
+static InstOpcode invalid_opcode = {
+    "0000000000000000", &sh4_inst_invalid, false,
     0, 0, (sh4_inst_group_t)0, 0, 0, 0
 };
-#endif
 
 void sh4_exec_inst(Sh4 *sh4) {
     inst_t inst;
@@ -1010,40 +1008,7 @@ InstOpcode const* sh4_decode_inst(Sh4 *sh4, inst_t inst) {
         op++;
     }
 
-#ifdef DBG_EXIT_ON_UNDEFINED_OPCODE
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("SH4 CPU exception for "
-                                          "unrecognized opcode") <<
-                          errinfo_opcode_val(inst));
-#else
-#ifdef ENABLE_DEBUGGER
-    /*
-     * Send this to the gdb backend if it's running.  else, fall through to the
-     * next case, where we raise an sh4 CPU exception.
-     */
-    Debugger *dbg = dreamcast_get_debugger();
-    if (dbg) {
-        dbg->on_softbreak(inst, sh4->reg[SH4_REG_PC]);
-        return &softbreak_opcode;
-    }
-
-#endif /* ifdef ENABLE_DEBUGGER */
-    /*
-     * raise an sh4 CPU exception, this case is
-     * what's actually supposed to happen on real hardware.
-     */
-
-    /*
-     * Slot Illegal Instruction Exception supersedes General Illegal
-     * Instruction Exception.
-     */
-    if (sh4->delayed_branch)
-        sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
-    else
-        sh4_set_exception(sh4, SH4_EXCP_GEN_ILLEGAL_INST);
-#endif /* ifdef DBG_EXIT_ON_UNDEFINED_OPCODE */
-
-    return NULL;
+    return &invalid_opcode;
 }
 
 void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
@@ -4327,7 +4292,37 @@ void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst) {
                           errinfo_opcode_name("FTRV MXTRX, FVn"));
 }
 
+void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
+#ifdef DBG_EXIT_ON_UNDEFINED_OPCODE
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("SH4 CPU exception for "
+                                          "unrecognized opcode") <<
+                          errinfo_opcode_val(inst));
+#else
 #ifdef ENABLE_DEBUGGER
-void sh4_inst_softbreak(Sh4 *sh4, Sh4OpArgs inst) {
+    /*
+     * Send this to the gdb backend if it's running.  else, fall through to the
+     * next case, where we raise an sh4 CPU exception.
+     */
+    Debugger *dbg = dreamcast_get_debugger();
+    if (dbg) {
+        dbg->on_softbreak(inst.inst, sh4->reg[SH4_REG_PC]);
+        return;
+    }
+
+#endif /* ifdef ENABLE_DEBUGGER */
+    /*
+     * raise an sh4 CPU exception, this case is
+     * what's actually supposed to happen on real hardware.
+     */
+
+    /*
+     * Slot Illegal Instruction Exception supersedes General Illegal
+     * Instruction Exception.
+     */
+    if (sh4->delayed_branch)
+        sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
+    else
+        sh4_set_exception(sh4, SH4_EXCP_GEN_ILLEGAL_INST);
+#endif /* ifdef DBG_EXIT_ON_UNDEFINED_OPCODE */
 }
-#endif

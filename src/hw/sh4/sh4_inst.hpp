@@ -1168,14 +1168,14 @@ void sh4_inst_binary_fipr_fv_fv(Sh4 *sh4, Sh4OpArgs inst);
 // 1111nn0111111101
 void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst);
 
-#ifdef ENABLE_DEBUGGER
 /*
- * fake opcode used for implementing softbreaks.  This does nothing at all,
- * it doesn't even increment the instruction pointer.  The point of this opcode
- * is to conditionally prevent the emulator from doing anything without
- * potentially impacting performance by using an if statement
+ * fake opcode used for implementing softbreaks and errors.
+ *
+ * Depending on preprocessor options, this function might signal to the
+ * debugger that there was a TRAP, or it might throw a C++ function or it
+ * might set an sh4 CPU exception (which is what would happen on an actual
+ * sh4).
  */
-void sh4_inst_softbreak(Sh4 *sh4, Sh4OpArgs inst);
-#endif
+void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst);
 
 #endif
