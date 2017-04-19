@@ -51,932 +51,905 @@ errinfo_opcode_val;
 
 static struct InstOpcode opcode_list[] = {
     // RTS
-    { "0000000000001011", &sh4_inst_rts, true, 0, 0, SH4_GROUP_CO, 2 },
+    { "0000000000001011", &sh4_inst_rts, true, SH4_GROUP_CO, 2 },
 
     // CLRMAC
-    { "0000000000101000", &sh4_inst_clrmac, false, 0, 0, SH4_GROUP_CO, 1 },
+    { "0000000000101000", &sh4_inst_clrmac, false, SH4_GROUP_CO, 1 },
 
     // CLRS
-    { "0000000001001000", &sh4_inst_clrs, false, 0, 0, SH4_GROUP_CO, 1 },
+    { "0000000001001000", &sh4_inst_clrs, false, SH4_GROUP_CO, 1 },
 
     // CLRT
-    { "0000000000001000", &sh4_inst_clrt, false, 0, 0, SH4_GROUP_MT, 1 },
+    { "0000000000001000", &sh4_inst_clrt, false, SH4_GROUP_MT, 1 },
 
     // LDTLB
-    { "0000000000111000", &sh4_inst_ldtlb, false, 0, 0, SH4_GROUP_CO, 1 },
+    { "0000000000111000", &sh4_inst_ldtlb, false, SH4_GROUP_CO, 1 },
 
     // NOP
-    { "0000000000001001", &sh4_inst_nop, false, 0, 0, SH4_GROUP_MT, 1 },
+    { "0000000000001001", &sh4_inst_nop, false, SH4_GROUP_MT, 1 },
 
     // RTE
-    { "0000000000101011", &sh4_inst_rte, false, 0, 0, SH4_GROUP_CO, 5 },
+    { "0000000000101011", &sh4_inst_rte, false, SH4_GROUP_CO, 5 },
 
     // SETS
-    { "0000000001011000", &sh4_inst_sets, false, 0, 0, SH4_GROUP_CO, 1 },
+    { "0000000001011000", &sh4_inst_sets, false, SH4_GROUP_CO, 1 },
 
     // SETT
-    { "0000000000011000", &sh4_inst_sett, false, 0, 0, SH4_GROUP_MT, 1 },
+    { "0000000000011000", &sh4_inst_sett, false, SH4_GROUP_MT, 1 },
 
     // SLEEP
-    { "0000000000011011", &sh4_inst_sleep, false, 0, 0, SH4_GROUP_CO, 4 },
+    { "0000000000011011", &sh4_inst_sleep, false, SH4_GROUP_CO, 4 },
 
     // FRCHG
-    { "1111101111111101", &sh4_inst_frchg, false, 0, 0, SH4_GROUP_FE, 1 },
+    { "1111101111111101", &sh4_inst_frchg, false, SH4_GROUP_FE, 1 },
 
     // FSCHG
-    { "1111001111111101", &sh4_inst_fschg, false, 0, 0, SH4_GROUP_FE, 1 },
+    { "1111001111111101", &sh4_inst_fschg, false, SH4_GROUP_FE, 1 },
 
     // MOVT Rn
     { "0000nnnn00101001", &sh4_inst_unary_movt_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // CMP/PZ
     { "0100nnnn00010001", &sh4_inst_unary_cmppz_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // CMP/PL
     { "0100nnnn00010101", &sh4_inst_unary_cmppl_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // DT
     { "0100nnnn00010000", &sh4_inst_unary_dt_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // ROTL Rn
     { "0100nnnn00000100", &sh4_inst_unary_rotl_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // ROTR Rn
     { "0100nnnn00000101", &sh4_inst_unary_rotr_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // ROTCL Rn
     { "0100nnnn00100100", &sh4_inst_unary_rotcl_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // ROTCR Rn
     { "0100nnnn00100101", &sh4_inst_unary_rotcr_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHAL Rn
     { "0100nnnn00200000", &sh4_inst_unary_shal_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHAR Rn
     { "0100nnnn00100001", &sh4_inst_unary_shar_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHLL Rn
     { "0100nnnn00000000", &sh4_inst_unary_shll_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHLR Rn
     { "0100nnnn00000001", &sh4_inst_unary_shlr_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHLL2 Rn
     { "0100nnnn00001000", &sh4_inst_unary_shll2_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHLR2 Rn
     { "0100nnnn00001001", &sh4_inst_unary_shlr2_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHLL8 Rn
     { "0100nnnn00011000", &sh4_inst_unary_shll8_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHLR8 Rn
     { "0100nnnn00011001", &sh4_inst_unary_shlr8_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHLL16 Rn
     { "0100nnnn00101000", &sh4_inst_unary_shll16_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHLR16 Rn
     { "0100nnnn00101001", &sh4_inst_unary_shlr16_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // BRAF Rn
     { "0000nnnn00100011", &sh4_inst_unary_braf_gen, true,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // BSRF Rn
     { "0000nnnn00000011", &sh4_inst_unary_bsrf_gen, true,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // CMP/EQ #imm, R0
     { "10001000iiiiiiii", &sh4_inst_binary_cmpeq_imm_r0, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // AND.B #imm, @(R0, GBR)
     { "11001101iiiiiiii", &sh4_inst_binary_andb_imm_r0_gbr, false,
-      0, 0, SH4_GROUP_CO, 4 },
+      SH4_GROUP_CO, 4 },
 
     // AND #imm, R0
     { "11001001iiiiiiii", &sh4_inst_binary_and_imm_r0, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // OR.B #imm, @(R0, GBR)
     { "11001111iiiiiiii", &sh4_inst_binary_orb_imm_r0_gbr, false,
-      0, 0, SH4_GROUP_CO, 4 },
+      SH4_GROUP_CO, 4 },
 
     // OR #imm, R0
     { "11001011iiiiiiii", &sh4_inst_binary_or_imm_r0, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // TST #imm, R0
     { "11001000iiiiiiii", &sh4_inst_binary_tst_imm_r0, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // TST.B #imm, @(R0, GBR)
     { "11001100iiiiiiii", &sh4_inst_binary_tstb_imm_r0_gbr, false,
-      0, 0, SH4_GROUP_CO, 3 },
+      SH4_GROUP_CO, 3 },
 
     // XOR #imm, R0
     { "11001010iiiiiiii", &sh4_inst_binary_xor_imm_r0, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // XOR.B #imm, @(R0, GBR)
     { "11001110iiiiiiii", &sh4_inst_binary_xorb_imm_r0_gbr, false,
-      0, 0, SH4_GROUP_CO, 4 },
+      SH4_GROUP_CO, 4 },
 
     // BF label
     { "10001011dddddddd", &sh4_inst_unary_bf_disp, true,
-      0, 0, SH4_GROUP_BR, 1 },
+      SH4_GROUP_BR, 1 },
 
     // BF/S label
     { "10001111dddddddd", &sh4_inst_unary_bfs_disp, true,
-      0, 0, SH4_GROUP_BR, 1 },
+      SH4_GROUP_BR, 1 },
 
     // BT label
     { "10001001dddddddd", &sh4_inst_unary_bt_disp, true,
-      0, 0, SH4_GROUP_BR, 1 },
+      SH4_GROUP_BR, 1 },
 
     // BT/S label
     { "10001101dddddddd", &sh4_inst_unary_bts_disp, true,
-      0, 0, SH4_GROUP_BR, 1 },
+      SH4_GROUP_BR, 1 },
 
     // BRA label
     { "1010dddddddddddd", &sh4_inst_unary_bra_disp, true,
-      0, 0, SH4_GROUP_BR, 1 },
+      SH4_GROUP_BR, 1 },
 
     // BSR label
     { "1011dddddddddddd", &sh4_inst_unary_bsr_disp, true,
-      0, 0, SH4_GROUP_BR, 1 },
+      SH4_GROUP_BR, 1 },
 
     // TRAPA #immed
     { "11000011iiiiiiii", &sh4_inst_unary_trapa_disp, false,
-      0, 0, SH4_GROUP_CO, 7 },
+      SH4_GROUP_CO, 7 },
 
     // TAS.B @Rn
     { "0100nnnn00011011", &sh4_inst_unary_tasb_gen, false,
-      0, 0, SH4_GROUP_CO, 5 },
+      SH4_GROUP_CO, 5 },
 
     // OCBI @Rn
     { "0000nnnn10100011", &sh4_inst_unary_ocbi_indgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // OCBP @Rn
     { "0000nnnn10100011", &sh4_inst_unary_ocbp_indgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // PREF @Rn
     { "0000nnnn10000011", &sh4_inst_unary_pref_indgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // JMP @Rn
     { "0100nnnn00101011", &sh4_inst_unary_jmp_indgen, true,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // JSR @Rn
     { "0100nnnn00001011", &sh4_inst_unary_jsr_indgen, true,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // LDC Rm, SR
     { "0100mmmm00001110", &sh4_inst_binary_ldc_gen_sr, false,
-      0, 0, SH4_GROUP_CO, 4 },
+      SH4_GROUP_CO, 4 },
 
     // LDC Rm, GBR
     { "0100mmmm00011110", &sh4_inst_binary_ldc_gen_gbr, false,
-      0, 0, SH4_GROUP_CO, 3 },
+      SH4_GROUP_CO, 3 },
 
     // LDC Rm, VBR
     { "0100mmmm00101110", &sh4_inst_binary_ldc_gen_vbr, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDC Rm, SSR
     { "0100mmmm00111110", &sh4_inst_binary_ldc_gen_ssr, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDC Rm, SPC
     { "0100mmmm01001110", &sh4_inst_binary_ldc_gen_spc, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDC Rm, DBR
     { "0100mmmm11111010", &sh4_inst_binary_ldc_gen_dbr, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STC SR, Rn
     { "0000nnnn00000010", &sh4_inst_binary_stc_sr_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC GBR, Rn
     { "0000nnnn00010010", &sh4_inst_binary_stc_gbr_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC VBR, Rn
     { "0000nnnn00100010", &sh4_inst_binary_stc_vbr_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC SSR, Rn
     { "0000nnnn00110010", &sh4_inst_binary_stc_ssr_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC SPC, Rn
     { "0000nnnn01000010", &sh4_inst_binary_stc_spc_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC SGR, Rn
     { "0000nnnn00111010", &sh4_inst_binary_stc_sgr_gen, false,
-      0, 0, SH4_GROUP_CO, 3 },
+      SH4_GROUP_CO, 3 },
 
     // STC DBR, Rn
     { "0000nnnn11111010", &sh4_inst_binary_stc_dbr_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // LDC.L @Rm+, SR
     { "0100mmmm00000111", &sh4_inst_binary_ldcl_indgeninc_sr, false,
-      0, 0, SH4_GROUP_CO, 4 },
+      SH4_GROUP_CO, 4 },
 
     // LDC.L @Rm+, GBR
     { "0100mmmm00010111", &sh4_inst_binary_ldcl_indgeninc_gbr, false,
-      0, 0, SH4_GROUP_CO, 3 },
+      SH4_GROUP_CO, 3 },
 
     // LDC.L @Rm+, VBR
     { "0100mmmm00100111", &sh4_inst_binary_ldcl_indgeninc_vbr, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDC.L @Rm+, SSR
     { "0100mmmm00110111", &sh4_inst_binary_ldcl_indgenic_ssr, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDC.L @Rm+, SPC
     { "0100mmmm01000111", &sh4_inst_binary_ldcl_indgeninc_spc, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDC.L @Rm+, DBR
     { "0100mmmm11110110", &sh4_inst_binary_ldcl_indgeninc_dbr, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STC.L SR, @-Rn
     { "0100nnnn00000011", &sh4_inst_binary_stcl_sr_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC.L GBR, @-Rn
     { "0100nnnn00010011", &sh4_inst_binary_stcl_gbr_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC.L VBR, @-Rn
     { "0100nnnn00100011", &sh4_inst_binary_stcl_vbr_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC.L SSR, @-Rn
     { "0100nnnn00110011", &sh4_inst_binary_stcl_ssr_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC.L SPC, @-Rn
     { "0100nnnn01000011", &sh4_inst_binary_stcl_spc_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC.L SGR, @-Rn
     { "0100nnnn00110010", &sh4_inst_binary_stcl_sgr_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 3 },
+      SH4_GROUP_CO, 3 },
 
     // STC.L DBR, @-Rn
     { "0100nnnn11110010", &sh4_inst_binary_stcl_dbr_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // MOV #imm, Rn
     { "1110nnnniiiiiiii", &sh4_inst_binary_mov_imm_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // ADD #imm, Rn
     { "0111nnnniiiiiiii", &sh4_inst_binary_add_imm_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // MOV.W @(disp, PC), Rn
     { "1001nnnndddddddd", &sh4_inst_binary_movw_binind_disp_pc_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.L @(disp, PC), Rn
     { "1101nnnndddddddd", &sh4_inst_binary_movl_binind_disp_pc_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV Rm, Rn
     { "0110nnnnmmmm0011", &sh4_inst_binary_movw_gen_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // SWAP.B Rm, Rn
     { "0110nnnnmmmm1000", &sh4_inst_binary_swapb_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SWAP.W Rm, Rn
     { "0110nnnnmmmm1001", &sh4_inst_binary_swapw_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // XTRCT Rm, Rn
     { "0010nnnnmmmm1101", &sh4_inst_binary_xtrct_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // ADD Rm, Rn
     { "0011nnnnmmmm1100", &sh4_inst_binary_add_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // ADDC Rm, Rn
     { "0011nnnnmmmm1110", &sh4_inst_binary_addc_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // ADDV Rm, Rn
     { "0011nnnnmmmm1111", &sh4_inst_binary_addv_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // CMP/EQ Rm, Rn
     { "0011nnnnmmmm0000", &sh4_inst_binary_cmpeq_gen_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // CMP/HS Rm, Rn
     { "0011nnnnmmmm0010", &sh4_inst_binary_cmphs_gen_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // CMP/GE Rm, Rn
     { "0011nnnnmmmm0011", &sh4_inst_binary_cmpge_gen_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // CMP/HI Rm, Rn
     { "0011nnnnmmmm0110", &sh4_inst_binary_cmphi_gen_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // CMP/GT Rm, Rn
     { "0011nnnnmmmm0111", &sh4_inst_binary_cmpgt_gen_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // CMP/STR Rm, Rn
     { "0010nnnnmmmm1100", &sh4_inst_binary_cmpstr_gen_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // DIV1 Rm, Rn
     { "0011nnnnmmmm0100", &sh4_inst_binary_div1_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // DIV0S Rm, Rn
     { "0010nnnnmmmm0111", &sh4_inst_binary_div0s_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // DIV0U
-    { "0000000000011001", &sh4_inst_noarg_div0u, false, 0, 0, SH4_GROUP_EX, 1 },
+    { "0000000000011001", &sh4_inst_noarg_div0u, false, SH4_GROUP_EX, 1 },
 
     // DMULS.L Rm, Rn
     { "0011nnnnmmmm1101", &sh4_inst_binary_dmulsl_gen_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // DMULU.L Rm, Rn
     { "0011nnnnmmmm0101", &sh4_inst_binary_dmulul_gen_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // EXTS.B Rm, Rn
     { "0110nnnnmmmm1110", &sh4_inst_binary_extsb_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // EXTS.W Rm, Rn
     { "0110nnnnmmmm1111", &sh4_inst_binary_extsw_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // EXTU.B Rm, Rn
     { "0110nnnnmmmm1100", &sh4_inst_binary_extub_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // EXTU.W Rm, Rn
     { "0110nnnnmmmm1101", &sh4_inst_binary_extuw_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // MUL.L Rm, Rn
     { "0000nnnnmmmm0111", &sh4_inst_binary_mull_gen_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // MULS.W Rm, Rn
     { "0010nnnnmmmm1111", &sh4_inst_binary_mulsw_gen_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // MULU.W Rm, Rn
     { "0010nnnnmmmm1110", &sh4_inst_binary_muluw_gen_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // NEG Rm, Rn
     { "0110nnnnmmmm1011", &sh4_inst_binary_neg_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // NEGC Rm, Rn
     { "0110nnnnmmmm1010", &sh4_inst_binary_negc_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SUB Rm, Rn
     { "0011nnnnmmmm1000", &sh4_inst_binary_sub_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SUBC Rm, Rn
     { "0011nnnnmmmm1010", &sh4_inst_binary_subc_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SUBV Rm, Rn
     { "0011nnnnmmmm1011", &sh4_inst_binary_subv_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // AND Rm, Rn
     { "0010nnnnmmmm1001", &sh4_inst_binary_and_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // NOT Rm, Rn
     { "0110nnnnmmmm0111", &sh4_inst_binary_not_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // OR Rm, Rn
     { "0010nnnnmmmm1011", &sh4_inst_binary_or_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // TST Rm, Rn
     { "0010nnnnmmmm1000", &sh4_inst_binary_tst_gen_gen, false,
-      0, 0, SH4_GROUP_MT, 1 },
+      SH4_GROUP_MT, 1 },
 
     // XOR Rm, Rn
     { "0010nnnnmmmm1010", &sh4_inst_binary_xor_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHAD Rm, Rn
     { "0100nnnnmmmm1100", &sh4_inst_binary_shad_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // SHLD Rm, Rn
     { "0100nnnnmmmm1101", &sh4_inst_binary_shld_gen_gen, false,
-      0, 0, SH4_GROUP_EX, 1 },
+      SH4_GROUP_EX, 1 },
 
     // LDC Rm, Rn_BANK
     { "0100mmmm1nnn1110", &sh4_inst_binary_ldc_gen_bank, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDC.L @Rm+, Rn_BANK
     { "0100mmmm1nnn0111", &sh4_inst_binary_ldcl_indgeninc_bank, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STC Rm_BANK, Rn
     { "0000nnnn1mmm0010", &sh4_inst_binary_stc_bank_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STC.L Rm_BANK, @-Rn
     { "0100nnnn1mmm0011", &sh4_inst_binary_stcl_bank_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // LDS Rm, MACH
     { "0100mmmm00001010", &sh4_inst_binary_lds_gen_mach, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDS Rm, MACL
     { "0100mmmm00011010", &sh4_inst_binary_lds_gen_macl, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STS MACH, Rn
     { "0000nnnn00001010", &sh4_inst_binary_sts_mach_gen, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STS MACL, Rn
     { "0000nnnn00011010", &sh4_inst_binary_sts_macl_gen, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDS Rm, PR
     { "0100mmmm00101010", &sh4_inst_binary_lds_gen_pr, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STS PR, Rn
     { "0000nnnn00101010", &sh4_inst_binary_sts_pr_gen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // LDS.L @Rm+, MACH
     { "0100mmmm00000110", &sh4_inst_binary_ldsl_indgeninc_mach, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDS.L @Rm+, MACL
     { "0100mmmm00010110", &sh4_inst_binary_ldsl_indgeninc_macl, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STS.L MACH, @-Rn
     { "0100mmmm00000010", &sh4_inst_binary_stsl_mach_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STS.L MACL, @-Rn
     { "0100mmmm00010010", &sh4_inst_binary_stsl_macl_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDS.L @Rm+, PR
     { "0100mmmm00100110", &sh4_inst_binary_ldsl_indgeninc_pr, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // STS.L PR, @-Rn
     { "0100nnnn00100010", &sh4_inst_binary_stsl_pr_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 2 },
+      SH4_GROUP_CO, 2 },
 
     // MOV.B Rm, @Rn
     { "0010nnnnmmmm0000", &sh4_inst_binary_movb_gen_indgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.W Rm, @Rn
     { "0010nnnnmmmm0001", &sh4_inst_binary_movw_gen_indgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.L Rm, @Rn
     { "0010nnnnmmmm0010", &sh4_inst_binary_movl_gen_indgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.B @Rm, Rn
     { "0110nnnnmmmm0000", &sh4_inst_binary_movb_indgen_gen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.W @Rm, Rn
     { "0110nnnnmmmm0001", &sh4_inst_binary_movw_indgen_gen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.L @Rm, Rn
     { "0110nnnnmmmm0010", &sh4_inst_binary_movl_indgen_gen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.B Rm, @-Rn
     { "0010nnnnmmmm0100", &sh4_inst_binary_movb_gen_inddecgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.W Rm, @-Rn
     { "0010nnnnmmmm0101", &sh4_inst_binary_movw_gen_inddecgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.L Rm, @-Rn
     { "0010nnnnmmmm0110", &sh4_inst_binary_movl_gen_inddecgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.B @Rm+, Rn
     { "0110nnnnmmmm0100", &sh4_inst_binary_movb_indgeninc_gen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.W @Rm+, Rn
     { "0110nnnnmmmm0101", &sh4_inst_binary_movw_indgeninc_gen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MOV.L @Rm+, Rn
     { "0110nnnnmmmm0110", &sh4_inst_binary_movl_indgeninc_gen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // MAC.L @Rm+, @Rn+
     { "0000nnnnmmmm1111", &sh4_inst_binary_macl_indgeninc_indgeninc,
-      false, 0, 0, SH4_GROUP_CO, 2 },
+      false, SH4_GROUP_CO, 2 },
 
     // MAC.W @Rm+, @Rn+
     { "0100nnnnmmmm1111", &sh4_inst_binary_macw_indgeninc_indgeninc,
-      false, 0, 0, SH4_GROUP_CO, 2 },
+      false, SH4_GROUP_CO, 2 },
 
     // MOV.B R0, @(disp, Rn)
     { "10000000nnnndddd", &sh4_inst_binary_movb_r0_binind_disp_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.W R0, @(disp, Rn)
     { "10000001nnnndddd", &sh4_inst_binary_movw_r0_binind_disp_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.L Rm, @(disp, Rn)
     { "0001nnnnmmmmdddd", &sh4_inst_binary_movl_gen_binind_disp_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.B @(disp, Rm), R0
     { "10000100mmmmdddd", &sh4_inst_binary_movb_binind_disp_gen_r0,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.W @(disp, Rm), R0
     { "10000101mmmmdddd", &sh4_inst_binary_movw_binind_disp_gen_r0,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.L @(disp, Rm), Rn
     { "0101nnnnmmmmdddd", &sh4_inst_binary_movl_binind_disp_gen_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.B Rm, @(R0, Rn)
     { "0000nnnnmmmm0100", &sh4_inst_binary_movb_gen_binind_r0_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.W Rm, @(R0, Rn)
     { "0000nnnnmmmm0101", &sh4_inst_binary_movw_gen_binind_r0_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.L Rm, @(R0, Rn)
     { "0000nnnnmmmm0110", &sh4_inst_binary_movl_gen_binind_r0_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.B @(R0, Rm), Rn
     { "0000nnnnmmmm1100", &sh4_inst_binary_movb_binind_r0_gen_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.W @(R0, Rm), Rn
     { "0000nnnnmmmm1101", &sh4_inst_binary_movw_binind_r0_gen_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.L @(R0, Rm), Rn
     { "0000nnnnmmmm1110", &sh4_inst_binary_movl_binind_r0_gen_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.B R0, @(disp, GBR)
     { "11000000dddddddd", &sh4_inst_binary_movb_r0_binind_disp_gbr,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.W R0, @(disp, GBR)
     { "11000001dddddddd", &sh4_inst_binary_movw_r0_binind_disp_gbr,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.L R0, @(disp, GBR)
     { "11000010dddddddd", &sh4_inst_binary_movl_r0_binind_disp_gbr,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.B @(disp, GBR), R0
     { "11000100dddddddd", &sh4_inst_binary_movb_binind_disp_gbr_r0,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.W @(disp, GBR), R0
     { "11000101dddddddd", &sh4_inst_binary_movw_binind_disp_gbr_r0,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOV.L @(disp, GBR), R0
     { "11000110dddddddd", &sh4_inst_binary_movl_binind_disp_gbr_r0,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // MOVA @(disp, PC), R0
     { "11000111dddddddd", &sh4_inst_binary_mova_binind_disp_pc_r0,
-      false, 0, 0, SH4_GROUP_EX, 1 },
+      false, SH4_GROUP_EX, 1 },
 
     // MOVCA.L R0, @Rn
     { "0000nnnn11000011", &sh4_inst_binary_movcal_r0_indgen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // FLDI0 FRn
-    { "1111nnnn10001101", &sh4_inst_unary_fldi0_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_LS, 1 },
+    { "1111nnnn10001101", FPU_HANDLER(fldi0),
+      false, SH4_GROUP_LS, 1 },
 
     // FLDI1 Frn
-    { "1111nnnn10011101", &sh4_inst_unary_fldi1_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_LS, 1 },
+    { "1111nnnn10011101", FPU_HANDLER(fldi1),
+      false, SH4_GROUP_LS, 1 },
 
     // FMOV FRm, FRn
-    { "1111nnnnmmmm1100", &sh4_inst_binary_fmov_fr_fr,
-      false, SH4_FPSCR_SZ_MASK, 0, SH4_GROUP_LS, 1 },
+    // 1111nnnnmmmm1100
+    // FMOV DRm, DRn
+    // 1111nnn0mmm01100
+    { "1111nnnnmmmm1100", FPU_HANDLER(fmov_gen),
+      false, SH4_GROUP_LS, 1 },
 
     // FMOV.S @Rm, FRn
-    { "1111nnnnmmmm1000", &sh4_inst_binary_fmovs_indgen_fr,
-      false, SH4_FPSCR_SZ_MASK, 0, SH4_GROUP_LS, 1 },
+    // 1111nnnnmmmm1000
+    // FMOV @Rm, DRn
+    // 1111nnn0mmmm1000
+    { "1111nnnnmmmm1000", FPU_HANDLER(fmovs_ind_gen),
+      false, SH4_GROUP_LS, 1 },
 
     // FMOV.S @(R0, Rm), FRn
-    { "1111nnnnmmmm0110", &sh4_inst_binary_fmovs_binind_r0_gen_fr,
-      false, SH4_FPSCR_SZ_MASK, 0, SH4_GROUP_LS, 1 },
+    // 1111nnnnmmmm0110
+    // FMOV @(R0, Rm), DRn
+    // 1111nnn0mmmm0110
+    { "1111nnnnmmmm0110", FPU_HANDLER(fmov_binind_r0_gen_fpu),
+      false, SH4_GROUP_LS, 1 },
 
     // FMOV.S @Rm+, FRn
-    { "1111nnnnmmmm1001", &sh4_inst_binary_fmovs_indgeninc_fr,
-      false, SH4_FPSCR_SZ_MASK, 0, SH4_GROUP_LS, 1 },
+    // 1111nnnnmmmm1001
+    // FMOV @Rm+, DRn
+    // 1111nnn0mmmm1001
+    { "1111nnnnmmmm1001", FPU_HANDLER(fmov_indgeninc_fpu),
+      false, SH4_GROUP_LS, 1 },
 
     // FMOV.S FRm, @Rn
-    { "1111nnnnmmmm1010", &sh4_inst_binary_fmovs_fr_indgen,
-      false,  SH4_FPSCR_SZ_MASK, 0, SH4_GROUP_LS, 1 },
+    // 1111nnnnmmmm1010
+    // FMOV DRm, @Rn
+    // 1111nnnnmmm01010
+    { "1111nnnnmmmm1010", FPU_HANDLER(fmov_fpu_indgen),
+      false, SH4_GROUP_LS, 1 },
 
     // FMOV.S FRm, @-Rn
-    { "1111nnnnmmmm1011", &sh4_inst_binary_fmovs_fr_inddecgen,
-      false,  SH4_FPSCR_SZ_MASK, 0, SH4_GROUP_LS, 1 },
+    // 1111nnnnmmmm1011
+    // FMOV DRm, @-Rn
+    // 1111nnnnmmm01011
+    { "1111nnnnmmmm1011", FPU_HANDLER(fmov_fpu_inddecgen),
+      false, SH4_GROUP_LS, 1 },
 
     // FMOV.S FRm, @(R0, Rn)
-    { "1111nnnnmmmm0111", &sh4_inst_binary_fmovs_fr_binind_r0_gen,
-      false, SH4_FPSCR_SZ_MASK, 0, SH4_GROUP_LS, 1 },
-
-    // FMOV DRm, DRn
-    { "1111nnn0mmm01100", &sh4_inst_binary_fmov_dr_dr,
-      false, SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK, SH4_GROUP_LS, 1 },
-
-    // FMOV @Rm, DRn
-    { "1111nnn0mmmm1000", &sh4_inst_binary_fmov_indgen_dr,
-      false, SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK, SH4_GROUP_LS, 1 },
-
-    // FMOV @(R0, Rm), DRn
-    { "1111nnn0mmmm0110", &sh4_inst_binary_fmov_binind_r0_gen_dr,
-      false, SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK, SH4_GROUP_LS, 1 },
-
-    // FMOV @Rm+, DRn
-    { "1111nnn0mmmm1001", &sh4_inst_binary_fmov_indgeninc_dr,
-      false, SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK, SH4_GROUP_LS, 1 },
-
-    // FMOV DRm, @Rn
-    { "1111nnnnmmm01010", &sh4_inst_binary_fmov_dr_indgen,
-      false, SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK, SH4_GROUP_LS, 1 },
-
-    // FMOV DRm, @-Rn
-    { "1111nnnnmmm01011", &sh4_inst_binary_fmov_dr_inddecgen,
-      false, SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK, SH4_GROUP_LS, 1 },
-
+    // 1111nnnnmmmm0111
     // FMOV DRm, @(R0, Rn)
-    { "1111nnnnmmm00111", &sh4_inst_binary_fmov_dr_binind_r0_gen,
-      false, SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK, SH4_GROUP_LS, 1 },
+    // 1111nnnnmmm00111
+    { "1111nnnnmmmm0111", FPU_HANDLER(fmov_fpu_binind_r0_gen),
+      false, SH4_GROUP_LS, 1 },
 
     // FLDS FRm, FPUL
     // XXX Should this check the SZ or PR bits of FPSCR ?
     { "1111mmmm00011101", &sh4_inst_binary_flds_fr_fpul, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // FSTS FPUL, FRn
     // XXX Should this check the SZ or PR bits of FPSCR ?
     { "1111nnnn00001101", &sh4_inst_binary_fsts_fpul_fr, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // FABS FRn
-    { "1111nnnn01011101", &sh4_inst_unary_fabs_fr, false,
-      SH4_FPSCR_PR_MASK, 0, SH4_GROUP_LS, 1 },
+    // 1111nnnn01011101
+    // FABS DRn
+    // 1111nnn001011101
+    { "1111nnnn01011101", FPU_HANDLER(fabs_fpu), false,
+      SH4_GROUP_LS, 1 },
 
     // FADD FRm, FRn
-    { "1111nnnnmmmm0000", &sh4_inst_binary_fadd_fr_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
+    // 1111nnnnmmmm0000
+    // FADD DRm, DRn
+    // 1111nnn0mmm00000
+    { "1111nnnnmmmm0000", FPU_HANDLER(fadd_fpu),
+      false, SH4_GROUP_FE, 1 },
 
     // FCMP/EQ FRm, FRn
-    { "1111nnnnmmmm0100", &sh4_inst_binary_fcmpeq_fr_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
+    // 1111nnnnmmmm0100
+    // FCMP/EQ DRm, DRn
+    // 1111nnn0mmm00100
+    { "1111nnnnmmmm0100", FPU_HANDLER(fcmpeq_fpu), false, SH4_GROUP_FE, 1 },
 
     // FCMP/GT FRm, FRn
-    { "1111nnnnmmmm0101", &sh4_inst_binary_fcmpgt_fr_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
+    // 1111nnnnmmmm0101
+    // FCMP/GT DRm, DRn
+    // 1111nnn0mmm00101
+    { "1111nnnnmmmm0101", FPU_HANDLER(fcmpgt_fpu), false, SH4_GROUP_FE, 1 },
 
     // FDIV FRm, FRn
-    { "1111nnnnmmmm0011", &sh4_inst_binary_fdiv_fr_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
+    // 1111nnnnmmmm0011
+    // FDIV DRm, DRn
+    // 1111nnn0mmm00011
+    { "1111nnnnmmmm0011", FPU_HANDLER(fdiv_fpu), false, SH4_GROUP_FE, 1 },
 
     // FLOAT FPUL, FRn
-    { "1111nnnn00101101", &sh4_inst_binary_float_fpul_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
+    // 1111nnnn00101101
+    // FLOAT FPUL, DRn
+    // 1111nnn000101101
+    { "1111nnnn00101101", FPU_HANDLER(float_fpu), false, SH4_GROUP_FE, 1 },
 
     // FMAC FR0, FRm, FRn
-    { "1111nnnnmmmm1110", &sh4_inst_trinary_fmac_fr0_fr_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
+    // 1111nnnnmmmm1110
+    { "1111nnnnmmmm1110", FPU_HANDLER(fmac_fpu), false, SH4_GROUP_FE, 1 },
 
     // FMUL FRm, FRn
-    { "1111nnnnmmmm0010", &sh4_inst_binary_fmul_fr_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
+    // 1111nnnnmmmm0010
+    // FMUL DRm, DRn
+    // 1111nnn0mmm00010
+    { "1111nnnnmmmm0010", FPU_HANDLER(fmul_fpu), false, SH4_GROUP_FE, 1 },
 
     // FNEG FRn
-    { "1111nnnn01001101", &sh4_inst_unary_fneg_fr, false,
-      SH4_FPSCR_PR_MASK, 0, SH4_GROUP_LS, 1 },
+    // 1111nnnn01001101
+    // FNEG DRn
+    // 1111nnn001001101
+    { "1111nnnn01001101", FPU_HANDLER(fneg_fpu), false, SH4_GROUP_LS, 1 },
 
     // FSQRT FRn
-    { "1111nnnn01101101", &sh4_inst_unary_fsqrt_fr, false,
-      SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
+    // 1111nnnn01101101
+    // FSQRT DRn
+    // 1111nnn001101101
+    { "1111nnnn01101101", FPU_HANDLER(fsqrt_fpu), false, SH4_GROUP_FE, 1 },
 
     // FSUB FRm, FRn
-    { "1111nnnnmmmm0001", &sh4_inst_binary_fsub_fr_fr,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
+    // 1111nnnnmmmm0001
+    // FSUB DRm, DRn
+    // 1111nnn0mmm00001
+    { "1111nnnnmmmm0001", FPU_HANDLER(fsub_fpu), false, SH4_GROUP_FE, 1 },
 
     // FTRC FRm, FPUL
-    { "1111mmmm00111101", &sh4_inst_binary_ftrc_fr_fpul,
-      false, SH4_FPSCR_PR_MASK, 0, SH4_GROUP_FE, 1 },
-
-    // FABS DRn
-    { "1111nnn001011101", &sh4_inst_unary_fabs_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_LS, 1 },
-
-    // FADD DRm, DRn
-    { "1111nnn0mmm00000", &sh4_inst_binary_fadd_dr_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_FE, 1 },
-
-    // FCMP/EQ DRm, DRn
-    { "1111nnn0mmm00100", &sh4_inst_binary_fcmpeq_dr_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_CO, 2 },
-
-    // FCMP/GT DRm, DRn
-    { "1111nnn0mmm00101", &sh4_inst_binary_fcmpgt_dr_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_CO, 2 },
-
-    // FDIV DRm, DRn
-    { "1111nnn0mmm00011", &sh4_inst_binary_fdiv_dr_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_FE, 1 },
+    // 1111mmmm00111101
+    // FTRC DRm, FPUL
+    // 1111mmm000111101
+    { "1111mmmm00111101", FPU_HANDLER(ftrc_fpu), false, SH4_GROUP_FE, 1 },
 
     // FCNVDS DRm, FPUL
-    { "1111mmm010111101", &sh4_inst_binary_fcnvds_dr_fpul,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_FE, 1 },
+    // 1111mmm010111101
+    { "1111mmm010111101", FPU_HANDLER(fcnvds_fpu), false, SH4_GROUP_FE, 1 },
 
     // FCNVSD FPUL, DRn
-    { "1111nnn010101101", &sh4_inst_binary_fcnvsd_fpul_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_FE, 1 },
-
-    // FLOAT FPUL, DRn
-    { "1111nnn000101101", &sh4_inst_binary_float_fpul_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_FE, 1 },
-
-    // FMUL DRm, DRn
-    { "1111nnn0mmm00010", &sh4_inst_binary_fmul_dr_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_FE, 1 },
-
-    // FNEG DRn
-    { "1111nnn001001101", &sh4_inst_unary_fneg_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_LS, 1 },
-
-    // FSQRT DRn
-    { "1111nnn001101101", &sh4_inst_unary_fsqrt_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_FE, 1 },
-
-    // FSUB DRm, DRn
-    { "1111nnn0mmm00001", &sh4_inst_binary_fsub_dr_dr,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_FE, 1 },
-
-    // FTRC DRm, FPUL
-    { "1111mmm000111101", &sh4_inst_binary_ftrc_dr_fpul,
-      false, SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK, SH4_GROUP_FE, 1 },
+    // 1111nnn010101101
+    { "1111nnn010101101", FPU_HANDLER(fcnvsd_fpu), false, SH4_GROUP_FE, 1 },
 
     // LDS Rm, FPSCR
     { "0100mmmm01101010", &sh4_inst_binary_lds_gen_fpscr, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDS Rm, FPUL
     { "0100mmmm01011010", &sh4_inst_binary_gen_fpul, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // LDS.L @Rm+, FPSCR
     { "0100mmmm01100110", &sh4_inst_binary_ldsl_indgeninc_fpscr, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // LDS.L @Rm+, FPUL
     { "0100mmmm01010110", &sh4_inst_binary_ldsl_indgeninc_fpul, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STS FPSCR, Rn
     { "0000nnnn01101010", &sh4_inst_binary_sts_fpscr_gen, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STS FPUL, Rn
     { "0000nnnn01011010", &sh4_inst_binary_sts_fpul_gen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // STS.L FPSCR, @-Rn
     { "0100nnnn01100010", &sh4_inst_binary_stsl_fpscr_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // STS.L FPUL, @-Rn
     { "0100nnnn01010010", &sh4_inst_binary_stsl_fpul_inddecgen, false,
-      0, 0, SH4_GROUP_CO, 1 },
+      SH4_GROUP_CO, 1 },
 
     // FMOV DRm, XDn
     { "1111nnn1mmm01100", &sh4_inst_binary_fmove_dr_xd, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // FMOV XDm, DRn
     { "1111nnn0mmm11100", &sh4_inst_binary_fmov_xd_dr, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // FMOV XDm, XDn
     { "1111nnn1mmm11100", &sh4_inst_binary_fmov_xd_xd, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // FMOV @Rm, XDn
     { "1111nnn1mmmm1000", &sh4_inst_binary_fmov_indgen_xd, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // FMOV @Rm+, XDn
     { "1111nnn1mmmm1001", &sh4_inst_binary_fmov_indgeninc_xd, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // FMOV @(R0, Rm), XDn
     { "1111nnn1mmmm0110", &sh4_inst_binary_fmov_binind_r0_gen_xd,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // FMOV XDm, @Rn
     { "1111nnnnmmm11010", &sh4_inst_binary_fmov_xd_indgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // FMOV XDm, @-Rn
     { "1111nnnnmmm11011", &sh4_inst_binary_fmov_xd_inddecgen, false,
-      0, 0, SH4_GROUP_LS, 1 },
+      SH4_GROUP_LS, 1 },
 
     // FMOV XDm, @(R0, Rn)
     { "1111nnnnmmm10111", &sh4_inst_binary_fmov_xs_binind_r0_gen,
-      false, 0, 0, SH4_GROUP_LS, 1 },
+      false, SH4_GROUP_LS, 1 },
 
     // FIPR FVm, FVn - vector dot product
     { "1111nnmm11101101", &sh4_inst_binary_fipr_fv_fv, false,
-      0, 0, SH4_GROUP_FE, 1 },
+      SH4_GROUP_FE, 1 },
 
     // FTRV XMTRX, FVn - multiple vector by matrix
     { "1111nn0111111101", &sh4_inst_binary_fitrv_mxtrx_fv, false,
-      0, 0, SH4_GROUP_FE, 1 },
+      SH4_GROUP_FE, 1 },
 
     { NULL }
 };
 
 static InstOpcode invalid_opcode = {
     "0000000000000000", &sh4_inst_invalid, false,
-    0, 0, (sh4_inst_group_t)0, 0, 0, 0
+    (sh4_inst_group_t)0, 0, 0, 0
 };
 
 void sh4_exec_inst(Sh4 *sh4) {
@@ -1001,8 +974,7 @@ InstOpcode const* sh4_decode_inst(Sh4 *sh4, inst_t inst) {
     InstOpcode const *op = opcode_list;
 
     while (op->fmt) {
-        if (((op->mask & inst) == op->val) &&
-            ((op->fpscr_mask & sh4->fpu.fpscr) == op->fpscr_val)) {
+        if ((op->mask & inst) == op->val) {
             return op;
         }
         op++;
@@ -4326,3 +4298,177 @@ void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
         sh4_set_exception(sh4, SH4_EXCP_GEN_ILLEGAL_INST);
 #endif /* ifdef DBG_EXIT_ON_UNDEFINED_OPCODE */
 }
+
+// TODO: what is the proper behavior when the PR bit is set?
+// FLDI0 FRn
+// 1111nnnn10001101
+DEF_FPU_HANDLER(fldi0, SH4_FPSCR_PR_MASK,
+                sh4_inst_unary_fldi0_fr, sh4_inst_invalid)
+
+// TODO: what is the proper behavior when the PR bit is set?
+// FLDI1 Frn
+// 1111nnnn10011101
+DEF_FPU_HANDLER(fldi1, SH4_FPSCR_PR_MASK,
+                sh4_inst_unary_fldi1_fr, sh4_inst_unary_fldi1_fr)
+
+// these handlers depend on the SZ bit
+// FMOV FRm, FRn
+// 1111nnnnmmmm1100
+// FMOV DRm, DRn
+// 1111nnn0mmm01100
+DEF_FPU_HANDLER(fmov_gen, SH4_FPSCR_SZ_MASK,
+                sh4_inst_binary_fmov_fr_fr, sh4_inst_binary_fmov_dr_dr)
+
+// FMOV.S @Rm, FRn
+// 1111nnnnmmmm1000
+// FMOV @Rm, DRn
+// 1111nnn0mmmm1000
+DEF_FPU_HANDLER(fmovs_ind_gen, SH4_FPSCR_SZ_MASK,
+                sh4_inst_binary_fmovs_indgen_fr,
+                sh4_inst_binary_fmov_indgen_dr)
+
+// FMOV.S @(R0, Rm), FRn
+// 1111nnnnmmmm0110
+// FMOV @(R0, Rm), DRn
+// 1111nnn0mmmm0110
+DEF_FPU_HANDLER(fmov_binind_r0_gen_fpu, SH4_FPSCR_SZ_MASK,
+                sh4_inst_binary_fmovs_binind_r0_gen_fr,
+                sh4_inst_binary_fmov_binind_r0_gen_dr)
+
+// FMOV.S @Rm+, FRn
+// 1111nnnnmmmm1001
+// FMOV @Rm+, DRn
+// 1111nnn0mmmm1001
+DEF_FPU_HANDLER(fmov_indgeninc_fpu, SH4_FPSCR_SZ_MASK,
+                sh4_inst_binary_fmovs_indgeninc_fr,
+                sh4_inst_binary_fmov_indgeninc_dr)
+
+// FMOV.S FRm, @Rn
+// 1111nnnnmmmm1010
+// FMOV DRm, @Rn
+// 1111nnnnmmm01010
+DEF_FPU_HANDLER(fmov_fpu_indgen, SH4_FPSCR_SZ_MASK,
+                sh4_inst_binary_fmovs_fr_indgen,
+                sh4_inst_binary_fmov_dr_indgen)
+
+// FMOV.S FRm, @-Rn
+// 1111nnnnmmmm1011
+// FMOV DRm, @-Rn
+// 1111nnnnmmm01011
+DEF_FPU_HANDLER(fmov_fpu_inddecgen, SH4_FPSCR_SZ_MASK,
+                sh4_inst_binary_fmovs_fr_inddecgen,
+                sh4_inst_binary_fmov_dr_inddecgen)
+
+// FMOV.S FRm, @(R0, Rn)
+// 1111nnnnmmmm0111
+// FMOV DRm, @(R0, Rn)
+// 1111nnnnmmm00111
+DEF_FPU_HANDLER(fmov_fpu_binind_r0_gen, SH4_FPSCR_SZ_MASK,
+                sh4_inst_binary_fmovs_fr_binind_r0_gen,
+                sh4_inst_binary_fmov_dr_binind_r0_gen)
+
+// FABS FRn
+// 1111nnnn01011101
+// FABS DRn
+// 1111nnn001011101
+DEF_FPU_HANDLER(fabs_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_unary_fabs_fr,
+                sh4_inst_unary_fabs_dr)
+
+// FADD FRm, FRn
+// 1111nnnnmmmm0000
+// FADD DRm, DRn
+// 1111nnn0mmm00000
+DEF_FPU_HANDLER(fadd_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_binary_fadd_fr_fr,
+                sh4_inst_binary_fadd_dr_dr)
+
+// FCMP/EQ FRm, FRn
+// 1111nnnnmmmm0100
+// FCMP/EQ DRm, DRn
+// 1111nnn0mmm00100
+DEF_FPU_HANDLER(fcmpeq_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_binary_fcmpeq_fr_fr,
+                sh4_inst_binary_fcmpeq_dr_dr)
+
+// FCMP/GT FRm, FRn
+// 1111nnnnmmmm0101
+// FCMP/GT DRm, DRn
+// 1111nnn0mmm00101
+DEF_FPU_HANDLER(fcmpgt_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_binary_fcmpgt_fr_fr,
+                sh4_inst_binary_fcmpgt_dr_dr)
+
+// FDIV FRm, FRn
+// 1111nnnnmmmm0011
+// FDIV DRm, DRn
+// 1111nnn0mmm00011
+DEF_FPU_HANDLER(fdiv_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_binary_fdiv_fr_fr,
+                sh4_inst_binary_fdiv_dr_dr);
+
+// FLOAT FPUL, FRn
+// 1111nnnn00101101
+// FLOAT FPUL, DRn
+// 1111nnn000101101
+DEF_FPU_HANDLER(float_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_binary_float_fpul_fr,
+                sh4_inst_binary_float_fpul_dr)
+
+// FMAC FR0, FRm, FRn
+// 1111nnnnmmmm1110
+DEF_FPU_HANDLER(fmac_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_trinary_fmac_fr0_fr_fr,
+                sh4_inst_invalid)
+
+// FMUL FRm, FRn
+// 1111nnnnmmmm0010
+// FMUL DRm, DRn
+// 1111nnn0mmm00010
+DEF_FPU_HANDLER(fmul_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_binary_fmul_fr_fr,
+                sh4_inst_binary_fmul_dr_dr)
+
+// FNEG FRn
+// 1111nnnn01001101
+// FNEG DRn
+// 1111nnn001001101
+DEF_FPU_HANDLER(fneg_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_unary_fneg_fr,
+                sh4_inst_unary_fneg_dr)
+
+// FSQRT FRn
+// 1111nnnn01101101
+// FSQRT DRn
+// 1111nnn001101101
+DEF_FPU_HANDLER(fsqrt_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_unary_fsqrt_fr,
+                sh4_inst_unary_fsqrt_dr);
+
+// FSUB FRm, FRn
+// 1111nnnnmmmm0001
+// FSUB DRm, DRn
+// 1111nnn0mmm00001
+DEF_FPU_HANDLER(fsub_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_binary_fsub_fr_fr,
+                sh4_inst_binary_fsub_dr_dr)
+
+// FTRC FRm, FPUL
+// 1111mmmm00111101
+// FTRC DRm, FPUL
+// 1111mmm000111101
+DEF_FPU_HANDLER(ftrc_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_binary_ftrc_fr_fpul,
+                sh4_inst_binary_ftrc_dr_fpul)
+
+// FCNVDS DRm, FPUL
+// 1111mmm010111101
+DEF_FPU_HANDLER(fcnvds_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_invalid,
+                sh4_inst_binary_fcnvds_dr_fpul)
+
+// FCNVSD FPUL, DRn
+// 1111nnn010101101
+DEF_FPU_HANDLER(fcnvsd_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_invalid,
+                sh4_inst_binary_fcnvsd_fpul_dr);
