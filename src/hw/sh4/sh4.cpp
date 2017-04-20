@@ -30,6 +30,7 @@
 #include "sh4_mmu.hpp"
 #include "sh4_excp.hpp"
 #include "sh4_reg.hpp"
+#include "sh4_inst.hpp"
 #include "sh4.hpp"
 
 // struct RegFile
@@ -184,7 +185,7 @@ mulligan:
                 goto mulligan;
             }
 
-            InstOpcode const *op = sh4_decode_inst(inst);
+            InstOpcode const *op = sh4_inst_lut[inst];
 
             /*
              * The reason why this function subtracts sh4->cycles_accum both
@@ -222,7 +223,7 @@ mulligan:
                 if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC])))
                     goto mulligan;
 
-                InstOpcode const *second_op = sh4_decode_inst(inst);
+                InstOpcode const *second_op = sh4_inst_lut[inst];
 
                 if (second_op->group == SH4_GROUP_CO)
                     continue;
@@ -256,7 +257,7 @@ mulligan:
             goto mulligan;
         }
 
-        InstOpcode const *op = sh4_decode_inst(inst);
+        InstOpcode const *op = sh4_inst_lut[inst];
 
         dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp();
         if ((op->group == SH4_GROUP_CO) ||

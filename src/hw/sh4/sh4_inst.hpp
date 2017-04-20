@@ -225,7 +225,11 @@ struct InstOpcode {
     inst_t val;
 };
 
-InstOpcode const* sh4_decode_inst(inst_t inst);
+/*
+ * maps 16-bit instructions to InstOpcodes for O(1) decoding
+ * this array looks big but it's really only half a megabyte
+ */
+extern InstOpcode const *sh4_inst_lut[1 << 16];
 
 void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op);
 

@@ -954,20 +954,12 @@ static InstOpcode invalid_opcode = {
     (sh4_inst_group_t)0, 0, 0, 0
 };
 
-/*
- * maps 16-bit instructions to InstOpcodes for O(1) decoding
- * this array looks big but it's really only half a megabyte
- */
-static InstOpcode const *inst_lut[1 << 16];
+InstOpcode const *sh4_inst_lut[1 << 16];
 
 void sh4_init_inst_lut() {
     unsigned inst;
     for (inst = 0; inst < (1 << 16); inst++)
-        inst_lut[inst] = sh4_decode_inst_slow((inst_t)inst);
-}
-
-InstOpcode const* sh4_decode_inst(inst_t inst) {
-    return inst_lut[inst];
+        sh4_inst_lut[inst] = sh4_decode_inst_slow((inst_t)inst);
 }
 
 void sh4_exec_inst(Sh4 *sh4) {
@@ -981,14 +973,14 @@ void sh4_exec_inst(Sh4 *sh4) {
                                   errinfo_feature("SH4 CPU exceptions/traps"));
         }
 
-        sh4_do_exec_inst(sh4, inst, sh4_decode_inst(inst));
+        sh4_do_exec_inst(sh4, inst, sh4_inst_lut[inst]);
     } catch (BaseException& exc) {
         sh4_add_regs_to_exc(sh4, exc);
         throw;
     }
 }
 
-// used to initialize the inst_lut
+// used to initialize the sh4_inst_lut
 static InstOpcode const* sh4_decode_inst_slow(inst_t inst) {
     InstOpcode const *op = opcode_list;
 
