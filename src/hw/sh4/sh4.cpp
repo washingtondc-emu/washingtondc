@@ -93,6 +93,8 @@ void sh4_init(Sh4 *sh4) {
     sh4_compile_instructions();
 
     sh4_on_hard_reset(sh4);
+
+    sh4_init_inst_lut();
 }
 
 void sh4_cleanup(Sh4 *sh4) {
@@ -182,7 +184,7 @@ mulligan:
                 goto mulligan;
             }
 
-            InstOpcode const *op = sh4_decode_inst(sh4, inst);
+            InstOpcode const *op = sh4_decode_inst(inst);
 
             /*
              * The reason why this function subtracts sh4->cycles_accum both
@@ -220,7 +222,7 @@ mulligan:
                 if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC])))
                     goto mulligan;
 
-                InstOpcode const *second_op = sh4_decode_inst(sh4, inst);
+                InstOpcode const *second_op = sh4_decode_inst(inst);
 
                 if (second_op->group == SH4_GROUP_CO)
                     continue;
@@ -254,7 +256,7 @@ mulligan:
             goto mulligan;
         }
 
-        InstOpcode const *op = sh4_decode_inst(sh4, inst);
+        InstOpcode const *op = sh4_decode_inst(inst);
 
         dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp();
         if ((op->group == SH4_GROUP_CO) ||

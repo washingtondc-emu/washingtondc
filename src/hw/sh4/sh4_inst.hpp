@@ -150,6 +150,14 @@ union Sh4OpArgs {
     };
 };
 
+/*
+ * the lut is a static (global) table that will be shared by all sh4
+ * instances even if there's more than one of them, but sh4_init_lut
+ * will always initialize it in the exact same way so it's safe to call this
+ * function more than once.
+ */
+void sh4_init_inst_lut();
+
 BOOST_STATIC_ASSERT(sizeof(Sh4OpArgs) == 2);
 
 typedef void (*opcode_func_t)(Sh4*, Sh4OpArgs oa);
@@ -217,7 +225,7 @@ struct InstOpcode {
     inst_t val;
 };
 
-InstOpcode const* sh4_decode_inst(Sh4 *sh4, inst_t inst);
+InstOpcode const* sh4_decode_inst(inst_t inst);
 
 void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op);
 
