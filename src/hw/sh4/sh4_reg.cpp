@@ -35,7 +35,10 @@ static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);
 static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
                                       struct Sh4MemMappedReg const *reg_info);
 static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
-                                      struct Sh4MemMappedReg const *reg_info);
+                                       struct Sh4MemMappedReg const *reg_info);
+
+static int sh4_id_reg_read_handler(Sh4 *sh4, void *buf,
+                                   struct Sh4MemMappedReg const *reg_info);
 
 static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "EXPEVT", 0xff000024, ~addr32_t(0), 4, SH4_REG_EXPEVT, false,
@@ -62,6 +65,20 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
     { "TRA", 0xff000020, ~addr32_t(0), 4, SH4_REG_TRA, false,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+
+    /*
+     * this is an odd one.  This register doesn't appear in any documentation
+     * I have on hand, but from what I can gleam it's some sort of read-only
+     * register that can be used to determine what specific SuperH CPU model
+     * your program is running on.  Dreamcast BIOS checks this for some reason
+     * even though there's only one CPU it could possibly be running on.
+     *
+     * The handler for this register simply returns a constant value I got by
+     * running a program on my dreamcast that prints this register to the
+     * framebuffer.
+     */
+    { "SUPERH-ID", 0xff000030, ~addr32_t(0), 4, (sh4_reg_idx_t)-1, false,
+      sh4_id_reg_read_handler, Sh4ReadOnlyRegWriteHandler, 0, 0 },
 
     /*
      * Bus-state registers.
@@ -684,5 +701,13 @@ static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
 
     sh4->reg[SH4_REG_PDTRA] = val;
 
+    return 0;
+}
+
+static int sh4_id_reg_read_handler(Sh4 *sh4, void *buf,
+                                   struct Sh4MemMappedReg const *reg_info) {
+    // this value was obtained empircally on a real dreamcast
+    uint32_t id_val = 0x040205c1;
+    memcpy(buf, &id_val, sizeof(id_val));
     return 0;
 }
