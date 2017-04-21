@@ -3610,19 +3610,17 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 // FLDI0 FRn
 // 1111nnnn10001101
 void sh4_inst_unary_fldi0_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnn10001101") <<
-                          errinfo_opcode_name("FLDI0 FRn"));
+    *sh4_fpu_fr(sh4, inst.fr_reg) = 0.0f;
+
+    sh4_next_inst(sh4);
 }
 
 // FLDI1 Frn
 // 1111nnnn10011101
 void sh4_inst_unary_fldi1_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnn10011101") <<
-                          errinfo_opcode_name("FLDI1 Frn"));
+    *sh4_fpu_fr(sh4, inst.fr_reg) = 1.0f;
+
+    sh4_next_inst(sh4);
 }
 
 // FMOV FRm, FRn
