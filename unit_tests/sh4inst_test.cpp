@@ -10824,6 +10824,94 @@ public:
 
         return failure;
     }
+
+    // FLDI0 FRn
+    // 1111nnnn10001101
+    static int do_unary_fldi0_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 unsigned reg_no) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FLDI0 FR" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        sh4_exec_inst(cpu);
+
+        float res = *sh4_fpu_fr(cpu, reg_no);
+
+        if (res != 0.0f) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is 0.0" << std::endl;
+            std::cout << "actual val is " << res << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+
+    static int unary_fldi0_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                              RandGen32 *randgen32) {
+        unsigned reg_no;
+        int failure = 0;
+
+        for (reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_fldi0_fr(cpu, bios, mem, reg_no);
+        }
+
+        return failure;
+    }
+
+    // FLDI1 Frn
+    // 1111nnnn10011101
+    static int do_unary_fldi1_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 unsigned reg_no) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FLDI1 FR" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        sh4_exec_inst(cpu);
+
+        float res = *sh4_fpu_fr(cpu, reg_no);
+
+        if (res != 1.0f) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is 1.0" << std::endl;
+            std::cout << "actual val is " << res << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+
+    static int unary_fldi1_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                              RandGen32 *randgen32) {
+        unsigned reg_no;
+        int failure = 0;
+
+        for (reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_fldi1_fr(cpu, bios, mem, reg_no);
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -11043,6 +11131,8 @@ struct inst_test {
     { "binary_sts_fpul_gen", &Sh4InstTests::binary_sts_fpul_gen },
     { "binary_stsl_fpul_inddecgen", &Sh4InstTests::binary_stsl_fpul_inddecgen },
     { "noarg_rte", &Sh4InstTests::noarg_rte },
+    { "unary_fldi0_fr", &Sh4InstTests::unary_fldi0_fr },
+    { "unary_fldi1_fr", &Sh4InstTests::unary_fldi1_fr },
     { NULL }
 };
 
