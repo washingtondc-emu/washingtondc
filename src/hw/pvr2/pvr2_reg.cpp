@@ -23,7 +23,9 @@
 #include <cstring>
 #include <iostream>
 
-#include "types.hpp"
+#include <boost/cstdint.hpp>
+
+#include "types.h"
 #include "MemoryMap.hpp"
 #include "BaseException.hpp"
 

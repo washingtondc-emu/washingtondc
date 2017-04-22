@@ -23,9 +23,11 @@
 #include <cstring>
 #include <iostream>
 
+#include <boost/cstdint.hpp>
+
 #include "g1_reg.hpp"
 
-#include "types.hpp"
+#include "types.h"
 #include "MemoryMap.hpp"
 #include "BaseException.hpp"
 

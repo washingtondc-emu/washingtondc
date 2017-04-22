@@ -23,7 +23,9 @@
 #include <cctype>
 #include <iostream>
 
-#include "types.hpp"
+#include <boost/cstdint.hpp>
+
+#include "types.h"
 #include "BaseException.hpp"
 
 #include "sh4asm.hpp"

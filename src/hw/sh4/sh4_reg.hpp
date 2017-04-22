@@ -26,6 +26,8 @@
 #include "BaseException.hpp"
 #include "sh4_reg_flags.hpp"
 
+struct Sh4;
+
 typedef boost::error_info<struct tag_feature_name_error_info, std::string>
 errinfo_regname;
 

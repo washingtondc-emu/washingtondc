@@ -23,8 +23,10 @@
 #include <cstring>
 #include <iostream>
 
+#include <boost/cstdint.hpp>
+
 #include "spg.hpp"
-#include "types.hpp"
+#include "types.h"
 #include "MemoryMap.hpp"
 #include "BaseException.hpp"
 

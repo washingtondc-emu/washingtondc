@@ -23,7 +23,9 @@
 #ifndef SPG_HPP_
 #define SPG_HPP_
 
-#include "types.hpp"
+#include <boost/cstdint.hpp>
+
+#include "types.h"
 #include "dc_sched.hpp"
 
 void spg_init();

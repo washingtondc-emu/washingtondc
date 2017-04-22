@@ -27,7 +27,7 @@
 #include <vector>
 #include <boost/cstdint.hpp>
 
-#include "types.hpp"
+#include "types.h"
 #include "BaseException.hpp"
 
 class BiosFile {

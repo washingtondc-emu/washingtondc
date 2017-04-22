@@ -29,7 +29,7 @@
 #include <boost/static_assert.hpp>
 
 #include "BaseException.hpp"
-#include "types.hpp"
+#include "types.h"
 #include "MemoryMap.hpp"
 #include "sh4_inst.hpp"
 #include "sh4_mmu.hpp"

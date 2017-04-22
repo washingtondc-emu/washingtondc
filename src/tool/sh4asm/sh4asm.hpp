@@ -27,9 +27,10 @@
 
 #include <boost/tokenizer.hpp>
 #include <boost/exception/exception.hpp>
+#include <boost/cstdint.hpp>
 
 #include "BaseException.hpp"
-#include "types.hpp"
+#include "types.h"
 #include "Inst.hpp"
 
 class BadSymbolError : public BaseException {

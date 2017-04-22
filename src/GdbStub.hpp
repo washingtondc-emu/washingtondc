@@ -34,6 +34,7 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/buffer.hpp>
+#include <boost/cstdint.hpp>
 
 #include "common/BaseException.hpp"
 #include "Debugger.hpp"

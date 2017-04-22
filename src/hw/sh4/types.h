@@ -20,19 +20,20 @@
  *
  ******************************************************************************/
 
-#ifndef TYPES_HPP_
-#define TYPES_HPP_
+#ifndef TYPES_H_
+#define TYPES_H_
 
-#include <boost/cstdint.hpp>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef boost::uint32_t reg32_t;
-typedef boost::uint32_t addr32_t;
-typedef boost::uint32_t page_no_t;
-typedef boost::uint16_t inst_t; // instruction
+typedef uint32_t reg32_t;
+typedef uint32_t addr32_t;
+typedef uint32_t page_no_t;
+typedef uint16_t inst_t; // instruction
 
-class Sh4;
-class Icache;
-class Ocache;
-class Memory;
+#ifdef __cplusplus
+}
+#endif
 
 #endif

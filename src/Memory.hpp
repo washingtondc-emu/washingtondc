@@ -25,7 +25,7 @@
 
 #include <boost/cstdint.hpp>
 
-#include "types.hpp"
+#include "types.h"
 
 struct Memory {
     size_t size;

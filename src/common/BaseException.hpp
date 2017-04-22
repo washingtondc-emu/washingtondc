@@ -27,8 +27,9 @@
 #include <exception>
 
 #include <boost/exception/all.hpp>
+#include <boost/cstdint.hpp>
 
-#include "types.hpp"
+#include "types.h"
 
 typedef boost::error_info<struct tag_feature_name_error_info, std::string>
 errinfo_feature;

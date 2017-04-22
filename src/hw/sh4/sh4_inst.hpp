@@ -23,12 +23,15 @@
 #ifndef SH4_INST_HPP_
 #define SH4_INST_HPP_
 
+#include <boost/cstdint.hpp>
+
 #include "sh4.hpp"
-#include "types.hpp"
+#include "types.h"
+
+struct Sh4;
 
 // runs the next instruction, modifies CPU state and sets flags accordingly
 void sh4_exec_inst(Sh4 *sh4);
-
 
 union Sh4OpArgs {
     inst_t inst;
