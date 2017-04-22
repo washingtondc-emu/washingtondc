@@ -31,6 +31,8 @@
 #include "sh4_excp.hpp"
 #include "sh4_reg.hpp"
 #include "sh4_inst.hpp"
+#include "error.h"
+
 #include "sh4.hpp"
 
 // struct RegFile
@@ -91,7 +93,7 @@ void sh4_init(Sh4 *sh4) {
 
     sh4_init_regs(sh4);
 
-    sh4_compile_instructions();
+    sh4_compile_instructions(sh4);
 
     sh4_on_hard_reset(sh4);
 
@@ -341,4 +343,100 @@ void sh4_add_regs_to_exc(Sh4 *sh4, BaseException& exc) {
     exc << errinfo_reg_ttb(sh4->reg[SH4_REG_TTB]);
     exc << errinfo_reg_tea(sh4->reg[SH4_REG_TEA]);
     exc << errinfo_reg_mmucr(sh4->reg[SH4_REG_MMUCR]);
+}
+
+static DEF_ERROR_U32_ATTR(sh4_reg_sr)
+static DEF_ERROR_U32_ATTR(sh4_reg_ssr)
+static DEF_ERROR_U32_ATTR(sh4_reg_pc)
+static DEF_ERROR_U32_ATTR(sh4_reg_spc)
+static DEF_ERROR_U32_ATTR(sh4_reg_gbr)
+static DEF_ERROR_U32_ATTR(sh4_reg_vbr)
+static DEF_ERROR_U32_ATTR(sh4_reg_sgr)
+static DEF_ERROR_U32_ATTR(sh4_reg_dbr)
+static DEF_ERROR_U32_ATTR(sh4_reg_mach)
+static DEF_ERROR_U32_ATTR(sh4_reg_macl)
+static DEF_ERROR_U32_ATTR(sh4_reg_pr)
+static DEF_ERROR_U32_ATTR(sh4_reg_fpscr)
+static DEF_ERROR_U32_ATTR(sh4_reg_fpul)
+static DEF_ERROR_U32_ATTR(sh4_reg_r0_bank0);
+static DEF_ERROR_U32_ATTR(sh4_reg_r1_bank0);
+static DEF_ERROR_U32_ATTR(sh4_reg_r2_bank0);
+static DEF_ERROR_U32_ATTR(sh4_reg_r3_bank0);
+static DEF_ERROR_U32_ATTR(sh4_reg_r4_bank0);
+static DEF_ERROR_U32_ATTR(sh4_reg_r5_bank0);
+static DEF_ERROR_U32_ATTR(sh4_reg_r6_bank0);
+static DEF_ERROR_U32_ATTR(sh4_reg_r7_bank0);
+static DEF_ERROR_U32_ATTR(sh4_reg_r0_bank1);
+static DEF_ERROR_U32_ATTR(sh4_reg_r1_bank1);
+static DEF_ERROR_U32_ATTR(sh4_reg_r2_bank1);
+static DEF_ERROR_U32_ATTR(sh4_reg_r3_bank1);
+static DEF_ERROR_U32_ATTR(sh4_reg_r4_bank1);
+static DEF_ERROR_U32_ATTR(sh4_reg_r5_bank1);
+static DEF_ERROR_U32_ATTR(sh4_reg_r6_bank1);
+static DEF_ERROR_U32_ATTR(sh4_reg_r7_bank1);
+static DEF_ERROR_U32_ATTR(sh4_reg_r8);
+static DEF_ERROR_U32_ATTR(sh4_reg_r9);
+static DEF_ERROR_U32_ATTR(sh4_reg_r10);
+static DEF_ERROR_U32_ATTR(sh4_reg_r11);
+static DEF_ERROR_U32_ATTR(sh4_reg_r12);
+static DEF_ERROR_U32_ATTR(sh4_reg_r13);
+static DEF_ERROR_U32_ATTR(sh4_reg_r14);
+static DEF_ERROR_U32_ATTR(sh4_reg_r15);
+static DEF_ERROR_U32_ATTR(sh4_reg_ccr);
+static DEF_ERROR_U32_ATTR(sh4_reg_qacr0);
+static DEF_ERROR_U32_ATTR(sh4_reg_qacr1);
+static DEF_ERROR_U32_ATTR(sh4_reg_pteh);
+static DEF_ERROR_U32_ATTR(sh4_reg_ptel);
+static DEF_ERROR_U32_ATTR(sh4_reg_ptea);
+static DEF_ERROR_U32_ATTR(sh4_reg_ttb);
+static DEF_ERROR_U32_ATTR(sh4_reg_tea);
+static DEF_ERROR_U32_ATTR(sh4_reg_mmucr);
+
+void sh4_error_set_regs(Sh4 *sh4) {
+    error_set_sh4_reg_sr(sh4->reg[SH4_REG_SR]);
+    error_set_sh4_reg_ssr(sh4->reg[SH4_REG_SSR]);
+    error_set_sh4_reg_pc(sh4->reg[SH4_REG_PC]);
+    error_set_sh4_reg_spc(sh4->reg[SH4_REG_SPC]);
+    error_set_sh4_reg_gbr(sh4->reg[SH4_REG_GBR]);
+    error_set_sh4_reg_vbr(sh4->reg[SH4_REG_VBR]);
+    error_set_sh4_reg_sgr(sh4->reg[SH4_REG_SGR]);
+    error_set_sh4_reg_dbr(sh4->reg[SH4_REG_DBR]);
+    error_set_sh4_reg_mach(sh4->reg[SH4_REG_MACH]);
+    error_set_sh4_reg_macl(sh4->reg[SH4_REG_MACL]);
+    error_set_sh4_reg_pr(sh4->reg[SH4_REG_PR]);
+    error_set_sh4_reg_fpscr(sh4->fpu.fpscr);
+    error_set_sh4_reg_fpul(sh4->fpu.fpul);
+    error_set_sh4_reg_r0_bank0(sh4->reg[SH4_REG_R0_BANK0]);
+    error_set_sh4_reg_r1_bank0(sh4->reg[SH4_REG_R1_BANK0]);
+    error_set_sh4_reg_r2_bank0(sh4->reg[SH4_REG_R2_BANK0]);
+    error_set_sh4_reg_r3_bank0(sh4->reg[SH4_REG_R3_BANK0]);
+    error_set_sh4_reg_r4_bank0(sh4->reg[SH4_REG_R4_BANK0]);
+    error_set_sh4_reg_r5_bank0(sh4->reg[SH4_REG_R5_BANK0]);
+    error_set_sh4_reg_r6_bank0(sh4->reg[SH4_REG_R6_BANK0]);
+    error_set_sh4_reg_r7_bank0(sh4->reg[SH4_REG_R7_BANK0]);
+    error_set_sh4_reg_r0_bank1(sh4->reg[SH4_REG_R0_BANK1]);
+    error_set_sh4_reg_r1_bank1(sh4->reg[SH4_REG_R1_BANK1]);
+    error_set_sh4_reg_r2_bank1(sh4->reg[SH4_REG_R2_BANK1]);
+    error_set_sh4_reg_r3_bank1(sh4->reg[SH4_REG_R3_BANK1]);
+    error_set_sh4_reg_r4_bank1(sh4->reg[SH4_REG_R4_BANK1]);
+    error_set_sh4_reg_r5_bank1(sh4->reg[SH4_REG_R5_BANK1]);
+    error_set_sh4_reg_r6_bank1(sh4->reg[SH4_REG_R6_BANK1]);
+    error_set_sh4_reg_r7_bank1(sh4->reg[SH4_REG_R7_BANK1]);
+    error_set_sh4_reg_r8(sh4->reg[SH4_REG_R8]);
+    error_set_sh4_reg_r9(sh4->reg[SH4_REG_R9]);
+    error_set_sh4_reg_r10(sh4->reg[SH4_REG_R10]);
+    error_set_sh4_reg_r11(sh4->reg[SH4_REG_R11]);
+    error_set_sh4_reg_r12(sh4->reg[SH4_REG_R12]);
+    error_set_sh4_reg_r13(sh4->reg[SH4_REG_R13]);
+    error_set_sh4_reg_r14(sh4->reg[SH4_REG_R14]);
+    error_set_sh4_reg_r15(sh4->reg[SH4_REG_R15]);
+    error_set_sh4_reg_ccr(sh4->reg[SH4_REG_CCR]);
+    error_set_sh4_reg_qacr0(sh4->reg[SH4_REG_QACR0]);
+    error_set_sh4_reg_qacr1(sh4->reg[SH4_REG_QACR1]);
+    error_set_sh4_reg_pteh(sh4->reg[SH4_REG_PTEH]);
+    error_set_sh4_reg_ptel(sh4->reg[SH4_REG_PTEL]);
+    error_set_sh4_reg_ptea(sh4->reg[SH4_REG_PTEA]);
+    error_set_sh4_reg_ttb(sh4->reg[SH4_REG_TTB]);
+    error_set_sh4_reg_tea(sh4->reg[SH4_REG_TEA]);
+    error_set_sh4_reg_mmucr(sh4->reg[SH4_REG_MMUCR]);
 }

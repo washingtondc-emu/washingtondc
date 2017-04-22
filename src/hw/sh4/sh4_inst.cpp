@@ -26,6 +26,7 @@
 
 #include <boost/tuple/tuple.hpp>
 
+#include "error.h"
 #include "arch/arch_fpu.hpp"
 #include "BaseException.hpp"
 #include "Dreamcast.hpp"
@@ -39,6 +40,9 @@
 #endif
 
 #include "sh4_inst.hpp"
+
+DEF_ERROR_STRING_ATTR(opcode_format)
+DEF_ERROR_STRING_ATTR(opcode_name)
 
 typedef boost::error_info<struct tag_opcode_format_error_info, std::string>
 errinfo_opcode_format;
@@ -954,6 +958,12 @@ static InstOpcode invalid_opcode = {
     (sh4_inst_group_t)0, 0, 0, 0
 };
 
+#define SH4_INST_RAISE_ERROR(sh4, error_tp)     \
+    do {                                        \
+        sh4_error_set_regs(sh4);                \
+        RAISE_ERROR(error_tp);                  \
+    } while (0)
+
 InstOpcode const *sh4_inst_lut[1 << 16];
 
 void sh4_init_inst_lut() {
@@ -969,8 +979,8 @@ void sh4_exec_inst(Sh4 *sh4) {
     try {
         if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
             // fuck it, i'll commit now and figure what to do here later
-            BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                  errinfo_feature("SH4 CPU exceptions/traps"));
+            error_set_feature("SH4 CPU exceptions/traps");
+            SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
         }
 
         sh4_do_exec_inst(sh4, inst, sh4_inst_lut[inst]);
@@ -1026,23 +1036,24 @@ void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
     }
 }
 
-void sh4_compile_instructions() {
+void sh4_compile_instructions(Sh4 *sh4) {
     InstOpcode *op = opcode_list;
 
     while (op->fmt) {
-        sh4_compile_instruction(op);
+        sh4_compile_instruction(sh4, op);
         op++;
     }
 }
 
-void sh4_compile_instruction(struct InstOpcode *op) {
+void sh4_compile_instruction(Sh4 *sh4, struct InstOpcode *op) {
     char const *fmt = op->fmt;
     inst_t mask = 0, val = 0;
 
-    if (strlen(fmt) != 16)
-        BOOST_THROW_EXCEPTION(InvalidParamError() <<
-                              errinfo_param_name("instruction opcode format") <<
-                              errinfo_opcode_format(fmt));
+    if (strlen(fmt) != 16) {
+        error_set_param_name("instruction opcode format");
+        error_set_opcode_format(fmt);
+        SH4_INST_RAISE_ERROR(sh4, ERROR_INVALID_PARAM);
+    }
 
     for (int idx = 0; idx < 16; idx++) {
         val <<= 1;
@@ -1099,10 +1110,10 @@ void sh4_inst_clrt(Sh4 *sh4, Sh4OpArgs inst) {
 // LDTLB
 // 0000000000111000
 void sh4_inst_ldtlb(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("0000000000111000") <<
-                          errinfo_opcode_name("LDTLB"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("0000000000111000");
+    error_set_opcode_name("LDTLB");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // NOP
@@ -1661,10 +1672,11 @@ void sh4_inst_unary_trapa_disp(Sh4 *sh4, Sh4OpArgs inst) {
         return;
     }
 #endif /* ifdef ENABLE_DEBUGGER */
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("11000011iiiiiiii") <<
-                          errinfo_opcode_name("TRAPA #immed"));
+
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("11000011iiiiiiii");
+    error_set_opcode_name("TRAPA #immed");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // TAS.B @Rn
@@ -1738,11 +1750,12 @@ void sh4_inst_unary_jsr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm00001110
 void sh4_inst_binary_ldc_gen_sr(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     sh4->reg[SH4_REG_SR] = *sh4_gen_reg(sh4, inst.gen_reg);
@@ -1762,11 +1775,12 @@ void sh4_inst_binary_ldc_gen_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm00101110
 void sh4_inst_binary_ldc_gen_vbr(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     sh4->reg[SH4_REG_VBR] = *sh4_gen_reg(sh4, inst.gen_reg);
@@ -1778,11 +1792,12 @@ void sh4_inst_binary_ldc_gen_vbr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm00111110
 void sh4_inst_binary_ldc_gen_ssr(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     sh4->reg[SH4_REG_SSR] = *sh4_gen_reg(sh4, inst.gen_reg);
@@ -1794,11 +1809,12 @@ void sh4_inst_binary_ldc_gen_ssr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm01001110
 void sh4_inst_binary_ldc_gen_spc(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     sh4->reg[SH4_REG_SPC] = *sh4_gen_reg(sh4, inst.gen_reg);
@@ -1810,11 +1826,12 @@ void sh4_inst_binary_ldc_gen_spc(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm11111010
 void sh4_inst_binary_ldc_gen_dbr(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     sh4->reg[SH4_REG_DBR] = *sh4_gen_reg(sh4, inst.gen_reg);
@@ -1826,11 +1843,12 @@ void sh4_inst_binary_ldc_gen_dbr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00000010
 void sh4_inst_binary_stc_sr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_SR];
@@ -1850,11 +1868,12 @@ void sh4_inst_binary_stc_gbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00100010
 void sh4_inst_binary_stc_vbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_VBR];
@@ -1866,11 +1885,12 @@ void sh4_inst_binary_stc_vbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00110010
 void sh4_inst_binary_stc_ssr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_SSR];
@@ -1882,11 +1902,12 @@ void sh4_inst_binary_stc_ssr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn01000010
 void sh4_inst_binary_stc_spc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_SPC];
@@ -1898,11 +1919,12 @@ void sh4_inst_binary_stc_spc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn00111010
 void sh4_inst_binary_stc_sgr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_SGR];
@@ -1914,11 +1936,12 @@ void sh4_inst_binary_stc_sgr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn11111010
 void sh4_inst_binary_stc_dbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_DBR];
@@ -1933,11 +1956,12 @@ void sh4_inst_binary_ldcl_indgeninc_sr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
@@ -1975,11 +1999,12 @@ void sh4_inst_binary_ldcl_indgeninc_vbr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2000,11 +2025,12 @@ void sh4_inst_binary_ldcl_indgenic_ssr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2025,11 +2051,12 @@ void sh4_inst_binary_ldcl_indgeninc_spc(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2050,11 +2077,12 @@ void sh4_inst_binary_ldcl_indgeninc_dbr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2072,11 +2100,12 @@ void sh4_inst_binary_ldcl_indgeninc_dbr(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn00000011
 void sh4_inst_binary_stcl_sr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2108,11 +2137,12 @@ void sh4_inst_binary_stcl_gbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn00100011
 void sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2130,11 +2160,12 @@ void sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn00110011
 void sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2152,11 +2183,12 @@ void sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn01000011
 void sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2174,11 +2206,12 @@ void sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn00110010
 void sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2196,11 +2229,12 @@ void sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn11110010
 void sh4_inst_binary_stcl_dbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2828,11 +2862,12 @@ void sh4_inst_binary_shld_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100mmmm1nnn1110
 void sh4_inst_binary_ldc_gen_bank(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     *sh4_bank_reg(sh4, inst.bank_reg) = *sh4_gen_reg(sh4, inst.gen_reg);
@@ -2847,11 +2882,12 @@ void sh4_inst_binary_ldcl_indgeninc_bank(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
@@ -2869,11 +2905,12 @@ void sh4_inst_binary_ldcl_indgeninc_bank(Sh4 *sh4, Sh4OpArgs inst) {
 // 0000nnnn1mmm0010
 void sh4_inst_binary_stc_bank_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = *sh4_bank_reg(sh4, inst.bank_reg);
@@ -2885,11 +2922,12 @@ void sh4_inst_binary_stc_bank_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // 0100nnnn1mmm0011
 void sh4_inst_binary_stcl_bank_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef ENABLE_SH4_MMU
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for using a "
-                                              "privileged exception in an "
-                                              "unprivileged mode"));
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("CPU exception for using a "
+                          "privileged exception in an "
+                          "unprivileged mode");
+        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    }
 #endif
 
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
@@ -3812,46 +3850,46 @@ void sh4_inst_binary_fsts_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
 // FABS FRn
 // 1111nnnn01011101
 void sh4_inst_unary_fabs_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnn01011101") <<
-                          errinfo_opcode_name("FABS FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnn01011101");
+    error_set_opcode_name("FABS FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FADD FRm, FRn
 // 1111nnnnmmmm0000
 void sh4_inst_binary_fadd_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm0000") <<
-                          errinfo_opcode_name("FADD FRm, FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmmm0000");
+    error_set_opcode_name("FADD FRm, FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FCMP/EQ FRm, FRn
 // 1111nnnnmmmm0100
 void sh4_inst_binary_fcmpeq_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm0100") <<
-                          errinfo_opcode_name("FCMP/EQ FRm, FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmmm0100");
+    error_set_opcode_name("FCMP/EQ FRm, FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FCMP/GT FRm, FRn
 // 1111nnnnmmmm0101
 void sh4_inst_binary_fcmpgt_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm0101") <<
-                          errinfo_opcode_name("FCMP/GT FRm, FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmmm0101");
+    error_set_opcode_name("FCMP/GT FRm, FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FDIV FRm, FRn
 // 1111nnnnmmmm0011
 void sh4_inst_binary_fdiv_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm0011") <<
-                          errinfo_opcode_name("FDIV FRm, FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmmm0011");
+    error_set_opcode_name("FDIV FRm, FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FLOAT FPUL, FRn
@@ -3867,46 +3905,46 @@ void sh4_inst_binary_float_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
 // FMAC FR0, FRm, FRn
 // 1111nnnnmmmm1110
 void sh4_inst_trinary_fmac_fr0_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm1110") <<
-                          errinfo_opcode_name("FMAC FR0, FRm, FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmmm1110");
+    error_set_opcode_name("FMAC FR0, FRm, FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FMUL FRm, FRn
 // 1111nnnnmmmm0010
 void sh4_inst_binary_fmul_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm0010") <<
-                          errinfo_opcode_name("FMUL FRm, FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmmm0010");
+    error_set_opcode_name("FMUL FRm, FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FNEG FRn
 // 1111nnnn01001101
 void sh4_inst_unary_fneg_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnn01001101") <<
-                          errinfo_opcode_name("FNEG FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnn01001101");
+    error_set_opcode_name("FNEG FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FSQRT FRn
 // 1111nnnn01101101
 void sh4_inst_unary_fsqrt_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnn01101101") <<
-                          errinfo_opcode_name("FSQRT FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnn01101101");
+    error_set_opcode_name("FSQRT FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FSUB FRm, FRn
 // 1111nnnnmmmm0001
 void sh4_inst_binary_fsub_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmmm0001") <<
-                          errinfo_opcode_name("FSUB FRm, FRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmmm0001");
+    error_set_opcode_name("FSUB FRm, FRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FTRC FRm, FPUL
@@ -3936,46 +3974,46 @@ void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 // FABS DRn
 // 1111nnn001011101
 void sh4_inst_unary_fabs_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn001011101") <<
-                          errinfo_opcode_name("FABS DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn001011101");
+    error_set_opcode_name("FABS DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FADD DRm, DRn
 // 1111nnn0mmm00000
 void sh4_inst_binary_fadd_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmm00000") <<
-                          errinfo_opcode_name("FADD DRm, DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn0mmm00000");
+    error_set_opcode_name("FADD DRm, DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FCMP/EQ DRm, DRn
 // 1111nnn0mmm00100
 void sh4_inst_binary_fcmpeq_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmm00100") <<
-                          errinfo_opcode_name("FCMP/EQ DRm, DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn0mmm00100");
+    error_set_opcode_name("FCMP/EQ DRm, DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FCMP/GT DRm, DRn
 // 1111nnn0mmm00101
 void sh4_inst_binary_fcmpgt_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmm00101") <<
-                          errinfo_opcode_name("FCMP/GT DRm, DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn0mmm00101");
+    error_set_opcode_name("FCMP/GT DRm, DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FDIV DRm, DRn
 // 1111nnn0mmm00011
 void sh4_inst_binary_fdiv_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmm00011") <<
-                          errinfo_opcode_name("FDIV DRm, DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn0mmm00011");
+    error_set_opcode_name("FDIV DRm, DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FCNVDS DRm, FPUL
@@ -4026,37 +4064,37 @@ void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 // FMUL DRm, DRn
 // 1111nnn0mmm00010
 void sh4_inst_binary_fmul_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmm00010") <<
-                          errinfo_opcode_name("FMUL DRm, DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn0mmm00010");
+    error_set_opcode_name("FMUL DRm, DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FNEG DRn
 // 1111nnn001001101
 void sh4_inst_unary_fneg_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn001001101") <<
-                          errinfo_opcode_name("FNEG DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn001001101");
+    error_set_opcode_name("FNEG DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FSQRT DRn
 // 1111nnn001101101
 void sh4_inst_unary_fsqrt_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn001101101") <<
-                          errinfo_opcode_name("FSQRT DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn001101101");
+    error_set_opcode_name("FSQRT DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FSUB DRm, DRn
 // 1111nnn0mmm00001
 void sh4_inst_binary_fsub_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmm00001") <<
-                          errinfo_opcode_name("FSUB DRm, DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn0mmm00001");
+    error_set_opcode_name("FSUB DRm, DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FTRC DRm, FPUL
@@ -4177,108 +4215,107 @@ void sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 // FMOV DRm, XDn
 // 1111nnn1mmm01100
 void sh4_inst_binary_fmove_dr_xd(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn1mmm01100") <<
-                          errinfo_opcode_name("FMOV DRm, XDn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn1mmm01100");
+    error_set_opcode_name("FMOV DRm, XDn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FMOV XDm, DRn
 // 1111nnn0mmm11100
 void sh4_inst_binary_fmov_xd_dr(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn0mmm11100") <<
-                          errinfo_opcode_name("FMOV XDm, DRn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn0mmm11100");
+    error_set_opcode_name("FMOV XDm, DRn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FMOV XDm, XDn
 // 1111nnn1mmm11100
 void sh4_inst_binary_fmov_xd_xd(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn1mmm11100") <<
-                          errinfo_opcode_name("FMOV XDm, XDn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn1mmm11100");
+    error_set_opcode_name("FMOV XDm, XDn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FMOV @Rm, XDn
 // 1111nnn1mmmm1000
 void sh4_inst_binary_fmov_indgen_xd(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn1mmmm1000") <<
-                          errinfo_opcode_name("FMOV @Rm, XDn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn1mmmm1000");
+    error_set_opcode_name("FMOV @Rm, XDn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FMOV @Rm+, XDn
 // 1111nnn1mmmm1001
 void sh4_inst_binary_fmov_indgeninc_xd(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn1mmmm1001") <<
-                          errinfo_opcode_name("FMOV @Rm+, XDn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn1mmmm1001");
+    error_set_opcode_name("FMOV @Rm+, XDn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FMOV @(R0, Rn), XDn
 // 1111nnn1mmmm0110
 void sh4_inst_binary_fmov_binind_r0_gen_xd(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnn1mmmm0110") <<
-                          errinfo_opcode_name("FMOV @(R0, Rn), XDn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnn1mmmm0110");
+    error_set_opcode_name("FMOV @(R0, Rn), XDn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FMOV XDm, @Rn
 // 1111nnnnmmm11010
 void sh4_inst_binary_fmov_xd_indgen(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmm11010") <<
-                          errinfo_opcode_name("FMOV XDm, @Rn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmm11010");
+    error_set_opcode_name("FMOV XDm, @Rn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FMOV XDm, @-Rn
 // 1111nnnnmmm11011
 void sh4_inst_binary_fmov_xd_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmm11011") <<
-                          errinfo_opcode_name("FMOV XDm, @-Rn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmm11011");
+    error_set_opcode_name("FMOV XDm, @-Rn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FMOV XDm, @(R0, Rn)
 // 1111nnnnmmm10111
 void sh4_inst_binary_fmov_xs_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnnnmmm10111") <<
-                          errinfo_opcode_name("FMOV XDm, @(R0, Rn)"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnnnmmm10111");
+    error_set_opcode_name("FMOV XDm, @(R0, Rn)");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FIPR FVm, FVn - vector dot product
 // 1111nnmm11101101
 void sh4_inst_binary_fipr_fv_fv(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nnmm11101101") <<
-                          errinfo_opcode_name("FIPR FVm, FVn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nnmm11101101");
+    error_set_opcode_name("FIPR FVm, FVn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 // FTRV XMTRX, FVn - multiple vector by matrix
 // 1111nn0111111101
 void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("opcode implementation") <<
-                          errinfo_opcode_format("1111nn0111111101") <<
-                          errinfo_opcode_name("FTRV MXTRX, FVn"));
+    error_set_feature("opcode implementation");
+    error_set_opcode_format("1111nn0111111101");
+    error_set_opcode_name("FTRV MXTRX, FVn");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 }
 
 void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef DBG_EXIT_ON_UNDEFINED_OPCODE
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("SH4 CPU exception for "
-                                          "unrecognized opcode") <<
-                          errinfo_opcode_val(inst));
+
+    error_set_feature("SH4 CPU exception for unrecognized opcode");
+    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 #else
 #ifdef ENABLE_DEBUGGER
     /*

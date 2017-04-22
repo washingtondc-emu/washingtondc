@@ -39,6 +39,7 @@
 #include "sh4_ocache.hpp"
 #include "sh4_excp.hpp"
 #include "sh4_scif.hpp"
+#include "error.h"
 
 /* Hitachi SuperH-4 interpreter */
 
@@ -266,5 +267,7 @@ static inline double *sh4_fpu_dr(Sh4 *sh4, unsigned reg_no) {
 }
 
 void sh4_add_regs_to_exc(Sh4 *sh4, BaseException& exc);
+
+void sh4_error_set_regs(Sh4 *sh4);
 
 #endif
