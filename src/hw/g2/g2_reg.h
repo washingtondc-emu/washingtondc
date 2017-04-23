@@ -20,10 +20,18 @@
  *
  ******************************************************************************/
 
-#ifndef G2_REG_HPP_
-#define G2_REG_HPP_
+#ifndef G2_REG_H_
+#define G2_REG_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int g2_reg_read(void *buf, size_t addr, size_t len);
 int g2_reg_write(void const *buf, size_t addr, size_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
