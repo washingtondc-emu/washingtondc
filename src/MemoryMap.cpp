@@ -64,73 +64,38 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
              * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
              */
             if ((addr + (len - 1)) > ADDR_BIOS_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return bios->read(buf, addr - ADDR_BIOS_FIRST, len);
         } else if (addr >= ADDR_FLASH_FIRST && addr <= ADDR_FLASH_LAST) {
             if ((addr + (len - 1) > ADDR_FLASH_LAST) ||
                 (addr < ADDR_FLASH_FIRST)) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return flash_mem_read(buf, addr, len);
         } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
             if (addr + (len - 1) > ADDR_G1_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return g1_reg_read(buf, addr, len);
         } else if (addr >= ADDR_SYS_FIRST && addr <= ADDR_SYS_LAST) {
             if (addr + (len - 1) > ADDR_SYS_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return sys_block_read(buf, addr, len);
         } else if (addr >= ADDR_MAPLE_FIRST && addr <= ADDR_MAPLE_LAST) {
             if (addr + (len - 1) > ADDR_MAPLE_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return maple_reg_read(buf, addr, len);
         } else if (addr >= ADDR_G2_FIRST && addr <= ADDR_G2_LAST) {
             if (addr + (len - 1) > ADDR_G2_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return g2_reg_read(buf, addr, len);
         } else if (addr >= ADDR_PVR2_FIRST && addr <= ADDR_PVR2_LAST) {
             if (addr + (len - 1) > ADDR_PVR2_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return pvr2_reg_read(buf, addr, len);
         } else if (addr >= ADDR_MODEM_FIRST && addr <= ADDR_MODEM_LAST) {
@@ -142,44 +107,24 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             return aica_reg_read(buf, addr, len);
         } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
             if (addr + (len - 1) > ADDR_TEX_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return pvr2_tex_mem_read(buf, addr, len);
         } else if (addr >= ADDR_AICA_WAVE_FIRST &&
                    addr <= ADDR_AICA_WAVE_FIRST) {
             if (addr + (len - 1) > ADDR_AICA_WAVE_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return aica_wave_mem_read(buf, addr, len);
         } else if (addr >= ADDR_AICA_RTC_FIRST &&
                    addr <= ADDR_AICA_RTC_LAST) {
             if (addr + (len - 1) > ADDR_AICA_RTC_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return aica_rtc_read(buf, addr, len);
         } else if (addr >= ADDR_GDROM_FIRST && addr <= ADDR_GDROM_LAST) {
             if (addr + (len - 1) > ADDR_GDROM_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest reads "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return gdrom_reg_read(buf, addr, len);
         }
@@ -192,6 +137,20 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
         exc << errinfo_op_type("read");
         throw;
     }
+
+boundary_cross:
+    /*
+     * this label is where we go to when the requested read is not
+     * contained entirely withing a single mapping.
+     */
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("proper response for "
+                                          "when the guest reads "
+                                          "past a memory map's "
+                                          "end") <<
+                          errinfo_length(len) <<
+                          errinfo_guest_addr(addr) <<
+                          errinfo_op_type("read"));
 }
 
 int memory_map_write(void const *buf, size_t addr, size_t len) {
@@ -204,69 +163,35 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
              * XXX In case you were wondering: we don't check to see if
              * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
              */
-            BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                  errinfo_feature("Proper response for when "
-                                                  "the guest tries to write to "
-                                                  "read-only memory") <<
-                                  errinfo_length(len));
+            goto boundary_cross;
         } else if (addr >= ADDR_FLASH_FIRST && addr <= ADDR_FLASH_LAST) {
             if ((addr + (len - 1) > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest tries to "
-                                                      "write past a memory "
-                                                      "map's end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return flash_mem_write(buf, addr, len);
         } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
             if (addr + (len - 1) > ADDR_G1_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest writes "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return g1_reg_write(buf, addr, len);
         } else if (addr >= ADDR_SYS_FIRST && addr <= ADDR_SYS_LAST) {
             if (addr + (len - 1) > ADDR_SYS_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest writes "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return sys_block_write(buf, addr, len);
         } else if (addr >= ADDR_MAPLE_FIRST && addr <= ADDR_MAPLE_LAST) {
             if (addr + (len - 1) > ADDR_MAPLE_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest writes "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return maple_reg_write(buf, addr, len);
         } else if (addr >= ADDR_G2_FIRST && addr <= ADDR_G2_LAST) {
             if (addr + (len - 1) > ADDR_G2_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest writes "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return g2_reg_write(buf, addr, len);
         } else if (addr >= ADDR_PVR2_FIRST && addr <= ADDR_PVR2_LAST) {
             if (addr + (len - 1) > ADDR_PVR2_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest writes "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return pvr2_reg_write(buf, addr, len);
         } else if (addr >= ADDR_MODEM_FIRST && addr <= ADDR_MODEM_LAST) {
@@ -278,44 +203,24 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
             return aica_reg_write(buf, addr, len);
         } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
             if (addr + (len - 1) > ADDR_TEX_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest writes "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return pvr2_tex_mem_write(buf, addr, len);
         } else if (addr >= ADDR_AICA_WAVE_FIRST &&
                    addr <= ADDR_AICA_WAVE_LAST) {
             if (addr + (len - 1) > ADDR_AICA_WAVE_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest writes "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return aica_wave_mem_write(buf, addr, len);
         } else if (addr >= ADDR_AICA_RTC_FIRST &&
                    addr <= ADDR_AICA_RTC_LAST) {
             if (addr + (len - 1) > ADDR_AICA_RTC_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest writes "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return aica_rtc_write(buf, addr, len);
         } else if (addr >= ADDR_GDROM_FIRST && addr <= ADDR_GDROM_LAST) {
             if (addr + (len - 1) > ADDR_GDROM_LAST) {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("proper response for "
-                                                      "when the guest writes "
-                                                      "past a memory map's "
-                                                      "end") <<
-                                      errinfo_length(len));
+                goto boundary_cross;
             }
             return gdrom_reg_write(buf, addr, len);
         }
@@ -346,4 +251,14 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
     BOOST_THROW_EXCEPTION(UnimplementedError() <<
                           errinfo_feature("memory mapping") <<
                           errinfo_guest_addr(addr));
+boundary_cross:
+    /* when the write is not contained entirely within one mapping */
+    BOOST_THROW_EXCEPTION(UnimplementedError() <<
+                          errinfo_feature("proper response for "
+                                          "when the guest writes "
+                                          "past a memory map's "
+                                          "end") <<
+                          errinfo_length(len) <<
+                          errinfo_guest_addr(addr) <<
+                          errinfo_op_type("write"));
 }
