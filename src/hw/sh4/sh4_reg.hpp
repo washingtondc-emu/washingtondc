@@ -24,7 +24,7 @@
 #define SH4_REG_HPP_
 
 #include "BaseException.hpp"
-#include "sh4_reg_flags.hpp"
+#include "sh4_reg_flags.h"
 
 struct Sh4;
 

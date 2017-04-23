@@ -26,7 +26,7 @@
 #include <boost/cstdint.hpp>
 
 #include "sh4_reg.hpp"
-#include "sh4_reg_flags.hpp"
+#include "sh4_reg_flags.h"
 
 static const unsigned SH4_MMUPTEH_ASID_SHIFT = 0;
 static const unsigned SH4_MMUPTEH_ASID_MASK = 0xff << SH4_MMUPTEH_ASID_SHIFT;
