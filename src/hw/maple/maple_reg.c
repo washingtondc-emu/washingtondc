@@ -20,14 +20,16 @@
  *
  ******************************************************************************/
 
-#include <iostream>
+#include <stdio.h>
+#include <string.h>
 
-#include "BaseException.hpp"
-#include "MemoryMap.hpp"
+#include "error.h"
+#include "mem_areas.h"
+#include "types.h"
 
-#include "maple_reg.hpp"
+#include "maple_reg.h"
 
-static const size_t N_MAPLE_REGS = ADDR_MAPLE_LAST - ADDR_MAPLE_FIRST + 1;
+#define N_MAPLE_REGS (ADDR_MAPLE_LAST - ADDR_MAPLE_FIRST + 1)
 static reg32_t maple_regs[N_MAPLE_REGS];
 
 struct maple_mapped_reg;
@@ -86,23 +88,21 @@ int maple_reg_read(void *buf, size_t addr, size_t len) {
             if (curs->len == len) {
                 return curs->on_read(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while reading "
-                                                      "from a maple "
-                                                      "register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_address(addr);
+                error_set_length(len);
+                error_set_feature("Whatever happens when you use an "
+                                  "inapproriate length while reading from a "
+                                  "maple register");
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("reading from one of the "
-                                          "maple registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_address(addr);
+    error_set_length(len);
+    error_set_feature("reading from one of the maple registers");
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 int maple_reg_write(void const *buf, size_t addr, size_t len) {
@@ -113,22 +113,21 @@ int maple_reg_write(void const *buf, size_t addr, size_t len) {
             if (curs->len == len) {
                 return curs->on_write(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while writing to "
-                                                      "a maple register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_address(addr);
+                error_set_length(len);
+                error_set_feature("Whatever happens when you use an "
+                                  "inapproriate length while writing to a "
+                                  "maple register");
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("writing to one of the "
-                                          "maple registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_address(addr);
+    error_set_length(len);
+    error_set_feature("writing to one of the maple registers");
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static int
@@ -157,34 +156,28 @@ warn_maple_reg_read_handler(struct maple_mapped_reg const *reg_info,
     int ret_code = default_maple_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        std::cerr << "WARNING: read from maple register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: read from maple register %s\n",
+                reg_info->reg_name);
     } else {
         switch (reg_info->len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(2) <<
-                unsigned(val8) << " from maple register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%02x from maple register %s\n",
+                    (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(4) <<
-                unsigned(val16) << " from maple register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%04x from maple register %s\n",
+                    (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(8) <<
-                unsigned(val32) << " from maple register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%08x from maple register %s\n",
+                    (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            std::cerr << "WARNING: read from maple register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read from maple register %s\n",
+                    reg_info->reg_name);
         }
     }
 
@@ -201,28 +194,22 @@ warn_maple_reg_write_handler(struct maple_mapped_reg const *reg_info,
     switch (reg_info->len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(2) <<
-            unsigned(val8) << " to maple register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%02x to maple register %s\n",
+                (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(4) <<
-            unsigned(val16) << " to maple register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%04x to maple register %s\n",
+                (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(8) <<
-            unsigned(val32) << " to maple register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%08x to maple register %s\n",
+                (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        std::cerr << "WARNING: reading from maple register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing to maple register %s\n",
+                reg_info->reg_name);
     }
 
     return default_maple_reg_write_handler(reg_info, buf, addr, len);

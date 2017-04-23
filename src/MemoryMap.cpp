@@ -22,7 +22,7 @@
 
 #include "BaseException.hpp"
 #include "hw/sys/sys_block.hpp"
-#include "hw/maple/maple_reg.hpp"
+#include "hw/maple/maple_reg.h"
 #include "hw/g1/g1_reg.h"
 #include "hw/g2/g2_reg.h"
 #include "hw/g2/modem.h"
