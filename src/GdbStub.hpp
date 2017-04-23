@@ -38,7 +38,7 @@
 
 #include "common/BaseException.hpp"
 #include "Debugger.hpp"
-#include "types.hpp"
+#include "types.h"
 #include "hw/sh4/sh4.hpp"
 
 class GdbStub : public Debugger {
