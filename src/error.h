@@ -37,7 +37,11 @@ enum error_type {
     /* unable to continue due to unimplemented functionality */
     ERROR_UNIMPLEMENTED,
 
-    ERROR_INVALID_PARAM
+    /* invalid parameter */
+    ERROR_INVALID_PARAM,
+
+    /* memory access failed because the address was out-of-bounds */
+    ERROR_MEM_OUT_OF_BOUNDS,
 };
 
 enum error_attr_type {
@@ -122,6 +126,10 @@ ERROR_STRING_ATTR(file);
 
 ERROR_STRING_ATTR(feature);
 ERROR_STRING_ATTR(param_name);
+
+ERROR_U32_ATTR(address);
+
+ERROR_INT_ATTR(length);
 
 #define RAISE_ERROR(tp)                         \
     do {                                        \

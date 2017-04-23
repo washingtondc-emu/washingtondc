@@ -33,7 +33,7 @@
 #include "hw/sh4/sh4_excp.hpp"
 #include "tool/sh4asm/sh4asm.hpp"
 #include "BaseException.hpp"
-#include "Memory.hpp"
+#include "memory.h"
 
 char const prog_asm[] =
     /*

@@ -27,7 +27,7 @@
 #include <list>
 
 #include "BaseException.hpp"
-#include "Memory.hpp"
+#include "memory.h"
 #include "MemoryMap.hpp"
 #include "hw/sh4/sh4.hpp"
 #include "hw/sh4/sh4_excp.hpp"

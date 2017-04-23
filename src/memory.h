@@ -23,23 +23,18 @@
 #ifndef MEMORY_HPP_
 #define MEMORY_HPP_
 
-#include <boost/cstdint.hpp>
+#include <stdint.h>
 
 #include "types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct Memory {
     size_t size;
     uint8_t *mem;
 };
-
-template<typename data_tp, class InputIterator>
-void memory_load_binary(struct Memory *mem, addr32_t where, InputIterator start,
-                        InputIterator end) {
-    for (InputIterator it = start; it != end; it++, where++) {
-        data_tp tmp = *it;
-        memory_write(mem, &tmp, where, sizeof(tmp));
-    }
-}
 
 void memory_init(struct Memory *mem, size_t size);
 
@@ -52,5 +47,9 @@ size_t memory_size(struct Memory const *mem);
 
 int memory_read(struct Memory const *mem, void *buf, size_t addr, size_t len);
 int memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

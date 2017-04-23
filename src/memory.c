@@ -20,21 +20,24 @@
  *
  ******************************************************************************/
 
-#include <cstring>
+#include <string.h>
+#include <stdlib.h>
 
-#include "BaseException.hpp"
+#include "error.h"
 
-#include "Memory.hpp"
+#include "memory.h"
+
+
 
 void memory_init(struct Memory *mem, size_t size) {
-    mem->mem = new boost::uint8_t[size];
+    mem->mem = (uint8_t*)malloc(sizeof(uint8_t) * size);
     mem->size = size;
 
     memory_clear(mem);
 }
 
 void memory_cleanup(struct Memory *mem) {
-    delete[] mem->mem;
+    free(mem->mem);
 }
 
 void memory_clear(struct Memory *mem) {
@@ -49,7 +52,9 @@ int memory_read(struct Memory const *mem, void *buf,
                 size_t addr, size_t len) {
     size_t end_addr = addr + (len - 1);
     if (addr >= mem->size || end_addr >= mem->size || end_addr < addr) {
-        BOOST_THROW_EXCEPTION(MemBoundsError() << errinfo_guest_addr(addr));
+        error_set_address(addr);
+        error_set_length(len);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
     memcpy(buf, mem->mem + addr, len);
@@ -61,7 +66,9 @@ int memory_write(struct Memory *mem, void const *buf,
                  size_t addr, size_t len) {
     size_t end_addr = addr + (len - 1);
     if (addr >= mem->size || end_addr >= mem->size || end_addr < addr) {
-        BOOST_THROW_EXCEPTION(MemBoundsError() << errinfo_guest_addr(addr));
+        error_set_address(addr);
+        error_set_length(len);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
     memcpy(mem->mem + addr, buf, len);

@@ -24,7 +24,7 @@
 #define MEMORYMAP_HPP_
 
 #include "BiosFile.hpp"
-#include "Memory.hpp"
+#include "memory.h"
 
 // System Boot ROM
 const static size_t ADDR_BIOS_FIRST = 0;

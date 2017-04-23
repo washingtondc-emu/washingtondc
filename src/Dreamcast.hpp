@@ -26,7 +26,7 @@
 #include <boost/asio.hpp>
 
 #include "BiosFile.hpp"
-#include "Memory.hpp"
+#include "memory.h"
 #include "hw/sh4/sh4.hpp"
 #include "dc_sched.hpp"
 

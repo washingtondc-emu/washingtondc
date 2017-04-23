@@ -93,6 +93,8 @@ static char const *error_type_string(enum error_type tp) {
         return "unable to continue due to unimplemented functionality";
     case ERROR_INVALID_PARAM:
         return "invalid parameter value";
+    case ERROR_MEM_OUT_OF_BOUNDS:
+        return "memory access failed because the address was out-of-bounds";
     default:
         return "Unknown error (this shouldn\'t happen)";
     }
@@ -102,3 +104,5 @@ DEF_ERROR_INT_ATTR(line)
 DEF_ERROR_STRING_ATTR(file)
 DEF_ERROR_STRING_ATTR(feature)
 DEF_ERROR_STRING_ATTR(param_name)
+DEF_ERROR_U32_ATTR(address)
+DEF_ERROR_INT_ATTR(length)

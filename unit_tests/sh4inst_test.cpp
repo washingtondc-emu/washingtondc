@@ -26,7 +26,7 @@
 #include <limits>
 
 #include "BaseException.hpp"
-#include "Memory.hpp"
+#include "memory.h"
 #include "hw/sh4/sh4.hpp"
 #include "tool/sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
@@ -45,6 +45,15 @@ static const size_t MEM_SZ = 16 * 1024 * 1024;
 typedef RandGenerator<boost::uint32_t> RandGen32;
 typedef int(*inst_test_func_t)(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                RandGen32 *randgen32);
+
+template<typename data_tp, class InputIterator>
+void memory_load_binary(struct Memory *mem, addr32_t where, InputIterator start,
+                        InputIterator end) {
+    for (InputIterator it = start; it != end; it++, where++) {
+        data_tp tmp = *it;
+        memory_write(mem, &tmp, where, sizeof(tmp));
+    }
+}
 
 class AddrRange {
 public:
