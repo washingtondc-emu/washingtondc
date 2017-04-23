@@ -24,14 +24,13 @@
 
 #include <cstring>
 
-#include "hw/pvr2/spg.hpp"
 #include "BaseException.hpp"
-#include "Dreamcast.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4_excp.hpp"
 #include "sh4_reg.hpp"
-#include "sh4_inst.hpp"
+#include "sh4_inst.h"
 #include "error.h"
+#include "Dreamcast.hpp"
 
 #include "sh4.hpp"
 

@@ -23,15 +23,13 @@
 #ifndef SH4_HPP_
 #define SH4_HPP_
 
-#include <cassert>
+#include <assert.h>
 
-#include <boost/cstdint.hpp>
-#include <boost/static_assert.hpp>
+#include <stdint.h>
 
-#include "BaseException.hpp"
+#include "error.h"
 #include "types.h"
-#include "MemoryMap.hpp"
-#include "sh4_inst.hpp"
+#include "sh4_inst.h"
 #include "sh4_mmu.hpp"
 #include "sh4_reg.hpp"
 #include "sh4_mem.hpp"
@@ -81,7 +79,7 @@ struct Sh4 {
         float fr[SH4_N_FLOAT_REGS];
         double dr[SH4_N_DOUBLE_REGS];
     };
-    BOOST_STATIC_ASSERT(sizeof(FpuRegFile) == (SH4_N_FLOAT_REGS * sizeof(float)));
+    // BOOST_STATIC_ASSERT(sizeof(FpuRegFile) == (SH4_N_FLOAT_REGS * sizeof(float)));
 
     struct FpuReg {
         // floating point status/control register

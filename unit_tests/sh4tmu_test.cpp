@@ -34,6 +34,8 @@
 #include "tool/sh4asm/sh4asm.hpp"
 #include "BaseException.hpp"
 #include "memory.h"
+#include "BiosFile.hpp"
+#include "MemoryMap.hpp"
 
 char const prog_asm[] =
     /*

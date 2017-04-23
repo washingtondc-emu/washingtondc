@@ -32,7 +32,7 @@
 #include <boost/cstdint.hpp>
 
 #include "types.h"
-#include "MemoryMap.hpp"
+// #include "MemoryMap.hpp"
 
 typedef size_t sh4_ocache_line_t;     // index of cache-line (32-bytes/incrment)
 typedef uint32_t sh4_ocache_key_t;

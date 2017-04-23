@@ -30,6 +30,8 @@
 #include "BaseException.hpp"
 #include "memory.h"
 #include "RandGenerator.hpp"
+#include "BiosFile.hpp"
+#include "MemoryMap.hpp"
 
 typedef RandGenerator<uint32_t> RandGen32;
 

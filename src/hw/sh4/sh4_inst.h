@@ -20,13 +20,16 @@
  *
  ******************************************************************************/
 
-#ifndef SH4_INST_HPP_
-#define SH4_INST_HPP_
+#ifndef SH4_INST_H_
+#define SH4_INST_H_
 
-#include <boost/cstdint.hpp>
+#include <stdint.h>
 
-#include "sh4.hpp"
 #include "types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct Sh4;
 
@@ -161,7 +164,7 @@ union Sh4OpArgs {
  */
 void sh4_init_inst_lut();
 
-BOOST_STATIC_ASSERT(sizeof(Sh4OpArgs) == 2);
+// BOOST_STATIC_ASSERT(sizeof(Sh4OpArgs) == 2);
 
 typedef void (*opcode_func_t)(Sh4*, Sh4OpArgs oa);
 
@@ -1191,7 +1194,7 @@ void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst);
 
 #define FPU_HANDLER(name) sh4_fpu_inst_ ## name
 
-#define DECL_FPU_HANDLER(name) void FPU_HANDLER(name) (Sh4 *sh4, Sh4OpArgs inst)
+#define DECL_FPU_HANDLER(name) extern "C" void FPU_HANDLER(name) (Sh4 *sh4, Sh4OpArgs inst)
 
 #define DEF_FPU_HANDLER(name, mask, on_false, on_true) \
     DECL_FPU_HANDLER(name) {                           \
@@ -1332,5 +1335,9 @@ DECL_FPU_HANDLER(fcnvds_fpu);
 // FCNVSD FPUL, DRn
 // 1111nnn010101101
 DECL_FPU_HANDLER(fcnvsd_fpu);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
