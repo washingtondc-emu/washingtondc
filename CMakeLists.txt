@@ -73,8 +73,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/types.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_ocache.hpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_ocache.cpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/g1/g1_reg.hpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/g1/g1_reg.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/g1/g1_reg.h"
+                "${PROJECT_SOURCE_DIR}/src/hw/g1/g1_reg.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/g2/g2_reg.hpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/g2/g2_reg.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/gdrom/gdrom_reg.hpp"
@@ -130,7 +130,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/gfx_thread.hpp"
                 "${PROJECT_SOURCE_DIR}/src/gfx_thread.cpp"
                 "${PROJECT_SOURCE_DIR}/src/error.c"
-                "${PROJECT_SOURCE_DIR}/src/error.h")
+                "${PROJECT_SOURCE_DIR}/src/error.h"
+                "${PROJECT_SOURCE_DIR}/src/mem_areas.h")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)

@@ -25,65 +25,7 @@
 
 #include "BiosFile.hpp"
 #include "memory.h"
-
-// System Boot ROM
-const static size_t ADDR_BIOS_FIRST = 0;
-const static size_t ADDR_BIOS_LAST  = 0x001fffff;
-
-// flash memory
-const static size_t ADDR_FLASH_FIRST = 0x00200000;
-const static size_t ADDR_FLASH_LAST = 0x0021ffff;
-
-// main system memory
-const static size_t ADDR_RAM_FIRST  = 0x0c000000;
-const static size_t ADDR_RAM_LAST   = 0x0cffffff;
-
-// G1 bus control registers
-const static size_t ADDR_G1_FIRST = 0x005F7400;
-const static size_t ADDR_G1_LAST  = 0x005F74FF;
-
-// system block registers
-const static size_t ADDR_SYS_FIRST = 0x005f6800;
-const static size_t ADDR_SYS_LAST  = 0x005F69FF;
-
-// maple bus registers
-const static size_t ADDR_MAPLE_FIRST = 0x5f6c00;
-const static size_t ADDR_MAPLE_LAST = 0x5f6cff;
-
-// G2 bus control registers
-const static size_t ADDR_G2_FIRST = 0x5f7800;
-const static size_t ADDR_G2_LAST = 0x5f78ff;
-
-// GD-ROM drive control registers
-const static size_t ADDR_GDROM_FIRST = 0x5f7000;
-const static size_t ADDR_GDROM_LAST = 0x5f70ff;
-
-// NEC PowerVR 2 control registers
-const static size_t ADDR_PVR2_FIRST = 0x5f7c00;
-const static size_t ADDR_PVR2_LAST = 0x5f7cff;
-
-const static size_t ADDR_PVR2_CORE_FIRST = 0x5f8000;
-const static size_t ADDR_PVR2_CORE_LAST = 0x5f9fff;
-
-// yep, it's the modem.  And probably the broadband adapter, too.
-const static size_t ADDR_MODEM_FIRST = 0x600000;
-const static size_t ADDR_MODEM_LAST = 0x60048c;
-
-// AICA registers
-const static size_t ADDR_AICA_FIRST = 0x00700000;
-const static size_t ADDR_AICA_LAST  = 0x00707FFF;
-
-const static size_t ADDR_AICA_RTC_FIRST = 0x00710000;
-const static size_t ADDR_AICA_RTC_LAST = 0x0071000b;
-
-const static size_t ADDR_AICA_WAVE_FIRST = 0x00800000;
-const static size_t ADDR_AICA_WAVE_LAST = 0x00ffffff;
-
-// texture memory.
-// This represents both the 32-bit area and the 64-bit area because
-// I don't know what the difference between them is supposed to be
-const static size_t ADDR_TEX_FIRST = 0x05000000;
-const static size_t ADDR_TEX_LAST =  0x057fffff;
+#include "mem_areas.h"
 
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new);
 void memory_map_set_bios(BiosFile *bios_new);
