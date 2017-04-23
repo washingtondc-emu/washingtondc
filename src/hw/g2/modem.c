@@ -20,10 +20,10 @@
  *
  ******************************************************************************/
 
-#include <cstring>
+#include <string.h>
 
-#include "BaseException.hpp"
-#include "modem.hpp"
+#include "error.h"
+#include "modem.h"
 
 /* pull down to 0 - this device is not implemented */
 
@@ -34,6 +34,6 @@ int modem_read(void *buf, size_t addr, size_t len) {
 }
 
 int modem_write(void const *buf, size_t addr, size_t len) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("sending data to the modem unit"));
+    error_set_feature("sending data to the modem unit");
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
