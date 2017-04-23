@@ -43,6 +43,8 @@ GdbStub::GdbStub() : Debugger(),
                      tcp_socket(dc_io_service) {
     frontend_supports_swbreak = false;
     is_writing = false;
+    should_expect_mem_access_error = false;
+    mem_access_error = false;
 }
 
 GdbStub::~GdbStub() {
@@ -466,6 +468,8 @@ std::string GdbStub::handle_m_packet(std::string dat) {
 
 std::string GdbStub::read_mem_4(addr32_t addr, unsigned len) {
     std::stringstream ss;
+    expect_mem_access_error(true);
+
     while (len) {
         uint32_t val;
 
@@ -473,7 +477,12 @@ std::string GdbStub::read_mem_4(addr32_t addr, unsigned len) {
             sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
             addr += 4;
         } catch (BaseException& exc) {
-            // std::cerr << boost::diagnostic_information(exc);
+            expect_mem_access_error(false);
+            return err_str(EINVAL);
+        }
+
+        if (mem_access_error) {
+            expect_mem_access_error(false);
             return err_str(EINVAL);
         }
 
@@ -481,11 +490,14 @@ std::string GdbStub::read_mem_4(addr32_t addr, unsigned len) {
         len -= 4;
     }
 
+    expect_mem_access_error(false);
     return ss.str();
 }
 
 std::string GdbStub::read_mem_2(addr32_t addr, unsigned len) {
     std::stringstream ss;
+    expect_mem_access_error (true);
+
     while (len) {
         uint16_t val;
 
@@ -493,7 +505,12 @@ std::string GdbStub::read_mem_2(addr32_t addr, unsigned len) {
             sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
             addr += 2;
         } catch (BaseException& exc) {
-            // std::cerr << boost::diagnostic_information(exc);
+            expect_mem_access_error(false);
+            return err_str(EINVAL);
+        }
+
+        if (mem_access_error) {
+            expect_mem_access_error(false);
             return err_str(EINVAL);
         }
 
@@ -501,11 +518,14 @@ std::string GdbStub::read_mem_2(addr32_t addr, unsigned len) {
         len -= 2;
     }
 
+    expect_mem_access_error(false);
     return ss.str();
 }
 
 std::string GdbStub::read_mem_1(addr32_t addr, unsigned len) {
     std::stringstream ss;
+    expect_mem_access_error(true);
+
     while (len--) {
         uint8_t val;
 
@@ -513,14 +533,19 @@ std::string GdbStub::read_mem_1(addr32_t addr, unsigned len) {
             sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
             addr++;
         } catch (BaseException& exc) {
-            // std::cerr << boost::diagnostic_information(exc);
+            expect_mem_access_error(false);
             return err_str(EINVAL);
         }
 
-        // val = boost::endian::endian_reverse(val);
+        if (mem_access_error) {
+            expect_mem_access_error(false);
+            return err_str(EINVAL);
+        }
+
         ss << serialize_data(&val, sizeof(val));
     }
 
+    expect_mem_access_error(false);
     return ss.str();
 }
 
@@ -549,9 +574,17 @@ std::string GdbStub::handle_M_packet(std::string dat) {
         if (len < 1024) {
             uint8_t *buf = new uint8_t[len];
             try {
+                expect_mem_access_error(true);
                 deserialize_data(ss, buf, len);
                 sh4_write_mem(dreamcast_get_cpu(), buf, addr, len);
+
+                if (mem_access_error) {
+                    expect_mem_access_error(false);
+                    return err_str(EINVAL);
+                }
+
             } catch (BaseException& exc) {
+                expect_mem_access_error(false);
                 delete[] buf;
                 throw;
             }
@@ -560,10 +593,12 @@ std::string GdbStub::handle_M_packet(std::string dat) {
             BOOST_THROW_EXCEPTION(InvalidParamError());
         }
     } catch (BaseException& exc) {
+        expect_mem_access_error(false);
         std::cerr << boost::diagnostic_information(exc);
         return err_str(EINVAL);
     }
 
+    expect_mem_access_error(false);
     return "OK";
 }
 
@@ -946,4 +981,24 @@ std::string GdbStub::next_packet() {
 #endif
 
     return pkt;
+}
+
+void GdbStub::dbg_errror_handler(int error_tp, void *argptr) {
+    GdbStub* stub = (GdbStub*)argptr;
+
+    stub->error_handler(error_tp);
+}
+
+void GdbStub::error_handler(int error_tp) {
+    if (should_expect_mem_access_error) {
+        mem_access_error = true;
+    } else {
+        error_print();
+        exit(1);
+    }
+}
+
+void GdbStub::expect_mem_access_error(bool should) {
+    mem_access_error = false;
+    should_expect_mem_access_error = true;
 }

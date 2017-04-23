@@ -32,12 +32,30 @@
 static char const *error_type_string(enum error_type tp);
 static void print_attr(struct error_attr const *attr);
 
+#ifdef ENABLE_DEBUGGER
+static error_handler_t error_handler;
+static void *error_handler_arg;
+#endif
+
 enum error_type error_type;
 
 struct error_attr *first_attr;
 
+#ifdef ENABLE_DEBUGGER
+void set_error_handler(error_handler_t handler) {
+    error_handler = handler;
+}
+#endif
+
 void error_raise(enum error_type tp) {
     error_type = tp;
+
+#ifdef ENABLE_DEBUGGER
+    if (error_handler) {
+        error_handler(tp, error_handler_arg);
+        return;
+    }
+#endif
 
     error_print();
     exit(1);

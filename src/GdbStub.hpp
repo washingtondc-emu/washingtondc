@@ -172,6 +172,11 @@ private:
     std::string read_mem_4(addr32_t addr, unsigned len);
     std::string read_mem_2(addr32_t addr, unsigned len);
     std::string read_mem_1(addr32_t addr, unsigned len);
+
+    static void dbg_errror_handler(int error_tp, void *argptr);
+    void error_handler(int error_tp);
+    bool should_expect_mem_access_error, mem_access_error;
+    void expect_mem_access_error(bool should);
 };
 
 #endif

@@ -79,7 +79,23 @@ void error_add_attr(struct error_attr *attr);
 
 void error_print();
 
-#define ERROR_STRING_ATTR(the_attr_name)                \
+#ifdef ENABLE_DEBUGGER
+/*
+ * if there's an error handler set, error_raise will call that instead of
+ * calling exit.
+ *
+ * this API is intended for the debugger to have a way to catch memory errors
+ * and report them back to gdb without crashing the emulator.  I don't intend
+ * to use it elsewhere because writing decent error handling code is hard to do
+ * without throwing a million if statements everywhere and shooting your
+ * performance to hell *shrugs*.  panic-style error handling, on the other
+ * hand...
+ */
+typedef void(*error_handler_t)(enum error_type, void *arg);
+void set_error_handler(error_handler_t handler);
+#endif
+
+#define ERROR_STRING_ATTR(the_attr_name)                        \
     void error_set_##the_attr_name(char const *attr_val)
 
 #define ERROR_INT_ATTR(the_attr_name)                   \
