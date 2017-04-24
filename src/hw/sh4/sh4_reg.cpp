@@ -26,7 +26,7 @@
 
 #include "sh4_excp.h"
 #include "sh4_reg.h"
-#include "sh4_tmu.hpp"
+#include "sh4_tmu.h"
 #include "sh4.hpp"
 
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);

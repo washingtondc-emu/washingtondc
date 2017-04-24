@@ -32,7 +32,7 @@
 #include "sh4_mmu.h"
 #include "sh4_reg.h"
 #include "sh4_mem.hpp"
-#include "sh4_tmu.hpp"
+#include "sh4_tmu.h"
 #include "sh4_ocache.h"
 #include "sh4_excp.h"
 #include "sh4_scif.hpp"

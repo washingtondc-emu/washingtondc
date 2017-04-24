@@ -30,7 +30,7 @@
 #include "dc_sched.h"
 #include "Dreamcast.hpp"
 
-#include "sh4_tmu.hpp"
+#include "sh4_tmu.h"
 
 typedef uint64_t tmu_cycle_t;
 
