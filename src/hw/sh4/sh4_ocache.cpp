@@ -51,7 +51,7 @@ static const unsigned SH4_OCACHE_KEY_TAG_SHIFT = 2;
 static const unsigned SH4_OCACHE_KEY_TAG_MASK = 0x7ffff << SH4_OCACHE_KEY_TAG_SHIFT;
 
 void sh4_ocache_init(struct sh4_ocache *ocache) {
-    ocache->oc_ram_area = new uint8_t[SH4_OC_RAM_AREA_SIZE];
+    ocache->oc_ram_area = (uint8_t*)malloc(sizeof(uint8_t) * SH4_OC_RAM_AREA_SIZE);
 
     sh4_ocache_clear(ocache);
 }
