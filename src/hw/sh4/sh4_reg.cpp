@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "sh4_excp.hpp"
+#include "sh4_excp.h"
 #include "sh4_reg.h"
 #include "sh4_tmu.hpp"
 #include "sh4.hpp"

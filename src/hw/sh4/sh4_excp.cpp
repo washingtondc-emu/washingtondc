@@ -20,19 +20,11 @@
  *
  ******************************************************************************/
 
-#include "BaseException.hpp"
 #include "sh4.hpp"
-#include "sh4_excp.hpp"
+#include "sh4_excp.h"
+#include "error.h"
 
-typedef boost::error_info<struct tag_excp_code_error_info,
-                          enum Sh4ExceptionCode> sh4_excp_code_error_info;
-
-class UnknownExcpCodeException : public BaseException {
-public:
-    char const *what() const throw() {
-        return "unrecognized sh4 exception code";
-    }
-};
+static DEF_ERROR_INT_ATTR(sh4_exception_code)
 
 static Sh4ExcpMeta const sh4_excp_meta[SH4_EXCP_COUNT] = {
     // exception code                         prio_level   prio_order   offset
@@ -101,6 +93,7 @@ static Sh4ExcpMeta const sh4_excp_meta[SH4_EXCP_COUNT] = {
     { SH4_EXCP_SCIF_TXI,                          4,           2,           0x600  }
 };
 
+extern "C"
 void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     struct Sh4ExcpMeta const *meta = NULL;
     reg32_t *reg = sh4->reg;
@@ -112,9 +105,10 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
         }
     }
 
-    if (!meta)
-        BOOST_THROW_EXCEPTION(UnknownExcpCodeException() <<
-                              sh4_excp_code_error_info(vector));
+    if (!meta) {
+        error_set_sh4_exception_code((int)vector);
+        RAISE_ERROR(ERROR_UNKNOWN_EXCP_CODE);
+    }
 
     reg[SH4_REG_SPC] = reg[SH4_REG_PC];
     reg[SH4_REG_SSR] = reg[SH4_REG_SR];
@@ -140,6 +134,7 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     }
 }
 
+extern "C"
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
     sh4->reg[SH4_REG_EXPEVT] = (excp_code << SH4_EXPEVT_CODE_SHIFT) &
         SH4_EXPEVT_CODE_MASK;
@@ -147,11 +142,13 @@ void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
     sh4_enter_exception(sh4, (Sh4ExceptionCode)excp_code);
 }
 
+extern "C"
 void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line,
                        Sh4ExceptionCode intp_code) {
     sh4->intc.irq_lines[irq_line] = intp_code;
 }
 
+extern "C"
 void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
     irl_val = ~irl_val;
 
@@ -176,6 +173,7 @@ void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
         sh4->intc.irq_lines[SH4_IRQ_IRL3] = (Sh4ExceptionCode)0;
 }
 
+extern "C"
 void sh4_check_interrupts(Sh4 *sh4) {
     /*
      * for the purposes of interrupt handling, I treat delayed-branch slots

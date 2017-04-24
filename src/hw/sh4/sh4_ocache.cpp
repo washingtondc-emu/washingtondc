@@ -26,7 +26,7 @@
 #include <boost/cstdint.hpp>
 
 #include "sh4.hpp"
-#include "sh4_excp.hpp"
+#include "sh4_excp.h"
 #include "BaseException.hpp"
 
 #include "sh4_ocache.hpp"

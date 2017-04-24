@@ -47,7 +47,10 @@ enum error_type {
     ERROR_FAILED_ALLOC,
 
     /* error on some file operation */
-    ERROR_FILE_IO
+    ERROR_FILE_IO,
+
+    /* sh4 interpreter encountered an unknown exception code */
+    ERROR_UNKNOWN_EXCP_CODE
 };
 
 enum error_attr_type {

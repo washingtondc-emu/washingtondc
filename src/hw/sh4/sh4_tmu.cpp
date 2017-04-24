@@ -25,7 +25,7 @@
 
 #include <boost/cstdint.hpp>
 
-#include "sh4_excp.hpp"
+#include "sh4_excp.h"
 #include "sh4.hpp"
 #include "dc_sched.hpp"
 #include "Dreamcast.hpp"

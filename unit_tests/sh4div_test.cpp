@@ -25,7 +25,7 @@
 #include <iostream>
 
 #include "hw/sh4/sh4.hpp"
-#include "hw/sh4/sh4_excp.hpp"
+#include "hw/sh4/sh4_excp.h"
 #include "tool/sh4asm/sh4asm.hpp"
 #include "BaseException.hpp"
 #include "memory.h"

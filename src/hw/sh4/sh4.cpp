@@ -26,7 +26,7 @@
 
 #include "BaseException.hpp"
 #include "sh4_mmu.hpp"
-#include "sh4_excp.hpp"
+#include "sh4_excp.h"
 #include "sh4_reg.h"
 #include "sh4_inst.h"
 #include "error.h"

@@ -33,7 +33,7 @@
 #include "sh4_ocache.hpp"
 #include "sh4_mmu.hpp"
 #include "sh4.hpp"
-#include "sh4_excp.hpp"
+#include "sh4_excp.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "Debugger.hpp"

@@ -24,7 +24,6 @@
 #define SH4_HPP_
 
 #include <assert.h>
-
 #include <stdint.h>
 
 #include "error.h"
@@ -35,7 +34,7 @@
 #include "sh4_mem.hpp"
 #include "sh4_tmu.hpp"
 #include "sh4_ocache.hpp"
-#include "sh4_excp.hpp"
+#include "sh4_excp.h"
 #include "sh4_scif.hpp"
 #include "BaseException.hpp"
 

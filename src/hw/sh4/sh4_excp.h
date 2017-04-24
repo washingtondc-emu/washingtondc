@@ -20,10 +20,14 @@
  *
  ******************************************************************************/
 
-#ifndef SH4_EXCP_HPP_
-#define SH4_EXCP_HPP_
+#ifndef SH4_EXCP_H_
+#define SH4_EXCP_H_
 
 #include "sh4_reg.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum Sh4ExceptionCode {
     // reset-type exceptions
@@ -171,5 +175,9 @@ void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line, Sh4ExceptionCode intp_code);
 
 /* check IRQ lines and enter interrupt state if necessary */
 void sh4_check_interrupts(Sh4 *sh4);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

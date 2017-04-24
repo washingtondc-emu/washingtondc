@@ -113,6 +113,12 @@ static char const *error_type_string(enum error_type tp) {
         return "invalid parameter value";
     case ERROR_MEM_OUT_OF_BOUNDS:
         return "memory access failed because the address was out-of-bounds";
+    case ERROR_FAILED_ALLOC:
+        return "unable to allocate memory";
+    case ERROR_FILE_IO:
+        return "error on some file operation";
+    case ERROR_UNKNOWN_EXCP_CODE:
+        return "sh4 interpreter encountered an unknown exception code";
     default:
         return "Unknown error (this shouldn\'t happen)";
     }

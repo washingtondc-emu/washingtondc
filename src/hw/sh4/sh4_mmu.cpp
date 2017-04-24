@@ -23,7 +23,7 @@
 #include "BaseException.hpp"
 
 #include "sh4_reg.h"
-#include "sh4_excp.hpp"
+#include "sh4_excp.h"
 
 #include "sh4.hpp"
 

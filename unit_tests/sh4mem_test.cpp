@@ -30,7 +30,7 @@
 #include "memory.h"
 #include "MemoryMap.hpp"
 #include "hw/sh4/sh4.hpp"
-#include "hw/sh4/sh4_excp.hpp"
+#include "hw/sh4/sh4_excp.h"
 #include "RandGenerator.hpp"
 
 typedef boost::error_info<struct tag_utlb_index_error_info, unsigned>
