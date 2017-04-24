@@ -33,7 +33,7 @@
 #include "hw/aica/aica_rtc.hpp"
 #include "hw/aica/aica_wave_mem.hpp"
 #include "hw/gdrom/gdrom_reg.hpp"
-#include "flash_memory.hpp"
+#include "flash_memory.h"
 
 #include "MemoryMap.hpp"
 
