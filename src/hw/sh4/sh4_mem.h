@@ -20,10 +20,14 @@
  *
  ******************************************************************************/
 
-#ifndef SH4_MEM_HPP_
-#define SH4_MEM_HPP_
+#ifndef SH4_MEM_H_
+#define SH4_MEM_H_
 
-#include <boost/static_assert.hpp>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct Sh4;
 
 enum VirtMemArea {
     SH4_AREA_P0 = 0,
@@ -34,16 +38,16 @@ enum VirtMemArea {
 };
 
 // Physical memory aread boundaries
-static const size_t SH4_AREA_P0_FIRST = 0x00000000;
-static const size_t SH4_AREA_P0_LAST  = 0x7fffffff;
-static const size_t SH4_AREA_P1_FIRST = 0x80000000;
-static const size_t SH4_AREA_P1_LAST  = 0x9fffffff;
-static const size_t SH4_AREA_P2_FIRST = 0xa0000000;
-static const size_t SH4_AREA_P2_LAST  = 0xbfffffff;
-static const size_t SH4_AREA_P3_FIRST = 0xc0000000;
-static const size_t SH4_AREA_P3_LAST  = 0xdfffffff;
-static const size_t SH4_AREA_P4_FIRST = 0xe0000000;
-static const size_t SH4_AREA_P4_LAST  = 0xffffffff;
+#define SH4_AREA_P0_FIRST  0x00000000
+#define SH4_AREA_P0_LAST   0x7fffffff
+#define SH4_AREA_P1_FIRST  0x80000000
+#define SH4_AREA_P1_LAST   0x9fffffff
+#define SH4_AREA_P2_FIRST  0xa0000000
+#define SH4_AREA_P2_LAST   0xbfffffff
+#define SH4_AREA_P3_FIRST  0xc0000000
+#define SH4_AREA_P3_LAST   0xdfffffff
+#define SH4_AREA_P4_FIRST  0xe0000000
+#define SH4_AREA_P4_LAST   0xffffffff
 
 /*
  * SH4_P4_REGSTART is the addr of the first memory-mapped
@@ -55,17 +59,17 @@ static const size_t SH4_AREA_P4_LAST  = 0xffffffff;
  * SH4_AREA7_REGEND is the first addr *after* the last memory-mapped
  *     register in area 7
  */
-static const size_t SH4_P4_REGSTART = 0xff000000;
-static const size_t SH4_P4_REGEND = 0xfff00008;
-static const size_t SH4_AREA7_REGSTART = 0x1f000000;
-static const size_t SH4_AREA7_REGEND = 0x1ff00008;
-BOOST_STATIC_ASSERT((SH4_P4_REGEND - SH4_P4_REGSTART) ==
-                    (SH4_AREA7_REGEND - SH4_AREA7_REGSTART));
+#define SH4_P4_REGSTART    0xff000000
+#define SH4_P4_REGEND      0xfff00008
+#define SH4_AREA7_REGSTART 0x1f000000
+#define SH4_AREA7_REGEND   0x1ff00008
+// BOOST_STATIC_ASSERT((SH4_P4_REGEND - SH4_P4_REGSTART) ==
+//                     (SH4_AREA7_REGEND - SH4_AREA7_REGSTART));
 
 /* constants needed for opcache as ram */
-static const size_t SH4_LONGS_PER_OP_CACHE_LINE = 8;
-static const size_t SH4_OP_CACHE_LINE_SIZE = SH4_LONGS_PER_OP_CACHE_LINE * 4;
-static const size_t SH4_OC_RAM_AREA_SIZE = 8 * 1024;
+#define SH4_LONGS_PER_OP_CACHE_LINE 8
+#define SH4_OP_CACHE_LINE_SIZE (SH4_LONGS_PER_OP_CACHE_LINE * 4)
+#define SH4_OC_RAM_AREA_SIZE (8 * 1024)
 
 /*
  * From within the CPU, these functions should be called instead of
@@ -97,5 +101,9 @@ enum VirtMemArea sh4_get_mem_area(addr32_t addr);
  */
 int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
 int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
