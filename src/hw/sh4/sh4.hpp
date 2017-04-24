@@ -29,7 +29,7 @@
 #include "error.h"
 #include "types.h"
 #include "sh4_inst.h"
-#include "sh4_mmu.hpp"
+#include "sh4_mmu.h"
 #include "sh4_reg.h"
 #include "sh4_mem.hpp"
 #include "sh4_tmu.hpp"

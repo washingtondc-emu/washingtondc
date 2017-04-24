@@ -50,7 +50,10 @@ enum error_type {
     ERROR_FILE_IO,
 
     /* sh4 interpreter encountered an unknown exception code */
-    ERROR_UNKNOWN_EXCP_CODE
+    ERROR_UNKNOWN_EXCP_CODE,
+
+    /* shouldn't be possible ? */
+    ERROR_INTEGRITY
 };
 
 enum error_attr_type {
@@ -159,6 +162,8 @@ ERROR_INT_ATTR(length);
 ERROR_INT_ATTR(errno_val);
 
 ERROR_U32_ATTR(expected_length);
+
+ERROR_STRING_ATTR(wtf);
 
 #define RAISE_ERROR(tp)                         \
     do {                                        \

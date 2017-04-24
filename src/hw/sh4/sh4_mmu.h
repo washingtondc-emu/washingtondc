@@ -20,109 +20,114 @@
  *
  ******************************************************************************/
 
-#ifndef SH4_MMU_HPP_
-#define SH4_MMU_HPP_
+#ifndef SH4_MMU_H_
+#define SH4_MMU_H_
 
-#include <boost/cstdint.hpp>
+#include <stdint.h>
+#include <stddef.h>
 
 #include "sh4_reg.h"
 #include "sh4_reg_flags.h"
 
-static const unsigned SH4_MMUPTEH_ASID_SHIFT = 0;
-static const unsigned SH4_MMUPTEH_ASID_MASK = 0xff << SH4_MMUPTEH_ASID_SHIFT;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-static const unsigned SH4_MMUPTEH_VPN_SHIFT = 10;
-static const unsigned SH4_MMUPTEH_VPN_MASK = 0x3fffff << SH4_MMUPTEH_VPN_SHIFT;
+#define SH4_MMUPTEH_ASID_SHIFT 0
+#define SH4_MMUPTEH_ASID_MASK (0xff << SH4_MMUPTEH_ASID_SHIFT)
+
+#define SH4_MMUPTEH_VPN_SHIFT 10
+#define SH4_MMUPTEH_VPN_MASK (0x3fffff << SH4_MMUPTEH_VPN_SHIFT)
 
 // UTLB Valid bit
-static const unsigned SH4_UTLB_KEY_VALID_SHIFT = 0;
-static const unsigned SH4_UTLB_KEY_VALID_MASK = 1 << SH4_UTLB_KEY_VALID_SHIFT;
+#define SH4_UTLB_KEY_VALID_SHIFT 0
+#define SH4_UTLB_KEY_VALID_MASK (1 << SH4_UTLB_KEY_VALID_SHIFT)
 
 // UTLB Virtual Page Number
-static const unsigned SH4_UTLB_KEY_VPN_SHIFT = 1;
-static const unsigned SH4_UTLB_KEY_VPN_MASK = 0x3fffff << SH4_UTLB_KEY_VPN_SHIFT;
+#define SH4_UTLB_KEY_VPN_SHIFT 1
+#define SH4_UTLB_KEY_VPN_MASK (0x3fffff << SH4_UTLB_KEY_VPN_SHIFT)
 
 // UTLB Address-Space Identifier
-static const unsigned SH4_UTLB_KEY_ASID_SHIFT = 23;
-static const unsigned SH4_UTLB_KEY_ASID_MASK = 0xff << SH4_UTLB_KEY_ASID_SHIFT;
+#define SH4_UTLB_KEY_ASID_SHIFT 23
+#define SH4_UTLB_KEY_ASID_MASK (0xff << SH4_UTLB_KEY_ASID_SHIFT)
 
 // UTLB Timing Control - I have no idea what this is
 // (see page 41 of the sh7750 hardware manual)
-static const unsigned SH4_UTLB_ENT_TC_SHIFT = 0;
-static const unsigned SH4_UTLB_ENT_TC_MASK = 1 << SH4_UTLB_ENT_TC_SHIFT;
+#define SH4_UTLB_ENT_TC_SHIFT 0
+#define SH4_UTLB_ENT_TC_MASK (1 << SH4_UTLB_ENT_TC_SHIFT)
 
 // UTLB Space Attribute
-static const unsigned SH4_UTLB_ENT_SA_SHIFT = 1;
-static const unsigned SH4_UTLB_ENT_SA_MASK = 0x7 << SH4_UTLB_ENT_SA_SHIFT;
+#define SH4_UTLB_ENT_SA_SHIFT 1
+#define SH4_UTLB_ENT_SA_MASK (0x7 << SH4_UTLB_ENT_SA_SHIFT)
 
 // UTLB Write-Through
-static const unsigned SH4_UTLB_ENT_WT_SHIFT = 4;
-static const unsigned SH4_UTLB_ENT_WT_MASK = 1 << SH4_UTLB_ENT_WT_SHIFT;
+#define SH4_UTLB_ENT_WT_SHIFT 4
+#define SH4_UTLB_ENT_WT_MASK (1 << SH4_UTLB_ENT_WT_SHIFT)
 
 // UTLB Dirty Bit
-static const unsigned SH4_UTLB_ENT_D_SHIFT = 5;
-static const unsigned SH4_UTLB_ENT_D_MASK = 1 << SH4_UTLB_ENT_D_SHIFT;
+#define SH4_UTLB_ENT_D_SHIFT 5
+#define SH4_UTLB_ENT_D_MASK (1 << SH4_UTLB_ENT_D_SHIFT)
 
 // UTLB Protection-Key data
-static const unsigned SH4_UTLB_ENT_PR_SHIFT = 6;
-static const unsigned SH4_UTLB_ENT_PR_MASK = 3 << SH4_UTLB_ENT_PR_SHIFT;
+#define SH4_UTLB_ENT_PR_SHIFT 6
+#define SH4_UTLB_ENT_PR_MASK (3 << SH4_UTLB_ENT_PR_SHIFT)
 
 // UTLB Cacheability bit
-static const unsigned SH4_UTLB_ENT_C_SHIFT = 8;
-static const unsigned SH4_UTLB_ENT_C_MASK = 1 << SH4_UTLB_ENT_C_SHIFT;
+#define SH4_UTLB_ENT_C_SHIFT 8
+#define SH4_UTLB_ENT_C_MASK (1 << SH4_UTLB_ENT_C_SHIFT)
 
 // UTLB Share status bit
-static const unsigned SH4_UTLB_ENT_SH_SHIFT = 9;
-static const unsigned SH4_UTLB_ENT_SH_MASK = 1 << SH4_UTLB_ENT_SH_SHIFT;
+#define SH4_UTLB_ENT_SH_SHIFT 9
+#define SH4_UTLB_ENT_SH_MASK (1 << SH4_UTLB_ENT_SH_SHIFT)
 
 // UTLB Page size (see enum PageSize definition)
-static const unsigned SH4_UTLB_ENT_SZ_SHIFT = 10;
-static const unsigned SH4_UTLB_ENT_SZ_MASK = 3 << SH4_UTLB_ENT_SZ_SHIFT;
+#define SH4_UTLB_ENT_SZ_SHIFT 10
+#define SH4_UTLB_ENT_SZ_MASK (3 << SH4_UTLB_ENT_SZ_SHIFT)
 
 // UTLB Physical Page Number
-static const unsigned SH4_UTLB_ENT_PPN_SHIFT = 12;
-static const unsigned SH4_UTLB_ENT_PPN_MASK = 0x7ffff << SH4_UTLB_ENT_PPN_SHIFT;
+#define SH4_UTLB_ENT_PPN_SHIFT 12
+#define SH4_UTLB_ENT_PPN_MASK (0x7ffff << SH4_UTLB_ENT_PPN_SHIFT)
 
 // ITLB Valid bit
-static const unsigned SH4_ITLB_KEY_VALID_SHIFT = 0;
-static const unsigned SH4_ITLB_KEY_VALID_MASK = 1 << SH4_ITLB_KEY_VALID_SHIFT;
+#define SH4_ITLB_KEY_VALID_SHIFT 0
+#define SH4_ITLB_KEY_VALID_MASK (1 << SH4_ITLB_KEY_VALID_SHIFT)
 
 // ITLB Virtual Page Number
-static const unsigned SH4_ITLB_KEY_VPN_SHIFT = 1;
-static const unsigned SH4_ITLB_KEY_VPN_MASK = 0x3fffff << SH4_ITLB_KEY_VPN_SHIFT;
+#define SH4_ITLB_KEY_VPN_SHIFT 1
+#define SH4_ITLB_KEY_VPN_MASK (0x3fffff << SH4_ITLB_KEY_VPN_SHIFT)
 
 // ITLB Address-Space Identifier
-static const unsigned SH4_ITLB_KEY_ASID_SHIFT = 23;
-static const unsigned SH4_ITLB_KEY_ASID_MASK = 0xff << SH4_ITLB_KEY_ASID_SHIFT;
+#define SH4_ITLB_KEY_ASID_SHIFT 23
+#define SH4_ITLB_KEY_ASID_MASK (0xff << SH4_ITLB_KEY_ASID_SHIFT)
 
 // ITLB Timing Control - I have no idea what this is
 // (see page 41 of the sh7750 hardware manual)
-static const unsigned SH4_ITLB_ENT_TC_SHIFT = 0;
-static const unsigned SH4_ITLB_ENT_TC_MASK = 1 << SH4_ITLB_ENT_TC_SHIFT;
+#define SH4_ITLB_ENT_TC_SHIFT 0
+#define SH4_ITLB_ENT_TC_MASK (1 << SH4_ITLB_ENT_TC_SHIFT)
 
 // ITLB Space Attribute
-static const unsigned SH4_ITLB_ENT_SA_SHIFT = 1;
-static const unsigned SH4_ITLB_ENT_SA_MASK = 0x7 << SH4_ITLB_ENT_SA_SHIFT;
+#define SH4_ITLB_ENT_SA_SHIFT 1
+#define SH4_ITLB_ENT_SA_MASK (0x7 << SH4_ITLB_ENT_SA_SHIFT)
 
 // ITLB Protection Key data (0=priveleged, 1=user or priveleged)
-static const unsigned SH4_ITLB_ENT_PR_SHIFT = 4;
-static const unsigned SH4_ITLB_ENT_PR_MASK = 1 << SH4_ITLB_ENT_PR_SHIFT;
+#define SH4_ITLB_ENT_PR_SHIFT 4
+#define SH4_ITLB_ENT_PR_MASK (1 << SH4_ITLB_ENT_PR_SHIFT)
 
 // ITLB Cacheability flag
-static const unsigned SH4_ITLB_ENT_C_SHIFT = 5;
-static const unsigned SH4_ITLB_ENT_C_MASK = 1 << SH4_ITLB_ENT_C_SHIFT;
+#define SH4_ITLB_ENT_C_SHIFT 5
+#define SH4_ITLB_ENT_C_MASK (1 << SH4_ITLB_ENT_C_SHIFT)
 
 // ITLB Share status Bit
-static const unsigned SH4_ITLB_ENT_SH_SHIFT = 6;
-static const unsigned SH4_ITLB_ENT_SH_MASK = 1 << SH4_ITLB_ENT_SH_SHIFT;
+#define SH4_ITLB_ENT_SH_SHIFT 6
+#define SH4_ITLB_ENT_SH_MASK (1 << SH4_ITLB_ENT_SH_SHIFT)
 
 // ITLB Page size (see enum PageSize definition)
-static const unsigned SH4_ITLB_ENT_SZ_SHIFT = 7;
-static const unsigned SH4_ITLB_ENT_SZ_MASK = 0x3 << SH4_ITLB_ENT_SZ_SHIFT;
+#define SH4_ITLB_ENT_SZ_SHIFT 7
+#define SH4_ITLB_ENT_SZ_MASK (0x3 << SH4_ITLB_ENT_SZ_SHIFT)
 
 // ITLB Physical Page Number
-static const unsigned SH4_ITLB_ENT_PPN_SHIFT = 9;
-static const unsigned SH4_ITLB_ENT_PPN_MASK = 0x7ffff << SH4_ITLB_ENT_PPN_SHIFT;
+#define SH4_ITLB_ENT_PPN_SHIFT 9
+#define SH4_ITLB_ENT_PPN_MASK (0x7ffff << SH4_ITLB_ENT_PPN_SHIFT)
 
 enum PageSize {
     SH4_MMU_ONE_KILO = 0,
@@ -218,6 +223,10 @@ int sh4_mmu_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len);
 int sh4_mmu_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len);
 int sh4_mmu_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr);
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

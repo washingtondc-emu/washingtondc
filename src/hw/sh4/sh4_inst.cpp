@@ -31,7 +31,7 @@
 #include "BaseException.hpp"
 #include "Dreamcast.hpp"
 #include "sh4_ocache.hpp"
-#include "sh4_mmu.hpp"
+#include "sh4_mmu.h"
 #include "sh4.hpp"
 #include "sh4_excp.h"
 
