@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,18 +20,40 @@
  *
  ******************************************************************************/
 
-#ifndef MEMORYMAP_HPP_
-#define MEMORYMAP_HPP_
+#ifndef BIOSFILE_H_
+#define BIOSFILE_H_
 
-#include "BiosFile.h"
-#include "memory.h"
-#include "mem_areas.h"
+#include <string.h>
+#include <stdint.h>
 
-void memory_map_init(BiosFile *bios_new, struct Memory *mem_new);
-void memory_map_set_bios(BiosFile *bios_new);
-void memory_map_set_mem(struct Memory *mem_new);
+#include "types.h"
+#include "error.h"
 
-int memory_map_read(void *buf, size_t addr, size_t len);
-int memory_map_write(void const *buf, size_t addr, size_t len);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define BIOS_SZ_EXPECT (0x1fffff + 1)
+
+struct BiosFile {
+    size_t dat_len;
+    uint8_t *dat;
+};
+
+void bios_file_init_empty(struct BiosFile *bios_file);
+void bios_file_init(struct BiosFile *bios_file, char const *path);
+void bios_file_cleanup(struct BiosFile *bios_file);
+
+void bios_file_clear(struct BiosFile *bios_file);
+
+uint8_t *bios_file_begin(struct BiosFile *bios_file);
+uint8_t *bios_file_end(struct BiosFile *bios_file);
+
+int bios_file_read(struct BiosFile *bios_file, void *buf,
+                   size_t addr, size_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

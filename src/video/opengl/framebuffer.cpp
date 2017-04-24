@@ -30,6 +30,7 @@
 #include "hw/pvr2/pvr2_core_reg.hpp"
 #include "hw/pvr2/pvr2_tex_mem.hpp"
 #include "opengl_backend.hpp"
+#include "BaseException.hpp"
 
 #include "framebuffer.hpp"
 

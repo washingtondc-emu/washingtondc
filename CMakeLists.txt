@@ -101,8 +101,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/aica/aica_rtc.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/aica/aica_wave_mem.hpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/aica/aica_wave_mem.cpp"
-                "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
-                "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp"
+                "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
+                "${PROJECT_SOURCE_DIR}/src/BiosFile.c"
                 "${PROJECT_SOURCE_DIR}/src/flash_memory.hpp"
                 "${PROJECT_SOURCE_DIR}/src/flash_memory.cpp"
                 "${PROJECT_SOURCE_DIR}/src/memory.h"
@@ -117,8 +117,6 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/Dreamcast.cpp"
                 "${PROJECT_SOURCE_DIR}/src/dc_sched.hpp"
                 "${PROJECT_SOURCE_DIR}/src/dc_sched.cpp"
-                "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
-                "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp"
                 "${PROJECT_SOURCE_DIR}/src/window.cpp"
                 "${PROJECT_SOURCE_DIR}/src/window.hpp"
                 "${PROJECT_SOURCE_DIR}/src/video/opengl/framebuffer.cpp"
@@ -137,8 +135,8 @@ if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
 endif()
 
-set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.hpp"
-                         "${PROJECT_SOURCE_DIR}/src/BiosFile.cpp"
+set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
+                         "${PROJECT_SOURCE_DIR}/src/BiosFile.c"
                          "${PROJECT_SOURCE_DIR}/src/main.cpp")
 
 if (ENABLE_DEBUGGER)

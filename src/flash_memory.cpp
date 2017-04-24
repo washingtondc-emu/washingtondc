@@ -23,6 +23,8 @@
 #include <fstream>
 #include <iostream>
 
+#include "BaseException.hpp"
+
 #include "flash_memory.hpp"
 
 static uint8_t flash_mem[FLASH_MEM_SZ];

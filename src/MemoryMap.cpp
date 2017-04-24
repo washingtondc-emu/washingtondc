@@ -66,7 +66,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
             if ((addr + (len - 1)) > ADDR_BIOS_LAST) {
                 goto boundary_cross;
             }
-            return bios->read(buf, addr - ADDR_BIOS_FIRST, len);
+            return bios_file_read(bios, buf, addr - ADDR_BIOS_FIRST, len);
         } else if (addr >= ADDR_FLASH_FIRST && addr <= ADDR_FLASH_LAST) {
             if ((addr + (len - 1) > ADDR_FLASH_LAST) ||
                 (addr < ADDR_FLASH_FIRST)) {

@@ -30,10 +30,32 @@
 #include "BaseException.hpp"
 #include "memory.h"
 #include "RandGenerator.hpp"
-#include "BiosFile.hpp"
+#include "BiosFile.h"
 #include "MemoryMap.hpp"
 
 typedef RandGenerator<uint32_t> RandGen32;
+
+/*
+ * loads a program into the given address.  the InputIterator's
+ * indirect method (overload*) should return a data_tp.
+ */
+static void bios_load_binary(BiosFile *bios, addr32_t where,
+                             Sh4Prog::ByteList::const_iterator start,
+                             Sh4Prog::ByteList::const_iterator end) {
+    size_t bytes_written = 0;
+
+    bios_file_clear(bios);
+
+    for (Sh4Prog::ByteList::const_iterator it = start; it != end; it++) {
+        uint8_t tmp = *it;
+
+        if (bytes_written + sizeof(uint8_t) >= bios->dat_len)
+            BOOST_THROW_EXCEPTION(InvalidParamError());
+
+        memcpy(bios->dat + bytes_written, &tmp, sizeof(tmp));
+        bytes_written += sizeof(tmp);
+    }
+}
 
 /*
  * sh4 program for unsigned division of a 32-bit dividend by a 16-bit divisor
@@ -311,7 +333,7 @@ run_div_test(addr32_t run_until, struct div_test_state *state,
 
     test_prog.add_txt(std::string(prog_asm));
     const Sh4Prog::ByteList& inst = test_prog.get_prog();
-    state->bios.load_binary<uint8_t>(0, inst.begin(), inst.end());
+    bios_load_binary(&state->bios, 0, inst.begin(), inst.end());
 
     sh4_on_hard_reset(&state->sh4);
     sh4_enter(&state->sh4);
@@ -428,7 +450,7 @@ unsigned_div_test_64_32(struct div_test *test, struct div_test_state *state) {
 
     test_prog.add_txt(std::string(div_unsigned_64_32));
     const Sh4Prog::ByteList& inst = test_prog.get_prog();
-    state->bios.load_binary<uint8_t>(0, inst.begin(), inst.end());
+    bios_load_binary(&state->bios, 0, inst.begin(), inst.end());
 
     sh4_on_hard_reset(&state->sh4);
     sh4_enter(&state->sh4);
@@ -466,9 +488,10 @@ int main(int argc, char **argv) {
             seed = atoi(optarg);
     }
 
-    try {
-        struct div_test_state test_state;
+    struct div_test_state test_state;
+    bios_file_init_empty(&test_state.bios);
 
+    try {
         memory_init(&test_state.mem, 16 * 1024 * 1024);
         memory_map_init(&test_state.bios, &test_state.mem);
         sh4_init(&test_state.sh4);
@@ -496,6 +519,8 @@ int main(int argc, char **argv) {
 
     std::cout << std::dec << n_tests << " run -- " << n_success <<
         " successes." << std::endl;
+
+    bios_file_cleanup(&test_state.bios);
 
     return (n_tests == n_success) ? 0 : 1;
 }

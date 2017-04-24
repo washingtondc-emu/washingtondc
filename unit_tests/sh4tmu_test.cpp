@@ -34,8 +34,30 @@
 #include "tool/sh4asm/sh4asm.hpp"
 #include "BaseException.hpp"
 #include "memory.h"
-#include "BiosFile.hpp"
+#include "BiosFile.h"
 #include "MemoryMap.hpp"
+
+/*
+ * loads a program into the given address.  the InputIterator's
+ * indirect method (overload*) should return a data_tp.
+ */
+static void bios_load_binary(BiosFile *bios, addr32_t where,
+                             Sh4Prog::ByteList::const_iterator start,
+                             Sh4Prog::ByteList::const_iterator end) {
+    size_t bytes_written = 0;
+
+    bios_file_clear(bios);
+
+    for (Sh4Prog::ByteList::const_iterator it = start; it != end; it++) {
+        uint8_t tmp = *it;
+
+        if (bytes_written + sizeof(uint8_t) >= bios->dat_len)
+            BOOST_THROW_EXCEPTION(InvalidParamError());
+
+        memcpy(bios->dat + bytes_written, &tmp, sizeof(tmp));
+        bytes_written += sizeof(tmp);
+    }
+}
 
 char const prog_asm[] =
     /*
@@ -193,20 +215,21 @@ char const prog_asm[] =
     "";
 
 int main(int argc, char **argv) {
+    BiosFile bios;
     try {
         Sh4Prog test_prog;
-        BiosFile bios;
         struct Memory mem;
         Sh4 sh4;
         int ret_code = 0;
 
+        bios_file_init_empty(&bios);
         memory_init(&mem, 16 * 1024 * 1024);
         memory_map_init(&bios, &mem);
         sh4_init(&sh4);
 
         test_prog.add_txt(std::string(prog_asm));
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios.load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(&bios, 0, inst.begin(), inst.end());
 
         sh4_run_until(&sh4, 0x0c000100);
 
@@ -256,11 +279,13 @@ int main(int argc, char **argv) {
         else
             std::cout << "TEST SUCCESS" << std::endl;
 
+        bios_file_cleanup(&bios);
         sh4_cleanup(&sh4);
 
         return ret_code;
     } catch (BaseException& exc) {
         std::cerr << boost::diagnostic_information(exc);
+        bios_file_cleanup(&bios);
     }
 
     return 1;

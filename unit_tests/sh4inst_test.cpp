@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include <boost/cstdint.hpp>
+
 #include <unistd.h>
 #include <iostream>
 #include <sstream>
@@ -32,7 +34,7 @@
 #include "tool/sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
 #include "arch/arch_fpu.hpp"
-#include "BiosFile.hpp"
+#include "BiosFile.h"
 #include "MemoryMap.hpp"
 
 #ifdef ENABLE_SH4_ICACHE
@@ -50,11 +52,33 @@ typedef int(*inst_test_func_t)(Sh4 *cpu, BiosFile *bios, Memory *mem,
                                RandGen32 *randgen32);
 
 template<typename data_tp, class InputIterator>
-void memory_load_binary(struct Memory *mem, addr32_t where, InputIterator start,
-                        InputIterator end) {
+static void memory_load_binary(struct Memory *mem, addr32_t where,
+                               InputIterator start, InputIterator end) {
     for (InputIterator it = start; it != end; it++, where++) {
         data_tp tmp = *it;
         memory_write(mem, &tmp, where, sizeof(tmp));
+    }
+}
+
+/*
+ * loads a program into the given address.  the InputIterator's
+ * indirect method (overload*) should return a data_tp.
+ */
+static void bios_load_binary(BiosFile *bios, addr32_t where,
+                             Sh4Prog::ByteList::const_iterator start,
+                             Sh4Prog::ByteList::const_iterator end) {
+    size_t bytes_written = 0;
+
+    bios_file_clear(bios);
+
+    for (Sh4Prog::ByteList::const_iterator it = start; it != end; it++) {
+        uint8_t tmp = *it;
+
+        if (bytes_written + sizeof(uint8_t) >= bios->dat_len)
+            BOOST_THROW_EXCEPTION(InvalidParamError());
+
+        memcpy(bios->dat + bytes_written, &tmp, sizeof(tmp));
+        bytes_written += sizeof(tmp);
     }
 }
 
@@ -106,9 +130,7 @@ public:
         Sh4Prog test_prog;
         test_prog.add_txt("NOP\n");
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t,
-                         Sh4Prog::ByteList::const_iterator>(0, inst.begin(),
-                                                            inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -135,7 +157,7 @@ public:
                 ss << "ADD #" << imm_val << ", R" << reg_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios_load_binary(bios, 0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -183,7 +205,7 @@ public:
                 ss << "ADD R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios_load_binary(bios, 0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -232,7 +254,7 @@ public:
                 ss << "ADDC R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios_load_binary(bios, 0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -356,7 +378,7 @@ public:
                 ss << "ADDV R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios_load_binary(bios, 0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -501,7 +523,7 @@ public:
                 ss << "SUB R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios_load_binary(bios, 0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -556,7 +578,7 @@ public:
                 ss << "SUBC R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios_load_binary(bios, 0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -673,7 +695,7 @@ public:
                 ss << "SUBV R" << reg1_no << ", R" << reg2_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios_load_binary(bios, 0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -802,7 +824,7 @@ public:
                 ss << "MOVT R" << reg_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios_load_binary(bios, 0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -837,7 +859,7 @@ public:
                 ss << "MOV #" << (unsigned)imm_val << ", R" << reg_no << "\n";
                 test_prog.add_txt(ss.str());
                 const Sh4Prog::ByteList& inst = test_prog.get_prog();
-                bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+                bios_load_binary(bios, 0, inst.begin(), inst.end());
 
                 reset_cpu(cpu);
 
@@ -992,7 +1014,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -1040,7 +1062,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -1095,7 +1117,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -1150,7 +1172,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -1204,7 +1226,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = addr;
@@ -1256,7 +1278,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = addr;
@@ -1308,7 +1330,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = addr;
@@ -1366,7 +1388,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -1437,7 +1459,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -1507,7 +1529,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -1573,7 +1595,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = addr;
@@ -1636,7 +1658,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = addr;
@@ -1698,7 +1720,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = addr;
@@ -1760,7 +1782,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, 0) = val;
@@ -1815,7 +1837,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, 0) = val;
@@ -1872,7 +1894,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -1932,7 +1954,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_base) = base;
@@ -1985,7 +2007,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_base) = base;
@@ -2040,7 +2062,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_base) = base;
@@ -2102,7 +2124,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -2182,7 +2204,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -2261,7 +2283,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -2335,7 +2357,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_base) = base_val;
@@ -2409,7 +2431,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_base) = base_val;
@@ -2483,7 +2505,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_base) = base_val;
@@ -2554,7 +2576,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, 0) = r0_val;
@@ -2605,7 +2627,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, 0) = r0_val;
@@ -2657,7 +2679,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, 0) = r0_val;
@@ -2709,7 +2731,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_GBR] = gbr_val;
@@ -2758,7 +2780,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_GBR] = gbr_val;
@@ -2807,7 +2829,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_GBR] = gbr_val;
@@ -2902,7 +2924,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = reg_val;
@@ -2942,7 +2964,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = reg_val;
@@ -2982,7 +3004,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = reg_val;
@@ -3022,7 +3044,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = reg_val;
@@ -3062,7 +3084,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = reg_val;
@@ -3102,7 +3124,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = reg_val;
@@ -3143,7 +3165,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = reg_val;
@@ -3190,7 +3212,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3249,7 +3271,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3301,7 +3323,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3353,7 +3375,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3405,7 +3427,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3457,7 +3479,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3515,7 +3537,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3556,7 +3578,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3597,7 +3619,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3638,7 +3660,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3679,7 +3701,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3720,7 +3742,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3761,7 +3783,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3806,7 +3828,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3858,7 +3880,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3910,7 +3932,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -3962,7 +3984,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4014,7 +4036,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4066,7 +4088,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4118,7 +4140,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4171,7 +4193,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = addr;
@@ -4224,7 +4246,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4270,7 +4292,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4323,7 +4345,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4365,7 +4387,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4407,7 +4429,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4449,7 +4471,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4491,7 +4513,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4533,7 +4555,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4576,7 +4598,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4624,7 +4646,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4672,7 +4694,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4720,7 +4742,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4771,7 +4793,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4822,7 +4844,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4872,7 +4894,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4916,7 +4938,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -4960,7 +4982,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5013,7 +5035,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5075,7 +5097,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5140,7 +5162,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5205,7 +5227,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5270,7 +5292,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5333,7 +5355,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5404,7 +5426,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5459,7 +5481,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5511,7 +5533,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5562,7 +5584,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5618,7 +5640,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -5672,7 +5694,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, 0) = r0_val;
@@ -5717,7 +5739,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5774,7 +5796,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -5827,7 +5849,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, 0) = r0_val;
@@ -5871,7 +5893,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -5928,7 +5950,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -5981,7 +6003,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, 0) = r0_val;
@@ -6024,7 +6046,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -6080,7 +6102,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -6126,7 +6148,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -6169,7 +6191,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -6232,7 +6254,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -6287,7 +6309,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -6334,7 +6356,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val;
@@ -6381,7 +6403,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val_src;
@@ -6432,7 +6454,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val_src;
@@ -6479,7 +6501,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val_src;
@@ -6526,7 +6548,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val_src;
@@ -6573,7 +6595,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val_src;
@@ -6618,7 +6640,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -6668,7 +6690,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -6718,7 +6740,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -6776,7 +6798,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -6835,7 +6857,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val_src;
@@ -6893,7 +6915,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -6941,7 +6963,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -6990,7 +7012,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = val_src;
@@ -7048,7 +7070,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -7096,7 +7118,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -7144,7 +7166,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -7187,7 +7209,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -7230,7 +7252,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -7273,7 +7295,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -7316,7 +7338,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -7359,7 +7381,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_no) = val;
@@ -7403,7 +7425,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -7455,7 +7477,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -7509,7 +7531,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -7573,7 +7595,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_addr;
@@ -7715,7 +7737,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_addr;
@@ -7843,7 +7865,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_MACH] = randgen32->pick_val(0);
@@ -7871,7 +7893,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_SR] = randgen32->pick_val(0) | SH4_SR_MD_MASK;
@@ -7896,7 +7918,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_SR] = randgen32->pick_val(0) | SH4_SR_MD_MASK;
@@ -7921,7 +7943,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_SR] = randgen32->pick_val(0) | SH4_SR_MD_MASK;
@@ -7946,7 +7968,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         cpu->reg[SH4_REG_SR] = randgen32->pick_val(0) | SH4_SR_MD_MASK;
@@ -7977,7 +7999,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, 0) = val;
@@ -8918,7 +8940,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_m) = reg_m_val;
@@ -8976,7 +8998,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_m) = reg_m_val;
@@ -9033,7 +9055,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -9076,7 +9098,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -9124,7 +9146,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -9167,7 +9189,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -9219,7 +9241,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -9268,7 +9290,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, src_reg_no) = addr;
@@ -9320,7 +9342,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -9385,7 +9407,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = addr;
@@ -9442,7 +9464,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, dst_reg_no) = addr;
@@ -9499,7 +9521,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_fpu_fr(cpu, reg_src) = f_val;
@@ -9556,7 +9578,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_dst) = dst_val;
@@ -9676,7 +9698,7 @@ public:
 
         test_prog.add_txt(ss.str());
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         static const unsigned N_INSTS = 41;
         /*
@@ -9744,7 +9766,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -9796,7 +9818,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, src_reg_no) = addr;
@@ -9851,7 +9873,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = src_val;
@@ -9920,7 +9942,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_src) = addr;
@@ -9981,7 +10003,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, dst_reg_no) = addr;
@@ -10041,7 +10063,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_fpu_dr(cpu, reg_src >> 1) = val;
@@ -10101,7 +10123,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_gen_reg(cpu, reg_dst) = dst_val;
@@ -10167,7 +10189,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_fpu_fr(cpu, reg_src) = src_val;
@@ -10211,7 +10233,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
@@ -10254,7 +10276,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
@@ -10297,7 +10319,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_fpu_fr(cpu, reg_src) = src_val;
@@ -10358,7 +10380,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_fpu_dr(cpu, reg_src >> 1) = src_val;
@@ -10417,7 +10439,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
@@ -10477,7 +10499,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
@@ -10537,7 +10559,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
         *sh4_fpu_dr(cpu, reg_src >> 1) = src_val;
@@ -10587,7 +10609,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -10633,7 +10655,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -10683,7 +10705,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -10726,7 +10748,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -10779,7 +10801,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -10849,7 +10871,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -10893,7 +10915,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        bios->load_binary<uint8_t>(0, inst.begin(), inst.end());
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
 
@@ -11152,6 +11174,7 @@ int main(int argc, char **argv) {
     struct Memory mem;
     memory_init(&mem, 16 * 1024 * 1024);
     BiosFile bios;
+    bios_file_init_empty(&bios);
     memory_map_init(&bios, &mem);
     Sh4 cpu;
     struct inst_test *test = inst_tests;
@@ -11204,6 +11227,7 @@ int main(int argc, char **argv) {
 
     ret_val = 1;
 on_exit:
+    bios_file_cleanup(&bios);
     sh4_cleanup(&cpu);
     return ret_val;
 }

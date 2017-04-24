@@ -44,7 +44,7 @@
 static const size_t MEM_SZ = 16 * 1024 * 1024;
 
 static Sh4 cpu;
-static BiosFile *bios;
+static BiosFile bios;
 static struct Memory mem;
 
 static volatile bool is_running;
@@ -85,8 +85,8 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     memory_init(&mem, MEM_SZ);
     if (flash_path)
         flash_mem_load(flash_path);
-    bios = new BiosFile(bios_path);
-    memory_map_init(bios, &mem);
+    bios_file_init(&bios, bios_path);
+    memory_map_init(&bios, &mem);
     sh4_init(&cpu);
     spg_init();
 
@@ -119,10 +119,10 @@ void dreamcast_init_direct(char const *path_ip_bin,
     if (flash_path)
         flash_mem_load(flash_path);
     if (bios_path)
-        bios = new BiosFile(bios_path);
+        bios_file_init(&bios, bios_path);
     else
-        bios = new BiosFile();
-    memory_map_init(bios, &mem);
+        bios_file_init_empty(&bios);
+    memory_map_init(&bios, &mem);
 
     file_ip_bin.seekg(0, file_ip_bin.end);
     size_t len_ip_bin = file_ip_bin.tellg();
@@ -186,7 +186,7 @@ void dreamcast_cleanup() {
 #endif
 
     sh4_cleanup(&cpu);
-    delete bios;
+    bios_file_cleanup(&bios);
     memory_cleanup(&mem);
 }
 

@@ -42,6 +42,12 @@ enum error_type {
 
     /* memory access failed because the address was out-of-bounds */
     ERROR_MEM_OUT_OF_BOUNDS,
+
+    /* unable to allocate memory */
+    ERROR_FAILED_ALLOC,
+
+    /* error on some file operation */
+    ERROR_FILE_IO
 };
 
 enum error_attr_type {
@@ -146,6 +152,8 @@ ERROR_STRING_ATTR(param_name);
 ERROR_U32_ATTR(address);
 
 ERROR_INT_ATTR(length);
+
+ERROR_INT_ATTR(errno_val);
 
 #define RAISE_ERROR(tp)                         \
     do {                                        \

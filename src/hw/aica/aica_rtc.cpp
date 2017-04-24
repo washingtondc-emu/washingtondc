@@ -25,6 +25,7 @@
 #include <boost/cstdint.hpp>
 
 #include "MemoryMap.hpp"
+#include "BaseException.hpp"
 
 #include "aica_rtc.hpp"
 
