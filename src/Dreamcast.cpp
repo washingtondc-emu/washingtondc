@@ -27,7 +27,7 @@
 
 #include "common/BaseException.hpp"
 #include "flash_memory.h"
-#include "dc_sched.hpp"
+#include "dc_sched.h"
 #include "hw/pvr2/spg.hpp"
 #include "window.hpp"
 #include "MemoryMap.hpp"

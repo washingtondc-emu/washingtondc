@@ -26,7 +26,7 @@
 #include <boost/cstdint.hpp>
 
 #include "types.h"
-#include "dc_sched.hpp"
+#include "dc_sched.h"
 
 void spg_init();
 void spg_cleanup();

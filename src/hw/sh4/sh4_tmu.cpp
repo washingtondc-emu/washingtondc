@@ -27,7 +27,7 @@
 
 #include "sh4_excp.h"
 #include "sh4.hpp"
-#include "dc_sched.hpp"
+#include "dc_sched.h"
 #include "Dreamcast.hpp"
 
 #include "sh4_tmu.hpp"

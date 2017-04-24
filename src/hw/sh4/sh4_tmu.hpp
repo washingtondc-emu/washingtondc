@@ -24,7 +24,7 @@
 #define SH4_TMU_HPP_
 
 #include "sh4_reg.h"
-#include "dc_sched.hpp"
+#include "dc_sched.h"
 
 struct Sh4;
 

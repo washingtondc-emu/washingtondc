@@ -20,13 +20,15 @@
  *
  ******************************************************************************/
 
-#include "dc_sched.hpp"
+#include <stddef.h>
 
-static SchedEvent *ev_next;
+#include "dc_sched.h"
 
-void sched_event(SchedEvent *event) {
-    SchedEvent *next_ptr = ev_next;
-    SchedEvent **pprev_ptr = &ev_next;
+static struct SchedEvent *ev_next;
+
+void sched_event(struct SchedEvent *event) {
+    struct SchedEvent *next_ptr = ev_next;
+    struct SchedEvent **pprev_ptr = &ev_next;
     while (next_ptr && next_ptr->when < event->when) {
         pprev_ptr = &next_ptr->next_event;
         next_ptr = next_ptr->next_event;
@@ -38,7 +40,7 @@ void sched_event(SchedEvent *event) {
     event->pprev_event = pprev_ptr;
 }
 
-void cancel_event(SchedEvent *event) {
+void cancel_event(struct SchedEvent *event) {
     if (event->next_event)
         event->next_event->pprev_event = event->pprev_event;
     *event->pprev_event = event->next_event;
@@ -48,8 +50,8 @@ void cancel_event(SchedEvent *event) {
     event->pprev_event = NULL;
 }
 
-SchedEvent *pop_event() {
-    SchedEvent *ev_ret = ev_next;
+struct SchedEvent *pop_event() {
+    struct SchedEvent *ev_ret = ev_next;
 
     if (ev_next) {
         ev_next = ev_next->next_event;
@@ -66,6 +68,6 @@ SchedEvent *pop_event() {
     return ev_ret;
 }
 
-SchedEvent *peek_event() {
+struct SchedEvent *peek_event() {
     return ev_next;
 }

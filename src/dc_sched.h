@@ -20,17 +20,21 @@
  *
  ******************************************************************************/
 
-#ifndef DC_SCHED_HPP_
-#define DC_SCHED_HPP_
+#ifndef DC_SCHED_H_
+#define DC_SCHED_H_
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // simple priority-queue scheduler
-
-#include <boost/cstdint.hpp>
 
 typedef uint64_t dc_cycle_stamp_t;
 
 struct SchedEvent;
-typedef void(*dc_event_handler_t)(SchedEvent *event);
+typedef void(*dc_event_handler_t)(struct SchedEvent *event);
 
 // a scheduled event.
 struct SchedEvent {
@@ -41,17 +45,21 @@ struct SchedEvent {
     void *arg_ptr;
 
     // linked list, only the scheduler gets to touch these
-    SchedEvent **pprev_event;
-    SchedEvent *next_event;
+    struct SchedEvent **pprev_event;
+    struct SchedEvent *next_event;
 };
 
 /*
  * these methods do not free or otherwise take ownership of the event.
  * This way, users can use global or static SchedEvent structs.
  */
-void sched_event(SchedEvent *event);
-void cancel_event(SchedEvent *event);
-SchedEvent *pop_event();
-SchedEvent *peek_event();
+void sched_event(struct SchedEvent *event);
+void cancel_event(struct SchedEvent *event);
+struct SchedEvent *pop_event();
+struct SchedEvent *peek_event();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
