@@ -30,7 +30,7 @@
 #include "arch/arch_fpu.hpp"
 #include "BaseException.hpp"
 #include "Dreamcast.hpp"
-#include "sh4_ocache.hpp"
+#include "sh4_ocache.h"
 #include "sh4_mmu.h"
 #include "sh4.hpp"
 #include "sh4_excp.h"

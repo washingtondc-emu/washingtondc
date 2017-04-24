@@ -26,13 +26,18 @@
  * cache is used as RAM.
  */
 
-#ifndef SH4_OCACHE_HPP_
-#define SH4_OCACHE_HPP_
+#ifndef SH4_OCACHE_H_
+#define SH4_OCACHE_H_
 
-#include <boost/cstdint.hpp>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "types.h"
-// #include "MemoryMap.hpp"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef size_t sh4_ocache_line_t;     // index of cache-line (32-bytes/incrment)
 typedef uint32_t sh4_ocache_key_t;
@@ -75,15 +80,15 @@ void sh4_ocache_do_read_ora(Sh4 *sh4, void *dat, addr32_t paddr, unsigned len);
  * if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL), then the address is a
  * store queue address.
  */
-static const addr32_t SH4_SQ_AREA_MASK = 0xfc000000;
-static const addr32_t SH4_SQ_AREA_VAL  = 0xe0000000;
+#define SH4_SQ_AREA_MASK 0xfc000000
+#define SH4_SQ_AREA_VAL  0xe0000000
 
 // it is not a mistake that this overlaps with SH4_SQ_SELECT_MASK by 1 bit
-static const addr32_t SH4_SQ_ADDR_MASK = 0x03ffffe0;
+#define SH4_SQ_ADDR_MASK 0x03ffffe0
 
 // bit 5 in a store-queue address decides between SQ0 and SQ1
-static const addr32_t SH4_SQ_SELECT_SHIFT = 5;
-static const addr32_t SH4_SQ_SELECT_MASK = (1 << SH4_SQ_SELECT_SHIFT);
+#define SH4_SQ_SELECT_SHIFT 5
+#define SH4_SQ_SELECT_MASK (1 << SH4_SQ_SELECT_SHIFT)
 
 // write to a store-queue.  len should be in terms of bytes.
 int sh4_sq_write(Sh4 *sh4, void const *buf, addr32_t addr, unsigned len);
@@ -95,10 +100,14 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr);
  * if ((addr & OC_RAM_AREA_MASK) == OC_RAM_AREA_VAL) and the ORA bit is set
  * in CCR, then addr is part of the Operand Cache's RAM area
  */
-static const addr32_t SH4_OC_RAM_AREA_MASK = 0xfc000000;
-static const addr32_t SH4_OC_RAM_AREA_VAL = 0x7c000000;
+#define SH4_OC_RAM_AREA_MASK 0xfc000000
+#define SH4_OC_RAM_AREA_VAL 0x7c000000
 static inline bool sh4_ocache_in_ram_area(addr32_t addr) {
     return (addr & SH4_OC_RAM_AREA_MASK) == SH4_OC_RAM_AREA_VAL;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
