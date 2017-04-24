@@ -27,7 +27,7 @@
 #endif
 
 #include "Dreamcast.hpp"
-#include "sh4_reg.hpp"
+#include "sh4_reg.h"
 #include "sh4_reg_flags.h"
 #include "sh4.hpp"
 

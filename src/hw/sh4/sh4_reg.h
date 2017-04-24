@@ -20,16 +20,17 @@
  *
  ******************************************************************************/
 
-#ifndef SH4_REG_HPP_
-#define SH4_REG_HPP_
+#ifndef SH4_REG_H_
+#define SH4_REG_H_
 
-#include "BaseException.hpp"
+#include "types.h"
 #include "sh4_reg_flags.h"
 
-struct Sh4;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef boost::error_info<struct tag_feature_name_error_info, std::string>
-errinfo_regname;
+struct Sh4;
 
 typedef enum sh4_reg_idx {
     /* general-purpose registers 0-7, bank 0 */
@@ -314,7 +315,6 @@ void sh4_init_regs(Sh4 *sh4);
 
 // set up the memory-mapped registers for a reset;
 void sh4_poweron_reset_regs(Sh4 *sh4);
-void sh4_manual_reset_regs(Sh4 *sh4);
 
 /* read/write handler callbacks for when you don't give a fuck */
 int Sh4IgnoreRegReadHandler(Sh4 *sh4, void *buf,
@@ -362,5 +362,9 @@ int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
                             addr32_t addr, unsigned len);
 int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
                              addr32_t addr, unsigned len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

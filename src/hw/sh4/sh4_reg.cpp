@@ -20,13 +20,12 @@
  *
  ******************************************************************************/
 
-#include <cstring>
-#include <iostream>
-#include <iomanip>
+#include <string.h>
+#include <stdio.h>
+#include <stdint.h>
 
-#include "BaseException.hpp"
 #include "sh4_excp.hpp"
-#include "sh4_reg.hpp"
+#include "sh4_reg.h"
 #include "sh4_tmu.hpp"
 #include "sh4.hpp"
 
@@ -335,7 +334,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { NULL }
 };
 
-void sh4_init_regs(Sh4 *sh4) {
+extern "C" void sh4_init_regs(Sh4 *sh4) {
     sh4_poweron_reset_regs(sh4);
 }
 
@@ -358,7 +357,7 @@ void sh4_init_regs(Sh4 *sh4) {
  * regardless of which components they represent.  reset and soft-reset could
  * be served by special handlers.
  */
-void sh4_poweron_reset_regs(Sh4 *sh4) {
+extern "C" void sh4_poweron_reset_regs(Sh4 *sh4) {
     Sh4MemMappedReg *curs = mem_mapped_regs;
 
     while (curs->reg_name) {
@@ -390,22 +389,6 @@ void sh4_poweron_reset_regs(Sh4 *sh4) {
     *sh4_gen_reg(sh4, 15) = 0x8c00f400;
 }
 
-void sh4_manual_reset_regs(Sh4 *sh4) {
-    Sh4MemMappedReg *curs = mem_mapped_regs;
-
-    while (curs->reg_name) {
-        Sh4RegWriteHandler handler = curs->on_p4_write;
-        if (handler(sh4, &curs->manual_reset_val, curs) != 0)
-            BOOST_THROW_EXCEPTION(IntegrityError() <<
-                                  errinfo_wtf("the reg write handler returned "
-                                              "error during a poweron reset") <<
-                                  errinfo_guest_addr(curs->addr) <<
-                                  errinfo_regname(curs->reg_name));
-
-        curs++;
-    }
-}
-
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr) {
     struct Sh4MemMappedReg *curs = mem_mapped_regs;
 
@@ -415,42 +398,43 @@ static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr) {
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("accessing one of the "
-                                          "mem-mapped registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_address(addr);
+    error_set_feature("accessing one of the mem-mapped registers");
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    return NULL; // never happens
 }
 
-int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
-                            addr32_t addr, unsigned len) {
+extern "C" int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
+                                       addr32_t addr, unsigned len) {
     struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);
     Sh4RegReadHandler handler = mm_reg->on_p4_read;
 
     if (len != mm_reg->len) {
-        BOOST_THROW_EXCEPTION(InvalidParamError() <<
-                              errinfo_length(len) <<
-                              errinfo_length_expect(mm_reg->len) <<
-                              errinfo_guest_addr(addr));
+        error_set_length(len);
+        error_set_expected_length(mm_reg->len);
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
     return handler(sh4, buf, mm_reg);
 }
 
-int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
-                             addr32_t addr, unsigned len) {
+extern "C" int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
+                                        addr32_t addr, unsigned len) {
     struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);
     Sh4RegWriteHandler handler = mm_reg->on_p4_write;
 
     if (len != mm_reg->len) {
-        BOOST_THROW_EXCEPTION(InvalidParamError() <<
-                              errinfo_length(len) <<
-                              errinfo_length_expect(mm_reg->len) <<
-                              errinfo_guest_addr(addr));
+        error_set_length(len);
+        error_set_expected_length(mm_reg->len);
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
     return handler(sh4, buf, mm_reg);
 }
 
+extern "C"
 int Sh4DefaultRegReadHandler(Sh4 *sh4, void *buf,
                              struct Sh4MemMappedReg const *reg_info) {
     assert(reg_info->len <= sizeof(reg32_t));
@@ -460,6 +444,7 @@ int Sh4DefaultRegReadHandler(Sh4 *sh4, void *buf,
     return 0;
 }
 
+extern "C"
 int Sh4DefaultRegWriteHandler(Sh4 *sh4, void const *buf,
                               struct Sh4MemMappedReg const *reg_info) {
     assert(reg_info->len <= sizeof(reg32_t));
@@ -469,6 +454,7 @@ int Sh4DefaultRegWriteHandler(Sh4 *sh4, void const *buf,
     return 0;
 }
 
+extern "C"
 int Sh4IgnoreRegReadHandler(Sh4 *sh4, void *buf,
                             struct Sh4MemMappedReg const *reg_info) {
     memcpy(buf, reg_info->addr - SH4_P4_REGSTART + sh4->reg_area,
@@ -477,6 +463,7 @@ int Sh4IgnoreRegReadHandler(Sh4 *sh4, void *buf,
     return 0;
 }
 
+extern "C"
 int Sh4IgnoreRegWriteHandler(Sh4 *sh4, void const *buf,
                              struct Sh4MemMappedReg const *reg_info) {
     memcpy(reg_info->addr - SH4_P4_REGSTART + sh4->reg_area,
@@ -485,24 +472,27 @@ int Sh4IgnoreRegWriteHandler(Sh4 *sh4, void const *buf,
     return 0;
 }
 
+extern "C"
 int Sh4WriteOnlyRegReadHandler(Sh4 *sh4, void *buf,
                                struct Sh4MemMappedReg const *reg_info) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("sh4 CPU exception for trying to "
-                                          "read from a write-only CPU "
-                                          "register") <<
-                          errinfo_guest_addr(reg_info->addr));
+    error_set_feature("sh4 CPU exception for trying to read from a write-only "
+                      "CPU register");
+    error_set_address(reg_info->addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    return 1; // never happens
 }
 
+extern "C"
 int Sh4ReadOnlyRegWriteHandler(Sh4 *sh4, void const *buf,
                                struct Sh4MemMappedReg const *reg_info) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("sh4 CPU exception for trying to "
-                                          "write to a read-only CPU "
-                                          "register") <<
-                          errinfo_guest_addr(reg_info->addr));
+    error_set_feature("sh4 CPU exception for trying to write to a write-only "
+                      "CPU register");
+    error_set_address(reg_info->addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    return 1; // never happens
 }
 
+extern "C"
 int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
                           struct Sh4MemMappedReg const *reg_info) {
     uint8_t val8;
@@ -512,41 +502,34 @@ int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
     int ret_code = Sh4DefaultRegReadHandler(sh4, buf, reg_info);
 
     if (ret_code) {
-        std::cerr << "WARNING: read from register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: read from register %s\n", reg_info->reg_name);
     } else {
         switch (reg_info->len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(2) <<
-                unsigned(val8) << " from register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%02x from register %s\n",
+                    (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(4) <<
-                unsigned(val16) << " from register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%04x from register %s\n",
+                    (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(8) <<
-                unsigned(val32) << " from register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%08x from register %s\n",
+                    (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            std::cerr << "WARNING: read from register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read from register %s\n", reg_info->reg_name);
         }
     }
-    std::cerr << "(PC is " << std::hex << sh4->reg[SH4_REG_PC] << ")" << std::endl;
+    fprintf(stderr, "(PC is %x)\n", (unsigned)sh4->reg[SH4_REG_PC]);
 
     return ret_code;
 }
 
+extern "C"
 int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
                            struct Sh4MemMappedReg const *reg_info) {
     uint8_t val8;
@@ -556,28 +539,21 @@ int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
     switch (reg_info->len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(2) <<
-            unsigned(val8) << " to register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: write 0x%02x to register %s\n",
+                (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(4) <<
-            unsigned(val16) << " to register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: write 0x%04x to register %s\n",
+                (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(8) <<
-            unsigned(val32) << " to register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: write 0x%08x to register %s\n",
+                (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        std::cerr << "WARNING: reading from register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: write to register %s\n", reg_info->reg_name);
     }
 
     return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
@@ -661,10 +637,8 @@ static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
     memcpy(buf, &out_val, sizeof(out_val));
 
     /* I got my eye on you...*/
-    std::cerr << "WARNING: reading 0x" <<
-        std::hex << std::setfill('0') << std::setw(4) <<
-        unsigned(out_val) << " from register " <<
-        reg_info->reg_name << std::endl;
+    fprintf(stderr, "WARNING: reading 0x%04x from register %s\n",
+            (unsigned)out_val, reg_info->reg_name);
 
     return 0;
 }
@@ -693,11 +667,9 @@ static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
     }
 
     /* I got my eye on you...*/
-    std::cerr << "WARNING: writing 0x" <<
-        std::hex << std::setfill('0') << std::setw(4) <<
-        unsigned(val) << " to register " <<
-        reg_info->reg_name << " (attempted write was " <<
-        unsigned(val_orig) << ")" << std::endl;
+    fprintf(stderr, "WARNING: writing 0x%04x to register %s "
+            "(attempted write was %x)\n",
+            (unsigned)val, reg_info->reg_name, (unsigned)val_orig);
 
     sh4->reg[SH4_REG_PDTRA] = val;
 

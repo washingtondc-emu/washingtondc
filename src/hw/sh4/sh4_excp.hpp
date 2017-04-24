@@ -23,7 +23,7 @@
 #ifndef SH4_EXCP_HPP_
 #define SH4_EXCP_HPP_
 
-#include "sh4_reg.hpp"
+#include "sh4_reg.h"
 
 enum Sh4ExceptionCode {
     // reset-type exceptions

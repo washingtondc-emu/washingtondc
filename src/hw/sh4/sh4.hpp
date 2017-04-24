@@ -31,13 +31,13 @@
 #include "types.h"
 #include "sh4_inst.h"
 #include "sh4_mmu.hpp"
-#include "sh4_reg.hpp"
+#include "sh4_reg.h"
 #include "sh4_mem.hpp"
 #include "sh4_tmu.hpp"
 #include "sh4_ocache.hpp"
 #include "sh4_excp.hpp"
 #include "sh4_scif.hpp"
-#include "error.h"
+#include "BaseException.hpp"
 
 /* Hitachi SuperH-4 interpreter */
 

@@ -23,7 +23,7 @@
 #ifndef SH4_TMU_HPP_
 #define SH4_TMU_HPP_
 
-#include "sh4_reg.hpp"
+#include "sh4_reg.h"
 #include "dc_sched.hpp"
 
 struct Sh4;

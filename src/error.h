@@ -155,6 +155,8 @@ ERROR_INT_ATTR(length);
 
 ERROR_INT_ATTR(errno_val);
 
+ERROR_U32_ATTR(expected_length);
+
 #define RAISE_ERROR(tp)                         \
     do {                                        \
         error_set_line(__LINE__);               \
