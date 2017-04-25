@@ -31,9 +31,11 @@
 #include <sstream>
 #include <queue>
 
+#include <event2/event.h>
+#include <event2/bufferevent.h>
+#include <event2/listener.h>
+#include <event2/buffer.h>
 #include <boost/array.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/buffer.hpp>
 #include <boost/cstdint.hpp>
 
 #include "common/BaseException.hpp"
@@ -76,9 +78,9 @@ public:
     };
 
 private:
-    boost::asio::ip::tcp::endpoint tcp_endpoint;
-    boost::asio::ip::tcp::acceptor tcp_acceptor;
-    boost::asio::ip::tcp::socket tcp_socket;
+    struct evconnlistener *listener;
+    bool is_listening;
+    struct bufferevent *bev;
 
     bool is_writing;
     boost::array<char, 1> read_buffer;
@@ -148,10 +150,6 @@ private:
     int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
                 unsigned reg_no, reg32_t reg_val, bool bank);
 
-    void handle_read(const boost::system::error_code& error);
-
-    void handle_write(const boost::system::error_code& error);
-
     void handle_c_packet(std::string dat);
     void handle_s_packet(std::string dat);
     std::string handle_g_packet(std::string dat);
@@ -177,6 +175,21 @@ private:
     void error_handler(int error_tp);
     bool should_expect_mem_access_error, mem_access_error;
     void expect_mem_access_error(bool should);
+
+    static void
+    listener_cb_static(struct evconnlistener *listener,
+                       evutil_socket_t fd, struct sockaddr *saddr,
+                       int socklen, void *arg);
+    void
+    listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
+                struct sockaddr *saddr, int socklen);
+    static void handle_events_static(struct bufferevent *bev, short events,
+                                     void *arg);
+    static void handle_read_static(struct bufferevent *bev, void *arg);
+    static void handle_write_static(struct bufferevent *bev, void *arg);
+    void handle_events(struct bufferevent *bev, short events);
+    void handle_read(struct bufferevent *bev);
+    void handle_write(struct bufferevent *bev);
 };
 
 #endif

@@ -164,7 +164,6 @@ include_directories("${PROJECT_SOURCE_DIR}/src/"
 
 add_library(sh4asm_core ${sh4asm_core_sources})
 add_library(sh4 ${sh4_sources})
-add_library(boost_system "${PROJECT_SOURCE_DIR}/external/washingtondc-boost/libs/system/src/error_code.cpp")
 
 # TODO: I wish there was an easy way to do this as a dependency like in make...
 configure_file("src/video/opengl/final_frag.glsl" "final_frag.glsl")
@@ -178,23 +177,23 @@ configure_file("src/video/opengl/final_vert.glsl" "final_vert.glsl")
 # Ideally, only washingtondc should need GLFW
 
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp")
-target_link_libraries(sh4asm_test sh4asm_core boost_system rt GL glfw GLEW pthread)
+target_link_libraries(sh4asm_test sh4asm_core rt GL glfw GLEW pthread)
 
 add_executable(sh4mem_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4mem_test.cpp")
-target_link_libraries(sh4mem_test sh4 boost_system rt GL glfw GLEW pthread)
+target_link_libraries(sh4mem_test sh4 rt GL glfw GLEW pthread event)
 
 add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp")
-target_link_libraries(sh4inst_test sh4 sh4asm_core boost_system rt GL glfw GLEW pthread)
+target_link_libraries(sh4inst_test sh4 sh4asm_core rt GL glfw GLEW pthread event)
 
 add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.cpp")
-target_link_libraries(sh4tmu_test sh4 sh4asm_core boost_system rt GL glfw GLEW pthread)
+target_link_libraries(sh4tmu_test sh4 sh4asm_core rt GL glfw GLEW pthread event)
 
 add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.cpp")
-target_link_libraries(sh4div_test sh4 sh4asm_core boost_system rt GL glfw GLEW pthread)
+target_link_libraries(sh4div_test sh4 sh4asm_core rt GL glfw GLEW pthread event)
 
 add_executable(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp")
 target_link_libraries(sh4asm sh4asm_core rt)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-target_link_libraries(washingtondc sh4 boost_system rt GL glfw GLEW pthread)
+target_link_libraries(washingtondc sh4 rt GL glfw GLEW pthread event)

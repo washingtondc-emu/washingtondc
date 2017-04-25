@@ -36,15 +36,14 @@
 // uncomment this to log all traffic in/out of the debugger to stdout
 // #define GDBSTUB_VERBOSE
 
-GdbStub::GdbStub() : Debugger(),
-                     tcp_endpoint(boost::asio::ip::tcp::v4(),
-                                  PORT_NO),
-                     tcp_acceptor(dc_io_service, tcp_endpoint),
-                     tcp_socket(dc_io_service) {
+GdbStub::GdbStub() : Debugger() {
     frontend_supports_swbreak = false;
     is_writing = false;
     should_expect_mem_access_error = false;
     mem_access_error = false;
+    listener = NULL;
+    is_listening = false;
+    bev = NULL;
 }
 
 GdbStub::~GdbStub() {
@@ -53,11 +52,27 @@ GdbStub::~GdbStub() {
 void GdbStub::attach() {
     std::cout << "Awaiting remote GDB connection on port " << PORT_NO <<
         "..." << std::endl;
-    tcp_acceptor.accept(tcp_socket);
+
+    struct sockaddr_in sin;
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(PORT_NO);
+    listener = evconnlistener_new_bind(dc_event_base, listener_cb_static, this,
+                                       LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1,
+                                       (struct sockaddr*)&sin, sizeof(sin));
+
+    if (!listener)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    // the listener_cb will set is_listening = false when we have a connection
+    is_listening = true;
+    do {
+        std::cout << "still waiting..." << std::endl;
+        if (event_base_loop(dc_event_base, EVLOOP_ONCE) != 0)
+            exit(4);
+    } while (is_listening);
+
     std::cout << "Connection established." << std::endl;
-    boost::asio::async_read(tcp_socket, boost::asio::buffer(read_buffer),
-                            boost::bind(&GdbStub::handle_read, this,
-                                        boost::asio::placeholders::error));
 }
 
 void GdbStub::on_break() {
@@ -196,25 +211,31 @@ void GdbStub::transmit(const std::string& data) {
 void GdbStub::write_start() {
     size_t idx = 0;
 
+    if (output_queue.empty())
+        is_writing = false;
+
     if (is_writing || output_queue.empty())
         return;
 
-    while (idx < write_buffer.size() && !output_queue.empty()) {
-        write_buffer[idx++] = output_queue.front();
+    struct evbuffer *write_buffer;
+    if (!(write_buffer = evbuffer_new()))
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    while (!output_queue.empty()) {
+        uint8_t dat = output_queue.front();
+        evbuffer_add(write_buffer, &dat, sizeof(dat));
         output_queue.pop();
     }
 
-    boost::asio::async_write(tcp_socket,
-                             boost::asio::buffer(write_buffer.c_array(), idx),
-                             boost::bind(&GdbStub::handle_write, this,
-                                         boost::asio::placeholders::error));
+    bufferevent_write_buffer(bev, write_buffer);
+    evbuffer_free(write_buffer);
 }
 
 /*
  * this function gets called when boost is done writing
  * and is hungry for more data
  */
-void GdbStub::handle_write(const boost::system::error_code& error) {
+void GdbStub::handle_write(struct bufferevent *bev) {
     is_writing = false;
 
     if (output_queue.empty())
@@ -223,12 +244,20 @@ void GdbStub::handle_write(const boost::system::error_code& error) {
     write_start();
 }
 
-void GdbStub::handle_read(const boost::system::error_code& error) {
+void GdbStub::handle_read(struct bufferevent *bev) {
+    struct evbuffer *read_buffer;
 
-    if (error)
-        return;
-    for (unsigned i = 0; i < read_buffer.size(); i++) {
-        input_queue.push(read_buffer.at(i));
+    if (!(read_buffer = evbuffer_new()))
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    bufferevent_read_buffer(bev, read_buffer);
+    size_t buflen = evbuffer_get_length(read_buffer);
+
+    for (unsigned i = 0; i < buflen; i++) {
+        uint8_t tmp;
+        if (evbuffer_remove(read_buffer, &tmp, sizeof(tmp)) < 0)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+        input_queue.push(tmp);
     }
 
     while (input_queue.size()) {
@@ -289,10 +318,6 @@ void GdbStub::handle_read(const boost::system::error_code& error) {
             }
         }
     }
-
-    boost::asio::async_read(tcp_socket, boost::asio::buffer(read_buffer),
-                            boost::bind(&GdbStub::handle_read, this,
-                                        boost::asio::placeholders::error));
 }
 
 std::string GdbStub::craft_packet(std::string data_in) {
@@ -1001,4 +1026,56 @@ void GdbStub::error_handler(int error_tp) {
 void GdbStub::expect_mem_access_error(bool should) {
     mem_access_error = false;
     should_expect_mem_access_error = true;
+}
+
+void
+GdbStub::listener_cb_static(struct evconnlistener *listener,
+                            evutil_socket_t fd, struct sockaddr *saddr,
+                            int socklen, void *arg) {
+    GdbStub *gdb = (GdbStub*)arg;
+    gdb->listener_cb(listener, fd, saddr, socklen);
+}
+
+void
+GdbStub::listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
+                     struct sockaddr *saddr, int socklen) {
+    bev = bufferevent_socket_new(dc_event_base, fd, BEV_OPT_CLOSE_ON_FREE);
+    if (!bev)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    bufferevent_setcb(bev, &GdbStub::handle_read_static,
+                      &GdbStub::handle_write_static,
+                      &GdbStub::handle_events_static, this);
+    bufferevent_enable(bev, EV_WRITE);
+    bufferevent_enable(bev, EV_READ);
+
+    is_listening = false;
+}
+
+
+void GdbStub::handle_read_static(struct bufferevent *bev, void *arg) {
+    GdbStub *gdb = (GdbStub*)arg;
+
+    gdb->handle_read(bev);
+}
+
+/*
+ * this function gets called when libevent is done writing
+ * and is hungry for more data
+ */
+void GdbStub::handle_write_static(struct bufferevent *bev, void *arg) {
+    GdbStub *gdb = (GdbStub*)arg;
+
+    gdb->handle_write(bev);
+}
+
+void GdbStub::handle_events_static(struct bufferevent *bev, short events,
+                                   void *arg) {
+    GdbStub *gdb = (GdbStub*)arg;
+
+    gdb->handle_events(bev, events);
+}
+
+void GdbStub::handle_events(struct bufferevent *bev, short events) {
+    exit(2);
 }

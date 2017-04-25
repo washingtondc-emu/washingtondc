@@ -23,8 +23,6 @@
 #ifndef DREAMCAST_HPP_
 #define DREAMCAST_HPP_
 
-#include <boost/asio.hpp>
-
 #include "BiosFile.h"
 #include "memory.h"
 #include "hw/sh4/sh4.hpp"
@@ -86,7 +84,7 @@ Debugger *dreamcast_get_debugger();
 #endif
 
 #if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
-extern boost::asio::io_service dc_io_service;
+extern struct event_base *dc_event_base;
 #endif
 
 /*

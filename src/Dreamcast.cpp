@@ -60,7 +60,7 @@ static SerialServer *serial_server;
 
 #if defined ENABLE_DEBUGGER || defined ENABLE_SERIAL_SERVER
 // Used by the GdbStub and SerialServer (if enabled) to do async network I/O
-boost::asio::io_service dc_io_service;
+struct event_base *dc_event_base;
 #endif
 
 dc_cycle_stamp_t dc_cycle_stamp_priv_;
@@ -81,6 +81,13 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
 
 #ifdef ENABLE_DEBUGGER
     debugger = NULL;
+#endif
+
+#if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
+    dc_event_base = event_base_new();
+    if (!dc_event_base) {
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    }
 #endif
 
     memory_init(&mem, MEM_SZ);
@@ -114,6 +121,10 @@ void dreamcast_init_direct(char const *path_ip_bin,
 
 #ifdef ENABLE_DEBUGGER
     debugger = NULL;
+#endif
+
+#if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
+    dc_event_base = event_base_new(); // TODO: check for NULL
 #endif
 
     memory_init(&mem, MEM_SZ);
@@ -189,6 +200,10 @@ void dreamcast_cleanup() {
     sh4_cleanup(&cpu);
     bios_file_cleanup(&bios);
     memory_cleanup(&mem);
+
+#if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
+    event_base_free(dc_event_base);
+#endif
 }
 
 #ifdef ENABLE_DEBUGGER
@@ -217,7 +232,7 @@ void dreamcast_run() {
     try {
         while (is_running) {
             /*
-             * The below logic will run the dc_io_service if the debugger is
+             * The below logic will run the dc_event_base if the debugger is
              * enabled or if the serial server is enabled.  If only the
              * debugger is enabled *or* both the debugger and the serial server
              * are enabled then it will pick either run_one or poll depending
@@ -235,15 +250,24 @@ void dreamcast_run() {
              * dc_io_service.poll instead because we don't want to block.
              */
             if (debugger && debugger->step(sh4_get_pc(&cpu))) {
-                dc_io_service.run_one();
+                if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
+                    is_running = false;
+                    break;
+                }
 
                 continue;
             } else {
-                dc_io_service.poll();
+                if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
+                    is_running = false;
+                    break;
+                }
             }
 #else
 #ifdef ENABLE_SERIAL_SERVER
-            dc_io_service.poll();
+            if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
+                is_running = false;
+                break;
+            }
 #endif
 #endif
 

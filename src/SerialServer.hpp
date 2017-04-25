@@ -26,9 +26,11 @@
 #include <queue>
 
 #include <boost/cstdint.hpp>
-#include <boost/asio.hpp>
-#include <boost/array.hpp>
-#include <boost/asio/buffer.hpp>
+
+#include <event2/event.h>
+#include <event2/bufferevent.h>
+#include <event2/listener.h>
+#include <event2/buffer.h>
 
 #include "hw/sh4/sh4.hpp"
 
@@ -59,12 +61,9 @@ public:
     void notify_tx_ready();
 
 private:
-    boost::asio::ip::tcp::endpoint tcp_endpoint;
-    boost::asio::ip::tcp::acceptor tcp_acceptor;
-    boost::asio::ip::tcp::socket tcp_socket;
-
-    boost::array<uint8_t, 1> read_buffer;
-    boost::array<uint8_t, 128> write_buffer;
+    struct evconnlistener *listener;
+    bool is_listening;
+    struct bufferevent *bev;
 
     std::queue<uint8_t> input_queue;
     std::queue<uint8_t> output_queue;
@@ -73,11 +72,24 @@ private:
 
     Sh4 *cpu;
 
-    void handle_read(const boost::system::error_code& error);
-    void handle_write(const boost::system::error_code& error);
-
     // schedule queued data for transmission
     void write_start();
+
+    static void
+    listener_cb_static(struct evconnlistener *listener,
+                       evutil_socket_t fd, struct sockaddr *saddr,
+                       int socklen, void *arg);
+    void
+    listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
+                struct sockaddr *saddr, int socklen);
+
+    static void handle_events_static(struct bufferevent *bev, short events,
+                                     void *arg);
+    static void handle_read_static(struct bufferevent *bev, void *arg);
+    static void handle_write_static(struct bufferevent *bev, void *arg);
+    void handle_events(struct bufferevent *bev, short events);
+    void handle_read(struct bufferevent *bev);
+    void handle_write(struct bufferevent *bev);
 };
 
 #endif
