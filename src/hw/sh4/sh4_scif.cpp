@@ -105,7 +105,7 @@ void sh4_scif_cleanup(sh4_scif *scif) {
     memset(scif, 0, sizeof(*scif));
 }
 
-void sh4_scif_connect_server(Sh4 *sh4, SerialServer *ser_srv) {
+void sh4_scif_connect_server(Sh4 *sh4, struct serial_server *ser_srv) {
     sh4->scif.ser_srv = ser_srv;
 }
 
@@ -164,7 +164,7 @@ sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
 
         memcpy(&dat, buf, sizeof(dat));
         sh4->scif.tx_queue->push(dat);
-        sh4->scif.ser_srv->notify_tx_ready();
+        serial_server_notify_tx_ready(sh4->scif.ser_srv);
     }
 #endif
 
@@ -180,7 +180,7 @@ void sh4_scif_cts(Sh4 *sh4) {
         check_tx_reset(sh4);
 
         if (tx_queue->size()) {
-            sh4->scif.ser_srv->put(tx_queue->front());
+            serial_server_put(sh4->scif.ser_srv, tx_queue->front());
             tx_queue->pop();
             check_tx_trig(sh4);
         } else {

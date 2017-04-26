@@ -32,54 +32,69 @@
 #error This file should not be built unless the serial server is enabled
 #endif
 
-SerialServer::SerialServer(Sh4 *cpu) {
-    this->cpu = cpu;
-    listener = NULL;
-    bev = NULL;
+typedef struct Sh4 Sh4;
 
-    ready_to_write = false;
+static void
+listener_cb(struct evconnlistener *listener,
+            evutil_socket_t fd, struct sockaddr *saddr,
+            int socklen, void *arg);
+static void handle_events(struct bufferevent *bev, short events, void *arg);
+static void handle_read(struct bufferevent *bev, void *arg);
+static void handle_write(struct bufferevent *bev, void *arg);
 
-    if (!(outbound = evbuffer_new()))
+void serial_server_init(struct serial_server *srv, struct Sh4 *cpu) {
+    memset(srv, 0, sizeof(*srv));
+
+    srv->cpu = cpu;
+    srv->listener = NULL;
+    srv->bev = NULL;
+
+    srv->ready_to_write = false;
+
+    if (!(srv->outbound = evbuffer_new()))
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 }
 
-SerialServer::~SerialServer() {
-    evbuffer_free(outbound);
-    if (bev)
-        bufferevent_free(bev);
-    if (listener)
-        evconnlistener_free(listener);
+void serial_server_cleanup(struct serial_server *srv) {
+    evbuffer_free(srv->outbound);
+    if (srv->bev)
+        bufferevent_free(srv->bev);
+    if (srv->listener)
+        evconnlistener_free(srv->listener);
+
+    memset(srv, 0, sizeof(*srv));
 }
 
-void SerialServer::attach() {
-    std::cout << "Awaiting serial connection on port " << PORT_NO << "..." <<
+void serial_server_attach(struct serial_server *srv) {
+    std::cout << "Awaiting serial connection on port " << SERIAL_PORT_NO << "..." <<
         std::endl;
 
     struct sockaddr_in sin;
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
-    sin.sin_port = htons(PORT_NO);
-    listener = evconnlistener_new_bind(dc_event_base, listener_cb_static, this,
+    sin.sin_port = htons(SERIAL_PORT_NO);
+    srv->listener = evconnlistener_new_bind(dc_event_base, listener_cb, srv,
                                        LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1,
                                        (struct sockaddr*)&sin, sizeof(sin));
 
-    if (!listener)
+    if (!srv->listener)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     // the listener_cb will set is_listening = false when we have a connection
-    is_listening = true;
+    srv->is_listening = true;
     do {
         std::cout << "still waiting..." << std::endl;
         if (event_base_loop(dc_event_base, EVLOOP_ONCE) != 0)
             exit(4);
-    } while (is_listening);
+    } while (srv->is_listening);
 
     std::cout << "Connection established." << std::endl;
 }
 
-void SerialServer::handle_read(struct bufferevent *bev) {
-    struct evbuffer *read_buffer;
+static void handle_read(struct bufferevent *bev, void *arg) {
+    struct serial_server *srv = (struct serial_server*)arg;
 
+    struct evbuffer *read_buffer;
     if (!(read_buffer = evbuffer_new()))
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
@@ -91,7 +106,7 @@ void SerialServer::handle_read(struct bufferevent *bev) {
         if (evbuffer_remove(read_buffer, &cur_byte, sizeof(cur_byte)) < 0)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-        sh4_scif_rx(cpu, cur_byte);
+        sh4_scif_rx(srv->cpu, cur_byte);
     }
 
     evbuffer_free(read_buffer);
@@ -101,77 +116,49 @@ void SerialServer::handle_read(struct bufferevent *bev) {
  * this function gets called when boost is done writing
  * and is hungry for more data
  */
-void SerialServer::handle_write(struct bufferevent *bev) {
-    if (!evbuffer_get_length(outbound)) {
-        ready_to_write = true;
-        sh4_scif_cts(cpu);
+static void handle_write(struct bufferevent *bev, void *arg) {
+    struct serial_server *srv = (struct serial_server*)arg;
+
+    if (!evbuffer_get_length(srv->outbound)) {
+        srv->ready_to_write = true;
+        sh4_scif_cts(srv->cpu);
         return;
     }
 
-    bufferevent_write_buffer(bev, outbound);
-    ready_to_write = false;
+    bufferevent_write_buffer(bev, srv->outbound);
+    srv->ready_to_write = false;
 }
 
-void SerialServer::put(uint8_t dat) {
-    evbuffer_add(outbound, &dat, sizeof(dat));
+void serial_server_put(struct serial_server *srv, uint8_t dat) {
+    evbuffer_add(srv->outbound, &dat, sizeof(dat));
 
-    if (ready_to_write) {
-        bufferevent_write_buffer(bev, outbound);
-        ready_to_write = false;
+    if (srv->ready_to_write) {
+        bufferevent_write_buffer(srv->bev, srv->outbound);
+        srv->ready_to_write = false;
     }
 }
 
-void SerialServer::notify_tx_ready() {
-    sh4_scif_cts(cpu);
+void serial_server_notify_tx_ready(struct serial_server *srv) {
+    sh4_scif_cts(srv->cpu);
 }
 
-void
-SerialServer::listener_cb_static(struct evconnlistener *listener,
-                                 evutil_socket_t fd, struct sockaddr *saddr,
-                                 int socklen, void *arg) {
-    SerialServer *ss = (SerialServer*)arg;
-    ss->listener_cb(listener, fd, saddr, socklen);
-}
+static void
+listener_cb(struct evconnlistener *listener,
+            evutil_socket_t fd, struct sockaddr *saddr,
+            int socklen, void *arg) {
+    struct serial_server *srv = (struct serial_server*)arg;
 
-void
-SerialServer::listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
-                          struct sockaddr *saddr, int socklen) {
-    bev = bufferevent_socket_new(dc_event_base, fd, BEV_OPT_CLOSE_ON_FREE);
-    if (!bev)
+    srv->bev = bufferevent_socket_new(dc_event_base, fd, BEV_OPT_CLOSE_ON_FREE);
+    if (!srv->bev)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    bufferevent_setcb(bev, &SerialServer::handle_read_static,
-                      &SerialServer::handle_write_static,
-                      &SerialServer::handle_events_static, this);
-    bufferevent_enable(bev, EV_WRITE);
-    bufferevent_enable(bev, EV_READ);
+    bufferevent_setcb(srv->bev, handle_read, handle_write, handle_events, srv);
+    bufferevent_enable(srv->bev, EV_WRITE);
+    bufferevent_enable(srv->bev, EV_READ);
 
-    is_listening = false;
+    srv->is_listening = false;
 }
 
-void SerialServer::handle_read_static(struct bufferevent *bev, void *arg) {
-    SerialServer *ss = (SerialServer*)arg;
-
-    ss->handle_read(bev);
-}
-
-/*
- * this function gets called when libevent is done writing
- * and is hungry for more data
- */
-void SerialServer::handle_write_static(struct bufferevent *bev, void *arg) {
-    SerialServer *ss = (SerialServer*)arg;
-
-    ss->handle_write(bev);
-}
-
-void SerialServer::handle_events_static(struct bufferevent *bev, short events,
-                                        void *arg) {
-    SerialServer *ss = (SerialServer*)arg;
-
-    ss->handle_events(bev, events);
-}
-
-void SerialServer::handle_events(struct bufferevent *bev, short events) {
+static void handle_events(struct bufferevent *bev, short events, void *arg) {
     exit(2);
 }

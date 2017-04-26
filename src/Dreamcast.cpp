@@ -55,11 +55,12 @@ static Debugger *debugger;
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
-static SerialServer *serial_server;
+static struct serial_server serial_server;
+bool serial_server_in_use;
 #endif
 
 #if defined ENABLE_DEBUGGER || defined ENABLE_SERIAL_SERVER
-// Used by the GdbStub and SerialServer (if enabled) to do async network I/O
+// Used by the GdbStub and serial_server (if enabled) to do async network I/O
 struct event_base *dc_event_base;
 #endif
 
@@ -99,9 +100,9 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     spg_init();
 
 #ifdef ENABLE_SERIAL_SERVER
-    if (serial_server) {
-        serial_server->attach();
-        sh4_scif_connect_server(&cpu, serial_server);
+    if (serial_server_in_use) {
+        serial_server_attach(&serial_server);
+        sh4_scif_connect_server(&cpu, &serial_server);
     }
 #endif
 }
@@ -193,8 +194,8 @@ void dreamcast_cleanup() {
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
-    if (serial_server)
-        delete serial_server;
+    if (serial_server_in_use)
+        serial_server_cleanup(&serial_server);
 #endif
 
     sh4_cleanup(&cpu);
@@ -371,9 +372,10 @@ void dreamcast_enable_debugger(void) {
 
 #ifdef ENABLE_SERIAL_SERVER
 void dreamcast_enable_serial_server(void) {
-    serial_server = new SerialServer(&cpu);
-    serial_server->attach();
-    sh4_scif_connect_server(&cpu, serial_server);
+    serial_server_in_use = true;
+    serial_server_init(&serial_server, &cpu);
+    serial_server_attach(&serial_server);
+    sh4_scif_connect_server(&cpu, &serial_server);
 }
 #endif
 

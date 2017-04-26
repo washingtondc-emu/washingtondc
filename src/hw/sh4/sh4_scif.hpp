@@ -27,7 +27,7 @@
 
 #include <boost/cstdint.hpp>
 
-class SerialServer;
+struct serial_server;
 
 /*
  * SH4 SCIF (Serial Port) emulation
@@ -80,7 +80,7 @@ struct sh4_scif {
      */
     bool tend_read, dr_read, tdfe_read, rdf_read;
 
-    SerialServer *ser_srv;
+    struct serial_server *ser_srv;
 };
 
 struct Sh4;
@@ -88,7 +88,7 @@ struct Sh4;
 void sh4_scif_init(sh4_scif *scif);
 void sh4_scif_cleanup(sh4_scif *scif);
 
-void sh4_scif_connect_server(Sh4 *sh4, SerialServer *ser_srv);
+void sh4_scif_connect_server(Sh4 *sh4, struct serial_server *ser_srv);
 
 int
 sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,
