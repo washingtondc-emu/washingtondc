@@ -33,13 +33,18 @@
 #endif
 
 SerialServer::SerialServer(Sh4 *cpu) {
-    is_writing = false;
     this->cpu = cpu;
     listener = NULL;
     bev = NULL;
+
+    ready_to_write = false;
+
+    if (!(outbound = evbuffer_new()))
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
 }
 
 SerialServer::~SerialServer() {
+    evbuffer_free(outbound);
     if (bev)
         bufferevent_free(bev);
     if (listener)
@@ -73,49 +78,23 @@ void SerialServer::attach() {
 }
 
 void SerialServer::handle_read(struct bufferevent *bev) {
-    // TODO: input_queue doesn't actually need to exist, does it ?
     struct evbuffer *read_buffer;
 
     if (!(read_buffer = evbuffer_new()))
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
+    // now send the data to the SCIF one char at a time
     bufferevent_read_buffer(bev, read_buffer);
     size_t buflen = evbuffer_get_length(read_buffer);
     for (unsigned idx = 0; idx < buflen ; idx++) {
-        uint8_t tmp;
-        if (evbuffer_remove(read_buffer, &tmp, sizeof(tmp)) < 0)
+        uint8_t cur_byte;
+        if (evbuffer_remove(read_buffer, &cur_byte, sizeof(cur_byte)) < 0)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
-        input_queue.push(tmp);
-    }
 
-    // now send the data to the SCIF one char at a time
-    while (input_queue.size()) {
-        sh4_scif_rx(cpu, input_queue.front());
-        input_queue.pop();
+        sh4_scif_rx(cpu, cur_byte);
     }
 
     evbuffer_free(read_buffer);
-}
-
-void SerialServer::write_start() {
-    if (output_queue.empty())
-        is_writing = false;
-
-    if (is_writing || output_queue.empty())
-        return;
-
-    struct evbuffer *write_buffer;
-    if (!(write_buffer = evbuffer_new()))
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    while (!output_queue.empty()) {
-        uint8_t dat = output_queue.front();
-        evbuffer_add(write_buffer, &dat, sizeof(dat));
-        output_queue.pop();
-    }
-
-    bufferevent_write_buffer(bev, write_buffer);
-    evbuffer_free(write_buffer);
 }
 
 /*
@@ -123,27 +102,27 @@ void SerialServer::write_start() {
  * and is hungry for more data
  */
 void SerialServer::handle_write(struct bufferevent *bev) {
-    is_writing = false;
-
-    if (output_queue.empty()) {
+    if (!evbuffer_get_length(outbound)) {
+        ready_to_write = true;
         sh4_scif_cts(cpu);
-
-        if (output_queue.empty())
-            return;
+        return;
     }
 
-    write_start();
+    bufferevent_write_buffer(bev, outbound);
+    ready_to_write = false;
 }
 
 void SerialServer::put(uint8_t dat) {
-    output_queue.push(dat);
+    evbuffer_add(outbound, &dat, sizeof(dat));
 
-    write_start();
+    if (ready_to_write) {
+        bufferevent_write_buffer(bev, outbound);
+        ready_to_write = false;
+    }
 }
 
 void SerialServer::notify_tx_ready() {
-    if (output_queue.empty())
-        sh4_scif_cts(cpu);
+    sh4_scif_cts(cpu);
 }
 
 void

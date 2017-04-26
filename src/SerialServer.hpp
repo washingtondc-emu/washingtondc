@@ -23,8 +23,6 @@
 #ifndef SERIALSERVER_HPP_
 #define SERIALSERVER_HPP_
 
-#include <queue>
-
 #include <boost/cstdint.hpp>
 
 #include <event2/event.h>
@@ -63,17 +61,12 @@ public:
 private:
     struct evconnlistener *listener;
     bool is_listening;
+    bool ready_to_write;
     struct bufferevent *bev;
 
-    std::queue<uint8_t> input_queue;
-    std::queue<uint8_t> output_queue;
-
-    bool is_writing;
+    struct evbuffer *outbound;
 
     Sh4 *cpu;
-
-    // schedule queued data for transmission
-    void write_start();
 
     static void
     listener_cb_static(struct evconnlistener *listener,
