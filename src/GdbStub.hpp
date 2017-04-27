@@ -43,48 +43,37 @@
 #include "types.h"
 #include "hw/sh4/sh4.hpp"
 
-class GdbStub : public Debugger {
-public:
-    // it's 'cause 1999 is the year the Dreamcast came out in America
-    static const unsigned PORT_NO = 1999;
+// it's 'cause 1999 is the year the Dreamcast came out in America
+#define GDB_PORT_NO 1999
 
-    GdbStub();
-    ~GdbStub();
+// see sh_sh4_register_name in gdb/sh-tdep.c in the gdb source code
+enum gdb_reg_order {
+    R0, R1, R2, R3, R4, R5, R6, R7,
+    R8, R9, R10, R11, R12, R13, R14, R15,
 
-    void attach();
+    PC, PR, GBR, VBR, MACH, MACL, SR, FPUL, FPSCR,
 
-    void on_break();
-    void on_read_watchpoint(addr32_t addr);
-    void on_write_watchpoint(addr32_t addr);
+    FR0, FR1, FR2, FR3, FR4, FR5, FR6, FR7,
+    FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15,
 
-    void on_softbreak(inst_t inst, addr32_t addr);
+    SSR, SPC,
 
-    // see sh_sh4_register_name in gdb/sh-tdep.c in the gdb source code
-    enum RegOrder {
-        R0, R1, R2, R3, R4, R5, R6, R7,
-        R8, R9, R10, R11, R12, R13, R14, R15,
+    R0B0, R1B0, R2B0, R3B0, R4B0, R5B0, R6B0, R7B0,
+    R0B1, R1B1, R2B1, R3B1, R4B1, R5B1, R6B1, R7B1,
 
-        PC, PR, GBR, VBR, MACH, MACL, SR, FPUL, FPSCR,
+    N_REGS
+};
 
-        FR0, FR1, FR2, FR3, FR4, FR5, FR6, FR7,
-        FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15,
+struct gdb_stub {
+    struct debugger *dbg;
 
-        SSR, SPC,
-
-        R0B0, R1B0, R2B0, R3B0, R4B0, R5B0, R6B0, R7B0,
-        R0B1, R1B1, R2B1, R3B1, R4B1, R5B1, R6B1, R7B1,
-
-        N_REGS
-    };
-
-private:
     struct evconnlistener *listener;
     bool is_listening;
     struct bufferevent *bev;
 
     bool is_writing;
-    boost::array<char, 1> read_buffer;
-    boost::array<char, 128> write_buffer;
+    // boost::array<char, 1> read_buffer;
+    // boost::array<char, 128> write_buffer;
 
     std::queue<char> input_queue;
     std::queue<char> output_queue;
@@ -96,100 +85,14 @@ private:
 
     bool frontend_supports_swbreak;
 
-    // enqueue data for transmit
-    void transmit(const std::string& data);
-
-    // set unack_packet = pkt and transmit
-    void transmit_pkt(const std::string& pkt);
-
-    // schedule queued data for transmission
-    void write_start();
-
-    std::string next_packet();
-
-    void handle_packet(std::string pkt);
-    std::string craft_packet(std::string data_in);
-    std::string extract_packet(std::string packet_in);
-
-    static std::string err_str(unsigned err_val);
-
-    static int decode_hex(char ch);
-    
-    std::string serialize_regs() const;
-
-    static std::string serialize_data(void const *buf, unsigned buf_len);
-
-    template<class Stream>
-    size_t deserialize_data(Stream& input, void *out, size_t max_sz) {
-        uint8_t *out8 = (uint8_t*)out;
-        size_t bytes_written = 0;
-        char ch;
-        char const eof = std::char_traits<char>::eof();
-        while ((ch = input.get()) != eof) {
-            if (bytes_written >= max_sz)
-                return max_sz;
-            *out8 = uint8_t(decode_hex(ch));
-            bytes_written++;
-
-            if ((ch = input.get()) != eof) {
-                *out8 <<= 4;
-                *out8 |= uint8_t(decode_hex(ch));
-            } else {
-                break;
-            }
-
-            out8++;
-        }
-
-        return bytes_written;
-    }
-
-    void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]);
-
-    // returns 0 on success, 1 on failure
-    int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
-                unsigned reg_no, reg32_t reg_val, bool bank);
-
-    void handle_c_packet(std::string dat);
-    void handle_s_packet(std::string dat);
-    std::string handle_g_packet(std::string dat);
-    std::string handle_m_packet(std::string dat);
-    std::string handle_q_packet(std::string dat);
-    std::string handle_z_packet(std::string dat);
-    std::string handle_G_packet(std::string dat);
-    std::string handle_M_packet(std::string dat);
-    std::string handle_P_packet(std::string dat);
-    std::string handle_D_packet(std::string dat);
-    std::string handle_K_packet(std::string dat);
-    std::string handle_Z_packet(std::string dat);
-
-    /*
-     * read memory in 4, 2, or 1 byte increments and return it as a hex-string.
-     * len must be evenly-divisible by 4/2/1.
-     */
-    std::string read_mem_4(addr32_t addr, unsigned len);
-    std::string read_mem_2(addr32_t addr, unsigned len);
-    std::string read_mem_1(addr32_t addr, unsigned len);
-
-    static void dbg_errror_handler(int error_tp, void *argptr);
-    void error_handler(int error_tp);
     bool should_expect_mem_access_error, mem_access_error;
-    void expect_mem_access_error(bool should);
-
-    static void
-    listener_cb_static(struct evconnlistener *listener,
-                       evutil_socket_t fd, struct sockaddr *saddr,
-                       int socklen, void *arg);
-    void
-    listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
-                struct sockaddr *saddr, int socklen);
-    static void handle_events_static(struct bufferevent *bev, short events,
-                                     void *arg);
-    static void handle_read_static(struct bufferevent *bev, void *arg);
-    static void handle_write_static(struct bufferevent *bev, void *arg);
-    void handle_events(struct bufferevent *bev, short events);
-    void handle_read(struct bufferevent *bev);
-    void handle_write(struct bufferevent *bev);
 };
+
+void gdb_init(struct gdb_stub *stub, struct debugger *dbg);
+void gdb_cleanup(struct gdb_stub *stub);
+
+void gdb_attach(void *argptr);
+
+extern struct debug_frontend gdb_debug_frontend;
 
 #endif

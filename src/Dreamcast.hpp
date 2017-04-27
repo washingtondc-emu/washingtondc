@@ -80,7 +80,7 @@ void dreamcast_kill();
 Sh4 *dreamcast_get_cpu();
 
 #ifdef ENABLE_DEBUGGER
-Debugger *dreamcast_get_debugger();
+struct debugger *dreamcast_get_debugger();
 #endif
 
 #if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)

@@ -1666,9 +1666,9 @@ extern "C" void sh4_inst_unary_trapa_disp(Sh4 *sh4, Sh4OpArgs inst) {
      * next case, which would jump to exception handling code if I had bothered
      * to implement it.
      */
-    Debugger *dbg = dreamcast_get_debugger();
+    struct debugger *dbg = dreamcast_get_debugger();
     if (dbg) {
-        dbg->on_softbreak(inst.inst, sh4->reg[SH4_REG_PC]);
+        debug_on_softbreak(dbg, inst.inst, sh4->reg[SH4_REG_PC]);
         return;
     }
 #endif /* ifdef ENABLE_DEBUGGER */
@@ -4322,9 +4322,9 @@ extern "C" void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
      * Send this to the gdb backend if it's running.  else, fall through to the
      * next case, where we raise an sh4 CPU exception.
      */
-    Debugger *dbg = dreamcast_get_debugger();
+    struct debugger *dbg = dreamcast_get_debugger();
     if (dbg) {
-        dbg->on_softbreak(inst.inst, sh4->reg[SH4_REG_PC]);
+        debug_on_softbreak(dbg, inst.inst, sh4->reg[SH4_REG_PC]);
         return;
     }
 

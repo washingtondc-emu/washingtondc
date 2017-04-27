@@ -35,8 +35,8 @@
 
 int sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_DEBUGGER
-    Debugger *dbg = dreamcast_get_debugger();
-    if (dbg && dbg->is_w_watch(addr, len)) {
+    struct debugger *dbg = dreamcast_get_debugger();
+    if (dbg && debug_is_w_watch(dbg, addr, len)) {
         sh4->aborted_operation = true;
         return 1;
     }
@@ -112,8 +112,8 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 
 int sh4_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_DEBUGGER
-    Debugger *dbg = dreamcast_get_debugger();
-    if (dbg && dbg->is_r_watch(addr, len)) {
+    struct debugger *dbg = dreamcast_get_debugger();
+    if (dbg && debug_is_r_watch(dbg, addr, len)) {
         sh4->aborted_operation = true;
         return 1;
     }

@@ -51,7 +51,9 @@ static struct Memory mem;
 static volatile bool is_running;
 
 #ifdef ENABLE_DEBUGGER
-static Debugger *debugger;
+static struct debugger debugger;
+static struct gdb_stub gdb_stub;
+static bool using_debugger;
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
@@ -80,9 +82,9 @@ static void dc_sigint_handler(int param);
 void dreamcast_init(char const *bios_path, char const *flash_path) {
     is_running = true;
 
-#ifdef ENABLE_DEBUGGER
-    debugger = NULL;
-#endif
+// #ifdef ENABLE_DEBUGGER
+//     debugger = NULL;
+// #endif
 
 #if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
     dc_event_base = event_base_new();
@@ -120,9 +122,9 @@ void dreamcast_init_direct(char const *path_ip_bin,
                                     std::ifstream::in | std::ifstream::binary);
     is_running = true;
 
-#ifdef ENABLE_DEBUGGER
-    debugger = NULL;
-#endif
+// #ifdef ENABLE_DEBUGGER
+//     debugger = NULL;
+// #endif
 
 #if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
     dc_event_base = event_base_new(); // TODO: check for NULL
@@ -189,8 +191,7 @@ void dreamcast_cleanup() {
     spg_cleanup();
 
 #ifdef ENABLE_DEBUGGER
-    if (debugger)
-        delete debugger;
+    debug_cleanup(&debugger);
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
@@ -208,8 +209,10 @@ void dreamcast_cleanup() {
 }
 
 #ifdef ENABLE_DEBUGGER
-Debugger *dreamcast_get_debugger() {
-    return debugger;
+struct debugger *dreamcast_get_debugger() {
+    if (using_debugger)
+        return &debugger;
+    return NULL;
 }
 #endif
 
@@ -243,14 +246,15 @@ void dreamcast_run() {
              */
 #ifdef ENABLE_DEBUGGER
             /*
-             * If the debugger is enabled, make sure we have its permission to single-step;
-             * if we don't then we call dc_io_service.run_one to block until
-             * something interresting happens, and then we skip the rest of the loop.
+             * If the debugger is enabled, make sure we have its permission to
+             * single-step; if we don't then we call dc_io_service.run_one to
+             * block until something interresting happens, and then we skip the
+             * rest of the loop.
              *
              * If we do have permission to single-step, then we call
              * dc_io_service.poll instead because we don't want to block.
              */
-            if (debugger && debugger->step(sh4_get_pc(&cpu))) {
+            if (using_debugger && debug_step(&debugger, sh4_get_pc(&cpu))) {
                 if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
                     is_running = false;
                     break;
@@ -365,8 +369,10 @@ Sh4 *dreamcast_get_cpu() {
 
 #ifdef ENABLE_DEBUGGER
 void dreamcast_enable_debugger(void) {
-    debugger = new GdbStub();
-    debugger->attach();
+    using_debugger = true;
+    debug_init(&debugger);
+    gdb_init(&gdb_stub, &debugger);
+    debug_attach(&debugger);
 }
 #endif
 

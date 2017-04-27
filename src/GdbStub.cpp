@@ -36,83 +36,173 @@
 // uncomment this to log all traffic in/out of the debugger to stdout
 // #define GDBSTUB_VERBOSE
 
-GdbStub::GdbStub() : Debugger() {
-    frontend_supports_swbreak = false;
-    is_writing = false;
-    should_expect_mem_access_error = false;
-    mem_access_error = false;
-    listener = NULL;
-    is_listening = false;
-    bev = NULL;
+static void gdb_on_break(void *arg);
+static void gdb_on_read_watchpoint(addr32_t addr, void *arg);
+static void gdb_on_write_watchpoint(addr32_t addr, void *arg);
+static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg);
+static int decode_hex(char ch);
+
+static std::string craft_packet(std::string data_in);
+static std::string gdb_serialize_regs(struct gdb_stub *stub);
+static void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]);
+static std::string serialize_data(void const *buf, unsigned buf_len);
+static int decode_hex(char ch);
+static void write_start(struct gdb_stub *stub);
+static std::string extract_packet(std::string packet_in);
+static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
+                   unsigned reg_no, reg32_t reg_val, bool bank);
+static std::string err_str(unsigned err_val);
+static void handle_packet(struct gdb_stub *stub,  std::string pkt);
+static void transmit_pkt(struct gdb_stub *stub, const std::string& pkt);
+static std::string next_packet(struct gdb_stub *stub);
+// static void errror_handler(int error_tp, void *argptr);
+static void expect_mem_access_error(struct gdb_stub *stub, bool should);
+
+static void handle_c_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_q_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_g_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_m_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_M_packet(struct gdb_stub *stub, std::string dat);
+static void handle_s_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_G_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_P_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_D_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_K_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_Z_packet(struct gdb_stub *stub, std::string dat);
+static std::string handle_z_packet(struct gdb_stub *stub, std::string dat);
+
+static std::string read_mem_4(struct gdb_stub *stub,
+                              addr32_t addr, unsigned len);
+static std::string read_mem_2(struct gdb_stub *stub, addr32_t addr,
+                              unsigned len);
+static std::string read_mem_1(struct gdb_stub *stub, addr32_t addr,
+                              unsigned len);
+
+static void
+listener_cb(struct evconnlistener *listener,
+            evutil_socket_t fd, struct sockaddr *saddr,
+            int socklen, void *arg);
+static void handle_events(struct bufferevent *bev, short events, void *arg);
+static void handle_read(struct bufferevent *bev, void *arg);
+static void handle_write(struct bufferevent *bev, void *arg);
+
+template<class Stream>
+static size_t deserialize_data(Stream& input, void *out, size_t max_sz) {
+    uint8_t *out8 = (uint8_t*)out;
+    size_t bytes_written = 0;
+    char ch;
+    char const eof = std::char_traits<char>::eof();
+    while ((ch = input.get()) != eof) {
+        if (bytes_written >= max_sz)
+            return max_sz;
+        *out8 = uint8_t(decode_hex(ch));
+        bytes_written++;
+
+        if ((ch = input.get()) != eof) {
+            *out8 <<= 4;
+            *out8 |= uint8_t(decode_hex(ch));
+        } else {
+            break;
+        }
+
+        out8++;
+    }
+
+    return bytes_written;
 }
 
-GdbStub::~GdbStub() {
+void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
+    stub->frontend_supports_swbreak = false;
+    stub->is_writing = false;
+    stub->should_expect_mem_access_error =false;
+    stub->listener = NULL;
+    stub->is_listening = false;
+    stub->bev = NULL;
+    stub->dbg = dbg;
+
+    dbg->frontend.step = NULL;
+    dbg->frontend.attach = gdb_attach;
+    dbg->frontend.on_break = gdb_on_break;
+    dbg->frontend.on_read_watchpoint = gdb_on_read_watchpoint;
+    dbg->frontend.on_write_watchpoint = gdb_on_write_watchpoint;
+    dbg->frontend.on_softbreak = gdb_on_softbreak;
+    dbg->frontend.arg = stub;
 }
 
-void GdbStub::attach() {
-    std::cout << "Awaiting remote GDB connection on port " << PORT_NO <<
+void gdb_cleanup(struct gdb_stub *stub) {
+    // TODO: cleanup
+}
+
+void gdb_attach(void *argptr) {
+    struct gdb_stub *stub = (struct gdb_stub*)argptr;
+
+    std::cout << "Awaiting remote GDB connection on port " << GDB_PORT_NO <<
         "..." << std::endl;
 
     struct sockaddr_in sin;
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
-    sin.sin_port = htons(PORT_NO);
-    listener = evconnlistener_new_bind(dc_event_base, listener_cb_static, this,
-                                       LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1,
-                                       (struct sockaddr*)&sin, sizeof(sin));
+    sin.sin_port = htons(GDB_PORT_NO);
+    unsigned event_flags = LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE;
+    stub->listener = evconnlistener_new_bind(dc_event_base, listener_cb, stub,
+                                             event_flags, -1,
+                                             (struct sockaddr*)&sin, sizeof(sin));
 
-    if (!listener)
+    if (!stub->listener)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     // the listener_cb will set is_listening = false when we have a connection
-    is_listening = true;
+    stub->is_listening = true;
     do {
         std::cout << "still waiting..." << std::endl;
         if (event_base_loop(dc_event_base, EVLOOP_ONCE) != 0)
             exit(4);
-    } while (is_listening);
+    } while (stub->is_listening);
 
     std::cout << "Connection established." << std::endl;
 }
 
-void GdbStub::on_break() {
-    transmit_pkt(craft_packet(std::string("S05")));
+static void gdb_on_break(void *arg) {
+    struct gdb_stub *stub = (struct gdb_stub*)arg;
+
+    transmit_pkt(stub, craft_packet(std::string("S05")));
 }
 
-
-void GdbStub::on_softbreak(inst_t inst, addr32_t addr) {
+static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg) {
     std::stringstream pkt_txt;
+    struct gdb_stub *stub = (struct gdb_stub*)arg;
 
-    if (frontend_supports_swbreak)
+    if (stub->frontend_supports_swbreak)
         pkt_txt << "T05swbreak:" << std::hex << addr << ";";
     else
         pkt_txt << "S05";
 
-    cur_state = STATE_BREAK;
+    stub->dbg->cur_state = DEBUG_STATE_BREAK;
 
-    transmit_pkt(craft_packet(pkt_txt.str()));
+    transmit_pkt(stub, craft_packet(pkt_txt.str()));
 }
 
-void GdbStub::on_read_watchpoint(addr32_t addr) {
+static void gdb_on_read_watchpoint(addr32_t addr, void *arg) {
     std::stringstream pkt_txt;
+    struct gdb_stub *stub = (struct gdb_stub*)arg;
 
     // pkt_txt << "T05rwatch:" << std::hex << addr << ";";
     pkt_txt << "S05";
 
-    transmit_pkt(craft_packet(pkt_txt.str()));
+    transmit_pkt(stub, craft_packet(pkt_txt.str()));
 }
 
-void GdbStub::on_write_watchpoint(addr32_t addr) {
+static void gdb_on_write_watchpoint(addr32_t addr, void *arg) {
     std::stringstream pkt_txt;
+    struct gdb_stub *stub = (struct gdb_stub*)arg;
 
     // pkt_txt << "T05watch:" << std::hex << addr << ";";
     pkt_txt << "S05";
 
-    transmit_pkt(craft_packet(pkt_txt.str()));
+    transmit_pkt(stub, craft_packet(pkt_txt.str()));
 }
 
-
-std::string GdbStub::serialize_regs() const {
+static std::string gdb_serialize_regs(struct gdb_stub *stub) {
     Sh4 *cpu = dreamcast_get_cpu();
     reg32_t reg_file[SH4_REGISTER_COUNT];
     sh4_get_regs(cpu, reg_file);
@@ -157,7 +247,7 @@ std::string GdbStub::serialize_regs() const {
     return serialize_data(regs, sizeof(regs));
 }
 
-void GdbStub::deserialize_regs(std::string input_str, reg32_t regs[N_REGS]) {
+static void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]) {
     std::stringstream stream(input_str);
     size_t sz_expect = N_REGS * sizeof(*regs);
 
@@ -172,7 +262,7 @@ void GdbStub::deserialize_regs(std::string input_str, reg32_t regs[N_REGS]) {
     }
 }
 
-std::string GdbStub::serialize_data(void const *buf, unsigned buf_len) {
+static std::string serialize_data(void const *buf, unsigned buf_len) {
     uint8_t const *buf8 = (uint8_t const*)buf;
     std::stringstream ss;
     static const char hex_tbl[16] = {
@@ -190,7 +280,7 @@ std::string GdbStub::serialize_data(void const *buf, unsigned buf_len) {
     return ss.str();
 }
 
-int GdbStub::decode_hex(char ch)
+static int decode_hex(char ch)
 {
     if ((ch >= 'a') && (ch <= 'f'))
         return ch - 'a' + 10;
@@ -201,126 +291,35 @@ int GdbStub::decode_hex(char ch)
     return -1;
 }
 
-void GdbStub::transmit(const std::string& data) {
+static void transmit(struct gdb_stub *stub, const std::string& data) {
     for (std::string::const_iterator it = data.begin(); it != data.end(); it++)
-        output_queue.push(*it);
+        stub->output_queue.push(*it);
 
-    write_start();
+    write_start(stub);
 }
 
-void GdbStub::write_start() {
-    size_t idx = 0;
+static void write_start(struct gdb_stub *stub) {
+    if (stub->output_queue.empty())
+        stub->is_writing = false;
 
-    if (output_queue.empty())
-        is_writing = false;
-
-    if (is_writing || output_queue.empty())
+    if (stub->is_writing || stub->output_queue.empty())
         return;
 
     struct evbuffer *write_buffer;
     if (!(write_buffer = evbuffer_new()))
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    while (!output_queue.empty()) {
-        uint8_t dat = output_queue.front();
+    while (!stub->output_queue.empty()) {
+        uint8_t dat = stub->output_queue.front();
         evbuffer_add(write_buffer, &dat, sizeof(dat));
-        output_queue.pop();
+        stub->output_queue.pop();
     }
 
-    bufferevent_write_buffer(bev, write_buffer);
+    bufferevent_write_buffer(stub->bev, write_buffer);
     evbuffer_free(write_buffer);
 }
 
-/*
- * this function gets called when boost is done writing
- * and is hungry for more data
- */
-void GdbStub::handle_write(struct bufferevent *bev) {
-    is_writing = false;
-
-    if (output_queue.empty())
-        return;
-
-    write_start();
-}
-
-void GdbStub::handle_read(struct bufferevent *bev) {
-    struct evbuffer *read_buffer;
-
-    if (!(read_buffer = evbuffer_new()))
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    bufferevent_read_buffer(bev, read_buffer);
-    size_t buflen = evbuffer_get_length(read_buffer);
-
-    for (unsigned i = 0; i < buflen; i++) {
-        uint8_t tmp;
-        if (evbuffer_remove(read_buffer, &tmp, sizeof(tmp)) < 0)
-            RAISE_ERROR(ERROR_FAILED_ALLOC);
-        input_queue.push(tmp);
-    }
-
-    while (input_queue.size()) {
-        char c = input_queue.front();
-        input_queue.pop();
-
-        if (input_packet.size()) {
-            input_packet += c;
-
-            std::string pkt = next_packet();
-            if (pkt.size()) {
-                input_packet = "";
-
-                // TODO: verify the checksum
-
-#ifdef GDBSTUB_VERBOSE
-                std::cout << ">>>> +" << std::endl;
-#endif
-                transmit(std::string("+"));
-                handle_packet(pkt);
-            }
-        } else {
-            if (c == '+') {
-#ifdef GDBSTUB_VERBOSE
-                std::cout << "<<<< +" << std::endl;
-#endif
-                if (!unack_packet.size())
-                    std::cerr << "WARNING: received acknowledgement for unsent " <<
-                        "packet" << std::endl;
-                unack_packet = "";
-            } else if (c == '-') {
-#ifdef GDBSTUB_VERBOSE
-                std::cout << "<<<< -" << std::endl;
-#endif
-                if (!unack_packet.size()) {
-                    std::cerr << "WARNING: received negative acknowledgement for " <<
-                        "unsent packet" << std::endl;
-                } else {
-#ifdef GDBSTUB_VERBOSE
-                    std::cout << ">>>>" << unack_packet << std::endl;
-#endif
-                    transmit(unack_packet);
-                }
-            } else if (c == '$') {
-                // new packet
-                input_packet = '$';
-            } else if (c == 3) {
-                // user pressed ctrl+c (^C) on the gdb frontend
-                std::cout << "GDBSTUB: user requested breakpoint (ctrl-C)" <<
-                    std::endl;
-                if (cur_state == STATE_NORM) {
-                    on_break();
-                    cur_state = STATE_BREAK;
-                }
-            } else {
-                std::cerr << "WARNING: ignoring unexpected character " << c <<
-                    std::endl;
-            }
-        }
-    }
-}
-
-std::string GdbStub::craft_packet(std::string data_in) {
+static std::string craft_packet(std::string data_in) {
     std::stringstream ss;
     uint8_t csum = 0;
     static const char hex_tbl[16] = {
@@ -338,15 +337,15 @@ std::string GdbStub::craft_packet(std::string data_in) {
     return ss.str();
 }
 
-std::string GdbStub::extract_packet(std::string packet_in) {
+static std::string extract_packet(std::string packet_in) {
     size_t dollar_idx = packet_in.find_first_of('$');
     size_t pound_idx = packet_in.find_last_of('#');
 
     return packet_in.substr(dollar_idx + 1, pound_idx - dollar_idx - 1);
 }
 
-int GdbStub::set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
-                     unsigned reg_no, reg32_t reg_val, bool bank) {
+static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
+                   unsigned reg_no, reg32_t reg_val, bool bank) {
     // there is some ambiguity over whether register banking should be based off
     // of the old sr or the new sr.  For now, it's based off of the old sr.
 
@@ -399,7 +398,7 @@ int GdbStub::set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
     return 0;
 }
 
-std::string GdbStub::err_str(unsigned err_val) {
+static std::string err_str(unsigned err_val) {
     static char const hex_chars[] = {
         '0', '1', '2', '3',
         '4', '5', '6', '7',
@@ -416,11 +415,11 @@ std::string GdbStub::err_str(unsigned err_val) {
     return "E" + err_str;
 }
 
-void GdbStub::handle_c_packet(std::string dat) {
-    cur_state = Debugger::STATE_NORM;
+static void handle_c_packet(struct gdb_stub *stub, std::string dat) {
+    stub->dbg->cur_state = DEBUG_STATE_NORM;
 }
 
-std::string GdbStub::handle_q_packet(std::string dat) {
+static std::string handle_q_packet(struct gdb_stub *stub, std::string dat) {
     if (dat.substr(0, 10) == "qSupported") {
         std::string reply;
         size_t semicolon_idx = dat.find_first_of(';');
@@ -453,7 +452,7 @@ std::string GdbStub::handle_q_packet(std::string dat) {
 
             if (feat == "swbreak") {
                 if (supported) {
-                    frontend_supports_swbreak = true;
+                    stub->frontend_supports_swbreak = true;
                     reply += "swbreak+;";
                 } else {
                     reply += "swbreak-;";
@@ -469,11 +468,11 @@ std::string GdbStub::handle_q_packet(std::string dat) {
     return std::string();
 }
 
-std::string GdbStub::handle_g_packet(std::string dat) {
-    return serialize_regs();
+static std::string handle_g_packet(struct gdb_stub *stub, std::string dat) {
+    return gdb_serialize_regs(stub);
 }
 
-std::string GdbStub::handle_m_packet(std::string dat) {
+static std::string handle_m_packet(struct gdb_stub *stub, std::string dat) {
     size_t addr_idx = dat.find_last_of('m') + 1;
     size_t comma_idx = dat.find_last_of(',');
     size_t len_idx = comma_idx + 1;
@@ -484,16 +483,17 @@ std::string GdbStub::handle_m_packet(std::string dat) {
     std::stringstream(dat.substr(len_idx)) >> std::hex >> len;
 
     if (len % 4 == 0)
-        return read_mem_4(addr, len);
+        return read_mem_4(stub, addr, len);
     else if (len % 2 == 0)
-        return read_mem_2(addr, len);
+        return read_mem_2(stub, addr, len);
     else
-        return read_mem_1(addr, len);
+        return read_mem_1(stub, addr, len);
 }
 
-std::string GdbStub::read_mem_4(addr32_t addr, unsigned len) {
+static std::string read_mem_4(struct gdb_stub *stub,
+                              addr32_t addr, unsigned len) {
     std::stringstream ss;
-    expect_mem_access_error(true);
+    expect_mem_access_error(stub, true);
 
     while (len) {
         uint32_t val;
@@ -502,12 +502,12 @@ std::string GdbStub::read_mem_4(addr32_t addr, unsigned len) {
             sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
             addr += 4;
         } catch (BaseException& exc) {
-            expect_mem_access_error(false);
+            expect_mem_access_error(stub, false);
             return err_str(EINVAL);
         }
 
-        if (mem_access_error) {
-            expect_mem_access_error(false);
+        if (stub->mem_access_error) {
+            expect_mem_access_error(stub, false);
             return err_str(EINVAL);
         }
 
@@ -515,13 +515,14 @@ std::string GdbStub::read_mem_4(addr32_t addr, unsigned len) {
         len -= 4;
     }
 
-    expect_mem_access_error(false);
+    expect_mem_access_error(stub, false);
     return ss.str();
 }
 
-std::string GdbStub::read_mem_2(addr32_t addr, unsigned len) {
+static std::string read_mem_2(struct gdb_stub *stub, addr32_t addr,
+                              unsigned len) {
     std::stringstream ss;
-    expect_mem_access_error (true);
+    expect_mem_access_error(stub, true);
 
     while (len) {
         uint16_t val;
@@ -530,12 +531,12 @@ std::string GdbStub::read_mem_2(addr32_t addr, unsigned len) {
             sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
             addr += 2;
         } catch (BaseException& exc) {
-            expect_mem_access_error(false);
+            expect_mem_access_error(stub, false);
             return err_str(EINVAL);
         }
 
-        if (mem_access_error) {
-            expect_mem_access_error(false);
+        if (stub->mem_access_error) {
+            expect_mem_access_error(stub, false);
             return err_str(EINVAL);
         }
 
@@ -543,13 +544,14 @@ std::string GdbStub::read_mem_2(addr32_t addr, unsigned len) {
         len -= 2;
     }
 
-    expect_mem_access_error(false);
+    expect_mem_access_error(stub, false);
     return ss.str();
 }
 
-std::string GdbStub::read_mem_1(addr32_t addr, unsigned len) {
+static std::string read_mem_1(struct gdb_stub *stub, addr32_t addr,
+                              unsigned len) {
     std::stringstream ss;
-    expect_mem_access_error(true);
+    expect_mem_access_error(stub, true);
 
     while (len--) {
         uint8_t val;
@@ -558,19 +560,19 @@ std::string GdbStub::read_mem_1(addr32_t addr, unsigned len) {
             sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
             addr++;
         } catch (BaseException& exc) {
-            expect_mem_access_error(false);
+            expect_mem_access_error(stub, false);
             return err_str(EINVAL);
         }
 
-        if (mem_access_error) {
-            expect_mem_access_error(false);
+        if (stub->mem_access_error) {
+            expect_mem_access_error(stub, false);
             return err_str(EINVAL);
         }
 
         ss << serialize_data(&val, sizeof(val));
     }
 
-    expect_mem_access_error(false);
+    expect_mem_access_error(stub, false);
     return ss.str();
 }
 
@@ -578,7 +580,7 @@ std::string GdbStub::read_mem_1(addr32_t addr, unsigned len) {
  * TODO: bounds checking (not that I expect there to be any hackers going in
  * through the debugger of all places)
  */
-std::string GdbStub::handle_M_packet(std::string dat) {
+static std::string handle_M_packet(struct gdb_stub *stub, std::string dat) {
     size_t addr_idx = dat.find_last_of('M') + 1;
     size_t comma_idx = dat.find_last_of(',');
     size_t colon_idx = dat.find_last_of(':');
@@ -599,17 +601,17 @@ std::string GdbStub::handle_M_packet(std::string dat) {
         if (len < 1024) {
             uint8_t *buf = new uint8_t[len];
             try {
-                expect_mem_access_error(true);
+                expect_mem_access_error(stub, true);
                 deserialize_data(ss, buf, len);
                 sh4_write_mem(dreamcast_get_cpu(), buf, addr, len);
 
-                if (mem_access_error) {
-                    expect_mem_access_error(false);
+                if (stub->mem_access_error) {
+                    expect_mem_access_error(stub, false);
                     return err_str(EINVAL);
                 }
 
             } catch (BaseException& exc) {
-                expect_mem_access_error(false);
+                expect_mem_access_error(stub, false);
                 delete[] buf;
                 throw;
             }
@@ -618,20 +620,20 @@ std::string GdbStub::handle_M_packet(std::string dat) {
             BOOST_THROW_EXCEPTION(InvalidParamError());
         }
     } catch (BaseException& exc) {
-        expect_mem_access_error(false);
+        expect_mem_access_error(stub, false);
         std::cerr << boost::diagnostic_information(exc);
         return err_str(EINVAL);
     }
 
-    expect_mem_access_error(false);
+    expect_mem_access_error(stub, false);
     return "OK";
 }
 
-void GdbStub::handle_s_packet(std::string dat) {
-    cur_state = Debugger::STATE_PRE_STEP;
+static void handle_s_packet(struct gdb_stub *stub, std::string dat) {
+    stub->dbg->cur_state = DEBUG_STATE_PRE_STEP;
 }
 
-std::string GdbStub::handle_G_packet(std::string dat) {
+static std::string handle_G_packet(struct gdb_stub *stub, std::string dat) {
     reg32_t regs[N_REGS];
 
     deserialize_regs(dat.substr(1), regs);
@@ -646,7 +648,7 @@ std::string GdbStub::handle_G_packet(std::string dat) {
     return "OK";
 }
 
-std::string GdbStub::handle_P_packet(std::string dat) {
+static std::string handle_P_packet(struct gdb_stub *stub, std::string dat) {
     size_t equals_idx = dat.find_first_of('=');
 
     if (equals_idx >= dat.size() - 1) {
@@ -688,21 +690,21 @@ std::string GdbStub::handle_P_packet(std::string dat) {
     return "OK";
 }
 
-std::string GdbStub::handle_D_packet(std::string dat) {
-    cur_state = Debugger::STATE_NORM;
+static std::string handle_D_packet(struct gdb_stub *stub, std::string dat) {
+    stub->dbg->cur_state = DEBUG_STATE_NORM;
 
-    on_detach();
+    debug_on_detach(stub->dbg);
 
     return "OK";
 }
 
-std::string GdbStub::handle_K_packet(std::string dat) {
+static std::string handle_K_packet(struct gdb_stub *stub, std::string dat) {
     dreamcast_kill();
 
     return "OK";
 }
 
-std::string GdbStub::handle_Z_packet(std::string dat) {
+static std::string handle_Z_packet(struct gdb_stub *stub, std::string dat) {
     if (dat.at(1) == '1') {
         //hardware breakpoint
 
@@ -724,7 +726,7 @@ std::string GdbStub::handle_Z_packet(std::string dat) {
         addr32_t break_addr;
         std::stringstream(dat) >> std::hex >> break_addr;
 
-        int err_code = add_break(break_addr);
+        int err_code = debug_add_break(stub->dbg, break_addr);
 
         if (err_code == 0)
             return std::string("OK");
@@ -757,7 +759,7 @@ std::string GdbStub::handle_Z_packet(std::string dat) {
         std::stringstream(addr_str) >> std::hex >> watch_addr;
         std::stringstream(len_str) >> std::hex >> length;
 
-        int err_code = add_w_watch(watch_addr, length);
+        int err_code = debug_add_w_watch(stub->dbg, watch_addr, length);
 
         if (err_code == 0)
             return std::string("OK");
@@ -790,7 +792,7 @@ std::string GdbStub::handle_Z_packet(std::string dat) {
         std::stringstream(addr_str) >> std::hex >> watch_addr;
         std::stringstream(len_str) >> std::hex >> length;
 
-        int err_code = add_r_watch(watch_addr, length);
+        int err_code = debug_add_r_watch(stub->dbg, watch_addr, length);
 
         if (err_code == 0)
             return std::string("OK");
@@ -802,7 +804,7 @@ std::string GdbStub::handle_Z_packet(std::string dat) {
     }
 }
 
-std::string GdbStub::handle_z_packet(std::string dat) {
+static std::string handle_z_packet(struct gdb_stub *stub, std::string dat) {
     if (dat.at(1) == '1') {
         //hardware breakpoint
 
@@ -822,7 +824,7 @@ std::string GdbStub::handle_z_packet(std::string dat) {
         addr32_t break_addr;
         std::stringstream(dat) >> std::hex >> break_addr;
 
-        int err_code = remove_break(break_addr);
+        int err_code = debug_remove_break(stub->dbg, break_addr);
 
         if (err_code == 0)
             return "OK";
@@ -855,7 +857,7 @@ std::string GdbStub::handle_z_packet(std::string dat) {
         std::stringstream(addr_str) >> std::hex >> watch_addr;
         std::stringstream(len_str) >> std::hex >> length;
 
-        int err_code = remove_w_watch(watch_addr, length);
+        int err_code = debug_remove_w_watch(stub->dbg, watch_addr, length);
 
         if (err_code == 0)
             return std::string("OK");
@@ -888,7 +890,7 @@ std::string GdbStub::handle_z_packet(std::string dat) {
         std::stringstream(addr_str) >> std::hex >> watch_addr;
         std::stringstream(len_str) >> std::hex >> length;
 
-        int err_code = remove_r_watch(watch_addr, length);
+        int err_code = debug_remove_r_watch(stub->dbg, watch_addr, length);
 
         if (err_code == 0)
             return std::string("OK");
@@ -900,7 +902,7 @@ std::string GdbStub::handle_z_packet(std::string dat) {
     }
 }
 
-void GdbStub::handle_packet(std::string pkt) {
+static void handle_packet(struct gdb_stub *stub,  std::string pkt) {
     std::string response;
     std::string dat = extract_packet(pkt);
 
@@ -908,51 +910,51 @@ void GdbStub::handle_packet(std::string pkt) {
 
     if (dat.size()) {
         if (dat.at(0) == 'q') {
-            response = craft_packet(handle_q_packet(dat));
+            response = craft_packet(handle_q_packet(stub, dat));
         } else if (dat.at(0) == 'g') {
-            response = craft_packet(handle_g_packet(dat));
+            response = craft_packet(handle_g_packet(stub, dat));
         } else if (dat.at(0) == 'G') {
-            response = craft_packet(handle_G_packet(dat));
+            response = craft_packet(handle_G_packet(stub, dat));
         } else if (dat.at(0) == 'm') {
-            response = craft_packet(handle_m_packet(dat));
+            response = craft_packet(handle_m_packet(stub, dat));
         } else if (dat.at(0) == 'M') {
-            response = craft_packet(handle_M_packet(dat));
+            response = craft_packet(handle_M_packet(stub, dat));
         } else if (dat.at(0) == '?') {
             response = craft_packet(std::string("S05 create:"));
         } else if (dat.at(0) == 's') {
-            handle_s_packet(dat);
+            handle_s_packet(stub, dat);
             return;
         } else if (dat.at(0) == 'c') {
-            handle_c_packet(dat);
+            handle_c_packet(stub, dat);
             return;
         } else if (dat.at(0) == 'P') {
-            response = craft_packet(handle_P_packet(dat));
+            response = craft_packet(handle_P_packet(stub, dat));
         } else if (dat.at(0) == 'D') {
-            response = craft_packet(handle_D_packet(dat));
+            response = craft_packet(handle_D_packet(stub, dat));
         } else if (dat.at(0) == 'k') {
-            response = craft_packet(handle_K_packet(dat));
+            response = craft_packet(handle_K_packet(stub, dat));
         } else if (dat.at(0) == 'z') {
-            response = craft_packet(handle_z_packet(dat));
+            response = craft_packet(handle_z_packet(stub, dat));
         } else if (dat.at(0) == 'Z') {
-            response = craft_packet(handle_Z_packet(dat));
+            response = craft_packet(handle_Z_packet(stub, dat));
         }
     }
 
-    transmit_pkt(response);
+    transmit_pkt(stub, response);
 }
 
-void GdbStub::transmit_pkt(const std::string& pkt) {
+static void transmit_pkt(struct gdb_stub *stub, const std::string& pkt) {
 #ifdef GDBSTUB_VERBOSE
     std::cout << ">>>> " << pkt << std::endl;
 #endif
 
-    unack_packet = pkt;
-    transmit(pkt);
+    stub->unack_packet = pkt;
+    transmit(stub, pkt);
 }
 
-std::string GdbStub::next_packet() {
+static std::string next_packet(struct gdb_stub *stub) {
     std::string pkt;
-    std::string pktbuf_tmp(input_packet);
+    std::string pktbuf_tmp(stub->input_packet);
     char ch;
 
     // wait around for the start character, ignore all other characters
@@ -999,7 +1001,7 @@ std::string GdbStub::next_packet() {
     pktbuf_tmp = pktbuf_tmp.substr(1);
     pkt += ch;
 
-    input_packet = pktbuf_tmp;
+    stub->input_packet = pktbuf_tmp;
 
 #ifdef GDBSTUB_VERBOSE
     std::cout << "<<<< " << pkt << std::endl;
@@ -1008,74 +1010,136 @@ std::string GdbStub::next_packet() {
     return pkt;
 }
 
-void GdbStub::dbg_errror_handler(int error_tp, void *argptr) {
-    GdbStub* stub = (GdbStub*)argptr;
+// static void errror_handler(int error_tp, void *argptr) {
+//     struct gdb_stub* stub = (struct gdb_stub*)argptr;
 
-    stub->error_handler(error_tp);
+//     if (stub->should_expect_mem_access_error) {
+//         stub->mem_access_error = true;
+//     } else {
+//         error_print();
+//         exit(1);
+//     }
+// }
+
+static void expect_mem_access_error(struct gdb_stub *stub, bool should) {
+    stub->mem_access_error = false;
+    stub->should_expect_mem_access_error = true;
 }
 
-void GdbStub::error_handler(int error_tp) {
-    if (should_expect_mem_access_error) {
-        mem_access_error = true;
-    } else {
-        error_print();
-        exit(1);
-    }
-}
+static void
+listener_cb(struct evconnlistener *listener,
+            evutil_socket_t fd, struct sockaddr *saddr,
+            int socklen, void *arg) {
+    struct gdb_stub *stub = (struct gdb_stub*)arg;
 
-void GdbStub::expect_mem_access_error(bool should) {
-    mem_access_error = false;
-    should_expect_mem_access_error = true;
-}
+    if (!stub->is_listening)
+        return;
 
-void
-GdbStub::listener_cb_static(struct evconnlistener *listener,
-                            evutil_socket_t fd, struct sockaddr *saddr,
-                            int socklen, void *arg) {
-    GdbStub *gdb = (GdbStub*)arg;
-    gdb->listener_cb(listener, fd, saddr, socklen);
-}
-
-void
-GdbStub::listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
-                     struct sockaddr *saddr, int socklen) {
-    bev = bufferevent_socket_new(dc_event_base, fd, BEV_OPT_CLOSE_ON_FREE);
-    if (!bev)
+    stub->bev = bufferevent_socket_new(dc_event_base, fd,
+                                       BEV_OPT_CLOSE_ON_FREE);
+    if (!stub->bev)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    bufferevent_setcb(bev, &GdbStub::handle_read_static,
-                      &GdbStub::handle_write_static,
-                      &GdbStub::handle_events_static, this);
-    bufferevent_enable(bev, EV_WRITE);
-    bufferevent_enable(bev, EV_READ);
+    bufferevent_setcb(stub->bev, handle_read,
+                      handle_write, handle_events, stub);
+    bufferevent_enable(stub->bev, EV_WRITE);
+    bufferevent_enable(stub->bev, EV_READ);
 
-    is_listening = false;
+    stub->is_listening = false;
 }
 
+static void handle_events(struct bufferevent *bev, short events, void *arg) {
+    exit(2);
+}
 
-void GdbStub::handle_read_static(struct bufferevent *bev, void *arg) {
-    GdbStub *gdb = (GdbStub*)arg;
+static void handle_read(struct bufferevent *bev, void *arg) {
+    struct evbuffer *read_buffer;
+    struct gdb_stub *stub = (struct gdb_stub*)arg;
 
-    gdb->handle_read(bev);
+    if (!(read_buffer = evbuffer_new()))
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    bufferevent_read_buffer(bev, read_buffer);
+    size_t buflen = evbuffer_get_length(read_buffer);
+
+    for (unsigned i = 0; i < buflen; i++) {
+        uint8_t tmp;
+        if (evbuffer_remove(read_buffer, &tmp, sizeof(tmp)) < 0)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+        stub->input_queue.push(tmp);
+    }
+
+    while (stub->input_queue.size()) {
+        char c = stub->input_queue.front();
+        stub->input_queue.pop();
+
+        if (stub->input_packet.size()) {
+            stub->input_packet += c;
+
+            std::string pkt = next_packet(stub);
+            if (pkt.size()) {
+                stub->input_packet = "";
+
+                // TODO: verify the checksum
+
+#ifdef GDBSTUB_VERBOSE
+                std::cout << ">>>> +" << std::endl;
+#endif
+                transmit(stub, std::string("+"));
+                handle_packet(stub, pkt);
+            }
+        } else {
+            if (c == '+') {
+#ifdef GDBSTUB_VERBOSE
+                std::cout << "<<<< +" << std::endl;
+#endif
+                if (!stub->unack_packet.size())
+                    std::cerr << "WARNING: received acknowledgement for unsent " <<
+                        "packet" << std::endl;
+                stub->unack_packet = "";
+            } else if (c == '-') {
+#ifdef GDBSTUB_VERBOSE
+                std::cout << "<<<< -" << std::endl;
+#endif
+                if (!stub->unack_packet.size()) {
+                    std::cerr << "WARNING: received negative acknowledgement for " <<
+                        "unsent packet" << std::endl;
+                } else {
+#ifdef GDBSTUB_VERBOSE
+                    std::cout << ">>>>" << stub->unack_packet << std::endl;
+#endif
+                    transmit(stub, stub->unack_packet);
+                }
+            } else if (c == '$') {
+                // new packet
+                stub->input_packet = '$';
+            } else if (c == 3) {
+                // user pressed ctrl+c (^C) on the gdb frontend
+                std::cout << "GDBSTUB: user requested breakpoint (ctrl-C)" <<
+                    std::endl;
+                if (stub->dbg->cur_state == DEBUG_STATE_NORM) {
+                    gdb_on_break(stub);
+                    stub->dbg->cur_state = DEBUG_STATE_BREAK;
+                }
+            } else {
+                std::cerr << "WARNING: ignoring unexpected character " << c <<
+                    std::endl;
+            }
+        }
+    }
 }
 
 /*
  * this function gets called when libevent is done writing
  * and is hungry for more data
  */
-void GdbStub::handle_write_static(struct bufferevent *bev, void *arg) {
-    GdbStub *gdb = (GdbStub*)arg;
+static void handle_write(struct bufferevent *bev, void *arg) {
+    struct gdb_stub *stub = (struct gdb_stub*)arg;
 
-    gdb->handle_write(bev);
-}
+    stub->is_writing = false;
 
-void GdbStub::handle_events_static(struct bufferevent *bev, short events,
-                                   void *arg) {
-    GdbStub *gdb = (GdbStub*)arg;
+    if (stub->output_queue.empty())
+        return;
 
-    gdb->handle_events(bev, events);
-}
-
-void GdbStub::handle_events(struct bufferevent *bev, short events) {
-    exit(2);
+    write_start(stub);
 }

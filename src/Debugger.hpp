@@ -33,58 +33,45 @@
 
 #include "types.h"
 
-class Debugger {
-public:
-    Debugger();
-    virtual ~Debugger();
+enum debug_state {
+    DEBUG_STATE_NORM,
+    DEBUG_STATE_PRE_STEP,
+    DEBUG_STATE_POST_STEP,
+    DEBUG_STATE_BREAK
+};
 
-    bool should_break(addr32_t pc);
-
-    virtual bool step(addr32_t pc);
-
-    virtual void attach() = 0;
-
-    virtual void on_break() = 0;
-    virtual void on_read_watchpoint(addr32_t addr) = 0;
-    virtual void on_write_watchpoint(addr32_t addr) = 0;
+struct debug_frontend {
+    bool(*step)(addr32_t, void*);
+    void(*attach)(void*);
+    void(*on_break)(void*);
+    void(*on_read_watchpoint)(addr32_t addr, void*);
+    void(*on_write_watchpoint)(addr32_t, void*);
 
     /*
      * called by the sh4 instruction decoder when it doesn't recognize an
      * opcode or it hits a TRAPA.  This generally means that we stumbled
      * across a softbreak.
      */
-    virtual void on_softbreak(inst_t inst, addr32_t addr) = 0;
+    void(*on_softbreak)(inst_t, addr32_t, void*);
 
-    // these functions return 0 on success, nonzer on failure
-    int add_break(addr32_t addr);
-    int remove_break(addr32_t addr);
+    void *arg;
+};
 
-    // these functions return 0 on success, nonzer on failure
-    int add_r_watch(addr32_t addr, unsigned len);
-    int remove_r_watch(addr32_t addr, unsigned len);
+#define DEBUG_N_BREAKPOINTS 16
+#define DEBUG_N_W_WATCHPOINTS 16
+#define DEBUG_N_R_WATCHPOINTS 16
 
-    // these functions return 0 on success, nonzer on failure
-    int add_w_watch(addr32_t addr, unsigned len);
-    int remove_w_watch(addr32_t addr, unsigned len);
+struct debugger {
+    addr32_t breakpoints[DEBUG_N_BREAKPOINTS];
+    bool breakpoint_enable[DEBUG_N_BREAKPOINTS];
 
-    // return true if the given addr and len trigger a watchpoint
-    bool is_w_watch(addr32_t addr, unsigned len);
-    bool is_r_watch(addr32_t addr, unsigned len);
+    addr32_t w_watchpoints[DEBUG_N_W_WATCHPOINTS];
+    unsigned w_watchpoint_len[DEBUG_N_W_WATCHPOINTS];
+    bool w_watchpoint_enable[DEBUG_N_W_WATCHPOINTS];
 
-private:
-    static const unsigned N_BREAKPOINTS = 16;
-    addr32_t breakpoints[N_BREAKPOINTS];
-    bool breakpoint_enable[N_BREAKPOINTS];
-
-    static const unsigned N_W_WATCHPOINTS = 16;
-    addr32_t w_watchpoints[N_W_WATCHPOINTS];
-    unsigned w_watchpoint_len[N_W_WATCHPOINTS];
-    bool w_watchpoint_enable[N_W_WATCHPOINTS];
-
-    static const unsigned N_R_WATCHPOINTS = 16;
-    addr32_t r_watchpoints[N_R_WATCHPOINTS];
-    unsigned r_watchpoint_len[N_R_WATCHPOINTS];
-    bool r_watchpoint_enable[N_R_WATCHPOINTS];
+    addr32_t r_watchpoints[DEBUG_N_R_WATCHPOINTS];
+    unsigned r_watchpoint_len[DEBUG_N_R_WATCHPOINTS];
+    bool r_watchpoint_enable[DEBUG_N_R_WATCHPOINTS];
 
     // when a watchpoint gets triggered, at_watchpoint is set to true
     // and the memory address is placed in watchpoint_addr
@@ -95,20 +82,46 @@ private:
     // when this is false and at_watchpoint is true: write-watchpoint
     bool is_read_watchpoint;
 
-protected:
-    enum State {
-        STATE_NORM,
-        STATE_PRE_STEP,
-        STATE_POST_STEP,
-        STATE_BREAK
-    };
-    State cur_state;
+    enum debug_state cur_state;
 
-    /*
-     * call this when gdb sends a detach packet.
-     * This clears out break points and such.
-     */
-    void on_detach();
+    struct debug_frontend frontend;
 };
+
+/*
+ * it is safe to call debug_init before the frontend is initialized as long as
+ * it gets initialized before you call any other debug_* functions.
+ */
+void debug_init(struct debugger *dbg);
+void debug_cleanup(struct debugger *dbg);
+
+void debug_attach(struct debugger *dbg);
+
+bool debug_should_break(struct debugger *dbg, addr32_t pc);
+
+void debug_on_softbreak(struct debugger *dbg, inst_t inst, addr32_t pc);
+
+// these functions return 0 on success, nonzer on failure
+int debug_add_break(struct debugger *dbg, addr32_t addr);
+int debug_remove_break(struct debugger *dbg, addr32_t addr);
+
+// these functions return 0 on success, nonzer on failure
+int debug_add_r_watch(struct debugger *dbg, addr32_t addr, unsigned len);
+int debug_remove_r_watch(struct debugger *dbg, addr32_t addr, unsigned len);
+
+// these functions return 0 on success, nonzer on failure
+int debug_add_w_watch(struct debugger *dbg, addr32_t addr, unsigned len);
+int debug_remove_w_watch(struct debugger *dbg, addr32_t addr, unsigned len);
+
+// return true if the given addr and len trigger a watchpoint
+bool debug_is_w_watch(struct debugger *dbg, addr32_t addr, unsigned len);
+bool debug_is_r_watch(struct debugger *dbg, addr32_t addr, unsigned len);
+
+/*
+ * call this when gdb sends a detach packet.
+ * This clears out break points and such.
+ */
+void debug_on_detach(struct debugger *dbg);
+
+bool debug_step(struct debugger *dbg, addr32_t pc);
 
 #endif
