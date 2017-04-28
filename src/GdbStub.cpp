@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <string>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -31,7 +32,7 @@
 #include "hw/sh4/sh4.hpp"
 #include "Dreamcast.hpp"
 
-#include "GdbStub.hpp"
+#include "gdb_stub.h"
 
 // uncomment this to log all traffic in/out of the debugger to stdout
 // #define GDBSTUB_VERBOSE
@@ -111,7 +112,10 @@ static size_t deserialize_data(Stream& input, void *out, size_t max_sz) {
     return bytes_written;
 }
 
-void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
+extern "C" void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
+    string_init(&stub->unack_packet);
+    string_init(&stub->input_packet);
+
     stub->frontend_supports_swbreak = false;
     stub->is_writing = false;
     stub->should_expect_mem_access_error =false;
@@ -119,6 +123,10 @@ void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
     stub->is_listening = false;
     stub->bev = NULL;
     stub->dbg = dbg;
+
+    stub->output_buffer = evbuffer_new();
+    if (!stub->output_buffer)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     dbg->frontend.step = NULL;
     dbg->frontend.attach = gdb_attach;
@@ -129,11 +137,14 @@ void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
     dbg->frontend.arg = stub;
 }
 
-void gdb_cleanup(struct gdb_stub *stub) {
+extern "C" void gdb_cleanup(struct gdb_stub *stub) {
     // TODO: cleanup
+
+    string_cleanup(&stub->input_packet);
+    string_cleanup(&stub->unack_packet);
 }
 
-void gdb_attach(void *argptr) {
+extern "C" void gdb_attach(void *argptr) {
     struct gdb_stub *stub = (struct gdb_stub*)argptr;
 
     std::cout << "Awaiting remote GDB connection on port " << GDB_PORT_NO <<
@@ -258,7 +269,7 @@ static void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]) {
         // TODO: better error messages
         std::cout << "sz_expect is " << sz_expect << ", sz_actual is " <<
             sz_actual << std::endl;
-        BOOST_THROW_EXCEPTION(IntegrityError("Some shit with gdb i guess"));
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 }
 
@@ -292,31 +303,24 @@ static int decode_hex(char ch)
 }
 
 static void transmit(struct gdb_stub *stub, const std::string& data) {
-    for (std::string::const_iterator it = data.begin(); it != data.end(); it++)
-        stub->output_queue.push(*it);
+    for (std::string::const_iterator it = data.begin();
+         it != data.end(); it++) {
+        char tmp = *it;
+        if (evbuffer_add(stub->output_buffer, &tmp, sizeof(tmp)) < 0)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+    }
 
     write_start(stub);
 }
 
 static void write_start(struct gdb_stub *stub) {
-    if (stub->output_queue.empty())
+    if (!evbuffer_get_length(stub->output_buffer))
         stub->is_writing = false;
 
-    if (stub->is_writing || stub->output_queue.empty())
+    if (stub->is_writing || !evbuffer_get_length(stub->output_buffer))
         return;
 
-    struct evbuffer *write_buffer;
-    if (!(write_buffer = evbuffer_new()))
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    while (!stub->output_queue.empty()) {
-        uint8_t dat = stub->output_queue.front();
-        evbuffer_add(write_buffer, &dat, sizeof(dat));
-        stub->output_queue.pop();
-    }
-
-    bufferevent_write_buffer(stub->bev, write_buffer);
-    evbuffer_free(write_buffer);
+    bufferevent_write_buffer(stub->bev, stub->output_buffer);
 }
 
 static std::string craft_packet(std::string data_in) {
@@ -617,7 +621,7 @@ static std::string handle_M_packet(struct gdb_stub *stub, std::string dat) {
             }
             delete[] buf;
         } else {
-            BOOST_THROW_EXCEPTION(InvalidParamError());
+            RAISE_ERROR(ERROR_INVALID_PARAM);
         }
     } catch (BaseException& exc) {
         expect_mem_access_error(stub, false);
@@ -948,13 +952,13 @@ static void transmit_pkt(struct gdb_stub *stub, const std::string& pkt) {
     std::cout << ">>>> " << pkt << std::endl;
 #endif
 
-    stub->unack_packet = pkt;
+    string_set(&stub->unack_packet, pkt.c_str());
     transmit(stub, pkt);
 }
 
 static std::string next_packet(struct gdb_stub *stub) {
     std::string pkt;
-    std::string pktbuf_tmp(stub->input_packet);
+    std::string pktbuf_tmp(string_get(&stub->input_packet));
     char ch;
 
     // wait around for the start character, ignore all other characters
@@ -1001,7 +1005,7 @@ static std::string next_packet(struct gdb_stub *stub) {
     pktbuf_tmp = pktbuf_tmp.substr(1);
     pkt += ch;
 
-    stub->input_packet = pktbuf_tmp;
+    string_set(&stub->input_packet, pktbuf_tmp.c_str());
 
 #ifdef GDBSTUB_VERBOSE
     std::cout << "<<<< " << pkt << std::endl;
@@ -1066,19 +1070,15 @@ static void handle_read(struct bufferevent *bev, void *arg) {
         uint8_t tmp;
         if (evbuffer_remove(read_buffer, &tmp, sizeof(tmp)) < 0)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
-        stub->input_queue.push(tmp);
-    }
 
-    while (stub->input_queue.size()) {
-        char c = stub->input_queue.front();
-        stub->input_queue.pop();
+        char c = tmp;
 
-        if (stub->input_packet.size()) {
-            stub->input_packet += c;
+        if (string_length(&stub->input_packet)) {
+            string_append_char(&stub->input_packet, c);
 
             std::string pkt = next_packet(stub);
             if (pkt.size()) {
-                stub->input_packet = "";
+                string_set(&stub->input_packet, "");
 
                 // TODO: verify the checksum
 
@@ -1093,26 +1093,26 @@ static void handle_read(struct bufferevent *bev, void *arg) {
 #ifdef GDBSTUB_VERBOSE
                 std::cout << "<<<< +" << std::endl;
 #endif
-                if (!stub->unack_packet.size())
+                if (!string_length(&stub->unack_packet))
                     std::cerr << "WARNING: received acknowledgement for unsent " <<
                         "packet" << std::endl;
-                stub->unack_packet = "";
+                string_set(&stub->unack_packet, "");
             } else if (c == '-') {
 #ifdef GDBSTUB_VERBOSE
                 std::cout << "<<<< -" << std::endl;
 #endif
-                if (!stub->unack_packet.size()) {
+                if (!string_length(&stub->unack_packet)) {
                     std::cerr << "WARNING: received negative acknowledgement for " <<
                         "unsent packet" << std::endl;
                 } else {
 #ifdef GDBSTUB_VERBOSE
-                    std::cout << ">>>>" << stub->unack_packet << std::endl;
+                    std::cout << ">>>>" << string_get(&stub->unack_packet) << std::endl;
 #endif
-                    transmit(stub, stub->unack_packet);
+                    transmit(stub, std::string(string_get(&stub->unack_packet)));
                 }
             } else if (c == '$') {
                 // new packet
-                stub->input_packet = '$';
+                string_set(&stub->input_packet, "$");
             } else if (c == 3) {
                 // user pressed ctrl+c (^C) on the gdb frontend
                 std::cout << "GDBSTUB: user requested breakpoint (ctrl-C)" <<
@@ -1138,7 +1138,7 @@ static void handle_write(struct bufferevent *bev, void *arg) {
 
     stub->is_writing = false;
 
-    if (stub->output_queue.empty())
+    if (!evbuffer_get_length(stub->output_buffer))
         return;
 
     write_start(stub);

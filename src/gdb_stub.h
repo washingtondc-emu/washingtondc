@@ -27,21 +27,20 @@
 #error This file should not be included unless the debugger is enabled
 #endif
 
-#include <string>
-#include <sstream>
-#include <queue>
+#include <stdint.h>
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
 #include <event2/buffer.h>
-#include <boost/array.hpp>
-#include <boost/cstdint.hpp>
 
-#include "common/BaseException.hpp"
 #include "debugger.h"
 #include "types.h"
-#include "hw/sh4/sh4.hpp"
+#include "stringlib.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // it's 'cause 1999 is the year the Dreamcast came out in America
 #define GDB_PORT_NO 1999
@@ -71,17 +70,14 @@ struct gdb_stub {
     bool is_listening;
     struct bufferevent *bev;
 
-    bool is_writing;
-    // boost::array<char, 1> read_buffer;
-    // boost::array<char, 128> write_buffer;
+    struct evbuffer *output_buffer;
 
-    std::queue<char> input_queue;
-    std::queue<char> output_queue;
+    bool is_writing;
 
     // the last unsuccessfully acknowledged packet, or empty if there is none
-    std::string unack_packet;
+    struct string unack_packet;
 
-    std::string input_packet;
+    struct string input_packet;
 
     bool frontend_supports_swbreak;
 
@@ -94,5 +90,9 @@ void gdb_cleanup(struct gdb_stub *stub);
 void gdb_attach(void *argptr);
 
 extern struct debug_frontend gdb_debug_frontend;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

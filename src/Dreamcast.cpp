@@ -33,7 +33,7 @@
 #include "MemoryMap.hpp"
 
 #ifdef ENABLE_DEBUGGER
-#include "GdbStub.hpp"
+#include "gdb_stub.h"
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER

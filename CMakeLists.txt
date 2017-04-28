@@ -131,7 +131,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/gfx_thread.cpp"
                 "${PROJECT_SOURCE_DIR}/src/error.c"
                 "${PROJECT_SOURCE_DIR}/src/error.h"
-                "${PROJECT_SOURCE_DIR}/src/mem_areas.h")
+                "${PROJECT_SOURCE_DIR}/src/mem_areas.h"
+                "${PROJECT_SOURCE_DIR}/src/stringlib.h"
+                "${PROJECT_SOURCE_DIR}/src/stringlib.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
@@ -145,7 +147,7 @@ if (ENABLE_DEBUGGER)
     add_definitions(-DENABLE_DEBUGGER)
     set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/debugger.h"
                                    "${PROJECT_SOURCE_DIR}/src/debugger.c"
-                                   "${PROJECT_SOURCE_DIR}/src/GdbStub.hpp"
+                                   "${PROJECT_SOURCE_DIR}/src/gdb_stub.h"
                                    "${PROJECT_SOURCE_DIR}/src/GdbStub.cpp")
 endif()
 
