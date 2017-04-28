@@ -20,12 +20,11 @@
  *
  ******************************************************************************/
 
-#include <algorithm>
-#include <cstring>
-
+#include <string.h>
 #include <errno.h>
+#include <stdbool.h>
 
-#include "Debugger.hpp"
+#include "debugger.h"
 
 #ifndef ENABLE_DEBUGGER
 #error This file should not be included unless the debugger is enabled
@@ -46,12 +45,9 @@ void debug_init(struct debugger *dbg) {
 
     memset(&dbg->frontend, 0, sizeof(dbg->frontend));
 
-    std::fill(dbg->breakpoint_enable,
-              dbg->breakpoint_enable + DEBUG_N_BREAKPOINTS, false);
-    std::fill(dbg->w_watchpoint_enable,
-              dbg->w_watchpoint_enable + DEBUG_N_W_WATCHPOINTS, false);
-    std::fill(dbg->r_watchpoint_enable,
-              dbg->r_watchpoint_enable + DEBUG_N_R_WATCHPOINTS, false);
+    memset(dbg->breakpoint_enable, 0, sizeof(dbg->breakpoint_enable));
+    memset(dbg->w_watchpoint_enable, 0, sizeof(dbg->w_watchpoint_enable));
+    memset(dbg->r_watchpoint_enable, 0, sizeof(dbg->r_watchpoint_enable));
 }
 
 void debug_cleanup(struct debugger *dbg) {
@@ -100,8 +96,9 @@ bool debug_step(struct debugger *dbg, addr32_t pc) {
 }
 
 void debug_on_detach(struct debugger *dbg) {
-    std::fill(dbg->breakpoint_enable,
-              dbg->breakpoint_enable + DEBUG_N_BREAKPOINTS, false);
+    memset(dbg->breakpoint_enable, 0, sizeof(dbg->breakpoint_enable));
+    memset(dbg->w_watchpoint_enable, 0, sizeof(dbg->w_watchpoint_enable));
+    memset(dbg->r_watchpoint_enable, 0, sizeof(dbg->r_watchpoint_enable));
 }
 
 int debug_add_break(struct debugger *dbg, addr32_t addr) {

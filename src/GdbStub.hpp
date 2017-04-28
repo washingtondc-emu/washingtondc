@@ -39,7 +39,7 @@
 #include <boost/cstdint.hpp>
 
 #include "common/BaseException.hpp"
-#include "Debugger.hpp"
+#include "debugger.h"
 #include "types.h"
 #include "hw/sh4/sh4.hpp"
 

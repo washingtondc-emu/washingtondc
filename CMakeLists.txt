@@ -25,6 +25,7 @@ project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 set(CMAKE_CXX_STANDARD 98)
+set(CMAKE_C_STANDARD 11)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
@@ -142,8 +143,8 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
 
 if (ENABLE_DEBUGGER)
     add_definitions(-DENABLE_DEBUGGER)
-    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/Debugger.hpp"
-                                   "${PROJECT_SOURCE_DIR}/src/Debugger.cpp"
+    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/debugger.h"
+                                   "${PROJECT_SOURCE_DIR}/src/debugger.c"
                                    "${PROJECT_SOURCE_DIR}/src/GdbStub.hpp"
                                    "${PROJECT_SOURCE_DIR}/src/GdbStub.cpp")
 endif()

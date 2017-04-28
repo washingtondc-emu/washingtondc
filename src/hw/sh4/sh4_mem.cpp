@@ -30,7 +30,7 @@
 #include "MemoryMap.hpp"
 
 #ifdef ENABLE_DEBUGGER
-#include "Debugger.hpp"
+#include "debugger.h"
 #endif
 
 int sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {

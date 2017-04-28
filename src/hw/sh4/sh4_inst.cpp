@@ -36,7 +36,7 @@
 #include "sh4_excp.h"
 
 #ifdef ENABLE_DEBUGGER
-#include "Debugger.hpp"
+#include "debugger.h"
 #endif
 
 #include "sh4_inst.h"

@@ -29,7 +29,7 @@
 #include "dc_sched.h"
 
 #ifdef ENABLE_DEBUGGER
-#include "Debugger.hpp"
+#include "debugger.h"
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER

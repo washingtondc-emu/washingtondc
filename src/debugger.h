@@ -20,18 +20,20 @@
  *
  ******************************************************************************/
 
-#ifndef DEBUGGER_HPP_
-#define DEBUGGER_HPP_
+#ifndef DEBUGGER_H_
+#define DEBUGGER_H_
 
 #ifndef ENABLE_DEBUGGER
 #error This file should not be included unless the debugger is enabled
 #endif
 
-#include <boost/weak_ptr.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/cstdint.hpp>
+#include <stdbool.h>
 
 #include "types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum debug_state {
     DEBUG_STATE_NORM,
@@ -123,5 +125,9 @@ bool debug_is_r_watch(struct debugger *dbg, addr32_t addr, unsigned len);
 void debug_on_detach(struct debugger *dbg);
 
 bool debug_step(struct debugger *dbg, addr32_t pc);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
