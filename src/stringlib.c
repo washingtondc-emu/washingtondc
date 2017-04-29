@@ -22,15 +22,27 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <assert.h>
 
 #include "error.h"
 
 #include "stringlib.h"
 
+static DEF_ERROR_INT_ATTR(character);
+
+static bool is_hex_digit(char c);
+static unsigned get_hex_val(char c);
+
 void string_init(struct string *str) {
     size_t len;
     
     memset(str, 0, sizeof(*str));
+}
+
+void string_init_txt(struct string *str, char const *txt) {
+    string_init(str);
+    string_set(str, txt);
 }
 
 void string_cleanup(struct string *str) {
@@ -73,6 +85,7 @@ char const *string_get(struct string const *str) {
 
 void string_copy(struct string *dst, struct string const *src) {
     // lazy implementation -_-
+    assert(src != dst);
     string_set(dst, string_get(src));
 }
 
@@ -103,4 +116,198 @@ void string_append_char(struct string *dst, char ch) {
     tmp[1] = '\0';
 
     string_append(dst, tmp);
+}
+
+void string_tok_begin(struct string_curs *curs) {
+    curs->next_idx = 0;
+}
+
+bool string_tok_next(struct string *tok,
+                     struct string_curs *curs,
+                     char const *str,
+                     char const *delim) {
+    size_t pos = curs->next_idx;
+
+    if (!str || !str[curs->next_idx])
+        return false;
+
+    string_set(tok, "");
+
+    while (str[pos]) {
+        char const *delim_p = delim;
+
+        while (*delim_p) {
+            if (*delim_p == str[pos]) {
+                // end of token
+                curs->next_idx = pos + 1;
+                return true;
+            }
+            delim_p++;
+        }
+
+        string_append_char(tok, str[pos]);
+        pos++;
+    }
+
+    // end of string
+    curs->next_idx = pos;
+    return true;
+}
+
+void string_substr(struct string *dst, struct string const *src,
+                   int first_idx, int last_idx) {
+    assert(src != dst);
+
+    int src_len = (int)string_length(src);
+
+    string_set(dst, "");
+
+    if (!src_len)
+        return;
+
+    if (first_idx < 0)
+        first_idx = 0;
+    if (last_idx < 0)
+        return;
+    if (first_idx >= src_len)
+        return;
+    if (last_idx >= src_len)
+        last_idx = src_len - 1;
+
+    char const *src_c_str = string_get(src);
+
+    string_set(dst, "");
+
+    int idx = first_idx;
+    while (idx <= last_idx) {
+        string_append_char(dst, src_c_str[idx]);
+        idx++;
+    }
+}
+
+int string_find_first_of(struct string const *src, char const *delim) {
+    char const *str_beg = string_get(src);
+    char const *str = str_beg;
+
+    while (*str) {
+        char const *delim_cur = delim;
+        while (*delim_cur) {
+            if (*str == *delim_cur)
+                return str - str_beg;
+            delim_cur++;
+        }
+        str++;
+    }
+
+    return -1;
+}
+
+int string_find_last_of(struct string const *src, char const *delim) {
+    char const *str_beg = string_get(src);
+    char const *str_end = str_beg + (strlen(str_beg) - 1);
+    char const *str = str_beg + (strlen(str_beg) - 1);
+
+    if (!strlen(str_beg))
+        return -1;
+
+    do {
+        char const *delim_cur = delim;
+        while (*delim_cur) {
+            if (*str == *delim_cur)
+                return str - str_beg;
+            delim_cur++;
+        }
+    } while (str-- != str_beg);
+
+    return -1;
+}
+
+bool string_eq_n(struct string const *str, char const *cmp, int n_chars) {
+    char const *c_str = string_get(str);
+
+    int idx = 0;
+
+    while ((*c_str && *cmp) && (idx < n_chars)) {
+        if (*c_str != *cmp)
+            return false;
+
+        c_str++;
+        cmp++;
+        idx++;
+    }
+
+    if (idx == n_chars)
+        return true;
+
+    // we got to the end of one or both strings before reaching the nth char
+    return *c_str == *cmp;
+}
+
+void string_append_hex32(struct string *str, uint32_t val) {
+    static const char hex_tbl[16] = {
+        '0', '1', '2', '3',
+        '4', '5', '6', '7',
+        '8', '9', 'a', 'b',
+        'c', 'd', 'e', 'f'
+    };
+
+    unsigned digit;
+    for (digit = 0; digit < 8; digit++) {
+        unsigned shift = 4 * (7 - digit);
+        uint32_t mask = 0xf << shift;
+
+        string_append_char(str, hex_tbl[(mask & val) >> shift]);
+    }
+}
+
+static bool is_hex_digit(char c) {
+    return (c >= 'a' && c <= 'f') ||
+        (c >= 'A' && c <= 'F') ||
+        (c >= '0' && c <= '9');
+}
+
+static unsigned get_hex_val(char c) {
+    if (c >= 'a' && c <= 'f')
+        return (c - 'a') + 10;
+    if (c >= 'A' && c <= 'F')
+        return (c - 'A') + 10;
+    if (c >= '0' && c <= '9')
+        return c - '0';
+
+    error_set_character((int)c);
+    RAISE_ERROR(ERROR_INVALID_PARAM);
+    return 15; // never happens
+}
+
+/*
+ * read a 32-bit hex-int from str starting at start_idx.  This function will stop
+ * reading after it has encountered a non-hex character, after it is reached
+ * the end of the string, or after it has read 8 hex-chars.
+ *
+ * the hex-int is expected to be in big-endian format.  The uint32_t returned
+ * will be in host byte order.
+ *
+ * if str is empty, then this function will return 0.
+ */
+uint32_t string_read_hex32(struct string const *str, int start_idx) {
+    int n_bytes = 0;
+    int idx = start_idx;
+    char const *str_ptr = string_get(str);
+    uint32_t val = 0;
+    char dat[8];
+
+    if (idx >= strlen(str_ptr))
+        return 0;
+
+    /*
+     * is_hex_digit will catch the NULL terminator for us in addtion to any
+     * non-hex characters.
+     */
+    while (n_bytes < 8 && is_hex_digit(*str_ptr))
+        dat[n_bytes++] = get_hex_val(*str_ptr++);
+
+    for (idx = 0; idx < n_bytes; idx++)
+        val = (val << 4) | dat[idx];
+
+    return val;
 }

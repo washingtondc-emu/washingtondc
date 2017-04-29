@@ -20,14 +20,8 @@
  *
  ******************************************************************************/
 
-#include <string>
-#include <sstream>
 #include <iostream>
 #include <iomanip>
-
-#include <boost/bind.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
 
 #include "hw/sh4/sh4.hpp"
 #include "Dreamcast.hpp"
@@ -43,41 +37,56 @@ static void gdb_on_write_watchpoint(addr32_t addr, void *arg);
 static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg);
 static int decode_hex(char ch);
 
-static std::string craft_packet(std::string data_in);
-static std::string gdb_serialize_regs(struct gdb_stub *stub);
-static void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]);
-static std::string serialize_data(void const *buf, unsigned buf_len);
+static void craft_packet(struct string *out, struct string const *in);
+static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out);
+static void deserialize_regs(struct string const *input_str,
+                             reg32_t regs[N_REGS]);
+static void serialize_data(struct string *out, void const *buf,
+                           unsigned buf_len);
+static size_t deserialize_data(struct string const *input_str,
+                               void *out, size_t max_sz);
 static int decode_hex(char ch);
 static void write_start(struct gdb_stub *stub);
-static std::string extract_packet(std::string packet_in);
+static void extract_packet(struct string *out, struct string const *packet_in);
 static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
                    unsigned reg_no, reg32_t reg_val, bool bank);
-static std::string err_str(unsigned err_val);
-static void handle_packet(struct gdb_stub *stub,  std::string pkt);
-static void transmit_pkt(struct gdb_stub *stub, const std::string& pkt);
-static std::string next_packet(struct gdb_stub *stub);
+static void handle_packet(struct gdb_stub *stub, struct string *pkt);
+static void transmit_pkt(struct gdb_stub *stub, struct string const *pkt);
+static bool next_packet(struct gdb_stub *stub, struct string *pkt);
 // static void errror_handler(int error_tp, void *argptr);
 static void expect_mem_access_error(struct gdb_stub *stub, bool should);
 
-static void handle_c_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_q_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_g_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_m_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_M_packet(struct gdb_stub *stub, std::string dat);
-static void handle_s_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_G_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_P_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_D_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_K_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_Z_packet(struct gdb_stub *stub, std::string dat);
-static std::string handle_z_packet(struct gdb_stub *stub, std::string dat);
+static void handle_c_packet(struct gdb_stub *stub, struct string *out,
+                            struct string *dat);
+static void handle_q_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_g_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_m_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_M_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_s_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_G_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_P_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_D_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_K_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_Z_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
+static void handle_z_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat);
 
-static std::string read_mem_4(struct gdb_stub *stub,
-                              addr32_t addr, unsigned len);
-static std::string read_mem_2(struct gdb_stub *stub, addr32_t addr,
-                              unsigned len);
-static std::string read_mem_1(struct gdb_stub *stub, addr32_t addr,
-                              unsigned len);
+static void read_mem_4(struct gdb_stub *stub, struct string *out,
+                       addr32_t addr, unsigned len);
+static void read_mem_2(struct gdb_stub *stub, struct string *out,
+                       addr32_t addr, unsigned len);
+static void read_mem_1(struct gdb_stub *stub, struct string *out,
+                       addr32_t addr, unsigned len);
 
 static void
 listener_cb(struct evconnlistener *listener,
@@ -87,19 +96,22 @@ static void handle_events(struct bufferevent *bev, short events, void *arg);
 static void handle_read(struct bufferevent *bev, void *arg);
 static void handle_write(struct bufferevent *bev, void *arg);
 
-template<class Stream>
-static size_t deserialize_data(Stream& input, void *out, size_t max_sz) {
+static size_t deserialize_data(struct string const *input_str,
+                               void *out, size_t max_sz) {
     uint8_t *out8 = (uint8_t*)out;
     size_t bytes_written = 0;
     char ch;
-    char const eof = std::char_traits<char>::eof();
-    while ((ch = input.get()) != eof) {
+    // char const eof = std::char_traits<char>::eof();
+    char const *input = string_get(input_str);
+
+    while ((ch = *input++)/* && (ch != eof)*/) {
         if (bytes_written >= max_sz)
             return max_sz;
+
         *out8 = uint8_t(decode_hex(ch));
         bytes_written++;
 
-        if ((ch = input.get()) != eof) {
+        if ((ch = *input++)) {
             *out8 <<= 4;
             *out8 |= uint8_t(decode_hex(ch));
         } else {
@@ -176,44 +188,61 @@ extern "C" void gdb_attach(void *argptr) {
 static void gdb_on_break(void *arg) {
     struct gdb_stub *stub = (struct gdb_stub*)arg;
 
-    transmit_pkt(stub, craft_packet(std::string("S05")));
+    struct string resp, pkt;
+    string_init(&pkt);
+    string_init_txt(&resp, "S05");
+
+    craft_packet(&pkt, &resp);
+    transmit_pkt(stub, &pkt);
+
+    string_cleanup(&resp);
+    string_cleanup(&pkt);
 }
 
 static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg) {
-    std::stringstream pkt_txt;
     struct gdb_stub *stub = (struct gdb_stub*)arg;
 
-    if (stub->frontend_supports_swbreak)
-        pkt_txt << "T05swbreak:" << std::hex << addr << ";";
-    else
-        pkt_txt << "S05";
+    struct string resp, pkt;
+    string_init(&pkt);
+    string_init(&resp);
+
+    if (stub->frontend_supports_swbreak) {
+        string_set(&resp, "T05swbreak:");
+        string_append_hex32(&resp, addr);
+        string_append_char(&resp, ';');
+    } else {
+        string_set(&resp, "T05swbreak:");
+    }
 
     stub->dbg->cur_state = DEBUG_STATE_BREAK;
 
-    transmit_pkt(stub, craft_packet(pkt_txt.str()));
+    craft_packet(&pkt, &resp);
+    transmit_pkt(stub, &pkt);
 }
 
 static void gdb_on_read_watchpoint(addr32_t addr, void *arg) {
-    std::stringstream pkt_txt;
     struct gdb_stub *stub = (struct gdb_stub*)arg;
 
-    // pkt_txt << "T05rwatch:" << std::hex << addr << ";";
-    pkt_txt << "S05";
+    struct string resp, pkt;
+    string_init(&pkt);
+    string_init_txt(&resp, "S05");
 
-    transmit_pkt(stub, craft_packet(pkt_txt.str()));
+    craft_packet(&pkt, &resp);
+    transmit_pkt(stub, &pkt);
 }
 
 static void gdb_on_write_watchpoint(addr32_t addr, void *arg) {
-    std::stringstream pkt_txt;
     struct gdb_stub *stub = (struct gdb_stub*)arg;
 
-    // pkt_txt << "T05watch:" << std::hex << addr << ";";
-    pkt_txt << "S05";
+    struct string resp, pkt;
+    string_init(&pkt);
+    string_init_txt(&resp, "S05");
 
-    transmit_pkt(stub, craft_packet(pkt_txt.str()));
+    craft_packet(&pkt, &resp);
+    transmit_pkt(stub, &pkt);
 }
 
-static std::string gdb_serialize_regs(struct gdb_stub *stub) {
+static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
     Sh4 *cpu = dreamcast_get_cpu();
     reg32_t reg_file[SH4_REGISTER_COUNT];
     sh4_get_regs(cpu, reg_file);
@@ -255,15 +284,13 @@ static std::string gdb_serialize_regs(struct gdb_stub *stub) {
     regs[FPUL] = fpu_reg.fpul;
     regs[FPSCR] = fpu_reg.fpscr;
 
-    return serialize_data(regs, sizeof(regs));
+    serialize_data(out, regs, sizeof(regs));
 }
 
-static void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]) {
-    std::stringstream stream(input_str);
+static void deserialize_regs(struct string const *input_str, reg32_t regs[N_REGS]) {
     size_t sz_expect = N_REGS * sizeof(*regs);
 
-    size_t sz_actual = deserialize_data<std::stringstream>(stream, regs,
-                                                           sz_expect);
+    size_t sz_actual = deserialize_data(input_str, regs, sz_expect);
 
     if (sz_expect != sz_actual) {
         // TODO: better error messages
@@ -273,9 +300,9 @@ static void deserialize_regs(std::string input_str, reg32_t regs[N_REGS]) {
     }
 }
 
-static std::string serialize_data(void const *buf, unsigned buf_len) {
+static void serialize_data(struct string *out, void const *buf,
+                           unsigned buf_len) {
     uint8_t const *buf8 = (uint8_t const*)buf;
-    std::stringstream ss;
     static const char hex_tbl[16] = {
         '0', '1', '2', '3',
         '4', '5', '6', '7',
@@ -284,11 +311,10 @@ static std::string serialize_data(void const *buf, unsigned buf_len) {
     };
 
     for (unsigned i = 0; i < buf_len; i++) {
-        ss << hex_tbl[(*buf8) >> 4] << hex_tbl[(*buf8) & 0xf];
+        string_append_char(out, hex_tbl[(*buf8) >> 4]);
+        string_append_char(out, hex_tbl[(*buf8) & 0xf]);
         buf8++;
     }
-
-    return ss.str();
 }
 
 static int decode_hex(char ch)
@@ -302,15 +328,18 @@ static int decode_hex(char ch)
     return -1;
 }
 
-static void transmit(struct gdb_stub *stub, const std::string& data) {
-    for (std::string::const_iterator it = data.begin();
-         it != data.end(); it++) {
-        char tmp = *it;
-        if (evbuffer_add(stub->output_buffer, &tmp, sizeof(tmp)) < 0)
-            RAISE_ERROR(ERROR_FAILED_ALLOC);
-    }
+static void transmit(struct gdb_stub *stub, struct string const *data) {
+    int len = string_length(data);
+    if (len > 0) {
+        char const *data_c_str = string_get(data);
 
-    write_start(stub);
+        if (evbuffer_add(stub->output_buffer, data_c_str,
+                         sizeof(char) * len) < 0) {
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+        }
+
+        write_start(stub);
+    }
 }
 
 static void write_start(struct gdb_stub *stub) {
@@ -323,8 +352,7 @@ static void write_start(struct gdb_stub *stub) {
     bufferevent_write_buffer(stub->bev, stub->output_buffer);
 }
 
-static std::string craft_packet(std::string data_in) {
-    std::stringstream ss;
+static void craft_packet(struct string *out, struct string const *in) {
     uint8_t csum = 0;
     static const char hex_tbl[16] = {
         '0', '1', '2', '3',
@@ -333,19 +361,27 @@ static std::string craft_packet(std::string data_in) {
         'c', 'd', 'e', 'f'
     };
 
+    char const *str_ptr = string_get(in);
+    while (*str_ptr) {
+        csum += (uint8_t)*str_ptr;
+        str_ptr++;
+    }
 
-    for (std::string::iterator it = data_in.begin(); it != data_in.end(); it++)
-        csum += *it;
-
-    ss << "$" << data_in << "#" << hex_tbl[csum >> 4] << hex_tbl[csum & 0xf];
-    return ss.str();
+    string_append(out, "$");
+    string_append(out, string_get(in));
+    string_append(out, "#");
+    string_append_char(out, hex_tbl[csum >> 4]);
+    string_append_char(out, hex_tbl[csum & 0xf]);
 }
 
-static std::string extract_packet(std::string packet_in) {
-    size_t dollar_idx = packet_in.find_first_of('$');
-    size_t pound_idx = packet_in.find_last_of('#');
+static void extract_packet(struct string *out, struct string const *packet_in) {
+    int dollar_idx = string_find_first_of(packet_in, "$");
+    int pound_idx = string_find_last_of(packet_in, "#");
 
-    return packet_in.substr(dollar_idx + 1, pound_idx - dollar_idx - 1);
+    if (dollar_idx < 0 || pound_idx < 0)
+        return;
+
+    string_substr(out, packet_in, dollar_idx + 1, pound_idx - 1);
 }
 
 static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
@@ -402,7 +438,7 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
     return 0;
 }
 
-static std::string err_str(unsigned err_val) {
+static void err_str(struct string *err_out, unsigned err_val) {
     static char const hex_chars[] = {
         '0', '1', '2', '3',
         '4', '5', '6', '7',
@@ -410,93 +446,124 @@ static std::string err_str(unsigned err_val) {
         'c', 'd', 'e', 'f'
     };
 
+    string_append_char(err_out, 'E');
+
     // dont print more than 2 digits
     err_val &= 0xff;
-    std::string err_str = std::string() + hex_chars[err_val >> 4];
+    string_append_char(err_out, hex_chars[err_val >> 4]);
     err_val &= 0x0f;
-    err_str += hex_chars[err_val];
-
-    return "E" + err_str;
+    string_append_char(err_out, hex_chars[err_val]);
 }
 
-static void handle_c_packet(struct gdb_stub *stub, std::string dat) {
+static void handle_c_packet(struct gdb_stub *stub, struct string *out,
+                            struct string *dat) {
     stub->dbg->cur_state = DEBUG_STATE_NORM;
 }
 
-static std::string handle_q_packet(struct gdb_stub *stub, std::string dat) {
-    if (dat.substr(0, 10) == "qSupported") {
-        std::string reply;
-        size_t semicolon_idx = dat.find_first_of(';');
+static void handle_q_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat_orig) {
+    struct string dat, tok;
+    string_init(&dat);
+    string_init(&tok);
+    string_copy(&dat, dat_orig);
 
-        if (semicolon_idx == std::string::npos)
-            return std::string();
+    if (string_eq_n(&dat, "qSupported", 10)) {
+        int semicolon_idx = string_find_first_of(&dat, ";");
 
-        dat = dat.substr(semicolon_idx + 1);
+        if (semicolon_idx == -1)
+            goto cleanup;
 
-        std::vector<std::string> features;
-        boost::algorithm::split(features, dat,
-                                boost::algorithm::is_any_of(";"));
-        for (std::vector<std::string>::iterator it = features.begin();
-             it != features.end(); it++) {
-            std::string feat = *it;
+        struct string tmp;
+        string_init(&tmp);
+        string_substr(&tmp, &dat, semicolon_idx + 1, string_length(&dat) - 1);
+        string_cleanup(&dat);
+        memcpy(&dat, &tmp, sizeof(dat));
+
+        struct string_curs curs;
+        string_tok_begin(&curs);
+        while (string_tok_next(&tok, &curs, string_get(&dat), ";")) {
             bool supported = false;
 
-            size_t plus_or_minus_idx = feat.find_last_of("+-");
+            int plus_or_minus_idx = string_find_last_of(&tok, "+-");
 
             /*
              * ignore all the settings that try to set variables,
              * we're really only here for swbreak.
              */
-
-            if (plus_or_minus_idx != std::string::npos) {
-                if (feat.at(plus_or_minus_idx) == '+')
+            if (plus_or_minus_idx >= 0) {
+                if (string_get(&tok)[plus_or_minus_idx] == '+')
                     supported = true;
-                feat = feat.substr(0, plus_or_minus_idx);
+
+                struct string tmp;
+                string_init(&tmp);
+                string_substr(&tmp, &tok, 0, plus_or_minus_idx - 1);
+                string_cleanup(&tok);
+                memcpy(&tok, &tmp, sizeof(tok));
             }
 
-            if (feat == "swbreak") {
+            if (strcmp(string_get(&tok), "swbreak") == 0) {
                 if (supported) {
                     stub->frontend_supports_swbreak = true;
-                    reply += "swbreak+;";
+                    string_append(out, "swbreak+;");
                 } else {
-                    reply += "swbreak-;";
+                    string_append(out, "swbreak-;");
                 }
             } else {
-                reply += feat + "-;";
+                string_append(out, string_get(&tok));
+                string_append(out, "-;");
             }
         }
 
-        return reply;
+        goto cleanup;
     }
 
-    return std::string();
+cleanup:
+    string_cleanup(&tok);
+    string_cleanup(&dat);
 }
 
-static std::string handle_g_packet(struct gdb_stub *stub, std::string dat) {
-    return gdb_serialize_regs(stub);
+static void handle_g_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
+    gdb_serialize_regs(stub, out);
 }
 
-static std::string handle_m_packet(struct gdb_stub *stub, std::string dat) {
-    size_t addr_idx = dat.find_last_of('m') + 1;
-    size_t comma_idx = dat.find_last_of(',');
-    size_t len_idx = comma_idx + 1;
+static void handle_m_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
+    int addr_idx = string_find_last_of(dat, "m");
+    int comma_idx = string_find_last_of(dat, ",");
+    int len_idx = comma_idx;
 
-    unsigned len;
-    unsigned addr;
-    std::stringstream(dat.substr(addr_idx, comma_idx)) >> std::hex >> addr;
-    std::stringstream(dat.substr(len_idx)) >> std::hex >> len;
+    if (addr_idx < 0 || comma_idx < 0 || len_idx < 0) {
+        err_str(out, EINVAL);
+        return;
+    }
+
+    addr_idx++;
+    len_idx++;
+
+    struct string len_str, addr_str;
+    string_init(&len_str);
+    string_init(&addr_str);
+
+    string_substr(&len_str, dat, len_idx, string_length(dat) - 1);
+    string_substr(&addr_str, dat, addr_idx, comma_idx - 1);
+
+    uint32_t len = string_read_hex32(&len_str, 0);
+    uint32_t addr = string_read_hex32(&addr_str, 0);
+
+    string_cleanup(&addr_str);
+    string_cleanup(&len_str);
 
     if (len % 4 == 0)
-        return read_mem_4(stub, addr, len);
+        return read_mem_4(stub, out, addr, len);
     else if (len % 2 == 0)
-        return read_mem_2(stub, addr, len);
+        return read_mem_2(stub, out, addr, len);
     else
-        return read_mem_1(stub, addr, len);
+        return read_mem_1(stub, out, addr, len);
 }
 
-static std::string read_mem_4(struct gdb_stub *stub,
-                              addr32_t addr, unsigned len) {
-    std::stringstream ss;
+static void read_mem_4(struct gdb_stub *stub, struct string *out,
+                       addr32_t addr, unsigned len) {
     expect_mem_access_error(stub, true);
 
     while (len) {
@@ -507,25 +574,25 @@ static std::string read_mem_4(struct gdb_stub *stub,
             addr += 4;
         } catch (BaseException& exc) {
             expect_mem_access_error(stub, false);
-            return err_str(EINVAL);
+            err_str(out, EINVAL);
+            return;
         }
 
         if (stub->mem_access_error) {
             expect_mem_access_error(stub, false);
-            return err_str(EINVAL);
+            err_str(out, EINVAL);
+            return;
         }
 
-        ss << serialize_data(&val, sizeof(val));
+        serialize_data(out, &val, sizeof(val));
         len -= 4;
     }
 
     expect_mem_access_error(stub, false);
-    return ss.str();
 }
 
-static std::string read_mem_2(struct gdb_stub *stub, addr32_t addr,
-                              unsigned len) {
-    std::stringstream ss;
+static void read_mem_2(struct gdb_stub *stub, struct string *out,
+                       addr32_t addr, unsigned len) {
     expect_mem_access_error(stub, true);
 
     while (len) {
@@ -536,25 +603,25 @@ static std::string read_mem_2(struct gdb_stub *stub, addr32_t addr,
             addr += 2;
         } catch (BaseException& exc) {
             expect_mem_access_error(stub, false);
-            return err_str(EINVAL);
+            err_str(out, EINVAL);
+            return;
         }
 
         if (stub->mem_access_error) {
             expect_mem_access_error(stub, false);
-            return err_str(EINVAL);
+            err_str(out, EINVAL);
+            return;
         }
 
-        ss << serialize_data(&val, sizeof(val));
+        serialize_data(out, &val, sizeof(val));
         len -= 2;
     }
 
     expect_mem_access_error(stub, false);
-    return ss.str();
 }
 
-static std::string read_mem_1(struct gdb_stub *stub, addr32_t addr,
-                              unsigned len) {
-    std::stringstream ss;
+static void read_mem_1(struct gdb_stub *stub, struct string *out,
+                       addr32_t addr, unsigned len) {
     expect_mem_access_error(stub, true);
 
     while (len--) {
@@ -565,82 +632,109 @@ static std::string read_mem_1(struct gdb_stub *stub, addr32_t addr,
             addr++;
         } catch (BaseException& exc) {
             expect_mem_access_error(stub, false);
-            return err_str(EINVAL);
+            err_str(out, EINVAL);
+            return;
         }
 
         if (stub->mem_access_error) {
             expect_mem_access_error(stub, false);
-            return err_str(EINVAL);
+            err_str(out, EINVAL);
+            return;
         }
 
-        ss << serialize_data(&val, sizeof(val));
+        serialize_data(out, &val, sizeof(val));
     }
 
     expect_mem_access_error(stub, false);
-    return ss.str();
 }
 
 /*
  * TODO: bounds checking (not that I expect there to be any hackers going in
  * through the debugger of all places)
  */
-static std::string handle_M_packet(struct gdb_stub *stub, std::string dat) {
-    size_t addr_idx = dat.find_last_of('M') + 1;
-    size_t comma_idx = dat.find_last_of(',');
-    size_t colon_idx = dat.find_last_of(':');
-    size_t len_idx = comma_idx + 1;
-    size_t dat_idx = colon_idx + 1;
+static void handle_M_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
+    int addr_idx = string_find_last_of(dat, "M");
+    int comma_idx = string_find_last_of(dat, ",");
+    int colon_idx = string_find_last_of(dat, ":");
 
-    std::string addr_substr = dat.substr(addr_idx, comma_idx - addr_idx);
-    std::string len_substr = dat.substr(len_idx, colon_idx - len_idx);
+    if (addr_idx < 0 || comma_idx < 0 || colon_idx < 0) {
+        err_str(out, EINVAL);
+        return;
+    }
 
-    unsigned addr;
-    unsigned len;
+    int len_idx = comma_idx + 1;
+    int dat_idx = colon_idx + 1;
+    addr_idx++;
 
-    std::stringstream(addr_substr) >> std::hex >> addr;
-    std::stringstream(len_substr) >> std::hex >> len;
+    struct string addr_substr;
+    struct string len_substr;
+    string_init(&addr_substr);
+    string_init(&len_substr);
+    string_substr(&addr_substr, dat, addr_idx, comma_idx - 1);
+    string_substr(&len_substr, dat, len_idx, colon_idx - 1);
+
+    uint32_t addr = string_read_hex32(&addr_substr, 0);
+    uint32_t len = string_read_hex32(&len_substr, 0);
+
+    string_cleanup(&addr_substr);
+    string_cleanup(&len_substr);
 
     try {
-        std::stringstream ss(dat.substr(dat_idx));
+        struct string new_dat;
+        string_init(&new_dat);
+        string_substr(&new_dat, dat, dat_idx, string_length(dat) - 1);
         if (len < 1024) {
             uint8_t *buf = new uint8_t[len];
             try {
                 expect_mem_access_error(stub, true);
-                deserialize_data(ss, buf, len);
+                deserialize_data(&new_dat, buf, len);
                 sh4_write_mem(dreamcast_get_cpu(), buf, addr, len);
 
                 if (stub->mem_access_error) {
                     expect_mem_access_error(stub, false);
-                    return err_str(EINVAL);
+                    err_str(out, EINVAL);
+                    string_cleanup(&new_dat);
+                    return;
                 }
 
             } catch (BaseException& exc) {
                 expect_mem_access_error(stub, false);
+                string_cleanup(&new_dat);
                 delete[] buf;
                 throw;
             }
             delete[] buf;
         } else {
+            error_set_length(len);
             RAISE_ERROR(ERROR_INVALID_PARAM);
         }
+        string_cleanup(&new_dat);
     } catch (BaseException& exc) {
         expect_mem_access_error(stub, false);
         std::cerr << boost::diagnostic_information(exc);
-        return err_str(EINVAL);
+        err_str(out, EINVAL);
+        return;
     }
 
     expect_mem_access_error(stub, false);
-    return "OK";
+    string_set(out, "OK");
 }
 
-static void handle_s_packet(struct gdb_stub *stub, std::string dat) {
+static void handle_s_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
     stub->dbg->cur_state = DEBUG_STATE_PRE_STEP;
 }
 
-static std::string handle_G_packet(struct gdb_stub *stub, std::string dat) {
+static void handle_G_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
     reg32_t regs[N_REGS];
 
-    deserialize_regs(dat.substr(1), regs);
+    struct string tmp;
+    string_init(&tmp);
+    string_substr(&tmp, dat, 1, string_length(dat) - 1);
+    deserialize_regs(&tmp, regs);
+    string_cleanup(&tmp);
 
     reg32_t new_regs[SH4_REGISTER_COUNT];
     sh4_get_regs(dreamcast_get_cpu(), new_regs);
@@ -649,369 +743,471 @@ static std::string handle_G_packet(struct gdb_stub *stub, std::string dat) {
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
         set_reg(new_regs, &new_fpu, reg_no, regs[reg_no], bank);
-    return "OK";
+
+    string_set(out, "OK");
 }
 
-static std::string handle_P_packet(struct gdb_stub *stub, std::string dat) {
-    size_t equals_idx = dat.find_first_of('=');
+static void handle_P_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
+    Sh4 *cpu;
+    reg32_t regs[SH4_REGISTER_COUNT];
+    Sh4::FpuReg fpu;
+    int equals_idx = string_find_first_of(dat, "=");
 
-    if (equals_idx >= dat.size() - 1) {
+    if ((equals_idx < 0) || ((size_t)equals_idx >= (string_length(dat) - 1))) {
 #ifdef GDBSTUB_VERBOSE
         std::cout << "WARNING: malformed P packet in gdbstub \"" << dat <<
             "\"" << std::endl;
 #endif
 
-        return "E16";
+        string_set(out, "E16");
+        return;
     }
 
-    std::string reg_no_str = dat.substr(1, equals_idx - 1);
-    std::string reg_val_str = dat.substr(equals_idx + 1);
+    struct string reg_no_str, reg_val_str;
+    string_init(&reg_no_str);
+    string_init(&reg_val_str);
+
+    string_substr(&reg_no_str, dat, 1, equals_idx - 1);
+    string_substr(&reg_val_str, dat, equals_idx + 1, string_length(dat) - 1);
 
     unsigned reg_no = 0;
     reg32_t reg_val = 0;
-    std::stringstream reg_no_stream(reg_no_str);
-    std::stringstream reg_val_stream(reg_val_str);
-    deserialize_data<std::stringstream>(reg_no_stream, &reg_no, sizeof(reg_no));
-    deserialize_data<std::stringstream>(reg_val_stream, &reg_val,
-                                        sizeof(reg_val));
+    deserialize_data(&reg_no_str, &reg_no, sizeof(reg_no));
+    deserialize_data(&reg_val_str, &reg_val, sizeof(reg_val));
 
     if (reg_no >= N_REGS) {
 #ifdef GDBSTUB_VERBOSE
         std::cout << "ERROR: unable to write to register number " <<
             std::hex << reg_no << std::endl;
 #endif
-        return "E16";
+        string_set(out, "E16");
+        goto cleanup;
     }
 
-    Sh4 *cpu = dreamcast_get_cpu();
-    reg32_t regs[SH4_REGISTER_COUNT];
+    cpu = dreamcast_get_cpu();
     sh4_get_regs(cpu, regs);
-    Sh4::FpuReg fpu = sh4_get_fpu(cpu);
+    fpu = sh4_get_fpu(cpu);
     set_reg(regs, &fpu, reg_no, reg_val,
             bool(regs[SH4_REG_SR] & SH4_SR_RB_MASK));
     sh4_set_regs(cpu, regs);
 
-    return "OK";
+    string_set(out, "OK");
+
+cleanup:
+    string_cleanup(&reg_val_str);
+    string_cleanup(&reg_no_str);
 }
 
-static std::string handle_D_packet(struct gdb_stub *stub, std::string dat) {
+static void handle_D_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
     stub->dbg->cur_state = DEBUG_STATE_NORM;
 
     debug_on_detach(stub->dbg);
 
-    return "OK";
+    string_set(out, "OK");
 }
 
-static std::string handle_K_packet(struct gdb_stub *stub, std::string dat) {
+static void handle_K_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
     dreamcast_kill();
 
-    return "OK";
+    string_set(out, "OK");
 }
 
-static std::string handle_Z_packet(struct gdb_stub *stub, std::string dat) {
-    if (dat.at(1) == '1') {
+static void handle_Z_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
+    char const *dat_c_str = string_get(dat);
+    struct string dat_local;
+    string_init(&dat_local);
+    string_copy(&dat_local, dat);
+
+    if (dat_c_str[1] == '1') {
         //hardware breakpoint
 
-        if (dat.find_first_of(';') != std::string::npos)
-            return std::string(); // we don't support conditions
+        if (string_find_first_of(&dat_local, ":") >= 0)
+            goto cleanup; // we don't support conditions
 
-        size_t first_comma_idx = dat.find_first_of(',');
-        if ((first_comma_idx == std::string::npos) ||
-            (first_comma_idx == dat.size() - 1)) {
-            return std::string(); // something is wrong and/or unexpected
+        int first_comma_idx = string_find_first_of(&dat_local, ",");
+        if ((first_comma_idx < 0) ||
+            (first_comma_idx == (int)string_length(&dat_local) - 1)) {
+            goto cleanup; // something is wrong and/or unexpected
         }
 
-        size_t last_comma_idx = dat.find_last_of(',');
-        if (last_comma_idx == std::string::npos)
-            return std::string(); // something is wrong and/or unexpected
+        int last_comma_idx = string_find_last_of(&dat_local, ",");
+        if (last_comma_idx < 0)
+            goto cleanup; // something is wrong and/or unexpected
 
-        dat = dat.substr(first_comma_idx + 1, last_comma_idx - first_comma_idx);
+        struct string tmp_str;
+        string_init(&tmp_str);
+        string_substr(&tmp_str, &dat_local,
+                      first_comma_idx + 1, last_comma_idx - 1);
+        string_cleanup(&dat_local);
+        memcpy(&dat_local, &tmp_str, sizeof(dat_local));
 
-        addr32_t break_addr;
-        std::stringstream(dat) >> std::hex >> break_addr;
+        addr32_t break_addr = string_read_hex32(&dat_local, 0);
 
         int err_code = debug_add_break(stub->dbg, break_addr);
 
         if (err_code == 0)
-            return std::string("OK");
+            string_set(out, "OK");
+        else
+            err_str(out, err_code);
 
-        return err_str(err_code);
-    } else if (dat.at(1) == '2') {
+        goto cleanup;
+    } else if (dat_c_str[1] == '2') {
         // write watchpoint
 
-        if (dat.find_first_of(';') != std::string::npos)
-            return std::string(); // we don't support conditions
+        if (string_find_first_of(&dat_local, ":") >= 0)
+            goto cleanup; // we don't support conditions
 
-        size_t first_comma_idx = dat.find_first_of(',');
-        if ((first_comma_idx == std::string::npos) ||
-            (first_comma_idx == dat.size() - 1)) {
-            return std::string(); // something is wrong and/or unexpected
+        int first_comma_idx = string_find_first_of(&dat_local, ",");
+        if ((first_comma_idx < 0) ||
+            (first_comma_idx == (int)string_length(&dat_local) - 1)) {
+            goto cleanup; // something is wrong and/or unexpected
         }
 
-        size_t last_comma_idx = dat.find_last_of(',');
-        if (last_comma_idx == std::string::npos)
-            return std::string(); // something is wrong and/or unexpected
+        int last_comma_idx = string_find_last_of(&dat_local, ",");
+        if (last_comma_idx < 0)
+            goto cleanup; // something is wrong and/or unexpected
 
-        size_t last_hash_idx = dat.find_last_of('#');
-        std::string len_str = dat.substr(last_comma_idx + 1,
-                                         last_hash_idx - last_comma_idx);
-        std::string addr_str = dat.substr(first_comma_idx + 1,
-                                          last_comma_idx - first_comma_idx);
+        struct string len_str, addr_str;
+        string_init(&len_str);
+        string_init(&addr_str);
 
-        unsigned length;
-        addr32_t watch_addr;
-        std::stringstream(addr_str) >> std::hex >> watch_addr;
-        std::stringstream(len_str) >> std::hex >> length;
+        string_substr(&len_str, &dat_local, last_comma_idx + 1,
+                      string_length(&dat_local) - 1);
+        string_substr(&addr_str, &dat_local,
+                      first_comma_idx + 1, last_comma_idx - 1);
+
+        uint32_t length = string_read_hex32(&len_str, 0);
+        addr32_t watch_addr = string_read_hex32(&addr_str, 0);;
+
+        string_cleanup(&addr_str);
+        string_cleanup(&len_str);
 
         int err_code = debug_add_w_watch(stub->dbg, watch_addr, length);
 
         if (err_code == 0)
-            return std::string("OK");
+            string_set(out, "OK");
+        else
+            err_str(out, err_code);
 
-        return err_str(err_code);
-    } else if (dat.at(1) == '3') {
+        goto cleanup;
+    } else if (dat_c_str[1] == '3') {
         // read watchpoint
 
-        if (dat.find_first_of(';') != std::string::npos)
-            return std::string(); // we don't support conditions
+        if (string_find_first_of(&dat_local, ":") >= 0)
+            goto cleanup; // we don't support conditions
 
-        size_t first_comma_idx = dat.find_first_of(',');
-        if ((first_comma_idx == std::string::npos) ||
-            (first_comma_idx == dat.size() - 1)) {
-            return std::string(); // something is wrong and/or unexpected
+        int first_comma_idx = string_find_first_of(&dat_local, ",");
+        if ((first_comma_idx < 0) ||
+            (first_comma_idx == (int)string_length(&dat_local) - 1)) {
+            goto cleanup; // something is wrong and/or unexpected
         }
 
-        size_t last_comma_idx = dat.find_last_of(',');
-        if (last_comma_idx == std::string::npos)
-            return std::string(); // something is wrong and/or unexpected
+        int last_comma_idx = string_find_last_of(&dat_local, ",");
+        if (last_comma_idx < 0)
+            goto cleanup; // something is wrong and/or unexpected
 
-        size_t last_hash_idx = dat.find_last_of('#');
-        std::string len_str = dat.substr(last_comma_idx + 1,
-                                         last_hash_idx - last_comma_idx);
-        std::string addr_str = dat.substr(first_comma_idx + 1,
-                                          last_comma_idx - first_comma_idx);
+        struct string len_str, addr_str;
+        string_init(&len_str);
+        string_init(&addr_str);
 
-        unsigned length;
-        addr32_t watch_addr;
-        std::stringstream(addr_str) >> std::hex >> watch_addr;
-        std::stringstream(len_str) >> std::hex >> length;
+        string_substr(&len_str, &dat_local,
+                      last_comma_idx + 1, string_length(&dat_local) - 1);
+        string_substr(&addr_str, &dat_local,
+                      first_comma_idx + 1, last_comma_idx - 1);
+
+        uint32_t length = string_read_hex32(&len_str, 0);
+        addr32_t watch_addr = string_read_hex32(&addr_str, 0);;
+
+        string_cleanup(&addr_str);
+        string_cleanup(&len_str);
 
         int err_code = debug_add_r_watch(stub->dbg, watch_addr, length);
 
         if (err_code == 0)
-            return std::string("OK");
+            string_set(out, "OK");
+        else
+            err_str(out, err_code);
 
-        return err_str(err_code);
+        goto cleanup;
     } else {
         // unsupported
-        return std::string();
+        goto cleanup;
     }
+
+cleanup:
+    string_cleanup(&dat_local);
 }
 
-static std::string handle_z_packet(struct gdb_stub *stub, std::string dat) {
-    if (dat.at(1) == '1') {
+static void handle_z_packet(struct gdb_stub *stub, struct string *out,
+                            struct string const *dat) {
+    char const *dat_c_str = string_get(dat);
+    struct string dat_local;
+    string_init(&dat_local);
+    string_copy(&dat_local, dat);
+
+    if (dat_c_str[1] == '1') {
         //hardware breakpoint
 
-        if (dat.find_first_of(';') != std::string::npos)
-            return std::string(); // we don't support conditions
+        if (string_find_first_of(&dat_local, ":") >= 0)
+            goto cleanup; // we don't support conditions
 
-        size_t first_comma_idx = dat.find_first_of(',');
-        if (first_comma_idx == std::string::npos)
-            return std::string(); // something is wrong and/or unexpected
+        int first_comma_idx = string_find_first_of(&dat_local, ",");
+        if ((first_comma_idx < 0) ||
+            (first_comma_idx == (int)string_length(&dat_local) - 1)) {
+            goto cleanup; // something is wrong and/or unexpected
+        }
 
-        size_t last_comma_idx = dat.find_last_of(',');
-        if (last_comma_idx == std::string::npos)
-            return std::string(); // something is wrong and/or unexpected
+        int last_comma_idx = string_find_last_of(&dat_local, ",");
+        if (last_comma_idx < 0)
+            goto cleanup; // something is wrong and/or unexpected
 
-        dat = dat.substr(first_comma_idx + 1, last_comma_idx - first_comma_idx);
+        struct string tmp_str;
+        string_init(&tmp_str);
+        string_substr(&tmp_str, &dat_local,
+                      first_comma_idx + 1, last_comma_idx - 1);
+        string_cleanup(&dat_local);
+        memcpy(&dat_local, &tmp_str, sizeof(dat_local));
 
-        addr32_t break_addr;
-        std::stringstream(dat) >> std::hex >> break_addr;
+        addr32_t break_addr = string_read_hex32(&dat_local, 0);
 
         int err_code = debug_remove_break(stub->dbg, break_addr);
 
         if (err_code == 0)
-            return "OK";
+            string_set(out, "OK");
+        else
+            err_str(out, err_code);
 
-        return err_str(err_code);
-    } else if (dat.at(1) == '2') {
+        goto cleanup;
+    } else if (dat_c_str[1] == '2') {
         // write watchpoint
 
-        if (dat.find_first_of(';') != std::string::npos)
-            return std::string(); // we don't support conditions
+        if (string_find_first_of(&dat_local, ":") >= 0)
+            goto cleanup; // we don't support conditions
 
-        size_t first_comma_idx = dat.find_first_of(',');
-        if ((first_comma_idx == std::string::npos) ||
-            (first_comma_idx == dat.size() - 1)) {
-            return std::string(); // something is wrong and/or unexpected
+        int first_comma_idx = string_find_first_of(&dat_local, ",");
+        if ((first_comma_idx < 0) ||
+            (first_comma_idx == (int)string_length(&dat_local) - 1)) {
+            goto cleanup; // something is wrong and/or unexpected
         }
 
-        size_t last_comma_idx = dat.find_last_of(',');
-        if (last_comma_idx == std::string::npos)
-            return std::string(); // something is wrong and/or unexpected
+        int last_comma_idx = string_find_last_of(&dat_local, ",");
+        if (last_comma_idx < 0)
+            goto cleanup; // something is wrong and/or unexpected
 
-        size_t last_hash_idx = dat.find_last_of('#');
-        std::string len_str = dat.substr(last_comma_idx + 1,
-                                         last_hash_idx - last_comma_idx);
-        std::string addr_str = dat.substr(first_comma_idx + 1,
-                                          last_comma_idx - first_comma_idx);
+        struct string len_str, addr_str;
+        string_init(&len_str);
+        string_init(&addr_str);
 
-        unsigned length;
-        addr32_t watch_addr;
-        std::stringstream(addr_str) >> std::hex >> watch_addr;
-        std::stringstream(len_str) >> std::hex >> length;
+        string_substr(&len_str, &dat_local, last_comma_idx + 1,
+                      string_length(&dat_local) - 1);
+        string_substr(&addr_str, &dat_local, first_comma_idx + 1, last_comma_idx - 1);
+
+        uint32_t length = string_read_hex32(&len_str, 0);
+        addr32_t watch_addr = string_read_hex32(&addr_str, 0);;
+
+        string_cleanup(&addr_str);
+        string_cleanup(&len_str);
 
         int err_code = debug_remove_w_watch(stub->dbg, watch_addr, length);
 
         if (err_code == 0)
-            return std::string("OK");
+            string_set(out, "OK");
+        else
+            err_str(out, err_code);
 
-        return err_str(err_code);
-    } else if (dat.at(1) == '3') {
+        goto cleanup;
+    } else if (dat_c_str[1] == '3') {
         // read watchpoint
 
-        if (dat.find_first_of(';') != std::string::npos)
-            return std::string(); // we don't support conditions
+        if (string_find_first_of(&dat_local, ":") >= 0)
+            goto cleanup; // we don't support conditions
 
-        size_t first_comma_idx = dat.find_first_of(',');
-        if ((first_comma_idx == std::string::npos) ||
-            (first_comma_idx == dat.size() - 1)) {
-            return std::string(); // something is wrong and/or unexpected
+        int first_comma_idx = string_find_first_of(&dat_local, ",");
+        if ((first_comma_idx < 0) ||
+            (first_comma_idx == (int)string_length(&dat_local) - 1)) {
+            goto cleanup; // something is wrong and/or unexpected
         }
 
-        size_t last_comma_idx = dat.find_last_of(',');
-        if (last_comma_idx == std::string::npos)
-            return std::string(); // something is wrong and/or unexpected
+        int last_comma_idx = string_find_last_of(&dat_local, ",");
+        if (last_comma_idx < 0)
+            goto cleanup; // something is wrong and/or unexpected
 
-        size_t last_hash_idx = dat.find_last_of('#');
-        std::string len_str = dat.substr(last_comma_idx + 1,
-                                         last_hash_idx - last_comma_idx);
-        std::string addr_str = dat.substr(first_comma_idx + 1,
-                                          last_comma_idx - first_comma_idx);
+        struct string len_str, addr_str;
+        string_init(&len_str);
+        string_init(&addr_str);
 
-        unsigned length;
-        addr32_t watch_addr;
-        std::stringstream(addr_str) >> std::hex >> watch_addr;
-        std::stringstream(len_str) >> std::hex >> length;
+        string_substr(&len_str, &dat_local, last_comma_idx + 1,
+                      string_length(&dat_local) - 1);
+        string_substr(&addr_str, &dat_local,
+                      first_comma_idx + 1, last_comma_idx - 1);
+
+        uint32_t length = string_read_hex32(&len_str, 0);
+        addr32_t watch_addr = string_read_hex32(&addr_str, 0);;
+
+        string_cleanup(&addr_str);
+        string_cleanup(&len_str);
 
         int err_code = debug_remove_r_watch(stub->dbg, watch_addr, length);
 
         if (err_code == 0)
-            return std::string("OK");
+            string_set(out, "OK");
+        else
+            err_str(out, err_code);
 
-        return err_str(err_code);
+        goto cleanup;
     } else {
         // unsupported
-        return std::string();
+        goto cleanup;
     }
+
+cleanup:
+    string_cleanup(&dat_local);
 }
 
-static void handle_packet(struct gdb_stub *stub,  std::string pkt) {
-    std::string response;
-    std::string dat = extract_packet(pkt);
+static void handle_packet(struct gdb_stub *stub,  struct string *pkt) {
+    struct string dat;
+    struct string response;
+    struct string resp_pkt;
 
-    response = craft_packet(std::string());
+    string_init(&dat);
+    string_init(&response);
+    string_init(&resp_pkt);
 
-    if (dat.size()) {
-        if (dat.at(0) == 'q') {
-            response = craft_packet(handle_q_packet(stub, dat));
-        } else if (dat.at(0) == 'g') {
-            response = craft_packet(handle_g_packet(stub, dat));
-        } else if (dat.at(0) == 'G') {
-            response = craft_packet(handle_G_packet(stub, dat));
-        } else if (dat.at(0) == 'm') {
-            response = craft_packet(handle_m_packet(stub, dat));
-        } else if (dat.at(0) == 'M') {
-            response = craft_packet(handle_M_packet(stub, dat));
-        } else if (dat.at(0) == '?') {
-            response = craft_packet(std::string("S05 create:"));
-        } else if (dat.at(0) == 's') {
-            handle_s_packet(stub, dat);
-            return;
-        } else if (dat.at(0) == 'c') {
-            handle_c_packet(stub, dat);
-            return;
-        } else if (dat.at(0) == 'P') {
-            response = craft_packet(handle_P_packet(stub, dat));
-        } else if (dat.at(0) == 'D') {
-            response = craft_packet(handle_D_packet(stub, dat));
-        } else if (dat.at(0) == 'k') {
-            response = craft_packet(handle_K_packet(stub, dat));
-        } else if (dat.at(0) == 'z') {
-            response = craft_packet(handle_z_packet(stub, dat));
-        } else if (dat.at(0) == 'Z') {
-            response = craft_packet(handle_Z_packet(stub, dat));
+    extract_packet(&dat, pkt);
+
+    if (string_length(&dat)) {
+        char first_ch = string_get(&dat)[0];
+        if (first_ch == 'q') {
+            handle_q_packet(stub, &response, &dat);
+        } else if (first_ch == 'g') {
+            handle_g_packet(stub, &response, &dat);
+        } else if (first_ch == 'G') {
+            handle_G_packet(stub, &response, &dat);
+        } else if (first_ch == 'm') {
+            handle_m_packet(stub, &response, &dat);
+        } else if (first_ch == 'M') {
+            handle_M_packet(stub, &response, &dat);
+        } else if (first_ch == '?') {
+            string_set(&response, "S05 create:");
+        } else if (first_ch == 's') {
+            handle_s_packet(stub, &response, &dat);
+            goto cleanup;
+        } else if (first_ch == 'c') {
+            handle_c_packet(stub, &response, &dat);
+            goto cleanup;
+        } else if (first_ch == 'P') {
+            handle_P_packet(stub, &response, &dat);
+        } else if (first_ch == 'D') {
+            handle_D_packet(stub, &response, &dat);
+        } else if (first_ch == 'k') {
+            handle_K_packet(stub, &response, &dat);
+        } else if (first_ch == 'z') {
+            handle_z_packet(stub, &response, &dat);
+        } else if (first_ch == 'Z') {
+            handle_Z_packet(stub, &response, &dat);
         }
     }
 
-    transmit_pkt(stub, response);
+    craft_packet(&resp_pkt, &response);
+    transmit_pkt(stub, &resp_pkt);
+
+cleanup:
+    string_cleanup(&resp_pkt);
+    string_cleanup(&response);
+    string_cleanup(&dat);
 }
 
-static void transmit_pkt(struct gdb_stub *stub, const std::string& pkt) {
+static void transmit_pkt(struct gdb_stub *stub, struct string const *pkt) {
 #ifdef GDBSTUB_VERBOSE
-    std::cout << ">>>> " << pkt << std::endl;
+    std::cout << ">>>> " << string_get(pkt) << std::endl;
 #endif
 
-    string_set(&stub->unack_packet, pkt.c_str());
+    string_copy(&stub->unack_packet, pkt);
     transmit(stub, pkt);
 }
 
-static std::string next_packet(struct gdb_stub *stub) {
-    std::string pkt;
-    std::string pktbuf_tmp(string_get(&stub->input_packet));
+static bool next_packet(struct gdb_stub *stub, struct string *pkt) {
+    struct string pktbuf_tmp;
+    struct string tmp_str;
     char ch;
+    bool found_pkt = false;
+
+    string_init(&pktbuf_tmp);
+    string_copy(&pktbuf_tmp, &stub->input_packet);
 
     // wait around for the start character, ignore all other characters
     do {
-        if (!pktbuf_tmp.size())
-            return std::string();
+        if (!string_length(&pktbuf_tmp))
+            goto cleanup;
 
-        ch = pktbuf_tmp.at(0);
-        pktbuf_tmp = pktbuf_tmp.substr(1);
+        ch = string_get(&pktbuf_tmp)[0];
+
+        string_init(&tmp_str);
+        string_substr(&tmp_str, &pktbuf_tmp, 1, string_length(&pktbuf_tmp) - 1);
+        string_cleanup(&pktbuf_tmp);
+        memcpy(&pktbuf_tmp, &tmp_str, sizeof(pktbuf_tmp));
 
         if (ch == std::char_traits<char>::eof())
-            return std::string();
+            goto cleanup;
     } while(ch != '$');
-    pkt += ch;
+    string_append_char(pkt, ch);
 
     // now, read until a # or end of buffer is found
     do {
-        if (!pktbuf_tmp.size())
-            return std::string();
+        if (!string_length(&pktbuf_tmp))
+            goto cleanup;
 
-        ch = pktbuf_tmp.at(0);
-        pktbuf_tmp = pktbuf_tmp.substr(1);
+        ch = string_get(&pktbuf_tmp)[0];
+
+        string_init(&tmp_str);
+        string_substr(&tmp_str, &pktbuf_tmp, 1, string_length(&pktbuf_tmp) - 1);
+        string_cleanup(&pktbuf_tmp);
+        memcpy(&pktbuf_tmp, &tmp_str, sizeof(pktbuf_tmp));
 
         if (ch == std::char_traits<char>::eof())
-            return std::string();
+            goto cleanup;
 
-        pkt += ch;
+        string_append_char(pkt, ch);
     } while(ch != '#');
         
     // read the one-byte (two char) checksum
-    if (!pktbuf_tmp.size())
-        return std::string();
-    ch = pktbuf_tmp.at(0);
+    if (!string_length(&pktbuf_tmp))
+            goto cleanup;
+    ch = string_get(&pktbuf_tmp)[0];
     if (ch == std::char_traits<char>::eof())
-        return std::string();
-    pktbuf_tmp = pktbuf_tmp.substr(1);
-    pkt += ch;
+            goto cleanup;
+    string_init(&tmp_str);
+    string_substr(&tmp_str, &pktbuf_tmp, 1, string_length(&pktbuf_tmp) - 1);
+    string_cleanup(&pktbuf_tmp);
+    memcpy(&pktbuf_tmp, &tmp_str, sizeof(pktbuf_tmp));
+    string_append_char(pkt, ch);
 
-    if (!pktbuf_tmp.size())
-        return std::string();
-    ch = pktbuf_tmp.at(0);
+    if (!string_length(&pktbuf_tmp))
+            goto cleanup;
+    ch = string_get(&pktbuf_tmp)[0];
     if (ch == std::char_traits<char>::eof())
-        return std::string();
-    pktbuf_tmp = pktbuf_tmp.substr(1);
-    pkt += ch;
+            goto cleanup;
+    string_init(&tmp_str);
+    string_substr(&tmp_str, &pktbuf_tmp, 1, string_length(&pktbuf_tmp) - 1);
+    string_cleanup(&pktbuf_tmp);
+    memcpy(&pktbuf_tmp, &tmp_str, sizeof(pktbuf_tmp));
+    string_append_char(pkt, ch);
 
-    string_set(&stub->input_packet, pktbuf_tmp.c_str());
+    string_set(&stub->input_packet, string_get(&pktbuf_tmp));
 
 #ifdef GDBSTUB_VERBOSE
-    std::cout << "<<<< " << pkt << std::endl;
+    std::cout << "<<<< " << string_get(pkt) << std::endl;
 #endif
 
-    return pkt;
+    found_pkt = true;
+
+cleanup:
+    string_cleanup(&pktbuf_tmp);
+    return found_pkt;
 }
 
 // static void errror_handler(int error_tp, void *argptr) {
@@ -1076,8 +1272,10 @@ static void handle_read(struct bufferevent *bev, void *arg) {
         if (string_length(&stub->input_packet)) {
             string_append_char(&stub->input_packet, c);
 
-            std::string pkt = next_packet(stub);
-            if (pkt.size()) {
+            struct string pkt;
+            string_init(&pkt);
+            bool pkt_valid = next_packet(stub, &pkt);
+            if (string_length(&pkt) && pkt_valid) {
                 string_set(&stub->input_packet, "");
 
                 // TODO: verify the checksum
@@ -1085,9 +1283,14 @@ static void handle_read(struct bufferevent *bev, void *arg) {
 #ifdef GDBSTUB_VERBOSE
                 std::cout << ">>>> +" << std::endl;
 #endif
-                transmit(stub, std::string("+"));
-                handle_packet(stub, pkt);
+                struct string plus_symbol;
+                string_init_txt(&plus_symbol, "+");
+                transmit(stub, &plus_symbol);
+                string_cleanup(&plus_symbol);
+                handle_packet(stub, &pkt);
             }
+
+            string_cleanup(&pkt);
         } else {
             if (c == '+') {
 #ifdef GDBSTUB_VERBOSE
@@ -1108,7 +1311,7 @@ static void handle_read(struct bufferevent *bev, void *arg) {
 #ifdef GDBSTUB_VERBOSE
                     std::cout << ">>>>" << string_get(&stub->unack_packet) << std::endl;
 #endif
-                    transmit(stub, std::string(string_get(&stub->unack_packet)));
+                    transmit(stub, &stub->unack_packet);
                 }
             } else if (c == '$') {
                 // new packet
