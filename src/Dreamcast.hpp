@@ -33,7 +33,7 @@
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
-#include "SerialServer.hpp"
+#include "serial_server.h"
 #endif
 
 void dreamcast_init(char const *bios_path, char const *flash_path = NULL);

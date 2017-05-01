@@ -26,7 +26,7 @@
 
 #include "Dreamcast.hpp"
 
-#include "SerialServer.hpp"
+#include "serial_server.h"
 
 #ifndef ENABLE_SERIAL_SERVER
 #error This file should not be built unless the serial server is enabled
@@ -42,6 +42,7 @@ static void handle_events(struct bufferevent *bev, short events, void *arg);
 static void handle_read(struct bufferevent *bev, void *arg);
 static void handle_write(struct bufferevent *bev, void *arg);
 
+extern "C"
 void serial_server_init(struct serial_server *srv, struct Sh4 *cpu) {
     memset(srv, 0, sizeof(*srv));
 
@@ -55,6 +56,7 @@ void serial_server_init(struct serial_server *srv, struct Sh4 *cpu) {
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 }
 
+extern "C"
 void serial_server_cleanup(struct serial_server *srv) {
     evbuffer_free(srv->outbound);
     if (srv->bev)
@@ -65,6 +67,7 @@ void serial_server_cleanup(struct serial_server *srv) {
     memset(srv, 0, sizeof(*srv));
 }
 
+extern "C"
 void serial_server_attach(struct serial_server *srv) {
     std::cout << "Awaiting serial connection on port " << SERIAL_PORT_NO << "..." <<
         std::endl;

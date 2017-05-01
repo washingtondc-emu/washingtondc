@@ -37,7 +37,7 @@
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
-#include "SerialServer.hpp"
+#include "serial_server.h"
 #endif
 
 #include "Dreamcast.hpp"

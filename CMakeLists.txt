@@ -153,7 +153,7 @@ endif()
 
 if (ENABLE_SERIAL_SERVER)
   add_definitions(-DENABLE_SERIAL_SERVER)
-  set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/SerialServer.hpp"
+  set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/serial_server.h"
                                  "${PROJECT_SOURCE_DIR}/src/SerialServer.cpp")
 endif()
 

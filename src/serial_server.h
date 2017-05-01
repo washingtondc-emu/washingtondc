@@ -20,10 +20,10 @@
  *
  ******************************************************************************/
 
-#ifndef SERIALSERVER_HPP_
-#define SERIALSERVER_HPP_
+#ifndef SERIALSERVER_H_
+#define SERIALSERVER_H_
 
-#include <boost/cstdint.hpp>
+#include <stdint.h>
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>
@@ -32,6 +32,10 @@
 
 #ifndef ENABLE_SERIAL_SERVER
 #error This file should not be included unless the serial server is enabled
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 struct Sh4;
@@ -66,5 +70,9 @@ void serial_server_put(struct serial_server *srv, uint8_t dat);
  * sh4_scif_cts later when it is ready.
  */
 void serial_server_notify_tx_ready(struct serial_server *srv);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
