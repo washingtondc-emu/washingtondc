@@ -25,7 +25,7 @@
 #include <iostream>
 #include <boost/cstdint.hpp>
 
-#include "sh4.hpp"
+#include "sh4.h"
 #include "sh4_excp.h"
 #include "BaseException.hpp"
 

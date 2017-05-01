@@ -22,9 +22,11 @@
 
 #include <iostream>
 #include <iomanip>
+#include <cstdlib>
 
-#include "hw/sh4/sh4.hpp"
+#include "hw/sh4/sh4.h"
 #include "Dreamcast.hpp"
+#include "BaseException.hpp"
 
 #include "gdb_stub.h"
 

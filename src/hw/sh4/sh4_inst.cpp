@@ -32,7 +32,7 @@
 #include "Dreamcast.hpp"
 #include "sh4_ocache.h"
 #include "sh4_mmu.h"
-#include "sh4.hpp"
+#include "sh4.h"
 #include "sh4_excp.h"
 
 #ifdef ENABLE_DEBUGGER
@@ -54,6 +54,12 @@ typedef boost::error_info<struct tag_opcode_val_name_error_info, inst_t>
 errinfo_opcode_val;
 
 static InstOpcode const* sh4_decode_inst_slow(inst_t inst);
+
+/*
+ * this is defined in sh4.cpp; the prototype declaration is here as a temporary
+ * hack for the C refactoring because I can't put it in sh4.h
+ */
+void sh4_add_regs_to_exc(Sh4 *sh4, BaseException& exc);
 
 static struct InstOpcode opcode_list[] = {
     // RTS

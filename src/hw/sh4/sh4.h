@@ -20,8 +20,8 @@
  *
  ******************************************************************************/
 
-#ifndef SH4_HPP_
-#define SH4_HPP_
+#ifndef SH4_H_
+#define SH4_H_
 
 #include <assert.h>
 #include <stdint.h>
@@ -36,14 +36,15 @@
 #include "sh4_ocache.h"
 #include "sh4_excp.h"
 #include "sh4_scif.h"
-#include "BaseException.hpp"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Hitachi SuperH-4 interpreter */
 
-typedef boost::error_info<struct tag_sh4_cycle_stamp, uint64_t> errinfo_cycle_stamp;
-
-static const size_t SH4_N_FLOAT_REGS = 16;
-static const size_t SH4_N_DOUBLE_REGS = 8;
+#define SH4_N_FLOAT_REGS 16
+#define SH4_N_DOUBLE_REGS 8
 
 enum Sh4ExecState {
     SH4_EXEC_STATE_NORM,
@@ -263,8 +264,10 @@ static inline double *sh4_fpu_dr(Sh4 *sh4, unsigned reg_no) {
     return sh4->fpu.reg_bank0.dr + reg_no;
 }
 
-void sh4_add_regs_to_exc(Sh4 *sh4, BaseException& exc);
-
 void sh4_error_set_regs(Sh4 *sh4);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

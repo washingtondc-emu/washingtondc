@@ -27,7 +27,7 @@
 #include "Dreamcast.hpp"
 #include "video/opengl/framebuffer.hpp"
 #include "window.hpp"
-#include "hw/sh4/sh4.hpp"
+#include "hw/sh4/sh4.h"
 #include "hw/sys/holly_intc.hpp"
 
 #include "spg.hpp"

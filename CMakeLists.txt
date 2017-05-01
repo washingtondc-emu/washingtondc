@@ -57,7 +57,7 @@ endif()
 # TODO: this was originally supposed to be just the sh4-related code,
 # but somehow it has swollen to encompass almost everything...
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
-                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.hpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_excp.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_excp.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.cpp"

@@ -25,7 +25,7 @@
 #include "error.h"
 #include "MemoryMap.hpp"
 
-#include "sh4.hpp"
+#include "sh4.h"
 
 #ifdef ENABLE_SH4_MMU
 

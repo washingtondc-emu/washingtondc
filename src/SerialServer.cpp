@@ -23,6 +23,7 @@
 #include <iostream>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <cstdlib>
 
 #include "Dreamcast.hpp"
 

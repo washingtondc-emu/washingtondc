@@ -29,7 +29,7 @@
 #include "BaseException.hpp"
 #include "memory.h"
 #include "MemoryMap.hpp"
-#include "hw/sh4/sh4.hpp"
+#include "hw/sh4/sh4.h"
 #include "hw/sh4/sh4_excp.h"
 #include "RandGenerator.hpp"
 

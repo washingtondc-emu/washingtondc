@@ -30,7 +30,7 @@
 #include "Dreamcast.hpp"
 #include "sh4_reg.h"
 #include "sh4_reg_flags.h"
-#include "sh4.hpp"
+#include "sh4.h"
 #include "error.h"
 
 #include "sh4_scif.h"

@@ -32,7 +32,9 @@
 #include "error.h"
 #include "Dreamcast.hpp"
 
-#include "sh4.hpp"
+#include "sh4.h"
+
+typedef boost::error_info<struct tag_sh4_cycle_stamp, uint64_t> errinfo_cycle_stamp;
 
 // struct RegFile
 typedef boost::error_info<struct tag_sr_error_info, reg32_t> errinfo_reg_sr;
@@ -72,6 +74,8 @@ typedef boost::error_info<struct tag_ttb_error_info, reg32_t> errinfo_reg_ttb;
 typedef boost::error_info<struct tag_tea_error_info, reg32_t> errinfo_reg_tea;
 typedef boost::error_info<struct tag_mmucr_error_info, reg32_t>
 errinfo_reg_mmucr;
+
+void sh4_add_regs_to_exc(Sh4 *sh4, BaseException& exc);
 
 void sh4_init(Sh4 *sh4) {
     memset(sh4, 0, sizeof(*sh4));

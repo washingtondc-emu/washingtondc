@@ -20,9 +20,10 @@
  *
  ******************************************************************************/
 
-#include "sh4.hpp"
+#include "sh4.h"
 #include "sh4_excp.h"
 #include "error.h"
+#include "BaseException.hpp"
 
 static DEF_ERROR_INT_ATTR(sh4_exception_code)
 

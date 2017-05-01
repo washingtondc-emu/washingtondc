@@ -25,7 +25,7 @@
 #include "sh4_mmu.h"
 #include "sh4_excp.h"
 #include "sh4_mem.h"
-#include "sh4.hpp"
+#include "sh4.h"
 #include "Dreamcast.hpp"
 #include "MemoryMap.hpp"
 
