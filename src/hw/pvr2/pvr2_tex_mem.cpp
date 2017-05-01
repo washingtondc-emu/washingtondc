@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 #include "BaseException.hpp"
 
 uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];

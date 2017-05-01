@@ -23,7 +23,7 @@
 #include "sh4_reg.h"
 #include "sh4_excp.h"
 #include "error.h"
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 
 #include "sh4.h"
 

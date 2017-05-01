@@ -23,7 +23,7 @@
 #ifndef PVR2_TEX_MEM_HPP_
 #define PVR2_TEX_MEM_HPP_
 
-#include "MemoryMap.hpp"
+#include "mem_areas.h"
 
 extern uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];
 

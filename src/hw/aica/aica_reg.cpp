@@ -23,7 +23,7 @@
 #include <iostream>
 
 #include "BaseException.hpp"
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 
 #include "aica_reg.hpp"
 

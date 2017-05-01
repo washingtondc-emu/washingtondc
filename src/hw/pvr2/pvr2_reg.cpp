@@ -26,7 +26,7 @@
 #include <boost/cstdint.hpp>
 
 #include "types.h"
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 #include "BaseException.hpp"
 
 #include "pvr2_reg.hpp"

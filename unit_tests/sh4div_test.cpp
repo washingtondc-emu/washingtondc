@@ -31,7 +31,7 @@
 #include "memory.h"
 #include "RandGenerator.hpp"
 #include "BiosFile.h"
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 
 typedef RandGenerator<uint32_t> RandGen32;
 

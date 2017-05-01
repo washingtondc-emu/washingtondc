@@ -23,7 +23,7 @@
 #include <iostream>
 
 #include "BaseException.hpp"
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 #include "hw/gdrom/gdrom_reg.hpp"
 #include "holly_intc.hpp"
 

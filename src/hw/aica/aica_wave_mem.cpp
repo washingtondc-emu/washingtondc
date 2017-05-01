@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 #include "BaseException.hpp"
 
 static uint8_t aica_wave_mem[ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1];

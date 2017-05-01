@@ -27,7 +27,7 @@
 #include "sh4_mem.h"
 #include "sh4.h"
 #include "dreamcast.h"
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debugger.h"

@@ -35,7 +35,7 @@
 #include "BaseException.hpp"
 #include "memory.h"
 #include "BiosFile.h"
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 
 /*
  * loads a program into the given address.  the InputIterator's

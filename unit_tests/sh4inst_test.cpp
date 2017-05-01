@@ -35,7 +35,7 @@
 #include "RandGenerator.hpp"
 #include "arch/arch_fpu.hpp"
 #include "BiosFile.h"
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 
 #ifdef ENABLE_SH4_ICACHE
 #include "hw/sh4/Icache.hpp"

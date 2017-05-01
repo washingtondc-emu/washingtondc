@@ -30,7 +30,7 @@
 #include "dc_sched.h"
 #include "hw/pvr2/spg.hpp"
 #include "window.hpp"
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"

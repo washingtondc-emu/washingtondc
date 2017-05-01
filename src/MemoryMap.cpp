@@ -35,24 +35,28 @@
 #include "hw/gdrom/gdrom_reg.hpp"
 #include "flash_memory.h"
 
-#include "MemoryMap.hpp"
+#include "MemoryMap.h"
 
 static BiosFile *bios;
 static struct Memory *mem;
 
+extern "C"
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new) {
     memory_map_set_bios(bios_new);
     memory_map_set_mem(mem_new);
 }
 
+extern "C"
 void memory_map_set_bios(BiosFile *bios_new) {
     bios = bios_new;
 }
 
+extern "C"
 void memory_map_set_mem(struct Memory *mem_new) {
     mem = mem_new;
 }
 
+extern "C"
 int memory_map_read(void *buf, size_t addr, size_t len) {
     try {
         // check RAM first because that's the case we want to optimize for
@@ -153,6 +157,7 @@ boundary_cross:
                           errinfo_op_type("read"));
 }
 
+extern "C"
 int memory_map_write(void const *buf, size_t addr, size_t len) {
     try {
         // check RAM first because that's the case we want to optimize for
