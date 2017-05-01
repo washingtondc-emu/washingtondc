@@ -33,7 +33,7 @@
 #include "hw/sh4/sh4.h"
 #include "tool/sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
-#include "arch/arch_fpu.hpp"
+#include "arch/arch_fpu.h"
 #include "BiosFile.h"
 #include "MemoryMap.h"
 

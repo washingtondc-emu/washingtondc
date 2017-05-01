@@ -21,6 +21,11 @@
 
 /* Define bits representing the exception.  We use the bit positions
    of the appropriate bits in the FPU control word.  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum
   {
     ARCH_FE_INVALID =
@@ -176,4 +181,8 @@ __END_DECLS
 
 #endif // #if 0
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif

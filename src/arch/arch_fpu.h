@@ -20,15 +20,19 @@
  *
  ******************************************************************************/
 
-#ifndef ARCH_FPU_HPP_
-#define ARCH_FPU_HPP_
+#ifndef ARCH_FPU_H_
+#define ARCH_FPU_H_
 
 /*
  * TODO: if/when I add support for other architectures, come up with a
  * way to choose which version of arch_fenv.hpp to include instead of always
  * including the x86_64 one.
  */
-#include "x86_64/arch_fenv.hpp"
+#include "x86_64/arch_fenv.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // replacement for the C99 isfinite macro
 #define arch_isfinite(val) __builtin_isfinite((val))
@@ -38,5 +42,9 @@ int arch_fesetround (int round);
 
 // replacement for the C99 fegetround function
 int arch_fegetround (void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
