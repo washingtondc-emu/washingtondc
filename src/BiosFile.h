@@ -39,6 +39,7 @@ struct BiosFile {
     size_t dat_len;
     uint8_t *dat;
 };
+typedef struct BiosFile BiosFile;
 
 void bios_file_init_empty(struct BiosFile *bios_file);
 void bios_file_init(struct BiosFile *bios_file, char const *path);

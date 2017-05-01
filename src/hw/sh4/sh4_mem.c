@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 
-#include "BaseException.hpp"
+#include <stdlib.h>
 
 #include "sh4_mmu.h"
 #include "sh4_excp.h"
@@ -32,6 +32,12 @@
 #ifdef ENABLE_DEBUGGER
 #include "debugger.h"
 #endif
+
+/*
+ * TODO: need to adequately return control to the debugger when there's a memory
+ * error and the debugger has its error-handler set up.  longjmp is the obvious
+ * solution, but until all the codebase is out of C++ I don't want to risk that.
+ */
 
 int sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_DEBUGGER
@@ -62,9 +68,9 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
          * looks like it's for instances where the page can be looked up in the
          * TLB.
          */
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for unprivileged "
-                                              "access to high memory areas"));
+        error_set_feature("CPU exception for unprivileged "
+                          "access to high memory areas");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     switch (virt_area) {
@@ -74,11 +80,9 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_SH4_MMU
             return sh4_mmu_write_mem(sh4, data, addr, len);
 #else // ifdef ENABLE_SH4_MMU
-            BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                  errinfo_feature("MMU") <<
-                                  errinfo_advice("run cmake with "
-                                                 "-DENABLE_SH4_MMU=ON"
-                                                 " and rebuild"));
+            error_set_feature("MMU");
+            error_set_advice("run cmake with -DENABLE_SH4_MMU=ON and rebuild");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
         } else {
             // handle the case where OCE is enabled and ORA is
@@ -105,9 +109,9 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
         break;
     }
 
-    BOOST_THROW_EXCEPTION(IntegrityError() <<
-                          errinfo_wtf("I don't believe it should be possible "
-                                      "to get here (see Sh4::write_mem)"));
+    error_set_wtf("this should not be possible");
+    RAISE_ERROR(ERROR_INTEGRITY);
+    exit(1); // never happens
 }
 
 int sh4_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
@@ -139,9 +143,9 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
          * looks like it's for instances where the page can be looked up in the
          * TLB.
          */
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for unprivileged "
-                                              "access to high memory areas"));
+        error_set_feature("CPU exception for unprivileged "
+                          "access to high memory areas");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     switch (virt_area) {
@@ -151,12 +155,9 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_SH4_MMU
             return sh4_mmu_read_mem(sh4, data, addr, len);
 #else // ifdef ENABLE_SH4_MMU
-            BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                  errinfo_feature("MMU") <<
-                                  errinfo_advice("run cmake with "
-                                                 "-DENABLE_SH4_MMU=ON "
-                                                 "and rebuild"));
-
+            error_set_feature("MMU");
+            error_set_advice("run cmake with -DENABLE_SH4_MMU=ON and rebuild");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
         } else {
             // handle the case where OCE is enabled and ORA is
@@ -191,11 +192,10 @@ int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len) {
         return sh4_read_mem_mapped_reg(sh4, dat, addr, len);
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("reading from part of the P4 "
-                                          "memory region") <<
-                          errinfo_guest_addr(addr));
-
+    error_set_address(addr);
+    error_set_feature("reading from part of the P4 memory region");
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    exit(1);
 }
 
 int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
@@ -206,10 +206,10 @@ int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
         return sh4_write_mem_mapped_reg(sh4, dat, addr, len);
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("writing to part of the P4 "
-                                          "memory region") <<
-                          errinfo_guest_addr(addr));
+    error_set_address(addr);
+    error_set_feature("writing to part of the P4 memory region");
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    exit(1);
 }
 
 
@@ -227,9 +227,9 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
          * looks like it's for instances where the page can be looked up in the
          * TLB.
          */
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for unprivileged "
-                                              "access to high memory areas"));
+        error_set_feature("CPU exception for unprivileged "
+                          "access to high memory areas");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     switch (virt_area) {
@@ -239,11 +239,9 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
 #ifdef ENABLE_SH4_MMU
             return sh4_mmu_read_inst(sh4, out, addr);
 #else // ifdef ENABLE_SH4_MMU
-            BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                  errinfo_feature("MMU") <<
-                                  errinfo_advice("run cmake with "
-                                                 "-DENABLE_SH4_MMU=ON "
-                                                  "and rebuild"));
+            error_set_feature("MMU");
+            error_set_advice("run cmake with -DENABLE_SH4_MMU=ON and rebuild");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
         } else {
             return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
@@ -255,10 +253,9 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
     case SH4_AREA_P2:
         return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
     case SH4_AREA_P4:
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("CPU exception for reading "
-                                              "instructions from the P4 "
-                                              "memory area"));
+        error_set_feature("CPU exception for reading instructions from the P4 "
+                          "memory area");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     default:
         break;
     }

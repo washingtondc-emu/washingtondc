@@ -51,6 +51,26 @@ enum Sh4ExecState {
     SH4_EXEC_STATE_SLEEP,
     SH4_EXEC_STATE_STANDBY
 };
+typedef enum Sh4ExecState Sh4ExecState;
+
+union FpuRegFile {
+    float fr[SH4_N_FLOAT_REGS];
+    double dr[SH4_N_DOUBLE_REGS];
+};
+// BOOST_STATIC_ASSERT(sizeof(FpuRegFile) == (SH4_N_FLOAT_REGS * sizeof(float)));
+typedef union FpuRegFile FpuRegFile;
+
+struct FpuReg {
+    // floating point status/control register
+    reg32_t fpscr;
+
+    // floating-point communication register
+    reg32_t fpul;
+
+    FpuRegFile reg_bank0;
+    FpuRegFile reg_bank1;
+};
+typedef struct FpuReg FpuReg;
 
 struct Sh4 {
     Sh4ExecState exec_state;
@@ -75,22 +95,6 @@ struct Sh4 {
     bool delayed_branch;
     addr32_t delayed_branch_addr;
 
-    union FpuRegFile {
-        float fr[SH4_N_FLOAT_REGS];
-        double dr[SH4_N_DOUBLE_REGS];
-    };
-    // BOOST_STATIC_ASSERT(sizeof(FpuRegFile) == (SH4_N_FLOAT_REGS * sizeof(float)));
-
-    struct FpuReg {
-        // floating point status/control register
-        reg32_t fpscr;
-
-        // floating-point communication register
-        reg32_t fpul;
-
-        FpuRegFile reg_bank0;
-        FpuRegFile reg_bank1;
-    };
     FpuReg fpu;
 
     struct sh4_tmu tmu;
@@ -137,6 +141,8 @@ struct Sh4 {
     bool aborted_operation;
 #endif
 };
+
+typedef struct Sh4 Sh4;
 
 void sh4_init(Sh4 *sh4);
 void sh4_cleanup(Sh4 *sh4);
@@ -192,9 +198,9 @@ void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val);
 
 // these four APIs are intended primarily for debuggers to use
 void sh4_get_regs(Sh4 *sh4, reg32_t reg_out[SH4_REGISTER_COUNT]);
-Sh4::FpuReg sh4_get_fpu(Sh4 *sh4);
+FpuReg sh4_get_fpu(Sh4 *sh4);
 void sh4_set_regs(Sh4 *sh4, reg32_t const reg_out[SH4_REGISTER_COUNT]);
-void sh4_set_fpu(Sh4 *sh4, const Sh4::FpuReg& src);
+void sh4_set_fpu(Sh4 *sh4, FpuReg src);
 
 static inline void sh4_next_inst(Sh4 *sh4) {
     sh4->reg[SH4_REG_PC] += 2;

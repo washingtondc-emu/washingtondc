@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 struct Sh4;
+typedef struct Sh4 Sh4;
 
 // runs the next instruction, modifies CPU state and sets flags accordingly
 void sh4_exec_inst(Sh4 *sh4);
@@ -156,6 +157,8 @@ union Sh4OpArgs {
     };
 };
 
+typedef union Sh4OpArgs Sh4OpArgs;
+
 /*
  * the lut is a static (global) table that will be shared by all sh4
  * instances even if there's more than one of them, but sh4_init_lut
@@ -230,6 +233,8 @@ struct InstOpcode {
     inst_t mask;
     inst_t val;
 };
+
+typedef struct InstOpcode InstOpcode;
 
 /*
  * maps 16-bit instructions to InstOpcodes for O(1) decoding
@@ -1194,7 +1199,7 @@ void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst);
 
 #define FPU_HANDLER(name) sh4_fpu_inst_ ## name
 
-#define DECL_FPU_HANDLER(name) extern "C" void FPU_HANDLER(name) (Sh4 *sh4, Sh4OpArgs inst)
+#define DECL_FPU_HANDLER(name) void FPU_HANDLER(name) (Sh4 *sh4, Sh4OpArgs inst)
 
 #define DEF_FPU_HANDLER(name, mask, on_false, on_true) \
     DECL_FPU_HANDLER(name) {                           \

@@ -165,6 +165,8 @@ ERROR_U32_ATTR(expected_length);
 
 ERROR_STRING_ATTR(wtf);
 
+ERROR_STRING_ATTR(advice);
+
 #define RAISE_ERROR(tp)                         \
     do {                                        \
         error_set_line(__LINE__);               \

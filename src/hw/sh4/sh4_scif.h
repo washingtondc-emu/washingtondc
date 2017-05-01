@@ -84,6 +84,8 @@ struct sh4_scif {
     struct serial_server *ser_srv;
 };
 
+typedef struct sh4_scif sh4_scif;
+
 struct Sh4;
 
 void sh4_scif_init(sh4_scif *scif);

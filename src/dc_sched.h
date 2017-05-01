@@ -49,6 +49,8 @@ struct SchedEvent {
     struct SchedEvent *next_event;
 };
 
+typedef struct SchedEvent SchedEvent;
+
 /*
  * these methods do not free or otherwise take ownership of the event.
  * This way, users can use global or static SchedEvent structs.

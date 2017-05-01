@@ -23,6 +23,8 @@
 #ifndef SH4_REG_H_
 #define SH4_REG_H_
 
+#include <stdbool.h>
+
 #include "types.h"
 #include "sh4_reg_flags.h"
 
@@ -31,6 +33,7 @@ extern "C" {
 #endif
 
 struct Sh4;
+typedef struct Sh4 Sh4;
 
 typedef enum sh4_reg_idx {
     /* general-purpose registers 0-7, bank 0 */

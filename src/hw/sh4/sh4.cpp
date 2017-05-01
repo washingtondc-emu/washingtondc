@@ -148,7 +148,7 @@ void sh4_get_regs(Sh4 *sh4, reg32_t reg_out[SH4_REGISTER_COUNT]) {
     memcpy(reg_out, sh4->reg, sizeof(reg_out[0]) * SH4_REGISTER_COUNT);
 }
 
-Sh4::FpuReg sh4_get_fpu(Sh4 *sh4) {
+FpuReg sh4_get_fpu(Sh4 *sh4) {
     return sh4->fpu;
 }
 
@@ -156,7 +156,7 @@ void sh4_set_regs(Sh4 *sh4, reg32_t const reg_in[SH4_REGISTER_COUNT]) {
     memcpy(sh4->reg, reg_in, sizeof(sh4->reg[0]) * SH4_REGISTER_COUNT);
 }
 
-void sh4_set_fpu(Sh4 *sh4, const Sh4::FpuReg& src) {
+void sh4_set_fpu(Sh4 *sh4, FpuReg src) {
     sh4->fpu = src;
 }
 

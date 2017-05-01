@@ -111,6 +111,8 @@ enum Sh4ExceptionCode {
     SH4_EXCP_SCIF_TXI                 = 0x760
 };
 
+typedef enum Sh4ExceptionCode Sh4ExceptionCode;
+
 const static unsigned SH4_EXCP_COUNT = 9 + 16 + 16 + 2 + 16 + 5;
 
 enum {
@@ -149,9 +151,13 @@ struct Sh4ExcpMeta {
     addr32_t offset;
 };
 
+typedef struct Sh4ExcpMeta Sh4ExcpMeta;
+
 struct sh4_intc {
     Sh4ExceptionCode irq_lines[SH4_IRQ_COUNT];
 };
+
+typedef struct sh4_intc sh4_intc;
 
 /*
  * called by set_exception and set_interrupt.  This function configures

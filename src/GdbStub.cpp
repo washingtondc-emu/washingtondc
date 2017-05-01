@@ -50,7 +50,7 @@ static size_t deserialize_data(struct string const *input_str,
 static int decode_hex(char ch);
 static void write_start(struct gdb_stub *stub);
 static void extract_packet(struct string *out, struct string const *packet_in);
-static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
+static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
                    unsigned reg_no, reg32_t reg_val, bool bank);
 static void handle_packet(struct gdb_stub *stub, struct string *pkt);
 static void transmit_pkt(struct gdb_stub *stub, struct string const *pkt);
@@ -248,7 +248,7 @@ static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
     Sh4 *cpu = dreamcast_get_cpu();
     reg32_t reg_file[SH4_REGISTER_COUNT];
     sh4_get_regs(cpu, reg_file);
-    Sh4::FpuReg fpu_reg = sh4_get_fpu(cpu);
+    FpuReg fpu_reg = sh4_get_fpu(cpu);
     reg32_t regs[N_REGS] = { 0 };
 
     // general-purpose registers
@@ -386,7 +386,7 @@ static void extract_packet(struct string *out, struct string const *packet_in) {
     string_substr(out, packet_in, dollar_idx + 1, pound_idx - 1);
 }
 
-static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], Sh4::FpuReg *fpu,
+static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
                    unsigned reg_no, reg32_t reg_val, bool bank) {
     // there is some ambiguity over whether register banking should be based off
     // of the old sr or the new sr.  For now, it's based off of the old sr.
@@ -740,7 +740,7 @@ static void handle_G_packet(struct gdb_stub *stub, struct string *out,
 
     reg32_t new_regs[SH4_REGISTER_COUNT];
     sh4_get_regs(dreamcast_get_cpu(), new_regs);
-    Sh4::FpuReg new_fpu = sh4_get_fpu(dreamcast_get_cpu());
+    FpuReg new_fpu = sh4_get_fpu(dreamcast_get_cpu());
     bool bank = new_regs[SH4_REG_SR] & SH4_SR_RB_MASK;
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
@@ -753,7 +753,7 @@ static void handle_P_packet(struct gdb_stub *stub, struct string *out,
                             struct string const *dat) {
     Sh4 *cpu;
     reg32_t regs[SH4_REGISTER_COUNT];
-    Sh4::FpuReg fpu;
+    FpuReg fpu;
     int equals_idx = string_find_first_of(dat, "=");
 
     if ((equals_idx < 0) || ((size_t)equals_idx >= (string_length(dat) - 1))) {
