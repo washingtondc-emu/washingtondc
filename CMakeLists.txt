@@ -155,7 +155,7 @@ endif()
 if (ENABLE_SERIAL_SERVER)
   add_definitions(-DENABLE_SERIAL_SERVER)
   set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/serial_server.h"
-                                 "${PROJECT_SOURCE_DIR}/src/SerialServer.cpp")
+                                 "${PROJECT_SOURCE_DIR}/src/serial_server.c")
 endif()
 
 set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"

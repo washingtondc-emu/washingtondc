@@ -20,10 +20,10 @@
  *
  ******************************************************************************/
 
-#include <iostream>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <cstdlib>
+#include <stdlib.h>
 
 #include "dreamcast.h"
 
@@ -43,7 +43,6 @@ static void handle_events(struct bufferevent *bev, short events, void *arg);
 static void handle_read(struct bufferevent *bev, void *arg);
 static void handle_write(struct bufferevent *bev, void *arg);
 
-extern "C"
 void serial_server_init(struct serial_server *srv, struct Sh4 *cpu) {
     memset(srv, 0, sizeof(*srv));
 
@@ -57,7 +56,6 @@ void serial_server_init(struct serial_server *srv, struct Sh4 *cpu) {
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 }
 
-extern "C"
 void serial_server_cleanup(struct serial_server *srv) {
     evbuffer_free(srv->outbound);
     if (srv->bev)
@@ -68,10 +66,8 @@ void serial_server_cleanup(struct serial_server *srv) {
     memset(srv, 0, sizeof(*srv));
 }
 
-extern "C"
 void serial_server_attach(struct serial_server *srv) {
-    std::cout << "Awaiting serial connection on port " << SERIAL_PORT_NO << "..." <<
-        std::endl;
+    printf("Awaiting serial connection on port %d...\n", SERIAL_PORT_NO);
 
     struct sockaddr_in sin;
     memset(&sin, 0, sizeof(sin));
@@ -87,12 +83,12 @@ void serial_server_attach(struct serial_server *srv) {
     // the listener_cb will set is_listening = false when we have a connection
     srv->is_listening = true;
     do {
-        std::cout << "still waiting..." << std::endl;
+        printf("still waiting...\n");
         if (event_base_loop(dc_event_base, EVLOOP_ONCE) != 0)
             exit(4);
     } while (srv->is_listening);
 
-    std::cout << "Connection established." << std::endl;
+    printf("Connection established.\n");
 }
 
 static void handle_read(struct bufferevent *bev, void *arg) {
