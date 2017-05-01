@@ -24,6 +24,7 @@
 #define SH4_INST_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "types.h"
 
