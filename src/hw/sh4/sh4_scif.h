@@ -20,12 +20,16 @@
  *
  ******************************************************************************/
 
-#ifndef SH4_SCIF_HPP_
-#define SH4_SCIF_HPP_
+#ifndef SH4_SCIF_H_
+#define SH4_SCIF_H_
 
-#include <boost/cstdint.hpp>
+#include <stdint.h>
 
 #include "fifo.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct serial_server;
 
@@ -140,5 +144,9 @@ void sh4_scif_cts(Sh4 *sh4);
 
 // Called by the serial server whenever it has another byte.
 void sh4_scif_rx(Sh4 *sh4, uint8_t dat);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

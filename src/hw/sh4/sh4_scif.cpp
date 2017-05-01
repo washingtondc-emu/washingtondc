@@ -33,7 +33,7 @@
 #include "sh4.hpp"
 #include "error.h"
 
-#include "sh4_scif.hpp"
+#include "sh4_scif.h"
 
 /*
  * This shouldn't be too difficult, but the authors of the official sh4
@@ -98,6 +98,7 @@ static inline unsigned rx_fifo_trigger(Sh4 *sh4) {
     return lut[rtrg];
 }
 
+extern "C"
 void sh4_scif_init(sh4_scif *scif) {
     memset(scif, 0, sizeof(*scif));
 
@@ -105,6 +106,7 @@ void sh4_scif_init(sh4_scif *scif) {
     fifo_init(&scif->rxq);
 }
 
+extern "C"
 void sh4_scif_cleanup(sh4_scif *scif) {
     struct fifo_node *nodep;
     while ((nodep = fifo_pop(&scif->txq)))
@@ -115,11 +117,12 @@ void sh4_scif_cleanup(sh4_scif *scif) {
     memset(scif, 0, sizeof(*scif));
 }
 
+extern "C"
 void sh4_scif_connect_server(Sh4 *sh4, struct serial_server *ser_srv) {
     sh4->scif.ser_srv = ser_srv;
 }
 
-int
+extern "C" int
 sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,
                             struct Sh4MemMappedReg const *reg_info) {
     struct sh4_scif *scif = &sh4->scif;
@@ -140,7 +143,7 @@ sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,
 }
 
 // this is called when the software wants to read from the SCIF's rx fifo
-int
+extern "C" int
 sh4_scfrdr2_reg_read_handler(Sh4 *sh4, void *buf,
                              struct Sh4MemMappedReg const *reg_info) {
    struct sh4_scif *scif = &sh4->scif;
@@ -163,7 +166,7 @@ sh4_scfrdr2_reg_read_handler(Sh4 *sh4, void *buf,
 }
 
 // this is called when the software wants to write to the SCIF's tx fifo
-int
+extern "C" int
 sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
                               struct Sh4MemMappedReg const *reg_info) {
 #ifdef ENABLE_SERIAL_SERVER
@@ -181,6 +184,7 @@ sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
 
 #ifdef ENABLE_SERIAL_SERVER
 
+extern "C"
 void sh4_scif_cts(Sh4 *sh4) {
     if (sh4->scif.ser_srv) {
         struct fifo_head *txq = &sh4->scif.txq;
@@ -199,6 +203,7 @@ void sh4_scif_cts(Sh4 *sh4) {
 
 #endif
 
+extern "C"
 void sh4_scif_rx(Sh4 *sh4, uint8_t dat) {
     push_queue(&sh4->scif.rxq, dat);
 
@@ -247,14 +252,14 @@ static void check_tx_reset(Sh4 *sh4) {
     }
 }
 
-int
+extern "C" int
 sh4_scsmr2_reg_read_handler(Sh4 *sh4, void *buf,
                             struct Sh4MemMappedReg const *reg_info) {
     memcpy(buf, &sh4->reg[SH4_REG_SCSCR2], reg_info->len);
     return 0;
 }
 
-int
+extern "C" int
 sh4_scsmr2_reg_write_handler(Sh4 *sh4, void const *buf,
                              struct Sh4MemMappedReg const *reg_info) {
     uint16_t dat;
@@ -269,7 +274,7 @@ sh4_scsmr2_reg_write_handler(Sh4 *sh4, void const *buf,
     return 0;
 }
 
-int
+extern "C" int
 sh4_scfcr2_reg_read_handler(Sh4 *sh4, void *buf,
                             struct Sh4MemMappedReg const *reg_info) {
     memcpy(buf, &sh4->reg[SH4_REG_SCFCR2], reg_info->len);
@@ -277,7 +282,7 @@ sh4_scfcr2_reg_read_handler(Sh4 *sh4, void *buf,
     return 0;
 }
 
-int
+extern "C" int
 sh4_scfcr2_reg_write_handler(Sh4 *sh4, void const *buf,
                              struct Sh4MemMappedReg const *reg_info) {
     memcpy(&sh4->reg[SH4_REG_SCFCR2], buf, reg_info->len);
@@ -291,14 +296,14 @@ sh4_scfcr2_reg_write_handler(Sh4 *sh4, void const *buf,
     return 0;
 }
 
-int
+extern "C" int
 sh4_scscr2_reg_read_handler(Sh4 *sh4, void *buf,
                             struct Sh4MemMappedReg const *reg_info) {
     memcpy(buf, &sh4->reg[SH4_REG_SCSCR2], reg_info->len);
     return 0;
 }
 
-int
+extern "C" int
 sh4_scscr2_reg_write_handler(Sh4 *sh4, void const *buf,
                              struct Sh4MemMappedReg const *reg_info) {
     memcpy(&sh4->reg[SH4_REG_SCSCR2], buf, reg_info->len);
@@ -310,7 +315,7 @@ sh4_scscr2_reg_write_handler(Sh4 *sh4, void const *buf,
     return 0;
 }
 
-int
+extern "C" int
 sh4_scfsr2_reg_read_handler(Sh4 *sh4, void *buf,
                             struct Sh4MemMappedReg const *reg_info) {
     uint16_t tmp = sh4->reg[SH4_REG_SCFSR2];
@@ -329,7 +334,7 @@ sh4_scfsr2_reg_read_handler(Sh4 *sh4, void *buf,
     return 0;
 }
 
-int
+extern "C" int
 sh4_scfsr2_reg_write_handler(Sh4 *sh4, void const *buf,
                              struct Sh4MemMappedReg const *reg_info) {
     uint16_t new_val, orig_val;
