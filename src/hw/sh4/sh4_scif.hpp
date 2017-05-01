@@ -23,9 +23,9 @@
 #ifndef SH4_SCIF_HPP_
 #define SH4_SCIF_HPP_
 
-#include <queue>
-
 #include <boost/cstdint.hpp>
+
+#include "fifo.h"
 
 struct serial_server;
 
@@ -59,18 +59,15 @@ struct serial_server;
  * to support those SD card adapters that can plug into the serial port, but as
  * with the Neo Geo Pocket stuff, that's a long way into the future.
  */
+
+struct sh4_scif_byte {
+    struct fifo_node node;
+
+    uint8_t dat;
+};
+
 struct sh4_scif {
-    /* Receive FIFO Data Register */
-    // uint8_t scfrdr2[16];
-
-    /* Transmit FIFO Data Register */
-    // uint8_t scftdr2[16];
-
-    /*
-     * these are pointers because I have code in sh4.cpp that memsets the
-     * entire sh4 to 0; ergo this struct is a POD.
-     */
-    std::queue<uint8_t> *rx_queue, *tx_queue;
+    struct fifo_head txq, rxq;
 
     /*
      * For the DR, TEND, TDFE and RDF bits in SCFSR2, the SH4 spec states that
