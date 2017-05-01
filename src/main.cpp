@@ -24,7 +24,7 @@
 #include <iostream>
 
 #include "BaseException.hpp"
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 #include "window.hpp"
 #include "gfx_thread.hpp"
 #include "video/opengl/framebuffer.hpp"

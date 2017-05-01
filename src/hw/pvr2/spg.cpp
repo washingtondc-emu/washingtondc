@@ -24,7 +24,7 @@
 #include <boost/cstdint.hpp>
 
 #include "BaseException.hpp"
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 #include "video/opengl/framebuffer.hpp"
 #include "window.hpp"
 #include "hw/sh4/sh4.h"

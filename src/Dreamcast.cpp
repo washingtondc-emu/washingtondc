@@ -40,7 +40,7 @@
 #include "serial_server.h"
 #endif
 
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 
 static const size_t MEM_SZ = 16 * 1024 * 1024;
 

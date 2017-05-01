@@ -30,7 +30,7 @@
 #include "sh4_reg.h"
 #include "sh4_inst.h"
 #include "error.h"
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 
 #include "sh4.h"
 

@@ -27,7 +27,7 @@
 #include "serial_server.h"
 #endif
 
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 #include "sh4_reg.h"
 #include "sh4_reg_flags.h"
 #include "sh4.h"

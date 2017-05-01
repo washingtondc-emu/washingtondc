@@ -33,7 +33,7 @@
 #include <GLFW/glfw3.h>
 
 #include "window.hpp"
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 #include "video/opengl/opengl_backend.hpp"
 
 #include "gfx_thread.hpp"

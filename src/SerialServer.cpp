@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <cstdlib>
 
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 
 #include "serial_server.h"
 

@@ -28,7 +28,7 @@
 #include "sh4_excp.h"
 #include "sh4.h"
 #include "dc_sched.h"
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 #include "BaseException.hpp"
 
 #include "sh4_tmu.h"

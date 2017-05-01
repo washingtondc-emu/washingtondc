@@ -25,7 +25,7 @@
 #include <cstdlib>
 
 #include "hw/sh4/sh4.h"
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 #include "BaseException.hpp"
 
 #include "gdb_stub.h"

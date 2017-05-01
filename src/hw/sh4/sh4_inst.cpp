@@ -29,7 +29,7 @@
 #include "error.h"
 #include "arch/arch_fpu.hpp"
 #include "BaseException.hpp"
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 #include "sh4_ocache.h"
 #include "sh4_mmu.h"
 #include "sh4.h"

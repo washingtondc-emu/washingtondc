@@ -25,7 +25,7 @@
 #include "BaseException.hpp"
 #include "hw/gdrom/gdrom_reg.hpp"
 #include "hw/sh4/sh4_excp.h"
-#include "Dreamcast.hpp"
+#include "dreamcast.h"
 
 #include "holly_intc.hpp"
 
