@@ -20,27 +20,22 @@
  *
  ******************************************************************************/
 
-#ifndef PVR2_CORE_REG_HPP_
-#define PVR2_CORE_REG_HPP_
+#ifndef PVR2_TEX_MEM_H_
+#define PVR2_TEX_MEM_H_
 
-// vlck divider bit for the FB_R_CTRL register
-const static unsigned PVR2_VCLK_DIV_SHIFT = 23;
-const static reg32_t PVR2_VCLK_DIV_MASK = 1 << PVR2_VCLK_DIV_SHIFT;
+#include "mem_areas.h"
 
-// bit in the FB_R_CTRL register that causes each scanline to be sent twice
-const static unsigned PVR2_LINE_DOUBLE_SHIFT = 1;
-const static reg32_t PVR2_LINE_DOUBLE_MASK = 1 << PVR2_LINE_DOUBLE_SHIFT;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// bit in the VO_CONTROL register that causes each pixel to be sent twice
-const static unsigned PVR2_PIXEL_DOUBLE_SHIFT = 8;
-const static reg32_t PVR2_PIXEL_DOUBLE_MASK = 1 << PVR2_PIXEL_DOUBLE_SHIFT;
+extern uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];
 
-int pvr2_core_reg_read(void *buf, size_t addr, size_t len);
-int pvr2_core_reg_write(void const *buf, size_t addr, size_t len);
+int pvr2_tex_mem_read(void *buf, size_t addr, size_t len);
+int pvr2_tex_mem_write(void const *buf, size_t addr, size_t len);
 
-uint32_t get_fb_r_sof1();
-uint32_t get_fb_r_sof2();
-uint32_t get_fb_r_ctrl();
-uint32_t get_fb_r_size();
+#ifdef __cplusplus
+}
+#endif
 
 #endif

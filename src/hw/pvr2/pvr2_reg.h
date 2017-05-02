@@ -20,14 +20,18 @@
  *
  ******************************************************************************/
 
-#ifndef PVR2_TEX_MEM_HPP_
-#define PVR2_TEX_MEM_HPP_
+#ifndef PVR2_REG_H_
+#define PVR2_REG_H_
 
-#include "mem_areas.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-extern uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];
+int pvr2_reg_read(void *buf, size_t addr, size_t len);
+int pvr2_reg_write(void const *buf, size_t addr, size_t len);
 
-int pvr2_tex_mem_read(void *buf, size_t addr, size_t len);
-int pvr2_tex_mem_write(void const *buf, size_t addr, size_t len);
+#ifdef __cplusplus
+}
+#endif
 
 #endif

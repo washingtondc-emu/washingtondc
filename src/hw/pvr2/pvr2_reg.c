@@ -20,18 +20,16 @@
  *
  ******************************************************************************/
 
-#include <cstring>
-#include <iostream>
-
-#include <boost/cstdint.hpp>
+#include <string.h>
+#include <stdio.h>
+#include <stdint.h>
 
 #include "types.h"
 #include "MemoryMap.h"
-#include "BaseException.hpp"
 
-#include "pvr2_reg.hpp"
+#include "pvr2_reg.h"
 
-static const size_t N_PVR2_REGS = ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1;
+#define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
 static reg32_t pvr2_regs[N_PVR2_REGS];
 
 struct pvr2_mem_mapped_reg;
@@ -94,23 +92,20 @@ int pvr2_reg_read(void *buf, size_t addr, size_t len) {
             if (curs->len >= len) {
                 return curs->on_read(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while reading "
-                                                      "from a pvr2 "
-                                                      "register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_feature("Whatever happens when you use an "
+                                  "inappropriate length while reading from a "
+                                  "pvr2 register");
+                error_set_address(addr);
+                error_set_length(len);
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("reading from one of the "
-                                          "pvr2 registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_feature("reading from one of the pvr2 registers");
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 int pvr2_reg_write(void const *buf, size_t addr, size_t len) {
@@ -121,22 +116,20 @@ int pvr2_reg_write(void const *buf, size_t addr, size_t len) {
             if (curs->len >= len) {
                 return curs->on_write(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while writing to "
-                                                      "a pvr2 register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_feature("Whatever happens when you use an "
+                                  "inappropriate length while writing to a "
+                                  "pvr2 register");
+                error_set_address(addr);
+                error_set_length(len);
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("writing to one of the "
-                                          "pvr2 registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_feature("writing to one of the pvr2 registers");
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static int
@@ -165,34 +158,28 @@ warn_pvr2_reg_read_handler(struct pvr2_mem_mapped_reg const *reg_info,
     int ret_code = default_pvr2_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        std::cerr << "WARNING: read from pvr2 register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: read from pvr2 register %s\n",
+                reg_info->reg_name);
     } else {
         switch (len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(2) <<
-                unsigned(val8) << " from pvr2 register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%02x from pvr2 register %s\n",
+                    (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(4) <<
-                unsigned(val16) << " from pvr2 register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%04x from pvr2 register %s\n",
+                    (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(8) <<
-                unsigned(val32) << " from pvr2 register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%08x from pvr2 register %s\n",
+                    (unsigned)val32, reg_info->reg_name);
             break;
-        default:
-            std::cerr << "WARNING: read from pvr2 register " <<
-                reg_info->reg_name << std::endl;
+        default: 
+            fprintf(stderr, "WARNING: read from pvr2 register %s\n",
+                    reg_info->reg_name);
         }
     }
 
@@ -209,28 +196,22 @@ warn_pvr2_reg_write_handler(struct pvr2_mem_mapped_reg const *reg_info,
     switch (len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(2) <<
-            unsigned(val8) << " to pvr2 register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%02x to pvr2 register %s\n",
+                    (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(4) <<
-            unsigned(val16) << " to pvr2 register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%04x to pvr2 register %s\n",
+                (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(8) <<
-            unsigned(val32) << " to pvr2 register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%08x to pvr2 register %s\n",
+                (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        std::cerr << "WARNING: reading from pvr2 register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing to pvr2 register %s\n",
+                reg_info->reg_name);
     }
 
     return default_pvr2_reg_write_handler(reg_info, buf, addr, len);

@@ -20,13 +20,20 @@
  *
  ******************************************************************************/
 
-#ifndef SPG_HPP_
-#define SPG_HPP_
+#ifndef SPG_H_
+#define SPG_H_
 
-#include <boost/cstdint.hpp>
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "types.h"
 #include "dc_sched.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct pvr2_core_mem_mapped_reg;
 
 void spg_init();
 void spg_cleanup();
@@ -87,5 +94,9 @@ read_spg_load(struct pvr2_core_mem_mapped_reg const *reg_info,
 int
 write_spg_load(struct pvr2_core_mem_mapped_reg const *reg_info,
                void const *buf, addr32_t addr, unsigned len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

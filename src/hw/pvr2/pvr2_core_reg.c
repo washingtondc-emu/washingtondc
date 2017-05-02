@@ -20,23 +20,21 @@
  *
  ******************************************************************************/
 
-#include <cstring>
-#include <iostream>
+#include <string.h>
+#include <stdio.h>
+#include <stdint.h>
 
-#include <boost/cstdint.hpp>
-
-#include "spg.hpp"
+#include "spg.h"
 #include "types.h"
 #include "MemoryMap.h"
-#include "BaseException.hpp"
+#include "error.h"
 
-#include "pvr2_core_reg.hpp"
+#include "pvr2_core_reg.h"
 
 static uint32_t fb_r_sof1, fb_r_sof2, fb_r_ctrl, fb_r_size;
 
 
-static const size_t N_PVR2_CORE_REGS =
-    ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1;
+#define N_PVR2_CORE_REGS (ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1)
 static reg32_t pvr2_core_regs[N_PVR2_CORE_REGS];
 
 struct pvr2_core_mem_mapped_reg;
@@ -236,23 +234,20 @@ int pvr2_core_reg_read(void *buf, size_t addr, size_t len) {
             if ((curs->len == len) || (curs->len >= len && curs->n_elem > 1)) {
                 return curs->on_read(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while reading "
-                                                      "from a pvr2 core "
-                                                      "register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_address(addr);
+                error_set_length(len);
+                error_set_feature("Whatever happens when you use an "
+                                  "inapproriate length while reading "
+                                  "from a pvr2 core register");
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("reading from one of the "
-                                          "pvr2 core registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_feature("reading from one of the pvr2 core registers");
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 int pvr2_core_reg_write(void const *buf, size_t addr, size_t len) {
@@ -264,22 +259,20 @@ int pvr2_core_reg_write(void const *buf, size_t addr, size_t len) {
             if ((curs->len == len) || (curs->len >= len && curs->n_elem > 1)) {
                 return curs->on_write(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while writing to "
-                                                      "a pvr2 core register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_address(addr);
+                error_set_length(len);
+                error_set_feature("Whatever happens when you use an "
+                                  "inapproriate length while writing to a pvr2 "
+                                  "core register");
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("writing to one of the "
-                                          "pvr2 core registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_address(addr);
+    error_set_feature("writing to one of the pvr2 core registers");
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static int
@@ -310,34 +303,28 @@ warn_pvr2_core_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     int ret_code = default_pvr2_core_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        std::cerr << "WARNING: read from pvr2 core register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: read from pvr2 core register %s\n",
+                reg_info->reg_name);
     } else {
         switch (len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(2) <<
-                unsigned(val8) << " from pvr2 core register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%02x from pvr2 core register %s\n",
+                    (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(4) <<
-                unsigned(val16) << " from pvr2 core register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%04x from pvr2 core register %s\n",
+                    (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(8) <<
-                unsigned(val32) << " from pvr2 core register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%08x from pvr2 core register %s\n",
+                    (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            std::cerr << "WARNING: read from pvr2 core register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read from pvr2 core register %s\n",
+                    reg_info->reg_name);
         }
     }
 
@@ -355,28 +342,22 @@ warn_pvr2_core_reg_write_handler(
     switch (len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(2) <<
-            unsigned(val8) << " to pvr2 core register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%02x from pvr2 core register %s\n",
+                (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(4) <<
-            unsigned(val16) << " to pvr2 core register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%04x to pvr2 core register %s\n",
+                (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(8) <<
-            unsigned(val32) << " to pvr2 core register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%08x to pvr2 core register %s\n",
+                (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        std::cerr << "WARNING: reading from pvr2 core register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: reading from pvr2 core register %s\n",
+                reg_info->reg_name);
     }
 
     return default_pvr2_core_reg_write_handler(reg_info, buf, addr, len);
@@ -397,10 +378,11 @@ static int
 pvr2_core_read_only_reg_write_handler(
     struct pvr2_core_mem_mapped_reg const *reg_info,
     void const *buf, addr32_t addr, unsigned len) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("whatever happens when you write to "
-                                          "a read-only register") <<
-                          errinfo_guest_addr(addr) << errinfo_length(len));
+    error_set_feature("whatever happens when you write to "
+                      "a read-only register");
+    error_set_address(addr);
+    error_set_length(len);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static int
@@ -421,7 +403,7 @@ fb_r_ctrl_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     else
         spg_set_pclk_div(2);
 
-    spg_set_pix_double_y(bool(new_val & PVR2_LINE_DOUBLE_MASK));
+    spg_set_pix_double_y((bool)(new_val & PVR2_LINE_DOUBLE_MASK));
 
     memcpy(&fb_r_ctrl, buf, sizeof(fb_r_ctrl));
     return 0;
@@ -439,7 +421,7 @@ vo_control_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     reg32_t new_val;
     memcpy(&new_val, buf, sizeof(new_val));
 
-    spg_set_pix_double_x(bool(new_val & PVR2_PIXEL_DOUBLE_MASK));
+    spg_set_pix_double_x((bool)(new_val & PVR2_PIXEL_DOUBLE_MASK));
 
     return warn_pvr2_core_reg_write_handler(reg_info, buf, addr, len);
 }
@@ -447,7 +429,7 @@ vo_control_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 fb_r_sof1_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                            void *buf, addr32_t addr, unsigned len) {
-    mempcpy(buf, &fb_r_sof1, sizeof(fb_r_sof1));
+    memcpy(buf, &fb_r_sof1, sizeof(fb_r_sof1));
     return 0;
 }
 
@@ -461,7 +443,7 @@ fb_r_sof1_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 fb_r_sof2_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                            void *buf, addr32_t addr, unsigned len) {
-    mempcpy(buf, &fb_r_sof2, sizeof(fb_r_sof2));
+    memcpy(buf, &fb_r_sof2, sizeof(fb_r_sof2));
     return 0;
 }
 
@@ -475,7 +457,7 @@ fb_r_sof2_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 fb_r_size_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                            void *buf, addr32_t addr, unsigned len) {
-    mempcpy(buf, &fb_r_size, sizeof(fb_r_size));
+    memcpy(buf, &fb_r_size, sizeof(fb_r_size));
     return 0;
 }
 

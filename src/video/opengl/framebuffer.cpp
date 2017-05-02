@@ -26,9 +26,9 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "hw/pvr2/spg.hpp"
-#include "hw/pvr2/pvr2_core_reg.hpp"
-#include "hw/pvr2/pvr2_tex_mem.hpp"
+#include "hw/pvr2/spg.h"
+#include "hw/pvr2/pvr2_core_reg.h"
+#include "hw/pvr2/pvr2_tex_mem.h"
 #include "opengl_backend.hpp"
 #include "BaseException.hpp"
 

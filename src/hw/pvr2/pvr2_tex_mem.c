@@ -21,7 +21,6 @@
  ******************************************************************************/
 
 #include "MemoryMap.h"
-#include "BaseException.hpp"
 
 uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];
 
@@ -31,8 +30,8 @@ int pvr2_tex_mem_read(void *buf, size_t addr, size_t len) {
     if (addr < ADDR_TEX_FIRST || addr > ADDR_TEX_LAST ||
         ((addr - 1 + len) > ADDR_TEX_LAST) ||
         ((addr - 1 + len) < ADDR_TEX_FIRST)) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("aw fuck it"));
+        error_set_feature("out-of-bounds PVR2 texture memory read");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     memcpy(buf, start_addr, len);
@@ -45,8 +44,8 @@ int pvr2_tex_mem_write(void const *buf, size_t addr, size_t len) {
     if (addr < ADDR_TEX_FIRST || addr > ADDR_TEX_LAST ||
         ((addr - 1 + len) > ADDR_TEX_LAST) ||
         ((addr - 1 + len) < ADDR_TEX_FIRST)) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("aw fuck it"));
+        error_set_feature("out-of-bounds PVR2 texture memory read");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     memcpy(start_addr, buf, len);

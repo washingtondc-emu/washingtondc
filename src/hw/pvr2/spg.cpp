@@ -30,7 +30,7 @@
 #include "hw/sh4/sh4.h"
 #include "hw/sys/holly_intc.hpp"
 
-#include "spg.hpp"
+#include "spg.h"
 
 /* This is the code which generates the H-BLANK and V-BLANK interrupts */
 
