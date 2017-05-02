@@ -20,67 +20,61 @@
  *
  ******************************************************************************/
 
-#include <cassert>
-#include <cstring>
-#include <iostream>
-#include <boost/cstdint.hpp>
+#include <assert.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #include "sh4.h"
 #include "sh4_excp.h"
-#include "BaseException.hpp"
+#include "error.h"
 
 #include "sh4_ocache.h"
 
-static const size_t SH4_OCACHE_LONGS_PER_CACHE_LINE = 8;
-static const size_t SH4_OCACHE_ENTRY_COUNT = 512;
-static const size_t SH4_OCACHE_LINE_SHIFT = 5;
-static const size_t SH4_OCACHE_LINE_SIZE = SH4_OCACHE_LONGS_PER_CACHE_LINE * 4;
-static const size_t SH4_OCACHE_SIZE = SH4_OCACHE_ENTRY_COUNT *
-    SH4_OCACHE_LINE_SIZE;
+#define SH4_OCACHE_LONGS_PER_CACHE_LINE  8
+#define SH4_OCACHE_ENTRY_COUNT           512
+#define SH4_OCACHE_LINE_SHIFT            5
+#define SH4_OCACHE_LINE_SIZE             (SH4_OCACHE_LONGS_PER_CACHE_LINE * 4)
+#define SH4_OCACHE_SIZE        (SH4_OCACHE_ENTRY_COUNT * SH4_OCACHE_LINE_SIZE)
 
 // The valid flag
-static const unsigned SH4_OCACHE_KEY_VALID_SHIFT = 0;
-static const unsigned SH4_OCACHE_KEY_VALID_MASK = 1 << SH4_OCACHE_KEY_VALID_SHIFT;
+#define SH4_OCACHE_KEY_VALID_SHIFT 0
+#define SH4_OCACHE_KEY_VALID_MASK  (1 << SH4_OCACHE_KEY_VALID_SHIFT)
 
 // the dirty flag
-static const unsigned SH4_OCACHE_KEY_DIRTY_SHIFT = 1;
-static const unsigned SH4_OCACHE_KEY_DIRTY_MASK = 1 << SH4_OCACHE_KEY_DIRTY_SHIFT;
+#define SH4_OCACHE_KEY_DIRTY_SHIFT 1
+#define SH4_OCACHE_KEY_DIRTY_MASK  (1 << SH4_OCACHE_KEY_DIRTY_SHIFT)
 
 // the tag represents bits 28:10 (inclusive) of a 29-bit address.
-static const unsigned SH4_OCACHE_KEY_TAG_SHIFT = 2;
-static const unsigned SH4_OCACHE_KEY_TAG_MASK = 0x7ffff << SH4_OCACHE_KEY_TAG_SHIFT;
+#define SH4_OCACHE_KEY_TAG_SHIFT 2
+#define SH4_OCACHE_KEY_TAG_MASK  (0x7ffff << SH4_OCACHE_KEY_TAG_SHIFT)
 
-extern "C"
 void sh4_ocache_init(struct sh4_ocache *ocache) {
     ocache->oc_ram_area = (uint8_t*)malloc(sizeof(uint8_t) * SH4_OC_RAM_AREA_SIZE);
 
     sh4_ocache_clear(ocache);
 }
 
-extern "C"
 void sh4_ocache_cleanup(struct sh4_ocache *ocache) {
     free(ocache->oc_ram_area);
 }
 
-extern "C"
 void sh4_ocache_clear(struct sh4_ocache *ocache) {
     memset(ocache->oc_ram_area, 0, sizeof(uint8_t) * SH4_OC_RAM_AREA_SIZE);
 }
 
-extern "C"
 void sh4_ocache_do_write_ora(Sh4 *sh4, void const *dat,
                              addr32_t paddr, unsigned len) {
     void *addr = sh4_ocache_get_ora_ram_addr(sh4, paddr);
     memcpy(addr, dat, len);
 }
 
-extern "C"
 void sh4_ocache_do_read_ora(Sh4 *sh4, void *dat, addr32_t paddr, unsigned len) {
     void *addr = sh4_ocache_get_ora_ram_addr(sh4, paddr);
     memcpy(dat, addr, len);
 }
 
-extern "C"
 void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr) {
     addr32_t area_offset = paddr & 0xfff;
     addr32_t area_start;
@@ -96,7 +90,6 @@ void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr) {
     return sh4->ocache.oc_ram_area + area_start + area_offset;
 }
 
-extern "C"
 int sh4_sq_write(Sh4 *sh4, void const *buf,
                  addr32_t addr, unsigned len) {
     /*
@@ -107,14 +100,14 @@ int sh4_sq_write(Sh4 *sh4, void const *buf,
      */
 #ifdef ENABLE_SH4_MMU
     if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("MMU support for store queues"));
+        error_set_feature("MMU support for store queues");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
 
     if ((sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK) &&
         !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
-        std::cout << __func__ << ": Address error raised" << std::endl;
+        printf("%s: Address error raised\n", __func__);
         sh4_set_exception(sh4, SH4_EXCP_INST_ADDR_ERR);
         return 1;
     }
@@ -124,11 +117,10 @@ int sh4_sq_write(Sh4 *sh4, void const *buf,
     unsigned sq_sel = ((addr & 0x20) >> 5) << 3;
     if ((n_words + sq_idx > 8) || (len & 3)) {
         // the spec doesn't say what kind of error to raise here
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("whatever happens when you "
-                                              "provide an inappropriate length "
-                                              "during a store-queue write") <<
-                              errinfo_length(len));
+        error_set_length(len);
+        error_set_feature("whatever happens when you provide an inappropriate "
+                          "length during a store-queue write");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     if (addr & SH4_SQ_SELECT_MASK)
@@ -139,7 +131,6 @@ int sh4_sq_write(Sh4 *sh4, void const *buf,
     return 0;
 }
 
-extern "C"
 int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
     unsigned sq_sel = (addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT;
     unsigned sq_idx = sq_sel << 3;
