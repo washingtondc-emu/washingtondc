@@ -29,12 +29,10 @@
 
 #ifdef ENABLE_SH4_MMU
 
-extern "C"
 void sh4_mmu_init(Sh4 *sh4) {
     memset(&sh4->mmu, 0, sizeof(sh4->mmu));
 }
 
-extern "C"
 addr32_t sh4_utlb_ent_get_vpn(struct sh4_utlb_entry const *ent) {
     switch ((ent->ent & SH4_UTLB_ENT_SZ_MASK) >> SH4_UTLB_ENT_SZ_SHIFT) {
     case SH4_MMU_ONE_KILO:
@@ -56,7 +54,6 @@ addr32_t sh4_utlb_ent_get_vpn(struct sh4_utlb_entry const *ent) {
     }
 }
 
-extern "C"
 addr32_t sh4_utlb_ent_get_addr_offset(struct sh4_utlb_entry const *ent,
                                       addr32_t addr) {
     switch ((ent->ent & SH4_UTLB_ENT_SZ_MASK) >> SH4_UTLB_ENT_SZ_SHIFT) {
@@ -79,7 +76,6 @@ addr32_t sh4_utlb_ent_get_addr_offset(struct sh4_utlb_entry const *ent,
     }
 }
 
-extern "C"
 addr32_t sh4_utlb_ent_get_ppn(struct sh4_utlb_entry const *ent) {
     switch ((ent->ent & SH4_UTLB_ENT_SZ_MASK) >> SH4_UTLB_ENT_SZ_SHIFT) {
     case SH4_MMU_ONE_KILO:
@@ -106,7 +102,6 @@ addr32_t sh4_utlb_ent_get_ppn(struct sh4_utlb_entry const *ent) {
  *       calls work, it becomes apparent that the exact same switch statement
  *       gets done 3 times in a row (suboptimal branching).
  */
-extern "C"
 addr32_t sh4_utlb_ent_translate(struct sh4_utlb_entry const *ent,
                                 addr32_t vaddr) {
     addr32_t ppn = sh4_utlb_ent_get_ppn(ent);
@@ -128,7 +123,6 @@ addr32_t sh4_utlb_ent_translate(struct sh4_utlb_entry const *ent,
     }
 }
 
-extern "C"
 addr32_t sh4_itlb_ent_get_vpn(struct sh4_itlb_entry const *ent) {
     switch ((ent->ent & SH4_ITLB_ENT_SZ_MASK) >> SH4_ITLB_ENT_SZ_SHIFT) {
     case SH4_MMU_ONE_KILO:
@@ -150,7 +144,6 @@ addr32_t sh4_itlb_ent_get_vpn(struct sh4_itlb_entry const *ent) {
     }
 }
 
-extern "C"
 addr32_t sh4_itlb_ent_get_ppn(struct sh4_itlb_entry const *ent) {
     switch ((ent->ent & SH4_ITLB_ENT_SZ_MASK) >> SH4_ITLB_ENT_SZ_SHIFT) {
     case SH4_MMU_ONE_KILO:
@@ -176,7 +169,6 @@ addr32_t sh4_itlb_ent_get_ppn(struct sh4_itlb_entry const *ent) {
     }
 }
 
-extern "C"
 addr32_t sh4_itlb_ent_get_addr_offset(struct sh4_itlb_entry const *ent,
                                       addr32_t addr) {
     switch ((ent->ent & SH4_ITLB_ENT_SZ_MASK) >> SH4_ITLB_ENT_SZ_SHIFT) {
@@ -199,7 +191,6 @@ addr32_t sh4_itlb_ent_get_addr_offset(struct sh4_itlb_entry const *ent,
     }
 }
 
-extern "C"
 addr32_t sh4_itlb_ent_translate(struct sh4_itlb_entry const *ent,
                                 addr32_t vaddr) {
     addr32_t ppn = sh4_itlb_ent_get_ppn(ent);
@@ -223,7 +214,6 @@ addr32_t sh4_itlb_ent_translate(struct sh4_itlb_entry const *ent,
 
 
 // find entry with matching VPN
-extern "C"
 struct sh4_utlb_entry *sh4_utlb_search(Sh4 *sh4, addr32_t vaddr,
                                        sh4_utlb_access_t access_type) {
     struct sh4_utlb_entry *ret = NULL;
@@ -325,7 +315,6 @@ struct sh4_utlb_entry *sh4_utlb_search(Sh4 *sh4, addr32_t vaddr,
     return ret;
 }
 
-extern "C"
 struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
     struct sh4_itlb_entry *ret = NULL;
     addr32_t vpn_vaddr;
@@ -455,7 +444,6 @@ struct sh4_itlb_entry *sh4_itlb_search(struct Sh4 *sh4, addr32_t vaddr) {
     return sh4_itlb_search(sh4, vaddr);
 }
 
-extern "C"
 int sh4_mmu_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
     bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
 
@@ -493,7 +481,6 @@ int sh4_mmu_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
     return memory_map_read(data, paddr & 0x1fffffff, len);
 }
 
-extern "C"
 int sh4_mmu_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
     bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
 
@@ -572,7 +559,6 @@ int sh4_mmu_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
     RAISE_ERROR(ERROR_INTEGRITY);
 }
 
-extern "C"
 int sh4_mmu_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
     bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
 

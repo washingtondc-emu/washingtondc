@@ -148,8 +148,8 @@ struct sh4_itlb_entry {
     uint32_t ent;
 };
 
-static const size_t SH4_UTLB_SIZE = 64;
-static const size_t SH4_ITLB_SIZE = 4;
+#define SH4_UTLB_SIZE 64
+#define SH4_ITLB_SIZE 4
 
 struct sh4_mmu {
     struct sh4_utlb_entry utlb[SH4_UTLB_SIZE];
