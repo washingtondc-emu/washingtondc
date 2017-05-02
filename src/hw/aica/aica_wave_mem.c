@@ -21,7 +21,7 @@
  ******************************************************************************/
 
 #include "MemoryMap.h"
-#include "BaseException.hpp"
+#include "error.h"
 
 static uint8_t aica_wave_mem[ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1];
 
@@ -31,8 +31,8 @@ int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
     if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
         ((addr - 1 + len) > ADDR_AICA_WAVE_LAST) ||
         ((addr - 1 + len) < ADDR_AICA_WAVE_FIRST)) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("aw fuck it"));
+        error_set_feature("aw fuck it");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     memcpy(buf, start_addr, len);
@@ -45,8 +45,8 @@ int aica_wave_mem_write(void const *buf, size_t addr, size_t len) {
     if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
         ((addr - 1 + len) > ADDR_AICA_WAVE_LAST) ||
         ((addr - 1 + len) < ADDR_AICA_WAVE_FIRST)) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("aw fuck it"));
+        error_set_feature("aw fuck it");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     memcpy(start_addr, buf, len);

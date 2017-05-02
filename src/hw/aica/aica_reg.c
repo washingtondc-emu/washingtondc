@@ -20,14 +20,13 @@
  *
  ******************************************************************************/
 
-#include <iostream>
+#include <stdio.h>
 
-#include "BaseException.hpp"
 #include "MemoryMap.h"
 
-#include "aica_reg.hpp"
+#include "aica_reg.h"
 
-static const size_t N_AICA_REGS = ADDR_AICA_LAST - ADDR_AICA_FIRST + 1;
+#define N_AICA_REGS ADDR_AICA_LAST - ADDR_AICA_FIRST + 1
 static reg32_t aica_regs[N_AICA_REGS];
 
 struct aica_mapped_reg;
@@ -149,24 +148,21 @@ int aica_reg_read(void *buf, size_t addr, size_t len) {
             if (curs->len == len) {
                 return curs->on_read(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while reading "
-                                                      "from a aica "
-                                                      "register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_feature("Whatever happens when you use an "
+                                  "inapproriate length while reading from an "
+                                  "aica register");
+                error_set_address(addr);
+                error_set_length(len);
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("reading from one of the "
-                                          "aica registers") <<
-                          errinfo_guest_addr(addr) <<
-                          errinfo_length(len));
+    error_set_feature("reading from one of the aica registers");
+    error_set_address(addr);
+    error_set_length(len);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 int aica_reg_write(void const *buf, size_t addr, size_t len) {
@@ -178,23 +174,21 @@ int aica_reg_write(void const *buf, size_t addr, size_t len) {
             if (curs->len == len) {
                 return curs->on_write(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while writing to "
-                                                      "a aica register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_feature("Whatever happens when you use an "
+                                  "inapproriate length while writing to an "
+                                  "aica register");
+                error_set_address(addr);
+                error_set_length(len);
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("writing to one of the "
-                                          "aica registers") <<
-                          errinfo_guest_addr(addr) <<
-                          errinfo_length(len));
+    error_set_feature("writing to one of the aica registers");
+    error_set_address(addr);
+    error_set_length(len);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static int
@@ -223,39 +217,31 @@ warn_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
     int ret_code = default_aica_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        std::cerr << "WARNING: read from aica register " <<
-            reg_info->reg_name << "(offset is " <<
-            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
+        fprintf(stderr, "WARNING: read from aica register %s (offset is %u)\n",
+                reg_info->reg_name, (addr - reg_info->addr) / reg_info->len);
     } else {
         switch (reg_info->len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(2) <<
-                unsigned(val8) << " from aica register " <<
-                reg_info->reg_name << "(offset is " <<
-            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
+            fprintf(stderr, "WARNING: read 0x%02x from aica register %s "
+                    "(offset is %u)\n", (unsigned)val8, reg_info->reg_name,
+                    (addr - reg_info->addr) / reg_info->len);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(4) <<
-                unsigned(val16) << " from aica register " <<
-                reg_info->reg_name << "(offset is " <<
-            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
+            fprintf(stderr, "WARNING: read 0x%04x from aica register %s "
+                    "(offset is %u)\n", (unsigned)val16, reg_info->reg_name,
+                    (addr - reg_info->addr) / reg_info->len);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(8) <<
-                unsigned(val32) << " from aica register " <<
-                reg_info->reg_name << "(offset is " <<
-            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
+            fprintf(stderr, "WARNING: read 0x%08x from aica register %s "
+                    "(offset is %u)\n", (unsigned)val32, reg_info->reg_name,
+                    (addr - reg_info->addr) / reg_info->len);
             break;
         default:
-            std::cerr << "WARNING: read from aica register " <<
-                reg_info->reg_name << "(offset is " <<
-            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
+        fprintf(stderr, "WARNING: read from aica register %s (offset is %u)\n",
+                reg_info->reg_name, (addr - reg_info->addr) / reg_info->len);
         }
     }
 
@@ -272,32 +258,25 @@ warn_aica_reg_write_handler(struct aica_mapped_reg const *reg_info,
     switch (reg_info->len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(2) <<
-            unsigned(val8) << " to aica register " <<
-            reg_info->reg_name << "(offset is " <<
-            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%02x to aica register %s "
+                "(offset is %u)\n", (unsigned)val8, reg_info->reg_name,
+                (addr - reg_info->addr) / reg_info->len);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(4) <<
-            unsigned(val16) << " to aica register " <<
-            reg_info->reg_name << "(offset is " <<
-            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%04x to aica register %s "
+                "(offset is %u)\n", (unsigned)val16, reg_info->reg_name,
+                (addr - reg_info->addr) / reg_info->len);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(8) <<
-            unsigned(val32) << " to aica register " <<
-            reg_info->reg_name << "(offset is " <<
-            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%08x to aica register %s "
+                "(offset is %u)\n", (unsigned)val32, reg_info->reg_name,
+                (addr - reg_info->addr) / reg_info->len);
         break;
     default:
-        std::cerr << "WARNING: reading from aica register " <<
-            reg_info->reg_name << "(offset is " <<
-            (addr - reg_info->addr) / reg_info->len << ")" << std::endl;
+        fprintf(stderr, "WARNING: writing to aica register %s (offset is %u)\n",
+                reg_info->reg_name, (addr - reg_info->addr) / reg_info->len);
     }
 
     return default_aica_reg_write_handler(reg_info, buf, addr, len);

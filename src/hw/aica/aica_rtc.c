@@ -20,14 +20,12 @@
  *
  ******************************************************************************/
 
-#include <iostream>
-
-#include <boost/cstdint.hpp>
+#include <stdio.h>
+#include <stdint.h>
 
 #include "MemoryMap.h"
-#include "BaseException.hpp"
 
-#include "aica_rtc.hpp"
+#include "aica_rtc.h"
 
 /*
  * HACK
@@ -66,17 +64,14 @@ int aica_rtc_read(void *buf, size_t addr, size_t len) {
         return 0;
     }
 
-    std::cout << "Reading " << len << " bytes from AICA RTC address 0x" <<
-        std::hex << addr;
+    printf("Reading %u bytes from AICA RTC address 0x%08x\n",
+           (unsigned)len, (unsigned)addr);
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("Whatever happens when "
-                                          "you use an inapproriate "
-                                          "length while reading "
-                                          "from an aica RTC "
-                                          "register") <<
-                          errinfo_guest_addr(addr) <<
-                          errinfo_length(len));
+    error_set_feature("Whatever happens when you use an inapproriate "
+                      "length while reading from an aica RTC register");
+    error_set_address(addr);
+    error_set_length(len);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 int aica_rtc_write(void const *buf, size_t addr, size_t len) {
@@ -88,15 +83,12 @@ int aica_rtc_write(void const *buf, size_t addr, size_t len) {
         return 0;
     }
 
-    std::cout << "Writing " << len << " bytes to AICA RTC address 0x" <<
-        std::hex << addr;
+    printf("Writing %u bytes to AICA RTC address 0x%08x\n",
+           (unsigned)len, (unsigned)addr);
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("Whatever happens when "
-                                          "you use an inapproriate "
-                                          "length while writing "
-                                          "to an aica RTC "
-                                          "register") <<
-                          errinfo_guest_addr(addr) <<
-                          errinfo_length(len));
+    error_set_feature("Whatever happens when you use an inapproriate "
+                      "length while reading from an aica RTC register");
+    error_set_address(addr);
+    error_set_length(len);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }

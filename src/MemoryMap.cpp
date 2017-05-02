@@ -29,9 +29,9 @@
 #include "hw/pvr2/pvr2_reg.hpp"
 #include "hw/pvr2/pvr2_core_reg.hpp"
 #include "hw/pvr2/pvr2_tex_mem.hpp"
-#include "hw/aica/aica_reg.hpp"
-#include "hw/aica/aica_rtc.hpp"
-#include "hw/aica/aica_wave_mem.hpp"
+#include "hw/aica/aica_reg.h"
+#include "hw/aica/aica_rtc.h"
+#include "hw/aica/aica_wave_mem.h"
 #include "hw/gdrom/gdrom_reg.hpp"
 #include "flash_memory.h"
 

@@ -20,10 +20,18 @@
  *
  ******************************************************************************/
 
-#ifndef AICA_WAVE_MEM_HPP_
-#define AICA_WAVE_MEM_HPP_
+#ifndef AICA_RTC_H_
+#define AICA_RTC_H_
 
-int aica_wave_mem_read(void *buf, size_t addr, size_t len);
-int aica_wave_mem_write(void const *buf, size_t addr, size_t len);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int aica_rtc_read(void *buf, size_t addr, size_t len);
+int aica_rtc_write(void const *buf, size_t addr, size_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
