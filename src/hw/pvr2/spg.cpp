@@ -28,7 +28,7 @@
 #include "video/opengl/framebuffer.hpp"
 #include "window.hpp"
 #include "hw/sh4/sh4.h"
-#include "hw/sys/holly_intc.hpp"
+#include "hw/sys/holly_intc.h"
 
 #include "spg.h"
 

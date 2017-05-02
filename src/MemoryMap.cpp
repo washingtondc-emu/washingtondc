@@ -21,7 +21,7 @@
  ******************************************************************************/
 
 #include "BaseException.hpp"
-#include "hw/sys/sys_block.hpp"
+#include "hw/sys/sys_block.h"
 #include "hw/maple/maple_reg.h"
 #include "hw/g1/g1_reg.h"
 #include "hw/g2/g2_reg.h"
@@ -32,7 +32,7 @@
 #include "hw/aica/aica_reg.h"
 #include "hw/aica/aica_rtc.h"
 #include "hw/aica/aica_wave_mem.h"
-#include "hw/gdrom/gdrom_reg.hpp"
+#include "hw/gdrom/gdrom_reg.h"
 #include "flash_memory.h"
 
 #include "MemoryMap.h"

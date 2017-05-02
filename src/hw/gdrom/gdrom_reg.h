@@ -20,10 +20,18 @@
  *
  ******************************************************************************/
 
-#ifndef GDROM_REG_HPP_
-#define GDROM_REG_HPP_
+#ifndef GDROM_REG_H_
+#define GDROM_REG_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int gdrom_reg_read(void *buf, size_t addr, size_t len);
 int gdrom_reg_write(void const *buf, size_t addr, size_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

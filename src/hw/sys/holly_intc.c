@@ -20,14 +20,13 @@
  *
  ******************************************************************************/
 
-#include <iostream>
+#include <stdio.h>
 
-#include "BaseException.hpp"
-#include "hw/gdrom/gdrom_reg.hpp"
+#include "hw/gdrom/gdrom_reg.h"
 #include "hw/sh4/sh4_excp.h"
 #include "dreamcast.h"
 
-#include "holly_intc.hpp"
+#include "holly_intc.h"
 
 static reg32_t reg_istnrm, reg_istext, reg_isterr;
 static reg32_t reg_iml2nrm, reg_iml2ext, reg_iml2err;
@@ -106,7 +105,7 @@ holly_reg_istext_read_handler(struct sys_mapped_reg const *reg_info,
 
     memcpy(buf, &istext_out, sizeof(istext_out));
 
-    std::cout << "Reading " << std::hex << istext_out << " from ISTEXT" << std::endl;
+    printf("Reading %X from ISTEXT\n", (unsigned)istext_out);
 
     return 0;
 }

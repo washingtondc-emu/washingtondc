@@ -20,16 +20,15 @@
  *
  ******************************************************************************/
 
-#include <iostream>
+#include <stdio.h>
 
-#include "BaseException.hpp"
 #include "MemoryMap.h"
-#include "hw/gdrom/gdrom_reg.hpp"
-#include "holly_intc.hpp"
+#include "hw/gdrom/gdrom_reg.h"
+#include "holly_intc.h"
 
-#include "sys_block.hpp"
+#include "sys_block.h"
 
-static const size_t N_SYS_REGS = ADDR_SYS_LAST - ADDR_SYS_FIRST + 1;
+#define N_SYS_REGS (ADDR_SYS_LAST - ADDR_SYS_FIRST + 1)
 static reg32_t sys_regs[N_SYS_REGS];
 
 struct sys_mapped_reg;
@@ -177,34 +176,28 @@ static int warn_sys_reg_read_handler(struct sys_mapped_reg const *reg_info,
     int ret_code = default_sys_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        std::cerr << "WARNING: read from system register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: read from system register %s\n",
+                reg_info->reg_name);
     } else {
         switch (reg_info->len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(2) <<
-                unsigned(val8) << " from system register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%02x from system register %s\n",
+                    (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(4) <<
-                unsigned(val16) << " from system register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%04x from system register %s\n",
+                    (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(8) <<
-                unsigned(val32) << " from system register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%08x from system register %s\n",
+                    (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            std::cerr << "WARNING: read from system register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read from system register %s\n",
+                    reg_info->reg_name);
         }
     }
 
@@ -221,28 +214,22 @@ static int warn_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
     switch (reg_info->len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(2) <<
-            unsigned(val8) << " to system register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%02x to system register %s\n",
+                (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(4) <<
-            unsigned(val16) << " to system register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%04x to system register %s\n",
+                (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(8) <<
-            unsigned(val32) << " to system register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%08x to system register %s\n",
+                (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        std::cerr << "WARNING: writing to system register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing to system register %s\n",
+                reg_info->reg_name);
     }
 
     return default_sys_reg_write_handler(reg_info, buf, addr, len);
@@ -256,22 +243,20 @@ int sys_block_read(void *buf, size_t addr, size_t len) {
             if (curs->len == len) {
                 return curs->on_read(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while writing to "
-                                                      "a system register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_feature("Whatever happens when you use an "
+                                  "inappropriate length while writing to a "
+                                  "system register");
+                error_set_address(addr);
+                error_set_length(len);
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("accessing one of the "
-                                          "system block registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_feature("accessing one of the system block registers");
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 int sys_block_write(void const *buf, size_t addr, size_t len) {
@@ -282,34 +267,30 @@ int sys_block_write(void const *buf, size_t addr, size_t len) {
             if (curs->len == len) {
                 return curs->on_write(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while reading "
-                                                      "from a system "
-                                                      "register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_feature("Whatever happens when you use an "
+                                  "inappropriate length while reading from a "
+                                  "system register");
+                error_set_address(addr);
+                error_set_length(len);
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("accessing one of the "
-                                          "system block registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_feature("accessing one of the system block registers");
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static int sys_read_only_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                            void const *buf, addr32_t addr,
                                            unsigned len) {
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("Whatever happens when you try to "
-                                          "write to a read-only system-block "
-                                          "register") <<
-                          errinfo_guest_addr(addr) <<
-                          errinfo_length(len));
+    error_set_feature("Whatever happens when you try to write to a read-only "
+                      "system block register");
+    error_set_address(addr);
+    error_set_length(len);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 __attribute__((unused)) static int

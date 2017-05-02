@@ -20,25 +20,26 @@
  *
  ******************************************************************************/
 
-#include <cstring>
-#include <iostream>
-
-#include <boost/cstdint.hpp>
+#include <string.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "types.h"
 #include "MemoryMap.h"
-#include "BaseException.hpp"
-#include "hw/sys/holly_intc.hpp"
+#include "hw/sys/holly_intc.h"
 
-#include "gdrom_reg.hpp"
+#include "gdrom_reg.h"
 
 bool bsy_signal; /* get off the phone! */
 bool drq_signal;
 
 unsigned n_bytes_received;
 
-static const size_t N_GDROM_REGS = ADDR_GDROM_LAST - ADDR_GDROM_FIRST + 1;
+#define N_GDROM_REGS (ADDR_GDROM_LAST - ADDR_GDROM_FIRST + 1)
 static reg32_t gdrom_regs[N_GDROM_REGS];
+
+struct gdrom_mem_mapped_reg;
 
 typedef int(*gdrom_reg_read_handler_t)(
     struct gdrom_mem_mapped_reg const *reg_info,
@@ -123,23 +124,20 @@ int gdrom_reg_read(void *buf, size_t addr, size_t len) {
             if (curs->len >= len) {
                 return curs->on_read(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while reading "
-                                                      "from a gdrom "
-                                                      "register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_feature("Whatever happens when you use an "
+                                  "inappropriate length while reading from a "
+                                  "gdrom register");
+                error_set_address(addr);
+                error_set_length(len);
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("reading from one of the "
-                                          "gdrom registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_feature("reading from one of the gdrom registers");
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 int gdrom_reg_write(void const *buf, size_t addr, size_t len) {
@@ -150,22 +148,20 @@ int gdrom_reg_write(void const *buf, size_t addr, size_t len) {
             if (curs->len >= len) {
                 return curs->on_write(curs, buf, addr, len);
             } else {
-                BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                                      errinfo_feature("Whatever happens when "
-                                                      "you use an inapproriate "
-                                                      "length while writing to "
-                                                      "a gdrom register") <<
-                                      errinfo_guest_addr(addr) <<
-                                      errinfo_length(len));
+                error_set_feature("Whatever happens when you use an "
+                                  "inappropriate length while writing to a "
+                                  "gdrom register");
+                error_set_address(addr);
+                error_set_length(len);
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
         }
         curs++;
     }
 
-    BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                          errinfo_feature("writing to one of the "
-                                          "gdrom registers") <<
-                          errinfo_guest_addr(addr));
+    error_set_feature("writing to one of the gdrom registers");
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static int
@@ -194,34 +190,28 @@ warn_gdrom_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     int ret_code = default_gdrom_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        std::cerr << "WARNING: read from gdrom register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: read from gdrom register %s\n",
+                reg_info->reg_name);
     } else {
         switch (len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(2) <<
-                unsigned(val8) << " from gdrom register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%02x from gdrom register %s\n",
+                    (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(4) <<
-                unsigned(val16) << " from gdrom register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%04x from gdrom register %s\n",
+                    (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            std::cerr << "WARNING: read 0x" <<
-                std::hex << std::setfill('0') << std::setw(8) <<
-                unsigned(val32) << " from gdrom register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read 0x%08x from gdrom register %s\n",
+                    (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            std::cerr << "WARNING: read from gdrom register " <<
-                reg_info->reg_name << std::endl;
+            fprintf(stderr, "WARNING: read from gdrom register %s\n",
+                    reg_info->reg_name);
         }
     }
 
@@ -238,28 +228,22 @@ warn_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     switch (len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(2) <<
-            unsigned(val8) << " to gdrom register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%02x to gdrom register %s\n",
+                (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(4) <<
-            unsigned(val16) << " to gdrom register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%04x to gdrom register %s\n",
+                (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        std::cerr << "WARNING: writing 0x" <<
-            std::hex << std::setfill('0') << std::setw(8) <<
-            unsigned(val32) << " to gdrom register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing 0x%08x to gdrom register %s\n",
+                (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        std::cerr << "WARNING: reading from gdrom register " <<
-            reg_info->reg_name << std::endl;
+        fprintf(stderr, "WARNING: writing to gdrom register %s\n",
+                reg_info->reg_name);
     }
 
     return default_gdrom_reg_write_handler(reg_info, buf, addr, len);
@@ -279,10 +263,9 @@ gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     // uint32_t val =  0 /*int(!pending_gdrom_irq)*//*1*/ << 7; // BSY
     // val |= 1 << 6; // DRDY
     // val |= 1 << 3; // DRQ
-    uint32_t val = (int(bsy_signal) << 7) | (int(drq_signal) << 3);
+    uint32_t val = (((int)bsy_signal) << 7) | (((int)drq_signal) << 3);
 
-    std::cout << "WARNING: read " << val << " from alternate GDROM status " <<
-        "register" << std::endl;
+    printf("WARNING: read %u from alternate GDROM status register\n", (unsigned)val);
 
     memcpy(buf, &val, len > 4 ? 4 : len);
 
@@ -296,12 +279,11 @@ gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     // uint32_t val =  0 /*int(!pending_gdrom_irq)*//*1*/ << 7; // BSY
     // val |= 1 << 6; // DRDY
     // val |= 1 << 3; // DRQ
-    uint32_t val = (int(bsy_signal) << 7) | (int(drq_signal) << 3);
+    uint32_t val = (((int)bsy_signal) << 7) | (((int)drq_signal) << 3);
 
     holly_clear_ext_int(HOLLY_EXT_INT_GDROM);
 
-    std::cout << "WARNING: read " << val << " from GDROM status register"
-              << std::endl;
+    printf("WARNING: read %u from GDROM status register\n", (unsigned)val);
 
     memcpy(buf, &val, len > 4 ? 4 : len);
 
@@ -325,8 +307,9 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     size_t n_bytes = len < sizeof(val) ? len : sizeof(val);
 
     memcpy(&val, buf, n_bytes);
-    std::cout << "WARNING: write " << std::hex << val <<
-        " to gd-rom command register (" << n_bytes << " bytes)" << std::endl;
+
+    printf("WARNING: write 0x%x to gd-rom command register (%u bytes)\n",
+           (unsigned)val, (unsigned)n_bytes);
 
     if (val == 0xa0) {
         drq_signal = true;
@@ -344,8 +327,8 @@ gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(&dat, buf, n_bytes);
 
-    std::cout << "WARNING: write " << std::hex << dat << "to gdrom data "
-        "register (" << len << " bytes)" << std::endl;
+    printf("WARNING: write %u to gdrom data register (%u bytes)\n",
+           (unsigned)dat, (unsigned)len);
 
     n_bytes_received += 2;
 

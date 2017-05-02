@@ -20,14 +20,23 @@
  *
  ******************************************************************************/
 
-#ifndef HOLLY_INTC_HPP_
-#define HOLLY_INTC_HPP_
+#ifndef HOLLY_INTC_H_
+#define HOLLY_INTC_H_
+
+#include <stdint.h>
+
+#include "types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum HollyExtInt {
     HOLLY_EXT_INT_GDROM,
 
     HOLLY_EXT_INT_COUNT
 };
+typedef enum HollyExtInt HollyExtInt;
 
 enum HollyNrmInt {
     HOLLY_NRM_INT_HBLANK,
@@ -36,27 +45,26 @@ enum HollyNrmInt {
 
     HOLLY_NRM_INT_COUNT
 };
+typedef enum HollyNrmInt HollyNrmInt;
+
+struct sys_mapped_reg;
 
 /*
  * Ugh.  All the documentation I've seen points to bit 5 being hblank,
  * but all the homebrew I've see uses it as a vblank interrupt.  IDK how it
  * even relates to the other two vblank interrupts.
  */
-const static unsigned HOLLY_REG_ISTNRM_HBLANK_SHIFT = 5;
-const static reg32_t HOLLY_REG_ISTNRM_HBLANK_MASK =
-    1 << HOLLY_REG_ISTNRM_HBLANK_SHIFT;
+#define HOLLY_REG_ISTNRM_HBLANK_SHIFT 5
+#define HOLLY_REG_ISTNRM_HBLANK_MASK (1 << HOLLY_REG_ISTNRM_HBLANK_SHIFT)
 
-const static unsigned HOLLY_REG_ISTNRM_VBLANK_OUT_SHIFT = 4;
-const static reg32_t HOLLY_REG_ISTNRM_VBLANK_OUT_MASK =
-         1 << HOLLY_REG_ISTNRM_VBLANK_OUT_SHIFT;
+#define HOLLY_REG_ISTNRM_VBLANK_OUT_SHIFT 4
+#define HOLLY_REG_ISTNRM_VBLANK_OUT_MASK  (1 << HOLLY_REG_ISTNRM_VBLANK_OUT_SHIFT)
 
-const static unsigned HOLLY_REG_ISTNRM_VBLANK_IN_SHIFT = 3;
-const static reg32_t HOLLY_REG_ISTNRM_VBLANK_IN_MASK =
-              1 << HOLLY_REG_ISTNRM_VBLANK_IN_SHIFT;
+#define HOLLY_REG_ISTNRM_VBLANK_IN_SHIFT 3
+#define HOLLY_REG_ISTNRM_VBLANK_IN_MASK (1 << HOLLY_REG_ISTNRM_VBLANK_IN_SHIFT)
 
-const static unsigned HOLLY_REG_ISTEXT_GDROM_SHIFT = 0;
-const static reg32_t HOLLY_REG_ISTEXT_GDROM_MASK =
-    1 << HOLLY_REG_ISTEXT_GDROM_SHIFT;
+#define HOLLY_REG_ISTEXT_GDROM_SHIFT 0
+#define HOLLY_REG_ISTEXT_GDROM_MASK (1 << HOLLY_REG_ISTEXT_GDROM_SHIFT)
 
 void holly_raise_nrm_int(HollyNrmInt int_type);
 void holly_clear_nrm_int(HollyNrmInt int_type);
@@ -124,4 +132,8 @@ int holly_reg_iml6ext_read_handler(struct sys_mapped_reg const *reg_info,
 int holly_reg_iml6ext_write_handler(struct sys_mapped_reg const *reg_info,
                                     void const *buf, addr32_t addr,
                                     unsigned len);
+#ifdef __cplusplus
+}
+#endif
+
 #endif
