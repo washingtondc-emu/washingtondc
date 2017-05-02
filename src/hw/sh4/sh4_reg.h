@@ -309,6 +309,7 @@ struct Sh4MemMappedReg {
     reg32_t poweron_reset_val;
     reg32_t manual_reset_val;
 };
+typedef struct Sh4MemMappedReg Sh4MemMappedReg;
 
 /*
  * this is called from the sh4 constructor to
