@@ -23,7 +23,6 @@
 #include "sh4.h"
 #include "sh4_excp.h"
 #include "error.h"
-#include "BaseException.hpp"
 
 static DEF_ERROR_INT_ATTR(sh4_exception_code)
 
@@ -94,7 +93,6 @@ static Sh4ExcpMeta const sh4_excp_meta[SH4_EXCP_COUNT] = {
     { SH4_EXCP_SCIF_TXI,                          4,           2,           0x600  }
 };
 
-extern "C"
 void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     struct Sh4ExcpMeta const *meta = NULL;
     reg32_t *reg = sh4->reg;
@@ -135,7 +133,6 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     }
 }
 
-extern "C"
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
     sh4->reg[SH4_REG_EXPEVT] = (excp_code << SH4_EXPEVT_CODE_SHIFT) &
         SH4_EXPEVT_CODE_MASK;
@@ -143,13 +140,11 @@ void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
     sh4_enter_exception(sh4, (Sh4ExceptionCode)excp_code);
 }
 
-extern "C"
 void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line,
                        Sh4ExceptionCode intp_code) {
     sh4->intc.irq_lines[irq_line] = intp_code;
 }
 
-extern "C"
 void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
     irl_val = ~irl_val;
 
@@ -174,7 +169,6 @@ void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
         sh4->intc.irq_lines[SH4_IRQ_IRL3] = (Sh4ExceptionCode)0;
 }
 
-extern "C"
 void sh4_check_interrupts(Sh4 *sh4) {
     /*
      * for the purposes of interrupt handling, I treat delayed-branch slots
@@ -214,8 +208,8 @@ void sh4_check_interrupts(Sh4 *sh4) {
         int prio = (mask & sh4->reg[ipr_reg_idx]) >> prio_shift_amt;
 
         /* check the sh4's interrupt mask */
-        if (prio > int((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
-                       SH4_SR_IMASK_SHIFT)) {
+        if (prio > (int)((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
+                         SH4_SR_IMASK_SHIFT)) {
             // only take the highest priority irq
             // TODO: priority order
             if (sh4->intc.irq_lines[line] && (prio > max_prio)) {
@@ -312,13 +306,13 @@ void sh4_check_interrupts(Sh4 *sh4) {
                 code = SH4_EXCP_EXT_E;
                 break;
             default:
-                BOOST_THROW_EXCEPTION(IntegrityError());
+                RAISE_ERROR(ERROR_INTEGRITY);
             }
 
             // TODO: priority order
             if (prio > max_prio &&
-                (prio > int((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
-                            SH4_SR_IMASK_SHIFT))) {
+                (prio > (int)((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
+                              SH4_SR_IMASK_SHIFT))) {
                 /*
                  * TODO: instead of accepting the INTEVT value from whoever
                  * raised the interrupt, we should be figuring out what it

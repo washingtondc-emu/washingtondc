@@ -59,7 +59,7 @@ endif()
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.cpp"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_excp.h"
-                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_excp.cpp"
+                "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_excp.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_inst.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mem.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mem.c"

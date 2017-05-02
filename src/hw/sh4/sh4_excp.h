@@ -113,7 +113,7 @@ enum Sh4ExceptionCode {
 
 typedef enum Sh4ExceptionCode Sh4ExceptionCode;
 
-const static unsigned SH4_EXCP_COUNT = 9 + 16 + 16 + 2 + 16 + 5;
+#define SH4_EXCP_COUNT (9 + 16 + 16 + 2 + 16 + 5)
 
 enum {
     SH4_IRQ_RTC,
