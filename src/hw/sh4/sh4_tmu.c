@@ -20,16 +20,14 @@
  *
  ******************************************************************************/
 
-#include <cstring>
-#include <iostream>
-
-#include <boost/cstdint.hpp>
+#include <string.h>
+#include <stdio.h>
+#include <stdint.h>
 
 #include "sh4_excp.h"
 #include "sh4.h"
 #include "dc_sched.h"
 #include "dreamcast.h"
-#include "BaseException.hpp"
 
 #include "sh4_tmu.h"
 
@@ -38,8 +36,8 @@ typedef uint64_t tmu_cycle_t;
 static struct SchedEvent tmu_chan_event[3];
 
 // number of SH4 ticks per TMU tick
-static const unsigned TMU_DIV_SHIFT = 2;
-static const unsigned TMU_DIV = (1 << TMU_DIV_SHIFT);
+#define TMU_DIV_SHIFT 2
+#define TMU_DIV      (1 << TMU_DIV_SHIFT)
 
 // this is the cycle count from the last time we updated the chan_accum values
 static tmu_cycle_t stamp_last_sync[3];
@@ -101,7 +99,7 @@ static void chan_set_tcnt(Sh4 *sh4, unsigned chan, uint32_t val) {
 }
 
 static inline bool chan_enabled(Sh4 *sh4, unsigned chan) {
-    return bool(sh4->reg[SH4_REG_TSTR] & (1 << chan));
+    return (bool)(sh4->reg[SH4_REG_TSTR] & (1 << chan));
 }
 
 static inline bool chan_int_enabled(Sh4 *sh4, unsigned chan) {
@@ -125,7 +123,7 @@ static inline void chan_raise_int(Sh4 *sh4, unsigned chan) {
         line = SH4_IRQ_TMU2;
         break;
     default:
-        BOOST_THROW_EXCEPTION(InvalidParamError());
+        RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
     sh4_set_interrupt(sh4, line, code);
@@ -149,7 +147,7 @@ static inline unsigned chan_clock_div(Sh4 *sh4, unsigned chan) {
         return 1024;
     default:
         // software shouldn't be doing this anyways
-        BOOST_THROW_EXCEPTION(UnimplementedError());
+        RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 }
 
@@ -207,7 +205,7 @@ static void tmu_chan_sync(Sh4 *sh4, unsigned chan) {
 }
 
 void sh4_tmu_init(Sh4 *sh4) {
-    sh4_tmu *tmu = &sh4->tmu;
+    struct sh4_tmu *tmu = &sh4->tmu;
 
     memset(tmu, 0, sizeof(*tmu));
 
@@ -424,7 +422,7 @@ int sh4_tmu_tcnt_read_handler(Sh4 *sh4, void *buf,
         chan = 2;
         break;
     default:
-        BOOST_THROW_EXCEPTION(InvalidParamError());
+        RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
     tmu_chan_sync(sh4, chan);
@@ -445,7 +443,7 @@ int sh4_tmu_tcnt_write_handler(Sh4 *sh4, void const *buf,
         chan = 2;
         break;
     default:
-        BOOST_THROW_EXCEPTION(InvalidParamError());
+        RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
     tmu_chan_sync(sh4, chan);
