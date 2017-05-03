@@ -20,7 +20,11 @@
  *
  ******************************************************************************/
 
-#include <boost/cstdint.hpp>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * The framebuffer runs in the Dreamcast thread.  On vsync events, it is called
@@ -85,3 +89,7 @@ void framebuffer_init(unsigned width, unsigned height);
 void framebuffer_render();
 // void conv_rgb888_to_rgb888(uint32_t *pixels_out, uint8_t const *pixels_in,
 //                            unsigned n_pixels);
+
+#ifdef __cplusplus
+}
+#endif

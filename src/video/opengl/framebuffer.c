@@ -20,15 +20,18 @@
  *
  ******************************************************************************/
 
-#include <iostream>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
+#include "types.h"
+#include "error.h"
 #include "hw/pvr2/spg.h"
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
 #include "opengl_backend.h"
-#include "BaseException.hpp"
 
-#include "framebuffer.hpp"
+#include "framebuffer.h"
 
 /*
  * this is where we store the client-side version
@@ -135,12 +138,10 @@ void read_framebuffer_rgb565_prog(uint32_t *pixels_out, addr32_t start_addr,
     addr32_t first_byte = start_addr + ADDR_TEX_FIRST;
     if (last_byte > ADDR_TEX_LAST || first_byte < ADDR_TEX_FIRST ||
         last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("whatever happens when "
-                                              "START_ADDR is configured to "
-                                              "read outside of texture "
-                                              "memory") <<
-                              errinfo_guest_addr(start_addr));
+        error_set_feature("whatever happens when START_ADDR is configured to "
+                          "read outside of texture memory");
+        error_set_address(start_addr);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     unsigned row;
@@ -194,11 +195,9 @@ void read_framebuffer_rgb565_intl(uint32_t *pixels_out,
         first_addr_field2 > ADDR_TEX_LAST ||
         last_addr_field2 < ADDR_TEX_FIRST ||
         last_addr_field2 > ADDR_TEX_LAST) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("whatever happens when "
-                                              "a framebuffer is configured to "
-                                              "read outside of texture "
-                                              "memory"));
+        error_set_feature("whatever happens when a framebuffer is configured "
+                          "to read outside of texture memory");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     unsigned row;
@@ -229,12 +228,10 @@ void read_framebuffer_rgb0888_prog(uint32_t *pixels_out, addr32_t start_addr,
     addr32_t first_byte = start_addr + ADDR_TEX_FIRST;
     if (last_byte > ADDR_TEX_LAST || first_byte < ADDR_TEX_FIRST ||
         last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("whatever happens when "
-                                              "START_ADDR is configured to "
-                                              "read outside of texture "
-                                              "memory") <<
-                              errinfo_guest_addr(start_addr));
+        error_set_feature("whatever happens when START_ADDR is configured to "
+                          "read outside of texture memory");
+        error_set_address(start_addr);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     unsigned row;
@@ -277,11 +274,9 @@ void read_framebuffer_rgb0888_intl(uint32_t *pixels_out,
         first_addr_field2 > ADDR_TEX_LAST ||
         last_addr_field2 < ADDR_TEX_FIRST ||
         last_addr_field2 > ADDR_TEX_LAST) {
-        BOOST_THROW_EXCEPTION(UnimplementedError() <<
-                              errinfo_feature("whatever happens when "
-                                              "a framebuffer is configured to "
-                                              "read outside of texture "
-                                              "memory"));
+        error_set_feature("whatever happens when a framebuffer is configured "
+                          "to read outside of texture");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     unsigned row;
@@ -315,7 +310,7 @@ void framebuffer_init(unsigned width, unsigned height) {
     fb_width = width;
     fb_height = height;
 
-    fb_tex_mem = new uint8_t[fb_width * fb_height * 4];
+    fb_tex_mem = (uint8_t*)malloc(sizeof(uint8_t) * fb_width * fb_height * 4);
 }
 
 void framebuffer_render() {
@@ -351,16 +346,17 @@ void framebuffer_render() {
         height <<= 1;
 
     if (fb_width != width || fb_height != height) {
-        delete[] fb_tex_mem;
+        free(fb_tex_mem);
         fb_width = width;
         fb_height = height;
-        fb_tex_mem = new uint8_t[fb_width * fb_height * 4];
+        fb_tex_mem =
+            (uint8_t*)malloc(sizeof(uint8_t) * fb_width * fb_height * 4);
     }
 
     switch ((fb_r_ctrl & 0xc) >> 2) {
     case 0:
         // 16-bit 555 RGB
-        std::cout << "Warning: unsupported video mode RGB555" << std::endl;
+        printf("Warning: unsupported video mode RGB555\n");
         break;
     case 1:
         // 16-bit 565 RGB
@@ -380,7 +376,7 @@ void framebuffer_render() {
         break;
     case 2:
         // 24-bit 888 RGB
-        std::cout << "Warning: unsupported video mode RGB888" << std::endl;
+        printf("Warning: unsupported video mode RGB888\n");
         break;
     case 3:
         // 32-bit 08888 RGB

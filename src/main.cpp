@@ -27,7 +27,7 @@
 #include "dreamcast.h"
 #include "window.h"
 #include "gfx_thread.h"
-#include "video/opengl/framebuffer.hpp"
+#include "video/opengl/framebuffer.h"
 #include "video/opengl/opengl_backend.h"
 
 static void print_usage(char const *cmd) {
