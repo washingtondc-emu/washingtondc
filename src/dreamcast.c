@@ -20,12 +20,13 @@
  *
  ******************************************************************************/
 
-#include <ctime>
-#include <csignal>
-#include <fstream>
-#include <iostream>
+#include <time.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-#include "common/BaseException.hpp"
+#include "error.h"
 #include "flash_memory.h"
 #include "dc_sched.h"
 #include "hw/pvr2/spg.h"
@@ -75,9 +76,11 @@ enum TermReason {
 };
 
 // this stores the reason the dreamcast suspended execution
-TermReason term_reason = TERM_REASON_NORM;
+enum TermReason term_reason = TERM_REASON_NORM;
 
 static void dc_sigint_handler(int param);
+
+static void *load_file(char const *path, long *len);
 
 void dreamcast_init(char const *bios_path, char const *flash_path) {
     is_running = true;
@@ -116,10 +119,6 @@ void dreamcast_init_direct(char const *path_ip_bin,
                            char const *flash_path,
                            char const *syscalls_path,
                            bool skip_ip_bin) {
-    std::ifstream file_ip_bin(path_ip_bin,
-                              std::ifstream::in | std::ifstream::binary);
-    std::ifstream file_1st_read_bin(path_1st_read_bin,
-                                    std::ifstream::in | std::ifstream::binary);
     is_running = true;
 
 // #ifdef ENABLE_DEBUGGER
@@ -139,40 +138,45 @@ void dreamcast_init_direct(char const *path_ip_bin,
         bios_file_init_empty(&bios);
     memory_map_init(&bios, &mem);
 
-    file_ip_bin.seekg(0, file_ip_bin.end);
-    size_t len_ip_bin = file_ip_bin.tellg();
-    file_ip_bin.seekg(0, file_ip_bin.beg);
+    long len_ip_bin;
+    void *dat_ip_bin = load_file(path_ip_bin, &len_ip_bin);
+    if (!dat_ip_bin) {
+        error_set_file_path(path_ip_bin);
+        error_set_errno_val(errno);
+        RAISE_ERROR(ERROR_FILE_IO);
+    }
+    memory_map_write(dat_ip_bin, ADDR_IP_BIN & ~0xe0000000, len_ip_bin);
+    free(dat_ip_bin);
 
-    file_1st_read_bin.seekg(0, file_1st_read_bin.end);
-    size_t len_1st_read_bin = file_1st_read_bin.tellg();
-    file_1st_read_bin.seekg(0, file_1st_read_bin.beg);
-
-    uint8_t *dat = new uint8_t[len_ip_bin];
-    file_ip_bin.read((char*)dat, sizeof(uint8_t) * len_ip_bin);
-    memory_map_write(dat, ADDR_IP_BIN & ~0xe0000000, len_ip_bin);
-    delete[] dat;
-
-    dat = new uint8_t[len_1st_read_bin];
-    file_1st_read_bin.read((char*)dat, sizeof(uint8_t) * len_1st_read_bin);
-    memory_map_write(dat, ADDR_1ST_READ_BIN & ~0xe0000000, len_1st_read_bin);
-    delete[] dat;
+    long len_1st_read_bin;
+    void *dat_1st_read_bin = load_file(path_1st_read_bin, &len_1st_read_bin);
+    if (!dat_1st_read_bin) {
+        error_set_file_path(path_1st_read_bin);
+        error_set_errno_val(errno);
+        RAISE_ERROR(ERROR_FILE_IO);
+    }
+    memory_map_write(dat_1st_read_bin, ADDR_1ST_READ_BIN & ~0xe0000000,
+                     len_1st_read_bin);
+    free(dat_1st_read_bin);
 
     if (syscalls_path) {
-        size_t syscalls_len;
-        std::ifstream file_syscalls(syscalls_path,
-                                    std::ifstream::in | std::ifstream::binary);
-        file_syscalls.seekg(0, file_syscalls.end);
-        syscalls_len = file_syscalls.tellg();
-        file_syscalls.seekg(0, file_syscalls.beg);
+        long syscalls_len;
+        void *dat_syscalls = load_file(syscalls_path, &syscalls_len);
 
-        if (syscalls_len != LEN_SYSCALLS)
-            BOOST_THROW_EXCEPTION(InvalidFileLengthError() <<
-                                  errinfo_length(syscalls_len) <<
-                                  errinfo_length_expect(LEN_SYSCALLS));
-        uint8_t *dat = new uint8_t[syscalls_len];
-        file_syscalls.read((char*)dat, sizeof(uint8_t) * syscalls_len);
-        memory_map_write(dat, ADDR_SYSCALLS & ~0xe0000000, syscalls_len);
-        delete[] dat;
+        if (!dat_syscalls) {
+            error_set_file_path(syscalls_path);
+            error_set_errno_val(errno);
+            RAISE_ERROR(ERROR_FILE_IO);
+        }
+
+        if (syscalls_len != LEN_SYSCALLS) {
+            error_set_length(syscalls_len);
+            error_set_expected_length(LEN_SYSCALLS);
+            RAISE_ERROR(ERROR_INVALID_FILE_LEN);
+        }
+
+        memory_map_write(dat_syscalls, ADDR_SYSCALLS & ~0xe0000000, syscalls_len);
+        free(dat_syscalls);
     }
 
     sh4_init(&cpu);
@@ -233,90 +237,89 @@ void dreamcast_run() {
     struct timespec start_time, end_time, delta_time;
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-    try {
-        while (is_running) {
-            /*
-             * The below logic will run the dc_event_base if the debugger is
-             * enabled or if the serial server is enabled.  If only the
-             * debugger is enabled *or* both the debugger and the serial server
-             * are enabled then it will pick either run_one or poll depending
-             * on whether the debugger has suspended execution.  If only the
-             * serial server is enabled, then it will unconditionally run
-             * dc_ios_service.poll.
-             */
+    while (is_running) {
+        /*
+         * The below logic will run the dc_event_base if the debugger is
+         * enabled or if the serial server is enabled.  If only the
+         * debugger is enabled *or* both the debugger and the serial server
+         * are enabled then it will pick either run_one or poll depending
+         * on whether the debugger has suspended execution.  If only the
+         * serial server is enabled, then it will unconditionally run
+         * dc_ios_service.poll.
+         */
 #ifdef ENABLE_DEBUGGER
-            /*
-             * If the debugger is enabled, make sure we have its permission to
-             * single-step; if we don't then we call dc_io_service.run_one to
-             * block until something interresting happens, and then we skip the
-             * rest of the loop.
-             *
-             * If we do have permission to single-step, then we call
-             * dc_io_service.poll instead because we don't want to block.
-             */
-            if (using_debugger && debug_step(&debugger, sh4_get_pc(&cpu))) {
-                if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
-                    is_running = false;
-                    break;
-                }
-
-                continue;
-            } else {
-                if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
-                    is_running = false;
-                    break;
-                }
+        /*
+         * If the debugger is enabled, make sure we have its permission to
+         * single-step; if we don't then we call dc_io_service.run_one to
+         * block until something interresting happens, and then we skip the
+         * rest of the loop.
+         *
+         * If we do have permission to single-step, then we call
+         * dc_io_service.poll instead because we don't want to block.
+         */
+        if (using_debugger && debug_step(&debugger, sh4_get_pc(&cpu))) {
+            if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
+                is_running = false;
+                break;
             }
-#else
-#ifdef ENABLE_SERIAL_SERVER
+
+            continue;
+        } else {
             if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
                 is_running = false;
                 break;
             }
+        }
+#else
+#ifdef ENABLE_SERIAL_SERVER
+        if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
+            is_running = false;
+            break;
+        }
 #endif
 #endif
 
 #ifdef ENABLE_DEBUGGER
-            /*
-             * TODO: don't single-step if there's no
-             * chance of us hitting a breakpoint
-             */
-            sh4_single_step(&cpu);
+        /*
+         * TODO: don't single-step if there's no
+         * chance of us hitting a breakpoint
+         */
+        sh4_single_step(&cpu);
 #else
-            SchedEvent *next_event = peek_event();
+        SchedEvent *next_event = peek_event();
 
-            /*
-             * if, during the last big chunk of SH4 instructions, there was an
-             * event pushed that predated what was originally the next event,
-             * then we will have accidentally skipped over it.
-             * In this case, we want to run that event immediately without
-             * running the CPU
-             */
-            if (next_event) {
-                if (dc_cycle_stamp_priv_ < next_event->when) {
-                    sh4_run_cycles(&cpu, next_event->when - dc_cycle_stamp_priv_);
-                } else {
-                    pop_event();
-                    next_event->handler(next_event);
-                }
+        /*
+         * if, during the last big chunk of SH4 instructions, there was an
+         * event pushed that predated what was originally the next event,
+         * then we will have accidentally skipped over it.
+         * In this case, we want to run that event immediately without
+         * running the CPU
+         */
+        if (next_event) {
+            if (dc_cycle_stamp_priv_ < next_event->when) {
+                sh4_run_cycles(&cpu, next_event->when - dc_cycle_stamp_priv_);
             } else {
-                /*
-                 * Hard to say what to do here.  Constantly checking to see if
-                 * a new event got pushed would be costly.  Instead I just run
-                 * the cpu a little, but not so much that I drastically overrun
-                 * anything that might get scheduled.  The number of cycles to
-                 * run here is arbitrary, but if it's too low then performance
-                 * will be negatively impacted and if it's too high then
-                 * accuracy will be negatively impacted.
-                 */
-                sh4_run_cycles(&cpu, 16);
+                pop_event();
+                next_event->handler(next_event);
             }
-#endif
+        } else {
+            /*
+             * Hard to say what to do here.  Constantly checking to see if
+             * a new event got pushed would be costly.  Instead I just run
+             * the cpu a little, but not so much that I drastically overrun
+             * anything that might get scheduled.  The number of cycles to
+             * run here is arbitrary, but if it's too low then performance
+             * will be negatively impacted and if it's too high then
+             * accuracy will be negatively impacted.
+             */
+            sh4_run_cycles(&cpu, 16);
         }
-    } catch(const BaseException& exc) {
-        std::cerr << boost::diagnostic_information(exc);
-        term_reason = TERM_REASON_ERROR;
+#endif
     }
+    /* } catch(const BaseException& exc) { */
+    /*     std::cerr << boost::diagnostic_information(exc); */
+    /*     term_reason = TERM_REASON_ERROR; */
+    /* } */
     clock_gettime(CLOCK_MONOTONIC, &end_time);
 
     /* subtract delta_time = end_time - start_time */
@@ -330,33 +333,30 @@ void dreamcast_run() {
 
     switch (term_reason) {
     case TERM_REASON_NORM:
-        std::cout << "program execution ended normally" << std::endl;
+        printf("program execution ended normally\n");
         break;
     case TERM_REASON_ERROR:
-        std::cout << "program execution ended due to an unrecoverable " <<
-            "error" << std::endl;
+        printf("program execution ended due to an unrecoverable error\n");
         break;
     case TERM_REASON_SIGINT:
-        std::cout << "program execution ended due to user-initiated " <<
-            "interruption" << std::endl;
+        printf("program execution ended due to user-initiated interruption\n");
         break;
     default:
-        std::cout << "program execution ended for unknown reasons" << std::endl;
+        printf("program execution ended for unknown reasons\n");
         break;
     }
 
-    std::cout << "Total elapsed time: " << std::dec << delta_time.tv_sec <<
-        " seconds and " << delta_time.tv_nsec << " nanoseconds." << std::endl;
+    printf("Total elapsed time: %u seconds and %u nanoseconds\n",
+           (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
 
-    std::cout << dc_cycle_stamp() << " SH4 CPU cycles executed." << std::endl;
+    printf("%u SH4 CPU cycles executed\n", (unsigned)dc_cycle_stamp());
 
     double seconds = delta_time.tv_sec +
-        double(delta_time.tv_nsec) / 1000000000.0;
-    double hz = double(dc_cycle_stamp()) / seconds;
+        ((double)delta_time.tv_nsec) / 1000000000.0;
+    double hz = ((double)dc_cycle_stamp()) / seconds;
     double hz_ratio = hz / 200000000.0;
 
-    std::cout << "Performance is " << (hz / 1000000.0) << " MHz (" <<
-        (hz_ratio * 100.0) << "%)" << std::endl;
+    printf("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
 }
 
 void dreamcast_kill() {
@@ -388,4 +388,36 @@ void dreamcast_enable_serial_server(void) {
 static void dc_sigint_handler(int param) {
     is_running = false;
     term_reason = TERM_REASON_SIGINT;
+}
+
+static void *load_file(char const *path, long *len) {
+    FILE *fp = fopen(path, "rb");
+    long file_sz;
+    void *dat = NULL;
+
+    if (!fp)
+        return NULL;
+
+    if (fseek(fp, 0, SEEK_END) < 0)
+        goto close_fp;
+    if ((file_sz = ftell(fp)) < 0)
+        goto close_fp;
+    if (fseek(fp, 0, SEEK_SET) < 0)
+        goto close_fp;
+
+    dat = malloc(file_sz);
+    if (fread(dat, file_sz, 1, fp) != 1)
+        goto free_dat;
+
+    *len = file_sz;
+
+    // success
+    goto close_fp;
+
+free_dat:
+    free(dat);
+    dat = NULL;
+close_fp:
+    fclose(fp);
+    return dat;
 }

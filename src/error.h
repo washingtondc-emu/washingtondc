@@ -53,7 +53,9 @@ enum error_type {
     ERROR_UNKNOWN_EXCP_CODE,
 
     /* shouldn't be possible ? */
-    ERROR_INTEGRITY
+    ERROR_INTEGRITY,
+
+    ERROR_INVALID_FILE_LEN
 };
 
 enum error_attr_type {
@@ -166,6 +168,8 @@ ERROR_U32_ATTR(expected_length);
 ERROR_STRING_ATTR(wtf);
 
 ERROR_STRING_ATTR(advice);
+
+ERROR_STRING_ATTR(file_path);
 
 #define RAISE_ERROR(tp)                         \
     do {                                        \

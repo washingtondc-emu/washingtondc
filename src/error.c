@@ -121,6 +121,8 @@ static char const *error_type_string(enum error_type tp) {
         return "sh4 interpreter encountered an unknown exception code";
     case ERROR_INTEGRITY:
         return "something that *should* be impossible just happened";
+    case ERROR_INVALID_FILE_LEN:
+        return "incorrect file length";
     default:
         return "Unknown error (this shouldn\'t happen)";
     }
@@ -136,3 +138,4 @@ DEF_ERROR_INT_ATTR(errno_val)
 DEF_ERROR_U32_ATTR(expected_length)
 DEF_ERROR_STRING_ATTR(wtf)
 DEF_ERROR_STRING_ATTR(advice)
+DEF_ERROR_STRING_ATTR(file_path)
