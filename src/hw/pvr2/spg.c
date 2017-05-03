@@ -20,10 +20,11 @@
  *
  ******************************************************************************/
 
-#include <iostream>
-#include <boost/cstdint.hpp>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-#include "BaseException.hpp"
+#include "error.h"
 #include "dreamcast.h"
 #include "video/opengl/framebuffer.h"
 #include "window.h"
@@ -34,18 +35,12 @@
 
 /* This is the code which generates the H-BLANK and V-BLANK interrupts */
 
-typedef boost::error_info<struct tag_raster_x_expect_error_info,
-                          unsigned> errinfo_raster_x_expect;
-typedef boost::error_info<struct tag_raster_x_actual_error_info,
-                          unsigned> errinfo_raster_x_actual;
-typedef boost::error_info<struct tag_raster_y_expect_error_info,
-                          unsigned> errinfo_raster_y_expect;
-typedef boost::error_info<struct tag_raster_y_actual_error_info,
-                          unsigned> errinfo_raster_y_actual;
-typedef boost::error_info<struct tag_hblank_int_comp_val_error_info,
-                          unsigned> errinfo_hblank_int_comp_val;
-typedef boost::error_info<struct tag_hblank_int_mode_error_info,
-                          unsigned> errinfo_hblank_int_mode;
+static DEF_ERROR_INT_ATTR(raster_x_expect)
+static DEF_ERROR_INT_ATTR(raster_y_expect)
+static DEF_ERROR_INT_ATTR(raster_x_actual)
+static DEF_ERROR_INT_ATTR(raster_y_actual)
+static DEF_ERROR_INT_ATTR(hlank_int_comp_val)
+static DEF_ERROR_INT_ATTR(hblank_int_mode)
 
 /*
  * algorithm:
@@ -91,7 +86,7 @@ typedef uint64_t spg_vclk_cycle_t;
  * VBLANK/HBLANK timings so I'm in no mood to contemplate the
  * possibilities.
  */
-static const unsigned SPG_VCLK_DIV = 7;
+#define SPG_VCLK_DIV 7
 
 /*
  * this should be either 1 (for 27 MHz pixel clock) or
@@ -202,36 +197,36 @@ static void spg_handle_hblank(SchedEvent *event) {
     unsigned hblank_int_comp_val = get_hblank_int_comp_val();
 
     if (raster_x != 0) {
-        BOOST_THROW_EXCEPTION(IntegrityError() <<
-                              errinfo_raster_x_expect(0) <<
-                              errinfo_raster_x_actual(raster_x) <<
-                              errinfo_raster_y_actual(raster_y) <<
-                              errinfo_hblank_int_comp_val(hblank_int_comp_val) <<
-                              errinfo_hblank_int_mode(hblank_int_mode));
+        error_set_raster_x_expect(0);
+        error_set_raster_x_actual(raster_x);
+        error_set_raster_y_actual(raster_y);
+        error_set_hblank_int_comp_val(hblank_int_comp_val);
+        error_set_hblank_int_mode(hblank_int_mode);
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 
     switch (hblank_int_mode) {
     case 0:
         if (raster_y == hblank_int_comp_val) {
-            BOOST_THROW_EXCEPTION(IntegrityError() <<
-                                  errinfo_raster_y_expect(hblank_int_comp_val) <<
-                                  errinfo_raster_y_actual(raster_y) <<
-                                  errinfo_hblank_int_comp_val(hblank_int_comp_val) <<
-                              errinfo_hblank_int_mode(hblank_int_mode));
+            error_set_raster_y_expect(hblank_int_comp_val);
+            error_set_raster_y_actual(raster_y);
+            error_set_hblank_int_comp_val(hblank_int_comp_val);
+            error_set_hblank_int_mode(hblank_int_mode);
+            RAISE_ERROR(ERROR_INTEGRITY);
         }
         break;
     case 1:
         if (hblank_int_comp_val && (raster_y % hblank_int_comp_val == 0)) {
-            BOOST_THROW_EXCEPTION(IntegrityError() <<
-                                  errinfo_raster_y_actual(raster_y) <<
-                                  errinfo_hblank_int_comp_val(hblank_int_comp_val) <<
-                              errinfo_hblank_int_mode(hblank_int_mode));
+            error_set_raster_y_actual(raster_y);
+            error_set_hblank_int_comp_val(hblank_int_comp_val);
+            error_set_hblank_int_mode(hblank_int_mode);
+            RAISE_ERROR(ERROR_INTEGRITY);
         }
         break;
     case 2:
         break;
     default:
-        BOOST_THROW_EXCEPTION(UnimplementedError());
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
 
@@ -245,7 +240,7 @@ static void spg_handle_vblank_in(SchedEvent *event) {
     holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_IN);
     sched_next_vblank_in_event();
 
-    std::cout << "vcount is " << std::dec << get_vcount() << std::endl;
+    printf("vcount is %u\n", get_vcount);
     framebuffer_render();
 }
 
@@ -293,7 +288,7 @@ static void sched_next_hblank_event() {
         next_hblank_pclk = hcount - raster_x;
         break;
     default:
-        BOOST_THROW_EXCEPTION(UnimplementedError());
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     hblank_event.when = (SPG_VCLK_DIV * pclk_div) *
@@ -354,7 +349,7 @@ static inline spg_vclk_cycle_t spg_cycle_stamp() {
 
 void spg_set_pclk_div(unsigned val) {
     if (val != 1 && val != 2)
-        BOOST_THROW_EXCEPTION(InvalidParamError());
+        RAISE_ERROR(ERROR_INVALID_PARAM);
 
     pclk_div = val;
 }
