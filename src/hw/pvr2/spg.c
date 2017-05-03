@@ -240,7 +240,7 @@ static void spg_handle_vblank_in(SchedEvent *event) {
     holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_IN);
     sched_next_vblank_in_event();
 
-    printf("vcount is %u\n", get_vcount);
+    printf("vcount is %u\n", get_vcount());
     framebuffer_render();
 }
 
