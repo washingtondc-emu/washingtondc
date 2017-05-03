@@ -30,6 +30,7 @@
 #include "sh4_inst.h"
 #include "error.h"
 #include "dreamcast.h"
+#include "arch/arch_fpu.h"
 
 #include "sh4.h"
 
@@ -119,17 +120,17 @@ void sh4_set_fpu(Sh4 *sh4, FpuReg src) {
 
 void sh4_enter(Sh4 *sh4) {
     if (sh4->fpu.fpscr & SH4_FPSCR_RM_MASK)
-        fesetround(FE_TOWARDZERO);
+        arch_fesetround(FE_TOWARDZERO);
     else
-        fesetround(FE_TONEAREST);
+        arch_fesetround(FE_TONEAREST);
 }
 
 void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {
     sh4->fpu.fpscr = new_val;
     if (sh4->fpu.fpscr & SH4_FPSCR_RM_MASK)
-        fesetround(FE_TOWARDZERO);
+        arch_fesetround(FE_TOWARDZERO);
     else
-        fesetround(FE_TONEAREST);
+        arch_fesetround(FE_TONEAREST);
 }
 
 void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles) {
