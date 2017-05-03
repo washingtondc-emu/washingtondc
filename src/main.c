@@ -156,9 +156,6 @@ int main(int argc, char **argv) {
 #else
         fprintf(stderr, "WARNING: Unable to enable remote gdb stub.\n"
                 "Please rebuild with -DENABLE_DEBUGGER=On\n");
-        std::cerr << "WARNING: Unable to enable remote gdb stub." <<
-            std::endl << "Please rebuild with -DENABLE_DEBUGGER=On" <<
-            std::endl;
 #endif
     }
 

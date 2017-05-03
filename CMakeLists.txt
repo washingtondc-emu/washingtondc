@@ -142,7 +142,7 @@ endif()
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
                          "${PROJECT_SOURCE_DIR}/src/BiosFile.c"
-                         "${PROJECT_SOURCE_DIR}/src/main.cpp")
+                         "${PROJECT_SOURCE_DIR}/src/main.c")
 
 if (ENABLE_DEBUGGER)
     add_definitions(-DENABLE_DEBUGGER)
