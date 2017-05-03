@@ -41,7 +41,7 @@
 #include <GL/gl.h>
 
 #include "opengl_backend.hpp"
-#include "shader.hpp"
+#include "shader.h"
 #include "gfx_thread.hpp"
 
 static void init_poly();

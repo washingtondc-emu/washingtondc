@@ -20,32 +20,20 @@
  *
  ******************************************************************************/
 
-#include <cstdio>
-#include <cstring>
-#include <cstdlib>
-#include <iterator>
-#include <fstream>
-#include <sstream>
+#include <err.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "BaseException.hpp"
+#include "shader.h"
 
-#include "shader.hpp"
+static char *read_txt(char const *path);
 
-class ShaderError : public BaseException {
-public:
-    char const *what() const throw() {
-        return "ShaderError";
-    }
-};
-
-typedef boost::error_info<struct tag_shader_log_error_info, std::string>
-errinfo_shader_log;
-
-static const size_t LOG_LEN_GLSL = 1024;
+#define LOG_LEN_GLSL 1024
 GLchar shader_log[LOG_LEN_GLSL];
 
 void shader_init(struct shader *out,
@@ -62,8 +50,7 @@ void shader_init(struct shader *out,
 
         glDeleteShader(vert_shader);
 
-        BOOST_THROW_EXCEPTION(ShaderError() <<
-                              errinfo_shader_log(shader_log));
+        errx(1, "Error compiling shader: %s\n", shader_log);
     }
 
     GLuint frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -77,8 +64,7 @@ void shader_init(struct shader *out,
         glDeleteShader(vert_shader);
         glDeleteShader(frag_shader);
 
-        BOOST_THROW_EXCEPTION(ShaderError() <<
-                              errinfo_shader_log(shader_log));
+        errx(1, "Error compiling shader: %s\n", shader_log);
     }
 
     GLuint shader_obj = glCreateProgram();
@@ -94,8 +80,7 @@ void shader_init(struct shader *out,
         glDeleteShader(frag_shader);
         glDeleteProgram(shader_obj);
 
-        BOOST_THROW_EXCEPTION(ShaderError() <<
-                              errinfo_shader_log(shader_log));
+        errx(1, "Error compiling shader: %s\n", shader_log);
     }
 
     out->vert_shader = vert_shader;
@@ -103,44 +88,40 @@ void shader_init(struct shader *out,
     out->shader_prog_obj = shader_obj;
 }
 
+static char *read_txt(char const *path) {
+    FILE *txt_fp;
+    char *src;
+    long src_len;
+
+    if (!(txt_fp = fopen(path, "r")))
+        err(1, "Unable to open \"%s\"\n", path);
+
+    if (fseek(txt_fp, 0, SEEK_END) < 0)
+        err(1, "unable to seek \"%s\"\n", path);
+    if ((src_len = ftell(txt_fp)) < 0)
+        err(1, "unable to obtain length of \"%s\"\n", path);
+    if (fseek(txt_fp, 0, SEEK_SET) < 0)
+        err(1, "unable to seek \"%s\"\n", path);
+
+    src = (char*)malloc(sizeof(char) * (1 + src_len));
+    if (fread(src, sizeof(char),
+              src_len, txt_fp) != src_len) {
+        err(1, "unable to read from \"%s\"\n", path);
+    }
+    src[src_len - 1] = '\0';
+
+    fclose(txt_fp);
+
+    return src;
+}
+
 void shader_init_from_file(struct shader *out,
                            char const *vert_shader_path,
                            char const *frag_shader_path) {
-    char *vert_shader_src = NULL, *frag_shader_src = NULL;
+    char *vert_shader_src, *frag_shader_src;
 
-    try {
-        std::ifstream vert_shader_stream(vert_shader_path);
-        std::stringstream ss;
-
-        ss << vert_shader_stream.rdbuf();
-        vert_shader_src = strdup(ss.str().c_str());
-
-    } catch (BaseException& exc) {
-        if (vert_shader_src)
-            free(vert_shader_src);
-        if (frag_shader_src)
-            free(frag_shader_src);
-        exc << errinfo_path(vert_shader_path);
-        throw exc;
-    }
-
-    try {
-        std::ifstream frag_shader_stream(frag_shader_path);
-        std::stringstream ss;
-
-        ss << frag_shader_stream.rdbuf();
-        frag_shader_src = strdup(ss.str().c_str());
-    } catch (BaseException& exc) {
-        if (vert_shader_src)
-            free(vert_shader_src);
-        if (frag_shader_src)
-            free(frag_shader_src);
-        exc << errinfo_path(frag_shader_path);
-        throw exc;
-    }
-
-    // vert_shader_src = "";
-    // frag_shader_src = "";
+    vert_shader_src = read_txt(vert_shader_path);
+    frag_shader_src = read_txt(frag_shader_path);
 
     shader_init(out, vert_shader_src, frag_shader_src);
 

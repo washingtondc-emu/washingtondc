@@ -22,6 +22,10 @@
 
 #include <GL/gl.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct shader {
     GLuint vert_shader;
     GLuint frag_shader;
@@ -36,3 +40,7 @@ void shader_init(struct shader *out,
                  char const *vert_shader_src,
                  char const *frag_shader_src);
 void shader_cleanup(struct shader const *shader);
+
+#ifdef __cplusplus
+}
+#endif
