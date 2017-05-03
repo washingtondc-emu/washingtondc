@@ -24,7 +24,7 @@ cmake_minimum_required(VERSION 2.6)
 project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
-set(CMAKE_CXX_STANDARD 98)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
 
 # turn on strict warnings - i have no idea how to do this in windows
@@ -111,10 +111,6 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/memory.c"
                 "${PROJECT_SOURCE_DIR}/src/MemoryMap.h"
                 "${PROJECT_SOURCE_DIR}/src/MemoryMap.c"
-                "${PROJECT_SOURCE_DIR}/src/arch/arch_fpu.h"
-                "${PROJECT_SOURCE_DIR}/src/arch/x86_64/arch_fenv.h"
-                "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fesetround.c"
-                "${PROJECT_SOURCE_DIR}/src/arch/x86_64/fegetround.c"
                 "${PROJECT_SOURCE_DIR}/src/dreamcast.h"
                 "${PROJECT_SOURCE_DIR}/src/dreamcast.c"
                 "${PROJECT_SOURCE_DIR}/src/dc_sched.h"
@@ -181,23 +177,23 @@ configure_file("src/video/opengl/final_vert.glsl" "final_vert.glsl")
 # Ideally, only washingtondc should need GLFW
 
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp")
-target_link_libraries(sh4asm_test sh4asm_core rt GL glfw GLEW pthread)
+target_link_libraries(sh4asm_test m sh4asm_core rt GL glfw GLEW pthread)
 
 add_executable(sh4mem_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4mem_test.cpp")
-target_link_libraries(sh4mem_test sh4 rt GL glfw GLEW pthread event)
+target_link_libraries(sh4mem_test m sh4 rt GL glfw GLEW pthread event)
 
 add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp")
-target_link_libraries(sh4inst_test sh4 sh4asm_core rt GL glfw GLEW pthread event)
+target_link_libraries(sh4inst_test m sh4 sh4asm_core rt GL glfw GLEW pthread event)
 
 add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.cpp")
-target_link_libraries(sh4tmu_test sh4 sh4asm_core rt GL glfw GLEW pthread event)
+target_link_libraries(sh4tmu_test m sh4 sh4asm_core rt GL glfw GLEW pthread event)
 
 add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.cpp")
-target_link_libraries(sh4div_test sh4 sh4asm_core rt GL glfw GLEW pthread event)
+target_link_libraries(sh4div_test m sh4 sh4asm_core rt GL glfw GLEW pthread event)
 
 add_executable(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp")
-target_link_libraries(sh4asm sh4asm_core rt)
+target_link_libraries(sh4asm m sh4asm_core rt)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-target_link_libraries(washingtondc sh4 rt GL glfw GLEW pthread event)
+target_link_libraries(washingtondc m sh4 rt GL glfw GLEW pthread event)

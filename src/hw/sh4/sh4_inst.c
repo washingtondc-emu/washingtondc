@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <fenv.h>
 #include <limits.h>
 #include <string.h>
 #include <math.h>
@@ -27,7 +28,6 @@
 #include <stdbool.h>
 
 #include "error.h"
-#include "arch/arch_fpu.h"
 #include "dreamcast.h"
 #include "sh4_ocache.h"
 #include "sh4_mmu.h"
@@ -3946,13 +3946,13 @@ void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_next_inst(sh4);
     sh4->fpu.fpscr &= ~SH4_FPSCR_CAUSE_MASK;
 
-    int round_mode = arch_fegetround();
-    arch_fesetround(ARCH_FE_TOWARDZERO);
+    int round_mode = fegetround();
+    fesetround(FE_TOWARDZERO);
 
     val_int = val;
     memcpy(&sh4->fpu.fpul, &val_int, sizeof(sh4->fpu.fpul));
 
-    arch_fesetround(round_mode);
+    fesetround(round_mode);
 }
 
 // FABS DRn
@@ -4095,13 +4095,13 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_next_inst(sh4);
     sh4->fpu.fpscr &= ~SH4_FPSCR_CAUSE_MASK;
 
-    int round_mode = arch_fegetround();
-    arch_fesetround(ARCH_FE_TOWARDZERO);
+    int round_mode = fegetround();
+    fesetround(FE_TOWARDZERO);
 
     val_int = val_in;
     memcpy(&sh4->fpu.fpul, &val_int, sizeof(sh4->fpu.fpul));
 
-    arch_fesetround(round_mode);
+    fesetround(round_mode);
 }
 
 // LDS Rm, FPSCR
