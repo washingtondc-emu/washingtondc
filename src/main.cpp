@@ -26,9 +26,9 @@
 #include "BaseException.hpp"
 #include "dreamcast.h"
 #include "window.h"
-#include "gfx_thread.hpp"
+#include "gfx_thread.h"
 #include "video/opengl/framebuffer.hpp"
-#include "video/opengl/opengl_backend.hpp"
+#include "video/opengl/opengl_backend.h"
 
 static void print_usage(char const *cmd) {
     std::cerr << "USAGE: " << cmd << " [options] [IP.BIN 1ST_READ.BIN]" <<

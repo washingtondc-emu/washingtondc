@@ -22,14 +22,10 @@
 
 #include <iostream>
 
-#define GL3_PROTOTYPES 1
-#include <GL/glew.h>
-#include <GL/gl.h>
-
 #include "hw/pvr2/spg.h"
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
-#include "opengl_backend.hpp"
+#include "opengl_backend.h"
 #include "BaseException.hpp"
 
 #include "framebuffer.hpp"

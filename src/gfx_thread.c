@@ -21,10 +21,11 @@
  ******************************************************************************/
 
 #include <pthread.h>
-#include <cstdlib>
-#include <cstdio>
-#include <cerrno>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 #include <err.h>
+#include <stdbool.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -34,9 +35,9 @@
 
 #include "window.h"
 #include "dreamcast.h"
-#include "video/opengl/opengl_backend.hpp"
+#include "video/opengl/opengl_backend.h"
 
-#include "gfx_thread.hpp"
+#include "gfx_thread.h"
 
 /*
  * used to pass the window width/height from the main thread to the gfx

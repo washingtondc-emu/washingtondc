@@ -20,25 +20,27 @@
  *
  ******************************************************************************/
 
-#ifndef OPENGL_BACKEND_HPP_
-#define OPENGL_BACKEND_HPP_
+#ifndef GFX_THREAD_H_
+#define GFX_THREAD_H_
 
-#include <boost/cstdint.hpp>
+#ifdef __cplusplus
+extern "C"{
+#endif
 
 /*
- * this gets called every time the framebuffer has a new frame to render.
- * fb_new belongs to the caller, and its contents will be copied into a new
- * storage area.
- *
- * this function is safe to call from outside of the graphics thread
+ * The purpose of the GFX thread is to handle all the OpenGL and windowing
+ * related things.
  */
-void backend_new_framebuffer(uint32_t const *fb_new,
-                             unsigned fb_new_width, unsigned fb_new_height);
 
-void backend_update_framebuffer();
-void backend_present();
+void gfx_thread_launch(unsigned width, unsigned height);
 
-void opengl_backend_init();
-void opengl_backend_cleanup();
+void gfx_thread_kill();
+
+// signals the gfx thread to wake up and make the opengl backend redraw
+void gfx_thread_redraw();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

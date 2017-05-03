@@ -20,19 +20,11 @@
  *
  ******************************************************************************/
 
-/*
- * I'm using printf instead of std::cout for logging from now on because it
- * occured to me that iostream might not be thread-safe.
- *
- * Also, in general I'm still mulling the possibility of porting what I have
- * so far from c++03 to C11 because I'm starting to finally understand why it
- * is that people don't like C++.
- */
-#include <cstdio>
-#include <cerrno>
-#include <cstdlib>
-#include <cstring>
-#include <cstdio>
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include <err.h>
 #include <pthread.h>
 
@@ -40,17 +32,17 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "opengl_backend.hpp"
+#include "opengl_backend.h"
 #include "shader.h"
-#include "gfx_thread.hpp"
+#include "gfx_thread.h"
 
 static void init_poly();
 
 // vertex position (x, y, z)
-static const unsigned SLOT_VERT_POS = 0;
+#define SLOT_VERT_POS 0
 
 // vertex texture coordinates (s, t)
-static const unsigned SLOT_VERT_ST = 1;
+#define SLOT_VERT_ST 1
 
 /*
  * this shader represents the final stage of output, where a single textured
@@ -60,8 +52,8 @@ static struct shader fb_shader;
 
 // number of floats per vertex.
 // that's 3 floats for the position and 2 for the texture coords
-const static unsigned FB_VERT_LEN = 5;
-const static unsigned FB_VERT_COUNT = 4;
+#define FB_VERT_LEN 5
+#define FB_VERT_COUNT 4
 static GLfloat fb_quad_verts[FB_VERT_LEN * FB_VERT_COUNT] = {
     /*
      * it is not a mistake that the texture-coordinates are upside-down
@@ -76,7 +68,7 @@ static GLfloat fb_quad_verts[FB_VERT_LEN * FB_VERT_COUNT] = {
      1.0f, -1.0f, 0.0f,    1.0f, 1.0f
 };
 
-const static unsigned FB_QUAD_IDX_COUNT = 4;
+#define FB_QUAD_IDX_COUNT 4
 GLuint fb_quad_idx[FB_QUAD_IDX_COUNT] = {
     1, 0, 2, 3
 };

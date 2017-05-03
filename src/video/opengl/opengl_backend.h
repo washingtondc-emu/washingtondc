@@ -20,19 +20,33 @@
  *
  ******************************************************************************/
 
-#ifndef GFX_THREAD_HPP_
-#define GFX_THREAD_HPP_
+#ifndef OPENGL_BACKEND_H_
+#define OPENGL_BACKEND_H_
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
- * The purpose of the GFX thread is to handle all the OpenGL and windowing
- * related things.
+ * this gets called every time the framebuffer has a new frame to render.
+ * fb_new belongs to the caller, and its contents will be copied into a new
+ * storage area.
+ *
+ * this function is safe to call from outside of the graphics thread
  */
+void backend_new_framebuffer(uint32_t const *fb_new,
+                             unsigned fb_new_width, unsigned fb_new_height);
 
-void gfx_thread_launch(unsigned width, unsigned height);
+void backend_update_framebuffer();
+void backend_present();
 
-void gfx_thread_kill();
+void opengl_backend_init();
+void opengl_backend_cleanup();
 
-// signals the gfx thread to wake up and make the opengl backend redraw
-void gfx_thread_redraw();
+#ifdef __cplusplus
+}
+#endif
 
 #endif
