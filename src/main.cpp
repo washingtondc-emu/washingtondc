@@ -25,7 +25,7 @@
 
 #include "BaseException.hpp"
 #include "dreamcast.h"
-#include "window.hpp"
+#include "window.h"
 #include "gfx_thread.hpp"
 #include "video/opengl/framebuffer.hpp"
 #include "video/opengl/opengl_backend.hpp"

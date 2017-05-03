@@ -20,8 +20,12 @@
  *
  ******************************************************************************/
 
-#ifndef WINDOW_HPP_
-#define WINDOW_HPP_
+#ifndef WINDOW_H_
+#define WINDOW_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void win_init(unsigned width, unsigned height);
 void win_cleanup();
@@ -30,5 +34,9 @@ void win_cleanup();
 bool win_check_events();
 
 void win_update();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

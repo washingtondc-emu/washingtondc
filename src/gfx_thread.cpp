@@ -32,7 +32,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include "window.hpp"
+#include "window.h"
 #include "dreamcast.h"
 #include "video/opengl/opengl_backend.hpp"
 

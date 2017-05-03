@@ -20,7 +20,8 @@
  *
  ******************************************************************************/
 
-#include <cstdlib>
+#include <err.h>
+#include <stdbool.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -28,8 +29,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include "BaseException.hpp"
-#include "window.hpp"
+#include "window.h"
 
 static unsigned res_x, res_y;
 static GLFWwindow *win;
@@ -39,7 +39,7 @@ void win_init(unsigned width, unsigned height) {
     res_y = height;
 
     if (!glfwInit())
-        BOOST_THROW_EXCEPTION(IntegrityError());
+        err(1, "unable to initialize glfw");
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -47,8 +47,9 @@ void win_init(unsigned width, unsigned height) {
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     win = glfwCreateWindow(res_x, res_y, "WashingtonDC Dreamcast Emulator", NULL, NULL);
+
     if (!win)
-        BOOST_THROW_EXCEPTION(IntegrityError());
+        errx(1, "unable to create window");
 
     glfwMakeContextCurrent(win);
 

@@ -29,7 +29,7 @@
 #include "flash_memory.h"
 #include "dc_sched.h"
 #include "hw/pvr2/spg.h"
-#include "window.hpp"
+#include "window.h"
 #include "MemoryMap.h"
 
 #ifdef ENABLE_DEBUGGER

@@ -26,7 +26,7 @@
 #include "BaseException.hpp"
 #include "dreamcast.h"
 #include "video/opengl/framebuffer.hpp"
-#include "window.hpp"
+#include "window.h"
 #include "hw/sh4/sh4.h"
 #include "hw/sys/holly_intc.h"
 
