@@ -21,9 +21,11 @@
  ******************************************************************************/
 
 #include <unistd.h>
-#include <iostream>
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-#include "BaseException.hpp"
 #include "dreamcast.h"
 #include "window.h"
 #include "gfx_thread.h"
@@ -31,23 +33,21 @@
 #include "video/opengl/opengl_backend.h"
 
 static void print_usage(char const *cmd) {
-    std::cerr << "USAGE: " << cmd << " [options] [IP.BIN 1ST_READ.BIN]" <<
-        std::endl << std::endl;
+    fprintf(stderr, "USAGE: %s [options] [IP.BIN 1ST_READ.BIN]\n\n", cmd);
 
-    std::cerr << "WashingtonDC Dreamcast Emulator" << std::endl << std::endl;
+    fprintf(stderr, "WashingtonDC Dreamcast Emulator\n\n");
 
-    std::cerr << "OPTIONS:" << std::endl;
-    std::cerr << "\t-b <bios_path>\tpath to dreamcast boot ROM" << std::endl;
-    std::cerr << "\t-f <flash_path>\tpath to dreamcast flash ROM "
-        "image" << std::endl;
-    std::cerr << "\t-g\t\tenable remote GDB backend" << std::endl;
-    std::cerr << "\t-d\t\tenable direct boot (skip BIOS)" << std::endl;
-    std::cerr << "\t-u\t\tskip IP.BIN and boot straight to 1ST_READ.BIN (only "
-        "valid for direct boot)" << std::endl;
-    std::cerr << "\t-s\t\tpath to dreamcast system call image (only needed for "
-        "direct boot)" << std::endl;
-    std::cerr << "\t-t\t\testablish serial server over TCP port 1998" << std::endl;
-    std::cerr << "\t-h\t\tdisplay this message and exit" << std::endl;
+    fprintf(stderr, "OPTIONS:\n"
+            "\t-b <bios_path>\tpath to dreamcast boot ROM\n"
+            "\t-f <flash_path>\tpath to dreamcast flash ROM image\n"
+            "\t-g\t\tenable remote GDB backend\n"
+            "\t-d\t\tenable direct boot (skip BIOS)\n"
+            "\t-u\t\tskip IP.BIN and boot straight to 1ST_READ.BIN (only "
+            "valid for direct boot)\n"
+            "\t-s\t\tpath to dreamcast system call image (only needed for "
+            "direct boot)\n"
+            "\t-t\t\testablish serial server over TCP port 1998\n"
+            "\t-h\t\tdisplay this message and exit\n");
 }
 
 int main(int argc, char **argv) {
@@ -75,9 +75,8 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_DIRECT_BOOT
             boot_direct = true;
 #else
-            std::cerr << "ERROR: unable to boot in direct-mode: it's "
-                "not enabled!" << std::endl <<
-                "rebuild with -DENABLE_DIRECT_BOOT" << std::endl;
+            fprintf(stderr, "unable to boot in direct-mode: it's not enabled!\n"
+                    "rebuild with -DENABLE_DIRECT_BOOT\n");
             exit(1);
 #endif
             break;
@@ -85,9 +84,8 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_DIRECT_BOOT
             skip_ip_bin = true;
 #else
-            std::cerr << "ERROR: unable to boot in direct-mode: it's "
-                "not enabled!" << std::endl <<
-                "rebuild with -DENABLE_DIRECT_BOOT" << std::endl;
+            fprintf(stderr, "unable to boot in direct-mode: it's not enabled!\n"
+                    "rebuild with -DENABLE_DIRECT_BOOT\n");
             exit(1);
 #endif
             break;
@@ -107,13 +105,13 @@ int main(int argc, char **argv) {
     argc -= optind;
 
     if (skip_ip_bin && !boot_direct) {
-        std::cerr << "Error: -u option is meaningless without -d!" << std::endl;
+        fprintf(stderr, "Error: -u option is meaningless with -d!\n");
         exit(1);
     }
 
     if (path_syscalls_bin && !boot_direct)
-        std::cerr << "Warning: -s option is meaningless when not performing a "
-            "direct boot (-d option)" << std::endl;
+        fprintf(stderr, "Warning: -s option is meaningless when not "
+                "performing a direct boot (-d option)\n");
 
     if (boot_direct) {
         if (argc != 2) {
@@ -124,55 +122,50 @@ int main(int argc, char **argv) {
         path_ip_bin = argv[0];
         path_1st_read_bin = argv[1];
 
-        std::cout << "direct boot enabled, loading IP.BIN from " <<
-            path_ip_bin << " and loading 1ST_READ.BIN from " <<
-            path_1st_read_bin << std::endl;
+        printf("direct boot enbaled, loading IP.BIN from %s and loading "
+               "1ST_READ.BIN from %s\n", path_ip_bin, path_1st_read_bin);
     } else if (argc != 0 || !bios_path) {
         print_usage(cmd);
         exit(1);
     }
 
-    try {
 #ifdef ENABLE_DIRECT_BOOT
-        if (boot_direct) {
-            dreamcast_init_direct(path_ip_bin, path_1st_read_bin,
-                                  bios_path, flash_path, path_syscalls_bin,
-                                  skip_ip_bin);
-        } else {
+    if (boot_direct) {
+        dreamcast_init_direct(path_ip_bin, path_1st_read_bin,
+                              bios_path, flash_path, path_syscalls_bin,
+                              skip_ip_bin);
+    } else {
 #endif
-            dreamcast_init(bios_path, flash_path);
+        dreamcast_init(bios_path, flash_path);
 #ifdef ENABLE_DIRECT_BOOT
-        }
-#endif
-
-        if (enable_serial) {
-#ifdef ENABLE_SERIAL_SERVER
-            dreamcast_enable_serial_server();
-#else
-            std::cerr << "WARNING: Unable to enable TCP serial server." <<
-                std::endl << "Please rebuild with -DENABLE_SERIAL_SERVER" <<
-                std::endl;
-#endif
-        }
-
-        if (enable_debugger) {
-#ifdef ENABLE_DEBUGGER
-            dreamcast_enable_debugger();
-#else
-            std::cerr << "WARNING: Unable to enable remote gdb stub." <<
-                std::endl << "Please rebuild with -DENABLE_DEBUGGER=On" <<
-                std::endl;
-#endif
-        }
-
-        framebuffer_init(640, 480);
-        gfx_thread_launch(640, 480);
-
-        dreamcast_run();
-    } catch (BaseException& err) {
-        std::cerr << boost::diagnostic_information(err);
-        exit(1);
     }
+#endif
+
+    if (enable_serial) {
+#ifdef ENABLE_SERIAL_SERVER
+        dreamcast_enable_serial_server();
+#else
+        fprintf(stderr, "WARNING: Unable to enable TCP serial server\n"
+                "Please rebuild with -DENABLE_SERIAL_SERVER\n");
+#endif
+    }
+
+    if (enable_debugger) {
+#ifdef ENABLE_DEBUGGER
+        dreamcast_enable_debugger();
+#else
+        fprintf(stderr, "WARNING: Unable to enable remote gdb stub.\n"
+                "Please rebuild with -DENABLE_DEBUGGER=On\n");
+        std::cerr << "WARNING: Unable to enable remote gdb stub." <<
+            std::endl << "Please rebuild with -DENABLE_DEBUGGER=On" <<
+            std::endl;
+#endif
+    }
+
+    framebuffer_init(640, 480);
+    gfx_thread_launch(640, 480);
+
+    dreamcast_run();
 
     exit(0);
 }
