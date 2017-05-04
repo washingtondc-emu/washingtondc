@@ -358,6 +358,8 @@ void dreamcast_run() {
     double hz_ratio = hz / 200000000.0;
 
     printf("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
+
+    dreamcast_cleanup();
 }
 
 void dreamcast_kill() {

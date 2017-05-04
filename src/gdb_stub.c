@@ -126,12 +126,14 @@ static size_t deserialize_data(struct string const *input_str,
 }
 
 void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
+    memset(stub, 0, sizeof(*stub));
+
     string_init(&stub->unack_packet);
     string_init(&stub->input_packet);
 
     stub->frontend_supports_swbreak = false;
     stub->is_writing = false;
-    stub->should_expect_mem_access_error =false;
+    stub->should_expect_mem_access_error = false;
     stub->listener = NULL;
     stub->is_listening = false;
     stub->bev = NULL;
@@ -147,11 +149,19 @@ void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
     dbg->frontend.on_read_watchpoint = gdb_on_read_watchpoint;
     dbg->frontend.on_write_watchpoint = gdb_on_write_watchpoint;
     dbg->frontend.on_softbreak = gdb_on_softbreak;
+    dbg->frontend.on_cleanup = gdb_cleanup;
     dbg->frontend.arg = stub;
 }
 
-void gdb_cleanup(struct gdb_stub *stub) {
-    // TODO: cleanup
+void gdb_cleanup(void *arg) {
+    struct gdb_stub *stub = (struct gdb_stub*)arg;
+
+    if (stub->bev) {
+        bufferevent_free(stub->bev);
+    }
+
+    if (stub->listener)
+        evconnlistener_free(stub->listener);
 
     string_cleanup(&stub->input_packet);
     string_cleanup(&stub->unack_packet);

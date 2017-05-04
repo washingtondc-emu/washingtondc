@@ -56,6 +56,8 @@ struct debug_frontend {
      */
     void(*on_softbreak)(inst_t, addr32_t, void*);
 
+    void(*on_cleanup)(void*);
+
     void *arg;
 };
 

@@ -85,7 +85,7 @@ struct gdb_stub {
 };
 
 void gdb_init(struct gdb_stub *stub, struct debugger *dbg);
-void gdb_cleanup(struct gdb_stub *stub);
+void gdb_cleanup(void *arg);
 
 void gdb_attach(void *argptr);
 

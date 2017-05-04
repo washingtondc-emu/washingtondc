@@ -38,6 +38,7 @@ static void frontend_on_write_watchpoint(struct debug_frontend *frontend,
                                          addr32_t addr);
 static void frontend_on_softbreak(struct debug_frontend *frontend, inst_t inst,
                                   addr32_t addr);
+static void frontend_on_cleanup(struct debug_frontend *frontend);
 
 void debug_init(struct debugger *dbg) {
     dbg->cur_state = DEBUG_STATE_BREAK;
@@ -51,6 +52,7 @@ void debug_init(struct debugger *dbg) {
 }
 
 void debug_cleanup(struct debugger *dbg) {
+    frontend_on_cleanup(&dbg->frontend);
 }
 
 bool debug_should_break(struct debugger *dbg, addr32_t pc) {
@@ -256,4 +258,9 @@ static void frontend_on_softbreak(struct debug_frontend *frontend, inst_t inst,
                                   addr32_t addr) {
     if (frontend->on_softbreak)
         frontend->on_softbreak(inst, addr, frontend->arg);
+}
+
+static void frontend_on_cleanup(struct debug_frontend *frontend) {
+    if (frontend->on_cleanup)
+        frontend->on_cleanup(frontend->arg);
 }
