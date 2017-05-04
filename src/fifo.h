@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,6 +34,11 @@ extern "C" {
 
 #define FIFO_DEREF(nodep, tp, memb) \
     (*((tp*)(((uint8_t*)nodep) - offsetof(tp, memb))))
+
+#define FIFO_HEAD_INITIALIZER(name) { .first = NULL, .plast = &name.first }
+
+#define FIFO_FOREACH(head, curs) \
+    for ((curs) = (head).first; (curs); (curs) = (curs)->next)
 
 struct fifo_node {
     struct fifo_node *next;
@@ -82,6 +88,26 @@ static inline size_t fifo_len(struct fifo_head *fifo) {
 
 static inline bool fifo_empty(struct fifo_head *fifo) {
     return fifo->first == NULL;
+}
+
+static inline void fifo_erase(struct fifo_head *fifo, struct fifo_node *node) {
+    struct fifo_node **cursp = &fifo->first;
+
+    while (*cursp) {
+        struct fifo_node *curs = *cursp;
+
+        if (curs == node)
+            break;
+        cursp = &curs->next;
+    }
+
+    if (*cursp) {
+        *cursp = node->next;
+        node->next = NULL;
+    } else {
+        fprintf(stderr, "WARNING: attempting to erase non-present "
+                "element from FIFO\n");
+    }
 }
 
 #ifdef __cplusplus

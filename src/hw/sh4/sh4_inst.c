@@ -950,7 +950,6 @@ static InstOpcode invalid_opcode = {
 
 #define SH4_INST_RAISE_ERROR(sh4, error_tp)     \
     do {                                        \
-        sh4_error_set_regs(sh4);                \
         RAISE_ERROR(error_tp);                  \
     } while (0)
 

@@ -27,6 +27,8 @@
 
 #include <stdint.h>
 
+#include "fifo.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -92,6 +94,21 @@ void error_clear();
 void error_add_attr(struct error_attr *attr);
 
 void error_print();
+
+/*
+ * Unlike error handlers (see below, error callbacks are invoked at the
+ * beginning of error processing to set attributes.  They are not supposed
+ * to attempt to handle the error in any way.
+ */
+struct error_callback {
+    void(*callback_fn)(void *arg);
+    void *arg;
+
+    struct fifo_node node;
+};
+
+void error_add_callback(struct error_callback *cb);
+void error_rm_callback(struct error_callback *cb);
 
 #ifdef ENABLE_DEBUGGER
 /*

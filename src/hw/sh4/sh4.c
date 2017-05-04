@@ -33,6 +33,10 @@
 
 #include "sh4.h"
 
+static void sh4_error_set_regs(void *argptr);
+
+static struct error_callback sh4_error_callback;
+
 void sh4_init(Sh4 *sh4) {
     memset(sh4, 0, sizeof(*sh4));
     sh4->reg_area = (uint8_t*)malloc(sizeof(uint8_t) * (SH4_P4_REGEND - SH4_P4_REGSTART));
@@ -57,9 +61,19 @@ void sh4_init(Sh4 *sh4) {
     sh4_on_hard_reset(sh4);
 
     sh4_init_inst_lut();
+
+    /*
+     * TODO: in the future dynamically allocate the sh4_error_callback so I can
+     * have one for each CPU (on multi-cpu systems like the hikaru)
+     */
+    sh4_error_callback.arg = sh4;
+    sh4_error_callback.callback_fn = sh4_error_set_regs;
+    error_add_callback(&sh4_error_callback);
 }
 
 void sh4_cleanup(Sh4 *sh4) {
+    error_rm_callback(&sh4_error_callback);
+
     sh4_tmu_cleanup(sh4);
 
     sh4_ocache_cleanup(&sh4->ocache);
@@ -289,7 +303,9 @@ static DEF_ERROR_U32_ATTR(sh4_reg_ttb);
 static DEF_ERROR_U32_ATTR(sh4_reg_tea);
 static DEF_ERROR_U32_ATTR(sh4_reg_mmucr);
 
-void sh4_error_set_regs(Sh4 *sh4) {
+static void sh4_error_set_regs(void *argptr) {
+    Sh4 *sh4 = (Sh4*)argptr;
+
     error_set_sh4_reg_sr(sh4->reg[SH4_REG_SR]);
     error_set_sh4_reg_ssr(sh4->reg[SH4_REG_SSR]);
     error_set_sh4_reg_pc(sh4->reg[SH4_REG_PC]);

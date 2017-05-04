@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "fifo.h"
+
 #include "error.h"
 
 #ifdef __cplusplus
@@ -41,6 +43,8 @@ enum error_type error_type;
 
 struct error_attr *first_attr;
 
+static struct fifo_head err_callbacks = FIFO_HEAD_INITIALIZER(err_callbacks);
+
 #ifdef ENABLE_DEBUGGER
 void set_error_handler(error_handler_t handler) {
     error_handler = handler;
@@ -56,6 +60,15 @@ void error_raise(enum error_type tp) {
         return;
     }
 #endif
+
+    struct fifo_node *cursor;
+
+    FIFO_FOREACH(err_callbacks, cursor) {
+        struct error_callback *cb =
+            &FIFO_DEREF(cursor, struct error_callback, node);
+
+        cb->callback_fn(cb->arg);
+    }
 
     error_print();
     exit(1);
@@ -126,6 +139,14 @@ static char const *error_type_string(enum error_type tp) {
     default:
         return "Unknown error (this shouldn\'t happen)";
     }
+}
+
+void error_add_callback(struct error_callback *cb) {
+    fifo_push(&err_callbacks, &cb->node);
+}
+
+void error_rm_callback(struct error_callback *cb) {
+    fifo_erase(&err_callbacks, &cb->node);
 }
 
 DEF_ERROR_INT_ATTR(line)
