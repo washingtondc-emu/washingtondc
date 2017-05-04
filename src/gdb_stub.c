@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -157,6 +158,31 @@ void gdb_cleanup(void *arg) {
     struct gdb_stub *stub = (struct gdb_stub*)arg;
 
     if (stub->bev) {
+        /*
+         * TODO - HACK
+         * Some versions of gdb will hang after sending the K packet
+         * unless there's a delay.  I'm pretty sure this is a bug in gdb itself
+         * because not all versions have this bug, and also because the
+         * documentation says that immediately closing the connection without
+         * even sending an acknowledgement is a perfectly valid way to handle a
+         * K packet.
+         *
+         * As for why the delay fixes things, I *think* it has something to do
+         * with forcing gdb to send the packet again because it thinks we never
+         * received the first one.
+         *
+         * I've seen this in Ubuntu's version of gdb-7.11, but gentoo's version
+         * of 7.10 is clear.  I have no idea if this is a result of some
+         * patch in the Ubuntu version or if I've actually stumbled across a
+         * bug upstream.  I Need to remember to go back and try it out on some
+         * more builds this weekend.
+         *
+         * ANYWAYS,  the 10 second delay is annoying but not nearly as annoying
+         * as needing to killall gdb every time I quit.
+         */
+        printf("Artificial 10-second delay to work around a bug present in "
+               "some gdb installations, please be patient...\n");
+        sleep(10);
         bufferevent_free(stub->bev);
     }
 
