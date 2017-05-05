@@ -1,31 +1,44 @@
-# WashingtonDC Dreamcast Emulator
+# WashingtonDC
 
-Someday this is going to be a Sega Dreamcast emulator.  For now, it's just a
-partially-complete SH4 interpreter.
+WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  Currently
+it's only capable of running a handful of homebrew programs because it is still
+at an early stage of development but the goal is to someday run the entire
+Dreamcast library at full-speed, and eventually even Naomi/Atomiswave/Hikaru
+games.
 
+## GALLERY
+![Alt text](media/washingtondc_sega_logo.png "SEGA bootstrap (IP.BIN)") ![Alt text](media/washingtondc_kos_320x240.png "KallistiOS 320x240 example program")
 
-# Instructions
+*(the SEGA license statement in the above screenshot refers to a program running within WashingtonDC, not WashingtonDC itself)*
 
-* run washingtondc:
-    ./washingtondc -b \<path to Dreamcast BIOS file\>
+## COMPILING
 
-Not much will happen because this is still in a very early stage of development
+mkdir build
+cd build
+cmake [OPTIONS] ..
+make
 
-# remote debugging with gdb
+Available options for the cmake generation are:
 
-* run washingtondc with the -g option:
+ENABLE_SH4_MMU=On(default)/Off - emulate the sh4's Memory Management Unit (MMU)
+ENABLE_DEBUGGER=On(default)/Off - Enable the remote gdb backend
+ENABLE_DIRECT_BOOT=On(default)/Off - Enable direct boot mode (optionally skip
+                                     boot rom)
+DBG_EXIT_ON_UNDEFINED_OPCODE=Of/Off(default) - Bail out if the emulator hits an
+                                               undefined opcode
+ENABLE_SERIAL_SERVER=On(default)/Off - Enable serial server over TCP port 1998
+INVARIANTS=On(default)/Off - runtime sanity checks that should never fail
 
-    ./washingtondc -b \<path to Dreamcast BIOS file\>
+## USAGE
 
-    It will print:
+./washingtondc [options] [IP.BIN 1ST_READ.BIN]
 
-    Awaiting remote GDB connection on port 1999...
-
-* open gdb in another window
-* enter the following commands:
-    set architecture sh4
-    set step-mode on
-    target remote localhost:1999
-
-At this point you will have a live debugger session you can use to watch
-washingtondc load the dreamcast bios and eventually crash.
+OPTIONS:
+-b <bios_path> path to dreamcast boot ROM
+-f <flash_path> path to dreamcast flash ROM image
+-g enable remote GDB backend via TCP port 1999
+-d enable direct boot (skip BIOS)
+-u skip IP.BIN and boot straight to 1ST_READ.BIN (only valid for direct boot)
+-s path to dreamcast system call image (only needed for direct boot)
+-t establish serial server over TCP port 1998
+-h display this message and exit
