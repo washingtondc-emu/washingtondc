@@ -154,12 +154,12 @@ if (ENABLE_SERIAL_SERVER)
                                  "${PROJECT_SOURCE_DIR}/src/serial_server.c")
 endif()
 
-set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/Inst.cpp"
-                        "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/sh4asm.cpp")
+set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/tool/sh4asm/Inst.cpp"
+                        "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4asm.cpp")
 
 include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
-                    "${PROJECT_SOURCE_DIR}/src/common"
+                    "${PROJECT_SOURCE_DIR}/common"
                     "${PROJECT_SOURCE_DIR}/external")
 
 add_library(sh4asm_core ${sh4asm_core_sources})
@@ -176,22 +176,28 @@ configure_file("src/video/opengl/final_vert.glsl" "final_vert.glsl")
 #
 # Ideally, only washingtondc should need GLFW
 
-add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp")
-target_link_libraries(sh4asm_test m sh4asm_core rt GL glfw GLEW pthread)
+set(common_headers "${PROJECT_SOURCE_DIR}/common/BaseException.hpp")
 
-add_executable(sh4mem_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4mem_test.cpp")
+add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp" ${common_headers})
+target_link_libraries(sh4asm_test m sh4asm_core rt GL glfw GLEW pthread)
+target_include_directories(sh4asm_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
+
+add_executable(sh4mem_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4mem_test.cpp" ${common_headers})
 target_link_libraries(sh4mem_test m sh4 rt GL glfw GLEW pthread event)
 
-add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp")
+add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp" ${common_headers})
 target_link_libraries(sh4inst_test m sh4 sh4asm_core rt GL glfw GLEW pthread event)
+target_include_directories(sh4inst_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 
-add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.cpp")
+add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.cpp" ${common_headers})
 target_link_libraries(sh4tmu_test m sh4 sh4asm_core rt GL glfw GLEW pthread event)
+target_include_directories(sh4tmu_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 
-add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.cpp")
+add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.cpp" ${common_headers})
 target_link_libraries(sh4div_test m sh4 sh4asm_core rt GL glfw GLEW pthread event)
+target_include_directories(sh4div_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 
-add_executable(sh4asm "${PROJECT_SOURCE_DIR}/src/tool/sh4asm/main.cpp")
+add_executable(sh4asm "${PROJECT_SOURCE_DIR}/tool/sh4asm/main.cpp" ${common_headers})
 target_link_libraries(sh4asm m sh4asm_core rt)
 
 add_executable(washingtondc ${washingtondc_sources})

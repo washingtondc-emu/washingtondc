@@ -32,7 +32,7 @@
 #include "memory.h"
 #include "mem_areas.h"
 #include "hw/sh4/sh4.h"
-#include "tool/sh4asm/sh4asm.hpp"
+#include "sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
 #include "BiosFile.h"
 #include "MemoryMap.h"

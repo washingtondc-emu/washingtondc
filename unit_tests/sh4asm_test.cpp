@@ -26,7 +26,7 @@
 #include <boost/cstdint.hpp>
 #include <boost/tokenizer.hpp>
 
-#include "tool/sh4asm/sh4asm.hpp"
+#include "sh4asm/sh4asm.hpp"
 #include "RandGenerator.hpp"
 #include "BaseException.hpp"
 
