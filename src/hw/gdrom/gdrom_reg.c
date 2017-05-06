@@ -152,6 +152,22 @@ enum {
 };
 static uint32_t trans_mode_vals[TRANS_MODE_COUNT];
 
+enum gdrom_state {
+    GDROM_STATE_NORM,
+    GDROM_STATE_INPUT_PKT
+};
+
+static enum gdrom_state state;
+
+#define PKT_LEN 12
+static uint8_t pkt_buf[PKT_LEN];
+
+//this is used to buffer PIO data going from the GD-ROM to the host
+#define DATA_BUF_MAX 64
+unsigned data_buf_len;
+unsigned data_buf_idx;
+unsigned data_buf[DATA_BUF_MAX];
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // GD-ROM drive function implementation
@@ -216,6 +232,9 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len);
+static int
+gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                            void *buf, addr32_t addr, unsigned len);
 
 static int
 gdrom_features_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
@@ -228,6 +247,10 @@ gdrom_sect_cnt_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_dev_ctrl_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                  void const *buf, addr32_t addr, unsigned len);
+
+static int
+gdrom_int_reason_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                                  void *buf, addr32_t addr, unsigned len);
 
 
 static struct gdrom_mem_mapped_reg {
@@ -247,11 +270,11 @@ static struct gdrom_mem_mapped_reg {
     { "status/command", 0x5f709c, 4,
       gdrom_status_read_handler, gdrom_cmd_reg_write_handler },
     { "GD-ROM Data", 0x5f7080, 4,
-      warn_gdrom_reg_read_handler, gdrom_data_reg_write_handler },
+      gdrom_data_reg_read_handler/* warn_gdrom_reg_read_handler */, gdrom_data_reg_write_handler },
     { "Error/features", 0x5f7084, 4,
       gdrom_error_reg_read_handler, gdrom_features_reg_write_handler },
     { "Interrupt reason/sector count", 0x5f7088, 4,
-      warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
+      gdrom_int_reason_reg_read_handler, warn_gdrom_reg_write_handler },
     { "Sector number", 0x5f708c, 4,
       warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
     { "Byte Count (low)", 0x5f7090, 4,
@@ -262,6 +285,14 @@ static struct gdrom_mem_mapped_reg {
 };
 
 static void gdrom_cmd_set_features(void);
+
+// called when the packet command (0xa0) is written to the cmd register
+static void gdrom_cmd_begin_packet(void);
+
+// called when all 12 bytes of a packet have been written to data
+static void gdrom_input_packet(void);
+
+static void gdrom_input_req_mode_packet(void);
 
 int gdrom_reg_read(void *buf, size_t addr, size_t len) {
     struct gdrom_mem_mapped_reg *curs = gdrom_reg_info;
@@ -461,8 +492,9 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     switch (cmd) {
     case GDROM_CMD_PKT:
         // TODO: implement packets instead of pretending to receive them
-        stat_reg |= STAT_DRQ_MASK;
-    break;
+        gdrom_cmd_begin_packet();
+        return 0;
+        break;
     case GDROM_CMD_SET_FEAT:
         gdrom_cmd_set_features();
         break;
@@ -480,6 +512,30 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 }
 
 static int
+gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                            void *buf, addr32_t addr, unsigned len) {
+    uint8_t *ptr = buf;
+
+    printf("WARNING: reading %u values from GD-ROM data register:\n", len);
+
+    while (len--) {
+        unsigned old_idx = data_buf_idx;
+        *ptr++ = data_buf_idx < data_buf_len ? data_buf[data_buf_idx++] : 0;
+        printf("\t[%u] = 0x%02x\n", old_idx, (unsigned)*(ptr - 1));
+    }
+
+    if (data_buf_idx >= data_buf_len) {
+        // done transmitting data from gdrom to host - notify host
+        stat_reg &= ~(STAT_DRQ_MASK | STAT_BSY_MASK);
+        stat_reg |= STAT_DRDY_MASK;
+    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+    }
+
+    return 0;
+}
+
+static int
 gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len) {
     uint32_t dat = 0;
@@ -490,14 +546,15 @@ gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     printf("WARNING: write 0x%04x to gdrom data register (%u bytes)\n",
            (unsigned)dat, (unsigned)len);
 
-    n_bytes_received += 2;
+    if (state == GDROM_STATE_INPUT_PKT) {
+        pkt_buf[n_bytes_received] = dat & 0xff;
+        pkt_buf[n_bytes_received + 1] = (dat >> 8) & 0xff;
+        n_bytes_received += 2;
 
-    if (n_bytes_received >= 12) {
-        n_bytes_received = 0;
-        stat_reg &= ~(STAT_DRQ_MASK | STAT_BSY_MASK);
-
-        if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
-            holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        if (n_bytes_received >= 12) {
+            n_bytes_received = 0;
+            gdrom_input_packet();
+        }
     }
 
     return 0;
@@ -561,6 +618,81 @@ static void gdrom_cmd_set_features(void) {
     }
 }
 
+static void gdrom_cmd_begin_packet(void) {
+    int_reason_reg &= ~INT_REASON_IO_MASK;
+    int_reason_reg |= INT_REASON_COD_MASK;
+    stat_reg |= STAT_DRQ_MASK;
+    n_bytes_received = 0;
+    state = GDROM_STATE_INPUT_PKT;
+}
+
+/*
+ * this function is called after 12 bytes have been written to the data
+ * register after the drive has received GDROM_CMD_PKT (which puts it in
+ * GDROM_STATE_INPUT_PKT
+ */
+static void gdrom_input_packet(void) {
+    stat_reg &= ~(STAT_DRQ_MASK | STAT_BSY_MASK);
+
+    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+
+    if (pkt_buf[0] == 0x10) {
+        printf("REQ_STAT command received!\n");
+        state = GDROM_STATE_NORM;
+    } else if (pkt_buf[0] == 0x11) {
+        gdrom_input_req_mode_packet();
+    } else {
+        printf("unknown packet 0x%02x received\n", (unsigned)pkt_buf[0]);
+        state = GDROM_STATE_NORM;
+    }
+}
+
+static void gdrom_input_req_mode_packet(void) {
+    unsigned starting_addr = pkt_buf[2];
+    unsigned len = pkt_buf[4];
+
+    printf("REQ_MODE command received\n");
+    printf("read %u bytes starting at %u\n", len, starting_addr);
+
+    // temp placeholder for hardware info until I can reverse it from my DC
+    static uint8_t info[32] = {
+        's', 'o', 'n', 'i', 'c', ' ', 't', 'h',
+        'e', 'h', 'e', 'd', 'g', 'e', 'h', 'o',
+        'g', ' ', 'm', 'i', 'l', 'e', 's', ' ',
+        '\"','t', 'a', 'i', 'l', 's', '\"','.'
+    };
+
+    if (len != 0) {
+        unsigned first_idx = starting_addr;
+        unsigned last_idx = starting_addr + (len - 1);
+
+        if (first_idx > 31)
+            first_idx = 31;
+        if (last_idx > 31)
+            last_idx = 31;
+
+        unsigned idx;
+        for (idx = first_idx; idx <= last_idx; idx++) {
+            data_buf[idx - first_idx] = info[idx];
+            printf("data_buf[%u] = 0x%02x\n", idx - first_idx, data_buf[idx - first_idx]);
+        }
+
+        data_buf_len = last_idx - first_idx + 1;
+    } else {
+        data_buf_len = 0;
+    }
+    data_buf_idx = 0;
+
+    int_reason_reg |= INT_REASON_IO_MASK;
+    int_reason_reg &= ~INT_REASON_COD_MASK;
+    stat_reg |= STAT_DRQ_MASK;
+    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+
+    state = GDROM_STATE_NORM;
+}
+
 static int
 gdrom_sect_cnt_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                  void const *buf, addr32_t addr, unsigned len) {
@@ -577,6 +709,16 @@ gdrom_dev_ctrl_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     size_t n_bytes = len < sizeof(dev_ctrl_reg) ? len : sizeof(dev_ctrl_reg);
 
     memcpy(&dev_ctrl_reg, buf, n_bytes);
+
+    return 0;
+}
+
+static int
+gdrom_int_reason_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                                  void *buf, addr32_t addr, unsigned len) {
+    size_t n_bytes = len < sizeof(int_reason_reg) ? len : sizeof(int_reason_reg);
+
+    memcpy(&int_reason_reg, buf, n_bytes);
 
     return 0;
 }
