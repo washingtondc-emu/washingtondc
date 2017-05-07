@@ -608,10 +608,6 @@ static void read_mem_4(struct gdb_stub *stub, struct string *out,
         sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
         addr += 4;
 
-        expect_mem_access_error(stub, false);
-        err_str(out, EINVAL);
-        return;
-
         if (stub->mem_access_error) {
             expect_mem_access_error(stub, false);
             err_str(out, EINVAL);
