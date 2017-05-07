@@ -675,7 +675,8 @@ static void gdrom_input_req_mode_packet(void) {
         unsigned idx;
         for (idx = first_idx; idx <= last_idx; idx++) {
             data_buf[idx - first_idx] = info[idx];
-            printf("data_buf[%u] = 0x%02x\n", idx - first_idx, data_buf[idx - first_idx]);
+            printf("GD-ROM: data_buf[%u] = 0x%02x\n",
+                   idx - first_idx, data_buf[idx - first_idx]);
         }
 
         data_buf_len = last_idx - first_idx + 1;
@@ -718,7 +719,9 @@ gdrom_int_reason_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len) {
     size_t n_bytes = len < sizeof(int_reason_reg) ? len : sizeof(int_reason_reg);
 
-    memcpy(&int_reason_reg, buf, n_bytes);
+    printf("GD-ROM: int_reason is 0x%08x\n", int_reason_reg);
+
+    memcpy(buf, &int_reason_reg, n_bytes);
 
     return 0;
 }
