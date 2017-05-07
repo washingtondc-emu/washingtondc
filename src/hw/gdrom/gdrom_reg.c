@@ -655,12 +655,18 @@ static void gdrom_input_req_mode_packet(void) {
     printf("REQ_MODE command received\n");
     printf("read %u bytes starting at %u\n", len, starting_addr);
 
-    // temp placeholder for hardware info until I can reverse it from my DC
+    /*
+     * response to command packet 0x11 (REQ_MODE).  A couple of these fields
+     * are supposed to be user-editable via the 0x12 (SET_MODE) packet.  Mostly
+     * it's just irrelevant text used to get the drive's firmware version.  For
+     * now none of these fields can be changed because I haven't implemented
+     * that yet.
+     */
     static uint8_t info[32] = {
-        's', 'o', 'n', 'i', 'c', ' ', 't', 'h',
-        'e', 'h', 'e', 'd', 'g', 'e', 'h', 'o',
-        'g', ' ', 'm', 'i', 'l', 'e', 's', ' ',
-        '\"','t', 'a', 'i', 'l', 's', '\"','.'
+        0x00, 0x00, 0x00, 0x00, 0x00, 0xb4, 0x19, 0x00,
+        0x00, 0x08,  'S',  'E',  ' ',  ' ',  ' ',  ' ',
+         ' ',  ' ',  'R',  'e',  'v',  ' ',  '6',  '.',
+         '4',  '2',  '9',  '9',  '0',  '3',  '1',  '6'
     };
 
     if (len != 0) {
