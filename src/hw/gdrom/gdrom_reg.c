@@ -163,7 +163,7 @@ static enum gdrom_state state;
 static uint8_t pkt_buf[PKT_LEN];
 
 //this is used to buffer PIO data going from the GD-ROM to the host
-#define DATA_BUF_MAX 64
+#define DATA_BUF_MAX 1024
 unsigned data_buf_len;
 unsigned data_buf_idx;
 unsigned data_buf[DATA_BUF_MAX];
@@ -288,6 +288,8 @@ static void gdrom_cmd_set_features(void);
 
 // called when the packet command (0xa0) is written to the cmd register
 static void gdrom_cmd_begin_packet(void);
+
+static void gdrom_cmd_identify(void);
 
 // called when all 12 bytes of a packet have been written to data
 static void gdrom_input_packet(void);
@@ -498,6 +500,10 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     case GDROM_CMD_SET_FEAT:
         gdrom_cmd_set_features();
         break;
+    case GDROM_CMD_IDENTIFY:
+        gdrom_cmd_identify();
+        return 0;
+        break;
     default:
         fprintf(stderr, "WARNING: unknown command 0x%2x input to gdrom "
                 "command register\n", cmd);
@@ -616,6 +622,34 @@ static void gdrom_cmd_set_features(void) {
         fprintf(stderr, "WARNING: unrecognized GD-ROM transfer mode\n"
                 "sect_cnt_reg is 0x%08x\n", sect_cnt_reg);
     }
+}
+
+// string of bytes returned by the GDROM_CMD_IDENTIFY command
+static uint8_t gdrom_ident_str[80] = {
+    0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x53, 0x45, 0x20, 0x20,
+    0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+    0x20, 0x20, 0x43, 0x44, 0x2d, 0x52, 0x4f, 0x4d, 0x20, 0x44,
+    0x52, 0x49, 0x56, 0x45, 0x20, 0x20, 0x20, 0x20, 0x36, 0x2e,
+    0x34, 0x32, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+    0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static void gdrom_cmd_identify(void) {
+    state = GDROM_STATE_NORM;
+
+    stat_reg &= ~STAT_BSY_MASK;
+    stat_reg |= STAT_DRQ_MASK;
+
+    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+
+    unsigned idx;
+    for (idx = 0; idx < 80; idx++)
+        data_buf[idx] = gdrom_ident_str[idx];
+    data_buf_len = 80;
+    data_buf_idx = 0;
 }
 
 static void gdrom_cmd_begin_packet(void) {
