@@ -46,6 +46,16 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// Packet Commands
+//
+////////////////////////////////////////////////////////////////////////////////
+
+#define GDROM_PKT_TEST_UNIT 0x00
+#define GDROM_PKT_REQ_STAT  0x10
+#define GDROM_PKT_REQ_MODE  0x11
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // Transfer Modes (for the sector count register in GDROM_CMD_SEAT_FEAT)
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,6 +305,8 @@ static void gdrom_cmd_identify(void);
 static void gdrom_input_packet(void);
 
 static void gdrom_input_req_mode_packet(void);
+
+static void gdrom_input_test_unit_packet(void);
 
 int gdrom_reg_read(void *buf, size_t addr, size_t len) {
     struct gdrom_mem_mapped_reg *curs = gdrom_reg_info;
@@ -671,15 +683,38 @@ static void gdrom_input_packet(void) {
     if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
-    if (pkt_buf[0] == 0x10) {
+
+    switch (pkt_buf[0]) {
+    case GDROM_PKT_TEST_UNIT:
+        gdrom_input_test_unit_packet();
+        break;
+    case GDROM_PKT_REQ_STAT:
         printf("REQ_STAT command received!\n");
-        state = GDROM_STATE_NORM;
-    } else if (pkt_buf[0] == 0x11) {
+        state = GDROM_STATE_NORM; // TODO: implement
+        break;
+    case GDROM_PKT_REQ_MODE:
         gdrom_input_req_mode_packet();
-    } else {
+        break;
+    default:
         printf("unknown packet 0x%02x received\n", (unsigned)pkt_buf[0]);
         state = GDROM_STATE_NORM;
     }
+}
+
+static void gdrom_input_test_unit_packet(void) {
+    printf("TEST_UNIT packet received\n");
+
+    // is this correct?
+    int_reason_reg |= (INT_REASON_COD_MASK | INT_REASON_IO_MASK);
+    stat_reg |= STAT_DRDY_MASK;
+    stat_reg &= ~(STAT_BSY_MASK | STAT_DRQ_MASK);
+
+    // raise interrupt if it is enabled - this is already done from
+    // gdrom_input_packet
+    /* if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK)) */
+    /*     holly_raise_ext_int(HOLLY_EXT_INT_GDROM); */
+
+    state = GDROM_STATE_NORM;
 }
 
 static void gdrom_input_req_mode_packet(void) {
