@@ -2,11 +2,11 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation, either version 3 of the License, or
+ *    the Free Software Foundation, either version 2 of the License, or
  *    (at your option) any later version.
  *
  *    This program is distributed in the hope that it will be useful,
@@ -20,27 +20,28 @@
  *
  ******************************************************************************/
 
-#ifndef MEMORYMAP_H_
-#define MEMORYMAP_H_
+#ifndef MEM_CODE_H_
+#define MEM_CODE_H_
 
-#include "BiosFile.h"
-#include "memory.h"
-#include "mem_areas.h"
+// common error codes returned by the various memory access/mapping functions
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void memory_map_init(BiosFile *bios_new, struct Memory *mem_new);
-void memory_map_set_bios(BiosFile *bios_new);
-void memory_map_set_mem(struct Memory *mem_new);
+// sh4 CPU exception raised during memory access; access aborted
+#define MEM_ACCESS_EXC 1
+
+// memory access succeeded
+#define MEM_ACCESS_SUCCESS 0
 
 /*
- * the error codes returned by these functions are the same as the error codes
- * defined in mem_code.h
+ * access failed due to a bug or unimplemented feature in WashingtonDC.
+ *
+ * the access was aborted and the appropriate details have been sent to the
+ * error reporting-system, but the error was not raised.
  */
-int memory_map_read(void *buf, size_t addr, size_t len);
-int memory_map_write(void const *buf, size_t addr, size_t len);
+#define MEM_ACCESS_FAILURE -1
 
 #ifdef __cplusplus
 }

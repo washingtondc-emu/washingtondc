@@ -74,7 +74,7 @@ enum VirtMemArea {
 /*
  * From within the CPU, these functions should be called instead of
  * the memory's read/write functions because these implement the MMU
- * functionality.  In the event of a failure, these functions will set the
+ * functionality.  In the event of a CPU exception, these functions will set the
  * appropriate CPU flags for an exception and return non-zero.  On success
  * they will return zero.
  */
@@ -83,13 +83,11 @@ int sh4_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
 
 
 /*
- * same as sh4_write_mem/sh4_read_mem, except they don't check for debugger
- * watchpoints when the debugger is enabled.
+ * same as sh4_write_mem/sh4_read_mem, except they don't automatically raise
+ * pending errors and they don't check for watchpoints
  */
 int sh4_do_write_mem(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
 int sh4_do_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
-
-
 
 int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr);
 

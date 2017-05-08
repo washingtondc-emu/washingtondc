@@ -28,6 +28,7 @@
 #include "sh4.h"
 #include "dreamcast.h"
 #include "MemoryMap.h"
+#include "mem_code.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debugger.h"
@@ -44,11 +45,15 @@ int sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
     struct debugger *dbg = dreamcast_get_debugger();
     if (dbg && debug_is_w_watch(dbg, addr, len)) {
         sh4->aborted_operation = true;
-        return 1;
+        return MEM_ACCESS_EXC;
     }
 #endif
 
-    return sh4_do_write_mem(sh4, data, addr, len);
+    int ret;
+
+    if ((ret = sh4_do_write_mem(sh4, data, addr, len)) == MEM_ACCESS_FAILURE)
+        RAISE_ERROR(get_error_pending());
+    return ret;
 }
 
 int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
@@ -70,7 +75,8 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
          */
         error_set_feature("CPU exception for unprivileged "
                           "access to high memory areas");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
     }
 
     switch (virt_area) {
@@ -82,7 +88,8 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 #else // ifdef ENABLE_SH4_MMU
             error_set_feature("MMU");
             error_set_advice("run cmake with -DENABLE_SH4_MMU=ON and rebuild");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            PENDING_ERROR(ERROR_UNIMPLEMENTED);
+            return MEM_ACCESS_FAILURE;
 #endif
         } else {
             // handle the case where OCE is enabled and ORA is
@@ -91,7 +98,7 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
                 (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
                 sh4_ocache_in_ram_area(addr)) {
                 sh4_ocache_do_write_ora(sh4, data, addr, len);
-                return 0;
+                return MEM_ACCESS_SUCCESS;
             }
 
             // don't use the cache
@@ -119,11 +126,14 @@ int sh4_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
     struct debugger *dbg = dreamcast_get_debugger();
     if (dbg && debug_is_r_watch(dbg, addr, len)) {
         sh4->aborted_operation = true;
-        return 1;
+        return MEM_ACCESS_EXC;
     }
 #endif
+    int ret;
 
-    return sh4_do_read_mem(sh4, data, addr, len);
+    if ((ret = sh4_do_read_mem(sh4, data, addr, len)) == MEM_ACCESS_FAILURE)
+        RAISE_ERROR(get_error_pending());
+    return ret;
 }
 
 int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
@@ -145,7 +155,8 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
          */
         error_set_feature("CPU exception for unprivileged "
                           "access to high memory areas");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
     }
 
     switch (virt_area) {
@@ -157,7 +168,8 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
 #else // ifdef ENABLE_SH4_MMU
             error_set_feature("MMU");
             error_set_advice("run cmake with -DENABLE_SH4_MMU=ON and rebuild");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            PENDING_ERROR(ERROR_UNIMPLEMENTED);
+            return MEM_ACCESS_FAILURE;
 #endif
         } else {
             // handle the case where OCE is enabled and ORA is
@@ -166,7 +178,7 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
                 (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
                 sh4_ocache_in_ram_area(addr)) {
                 sh4_ocache_do_read_ora(sh4, data, addr, len);
-                return 0;
+                return MEM_ACCESS_SUCCESS;
             }
 
             // don't use the cache
@@ -184,7 +196,7 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
         break;
     }
 
-    return 1;
+    return MEM_ACCESS_EXC;
 }
 
 int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len) {
@@ -194,8 +206,8 @@ int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len) {
 
     error_set_address(addr);
     error_set_feature("reading from part of the P4 memory region");
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    exit(1);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
@@ -208,8 +220,8 @@ int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
 
     error_set_address(addr);
     error_set_feature("writing to part of the P4 memory region");
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    exit(1);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 
@@ -229,7 +241,8 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
          */
         error_set_feature("CPU exception for unprivileged "
                           "access to high memory areas");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
     }
 
     switch (virt_area) {
@@ -241,7 +254,8 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
 #else // ifdef ENABLE_SH4_MMU
             error_set_feature("MMU");
             error_set_advice("run cmake with -DENABLE_SH4_MMU=ON and rebuild");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            PENDING_ERROR(ERROR_UNIMPLEMENTED);
+            return MEM_ACCESS_FAILURE;
 #endif
         } else {
             return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
@@ -255,12 +269,13 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
     case SH4_AREA_P4:
         error_set_feature("CPU exception for reading instructions from the P4 "
                           "memory area");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
     default:
         break;
     }
 
-    return 1;
+    return MEM_ACCESS_EXC;
 }
 
 enum VirtMemArea sh4_get_mem_area(addr32_t addr) {

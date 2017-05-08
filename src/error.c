@@ -34,32 +34,17 @@
 static char const *error_type_string(enum error_type tp);
 static void print_attr(struct error_attr const *attr);
 
-#ifdef ENABLE_DEBUGGER
-static error_handler_t error_handler;
-static void *error_handler_arg;
-#endif
+static enum error_type error_pending = ERROR_NONE;
 
-enum error_type error_type;
+static enum error_type error_type;
 
-struct error_attr *first_attr;
+static struct error_attr *first_attr;
 
 static struct fifo_head err_callbacks = FIFO_HEAD_INITIALIZER(err_callbacks);
 
-#ifdef ENABLE_DEBUGGER
-void set_error_handler(error_handler_t handler) {
-    error_handler = handler;
-}
-#endif
-
+__attribute__((__noreturn__))
 void error_raise(enum error_type tp) {
     error_type = tp;
-
-#ifdef ENABLE_DEBUGGER
-    if (error_handler) {
-        error_handler(tp, error_handler_arg);
-        return;
-    }
-#endif
 
     struct fifo_node *cursor;
 
@@ -75,6 +60,7 @@ void error_raise(enum error_type tp) {
 }
 
 void error_clear() {
+    error_pending = ERROR_NONE;
     error_type = ERROR_NONE;
     first_attr = NULL;
 }
@@ -149,8 +135,18 @@ void error_rm_callback(struct error_callback *cb) {
     fifo_erase(&err_callbacks, &cb->node);
 }
 
+enum error_type get_error_pending(void) {
+    return error_pending;
+}
+
+void set_error_pending(enum error_type tp) {
+    error_pending = tp;
+}
+
 DEF_ERROR_INT_ATTR(line)
 DEF_ERROR_STRING_ATTR(file)
+DEF_ERROR_INT_ATTR(pending_error_line)
+DEF_ERROR_STRING_ATTR(pending_error_file)
 DEF_ERROR_STRING_ATTR(feature)
 DEF_ERROR_STRING_ATTR(param_name)
 DEF_ERROR_U32_ATTR(address)

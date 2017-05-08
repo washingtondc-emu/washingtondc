@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include "mem_code.h"
 #include "MemoryMap.h"
 
 uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];
@@ -31,11 +32,12 @@ int pvr2_tex_mem_read(void *buf, size_t addr, size_t len) {
         ((addr - 1 + len) > ADDR_TEX_LAST) ||
         ((addr - 1 + len) < ADDR_TEX_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
     }
 
     memcpy(buf, start_addr, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 int pvr2_tex_mem_write(void const *buf, size_t addr, size_t len) {
@@ -45,9 +47,10 @@ int pvr2_tex_mem_write(void const *buf, size_t addr, size_t len) {
         ((addr - 1 + len) > ADDR_TEX_LAST) ||
         ((addr - 1 + len) < ADDR_TEX_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
     }
 
     memcpy(start_addr, buf, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }

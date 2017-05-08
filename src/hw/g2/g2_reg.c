@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "types.h"
+#include "mem_code.h"
 #include "mem_areas.h"
 #include "error.h"
 
@@ -177,7 +178,8 @@ int g2_reg_read(void *buf, size_t addr, size_t len) {
                 error_set_feature("Whatever happens when you use an "
                                   "inapproriate length while reading "
                                   "from a g2 register");
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -185,7 +187,8 @@ int g2_reg_read(void *buf, size_t addr, size_t len) {
 
     error_set_address(addr);
     error_set_feature("reading from one of the g2 registers");
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 int g2_reg_write(void const *buf, size_t addr, size_t len) {
@@ -201,7 +204,8 @@ int g2_reg_write(void const *buf, size_t addr, size_t len) {
                 error_set_feature("Whatever happens when you use an "
                                   "inapproriate length while writing to a g2 "
                                   "register");
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -210,7 +214,8 @@ int g2_reg_write(void const *buf, size_t addr, size_t len) {
     error_set_address(addr);
     error_set_length(len);
     error_set_feature("writing to one of the g2 registers");
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 static int
@@ -218,7 +223,7 @@ default_g2_reg_read_handler(struct g2_mem_mapped_reg const *reg_info,
                             void *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_G2_FIRST) >> 2;
     memcpy(buf, idx + g2_regs, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -226,7 +231,7 @@ default_g2_reg_write_handler(struct g2_mem_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_G2_FIRST) >> 2;
     memcpy(idx + g2_regs, buf, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -264,7 +269,7 @@ warn_g2_reg_read_handler(struct g2_mem_mapped_reg const *reg_info,
         }
     }
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int

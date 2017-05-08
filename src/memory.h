@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "types.h"
+#include "mem_code.h"
 
 #ifdef __cplusplus
 extern "C" {

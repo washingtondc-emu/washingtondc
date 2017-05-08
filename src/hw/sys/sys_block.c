@@ -25,6 +25,7 @@
 #include "MemoryMap.h"
 #include "hw/gdrom/gdrom_reg.h"
 #include "holly_intc.h"
+#include "mem_code.h"
 
 #include "sys_block.h"
 
@@ -156,7 +157,7 @@ static int default_sys_reg_read_handler(struct sys_mapped_reg const *reg_info,
                                         unsigned len) {
     size_t idx = (addr - ADDR_SYS_FIRST) >> 2;
     memcpy(buf, idx + sys_regs, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int default_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
@@ -164,7 +165,7 @@ static int default_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                          unsigned len) {
     size_t idx = (addr - ADDR_SYS_FIRST) >> 2;
     memcpy(idx + sys_regs, buf, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int warn_sys_reg_read_handler(struct sys_mapped_reg const *reg_info,
@@ -201,7 +202,7 @@ static int warn_sys_reg_read_handler(struct sys_mapped_reg const *reg_info,
         }
     }
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int warn_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
@@ -248,7 +249,8 @@ int sys_block_read(void *buf, size_t addr, size_t len) {
                                   "system register");
                 error_set_address(addr);
                 error_set_length(len);
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -256,7 +258,8 @@ int sys_block_read(void *buf, size_t addr, size_t len) {
 
     error_set_feature("accessing one of the system block registers");
     error_set_address(addr);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 int sys_block_write(void const *buf, size_t addr, size_t len) {
@@ -272,7 +275,8 @@ int sys_block_write(void const *buf, size_t addr, size_t len) {
                                   "system register");
                 error_set_address(addr);
                 error_set_length(len);
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -280,7 +284,8 @@ int sys_block_write(void const *buf, size_t addr, size_t len) {
 
     error_set_feature("accessing one of the system block registers");
     error_set_address(addr);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 static int sys_read_only_reg_write_handler(struct sys_mapped_reg const *reg_info,
@@ -290,11 +295,12 @@ static int sys_read_only_reg_write_handler(struct sys_mapped_reg const *reg_info
                       "system block register");
     error_set_address(addr);
     error_set_length(len);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 __attribute__((unused)) static int
 ignore_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len) {
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }

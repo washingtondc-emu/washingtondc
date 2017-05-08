@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "mem_code.h"
 #include "error.h"
 
 #include "BiosFile.h"
@@ -119,5 +120,5 @@ uint8_t *bios_file_end(struct BiosFile *bios_file) {
 int bios_file_read(struct BiosFile *bios_file, void *buf,
                    size_t addr, size_t len) {
     memcpy(buf, bios_file->dat + addr, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }

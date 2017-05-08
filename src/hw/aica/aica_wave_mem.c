@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include "mem_code.h"
 #include "MemoryMap.h"
 #include "error.h"
 
@@ -32,11 +33,12 @@ int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
         ((addr - 1 + len) > ADDR_AICA_WAVE_LAST) ||
         ((addr - 1 + len) < ADDR_AICA_WAVE_FIRST)) {
         error_set_feature("aw fuck it");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
     }
 
     memcpy(buf, start_addr, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 int aica_wave_mem_write(void const *buf, size_t addr, size_t len) {
@@ -46,9 +48,10 @@ int aica_wave_mem_write(void const *buf, size_t addr, size_t len) {
         ((addr - 1 + len) > ADDR_AICA_WAVE_LAST) ||
         ((addr - 1 + len) < ADDR_AICA_WAVE_FIRST)) {
         error_set_feature("aw fuck it");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
     }
 
     memcpy(start_addr, buf, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }

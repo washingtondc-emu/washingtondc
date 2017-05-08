@@ -55,8 +55,6 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
 static void handle_packet(struct gdb_stub *stub, struct string *pkt);
 static void transmit_pkt(struct gdb_stub *stub, struct string const *pkt);
 static bool next_packet(struct gdb_stub *stub, struct string *pkt);
-// static void errror_handler(int error_tp, void *argptr);
-static void expect_mem_access_error(struct gdb_stub *stub, bool should);
 
 static void handle_c_packet(struct gdb_stub *stub, struct string *out,
                             struct string *dat);
@@ -134,7 +132,6 @@ void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
 
     stub->frontend_supports_swbreak = false;
     stub->is_writing = false;
-    stub->should_expect_mem_access_error = false;
     stub->listener = NULL;
     stub->is_listening = false;
     stub->bev = NULL;
@@ -600,70 +597,64 @@ static void handle_m_packet(struct gdb_stub *stub, struct string *out,
 
 static void read_mem_4(struct gdb_stub *stub, struct string *out,
                        addr32_t addr, unsigned len) {
-    expect_mem_access_error(stub, true);
-
     while (len) {
         uint32_t val;
 
-        sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
-        addr += 4;
+        int err = sh4_do_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
 
-        if (stub->mem_access_error) {
-            expect_mem_access_error(stub, false);
+        // TODO: ideally this code would be smart enough to not raise CPU exceptions
+        if (err != MEM_ACCESS_SUCCESS) {
+            error_clear();
             err_str(out, EINVAL);
             return;
         }
+
+        addr += 4;
 
         serialize_data(out, &val, sizeof(val));
         len -= 4;
     }
-
-    expect_mem_access_error(stub, false);
 }
 
 static void read_mem_2(struct gdb_stub *stub, struct string *out,
                        addr32_t addr, unsigned len) {
-    expect_mem_access_error(stub, true);
-
     while (len) {
         uint16_t val;
 
-        sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
-        addr += 2;
+        int err = sh4_do_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
 
-        if (stub->mem_access_error) {
-            expect_mem_access_error(stub, false);
+        // TODO: ideally this code would be smart enough to not raise CPU exceptions
+        if (err != MEM_ACCESS_SUCCESS) {
+            error_clear();
             err_str(out, EINVAL);
             return;
         }
+
+        addr += 2;
 
         serialize_data(out, &val, sizeof(val));
         len -= 2;
     }
-
-    expect_mem_access_error(stub, false);
 }
 
 static void read_mem_1(struct gdb_stub *stub, struct string *out,
                        addr32_t addr, unsigned len) {
-    expect_mem_access_error(stub, true);
-
     while (len--) {
         uint8_t val;
 
-        sh4_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
-        addr++;
+        int err = sh4_do_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
 
-        if (stub->mem_access_error) {
-            expect_mem_access_error(stub, false);
+        // TODO: ideally this code would be smart enough to not raise CPU exceptions
+        if (err != MEM_ACCESS_SUCCESS) {
+            error_clear();
             err_str(out, EINVAL);
             return;
         }
 
+        addr++;
+
         serialize_data(out, &val, sizeof(val));
     }
-
-    expect_mem_access_error(stub, false);
 }
 
 /*
@@ -703,13 +694,11 @@ static void handle_M_packet(struct gdb_stub *stub, struct string *out,
     string_substr(&new_dat, dat, dat_idx, string_length(dat) - 1);
     if (len < 1024) {
         uint8_t *buf = (uint8_t*)malloc(sizeof(uint8_t) * len);
-        expect_mem_access_error(stub, true);
         deserialize_data(&new_dat, buf, len);
-        sh4_write_mem(dreamcast_get_cpu(), buf, addr, len);
+        int err = sh4_do_write_mem(dreamcast_get_cpu(), buf, addr, len);
         free(buf);
 
-        if (stub->mem_access_error) {
-            expect_mem_access_error(stub, false);
+        if (err != MEM_ACCESS_SUCCESS) {
             err_str(out, EINVAL);
             string_cleanup(&new_dat);
             return;
@@ -720,7 +709,6 @@ static void handle_M_packet(struct gdb_stub *stub, struct string *out,
     }
     string_cleanup(&new_dat);
 
-    expect_mem_access_error(stub, false);
     string_set(out, "OK");
 }
 
@@ -1209,22 +1197,6 @@ static bool next_packet(struct gdb_stub *stub, struct string *pkt) {
 cleanup:
     string_cleanup(&pktbuf_tmp);
     return found_pkt;
-}
-
-// static void errror_handler(int error_tp, void *argptr) {
-//     struct gdb_stub* stub = (struct gdb_stub*)argptr;
-
-//     if (stub->should_expect_mem_access_error) {
-//         stub->mem_access_error = true;
-//     } else {
-//         error_print();
-//         exit(1);
-//     }
-// }
-
-static void expect_mem_access_error(struct gdb_stub *stub, bool should) {
-    stub->mem_access_error = false;
-    stub->should_expect_mem_access_error = true;
 }
 
 static void

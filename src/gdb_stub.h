@@ -80,8 +80,6 @@ struct gdb_stub {
     struct string input_packet;
 
     bool frontend_supports_swbreak;
-
-    bool should_expect_mem_access_error, mem_access_error;
 };
 
 void gdb_init(struct gdb_stub *stub, struct debugger *dbg);

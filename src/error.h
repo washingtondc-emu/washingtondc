@@ -87,7 +87,14 @@ struct error_attr {
     struct error_attr **pprev;
 };
 
-void error_raise(enum error_type tp);
+/*
+ * somehow using the C11 noreturn specifier here is breaking the C++ testing
+ * code over in unit_tests/ even though that's SUPPOSED to work since it's
+ * built using the C++11 standard which SHOULD be compatible with C11.  So I
+ * have to go with the non-standard gcc __attribute__ extension instead.
+ * Whatever.
+ */
+__attribute__((__noreturn__)) void error_raise(enum error_type tp);
 enum error_type error_check();
 void error_clear();
 
@@ -96,9 +103,39 @@ void error_add_attr(struct error_attr *attr);
 void error_print();
 
 /*
- * Unlike error handlers (see below, error callbacks are invoked at the
- * beginning of error processing to set attributes.  They are not supposed
- * to attempt to handle the error in any way.
+ * some subsystems will set error attributes but not call RAISE_ERROR if
+ * there's a problem.  This is mostly for the benefit of the debugger, because
+ * we don't want WashingtonDC to crash solely because the user punched in a bad
+ * memory address or something.
+ *
+ * the pending error is used by functions within subsystems to store what
+ * error should be raised if the caller cannot handle the error.
+ *
+ * If a function call returns that an error happened, and the caller cannot
+ * handle the error, it should call RAISE_ERROR(get_error_pending())
+ *
+ * OR
+ *
+ * it can pass the buck along to its caller by returning some status code so
+ * that it will know there's a recommended error pending.
+ *
+ * OR
+ *
+ * it can handle the error and then call error_clear so that the reccomended
+ * error code and all of the attributes are unset.
+ *
+ * Note that it is not safe for a function to set new error attributes when
+ * there is a recommended error pending.  This is because the error-handling
+ * code is not smart enough to detect when an attribute is already set, so by
+ * setting an attribute while an error is pending you risk setting the same
+ * attribute twice, which corrupts the error attribute list.
+ */
+enum error_type get_error_pending(void);
+void set_error_pending(enum error_type tp);
+
+/*
+ * error callbacks are invoked at the beginning of error processing to set
+ * attributes.  They are not supposed to attempt to handle the error in any way.
  */
 struct error_callback {
     void(*callback_fn)(void *arg);
@@ -109,22 +146,6 @@ struct error_callback {
 
 void error_add_callback(struct error_callback *cb);
 void error_rm_callback(struct error_callback *cb);
-
-#ifdef ENABLE_DEBUGGER
-/*
- * if there's an error handler set, error_raise will call that instead of
- * calling exit.
- *
- * this API is intended for the debugger to have a way to catch memory errors
- * and report them back to gdb without crashing the emulator.  I don't intend
- * to use it elsewhere because writing decent error handling code is hard to do
- * without throwing a million if statements everywhere and shooting your
- * performance to hell *shrugs*.  panic-style error handling, on the other
- * hand...
- */
-typedef void(*error_handler_t)(enum error_type, void *arg);
-void set_error_handler(error_handler_t handler);
-#endif
 
 #define ERROR_STRING_ATTR(the_attr_name)                        \
     void error_set_##the_attr_name(char const *attr_val)
@@ -171,6 +192,9 @@ void set_error_handler(error_handler_t handler);
 ERROR_INT_ATTR(line);
 ERROR_STRING_ATTR(file);
 
+ERROR_INT_ATTR(pending_error_line);
+ERROR_STRING_ATTR(pending_error_file);
+
 ERROR_STRING_ATTR(feature);
 ERROR_STRING_ATTR(param_name);
 
@@ -193,6 +217,13 @@ ERROR_STRING_ATTR(file_path);
         error_set_line(__LINE__);               \
         error_set_file(__FILE__);               \
         error_raise(tp);                        \
+    } while (0)
+
+#define PENDING_ERROR(tp)                       \
+    do {                                        \
+        error_set_pending_error_line(__LINE__); \
+        error_set_pending_error_file(__FILE__); \
+        set_error_pending(tp);                  \
     } while (0)
 
 #ifdef __cplusplus

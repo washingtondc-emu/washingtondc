@@ -26,6 +26,7 @@
 
 #include "spg.h"
 #include "types.h"
+#include "mem_code.h"
 #include "MemoryMap.h"
 #include "error.h"
 
@@ -239,7 +240,8 @@ int pvr2_core_reg_read(void *buf, size_t addr, size_t len) {
                 error_set_feature("Whatever happens when you use an "
                                   "inapproriate length while reading "
                                   "from a pvr2 core register");
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -247,7 +249,8 @@ int pvr2_core_reg_read(void *buf, size_t addr, size_t len) {
 
     error_set_feature("reading from one of the pvr2 core registers");
     error_set_address(addr);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 int pvr2_core_reg_write(void const *buf, size_t addr, size_t len) {
@@ -264,7 +267,8 @@ int pvr2_core_reg_write(void const *buf, size_t addr, size_t len) {
                 error_set_feature("Whatever happens when you use an "
                                   "inapproriate length while writing to a pvr2 "
                                   "core register");
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -272,7 +276,8 @@ int pvr2_core_reg_write(void const *buf, size_t addr, size_t len) {
 
     error_set_address(addr);
     error_set_feature("writing to one of the pvr2 core registers");
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 static int
@@ -281,7 +286,7 @@ default_pvr2_core_reg_read_handler(
     void *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_PVR2_CORE_FIRST) >> 2;
     memcpy(buf, idx + pvr2_core_regs, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -290,7 +295,7 @@ default_pvr2_core_reg_write_handler(
     void const *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_PVR2_CORE_FIRST) >> 2;
     memcpy(idx + pvr2_core_regs, buf, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -328,7 +333,7 @@ warn_pvr2_core_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
         }
     }
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -371,7 +376,7 @@ pvr2_core_id_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 
     memcpy(buf, &tmp, len);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -382,14 +387,15 @@ pvr2_core_read_only_reg_write_handler(
                       "a read-only register");
     error_set_address(addr);
     error_set_length(len);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 static int
 fb_r_ctrl_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                            void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &fb_r_ctrl, sizeof(fb_r_ctrl));
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -406,7 +412,7 @@ fb_r_ctrl_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     spg_set_pix_double_y((bool)(new_val & PVR2_LINE_DOUBLE_MASK));
 
     memcpy(&fb_r_ctrl, buf, sizeof(fb_r_ctrl));
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -430,42 +436,42 @@ static int
 fb_r_sof1_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                            void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &fb_r_sof1, sizeof(fb_r_sof1));
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
 fb_r_sof1_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
     memcpy(&fb_r_sof1, buf, sizeof(fb_r_sof1));
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
 fb_r_sof2_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                            void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &fb_r_sof2, sizeof(fb_r_sof2));
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
 fb_r_sof2_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
     memcpy(&fb_r_sof2, buf, sizeof(fb_r_sof2));
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
 fb_r_size_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                            void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &fb_r_size, sizeof(fb_r_size));
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
 fb_r_size_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
     memcpy(&fb_r_size, buf, sizeof(fb_r_size));
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 uint32_t get_fb_r_sof1() {

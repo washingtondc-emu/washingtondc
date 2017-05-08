@@ -54,7 +54,8 @@ int memory_read(struct Memory const *mem, void *buf,
     if (addr >= mem->size || end_addr >= mem->size || end_addr < addr) {
         error_set_address(addr);
         error_set_length(len);
-        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+        return MEM_ACCESS_FAILURE;
     }
 
     memcpy(buf, mem->mem + addr, len);
@@ -68,7 +69,8 @@ int memory_write(struct Memory *mem, void const *buf,
     if (addr >= mem->size || end_addr >= mem->size || end_addr < addr) {
         error_set_address(addr);
         error_set_length(len);
-        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+        return MEM_ACCESS_FAILURE;
     }
 
     memcpy(mem->mem + addr, buf, len);

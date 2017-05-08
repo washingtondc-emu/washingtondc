@@ -61,7 +61,7 @@ int aica_rtc_read(void *buf, size_t addr, size_t len) {
     if (first_byte >= ADDR_AICA_RTC_FIRST && first_byte <= ADDR_AICA_RTC_LAST &&
         last_byte >= ADDR_AICA_RTC_FIRST && last_byte <= ADDR_AICA_RTC_LAST) {
         memcpy(buf, &tmp, len);
-        return 0;
+        return MEM_ACCESS_SUCCESS;
     }
 
     printf("Reading %u bytes from AICA RTC address 0x%08x\n",
@@ -71,7 +71,8 @@ int aica_rtc_read(void *buf, size_t addr, size_t len) {
                       "length while reading from an aica RTC register");
     error_set_address(addr);
     error_set_length(len);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 int aica_rtc_write(void const *buf, size_t addr, size_t len) {
@@ -80,7 +81,7 @@ int aica_rtc_write(void const *buf, size_t addr, size_t len) {
     if (first_byte >= ADDR_AICA_RTC_FIRST && first_byte <= ADDR_AICA_RTC_LAST &&
         last_byte >= ADDR_AICA_RTC_FIRST && last_byte <= ADDR_AICA_RTC_LAST) {
         memcpy(aica_rtc + first_byte, buf, len);
-        return 0;
+        return MEM_ACCESS_SUCCESS;
     }
 
     printf("Writing %u bytes to AICA RTC address 0x%08x\n",
@@ -90,5 +91,6 @@ int aica_rtc_write(void const *buf, size_t addr, size_t len) {
                       "length while reading from an aica RTC register");
     error_set_address(addr);
     error_set_length(len);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }

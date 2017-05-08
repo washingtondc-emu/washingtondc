@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "mem_code.h"
 #include "types.h"
 #include "MemoryMap.h"
 
@@ -97,7 +98,8 @@ int pvr2_reg_read(void *buf, size_t addr, size_t len) {
                                   "pvr2 register");
                 error_set_address(addr);
                 error_set_length(len);
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -105,7 +107,8 @@ int pvr2_reg_read(void *buf, size_t addr, size_t len) {
 
     error_set_feature("reading from one of the pvr2 registers");
     error_set_address(addr);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 int pvr2_reg_write(void const *buf, size_t addr, size_t len) {
@@ -121,7 +124,8 @@ int pvr2_reg_write(void const *buf, size_t addr, size_t len) {
                                   "pvr2 register");
                 error_set_address(addr);
                 error_set_length(len);
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -129,7 +133,8 @@ int pvr2_reg_write(void const *buf, size_t addr, size_t len) {
 
     error_set_feature("writing to one of the pvr2 registers");
     error_set_address(addr);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 static int
@@ -137,7 +142,7 @@ default_pvr2_reg_read_handler(struct pvr2_mem_mapped_reg const *reg_info,
                               void *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_PVR2_FIRST) >> 2;
     memcpy(buf, idx + pvr2_regs, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -145,7 +150,7 @@ default_pvr2_reg_write_handler(struct pvr2_mem_mapped_reg const *reg_info,
                                void const *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_PVR2_FIRST) >> 2;
     memcpy(idx + pvr2_regs, buf, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -183,7 +188,7 @@ warn_pvr2_reg_read_handler(struct pvr2_mem_mapped_reg const *reg_info,
         }
     }
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int

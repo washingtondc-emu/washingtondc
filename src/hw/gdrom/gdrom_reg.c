@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "error.h"
+#include "mem_code.h"
 #include "types.h"
 #include "MemoryMap.h"
 #include "hw/sys/holly_intc.h"
@@ -321,7 +323,8 @@ int gdrom_reg_read(void *buf, size_t addr, size_t len) {
                                   "gdrom register");
                 error_set_address(addr);
                 error_set_length(len);
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -345,7 +348,8 @@ int gdrom_reg_write(void const *buf, size_t addr, size_t len) {
                                   "gdrom register");
                 error_set_address(addr);
                 error_set_length(len);
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -361,7 +365,7 @@ default_gdrom_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                void *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_GDROM_FIRST) >> 2;
     memcpy(buf, idx + gdrom_regs, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -369,7 +373,7 @@ default_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                 void const *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_GDROM_FIRST) >> 2;
     memcpy(idx + gdrom_regs, buf, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -445,7 +449,7 @@ static int
 ignore_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                void const *buf, addr32_t addr, unsigned len) {
     /* do nothing */
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -461,7 +465,7 @@ gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(buf, &stat_reg, len > 4 ? 4 : len);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -479,7 +483,7 @@ gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(buf, &stat_reg, len > 4 ? 4 : len);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -489,7 +493,7 @@ gdrom_error_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(buf, &val, len > 4 ? 4 : len);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -507,14 +511,14 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     case GDROM_CMD_PKT:
         // TODO: implement packets instead of pretending to receive them
         gdrom_cmd_begin_packet();
-        return 0;
+        return MEM_ACCESS_SUCCESS;
         break;
     case GDROM_CMD_SET_FEAT:
         gdrom_cmd_set_features();
         break;
     case GDROM_CMD_IDENTIFY:
         gdrom_cmd_identify();
-        return 0;
+        return MEM_ACCESS_SUCCESS;
         break;
     default:
         fprintf(stderr, "WARNING: unknown command 0x%2x input to gdrom "
@@ -526,7 +530,7 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -550,7 +554,7 @@ gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
     }
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -575,7 +579,7 @@ gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
         }
     }
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -585,7 +589,7 @@ gdrom_features_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(&feat_reg, buf, n_bytes);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static void gdrom_cmd_set_features(void) {
@@ -776,7 +780,7 @@ gdrom_sect_cnt_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(&sect_cnt_reg, buf, n_bytes);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -786,7 +790,7 @@ gdrom_dev_ctrl_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(&dev_ctrl_reg, buf, n_bytes);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -798,5 +802,5 @@ gdrom_int_reason_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(buf, &int_reason_reg, n_bytes);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }

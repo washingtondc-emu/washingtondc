@@ -24,16 +24,18 @@
 
 #include "error.h"
 #include "modem.h"
+#include "mem_code.h"
 
 /* pull down to 0 - this device is not implemented */
 
 int modem_read(void *buf, size_t addr, size_t len) {
     memset(buf, 0, len);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 int modem_write(void const *buf, size_t addr, size_t len) {
     error_set_feature("sending data to the modem unit");
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }

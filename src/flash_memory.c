@@ -25,6 +25,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include "mem_code.h"
 #include "error.h"
 
 #include "flash_memory.h"
@@ -84,23 +85,24 @@ int flash_mem_read(void *buf, size_t addr, size_t len) {
     if ((addr + len - 1 > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
         error_set_length(len);
-        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
-        return 1;
+        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+        return MEM_ACCESS_FAILURE;
     }
 
     memcpy(buf, flash_mem + (addr - ADDR_FLASH_FIRST), len);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 int flash_mem_write(void const *buf, size_t addr, size_t len) {
     if ((addr + len - 1 > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
         error_set_length(len);
-        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+        return MEM_ACCESS_FAILURE;
     }
 
     memcpy(flash_mem + (addr - ADDR_FLASH_FIRST), buf, len);
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }

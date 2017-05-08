@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "error.h"
+#include "mem_code.h"
 #include "mem_areas.h"
 #include "types.h"
 
@@ -93,7 +94,8 @@ int maple_reg_read(void *buf, size_t addr, size_t len) {
                 error_set_feature("Whatever happens when you use an "
                                   "inapproriate length while reading from a "
                                   "maple register");
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -102,7 +104,8 @@ int maple_reg_read(void *buf, size_t addr, size_t len) {
     error_set_address(addr);
     error_set_length(len);
     error_set_feature("reading from one of the maple registers");
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 int maple_reg_write(void const *buf, size_t addr, size_t len) {
@@ -118,7 +121,8 @@ int maple_reg_write(void const *buf, size_t addr, size_t len) {
                 error_set_feature("Whatever happens when you use an "
                                   "inapproriate length while writing to a "
                                   "maple register");
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                return MEM_ACCESS_FAILURE;
             }
         }
         curs++;
@@ -127,7 +131,8 @@ int maple_reg_write(void const *buf, size_t addr, size_t len) {
     error_set_address(addr);
     error_set_length(len);
     error_set_feature("writing to one of the maple registers");
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
 
 static int
@@ -135,7 +140,7 @@ default_maple_reg_read_handler(struct maple_mapped_reg const *reg_info,
                                void *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_MAPLE_FIRST) >> 2;
     memcpy(buf, idx + maple_regs, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -143,7 +148,7 @@ default_maple_reg_write_handler(struct maple_mapped_reg const *reg_info,
                                 void const *buf, addr32_t addr, unsigned len) {
     size_t idx = (addr - ADDR_MAPLE_FIRST) >> 2;
     memcpy(idx + maple_regs, buf, len);
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int
@@ -181,7 +186,7 @@ warn_maple_reg_read_handler(struct maple_mapped_reg const *reg_info,
         }
     }
 
-    return 0;
+    return MEM_ACCESS_SUCCESS;
 }
 
 static int

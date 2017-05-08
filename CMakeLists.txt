@@ -24,8 +24,9 @@ cmake_minimum_required(VERSION 2.6)
 project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
@@ -107,6 +108,7 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/BiosFile.c"
                 "${PROJECT_SOURCE_DIR}/src/flash_memory.h"
                 "${PROJECT_SOURCE_DIR}/src/flash_memory.c"
+                "${PROJECT_SOURCE_DIR}/src/mem_code.h"
                 "${PROJECT_SOURCE_DIR}/src/memory.h"
                 "${PROJECT_SOURCE_DIR}/src/memory.c"
                 "${PROJECT_SOURCE_DIR}/src/MemoryMap.h"

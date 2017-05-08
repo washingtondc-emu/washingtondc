@@ -156,8 +156,12 @@ mulligan:
     sh4_check_interrupts(sh4);
     do {
         if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
-            // TODO: some sort of logic to detect infinite loops here
-            goto mulligan;
+            if (exc_pending == MEM_ACCESS_EXC) {
+                // TODO: some sort of logic to detect infinite loops here
+                goto mulligan;
+            } else {
+                RAISE_ERROR(get_error_pending());
+            }
         }
 
         InstOpcode const *op = sh4_inst_lut[inst];
@@ -195,8 +199,12 @@ mulligan:
              * if there's an exception we'll deal with it next time this
              * function gets called
              */
-            if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC])))
-                goto mulligan;
+            if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
+                if (exc_pending == MEM_ACCESS_EXC)
+                    goto mulligan;
+                else
+                    RAISE_ERROR(get_error_pending());
+            }
 
             InstOpcode const *second_op = sh4_inst_lut[inst];
 
@@ -223,7 +231,10 @@ mulligan:
 
     if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
         // TODO: some sort of logic to detect infinite loops here
-        goto mulligan;
+        if (exc_pending == MEM_ACCESS_EXC)
+            goto mulligan;
+        else
+            RAISE_ERROR(get_error_pending());
     }
 
     InstOpcode const *op = sh4_inst_lut[inst];
