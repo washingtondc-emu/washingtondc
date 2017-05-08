@@ -12,7 +12,7 @@ games.
 *(the SEGA license statement in the above screenshot refers to a program running within WashingtonDC, not WashingtonDC itself)*
 
 ## COMPILING
-
+```
 mkdir build
 cd build
 cmake [OPTIONS] ..
@@ -28,9 +28,9 @@ DBG_EXIT_ON_UNDEFINED_OPCODE=Of/Off(default) - Bail out if the emulator hits an
                                                undefined opcode
 ENABLE_SERIAL_SERVER=On(default)/Off - Enable serial server over TCP port 1998
 INVARIANTS=On(default)/Off - runtime sanity checks that should never fail
-
+```
 ## USAGE
-
+```
 ./washingtondc [options] [IP.BIN 1ST_READ.BIN]
 
 OPTIONS:
@@ -42,3 +42,4 @@ OPTIONS:
 -s path to dreamcast system call image (only needed for direct boot)
 -t establish serial server over TCP port 1998
 -h display this message and exit
+```
