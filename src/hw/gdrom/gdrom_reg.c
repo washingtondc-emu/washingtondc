@@ -52,9 +52,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#define GDROM_PKT_TEST_UNIT 0x00
-#define GDROM_PKT_REQ_STAT  0x10
-#define GDROM_PKT_REQ_MODE  0x11
+#define GDROM_PKT_TEST_UNIT  0x00
+#define GDROM_PKT_REQ_STAT   0x10
+#define GDROM_PKT_REQ_MODE   0x11
+#define GDROM_PKT_START_DISK 0x70
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -309,6 +310,8 @@ static void gdrom_input_packet(void);
 static void gdrom_input_req_mode_packet(void);
 
 static void gdrom_input_test_unit_packet(void);
+
+static void gdrom_input_start_disk_packet(void);
 
 int gdrom_reg_read(void *buf, size_t addr, size_t len) {
     struct gdrom_mem_mapped_reg *curs = gdrom_reg_info;
@@ -589,6 +592,9 @@ gdrom_features_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(&feat_reg, buf, n_bytes);
 
+    fprintf(stderr, "WARNING: writing 0x%08x to the GD-ROM features register\n",
+            feat_reg);
+
     return MEM_ACCESS_SUCCESS;
 }
 
@@ -699,6 +705,9 @@ static void gdrom_input_packet(void) {
     case GDROM_PKT_REQ_MODE:
         gdrom_input_req_mode_packet();
         break;
+    case GDROM_PKT_START_DISK:
+        gdrom_input_start_disk_packet();
+        break;
     default:
         printf("unknown packet 0x%02x received\n", (unsigned)pkt_buf[0]);
         state = GDROM_STATE_NORM;
@@ -707,6 +716,28 @@ static void gdrom_input_packet(void) {
 
 static void gdrom_input_test_unit_packet(void) {
     printf("TEST_UNIT packet received\n");
+
+    // is this correct?
+    int_reason_reg |= (INT_REASON_COD_MASK | INT_REASON_IO_MASK);
+    stat_reg |= STAT_DRDY_MASK;
+    stat_reg &= ~(STAT_BSY_MASK | STAT_DRQ_MASK);
+
+    // raise interrupt if it is enabled - this is already done from
+    // gdrom_input_packet
+    /* if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK)) */
+    /*     holly_raise_ext_int(HOLLY_EXT_INT_GDROM); */
+
+    state = GDROM_STATE_NORM;
+}
+
+/*
+ * Exactly what this command does is a mystery to me.  It doesn't appear to
+ * convey any data because the bios does not check for any.  What little
+ * information I can find would seem to convey that this is some sort of a
+ * disk initialization function?
+ */
+static void gdrom_input_start_disk_packet(void) {
+    printf("START_DISK(=0x70) packet received\n");
 
     // is this correct?
     int_reason_reg |= (INT_REASON_COD_MASK | INT_REASON_IO_MASK);
