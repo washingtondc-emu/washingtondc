@@ -144,6 +144,39 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// status flags (for REQ_STAT and the sector-number register)
+//
+////////////////////////////////////////////////////////////////////////////////
+
+enum gdrom_disc_state {
+    GDROM_STATE_BUSY  = 0x0,
+    GDROM_STATE_PAUSE = 0x1,
+    GDROM_STATE_STANDBY = 0x2,
+    GDROM_STATE_PLAY = 0x3,
+    GDROM_STATE_SEEK = 0x4,
+    GDROM_STATE_SCAN = 0x5,
+    GDROM_STATE_OPEN = 0x6,
+    GDROM_STATE_NODISC = 0x7,
+    GDROM_STATE_RETRY = 0x8,
+    GDROM_STATE_ERROR = 0x9
+};
+
+enum gdrom_fmt {
+    GDROM_FMT_CDDA = 0,
+    GDROM_FMT_CDROM = 1,
+    GDROM_FMT_XA = 2,
+    GDROM_FMT_CDI = 3,
+    GDROM_FMT_GDROM = 8
+};
+
+#define SEC_NUM_STATUS_SHIFT 0
+#define SEC_NUM_STATUS_MASK (0xf << SEC_NUM_STATUS_SHIFT)
+
+#define SEC_NUM_FMT_SHIFT 4
+#define SEC_NUM_FMT_MASK (0xf << SEC_NUM_FMT_SHIFT)
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // GD-ROM drive state
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,6 +299,11 @@ gdrom_int_reason_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len);
 
 
+static int
+gdrom_sector_num_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                                  void *buf, addr32_t addr, unsigned len);
+
+
 static struct gdrom_mem_mapped_reg {
     char const *reg_name;
 
@@ -289,7 +327,7 @@ static struct gdrom_mem_mapped_reg {
     { "Interrupt reason/sector count", 0x5f7088, 4,
       gdrom_int_reason_reg_read_handler, warn_gdrom_reg_write_handler },
     { "Sector number", 0x5f708c, 4,
-      warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
+      gdrom_sector_num_reg_read_handler, warn_gdrom_reg_write_handler },
     { "Byte Count (low)", 0x5f7090, 4,
       warn_gdrom_reg_read_handler, warn_gdrom_reg_write_handler },
     { "Byte Count (high)", 0x5f7094, 4,
@@ -834,4 +872,15 @@ gdrom_int_reason_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     memcpy(buf, &int_reason_reg, n_bytes);
 
     return MEM_ACCESS_SUCCESS;
+}
+
+static int
+gdrom_sector_num_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
+                                  void *buf, addr32_t addr, unsigned len) {
+    // for now, hard code this register so that there's never a disc inserted
+    uint32_t status = GDROM_STATE_NODISC << SEC_NUM_STATUS_SHIFT;
+
+    memcpy(buf, &status, len < sizeof(status) ? len : sizeof(status));
+
+    return 0;
 }
