@@ -31,6 +31,7 @@
  */
 
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,6 +74,15 @@ void string_cleanup(struct string *str);
  * string_init
  */
 void string_set(struct string *str, char const *txt);
+
+/*
+ * set the contents of string from the given file.
+ *
+ * the string must have been previously initialized via string_init.
+ *
+ * the file position after calling this function is undefined
+ */
+void string_load_stdio(struct string *str, FILE *fp);
 
 /*
  * copy src into dst.
@@ -151,6 +161,25 @@ bool string_tok_next(struct string *tok,
  */
 void string_substr(struct string *dst, struct string const *src,
                    int first_idx, int last_idx);
+
+/*
+ * returns the nth grouping of characters separated by the characters in delim.
+ *
+ * Although this function may seem like it serves a similar purpose to
+ * string_tok_next, the behavior is slightly different because this function is
+ * designed to fill a different niche.  This function will never return an
+ * empty string (unless there's an error, but then the returned string is
+ * considered invalid anyways), and it will treat any leading or trailing
+ * delimiter characters as if they aren't there; the first column begins with
+ * the first non-delim character and the last column ends with the last non
+ * delim character.
+ *
+ * the return value of this function is 0 on success and non-zero on failure.
+ * a failure means that the number of columns in the source string is less than
+ * or equal to col_no.
+ */
+int string_get_col(struct string *dst, struct string const *src,
+                   unsigned col_no, char const *delim);
 
 /*
  * returns the index of the first instance of *any* part of delim in src.

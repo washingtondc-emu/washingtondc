@@ -132,7 +132,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/mem_areas.h"
                 "${PROJECT_SOURCE_DIR}/src/stringlib.h"
                 "${PROJECT_SOURCE_DIR}/src/stringlib.c"
-                "${PROJECT_SOURCE_DIR}/src/fifo.h")
+                "${PROJECT_SOURCE_DIR}/src/fifo.h"
+                "${PROJECT_SOURCE_DIR}/src/gdi.h"
+                "${PROJECT_SOURCE_DIR}/src/gdi.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)

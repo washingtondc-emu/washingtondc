@@ -31,6 +31,7 @@
 #include "gfx_thread.h"
 #include "video/opengl/framebuffer.h"
 #include "video/opengl/opengl_backend.h"
+#include "gdi.h"
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [IP.BIN 1ST_READ.BIN]\n\n", cmd);
@@ -47,7 +48,8 @@ static void print_usage(char const *cmd) {
             "\t-s\t\tpath to dreamcast system call image (only needed for "
             "direct boot)\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"
-            "\t-h\t\tdisplay this message and exit\n");
+            "\t-h\t\tdisplay this message and exit\n"
+            "\t-m\t\tmount the given image in the GD-ROM drive");
 }
 
 int main(int argc, char **argv) {
@@ -58,9 +60,10 @@ int main(int argc, char **argv) {
     bool boot_direct = false, skip_ip_bin = false;
     char const *path_1st_read_bin = NULL, *path_ip_bin = NULL;
     char const *path_syscalls_bin = NULL;
+    char const *path_gdi = NULL;
     bool enable_serial = false;
 
-    while ((opt = getopt(argc, argv, "b:f:s:gduht")) != -1) {
+    while ((opt = getopt(argc, argv, "b:f:s:m:gduht")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -95,6 +98,9 @@ int main(int argc, char **argv) {
         case 't':
             enable_serial = true;
             break;
+        case 'm':
+            path_gdi = optarg;
+            break;
         case 'h':
             print_usage(cmd);
             exit(0);
@@ -103,6 +109,13 @@ int main(int argc, char **argv) {
 
     argv += optind;
     argc -= optind;
+
+    if (path_gdi) {
+        struct gdi_info disc_img;
+        parse_gdi(&disc_img, path_gdi);
+        print_gdi(&disc_img);
+        cleanup_gdi(&disc_img);
+    }
 
     if (skip_ip_bin && !boot_direct) {
         fprintf(stderr, "Error: -u option is meaningless with -d!\n");

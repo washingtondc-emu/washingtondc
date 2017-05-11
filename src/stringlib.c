@@ -24,6 +24,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "error.h"
 
@@ -33,6 +34,7 @@ static DEF_ERROR_INT_ATTR(character);
 
 static bool is_hex_digit(char c);
 static unsigned get_hex_val(char c);
+static bool check_char_Class(char c, char const *class);
 
 void string_init(struct string *str) {
     size_t len;
@@ -69,6 +71,39 @@ void string_set(struct string *str, char const *txt) {
             free(str->c_str);
         memset(str, 0, sizeof(*str));
     }
+}
+
+void string_load_stdio(struct string *str, FILE *fp) {
+    long file_sz, buf_sz;
+
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        error_set_errno_val(errno);
+        RAISE_ERROR(ERROR_FILE_IO);
+    }
+
+    if ((file_sz = ftell(fp)) < 0) {
+        error_set_errno_val(errno);
+        RAISE_ERROR(ERROR_FILE_IO);
+    }
+
+    if (fseek(fp, 0, SEEK_SET) != 0) {
+        error_set_errno_val(errno);
+        RAISE_ERROR(ERROR_FILE_IO);
+    }
+
+    buf_sz = file_sz + 1;
+    str->c_str = (char*)realloc(str->c_str, sizeof(char) * buf_sz);
+    if (!str->c_str) {
+        error_set_errno_val(errno);
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    }
+    str->alloc = buf_sz * sizeof(char);
+
+    if (fread(str->c_str, sizeof(char), file_sz, fp) != file_sz) {
+        error_set_errno_val(errno);
+        RAISE_ERROR(ERROR_FILE_IO);
+    }
+    str->c_str[buf_sz - 1] = '\0';
 }
 
 size_t string_length(struct string const *str) {
@@ -310,4 +345,43 @@ uint32_t string_read_hex32(struct string const *str, int start_idx) {
         val = (val << 4) | dat[idx];
 
     return val;
+}
+
+static bool check_char_class(char c, char const *class) {
+    while (*class)
+        if (c == *class++)
+            return true;
+    return false;
+}
+
+int string_get_col(struct string *dst, struct string const *src,
+                   unsigned col_no, char const *delim) {
+    unsigned cur_col = 0;
+    char const *strp = string_get(src);
+
+    for (;;) {
+        // advance to the beginning of the column
+        while (check_char_class(*strp, delim) && *strp)
+            strp++;
+        if (!*strp)
+            return -1;
+
+        if (cur_col == col_no)
+            break;
+
+        // advance to the end of the column
+        while (!check_char_class(*strp, delim) && *strp)
+            strp++;
+        if (!*strp)
+            return -1;
+
+        cur_col++;
+    }
+
+    // at this point, strp points to the beginning of the column
+    string_set(dst, "");
+    while (*strp && !check_char_class(*strp, delim))
+        string_append_char(dst, *strp++);
+
+    return 0;
 }

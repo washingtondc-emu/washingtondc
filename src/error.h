@@ -57,6 +57,9 @@ enum error_type {
     /* shouldn't be possible ? */
     ERROR_INTEGRITY,
 
+    /* some parameter is beyond the maximum allowed limits */
+    ERROR_TOO_BIG,
+
     ERROR_INVALID_FILE_LEN
 };
 
@@ -211,6 +214,8 @@ ERROR_STRING_ATTR(wtf);
 ERROR_STRING_ATTR(advice);
 
 ERROR_STRING_ATTR(file_path);
+
+ERROR_INT_ATTR(max_val);
 
 #define RAISE_ERROR(tp)                         \
     do {                                        \

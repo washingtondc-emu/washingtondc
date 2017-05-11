@@ -122,6 +122,8 @@ static char const *error_type_string(enum error_type tp) {
         return "something that *should* be impossible just happened";
     case ERROR_INVALID_FILE_LEN:
         return "incorrect file length";
+    case ERROR_TOO_BIG:
+        return "some parameter is beyond the maximum allowed limits";
     default:
         return "Unknown error (this shouldn\'t happen)";
     }
@@ -156,3 +158,4 @@ DEF_ERROR_U32_ATTR(expected_length)
 DEF_ERROR_STRING_ATTR(wtf)
 DEF_ERROR_STRING_ATTR(advice)
 DEF_ERROR_STRING_ATTR(file_path)
+DEF_ERROR_INT_ATTR(max_val)
