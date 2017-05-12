@@ -56,6 +56,8 @@ struct gdi_info {
 void parse_gdi(struct gdi_info *outp, char const *path);
 void cleanup_gdi(struct gdi_info *info);
 
+void mount_gdi(char const *path);
+
 /*
  * dumps the given gdi to stdout, this is really only here for
  * debugging/validation/logging.

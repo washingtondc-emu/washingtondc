@@ -24,6 +24,7 @@
  ***************************************************************************/
 
 #include <err.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -31,8 +32,20 @@
 
 #include "stringlib.h"
 #include "error.h"
+#include "mount.h"
 
 #include "gdi.h"
+
+struct gdi_mount {
+    struct gdi_info meta;
+    FILE **track_streams;
+};
+
+static void mount_gdi_cleanup(struct mount *mount);
+
+static struct mount_ops gdi_mount_ops = {
+    .cleanup = mount_gdi_cleanup
+};
 
 /* enforce sane limits - MAX_TRACKS might need to be bigger tbh */
 #define MAX_TRACKS 16
@@ -161,4 +174,45 @@ void print_gdi(struct gdi_info const *gdi) {
                track_no + 1, trackp->lba_start, trackp->ctrl,
                trackp->sector_size, string_get(&trackp->rel_path), trackp->offset);
     }
+}
+
+void mount_gdi(char const *path) {
+    struct gdi_mount *mount =
+        (struct gdi_mount*)calloc(1, sizeof(struct gdi_mount));
+
+    if (!mount)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    parse_gdi(&mount->meta, path);
+
+    printf("about to (attempt to) mount the following image:\n");
+    print_gdi(&mount->meta);
+
+    mount->track_streams = (FILE**)calloc(mount->meta.n_tracks, sizeof(FILE*));
+    if (!mount->track_streams)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    unsigned track_no;
+    for (track_no = 0; track_no < mount->meta.n_tracks; track_no++) {
+        struct string const *track_path =
+            &mount->meta.tracks[track_no].abs_path;
+        mount->track_streams[track_no] = fopen(string_get(track_path), "rb");
+        if (!mount->track_streams[track_no]) {
+            error_set_file_path(string_get(track_path));
+            error_set_errno_val(errno);
+            RAISE_ERROR(ERROR_FILE_IO);
+        }
+    }
+
+    mount_insert(&gdi_mount_ops, mount);
+}
+
+static void mount_gdi_cleanup(struct mount *mount) {
+    struct gdi_mount *state = (struct gdi_mount*)mount->state;
+
+    unsigned track_no;
+    for (track_no = 0; track_no < state->meta.n_tracks; track_no++)
+        fclose(state->track_streams[track_no]);
+    free(state->track_streams);
+    free(state);
 }

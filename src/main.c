@@ -31,6 +31,7 @@
 #include "gfx_thread.h"
 #include "video/opengl/framebuffer.h"
 #include "video/opengl/opengl_backend.h"
+#include "mount.h"
 #include "gdi.h"
 
 static void print_usage(char const *cmd) {
@@ -110,12 +111,8 @@ int main(int argc, char **argv) {
     argv += optind;
     argc -= optind;
 
-    if (path_gdi) {
-        struct gdi_info disc_img;
-        parse_gdi(&disc_img, path_gdi);
-        print_gdi(&disc_img);
-        cleanup_gdi(&disc_img);
-    }
+    if (path_gdi)
+        mount_gdi(path_gdi);
 
     if (skip_ip_bin && !boot_direct) {
         fprintf(stderr, "Error: -u option is meaningless with -d!\n");
@@ -176,6 +173,9 @@ int main(int argc, char **argv) {
     gfx_thread_launch(640, 480);
 
     dreamcast_run();
+
+    if (mount_check())
+        mount_eject();
 
     exit(0);
 }
