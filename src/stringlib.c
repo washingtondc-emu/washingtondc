@@ -25,6 +25,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <errno.h>
+#include <libgen.h>
 
 #include "error.h"
 
@@ -65,7 +66,6 @@ void string_set(struct string *str, char const *txt) {
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
         strcpy(str->c_str, txt);
-        str->alloc = bytes_alloc;
     } else {
         if (str->c_str)
             free(str->c_str);
@@ -97,7 +97,6 @@ void string_load_stdio(struct string *str, FILE *fp) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FAILED_ALLOC);
     }
-    str->alloc = buf_sz * sizeof(char);
 
     if (fread(str->c_str, sizeof(char), file_sz, fp) != file_sz) {
         error_set_errno_val(errno);
@@ -141,7 +140,6 @@ void string_append(struct string *dst, char const *src) {
         free(dst->c_str);
 
     dst->c_str = new_alloc;
-    dst->alloc = new_alloc_sz;
 }
 
 void string_append_char(struct string *dst, char ch) {
@@ -384,4 +382,30 @@ int string_get_col(struct string *dst, struct string const *src,
         string_append_char(dst, *strp++);
 
     return 0;
+}
+
+void string_dirname(struct string *dst, char const *input) {
+    /*
+     * this function is kinda wordy because the posix standard for dirname is
+     * so wonky.  dirname *might* edit the string you send it is a parameter,
+     * so we have to make a copy before we call dirname, and it *might* return
+     * that modified string or it *might* return a pointer to some static
+     * memory, so we have to immediately make another copy.
+     *
+     * And don't get me started on basename, on GNU platforms that one actually
+     * changes behavior depending on whether or not libgen.h was included.
+     *
+     * (/rant)
+     */
+    char *input_tmp = strdup(input);
+
+    if (!input_tmp)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    if (dst->c_str)
+        free(dst->c_str);
+
+    dst->c_str = strdup(dirname(input_tmp));
+
+    free(input_tmp);
 }

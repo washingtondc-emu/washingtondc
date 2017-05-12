@@ -117,8 +117,14 @@ void parse_gdi(struct gdi_info *outp, char const *path) {
             trackp->offset = atoi(string_get(&offset_col));
             string_cleanup(&offset_col);
 
-            string_init(&trackp->path);
-            string_get_col(&trackp->path, &cur_line, 4, " \t");
+            string_init(&trackp->rel_path);
+            string_get_col(&trackp->rel_path, &cur_line, 4, " \t");
+
+            // get absolute path
+            string_init(&trackp->abs_path);
+            string_dirname(&trackp->abs_path, path);
+            string_append_char(&trackp->abs_path, '/');
+            string_append(&trackp->abs_path, string_get(&trackp->rel_path));
         }
 
         line_no++;
@@ -136,7 +142,8 @@ void cleanup_gdi(struct gdi_info *info) {
 
     for (track_no = 0; track_no < info->n_tracks; track_no++) {
         struct gdi_track *track = info->tracks + track_no;
-        string_cleanup(&track->path);
+        string_cleanup(&track->abs_path);
+        string_cleanup(&track->rel_path);
     }
 
     free(info->tracks);
@@ -152,6 +159,6 @@ void print_gdi(struct gdi_info const *gdi) {
         struct gdi_track const *trackp = gdi->tracks + track_no;
         printf("%u %u %u %u %s %u\n",
                track_no + 1, trackp->lba_start, trackp->ctrl,
-               trackp->sector_size, string_get(&trackp->path), trackp->offset);
+               trackp->sector_size, string_get(&trackp->rel_path), trackp->offset);
     }
 }

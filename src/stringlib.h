@@ -46,10 +46,6 @@ struct string {
      * empty, then call string_get
      */
     char *c_str;
-
-    // this is the number of bytes allocated in c_str.
-    // for the actual string length, call string_length.
-    size_t alloc;
 };
 
 /*
@@ -216,6 +212,9 @@ void string_append_hex32(struct string *str, uint32_t val);
  * the end of the string, or after it has read 8 hex-chars.
  */
 uint32_t string_read_hex32(struct string const *str, int first_idx);
+
+// dst must be initialized prior to calling this
+void string_dirname(struct string *dst, char const *input);
 
 #ifdef __cplusplus
 }

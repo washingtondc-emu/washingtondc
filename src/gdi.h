@@ -36,7 +36,14 @@ struct gdi_track {
     unsigned lba_start;    // block address offset
     unsigned ctrl;         // ???
     unsigned sector_size;  // sector size, typically (but not always) 2352
-    struct string path;
+
+    /*
+     * store both the relative and absolute paths.
+     * relative is used for UI/error-reporting
+     * absolute is how we actually access the file.
+     */
+    struct string rel_path, abs_path;
+
     unsigned offset;
 };
 
