@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "mount.h"
 #include "error.h"
 #include "mem_code.h"
 #include "types.h"
@@ -874,7 +875,9 @@ static int
 gdrom_sector_num_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len) {
     // for now, hard code this register so that there's never a disc inserted
-    uint32_t status = GDROM_STATE_NODISC << SEC_NUM_STATUS_SHIFT;
+
+    uint32_t status = mount_check() ? GDROM_STATE_PAUSE : GDROM_STATE_NODISC;
+    status <<= SEC_NUM_STATUS_SHIFT;
 
     memcpy(buf, &status, len < sizeof(status) ? len : sizeof(status));
 
