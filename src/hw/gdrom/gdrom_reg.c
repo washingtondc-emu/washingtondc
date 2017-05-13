@@ -208,11 +208,12 @@ static enum gdrom_state state;
 #define PKT_LEN 12
 static uint8_t pkt_buf[PKT_LEN];
 
-//this is used to buffer PIO data going from the GD-ROM to the host
-#define DATA_BUF_MAX 1024
-unsigned data_buf_len;
-unsigned data_buf_idx;
-unsigned data_buf[DATA_BUF_MAX];
+static void data_buf_set(unsigned const *dat, unsigned n_elem);
+static void data_buf_push(unsigned val);
+static int data_buf_read(unsigned *dat);
+static bool data_buf_empty(void);
+static void data_buf_clear(void);
+static unsigned data_buf_pos(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -582,12 +583,14 @@ gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     printf("WARNING: reading %u values from GD-ROM data register:\n", len);
 
     while (len--) {
-        unsigned old_idx = data_buf_idx;
-        *ptr++ = data_buf_idx < data_buf_len ? data_buf[data_buf_idx++] : 0;
-        printf("\t[%u] = 0x%02x\n", old_idx, (unsigned)*(ptr - 1));
+        unsigned dat;
+        if (data_buf_read(&dat) == 0)
+            *ptr++ = dat;
+        else
+            *ptr++ = 0;
     }
 
-    if (data_buf_idx >= data_buf_len) {
+    if (data_buf_empty()) {
         // done transmitting data from gdrom to host - notify host
         stat_reg &= ~(STAT_DRQ_MASK | STAT_BSY_MASK);
         stat_reg |= STAT_DRDY_MASK;
@@ -705,11 +708,10 @@ static void gdrom_cmd_identify(void) {
     if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
+    data_buf_clear();
     unsigned idx;
     for (idx = 0; idx < 80; idx++)
-        data_buf[idx] = gdrom_ident_str[idx];
-    data_buf_len = 80;
-    data_buf_idx = 0;
+        data_buf_push(gdrom_ident_str[idx]);
 }
 
 static void gdrom_cmd_begin_packet(void) {
@@ -811,6 +813,7 @@ static void gdrom_input_req_mode_packet(void) {
          '4',  '2',  '9',  '9',  '0',  '3',  '1',  '6'
     };
 
+    data_buf_clear();
     if (len != 0) {
         unsigned first_idx = starting_addr;
         unsigned last_idx = starting_addr + (len - 1);
@@ -822,16 +825,9 @@ static void gdrom_input_req_mode_packet(void) {
 
         unsigned idx;
         for (idx = first_idx; idx <= last_idx; idx++) {
-            data_buf[idx - first_idx] = info[idx];
-            printf("GD-ROM: data_buf[%u] = 0x%02x\n",
-                   idx - first_idx, data_buf[idx - first_idx]);
+            data_buf_push(info[idx]);
         }
-
-        data_buf_len = last_idx - first_idx + 1;
-    } else {
-        data_buf_len = 0;
     }
-    data_buf_idx = 0;
 
     int_reason_reg |= INT_REASON_IO_MASK;
     int_reason_reg &= ~INT_REASON_COD_MASK;
@@ -883,4 +879,61 @@ gdrom_sector_num_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     memcpy(buf, &status, len < sizeof(status) ? len : sizeof(status));
 
     return 0;
+}
+
+//this is used to buffer PIO data going from the GD-ROM to the host
+#define DATA_BUF_MAX 1024
+unsigned data_buf_len;
+unsigned data_buf_idx;
+unsigned data_buf[DATA_BUF_MAX];
+
+static void data_buf_set(unsigned const *dat, unsigned n_elem) {
+    data_buf_idx = 0;
+
+    if (n_elem > DATA_BUF_MAX) {
+        fprintf(stderr, "WARNING - GDROM truncating data buffer (requested "
+                "length was %u)\n", n_elem);
+        n_elem = DATA_BUF_MAX;
+    }
+
+    memcpy(data_buf, dat, n_elem * sizeof(unsigned));
+    data_buf_len = n_elem;
+}
+
+// add a single element to the back of the data_buf
+static void data_buf_push(unsigned val) {
+    if (data_buf_len >= DATA_BUF_MAX) {
+        fprintf(stderr, "WARNING - GDROM data buffer out of memory\n");
+        return;
+    }
+
+    data_buf[data_buf_len++] = val;
+
+    printf("GD-ROM: data_buf[%u] = 0x%02x\n", data_buf_len - 1, val);
+}
+
+// returns 0 on success, < 0 if there's no more data.
+static int data_buf_read(unsigned *dat) {
+    if (data_buf_empty()) {
+        printf("GD-ROM - software attempted to read past end of data\n");
+        return -1;
+    }
+    *dat = data_buf[data_buf_idx++];
+
+    printf("\t[%u] = 0x%02x\n", data_buf_idx - 1, data_buf[data_buf_idx - 1]);
+
+    return 0;
+}
+
+static bool data_buf_empty(void) {
+    return data_buf_idx >= data_buf_len;
+}
+
+static void data_buf_clear(void) {
+    data_buf_idx = 0;
+    data_buf_len = 0;
+}
+
+static unsigned data_buf_pos(void) {
+    return data_buf_idx;
 }
