@@ -56,6 +56,7 @@
 #define GDROM_PKT_TEST_UNIT  0x00
 #define GDROM_PKT_REQ_STAT   0x10
 #define GDROM_PKT_REQ_MODE   0x11
+#define GDROM_PKT_READ_TOC   0x14
 #define GDROM_PKT_START_DISK 0x70
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -352,6 +353,8 @@ static void gdrom_input_req_mode_packet(void);
 static void gdrom_input_test_unit_packet(void);
 
 static void gdrom_input_start_disk_packet(void);
+
+static void gdrom_input_read_toc_packet(void);
 
 int gdrom_reg_read(void *buf, size_t addr, size_t len) {
     struct gdrom_mem_mapped_reg *curs = gdrom_reg_info;
@@ -749,6 +752,9 @@ static void gdrom_input_packet(void) {
     case GDROM_PKT_START_DISK:
         gdrom_input_start_disk_packet();
         break;
+    case GDROM_PKT_READ_TOC:
+        gdrom_input_read_toc_packet();
+        break;
     default:
         printf("unknown packet 0x%02x received\n", (unsigned)pkt_buf[0]);
         state = GDROM_STATE_NORM;
@@ -829,6 +835,36 @@ static void gdrom_input_req_mode_packet(void) {
             data_buf_push(info[idx]);
         }
     }
+
+    int_reason_reg |= INT_REASON_IO_MASK;
+    int_reason_reg &= ~INT_REASON_COD_MASK;
+    stat_reg |= STAT_DRQ_MASK;
+    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+
+    state = GDROM_STATE_NORM;
+}
+
+static void gdrom_input_read_toc_packet(void) {
+    unsigned session = pkt_buf[1] & 1;
+    unsigned len = (((unsigned)pkt_buf[3]) << 8) | pkt_buf[4];
+
+    printf("GD-ROM: GET_TOC command received\n");
+    printf("request to read %u bytes from the Table of Contents for "
+           "Session %u\n", len, session);
+
+    struct mount_toc toc;
+    memset(&toc, 0, sizeof(toc));
+
+    // TODO: call mount_check and signal an error if nothing is mounted
+    mount_read_toc(&toc, session);
+
+    data_buf_clear();
+    uint8_t const *ptr = mount_encode_toc(&toc);
+
+    unsigned byte_no;
+    for (byte_no = 0; byte_no < CDROM_TOC_SIZE; byte_no++)
+        data_buf_push(*ptr++);
 
     int_reason_reg |= INT_REASON_IO_MASK;
     int_reason_reg &= ~INT_REASON_COD_MASK;

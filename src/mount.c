@@ -71,3 +71,57 @@ int mount_read_toc(struct mount_toc* out, unsigned session) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 }
+
+void const* mount_encode_toc(struct mount_toc const *toc) {
+    static uint8_t toc_out[CDROM_TOC_SIZE];
+
+    unsigned track_no;
+    for (track_no = 1; track_no <= 99; track_no++) {
+        unsigned track_idx = track_no - 1;
+        if (track_no <= toc->track_count) {
+            struct mount_track const *trackp = toc->tracks + track_idx;
+
+            uint32_t fad = lba_to_fad(trackp->lba);
+            uint32_t fad_be = ((fad & 0xff0000) >> 16) |
+                (fad & 0x00ff00) |
+                ((fad & 0x0000ff) << 16);
+
+            uint32_t track_bin = (trackp->adr & 0xf) |
+                ((trackp->ctrl << 4) & 0xf0) |
+                (fad_be << 8);
+
+            memcpy(toc_out + 4 * track_idx, &track_bin, sizeof(track_bin));
+        } else {
+            memset(toc_out + 4 * track_idx, 0xff, 4);
+        }
+    }
+
+    struct mount_track const *first_trackp =
+        toc->tracks + (toc->first_track - 1);
+    struct mount_track const *last_trackp =
+        toc->tracks + (toc->last_track - 1);
+
+    uint32_t first_track_bin = (first_trackp->adr & 0xf) |
+        ((first_trackp->ctrl << 4) & 0xf0) |
+        ((toc->first_track << 8) & 0xff00);
+    uint32_t last_track_bin = (last_trackp->adr & 0xf) |
+        ((last_trackp->ctrl << 4) & 0xf0) |
+        ((toc->last_track << 8) & 0xff00);
+
+    memcpy(toc_out + 99 * 4, &first_track_bin, sizeof(first_track_bin));
+    memcpy(toc_out + 100 * 4, &last_track_bin, sizeof(last_track_bin));
+
+    // TODO: do something about the leadout
+    uint32_t leadout_bin = 0;
+    memcpy(toc_out + 104 * 4, &leadout_bin, sizeof(leadout_bin));
+
+    return toc_out;
+}
+
+unsigned lba_to_fad(unsigned lba) {
+    return lba + 150;
+}
+
+unsigned fad_to_lba(unsigned fad) {
+    return fad - 150;
+}

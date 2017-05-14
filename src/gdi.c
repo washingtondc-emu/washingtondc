@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "stringlib.h"
 #include "error.h"
@@ -42,8 +43,16 @@ struct gdi_mount {
 };
 
 static void mount_gdi_cleanup(struct mount *mount);
+static unsigned mount_gdi_session_count(struct mount *mount);
+static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
+                              unsigned session_no);
+
+// return true if this is a legitimate gd-rom; else return false
+static bool gdi_validate_fmt(struct gdi_info const *info);
 
 static struct mount_ops gdi_mount_ops = {
+    .session_count = mount_gdi_session_count,
+    .read_toc = mount_gdi_read_toc,
     .cleanup = mount_gdi_cleanup
 };
 
@@ -164,6 +173,10 @@ void cleanup_gdi(struct gdi_info *info) {
     info->n_tracks = 0;
 }
 
+static bool gdi_validate_fmt(struct gdi_info const *info) {
+    return info->n_tracks >= 3;
+}
+
 void print_gdi(struct gdi_info const *gdi) {
     printf("%u\n", gdi->n_tracks);
 
@@ -187,6 +200,9 @@ void mount_gdi(char const *path) {
 
     printf("about to (attempt to) mount the following image:\n");
     print_gdi(&mount->meta);
+
+    if (!gdi_validate_fmt(&mount->meta))
+        RAISE_ERROR(ERROR_INVALID_PARAM);
 
     mount->track_streams = (FILE**)calloc(mount->meta.n_tracks, sizeof(FILE*));
     if (!mount->track_streams)
@@ -215,4 +231,78 @@ static void mount_gdi_cleanup(struct mount *mount) {
         fclose(state->track_streams[track_no]);
     free(state->track_streams);
     free(state);
+}
+
+static unsigned mount_gdi_session_count(struct mount *mount) {
+    return 2;
+}
+
+static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
+                              unsigned session_no) {
+    struct gdi_info const *info = (struct gdi_info const*)mount->state;
+
+    // GD-ROM disks have two sessions
+    if (session_no > 1)
+        return -1;
+
+    memset(toc->tracks, -1, sizeof(toc->tracks));
+    /* memset(toc->entry, 0, sizeof(toc->entry)); */
+
+    if (session_no == 0) {
+        // session 0 contains the first two tracks
+        toc->track_count = 2;
+
+        // track 1
+        toc->tracks[0].lba = info->tracks[0].lba_start;
+        toc->tracks[0].adr = 0;
+        toc->tracks[0].ctrl = info->tracks[0].ctrl;
+
+        // track 2
+        toc->tracks[1].lba = info->tracks[1].lba_start;
+        toc->tracks[1].adr = 0;
+        toc->tracks[1].ctrl = info->tracks[1].ctrl;
+
+        toc->first_track = 1;
+        toc->last_track = 2;
+
+        /* // track 1 */
+        /* unsigned lba = ((info->tracks[0].lba_start & 0x0000ff) << 0) | */
+        /*     ((info->tracks[0].lba_start  & 0x00ff00) << 8) | */
+        /*     ((info->tracks[0].lba_start  & 0xff0000) << 16); */
+        /* toc->entry[0] = (info->tracks[0].ctrl << 4) | lba; */
+
+        /* // track 2 */
+        /* lba = ((info->tracks[1].lba_start & 0x0000ff) << 0) | */
+        /*     ((info->tracks[1].lba_start  & 0x00ff00) << 8) | */
+        /*     ((info->tracks[1].lba_start  & 0xff0000) << 16); */
+        /* toc->entry[1] = (info->tracks[1].ctrl << 4) | lba; */
+
+        /* toc->first_track = info->tracks[0].ctrl | (1 << 8); // track 1 */
+        /* toc->last_track = info->tracks[1].ctrl | (2 << 8);  // track 2 */
+    } else {
+        // TODO - implement
+        toc->track_count = info->n_tracks - 2;
+
+        unsigned src_track_no;
+        for (src_track_no = 2; src_track_no < info->n_tracks; src_track_no++) {
+            toc->tracks[src_track_no - 2].lba = info->tracks[src_track_no].lba_start;
+            toc->tracks[src_track_no - 2].adr = 0;
+            toc->tracks[src_track_no - 2].ctrl = info->tracks[src_track_no].ctrl;
+
+            toc->first_track = 3;
+            toc->last_track = info->n_tracks;
+        }
+    }
+
+    /*
+     * confession: I don't know what this is yet
+     *
+     * I *think* it's supposed to point to the first block after the last track
+     * in the session, but I need to confirm this.  It's surprisingly hard to
+     * find documentation on the lower level aspects of CD even though it's
+     * such a ubiquitous media.
+     */
+    toc->leadout = 0;
+
+    return 0;
 }

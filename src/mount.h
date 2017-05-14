@@ -43,9 +43,25 @@ struct mount {
     void *state;
 };
 
-// CD-ROM table-of-contents structure
+/*
+ * CD-ROM table-of-contents structure
+ * Unlike the actual table-of-contents structure this doesn't include the GDROM
+ * LBA offset or the big-endiannes of the track's LBA, and every field is
+ * separate.  The GDROM code over in hw/ is what converts this to the actual
+ * table-of-contents structure.
+ *
+ * Like in an actual CD-ROM, the track numbers here are one-indexed,
+ * not zero-indexed
+ */
+struct mount_track {
+    unsigned ctrl;
+    unsigned adr; // usually ignored (set to 0)
+    unsigned lba;
+};
+
 struct mount_toc {
-    unsigned entry[99];
+    struct mount_track tracks[99];
+    unsigned track_count;
     unsigned first_track, last_track;
     unsigned leadout;
 };
@@ -74,6 +90,24 @@ bool mount_check(void);
 unsigned mount_session_count(void);
 
 int mount_read_toc(struct mount_toc* out, unsigned session);
+
+
+/*
+ * size of an actual CD-ROM Table-Of-Contents structure.  This is the length of
+ * the data returned by mount_encode_toc.
+ */
+#define CDROM_TOC_SIZE ((99 + 3) * 4)
+
+/*
+ * this function takes the given TOC and encodes it into the actual CD-ROM TOC
+ * format.  the pointer returned points to a statically allocated buffer; it
+ * should not be expected to remain consistent across multiple calls to
+ * mount_encode_toc and it should not be freed.
+ */
+void const* mount_encode_toc(struct mount_toc const *toc);
+
+unsigned lba_to_fad(unsigned lba);
+unsigned fad_to_lba(unsigned fad);
 
 #ifdef __cplusplus
 }
