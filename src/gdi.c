@@ -254,12 +254,12 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
 
         // track 1
         toc->tracks[0].lba = info->tracks[0].lba_start;
-        toc->tracks[0].adr = 0;
+        toc->tracks[0].adr = 1;
         toc->tracks[0].ctrl = info->tracks[0].ctrl;
 
         // track 2
         toc->tracks[1].lba = info->tracks[1].lba_start;
-        toc->tracks[1].adr = 0;
+        toc->tracks[1].adr = 1;
         toc->tracks[1].ctrl = info->tracks[1].ctrl;
 
         toc->first_track = 1;
