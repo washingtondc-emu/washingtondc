@@ -40,6 +40,7 @@
 struct gdi_mount {
     struct gdi_info meta;
     FILE **track_streams;
+    size_t *track_lengths; // length of each track, in bytes
 };
 
 static void mount_gdi_cleanup(struct mount *mount);
@@ -208,6 +209,13 @@ void mount_gdi(char const *path) {
     if (!mount->track_streams)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
+    mount->track_lengths = (size_t*)calloc(mount->meta.n_tracks,
+                                           sizeof(size_t));
+    if (!mount->track_lengths) {
+        free(mount->track_streams);
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    }
+
     unsigned track_no;
     for (track_no = 0; track_no < mount->meta.n_tracks; track_no++) {
         struct string const *track_path =
@@ -218,6 +226,21 @@ void mount_gdi(char const *path) {
             error_set_errno_val(errno);
             RAISE_ERROR(ERROR_FILE_IO);
         }
+
+        if (fseek(mount->track_streams[track_no], 0, SEEK_END) != 0) {
+            error_set_file_path(string_get(track_path));
+            error_set_errno_val(errno);
+            RAISE_ERROR(ERROR_FILE_IO);
+        }
+
+        long len = ftell(mount->track_streams[track_no]);
+        if (len < 0) {
+            error_set_file_path(string_get(track_path));
+            error_set_errno_val(errno);
+            RAISE_ERROR(ERROR_FILE_IO);
+        }
+
+        mount->track_lengths[track_no] = len;
     }
 
     mount_insert(&gdi_mount_ops, mount);
@@ -239,14 +262,14 @@ static unsigned mount_gdi_session_count(struct mount *mount) {
 
 static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
                               unsigned session_no) {
-    struct gdi_info const *info = (struct gdi_info const*)mount->state;
+    struct gdi_mount const *gdi_mount = (struct gdi_mount const*)mount->state;
+    struct gdi_info const *info = &gdi_mount->meta;
 
     // GD-ROM disks have two sessions
     if (session_no > 1)
         return -1;
 
     memset(toc->tracks, -1, sizeof(toc->tracks));
-    /* memset(toc->entry, 0, sizeof(toc->entry)); */
 
     if (session_no == 0) {
         // session 0 contains the first two tracks
@@ -264,21 +287,6 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
 
         toc->first_track = 1;
         toc->last_track = 2;
-
-        /* // track 1 */
-        /* unsigned lba = ((info->tracks[0].lba_start & 0x0000ff) << 0) | */
-        /*     ((info->tracks[0].lba_start  & 0x00ff00) << 8) | */
-        /*     ((info->tracks[0].lba_start  & 0xff0000) << 16); */
-        /* toc->entry[0] = (info->tracks[0].ctrl << 4) | lba; */
-
-        /* // track 2 */
-        /* lba = ((info->tracks[1].lba_start & 0x0000ff) << 0) | */
-        /*     ((info->tracks[1].lba_start  & 0x00ff00) << 8) | */
-        /*     ((info->tracks[1].lba_start  & 0xff0000) << 16); */
-        /* toc->entry[1] = (info->tracks[1].ctrl << 4) | lba; */
-
-        /* toc->first_track = info->tracks[0].ctrl | (1 << 8); // track 1 */
-        /* toc->last_track = info->tracks[1].ctrl | (2 << 8);  // track 2 */
     } else {
         // TODO - implement
         toc->track_count = info->n_tracks - 2;
@@ -302,7 +310,10 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
      * find documentation on the lower level aspects of CD even though it's
      * such a ubiquitous media.
      */
-    toc->leadout = 0;
+    toc->leadout = gdi_mount->track_lengths[toc->last_track - 1] /
+        info->tracks[toc->last_track - 1].sector_size +
+        info->tracks[toc->last_track - 1].lba_start;
+    toc->leadout_adr = 1;
 
     return 0;
 }

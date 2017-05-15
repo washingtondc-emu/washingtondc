@@ -64,6 +64,7 @@ struct mount_toc {
     unsigned track_count;
     unsigned first_track, last_track;
     unsigned leadout;
+    unsigned leadout_adr;
 };
 
 struct mount_ops {

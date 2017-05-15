@@ -111,9 +111,12 @@ void const* mount_encode_toc(struct mount_toc const *toc) {
     memcpy(toc_out + 99 * 4, &first_track_bin, sizeof(first_track_bin));
     memcpy(toc_out + 100 * 4, &last_track_bin, sizeof(last_track_bin));
 
-    // TODO: do something about the leadout
-    uint32_t leadout_bin = 0;
-    memcpy(toc_out + 104 * 4, &leadout_bin, sizeof(leadout_bin));
+    unsigned leadout_fad = lba_to_fad(toc->leadout);
+    uint32_t leadout_bin = ((((leadout_fad & 0xff0000) >> 16) |
+                             (leadout_fad & 0x00ff00) |
+                             ((leadout_fad & 0x0000ff) << 16)) << 8) |
+        toc->leadout_adr;
+    memcpy(toc_out + 101 * 4, &leadout_bin, sizeof(leadout_bin));
 
     return toc_out;
 }
