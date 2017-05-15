@@ -58,6 +58,7 @@
 #define GDROM_PKT_REQ_MODE   0x11
 #define GDROM_PKT_READ_TOC   0x14
 #define GDROM_PKT_START_DISK 0x70
+#define GDROM_PKT_UNKNOWN_71 0x71
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -506,7 +507,7 @@ gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     // val |= 1 << 6; // DRDY
     // val |= 1 << 3; // DRQ
 
-    printf("WARNING: read %u from alternate GDROM status register\n",
+    printf("WARNING: read 0x%02x from alternate GDROM status register\n",
            (unsigned)stat_reg);
 
     memcpy(buf, &stat_reg, len > 4 ? 4 : len);
@@ -524,7 +525,7 @@ gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     holly_clear_ext_int(HOLLY_EXT_INT_GDROM);
 
-    printf("WARNING: read %u from GDROM status register\n",
+    printf("WARNING: read 0x%02x from GDROM status register\n",
            (unsigned)stat_reg);
 
     memcpy(buf, &stat_reg, len > 4 ? 4 : len);
@@ -598,8 +599,8 @@ gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
         // done transmitting data from gdrom to host - notify host
         stat_reg &= ~(STAT_DRQ_MASK | STAT_BSY_MASK);
         stat_reg |= STAT_DRDY_MASK;
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+            holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
     }
 
     return MEM_ACCESS_SUCCESS;
@@ -755,6 +756,10 @@ static void gdrom_input_packet(void) {
     case GDROM_PKT_READ_TOC:
         gdrom_input_read_toc_packet();
         break;
+    case GDROM_PKT_UNKNOWN_71:
+        printf("UNKNOWN PACKET 0x71 RECEIVED\n");
+        state = GDROM_STATE_NORM;
+        break;
     default:
         printf("unknown packet 0x%02x received\n", (unsigned)pkt_buf[0]);
         state = GDROM_STATE_NORM;
@@ -863,7 +868,7 @@ static void gdrom_input_read_toc_packet(void) {
     uint8_t const *ptr = mount_encode_toc(&toc);
 
     unsigned byte_no;
-    for (byte_no = 0; byte_no < CDROM_TOC_SIZE; byte_no++)
+    for (byte_no = 0; byte_no < len; byte_no++)
         data_buf_push(*ptr++);
 
     int_reason_reg |= INT_REASON_IO_MASK;
