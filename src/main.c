@@ -50,7 +50,7 @@ static void print_usage(char const *cmd) {
             "direct boot)\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
-            "\t-m\t\tmount the given image in the GD-ROM drive");
+            "\t-m\t\tmount the given image in the GD-ROM drive\n");
 }
 
 int main(int argc, char **argv) {
