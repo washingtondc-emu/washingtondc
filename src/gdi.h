@@ -26,6 +26,8 @@
 #ifndef GDI_FILE_H_
 #define GDI_FILE_H_
 
+#include <stdbool.h>
+
 #include "stringlib.h"
 
 #define GDI_DATA_TRACK 3
@@ -45,6 +47,9 @@ struct gdi_track {
     struct string rel_path, abs_path;
 
     unsigned offset;
+
+    /* this is used in the loaded code, it should always be true */
+    bool valid;
 };
 
 struct gdi_info {

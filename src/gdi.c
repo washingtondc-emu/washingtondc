@@ -61,12 +61,24 @@ static struct mount_ops gdi_mount_ops = {
 #define MAX_TRACKS 16
 #define MAX_TRACK_FIELDS 16
 
+/*
+ * all gd-rom discs have at a minimum two tracks on
+ * the first session and 1 on the third
+ */
+#define MIN_TRACKS 3
+
 void parse_gdi(struct gdi_info *outp, char const *path) {
     unsigned track_count;
     long file_sz;
     struct string whole_file_txt;
-    FILE *stream = fopen(path, "r");
     struct gdi_track *tracks;
+
+    FILE *stream = fopen(path, "r");
+    if (!stream) {
+        error_set_file_path(path);
+        error_set_errno_val(errno);
+        RAISE_ERROR(ERROR_FILE_IO);
+    }
 
     string_init(&whole_file_txt);
     string_load_stdio(&whole_file_txt, stream);
@@ -79,11 +91,18 @@ void parse_gdi(struct gdi_info *outp, char const *path) {
     string_init(&cur_line);
 
     unsigned line_no = 0;
+    unsigned n_tracks_loaded = 0;
     while (string_tok_next(&cur_line, &line_curs, string_get(&whole_file_txt),
                            "\n")) {
         if (line_no == 0) {
             // first line - read track count
             track_count = atoi(string_get(&cur_line));
+
+            if (track_count < MIN_TRACKS) {
+                error_set_file_path(path);
+                error_set_param_name("track_count");
+                RAISE_ERROR(ERROR_TOO_SMALL);
+            }
 
             if (track_count > MAX_TRACKS) {
                 error_set_file_path(path);
@@ -115,13 +134,18 @@ void parse_gdi(struct gdi_info *outp, char const *path) {
 
             struct gdi_track *trackp = tracks + track_no;
 
+            if (trackp->valid) {
+                error_set_param_name("track number");
+                error_set_file_path(path);
+                RAISE_ERROR(ERROR_DUPLICATE_DATA);
+            }
+
             struct string lba_start_col;
             string_init(&lba_start_col);
             string_get_col(&lba_start_col, &cur_line, 1, " \t");
             trackp->lba_start = atoi(string_get(&lba_start_col));
             string_cleanup(&lba_start_col);
 
-            // i have no idea what this is for
             struct string ctrl_col;
             string_init(&ctrl_col);
             string_get_col(&ctrl_col, &cur_line, 2, " \t");
@@ -148,9 +172,17 @@ void parse_gdi(struct gdi_info *outp, char const *path) {
             string_dirname(&trackp->abs_path, path);
             string_append_char(&trackp->abs_path, '/');
             string_append(&trackp->abs_path, string_get(&trackp->rel_path));
+
+            n_tracks_loaded++;
+            trackp->valid = true;
         }
 
         line_no++;
+    }
+
+    if (n_tracks_loaded != track_count) {
+        error_set_file_path(path);
+        RAISE_ERROR(ERROR_MISSING_DATA);
     }
 
     string_cleanup(&cur_line);

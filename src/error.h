@@ -60,6 +60,15 @@ enum error_type {
     /* some parameter is beyond the maximum allowed limits */
     ERROR_TOO_BIG,
 
+    /* some parameter is below the minimum allowed limits */
+    ERROR_TOO_SMALL,
+
+    /* some parameter was provided two or more times */
+    ERROR_DUPLICATE_DATA,
+
+    /* some mandatory parameter was not provided */
+    ERROR_MISSING_DATA,
+
     ERROR_INVALID_FILE_LEN
 };
 
