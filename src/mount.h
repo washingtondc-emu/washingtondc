@@ -74,6 +74,8 @@ struct mount_ops {
     // read in the TOC for the given session; return 0 on success or nonzero on error
     int(*read_toc)(struct mount*, struct mount_toc*, unsigned);
 
+    int(*read_sector)(struct mount*, void*, unsigned);
+
     // release resources held by the mount
     void (*cleanup)(struct mount*);
 };
@@ -92,6 +94,7 @@ unsigned mount_session_count(void);
 
 int mount_read_toc(struct mount_toc* out, unsigned session);
 
+int mount_read_sectors(void *buf_out, unsigned fad, unsigned sector_count);
 
 /*
  * size of an actual CD-ROM Table-Of-Contents structure.  This is the length of

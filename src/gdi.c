@@ -47,6 +47,7 @@ static void mount_gdi_cleanup(struct mount *mount);
 static unsigned mount_gdi_session_count(struct mount *mount);
 static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
                               unsigned session_no);
+static int mount_read_sector(struct mount *mount, void *buf, unsigned fad);
 
 // return true if this is a legitimate gd-rom; else return false
 static bool gdi_validate_fmt(struct gdi_info const *info);
@@ -54,6 +55,7 @@ static bool gdi_validate_fmt(struct gdi_info const *info);
 static struct mount_ops gdi_mount_ops = {
     .session_count = mount_gdi_session_count,
     .read_toc = mount_gdi_read_toc,
+    .read_sector = mount_read_sector,
     .cleanup = mount_gdi_cleanup
 };
 
@@ -348,4 +350,47 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
     toc->leadout_adr = 1;
 
     return 0;
+}
+
+static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
+    struct gdi_mount const *gdi_mount = (struct gdi_mount const*)mount->state;
+    struct gdi_info const *info = &gdi_mount->meta;
+    unsigned lba = fad_to_lba(fad);
+
+    unsigned track_idx;
+    for (track_idx = 0; track_idx < info->n_tracks; track_idx++) {
+        struct gdi_track const *trackp = info->tracks + track_idx;
+
+        /*
+         * TODO: not sure if I should divide by 2048, 2352 or
+         * trackp->sector_size...
+         */
+        if ((lba >= trackp->lba_start) &&
+            (lba < gdi_mount->track_lengths[track_idx] / 2048)) {
+
+            /*
+             * the +16 is for skipping over mode 1 sync/header (year I know
+             * there are other modes to support, I shouldn't hardcode, etc
+             */
+            unsigned byte_offset = 2352 * (lba - trackp->lba_start) + 16;
+
+            printf("Select track %d\n", track_idx + 1);
+            printf("read starting at byte %u\n", byte_offset);
+
+            // TODO: don't ignore the offset
+            if (fseek(gdi_mount->track_streams[track_idx],
+                      byte_offset, SEEK_SET) != 0) {
+                error_set_errno_val(errno);
+                RAISE_ERROR(ERROR_FILE_IO);
+            }
+
+            if (fread(buf, 2048, 1, gdi_mount->track_streams[track_idx]) != 1) {
+                error_set_errno_val(errno);
+                RAISE_ERROR(ERROR_FILE_IO);
+            }
+            return 0;
+        }
+    }
+
+    return -1;
 }

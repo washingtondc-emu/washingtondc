@@ -72,6 +72,21 @@ int mount_read_toc(struct mount_toc* out, unsigned session) {
     }
 }
 
+int mount_read_sectors(void *buf_out, unsigned fad_start,
+                       unsigned sector_count) {
+    if (!mount_check() || !img.ops->read_sector)
+        return -1;
+
+    unsigned fad;
+    for (fad = fad_start; fad < (fad_start + sector_count); fad++) {
+        void *where = ((uint8_t*)buf_out) + 2048 * (fad - fad_start);
+        if (img.ops->read_sector(&img, where, fad) != 0)
+            return -1;
+    }
+
+    return 0;
+}
+
 void const* mount_encode_toc(struct mount_toc const *toc) {
     static uint8_t toc_out[CDROM_TOC_SIZE];
 

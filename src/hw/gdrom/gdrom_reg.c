@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "mount.h"
 #include "error.h"
@@ -57,6 +58,7 @@
 #define GDROM_PKT_REQ_STAT   0x10
 #define GDROM_PKT_REQ_MODE   0x11
 #define GDROM_PKT_READ_TOC   0x14
+#define GDROM_PKT_READ       0x30
 #define GDROM_PKT_START_DISK 0x70
 #define GDROM_PKT_UNKNOWN_71 0x71
 
@@ -340,7 +342,7 @@ static struct gdrom_mem_mapped_reg {
     { "status/command", 0x5f709c, 4,
       gdrom_status_read_handler, gdrom_cmd_reg_write_handler },
     { "GD-ROM Data", 0x5f7080, 4,
-      gdrom_data_reg_read_handler/* warn_gdrom_reg_read_handler */, gdrom_data_reg_write_handler },
+      gdrom_data_reg_read_handler, gdrom_data_reg_write_handler },
     { "Error/features", 0x5f7084, 4,
       gdrom_error_reg_read_handler, gdrom_features_reg_write_handler },
     { "Interrupt reason/sector count", 0x5f7088, 4,
@@ -371,6 +373,8 @@ static void gdrom_input_test_unit_packet(void);
 static void gdrom_input_start_disk_packet(void);
 
 static void gdrom_input_read_toc_packet(void);
+
+static void gdrom_input_read_packet(void);
 
 static void gdrom_input_packet_71(void);
 
@@ -773,6 +777,9 @@ static void gdrom_input_packet(void) {
     case GDROM_PKT_READ_TOC:
         gdrom_input_read_toc_packet();
         break;
+    case GDROM_PKT_READ:
+        gdrom_input_read_packet();
+        break;
     case GDROM_PKT_UNKNOWN_71:
         gdrom_input_packet_71();
         break;
@@ -1051,6 +1058,69 @@ static void gdrom_input_read_toc_packet(void) {
     state = GDROM_STATE_NORM;
 }
 
+static void gdrom_input_read_packet(void) {
+    // TODO implement
+    printf("GD-ROM - READ_PACKET command received\n");
+
+    unsigned start_addr = (pkt_buf[2] << 16) | (pkt_buf[3] << 8) | pkt_buf[4];
+    unsigned trans_len = (pkt_buf[8] << 16) | (pkt_buf[9] << 8) | pkt_buf[10];
+    unsigned data_sel = pkt_buf[1] >> 4;
+    unsigned data_tp_expect = (pkt_buf[1] >> 1) & 0x7;
+    unsigned param_tp = pkt_buf[1] & 1;
+
+    if (data_sel != 0x2) {
+        error_set_feature("CD-ROM header/subheader access");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    // TODO - check the expected data type (data_tp_expect)
+
+    if (param_tp != 0) {
+        /*
+         * i think this is a timecode format that maps linearly to FAD/LBA, but
+         * for now I'm just not sure.
+         */
+        error_set_feature("MSF format CD-ROM access");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    printf("request to read %u sectors from FAD %u\n", trans_len, start_addr);
+
+    if (trans_len > 20) // TODO: fix this
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    // TODO: data_buf is a mess
+
+    uint8_t *tmp = (uint8_t*)malloc(sizeof(uint8_t) * trans_len * 2048);
+    if (!tmp)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    data_buf_clear();
+
+    if (mount_read_sectors(tmp, start_addr, trans_len) < 0) {
+        // obviously this needs to get done eventually
+        error_set_feature("Correct errror message for failed GD-ROM read");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    unsigned idx;
+    for (idx = 0; idx < trans_len * 2048; idx++) {
+        data_buf_push(tmp[idx]);
+    }
+
+    free(tmp);
+
+    data_byte_count = 2048 * trans_len;
+
+    int_reason_reg |= INT_REASON_IO_MASK;
+    int_reason_reg &= ~INT_REASON_COD_MASK;
+    stat_reg |= STAT_DRQ_MASK;
+    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+
+    state = GDROM_STATE_NORM;
+}
+
 static int
 gdrom_sect_cnt_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                  void const *buf, addr32_t addr, unsigned len) {
@@ -1134,9 +1204,8 @@ gdrom_byte_count_high_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_i
     return 0;
 }
 
-
 //this is used to buffer PIO data going from the GD-ROM to the host
-#define DATA_BUF_MAX 1024
+#define DATA_BUF_MAX (20 * 1024)
 unsigned data_buf_len;
 unsigned data_buf_idx;
 unsigned data_buf[DATA_BUF_MAX];
