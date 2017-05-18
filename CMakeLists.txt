@@ -136,7 +136,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/gdi.h"
                 "${PROJECT_SOURCE_DIR}/src/gdi.c"
                 "${PROJECT_SOURCE_DIR}/src/mount.h"
-                "${PROJECT_SOURCE_DIR}/src/mount.c")
+                "${PROJECT_SOURCE_DIR}/src/mount.c"
+                "${PROJECT_SOURCE_DIR}/src/cdrom.h"
+                "${PROJECT_SOURCE_DIR}/src/cdrom.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)

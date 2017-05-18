@@ -75,6 +75,10 @@ static inline struct fifo_node* fifo_pop(struct fifo_head *fifo) {
     return first;
 }
 
+static inline struct fifo_node *fifo_peek(struct fifo_head *fifo) {
+    return fifo->first;
+}
+
 static inline size_t fifo_len(struct fifo_head *fifo) {
     size_t len = 0;
     struct fifo_node *nodep = fifo->first;

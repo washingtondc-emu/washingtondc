@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "error.h"
+#include "cdrom.h"
 
 #include "mount.h"
 
@@ -79,7 +80,8 @@ int mount_read_sectors(void *buf_out, unsigned fad_start,
 
     unsigned fad;
     for (fad = fad_start; fad < (fad_start + sector_count); fad++) {
-        void *where = ((uint8_t*)buf_out) + 2048 * (fad - fad_start);
+        void *where = ((uint8_t*)buf_out) +
+            CDROM_FRAME_DATA_SIZE * (fad - fad_start);
         if (img.ops->read_sector(&img, where, fad) != 0)
             return -1;
     }
@@ -96,7 +98,7 @@ void const* mount_encode_toc(struct mount_toc const *toc) {
         if (track_no <= toc->track_count) {
             struct mount_track const *trackp = toc->tracks + track_idx;
 
-            uint32_t fad = lba_to_fad(trackp->lba);
+            uint32_t fad = cdrom_lba_to_fad(trackp->lba);
             uint32_t fad_be = ((fad & 0xff0000) >> 16) |
                 (fad & 0x00ff00) |
                 ((fad & 0x0000ff) << 16);
@@ -126,7 +128,7 @@ void const* mount_encode_toc(struct mount_toc const *toc) {
     memcpy(toc_out + 99 * 4, &first_track_bin, sizeof(first_track_bin));
     memcpy(toc_out + 100 * 4, &last_track_bin, sizeof(last_track_bin));
 
-    unsigned leadout_fad = lba_to_fad(toc->leadout);
+    unsigned leadout_fad = cdrom_lba_to_fad(toc->leadout);
     uint32_t leadout_bin = ((((leadout_fad & 0xff0000) >> 16) |
                              (leadout_fad & 0x00ff00) |
                              ((leadout_fad & 0x0000ff) << 16)) << 8) |
@@ -134,12 +136,4 @@ void const* mount_encode_toc(struct mount_toc const *toc) {
     memcpy(toc_out + 101 * 4, &leadout_bin, sizeof(leadout_bin));
 
     return toc_out;
-}
-
-unsigned lba_to_fad(unsigned lba) {
-    return lba + 150;
-}
-
-unsigned fad_to_lba(unsigned fad) {
-    return fad - 150;
 }

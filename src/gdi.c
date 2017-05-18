@@ -34,6 +34,7 @@
 #include "stringlib.h"
 #include "error.h"
 #include "mount.h"
+#include "cdrom.h"
 
 #include "gdi.h"
 
@@ -355,7 +356,7 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
 static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
     struct gdi_mount const *gdi_mount = (struct gdi_mount const*)mount->state;
     struct gdi_info const *info = &gdi_mount->meta;
-    unsigned lba = fad_to_lba(fad);
+    unsigned lba = cdrom_fad_to_lba(fad);
 
     unsigned track_idx;
     for (track_idx = 0; track_idx < info->n_tracks; track_idx++) {
@@ -368,11 +369,10 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
         if ((lba >= trackp->lba_start) &&
             (lba < gdi_mount->track_lengths[track_idx] / 2048)) {
 
-            /*
-             * the +16 is for skipping over mode 1 sync/header (year I know
-             * there are other modes to support, I shouldn't hardcode, etc
-             */
-            unsigned byte_offset = 2352 * (lba - trackp->lba_start) + 16;
+            // TODO: support MODE2 FORM1, MODE2 FORM2, CDDA, etc...
+            unsigned lba_relative = lba - trackp->lba_start;
+            unsigned byte_offset = CDROM_FRAME_SIZE * lba_relative +
+                CDROM_MODE1_DATA_OFFSET;
 
             printf("Select track %d\n", track_idx + 1);
             printf("read starting at byte %u\n", byte_offset);

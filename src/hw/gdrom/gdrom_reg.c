@@ -32,6 +32,7 @@
 #include "types.h"
 #include "MemoryMap.h"
 #include "hw/sys/holly_intc.h"
+#include "cdrom.h"
 
 #include "gdrom_reg.h"
 
@@ -214,12 +215,41 @@ static enum gdrom_state state;
 #define PKT_LEN 12
 static uint8_t pkt_buf[PKT_LEN];
 
-static void data_buf_set(unsigned const *dat, unsigned n_elem);
-static void data_buf_push(unsigned val);
-static int data_buf_read(unsigned *dat);
-static bool data_buf_empty(void);
-static void data_buf_clear(void);
-static unsigned data_buf_pos(void);
+// Empty out the bufq and free resources.
+static void bufq_clear(void);
+
+/*
+ * grab one byte from the queue, pop/clear a node (if necessary) and return 0.
+ * this returns non-zero if the queue is empty.
+ */
+static int bufq_consume_byte(unsigned *byte);
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// GD-ROM data queueing
+//
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+ * 2352 was chosen as the size because that's the most that can be used at a
+ * time on a CD (frame size)
+ *
+ * Most disc accesses will only use 2048 bytes, and some will use far
+ * less than that (such as GDROM_PKT_REQ_MODE)
+ */
+#define GDROM_BUFQ_LEN CDROM_FRAME_SIZE
+
+struct gdrom_bufq_node {
+    struct fifo_node fifo_node;
+
+    // idx is the index of the next valid access
+    // len is the number of bytes which are valid
+    // when idx == len, this buffer is empty and should be removed
+    unsigned idx, len;
+    uint8_t dat[GDROM_BUFQ_LEN];
+};
+
+static struct fifo_head bufq = FIFO_HEAD_INITIALIZER(bufq);
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -610,13 +640,13 @@ gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     while (len--) {
         unsigned dat;
-        if (data_buf_read(&dat) == 0)
+        if (bufq_consume_byte(&dat) == 0)
             *ptr++ = dat;
         else
             *ptr++ = 0;
     }
 
-    if (data_buf_empty()) {
+    if (fifo_empty(&bufq)) {
         // done transmitting data from gdrom to host - notify host
         stat_reg &= ~(STAT_DRQ_MASK | STAT_BSY_MASK);
         stat_reg |= STAT_DRDY_MASK;
@@ -734,10 +764,21 @@ static void gdrom_cmd_identify(void) {
     if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
-    data_buf_clear();
-    unsigned idx;
-    for (idx = 0; idx < 80; idx++)
-        data_buf_push(gdrom_ident_str[idx]);
+    bufq_clear();
+
+    struct gdrom_bufq_node *node =
+        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+
+    if (!node)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    node->idx = 0;
+    node->len = 80;
+    memcpy(node->dat, gdrom_ident_str, sizeof(gdrom_ident_str));
+
+    data_byte_count = 80;
+
+    fifo_push(&bufq, &node->fifo_node);
 }
 
 static void gdrom_cmd_begin_packet(void) {
@@ -964,14 +1005,22 @@ static void gdrom_input_packet_71(void) {
                                 0x62, 0x71, 0xf1, 0xb1, 0xf3, 0x8d
     };
 
-    data_buf_clear();
+    bufq_clear();
 
-    uint8_t const *ptr = pkt71_resp;
-    unsigned idx;
-    for (idx = 0; idx < PKT_71_RESP_LEN; idx++)
-        data_buf_push(*ptr++);
+    struct gdrom_bufq_node *node =
+        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+    node->idx = 0;
+    node->len = PKT_71_RESP_LEN;
+
+    /*
+     * XXX this works because PKT_71_RESP_LEN is less than GDROM_BUFQ_LEN.
+     * if that ever changes, so must this code
+     */
+    memcpy(node->dat, pkt71_resp, PKT_71_RESP_LEN);
 
     data_byte_count = PKT_71_RESP_LEN;
+
+    fifo_push(&bufq, &node->fifo_node);
 
     int_reason_reg |= INT_REASON_IO_MASK;
     int_reason_reg &= ~INT_REASON_COD_MASK;
@@ -1003,7 +1052,7 @@ static void gdrom_input_req_mode_packet(void) {
          '4',  '2',  '9',  '9',  '0',  '3',  '1',  '6'
     };
 
-    data_buf_clear();
+    bufq_clear();
     if (len != 0) {
         unsigned first_idx = starting_addr;
         unsigned last_idx = starting_addr + (len - 1);
@@ -1013,10 +1062,15 @@ static void gdrom_input_req_mode_packet(void) {
         if (last_idx > 31)
             last_idx = 31;
 
-        unsigned idx;
-        for (idx = first_idx; idx <= last_idx; idx++) {
-            data_buf_push(info[idx]);
-        }
+        struct gdrom_bufq_node *node =
+            (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+
+        node->idx = 0;
+        node->len = last_idx - first_idx + 1;
+        memcpy(&node->dat, info + first_idx, node->len * sizeof(uint8_t));
+
+        bufq_clear();
+        fifo_push(&bufq, &node->fifo_node);
     }
 
     int_reason_reg |= INT_REASON_IO_MASK;
@@ -1042,12 +1096,18 @@ static void gdrom_input_read_toc_packet(void) {
     // TODO: call mount_check and signal an error if nothing is mounted
     mount_read_toc(&toc, session);
 
-    data_buf_clear();
+    bufq_clear();
+    struct gdrom_bufq_node *node =
+        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+
     uint8_t const *ptr = mount_encode_toc(&toc);
 
-    unsigned byte_no;
-    for (byte_no = 0; byte_no < len; byte_no++)
-        data_buf_push(*ptr++);
+    node->idx = 0;
+    node->len = len;
+    memcpy(node->dat, ptr, len);
+    data_byte_count = len;
+
+    fifo_push(&bufq, &node->fifo_node);
 
     int_reason_reg |= INT_REASON_IO_MASK;
     int_reason_reg &= ~INT_REASON_COD_MASK;
@@ -1086,29 +1146,29 @@ static void gdrom_input_read_packet(void) {
 
     printf("request to read %u sectors from FAD %u\n", trans_len, start_addr);
 
-    if (trans_len > 20) // TODO: fix this
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    /* if (trans_len > 20) // TODO: fix this */
+    /*     RAISE_ERROR(ERROR_UNIMPLEMENTED); */
 
-    // TODO: data_buf is a mess
+    bufq_clear();
 
-    uint8_t *tmp = (uint8_t*)malloc(sizeof(uint8_t) * trans_len * 2048);
-    if (!tmp)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    while (trans_len--) {
+        struct gdrom_bufq_node *node =
+            (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
 
-    data_buf_clear();
+        if (!node)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    if (mount_read_sectors(tmp, start_addr, trans_len) < 0) {
-        // obviously this needs to get done eventually
-        error_set_feature("Correct errror message for failed GD-ROM read");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (mount_read_sectors(node->dat, start_addr, 1) < 0) {
+            // obviously this needs to get done eventually
+            error_set_feature("Correct errror message for failed GD-ROM read");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        node->idx = 0;
+        node->len = CDROM_FRAME_DATA_SIZE;
+
+        fifo_push(&bufq, &node->fifo_node);
     }
-
-    unsigned idx;
-    for (idx = 0; idx < trans_len * 2048; idx++) {
-        data_buf_push(tmp[idx]);
-    }
-
-    free(tmp);
 
     data_byte_count = 2048 * trans_len;
 
@@ -1204,59 +1264,27 @@ gdrom_byte_count_high_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_i
     return 0;
 }
 
-//this is used to buffer PIO data going from the GD-ROM to the host
-#define DATA_BUF_MAX (20 * 1024)
-unsigned data_buf_len;
-unsigned data_buf_idx;
-unsigned data_buf[DATA_BUF_MAX];
+static void bufq_clear(void) {
+    while (!fifo_empty(&bufq))
+        free(&FIFO_DEREF(fifo_pop(&bufq), struct gdrom_bufq_node, fifo_node));
+}
 
-static void data_buf_set(unsigned const *dat, unsigned n_elem) {
-    data_buf_idx = 0;
+static int bufq_consume_byte(unsigned *byte) {
+    struct fifo_node *node = fifo_peek(&bufq);
 
-    if (n_elem > DATA_BUF_MAX) {
-        fprintf(stderr, "WARNING - GDROM truncating data buffer (requested "
-                "length was %u)\n", n_elem);
-        n_elem = DATA_BUF_MAX;
+    if (node) {
+        struct gdrom_bufq_node *bufq_node =
+            &FIFO_DEREF(node, struct gdrom_bufq_node, fifo_node);
+
+        *byte = (unsigned)bufq_node->dat[bufq_node->idx++];
+
+        if (bufq_node->idx >= bufq_node->len) {
+            fifo_pop(&bufq);
+            free(bufq_node);
+        }
+
+        return 0;
     }
 
-    memcpy(data_buf, dat, n_elem * sizeof(unsigned));
-    data_buf_len = n_elem;
-}
-
-// add a single element to the back of the data_buf
-static void data_buf_push(unsigned val) {
-    if (data_buf_len >= DATA_BUF_MAX) {
-        fprintf(stderr, "WARNING - GDROM data buffer out of memory\n");
-        return;
-    }
-
-    data_buf[data_buf_len++] = val;
-
-    printf("GD-ROM: data_buf[%u] = 0x%02x\n", data_buf_len - 1, val);
-}
-
-// returns 0 on success, < 0 if there's no more data.
-static int data_buf_read(unsigned *dat) {
-    if (data_buf_empty()) {
-        printf("GD-ROM - software attempted to read past end of data\n");
-        return -1;
-    }
-    *dat = data_buf[data_buf_idx++];
-
-    printf("\t[%u] = 0x%02x\n", data_buf_idx - 1, data_buf[data_buf_idx - 1]);
-
-    return 0;
-}
-
-static bool data_buf_empty(void) {
-    return data_buf_idx >= data_buf_len;
-}
-
-static void data_buf_clear(void) {
-    data_buf_idx = 0;
-    data_buf_len = 0;
-}
-
-static unsigned data_buf_pos(void) {
-    return data_buf_idx;
+    return -1;
 }

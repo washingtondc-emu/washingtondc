@@ -110,9 +110,6 @@ int mount_read_sectors(void *buf_out, unsigned fad, unsigned sector_count);
  */
 void const* mount_encode_toc(struct mount_toc const *toc);
 
-unsigned lba_to_fad(unsigned lba);
-unsigned fad_to_lba(unsigned fad);
-
 #ifdef __cplusplus
 }
 #endif
