@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #include "error.h"
 #include "dreamcast.h"
@@ -307,15 +308,18 @@ static void sched_next_vblank_in_event() {
     unsigned line = get_vblank_in_int_line();
 
     unsigned lines_until_vblank_in;
-    if (raster_y <= line)
-        lines_until_vblank_in = vcount - raster_y + line;
-    else
+    if (raster_y < line)
         lines_until_vblank_in = line - raster_y;
+    else
+        lines_until_vblank_in = vcount - raster_y + line;
 
     unsigned pixels_until_vblank_in =
         lines_until_vblank_in * hcount - raster_x;
     vblank_in_event.when = (SPG_VCLK_DIV * pclk_div) *
         (pixels_until_vblank_in + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
+
+    assert(vblank_in_event.when - dc_cycle_stamp() < (200 * 1000 * 1000));
+
     sched_event(&vblank_in_event);
     vblank_in_event_scheduled = true;
 }
@@ -339,6 +343,9 @@ static void sched_next_vblank_out_event() {
         lines_until_vblank_out * hcount - raster_x;
     vblank_out_event.when = (SPG_VCLK_DIV * pclk_div) *
         (pixels_until_vblank_out + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
+
+    assert(vblank_out_event.when - dc_cycle_stamp() < (200 * 1000 * 1000));
+
     sched_event(&vblank_out_event);
     vblank_out_event_scheduled = true;
 }
