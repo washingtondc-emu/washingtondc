@@ -1071,6 +1071,7 @@ static void gdrom_input_req_mode_packet(void) {
 
         bufq_clear();
         fifo_push(&bufq, &node->fifo_node);
+        data_byte_count = node->len;
     }
 
     int_reason_reg |= INT_REASON_IO_MASK;
@@ -1101,6 +1102,9 @@ static void gdrom_input_read_toc_packet(void) {
         (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
 
     uint8_t const *ptr = mount_encode_toc(&toc);
+
+    if (len > CDROM_TOC_SIZE)
+        len = CDROM_TOC_SIZE;
 
     node->idx = 0;
     node->len = len;
@@ -1151,6 +1155,8 @@ static void gdrom_input_read_packet(void) {
 
     bufq_clear();
 
+    data_byte_count = CDROM_FRAME_DATA_SIZE * trans_len;
+
     while (trans_len--) {
         struct gdrom_bufq_node *node =
             (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
@@ -1169,8 +1175,6 @@ static void gdrom_input_read_packet(void) {
 
         fifo_push(&bufq, &node->fifo_node);
     }
-
-    data_byte_count = 2048 * trans_len;
 
     int_reason_reg |= INT_REASON_IO_MASK;
     int_reason_reg &= ~INT_REASON_COD_MASK;

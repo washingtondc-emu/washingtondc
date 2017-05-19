@@ -57,11 +57,16 @@ struct mount_track {
     unsigned ctrl;
     unsigned adr; // usually ignored (set to 0)
     unsigned lba;
+
+    /*
+     * if false, the track is unused, and will be
+     * filled with all ones by mount_encode_toc.
+     */
+    bool valid;
 };
 
 struct mount_toc {
     struct mount_track tracks[99];
-    unsigned track_count;
     unsigned first_track, last_track;
     unsigned leadout;
     unsigned leadout_adr;

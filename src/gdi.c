@@ -304,37 +304,40 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
     if (session_no > 1)
         return -1;
 
-    memset(toc->tracks, -1, sizeof(toc->tracks));
+    memset(toc->tracks, 0, sizeof(toc->tracks));
 
     if (session_no == 0) {
         // session 0 contains the first two tracks
-        toc->track_count = 2;
 
         // track 1
         toc->tracks[0].lba = info->tracks[0].lba_start;
         toc->tracks[0].adr = 1;
         toc->tracks[0].ctrl = info->tracks[0].ctrl;
+        toc->tracks[0].valid = true;
 
         // track 2
         toc->tracks[1].lba = info->tracks[1].lba_start;
         toc->tracks[1].adr = 1;
         toc->tracks[1].ctrl = info->tracks[1].ctrl;
+        toc->tracks[1].valid = true;
 
         toc->first_track = 1;
         toc->last_track = 2;
     } else {
-        // TODO - implement
-        toc->track_count = info->n_tracks - 2;
+        // session 1 contains all tracks but the first two
 
         unsigned src_track_no;
-        for (src_track_no = 2; src_track_no < info->n_tracks; src_track_no++) {
-            toc->tracks[src_track_no - 2].lba = info->tracks[src_track_no].lba_start;
-            toc->tracks[src_track_no - 2].adr = 0;
-            toc->tracks[src_track_no - 2].ctrl = info->tracks[src_track_no].ctrl;
-
-            toc->first_track = 3;
-            toc->last_track = info->n_tracks;
+        for (src_track_no = 3; src_track_no <= info->n_tracks; src_track_no++) {
+            toc->tracks[src_track_no - 1].lba =
+                info->tracks[src_track_no - 1].lba_start;
+            toc->tracks[src_track_no - 1].adr = 1;
+            toc->tracks[src_track_no - 1].ctrl =
+                info->tracks[src_track_no - 1].ctrl;
+            toc->tracks[src_track_no - 1].valid = true;
         }
+
+        toc->first_track = 3;
+        toc->last_track = info->n_tracks;
     }
 
     /*
