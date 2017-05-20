@@ -369,8 +369,9 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
          * TODO: not sure if I should divide by 2048, 2352 or
          * trackp->sector_size...
          */
+        unsigned track_lba_count = gdi_mount->track_lengths[track_idx] / 2048;
         if ((lba >= trackp->lba_start) &&
-            (lba < gdi_mount->track_lengths[track_idx] / 2048)) {
+            (lba < (trackp->lba_start + track_lba_count))) {
 
             // TODO: support MODE2 FORM1, MODE2 FORM2, CDDA, etc...
             unsigned lba_relative = lba - trackp->lba_start;
