@@ -167,6 +167,14 @@ enum gdrom_disc_state {
     GDROM_STATE_ERROR = 0x9
 };
 
+enum gdrom_disc_type {
+    DISC_TYPE_CDDA = 0,
+    DISC_TYPE_CDROM = 1,
+    DISC_TYPE_CDROM_XA = 2,
+    DISC_TYPE_CDI = 3, // i think this refers to phillips CD-I, not .cdi images
+    DISC_TYPE_GDROM = 8
+};
+
 enum gdrom_fmt {
     GDROM_FMT_CDDA = 0,
     GDROM_FMT_CDROM = 1,
@@ -177,6 +185,9 @@ enum gdrom_fmt {
 
 #define SEC_NUM_STATUS_SHIFT 0
 #define SEC_NUM_STATUS_MASK (0xf << SEC_NUM_STATUS_SHIFT)
+
+#define SEC_NUM_DISC_TYPE_SHIFT 4
+#define SEC_NUM_DISC_TYPE_MASK (0xf << SEC_NUM_DISC_TYPE_SHIFT)
 
 #define SEC_NUM_FMT_SHIFT 4
 #define SEC_NUM_FMT_MASK (0xf << SEC_NUM_FMT_SHIFT)
@@ -1222,8 +1233,16 @@ gdrom_sector_num_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len) {
     // for now, hard code this register so that there's never a disc inserted
 
-    uint32_t status = mount_check() ? GDROM_STATE_PAUSE : GDROM_STATE_NODISC;
-    status <<= SEC_NUM_STATUS_SHIFT;
+    uint32_t status;
+
+    if (mount_check()) {
+        status = (GDROM_STATE_PAUSE << SEC_NUM_STATUS_SHIFT) |
+            (DISC_TYPE_GDROM << SEC_NUM_DISC_TYPE_SHIFT);
+    } else {
+        status = GDROM_STATE_NODISC << SEC_NUM_STATUS_SHIFT;
+    }
+
+    printf("reading 0x%02x from the sector number\n", (unsigned)status);
 
     memcpy(buf, &status, len < sizeof(status) ? len : sizeof(status));
 
