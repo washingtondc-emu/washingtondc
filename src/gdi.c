@@ -383,17 +383,16 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
             // TODO: don't ignore the offset
             if (fseek(gdi_mount->track_streams[track_idx],
                       byte_offset, SEEK_SET) != 0) {
-                error_set_errno_val(errno);
-                RAISE_ERROR(ERROR_FILE_IO);
+                goto return_err;
             }
 
-            if (fread(buf, 2048, 1, gdi_mount->track_streams[track_idx]) != 1) {
-                error_set_errno_val(errno);
-                RAISE_ERROR(ERROR_FILE_IO);
-            }
+            if (fread(buf, 2048, 1, gdi_mount->track_streams[track_idx]) != 1)
+                goto return_err;
+
             return 0;
         }
     }
 
+return_err:
     return -1;
 }

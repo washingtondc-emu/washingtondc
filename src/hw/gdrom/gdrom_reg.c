@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -192,6 +193,35 @@ enum gdrom_fmt {
 #define SEC_NUM_FMT_SHIFT 4
 #define SEC_NUM_FMT_MASK (0xf << SEC_NUM_FMT_SHIFT)
 
+enum sense_key {
+    // no sense key (command execution successful)
+    SENSE_KEY_NONE = 0,
+
+    // successful error recovery
+    SENSE_KEY_RECOVERED = 1,
+
+    // drive not ready
+    SENSE_KEY_NOT_READY = 2,
+
+    // defective disc
+    SENSE_KEY_MEDIUM_ERROR = 3,
+
+    // drive failure
+    SENSE_KEY_HW_ERROR = 4,
+
+    // invalid parameter/request
+    SENSE_KEY_ILLEGAL_REQ = 5,
+
+    // disc removed/drive reset
+    SENSE_KEY_UNIT_ATTN = 6,
+
+    // writing to a read-only area
+    SENSE_KEY_DATA_PROT = 7,
+
+    // command was aborted
+    SENSE_KEY_CMD_ABORT = 11
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // GD-ROM drive state
@@ -204,6 +234,16 @@ static uint32_t sect_cnt_reg;   // sector count register
 static uint32_t int_reason_reg; // interrupt reason register
 static uint32_t dev_ctrl_reg;   // device control register
 static unsigned data_byte_count;     // byte-count low/high registers
+
+struct error_reg {
+    uint32_t ili : 1;
+    uint32_t eomf : 1;
+    uint32_t abrt : 1;
+    uint32_t mcr : 1;
+    uint32_t sense_key : 4;
+} error_reg;
+
+static_assert(sizeof(error_reg) == sizeof(uint32_t), "bad error_reg size");
 
 enum {
     TRANS_MODE_PIO_DFLT,
@@ -598,9 +638,7 @@ gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_error_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                              void *buf, addr32_t addr, unsigned len) {
-    uint32_t val = 0;
-
-    memcpy(buf, &val, len > 4 ? 4 : len);
+    memcpy(buf, &error_reg, len > 4 ? 4 : len);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -752,6 +790,9 @@ static void gdrom_cmd_set_features(void) {
         fprintf(stderr, "WARNING: unrecognized GD-ROM transfer mode\n"
                 "sect_cnt_reg is 0x%08x\n", sect_cnt_reg);
     }
+
+    stat_reg &= ~STAT_CHECK_MASK;
+    memset(&error_reg, 0, sizeof(error_reg));
 }
 
 // string of bytes returned by the GDROM_CMD_IDENTIFY command
@@ -790,6 +831,9 @@ static void gdrom_cmd_identify(void) {
     data_byte_count = 80;
 
     fifo_push(&bufq, &node->fifo_node);
+
+    stat_reg &= ~STAT_CHECK_MASK;
+    memset(&error_reg, 0, sizeof(error_reg));
 }
 
 static void gdrom_cmd_begin_packet(void) {
@@ -855,6 +899,9 @@ static void gdrom_input_test_unit_packet(void) {
     /*     holly_raise_ext_int(HOLLY_EXT_INT_GDROM); */
 
     state = GDROM_STATE_NORM;
+
+    stat_reg &= ~STAT_CHECK_MASK;
+    memset(&error_reg, 0, sizeof(error_reg));
 }
 
 /*
@@ -877,6 +924,9 @@ static void gdrom_input_start_disk_packet(void) {
     /*     holly_raise_ext_int(HOLLY_EXT_INT_GDROM); */
 
     state = GDROM_STATE_NORM;
+
+    stat_reg &= ~STAT_CHECK_MASK;
+    memset(&error_reg, 0, sizeof(error_reg));
 }
 
 /*
@@ -1040,6 +1090,9 @@ static void gdrom_input_packet_71(void) {
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
+
+    stat_reg &= ~STAT_CHECK_MASK;
+    memset(&error_reg, 0, sizeof(error_reg));
 }
 
 static void gdrom_input_req_mode_packet(void) {
@@ -1092,6 +1145,9 @@ static void gdrom_input_req_mode_packet(void) {
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
+
+    stat_reg &= ~STAT_CHECK_MASK;
+    memset(&error_reg, 0, sizeof(error_reg));
 }
 
 static void gdrom_input_read_toc_packet(void) {
@@ -1131,6 +1187,9 @@ static void gdrom_input_read_toc_packet(void) {
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
+
+    stat_reg &= ~STAT_CHECK_MASK;
+    memset(&error_reg, 0, sizeof(error_reg));
 }
 
 static void gdrom_input_read_packet(void) {
@@ -1176,9 +1235,12 @@ static void gdrom_input_read_packet(void) {
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
         if (mount_read_sectors(node->dat, start_addr, 1) < 0) {
-            // obviously this needs to get done eventually
-            error_set_feature("Correct errror message for failed GD-ROM read");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            free(node);
+
+            error_reg.sense_key = SENSE_KEY_ILLEGAL_REQ;
+            stat_reg |= STAT_CHECK_MASK;
+            state = GDROM_STATE_NORM;
+            return;
         }
 
         node->idx = 0;
@@ -1194,6 +1256,8 @@ static void gdrom_input_read_packet(void) {
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
+    stat_reg &= ~STAT_CHECK_MASK;
+    memset(&error_reg, 0, sizeof(error_reg));
 }
 
 static int
