@@ -106,6 +106,12 @@ static inline bool sh4_ocache_in_ram_area(addr32_t addr) {
     return (addr & SH4_OC_RAM_AREA_MASK) == SH4_OC_RAM_AREA_VAL;
 }
 
+#define SH4_OC_ADDR_ARRAY_FIRST 0xf4000000
+#define SH4_OC_ADDR_ARRAY_LAST  0xf4ffffff
+
+void sh4_ocache_write_addr_array(Sh4 *sh4, void const *dat,
+                                 addr32_t paddr, unsigned len);
+
 #ifdef __cplusplus
 }
 #endif

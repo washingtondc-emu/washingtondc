@@ -141,3 +141,8 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
     return sh4_write_mem(sh4, sh4->ocache.sq + sq_idx,
                          addr_actual, 8 * sizeof(uint32_t));
 }
+
+void sh4_ocache_write_addr_array(Sh4 *sh4, void const *dat,
+                                 addr32_t paddr, unsigned len) {
+    // do nothing
+}
