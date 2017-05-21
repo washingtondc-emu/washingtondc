@@ -105,6 +105,8 @@ static bool pix_double_x, pix_double_y;
 enum {
     SPG_HBLANK_INT,
     SPG_VBLANK_INT,
+    SPG_HBLANK,
+    SPG_VBLANK,
     SPG_LOAD,
     SPG_CONTROL,
 
@@ -115,6 +117,8 @@ enum {
 static reg32_t spg_reg[SPG_REG_COUNT] = {
     0x31d << 16,          // SPG_HBLANK_INT
     0x00150104,           // SPG_VBLANK_INT
+    0x007e0345,           // SPG_HBLANK
+    0x00150104,           // SPG_VBLANK
     (0x106 << 16) | 0x359 // SPG_LOAD
 };
 
@@ -134,6 +138,10 @@ static inline unsigned get_hblank_int_mode();
 static inline unsigned get_hblank_int_comp_val();
 static inline unsigned get_vblank_in_int_line();
 static inline unsigned get_vblank_out_int_line();
+static inline unsigned get_hbstart(void);
+static inline unsigned get_hbend(void);
+static inline unsigned get_vbstart(void);
+static inline unsigned get_vbend(void);
 
 static void sched_next_hblank_event();
 static void sched_next_vblank_in_event();
@@ -182,12 +190,17 @@ static void spg_sync() {
     unsigned vcount = get_vcount();
     spg_vclk_cycle_t cur_time = spg_cycle_stamp();
     spg_vclk_cycle_t delta_cycles = cur_time - last_sync;
-    last_sync = cur_time;
 
-    raster_x += delta_cycles / pclk_div;
-    raster_y += raster_x / hcount;
-    raster_x %= hcount;
-    raster_y %= vcount;
+    // only update the last_sync timestamp if the values have changed
+    unsigned raster_x_inc = delta_cycles / pclk_div;
+    if (raster_x_inc > 0) {
+        last_sync = cur_time;
+
+        raster_x += raster_x_inc;
+        raster_y += raster_x / hcount;
+        raster_x %= hcount;
+        raster_y %= vcount;
+    }
 }
 
 static void spg_handle_hblank(SchedEvent *event) {
@@ -402,6 +415,22 @@ static inline unsigned get_vblank_out_int_line() {
     return (spg_reg[SPG_VBLANK_INT] >> 16) & 0x3ff;
 }
 
+static inline unsigned get_hbstart(void) {
+    return spg_reg[SPG_HBLANK] & 0x3ff;
+}
+
+static inline unsigned get_hbend(void) {
+    return (spg_reg[SPG_HBLANK] >> 16) & 0x3ff;
+}
+
+static inline unsigned get_vbstart(void) {
+    return spg_reg[SPG_VBLANK] & 0x3ff;
+}
+
+static inline unsigned get_vbend(void) {
+    return (spg_reg[SPG_VBLANK] >> 16) & 0x3ff;
+}
+
 int
 read_spg_hblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
                     void *buf, addr32_t addr, unsigned len) {
@@ -485,5 +514,60 @@ int
 write_spg_control(struct pvr2_core_mem_mapped_reg const *reg_info,
                   void const *buf, addr32_t addr, unsigned len) {
     memcpy(spg_reg + SPG_CONTROL, buf, len);
+    return 0;
+}
+
+int
+read_spg_status(struct pvr2_core_mem_mapped_reg const *reg_info,
+                void *buf, addr32_t addr, unsigned len) {
+    uint32_t spg_stat;
+
+    spg_sync();
+
+    spg_stat = 0x3ff & raster_y;
+
+    /*
+     * TODO: set the fieldnum bit (bit 10).  this is related to which group of
+     * scanlines are currently being updated when interlacing is enabled, IIRC
+     */
+
+    // TODO: set the blank bit (bit 11).  I don't know what this is for yet
+
+    if (raster_y < get_vbend() || raster_y >= get_vbstart())
+        spg_stat |= (1 << 13);
+
+    if (raster_x < get_hbend() || raster_x >= get_hbstart())
+        spg_stat |= (1 << 12);
+
+    memcpy(buf, &spg_stat, len);
+
+    return 0;
+}
+
+int
+read_spg_hblank(struct pvr2_core_mem_mapped_reg const *reg_info,
+                void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, spg_reg + SPG_HBLANK, len);
+    return 0;
+}
+
+int
+write_spg_hblank(struct pvr2_core_mem_mapped_reg const *reg_info,
+                 void const *buf, addr32_t addr, unsigned len) {
+    memcpy(spg_reg + SPG_HBLANK, buf, len);
+    return 0;
+}
+
+int
+read_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
+                void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, spg_reg + SPG_VBLANK, len);
+    return 0;
+}
+
+int
+write_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
+                 void const *buf, addr32_t addr, unsigned len) {
+    memcpy(spg_reg + SPG_VBLANK, buf, len);
     return 0;
 }

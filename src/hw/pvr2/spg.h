@@ -94,6 +94,21 @@ read_spg_load(struct pvr2_core_mem_mapped_reg const *reg_info,
 int
 write_spg_load(struct pvr2_core_mem_mapped_reg const *reg_info,
                void const *buf, addr32_t addr, unsigned len);
+int
+read_spg_status(struct pvr2_core_mem_mapped_reg const *reg_info,
+                void *buf, addr32_t addr, unsigned len);
+int
+read_spg_hblank(struct pvr2_core_mem_mapped_reg const *reg_info,
+                void *buf, addr32_t addr, unsigned len);
+int
+write_spg_hblank(struct pvr2_core_mem_mapped_reg const *reg_info,
+                 void const *buf, addr32_t addr, unsigned len);
+int
+read_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
+                void *buf, addr32_t addr, unsigned len);
+int
+write_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
+                 void const *buf, addr32_t addr, unsigned len);
 
 #ifdef __cplusplus
 }
