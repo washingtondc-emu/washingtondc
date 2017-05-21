@@ -146,7 +146,8 @@ void parse_gdi(struct gdi_info *outp, char const *path) {
             struct string lba_start_col;
             string_init(&lba_start_col);
             string_get_col(&lba_start_col, &cur_line, 1, " \t");
-            trackp->lba_start = atoi(string_get(&lba_start_col));
+            trackp->lba_start =
+                cdrom_fad_to_lba(atoi(string_get(&lba_start_col)));
             string_cleanup(&lba_start_col);
 
             struct string ctrl_col;
@@ -365,11 +366,8 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
     for (track_idx = 0; track_idx < info->n_tracks; track_idx++) {
         struct gdi_track const *trackp = info->tracks + track_idx;
 
-        /*
-         * TODO: not sure if I should divide by 2048, 2352 or
-         * trackp->sector_size...
-         */
-        unsigned track_lba_count = gdi_mount->track_lengths[track_idx] / 2048;
+        unsigned track_lba_count =
+            gdi_mount->track_lengths[track_idx] / CDROM_FRAME_SIZE;
         if ((lba >= trackp->lba_start) &&
             (lba < (trackp->lba_start + track_lba_count))) {
 
@@ -378,8 +376,9 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
             unsigned byte_offset = CDROM_FRAME_SIZE * lba_relative +
                 CDROM_MODE1_DATA_OFFSET;
 
-            printf("Select track %d\n", track_idx + 1);
-            printf("read starting at byte %u\n", byte_offset);
+            printf("Select track %d (%u blocks starting from %u)\n",
+                   track_idx + 1, track_lba_count, (unsigned)trackp->lba_start);
+            printf("read 1 sector starting at byte %u\n", byte_offset);
 
             // TODO: don't ignore the offset
             if (fseek(gdi_mount->track_streams[track_idx],
