@@ -685,7 +685,7 @@ gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                             void *buf, addr32_t addr, unsigned len) {
     uint8_t *ptr = buf;
 
-    printf("WARNING: reading %u values from GD-ROM data register:\n", len);
+    /* printf("WARNING: reading %u values from GD-ROM data register:\n", len); */
 
     while (len--) {
         unsigned dat;
