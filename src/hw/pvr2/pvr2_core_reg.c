@@ -70,6 +70,9 @@ pvr2_core_read_only_reg_write_handler(
 static int
 pvr2_core_id_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                           void *buf, addr32_t addr, unsigned len);
+static int
+pvr2_core_revision_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void *buf, addr32_t addr, unsigned len);
 
 static int
 fb_r_ctrl_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
@@ -117,7 +120,8 @@ static struct pvr2_core_mem_mapped_reg {
 } pvr2_core_reg_info[] = {
     { "ID", 0x5f8000, 4, 1,
       pvr2_core_id_read_handler, pvr2_core_read_only_reg_write_handler },
-
+    { "REVISION", 0x5f8004, 4, 1,
+      pvr2_core_revision_read_handler, pvr2_core_read_only_reg_write_handler },
     { "SOFTRESET", 0x5f8008, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
 
@@ -375,6 +379,16 @@ pvr2_core_id_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                           void *buf, addr32_t addr, unsigned len) {
     /* hardcoded hardware ID */
     uint32_t tmp = 0x17fd11db;
+
+    memcpy(buf, &tmp, len);
+
+    return MEM_ACCESS_SUCCESS;
+}
+
+static int
+pvr2_core_revision_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void *buf, addr32_t addr, unsigned len) {
+    uint32_t tmp = 17;
 
     memcpy(buf, &tmp, len);
 
