@@ -35,7 +35,7 @@
 #define GDI_SECONDARY_DATA_TRACK 5
 
 struct gdi_track {
-    unsigned lba_start;    // block address offset
+    unsigned fad_start;    // block address offset
     unsigned ctrl;         // ???
     unsigned sector_size;  // sector size, typically (but not always) 2352
 

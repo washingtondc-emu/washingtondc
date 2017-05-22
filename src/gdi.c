@@ -143,12 +143,12 @@ void parse_gdi(struct gdi_info *outp, char const *path) {
                 RAISE_ERROR(ERROR_DUPLICATE_DATA);
             }
 
-            struct string lba_start_col;
-            string_init(&lba_start_col);
-            string_get_col(&lba_start_col, &cur_line, 1, " \t");
-            trackp->lba_start =
-                cdrom_fad_to_lba(atoi(string_get(&lba_start_col)));
-            string_cleanup(&lba_start_col);
+            struct string fad_start_col;
+            string_init(&fad_start_col);
+            string_get_col(&fad_start_col, &cur_line, 1, " \t");
+            trackp->fad_start =
+                cdrom_lba_to_fad(atoi(string_get(&fad_start_col)));
+            string_cleanup(&fad_start_col);
 
             struct string ctrl_col;
             string_init(&ctrl_col);
@@ -221,7 +221,7 @@ void print_gdi(struct gdi_info const *gdi) {
     for (track_no = 0; track_no < gdi->n_tracks; track_no++) {
         struct gdi_track const *trackp = gdi->tracks + track_no;
         printf("%u %u %u %u %s %u\n",
-               track_no + 1, trackp->lba_start, trackp->ctrl,
+               track_no + 1, cdrom_fad_to_lba(trackp->fad_start), trackp->ctrl,
                trackp->sector_size, string_get(&trackp->rel_path), trackp->offset);
     }
 }
@@ -311,13 +311,13 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
         // session 0 contains the first two tracks
 
         // track 1
-        toc->tracks[0].lba = info->tracks[0].lba_start;
+        toc->tracks[0].fad = info->tracks[0].fad_start;
         toc->tracks[0].adr = 1;
         toc->tracks[0].ctrl = info->tracks[0].ctrl;
         toc->tracks[0].valid = true;
 
         // track 2
-        toc->tracks[1].lba = info->tracks[1].lba_start;
+        toc->tracks[1].fad = info->tracks[1].fad_start;
         toc->tracks[1].adr = 1;
         toc->tracks[1].ctrl = info->tracks[1].ctrl;
         toc->tracks[1].valid = true;
@@ -329,8 +329,8 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
 
         unsigned src_track_no;
         for (src_track_no = 3; src_track_no <= info->n_tracks; src_track_no++) {
-            toc->tracks[src_track_no - 1].lba =
-                info->tracks[src_track_no - 1].lba_start;
+            toc->tracks[src_track_no - 1].fad =
+                info->tracks[src_track_no - 1].fad_start;
             toc->tracks[src_track_no - 1].adr = 1;
             toc->tracks[src_track_no - 1].ctrl =
                 info->tracks[src_track_no - 1].ctrl;
@@ -351,7 +351,7 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
      */
     toc->leadout = gdi_mount->track_lengths[toc->last_track - 1] /
         info->tracks[toc->last_track - 1].sector_size +
-        info->tracks[toc->last_track - 1].lba_start;
+        info->tracks[toc->last_track - 1].fad_start;
     toc->leadout_adr = 1;
 
     return 0;
@@ -360,24 +360,23 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
 static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
     struct gdi_mount const *gdi_mount = (struct gdi_mount const*)mount->state;
     struct gdi_info const *info = &gdi_mount->meta;
-    unsigned lba = cdrom_fad_to_lba(fad);
 
     unsigned track_idx;
     for (track_idx = 0; track_idx < info->n_tracks; track_idx++) {
         struct gdi_track const *trackp = info->tracks + track_idx;
 
-        unsigned track_lba_count =
+        unsigned track_fad_count =
             gdi_mount->track_lengths[track_idx] / CDROM_FRAME_SIZE;
-        if ((lba >= trackp->lba_start) &&
-            (lba < (trackp->lba_start + track_lba_count))) {
+        if ((fad >= trackp->fad_start) &&
+            (fad < (trackp->fad_start + track_fad_count))) {
 
             // TODO: support MODE2 FORM1, MODE2 FORM2, CDDA, etc...
-            unsigned lba_relative = lba - trackp->lba_start;
-            unsigned byte_offset = CDROM_FRAME_SIZE * lba_relative +
+            unsigned fad_relative = fad - trackp->fad_start;
+            unsigned byte_offset = CDROM_FRAME_SIZE * fad_relative +
                 CDROM_MODE1_DATA_OFFSET;
 
             printf("Select track %d (%u blocks starting from %u)\n",
-                   track_idx + 1, track_lba_count, (unsigned)trackp->lba_start);
+                   track_idx + 1, track_fad_count, (unsigned)trackp->fad_start);
             printf("read 1 sector starting at byte %u\n", byte_offset);
 
             // TODO: don't ignore the offset

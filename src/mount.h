@@ -56,7 +56,7 @@ struct mount {
 struct mount_track {
     unsigned ctrl;
     unsigned adr; // usually ignored (set to 0)
-    unsigned lba;
+    unsigned fad;
 
     /*
      * if false, the track is unused, and will be

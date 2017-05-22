@@ -97,7 +97,7 @@ void const* mount_encode_toc(struct mount_toc const *toc) {
         unsigned track_idx = track_no - 1;
         struct mount_track const *trackp = toc->tracks + track_idx;
         if (trackp->valid) {
-            uint32_t fad = cdrom_lba_to_fad(trackp->lba);
+            uint32_t fad = trackp->fad;
             uint32_t fad_be = ((fad & 0xff0000) >> 16) |
                 (fad & 0x00ff00) |
                 ((fad & 0x0000ff) << 16);
@@ -131,7 +131,7 @@ void const* mount_encode_toc(struct mount_toc const *toc) {
      * It is not a mistake that this gets the ctrl from the last track's ctrl
      * val; that seems to be how this is supposed to work (I think)...
      */
-    unsigned leadout_fad = cdrom_lba_to_fad(toc->leadout);
+    unsigned leadout_fad = toc->leadout;
     uint32_t leadout_bin = ((((leadout_fad & 0xff0000) >> 16) |
                              (leadout_fad & 0x00ff00) |
                              ((leadout_fad & 0x0000ff) << 16)) << 8) |
