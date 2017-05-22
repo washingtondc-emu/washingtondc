@@ -60,6 +60,9 @@ static int ignore_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                         void const *buf, addr32_t addr,
                                         unsigned len);
 
+static int sys_sbrev_reg_read_handler(struct sys_mapped_reg const *reg_info,
+                                     void *buf, addr32_t addr, unsigned len);
+
 /* yay, interrrupt registers */
 static struct sys_mapped_reg {
     char const *reg_name;
@@ -102,6 +105,10 @@ static struct sys_mapped_reg {
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
     { "SB_FFST", 0x5f688c, 4,
       default_sys_reg_read_handler, sys_read_only_reg_write_handler },
+
+    { "SB_SBREV", 0x5f689c, 4,
+      sys_sbrev_reg_read_handler, sys_read_only_reg_write_handler },
+
     /* TODO: spec says default val if SB_RBSPLT's MSB is 0, but bios writes 1 */
     { "SB_RBSPLT", 0x5f68a0, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
@@ -302,5 +309,12 @@ static int sys_read_only_reg_write_handler(struct sys_mapped_reg const *reg_info
 __attribute__((unused)) static int
 ignore_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len) {
+    return MEM_ACCESS_SUCCESS;
+}
+
+static int sys_sbrev_reg_read_handler(struct sys_mapped_reg const *reg_info,
+                                      void *buf, addr32_t addr, unsigned len) {
+    uint32_t sbrev = 16;
+    memcpy(buf, &sbrev, len);
     return MEM_ACCESS_SUCCESS;
 }
