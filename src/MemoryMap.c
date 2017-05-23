@@ -59,7 +59,7 @@ void memory_map_set_mem(struct Memory *mem_new) {
 int memory_map_read(void *buf, size_t addr, size_t len) {
     // check RAM first because that's the case we want to optimize for
     if (addr >= ADDR_RAM_FIRST && addr <= ADDR_RAM_LAST) {
-        return memory_read(mem, buf, addr - ADDR_RAM_FIRST, len);
+        return memory_read(mem, buf, addr & ADDR_RAM_MASK, len);
     } else if (addr <= ADDR_BIOS_LAST) {
         /*
          * XXX In case you were wondering: we don't check to see if
@@ -152,7 +152,7 @@ boundary_cross:
 int memory_map_write(void const *buf, size_t addr, size_t len) {
     // check RAM first because that's the case we want to optimize for
     if (addr >= ADDR_RAM_FIRST && addr <= ADDR_RAM_LAST) {
-        return memory_write(mem, buf, addr - ADDR_RAM_FIRST, len);
+        return memory_write(mem, buf, addr & ADDR_RAM_MASK, len);
     } else if (addr <= ADDR_BIOS_LAST) {
         /*
          * XXX In case you were wondering: we don't check to see if

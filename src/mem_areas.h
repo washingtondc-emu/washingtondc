@@ -27,6 +27,23 @@
 extern "C" {
 #endif
 
+/*
+ * XXX Currently the only memory area which has its Image Area implemented is
+ * the main RAM.  I don't have it implemented for the texture memory yet because
+ * I haven't determined if the 32-bit/64-bit texture access areas are supposed
+ * to be images of each other, and therefore I don't yet know how the actual
+ * Image Area for that area of memory will work.
+ *
+ * The reason why I have not implemented it for Area 0 is that I have not had a
+ * chance to run a HW test to confirm that my understanding of its image area is
+ * correct, and I don't currently have any games that I know use it.  When I
+ * have a chance to run an hw test on this, I will implement it.
+ *
+ * As for the RAM's image area, I know of one game that uses it (Namco Museum),
+ * and I have run a hardware test to verify that the same data gets read/written
+ * for same offset in all four image areas.
+ */
+
 // System Boot ROM
 #define ADDR_BIOS_FIRST  0
 #define ADDR_BIOS_LAST   0x001fffff
@@ -35,9 +52,14 @@ extern "C" {
 #define ADDR_FLASH_FIRST 0x00200000
 #define ADDR_FLASH_LAST  0x0021ffff
 
-// main system memory
+/*
+ * main system memory - unlike the mappings, this one includes its own image
+ * areas between ADD_RAM_FIRST and ADDR_RAM_LAST.  The mask is what you use to
+ * get the offset from the beginning of RAM to a given memory address.
+ */
 #define ADDR_RAM_FIRST   0x0c000000
-#define ADDR_RAM_LAST    0x0cffffff
+#define ADDR_RAM_LAST    0x0fffffff
+#define ADDR_RAM_MASK    0x00ffffff
 
 // G1 bus control registers
 #define ADDR_G1_FIRST    0x005F7400
