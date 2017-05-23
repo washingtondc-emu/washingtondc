@@ -4295,23 +4295,14 @@ void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst) {
 }
 
 void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
+    fprintf(stderr, "WARNING - unrecognized opcode at PC=0x%08x\n",
+            sh4->reg[SH4_REG_PC]);
+
 #ifdef DBG_EXIT_ON_UNDEFINED_OPCODE
 
     error_set_feature("SH4 CPU exception for unrecognized opcode");
     SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 #else
-#ifdef ENABLE_DEBUGGER
-    /*
-     * Send this to the gdb backend if it's running.  else, fall through to the
-     * next case, where we raise an sh4 CPU exception.
-     */
-    struct debugger *dbg = dreamcast_get_debugger();
-    if (dbg) {
-        debug_on_softbreak(dbg, inst.inst, sh4->reg[SH4_REG_PC]);
-        return;
-    }
-
-#endif /* ifdef ENABLE_DEBUGGER */
     /*
      * raise an sh4 CPU exception, this case is
      * what's actually supposed to happen on real hardware.
