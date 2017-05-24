@@ -445,12 +445,16 @@ void sh4_inst_unary_trapa_disp(Sh4 *sh4, Sh4OpArgs inst);
 void sh4_inst_unary_tasb_gen(Sh4 *sh4, Sh4OpArgs inst);
 
 // OCBI @Rn
-// 0000nnnn10100011
+// 0000nnnn10010011
 void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst);
 
 // OCBP @Rn
 // 0000nnnn10100011
 void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst);
+
+// OCBWB @Rn
+// 0000nnnn10110011
+void sh4_inst_unary_ocbwb_indgen(Sh4 *sh4, Sh4OpArgs inst);
 
 // PREF @Rn
 // 0000nnnn10000011

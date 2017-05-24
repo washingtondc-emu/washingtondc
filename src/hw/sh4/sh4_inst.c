@@ -231,11 +231,15 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 5 },
 
     // OCBI @Rn
-    { "0000nnnn10100011", &sh4_inst_unary_ocbi_indgen, false,
+    { "0000nnnn10010011", &sh4_inst_unary_ocbi_indgen, false,
       SH4_GROUP_LS, 1 },
 
     // OCBP @Rn
     { "0000nnnn10100011", &sh4_inst_unary_ocbp_indgen, false,
+      SH4_GROUP_LS, 1 },
+
+    // OCBWB @Rn
+    { "0000nnnn10110011", &sh4_inst_unary_ocbwb_indgen, false,
       SH4_GROUP_LS, 1 },
 
     // PREF @Rn
@@ -1694,6 +1698,12 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 // OCBP @Rn
 // 0000nnnn10100011
 void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
+    /* TODO: if mmu is enabled, this inst can generate exceptions */
+
+    sh4_next_inst(sh4);
+}
+
+void sh4_inst_unary_ocbwb_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     /* TODO: if mmu is enabled, this inst can generate exceptions */
 
     sh4_next_inst(sh4);
