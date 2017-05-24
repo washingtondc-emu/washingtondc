@@ -189,6 +189,19 @@ void dreamcast_init_direct(char const *path_ip_bin,
         cpu.reg[SH4_REG_PC] = ADDR_1ST_READ_BIN;
     else
         cpu.reg[SH4_REG_PC] = ADDR_BOOTSTRAP;
+
+    /*
+     * set the VBR to what it would have been after a BIOS boot.
+     * This was obtained empirically on a real Dreamcast.
+     *
+     * XXX not sure if there should be a different value depending on whether
+     * or not we skip IP.BIN.  All I do know is that this value is correct when
+     * we do skip IP.BIN because I obtained it by running a homebrew that prints
+     * the VBR value when it starts, which would be immediately after IP.BIN is
+     * run.  It is possible that there's a different value immediately before
+     * IP.BIN runs, and that the value seen by 1ST_READ.BIN is set by IP.BIN.
+     */
+    cpu.reg[SH4_REG_VBR] = 0x8c00f400;
 }
 #endif
 
