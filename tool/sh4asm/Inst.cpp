@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -292,11 +292,16 @@ PtrnList get_patterns() {
     // OCBI @Rn
     // 0000nnnn10100011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(ocbi), Ptrn_Ind<Ptrn_GenReg>,
-                           0x00a3, 0xf0ff, 8>));
+                           0x0093, 0xf0ff, 8>));
 
     // OCBP @Rn
     // 0000nnnn10100011
     list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(ocbp), Ptrn_Ind<Ptrn_GenReg>,
+                           0x00a3, 0xf0ff, 8>));
+
+    // OCBWB @Rn
+    // 0000nnnn10110011
+    list.push_back(PtrnPtr(new UnaryOperator<INST_PTRN(ocbwb), Ptrn_Ind<Ptrn_GenReg>,
                            0x00b3, 0xf0ff, 8>));
 
     // PREF @Rn

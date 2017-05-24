@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -138,6 +138,7 @@ char const *insts_to_test[] = {
     "TAS.B @R<4>",
     "OCBI @R<4>",
     "OCBP @R<4>",
+    "OCBWB @R<4>",
     "PREF @R<4>",
     "JMP @R<4>",
     "JSR @R<4>",
