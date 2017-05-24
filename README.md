@@ -39,6 +39,7 @@ OPTIONS:
 -g enable remote GDB backend via TCP port 1999
 -d enable direct boot (skip BIOS)
 -u skip IP.BIN and boot straight to 1ST_READ.BIN (only valid for direct boot)
+-m <gdi path> path to .gdi file which will be mounted in the GD-ROM drive
 -s path to dreamcast system call image (only needed for direct boot)
 -t establish serial server over TCP port 1998
 -h display this message and exit
