@@ -43,6 +43,11 @@
 static struct BiosFile *bios;
 static struct Memory *mem;
 
+static inline int read_area3(void *buf, size_t addr, size_t len);
+static inline int write_area3(void const *buf, size_t addr, size_t len);
+static inline int read_area0(void *buf, size_t addr, size_t len);
+static inline int write_area0(void const *buf, size_t addr, size_t len);
+
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new) {
     memory_map_set_bios(bios_new);
     memory_map_set_mem(mem_new);
@@ -58,9 +63,67 @@ void memory_map_set_mem(struct Memory *mem_new) {
 
 int memory_map_read(void *buf, size_t addr, size_t len) {
     // check RAM first because that's the case we want to optimize for
-    if (addr >= ADDR_RAM_FIRST && addr <= ADDR_RAM_LAST) {
-        return memory_read(mem, buf, addr & ADDR_RAM_MASK, len);
-    } else if (addr <= ADDR_BIOS_LAST) {
+    if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
+        return read_area3(buf, addr, len);
+    } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
+        if (addr + (len - 1) > ADDR_TEX_LAST) {
+            goto boundary_cross;
+        }
+        return pvr2_tex_mem_read(buf, addr, len);
+    } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) {
+        return read_area0(buf, addr, len);
+    }
+
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
+
+boundary_cross:
+    /*
+     * this label is where we go to when the requested read is not
+     * contained entirely withing a single mapping.
+     */
+    error_set_feature("proper response for when the guest reads past a memory "
+                      "map's end");
+    error_set_length(len);
+    error_set_address(addr);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
+}
+
+int memory_map_write(void const *buf, size_t addr, size_t len) {
+    // check RAM first because that's the case we want to optimize for
+    if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
+        return write_area3(buf, addr, len);
+    } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
+        if (addr + (len - 1) > ADDR_TEX_LAST) {
+            goto boundary_cross;
+        }
+        return pvr2_tex_mem_write(buf, addr, len);
+    } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) {
+        return write_area0(buf, addr, len);
+    }
+
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
+
+boundary_cross:
+    /* when the write is not contained entirely within one mapping */
+    error_set_feature("proper response for when the guest writes past a memory "
+                      "map's end");
+    error_set_length(len);
+    error_set_address(addr);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
+}
+
+static inline int read_area0(void *buf, size_t addr, size_t len) {
+    addr &= ADDR_AREA0_MASK;
+
+    if (addr <= ADDR_BIOS_LAST) {
         /*
          * XXX In case you were wondering: we don't check to see if
          * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
@@ -107,11 +170,6 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
         return pvr2_core_reg_read(buf, addr, len);
     } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
         return aica_reg_read(buf, addr, len);
-    } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
-        if (addr + (len - 1) > ADDR_TEX_LAST) {
-            goto boundary_cross;
-        }
-        return pvr2_tex_mem_read(buf, addr, len);
     } else if (addr >= ADDR_AICA_WAVE_FIRST &&
                addr <= ADDR_AICA_WAVE_FIRST) {
         if (addr + (len - 1) > ADDR_AICA_WAVE_LAST) {
@@ -131,17 +189,9 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
         return gdrom_reg_read(buf, addr, len);
     }
 
-    error_set_feature("memory mapping");
-    error_set_address(addr);
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-
 boundary_cross:
-    /*
-     * this label is where we go to when the requested read is not
-     * contained entirely withing a single mapping.
-     */
-    error_set_feature("proper response for when the guest reads past a memory "
+    /* when the write is not contained entirely within one mapping */
+    error_set_feature("proper response for when the guest writes past a memory "
                       "map's end");
     error_set_length(len);
     error_set_address(addr);
@@ -149,11 +199,10 @@ boundary_cross:
     return MEM_ACCESS_FAILURE;
 }
 
-int memory_map_write(void const *buf, size_t addr, size_t len) {
-    // check RAM first because that's the case we want to optimize for
-    if (addr >= ADDR_RAM_FIRST && addr <= ADDR_RAM_LAST) {
-        return memory_write(mem, buf, addr & ADDR_RAM_MASK, len);
-    } else if (addr <= ADDR_BIOS_LAST) {
+static inline int write_area0(void const *buf, size_t addr, size_t len) {
+    addr &= ADDR_AREA0_MASK;
+
+    if (addr <= ADDR_BIOS_LAST) {
         /*
          * XXX In case you were wondering: we don't check to see if
          * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
@@ -196,11 +245,6 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
         return pvr2_core_reg_write(buf, addr, len);
     } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
         return aica_reg_write(buf, addr, len);
-    } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
-        if (addr + (len - 1) > ADDR_TEX_LAST) {
-            goto boundary_cross;
-        }
-        return pvr2_tex_mem_write(buf, addr, len);
     } else if (addr >= ADDR_AICA_WAVE_FIRST &&
                addr <= ADDR_AICA_WAVE_LAST) {
         if (addr + (len - 1) > ADDR_AICA_WAVE_LAST) {
@@ -220,11 +264,6 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
         return gdrom_reg_write(buf, addr, len);
     }
 
-    error_set_feature("memory mapping");
-    error_set_address(addr);
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-
 boundary_cross:
     /* when the write is not contained entirely within one mapping */
     error_set_feature("proper response for when the guest writes past a memory "
@@ -233,4 +272,12 @@ boundary_cross:
     error_set_address(addr);
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
+}
+
+static inline int read_area3(void *buf, size_t addr, size_t len) {
+    return memory_read(mem, buf, addr & ADDR_AREA3_MASK, len);
+}
+
+static inline int write_area3(void const *buf, size_t addr, size_t len) {
+    return memory_write(mem, buf, addr & ADDR_AREA3_MASK, len);
 }

@@ -52,14 +52,18 @@ extern "C" {
 #define ADDR_FLASH_FIRST 0x00200000
 #define ADDR_FLASH_LAST  0x0021ffff
 
+// main system memory
+#define ADDR_AREA3_FIRST   0x0c000000
+#define ADDR_AREA3_LAST    0x0fffffff
+#define ADDR_AREA3_MASK    0x00ffffff
+
 /*
- * main system memory - unlike the mappings, this one includes its own image
- * areas between ADD_RAM_FIRST and ADDR_RAM_LAST.  The mask is what you use to
- * get the offset from the beginning of RAM to a given memory address.
+ * This is where all the I/O registers that aren't in the SH4 go, as well as
+ * the boot rom and system flash.
  */
-#define ADDR_RAM_FIRST   0x0c000000
-#define ADDR_RAM_LAST    0x0fffffff
-#define ADDR_RAM_MASK    0x00ffffff
+#define ADDR_AREA0_FIRST 0x00000000
+#define ADDR_AREA0_LAST  0x03ffffff
+#define ADDR_AREA0_MASK  0x01ffffff
 
 // G1 bus control registers
 #define ADDR_G1_FIRST    0x005F7400

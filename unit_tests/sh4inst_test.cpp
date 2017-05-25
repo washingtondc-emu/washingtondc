@@ -103,7 +103,7 @@ private:
 
 template <class AddrFunc>
 static addr32_t pick_addr(AddrFunc func) {
-    return func() + ADDR_RAM_FIRST;
+    return func() + ADDR_AREA3_FIRST;
 }
 
 class Sh4InstTests {
@@ -887,7 +887,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -950,7 +950,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -2877,7 +2877,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_val - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_val - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8047,7 +8047,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8106,7 +8106,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8168,7 +8168,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8252,7 +8252,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8341,7 +8341,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8422,7 +8422,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8506,7 +8506,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8585,7 +8585,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8677,7 +8677,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8769,7 +8769,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
@@ -8853,7 +8853,7 @@ public:
         cmd = ss.str();
         test_prog.add_txt(cmd);
         const Sh4Prog::ByteList& inst = test_prog.get_prog();
-        memory_load_binary<uint8_t>(mem, pc_init - ADDR_RAM_FIRST,
+        memory_load_binary<uint8_t>(mem, pc_init - ADDR_AREA3_FIRST,
                                     inst.begin(), inst.end());
 
         reset_cpu(cpu);
