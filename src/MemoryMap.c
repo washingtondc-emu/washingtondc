@@ -62,13 +62,13 @@ void memory_map_set_mem(struct Memory *mem_new) {
 }
 
 int memory_map_read(void *buf, size_t addr, size_t len) {
+    size_t first_addr = addr;
+    size_t last_addr = addr + (len - 1);
+
     // check RAM first because that's the case we want to optimize for
-    if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
+    if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) {
         return read_area3(buf, addr, len);
-    } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
-        if (addr + (len - 1) > ADDR_TEX_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_TEX_FIRST && last_addr <= ADDR_TEX_LAST) {
         return pvr2_tex_mem_read(buf, addr, len);
     } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) {
         return read_area0(buf, addr, len);
@@ -93,15 +93,15 @@ boundary_cross:
 }
 
 int memory_map_write(void const *buf, size_t addr, size_t len) {
+    size_t first_addr = addr;
+    size_t last_addr = addr + (len - 1);
+
     // check RAM first because that's the case we want to optimize for
-    if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
+    if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) {
         return write_area3(buf, addr, len);
-    } else if (addr >= ADDR_TEX_FIRST && addr <= ADDR_TEX_LAST) {
-        if (addr + (len - 1) > ADDR_TEX_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_TEX_FIRST && last_addr <= ADDR_TEX_LAST) {
         return pvr2_tex_mem_write(buf, addr, len);
-    } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) {
+    } else if (first_addr >= ADDR_AREA0_FIRST && last_addr <= ADDR_AREA0_LAST) {
         return write_area0(buf, addr, len);
     }
 
@@ -122,70 +122,41 @@ boundary_cross:
 
 static inline int read_area0(void *buf, size_t addr, size_t len) {
     addr &= ADDR_AREA0_MASK;
+    size_t first_addr = addr;
+    size_t last_addr = addr + (len - 1);
 
-    if (addr <= ADDR_BIOS_LAST) {
+    if (last_addr <= ADDR_BIOS_LAST) {
         /*
          * XXX In case you were wondering: we don't check to see if
          * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
          */
-        if ((addr + (len - 1)) > ADDR_BIOS_LAST) {
-            goto boundary_cross;
-        }
         return bios_file_read(bios, buf, addr - ADDR_BIOS_FIRST, len);
-    } else if (addr >= ADDR_FLASH_FIRST && addr <= ADDR_FLASH_LAST) {
-        if ((addr + (len - 1) > ADDR_FLASH_LAST) ||
-            (addr < ADDR_FLASH_FIRST)) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_FLASH_FIRST && last_addr <= ADDR_FLASH_LAST) {
         return flash_mem_read(buf, addr, len);
-    } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
-        if (addr + (len - 1) > ADDR_G1_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_G1_FIRST && last_addr <= ADDR_G1_LAST) {
         return g1_reg_read(buf, addr, len);
-    } else if (addr >= ADDR_SYS_FIRST && addr <= ADDR_SYS_LAST) {
-        if (addr + (len - 1) > ADDR_SYS_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_SYS_FIRST && last_addr <= ADDR_SYS_LAST) {
         return sys_block_read(buf, addr, len);
-    } else if (addr >= ADDR_MAPLE_FIRST && addr <= ADDR_MAPLE_LAST) {
-        if (addr + (len - 1) > ADDR_MAPLE_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_MAPLE_FIRST && last_addr <= ADDR_MAPLE_LAST) {
         return maple_reg_read(buf, addr, len);
-    } else if (addr >= ADDR_G2_FIRST && addr <= ADDR_G2_LAST) {
-        if (addr + (len - 1) > ADDR_G2_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_G2_FIRST && last_addr <= ADDR_G2_LAST) {
         return g2_reg_read(buf, addr, len);
-    } else if (addr >= ADDR_PVR2_FIRST && addr <= ADDR_PVR2_LAST) {
-        if (addr + (len - 1) > ADDR_PVR2_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_PVR2_FIRST && last_addr <= ADDR_PVR2_LAST) {
         return pvr2_reg_read(buf, addr, len);
-    } else if (addr >= ADDR_MODEM_FIRST && addr <= ADDR_MODEM_LAST) {
+    } else if (first_addr >= ADDR_MODEM_FIRST && last_addr <= ADDR_MODEM_LAST) {
         return modem_read(buf, addr, len);
-    } else if (addr >= ADDR_PVR2_CORE_FIRST &&
-               addr <= ADDR_PVR2_CORE_LAST) {
+    } else if (first_addr >= ADDR_PVR2_CORE_FIRST &&
+               last_addr <= ADDR_PVR2_CORE_LAST) {
         return pvr2_core_reg_read(buf, addr, len);
-    } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
+    } else if(first_addr >= ADDR_AICA_FIRST && last_addr <= ADDR_AICA_LAST) {
         return aica_reg_read(buf, addr, len);
-    } else if (addr >= ADDR_AICA_WAVE_FIRST &&
-               addr <= ADDR_AICA_WAVE_FIRST) {
-        if (addr + (len - 1) > ADDR_AICA_WAVE_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_AICA_WAVE_FIRST &&
+               last_addr <= ADDR_AICA_WAVE_FIRST) {
         return aica_wave_mem_read(buf, addr, len);
-    } else if (addr >= ADDR_AICA_RTC_FIRST &&
-               addr <= ADDR_AICA_RTC_LAST) {
-        if (addr + (len - 1) > ADDR_AICA_RTC_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_AICA_RTC_FIRST &&
+               last_addr <= ADDR_AICA_RTC_LAST) {
         return aica_rtc_read(buf, addr, len);
-    } else if (addr >= ADDR_GDROM_FIRST && addr <= ADDR_GDROM_LAST) {
-        if (addr + (len - 1) > ADDR_GDROM_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_GDROM_FIRST && last_addr <= ADDR_GDROM_LAST) {
         return gdrom_reg_read(buf, addr, len);
     }
 
@@ -201,66 +172,41 @@ boundary_cross:
 
 static inline int write_area0(void const *buf, size_t addr, size_t len) {
     addr &= ADDR_AREA0_MASK;
+    size_t first_addr = addr;
+    size_t last_addr = addr + (len - 1);
 
-    if (addr <= ADDR_BIOS_LAST) {
+    if (last_addr <= ADDR_BIOS_LAST) {
         /*
          * XXX In case you were wondering: we don't check to see if
          * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
          */
         goto boundary_cross;
-    } else if (addr >= ADDR_FLASH_FIRST && addr <= ADDR_FLASH_LAST) {
-        if ((addr + (len - 1) > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_FLASH_FIRST && last_addr <= ADDR_FLASH_LAST) {
         return flash_mem_write(buf, addr, len);
-    } else if (addr >= ADDR_G1_FIRST && addr <= ADDR_G1_LAST) {
-        if (addr + (len - 1) > ADDR_G1_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_G1_FIRST && last_addr <= ADDR_G1_LAST) {
         return g1_reg_write(buf, addr, len);
-    } else if (addr >= ADDR_SYS_FIRST && addr <= ADDR_SYS_LAST) {
-        if (addr + (len - 1) > ADDR_SYS_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_SYS_FIRST && last_addr <= ADDR_SYS_LAST) {
         return sys_block_write(buf, addr, len);
-    } else if (addr >= ADDR_MAPLE_FIRST && addr <= ADDR_MAPLE_LAST) {
-        if (addr + (len - 1) > ADDR_MAPLE_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_MAPLE_FIRST && last_addr <= ADDR_MAPLE_LAST) {
         return maple_reg_write(buf, addr, len);
-    } else if (addr >= ADDR_G2_FIRST && addr <= ADDR_G2_LAST) {
-        if (addr + (len - 1) > ADDR_G2_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_G2_FIRST && last_addr <= ADDR_G2_LAST) {
         return g2_reg_write(buf, addr, len);
-    } else if (addr >= ADDR_PVR2_FIRST && addr <= ADDR_PVR2_LAST) {
-        if (addr + (len - 1) > ADDR_PVR2_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_PVR2_FIRST && last_addr <= ADDR_PVR2_LAST) {
         return pvr2_reg_write(buf, addr, len);
-    } else if (addr >= ADDR_MODEM_FIRST && addr <= ADDR_MODEM_LAST) {
+    } else if (first_addr >= ADDR_MODEM_FIRST && last_addr <= ADDR_MODEM_LAST) {
         return modem_write(buf, addr, len);
-    } else if (addr >= ADDR_PVR2_CORE_FIRST &&
-               addr <= ADDR_PVR2_CORE_LAST) {
+    } else if (first_addr >= ADDR_PVR2_CORE_FIRST &&
+               last_addr <= ADDR_PVR2_CORE_LAST) {
         return pvr2_core_reg_write(buf, addr, len);
-    } else if(addr >= ADDR_AICA_FIRST && addr <= ADDR_AICA_LAST) {
+    } else if(first_addr >= ADDR_AICA_FIRST && last_addr <= ADDR_AICA_LAST) {
         return aica_reg_write(buf, addr, len);
-    } else if (addr >= ADDR_AICA_WAVE_FIRST &&
-               addr <= ADDR_AICA_WAVE_LAST) {
-        if (addr + (len - 1) > ADDR_AICA_WAVE_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_AICA_WAVE_FIRST &&
+               last_addr <= ADDR_AICA_WAVE_LAST) {
         return aica_wave_mem_write(buf, addr, len);
-    } else if (addr >= ADDR_AICA_RTC_FIRST &&
-               addr <= ADDR_AICA_RTC_LAST) {
-        if (addr + (len - 1) > ADDR_AICA_RTC_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_AICA_RTC_FIRST &&
+               last_addr <= ADDR_AICA_RTC_LAST) {
         return aica_rtc_write(buf, addr, len);
-    } else if (addr >= ADDR_GDROM_FIRST && addr <= ADDR_GDROM_LAST) {
-        if (addr + (len - 1) > ADDR_GDROM_LAST) {
-            goto boundary_cross;
-        }
+    } else if (first_addr >= ADDR_GDROM_FIRST && last_addr <= ADDR_GDROM_LAST) {
         return gdrom_reg_write(buf, addr, len);
     }
 
