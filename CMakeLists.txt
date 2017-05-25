@@ -25,7 +25,8 @@ project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_FLAGS "-std=gnu11")
+set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 enable_testing()
 
@@ -188,26 +189,26 @@ configure_file("src/video/opengl/final_vert.glsl" "final_vert.glsl")
 set(common_headers "${PROJECT_SOURCE_DIR}/common/BaseException.hpp")
 
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp" ${common_headers})
-target_link_libraries(sh4asm_test m sh4asm_core rt GL glfw GLEW pthread)
+target_link_libraries(sh4asm_test m sh4asm_core rt GL glfw3 dl Xrandr Xinerama Xcursor X11 GLEW pthread)
 target_include_directories(sh4asm_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4asm_test COMMAND ./sh4asm_test)
 
 add_executable(sh4mem_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4mem_test.cpp" ${common_headers})
-target_link_libraries(sh4mem_test m sh4 rt GL glfw GLEW pthread event)
+target_link_libraries(sh4mem_test m sh4 rt GL glfw3 X11 dl Xrandr Xinerama Xcursor GLEW pthread event)
 add_test(NAME sh4mem_test COMMAND ./sh4mem_test)
 
 add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp" ${common_headers})
-target_link_libraries(sh4inst_test m sh4 sh4asm_core rt GL glfw GLEW pthread event)
+target_link_libraries(sh4inst_test m sh4 sh4asm_core rt GL glfw3 X11 dl Xrandr Xinerama Xcursor GLEW pthread event)
 target_include_directories(sh4inst_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4inst_test COMMAND ./sh4inst_test)
 
 add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.cpp" ${common_headers})
-target_link_libraries(sh4tmu_test m sh4 sh4asm_core rt GL glfw GLEW pthread event)
+target_link_libraries(sh4tmu_test m sh4 sh4asm_core rt GL glfw3 X11 dl Xrandr Xinerama Xcursor GLEW pthread event)
 target_include_directories(sh4tmu_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test)
 
 add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.cpp" ${common_headers})
-target_link_libraries(sh4div_test m sh4 sh4asm_core rt GL glfw GLEW pthread event)
+target_link_libraries(sh4div_test m sh4 sh4asm_core rt GL glfw3 X11 dl Xrandr Xinerama Xcursor GLEW pthread event)
 target_include_directories(sh4div_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4div_test COMMAND ./sh4div_test)
 
@@ -216,4 +217,4 @@ target_link_libraries(sh4asm m sh4asm_core rt)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-target_link_libraries(washingtondc m sh4 rt GL glfw GLEW pthread event)
+target_link_libraries(washingtondc m sh4 rt GL glfw3 dl Xrandr Xinerama Xcursor X11 GLEW pthread event)
