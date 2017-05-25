@@ -234,6 +234,12 @@ struct debugger *dreamcast_get_debugger() {
 }
 #endif
 
+/*
+ * this is used to store the irl timestamp right before execution begins.
+ * This exists for performance profiling purposes only.
+ */
+static struct timespec start_time;
+
 void dreamcast_run() {
     signal(SIGINT, dc_sigint_handler);
 
@@ -244,11 +250,6 @@ void dreamcast_run() {
      */
     sh4_enter(&cpu);
 
-    /*
-     * store the irl timestamp right before execution begins.
-     * This exists for performance profiling purposes only.
-     */
-    struct timespec start_time, end_time, delta_time;
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     while (is_running) {
@@ -334,17 +335,6 @@ void dreamcast_run() {
     /*     std::cerr << boost::diagnostic_information(exc); */
     /*     term_reason = TERM_REASON_ERROR; */
     /* } */
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
-
-    /* subtract delta_time = end_time - start_time */
-    if (end_time.tv_nsec < start_time.tv_nsec) {
-        delta_time.tv_nsec = 1000000000 - start_time.tv_nsec + end_time.tv_nsec;
-        delta_time.tv_sec = end_time.tv_sec - 1 - start_time.tv_sec;
-    } else {
-        delta_time.tv_nsec = end_time.tv_nsec - start_time.tv_nsec;
-        delta_time.tv_sec = end_time.tv_sec - start_time.tv_sec;
-    }
-
     switch (term_reason) {
     case TERM_REASON_NORM:
         printf("program execution ended normally\n");
@@ -360,6 +350,24 @@ void dreamcast_run() {
         break;
     }
 
+    dc_print_perf_stats();
+
+    dreamcast_cleanup();
+}
+
+void dc_print_perf_stats(void) {
+    struct timespec end_time, delta_time;
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+
+    /* subtract delta_time = end_time - start_time */
+    if (end_time.tv_nsec < start_time.tv_nsec) {
+        delta_time.tv_nsec = 1000000000 - start_time.tv_nsec + end_time.tv_nsec;
+        delta_time.tv_sec = end_time.tv_sec - 1 - start_time.tv_sec;
+    } else {
+        delta_time.tv_nsec = end_time.tv_nsec - start_time.tv_nsec;
+        delta_time.tv_sec = end_time.tv_sec - start_time.tv_sec;
+    }
+
     printf("Total elapsed time: %u seconds and %u nanoseconds\n",
            (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
 
@@ -371,8 +379,6 @@ void dreamcast_run() {
     double hz_ratio = hz / 200000000.0;
 
     printf("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
-
-    dreamcast_cleanup();
 }
 
 void dreamcast_kill() {

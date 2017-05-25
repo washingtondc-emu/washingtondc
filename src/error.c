@@ -24,6 +24,7 @@
 #include <stdio.h>
 
 #include "fifo.h"
+#include "dreamcast.h"
 
 #include "error.h"
 
@@ -54,6 +55,8 @@ void error_raise(enum error_type tp) {
 
         cb->callback_fn(cb->arg);
     }
+
+    dc_print_perf_stats();
 
     error_print();
     exit(1);

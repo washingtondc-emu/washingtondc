@@ -107,6 +107,8 @@ static inline void dc_cycle_advance(dc_cycle_stamp_t n_cycles) {
     dc_cycle_stamp_priv_ += n_cycles;
 }
 
+void dc_print_perf_stats(void);
+
 #ifdef __cplusplus
 }
 #endif
