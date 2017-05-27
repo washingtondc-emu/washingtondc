@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 ################################################################################
 #
@@ -48,6 +48,15 @@
 # be common on real GD-ROM discs
 DEFAULT_TRACK01_LEN=604
 DEFAULT_TRACK02_LEN=526
+
+if command -v mkisofs ; then
+   MKISOFS_CMD="mkisofs"
+elif command -v genisoimage ; then
+    MKISOFS_CMD="genisoimage"
+else
+    echo "ERROR: you must install either mkisofs or genisoimage"
+    exit 1
+fi
 
 function print_usage() {
     echo "Usage: $0 -o <out_dir> [options] directory"
@@ -160,7 +169,7 @@ if $rock_ridge = true; then
     mkisofs_args="$mkisofs_args -R"
 fi
 
-mkisofs $mkisofs_args -C$msinfo -o $fs_path $in_dir
+$MKISOFS_CMD $mkisofs_args -C$msinfo -o $fs_path $in_dir
 
 fs_len="$(ls -l $fs_path  | awk '{ print $5 }')"
 
