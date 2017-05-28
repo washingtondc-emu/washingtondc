@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -286,9 +287,9 @@ static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
     for (int i = 0; i < 16; i++) {
         if (i < 8) {
             if (reg_file[SH4_REG_SR] & SH4_SR_RB_MASK)
-                regs[R0 + i] = reg_file[sh4_bank1_reg_idx(sh4, i)];
+                regs[R0 + i] = reg_file[sh4_bank1_reg_idx(cpu, i)];
             else
-                regs[R0 + i] = reg_file[sh4_bank0_reg_idx(sh4, i)];
+                regs[R0 + i] = reg_file[sh4_bank0_reg_idx(cpu, i)];
         }else {
             regs[R0 + i] = reg_file[SH4_REG_R8 + (i - 8)];
         }
@@ -296,8 +297,8 @@ static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
 
     // banked registers
     for (int i = 0; i < 8; i++) {
-        regs[R0B0 + i] = reg_file[sh4_bank0_reg_idx(sh4, i)];
-        regs[R0B1 + i] = reg_file[sh4_bank1_reg_idx(sh4, i)];
+        regs[R0B0 + i] = reg_file[sh4_bank0_reg_idx(cpu, i)];
+        regs[R0B1 + i] = reg_file[sh4_bank1_reg_idx(cpu, i)];
     }
 
     // TODO: floating point registers
@@ -420,8 +421,6 @@ static void extract_packet(struct string *out, struct string const *packet_in) {
 static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
                    unsigned reg_no, reg32_t reg_val, bool bank) {
     Sh4 *sh4 = dreamcast_get_cpu();
-    // there is some ambiguity over whether register banking should be based off
-    // of the old sr or the new sr.  For now, it's based off of the old sr.
 
     // TODO: floating point registers
     if (reg_no >= R0 && reg_no <= R15) {
@@ -452,6 +451,14 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
     } else if (reg_no == MACL) {
         reg_file[SH4_REG_MACL] = reg_val;
     } else if (reg_no == SR) {
+        /*
+         * TODO: there is some ambiguity over whether register banking should be
+         * based off of the old sr or the new sr for places like handle_G_packet
+         * where we loop through several registers.  For now, it's based off of
+         * the new SR because SH4_REG_SR comes after all the general-purpose
+         * registers in sh4_reg.h, and we potentially do a bank-switch here.
+         */
+        sh4_bank_switch_maybe(sh4, reg_file[SH4_REG_SR], reg_val);
         reg_file[SH4_REG_SR] = reg_val;
     } else if (reg_no == SSR) {
         reg_file[SH4_REG_SSR] = reg_val;
