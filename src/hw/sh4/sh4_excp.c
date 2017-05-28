@@ -113,10 +113,12 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     reg[SH4_REG_SSR] = reg[SH4_REG_SR];
     reg[SH4_REG_SGR] = reg[SH4_REG_R15];
 
-    reg[SH4_REG_SR] |= SH4_SR_BL_MASK;
-    reg[SH4_REG_SR] |= SH4_SR_MD_MASK;
-    reg[SH4_REG_SR] |= SH4_SR_RB_MASK;
-    reg[SH4_REG_SR] &= ~SH4_SR_FD_MASK;
+    reg32_t new_sr = reg[SH4_REG_SR];
+    new_sr |= (SH4_SR_BL_MASK | SH4_SR_MD_MASK | SH4_SR_RB_MASK);
+    new_sr &= ~SH4_SR_FD_MASK;
+
+    sh4_bank_switch_maybe(sh4, reg[SH4_REG_SR], new_sr);
+    reg[SH4_REG_SR] = new_sr;
 
     if (vector == SH4_EXCP_POWER_ON_RESET ||
         vector == SH4_EXCP_MANUAL_RESET ||

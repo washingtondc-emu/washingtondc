@@ -3226,6 +3226,8 @@ public:
         reg32_t old_sr = cpu->reg[SH4_REG_SR];
         sh4_exec_inst(cpu);
         reg32_t new_sr = cpu->reg[SH4_REG_SR];
+
+        sh4_bank_switch_maybe(cpu, new_sr, old_sr);
         cpu->reg[SH4_REG_SR] = old_sr;
 
         if ((new_sr != val) || (*sh4_gen_reg(cpu, reg_src) != 4 + addr)) {

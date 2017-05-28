@@ -267,6 +267,18 @@ void sh4_run_until(Sh4 *sh4, addr32_t stop_addr) {
         sh4_single_step(sh4);
 }
 
+void sh4_bank_switch(Sh4 *sh4) {
+    reg32_t tmp[8];
+    memcpy(tmp, sh4->reg + SH4_REG_R0_BANK0, 8 * sizeof(reg32_t));
+    memcpy(sh4->reg + SH4_REG_R0_BANK0, sh4->reg + SH4_REG_R0_BANK1, 8 * sizeof(reg32_t));
+    memcpy(sh4->reg + SH4_REG_R0_BANK1, tmp, 8 * sizeof(reg32_t));
+}
+
+void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr) {
+    if ((old_sr & SH4_SR_RB_MASK) != (new_sr & SH4_SR_RB_MASK))
+        sh4_bank_switch(sh4);
+}
+
 static DEF_ERROR_U32_ATTR(sh4_reg_sr)
 static DEF_ERROR_U32_ATTR(sh4_reg_ssr)
 static DEF_ERROR_U32_ATTR(sh4_reg_pc)

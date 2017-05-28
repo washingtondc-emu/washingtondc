@@ -202,6 +202,9 @@ FpuReg sh4_get_fpu(Sh4 *sh4);
 void sh4_set_regs(Sh4 *sh4, reg32_t const reg_out[SH4_REGISTER_COUNT]);
 void sh4_set_fpu(Sh4 *sh4, FpuReg src);
 
+void sh4_bank_switch(Sh4 *sh4);
+void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr);
+
 static inline void sh4_next_inst(Sh4 *sh4) {
     sh4->reg[SH4_REG_PC] += 2;
 }
@@ -213,14 +216,9 @@ static inline void sh4_next_inst(Sh4 *sh4) {
 static inline sh4_reg_idx_t sh4_gen_reg_idx(Sh4 *sh4, int reg_no) {
     assert(!(reg_no & ~0xf));
 
-    if (reg_no <= 7) {
-        if (sh4->reg[SH4_REG_SR] & SH4_SR_RB_MASK)
-            return (sh4_reg_idx_t)(SH4_REG_R0_BANK1 + reg_no);
-        else
-            return (sh4_reg_idx_t)(SH4_REG_R0_BANK0 + reg_no);
-    } else {
-        return (sh4_reg_idx_t)(SH4_REG_R8 + (reg_no - 8));
-    }
+    if (reg_no <= 7)
+        return (sh4_reg_idx_t)(SH4_REG_R0_BANK0 + reg_no);
+    return (sh4_reg_idx_t)(SH4_REG_R8 + (reg_no - 8));
 }
 
 /*
@@ -235,10 +233,7 @@ static inline reg32_t *sh4_gen_reg(Sh4 *sh4, int idx) {
 static inline sh4_reg_idx_t sh4_bank_reg_idx(Sh4 *sh4, int idx) {
     assert(!(idx & ~0x7));
 
-    if (sh4->reg[SH4_REG_SR] & SH4_SR_RB_MASK)
-        return (sh4_reg_idx_t)(SH4_REG_R0_BANK0 + idx);
-    else
-        return (sh4_reg_idx_t)(SH4_REG_R0_BANK1 + idx);
+    return (sh4_reg_idx_t)(SH4_REG_R0_BANK1 + idx);
 }
 
 // return a pointer to the given banked general-purpose register
