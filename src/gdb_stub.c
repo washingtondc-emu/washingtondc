@@ -286,9 +286,9 @@ static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
     for (int i = 0; i < 16; i++) {
         if (i < 8) {
             if (reg_file[SH4_REG_SR] & SH4_SR_RB_MASK)
-                regs[R0 + i] = reg_file[SH4_REG_R0_BANK1 + i];
+                regs[R0 + i] = reg_file[sh4_bank1_reg_idx(sh4, i)];
             else
-                regs[R0 + i] = reg_file[SH4_REG_R0_BANK0 + i];
+                regs[R0 + i] = reg_file[sh4_bank0_reg_idx(sh4, i)];
         }else {
             regs[R0 + i] = reg_file[SH4_REG_R8 + (i - 8)];
         }
@@ -296,8 +296,8 @@ static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
 
     // banked registers
     for (int i = 0; i < 8; i++) {
-        regs[R0B0 + i] = reg_file[SH4_REG_R0_BANK0 + i];
-        regs[R0B1 + i] = reg_file[SH4_REG_R0_BANK1 + i];
+        regs[R0B0 + i] = reg_file[sh4_bank0_reg_idx(sh4, i)];
+        regs[R0B1 + i] = reg_file[sh4_bank1_reg_idx(sh4, i)];
     }
 
     // TODO: floating point registers
@@ -419,6 +419,7 @@ static void extract_packet(struct string *out, struct string const *packet_in) {
 
 static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
                    unsigned reg_no, reg32_t reg_val, bool bank) {
+    Sh4 *sh4 = dreamcast_get_cpu();
     // there is some ambiguity over whether register banking should be based off
     // of the old sr or the new sr.  For now, it's based off of the old sr.
 
@@ -428,16 +429,16 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
 
         if (idx < 8) {
             if (bank)
-                reg_file[SH4_REG_R0_BANK1 + idx] = reg_val;
+                reg_file[sh4_bank1_reg_idx(sh4, idx)] = reg_val;
             else
-                reg_file[SH4_REG_R0_BANK0 + idx] = reg_val;
+                reg_file[sh4_bank0_reg_idx(sh4, idx)] = reg_val;
         } else {
             reg_file[SH4_REG_R8 + (idx + 8)] = reg_val;
         }
     } else if (reg_no >= R0B0 && reg_no <= R7B0) {
-        reg_file[reg_no - R0B0 + SH4_REG_R0_BANK0] = reg_val;
+        reg_file[sh4_bank0_reg_idx(sh4, reg_no - R0B0)] = reg_val;
     } else if (reg_no >= R0B1 && reg_no <= R7B1) {
-        reg_file[reg_no - R0B1 + SH4_REG_R0_BANK1] = reg_val;
+        reg_file[sh4_bank1_reg_idx(sh4, reg_no - R0B1)] = reg_val;
     } else if (reg_no == PC) {
         reg_file[SH4_REG_PC] =reg_val;
     } else if (reg_no == PR) {

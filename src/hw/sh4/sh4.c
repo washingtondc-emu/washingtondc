@@ -269,9 +269,9 @@ void sh4_run_until(Sh4 *sh4, addr32_t stop_addr) {
 
 void sh4_bank_switch(Sh4 *sh4) {
     reg32_t tmp[8];
-    memcpy(tmp, sh4->reg + SH4_REG_R0_BANK0, 8 * sizeof(reg32_t));
-    memcpy(sh4->reg + SH4_REG_R0_BANK0, sh4->reg + SH4_REG_R0_BANK1, 8 * sizeof(reg32_t));
-    memcpy(sh4->reg + SH4_REG_R0_BANK1, tmp, 8 * sizeof(reg32_t));
+    memcpy(tmp, sh4->reg + SH4_REG_R0, 8 * sizeof(reg32_t));
+    memcpy(sh4->reg + SH4_REG_R0, sh4->reg + SH4_REG_R0_BANK, 8 * sizeof(reg32_t));
+    memcpy(sh4->reg + SH4_REG_R0_BANK, tmp, 8 * sizeof(reg32_t));
 }
 
 void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr) {
@@ -342,22 +342,22 @@ static void sh4_error_set_regs(void *argptr) {
     error_set_sh4_reg_pr(sh4->reg[SH4_REG_PR]);
     error_set_sh4_reg_fpscr(sh4->fpu.fpscr);
     error_set_sh4_reg_fpul(sh4->fpu.fpul);
-    error_set_sh4_reg_r0_bank0(sh4->reg[SH4_REG_R0_BANK0]);
-    error_set_sh4_reg_r1_bank0(sh4->reg[SH4_REG_R1_BANK0]);
-    error_set_sh4_reg_r2_bank0(sh4->reg[SH4_REG_R2_BANK0]);
-    error_set_sh4_reg_r3_bank0(sh4->reg[SH4_REG_R3_BANK0]);
-    error_set_sh4_reg_r4_bank0(sh4->reg[SH4_REG_R4_BANK0]);
-    error_set_sh4_reg_r5_bank0(sh4->reg[SH4_REG_R5_BANK0]);
-    error_set_sh4_reg_r6_bank0(sh4->reg[SH4_REG_R6_BANK0]);
-    error_set_sh4_reg_r7_bank0(sh4->reg[SH4_REG_R7_BANK0]);
-    error_set_sh4_reg_r0_bank1(sh4->reg[SH4_REG_R0_BANK1]);
-    error_set_sh4_reg_r1_bank1(sh4->reg[SH4_REG_R1_BANK1]);
-    error_set_sh4_reg_r2_bank1(sh4->reg[SH4_REG_R2_BANK1]);
-    error_set_sh4_reg_r3_bank1(sh4->reg[SH4_REG_R3_BANK1]);
-    error_set_sh4_reg_r4_bank1(sh4->reg[SH4_REG_R4_BANK1]);
-    error_set_sh4_reg_r5_bank1(sh4->reg[SH4_REG_R5_BANK1]);
-    error_set_sh4_reg_r6_bank1(sh4->reg[SH4_REG_R6_BANK1]);
-    error_set_sh4_reg_r7_bank1(sh4->reg[SH4_REG_R7_BANK1]);
+    error_set_sh4_reg_r0_bank0(*sh4_bank0_reg(sh4, 0));
+    error_set_sh4_reg_r1_bank0(*sh4_bank0_reg(sh4, 1));
+    error_set_sh4_reg_r2_bank0(*sh4_bank0_reg(sh4, 2));
+    error_set_sh4_reg_r3_bank0(*sh4_bank0_reg(sh4, 3));
+    error_set_sh4_reg_r4_bank0(*sh4_bank0_reg(sh4, 4));
+    error_set_sh4_reg_r5_bank0(*sh4_bank0_reg(sh4, 5));
+    error_set_sh4_reg_r6_bank0(*sh4_bank0_reg(sh4, 6));
+    error_set_sh4_reg_r7_bank0(*sh4_bank0_reg(sh4, 7));
+    error_set_sh4_reg_r0_bank1(*sh4_bank1_reg(sh4, 0));
+    error_set_sh4_reg_r1_bank1(*sh4_bank1_reg(sh4, 1));
+    error_set_sh4_reg_r2_bank1(*sh4_bank1_reg(sh4, 2));
+    error_set_sh4_reg_r3_bank1(*sh4_bank1_reg(sh4, 3));
+    error_set_sh4_reg_r4_bank1(*sh4_bank1_reg(sh4, 4));
+    error_set_sh4_reg_r5_bank1(*sh4_bank1_reg(sh4, 5));
+    error_set_sh4_reg_r6_bank1(*sh4_bank1_reg(sh4, 6));
+    error_set_sh4_reg_r7_bank1(*sh4_bank1_reg(sh4, 7));
     error_set_sh4_reg_r8(sh4->reg[SH4_REG_R8]);
     error_set_sh4_reg_r9(sh4->reg[SH4_REG_R9]);
     error_set_sh4_reg_r10(sh4->reg[SH4_REG_R10]);

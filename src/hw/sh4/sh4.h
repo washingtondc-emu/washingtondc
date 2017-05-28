@@ -216,9 +216,7 @@ static inline void sh4_next_inst(Sh4 *sh4) {
 static inline sh4_reg_idx_t sh4_gen_reg_idx(Sh4 *sh4, int reg_no) {
     assert(!(reg_no & ~0xf));
 
-    if (reg_no <= 7)
-        return (sh4_reg_idx_t)(SH4_REG_R0_BANK0 + reg_no);
-    return (sh4_reg_idx_t)(SH4_REG_R8 + (reg_no - 8));
+    return (sh4_reg_idx_t)(SH4_REG_R0 + reg_no);
 }
 
 /*
@@ -233,12 +231,36 @@ static inline reg32_t *sh4_gen_reg(Sh4 *sh4, int idx) {
 static inline sh4_reg_idx_t sh4_bank_reg_idx(Sh4 *sh4, int idx) {
     assert(!(idx & ~0x7));
 
-    return (sh4_reg_idx_t)(SH4_REG_R0_BANK1 + idx);
+    return (sh4_reg_idx_t)(SH4_REG_R0_BANK + idx);
 }
 
 // return a pointer to the given banked general-purpose register
 static inline reg32_t *sh4_bank_reg(Sh4 *sh4, int idx) {
     return sh4->reg + sh4_bank_reg_idx(sh4, idx);
+}
+
+static inline sh4_reg_idx_t sh4_bank0_reg_idx(Sh4 *sh4, int idx) {
+    assert(!(idx & ~0x7));
+
+    if (sh4->reg[SH4_REG_SR] & SH4_SR_RB_MASK)
+        return (sh4_reg_idx_t)(SH4_REG_R0_BANK + idx);
+    return (sh4_reg_idx_t)(SH4_REG_R0 + idx);
+}
+
+static inline reg32_t *sh4_bank0_reg(Sh4 *sh4, int idx) {
+    return sh4->reg + sh4_bank0_reg_idx(sh4, idx);
+}
+
+static inline sh4_reg_idx_t sh4_bank1_reg_idx(Sh4 *sh4, int idx) {
+    assert(!(idx & ~0x7));
+
+    if (sh4->reg[SH4_REG_SR] & SH4_SR_RB_MASK)
+        return (sh4_reg_idx_t)(SH4_REG_R0 + idx);
+    return (sh4_reg_idx_t)(SH4_REG_R0_BANK + idx);
+}
+
+static inline reg32_t *sh4_bank1_reg(Sh4 *sh4, int idx) {
+    return sh4->reg + sh4_bank1_reg_idx(sh4, idx);
 }
 
 /*

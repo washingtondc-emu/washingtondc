@@ -36,25 +36,15 @@ struct Sh4;
 typedef struct Sh4 Sh4;
 
 typedef enum sh4_reg_idx {
-    /* general-purpose registers 0-7, bank 0 */
-    SH4_REG_R0_BANK0,
-    SH4_REG_R1_BANK0,
-    SH4_REG_R2_BANK0,
-    SH4_REG_R3_BANK0,
-    SH4_REG_R4_BANK0,
-    SH4_REG_R5_BANK0,
-    SH4_REG_R6_BANK0,
-    SH4_REG_R7_BANK0,
-
-    /* general-purpose registers 0-7, bank 1 */
-    SH4_REG_R0_BANK1,
-    SH4_REG_R1_BANK1,
-    SH4_REG_R2_BANK1,
-    SH4_REG_R3_BANK1,
-    SH4_REG_R4_BANK1,
-    SH4_REG_R5_BANK1,
-    SH4_REG_R6_BANK1,
-    SH4_REG_R7_BANK1,
+    /* general-purpose registers 0-7 */
+    SH4_REG_R0,
+    SH4_REG_R1,
+    SH4_REG_R2,
+    SH4_REG_R3,
+    SH4_REG_R4,
+    SH4_REG_R5,
+    SH4_REG_R6,
+    SH4_REG_R7,
 
     /* general-purpose registers 8-15 */
     SH4_REG_R8,
@@ -65,6 +55,16 @@ typedef enum sh4_reg_idx {
     SH4_REG_R13,
     SH4_REG_R14,
     SH4_REG_R15,
+
+    /* general-purpose registers 0-7, (banked) */
+    SH4_REG_R0_BANK,
+    SH4_REG_R1_BANK,
+    SH4_REG_R2_BANK,
+    SH4_REG_R3_BANK,
+    SH4_REG_R4_BANK,
+    SH4_REG_R5_BANK,
+    SH4_REG_R6_BANK,
+    SH4_REG_R7_BANK,
 
     /* status register */
     SH4_REG_SR,
