@@ -33,6 +33,8 @@
 #include "types.h"
 #include "MemoryMap.h"
 #include "hw/sys/holly_intc.h"
+#include "hw/sh4/sh4.h"
+#include "hw/sh4/sh4_dmac.h"
 #include "cdrom.h"
 
 #include "gdrom_reg.h"
@@ -151,6 +153,15 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// feature register flags
+//
+////////////////////////////////////////////////////////////////////////////////
+
+#define FEAT_REG_DMA_SHIFT 0
+#define FEAT_REG_DMA_MASK (1 << FEAT_REG_DMA_SHIFT)
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // status flags (for REQ_STAT and the sector-number register)
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,12 +239,45 @@ enum sense_key {
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+#define GDROM_GDAPRO_DEFAULT 0x00007f00
+#define GDROM_G1GDRC_DEFAULT 0x0000ffff
+#define GDROM_GDSTAR_DEFAULT 0x00000000 // undefined
+#define GDROM_GDLEN_DEFAULT  0x00000000 // undefined
+#define GDROM_GDDIR_DEFAULT  0x00000000
+#define GDROM_GDEN_DEFAULT   0x00000000
+#define GDROM_GDST_DEFAULT   0x00000000
+#define GDROM_GDLEND_DEFAULT 0x00000000 // undefined
+
 static uint32_t stat_reg;       // status register
 static uint32_t feat_reg;       // features register
 static uint32_t sect_cnt_reg;   // sector count register
 static uint32_t int_reason_reg; // interrupt reason register
 static uint32_t dev_ctrl_reg;   // device control register
-static unsigned data_byte_count;     // byte-count low/high registers
+static unsigned data_byte_count;// byte-count low/high registers
+
+// GD-ROM DMA memory protecion
+static uint32_t gdapro_reg = GDROM_GDAPRO_DEFAULT;
+
+// ???
+static uint32_t g1gdrc_reg = GDROM_G1GDRC_DEFAULT;
+
+// GD-ROM DMA start address
+static uint32_t dma_start_addr_reg = GDROM_GDSTAR_DEFAULT;
+
+// GD-ROM DMA transfer length (in bytes)
+static uint32_t dma_len_reg = GDROM_GDLEN_DEFAULT;
+
+// GD-ROM DMA transfer direction
+static uint32_t dma_dir_reg = GDROM_GDDIR_DEFAULT;
+
+// GD-ROM DMA enable
+static uint32_t dma_en_reg = GDROM_GDEN_DEFAULT;
+
+// GD-ROM DMA start
+static uint32_t dma_start_reg = GDROM_GDST_DEFAULT;
+
+// length of DMA result
+static uint32_t gdlend_reg = GDROM_GDLEND_DEFAULT;
 
 struct error_reg {
     uint32_t ili : 1;
@@ -275,6 +319,15 @@ static void bufq_clear(void);
  */
 static int bufq_consume_byte(unsigned *byte);
 
+/*
+ * do a DMA transfer from GD-ROM to host using whatever's in the buffer queue.
+ *
+ * This function gets all the relevant parameters from the registers,
+ * performs the transfer and sets the final value of all relevant registers
+ * except the ones that have flags or pertain to interrupts
+ */
+static void gdrom_complete_dma(void);
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // GD-ROM data queueing
@@ -315,6 +368,14 @@ __attribute__((unused)) static bool bsy_signal() {
 
 __attribute__((unused)) static bool drq_signal() {
     return (bool)(stat_reg & STAT_DRQ_MASK);
+}
+
+static unsigned gdrom_dma_prot_top(void) {
+    return (((gdapro_reg & 0x7f00) >> 8) << 20) | 0x08000000;
+}
+
+static unsigned gdrom_dma_prot_bot(void) {
+    return ((gdapro_reg & 0x7f) << 20) | 0x080fffff;
 }
 
 unsigned n_bytes_received;
@@ -1220,8 +1281,11 @@ static void gdrom_input_read_packet(void) {
 
     printf("request to read %u sectors from FAD %u\n", trans_len, start_addr);
 
-    /* if (trans_len > 20) // TODO: fix this */
-    /*     RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+    if (feat_reg & FEAT_REG_DMA_MASK) {
+        printf("WARNING: GD-ROM DMA READ ACCESS\n");
+        /* error_set_feature("GD-ROM DMA access"); */
+        /* RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+    }
 
     bufq_clear();
 
@@ -1249,9 +1313,14 @@ static void gdrom_input_read_packet(void) {
         fifo_push(&bufq, &node->fifo_node);
     }
 
-    int_reason_reg |= INT_REASON_IO_MASK;
-    int_reason_reg &= ~INT_REASON_COD_MASK;
-    stat_reg |= STAT_DRQ_MASK;
+    if (feat_reg & FEAT_REG_DMA_MASK) {
+        return; // wait for them to write 1 to GDST before doing something
+    } else {
+        int_reason_reg |= INT_REASON_IO_MASK;
+        int_reason_reg &= ~INT_REASON_COD_MASK;
+        stat_reg |= STAT_DRQ_MASK;
+    }
+
     if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
@@ -1351,6 +1420,151 @@ gdrom_byte_count_high_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_i
     return 0;
 }
 
+int
+gdrom_gdapro_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &gdapro_reg, len);
+    return 0;
+}
+
+int
+gdrom_gdapro_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len) {
+    // the g1 bus code will make sure len is equal to 4
+    uint32_t val = *(uint32_t*)buf;
+
+    // check security code
+    if ((val & 0xffff0000) != 0x88430000)
+        return 0;
+
+    gdapro_reg = val;
+
+    printf("GDAPRO (0x%08x) - allowing writes from 0x%08x throught 0x%08x\n",
+           gdapro_reg, gdrom_dma_prot_top(), gdrom_dma_prot_bot());
+
+    return 0;
+}
+
+int
+gdrom_g1gdrc_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &g1gdrc_reg, len);
+    printf("WARNING: reading %08x from G1GDRC\n", g1gdrc_reg);
+    return 0;
+}
+
+int
+gdrom_g1gdrc_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&g1gdrc_reg, buf, sizeof(g1gdrc_reg));
+    printf("WARNING: writing %08x to G1GDRC\n", g1gdrc_reg);
+    return 0;
+}
+
+int
+gdrom_gdstar_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &dma_start_addr_reg, len);
+    printf("WARNING: reading %08x from GDSTAR\n", dma_start_addr_reg);
+    return 0;
+}
+
+int
+gdrom_gdstar_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&dma_start_addr_reg, buf, sizeof(dma_start_addr_reg));
+    dma_start_addr_reg &= ~0xe0000000;
+    printf("WARNING: writing %08x to GDSTAR\n", dma_start_addr_reg);
+    return 0;
+}
+
+int
+gdrom_gdlen_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                             void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &dma_len_reg, len);
+    printf("WARNING: reading %08x from GDLEN\n", dma_len_reg);
+    return 0;
+}
+
+int
+gdrom_gdlen_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&dma_len_reg, buf, sizeof(dma_len_reg));
+    printf("WARNING: writing %08x to GDLEN\n", dma_len_reg);
+    return 0;
+}
+
+int
+gdrom_gddir_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                             void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &dma_dir_reg, len);
+    printf("WARNING: reading %08x from GDDIR\n", dma_dir_reg);
+    return 0;
+}
+
+int
+gdrom_gddir_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&dma_dir_reg, buf, sizeof(dma_dir_reg));
+    printf("WARNING: writing %08x to GDDIR\n", dma_dir_reg);
+    return 0;
+}
+
+int
+gdrom_gden_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                            void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &dma_en_reg, len);
+    printf("WARNING: reading %08x from GDEN\n", dma_en_reg);
+    return 0;
+}
+
+int
+gdrom_gden_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                             void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&dma_en_reg, buf, sizeof(dma_en_reg));
+    printf("WARNING: writing %08x to GDEN\n", dma_en_reg);
+    return 0;
+}
+
+int
+gdrom_gdst_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                            void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &dma_start_reg, len);
+    printf("WARNING: reading %08x from GDST\n", dma_start_reg);
+    return 0;
+}
+
+int
+gdrom_gdst_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                             void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&dma_start_reg, buf, sizeof(dma_start_reg));
+    printf("WARNING: writing %08x to GDST\n", dma_start_reg);
+
+    if (dma_start_reg) {
+        int_reason_reg |= (INT_REASON_IO_MASK | INT_REASON_COD_MASK);
+        stat_reg |= STAT_DRDY_MASK;
+        stat_reg &= ~STAT_DRQ_MASK;
+        gdrom_complete_dma();
+    }
+
+    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+
+    state = GDROM_STATE_NORM;
+    stat_reg &= ~STAT_CHECK_MASK;
+    memset(&error_reg, 0, sizeof(error_reg));
+
+    return 0;
+}
+
+int
+gdrom_gdlend_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &gdlend_reg, len);
+    printf("WARNING: reading %08x from GDLEND\n", gdlend_reg);
+    return 0;
+}
+
 static void bufq_clear(void) {
     while (!fifo_empty(&bufq))
         free(&FIFO_DEREF(fifo_pop(&bufq), struct gdrom_bufq_node, fifo_node));
@@ -1374,4 +1588,57 @@ static int bufq_consume_byte(unsigned *byte) {
     }
 
     return -1;
+}
+
+static void gdrom_complete_dma(void) {
+    unsigned bytes_transmitted = 0;
+    unsigned bytes_to_transmit = dma_len_reg;
+    unsigned addr = dma_start_addr_reg;
+
+    while (bytes_transmitted < bytes_to_transmit) {
+        struct fifo_node *fifo_node = fifo_pop(&bufq);
+
+        if (!fifo_node)
+            goto done;
+
+        struct gdrom_bufq_node *bufq_node =
+            &FIFO_DEREF(fifo_node, struct gdrom_bufq_node, fifo_node);
+
+        unsigned chunk_sz = bufq_node->len;
+
+        if ((chunk_sz + bytes_transmitted) > bytes_to_transmit)
+            chunk_sz = bytes_to_transmit - bytes_transmitted;
+
+        bytes_transmitted += chunk_sz;
+
+        /*
+         * enforce the gdapro register
+         * bytes_transmitted will still count the full length of chunk_sz
+         * because that seems like the logical behavior here.  I have not run
+         * any hardware tests to confirm that this is correct.
+         */
+        if (addr < gdrom_dma_prot_top()) {
+            // don't do this chunk if the end is below gdrom_dma_prot_top
+            if ((chunk_sz + addr) < gdrom_dma_prot_top())
+                goto chunk_finished;
+
+            chunk_sz -= (gdrom_dma_prot_top() - addr);
+            addr = gdrom_dma_prot_top();
+        }
+
+        if ((addr + chunk_sz - 1) > gdrom_dma_prot_bot()) {
+            chunk_sz = gdrom_dma_prot_bot() - addr + 1;
+        }
+
+        sh4_dmac_transfer_to_mem(addr, chunk_sz, 1, bufq_node->dat);
+
+    chunk_finished:
+        addr += chunk_sz;
+        free(bufq_node);
+    }
+
+done:
+    // set GD_LEND, etc here
+    gdlend_reg = bytes_transmitted;
+    dma_start_reg = 0;
 }

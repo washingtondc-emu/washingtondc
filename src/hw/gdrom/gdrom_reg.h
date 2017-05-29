@@ -23,12 +23,64 @@
 #ifndef GDROM_REG_H_
 #define GDROM_REG_H_
 
+#include "types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 int gdrom_reg_read(void *buf, size_t addr, size_t len);
 int gdrom_reg_write(void const *buf, size_t addr, size_t len);
+
+// these are GD-ROM DMA registers that lie with in the G1 bus' memory range
+struct g1_mem_mapped_reg;
+
+int
+gdrom_gdapro_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len);
+int
+gdrom_gdapro_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len);
+int
+gdrom_g1gdrc_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len);
+int
+gdrom_g1gdrc_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len);
+int
+gdrom_gdstar_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len);
+int
+gdrom_gdstar_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len);
+int
+gdrom_gdlen_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                             void *buf, addr32_t addr, unsigned len);
+int
+gdrom_gdlen_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void const *buf, addr32_t addr, unsigned len);
+int
+gdrom_gddir_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                             void *buf, addr32_t addr, unsigned len);
+int
+gdrom_gddir_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void const *buf, addr32_t addr, unsigned len);
+int
+gdrom_gden_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                            void *buf, addr32_t addr, unsigned len);
+int
+gdrom_gden_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                             void const *buf, addr32_t addr, unsigned len);
+int
+gdrom_gdst_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                            void *buf, addr32_t addr, unsigned len);
+int
+gdrom_gdst_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                             void const *buf, addr32_t addr, unsigned len);
+int
+gdrom_gdlend_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
+                              void *buf, addr32_t addr, unsigned len);
+
 
 #ifdef __cplusplus
 }

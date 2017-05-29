@@ -23,9 +23,30 @@
 #ifndef G1_REG_H_
 #define G1_REG_H_
 
+#include "types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct g1_mem_mapped_reg;
+
+typedef int(*g1_reg_read_handler_t)(struct g1_mem_mapped_reg const *reg_info,
+                                    void *buf, addr32_t addr, unsigned len);
+typedef int(*g1_reg_write_handler_t)(struct g1_mem_mapped_reg const *reg_info,
+                                     void const *buf, addr32_t addr,
+                                     unsigned len);
+
+struct g1_mem_mapped_reg {
+    char const *reg_name;
+
+    addr32_t addr;
+
+    unsigned len;
+
+    g1_reg_read_handler_t on_read;
+    g1_reg_write_handler_t on_write;
+};
 
 int g1_reg_read(void *buf, size_t addr, size_t len);
 int g1_reg_write(void const *buf, size_t addr, size_t len);

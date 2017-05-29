@@ -27,6 +27,7 @@
 #include "sh4_excp.h"
 #include "sh4_reg.h"
 #include "sh4_tmu.h"
+#include "sh4_dmac.h"
 #include "sh4.h"
 
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);
@@ -251,29 +252,29 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
 
     /* DMA Controller (DMAC) */
     { "SAR1", 0xffa00010, ~((addr32_t)0), 4, SH4_REG_SAR1, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_sar_reg_read_handler, sh4_dmac_sar_reg_write_handler, 0, 0 },
     { "DAR1", 0xffa00014, ~((addr32_t)0), 4, SH4_REG_DAR1, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_dar_reg_read_handler, sh4_dmac_dar_reg_write_handler, 0, 0 },
     { "DMATCR1", 0xffa00018, ~((addr32_t)0), 4, SH4_REG_DMATCR1, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_dmatcr_reg_read_handler, sh4_dmac_dmatcr_reg_write_handler, 0, 0 },
     { "CHCR1", 0xffa0001c, ~((addr32_t)0), 4, SH4_REG_CHCR1, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_chcr_reg_read_handler, sh4_dmac_chcr_reg_write_handler, 0, 0 },
     { "SAR2", 0xffa00020, ~((addr32_t)0), 4, SH4_REG_SAR2, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_sar_reg_read_handler, sh4_dmac_sar_reg_write_handler, 0, 0 },
     { "DAR2", 0xffa00024, ~((addr32_t)0), 4, SH4_REG_DAR2, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_dar_reg_read_handler, sh4_dmac_dar_reg_write_handler, 0, 0 },
     { "DMATCR2", 0xffa00028, ~((addr32_t)0), 4, SH4_REG_DMATCR2, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_dmatcr_reg_read_handler, sh4_dmac_dmatcr_reg_write_handler, 0, 0 },
     { "CHCR2", 0xffa0002c, ~((addr32_t)0), 4, SH4_REG_CHCR2, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_chcr_reg_read_handler, sh4_dmac_chcr_reg_write_handler, 0, 0 },
     { "SAR3", 0xffa00030, ~((addr32_t)0), 4, SH4_REG_SAR3, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
-    { "DAR2", 0xffa00034, ~((addr32_t)0), 4, SH4_REG_DAR3, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_sar_reg_read_handler, sh4_dmac_sar_reg_write_handler, 0, 0 },
+    { "DAR3", 0xffa00034, ~((addr32_t)0), 4, SH4_REG_DAR3, true,
+      sh4_dmac_dar_reg_read_handler, sh4_dmac_dar_reg_write_handler, 0, 0 },
     { "DMATCR3", 0xffa00038, ~((addr32_t)0), 4, SH4_REG_DMATCR3, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_dmac_dmatcr_reg_read_handler, sh4_dmac_dmatcr_reg_write_handler, 0, 0 },
     { "CHCR3", 0xffa0003c, ~((addr32_t)0), 4, SH4_REG_CHCR3, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_dmac_chcr_reg_read_handler, sh4_dmac_chcr_reg_write_handler, 0, 0 },
     { "DMAOR", 0xffa00040, ~((addr32_t)0), 4, SH4_REG_DMAOR, true,
       Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
 

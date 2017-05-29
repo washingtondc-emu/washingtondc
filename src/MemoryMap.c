@@ -76,6 +76,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
 
     error_set_feature("memory mapping");
     error_set_address(addr);
+    error_set_length(len);
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
 
@@ -107,6 +108,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
 
     error_set_feature("memory mapping");
     error_set_address(addr);
+    error_set_length(len);
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
 

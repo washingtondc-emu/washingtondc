@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "g1_reg.h"
+#include "hw/gdrom/gdrom_reg.h"
 
 #include "mem_code.h"
 #include "error.h"
@@ -34,14 +35,6 @@
 
 #define N_G1_REGS (ADDR_G1_LAST - ADDR_G1_FIRST + 1)
 static reg32_t g1_regs[N_G1_REGS];
-
-struct g1_mem_mapped_reg;
-
-typedef int(*g1_reg_read_handler_t)(struct g1_mem_mapped_reg const *reg_info,
-                                    void *buf, addr32_t addr, unsigned len);
-typedef int(*g1_reg_write_handler_t)(struct g1_mem_mapped_reg const *reg_info,
-                                     void const *buf, addr32_t addr,
-                                     unsigned len);
 
 static int
 default_g1_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
@@ -56,27 +49,29 @@ static int
 warn_g1_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
                           void const *buf, addr32_t addr, unsigned len);
 
-static struct g1_mem_mapped_reg {
-    char const *reg_name;
+// write handler for registers that should be read-only
+static int
+g1_read_only_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len);
 
-    addr32_t addr;
-
-    unsigned len;
-
-    g1_reg_read_handler_t on_read;
-    g1_reg_write_handler_t on_write;
-} g1_reg_info[] = {
+static struct g1_mem_mapped_reg g1_reg_info[] = {
     /* GD-ROM DMA registers */
+    { "SB_GDAPRO", 0x5f74b8, 4,
+      gdrom_gdapro_reg_read_handler, gdrom_gdapro_reg_write_handler },
+    { "SB_G1GDRC", 0x5f74a0, 4,
+      gdrom_g1gdrc_reg_read_handler, gdrom_g1gdrc_reg_write_handler },
+    { "SB_G1GDWC", 0x5f74a4, 4,
+      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
     { "SB_GDSTAR", 0x5f7404, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+      gdrom_gdstar_reg_read_handler, gdrom_gdstar_reg_write_handler },
     { "SB_GDLEN", 0x5f7408, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+      gdrom_gdlen_reg_read_handler, gdrom_gdlen_reg_write_handler },
     { "SB_GDDIR", 0x5f740c, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+      gdrom_gddir_reg_read_handler, gdrom_gddir_reg_write_handler },
     { "SB_GDEN", 0x5f7414, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+      gdrom_gden_reg_read_handler, gdrom_gden_reg_write_handler },
     { "SB_GDST", 0x5f7418, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+      gdrom_gdst_reg_read_handler, gdrom_gdst_reg_write_handler },
 
     /* system boot-rom registers */
     // XXX this is supposed to be write-only, but currently it's readable
@@ -97,22 +92,17 @@ static struct g1_mem_mapped_reg {
     { "SB_G1CWC", 0x5f7494, 4,
       warn_g1_reg_read_handler, warn_g1_reg_write_handler },
 
-    /* GD-DMA timing registers - *probably* related to GD-ROM */
-    { "SB_G1GDRC", 0x5f74a0, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-    { "SB_G1GDWC", 0x5f74a4, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-
     // TODO: SB_G1SYSM should be read-only
     { "SB_G1SYSM", 0x5f74b0, 4,
       warn_g1_reg_read_handler, warn_g1_reg_write_handler },
     { "SB_G1CRDYC", 0x5f74b4, 4,
       warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-    { "SB_GDAPRO", 0x5f74b8, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
 
     { "UNKNOWN", 0x005f74e4, 4,
       warn_g1_reg_read_handler, warn_g1_reg_write_handler },
+
+    { "SB_GDLEND", 0x005f74f8, 4,
+      gdrom_gdlend_reg_read_handler, g1_read_only_reg_write_handler },
 
     { NULL }
 };
@@ -122,7 +112,7 @@ int g1_reg_read(void *buf, size_t addr, size_t len) {
 
     while (curs->reg_name) {
         if (curs->addr == addr) {
-            if (curs->len >= len) {
+            if (curs->len == len) {
                 return curs->on_read(curs, buf, addr, len);
             } else {
                 error_set_address(addr);
@@ -254,4 +244,15 @@ warn_g1_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
     }
 
     return default_g1_reg_write_handler(reg_info, buf, addr, len);
+}
+
+static int
+g1_read_only_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
+                               void const *buf, addr32_t addr, unsigned len) {
+    error_set_feature("Whatever happens when you try to write to a read-only "
+                      "G1 bus register");
+    error_set_address(addr);
+    error_set_length(len);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }
