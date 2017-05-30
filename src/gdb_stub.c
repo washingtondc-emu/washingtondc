@@ -1290,7 +1290,7 @@ static void handle_read(struct bufferevent *bev, void *arg) {
                             "acknowledgement for unsent packet\n");
                 } else {
 #ifdef GDBSTUB_VERBOSE
-                    std::cout << ">>>>" << string_get(&stub->unack_packet) << std::endl;
+                    printf(">>>> %s\n",  string_get(&stub->unack_packet));
 #endif
                     transmit(stub, &stub->unack_packet);
                 }
