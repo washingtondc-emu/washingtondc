@@ -2,9 +2,7 @@
 
 WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  Currently
 it's only capable of running a handful of homebrew programs because it is still
-at an early stage of development but the goal is to someday run the entire
-Dreamcast library at full-speed, and eventually even Naomi/Atomiswave/Hikaru
-games.
+at an early stage of development.
 
 ## GALLERY
 ![Alt text](media/washingtondc_sega_logo.png "SEGA bootstrap (IP.BIN)") ![Alt text](media/washingtondc_kos_320x240.png "KallistiOS 320x240 example program")
