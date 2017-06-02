@@ -336,7 +336,6 @@ run_div_test(addr32_t run_until, struct div_test_state *state,
     bios_load_binary(&state->bios, 0, inst.begin(), inst.end());
 
     sh4_on_hard_reset(&state->sh4);
-    sh4_enter(&state->sh4);
 
     *sh4_gen_reg(&state->sh4, 1) = divisor;
     *sh4_gen_reg(&state->sh4, 2) = dividend;
@@ -453,7 +452,6 @@ unsigned_div_test_64_32(struct div_test *test, struct div_test_state *state) {
     bios_load_binary(&state->bios, 0, inst.begin(), inst.end());
 
     sh4_on_hard_reset(&state->sh4);
-    sh4_enter(&state->sh4);
 
     *sh4_gen_reg(&state->sh4, 1) = dividend_high;
     *sh4_gen_reg(&state->sh4, 2) = dividend_low;

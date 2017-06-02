@@ -175,18 +175,6 @@ void sh4_single_step(Sh4 *sh4);
  */
 void sh4_run_until(Sh4 *sh4, addr32_t stop_addr);
 
-/*
- * This function should be called every time the emulator is about to
- * start emulating sh4 code after having emulated something else.
- * The purpose is to make sure that the host CPU's state is in sync with
- * the virtual sh4's state for operations which have some associated state.
- *
- * For example, one of the things  this function does is make sure that the
- * host CPU's floating-point rounding mode matches the FPSCR register's
- * RM bit.
- */
-void sh4_enter(Sh4 *sh4);
-
 // returns the program counter
 reg32_t sh4_get_pc(Sh4 *sh4);
 

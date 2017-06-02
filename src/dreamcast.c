@@ -243,13 +243,6 @@ static struct timespec start_time;
 void dreamcast_run() {
     signal(SIGINT, dc_sigint_handler);
 
-    /*
-     * TODO: later when I'm emulating more than just the CPU,
-     * I'll need to remember to call this every time I re-enter
-     * the CPU's context.
-     */
-    sh4_enter(&cpu);
-
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     while (is_running) {

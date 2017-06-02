@@ -89,7 +89,7 @@ void sh4_on_hard_reset(Sh4 *sh4) {
     sh4->reg[SH4_REG_VBR] = 0;
     sh4->reg[SH4_REG_PC] = 0xa0000000;
 
-    sh4->fpu.fpscr = 0x41;
+    sh4_set_fpscr(sh4, 0x41);
 
     unsigned idx;
     for (idx = 0; idx < SH4_N_FLOAT_REGS; idx++) {
@@ -131,14 +131,24 @@ void sh4_set_fpu(Sh4 *sh4, FpuReg src) {
     sh4->fpu = src;
 }
 
-void sh4_enter(Sh4 *sh4) {
-    if (sh4->fpu.fpscr & SH4_FPSCR_RM_MASK)
-        fesetround(FE_TOWARDZERO);
-    else
-        fesetround(FE_TONEAREST);
-}
-
 void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {
+    /*
+     * XXX This function allows the FPU rounding mode to "bleed" out of the SH4's
+     * state and effect any other component that needs to use the FPU.
+     *
+     * Ideally we'd be maintaining a separate FPU context for the CPU, but in
+     * practice calling fesetenv/fegetenv every time WashingtonDC enters/leaves
+     * SH4 code incurs a massive performance penalty (greater than 50%).  This
+     * might be because of branching or it might be because fegetenv/fesetenv
+     * are really slow or it might just be the result of calling the same
+     * function very often.  Either way, there's way too much overhead.
+     *
+     * I'm expecting that the only "real" victims of this will be PVR2 and
+     * *maybe* AICA.  Generally speaking, there isn't much feedback from
+     * graphics/sound into the game state, so this shouldn't cause anything
+     * worse than very slightly glitched graphics/sound.
+     */
+
     sh4->fpu.fpscr = new_val;
     if (sh4->fpu.fpscr & SH4_FPSCR_RM_MASK)
         fesetround(FE_TOWARDZERO);
