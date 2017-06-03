@@ -160,8 +160,6 @@ void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles) {
     inst_t inst;
     int exc_pending;
 
-    n_cycles += sh4->cycles_accum;
-
 mulligan:
     sh4_check_interrupts(sh4);
     do {
@@ -176,23 +174,19 @@ mulligan:
 
         InstOpcode const *op = sh4_inst_lut[inst];
 
-        /*
-         * The reason why this function subtracts sh4->cycles_accum both
-         * times that can call dc_cycle_advance is that sh4->cycles_accum
-         * would have been included in a previous call to dc_cycle_advance.
-         */
-        if (op->issue > n_cycles) {
-            dc_cycle_advance(n_cycles - sh4->cycles_accum);
-            sh4->cycles_accum = n_cycles;
+        if (op->issue > (n_cycles + sh4->cycles_accum)) {
+            dc_cycle_advance(n_cycles);
+            sh4->cycles_accum += n_cycles;
             return;
         }
 
-        n_cycles -= op->issue;
-        if (sh4->cycles_accum >= op->issue) {
-            sh4->cycles_accum -= op->issue;
-        } else {
-            dc_cycle_advance(op->issue - sh4->cycles_accum);
+        if (op->issue > sh4->cycles_accum) {
+            unsigned adv_cycles = op->issue - sh4->cycles_accum;
+            dc_cycle_advance(adv_cycles);
+            n_cycles -= adv_cycles;
             sh4->cycles_accum = 0;
+        } else {
+            sh4->cycles_accum -= op->issue;
         }
 
         sh4_do_exec_inst(sh4, inst, op);
@@ -211,7 +205,7 @@ mulligan:
              */
             if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
                 if (exc_pending == MEM_ACCESS_EXC)
-                    goto mulligan;
+                    goto mulligan; // TODO: might be better to return here instead
                 else
                     RAISE_ERROR(get_error_pending());
             }
@@ -227,8 +221,6 @@ mulligan:
             }
         }
     } while (n_cycles);
-
-    sh4->cycles_accum = 0;
 }
 
 /* executes a single instruction and maybe ticks the clock. */
