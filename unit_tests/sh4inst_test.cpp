@@ -10509,7 +10509,6 @@ public:
 
         double val_actual, val_expect;
         val_actual = *sh4_fpu_dr(cpu, reg_dst >> 1);
-        memcpy(&val_actual, &cpu->reg[SH4_REG_FPUL], sizeof(val_actual));
 
         val_expect = double(src_val);
 
@@ -10528,8 +10527,8 @@ public:
 
         for (unsigned reg_no = 0; reg_no < SH4_N_DOUBLE_REGS; reg_no++) {
             failure = failure ||
-                do_binary_fcnvds_dr_fpul(cpu, bios, mem, reg_no * 2,
-                                         randgen32->pick_double());
+                do_binary_float_fpul_dr(cpu, bios, mem, reg_no * 2,
+                                        randgen32->pick_val(0));
         }
 
         return failure;
@@ -10932,7 +10931,6 @@ public:
 
         return 0;
     }
-
 
     static int unary_fldi1_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
                               RandGen32 *randgen32) {
