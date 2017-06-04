@@ -53,25 +53,6 @@ enum Sh4ExecState {
 };
 typedef enum Sh4ExecState Sh4ExecState;
 
-union FpuRegFile {
-    float fr[SH4_N_FLOAT_REGS];
-    double dr[SH4_N_DOUBLE_REGS];
-};
-// BOOST_STATIC_ASSERT(sizeof(FpuRegFile) == (SH4_N_FLOAT_REGS * sizeof(float)));
-typedef union FpuRegFile FpuRegFile;
-
-struct FpuReg {
-    // floating point status/control register
-    reg32_t fpscr;
-
-    // floating-point communication register
-    reg32_t fpul;
-
-    FpuRegFile reg_bank0;
-    FpuRegFile reg_bank1;
-};
-typedef struct FpuReg FpuReg;
-
 struct Sh4 {
     Sh4ExecState exec_state;
 
@@ -94,8 +75,6 @@ struct Sh4 {
      */
     bool delayed_branch;
     addr32_t delayed_branch_addr;
-
-    FpuReg fpu;
 
     struct sh4_tmu tmu;
 
@@ -186,12 +165,15 @@ void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val);
 
 // these four APIs are intended primarily for debuggers to use
 void sh4_get_regs(Sh4 *sh4, reg32_t reg_out[SH4_REGISTER_COUNT]);
-FpuReg sh4_get_fpu(Sh4 *sh4);
+/* FpuReg sh4_get_fpu(Sh4 *sh4); */
 void sh4_set_regs(Sh4 *sh4, reg32_t const reg_out[SH4_REGISTER_COUNT]);
-void sh4_set_fpu(Sh4 *sh4, FpuReg src);
+/* void sh4_set_fpu(Sh4 *sh4, FpuReg src); */
 
 void sh4_bank_switch(Sh4 *sh4);
 void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr);
+
+void sh4_fpu_bank_switch(Sh4 *sh4);
+void sh4_fpu_bank_switch_maybe(Sh4 *sh4, reg32_t old_fpscr, reg32_t new_fpscr);
 
 static inline void sh4_next_inst(Sh4 *sh4) {
     sh4->reg[SH4_REG_PC] += 2;
@@ -258,9 +240,25 @@ static inline reg32_t *sh4_bank1_reg(Sh4 *sh4, int idx) {
 static inline float *sh4_fpu_fr(Sh4 *sh4, unsigned reg_no) {
     assert(reg_no < SH4_N_FLOAT_REGS);
 
-    if (sh4->fpu.fpscr & SH4_FPSCR_FR_MASK)
-        return sh4->fpu.reg_bank1.fr + reg_no;
-    return sh4->fpu.reg_bank0.fr + reg_no;
+    return (float*)(sh4->reg + SH4_REG_FR0 + reg_no);
+}
+
+static inline float *sh4_bank_fpu_fr(Sh4 *sh4, unsigned reg_no) {
+    assert(reg_no < SH4_N_FLOAT_REGS);
+
+    return (float*)(sh4->reg + SH4_REG_FR0_BANK + reg_no);
+}
+
+static inline float *sh4_bank0_fpu_fr(Sh4 *sh4, unsigned reg_no) {
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_FR_MASK)
+        return sh4_bank_fpu_fr(sh4, reg_no);
+    return sh4_fpu_fr(sh4, reg_no);
+}
+
+static inline float *sh4_bank1_fpu_fr(Sh4 *sh4, unsigned reg_no) {
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_FR_MASK)
+        return sh4_fpu_fr(sh4, reg_no);
+    return sh4_bank_fpu_fr(sh4, reg_no);
 }
 
 /*
@@ -270,9 +268,7 @@ static inline float *sh4_fpu_fr(Sh4 *sh4, unsigned reg_no) {
 static inline double *sh4_fpu_dr(Sh4 *sh4, unsigned reg_no) {
     assert(reg_no < SH4_N_DOUBLE_REGS);
 
-    if (sh4->fpu.fpscr & SH4_FPSCR_FR_MASK)
-        return sh4->fpu.reg_bank1.dr + reg_no;
-    return sh4->fpu.reg_bank0.dr + reg_no;
+    return (double*)(sh4->reg + SH4_REG_FR0 + (reg_no << 1));
 }
 
 #ifdef __cplusplus

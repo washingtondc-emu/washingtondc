@@ -51,7 +51,7 @@ static size_t deserialize_data(struct string const *input_str,
 static int decode_hex(char ch);
 static void write_start(struct gdb_stub *stub);
 static void extract_packet(struct string *out, struct string const *packet_in);
-static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
+static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
                    unsigned reg_no, reg32_t reg_val, bool bank);
 static void handle_packet(struct gdb_stub *stub, struct string *pkt);
 static void transmit_pkt(struct gdb_stub *stub, struct string const *pkt);
@@ -280,7 +280,6 @@ static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
     Sh4 *cpu = dreamcast_get_cpu();
     reg32_t reg_file[SH4_REGISTER_COUNT];
     sh4_get_regs(cpu, reg_file);
-    FpuReg fpu_reg = sh4_get_fpu(cpu);
     reg32_t regs[N_REGS] = { 0 };
 
     // general-purpose registers
@@ -315,8 +314,8 @@ static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
     regs[SPC] = reg_file[SH4_REG_SPC];
 
     // FPU system/control registers
-    regs[FPUL] = fpu_reg.fpul;
-    regs[FPSCR] = fpu_reg.fpscr;
+    regs[FPUL] = reg_file[SH4_REG_FPUL];
+    regs[FPSCR] = reg_file[SH4_REG_FPSCR];
 
     serialize_data(out, regs, sizeof(regs));
 }
@@ -418,7 +417,7 @@ static void extract_packet(struct string *out, struct string const *packet_in) {
     string_substr(out, packet_in, dollar_idx + 1, pound_idx - 1);
 }
 
-static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
+static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
                    unsigned reg_no, reg32_t reg_val, bool bank) {
     Sh4 *sh4 = dreamcast_get_cpu();
 
@@ -465,9 +464,9 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT], FpuReg *fpu,
     } else if (reg_no == SPC) {
         reg_file[SH4_REG_SPC] = reg_val;
     } else if (reg_no == FPUL) {
-        fpu->fpul = reg_val;
+        sh4->reg[SH4_REG_FPUL] = reg_val;
     } else if (reg_no == FPSCR) {
-        fpu->fpscr = reg_val;
+        sh4->reg[SH4_REG_FPSCR] = reg_val;
     } else {
 #ifdef GDBSTUB_VERBOSE
         printf("WARNING: GdbStub unable to set value of register %x to %x\n",
@@ -737,11 +736,10 @@ static void handle_G_packet(struct gdb_stub *stub, struct string *out,
 
     reg32_t new_regs[SH4_REGISTER_COUNT];
     sh4_get_regs(dreamcast_get_cpu(), new_regs);
-    FpuReg new_fpu = sh4_get_fpu(dreamcast_get_cpu());
     bool bank = new_regs[SH4_REG_SR] & SH4_SR_RB_MASK;
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
-        set_reg(new_regs, &new_fpu, reg_no, regs[reg_no], bank);
+        set_reg(new_regs, reg_no, regs[reg_no], bank);
 
     string_set(out, "OK");
 }
@@ -750,7 +748,6 @@ static void handle_P_packet(struct gdb_stub *stub, struct string *out,
                             struct string const *dat) {
     Sh4 *cpu;
     reg32_t regs[SH4_REGISTER_COUNT];
-    FpuReg fpu;
     int equals_idx = string_find_first_of(dat, "=");
 
     if ((equals_idx < 0) || ((size_t)equals_idx >= (string_length(dat) - 1))) {
@@ -784,8 +781,7 @@ static void handle_P_packet(struct gdb_stub *stub, struct string *out,
 
     cpu = dreamcast_get_cpu();
     sh4_get_regs(cpu, regs);
-    fpu = sh4_get_fpu(cpu);
-    set_reg(regs, &fpu, reg_no, reg_val,
+    set_reg(regs, reg_no, reg_val,
             (bool)(regs[SH4_REG_SR] & SH4_SR_RB_MASK));
     sh4_set_regs(cpu, regs);
 

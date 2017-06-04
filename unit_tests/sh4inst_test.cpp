@@ -9062,10 +9062,10 @@ public:
         *sh4_gen_reg(cpu, reg_no) = val;
         sh4_exec_inst(cpu);
 
-        if (cpu->fpu.fpscr != val) {
+        if (cpu->reg[SH4_REG_FPSCR] != val) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << val << std::endl;
-            std::cout << "actual val is " << cpu->fpu.fpscr << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_FPSCR] << std::endl;
             return 1;
         }
 
@@ -9107,10 +9107,10 @@ public:
 
         sh4_exec_inst(cpu);
 
-        if (cpu->fpu.fpscr != val || *sh4_gen_reg(cpu, reg_no) != (addr + 4)) {
+        if (cpu->reg[SH4_REG_FPSCR] != val || *sh4_gen_reg(cpu, reg_no) != (addr + 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
             std::cout << "expected val is " << std::hex << val << std::endl;
-            std::cout << "actual val is " << cpu->fpu.fpscr << std::endl;
+            std::cout << "actual val is " << cpu->reg[SH4_REG_FPSCR] << std::endl;
             std::cout << "input addr is " << addr << std::endl;
             std::cout << "output addr is " << (addr + 4) << std::endl;
             return 1;
@@ -9150,7 +9150,7 @@ public:
 
         reset_cpu(cpu);
 
-        cpu->fpu.fpscr = val;
+        cpu->reg[SH4_REG_FPSCR] = val;
         sh4_exec_inst(cpu);
 
         if (*sh4_gen_reg(cpu, reg_no) != val) {
@@ -9194,7 +9194,7 @@ public:
         reset_cpu(cpu);
 
         *sh4_gen_reg(cpu, reg_no) = addr;
-        cpu->fpu.fpscr = fpscr_val;
+        cpu->reg[SH4_REG_FPSCR] = fpscr_val;
         sh4_exec_inst(cpu);
 
         uint32_t mem_val;
@@ -9725,25 +9725,25 @@ public:
         for (unsigned count = 0; count < N_INSTS; count++)
             sh4_exec_inst(cpu);
 
-        if (cpu->fpu.fpscr & SH4_FPSCR_FR_MASK) {
+        if (cpu->reg[SH4_REG_FPSCR] & SH4_FPSCR_FR_MASK) {
             std::cout << "While testing FRCHG: the FR bit in FPSCR was set "
                 "(it should have been cleared)" << std::endl;
             ret_val = 1;
         }
 
         for (unsigned idx = 0; idx < SH4_N_FLOAT_REGS; idx++) {
-            if (val_bank0[idx] != cpu->fpu.reg_bank0.fr[idx]) {
+            if (val_bank0[idx] != *sh4_bank0_fpu_fr(cpu, idx)) {
                 std::cout << "While testing FRCHG: bank0, register " << idx <<
                     " was expected to be " << val_bank0[idx] << "; the " <<
-                    "actual value is " << cpu->fpu.reg_bank0.fr[idx] <<
+                    "actual value is " << cpu->reg[SH4_REG_FR0 + idx] <<
                     std::endl;
                 ret_val = 1;
             }
 
-            if (val_bank1[idx] != cpu->fpu.reg_bank1.fr[idx]) {
+            if (val_bank1[idx] != *sh4_bank1_fpu_fr(cpu, idx)) {
                 std::cout << "While testing FRCHG: bank1, register " << idx <<
                     " was expected to be " << val_bank1[idx] << "; the " <<
-                    "actual value is " << cpu->fpu.reg_bank1.fr[idx] <<
+                    "actual value is " << cpu->reg[SH4_REG_FR0_BANK + idx] <<
                     std::endl;
                 ret_val = 1;
             }
@@ -10197,7 +10197,7 @@ public:
         sh4_exec_inst(cpu);
 
         float val_actual;
-        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+        memcpy(&val_actual, &cpu->reg[SH4_REG_FPUL], sizeof(val_actual));
 
         if (val_actual != src_val) {
             std::cout << "ERROR: while running " << cmd << std::endl;
@@ -10236,7 +10236,7 @@ public:
         bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
+        memcpy(&cpu->reg[SH4_REG_FPUL], &src_val, sizeof(cpu->reg[SH4_REG_FPUL]));
 
         sh4_exec_inst(cpu);
 
@@ -10279,7 +10279,7 @@ public:
         bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
+        memcpy(&cpu->reg[SH4_REG_FPUL], &src_val, sizeof(cpu->reg[SH4_REG_FPUL]));
 
         sh4_exec_inst(cpu);
 
@@ -10327,7 +10327,7 @@ public:
         sh4_exec_inst(cpu);
 
         reg32_t val_actual, val_expect;
-        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+        memcpy(&val_actual, &cpu->reg[SH4_REG_FPUL], sizeof(val_actual));
 
         int round_mode = fegetround();
         fesetround(FE_TOWARDZERO);
@@ -10389,7 +10389,7 @@ public:
             sh4_exec_inst(cpu);
 
         float val_actual, val_expect;
-        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+        memcpy(&val_actual, &cpu->reg[SH4_REG_FPUL], sizeof(val_actual));
 
         val_expect = float(src_val);
 
@@ -10442,14 +10442,14 @@ public:
         bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
+        memcpy(&cpu->reg[SH4_REG_FPUL], &src_val, sizeof(cpu->reg[SH4_REG_FPUL]));
 
         for (int i = 0; i < 11; i++)
             sh4_exec_inst(cpu);
 
         double val_actual, val_expect;
         val_actual = *sh4_fpu_dr(cpu, reg_dst >> 1);
-        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+        memcpy(&val_actual, &cpu->reg[SH4_REG_FPUL], sizeof(val_actual));
 
         val_expect = double(src_val);
 
@@ -10502,14 +10502,14 @@ public:
         bios_load_binary(bios, 0, inst.begin(), inst.end());
 
         reset_cpu(cpu);
-        memcpy(&cpu->fpu.fpul, &src_val, sizeof(cpu->fpu.fpul));
+        memcpy(&cpu->reg[SH4_REG_FPUL], &src_val, sizeof(cpu->reg[SH4_REG_FPUL]));
 
         for (int i = 0; i < 11; i++)
             sh4_exec_inst(cpu);
 
         double val_actual, val_expect;
         val_actual = *sh4_fpu_dr(cpu, reg_dst >> 1);
-        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+        memcpy(&val_actual, &cpu->reg[SH4_REG_FPUL], sizeof(val_actual));
 
         val_expect = double(src_val);
 
@@ -10568,7 +10568,7 @@ public:
             sh4_exec_inst(cpu);
 
         reg32_t val_actual, val_expect;
-        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+        memcpy(&val_actual, &cpu->reg[SH4_REG_FPUL], sizeof(val_actual));
 
         int round_mode = fegetround();
         fesetround(FE_TOWARDZERO);
@@ -10617,7 +10617,7 @@ public:
         sh4_exec_inst(cpu);
 
         reg32_t val_actual;
-        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+        memcpy(&val_actual, &cpu->reg[SH4_REG_FPUL], sizeof(val_actual));
 
         if (val_actual != val) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -10665,7 +10665,7 @@ public:
         sh4_exec_inst(cpu);
 
         reg32_t val_actual;
-        memcpy(&val_actual, &cpu->fpu.fpul, sizeof(val_actual));
+        memcpy(&val_actual, &cpu->reg[SH4_REG_FPUL], sizeof(val_actual));
 
         if (val_actual != val || *sh4_gen_reg(cpu, reg_no) != (addr + 4)) {
             std::cout << "ERROR while running " << cmd << std::endl;
@@ -10709,7 +10709,7 @@ public:
 
         reset_cpu(cpu);
 
-        memcpy(&cpu->fpu.fpul, &val, sizeof(cpu->fpu.fpul));
+        memcpy(&cpu->reg[SH4_REG_FPUL], &val, sizeof(cpu->reg[SH4_REG_FPUL]));
         sh4_exec_inst(cpu);
 
         if (*sh4_gen_reg(cpu, reg_no) != val) {
@@ -10753,7 +10753,7 @@ public:
         reset_cpu(cpu);
 
         *sh4_gen_reg(cpu, reg_no) = addr;
-        memcpy(&cpu->fpu.fpul, &fpul_val, sizeof(cpu->fpu.fpul));
+        memcpy(&cpu->reg[SH4_REG_FPUL], &fpul_val, sizeof(cpu->reg[SH4_REG_FPUL]));
         sh4_exec_inst(cpu);
 
         uint32_t mem_val;

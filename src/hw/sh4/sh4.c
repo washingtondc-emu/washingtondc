@@ -93,8 +93,8 @@ void sh4_on_hard_reset(Sh4 *sh4) {
 
     unsigned idx;
     for (idx = 0; idx < SH4_N_FLOAT_REGS; idx++) {
-        sh4->fpu.reg_bank0.fr[idx] = 0.0f;
-        sh4->fpu.reg_bank1.fr[idx] = 0.0f;
+        *sh4_fpu_fr(sh4, idx) = 0.0f;
+        *sh4_bank_fpu_fr(sh4, idx) = 0.0f;
     }
 
     sh4->delayed_branch = false;
@@ -119,16 +119,8 @@ void sh4_get_regs(Sh4 *sh4, reg32_t reg_out[SH4_REGISTER_COUNT]) {
     memcpy(reg_out, sh4->reg, sizeof(reg_out[0]) * SH4_REGISTER_COUNT);
 }
 
-FpuReg sh4_get_fpu(Sh4 *sh4) {
-    return sh4->fpu;
-}
-
 void sh4_set_regs(Sh4 *sh4, reg32_t const reg_in[SH4_REGISTER_COUNT]) {
     memcpy(sh4->reg, reg_in, sizeof(sh4->reg[0]) * SH4_REGISTER_COUNT);
-}
-
-void sh4_set_fpu(Sh4 *sh4, FpuReg src) {
-    sh4->fpu = src;
 }
 
 void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {
@@ -149,8 +141,10 @@ void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {
      * worse than very slightly glitched graphics/sound.
      */
 
-    sh4->fpu.fpscr = new_val;
-    if (sh4->fpu.fpscr & SH4_FPSCR_RM_MASK)
+    sh4_fpu_bank_switch_maybe(sh4, sh4->reg[SH4_REG_FPSCR], new_val);
+
+    sh4->reg[SH4_REG_FPSCR] = new_val;
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_RM_MASK)
         fesetround(FE_TOWARDZERO);
     else
         fesetround(FE_TONEAREST);
@@ -281,6 +275,18 @@ void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr) {
         sh4_bank_switch(sh4);
 }
 
+void sh4_fpu_bank_switch(Sh4 *sh4) {
+    uint32_t tmp[SH4_N_FLOAT_REGS];
+    memcpy(tmp, sh4->reg + SH4_REG_FR0, sizeof(tmp));
+    memcpy(sh4->reg + SH4_REG_FR0, sh4->reg + SH4_REG_FR0_BANK, sizeof(tmp));
+    memcpy(sh4->reg + SH4_REG_FR0_BANK, tmp, sizeof(tmp));
+}
+
+void sh4_fpu_bank_switch_maybe(Sh4 *sh4, reg32_t old_fpscr, reg32_t new_fpscr) {
+    if ((old_fpscr & SH4_FPSCR_FR_MASK) != (new_fpscr & SH4_FPSCR_FR_MASK))
+        sh4_fpu_bank_switch(sh4);
+}
+
 static DEF_ERROR_U32_ATTR(sh4_reg_sr)
 static DEF_ERROR_U32_ATTR(sh4_reg_ssr)
 static DEF_ERROR_U32_ATTR(sh4_reg_pc)
@@ -342,8 +348,8 @@ static void sh4_error_set_regs(void *argptr) {
     error_set_sh4_reg_mach(sh4->reg[SH4_REG_MACH]);
     error_set_sh4_reg_macl(sh4->reg[SH4_REG_MACL]);
     error_set_sh4_reg_pr(sh4->reg[SH4_REG_PR]);
-    error_set_sh4_reg_fpscr(sh4->fpu.fpscr);
-    error_set_sh4_reg_fpul(sh4->fpu.fpul);
+    error_set_sh4_reg_fpscr(sh4->reg[SH4_REG_FPSCR]);
+    error_set_sh4_reg_fpul(sh4->reg[SH4_REG_FPUL]);
     error_set_sh4_reg_r0_bank0(*sh4_bank0_reg(sh4, 0));
     error_set_sh4_reg_r1_bank0(*sh4_bank0_reg(sh4, 1));
     error_set_sh4_reg_r2_bank0(*sh4_bank0_reg(sh4, 2));

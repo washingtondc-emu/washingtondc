@@ -23,6 +23,7 @@
 #ifndef SH4_REG_H_
 #define SH4_REG_H_
 
+#include <assert.h>
 #include <stdbool.h>
 
 #include "types.h"
@@ -65,6 +66,64 @@ typedef enum sh4_reg_idx {
     SH4_REG_R5_BANK,
     SH4_REG_R6_BANK,
     SH4_REG_R7_BANK,
+
+    /* Floating-point registers */
+    SH4_REG_FR0,
+    SH4_REG_DR0 = SH4_REG_FR0,
+    SH4_REG_FR1,
+    SH4_REG_FR2,
+    SH4_REG_DR1 = SH4_REG_FR2,
+    SH4_REG_FR3,
+    SH4_REG_FR4,
+    SH4_REG_DR2 = SH4_REG_FR4,
+    SH4_REG_FR5,
+    SH4_REG_FR6,
+    SH4_REG_DR3 = SH4_REG_FR6,
+    SH4_REG_FR7,
+    SH4_REG_FR8,
+    SH4_REG_DR4 = SH4_REG_FR8,
+    SH4_REG_FR9,
+    SH4_REG_FR10,
+    SH4_REG_DR5 = SH4_REG_FR10,
+    SH4_REG_FR11,
+    SH4_REG_FR12,
+    SH4_REG_DR6 = SH4_REG_FR12,
+    SH4_REG_FR13,
+    SH4_REG_FR14,
+    SH4_REG_DR7 = SH4_REG_FR14,
+    SH4_REG_FR15,
+
+    /* floating-point registers (banked) */
+    SH4_REG_FR0_BANK,
+    SH4_REG_DR0_BANK = SH4_REG_FR0_BANK,
+    SH4_REG_FR1_BANK,
+    SH4_REG_FR2_BANK,
+    SH4_REG_DR1_BANK = SH4_REG_FR2_BANK,
+    SH4_REG_FR3_BANK,
+    SH4_REG_FR4_BANK,
+    SH4_REG_DR2_BANK = SH4_REG_FR4_BANK,
+    SH4_REG_FR5_BANK,
+    SH4_REG_FR6_BANK,
+    SH4_REG_DR3_BANK = SH4_REG_FR6_BANK,
+    SH4_REG_FR7_BANK,
+    SH4_REG_FR8_BANK,
+    SH4_REG_DR4_BANK = SH4_REG_FR8_BANK,
+    SH4_REG_FR9_BANK,
+    SH4_REG_FR10_BANK,
+    SH4_REG_DR5_BANK = SH4_REG_FR10_BANK,
+    SH4_REG_FR11_BANK,
+    SH4_REG_FR12_BANK,
+    SH4_REG_DR6_BANK = SH4_REG_FR12_BANK,
+    SH4_REG_FR13_BANK,
+    SH4_REG_FR14_BANK,
+    SH4_REG_DR7_BANK = SH4_REG_FR14_BANK,
+    SH4_REG_FR15_BANK,
+
+    /* floating-point status/control register */
+    SH4_REG_FPSCR,
+
+    /* floating-point communication register */
+    SH4_REG_FPUL,
 
     /* status register */
     SH4_REG_SR,
@@ -256,6 +315,11 @@ typedef enum sh4_reg_idx {
 
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
+
+static_assert(SH4_REG_FR15 - SH4_REG_FR0 + 1 == 16,
+              "incorrect number of FPU registers");
+static_assert(SH4_REG_FR15_BANK - SH4_REG_FR0_BANK + 1 == 16,
+              "incorrect number of banked FPU registers");
 
 /*
  * for the purpose of these handlers, you may assume that the caller has

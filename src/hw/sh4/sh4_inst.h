@@ -1208,7 +1208,7 @@ void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst);
 
 #define DEF_FPU_HANDLER(name, mask, on_false, on_true) \
     DECL_FPU_HANDLER(name) {                           \
-        if (sh4->fpu.fpscr & (mask)) {                 \
+        if (sh4->reg[SH4_REG_FPSCR] & (mask)) {        \
             on_true(sh4, inst);                        \
         } else {                                       \
             on_false(sh4, inst);                       \

@@ -1202,7 +1202,9 @@ void sh4_inst_frchg(Sh4 *sh4, Sh4OpArgs inst) {
      * just let the operation go through so I can avoid branching.
      */
 
-    sh4->fpu.fpscr ^= SH4_FPSCR_FR_MASK;
+    sh4->reg[SH4_REG_FPSCR] ^= SH4_FPSCR_FR_MASK;
+    sh4_fpu_bank_switch(sh4);
+
     sh4_next_inst(sh4);
 }
 
@@ -1216,7 +1218,7 @@ void sh4_inst_fschg(Sh4 *sh4, Sh4OpArgs inst) {
      * just let the operation go through so I can avoid branching.
      */
 
-    sh4->fpu.fpscr ^= SH4_FPSCR_SZ_MASK;
+    sh4->reg[SH4_REG_FPSCR] ^= SH4_FPSCR_SZ_MASK;
     sh4_next_inst(sh4);
 }
 
@@ -3830,7 +3832,7 @@ void sh4_inst_binary_fmov_dr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_flds_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     float *src_reg = sh4_fpu_fr(sh4, inst.gen_reg);
 
-    memcpy(&sh4->fpu.fpul, src_reg, sizeof(sh4->fpu.fpul));
+    memcpy(sh4->reg + SH4_REG_FPUL, src_reg, sizeof(sh4->reg[SH4_REG_FPUL]));
 
     sh4_next_inst(sh4);
 }
@@ -3840,7 +3842,7 @@ void sh4_inst_binary_flds_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fsts_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float *dst_reg = sh4_fpu_fr(sh4, inst.gen_reg);
 
-    memcpy(dst_reg, &sh4->fpu.fpul, sizeof(*dst_reg));
+    memcpy(dst_reg, sh4->reg + SH4_REG_FPUL, sizeof(*dst_reg));
 
     sh4_next_inst(sh4);
 }
@@ -3895,7 +3897,7 @@ void sh4_inst_binary_fdiv_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_float_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float *dst_reg = sh4_fpu_fr(sh4, inst.gen_reg);
 
-    *dst_reg = (float)sh4->fpu.fpul;
+    *dst_reg = (float)sh4->reg[SH4_REG_FPUL];
 
     sh4_next_inst(sh4);
 }
@@ -3958,13 +3960,13 @@ void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val_int;
 
     sh4_next_inst(sh4);
-    sh4->fpu.fpscr &= ~SH4_FPSCR_CAUSE_MASK;
+    sh4->reg[SH4_REG_FPSCR] &= ~SH4_FPSCR_CAUSE_MASK;
 
     int round_mode = fegetround();
     fesetround(FE_TOWARDZERO);
 
     val_int = val;
-    memcpy(&sh4->fpu.fpul, &val_int, sizeof(sh4->fpu.fpul));
+    memcpy(sh4->reg + SH4_REG_FPUL, &val_int, sizeof(sh4->reg[SH4_REG_FPUL]));
 
     fesetround(round_mode);
 }
@@ -4023,12 +4025,12 @@ void sh4_inst_binary_fcnvds_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
      * instead
      */
     sh4_next_inst(sh4);
-    sh4->fpu.fpscr &= ~SH4_FPSCR_CAUSE_MASK;
+    sh4->reg[SH4_REG_FPSCR] &= ~SH4_FPSCR_CAUSE_MASK;
 
     double in_val = *sh4_fpu_dr(sh4, inst.dr_reg);
     float out_val = in_val;
 
-    memcpy(&sh4->fpu.fpul, &out_val, sizeof(sh4->fpu.fpul));
+    memcpy(sh4->reg + SH4_REG_FPUL, &out_val, sizeof(sh4->reg[SH4_REG_FPUL]));
 }
 
 // FCNVSD FPUL, DRn
@@ -4040,10 +4042,10 @@ void sh4_inst_binary_fcnvsd_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
      * instead
      */
     sh4_next_inst(sh4);
-    sh4->fpu.fpscr &= ~SH4_FPSCR_CAUSE_MASK;
+    sh4->reg[SH4_REG_FPSCR] &= ~SH4_FPSCR_CAUSE_MASK;
 
     float in_val;
-    memcpy(&in_val, &sh4->fpu.fpul, sizeof(in_val));
+    memcpy(&in_val, sh4->reg + SH4_REG_FPUL, sizeof(in_val));
     double out_val = in_val;
 
     *sh4_fpu_dr(sh4, inst.dr_reg) = out_val;
@@ -4054,7 +4056,7 @@ void sh4_inst_binary_fcnvsd_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
     double *dst_reg = sh4_fpu_dr(sh4, inst.dr_reg);
 
-    *dst_reg = (double)sh4->fpu.fpul;
+    *dst_reg = (double)sh4->reg[SH4_REG_FPUL];
 
     sh4_next_inst(sh4);
 }
@@ -4107,13 +4109,13 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val_int;
 
     sh4_next_inst(sh4);
-    sh4->fpu.fpscr &= ~SH4_FPSCR_CAUSE_MASK;
+    sh4->reg[SH4_REG_FPSCR] &= ~SH4_FPSCR_CAUSE_MASK;
 
     int round_mode = fegetround();
     fesetround(FE_TOWARDZERO);
 
     val_int = val_in;
-    memcpy(&sh4->fpu.fpul, &val_int, sizeof(sh4->fpu.fpul));
+    memcpy(sh4->reg + SH4_REG_FPUL, &val_int, sizeof(sh4->reg[SH4_REG_FPUL]));
 
     fesetround(round_mode);
 }
@@ -4129,7 +4131,8 @@ void sh4_inst_binary_lds_gen_fpscr(Sh4 *sh4, Sh4OpArgs inst) {
 // LDS Rm, FPUL
 // 0100mmmm01011010
 void sh4_inst_binary_gen_fpul(Sh4 *sh4, Sh4OpArgs inst) {
-    memcpy(&sh4->fpu.fpul, sh4_gen_reg(sh4, inst.gen_reg), sizeof(sh4->fpu.fpul));
+    memcpy(sh4->reg + SH4_REG_FPUL, sh4_gen_reg(sh4, inst.gen_reg),
+           sizeof(sh4->reg[SH4_REG_FPUL]));
 
     sh4_next_inst(sh4);
 }
@@ -4159,7 +4162,7 @@ void sh4_inst_binary_ldsl_indgeninc_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     if (sh4_read_mem(sh4, &val, *addr_reg, sizeof(val)) != 0)
         return;
 
-    memcpy(&sh4->fpu.fpul, &val, sizeof(sh4->fpu.fpul));
+    memcpy(sh4->reg + SH4_REG_FPUL, &val, sizeof(sh4->reg[SH4_REG_FPUL]));
 
     *addr_reg += 4;
 
@@ -4169,7 +4172,7 @@ void sh4_inst_binary_ldsl_indgeninc_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 // STS FPSCR, Rn
 // 0000nnnn01101010
 void sh4_inst_binary_sts_fpscr_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    *sh4_gen_reg(sh4, inst.gen_reg) = sh4->fpu.fpscr;
+    *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_FPSCR];
 
     sh4_next_inst(sh4);
 }
@@ -4177,7 +4180,8 @@ void sh4_inst_binary_sts_fpscr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // STS FPUL, Rn
 // 0000nnnn01011010
 void sh4_inst_binary_sts_fpul_gen(Sh4 *sh4, Sh4OpArgs inst) {
-    memcpy(sh4_gen_reg(sh4, inst.gen_reg), &sh4->fpu.fpul, sizeof(sh4->fpu.fpul));
+    memcpy(sh4_gen_reg(sh4, inst.gen_reg), sh4->reg + SH4_REG_FPUL,
+           sizeof(sh4->reg[SH4_REG_FPUL]));
 
     sh4_next_inst(sh4);
 }
@@ -4188,7 +4192,8 @@ void sh4_inst_binary_stsl_fpscr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4_write_mem(sh4, &sh4->fpu.fpscr, addr, sizeof(sh4->fpu.fpscr)) != 0)
+    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_FPSCR], addr,
+                      sizeof(sh4->reg[SH4_REG_FPSCR])) != 0)
         return;
 
     *addr_reg = addr;
@@ -4202,7 +4207,8 @@ void sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4_write_mem(sh4, &sh4->fpu.fpul, addr, sizeof(sh4->fpu.fpul)) != 0)
+    if (sh4_write_mem(sh4, sh4->reg + SH4_REG_FPUL, addr,
+                      sizeof(sh4->reg[SH4_REG_FPUL])) != 0)
         return;
 
     *addr_reg = addr;
