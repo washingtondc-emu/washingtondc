@@ -3960,7 +3960,7 @@ void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val_int;
 
     sh4_next_inst(sh4);
-    sh4->reg[SH4_REG_FPSCR] &= ~SH4_FPSCR_CAUSE_MASK;
+    sh4_fpu_clear_cause(sh4);
 
     int round_mode = fegetround();
     fesetround(FE_TOWARDZERO);
@@ -4025,7 +4025,7 @@ void sh4_inst_binary_fcnvds_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
      * instead
      */
     sh4_next_inst(sh4);
-    sh4->reg[SH4_REG_FPSCR] &= ~SH4_FPSCR_CAUSE_MASK;
+    sh4_fpu_clear_cause(sh4);
 
     double in_val = *sh4_fpu_dr(sh4, inst.dr_reg);
     float out_val = in_val;
@@ -4042,7 +4042,7 @@ void sh4_inst_binary_fcnvsd_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
      * instead
      */
     sh4_next_inst(sh4);
-    sh4->reg[SH4_REG_FPSCR] &= ~SH4_FPSCR_CAUSE_MASK;
+    sh4_fpu_clear_cause(sh4);
 
     float in_val;
     memcpy(&in_val, sh4->reg + SH4_REG_FPUL, sizeof(in_val));
@@ -4109,7 +4109,7 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val_int;
 
     sh4_next_inst(sh4);
-    sh4->reg[SH4_REG_FPSCR] &= ~SH4_FPSCR_CAUSE_MASK;
+    sh4_fpu_clear_cause(sh4);
 
     int round_mode = fegetround();
     fesetround(FE_TOWARDZERO);

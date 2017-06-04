@@ -87,7 +87,31 @@ extern "C" {
 
 // FPU exception cause
 #define SH4_FPSCR_CAUSE_SHIFT 12
-#define SH4_FPSCR_CAUSE_MASK (0x1f << SH4_FPSCR_CAUSE_SHIFT)
+#define SH4_FPSCR_CAUSE_MASK (0x3f << SH4_FPSCR_CAUSE_SHIFT)
+
+// FPU error
+#define SH4_FPSCR_CAUSE_E_SHIFT 17
+#define SH4_FPSCR_CAUSE_E_MASK (1 << SH4_FPSCR_CAUSE_E_SHIFT)
+
+// FPU invalid operation
+#define SH4_FPSCR_CAUSE_V_SHIFT 16
+#define SH4_FPSCR_CAUSE_V_MASK (1 << SH4_FPSCR_CAUSE_V_SHIFT)
+
+// FPU divide by zero
+#define SH4_FPSCR_CAUSE_Z_SHIFT 15
+#define SH4_FPSCR_CAUSE_Z_MASK (1 << SH4_FPSCR_CAUSE_Z_SHIFT)
+
+// FPU overflow
+#define SH4_FPSCR_CAUSE_O_SHIFT 14
+#define SH4_FPSCR_CAUSE_O_MASK (1 << SH4_FPSCR_CAUSE_O_SHIFT)
+
+// FPU underflow
+#define SH4_FPSCR_CAUSE_U_SHIFT 13
+#define SH4_FPSCR_CAUSE_U_MASK (1 << SH4_FPSCR_CAUSE_U_SHIFT)
+
+// FPU inexact
+#define SH4_FPSCR_CAUSE_I_SHIFT 12
+#define SH4_FPSCR_CAUSE_I_MASK (1 << SH4_FPSCR_CAUSE_I_SHIFT)
 
 // FPU Denormalization mode
 #define SH4_FPSCR_DN_SHIFT 18

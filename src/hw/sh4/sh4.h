@@ -163,6 +163,13 @@ reg32_t sh4_get_pc(Sh4 *sh4);
  */
 void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val);
 
+// clear the cause bits in the FPSCR reg
+static inline void sh4_fpu_clear_cause(Sh4 *sh4) {
+#ifndef SH4_FPU_FAST
+    sh4->reg[SH4_REG_FPSCR] &= ~SH4_FPSCR_CAUSE_MASK;
+#endif
+}
+
 // these four APIs are intended primarily for debuggers to use
 void sh4_get_regs(Sh4 *sh4, reg32_t reg_out[SH4_REGISTER_COUNT]);
 /* FpuReg sh4_get_fpu(Sh4 *sh4); */
