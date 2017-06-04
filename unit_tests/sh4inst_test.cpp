@@ -10578,6 +10578,8 @@ public:
             std::cout << "ERROR: while running " << cmd << std::endl;
             std::cout << "expected val is " << val_expect << std::endl;
             std::cout << "actual val is " << val_actual << std::endl;
+            std::cout << "src_val is " << src_val << std::endl;
+            std::cout << "reg_src is " << reg_src << std::endl;
             return 1;
         }
         return 0;

@@ -4161,7 +4161,7 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
      * should be done here.  I'm just going to implement this the naive way
      * instead
      */
-    double val_in = *sh4_fpu_dr(sh4, inst.dr_src);
+    double val_in = *sh4_fpu_dr(sh4, inst.dr_reg);
     uint32_t val_int;
 
     sh4_next_inst(sh4);
