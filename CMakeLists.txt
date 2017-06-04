@@ -32,6 +32,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # i need this for strdup and clock_gettime on Debian for some unknown reason
 add_definitions(-D_POSIX_C_SOURCE=200809L)
 
+# While I prefer to avoid using GNU-specific stuff when possible, in general
+# I don't give a damn about portability to Windows
+add_definitions(-D_GNU_SOURCE)
+
 enable_testing()
 
 find_package(PkgConfig REQUIRED)

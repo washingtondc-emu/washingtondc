@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <assert.h>
 #include <fenv.h>
 #include <limits.h>
 #include <string.h>
@@ -42,6 +43,16 @@
 
 DEF_ERROR_STRING_ATTR(opcode_format)
 DEF_ERROR_STRING_ATTR(opcode_name)
+
+#ifndef SH4_FPU_FAST
+/*
+ * set the FPU's invalid operation flag in FPSCR and maybe raise an exception
+ *
+ * dst is the destination register index for the operation.
+ * It will be set to qNaN if the exceptions are disabled.
+ */
+static void sh4_fr_invalid(Sh4 *sh4, unsigned dst_reg);
+#endif
 
 static InstOpcode const* sh4_decode_inst_slow(inst_t inst);
 
@@ -1057,6 +1068,24 @@ void sh4_compile_instruction(Sh4 *sh4, struct InstOpcode *op) {
 
     op->mask = mask;
     op->val = val;
+}
+
+#define SH4_FPU_QNAN 0x7fbfffff
+
+static void sh4_fr_invalid(Sh4 *sh4, unsigned dst_reg) {
+    assert(dst_reg >= SH4_REG_FR0 && dst_reg <= SH4_REG_FR15);
+
+    sh4->reg[SH4_REG_FPSCR] |= (SH4_FPSCR_FLAG_V_MASK | SH4_FPSCR_CAUSE_V_MASK);
+
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_ENABLE_V_MASK)
+        sh4_set_exception(sh4, SH4_EXCP_FPU);
+    else
+        sh4->reg[dst_reg] = SH4_FPU_QNAN;
+}
+
+static void sh4_fpu_error(Sh4 *sh4) {
+    sh4->reg[SH4_REG_FPSCR] |= SH4_FPSCR_CAUSE_E_MASK;
+    sh4_set_exception(sh4, SH4_EXCP_FPU);
 }
 
 // RTS
@@ -3914,10 +3943,37 @@ void sh4_inst_trinary_fmac_fr0_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 // FMUL FRm, FRn
 // 1111nnnnmmmm0010
 void sh4_inst_binary_fmul_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnnnmmmm0010");
-    error_set_opcode_name("FMUL FRm, FRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+    float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
+    float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
+
+    float src = *srcp;
+    float dst = *dstp;
+
+#ifndef SH4_FPU_FAST
+    if (issignaling(src) || issignaling(dst)) {
+        sh4_fr_invalid(sh4, inst.fr_dst);
+        return;
+    }
+
+    int src_class = fpclassify(src);
+    int dst_class = fpclassify(dst);
+
+    if (src_class == FP_SUBNORMAL || dst_class == FP_SUBNORMAL) {
+        sh4_fpu_error(sh4);
+        return;
+    }
+
+    if ((src_class == FP_ZERO && dst_class == FP_INFINITE) ||
+        (src_class == FP_INFINITE && dst_class == FP_ZERO)) {
+        sh4_fr_invalid(sh4, inst.fr_dst);
+        return;
+    }
+#endif
+
+    *dstp = src * dst;
 }
 
 // FNEG FRn
