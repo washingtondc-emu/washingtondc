@@ -3888,10 +3888,38 @@ void sh4_inst_unary_fabs_fr(Sh4 *sh4, Sh4OpArgs inst) {
 // FADD FRm, FRn
 // 1111nnnnmmmm0000
 void sh4_inst_binary_fadd_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnnnmmmm0000");
-    error_set_opcode_name("FADD FRm, FRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+    float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
+    float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
+
+    float src = *srcp;
+    float dst = *dstp;
+
+#ifndef SH4_FPU_FAST
+
+    if (issignaling(src) || issignaling(dst)) {
+        sh4_fr_invalid(sh4, inst.fr_dst);
+        return;
+    }
+
+    int src_class = fpclassify(src);
+    int dst_class = fpclassify(dst);
+
+    if (src_class == FP_SUBNORMAL || dst_class == FP_SUBNORMAL) {
+        sh4_fpu_error(sh4);
+        return;
+    }
+
+    if (src_class == FP_INFINITE && dst_class == FP_INFINITE) {
+        sh4_fpu_error(sh4);
+        return;
+    }
+
+#endif
+
+    *dstp = dst + src;
 }
 
 // FCMP/EQ FRm, FRn
