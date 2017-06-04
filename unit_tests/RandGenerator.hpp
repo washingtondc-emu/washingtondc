@@ -58,11 +58,14 @@ public:
         return (T)rand();
     }
 
-    double pick_double(double max = std::numeric_limits<double>::max(),
+    double pick_double(double min = -(1024.0 * 1024.0),
+                       double max = (1024.0 * 1024.0),
                        addr32_t addr = 0) {
         T tmp = pick_val(addr);
 
-        return (double(tmp) / double(std::numeric_limits<T>::max())) * max;
+        double range = max - min;
+
+        return (double(tmp) / double(range)) * range + min;
     }
 
     /*
