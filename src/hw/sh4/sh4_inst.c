@@ -3915,10 +3915,45 @@ void sh4_inst_binary_fcmpgt_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 // FDIV FRm, FRn
 // 1111nnnnmmmm0011
 void sh4_inst_binary_fdiv_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnnnmmmm0011");
-    error_set_opcode_name("FDIV FRm, FRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+    float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
+    float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
+
+    float src = *srcp;
+    float dst = *dstp;
+
+#ifndef SH4_FPU_FAST
+    if (issignaling(src) || issignaling(dst)) {
+        sh4_fr_invalid(sh4, inst.fr_dst);
+        return;
+    }
+
+    int src_class = fpclassify(src);
+    int dst_class = fpclassify(dst);
+
+    if (src_class == FP_SUBNORMAL || dst_class == FP_SUBNORMAL) {
+        sh4_fpu_error(sh4);
+        return;
+    }
+
+    if (src_class == FP_ZERO && dst_class == FP_ZERO) {
+        sh4_fr_invalid(sh4, inst.fr_dst);
+        return;
+    }
+
+    if (src_class == FP_ZERO) {
+        sh4->reg[SH4_REG_FPSCR] |=
+            (SH4_FPSCR_FLAG_Z_MASK | SH4_FPSCR_CAUSE_Z_MASK);
+        if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_ENABLE_Z_MASK) {
+            sh4_set_exception(sh4, SH4_EXCP_FPU);
+            return;
+        }
+    }
+#endif
+
+    *dstp = dst / src;
 }
 
 // FLOAT FPUL, FRn

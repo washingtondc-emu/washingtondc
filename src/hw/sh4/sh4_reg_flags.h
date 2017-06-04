@@ -87,7 +87,7 @@ extern "C" {
 
 // FPU divide by zero
 #define SH4_FPSCR_FLAG_Z_SHIFT 5
-#define SH4_FPSCR_FLAG_Z_MASK (1 << SH4_FPSCR_FLAG_Z_MASK)
+#define SH4_FPSCR_FLAG_Z_MASK (1 << SH4_FPSCR_FLAG_Z_SHIFT)
 
 // FPU overflow
 #define SH4_FPSCR_FLAG_O_SHIFT 4
