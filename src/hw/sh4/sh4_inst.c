@@ -4060,10 +4060,8 @@ void sh4_inst_binary_fmul_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 // FNEG FRn
 // 1111nnnn01001101
 void sh4_inst_unary_fneg_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnnn01001101");
-    error_set_opcode_name("FNEG FRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    *sh4_fpu_fr(sh4, inst.fr_reg) = -*sh4_fpu_fr(sh4, inst.fr_reg);
+    sh4_next_inst(sh4);
 }
 
 // FSQRT FRn
