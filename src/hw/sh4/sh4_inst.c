@@ -33,6 +33,7 @@
 #include "sh4_ocache.h"
 #include "sh4_mmu.h"
 #include "sh4.h"
+#include "sh4_tbl.h"
 #include "sh4_excp.h"
 
 #ifdef ENABLE_DEBUGGER
@@ -954,6 +955,11 @@ static struct InstOpcode opcode_list[] = {
     // FTRV XMTRX, FVn - multiple vector by matrix
     { "1111nn0111111101", &sh4_inst_binary_fitrv_mxtrx_fv, false,
       SH4_GROUP_FE, 1 },
+
+    // FSCA FPUL, DRn - sine/cosine table lookup
+    // TODO: the issue cycle count here might be wrong, I couldn't find that
+    //       value for this instruction
+    { "1111nnn011111101", FPU_HANDLER(fsca_fpu), false, SH4_GROUP_FE, 1 },
 
     { NULL }
 };
@@ -4255,6 +4261,26 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     fesetround(round_mode);
 }
 
+// FSCA FPUL, DRn
+// 1111nnn011111101
+void sh4_inst_binary_fsca_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
+
+    // TODO: should I really be calling sh4_fpu_clear_cause here ?
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+#ifndef SH4_FPU_FAST
+    sh4->reg[SH4_REG_FPSCR] |= (SH4_FPSCR_CAUSE_I_MASK | SH4_FPSCR_FLAG_I_MASK);
+#endif
+
+    unsigned sin_reg_no = inst.dr_reg * 2;
+    unsigned cos_reg_no = sin_reg_no + 1;
+    unsigned angle = sh4->reg[SH4_REG_FPUL] & 0xffff;
+
+    *sh4_fpu_fr(sh4, sin_reg_no) = sh4_fsca_sin_tbl[angle];
+    *sh4_fpu_fr(sh4, cos_reg_no) = sh4_fsca_cos_tbl[angle];
+}
+
 // LDS Rm, FPSCR
 // 0100mmmm01101010
 void sh4_inst_binary_lds_gen_fpscr(Sh4 *sh4, Sh4OpArgs inst) {
@@ -4648,3 +4674,9 @@ DEF_FPU_HANDLER(fcnvds_fpu, SH4_FPSCR_PR_MASK,
 DEF_FPU_HANDLER(fcnvsd_fpu, SH4_FPSCR_PR_MASK,
                 sh4_inst_invalid,
                 sh4_inst_binary_fcnvsd_fpul_dr);
+
+// FSCA FPUL, DRn
+// 1111nnn011111101
+DEF_FPU_HANDLER(fsca_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_binary_fsca_fpul_dr,
+                sh4_inst_invalid);

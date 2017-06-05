@@ -1346,6 +1346,10 @@ DECL_FPU_HANDLER(fcnvds_fpu);
 // 1111nnn010101101
 DECL_FPU_HANDLER(fcnvsd_fpu);
 
+// FSCA FPUL, DRn
+// 1111nnn011111101
+DECL_FPU_HANDLER(fsca_fpu);
+
 #ifdef __cplusplus
 }
 #endif
