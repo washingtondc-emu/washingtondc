@@ -1419,6 +1419,11 @@ PtrnList get_patterns() {
     // 1111001111111101
     list.push_back(PtrnPtr(new NoArgOperator<INST_PTRN(frchg), 0xf3fd>));
 
+    // FSCA FPUL, DRn
+    // 1111nnn011111101
+    list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(fsca),
+                           Ptrn_FpulReg, Ptrn_DrReg, 0xf0fd, 0xf1ff, 0, 9>));
+
     return list;
 }
 

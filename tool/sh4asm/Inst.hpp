@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -161,6 +161,7 @@ DECL_INST_PTRN(fmov, "FMOV");
 DECL_INST_PTRN(fmovs, "FMOV.S");
 DECL_INST_PTRN(fmul, "FMUL");
 DECL_INST_PTRN(fneg, "FNEG");
+DECL_INST_PTRN(fsca, "FSCA");
 DECL_INST_PTRN(frchg, "FRCHG");
 DECL_INST_PTRN(fschg, "FSCHG");
 DECL_INST_PTRN(fsqrt, "FSQRT");

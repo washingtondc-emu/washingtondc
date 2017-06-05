@@ -322,6 +322,7 @@ char const *insts_to_test[] = {
     "FTRV XMTRX, FV<2,4>",
     "FRCHG",
     "FSCHG",
+    "FSCA FPUL, DR<3,2>",
     NULL
 };
 
