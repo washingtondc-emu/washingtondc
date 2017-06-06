@@ -250,22 +250,22 @@ static inline float *sh4_fpu_fr(Sh4 *sh4, unsigned reg_no) {
     return (float*)(sh4->reg + SH4_REG_FR0 + reg_no);
 }
 
-static inline float *sh4_bank_fpu_fr(Sh4 *sh4, unsigned reg_no) {
+static inline float *sh4_fpu_xf(Sh4 *sh4, unsigned reg_no) {
     assert(reg_no < SH4_N_FLOAT_REGS);
 
-    return (float*)(sh4->reg + SH4_REG_FR0_BANK + reg_no);
+    return (float*)(sh4->reg + SH4_REG_XF0 + reg_no);
 }
 
 static inline float *sh4_bank0_fpu_fr(Sh4 *sh4, unsigned reg_no) {
     if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_FR_MASK)
-        return sh4_bank_fpu_fr(sh4, reg_no);
+        return sh4_fpu_xf(sh4, reg_no);
     return sh4_fpu_fr(sh4, reg_no);
 }
 
 static inline float *sh4_bank1_fpu_fr(Sh4 *sh4, unsigned reg_no) {
     if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_FR_MASK)
         return sh4_fpu_fr(sh4, reg_no);
-    return sh4_bank_fpu_fr(sh4, reg_no);
+    return sh4_fpu_xf(sh4, reg_no);
 }
 
 /*

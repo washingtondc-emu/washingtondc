@@ -9743,7 +9743,7 @@ public:
             if (val_bank1[idx] != *sh4_bank1_fpu_fr(cpu, idx)) {
                 std::cout << "While testing FRCHG: bank1, register " << idx <<
                     " was expected to be " << val_bank1[idx] << "; the " <<
-                    "actual value is " << cpu->reg[SH4_REG_FR0_BANK + idx] <<
+                    "actual value is " << cpu->reg[SH4_REG_XF0 + idx] <<
                     std::endl;
                 ret_val = 1;
             }

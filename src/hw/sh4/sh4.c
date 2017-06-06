@@ -94,7 +94,7 @@ void sh4_on_hard_reset(Sh4 *sh4) {
     unsigned idx;
     for (idx = 0; idx < SH4_N_FLOAT_REGS; idx++) {
         *sh4_fpu_fr(sh4, idx) = 0.0f;
-        *sh4_bank_fpu_fr(sh4, idx) = 0.0f;
+        *sh4_fpu_xf(sh4, idx) = 0.0f;
     }
 
     sh4->delayed_branch = false;
@@ -278,8 +278,8 @@ void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr) {
 void sh4_fpu_bank_switch(Sh4 *sh4) {
     uint32_t tmp[SH4_N_FLOAT_REGS];
     memcpy(tmp, sh4->reg + SH4_REG_FR0, sizeof(tmp));
-    memcpy(sh4->reg + SH4_REG_FR0, sh4->reg + SH4_REG_FR0_BANK, sizeof(tmp));
-    memcpy(sh4->reg + SH4_REG_FR0_BANK, tmp, sizeof(tmp));
+    memcpy(sh4->reg + SH4_REG_FR0, sh4->reg + SH4_REG_XF0, sizeof(tmp));
+    memcpy(sh4->reg + SH4_REG_XF0, tmp, sizeof(tmp));
 }
 
 void sh4_fpu_bank_switch_maybe(Sh4 *sh4, reg32_t old_fpscr, reg32_t new_fpscr) {
