@@ -27,6 +27,7 @@
 #include <sstream>
 #include <limits>
 #include <cfenv>
+#include <cmath>
 
 #include "BaseException.hpp"
 #include "memory.h"
@@ -11350,6 +11351,54 @@ public:
 
         return failure;
     }
+
+    // FSQRT FRn
+    // 1111nnnn01101101
+    static int do_unary_fsqrt_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                unsigned reg_no, float in_val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FSQRT FR" << reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *sh4_fpu_fr(cpu, reg_no) = in_val;
+        sh4_exec_inst(cpu);
+
+        float res = *sh4_fpu_fr(cpu, reg_no);
+        float val_expect = sqrt(in_val);
+
+        if (res != val_expect) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val_expect << std::endl;
+            std::cout << "actual val is " << res << std::endl;
+            std::cout << "reg_no is " << reg_no << std::endl;
+            std::cout << "input value is " << in_val << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int unary_fsqrt_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                              RandGen32 *randgen32) {
+        unsigned reg_no;
+        int failure = 0;
+
+        for (reg_no = 0; reg_no < 16; reg_no++) {
+            failure = failure ||
+                do_unary_fsqrt_fr(cpu, bios, mem, reg_no,
+                                  randgen32->pick_double(0.0, 1024.0 * 1024.0));
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -11578,6 +11627,7 @@ struct inst_test {
     { "unary_fneg_fr",  &Sh4InstTests::unary_fneg_fr },
     { "binary_ftrv_fmtrx_fv", &Sh4InstTests::binary_ftrv_fmtrx_fv },
     { "binary_fmac_fr0_fr_fr", &Sh4InstTests::binary_fmac_fr0_fr_fr },
+    { "unary_fsqrt_fr", &Sh4InstTests::unary_fsqrt_fr },
     { NULL }
 };
 
