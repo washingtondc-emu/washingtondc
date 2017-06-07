@@ -11217,6 +11217,71 @@ public:
 
         return failure;
     }
+
+    // FTRV XMTRX, FVn - multiple vector by matrix
+    // 1111nn0111111101
+    static int do_binary_ftrv_fmtrx_fv(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                       unsigned fv_no, float const vec_in[4],
+                                       float const mat_in[16]) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FTRV XMTRX, FV" << fv_no*4 << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        memcpy(cpu->reg + SH4_REG_FR0 + fv_no * 4, vec_in, sizeof(float) * 4);
+        memcpy(cpu->reg + SH4_REG_XMTRX, mat_in, sizeof(float) * 16);
+
+        // *sh4_fpu_fr(cpu, reg_no) = in_val;
+        sh4_exec_inst(cpu);
+
+        float const *res = (float const*)(cpu->reg + (SH4_REG_FR0 + fv_no * 4));
+        // float val_expect = -in_val;
+        for (unsigned elem = 0; elem < 4; elem++) {
+            float val_expect =
+                mat_in[0 * 4 + elem] * vec_in[0] +
+                mat_in[1 * 4 + elem] * vec_in[1] +
+                mat_in[2 * 4 + elem] * vec_in[2] +
+                mat_in[3 * 4 + elem] * vec_in[3];
+
+            if (val_expect != res[elem]) {
+                std::cout << "ERROR while running " << cmd << std::endl;
+                std::cout << "expected val is " << val_expect << std::endl;
+                std::cout << "actual val is " << res[elem] << std::endl;
+                std::cout << "row number is " << elem << std::endl;
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    static int binary_ftrv_fmtrx_fv(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                    RandGen32 *randgen32) {
+        int failure = 0;
+        float mat[16];
+        float vec[4];
+
+        for (unsigned idx = 0; idx < 16; idx++)
+            mat[idx] = randgen32->pick_double();
+
+        for (unsigned idx = 0; idx < 4; idx++)
+            vec[idx] = randgen32->pick_double();
+
+        for (unsigned reg_no = 0; reg_no < 4; reg_no++) {
+            failure = failure ||
+                do_binary_ftrv_fmtrx_fv(cpu, bios, mem, reg_no, vec, mat);
+
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -11443,6 +11508,7 @@ struct inst_test {
     { "binary_fadd_fr_fr", &Sh4InstTests::binary_fadd_fr_fr },
     { "binary_fcmpgt_fr_fr", &Sh4InstTests::binary_fcmpgt_fr_fr },
     { "unary_fneg_fr",  &Sh4InstTests::unary_fneg_fr },
+    { "binary_ftrv_fmtrx_fv", &Sh4InstTests::binary_ftrv_fmtrx_fv },
     { NULL }
 };
 
