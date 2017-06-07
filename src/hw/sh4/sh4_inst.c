@@ -4081,10 +4081,17 @@ void sh4_inst_unary_fneg_fr(Sh4 *sh4, Sh4OpArgs inst) {
 // FSQRT FRn
 // 1111nnnn01101101
 void sh4_inst_unary_fsqrt_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnnn01101101");
-    error_set_opcode_name("FSQRT FRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+    // TODO: check for negative input and raise an FPU exception when it happens
+
+    float in;
+    memcpy(&in, sh4->reg + SH4_REG_FR0 + inst.fr_reg, sizeof(in));
+
+    float out = sqrt(in);
+
+    memcpy(sh4->reg + SH4_REG_FR0 + inst.fr_reg, &out, sizeof(out));
 }
 
 // FSUB FRm, FRn
