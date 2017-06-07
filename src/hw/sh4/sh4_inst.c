@@ -45,7 +45,7 @@
 DEF_ERROR_STRING_ATTR(opcode_format)
 DEF_ERROR_STRING_ATTR(opcode_name)
 
-#ifndef SH4_FPU_FAST
+#ifdef SH4_FPU_PEDANTIC
 /*
  * set the FPU's invalid operation flag in FPSCR and maybe raise an exception
  *
@@ -3903,7 +3903,7 @@ void sh4_inst_binary_fadd_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float src = *srcp;
     float dst = *dstp;
 
-#ifndef SH4_FPU_FAST
+#ifdef SH4_FPU_PEDANTIC
 
     if (issignaling(src) || issignaling(dst)) {
         sh4_fr_invalid(sh4, inst.fr_dst);
@@ -3949,7 +3949,7 @@ void sh4_inst_binary_fcmpgt_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float src = *srcp;
     float dst = *dstp;
 
-#ifndef SH4_FPU_FAST
+#ifdef SH4_FPU_PEDANTIC
     int src_class = fpclassify(src);
     int dst_class = fpclassify(dst);
 
@@ -3976,7 +3976,7 @@ void sh4_inst_binary_fdiv_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float src = *srcp;
     float dst = *dstp;
 
-#ifndef SH4_FPU_FAST
+#ifdef SH4_FPU_PEDANTIC
     if (issignaling(src) || issignaling(dst)) {
         sh4_fr_invalid(sh4, inst.fr_dst);
         return;
@@ -4039,7 +4039,7 @@ void sh4_inst_binary_fmul_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float src = *srcp;
     float dst = *dstp;
 
-#ifndef SH4_FPU_FAST
+#ifdef SH4_FPU_PEDANTIC
     if (issignaling(src) || issignaling(dst)) {
         sh4_fr_invalid(sh4, inst.fr_dst);
         return;
@@ -4269,7 +4269,7 @@ void sh4_inst_binary_fsca_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
 
-#ifndef SH4_FPU_FAST
+#ifdef SH4_FPU_PEDANTIC
     sh4->reg[SH4_REG_FPSCR] |= (SH4_FPSCR_CAUSE_I_MASK | SH4_FPSCR_FLAG_I_MASK);
 #endif
 
@@ -4474,7 +4474,7 @@ void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
 
-#ifndef SH4_FPU_FAST
+#ifdef SH4_FPU_PEDANTIC
     if (sh4->reg[SH4_REG_FPSCR] & (SH4_FPSCR_ENABLE_V_MASK |
                                    SH4_FPSCR_ENABLE_O_MASK |
                                    SH4_FPSCR_ENABLE_U_MASK |
