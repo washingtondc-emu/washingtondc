@@ -4021,10 +4021,18 @@ void sh4_inst_binary_float_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
 // FMAC FR0, FRm, FRn
 // 1111nnnnmmmm1110
 void sh4_inst_trinary_fmac_fr0_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnnnmmmm1110");
-    error_set_opcode_name("FMAC FR0, FRm, FRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+    float in0, in1, in2;
+
+    memcpy(&in0, sh4->reg + SH4_REG_FR0, sizeof(in0));
+    memcpy(&in1, sh4->reg + SH4_REG_FR0 + inst.fr_src, sizeof(in1));
+    memcpy(&in2, sh4->reg + SH4_REG_FR0 + inst.fr_dst, sizeof(in2));
+
+    in2 = in0 * in1 + in2;
+
+    memcpy(sh4->reg + SH4_REG_FR0 + inst.fr_dst, &in2, sizeof(in2));
 }
 
 // FMUL FRm, FRn
