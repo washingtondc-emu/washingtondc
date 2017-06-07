@@ -4470,10 +4470,76 @@ void sh4_inst_binary_fipr_fv_fv(Sh4 *sh4, Sh4OpArgs inst) {
 // FTRV XMTRX, FVn - multiple vector by matrix
 // 1111nn0111111101
 void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst) {
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nn0111111101");
-    error_set_opcode_name("FTRV MXTRX, FVn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+#ifndef SH4_FPU_FAST
+    if (sh4->reg[SH4_REG_FPSCR] & (SH4_FPSCR_ENABLE_V_MASK |
+                                   SH4_FPSCR_ENABLE_O_MASK |
+                                   SH4_FPSCR_ENABLE_U_MASK |
+                                   SH4_FPSCR_ENABLE_I_MASK)) {
+        sh4_set_exception(sh4, SH4_EXCP_FPU);
+        return;
+    }
+    /*
+     * TODO:
+     * There's quite alot of error-checking/exception-raising/flag-setting to
+     * be done here.  For now I'm committing without it becuase it looks like a
+     * real headache to write, and I'm honestly of the opinion that going this
+     * deep with the pedantry is a waste of time anyways.
+     */
+#endif
+
+    unsigned reg_idx = inst.fv_reg * 4 + SH4_REG_FR0;
+    float tmp[4];
+    memcpy(tmp, sh4->reg + reg_idx, sizeof(tmp));
+
+    float tmp_out[4];
+
+    float row0[4] = {
+        *(float*)(sh4->reg+SH4_REG_XF0),
+        *(float*)(sh4->reg+SH4_REG_XF4),
+        *(float*)(sh4->reg+SH4_REG_XF8),
+        *(float*)(sh4->reg+SH4_REG_XF12)
+    };
+    float row1[4] = {
+        *(float*)(sh4->reg+SH4_REG_XF1),
+        *(float*)(sh4->reg+SH4_REG_XF5),
+        *(float*)(sh4->reg+SH4_REG_XF9),
+        *(float*)(sh4->reg+SH4_REG_XF13)
+    };
+    float row2[4] = {
+        *(float*)(sh4->reg+SH4_REG_XF2),
+        *(float*)(sh4->reg+SH4_REG_XF6),
+        *(float*)(sh4->reg+SH4_REG_XF10),
+        *(float*)(sh4->reg+SH4_REG_XF14)
+    };
+    float row3[4] = {
+        *(float*)(sh4->reg+SH4_REG_XF3),
+        *(float*)(sh4->reg+SH4_REG_XF7),
+        *(float*)(sh4->reg+SH4_REG_XF11),
+        *(float*)(sh4->reg+SH4_REG_XF15)
+    };
+
+    tmp_out[0] = tmp[0] * row0[0] +
+        tmp[1] * row0[1] +
+        tmp[2] * row0[2] +
+        tmp[3] * row0[3];
+    tmp_out[1] = tmp[0] * row1[0] +
+        tmp[1] * row1[1] +
+        tmp[2] * row1[2] +
+        tmp[3] * row1[3];
+    tmp_out[2] = tmp[0] * row2[0] +
+        tmp[1] * row2[1] +
+        tmp[2] * row2[2] +
+        tmp[3] * row2[3];
+    tmp_out[3] = tmp[0] * row3[0] +
+        tmp[1] * row3[1] +
+        tmp[2] * row3[2] +
+        tmp[3] * row3[3];
+
+    memcpy(sh4->reg + reg_idx, tmp_out, sizeof(tmp_out));
 }
 
 void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
