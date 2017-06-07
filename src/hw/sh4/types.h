@@ -23,6 +23,7 @@
 #ifndef TYPES_H_
 #define TYPES_H_
 
+#include <assert.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -33,6 +34,9 @@ typedef uint32_t reg32_t;
 typedef uint32_t addr32_t;
 typedef uint32_t page_no_t;
 typedef uint16_t inst_t; // instruction
+
+static_assert(sizeof(reg32_t) == sizeof(float),
+              "cannot fit a float into a reg32_t");
 
 #ifdef __cplusplus
 }
