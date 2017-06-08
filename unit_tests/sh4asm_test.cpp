@@ -323,6 +323,7 @@ char const *insts_to_test[] = {
     "FRCHG",
     "FSCHG",
     "FSCA FPUL, DR<3,2>",
+    "FSRRA FR<4>",
     NULL
 };
 
