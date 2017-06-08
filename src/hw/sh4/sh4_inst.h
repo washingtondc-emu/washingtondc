@@ -1184,6 +1184,10 @@ void sh4_inst_binary_fipr_fv_fv(Sh4 *sh4, Sh4OpArgs inst);
 // 1111nn0111111101
 void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst);
 
+// FSRRA FRn
+// 1111nnnn01111101
+void sh4_inst_unary_fsrra_frn(Sh4  *sh4, Sh4OpArgs inst);
+
 /*
  * fake opcode used for implementing softbreaks and errors.
  *
@@ -1349,6 +1353,10 @@ DECL_FPU_HANDLER(fcnvsd_fpu);
 // FSCA FPUL, DRn
 // 1111nnn011111101
 DECL_FPU_HANDLER(fsca_fpu);
+
+// FSRRA FRn
+// 1111nnnn01111101
+DECL_FPU_HANDLER(fsrra_fpu);
 
 #ifdef __cplusplus
 }

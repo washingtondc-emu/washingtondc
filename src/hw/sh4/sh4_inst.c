@@ -961,6 +961,11 @@ static struct InstOpcode opcode_list[] = {
     //       value for this instruction
     { "1111nnn011111101", FPU_HANDLER(fsca_fpu), false, SH4_GROUP_FE, 1 },
 
+    // FSRRA FRn
+    // 1111nnnn01111101
+    // TODO: the issue cycle for this opcode might be wrong as well
+    { "1111nnnn01111101", FPU_HANDLER(fsrra_fpu), false, SH4_GROUP_FE, 1 },
+
     { NULL }
 };
 
@@ -4582,6 +4587,38 @@ void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
 #endif /* ifdef DBG_EXIT_ON_UNDEFINED_OPCODE */
 }
 
+// FSRRA FRn
+// 1111nnnn01111101
+void sh4_inst_unary_fsrra_frn(Sh4  *sh4, Sh4OpArgs inst) {
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+    float *srcp = sh4_fpu_fr(sh4, inst.fr_reg);
+    float src = *srcp;
+
+#ifdef SH4_FPU_PEDANTIC
+    if ((src < 0.0f) || issignaling(src)) {
+        sh4_fr_invalid(sh4, inst.fr_dst);
+        return;
+    }
+
+    int class = fpclassify(src);
+
+    if (class == FP_SUBNORMAL) {
+        // TODO: do I raise an exception here?
+        sh4->reg[SH4_REG_FPSCR] |= (SH4_FPSCR_CAUSE_E_MASK |
+                                    SH4_FPSCR_FLAG_E_MASK);
+        return;
+    }
+
+    sh4->reg[SH4_REG_FPSCR] |= (SH4_FPSCR_ENABLE_I_MASK | SH4_FPSCR_CAUSE_I_MASK);
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_ENABLE_I_MASK)
+        sh4_set_exception(sh4, SH4_EXCP_FPU);
+#endif
+
+    *srcp = 1.0 / sqrt(src);
+}
+
 // TODO: what is the proper behavior when the PR bit is set?
 // FLDI0 FRn
 // 1111nnnn10001101
@@ -4761,3 +4798,8 @@ DEF_FPU_HANDLER(fcnvsd_fpu, SH4_FPSCR_PR_MASK,
 DEF_FPU_HANDLER(fsca_fpu, SH4_FPSCR_PR_MASK,
                 sh4_inst_binary_fsca_fpul_dr,
                 sh4_inst_invalid);
+
+// FSRRA FRn
+// 1111nnnn01111101
+DEF_FPU_HANDLER(fsrra_fpu, SH4_FPSCR_PR_MASK,
+                sh4_inst_unary_fsrra_frn, sh4_inst_invalid);
