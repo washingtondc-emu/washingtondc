@@ -11564,6 +11564,73 @@ public:
 
         return failure;
     }
+
+    // FIPR FVm, FVn - vector dot product
+    // 1111nnmm11101101
+    static int do_binary_fipr_fv_fv(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                    unsigned fv_src, unsigned fv_dst,
+                                    float const vec1[4], float const vec2[4]) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FIPR FV" << (fv_src*4) << ", FV" << (fv_dst*4) << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        memcpy(cpu->reg + SH4_REG_FR0 + fv_src * 4, vec1, sizeof(float) * 4);
+        memcpy(cpu->reg + SH4_REG_FR0 + fv_dst * 4, vec2, sizeof(float) * 4);
+
+        sh4_exec_inst(cpu);
+
+        float const *res = (float const*)(cpu->reg + (SH4_REG_FR0 + fv_dst * 4));
+        float val_expect = vec1[0] * vec2[0] +
+            vec1[1] * vec2[1] +
+            vec1[2] * vec2[2] +
+            vec1[3] * vec2[3];
+
+        if (val_expect != res[3]) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected val is " << val_expect << std::endl;
+            std::cout << "actual val is " << res[3] << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int binary_fipr_fv_fv(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
+        int failure = 0;
+        float vec1[4];
+        float vec2[4];
+
+        for (unsigned reg_src = 0; reg_src < 4; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 4; reg_dst++) {
+                for (unsigned idx = 0; idx < 4; idx++)
+                    vec1[idx] = randgen32->pick_double();
+
+                for (unsigned idx = 0; idx < 4; idx++) {
+                    if (reg_src == reg_dst)
+                        vec2[idx] = vec1[idx];
+                    else
+                        vec2[idx] = randgen32->pick_double();
+                }
+
+                for (unsigned reg_no = 0; reg_no < 4; reg_no++) {
+                    failure = failure ||
+                        do_binary_fipr_fv_fv(cpu, bios, mem,
+                                             reg_src, reg_dst, vec1, vec2);
+                }
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -11796,6 +11863,7 @@ struct inst_test {
     { "unary_fsrra_fr", &Sh4InstTests::unary_fsrra_fr },
     { "binary_fcmpeq_fr_fr", &Sh4InstTests::binary_fcmpeq_fr_fr },
     { "binary_fsub_fr_fr", &Sh4InstTests::binary_fsub_fr_fr },
+    { "binary_fipr_fv_fv", &Sh4InstTests::binary_fipr_fv_fv },
     { NULL }
 };
 
