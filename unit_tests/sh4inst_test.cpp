@@ -11508,6 +11508,62 @@ public:
 
         return failure;
     }
+
+    // FSUB FRm, FRn
+    // 1111nnnnmmmm0001
+    static int do_binary_fsub_fr_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                    unsigned src_reg_no, unsigned dst_reg_no,
+                                    float src, float dst) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FSUB FR" << src_reg_no << ", FR" << dst_reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *sh4_fpu_fr(cpu, src_reg_no) = src;
+        *sh4_fpu_fr(cpu, dst_reg_no) = dst;
+        sh4_exec_inst(cpu);
+
+        float actual_val = *sh4_fpu_fr(cpu, dst_reg_no);
+        float expect_val = dst - src;
+        if (actual_val != expect_val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected value of FR" << dst_reg_no << " is " <<
+                expect_val << std::endl;
+            std::cout << "actual value is " << actual_val << std::endl;
+            std::cout << "inputs are are " << src << " and " << dst <<
+                std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_fsub_fr_fr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned src = 0; src < 16; src++) {
+            for (unsigned dst = 0; dst < 16; dst++) {
+                float src_val, dst_val;
+                src_val = randgen32->pick_double();
+                if (src == dst)
+                    dst_val = src_val;
+                else
+                    dst_val = randgen32->pick_double();
+                failure = failure ||
+                    do_binary_fsub_fr_fr(cpu, bios, mem, src, dst,
+                                         src_val, dst_val);
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -11739,6 +11795,7 @@ struct inst_test {
     { "unary_fsqrt_fr", &Sh4InstTests::unary_fsqrt_fr },
     { "unary_fsrra_fr", &Sh4InstTests::unary_fsrra_fr },
     { "binary_fcmpeq_fr_fr", &Sh4InstTests::binary_fcmpeq_fr_fr },
+    { "binary_fsub_fr_fr", &Sh4InstTests::binary_fsub_fr_fr },
     { NULL }
 };
 
