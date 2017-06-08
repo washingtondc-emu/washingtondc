@@ -3936,10 +3936,28 @@ void sh4_inst_binary_fadd_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 // FCMP/EQ FRm, FRn
 // 1111nnnnmmmm0100
 void sh4_inst_binary_fcmpeq_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnnnmmmm0100");
-    error_set_opcode_name("FCMP/EQ FRm, FRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+    float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
+    float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
+
+    float src = *srcp;
+    float dst = *dstp;
+
+#ifdef SH4_FPU_PEDANTIC
+    int src_class = fpclassify(src);
+    int dst_class = fpclassify(dst);
+
+    if (src_class == FP_NAN || dst_class == FP_NAN) {
+        sh4_fr_invalid(sh4, inst.fr_dst);
+        return;
+    }
+#endif
+
+    unsigned t_flag = (dst == src);
+    sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= (t_flag << SH4_SR_FLAG_T_SHIFT);
 }
 
 // FCMP/GT FRm, FRn
