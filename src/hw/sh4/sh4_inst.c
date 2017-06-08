@@ -4527,10 +4527,37 @@ void sh4_inst_binary_fmov_xs_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
 // FIPR FVm, FVn - vector dot product
 // 1111nnmm11101101
 void sh4_inst_binary_fipr_fv_fv(Sh4 *sh4, Sh4OpArgs inst) {
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnmm11101101");
-    error_set_opcode_name("FIPR FVm, FVn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+    sh4_next_inst(sh4);
+
+#ifdef SH4_FPU_PEDANTIC
+    if (sh4->reg[SH4_REG_FPSCR] & (SH4_FPSCR_ENABLE_V_MASK |
+                                   SH4_FPSCR_ENABLE_O_MASK |
+                                   SH4_FPSCR_ENABLE_U_MASK |
+                                   SH4_FPSCR_ENABLE_I_MASK)) {
+        sh4_set_exception(sh4, SH4_EXCP_FPU);
+        return;
+    }
+    /*
+     * TODO:
+     * There's quite alot of error-checking/exception-raising/flag-setting to
+     * be done here.  For now I'm committing without it becuase it looks like a
+     * real headache to write, and I'm honestly of the opinion that going this
+     * deep with the pedantry is a waste of time anyways.
+     */
+#endif
+    unsigned reg_src_idx = inst.fv_src * 4;
+    unsigned reg_dst_idx = inst.fv_dst * 4;
+
+    reg32_t *src1_ptr = sh4->reg + SH4_REG_FR0 + reg_src_idx;
+    reg32_t *src2_ptr = sh4->reg + SH4_REG_FR0 + reg_dst_idx;
+
+    float src1[4], src2[4], dst;
+    memcpy(src1, src1_ptr, sizeof(src1));
+    memcpy(src2, src2_ptr, sizeof(src2));
+
+    dst = src1[0] * src2[0] + src1[1] * src2[1] + src1[2] * src2[2] + src1[3] * src2[3];
+    memcpy(sh4->reg + SH4_REG_FR0 + reg_dst_idx + 3, &dst, sizeof(dst));
 }
 
 // FTRV XMTRX, FVn - multiple vector by matrix
