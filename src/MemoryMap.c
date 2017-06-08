@@ -153,7 +153,7 @@ static inline int read_area0(void *buf, size_t addr, size_t len) {
     } else if(first_addr >= ADDR_AICA_FIRST && last_addr <= ADDR_AICA_LAST) {
         return aica_reg_read(buf, addr, len);
     } else if (first_addr >= ADDR_AICA_WAVE_FIRST &&
-               last_addr <= ADDR_AICA_WAVE_FIRST) {
+               last_addr <= ADDR_AICA_WAVE_LAST) {
         return aica_wave_mem_read(buf, addr, len);
     } else if (first_addr >= ADDR_AICA_RTC_FIRST &&
                last_addr <= ADDR_AICA_RTC_LAST) {
