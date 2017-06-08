@@ -111,6 +111,8 @@ static inline bool sh4_ocache_in_ram_area(addr32_t addr) {
 
 void sh4_ocache_write_addr_array(Sh4 *sh4, void const *dat,
                                  addr32_t paddr, unsigned len);
+void sh4_ocache_read_addr_array(Sh4 *sh4, void *dat,
+                                addr32_t paddr, unsigned len);
 
 #ifdef __cplusplus
 }

@@ -205,6 +205,11 @@ int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len) {
         return sh4_read_mem_mapped_reg(sh4, dat, addr, len);
     }
 
+    if (addr >= SH4_OC_ADDR_ARRAY_FIRST && addr <= SH4_OC_ADDR_ARRAY_LAST) {
+        sh4_ocache_read_addr_array(sh4, dat, addr, len);
+        return MEM_ACCESS_SUCCESS;
+    }
+
     error_set_address(addr);
     error_set_feature("reading from part of the P4 memory region");
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
@@ -219,7 +224,7 @@ int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
         return sh4_write_mem_mapped_reg(sh4, dat, addr, len);
     }
 
-    if (addr >= SH4_OC_ADDR_ARRAY_FIRST && addr <= 0xf4ffffff) {
+    if (addr >= SH4_OC_ADDR_ARRAY_FIRST && addr <= SH4_OC_ADDR_ARRAY_LAST) {
         sh4_ocache_write_addr_array(sh4, dat, addr, len);
         return MEM_ACCESS_SUCCESS;
     }

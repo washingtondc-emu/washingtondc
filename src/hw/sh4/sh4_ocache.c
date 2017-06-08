@@ -146,3 +146,12 @@ void sh4_ocache_write_addr_array(Sh4 *sh4, void const *dat,
                                  addr32_t paddr, unsigned len) {
     // do nothing
 }
+
+void sh4_ocache_read_addr_array(Sh4 *sh4, void *dat,
+                                addr32_t paddr, unsigned len) {
+    /*
+     * I'm really not sure what to do here, so return all 0.
+     * namco museum uses this, but I'm not sure why.
+    */
+    memset(dat, 0, len);
+}
