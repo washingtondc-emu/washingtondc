@@ -20,8 +20,14 @@
  *
  ******************************************************************************/
 
-#ifndef OPENGL_BACKEND_H_
-#define OPENGL_BACKEND_H_
+#ifndef OPENGL_OUTPUT_H_
+#define OPENGL_OUTPUT_H_
+
+/*
+ * opengl_output.h: the final stage of rendering, where the framebuffer is
+ * turned into and opengl texture that's rendered onto a quadrilateral
+ * stretched across the screen.
+ */
 
 #include <stdint.h>
 
@@ -36,14 +42,15 @@ extern "C" {
  *
  * this function is safe to call from outside of the graphics thread
  */
-void backend_new_framebuffer(uint32_t const *fb_new,
-                             unsigned fb_new_width, unsigned fb_new_height);
+void opengl_video_new_framebuffer(uint32_t const *fb_new,
+                                  unsigned fb_new_width,
+                                  unsigned fb_new_height);
 
-void backend_update_framebuffer();
-void backend_present();
+void opengl_video_update_framebuffer();
+void opengl_video_present();
 
-void opengl_backend_init();
-void opengl_backend_cleanup();
+void opengl_video_output_init();
+void opengl_video_output_cleanup();
 
 #ifdef __cplusplus
 }

@@ -32,7 +32,7 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "opengl_backend.h"
+#include "opengl_output.h"
 #include "shader.h"
 #include "gfx_thread.h"
 
@@ -101,20 +101,21 @@ static uint32_t * volatile fb_read;
 static unsigned volatile fb_read_width, fb_read_height;
 static pthread_mutex_t fb_read_lock = PTHREAD_MUTEX_INITIALIZER;
 
-void opengl_backend_init() {
+void opengl_video_output_init() {
     shader_init_from_file(&fb_shader, "final_vert.glsl", "final_frag.glsl");
     init_poly();
 }
 
-void opengl_backend_cleanup() {
+void opengl_video_output_cleanup() {
     // TODO cleanup OpenGL stuff
 
     if (fb_read)
         free(fb_read);
 }
 
-void backend_new_framebuffer(uint32_t const *fb_new,
-                             unsigned fb_new_width, unsigned fb_new_height) {
+void opengl_video_new_framebuffer(uint32_t const *fb_new,
+                                  unsigned fb_new_width,
+                                  unsigned fb_new_height) {
     int ret_code;
     size_t fb_size = fb_new_width * fb_new_height * sizeof(uint32_t);
 
@@ -158,7 +159,7 @@ void backend_new_framebuffer(uint32_t const *fb_new,
     gfx_thread_redraw();
 }
 
-void backend_update_framebuffer() {
+void opengl_video_update_framebuffer() {
     int ret_code;
     unsigned img_width, img_height;
     uint32_t *img_data;
@@ -189,7 +190,7 @@ void backend_update_framebuffer() {
     free(img_data);
 }
 
-void backend_present() {
+void opengl_video_present() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(fb_shader.shader_prog_obj);

@@ -29,7 +29,7 @@
 #include "hw/pvr2/spg.h"
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
-#include "opengl_backend.h"
+#include "opengl_output.h"
 
 #include "framebuffer.h"
 
@@ -392,5 +392,5 @@ void framebuffer_render() {
         break;
     }
 
-    backend_new_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
+    opengl_video_new_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
 }

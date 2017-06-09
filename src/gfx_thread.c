@@ -35,7 +35,7 @@
 
 #include "window.h"
 #include "dreamcast.h"
-#include "video/opengl/opengl_backend.h"
+#include "video/opengl/opengl_output.h"
 
 #include "gfx_thread.h"
 
@@ -73,19 +73,19 @@ void gfx_thread_redraw() {
 static void* gfx_main(void *arg) {
     win_init(win_width, win_height);
 
-    opengl_backend_init();
+    opengl_video_output_init();
 
     do {
         /*
-         * TODO: only run backend_update_framebuffer
+         * TODO: only run opengl_video_update_framebuffer
          * when the framebuffer needs to be updated
          */
-        backend_update_framebuffer();
-        backend_present();
+        opengl_video_update_framebuffer();
+        opengl_video_present();
         win_update();
     } while (win_check_events() && !gfx_thread_dead);
 
-    opengl_backend_cleanup();
+    opengl_video_output_cleanup();
     win_cleanup();
 
     dreamcast_kill();

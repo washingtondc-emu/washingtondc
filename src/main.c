@@ -30,7 +30,7 @@
 #include "window.h"
 #include "gfx_thread.h"
 #include "video/opengl/framebuffer.h"
-#include "video/opengl/opengl_backend.h"
+#include "video/opengl/opengl_output.h"
 #include "mount.h"
 #include "gdi.h"
 
