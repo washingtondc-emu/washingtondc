@@ -106,11 +106,16 @@ extern "C" {
 #define ADDR_AICA_WAVE_FIRST 0x00800000
 #define ADDR_AICA_WAVE_LAST  0x00ffffff
 
-// texture memory.
-// This represents both the 32-bit area and the 64-bit area because
-// I don't know what the difference between them is supposed to be
-#define ADDR_TEX_FIRST       0x05000000
-#define ADDR_TEX_LAST        0x057fffff
+/*
+ * texture memory.
+ * I don't yet understand the 32-bit/64-bit access area dichotomy, so I'm
+ * keeping them separated for now.  They might both map th the same memory, I'm
+ * just not sure yet.
+ */
+#define ADDR_TEX64_FIRST       0x04000000
+#define ADDR_TEX64_LAST        0x047fffff
+#define ADDR_TEX32_FIRST       0x05000000
+#define ADDR_TEX32_LAST        0x057fffff
 
 #ifdef __cplusplus
 }

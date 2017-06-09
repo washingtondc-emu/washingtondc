@@ -127,17 +127,17 @@ conv_rgb0888_to_rgba8888(uint32_t *pixels_out,
 void read_framebuffer_rgb565_prog(uint32_t *pixels_out, addr32_t start_addr,
                                   unsigned width, unsigned height, unsigned stride,
                                   uint16_t concat) {
-    uint16_t const *pixels_in = (uint16_t*)(pvr2_tex_mem + start_addr);
+    uint16_t const *pixels_in = (uint16_t*)(pvr2_tex32_mem + start_addr);
     /*
      * bounds checking
      *
      * TODO: is it really necessary to test for
-     * (last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) ?
+     * (last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) ?
      */
-    addr32_t last_byte = start_addr + ADDR_TEX_FIRST + width * height * 2;
-    addr32_t first_byte = start_addr + ADDR_TEX_FIRST;
-    if (last_byte > ADDR_TEX_LAST || first_byte < ADDR_TEX_FIRST ||
-        last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) {
+    addr32_t last_byte = start_addr + ADDR_TEX32_FIRST + width * height * 2;
+    addr32_t first_byte = start_addr + ADDR_TEX32_FIRST;
+    if (last_byte > ADDR_TEX32_LAST || first_byte < ADDR_TEX32_FIRST ||
+        last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) {
         error_set_feature("whatever happens when START_ADDR is configured to "
                           "read outside of texture memory");
         error_set_address(start_addr);
@@ -181,20 +181,20 @@ void read_framebuffer_rgb565_intl(uint32_t *pixels_out,
      * TODO: it is not impossible that the algebra for last_addr_field1 and
      * last_addr_field2 are a little off here, I'm *kinda* drunk.
      */
-    addr32_t first_addr_field1 = ADDR_TEX_FIRST + row_start_field1;
-    addr32_t last_addr_field1 = ADDR_TEX_FIRST + row_start_field1 +
+    addr32_t first_addr_field1 = ADDR_TEX32_FIRST + row_start_field1;
+    addr32_t last_addr_field1 = ADDR_TEX32_FIRST + row_start_field1 +
         field_adv * (fb_height - 1) + 2 * (fb_width - 1);
-    addr32_t first_addr_field2 = ADDR_TEX_FIRST + row_start_field2;
-    addr32_t last_addr_field2 = ADDR_TEX_FIRST + row_start_field2 +
+    addr32_t first_addr_field2 = ADDR_TEX32_FIRST + row_start_field2;
+    addr32_t last_addr_field2 = ADDR_TEX32_FIRST + row_start_field2 +
         field_adv * (fb_height - 1) + 2 * (fb_width - 1);
-    if (first_addr_field1 < ADDR_TEX_FIRST ||
-        first_addr_field1 > ADDR_TEX_LAST ||
-        last_addr_field1 < ADDR_TEX_FIRST ||
-        last_addr_field1 > ADDR_TEX_LAST ||
-        first_addr_field2 < ADDR_TEX_FIRST ||
-        first_addr_field2 > ADDR_TEX_LAST ||
-        last_addr_field2 < ADDR_TEX_FIRST ||
-        last_addr_field2 > ADDR_TEX_LAST) {
+    if (first_addr_field1 < ADDR_TEX32_FIRST ||
+        first_addr_field1 > ADDR_TEX32_LAST ||
+        last_addr_field1 < ADDR_TEX32_FIRST ||
+        last_addr_field1 > ADDR_TEX32_LAST ||
+        first_addr_field2 < ADDR_TEX32_FIRST ||
+        first_addr_field2 > ADDR_TEX32_LAST ||
+        last_addr_field2 < ADDR_TEX32_FIRST ||
+        last_addr_field2 > ADDR_TEX32_LAST) {
         error_set_feature("whatever happens when a framebuffer is configured "
                           "to read outside of texture memory");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -202,8 +202,8 @@ void read_framebuffer_rgb565_intl(uint32_t *pixels_out,
 
     unsigned row;
     for (row = 0; row < fb_height; row++) {
-        uint16_t *ptr_row1 = (uint16_t*)(pvr2_tex_mem + row_start_field1);
-        uint16_t *ptr_row2 = (uint16_t*)(pvr2_tex_mem + row_start_field2);
+        uint16_t *ptr_row1 = (uint16_t*)(pvr2_tex32_mem + row_start_field1);
+        uint16_t *ptr_row2 = (uint16_t*)(pvr2_tex32_mem + row_start_field2);
 
         conv_rgb565_to_rgba8888(pixels_out + (row << 1) * fb_width,
                                 ptr_row1, fb_width, concat);
@@ -217,17 +217,17 @@ void read_framebuffer_rgb565_intl(uint32_t *pixels_out,
 
 void read_framebuffer_rgb0888_prog(uint32_t *pixels_out, addr32_t start_addr,
                                    unsigned width, unsigned height) {
-    uint32_t const *pixels_in = (uint32_t*)(pvr2_tex_mem + start_addr);
+    uint32_t const *pixels_in = (uint32_t*)(pvr2_tex32_mem + start_addr);
     /*
      * bounds checking
      *
      * TODO: is it really necessary to test for
-     * (last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) ?
+     * (last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) ?
      */
-    addr32_t last_byte = start_addr + ADDR_TEX_FIRST + width * height * 4;
-    addr32_t first_byte = start_addr + ADDR_TEX_FIRST;
-    if (last_byte > ADDR_TEX_LAST || first_byte < ADDR_TEX_FIRST ||
-        last_byte < ADDR_TEX_FIRST || first_byte > ADDR_TEX_LAST) {
+    addr32_t last_byte = start_addr + ADDR_TEX32_FIRST + width * height * 4;
+    addr32_t first_byte = start_addr + ADDR_TEX32_FIRST;
+    if (last_byte > ADDR_TEX32_LAST || first_byte < ADDR_TEX32_FIRST ||
+        last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) {
         error_set_feature("whatever happens when START_ADDR is configured to "
                           "read outside of texture memory");
         error_set_address(start_addr);
@@ -260,20 +260,20 @@ void read_framebuffer_rgb0888_intl(uint32_t *pixels_out,
      * TODO: it is not impossible that the algebra for last_addr_field1 and
      * last_addr_field2 are a little off here, I'm *kinda* drunk.
      */
-    addr32_t first_addr_field1 = ADDR_TEX_FIRST + row_start_field1;
-    addr32_t last_addr_field1 = ADDR_TEX_FIRST + row_start_field1 +
+    addr32_t first_addr_field1 = ADDR_TEX32_FIRST + row_start_field1;
+    addr32_t last_addr_field1 = ADDR_TEX32_FIRST + row_start_field1 +
         field_adv * (fb_height - 1) + 4 * (fb_width - 1);
-    addr32_t first_addr_field2 = ADDR_TEX_FIRST + row_start_field2;
-    addr32_t last_addr_field2 = ADDR_TEX_FIRST + row_start_field2 +
+    addr32_t first_addr_field2 = ADDR_TEX32_FIRST + row_start_field2;
+    addr32_t last_addr_field2 = ADDR_TEX32_FIRST + row_start_field2 +
         field_adv * (fb_height - 1) + 4 * (fb_width - 1);
-    if (first_addr_field1 < ADDR_TEX_FIRST ||
-        first_addr_field1 > ADDR_TEX_LAST ||
-        last_addr_field1 < ADDR_TEX_FIRST ||
-        last_addr_field1 > ADDR_TEX_LAST ||
-        first_addr_field2 < ADDR_TEX_FIRST ||
-        first_addr_field2 > ADDR_TEX_LAST ||
-        last_addr_field2 < ADDR_TEX_FIRST ||
-        last_addr_field2 > ADDR_TEX_LAST) {
+    if (first_addr_field1 < ADDR_TEX32_FIRST ||
+        first_addr_field1 > ADDR_TEX32_LAST ||
+        last_addr_field1 < ADDR_TEX32_FIRST ||
+        last_addr_field1 > ADDR_TEX32_LAST ||
+        first_addr_field2 < ADDR_TEX32_FIRST ||
+        first_addr_field2 > ADDR_TEX32_LAST ||
+        last_addr_field2 < ADDR_TEX32_FIRST ||
+        last_addr_field2 > ADDR_TEX32_LAST) {
         error_set_feature("whatever happens when a framebuffer is configured "
                           "to read outside of texture");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -281,8 +281,8 @@ void read_framebuffer_rgb0888_intl(uint32_t *pixels_out,
 
     unsigned row;
     for (row = 0; row < fb_height; row++) {
-        uint32_t *ptr_row1 = (uint32_t*)(pvr2_tex_mem + row_start_field1);
-        uint32_t *ptr_row2 = (uint32_t*)(pvr2_tex_mem + row_start_field2);
+        uint32_t *ptr_row1 = (uint32_t*)(pvr2_tex32_mem + row_start_field1);
+        uint32_t *ptr_row2 = (uint32_t*)(pvr2_tex32_mem + row_start_field2);
 
         conv_rgb0888_to_rgba8888(pixels_out + (row << 1) * fb_width,
                                  ptr_row1, fb_width);

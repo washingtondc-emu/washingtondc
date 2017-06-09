@@ -29,10 +29,20 @@
 extern "C" {
 #endif
 
-extern uint8_t pvr2_tex_mem[ADDR_TEX_LAST - ADDR_TEX_FIRST + 1];
+/*
+ * I don't yet understand the 32-bit/64-bit access area dichotomy, so I'm
+ * keeping them separated for now.  They might both map th the same memory, I'm
+ * just not sure yet.
+ */
 
-int pvr2_tex_mem_read(void *buf, size_t addr, size_t len);
-int pvr2_tex_mem_write(void const *buf, size_t addr, size_t len);
+extern uint8_t pvr2_tex32_mem[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
+extern uint8_t pvr2_tex64_mem[ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1];
+
+int pvr2_tex_mem_area32_read(void *buf, size_t addr, size_t len);
+int pvr2_tex_mem_area32_write(void const *buf, size_t addr, size_t len);
+
+int pvr2_tex_mem_area64_read(void *buf, size_t addr, size_t len);
+int pvr2_tex_mem_area64_write(void const *buf, size_t addr, size_t len);
 
 #ifdef __cplusplus
 }

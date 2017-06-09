@@ -68,8 +68,10 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
     // check RAM first because that's the case we want to optimize for
     if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) {
         return read_area3(buf, addr, len);
-    } else if (first_addr >= ADDR_TEX_FIRST && last_addr <= ADDR_TEX_LAST) {
-        return pvr2_tex_mem_read(buf, addr, len);
+    } else if (first_addr >= ADDR_TEX32_FIRST && last_addr <= ADDR_TEX32_LAST) {
+        return pvr2_tex_mem_area32_read(buf, addr, len);
+    } else if (first_addr >= ADDR_TEX64_FIRST && last_addr <= ADDR_TEX64_LAST) {
+        return pvr2_tex_mem_area64_read(buf, addr, len);
     } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) {
         return read_area0(buf, addr, len);
     }
@@ -100,8 +102,10 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
     // check RAM first because that's the case we want to optimize for
     if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) {
         return write_area3(buf, addr, len);
-    } else if (first_addr >= ADDR_TEX_FIRST && last_addr <= ADDR_TEX_LAST) {
-        return pvr2_tex_mem_write(buf, addr, len);
+    } else if (first_addr >= ADDR_TEX32_FIRST && last_addr <= ADDR_TEX32_LAST) {
+        return pvr2_tex_mem_area32_write(buf, addr, len);
+    } else if (first_addr >= ADDR_TEX64_FIRST && last_addr <= ADDR_TEX64_LAST) {
+        return pvr2_tex_mem_area64_write(buf, addr, len);
     } else if (first_addr >= ADDR_AREA0_FIRST && last_addr <= ADDR_AREA0_LAST) {
         return write_area0(buf, addr, len);
     }
