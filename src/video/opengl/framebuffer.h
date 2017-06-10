@@ -90,6 +90,32 @@ void framebuffer_render();
 // void conv_rgb888_to_rgb888(uint32_t *pixels_out, uint8_t const *pixels_in,
 //                            unsigned n_pixels);
 
+enum {
+    // the current framebuffer is the one in PVR2 texture memory
+    FRAMEBUFFER_CURRENT_VIRT,
+
+    // the current framebuffer is the one on the GPU
+    FRAMEBUFFER_CURRENT_HOST
+};
+
+int framebuffer_get_current(void);
+
+/*
+ * Copy the framebuffer from OpenGL memory into the Dreamcast's texture memory,
+ * in the location and format specified by the pertinent registers.  Then set
+ * the current framebuffer to FRAMEBUFFER_CURRENT_VIRT.
+ *
+ * this function does not check if the current framebuffer is the
+ * FRAMEBUFFER_CURRENT_HOST, you have to do that yourself before you call it.
+ */
+void framebuffer_sync_from_host(void);
+
+/*
+ * sync the frame buffer from OpenGL iff the current framebuffer is
+ * FRAMEBUFFER_CURRENT_HOST
+ */
+void framebuffer_sync_from_host_maybe(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -30,6 +30,7 @@
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
 #include "opengl_output.h"
+#include "gfx_thread.h"
 
 #include "framebuffer.h"
 
@@ -39,6 +40,13 @@
  */
 static uint8_t *fb_tex_mem;
 static unsigned fb_width, fb_height;
+
+static int current_fb = FRAMEBUFFER_CURRENT_HOST;
+
+#define OGL_FB_W_MAX (0x3ff + 1)
+#define OGL_FB_H_MAX (0x3ff + 1)
+#define OGL_FB_BYTES (OGL_FB_W_MAX * OGL_FB_H_MAX * 4)
+static uint8_t ogl_fb[OGL_FB_BYTES];
 
 /*
  * The concat parameter in these functions corresponds to the fb_concat value
@@ -345,6 +353,8 @@ void framebuffer_render() {
     if (interlace)
         height <<= 1;
 
+    framebuffer_sync_from_host_maybe();
+
     if (fb_width != width || fb_height != height) {
         free(fb_tex_mem);
         fb_width = width;
@@ -393,4 +403,63 @@ void framebuffer_render() {
     }
 
     opengl_video_new_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
+}
+
+int framebuffer_get_current(void) {
+    return current_fb;
+}
+
+void framebuffer_sync_from_host(void) {
+    // update the framebuffer from the opengl target
+
+    uint32_t fb_w_ctrl = get_fb_w_ctrl();
+    gfx_thread_read_framebuffer(ogl_fb, sizeof(ogl_fb));
+
+    switch (fb_w_ctrl & 0x7) {
+    case 0:
+        // 0555 KRGB 16-bit
+        printf("WARNING: unable to sync framebuffer from OpenGL: "
+               "packmode 0 unsupported\n");
+        break;
+    case 1:
+        // 565 RGB 16-bit
+        printf("WARNING: unable to sync framebuffer from OpenGL: "
+               "packmode 1 unsupported\n");
+        break;
+    case 2:
+        // 4444 ARGB 16-bit
+        printf("WARNING: unable to sync framebuffer from OpenGL: "
+               "packmode 2 unsupported\n");
+        break;
+    case 3:
+        // 1555 ARGB 16-bit
+        printf("WARNING: unable to sync framebuffer from OpenGL: "
+               "packmode 3 unsupported\n");
+        break;
+    case 4:
+        // 888 RGB 24-bit
+        printf("WARNING: unable to sync framebuffer from OpenGL: "
+               "packmode 4 unsupported\n");
+        break;
+    case  5:
+        // 0888 KRGB 32-bit
+        printf("WARNING: unable to sync framebuffer from OpenGL: "
+               "packmode 5 unsupported\n");
+        break;
+    case 6:
+        // 8888 ARGB 32-bit
+        printf("WARNING: unable to sync framebuffer from OpenGL: "
+               "packmode 6 unsupported\n");
+        break;
+    default:
+        printf("WARNING: unable to sync framebuffer from OpenGL: "
+               "packmode %d unsupported\n", fb_w_ctrl & 7);
+    }
+
+    current_fb = FRAMEBUFFER_CURRENT_VIRT;
+}
+
+void framebuffer_sync_from_host_maybe(void) {
+    if (current_fb == FRAMEBUFFER_CURRENT_HOST)
+        framebuffer_sync_from_host();
 }

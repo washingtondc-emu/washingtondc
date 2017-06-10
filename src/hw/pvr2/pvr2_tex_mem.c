@@ -22,6 +22,8 @@
 
 #include "mem_code.h"
 #include "MemoryMap.h"
+#include "pvr2_core_reg.h"
+#include "video/opengl/framebuffer.h"
 
 uint8_t pvr2_tex32_mem[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
 uint8_t pvr2_tex64_mem[ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1];
@@ -37,6 +39,13 @@ int pvr2_tex_mem_area32_read(void *buf, size_t addr, size_t len) {
         return MEM_ACCESS_FAILURE;
     }
 
+    /*
+     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
+     * end of the framebuffer
+     */
+    if ((addr + len) >= get_fb_w_sof1() || (addr + len) >= get_fb_w_sof2())
+        framebuffer_sync_from_host_maybe();
+
     memcpy(buf, start_addr, len);
     return MEM_ACCESS_SUCCESS;
 }
@@ -51,6 +60,13 @@ int pvr2_tex_mem_area32_write(void const *buf, size_t addr, size_t len) {
         PENDING_ERROR(ERROR_UNIMPLEMENTED);
         return MEM_ACCESS_FAILURE;
     }
+
+    /*
+     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
+     * end of the framebuffer
+     */
+    if ((addr + len) >= get_fb_w_sof1() || (addr + len) >= get_fb_w_sof2())
+        framebuffer_sync_from_host_maybe();
 
     memcpy(start_addr, buf, len);
     return MEM_ACCESS_SUCCESS;

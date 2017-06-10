@@ -29,6 +29,7 @@
 #include "mem_code.h"
 #include "MemoryMap.h"
 #include "error.h"
+#include "video/opengl/framebuffer.h"
 
 #include "pvr2_core_reg.h"
 
@@ -553,6 +554,7 @@ fb_w_sof1_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 fb_w_sof1_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
+    framebuffer_sync_from_host_maybe();
     memcpy(&fb_w_sof1, buf, sizeof(fb_w_sof1));
     return MEM_ACCESS_SUCCESS;
 }
@@ -567,6 +569,7 @@ fb_w_sof2_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 fb_w_sof2_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
+    framebuffer_sync_from_host_maybe();
     memcpy(&fb_w_sof2, buf, sizeof(fb_w_sof2));
     return MEM_ACCESS_SUCCESS;
 }
@@ -581,6 +584,7 @@ fb_w_ctrl_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 fb_w_ctrl_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
+    framebuffer_sync_from_host_maybe();
     memcpy(&fb_w_ctrl, buf, sizeof(fb_w_ctrl));
     return MEM_ACCESS_SUCCESS;
 }
