@@ -245,17 +245,4 @@ static void init_poly() {
     fb_poly.vao = vao;
     fb_poly.ebo = ebo;
     fb_poly.tex_obj = tex_obj;
-
-    /*
-     * this is just here for some testing/validation so I can make sure that
-     * the picture in opengl makes its way to the framebuffer and back, feel
-     * free to delete it at any time.
-     */
-    glClearColor(1.0, 0.0, 0.0, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glClearColor(0.0, 0.0, 0.0, 1.0);
-}
-
-void opengl_grab_pixels(void *out, unsigned width, unsigned height) {
-    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, out);
 }

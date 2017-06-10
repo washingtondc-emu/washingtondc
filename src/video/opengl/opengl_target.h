@@ -20,33 +20,26 @@
  *
  ******************************************************************************/
 
-#ifndef GFX_THREAD_H_
-#define GFX_THREAD_H_
+#ifndef OPENGL_TARGET_H_
+#define OPENGL_TARGET_H_
 
-#ifdef __cplusplus
-extern "C"{
-#endif
+/* code for configuring opengl's rendering target (which is a texture+FBO) */
 
-/*
- * The purpose of the GFX thread is to handle all the OpenGL and windowing
- * related things.
- */
+/* void opengl_target_init(void); */
 
-void gfx_thread_launch(unsigned width, unsigned height);
+// call this before rendering to the target
+void opengl_target_begin(unsigned width, unsigned height);
 
-void gfx_thread_kill();
-
-// signals the gfx thread to wake up and make the opengl backend redraw
-void gfx_thread_redraw();
+// call this when done rendering to the target
+void opengl_target_end(void);
 
 /*
- * read OpenGL's view of the framebuffer into dat.  dat must be at least
- * (width*height*4) bytes.
+ * This function is intended to be called from the graphics thread.
+ * It reads pixels from OpenGL's framebuffer.
+ * out must be at least (width*height*4) bytes
  */
-void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes);
+void opengl_target_grab_pixels(void *out, GLsizei buf_size);
 
-#ifdef __cplusplus
-}
-#endif
+GLuint opengl_target_get_tex(void);
 
 #endif

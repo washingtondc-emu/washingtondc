@@ -84,13 +84,6 @@ void opengl_video_present();
 void opengl_video_output_init();
 void opengl_video_output_cleanup();
 
-/*
- * This function is intended to be called from the graphics thread.
- * It reads pixels from OpenGL's framebuffer.
- * out must be at least (width*height*4) bytes
- */
-void opengl_grab_pixels(void *out, unsigned width, unsigned height);
-
 #ifdef __cplusplus
 }
 #endif

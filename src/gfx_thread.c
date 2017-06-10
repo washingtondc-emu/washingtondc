@@ -37,6 +37,7 @@
 #include "window.h"
 #include "dreamcast.h"
 #include "video/opengl/opengl_output.h"
+#include "video/opengl/opengl_target.h"
 
 #include "gfx_thread.h"
 
@@ -61,7 +62,7 @@ static atomic_flag not_reading_framebuffer = ATOMIC_FLAG_INIT;
  * waits on the fb_read_condtion condition.
  */
 static void * volatile fb_out;
-static volatile unsigned fb_out_w, fb_out_h;
+static volatile unsigned fb_out_size;
 
 static pthread_cond_t fb_read_condition = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t fb_out_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -97,6 +98,19 @@ static void* gfx_main(void *arg) {
 
     opengl_video_output_init();
 
+    /*
+     * this is just here for some testing/validation so I can make sure that
+     * the picture in opengl makes its way to the framebuffer and back, feel
+     * free to delete it at any time.
+     */
+    opengl_target_begin(640, 480);
+    glClearColor(1.0, 0.0, 0.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(0.0, 0.0, 0.0, 1.0);
+    opengl_target_end();
+
+    glClear(GL_COLOR_BUFFER_BIT);
+
     do {
         if (!atomic_flag_test_and_set(&not_pending_redraw)) {
             opengl_video_update_framebuffer();
@@ -109,9 +123,9 @@ static void* gfx_main(void *arg) {
                 abort(); // TODO: error handling
 
             // TODO: render 3d graphics here
-            opengl_grab_pixels(fb_out, fb_out_w, fb_out_h);
+            opengl_target_grab_pixels(fb_out, fb_out_size);
             fb_out = NULL;
-            fb_out_w = fb_out_h = 0;
+            fb_out_size = 0;
 
             if (pthread_cond_signal(&fb_read_condition) != 0)
                 abort(); // TODO: error handling
@@ -129,11 +143,12 @@ static void* gfx_main(void *arg) {
     return NULL; /* this line will never execute */
 }
 
-void gfx_thread_read_framebuffer(void *dat, unsigned width, unsigned height) {
+void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
     if (pthread_mutex_lock(&fb_out_lock) != 0)
         abort(); // TODO: error handling
 
     fb_out = dat;
+    fb_out_size = n_bytes;
     atomic_flag_clear(&not_reading_framebuffer);
 
     glfwPostEmptyEvent();
