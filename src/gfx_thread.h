@@ -39,6 +39,12 @@ void gfx_thread_kill();
 // signals the gfx thread to wake up and make the opengl backend redraw
 void gfx_thread_redraw();
 
+/*
+ * read OpenGL's view of the framebuffer into dat.  dat must be at least
+ * (width*height*4) bytes.
+ */
+void gfx_thread_read_framebuffer(void *dat, unsigned width, unsigned height);
+
 #ifdef __cplusplus
 }
 #endif

@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <err.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -48,6 +49,23 @@ static pthread_t gfx_thread;
 
 static volatile bool gfx_thread_dead;
 
+// if this is cleared, it means that there's been a vblank
+static atomic_flag not_pending_redraw = ATOMIC_FLAG_INIT;
+
+// if this is cleared, it means that userspace is waiting for us to read the framebuffer
+static atomic_flag not_reading_framebuffer = ATOMIC_FLAG_INIT;
+
+/*
+ * when gfx_thread_read_framebuffer gets called it sets this to point to where
+ * the framebuffer should be written to, clears not_reading_framebuffer, then
+ * waits on the fb_read_condtion condition.
+ */
+static void * volatile fb_out;
+static volatile unsigned fb_out_w, fb_out_h;
+
+static pthread_cond_t fb_read_condition = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t fb_out_lock = PTHREAD_MUTEX_INITIALIZER;
+
 static void* gfx_main(void *arg);
 
 void gfx_thread_launch(unsigned width, unsigned height) {
@@ -55,6 +73,9 @@ void gfx_thread_launch(unsigned width, unsigned height) {
 
     win_width = width;
     win_height = height;
+
+    atomic_flag_test_and_set(&not_pending_redraw);
+    atomic_flag_test_and_set(&not_reading_framebuffer);
 
     if ((err_code = pthread_create(&gfx_thread, NULL, gfx_main, NULL)) != 0)
         err(errno, "Unable to launch gfx thread");
@@ -67,6 +88,7 @@ void gfx_thread_kill() {
 }
 
 void gfx_thread_redraw() {
+    atomic_flag_clear(&not_pending_redraw);
     glfwPostEmptyEvent();
 }
 
@@ -76,13 +98,27 @@ static void* gfx_main(void *arg) {
     opengl_video_output_init();
 
     do {
-        /*
-         * TODO: only run opengl_video_update_framebuffer
-         * when the framebuffer needs to be updated
-         */
-        opengl_video_update_framebuffer();
-        opengl_video_present();
-        win_update();
+        if (!atomic_flag_test_and_set(&not_pending_redraw)) {
+            opengl_video_update_framebuffer();
+            opengl_video_present();
+            win_update();
+        }
+
+        if (!atomic_flag_test_and_set(&not_reading_framebuffer)) {
+            if (pthread_mutex_lock(&fb_out_lock) != 0)
+                abort(); // TODO: error handling
+
+            // TODO: render 3d graphics here
+            opengl_grab_pixels(fb_out, fb_out_w, fb_out_h);
+            fb_out = NULL;
+            fb_out_w = fb_out_h = 0;
+
+            if (pthread_cond_signal(&fb_read_condition) != 0)
+                abort(); // TODO: error handling
+
+            if (pthread_mutex_unlock(&fb_out_lock) != 0)
+                abort(); // TODO: error handling
+        }
     } while (win_check_events() && !gfx_thread_dead);
 
     opengl_video_output_cleanup();
@@ -91,4 +127,20 @@ static void* gfx_main(void *arg) {
     dreamcast_kill();
     pthread_exit(NULL);
     return NULL; /* this line will never execute */
+}
+
+void gfx_thread_read_framebuffer(void *dat, unsigned width, unsigned height) {
+    if (pthread_mutex_lock(&fb_out_lock) != 0)
+        abort(); // TODO: error handling
+
+    fb_out = dat;
+    atomic_flag_clear(&not_reading_framebuffer);
+
+    glfwPostEmptyEvent();
+
+    while (fb_out)
+        pthread_cond_wait(&fb_read_condition, &fb_out_lock);
+
+    if (pthread_mutex_unlock(&fb_out_lock) != 0)
+        abort(); // TODO: error handling
 }
