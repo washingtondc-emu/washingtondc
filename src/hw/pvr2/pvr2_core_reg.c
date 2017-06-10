@@ -32,7 +32,8 @@
 
 #include "pvr2_core_reg.h"
 
-static uint32_t fb_r_sof1, fb_r_sof2, fb_r_ctrl, fb_r_size;
+static uint32_t fb_r_sof1, fb_r_sof2, fb_r_ctrl, fb_r_size,
+    fb_w_sof1, fb_w_sof2, fb_w_ctrl;
 
 
 #define N_PVR2_CORE_REGS (ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1)
@@ -106,6 +107,30 @@ fb_r_size_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 fb_r_size_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len);
+static int
+fb_r_sof1_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len);
+static int
+fb_r_sof1_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len);
+static int
+fb_w_sof1_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len);
+static int
+fb_w_sof1_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len);
+static int
+fb_w_sof2_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len);
+static int
+fb_w_sof2_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len);
+static int
+fb_w_ctrl_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len);
+static int
+fb_w_ctrl_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len);
 
 static struct pvr2_core_mem_mapped_reg {
     char const *reg_name;
@@ -132,7 +157,7 @@ static struct pvr2_core_mem_mapped_reg {
     { "FB_R_CTRL", 0x5f8044, 4, 1,
       fb_r_ctrl_reg_read_handler, fb_r_ctrl_reg_write_handler },
     { "FB_W_CTRL", 0x5f8048, 4, 1,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      fb_w_ctrl_reg_read_handler, fb_w_ctrl_reg_write_handler },
     { "FB_W_LINESTRIDE", 0x5f804c, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "FB_R_SOF1", 0x5f8050, 4, 1,
@@ -142,9 +167,9 @@ static struct pvr2_core_mem_mapped_reg {
     { "FB_R_SIZE", 0x5f805c, 4, 1,
       fb_r_size_reg_read_handler, fb_r_size_reg_write_handler },
     { "FB_W_SOF1", 0x5f8060, 4, 1,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      fb_w_sof1_reg_read_handler, fb_w_sof1_reg_write_handler },
     { "FB_W_SOF2", 0x5f8064, 4, 1,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      fb_w_sof2_reg_read_handler, fb_w_sof2_reg_write_handler },
     { "FB_X_CLIP", 0x5f8068, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "FB_Y_CLIP", 0x5f806c, 4, 1,
@@ -504,4 +529,58 @@ uint32_t get_fb_r_ctrl() {
 
 uint32_t get_fb_r_size() {
     return fb_r_size;
+}
+
+uint32_t get_fb_w_sof1() {
+    return fb_w_sof1;
+}
+
+uint32_t get_fb_w_sof2() {
+    return fb_w_sof2;
+}
+
+uint32_t get_fb_w_ctrl() {
+    return fb_w_ctrl;
+}
+
+static int
+fb_w_sof1_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &fb_w_sof1, sizeof(fb_w_sof1));
+    return MEM_ACCESS_SUCCESS;
+}
+
+static int
+fb_w_sof1_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&fb_w_sof1, buf, sizeof(fb_w_sof1));
+    return MEM_ACCESS_SUCCESS;
+}
+
+static int
+fb_w_sof2_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &fb_w_sof2, sizeof(fb_w_sof2));
+    return MEM_ACCESS_SUCCESS;
+}
+
+static int
+fb_w_sof2_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&fb_w_sof2, buf, sizeof(fb_w_sof2));
+    return MEM_ACCESS_SUCCESS;
+}
+
+static int
+fb_w_ctrl_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &fb_w_ctrl, sizeof(fb_w_ctrl));
+    return MEM_ACCESS_SUCCESS;
+}
+
+static int
+fb_w_ctrl_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&fb_w_ctrl, buf, sizeof(fb_w_ctrl));
+    return MEM_ACCESS_SUCCESS;
 }
