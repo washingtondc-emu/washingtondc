@@ -29,10 +29,14 @@
 
 #include <GLFW/glfw3.h>
 
+#include "video/opengl/opengl_output.h"
+
 #include "window.h"
 
 static unsigned res_x, res_y;
 static GLFWwindow *win;
+
+static void expose_callback(GLFWwindow *win);
 
 void win_init(unsigned width, unsigned height) {
     res_x = width;
@@ -57,6 +61,8 @@ void win_init(unsigned width, unsigned height) {
     glewInit();
 
     glViewport(0, 0, res_x, res_y);
+
+    glfwSetWindowRefreshCallback(win, expose_callback);
 }
 
 void win_cleanup() {
@@ -70,4 +76,9 @@ bool win_check_events() {
 
 void win_update() {
     glfwSwapBuffers(win);
+}
+
+static void expose_callback(GLFWwindow *win) {
+    opengl_video_present();
+    win_update();
 }
