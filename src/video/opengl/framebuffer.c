@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "types.h"
 #include "error.h"
@@ -30,6 +31,7 @@
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
 #include "opengl_output.h"
+#include "opengl_target.h"
 #include "gfx_thread.h"
 
 #include "framebuffer.h"
@@ -333,6 +335,7 @@ void framebuffer_render() {
     unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
 
     if (!(fb_r_ctrl & 1)) {
+        printf("framebuffer disabled\n");
         // framebuffer is not enabled.
         // TODO: display all-white or all black here instead of letting
         // the screen look corrupted?
@@ -409,6 +412,47 @@ int framebuffer_get_current(void) {
     return current_fb;
 }
 
+static void framebuffer_sync_from_host_0555_krgb(void) {
+    // TODO: this is almost certainly not the correct way to get the screen
+    // dimensions as they are seen by PVR
+    unsigned width = (get_fb_r_size() & 0x3ff) + 1;
+    unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
+    /* unsigned width = 640; */
+    /* unsigned height = 480; */
+
+    uint32_t fb_w_ctrl = get_fb_w_ctrl();
+    uint16_t k_val = fb_w_ctrl & 0x8000;
+    unsigned stride = get_fb_w_linestride() * 8;
+
+    assert((width * height * 4) < OGL_FB_BYTES);
+    /* assert(width <= stride); */
+
+    memset(ogl_fb, 0xff, sizeof(ogl_fb));
+
+    gfx_thread_read_framebuffer(ogl_fb, OGL_FB_BYTES);
+
+    /* printf("width is %u\n", width); */
+    /* printf("height is %u\n", height); */
+
+    unsigned row, col;
+    for (row = 0; row < height; row++) {
+        uint16_t *line_start = (uint16_t*)(pvr2_tex32_mem + row * stride);
+
+        for (col = 0; col < width; col++) {
+            unsigned ogl_fb_idx = row * width + col;
+
+            /* if ((*(uint32_t*)(ogl_fb + 4 * ogl_fb_idx) & ~0xff000000) != 0) */
+            /*     printf("woohoo %08x!\n", *(uint32_t*)(ogl_fb + 4 * ogl_fb_idx)); */
+
+            uint16_t pix_out = ((ogl_fb[4 * ogl_fb_idx + 2] & 0xf8) >> 3) |
+                ((ogl_fb[4 * ogl_fb_idx + 1] & 0xf8) << 2) |
+                ((ogl_fb[4 * ogl_fb_idx] & 0xf8) << 7) | k_val;
+
+            line_start[col] = pix_out;
+        }
+    }
+}
+
 void framebuffer_sync_from_host(void) {
     // update the framebuffer from the opengl target
 
@@ -418,8 +462,9 @@ void framebuffer_sync_from_host(void) {
     switch (fb_w_ctrl & 0x7) {
     case 0:
         // 0555 KRGB 16-bit
-        printf("WARNING: unable to sync framebuffer from OpenGL: "
-               "packmode 0 unsupported\n");
+        framebuffer_sync_from_host_0555_krgb();
+        /* printf("WARNING: unable to sync framebuffer from OpenGL: " */
+        /*        "packmode 0 unsupported\n"); */
         break;
     case 1:
         // 565 RGB 16-bit

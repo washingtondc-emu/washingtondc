@@ -34,8 +34,7 @@
 #include "pvr2_core_reg.h"
 
 static uint32_t fb_r_sof1, fb_r_sof2, fb_r_ctrl, fb_r_size,
-    fb_w_sof1, fb_w_sof2, fb_w_ctrl;
-
+    fb_w_sof1, fb_w_sof2, fb_w_ctrl, fb_w_linestride;
 
 #define N_PVR2_CORE_REGS (ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1)
 static reg32_t pvr2_core_regs[N_PVR2_CORE_REGS];
@@ -132,6 +131,12 @@ fb_w_ctrl_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 fb_w_ctrl_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len);
+static int
+fb_w_linestride_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                 void *buf, addr32_t addr, unsigned len);
+static int
+fb_w_linestride_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                  void const *buf, addr32_t addr, unsigned len);
 
 static struct pvr2_core_mem_mapped_reg {
     char const *reg_name;
@@ -160,7 +165,7 @@ static struct pvr2_core_mem_mapped_reg {
     { "FB_W_CTRL", 0x5f8048, 4, 1,
       fb_w_ctrl_reg_read_handler, fb_w_ctrl_reg_write_handler },
     { "FB_W_LINESTRIDE", 0x5f804c, 4, 1,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      fb_w_linestride_reg_read_handler, fb_w_linestride_reg_write_handler },
     { "FB_R_SOF1", 0x5f8050, 4, 1,
       fb_r_sof1_reg_read_handler, fb_r_sof1_reg_write_handler },
     { "FB_R_SOF2", 0x5f8054, 4, 1,
@@ -544,6 +549,10 @@ uint32_t get_fb_w_ctrl() {
     return fb_w_ctrl;
 }
 
+uint32_t get_fb_w_linestride() {
+    return fb_w_linestride & 0x1ff;
+}
+
 static int
 fb_w_sof1_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                            void *buf, addr32_t addr, unsigned len) {
@@ -586,5 +595,20 @@ fb_w_ctrl_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
     framebuffer_sync_from_host_maybe();
     memcpy(&fb_w_ctrl, buf, sizeof(fb_w_ctrl));
+    return MEM_ACCESS_SUCCESS;
+}
+
+static int
+fb_w_linestride_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                 void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &fb_w_linestride, sizeof(fb_w_linestride));
+    return MEM_ACCESS_SUCCESS;
+}
+
+static int
+fb_w_linestride_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                  void const *buf, addr32_t addr, unsigned len) {
+    framebuffer_sync_from_host_maybe();
+    memcpy(&fb_w_linestride, buf, sizeof(fb_w_linestride));
     return MEM_ACCESS_SUCCESS;
 }

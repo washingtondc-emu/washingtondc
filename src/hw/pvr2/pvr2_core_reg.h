@@ -52,6 +52,7 @@ uint32_t get_fb_r_size();
 uint32_t get_fb_w_sof1();
 uint32_t get_fb_w_sof2();
 uint32_t get_fb_w_ctrl();
+uint32_t get_fb_w_linestride();
 
 #ifdef __cplusplus
 }
