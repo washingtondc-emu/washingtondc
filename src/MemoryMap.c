@@ -30,6 +30,7 @@
 #include "hw/pvr2/pvr2_reg.h"
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
+#include "hw/pvr2/pvr2_ta.h"
 #include "hw/aica/aica_reg.h"
 #include "hw/aica/aica_rtc.h"
 #include "hw/aica/aica_wave_mem.h"
@@ -43,10 +44,12 @@
 static struct BiosFile *bios;
 static struct Memory *mem;
 
-static inline int read_area3(void *buf, size_t addr, size_t len);
-static inline int write_area3(void const *buf, size_t addr, size_t len);
 static inline int read_area0(void *buf, size_t addr, size_t len);
 static inline int write_area0(void const *buf, size_t addr, size_t len);
+static inline int read_area3(void *buf, size_t addr, size_t len);
+static inline int write_area3(void const *buf, size_t addr, size_t len);
+static inline int read_area4(void *buf, size_t addr, size_t len);
+static inline int write_area4(void const *buf, size_t addr, size_t len);
 
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new) {
     memory_map_set_bios(bios_new);
@@ -74,6 +77,8 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
         return pvr2_tex_mem_area64_read(buf, addr, len);
     } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) {
         return read_area0(buf, addr, len);
+    } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <= ADDR_AREA4_LAST) {
+        return read_area4(buf, addr, len);
     }
 
     error_set_feature("memory mapping");
@@ -108,6 +113,8 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
         return pvr2_tex_mem_area64_write(buf, addr, len);
     } else if (first_addr >= ADDR_AREA0_FIRST && last_addr <= ADDR_AREA0_LAST) {
         return write_area0(buf, addr, len);
+    } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <= ADDR_AREA4_LAST) {
+        return write_area4(buf, addr, len);
     }
 
     error_set_feature("memory mapping");
@@ -232,4 +239,26 @@ static inline int read_area3(void *buf, size_t addr, size_t len) {
 
 static inline int write_area3(void const *buf, size_t addr, size_t len) {
     return memory_write(mem, buf, addr & ADDR_AREA3_MASK, len);
+}
+
+static inline int read_area4(void *buf, size_t addr, size_t len) {
+    if (addr >= ADDR_TA_FIFO_POLY_FIRST && addr <= ADDR_TA_FIFO_POLY_LAST)
+        return pvr2_ta_fifo_poly_read(buf, addr, len);
+
+    error_set_feature("AREA4 readable memory map");
+    error_set_length(len);
+    error_set_address(addr);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
+}
+
+static inline int write_area4(void const *buf, size_t addr, size_t len) {
+    if (addr >= ADDR_TA_FIFO_POLY_FIRST && addr <= ADDR_TA_FIFO_POLY_LAST)
+        return pvr2_ta_fifo_poly_write(buf, addr, len);
+
+    error_set_feature("AREA4 writable memory map");
+    error_set_length(len);
+    error_set_address(addr);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
 }

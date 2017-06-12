@@ -117,6 +117,13 @@ extern "C" {
 #define ADDR_TEX32_FIRST       0x05000000
 #define ADDR_TEX32_LAST        0x057fffff
 
+// area 4 is used by the tile accelerator
+#define ADDR_AREA4_FIRST 0x10000000
+#define ADDR_AREA4_LAST  0x13ffffff
+
+#define ADDR_TA_FIFO_POLY_FIRST 0x10000000
+#define ADDR_TA_FIFO_POLY_LAST  0x107fffff
+
 #ifdef __cplusplus
 }
 #endif
