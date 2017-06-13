@@ -42,6 +42,11 @@ enum HollyNrmInt {
     HOLLY_NRM_INT_HBLANK,
     HOLLY_NRM_INT_VBLANK_OUT,
     HOLLY_NRM_INT_VBLANK_IN,
+    HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE,
+    HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE,
+    HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE,
+    HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE,
+    HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE,
 
     HOLLY_NRM_INT_COUNT
 };
@@ -49,11 +54,31 @@ typedef enum HollyNrmInt HollyNrmInt;
 
 struct sys_mapped_reg;
 
-/*
- * Ugh.  All the documentation I've seen points to bit 5 being hblank,
- * but all the homebrew I've see uses it as a vblank interrupt.  IDK how it
- * even relates to the other two vblank interrupts.
- */
+// when the punch-through polygon list has been successfully input
+#define HOLLY_REG_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE_SHIFT 21
+#define HOLLY_REG_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE_MASK \
+    (1 << HOLLY_REG_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE_SHIFT)
+
+// when the transparent polygon modifier list has been successfully input
+#define HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE_SHIFT 10
+#define HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE_MASK \
+    (1 << HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE_SHIFT)
+
+// when the transparent polygon list has been successfully input
+#define HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE_SHIFT 9
+#define HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE_MASK \
+    (1 << HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE_SHIFT)
+
+// when the opaque polygon modifier list has been successfully input
+#define HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE_SHIFT 8
+#define HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE_MASK \
+    (1 << HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE_SHIFT)
+
+// when the opaque polygon list has been successfully input
+#define HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE_SHIFT 7
+#define HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE_MASK \
+    (1 << HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE_SHIFT)
+
 #define HOLLY_REG_ISTNRM_HBLANK_SHIFT 5
 #define HOLLY_REG_ISTNRM_HBLANK_MASK (1 << HOLLY_REG_ISTNRM_HBLANK_SHIFT)
 

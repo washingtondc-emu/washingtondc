@@ -23,8 +23,6 @@
 #ifndef PVR2_TA_H_
 #define PVR2_TA_H_
 
-#define PVR2_CMD_MAX_LEN 64
-
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len);
 int pvr2_ta_fifo_poly_write(void const *buf, size_t addr, size_t len);
 
