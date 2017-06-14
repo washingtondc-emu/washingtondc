@@ -36,6 +36,9 @@
 static uint32_t fb_r_sof1, fb_r_sof2, fb_r_ctrl, fb_r_size,
     fb_w_sof1, fb_w_sof2, fb_w_ctrl, fb_w_linestride;
 
+// 5f8128, 5f8138
+static uint32_t ta_vertbuf_pos, ta_vertbuf_start;
+
 #define N_PVR2_CORE_REGS (ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1)
 static reg32_t pvr2_core_regs[N_PVR2_CORE_REGS];
 
@@ -137,6 +140,21 @@ fb_w_linestride_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info
 static int
 fb_w_linestride_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                   void const *buf, addr32_t addr, unsigned len);
+static int
+ta_reset_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                          void *buf, addr32_t addr, unsigned len);
+static int
+ta_reset_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void const *buf, addr32_t addr, unsigned len);
+static int
+ta_vertbuf_start_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                  void *buf, addr32_t addr, unsigned len);
+static int
+ta_vertbuf_start_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                 void const *buf, addr32_t addr, unsigned len);
+static int
+ta_vertbuf_pos_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                  void *buf, addr32_t addr, unsigned len);
 
 static struct pvr2_core_mem_mapped_reg {
     char const *reg_name;
@@ -242,19 +260,21 @@ static struct pvr2_core_mem_mapped_reg {
       read_spg_status, pvr2_core_read_only_reg_write_handler },
     { "TA_OL_BASE", 0x5f8124, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
-    { "TA_ISP_BASE", 0x5f8128, 4, 1,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+    { "TA_VERTBUF_START", 0x5f8128, 4, 1,
+      ta_vertbuf_start_reg_read_handler, ta_vertbuf_start_reg_write_handler },
     { "TA_ISP_LIMIT", 0x5f8130, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+    { "TA_VERTBUF_POS", 0x5f8138, 4, 1,
+      ta_vertbuf_pos_reg_read_handler, pvr2_core_read_only_reg_write_handler },
     { "TA_OL_LIMIT", 0x5f812c, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "TA_GLOB_TILE_CLIP", 0x5f813c, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "TA_ALLOC_CTRL", 0x5f8140, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+    { "TA_RESET", 0x5f8144, 4, 1,
+      ta_reset_reg_read_handler, ta_reset_reg_write_handler },
     { "TA_NEXT_OPB_INIT", 0x5f8164, 4, 1,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
-    { "TA_LIST_INIT", 0x5f8144, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
 
     { "FOG_TABLE", 0x5f8200, 4, 0x80,
@@ -611,4 +631,56 @@ fb_w_linestride_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_inf
     framebuffer_sync_from_host_maybe();
     memcpy(&fb_w_linestride, buf, sizeof(fb_w_linestride));
     return MEM_ACCESS_SUCCESS;
+}
+
+static int
+ta_reset_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                          void *buf, addr32_t addr, unsigned len) {
+    fprintf(stderr, "WARNING: reading 0 from TA_RESET\n");
+    memset(buf, 0, len);
+    return 0;
+}
+
+static int
+ta_reset_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void const *buf, addr32_t addr, unsigned len) {
+    uint32_t val;
+    memcpy(&val, buf, sizeof(val));
+
+    if (val & 0x80000000) {
+        fprintf(stderr, "WARNING: TA_RESET!\n");
+
+        ta_vertbuf_pos = ta_vertbuf_start;
+    } else {
+        fprintf(stderr, "WARNING: TA_RESET was written to but the one bit that "
+                "actually matters was not set\n");
+    }
+
+    return 0;
+}
+
+static int
+ta_vertbuf_start_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                  void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &ta_vertbuf_start, sizeof(ta_vertbuf_start));
+    return 0;
+}
+
+static int
+ta_vertbuf_start_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                   void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&ta_vertbuf_start, buf, sizeof(ta_vertbuf_start));
+    ta_vertbuf_start &= ~0x3;
+    return 0;
+}
+
+/*
+ * I really don't know what to do with this other than reset it to
+ * ta_vertbuf_start whenever ta_reset gets written to
+ */
+static int
+ta_vertbuf_pos_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &ta_vertbuf_pos, len);
+    return 0;
 }
