@@ -28,4 +28,6 @@ int pvr2_ta_fifo_poly_write(void const *buf, size_t addr, size_t len);
 
 void pvr2_ta_startrender(void);
 
+void pvr2_ta_reinit(void);
+
 #endif

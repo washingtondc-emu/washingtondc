@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "hw/sys/holly_intc.h"
 
@@ -50,6 +51,15 @@ static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 unsigned expected_ta_fifo_len = 32;
 unsigned ta_fifo_byte_count = 0;
 
+/*
+ * vert_buf_len is in terms of verts, so the
+ * actual number of elements used in vert_buf
+ * is vert_buf_len*3
+ */
+#define MAX_VERTS (1 << 16)
+float vert_buf[3 * MAX_VERTS];
+unsigned vert_buf_len;
+
 enum display_list {
     DISPLAY_LIST_OPAQUE,
     DISPLAY_LIST_OPAQUE_MOD,
@@ -69,6 +79,8 @@ char const *display_list_names[DISPLAY_LIST_COUNT] = {
     "Transparent Modifier Volume",
     "Punch-through Polygon"
 };
+
+bool list_submitted[DISPLAY_LIST_COUNT];
 
 // which display list is currently open
 static enum display_list current_list = DISPLAY_LIST_NONE;
@@ -150,8 +162,14 @@ static void on_polyhdr_received(void) {
                             TA_CMD_DISP_LIST_SHIFT);
 
     if (current_list == DISPLAY_LIST_NONE) {
-        printf("Opening display list %s\n", display_list_names[list]);
-        current_list = list;
+        if (!list_submitted[current_list]) {
+            printf("Opening display list %s\n", display_list_names[list]);
+            current_list = list;
+            list_submitted[current_list] = true;
+        } else {
+            printf("WARNING: unable to open list %s because it is already "
+                   "closed\n", display_list_names[list]);
+        }
     } else if (current_list != list) {
         printf("WARNING: attempting to input poly header for list %s without "
                "first closing %s\n", display_list_names[list],
@@ -179,8 +197,11 @@ static void on_vertex_received(void) {
         return;
     }
 
-    printf("VERTEX PACKET: (%f, %f, %f)!\n",
-           ta_fifo_float[1], ta_fifo_float[2], ta_fifo_float[3]);
+    printf("vertex received!\n");
+    vert_buf[3 * vert_buf_len + 0] = ta_fifo_float[1];
+    vert_buf[3 * vert_buf_len + 1] = ta_fifo_float[2];
+    vert_buf[3 * vert_buf_len + 2] = ta_fifo_float[3];
+    vert_buf_len++;
 }
 
 static void on_end_of_list_received(void) {
@@ -215,6 +236,22 @@ static void on_end_of_list_received(void) {
 void pvr2_ta_startrender(void) {
     printf("STARTRENDER requested!\n");
 
+    printf("Vertex dump:\n");
+    unsigned vert_no = 0;
+
+    for (vert_no = 0; vert_no < vert_buf_len; vert_no++) {
+        float const *vertp = vert_buf + 3 * vert_no;
+        printf("\t(%f, %f, %f)\n", vertp[1], vertp[2], vertp[3]);
+    }
+
+    vert_buf_len = 0;
+    memset(list_submitted, 0, sizeof(list_submitted));
+    current_list = DISPLAY_LIST_NONE;
+
     // TODO: This irq definitely should not be triggered immediately
     holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
+}
+
+void pvr2_ta_reinit(void) {
+    memset(list_submitted, 0, sizeof(list_submitted));
 }

@@ -683,6 +683,8 @@ ta_reset_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                 "actually matters was not set\n");
     }
 
+    pvr2_ta_reinit();
+
     return 0;
 }
 
