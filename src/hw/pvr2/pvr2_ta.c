@@ -211,3 +211,10 @@ static void on_end_of_list_received(void) {
 
     current_list = DISPLAY_LIST_NONE;
  }
+
+void pvr2_ta_startrender(void) {
+    printf("STARTRENDER requested!\n");
+
+    // TODO: This irq definitely should not be triggered immediately
+    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
+}

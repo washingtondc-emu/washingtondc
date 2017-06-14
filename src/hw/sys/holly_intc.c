@@ -78,6 +78,10 @@ static struct holly_intp_info nrm_intp_tbl[HOLLY_NRM_INT_COUNT] = {
         "OPAQUE POLYGON LIST COMPLETE",
         HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE_MASK
     },
+    [HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE] = {
+        "POWERVR2 RENDER COMPLETE",
+        HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE_MASK
+    }
 };
 
 void holly_raise_nrm_int(HollyNrmInt int_type) {

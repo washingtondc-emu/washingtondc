@@ -30,6 +30,7 @@
 #include "MemoryMap.h"
 #include "error.h"
 #include "video/opengl/framebuffer.h"
+#include "pvr2_ta.h"
 
 #include "pvr2_core_reg.h"
 
@@ -71,6 +72,10 @@ static int
 pvr2_core_read_only_reg_write_handler(
     struct pvr2_core_mem_mapped_reg const *reg_info,
     void const *buf, addr32_t addr, unsigned len);
+static int
+pvr2_core_write_only_reg_read_handler(
+    struct pvr2_core_mem_mapped_reg const *reg_info,
+    void *buf, addr32_t addr, unsigned len);
 static int
 pvr2_core_id_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                           void *buf, addr32_t addr, unsigned len);
@@ -155,6 +160,9 @@ ta_vertbuf_start_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_in
 static int
 ta_vertbuf_pos_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len);
+static int
+ta_startrender_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                 void const *buf, addr32_t addr, unsigned len);
 
 static struct pvr2_core_mem_mapped_reg {
     char const *reg_name;
@@ -173,6 +181,8 @@ static struct pvr2_core_mem_mapped_reg {
       pvr2_core_revision_read_handler, pvr2_core_read_only_reg_write_handler },
     { "SOFTRESET", 0x5f8008, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+    { "STARTRENDER", 0x5f8014, 4, 1,
+      pvr2_core_write_only_reg_read_handler, ta_startrender_reg_write_handler},
 
     { "PARAM_BASE", 0x5f8020, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
@@ -463,6 +473,19 @@ pvr2_core_read_only_reg_write_handler(
 }
 
 static int
+pvr2_core_write_only_reg_read_handler(
+    struct pvr2_core_mem_mapped_reg const *reg_info,
+    void *buf, addr32_t addr, unsigned len) {
+    error_set_feature("whatever happens when you read from "
+                      "a write-only register");
+    error_set_address(addr);
+    error_set_length(len);
+    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+    return MEM_ACCESS_FAILURE;
+}
+
+
+static int
 fb_r_ctrl_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                            void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &fb_r_ctrl, sizeof(fb_r_ctrl));
@@ -686,5 +709,12 @@ static int
 ta_vertbuf_pos_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                 void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &ta_vertbuf_pos, len);
+    return 0;
+}
+
+static int
+ta_startrender_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                 void const *buf, addr32_t addr, unsigned len) {
+    pvr2_ta_startrender();
     return 0;
 }
