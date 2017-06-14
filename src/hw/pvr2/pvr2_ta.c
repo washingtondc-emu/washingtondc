@@ -162,10 +162,10 @@ static void on_polyhdr_received(void) {
                             TA_CMD_DISP_LIST_SHIFT);
 
     if (current_list == DISPLAY_LIST_NONE) {
-        if (!list_submitted[current_list]) {
+        if (!list_submitted[list]) {
             printf("Opening display list %s\n", display_list_names[list]);
             current_list = list;
-            list_submitted[current_list] = true;
+            list_submitted[list] = true;
         } else {
             printf("WARNING: unable to open list %s because it is already "
                    "closed\n", display_list_names[list]);
