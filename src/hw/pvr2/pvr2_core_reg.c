@@ -174,6 +174,10 @@ static struct pvr2_core_mem_mapped_reg {
     { "SOFTRESET", 0x5f8008, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
 
+    { "PARAM_BASE", 0x5f8020, 4, 1,
+      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+    { "REGION_BASE", 0x5f802c, 4, 1,
+      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "SPAN_SORT_CFG", 0x5f8030, 4, 1,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "VO_BORDER_COL", 0x5f8040, 4, 1,
