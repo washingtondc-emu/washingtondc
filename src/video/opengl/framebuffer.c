@@ -33,6 +33,8 @@
 #include "opengl_output.h"
 #include "opengl_target.h"
 #include "gfx_thread.h"
+#include "hw/pvr2/geo_buf.h"
+#include "opengl_renderer.h"
 
 #include "framebuffer.h"
 
@@ -455,6 +457,8 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
 
 void framebuffer_sync_from_host(void) {
     // update the framebuffer from the opengl target
+
+    render_wait_for_frame_stamp(geo_buf_latest_frame_stamp());
 
     uint32_t fb_w_ctrl = get_fb_w_ctrl();
     gfx_thread_read_framebuffer(ogl_fb, sizeof(ogl_fb));

@@ -31,6 +31,9 @@ static volatile unsigned prod_idx, cons_idx;
 
 static struct geo_buf ringbuf[GEO_BUF_COUNT];
 
+static unsigned next_frame_stamp;
+static unsigned last_prod_frame_stamp;
+
 struct geo_buf *geo_buf_get_cons(void) {
     if (prod_idx == cons_idx)
         return NULL;
@@ -53,7 +56,13 @@ void geo_buf_consume(void) {
 void geo_buf_produce(void) {
     unsigned next_prod_idx = (prod_idx + 1) % GEO_BUF_COUNT;
 
+    last_prod_frame_stamp = ringbuf[prod_idx].frame_stamp;
+
     if (next_prod_idx == cons_idx) {
+        /*
+         * TODO: this could cause deadlocks maybe since last_prod_frame_stamp
+         * will be incorrect
+         */
         fprintf(stderr, "WARNING: geo_buf DROPPED DUE TO RING OVERFLOW\n");
 #ifdef INVARIANTS
         abort();
@@ -62,5 +71,10 @@ void geo_buf_produce(void) {
     else
         prod_idx = next_prod_idx;
 
+    ringbuf[prod_idx].frame_stamp = ++next_frame_stamp;
     ringbuf[prod_idx].n_verts = 0;
+}
+
+unsigned geo_buf_latest_frame_stamp(void) {
+    return last_prod_frame_stamp;
 }

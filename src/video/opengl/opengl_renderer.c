@@ -20,11 +20,18 @@
  *
  ******************************************************************************/
 
+#include <pthread.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "hw/pvr2/geo_buf.h"
 
 #include "opengl_renderer.h"
+
+static unsigned volatile frame_stamp;
+
+static pthread_cond_t frame_stamp_update_cond = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t frame_stamp_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 void render_next_geo_buf(void) {
     struct geo_buf *geo = geo_buf_get_cons();
@@ -42,5 +49,23 @@ void render_next_geo_buf(void) {
         printf("\t(%f, %f, %f)\n", vertp[1], vertp[2], vertp[3]);
     }
 
+    // TODO: I wish I had a good idea for how to handle this without a mutex/condition var
+    if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
+        abort(); // TODO: error handling
+    frame_stamp = geo->frame_stamp;
+    if (pthread_cond_signal(&frame_stamp_update_cond) != 0)
+        abort(); // TODO: error handling
+    if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
+        abort(); // TODO: error handling
+
     geo_buf_consume();
+}
+
+void render_wait_for_frame_stamp(unsigned stamp) {
+    if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
+        abort(); // TODO: error handling
+    while (frame_stamp < stamp)
+        pthread_cond_wait(&frame_stamp_update_cond, &frame_stamp_mtx);
+    if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
+        abort(); // TODO: error handling
 }

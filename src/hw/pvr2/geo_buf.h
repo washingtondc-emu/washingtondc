@@ -41,6 +41,7 @@
 struct geo_buf {
     float verts[GEO_BUF_VERT_COUNT*3];
     unsigned n_verts;
+    unsigned frame_stamp;
 };
 
 /*
@@ -59,5 +60,8 @@ void geo_buf_consume(void);
 
 // mark the current geo_buf as having been consumed
 void geo_buf_produce(void);
+
+// return the frame stamp of the last geo_buf to be produced
+unsigned geo_buf_latest_frame_stamp(void);
 
 #endif
