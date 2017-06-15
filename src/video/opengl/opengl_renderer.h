@@ -20,32 +20,9 @@
  *
  ******************************************************************************/
 
-#ifndef OPENGL_TARGET_H_
-#define OPENGL_TARGET_H_
+#ifndef OPENGL_RENDERER_H_
+#define OPENGL_RENDERER_H_
 
-#define GL3_PROTOTYPES 1
-#include <GL/glew.h>
-#include <GL/gl.h>
-
-/* code for configuring opengl's rendering target (which is a texture+FBO) */
-
-/* void opengl_target_init(void); */
-
-// call this before rendering to the target
-void opengl_target_begin(unsigned width, unsigned height);
-
-// call this when done rendering to the target
-void opengl_target_end(void);
-
-/*
- * This function is intended to be called from the graphics thread.
- * It reads pixels from OpenGL's framebuffer.
- * out must be at least (width*height*4) bytes
- */
-void opengl_target_grab_pixels(void *out, GLsizei buf_size);
-
-GLuint opengl_target_get_tex(void);
-
-void opengl_target_render_triangles(float *verts, unsigned n_verts);
+void render_next_geo_buf(void);
 
 #endif

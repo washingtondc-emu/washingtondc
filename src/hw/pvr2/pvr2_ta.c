@@ -25,6 +25,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "geo_buf.h"
+#include "gfx_thread.h"
 #include "hw/sys/holly_intc.h"
 
 #include "pvr2_ta.h"
@@ -50,15 +52,6 @@ static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 
 unsigned expected_ta_fifo_len = 32;
 unsigned ta_fifo_byte_count = 0;
-
-/*
- * vert_buf_len is in terms of verts, so the
- * actual number of elements used in vert_buf
- * is vert_buf_len*3
- */
-#define MAX_VERTS (1 << 16)
-float vert_buf[3 * MAX_VERTS];
-unsigned vert_buf_len;
 
 enum display_list {
     DISPLAY_LIST_OPAQUE,
@@ -198,10 +191,19 @@ static void on_vertex_received(void) {
     }
 
     printf("vertex received!\n");
-    vert_buf[3 * vert_buf_len + 0] = ta_fifo_float[1];
-    vert_buf[3 * vert_buf_len + 1] = ta_fifo_float[2];
-    vert_buf[3 * vert_buf_len + 2] = ta_fifo_float[3];
-    vert_buf_len++;
+    struct geo_buf *geo = geo_buf_get_prod();
+    if (geo->n_verts < GEO_BUF_VERT_COUNT) {
+        geo->verts[3 * geo->n_verts + 0] = ta_fifo_float[1];
+        geo->verts[3 * geo->n_verts + 1] = ta_fifo_float[2];
+        geo->verts[3 * geo->n_verts + 2] = ta_fifo_float[3];
+        geo->n_verts++;
+    } else {
+        fprintf(stderr, "WARNING: dropped vertices: geo_buf contains %u "
+                "verts\n", geo->n_verts);
+#ifdef INVARIANTS
+        abort();
+#endif
+    }
 }
 
 static void on_end_of_list_received(void) {
@@ -236,15 +238,9 @@ static void on_end_of_list_received(void) {
 void pvr2_ta_startrender(void) {
     printf("STARTRENDER requested!\n");
 
-    printf("Vertex dump:\n");
-    unsigned vert_no = 0;
+    geo_buf_produce();
+    gfx_thread_render_geo_buf();
 
-    for (vert_no = 0; vert_no < vert_buf_len; vert_no++) {
-        float const *vertp = vert_buf + 3 * vert_no;
-        printf("\t(%f, %f, %f)\n", vertp[1], vertp[2], vertp[3]);
-    }
-
-    vert_buf_len = 0;
     memset(list_submitted, 0, sizeof(list_submitted));
     current_list = DISPLAY_LIST_NONE;
 

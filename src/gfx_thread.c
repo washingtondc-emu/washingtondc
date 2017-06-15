@@ -38,6 +38,7 @@
 #include "dreamcast.h"
 #include "video/opengl/opengl_output.h"
 #include "video/opengl/opengl_target.h"
+#include "video/opengl/opengl_renderer.h"
 
 #include "gfx_thread.h"
 
@@ -55,6 +56,9 @@ static atomic_flag not_pending_redraw = ATOMIC_FLAG_INIT;
 
 // if this is cleared, it means that userspace is waiting for us to read the framebuffer
 static atomic_flag not_reading_framebuffer = ATOMIC_FLAG_INIT;
+
+// if this is cleared, it means that there's a geo_buf waiting for us
+static atomic_flag not_rendering_geo_buf = ATOMIC_FLAG_INIT;
 
 /*
  * when gfx_thread_read_framebuffer gets called it sets this to point to where
@@ -90,6 +94,11 @@ void gfx_thread_kill() {
 
 void gfx_thread_redraw() {
     atomic_flag_clear(&not_pending_redraw);
+    glfwPostEmptyEvent();
+}
+
+void gfx_thread_render_geo_buf(void) {
+    atomic_flag_clear(&not_rendering_geo_buf);
     glfwPostEmptyEvent();
 }
 
@@ -133,6 +142,9 @@ static void* gfx_main(void *arg) {
             if (pthread_mutex_unlock(&fb_out_lock) != 0)
                 abort(); // TODO: error handling
         }
+
+        if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
+            render_next_geo_buf();
     } while (win_check_events() && !gfx_thread_dead);
 
     opengl_video_output_cleanup();

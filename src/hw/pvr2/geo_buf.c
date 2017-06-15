@@ -20,36 +20,47 @@
  *
  ******************************************************************************/
 
-#ifndef GFX_THREAD_H_
-#define GFX_THREAD_H_
+#include <stdio.h>
 
-#ifdef __cplusplus
-extern "C"{
-#endif
+#include "geo_buf.h"
 
-/*
- * The purpose of the GFX thread is to handle all the OpenGL and windowing
- * related things.
- */
+#define GEO_BUF_COUNT 4
 
-void gfx_thread_launch(unsigned width, unsigned height);
+// producer and consumer indices
+static volatile unsigned prod_idx, cons_idx;
 
-void gfx_thread_kill();
+static struct geo_buf ringbuf[GEO_BUF_COUNT];
 
-// signals the gfx thread to wake up and make the opengl backend redraw
-void gfx_thread_redraw();
-
-// signals the gfx thread to wake up and consume a geo_buf (by drawing it)
-void gfx_thread_render_geo_buf(void);
-
-/*
- * read OpenGL's view of the framebuffer into dat.  dat must be at least
- * (width*height*4) bytes.
- */
-void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes);
-
-#ifdef __cplusplus
+struct geo_buf *geo_buf_get_cons(void) {
+    if (prod_idx == cons_idx)
+        return NULL;
+    return ringbuf + cons_idx;
 }
-#endif
 
+struct geo_buf *geo_buf_get_prod(void) {
+    return ringbuf + cons_idx;
+}
+
+void geo_buf_consume(void) {
+    if (prod_idx == cons_idx) {
+        fprintf(stderr, "WARNING: attempt to consume from empty geo_buf "
+                "ring\n");
+    } else {
+        cons_idx = (cons_idx + 1) % GEO_BUF_COUNT;
+    }
+}
+
+void geo_buf_produce(void) {
+    unsigned next_prod_idx = (prod_idx + 1) % GEO_BUF_COUNT;
+
+    if (next_prod_idx == cons_idx) {
+        fprintf(stderr, "WARNING: geo_buf DROPPED DUE TO RING OVERFLOW\n");
+#ifdef INVARIANTS
+        abort();
 #endif
+    }
+    else
+        prod_idx = next_prod_idx;
+
+    ringbuf[prod_idx].n_verts = 0;
+}

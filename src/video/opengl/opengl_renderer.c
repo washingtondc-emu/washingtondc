@@ -20,32 +20,27 @@
  *
  ******************************************************************************/
 
-#ifndef OPENGL_TARGET_H_
-#define OPENGL_TARGET_H_
+#include <stdio.h>
 
-#define GL3_PROTOTYPES 1
-#include <GL/glew.h>
-#include <GL/gl.h>
+#include "hw/pvr2/geo_buf.h"
 
-/* code for configuring opengl's rendering target (which is a texture+FBO) */
+#include "opengl_renderer.h"
 
-/* void opengl_target_init(void); */
+void render_next_geo_buf(void) {
+    struct geo_buf *geo = geo_buf_get_cons();
 
-// call this before rendering to the target
-void opengl_target_begin(unsigned width, unsigned height);
+    if (!geo) {
+        printf("%s - erm...there's nothing to render here?\n", __func__);
+        return;
+    }
 
-// call this when done rendering to the target
-void opengl_target_end(void);
+    printf("Vertex dump:\n");
 
-/*
- * This function is intended to be called from the graphics thread.
- * It reads pixels from OpenGL's framebuffer.
- * out must be at least (width*height*4) bytes
- */
-void opengl_target_grab_pixels(void *out, GLsizei buf_size);
+    unsigned vert_no;
+    for (vert_no = 0; vert_no < geo->n_verts; vert_no++) {
+        float const *vertp = geo->verts + 3 * vert_no;
+        printf("\t(%f, %f, %f)\n", vertp[1], vertp[2], vertp[3]);
+    }
 
-GLuint opengl_target_get_tex(void);
-
-void opengl_target_render_triangles(float *verts, unsigned n_verts);
-
-#endif
+    geo_buf_consume();
+}
