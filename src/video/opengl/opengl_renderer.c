@@ -125,6 +125,8 @@ void render_next_geo_buf(void) {
         if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
             abort(); // TODO: error handling
 
+        printf("frame_stamp %u rendered\n", frame_stamp);
+
         geo_buf_consume();
         bufs_rendered++;
     }
@@ -138,8 +140,10 @@ void render_next_geo_buf(void) {
 void render_wait_for_frame_stamp(unsigned stamp) {
     if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
         abort(); // TODO: error handling
-    while (frame_stamp < stamp && dc_is_running())
+    while (frame_stamp < stamp && dc_is_running()) {
+        printf("waiting for frame_stamp %u (current is %u)\n", stamp, frame_stamp);
         pthread_cond_wait(&frame_stamp_update_cond, &frame_stamp_mtx);
+    }
     if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
         abort(); // TODO: error handling
 }

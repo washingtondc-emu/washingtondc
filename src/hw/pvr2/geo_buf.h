@@ -61,7 +61,13 @@ struct geo_buf *geo_buf_get_prod(void);
 // consume the current geo_buf (which is the one returned by geo_buf_get_cons)
 void geo_buf_consume(void);
 
-// mark the current geo_buf as having been consumed
+/*
+ * mark the current geo_buf as having been consumed.
+ *
+ * This function can block if the buffer is full; this is not ideal
+ * and I would like to find a way to revisit this some time in the future.  For
+ * now, stability trumps performance.
+ */
 void geo_buf_produce(void);
 
 // return the frame stamp of the last geo_buf to be produced
