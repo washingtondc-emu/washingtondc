@@ -221,7 +221,7 @@ static void spg_handle_hblank(SchedEvent *event) {
 
     switch (hblank_int_mode) {
     case 0:
-        if (raster_y == hblank_int_comp_val) {
+        if (raster_y != hblank_int_comp_val) {
             error_set_raster_y_expect(hblank_int_comp_val);
             error_set_raster_y_actual(raster_y);
             error_set_hblank_int_comp_val(hblank_int_comp_val);
@@ -230,7 +230,7 @@ static void spg_handle_hblank(SchedEvent *event) {
         }
         break;
     case 1:
-        if (hblank_int_comp_val && (raster_y % hblank_int_comp_val == 0)) {
+        if (hblank_int_comp_val && (raster_y % hblank_int_comp_val != 0)) {
             error_set_raster_y_actual(raster_y);
             error_set_hblank_int_comp_val(hblank_int_comp_val);
             error_set_hblank_int_mode(hblank_int_mode);
