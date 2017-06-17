@@ -32,6 +32,7 @@
 #include "shader.h"
 #include "opengl_target.h"
 #include "framebuffer.h"
+#include "dreamcast.h"
 
 #include "opengl_renderer.h"
 
@@ -90,44 +91,54 @@ static void render_do_draw(struct geo_buf *geo) {
 }
 
 void render_next_geo_buf(void) {
-    struct geo_buf *geo = geo_buf_get_cons();
+    struct geo_buf *geo;
+    unsigned bufs_rendered = 0;
 
-    if (!geo) {
+    while ((geo = geo_buf_get_cons())) {
+        /*
+         * dump vertices to stdout for now since we're not actually rendering
+         * them
+         */
+        printf("Vertex dump:\n");
+        unsigned vert_no;
+        for (vert_no = 0; vert_no < geo->n_verts; vert_no++) {
+            float const *vertp = geo->verts + 3 * vert_no;
+            printf("\t(%f, %f, %f)\n", vertp[1], vertp[2], vertp[3]);
+        }
+
+        opengl_target_begin(geo->screen_width, geo->screen_height);
+        glUseProgram(pvr_ta_shader.shader_prog_obj);
+        render_do_draw(geo);
+        opengl_target_end();
+
+        framebuffer_set_current(FRAMEBUFFER_CURRENT_HOST);
+
+        /*
+         * TODO: I wish I had a good idea for how to handle this without a
+         * mutex/condition var
+         */
+        if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
+            abort(); // TODO: error handling
+        frame_stamp = geo->frame_stamp;
+        if (pthread_cond_signal(&frame_stamp_update_cond) != 0)
+            abort(); // TODO: error handling
+        if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
+            abort(); // TODO: error handling
+
+        geo_buf_consume();
+        bufs_rendered++;
+    }
+
+    if (bufs_rendered)
+        printf("%s - %u geo_bufs rendered\n", __func__, bufs_rendered);
+    else
         printf("%s - erm...there's nothing to render here?\n", __func__);
-        return;
-    }
-
-    // dump vertices to stdout for now since we're not actually rendering them
-    printf("Vertex dump:\n");
-    unsigned vert_no;
-    for (vert_no = 0; vert_no < geo->n_verts; vert_no++) {
-        float const *vertp = geo->verts + 3 * vert_no;
-        printf("\t(%f, %f, %f)\n", vertp[1], vertp[2], vertp[3]);
-    }
-
-    opengl_target_begin(geo->screen_width, geo->screen_height);
-    glUseProgram(pvr_ta_shader.shader_prog_obj);
-    render_do_draw(geo);
-    opengl_target_end();
-
-    framebuffer_set_current(FRAMEBUFFER_CURRENT_HOST);
-
-    // TODO: I wish I had a good idea for how to handle this without a mutex/condition var
-    if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
-        abort(); // TODO: error handling
-    frame_stamp = geo->frame_stamp;
-    if (pthread_cond_signal(&frame_stamp_update_cond) != 0)
-        abort(); // TODO: error handling
-    if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
-        abort(); // TODO: error handling
-
-    geo_buf_consume();
 }
 
 void render_wait_for_frame_stamp(unsigned stamp) {
     if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
         abort(); // TODO: error handling
-    while (frame_stamp < stamp)
+    while (frame_stamp < stamp && dc_is_running())
         pthread_cond_wait(&frame_stamp_update_cond, &frame_stamp_mtx);
     if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
         abort(); // TODO: error handling

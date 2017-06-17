@@ -23,6 +23,8 @@
 #ifndef DREAMCAST_H_
 #define DREAMCAST_H_
 
+#include <stdbool.h>
+
 #include "BiosFile.h"
 #include "memory.h"
 #include "hw/sh4/sh4.h"
@@ -108,6 +110,8 @@ static inline void dc_cycle_advance(dc_cycle_stamp_t n_cycles) {
 }
 
 void dc_print_perf_stats(void);
+
+bool dc_is_running(void);
 
 #ifdef __cplusplus
 }

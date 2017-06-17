@@ -436,3 +436,7 @@ close_fp:
     fclose(fp);
     return dat;
 }
+
+bool dc_is_running(void) {
+    return is_running;
+}
