@@ -63,6 +63,7 @@ void win_init(unsigned width, unsigned height) {
     glViewport(0, 0, res_x, res_y);
 
     glfwSetWindowRefreshCallback(win, expose_callback);
+    glfwSwapInterval(0);
 }
 
 void win_cleanup() {
