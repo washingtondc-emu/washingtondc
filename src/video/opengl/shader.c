@@ -129,8 +129,10 @@ void shader_init_from_file(struct shader *out,
     free(frag_shader_src);
 }
 
-void shader_cleanup(struct shader const *shader) {
+void shader_cleanup(struct shader *shader) {
     glDeleteProgram(shader->shader_prog_obj);
     glDeleteShader(shader->frag_shader);
     glDeleteShader(shader->vert_shader);
+
+    memset(shader, 0, sizeof(*shader));
 }

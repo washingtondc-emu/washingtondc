@@ -39,7 +39,7 @@ void shader_init_from_file(struct shader *out,
 void shader_init(struct shader *out,
                  char const *vert_shader_src,
                  char const *frag_shader_src);
-void shader_cleanup(struct shader const *shader);
+void shader_cleanup(struct shader *shader);
 
 #ifdef __cplusplus
 }
