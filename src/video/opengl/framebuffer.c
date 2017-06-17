@@ -440,7 +440,7 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
     for (row = 0; row < height; row++) {
         // TODO: take interlacing into account here
         uint16_t *line_start = (uint16_t*)(pvr2_tex32_mem + get_fb_w_sof1() +
-                                           row * stride);
+                                           (height - (row + 1)) * stride);
 
         for (col = 0; col < width; col++) {
             unsigned ogl_fb_idx = row * width + col;
@@ -477,7 +477,7 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
     for (row = 0; row < height; row++) {
         // TODO: take interlacing into account here
         uint16_t *line_start = (uint16_t*)(pvr2_tex32_mem + get_fb_w_sof1() +
-                                           row * stride);
+                                           (height - (row + 1)) * stride);
 
         for (col = 0; col < width; col++) {
             unsigned ogl_fb_idx = row * width + col;
