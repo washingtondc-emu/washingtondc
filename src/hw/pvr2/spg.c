@@ -40,7 +40,7 @@ static DEF_ERROR_INT_ATTR(raster_x_expect)
 static DEF_ERROR_INT_ATTR(raster_y_expect)
 static DEF_ERROR_INT_ATTR(raster_x_actual)
 static DEF_ERROR_INT_ATTR(raster_y_actual)
-static DEF_ERROR_INT_ATTR(hlank_int_comp_val)
+static DEF_ERROR_INT_ATTR(hblank_int_comp_val)
 static DEF_ERROR_INT_ATTR(hblank_int_mode)
 
 /*

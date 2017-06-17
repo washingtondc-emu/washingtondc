@@ -73,6 +73,10 @@ if (SH4_FPU_FAST)
    add_definitions(-DSH4_FPU_FAST)
 endif()
 
+if (INVARIANTS)
+   add_definitions(-DINVARIANTS)
+endif()
+
 # TODO: this was originally supposed to be just the sh4-related code,
 # but somehow it has swollen to encompass almost everything...
 set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
