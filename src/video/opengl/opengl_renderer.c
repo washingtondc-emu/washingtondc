@@ -37,6 +37,7 @@
 #include "opengl_renderer.h"
 
 #define POSITION_SLOT 0
+#define SCREEN_DIMS_SLOT 1
 
 static unsigned volatile frame_stamp;
 
@@ -46,13 +47,6 @@ static pthread_mutex_t frame_stamp_mtx = PTHREAD_MUTEX_INITIALIZER;
 static struct shader pvr_ta_shader;
 
 static GLuint vbo, vao;
-
-static GLfloat tri_verts[] = {
-    -1.0, -1.0, 0.0,
-    0.0, 1.0, 0.0,
-    1.0, -1.0, 0.0
-};
-
 /*
  * draws the given geo_buf in whatever context is available (ie without setting
  * the shader, or the framebuffer).
@@ -64,29 +58,30 @@ void render_init(void) {
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
-
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(tri_verts), tri_verts, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(POSITION_SLOT);
-    glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
-                          3 * sizeof(GLfloat), (GLvoid*)0);
-    glBindVertexArray(0);
 }
 
 void render_cleanup(void) {
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
     shader_cleanup(&pvr_ta_shader);
+
+    vao = 0;
+    vbo = 0;
 }
 
 static void render_do_draw(struct geo_buf *geo) {
     glEnableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
 
-    glClearColor(0.0, 0.0, 1.0, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * geo->n_verts * 3,
+                 geo->verts, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(POSITION_SLOT);
+    glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
+                          3 * sizeof(GLfloat), (GLvoid*)0);
+    glDrawArrays(GL_TRIANGLES, 0, geo->n_verts);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
@@ -96,18 +91,22 @@ void render_next_geo_buf(void) {
 
     while ((geo = geo_buf_get_cons())) {
         /*
-         * dump vertices to stdout for now since we're not actually rendering
-         * them
+         * uncomment this to dump vertices to stdout
+         *
+         * for those moments when nothing's on the screen and you want to know
+         * if the polygons are even making it through the pipeline
          */
-        printf("Vertex dump:\n");
-        unsigned vert_no;
-        for (vert_no = 0; vert_no < geo->n_verts; vert_no++) {
-            float const *vertp = geo->verts + 3 * vert_no;
-            printf("\t(%f, %f, %f)\n", vertp[1], vertp[2], vertp[3]);
-        }
+        /* printf("Vertex dump (%u verts):\n", geo->n_verts); */
+        /* unsigned vert_no; */
+        /* for (vert_no = 0; vert_no < geo->n_verts; vert_no++) { */
+        /*     float const *vertp = geo->verts + 3 * vert_no; */
+        /*     printf("\t(%f, %f, %f)\n", vertp[0], vertp[1], vertp[2]); */
+        /* } */
 
         opengl_target_begin(geo->screen_width, geo->screen_height);
         glUseProgram(pvr_ta_shader.shader_prog_obj);
+        glUniform2f(SCREEN_DIMS_SLOT, (GLfloat)geo->screen_width * 0.5f,
+                    (GLfloat)geo->screen_height * 0.5f);
         render_do_draw(geo);
         opengl_target_end();
 

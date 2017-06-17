@@ -21,9 +21,19 @@
  ******************************************************************************/
 
 #version 330 core
+#extension GL_ARB_explicit_uniform_location : enable
 
 layout (location = 0) in vec3 vert_pos;
+layout (location = 1) uniform vec2 half_screen_dims;
 
 void main() {
-    gl_Position = vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);
+    /*
+     * translate coordinates from the Dreamcast's coordinate system (which is
+     * screen-coordinates with an origin in the upper-left) to OpenGL
+     * coordinates (which are bounded from -1.0 to 1.0, with the upper-left
+     * coordinate being at (-1.0, 1.0)
+     */
+    gl_Position = vec4((vert_pos.x - half_screen_dims.x) / half_screen_dims.x,
+                       -(vert_pos.y - half_screen_dims.y) / half_screen_dims.y,
+                       0.0/* vert_pos.z */, 1.0);
 }
