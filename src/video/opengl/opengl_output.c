@@ -191,8 +191,7 @@ void opengl_video_update_framebuffer() {
 }
 
 void opengl_video_present() {
-    /* glClear(GL_COLOR_BUFFER_BIT); */
-
+    glViewport(0, 0, 640, 480); // TODO: don't hardcode
     glUseProgram(fb_shader.shader_prog_obj);
     glBindTexture(GL_TEXTURE_2D, fb_poly.tex_obj);
     glUniform1i(glGetUniformLocation(fb_shader.shader_prog_obj, "fb_tex"), 0);

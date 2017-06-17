@@ -99,6 +99,7 @@ enum {
 };
 
 int framebuffer_get_current(void);
+void framebuffer_set_current(int current);
 
 /*
  * Copy the framebuffer from OpenGL memory into the Dreamcast's texture memory,

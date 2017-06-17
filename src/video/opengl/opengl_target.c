@@ -34,39 +34,45 @@ static GLuint tex;
 static GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
 static unsigned fbo_width, fbo_height;
 
-/* void opengl_target_init(void) { */
-/*     fbo_width = fbo_height = 0; */
-/* } */
+void opengl_target_init(void) {
+    fbo_width = fbo_height = 0;
+    glGenFramebuffers(1, &fbo);
+    glGenTextures(1, &tex);
+}
 
 void opengl_target_begin(unsigned width, unsigned height) {
     if (width != fbo_width || height != fbo_height) {
-        // generate new FBO and texture
-        // TODO: is this necessary?
-
-        glDeleteTextures(1, &tex);
-        glDeleteFramebuffers(0, &fbo);
-
-        glGenFramebuffers(1, &fbo);
-        glGenTextures(1, &tex);
+        // change texture dimensions
+        // TODO: is all of this necessary, or just the glTexImage2D stuff?
 
         fbo_width = width;
         fbo_height = height;
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glBindTexture(GL_TEXTURE_2D, tex);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+                     GL_UNSIGNED_BYTE, NULL);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glBindTexture(GL_TEXTURE_2D, tex);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, NULL);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex, 0);
     glDrawBuffers(1, &draw_buffer);
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         abort();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glViewport(0, 0, fbo_width, fbo_height);
 }
 
 void opengl_target_end(void) {
@@ -77,8 +83,6 @@ void opengl_target_end(void) {
 }
 
 void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
-    /* glNamedFramebufferReadBuffer(fbo, GL_COLOR_ATTACHMENT0); */
-    /* glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, out); */
     glBindTexture(GL_TEXTURE_2D, tex);
     glGetnTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf_size, out);
     glBindTexture(GL_TEXTURE_2D, 0);

@@ -28,6 +28,7 @@
 #include "geo_buf.h"
 #include "gfx_thread.h"
 #include "hw/sys/holly_intc.h"
+#include "pvr2_core_reg.h"
 
 #include "pvr2_ta.h"
 
@@ -237,6 +238,19 @@ static void on_end_of_list_received(void) {
 
 void pvr2_ta_startrender(void) {
     printf("STARTRENDER requested!\n");
+
+    // TODO: this is almost certainly not the correct way to get the screen
+    // dimensions as they are seen by PVR
+    unsigned width = (get_fb_r_size() & 0x3ff) + 1;
+    unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
+
+    // TODO: don't always do this.
+    //       this is correct but we need to check the image format to know if
+    //       we should double this
+    width *= 2;
+
+    geo_buf_get_prod()->screen_width = width;
+    geo_buf_get_prod()->screen_height = height;
 
     geo_buf_produce();
     gfx_thread_render_geo_buf();

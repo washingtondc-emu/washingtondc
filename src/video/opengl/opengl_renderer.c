@@ -24,14 +24,70 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define GL3_PROTOTYPES 1
+#include <GL/glew.h>
+#include <GL/gl.h>
+
 #include "hw/pvr2/geo_buf.h"
+#include "shader.h"
+#include "opengl_target.h"
+#include "framebuffer.h"
 
 #include "opengl_renderer.h"
+
+#define POSITION_SLOT 0
 
 static unsigned volatile frame_stamp;
 
 static pthread_cond_t frame_stamp_update_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t frame_stamp_mtx = PTHREAD_MUTEX_INITIALIZER;
+
+static struct shader pvr_ta_shader;
+
+static GLuint vbo, vao;
+
+static GLfloat tri_verts[] = {
+    -1.0, -1.0, 0.0,
+    0.0, 1.0, 0.0,
+    1.0, -1.0, 0.0
+};
+
+/*
+ * draws the given geo_buf in whatever context is available (ie without setting
+ * the shader, or the framebuffer).
+ */
+static void render_do_draw(struct geo_buf *geo);
+
+void render_init(void) {
+    shader_init_from_file(&pvr_ta_shader, "pvr_ta_vert.glsl", "pvr_ta_frag.glsl");
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(tri_verts), tri_verts, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(POSITION_SLOT);
+    glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
+                          3 * sizeof(GLfloat), (GLvoid*)0);
+    glBindVertexArray(0);
+}
+
+void render_cleanup(void) {
+    shader_cleanup(&pvr_ta_shader);
+}
+
+static void render_do_draw(struct geo_buf *geo) {
+    glEnableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+
+    glClearColor(0.0, 0.0, 1.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+}
 
 void render_next_geo_buf(void) {
     struct geo_buf *geo = geo_buf_get_cons();
@@ -41,13 +97,20 @@ void render_next_geo_buf(void) {
         return;
     }
 
+    // dump vertices to stdout for now since we're not actually rendering them
     printf("Vertex dump:\n");
-
     unsigned vert_no;
     for (vert_no = 0; vert_no < geo->n_verts; vert_no++) {
         float const *vertp = geo->verts + 3 * vert_no;
         printf("\t(%f, %f, %f)\n", vertp[1], vertp[2], vertp[3]);
     }
+
+    opengl_target_begin(geo->screen_width, geo->screen_height);
+    glUseProgram(pvr_ta_shader.shader_prog_obj);
+    render_do_draw(geo);
+    opengl_target_end();
+
+    framebuffer_set_current(FRAMEBUFFER_CURRENT_HOST);
 
     // TODO: I wish I had a good idea for how to handle this without a mutex/condition var
     if (pthread_mutex_lock(&frame_stamp_mtx) != 0)

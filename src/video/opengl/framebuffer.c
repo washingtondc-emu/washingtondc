@@ -407,6 +407,9 @@ void framebuffer_render() {
         break;
     }
 
+    printf("passing framebuffer dimensions=(%u, %u)\n", fb_width, fb_height);
+    printf("interlacing is %s\n", interlace ? "enabled" : "disabled");
+
     opengl_video_new_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
 }
 
@@ -419,8 +422,10 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
     // dimensions as they are seen by PVR
     unsigned width = (get_fb_r_size() & 0x3ff) + 1;
     unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
-    /* unsigned width = 640; */
-    /* unsigned height = 480; */
+
+    // we double width because width is in terms of 32-bits,
+    // and this format uses 16-bit pixels
+    width <<= 1;
 
     uint32_t fb_w_ctrl = get_fb_w_ctrl();
     uint16_t k_val = fb_w_ctrl & 0x8000;
@@ -429,26 +434,57 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
     assert((width * height * 4) < OGL_FB_BYTES);
     /* assert(width <= stride); */
 
-    memset(ogl_fb, 0xff, sizeof(ogl_fb));
-
     gfx_thread_read_framebuffer(ogl_fb, OGL_FB_BYTES);
-
-    /* printf("width is %u\n", width); */
-    /* printf("height is %u\n", height); */
 
     unsigned row, col;
     for (row = 0; row < height; row++) {
-        uint16_t *line_start = (uint16_t*)(pvr2_tex32_mem + row * stride);
+        // TODO: take interlacing into account here
+        uint16_t *line_start = (uint16_t*)(pvr2_tex32_mem + get_fb_w_sof1() +
+                                           row * stride);
 
         for (col = 0; col < width; col++) {
             unsigned ogl_fb_idx = row * width + col;
 
-            /* if ((*(uint32_t*)(ogl_fb + 4 * ogl_fb_idx) & ~0xff000000) != 0) */
-            /*     printf("woohoo %08x!\n", *(uint32_t*)(ogl_fb + 4 * ogl_fb_idx)); */
-
             uint16_t pix_out = ((ogl_fb[4 * ogl_fb_idx + 2] & 0xf8) >> 3) |
                 ((ogl_fb[4 * ogl_fb_idx + 1] & 0xf8) << 2) |
                 ((ogl_fb[4 * ogl_fb_idx] & 0xf8) << 7) | k_val;
+
+            line_start[col] = pix_out;
+        }
+    }
+}
+
+static void framebuffer_sync_from_host_0565_krgb(void) {
+    // TODO: this is almost certainly not the correct way to get the screen
+    // dimensions as they are seen by PVR
+    unsigned width = (get_fb_r_size() & 0x3ff) + 1;
+    unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
+
+    // we double width because width is in terms of 32-bits,
+    // and this format uses 16-bit pixels
+    width <<= 1;
+
+    uint32_t fb_w_ctrl = get_fb_w_ctrl();
+    uint16_t k_val = fb_w_ctrl & 0x8000;
+    unsigned stride = get_fb_w_linestride() * 8;
+
+    assert((width * height * 4) < OGL_FB_BYTES);
+    /* assert(width <= stride); */
+
+    gfx_thread_read_framebuffer(ogl_fb, OGL_FB_BYTES);
+
+    unsigned row, col;
+    for (row = 0; row < height; row++) {
+        // TODO: take interlacing into account here
+        uint16_t *line_start = (uint16_t*)(pvr2_tex32_mem + get_fb_w_sof1() +
+                                           row * stride);
+
+        for (col = 0; col < width; col++) {
+            unsigned ogl_fb_idx = row * width + col;
+
+            uint16_t pix_out = ((ogl_fb[4 * ogl_fb_idx + 2] & 0xf8) >> 3) |
+                ((ogl_fb[4 * ogl_fb_idx + 1] & 0xfc) << 3) |
+                ((ogl_fb[4 * ogl_fb_idx] & 0xf8) << 8) | k_val;
 
             line_start[col] = pix_out;
         }
@@ -467,13 +503,10 @@ void framebuffer_sync_from_host(void) {
     case 0:
         // 0555 KRGB 16-bit
         framebuffer_sync_from_host_0555_krgb();
-        /* printf("WARNING: unable to sync framebuffer from OpenGL: " */
-        /*        "packmode 0 unsupported\n"); */
         break;
     case 1:
         // 565 RGB 16-bit
-        printf("WARNING: unable to sync framebuffer from OpenGL: "
-               "packmode 1 unsupported\n");
+        framebuffer_sync_from_host_0565_krgb();
         break;
     case 2:
         // 4444 ARGB 16-bit
@@ -511,4 +544,8 @@ void framebuffer_sync_from_host(void) {
 void framebuffer_sync_from_host_maybe(void) {
     if (current_fb == FRAMEBUFFER_CURRENT_HOST)
         framebuffer_sync_from_host();
+}
+
+void framebuffer_set_current(int current) {
+    current_fb = current;
 }

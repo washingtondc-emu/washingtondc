@@ -29,7 +29,7 @@
 
 /* code for configuring opengl's rendering target (which is a texture+FBO) */
 
-/* void opengl_target_init(void); */
+void opengl_target_init(void);
 
 // call this before rendering to the target
 void opengl_target_begin(unsigned width, unsigned height);

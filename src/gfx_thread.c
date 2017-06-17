@@ -105,7 +105,9 @@ void gfx_thread_render_geo_buf(void) {
 static void* gfx_main(void *arg) {
     win_init(win_width, win_height);
 
+    opengl_target_init();
     opengl_video_output_init();
+    render_init();
 
     /*
      * this is just here for some testing/validation so I can make sure that
@@ -146,6 +148,8 @@ static void* gfx_main(void *arg) {
         if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
             render_next_geo_buf();
     } while (win_check_events() && !gfx_thread_dead);
+
+    render_cleanup();
 
     opengl_video_output_cleanup();
     win_cleanup();

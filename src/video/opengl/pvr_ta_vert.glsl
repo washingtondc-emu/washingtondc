@@ -20,20 +20,10 @@
  *
  ******************************************************************************/
 
-#ifndef OPENGL_RENDERER_H_
-#define OPENGL_RENDERER_H_
+#version 330 core
 
-void render_init(void);
-void render_cleanup(void);
+layout (location = 0) in vec3 vert_pos;
 
-// this should only be called from the gfx_thread
-void render_next_geo_buf(void);
-
-/*
- * block until the geo_buf with the given frame_stamp has rendered.
- *
- * This can only be called from outside of the gfx_thread.
- */
-void render_wait_for_frame_stamp(unsigned stamp);
-
-#endif
+void main() {
+    gl_Position = vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);
+}

@@ -42,6 +42,9 @@ struct geo_buf {
     float verts[GEO_BUF_VERT_COUNT*3];
     unsigned n_verts;
     unsigned frame_stamp;
+
+    // render dimensions
+    unsigned screen_width, screen_height;
 };
 
 /*
