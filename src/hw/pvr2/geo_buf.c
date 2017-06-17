@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "geo_buf.h"
 
@@ -41,7 +42,7 @@ struct geo_buf *geo_buf_get_cons(void) {
 }
 
 struct geo_buf *geo_buf_get_prod(void) {
-    return ringbuf + cons_idx;
+    return ringbuf + prod_idx;
 }
 
 void geo_buf_consume(void) {
@@ -67,9 +68,9 @@ void geo_buf_produce(void) {
 #ifdef INVARIANTS
         abort();
 #endif
-    }
-    else
+    } else {
         prod_idx = next_prod_idx;
+    }
 
     ringbuf[prod_idx].frame_stamp = ++next_frame_stamp;
     ringbuf[prod_idx].n_verts = 0;
