@@ -50,10 +50,19 @@
 // what is 6?
 #define TA_CMD_TYPE_VERTEX      0x7
 
+#define TA_COLOR_FMT_ARGB8888 0
+#define TA_COLOR_FMT_FLOAT    1
+// TODO: there ought to be two more color formats...
+
+#define TA_COLOR_FMT_SHIFT 4
+#define TA_COLOR_FMT_MASK (3 << TA_COLOR_FMT_SHIFT)
+
 static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 
-unsigned expected_ta_fifo_len = 32;
-unsigned ta_fifo_byte_count = 0;
+static unsigned expected_ta_fifo_len = 32;
+static unsigned ta_fifo_byte_count = 0;
+
+static unsigned ta_color_fmt;
 
 enum display_list {
     DISPLAY_LIST_OPAQUE,
@@ -161,6 +170,9 @@ static void on_polyhdr_received(void) {
             printf("Opening display list %s\n", display_list_names[list]);
             current_list = list;
             list_submitted[list] = true;
+
+            ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
+                TA_COLOR_FMT_SHIFT;
         } else {
             printf("WARNING: unable to open list %s because it is already "
                    "closed\n", display_list_names[list]);
@@ -195,9 +207,29 @@ static void on_vertex_received(void) {
     printf("vertex received!\n");
     struct geo_buf *geo = geo_buf_get_prod();
     if (geo->n_verts < GEO_BUF_VERT_COUNT) {
-        geo->verts[3 * geo->n_verts + 0] = ta_fifo_float[1];
-        geo->verts[3 * geo->n_verts + 1] = ta_fifo_float[2];
-        geo->verts[3 * geo->n_verts + 2] = ta_fifo_float[3];
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 0] = ta_fifo_float[1];
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 1] = ta_fifo_float[2];
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 2] = ta_fifo_float[3];
+
+        float color_r, color_g, color_b, color_a;
+
+        switch (ta_color_fmt) {
+        case TA_COLOR_FMT_ARGB8888:
+            color_a = (float)((ta_fifo32[6] & 0xff000000) >> 24) / 255.0f;
+            color_r = (float)((ta_fifo32[6] & 0x00ff0000) >> 16) / 255.0f;
+            color_g = (float)((ta_fifo32[6] & 0x0000ff00) >> 8) / 255.0f;
+            color_b = (float)((ta_fifo32[6] & 0x000000ff) >> 0) / 255.0f;
+            break;
+        default:
+            color_r = color_g = color_b = color_a = 1.0f;
+            fprintf(stderr, "WARNING: unknown TA color format %u\n", ta_color_fmt);
+        }
+
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 3] = color_r;
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 4] = color_g;
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 5] = color_b;
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 6] = color_a;
+
         geo->n_verts++;
     } else {
         fprintf(stderr, "WARNING: dropped vertices: geo_buf contains %u "

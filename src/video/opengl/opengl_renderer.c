@@ -38,6 +38,7 @@
 
 #define POSITION_SLOT 0
 #define SCREEN_DIMS_SLOT 1
+#define COLOR_SLOT 2
 
 static unsigned volatile frame_stamp;
 
@@ -71,16 +72,18 @@ void render_cleanup(void) {
 }
 
 static void render_do_draw(struct geo_buf *geo) {
-    glEnableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * geo->n_verts * 3,
+    glBufferData(GL_ARRAY_BUFFER,
+                 sizeof(float) * geo->n_verts * GEO_BUF_VERT_LEN,
                  geo->verts, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(POSITION_SLOT);
+    glEnableVertexAttribArray(COLOR_SLOT);
     glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
-                          3 * sizeof(GLfloat), (GLvoid*)0);
+                          GEO_BUF_VERT_LEN * sizeof(float), (GLvoid*)0);
+    glVertexAttribPointer(COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
+                          GEO_BUF_VERT_LEN * sizeof(float),
+                          (GLvoid*)(3 * sizeof(float)));
     glDrawArrays(GL_TRIANGLES, 0, geo->n_verts);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -91,19 +94,6 @@ void render_next_geo_buf(void) {
     unsigned bufs_rendered = 0;
 
     while ((geo = geo_buf_get_cons())) {
-        /*
-         * uncomment this to dump vertices to stdout
-         *
-         * for those moments when nothing's on the screen and you want to know
-         * if the polygons are even making it through the pipeline
-         */
-        /* printf("Vertex dump (%u verts):\n", geo->n_verts); */
-        /* unsigned vert_no; */
-        /* for (vert_no = 0; vert_no < geo->n_verts; vert_no++) { */
-        /*     float const *vertp = geo->verts + 3 * vert_no; */
-        /*     printf("\t(%f, %f, %f)\n", vertp[0], vertp[1], vertp[2]); */
-        /* } */
-
         opengl_target_begin(geo->screen_width, geo->screen_height);
         glUseProgram(pvr_ta_shader.shader_prog_obj);
         glUniform2f(SCREEN_DIMS_SLOT, (GLfloat)geo->screen_width * 0.5f,

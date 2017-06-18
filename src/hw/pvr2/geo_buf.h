@@ -38,8 +38,14 @@
 #define GEO_BUF_TRIANGLE_COUNT 131072
 #define GEO_BUF_VERT_COUNT (GEO_BUF_TRIANGLE_COUNT * 3)
 
+/*
+ * the number of elements per vertex.  Currently this means 3 floats for the
+ * coordinates and 4 floats for the color.
+ */
+#define GEO_BUF_VERT_LEN 7
+
 struct geo_buf {
-    float verts[GEO_BUF_VERT_COUNT*3];
+    float verts[GEO_BUF_VERT_COUNT * GEO_BUF_VERT_LEN];
     unsigned n_verts;
     unsigned frame_stamp;
 

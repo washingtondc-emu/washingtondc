@@ -25,6 +25,9 @@
 
 layout (location = 0) in vec3 vert_pos;
 layout (location = 1) uniform vec2 half_screen_dims;
+layout (location = 2) in vec4 color;
+
+out vec4 vert_color;
 
 void main() {
     /*
@@ -36,4 +39,6 @@ void main() {
     gl_Position = vec4((vert_pos.x - half_screen_dims.x) / half_screen_dims.x,
                        -(vert_pos.y - half_screen_dims.y) / half_screen_dims.y,
                        0.0/* vert_pos.z */, 1.0);
+
+    vert_color = color;
 }
