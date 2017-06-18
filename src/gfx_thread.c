@@ -164,10 +164,10 @@ void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
     fb_out_size = n_bytes;
     atomic_flag_clear(&not_reading_framebuffer);
 
-    glfwPostEmptyEvent();
-
-    while (fb_out)
+    while (fb_out) {
+        glfwPostEmptyEvent();
         pthread_cond_wait(&fb_read_condition, &fb_out_lock);
+    }
 
     if (pthread_mutex_unlock(&fb_out_lock) != 0)
         abort(); // TODO: error handling
