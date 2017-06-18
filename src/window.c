@@ -30,6 +30,7 @@
 #include <GLFW/glfw3.h>
 
 #include "video/opengl/opengl_output.h"
+#include "dreamcast.h"
 
 #include "window.h"
 
@@ -70,9 +71,11 @@ void win_cleanup() {
     glfwTerminate();
 }
 
-bool win_check_events() {
+void win_check_events(void) {
     glfwWaitEvents();
-    return !glfwWindowShouldClose(win);
+
+    if (glfwWindowShouldClose(win))
+        dreamcast_kill();
 }
 
 void win_update() {

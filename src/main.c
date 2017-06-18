@@ -174,6 +174,10 @@ int main(int argc, char **argv) {
 
     dreamcast_run();
 
+    printf("Waiting for gfx_thread to exit...\n");
+    gfx_thread_join();
+    printf("gfx_thread has exited.\n");
+
     if (mount_check())
         mount_eject();
 

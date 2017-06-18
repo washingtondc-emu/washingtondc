@@ -33,6 +33,7 @@
 #include "hw/pvr2/spg.h"
 #include "window.h"
 #include "MemoryMap.h"
+#include "gfx_thread.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
@@ -267,21 +268,21 @@ void dreamcast_run() {
          */
         if (using_debugger && debug_step(&debugger, sh4_get_pc(&cpu))) {
             if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
-                is_running = false;
+                dreamcast_kill();
                 break;
             }
 
             continue;
         } else {
             if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
-                is_running = false;
+                dreamcast_kill();
                 break;
             }
         }
 #else
 #ifdef ENABLE_SERIAL_SERVER
         if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
-            is_running = false;
+            dreamcast_kill();
             break;
         }
 #endif
@@ -374,8 +375,9 @@ void dc_print_perf_stats(void) {
     printf("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
 }
 
-void dreamcast_kill() {
+void dreamcast_kill(void) {
     is_running = false;
+    gfx_thread_notify_wake_up();
 }
 
 Sh4 *dreamcast_get_cpu() {

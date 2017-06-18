@@ -34,13 +34,29 @@ extern "C"{
 
 void gfx_thread_launch(unsigned width, unsigned height);
 
-void gfx_thread_kill();
+/*
+ * make sure dc_is_running() is false AND make sure to call
+ * gfx_thread_notify_wake_up before calling this.
+ */
+void gfx_thread_join(void);
 
 // signals the gfx thread to wake up and make the opengl backend redraw
 void gfx_thread_redraw();
 
 // signals the gfx thread to wake up and consume a geo_buf (by drawing it)
 void gfx_thread_render_geo_buf(void);
+
+/*
+ * causes the gfx_thread to wakeup and check for work that needs to be done.
+ * The only reason to call this is when dc_is_running starts returning false
+ * (see src/dreamcast.c).  Otherwise, any function that pushes work to the
+ * gfx_thread will do this itself.
+ *
+ * So really, there's only one place where this function should be called, and
+ * if you see it called from anywhere else then it *might* mean that somebody
+ * goofed up.
+ */
+void gfx_thread_notify_wake_up(void);
 
 /*
  * read OpenGL's view of the framebuffer into dat.  dat must be at least

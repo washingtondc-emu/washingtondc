@@ -113,6 +113,7 @@ void dc_print_perf_stats(void);
 
 bool dc_is_running(void);
 
+void dreamcast_kill(void);
 #ifdef __cplusplus
 }
 #endif

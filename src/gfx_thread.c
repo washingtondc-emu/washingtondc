@@ -49,8 +49,6 @@
 static unsigned win_width, win_height;
 static pthread_t gfx_thread;
 
-static volatile bool gfx_thread_dead;
-
 // if this is cleared, it means that there's been a vblank
 static atomic_flag not_pending_redraw = ATOMIC_FLAG_INIT;
 
@@ -86,9 +84,7 @@ void gfx_thread_launch(unsigned width, unsigned height) {
         err(errno, "Unable to launch gfx thread");
 }
 
-void gfx_thread_kill() {
-    gfx_thread_dead = true;
-    glfwPostEmptyEvent();
+void gfx_thread_join(void) {
     pthread_join(gfx_thread, NULL);
 }
 
@@ -147,14 +143,15 @@ static void* gfx_main(void *arg) {
 
         if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
             render_next_geo_buf();
-    } while (win_check_events() && !gfx_thread_dead);
+
+        win_check_events();
+    } while (dc_is_running());
 
     render_cleanup();
 
     opengl_video_output_cleanup();
     win_cleanup();
 
-    dreamcast_kill();
     pthread_exit(NULL);
     return NULL; /* this line will never execute */
 }
@@ -174,4 +171,8 @@ void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
 
     if (pthread_mutex_unlock(&fb_out_lock) != 0)
         abort(); // TODO: error handling
+}
+
+void gfx_thread_notify_wake_up(void) {
+    glfwPostEmptyEvent();
 }

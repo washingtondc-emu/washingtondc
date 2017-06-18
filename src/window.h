@@ -30,8 +30,7 @@ extern "C" {
 void win_init(unsigned width, unsigned height);
 void win_cleanup();
 
-// returns false if the window has been closed, true if it is still running
-bool win_check_events();
+void win_check_events(void);
 
 void win_update();
 
