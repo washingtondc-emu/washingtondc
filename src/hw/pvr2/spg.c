@@ -377,7 +377,16 @@ void spg_set_pclk_div(unsigned val) {
     if (val != 1 && val != 2)
         RAISE_ERROR(ERROR_INVALID_PARAM);
 
+    spg_sync();
+    spg_unsched_all();
+
     pclk_div = val;
+
+    spg_sync();
+
+    sched_next_hblank_event();
+    sched_next_vblank_in_event();
+    sched_next_vblank_out_event();
 }
 
 void spg_set_pix_double_x(bool val) {
