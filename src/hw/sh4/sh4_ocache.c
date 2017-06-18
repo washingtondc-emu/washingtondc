@@ -114,7 +114,7 @@ int sh4_sq_write(Sh4 *sh4, void const *buf,
 
     unsigned n_words = len >> 2;
     unsigned sq_idx = (addr >> 2) & 0x7;
-    unsigned sq_sel = ((addr & 0x20) >> 5) << 3;
+    unsigned sq_sel = ((addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT) << 3;
     if ((n_words + sq_idx > 8) || (len & 3)) {
         // the spec doesn't say what kind of error to raise here
         error_set_length(len);
@@ -123,8 +123,8 @@ int sh4_sq_write(Sh4 *sh4, void const *buf,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    if (addr & SH4_SQ_SELECT_MASK)
-        sq_idx += 8;
+    assert(len + sq_idx * sizeof(sh4->ocache.sq[0]) +
+           sq_sel * sizeof(sh4->ocache.sq[0]) <= sizeof(sh4->ocache.sq));
 
     memcpy(sh4->ocache.sq + sq_idx + sq_sel, buf, len);
 
