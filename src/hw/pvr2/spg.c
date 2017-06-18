@@ -64,8 +64,6 @@ static DEF_ERROR_INT_ATTR(hblank_int_mode)
  * However, the actuall interrupts happen based on the SPG_HBLANK_INT and SPG_VBLANK_INT registers?
  */
 
-typedef uint64_t spg_vclk_cycle_t;
-
 /*
  * Ugh.  This if statement is really painful to write.  the video clock
  * is supposed to be 27 MHz, which doesn't evenly divide from 200 MHz.
@@ -97,7 +95,7 @@ typedef uint64_t spg_vclk_cycle_t;
  */
 static unsigned pclk_div = 2;
 
-static spg_vclk_cycle_t last_sync;
+static dc_cycle_stamp_t last_sync;
 
 // whether to double pixels horizontally/vertically
 static bool pix_double_x, pix_double_y;
@@ -153,8 +151,6 @@ static void spg_handle_vblank_out(SchedEvent *event);
 
 static void spg_unsched_all();
 
-static inline spg_vclk_cycle_t spg_cycle_stamp();
-
 void spg_init() {
     hblank_event.handler = spg_handle_hblank;
     vblank_in_event.handler = spg_handle_vblank_in;
@@ -188,11 +184,14 @@ static void spg_unsched_all() {
 static void spg_sync() {
     unsigned hcount = get_hcount();
     unsigned vcount = get_vcount();
-    spg_vclk_cycle_t cur_time = spg_cycle_stamp();
-    spg_vclk_cycle_t delta_cycles = cur_time - last_sync;
+    dc_cycle_stamp_t cur_time = dc_cycle_stamp();
+    dc_cycle_stamp_t last_sync_rounded = (pclk_div * SPG_VCLK_DIV) *
+        (last_sync / (pclk_div * SPG_VCLK_DIV));
+
+    dc_cycle_stamp_t delta_cycles = cur_time - last_sync_rounded;
 
     // only update the last_sync timestamp if the values have changed
-    unsigned raster_x_inc = delta_cycles / pclk_div;
+    unsigned raster_x_inc = delta_cycles / (pclk_div * SPG_VCLK_DIV);
     if (raster_x_inc > 0) {
         last_sync = cur_time;
 
@@ -274,7 +273,7 @@ static void sched_next_hblank_event() {
     unsigned vcount = get_vcount();
     unsigned hblank_int_comp_val = get_hblank_int_comp_val();
     unsigned next_hblank_line;
-    spg_vclk_cycle_t next_hblank_pclk;
+    unsigned next_hblank_pclk;
 
     switch (hblank_int_mode) {
     case 0:
@@ -305,8 +304,19 @@ static void sched_next_hblank_event() {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
+    // I'm leaving this commented-out here it came in handy for debugging once
+
+    /* printf("current raster_x is %u; there are %u pixels until the next " */
+    /*        "hblank\n", (unsigned)raster_x, (unsigned)next_hblank_pclk); */
+    /* unsigned raster_y_next = */
+    /*     ((raster_x + next_hblank_pclk) / hcount + raster_y) % vcount; */
+    /* unsigned raster_x_next = (raster_x + next_hblank_pclk) % hcount; */
+    /* printf("when the time comes, the raster pos will be (%u, %u)\n", */
+    /*        raster_x_next, raster_y_next); */
+
     hblank_event.when = (SPG_VCLK_DIV * pclk_div) *
         (next_hblank_pclk + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
+
     sched_event(&hblank_event);
     hblank_event_scheduled = true;
 }
@@ -361,10 +371,6 @@ static void sched_next_vblank_out_event() {
 
     sched_event(&vblank_out_event);
     vblank_out_event_scheduled = true;
-}
-
-static inline spg_vclk_cycle_t spg_cycle_stamp() {
-    return dc_cycle_stamp() / SPG_VCLK_DIV;
 }
 
 void spg_set_pclk_div(unsigned val) {
