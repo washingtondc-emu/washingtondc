@@ -210,8 +210,8 @@ add_library(sh4 ${sh4_sources})
 # TODO: I wish there was an easy way to do this as a dependency like in make...
 configure_file("src/video/opengl/final_frag.glsl" "final_frag.glsl")
 configure_file("src/video/opengl/final_vert.glsl" "final_vert.glsl")
-configure_file("src/video/opengl/pvr_ta_vert.glsl" "pvr_ta_vert.glsl")
-configure_file("src/video/opengl/pvr_ta_frag.glsl" "pvr_ta_frag.glsl")
+configure_file("src/video/opengl/pvr2_ta_vert.glsl" "pvr2_ta_vert.glsl")
+configure_file("src/video/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl")
 
 # TODO: These shouldn't all need to be linked against GLFW, but there are some
 # GLFW function calls in Dreamcast.cpp, and since that's linked into libsh4

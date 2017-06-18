@@ -54,7 +54,8 @@ static GLuint vbo, vao;
 static void render_do_draw(struct geo_buf *geo);
 
 void render_init(void) {
-    shader_init_from_file(&pvr_ta_shader, "pvr_ta_vert.glsl", "pvr_ta_frag.glsl");
+    shader_init_from_file(&pvr_ta_shader, "pvr2_ta_vert.glsl",
+                          "pvr2_ta_frag.glsl");
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
