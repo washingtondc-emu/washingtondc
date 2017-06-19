@@ -120,7 +120,26 @@ void sh4_get_regs(Sh4 *sh4, reg32_t reg_out[SH4_REGISTER_COUNT]) {
 }
 
 void sh4_set_regs(Sh4 *sh4, reg32_t const reg_in[SH4_REGISTER_COUNT]) {
-    memcpy(sh4->reg, reg_in, sizeof(sh4->reg[0]) * SH4_REGISTER_COUNT);
+    unsigned reg_no;
+
+    // handle sr first as a special case because it can cause bank-switching
+    sh4_set_individual_reg(sh4, SH4_REG_SR, reg_in[SH4_REG_SR]);
+
+    for (reg_no = 0; reg_no < SH4_REGISTER_COUNT; reg_no++) {
+        if (reg_no != SH4_REG_SR)
+            sh4_set_individual_reg(sh4, reg_no, reg_in[reg_no]);
+    }
+}
+
+void sh4_set_individual_reg(Sh4 *sh4, unsigned reg_no, reg32_t reg_val) {
+    if (reg_no == SH4_REG_FPSCR) {
+        sh4_set_fpscr(sh4, reg_val);
+    } else if (reg_no == SH4_REG_SR) {
+        sh4_bank_switch_maybe(sh4, sh4->reg[SH4_REG_SR], reg_val);
+        sh4->reg[SH4_REG_SR] = reg_val;
+    } else {
+        sh4->reg[reg_no] = reg_val;
+    }
 }
 
 void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {

@@ -174,6 +174,7 @@ static inline void sh4_fpu_clear_cause(Sh4 *sh4) {
 void sh4_get_regs(Sh4 *sh4, reg32_t reg_out[SH4_REGISTER_COUNT]);
 /* FpuReg sh4_get_fpu(Sh4 *sh4); */
 void sh4_set_regs(Sh4 *sh4, reg32_t const reg_out[SH4_REGISTER_COUNT]);
+void sh4_set_individual_reg(Sh4 *sh4, unsigned reg_no, reg32_t reg_val);
 /* void sh4_set_fpu(Sh4 *sh4, FpuReg src); */
 
 void sh4_bank_switch(Sh4 *sh4);

@@ -283,16 +283,8 @@ static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
     reg32_t regs[N_REGS] = { 0 };
 
     // general-purpose registers
-    for (int i = 0; i < 16; i++) {
-        if (i < 8) {
-            if (reg_file[SH4_REG_SR] & SH4_SR_RB_MASK)
-                regs[R0 + i] = reg_file[sh4_bank1_reg_idx(cpu, i)];
-            else
-                regs[R0 + i] = reg_file[sh4_bank0_reg_idx(cpu, i)];
-        }else {
-            regs[R0 + i] = reg_file[SH4_REG_R8 + (i - 8)];
-        }
-    }
+    for (int i = 0; i < 16; i++)
+        regs[R0 + i] = reg_file[sh4_gen_reg_idx(cpu, i)];
 
     // banked registers
     for (int i = 0; i < 8; i++) {
@@ -421,6 +413,44 @@ static void extract_packet(struct string *out, struct string const *packet_in) {
     string_substr(out, packet_in, dollar_idx + 1, pound_idx - 1);
 }
 
+static int conv_reg_idx_to_sh4(unsigned reg_no) {
+    Sh4 *sh4 = dreamcast_get_cpu();
+
+    if (reg_no >= R0 && reg_no <= R15)
+        return sh4_gen_reg_idx(sh4, reg_no - R0);
+    else if (reg_no >= R0B0 && reg_no <= R7B0)
+        return sh4_bank0_reg_idx(sh4, reg_no - R0B0);
+    else if (reg_no >= R0B1 && reg_no <= R7B1)
+        return sh4_bank1_reg_idx(sh4, reg_no - R0B1);
+    else if (reg_no == PC)
+        return SH4_REG_PC;
+    else if (reg_no == PR)
+        return SH4_REG_PR;
+    else if (reg_no == GBR)
+        return SH4_REG_GBR;
+    else if (reg_no == VBR)
+        return SH4_REG_VBR;
+    else if (reg_no == MACH)
+        return SH4_REG_MACH;
+    else if (reg_no == MACL)
+        return SH4_REG_MACL;
+    else if (reg_no == SR)
+        return SH4_REG_SR;
+    else if (reg_no == SSR)
+        return SH4_REG_SSR;
+    else if (reg_no == SPC)
+        return SH4_REG_SPC;
+    else if (reg_no == FPUL)
+        return SH4_REG_FPUL;
+    else if (reg_no == FPSCR)
+        return SH4_REG_FPSCR;
+    else if (reg_no >= FR0 && reg_no <= FR15)
+        return reg_no - FR0 + SH4_REG_FR0;
+
+    fprintf(stderr, "Error: unable to map register index %d\n", reg_no);
+    return -1;
+}
+
 static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
                    unsigned reg_no, reg32_t reg_val, bool bank) {
     Sh4 *sh4 = dreamcast_get_cpu();
@@ -438,11 +468,15 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
             reg_file[SH4_REG_R8 + (idx + 8)] = reg_val;
         }
     } else if (reg_no >= R0B0 && reg_no <= R7B0) {
-        reg_file[sh4_bank0_reg_idx(sh4, reg_no - R0B0)] = reg_val;
+        fprintf(stderr, "WARNING: this gdb stub does not allow writes to "
+                "banked registers\n");
+        /* reg_file[sh4_bank0_reg_idx(sh4, reg_no - R0B0)] = reg_val; */
     } else if (reg_no >= R0B1 && reg_no <= R7B1) {
-        reg_file[sh4_bank1_reg_idx(sh4, reg_no - R0B1)] = reg_val;
+        fprintf(stderr, "WARNING: this gdb stub does not allow writes to "
+                "banked registers\n");
+        /* reg_file[sh4_bank1_reg_idx(sh4, reg_no - R0B1)] = reg_val; */
     } else if (reg_no == PC) {
-        reg_file[SH4_REG_PC] =reg_val;
+        reg_file[SH4_REG_PC] = reg_val;
     } else if (reg_no == PR) {
         reg_file[SH4_REG_PR] = reg_val;
     } else if (reg_no == GBR) {
@@ -454,14 +488,6 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
     } else if (reg_no == MACL) {
         reg_file[SH4_REG_MACL] = reg_val;
     } else if (reg_no == SR) {
-        /*
-         * TODO: there is some ambiguity over whether register banking should be
-         * based off of the old sr or the new sr for places like handle_G_packet
-         * where we loop through several registers.  For now, it's based off of
-         * the new SR because SH4_REG_SR comes after all the general-purpose
-         * registers in sh4_reg.h, and we potentially do a bank-switch here.
-         */
-        sh4_bank_switch_maybe(sh4, reg_file[SH4_REG_SR], reg_val);
         reg_file[SH4_REG_SR] = reg_val;
     } else if (reg_no == SSR) {
         reg_file[SH4_REG_SSR] = reg_val;
@@ -749,13 +775,13 @@ static void handle_G_packet(struct gdb_stub *stub, struct string *out,
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
         set_reg(new_regs, reg_no, regs[reg_no], bank);
+    sh4_set_regs(dreamcast_get_cpu(), new_regs);
 
     string_set(out, "OK");
 }
 
 static void handle_P_packet(struct gdb_stub *stub, struct string *out,
                             struct string const *dat) {
-    Sh4 *cpu;
     reg32_t regs[SH4_REGISTER_COUNT];
     int equals_idx = string_find_first_of(dat, "=");
 
@@ -788,11 +814,15 @@ static void handle_P_packet(struct gdb_stub *stub, struct string *out,
         goto cleanup;
     }
 
-    cpu = dreamcast_get_cpu();
-    sh4_get_regs(cpu, regs);
-    set_reg(regs, reg_no, reg_val,
-            (bool)(regs[SH4_REG_SR] & SH4_SR_RB_MASK));
-    sh4_set_regs(cpu, regs);
+    if ((reg_no >= R0B0 && reg_no <= R7B0) || (reg_no >= R0B1 && reg_no <= R7B1)) {
+        fprintf(stderr, "WARNING: this gdb stub does not allow writes to "
+                "banked registers\n");
+    } else {
+        int sh4_reg_no = conv_reg_idx_to_sh4(reg_no);
+
+        if (sh4_reg_no >= 0)
+            sh4_set_individual_reg(dreamcast_get_cpu(), sh4_reg_no, reg_val);
+    }
 
     string_set(out, "OK");
 
