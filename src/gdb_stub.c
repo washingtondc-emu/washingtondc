@@ -300,7 +300,11 @@ static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
         regs[R0B1 + i] = reg_file[sh4_bank1_reg_idx(cpu, i)];
     }
 
-    // TODO: floating point registers
+    // FPU registers
+    // TODO: implement the other types of FPU registers
+    // AFAIK, GDB only supports FRn, DRn and fVn.
+    for (int i = 0; i < 16; i++)
+        memcpy(regs + FR0 + i, reg_file + SH4_REG_FR0 + i, sizeof(float));
 
     // system/control registers
     regs[PC] = reg_file[SH4_REG_PC];
@@ -464,9 +468,14 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
     } else if (reg_no == SPC) {
         reg_file[SH4_REG_SPC] = reg_val;
     } else if (reg_no == FPUL) {
-        sh4->reg[SH4_REG_FPUL] = reg_val;
+        reg_file[SH4_REG_FPUL] = reg_val;
     } else if (reg_no == FPSCR) {
-        sh4->reg[SH4_REG_FPSCR] = reg_val;
+        reg_file[SH4_REG_FPSCR] = reg_val;
+    } else if (reg_no >= FR0 && reg_no <= FR15) {
+        // FPU registers
+        // TODO: implement the other types of FPU registers
+        // AFAIK, GDB only supports FRn, DRn and fVn.
+        memcpy(reg_file + SH4_REG_FR0 + (reg_no - FR0), &reg_val, sizeof(float));
     } else {
 #ifdef GDBSTUB_VERBOSE
         printf("WARNING: GdbStub unable to set value of register %x to %x\n",
