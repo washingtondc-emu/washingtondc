@@ -122,11 +122,15 @@ void sh4_get_regs(Sh4 *sh4, reg32_t reg_out[SH4_REGISTER_COUNT]) {
 void sh4_set_regs(Sh4 *sh4, reg32_t const reg_in[SH4_REGISTER_COUNT]) {
     unsigned reg_no;
 
-    // handle sr first as a special case because it can cause bank-switching
+    /*
+     * handle sr and fpscr first as a special case because
+     * they can cause bank-switching
+     */
     sh4_set_individual_reg(sh4, SH4_REG_SR, reg_in[SH4_REG_SR]);
+    sh4_set_individual_reg(sh4, SH4_REG_FPSCR, reg_in[SH4_REG_FPSCR]);
 
     for (reg_no = 0; reg_no < SH4_REGISTER_COUNT; reg_no++) {
-        if (reg_no != SH4_REG_SR)
+        if (reg_no != SH4_REG_SR && reg_no != SH4_REG_FPSCR)
             sh4_set_individual_reg(sh4, reg_no, reg_in[reg_no]);
     }
 }
