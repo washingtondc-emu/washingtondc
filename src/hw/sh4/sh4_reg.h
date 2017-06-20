@@ -84,7 +84,7 @@ typedef enum sh4_reg_idx {
     SH4_REG_FR7,
     SH4_REG_FR8,
     SH4_REG_DR8 = SH4_REG_FR8,
-    XH4_REG_FV8 = SH4_REG_FR8,
+    SH4_REG_FV8 = SH4_REG_FR8,
     SH4_REG_FR9,
     SH4_REG_FR10,
     SH4_REG_DR10 = SH4_REG_FR10,
