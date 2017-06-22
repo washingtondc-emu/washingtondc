@@ -203,9 +203,11 @@ void error_rm_callback(struct error_callback *cb);
 
 ERROR_INT_ATTR(line);
 ERROR_STRING_ATTR(file);
+ERROR_STRING_ATTR(function);
 
 ERROR_INT_ATTR(pending_error_line);
 ERROR_STRING_ATTR(pending_error_file);
+ERROR_STRING_ATTR(pending_error_function);
 
 ERROR_STRING_ATTR(feature);
 ERROR_STRING_ATTR(param_name);
@@ -230,14 +232,16 @@ ERROR_INT_ATTR(max_val);
     do {                                        \
         error_set_line(__LINE__);               \
         error_set_file(__FILE__);               \
+        error_set_function(__func__);           \
         error_raise(tp);                        \
     } while (0)
 
-#define PENDING_ERROR(tp)                       \
-    do {                                        \
-        error_set_pending_error_line(__LINE__); \
-        error_set_pending_error_file(__FILE__); \
-        set_error_pending(tp);                  \
+#define PENDING_ERROR(tp)                               \
+    do {                                                \
+        error_set_pending_error_line(__LINE__);         \
+        error_set_pending_error_file(__FILE__);         \
+        error_set_pending_error_function(__func__);     \
+        set_error_pending(tp);                          \
     } while (0)
 
 #ifdef __cplusplus

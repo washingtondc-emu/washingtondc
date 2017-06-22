@@ -62,16 +62,18 @@ static InstOpcode const* sh4_decode_inst_slow(inst_t inst);
 
 #ifdef INVARIANTS
 #define CHECK_INST(inst, mask, val) \
-    do_check_inst(inst, mask, val, __LINE__, __FILE__)
+    do_check_inst(inst, mask, val, __LINE__, __FILE__, __func__)
 
 static void do_check_inst(Sh4OpArgs inst, uint16_t mask, uint16_t val,
-                          int line_no, char const *file_name) {
+                          int line_no, char const *file_name,
+                          char const *func_name) {
     if ((inst.inst & mask) != val) {
         error_set_instruction(inst.inst);
         error_set_instruction_mask(mask);
         error_set_instruction_expect(val);
         error_set_line(line_no);
         error_set_file(file_name);
+        error_set_function(func_name);
         error_raise(ERROR_INTEGRITY);
     }
 }
