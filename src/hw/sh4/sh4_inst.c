@@ -794,6 +794,12 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm1100
     // FMOV DRm, DRn
     // 1111nnn0mmm01100
+    // FMOV XDm, DRn
+    // 1111nnn0mmm11100
+    // FMOV DRm, XDn
+    // 1111nnn1mmm01100
+    // FMOV XDm, XDn
+    // 1111nnn1mmm11100
     { "1111nnnnmmmm1100", FPU_HANDLER(fmov_gen),
       false, SH4_GROUP_LS, 1 },
 
@@ -801,6 +807,8 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm1000
     // FMOV @Rm, DRn
     // 1111nnn0mmmm1000
+    // FMOV @Rm, XDn
+    // 1111nnn1mmmm1000
     { "1111nnnnmmmm1000", FPU_HANDLER(fmovs_ind_gen),
       false, SH4_GROUP_LS, 1 },
 
@@ -808,6 +816,8 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm0110
     // FMOV @(R0, Rm), DRn
     // 1111nnn0mmmm0110
+    // FMOV @(R0, Rm), XDn
+    // 1111nnn1mmmm0110
     { "1111nnnnmmmm0110", FPU_HANDLER(fmov_binind_r0_gen_fpu),
       false, SH4_GROUP_LS, 1 },
 
@@ -815,6 +825,8 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm1001
     // FMOV @Rm+, DRn
     // 1111nnn0mmmm1001
+    // FMOV @Rm+, XDn
+    // 1111nnn1mmmm1001
     { "1111nnnnmmmm1001", FPU_HANDLER(fmov_indgeninc_fpu),
       false, SH4_GROUP_LS, 1 },
 
@@ -822,6 +834,8 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm1010
     // FMOV DRm, @Rn
     // 1111nnnnmmm01010
+    // FMOV XDm, @Rn
+    // 1111nnnnmmm11010
     { "1111nnnnmmmm1010", FPU_HANDLER(fmov_fpu_indgen),
       false, SH4_GROUP_LS, 1 },
 
@@ -829,6 +843,8 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm1011
     // FMOV DRm, @-Rn
     // 1111nnnnmmm01011
+    // FMOV XDm, @-Rn
+    // 1111nnnnmmm11011
     { "1111nnnnmmmm1011", FPU_HANDLER(fmov_fpu_inddecgen),
       false, SH4_GROUP_LS, 1 },
 
@@ -836,6 +852,8 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm0111
     // FMOV DRm, @(R0, Rn)
     // 1111nnnnmmm00111
+    // FMOV XDm, @(R0, Rn)
+    // 1111nnnnmmm10111
     { "1111nnnnmmmm0111", FPU_HANDLER(fmov_fpu_binind_r0_gen),
       false, SH4_GROUP_LS, 1 },
 
@@ -960,42 +978,6 @@ static struct InstOpcode opcode_list[] = {
     // STS.L FPUL, @-Rn
     { "0100nnnn01010010", &sh4_inst_binary_stsl_fpul_inddecgen, false,
       SH4_GROUP_CO, 1 },
-
-    // FMOV DRm, XDn
-    { "1111nnn1mmm01100", &sh4_inst_binary_fmove_dr_xd, false,
-      SH4_GROUP_LS, 1 },
-
-    // FMOV XDm, DRn
-    { "1111nnn0mmm11100", &sh4_inst_binary_fmov_xd_dr, false,
-      SH4_GROUP_LS, 1 },
-
-    // FMOV XDm, XDn
-    { "1111nnn1mmm11100", &sh4_inst_binary_fmov_xd_xd, false,
-      SH4_GROUP_LS, 1 },
-
-    // FMOV @Rm, XDn
-    { "1111nnn1mmmm1000", &sh4_inst_binary_fmov_indgen_xd, false,
-      SH4_GROUP_LS, 1 },
-
-    // FMOV @Rm+, XDn
-    { "1111nnn1mmmm1001", &sh4_inst_binary_fmov_indgeninc_xd, false,
-      SH4_GROUP_LS, 1 },
-
-    // FMOV @(R0, Rm), XDn
-    { "1111nnn1mmmm0110", &sh4_inst_binary_fmov_binind_r0_gen_xd,
-      false, SH4_GROUP_LS, 1 },
-
-    // FMOV XDm, @Rn
-    { "1111nnnnmmm11010", &sh4_inst_binary_fmov_xd_indgen, false,
-      SH4_GROUP_LS, 1 },
-
-    // FMOV XDm, @-Rn
-    { "1111nnnnmmm11011", &sh4_inst_binary_fmov_xd_inddecgen, false,
-      SH4_GROUP_LS, 1 },
-
-    // FMOV XDm, @(R0, Rn)
-    { "1111nnnnmmm10111", &sh4_inst_binary_fmov_xs_binind_r0_gen,
-      false, SH4_GROUP_LS, 1 },
 
     // FIPR FVm, FVn - vector dot product
     { "1111nnmm11101101", &sh4_inst_binary_fipr_fv_fv, false,
@@ -6218,61 +6200,226 @@ DEF_FPU_HANDLER(fldi0, SH4_FPSCR_PR_MASK,
 DEF_FPU_HANDLER(fldi1, SH4_FPSCR_PR_MASK,
                 sh4_inst_unary_fldi1_fr, sh4_inst_unary_fldi1_fr)
 
-// these handlers depend on the SZ bit
 // FMOV FRm, FRn
 // 1111nnnnmmmm1100
 // FMOV DRm, DRn
 // 1111nnn0mmm01100
-DEF_FPU_HANDLER(fmov_gen, SH4_FPSCR_SZ_MASK,
-                sh4_inst_binary_fmov_fr_fr, sh4_inst_binary_fmov_dr_dr)
+// FMOV XDm, DRn
+// 1111nnn0mmm11100
+// FMOV DRm, XDn
+// 1111nnn1mmm01100
+// FMOV XDm, XDn
+// 1111nnn1mmm11100
+DEF_FPU_HANDLER_CUSTOM(fmov_gen) {
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
+
+        /*
+         * TODO: I ought to be able to merge all four of these into a single
+         * opcode handler and use the (1 << 8) and (1 << 4) bits to control
+         * which register banks get used for the source and destination
+         * operands.
+         */
+        switch (inst.inst & ((1 << 8) | (1 << 4))) {
+        case 0:
+            sh4_inst_binary_fmov_dr_dr(sh4, inst);
+            break;
+        case (1 << 4):
+            sh4_inst_binary_fmov_xd_dr(sh4, inst);
+            break;
+        case (1 << 8):
+            sh4_inst_binary_fmove_dr_xd(sh4, inst);
+            break;
+        case (1 << 8) | (1 << 4):
+            sh4_inst_binary_fmov_xd_xd(sh4, inst);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY); // should never happen
+        }
+    } else {
+        sh4_inst_binary_fmov_fr_fr(sh4, inst);
+    }
+}
 
 // FMOV.S @Rm, FRn
 // 1111nnnnmmmm1000
 // FMOV @Rm, DRn
 // 1111nnn0mmmm1000
-DEF_FPU_HANDLER(fmovs_ind_gen, SH4_FPSCR_SZ_MASK,
-                sh4_inst_binary_fmovs_indgen_fr,
-                sh4_inst_binary_fmov_indgen_dr)
+// FMOV @Rm, XDn
+// 1111nnn1mmmm1000
+DEF_FPU_HANDLER_CUSTOM(fmovs_ind_gen) {
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
+
+        /*
+         * TODO: I ought to be able to merge both of these into a single
+         * opcode handler and use the (1 << 8) bit to control
+         * which register banks get used for the source and destination
+         * operands.
+         */
+        switch (inst.inst & (1 << 8)) {
+        case 0:
+            sh4_inst_binary_fmov_indgen_dr(sh4, inst);
+            break;
+        case (1 << 8):
+            sh4_inst_binary_fmov_indgen_xd(sh4, inst);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY); // should never happen
+        }
+    } else {
+        sh4_inst_binary_fmovs_indgen_fr(sh4, inst);
+    }
+}
 
 // FMOV.S @(R0, Rm), FRn
 // 1111nnnnmmmm0110
 // FMOV @(R0, Rm), DRn
 // 1111nnn0mmmm0110
-DEF_FPU_HANDLER(fmov_binind_r0_gen_fpu, SH4_FPSCR_SZ_MASK,
-                sh4_inst_binary_fmovs_binind_r0_gen_fr,
-                sh4_inst_binary_fmov_binind_r0_gen_dr)
+// FMOV @(R0, Rm), XDn
+// 1111nnn1mmmm0110
+DEF_FPU_HANDLER_CUSTOM(fmov_binind_r0_gen_fpu) {
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
+
+        /*
+         * TODO: I ought to be able to merge both of these into a single
+         * opcode handler and use the (1 << 8) bit to control
+         * which register banks get used for the source and destination
+         * operands.
+         */
+        switch (inst.inst & (1 << 8)) {
+        case 0:
+            sh4_inst_binary_fmov_binind_r0_gen_dr(sh4, inst);
+            break;
+        case (1 << 8):
+            sh4_inst_binary_fmov_binind_r0_gen_xd(sh4, inst);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY); // should never happen
+        }
+    } else {
+        sh4_inst_binary_fmovs_binind_r0_gen_fr(sh4, inst);
+    }
+}
 
 // FMOV.S @Rm+, FRn
 // 1111nnnnmmmm1001
 // FMOV @Rm+, DRn
 // 1111nnn0mmmm1001
-DEF_FPU_HANDLER(fmov_indgeninc_fpu, SH4_FPSCR_SZ_MASK,
-                sh4_inst_binary_fmovs_indgeninc_fr,
-                sh4_inst_binary_fmov_indgeninc_dr)
+// FMOV @Rm+, XDn
+// 1111nnn1mmmm1001
+DEF_FPU_HANDLER_CUSTOM(fmov_indgeninc_fpu) {
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
+
+        /*
+         * TODO: I ought to be able to merge both of these into a single
+         * opcode handler and use the (1 << 8) bit to control
+         * which register banks get used for the source and destination
+         * operands.
+         */
+        switch (inst.inst & (1 << 8)) {
+        case 0:
+            sh4_inst_binary_fmov_indgeninc_dr(sh4, inst);
+            break;
+        case (1 << 8):
+            sh4_inst_binary_fmov_indgeninc_xd(sh4, inst);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY); // should never happen
+        }
+    } else {
+        sh4_inst_binary_fmovs_indgeninc_fr(sh4, inst);
+    }
+}
 
 // FMOV.S FRm, @Rn
 // 1111nnnnmmmm1010
 // FMOV DRm, @Rn
 // 1111nnnnmmm01010
-DEF_FPU_HANDLER(fmov_fpu_indgen, SH4_FPSCR_SZ_MASK,
-                sh4_inst_binary_fmovs_fr_indgen,
-                sh4_inst_binary_fmov_dr_indgen)
+// FMOV XDm, @Rn
+// 1111nnnnmmm11010
+DEF_FPU_HANDLER_CUSTOM(fmov_fpu_indgen) {
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
+
+        /*
+         * TODO: I ought to be able to merge both of these into a single
+         * opcode handler and use the (1 << 4) bit to control
+         * which register banks get used for the source and destination
+         * operands.
+         */
+        switch (inst.inst & (1 << 4)) {
+        case 0:
+            sh4_inst_binary_fmov_dr_indgen(sh4, inst);
+            break;
+        case (1 << 4):
+            sh4_inst_binary_fmov_xd_indgen(sh4, inst);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY); // should never happen
+        }
+    } else {
+        sh4_inst_binary_fmovs_fr_indgen(sh4, inst);
+    }
+}
 
 // FMOV.S FRm, @-Rn
 // 1111nnnnmmmm1011
 // FMOV DRm, @-Rn
 // 1111nnnnmmm01011
-DEF_FPU_HANDLER(fmov_fpu_inddecgen, SH4_FPSCR_SZ_MASK,
-                sh4_inst_binary_fmovs_fr_inddecgen,
-                sh4_inst_binary_fmov_dr_inddecgen)
+// FMOV XDm, @-Rn
+// 1111nnnnmmm11011
+DEF_FPU_HANDLER_CUSTOM(fmov_fpu_inddecgen) {
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
+
+        /*
+         * TODO: I ought to be able to merge both of these into a single
+         * opcode handler and use the (1 << 4) bit to control
+         * which register banks get used for the source and destination
+         * operands.
+         */
+        switch (inst.inst & (1 << 4)) {
+        case 0:
+            sh4_inst_binary_fmov_dr_inddecgen(sh4, inst);
+            break;
+        case (1 << 4):
+            sh4_inst_binary_fmov_xd_inddecgen(sh4, inst);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY); // should never happen
+        }
+    } else {
+        sh4_inst_binary_fmovs_fr_inddecgen(sh4, inst);
+    }
+}
+
 
 // FMOV.S FRm, @(R0, Rn)
 // 1111nnnnmmmm0111
 // FMOV DRm, @(R0, Rn)
 // 1111nnnnmmm00111
-DEF_FPU_HANDLER(fmov_fpu_binind_r0_gen, SH4_FPSCR_SZ_MASK,
-                sh4_inst_binary_fmovs_fr_binind_r0_gen,
-                sh4_inst_binary_fmov_dr_binind_r0_gen)
+// FMOV XDm, @(R0, Rn)
+// 1111nnnnmmm10111
+DEF_FPU_HANDLER_CUSTOM(fmov_fpu_binind_r0_gen) {
+    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
+
+        /*
+         * TODO: I ought to be able to merge both of these into a single
+         * opcode handler and use the (1 << 4) bit to control
+         * which register banks get used for the source and destination
+         * operands.
+         */
+        switch (inst.inst & (1 << 4)) {
+        case 0:
+            sh4_inst_binary_fmov_dr_binind_r0_gen(sh4, inst);
+            break;
+        case (1 << 4):
+            sh4_inst_binary_fmov_xs_binind_r0_gen(sh4, inst);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY); // should never happen
+        }
+    } else {
+        sh4_inst_binary_fmovs_fr_binind_r0_gen(sh4, inst);
+    }
+}
 
 // FABS FRn
 // 1111nnnn01011101

@@ -1219,6 +1219,9 @@ void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst);
         }                                              \
     }
 
+#define DEF_FPU_HANDLER_CUSTOM(name)            \
+    DECL_FPU_HANDLER(name)
+
 // these handlers have no specified behavior for when the PR bit is set
 
 // FLDI0 FRn
