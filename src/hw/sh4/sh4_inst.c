@@ -47,6 +47,9 @@ static DEF_ERROR_STRING_ATTR(opcode_name)
 static DEF_ERROR_INT_ATTR(instruction)
 static DEF_ERROR_INT_ATTR(instruction_mask)
 static DEF_ERROR_INT_ATTR(instruction_expect)
+static DEF_ERROR_U32_ATTR(fpscr)
+static DEF_ERROR_U32_ATTR(fpscr_expect)
+static DEF_ERROR_U32_ATTR(fpscr_mask)
 
 #ifdef SH4_FPU_PEDANTIC
 /*
@@ -78,8 +81,29 @@ static void do_check_inst(Sh4OpArgs inst, uint16_t mask, uint16_t val,
     }
 }
 
+#define CHECK_FPSCR(fpscr, mask, expect) \
+    do_check_fpscr(fpscr, mask, expect, __LINE__, __FILE__, __func__)
+
+static void do_check_fpscr(reg32_t fpscr, reg32_t mask, reg32_t expect,
+                           int line_no, char const *file_name,
+                           char const *func_name) {
+    if ((fpscr & mask) != expect) {
+        error_set_fpscr(fpscr);
+        error_set_fpscr_mask(mask);
+        error_set_fpscr_expect(expect);
+        error_set_line(line_no);
+        error_set_file(file_name);
+        error_set_function(func_name);
+        error_raise(ERROR_INTEGRITY);
+    }
+}
+
 #else
+
 #define CHECK_INST(inst, mask, val)
+
+#define CHECK_FPSCR(fpscr, mask, expect)
+
 #endif
 
 static struct InstOpcode opcode_list[] = {
@@ -4749,6 +4773,7 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_fldi0_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn10001101, INST_CONS_1111nnnn10001101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     *sh4_fpu_fr(sh4, inst.fr_reg) = 0.0f;
 
@@ -4763,6 +4788,7 @@ void sh4_inst_unary_fldi0_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_fldi1_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn10011101, INST_CONS_1111nnnn10011101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     *sh4_fpu_fr(sh4, inst.fr_reg) = 1.0f;
 
@@ -4777,6 +4803,7 @@ void sh4_inst_unary_fldi1_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1100, INST_CONS_1111nnnnmmmm1100);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     *sh4_fpu_fr(sh4, inst.dst_reg) = *sh4_fpu_fr(sh4, inst.src_reg);
 
@@ -4791,6 +4818,7 @@ void sh4_inst_binary_fmov_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmovs_indgen_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1000, INST_CONS_1111nnnnmmmm1000);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t addr = *sh4_gen_reg(sh4, inst.src_reg);
     float *dst_ptr = sh4_fpu_fr(sh4, inst.dst_reg);
@@ -4809,6 +4837,7 @@ void sh4_inst_binary_fmovs_indgen_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmovs_binind_r0_gen_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0110, INST_CONS_1111nnnnmmmm0110);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, inst.src_reg);
     float *dst_ptr = sh4_fpu_fr(sh4, inst.dst_reg);
@@ -4827,6 +4856,7 @@ void sh4_inst_binary_fmovs_binind_r0_gen_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmovs_indgeninc_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1001, INST_CONS_1111nnnnmmmm1001);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, inst.src_reg);
     float *dst_ptr = sh4_fpu_fr(sh4, inst.dst_reg);
@@ -4846,6 +4876,7 @@ void sh4_inst_binary_fmovs_indgeninc_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmovs_fr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1010, INST_CONS_1111nnnnmmmm1010);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
@@ -4864,6 +4895,7 @@ void sh4_inst_binary_fmovs_fr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmovs_fr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1011, INST_CONS_1111nnnnmmmm1011);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, inst.dst_reg);
     reg32_t addr = *addr_p - 4;
@@ -4884,6 +4916,7 @@ void sh4_inst_binary_fmovs_fr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmovs_fr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0111, INST_CONS_1111nnnnmmmm0111);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
@@ -4902,6 +4935,7 @@ void sh4_inst_binary_fmovs_fr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm01100, INST_CONS_1111nnn0mmm01100);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     *sh4_fpu_dr(sh4, inst.dr_dst) = *sh4_fpu_dr(sh4, inst.dr_src);
 
@@ -4916,6 +4950,7 @@ void sh4_inst_binary_fmov_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_indgen_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmmm1000, INST_CONS_1111nnn0mmmm1000);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t addr = *sh4_gen_reg(sh4, inst.src_reg);
     double *dst_ptr = sh4_fpu_dr(sh4, inst.dr_dst);
@@ -4934,6 +4969,7 @@ void sh4_inst_binary_fmov_indgen_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_binind_r0_gen_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmmm0110, INST_CONS_1111nnn0mmmm0110);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, inst.src_reg);
     double *dst_ptr = sh4_fpu_dr(sh4, inst.dr_dst);
@@ -4952,6 +4988,7 @@ void sh4_inst_binary_fmov_binind_r0_gen_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_indgeninc_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmmm1001, INST_CONS_1111nnn0mmmm1001);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, inst.src_reg);
     double *dst_ptr = sh4_fpu_dr(sh4, inst.dr_dst);
@@ -4971,6 +5008,7 @@ void sh4_inst_binary_fmov_indgeninc_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_dr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm01010, INST_CONS_1111nnnnmmm01010);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
@@ -4989,6 +5027,7 @@ void sh4_inst_binary_fmov_dr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_dr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm01011, INST_CONS_1111nnnnmmm01011);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, inst.dst_reg);
     reg32_t addr = *addr_p - 8;
@@ -5009,6 +5048,7 @@ void sh4_inst_binary_fmov_dr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_dr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm00111, INST_CONS_1111nnnnmmm00111);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
@@ -5059,6 +5099,7 @@ void sh4_inst_binary_fsts_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_fabs_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn01011101, INST_CONS_1111nnnn01011101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnnn01011101");
@@ -5074,6 +5115,7 @@ void sh4_inst_unary_fabs_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fadd_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0000, INST_CONS_1111nnnnmmmm0000);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
@@ -5117,6 +5159,7 @@ void sh4_inst_binary_fadd_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fcmpeq_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0100, INST_CONS_1111nnnnmmmm0100);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
@@ -5150,6 +5193,7 @@ void sh4_inst_binary_fcmpeq_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fcmpgt_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0101, INST_CONS_1111nnnnmmmm0101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
@@ -5183,6 +5227,7 @@ void sh4_inst_binary_fcmpgt_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fdiv_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0011, INST_CONS_1111nnnnmmmm0011);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
@@ -5233,6 +5278,7 @@ void sh4_inst_binary_fdiv_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_float_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn00101101, INST_CONS_1111nnnn00101101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     float *dst_reg = sh4_fpu_fr(sh4, inst.gen_reg);
 
@@ -5249,6 +5295,7 @@ void sh4_inst_binary_float_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_trinary_fmac_fr0_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1110, INST_CONS_1111nnnnmmmm1110);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
@@ -5272,6 +5319,7 @@ void sh4_inst_trinary_fmac_fr0_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmul_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0010, INST_CONS_1111nnnnmmmm0010);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
@@ -5314,6 +5362,7 @@ void sh4_inst_binary_fmul_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_fneg_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn01001101, INST_CONS_1111nnnn01001101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     *sh4_fpu_fr(sh4, inst.fr_reg) = -*sh4_fpu_fr(sh4, inst.fr_reg);
     sh4_next_inst(sh4);
@@ -5327,6 +5376,7 @@ void sh4_inst_unary_fneg_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_fsqrt_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn01101101, INST_CONS_1111nnnn01101101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
@@ -5349,6 +5399,7 @@ void sh4_inst_unary_fsqrt_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fsub_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0001, INST_CONS_1111nnnnmmmm0001);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
@@ -5392,6 +5443,7 @@ void sh4_inst_binary_fsub_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111mmmm00111101, INST_CONS_1111mmmm00111101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     /*
      * TODO: The spec says there's some pretty complicated error-checking that
@@ -5422,6 +5474,7 @@ void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_fabs_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn001011101, INST_CONS_1111nnn001011101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn001011101");
@@ -5437,6 +5490,7 @@ void sh4_inst_unary_fabs_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fadd_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00000, INST_CONS_1111nnn0mmm00000);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn0mmm00000");
@@ -5452,6 +5506,7 @@ void sh4_inst_binary_fadd_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fcmpeq_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00100, INST_CONS_1111nnn0mmm00100);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn0mmm00100");
@@ -5467,6 +5522,7 @@ void sh4_inst_binary_fcmpeq_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fcmpgt_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00101, INST_CONS_1111nnn0mmm00101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn0mmm00101");
@@ -5482,6 +5538,7 @@ void sh4_inst_binary_fcmpgt_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fdiv_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00011, INST_CONS_1111nnn0mmm00011);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn0mmm00011");
@@ -5497,6 +5554,7 @@ void sh4_inst_binary_fdiv_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fcnvds_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111mmm010111101, INST_CONS_1111mmm010111101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     /*
      * TODO: The spec says there's some pretty complicated error-checking that
@@ -5520,6 +5578,7 @@ void sh4_inst_binary_fcnvds_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fcnvsd_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn010101101, INST_CONS_1111nnn010101101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     /*
      * TODO: The spec says there's some pretty complicated error-checking that
@@ -5544,6 +5603,7 @@ void sh4_inst_binary_fcnvsd_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn000101101, INST_CONS_1111nnn000101101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     double *dst_reg = sh4_fpu_dr(sh4, inst.dr_reg);
 
@@ -5560,6 +5620,7 @@ void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmul_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00010, INST_CONS_1111nnn0mmm00010);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn0mmm00010");
@@ -5575,6 +5636,7 @@ void sh4_inst_binary_fmul_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_fneg_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn001001101, INST_CONS_1111nnn001001101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn001001101");
@@ -5590,6 +5652,7 @@ void sh4_inst_unary_fneg_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_fsqrt_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn001101101, INST_CONS_1111nnn001101101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn001101101");
@@ -5605,6 +5668,7 @@ void sh4_inst_unary_fsqrt_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fsub_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00001, INST_CONS_1111nnn0mmm00001);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn0mmm00001");
@@ -5620,6 +5684,7 @@ void sh4_inst_binary_fsub_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111mmm000111101, INST_CONS_1111mmm000111101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     /*
      * TODO: The spec says there's some pretty complicated error-checking that
@@ -5649,6 +5714,7 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fsca_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn011111101, INST_CONS_1111nnn011111101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     // TODO: should I really be calling sh4_fpu_clear_cause here ?
     sh4_fpu_clear_cause(sh4);
@@ -5818,6 +5884,7 @@ void sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmove_dr_xd(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmm01100, INST_CONS_1111nnn1mmm01100);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn1mmm01100");
@@ -5833,6 +5900,7 @@ void sh4_inst_binary_fmove_dr_xd(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_xd_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm11100, INST_CONS_1111nnn0mmm11100);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn0mmm11100");
@@ -5848,6 +5916,7 @@ void sh4_inst_binary_fmov_xd_dr(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_xd_xd(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmm11100, INST_CONS_1111nnn1mmm11100);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn1mmm11100");
@@ -5863,6 +5932,7 @@ void sh4_inst_binary_fmov_xd_xd(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_indgen_xd(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmmm1000, INST_CONS_1111nnn1mmmm1000);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn1mmmm1000");
@@ -5878,6 +5948,7 @@ void sh4_inst_binary_fmov_indgen_xd(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_indgeninc_xd(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmmm1001, INST_CONS_1111nnn1mmmm1001);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn1mmmm1001");
@@ -5893,6 +5964,7 @@ void sh4_inst_binary_fmov_indgeninc_xd(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_binind_r0_gen_xd(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmmm0110, INST_CONS_1111nnn1mmmm0110);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnn1mmmm0110");
@@ -5908,6 +5980,7 @@ void sh4_inst_binary_fmov_binind_r0_gen_xd(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_xd_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm11010, INST_CONS_1111nnnnmmm11010);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnnnmmm11010");
@@ -5923,6 +5996,7 @@ void sh4_inst_binary_fmov_xd_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_xd_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm11011, INST_CONS_1111nnnnmmm11011);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnnnmmm11011");
@@ -5938,6 +6012,7 @@ void sh4_inst_binary_fmov_xd_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_binary_fmov_xs_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm10111, INST_CONS_1111nnnnmmm10111);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
     error_set_opcode_format("1111nnnnmmm10111");
@@ -6075,6 +6150,7 @@ void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst) {
 void sh4_inst_unary_fsrra_frn(Sh4  *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn01111101, INST_CONS_1111nnnn01111101);
+    CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
     sh4_next_inst(sh4);
