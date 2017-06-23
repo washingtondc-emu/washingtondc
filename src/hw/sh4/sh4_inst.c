@@ -5708,10 +5708,12 @@ void sh4_inst_binary_fsca_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     unsigned sin_reg_no = inst.dr_reg * 2;
     unsigned cos_reg_no = sin_reg_no + 1;
-    unsigned angle = sh4->reg[SH4_REG_FPUL] & 0xffff;
+    unsigned angle = sh4->reg[SH4_REG_FPUL] & (FSCA_TBL_LEN - 1);
 
-    *sh4_fpu_fr(sh4, sin_reg_no) = sh4_fsca_sin_tbl[angle];
-    *sh4_fpu_fr(sh4, cos_reg_no) = sh4_fsca_cos_tbl[angle];
+    memcpy(sh4_fpu_fr(sh4, sin_reg_no), sh4_fsca_sin_tbl + angle,
+           sizeof(float));
+    memcpy(sh4_fpu_fr(sh4, cos_reg_no), sh4_fsca_cos_tbl + angle,
+           sizeof(float));
 }
 
 #define INST_MASK_0100mmmm01101010 0xf0ff
