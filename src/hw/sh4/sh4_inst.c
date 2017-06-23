@@ -5931,10 +5931,14 @@ void sh4_inst_binary_fmov_indgeninc_xd(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1111nnn1mmmm1001, INST_CONS_1111nnn1mmmm1001);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnn1mmmm1001");
-    error_set_opcode_name("FMOV @Rm+, XDn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    reg32_t *addr_p = sh4_gen_reg(sh4, inst.src_reg);
+    double *dst_ptr = sh4_fpu_xd(sh4, inst.dr_dst);
+
+    if (sh4_read_mem(sh4, dst_ptr, *addr_p, sizeof(*dst_ptr)) != 0)
+        return;
+
+    *addr_p += 8;
+    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn1mmmm0110 0xf10f
