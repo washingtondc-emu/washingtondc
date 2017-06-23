@@ -11682,6 +11682,69 @@ public:
 
         return failure;
     }
+
+    // FMOV XDm, @-Rn
+    // 1111nnnnmmm11011
+    static int do_fmov_binary_xd_inddecgen(Sh4 *cpu, BiosFile *bios,
+                                           Memory *mem, unsigned reg_src,
+                                           unsigned reg_dst, addr32_t addr,
+                                           double val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        // increment addr 'cause the opcode is going to decrement it
+        addr += 8;
+
+        ss << "FSCHG\n";
+        ss << "FMOV XD" << reg_src << ", @-R" << reg_dst << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+        *sh4_fpu_xd(cpu, reg_src >> 1) = val;
+        *sh4_gen_reg(cpu, reg_dst) = addr;
+
+        sh4_exec_inst(cpu);
+        sh4_exec_inst(cpu);
+
+        double val_actual;
+        sh4_read_mem(cpu, &val_actual, addr - 8, sizeof(val_actual));
+
+        addr32_t addr_out_expect = addr - 8;
+        addr32_t addr_out_actual = *sh4_gen_reg(cpu, reg_dst);
+
+        if ((val_actual != val) || (addr_out_actual != addr_out_expect)) {
+            std::cout << "While running: " << cmd << std::endl;
+            std::cout << "val is " << val << std::endl;
+            std::cout << "addr is " << std::hex << addr << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
+            std::cout << "addr_out_actual is " << addr_out_actual << std::endl;
+            std::cout << "addr_out_expect is " << addr_out_expect << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
+    static int fmov_binary_xd_inddecgen(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                        RandGen32 *randgen32) {
+        int failed = 0;
+
+        for (unsigned reg_src = 0; reg_src < SH4_N_DOUBLE_REGS; reg_src++) {
+            for (unsigned reg_dst = 0; reg_dst < 16; reg_dst++) {
+                addr32_t addr = pick_addr(AddrRange(randgen32, 8, MEM_SZ - 8));
+                double val = randgen32->pick_double();
+                failed = failed ||
+                    do_fmov_binary_xd_inddecgen(cpu, bios, mem, reg_src * 2,
+                                                reg_dst, addr, val);
+            }
+        }
+
+        return failed;
+    }
 };
 
 struct inst_test {
@@ -11916,6 +11979,7 @@ struct inst_test {
     { "binary_fsub_fr_fr", &Sh4InstTests::binary_fsub_fr_fr },
     { "binary_fipr_fv_fv", &Sh4InstTests::binary_fipr_fv_fv },
     { "binary_fmov_dr_xd", &Sh4InstTests::binary_fmov_dr_xd },
+    { "fmov_binary_xd_inddecgen", &Sh4InstTests::fmov_binary_xd_inddecgen },
     { NULL }
 };
 
