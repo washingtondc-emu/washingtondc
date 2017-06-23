@@ -279,6 +279,12 @@ static inline double *sh4_fpu_dr(Sh4 *sh4, unsigned reg_no) {
     return (double*)(sh4->reg + SH4_REG_FR0 + (reg_no << 1));
 }
 
+static inline double *sh4_fpu_xd(Sh4 *sh4, unsigned reg_no) {
+    assert(reg_no < SH4_N_DOUBLE_REGS);
+
+    return (double*)(sh4->reg + SH4_REG_XD0 + (reg_no << 1));
+}
+
 #ifdef __cplusplus
 }
 #endif

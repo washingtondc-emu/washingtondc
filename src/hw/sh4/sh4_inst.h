@@ -1142,7 +1142,7 @@ void sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, Sh4OpArgs inst);
 
 // FMOV DRm, XDn
 // 1111nnn1mmm01100
-void sh4_inst_binary_fmove_dr_xd(Sh4 *sh4, Sh4OpArgs inst);
+void sh4_inst_binary_fmov_dr_xd(Sh4 *sh4, Sh4OpArgs inst);
 
 // FMOV XDm, DRn
 // 1111nnn0mmm11100

@@ -5863,15 +5863,14 @@ void sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
 // FMOV DRm, XDn
 // 1111nnn1mmm01100
-void sh4_inst_binary_fmove_dr_xd(Sh4 *sh4, Sh4OpArgs inst) {
+void sh4_inst_binary_fmov_dr_xd(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmm01100, INST_CONS_1111nnn1mmm01100);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnn1mmm01100");
-    error_set_opcode_name("FMOV DRm, XDn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    *sh4_fpu_xd(sh4, inst.dr_dst) = *sh4_fpu_dr(sh4, inst.dr_src);
+
+    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn0mmm11100 0xf11f
@@ -6227,7 +6226,7 @@ DEF_FPU_HANDLER_CUSTOM(fmov_gen) {
             sh4_inst_binary_fmov_xd_dr(sh4, inst);
             break;
         case (1 << 8):
-            sh4_inst_binary_fmove_dr_xd(sh4, inst);
+            sh4_inst_binary_fmov_dr_xd(sh4, inst);
             break;
         case (1 << 8) | (1 << 4):
             sh4_inst_binary_fmov_xd_xd(sh4, inst);
