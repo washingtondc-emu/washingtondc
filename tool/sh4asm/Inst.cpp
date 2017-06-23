@@ -1353,7 +1353,7 @@ PtrnList get_patterns() {
     // FMOV DRm, XDn
     // 1111nnn1mmm01100
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(fmov),
-                           Ptrn_DrReg, Ptrn_XdReg, 0xf00c, 0xf11f, 5, 9>));
+                           Ptrn_DrReg, Ptrn_XdReg, 0xf10c, 0xf11f, 5, 9>));
 
     // FMOV XDm, DRn
     // 1111nnn0mmm11100
