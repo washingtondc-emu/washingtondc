@@ -201,6 +201,9 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
 }
 
 int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len) {
+    if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL)
+        return sh4_sq_read(sh4, dat, addr, len);
+
     if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {
         return sh4_read_mem_mapped_reg(sh4, dat, addr, len);
     }

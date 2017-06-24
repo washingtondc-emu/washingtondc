@@ -93,6 +93,9 @@ void sh4_ocache_do_read_ora(Sh4 *sh4, void *dat, addr32_t paddr, unsigned len);
 // write to a store-queue.  len should be in terms of bytes.
 int sh4_sq_write(Sh4 *sh4, void const *buf, addr32_t addr, unsigned len);
 
+// read from a store-queue.  len should be in terms of bytes.
+int sh4_sq_read(Sh4 *sh4, void *buf, addr32_t addr, unsigned len);
+
 // implement the store queues' version of the pref instruction
 int sh4_sq_pref(Sh4 *sh4, addr32_t addr);
 
