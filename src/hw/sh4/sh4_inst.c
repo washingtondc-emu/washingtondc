@@ -2054,14 +2054,14 @@ void sh4_inst_unary_tasb_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_next_inst(sh4);
 }
 
-#define INST_MASK_0000nnnn10100011 0xf0ff
-#define INST_CONS_0000nnnn10100011 0x00a3
+#define INST_MASK_0000nnnn10010011 0xf0ff
+#define INST_CONS_0000nnnn10010011 0x0093
 
 // OCBI @Rn
-// 0000nnnn10100011
+// 0000nnnn10010011
 void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 
-    CHECK_INST(inst, INST_MASK_0000nnnn10100011, INST_CONS_0000nnnn10100011);
+    CHECK_INST(inst, INST_MASK_0000nnnn10010011, INST_CONS_0000nnnn10010011);
 
     /* TODO: if mmu is enabled, this inst can generate exceptions */
 
