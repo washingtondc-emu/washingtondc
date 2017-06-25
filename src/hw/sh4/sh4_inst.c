@@ -5264,7 +5264,7 @@ void sh4_inst_binary_float_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     float *dst_reg = sh4_fpu_fr(sh4, inst.gen_reg);
 
-    *dst_reg = (float)sh4->reg[SH4_REG_FPUL];
+    *dst_reg = (float)((int32_t)sh4->reg[SH4_REG_FPUL]);
 
     sh4_next_inst(sh4);
 }
@@ -5434,7 +5434,7 @@ void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
      */
     float const *val_in_p = sh4_fpu_fr(sh4, inst.gen_reg);
     float val = *val_in_p;
-    uint32_t val_int;
+    int32_t val_int;
 
     sh4_next_inst(sh4);
     sh4_fpu_clear_cause(sh4);
@@ -5589,7 +5589,7 @@ void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     double *dst_reg = sh4_fpu_dr(sh4, inst.dr_reg);
 
-    *dst_reg = (double)sh4->reg[SH4_REG_FPUL];
+    *dst_reg = (double)((int64_t)sh4->reg[SH4_REG_FPUL]);
 
     sh4_next_inst(sh4);
 }
@@ -5674,7 +5674,7 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
      * instead
      */
     double val_in = *sh4_fpu_dr(sh4, inst.dr_reg);
-    uint32_t val_int;
+    int32_t val_int;
 
     sh4_next_inst(sh4);
     sh4_fpu_clear_cause(sh4);
