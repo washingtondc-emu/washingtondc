@@ -5885,10 +5885,9 @@ void sh4_inst_binary_fmov_xd_dr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1111nnn0mmm11100, INST_CONS_1111nnn0mmm11100);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnn0mmm11100");
-    error_set_opcode_name("FMOV XDm, DRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    *sh4_fpu_dr(sh4, inst.dr_dst) = *sh4_fpu_xd(sh4, inst.dr_src);
+
+    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn1mmm11100 0xf11f
