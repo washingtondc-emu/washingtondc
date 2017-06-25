@@ -11806,6 +11806,57 @@ public:
 
         return failed;
     }
+
+    // FMOV XDm, DRn
+    // 1111nnn0mmm11100
+    static int do_binary_fmov_xd_dr(Sh4 *cpu, BiosFile *bios,
+                                    Memory *mem, unsigned src_reg_no,
+                                    unsigned dst_reg_no, double val) {
+        Sh4Prog test_prog;
+        std::stringstream ss;
+        std::string cmd;
+
+        ss << "FSCHG\n";
+        ss << "FMOV XD" << src_reg_no << ", DR" << dst_reg_no << "\n";
+        cmd = ss.str();
+        test_prog.add_txt(cmd);
+        const Sh4Prog::ByteList& inst = test_prog.get_prog();
+        bios_load_binary(bios, 0, inst.begin(), inst.end());
+
+        reset_cpu(cpu);
+
+        *sh4_fpu_xd(cpu, src_reg_no >> 1) = val;
+
+        sh4_exec_inst(cpu);
+        sh4_exec_inst(cpu);
+
+        double actual_val = *sh4_fpu_dr(cpu, dst_reg_no >> 1);
+        if (actual_val != val) {
+            std::cout << "ERROR while running " << cmd << std::endl;
+            std::cout << "expected value of DR" << dst_reg_no << " is " <<
+                val << std::endl;
+            std::cout << "actual value is " << actual_val << std::endl;
+            return 1;
+        }
+        return 0;
+    }
+
+    static int binary_fmov_xd_dr(Sh4 *cpu, BiosFile *bios, Memory *mem,
+                                 RandGen32 *randgen32) {
+        int failure = 0;
+
+        for (unsigned src_reg = 0; src_reg < SH4_N_DOUBLE_REGS; src_reg++) {
+            for (unsigned dst_reg = 0; dst_reg < SH4_N_DOUBLE_REGS; dst_reg++) {
+                double f_val = randgen32->pick_double();
+
+                failure = failure ||
+                    do_binary_fmov_xd_dr(cpu, bios, mem,
+                                         src_reg * 2, dst_reg * 2, f_val);
+            }
+        }
+
+        return failure;
+    }
 };
 
 struct inst_test {
@@ -12042,6 +12093,7 @@ struct inst_test {
     { "binary_fmov_dr_xd", &Sh4InstTests::binary_fmov_dr_xd },
     { "fmov_binary_xd_inddecgen", &Sh4InstTests::fmov_binary_xd_inddecgen },
     { "fmov_binary_indgeninc_xd", &Sh4InstTests::fmov_binary_indgeninc_xd },
+    { "binary_fmov_xd_dr", &Sh4InstTests::binary_fmov_xd_dr },
     { NULL }
 };
 
