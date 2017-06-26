@@ -54,6 +54,9 @@ uint32_t get_fb_w_sof2();
 uint32_t get_fb_w_ctrl();
 uint32_t get_fb_w_linestride();
 
+uint32_t get_isp_backgnd_d(void);
+uint32_t get_isp_backgnd_t(void);
+
 #ifdef __cplusplus
 }
 #endif

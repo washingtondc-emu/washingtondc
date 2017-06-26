@@ -35,7 +35,8 @@
 #include "pvr2_core_reg.h"
 
 static uint32_t fb_r_sof1, fb_r_sof2, fb_r_ctrl, fb_r_size,
-    fb_w_sof1, fb_w_sof2, fb_w_ctrl, fb_w_linestride;
+    fb_w_sof1, fb_w_sof2, fb_w_ctrl, fb_w_linestride, isp_backgnd_t,
+    isp_backgnd_d;
 
 // 5f8128, 5f8138
 static uint32_t ta_vertbuf_pos, ta_vertbuf_start;
@@ -163,6 +164,18 @@ ta_vertbuf_pos_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 ta_startrender_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                  void const *buf, addr32_t addr, unsigned len);
+static int
+isp_backgnd_t_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                               void *buf, addr32_t addr, unsigned len);
+static int
+isp_backgnd_t_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void const *buf, addr32_t addr, unsigned len);
+static int
+isp_backgnd_d_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                               void *buf, addr32_t addr, unsigned len);
+static int
+isp_backgnd_d_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void const *buf, addr32_t addr, unsigned len);
 
 static struct pvr2_core_mem_mapped_reg {
     char const *reg_name;
@@ -222,9 +235,9 @@ static struct pvr2_core_mem_mapped_reg {
     { "FPU_PERP_VAL", 0x5f8084, 4,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "ISP_BACKGND_D", 0x5f8088, 4,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      isp_backgnd_d_reg_read_handler, isp_backgnd_d_reg_write_handler },
     { "ISP_BACKGND_T", 0x5f808c, 4,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      isp_backgnd_t_reg_read_handler, isp_backgnd_t_reg_write_handler },
     { "ISP_FEED_CFG", 0x5f8098, 4,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "FOG_CLAMP_MAX", 0x5f80bc, 4,
@@ -950,4 +963,40 @@ ta_startrender_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info
                                  void const *buf, addr32_t addr, unsigned len) {
     pvr2_ta_startrender();
     return 0;
+}
+
+static int
+isp_backgnd_t_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                               void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &isp_backgnd_t, sizeof(isp_backgnd_t));
+    return 0;
+}
+
+static int
+isp_backgnd_t_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&isp_backgnd_t, buf, sizeof(isp_backgnd_t));
+    return 0;
+}
+
+static int
+isp_backgnd_d_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                               void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &isp_backgnd_d, sizeof(isp_backgnd_d));
+    return 0;
+}
+
+static int
+isp_backgnd_d_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&isp_backgnd_d, buf, sizeof(isp_backgnd_d));
+    return 0;
+}
+
+uint32_t get_isp_backgnd_d(void) {
+    return isp_backgnd_d;
+}
+
+uint32_t get_isp_backgnd_t(void) {
+    return isp_backgnd_t;
 }

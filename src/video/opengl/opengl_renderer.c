@@ -72,6 +72,16 @@ void render_cleanup(void) {
 }
 
 static void render_do_draw(struct geo_buf *geo) {
+    /*
+     * first draw the background plane
+     * TODO: I should actually draw a background plane instead
+     * of just calling glClear
+     */
+    glClearColor(geo->bgcolor[0], geo->bgcolor[1],
+                 geo->bgcolor[2], geo->bgcolor[3]);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // now draw the geometry itself
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER,

@@ -30,6 +30,7 @@
 #include "gfx_thread.h"
 #include "hw/sys/holly_intc.h"
 #include "pvr2_core_reg.h"
+#include "pvr2_tex_mem.h"
 
 #include "pvr2_ta.h"
 
@@ -56,6 +57,12 @@
 
 #define TA_COLOR_FMT_SHIFT 4
 #define TA_COLOR_FMT_MASK (3 << TA_COLOR_FMT_SHIFT)
+
+#define ISP_BACKGND_T_ADDR_SHIFT 1
+#define ISP_BACKGND_T_ADDR_MASK (0x7ffffc << ISP_BACKGND_T_ADDR_SHIFT)
+
+#define ISP_BACKGND_T_SKIP_SHIFT 24
+#define ISP_BACKGND_T_SKIP_MASK (7 << ISP_BACKGND_T_SKIP_SHIFT)
 
 static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 
@@ -276,6 +283,48 @@ void pvr2_ta_startrender(void) {
     // dimensions as they are seen by PVR
     unsigned width = (get_fb_r_size() & 0x3ff) + 1;
     unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
+
+    /*
+     * backgnd_info points to a structure containing some ISP/TSP parameters
+     * and three vertices (potentially including texture coordinate and
+     * color data).  These are used to draw a background plane.  isp_backgnd_d
+     * contians some sort of depth value which is used in auto-sorting mode (I
+     * think?).
+     *
+     * Obviously, I I don't actually understand how this works, nor do I
+     * understand why the vertex coordinates are relevant when it's just going
+     * to draw an infinite plane, so I just save the background color from the
+     * first vertex in the geo_buf so the renderer can use it to glClear.  I
+     * also save the depth value from isp_backgnd_d even though I don't have
+     * auto-sorting implemented yet.
+     *
+     * This hack inspired by MAME's powervr2 code.
+     */
+    uint32_t backgnd_tag = get_isp_backgnd_t();
+    addr32_t backgnd_info_addr = (backgnd_tag & ISP_BACKGND_T_ADDR_MASK) >>
+        ISP_BACKGND_T_ADDR_SHIFT;
+    uint32_t backgnd_skip = ((ISP_BACKGND_T_SKIP_MASK & backgnd_tag) >>
+                             ISP_BACKGND_T_SKIP_SHIFT) + 3;
+    uint32_t const *backgnd_info = (uint32_t*)(pvr2_tex32_mem + backgnd_info_addr);
+
+    /* printf("background skip is %d\n", (int)backgnd_skip); */
+
+    /* printf("ISP_BACKGND_D is %f\n", (double)frak); */
+    /* printf("ISP_BACKGND_T is 0x%08x\n", (unsigned)backgnd_tag); */
+
+    uint32_t bg_color_src = *(backgnd_info + 3 + 0 * backgnd_skip + 3);
+
+    float bg_color_a = (float)((bg_color_src & 0xff000000) >> 24) / 255.0f;
+    float bg_color_r = (float)((bg_color_src & 0x00ff0000) >> 16) / 255.0f;
+    float bg_color_g = (float)((bg_color_src & 0x0000ff00) >> 8) / 255.0f;
+    float bg_color_b = (float)((bg_color_src & 0x000000ff) >> 0) / 255.0f;
+    geo_buf_get_prod()->bgcolor[0] = bg_color_r;
+    geo_buf_get_prod()->bgcolor[1] = bg_color_g;
+    geo_buf_get_prod()->bgcolor[2] = bg_color_b;
+    geo_buf_get_prod()->bgcolor[3] = bg_color_a;
+
+    uint32_t backgnd_depth_as_int = get_isp_backgnd_d();
+    memcpy(&geo_buf_get_prod()->bgdepth, &backgnd_depth_as_int, sizeof(float));
 
     // TODO: don't always do this.
     //       this is correct but we need to check the image format to know if

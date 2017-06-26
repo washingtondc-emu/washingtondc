@@ -51,6 +51,9 @@ struct geo_buf {
 
     // render dimensions
     unsigned screen_width, screen_height;
+
+    float bgcolor[4];
+    float bgdepth;
 };
 
 /*
