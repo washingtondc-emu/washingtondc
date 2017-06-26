@@ -33,7 +33,7 @@
  * these are two separate tables
  */
 
-#define FSCA_TBL_LEN 32768
+#define FSCA_TBL_LEN 65536
 
 extern uint32_t const sh4_fsca_sin_tbl[FSCA_TBL_LEN];
 extern uint32_t const sh4_fsca_cos_tbl[FSCA_TBL_LEN];
