@@ -90,10 +90,11 @@ static void render_do_draw(struct geo_buf *geo) {
     glEnableVertexAttribArray(POSITION_SLOT);
     glEnableVertexAttribArray(COLOR_SLOT);
     glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
-                          GEO_BUF_VERT_LEN * sizeof(float), (GLvoid*)0);
+                          GEO_BUF_VERT_LEN * sizeof(float),
+                          (GLvoid*)(GEO_BUF_POS_OFFSET * sizeof(float)));
     glVertexAttribPointer(COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
                           GEO_BUF_VERT_LEN * sizeof(float),
-                          (GLvoid*)(3 * sizeof(float)));
+                          (GLvoid*)(GEO_BUF_COLOR_OFFSET * sizeof(float)));
     glDrawArrays(GL_TRIANGLES, 0, geo->n_verts);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);

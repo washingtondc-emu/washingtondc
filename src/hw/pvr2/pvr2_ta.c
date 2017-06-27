@@ -214,9 +214,12 @@ static void on_vertex_received(void) {
     printf("vertex received!\n");
     struct geo_buf *geo = geo_buf_get_prod();
     if (geo->n_verts < GEO_BUF_VERT_COUNT) {
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 0] = ta_fifo_float[1];
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 1] = ta_fifo_float[2];
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 2] = ta_fifo_float[3];
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_POS_OFFSET + 0] =
+            ta_fifo_float[1];
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_POS_OFFSET + 1] =
+            ta_fifo_float[2];
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_POS_OFFSET + 2] =
+            ta_fifo_float[3];
 
         float color_r, color_g, color_b, color_a;
 
@@ -232,10 +235,14 @@ static void on_vertex_received(void) {
             fprintf(stderr, "WARNING: unknown TA color format %u\n", ta_color_fmt);
         }
 
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 3] = color_r;
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 4] = color_g;
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 5] = color_b;
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + 6] = color_a;
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
+            color_r;
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
+            color_g;
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
+            color_b;
+        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
+            color_a;
 
         geo->n_verts++;
     } else {

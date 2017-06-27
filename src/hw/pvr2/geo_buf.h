@@ -39,6 +39,13 @@
 #define GEO_BUF_VERT_COUNT (GEO_BUF_TRIANGLE_COUNT * 3)
 
 /*
+ * offsets to vertex components within the geo_buf's vert array
+ * these are in terms of sizeof(float)
+ */
+#define GEO_BUF_POS_OFFSET 0
+#define GEO_BUF_COLOR_OFFSET 3
+
+/*
  * the number of elements per vertex.  Currently this means 3 floats for the
  * coordinates and 4 floats for the color.
  */
