@@ -39,6 +39,9 @@
 #define TA_CMD_TYPE_SHIFT 29
 #define TA_CMD_TYPE_MASK (0x7 << TA_CMD_TYPE_SHIFT)
 
+#define TA_CMD_END_OF_STRIP_SHIFT 28
+#define TA_CMD_END_OF_STRIP_MASK (1 << TA_CMD_END_OF_STRIP_SHIFT)
+
 #define TA_CMD_DISP_LIST_SHIFT 24
 #define TA_CMD_DISP_LIST_MASK (0x7 << TA_CMD_DISP_LIST_SHIFT)
 
@@ -70,6 +73,11 @@ static unsigned expected_ta_fifo_len = 32;
 static unsigned ta_fifo_byte_count = 0;
 
 static unsigned ta_color_fmt;
+
+// used to store the previous two verts when we're rendering a triangle strip
+float strip_vert1[GEO_BUF_VERT_LEN];
+float strip_vert2[GEO_BUF_VERT_LEN];
+unsigned strip_len; // number of verts in the current triangle strip
 
 enum display_list {
     DISPLAY_LIST_OPAQUE,
@@ -177,6 +185,7 @@ static void on_polyhdr_received(void) {
             printf("Opening display list %s\n", display_list_names[list]);
             current_list = list;
             list_submitted[list] = true;
+            strip_len = 0;
 
             ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
                 TA_COLOR_FMT_SHIFT;
@@ -200,6 +209,35 @@ static void on_vertex_received(void) {
 
     printf("vertex received!\n");
     struct geo_buf *geo = geo_buf_get_prod();
+
+    if (current_list != DISPLAY_LIST_OPAQUE) {
+        /* printf("display list %d ignored\n", current_list); */
+        return;
+    }
+
+    /*
+     * un-strip triangle strips by duplicating the previous two vertices.
+     *
+     * TODO: obviously it would be best to preserve the triangle strips and
+     * send them to OpenGL via GL_TRIANGLE_STRIP in the rendering backend, but
+     * then I need to come up with some way to signal the renderer to stop and
+     * re-start strips.  It might also be possible to stitch separate strips
+     * together with degenerate triangles...
+     */
+    if (strip_len >= 3) {
+        if (geo->n_verts < GEO_BUF_VERT_COUNT) {
+            memcpy(geo->verts + GEO_BUF_VERT_LEN * geo->n_verts, strip_vert1,
+                   sizeof(strip_vert1));
+            geo->n_verts++;
+        }
+
+        if (geo->n_verts < GEO_BUF_VERT_COUNT) {
+            memcpy(geo->verts + GEO_BUF_VERT_LEN * geo->n_verts, strip_vert2,
+                   sizeof(strip_vert2));
+            geo->n_verts++;
+        }
+    }
+
     if (geo->n_verts < GEO_BUF_VERT_COUNT) {
         geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_POS_OFFSET + 0] =
             ta_fifo_float[1];
@@ -230,6 +268,23 @@ static void on_vertex_received(void) {
             color_b;
         geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
             color_a;
+
+        if (ta_fifo32[0] & TA_CMD_END_OF_STRIP_SHIFT) {
+            /*
+             * TODO: handle degenerate cases where the user sends an
+             * end-of-strip on the first or second vertex
+             */
+            strip_len = 0;
+        } else {
+            /*
+             * shift the new vert into strip_vert2 and
+             * shift strip_vert2 into strip_vert1
+             */
+            memcpy(strip_vert1, strip_vert2, sizeof(strip_vert1));
+            memcpy(strip_vert2, geo->verts + GEO_BUF_VERT_LEN * geo->n_verts,
+                   sizeof(strip_vert2));
+            strip_len++;
+        }
 
         geo->n_verts++;
     } else {
