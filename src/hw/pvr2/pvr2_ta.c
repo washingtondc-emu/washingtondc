@@ -197,19 +197,6 @@ static void on_polyhdr_received(void) {
 static void on_vertex_received(void) {
     uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
     float const *ta_fifo_float = (float const*)ta_fifo;
-    enum display_list list =
-        (enum display_list)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
-                            TA_CMD_DISP_LIST_SHIFT);
-
-    if (current_list == DISPLAY_LIST_NONE) {
-        printf("Opening display list %s\n", display_list_names[list]);
-        current_list = list;
-    } else if (current_list != list) {
-        printf("WARNING: attempting to input vertex for list %s without first "
-               "closing %s\n", display_list_names[list],
-               display_list_names[current_list]);
-        return;
-    }
 
     printf("vertex received!\n");
     struct geo_buf *geo = geo_buf_get_prod();
