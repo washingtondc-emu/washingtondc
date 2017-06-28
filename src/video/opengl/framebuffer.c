@@ -455,14 +455,19 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
 }
 
 static void framebuffer_sync_from_host_0565_krgb(void) {
-    // TODO: this is almost certainly not the correct way to get the screen
-    // dimensions as they are seen by PVR
-    unsigned width = (get_fb_r_size() & 0x3ff) + 1;
-    unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
+    unsigned tile_w = get_glob_tile_clip_x() << 5;
+    unsigned tile_h = get_glob_tile_clip_y() << 5;
+    unsigned x_clip_min = get_fb_x_clip_min();
+    unsigned x_clip_max = get_fb_x_clip_max();
+    unsigned y_clip_min = get_fb_y_clip_min();
+    unsigned y_clip_max = get_fb_y_clip_max();
 
-    // we double width because width is in terms of 32-bits,
-    // and this format uses 16-bit pixels
-    width <<= 1;
+    unsigned x_min = x_clip_min;
+    unsigned y_min = y_clip_min;
+    unsigned x_max = tile_w < x_clip_max ? tile_w : x_clip_max;
+    unsigned y_max = tile_h < y_clip_max ? tile_h : y_clip_max;
+    unsigned width = x_max - x_min + 1;
+    unsigned height = y_max - y_min + 1;
 
     uint32_t fb_w_ctrl = get_fb_w_ctrl();
     uint16_t k_val = fb_w_ctrl & 0x8000;
@@ -474,12 +479,12 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
     gfx_thread_read_framebuffer(ogl_fb, OGL_FB_BYTES);
 
     unsigned row, col;
-    for (row = 0; row < height; row++) {
+    for (row = y_min; row <= y_max; row++) {
         // TODO: take interlacing into account here
         uint16_t *line_start = (uint16_t*)(pvr2_tex32_mem + get_fb_w_sof1() +
                                            (height - (row + 1)) * stride);
 
-        for (col = 0; col < width; col++) {
+        for (col = x_min; col <= x_max; col++) {
             unsigned ogl_fb_idx = row * width + col;
 
             uint16_t pix_out = ((ogl_fb[4 * ogl_fb_idx + 2] & 0xf8) >> 3) |

@@ -328,10 +328,19 @@ static void on_end_of_list_received(void) {
 void pvr2_ta_startrender(void) {
     printf("STARTRENDER requested!\n");
 
-    // TODO: this is almost certainly not the correct way to get the screen
-    // dimensions as they are seen by PVR
-    unsigned width = (get_fb_r_size() & 0x3ff) + 1;
-    unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
+    unsigned tile_w = get_glob_tile_clip_x() << 5;
+    unsigned tile_h = get_glob_tile_clip_y() << 5;
+    unsigned x_clip_min = get_fb_x_clip_min();
+    unsigned x_clip_max = get_fb_x_clip_max();
+    unsigned y_clip_min = get_fb_y_clip_min();
+    unsigned y_clip_max = get_fb_y_clip_max();
+
+    unsigned x_min = x_clip_min;
+    unsigned y_min = y_clip_min;
+    unsigned x_max = tile_w < x_clip_max ? tile_w : x_clip_max;
+    unsigned y_max = tile_h < y_clip_max ? tile_h : y_clip_max;
+    unsigned width = x_max - x_min + 1;
+    unsigned height = y_max - y_min + 1;
 
     /*
      * backgnd_info points to a structure containing some ISP/TSP parameters
@@ -374,11 +383,6 @@ void pvr2_ta_startrender(void) {
 
     uint32_t backgnd_depth_as_int = get_isp_backgnd_d();
     memcpy(&geo_buf_get_prod()->bgdepth, &backgnd_depth_as_int, sizeof(float));
-
-    // TODO: don't always do this.
-    //       this is correct but we need to check the image format to know if
-    //       we should double this
-    width *= 2;
 
     geo_buf_get_prod()->screen_width = width;
     geo_buf_get_prod()->screen_height = height;

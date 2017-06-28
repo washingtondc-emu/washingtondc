@@ -54,6 +54,22 @@ uint32_t get_fb_w_sof2();
 uint32_t get_fb_w_ctrl();
 uint32_t get_fb_w_linestride();
 
+uint32_t get_glob_tile_clip(void);
+
+uint32_t get_fb_x_clip(void);
+uint32_t get_fb_y_clip(void);
+
+/*
+ * helper functions to pull data out of get_fb_x_clip() get_fb_y_clip() and
+ * get_glob_tile_clip()
+ */
+unsigned get_fb_x_clip_min(void);
+unsigned get_fb_y_clip_min(void);
+unsigned get_fb_x_clip_max(void);
+unsigned get_fb_y_clip_max(void);
+unsigned get_glob_tile_clip_x(void);
+unsigned get_glob_tile_clip_y(void);
+
 uint32_t get_isp_backgnd_d(void);
 uint32_t get_isp_backgnd_t(void);
 

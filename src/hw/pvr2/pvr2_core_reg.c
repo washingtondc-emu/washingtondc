@@ -36,7 +36,7 @@
 
 static uint32_t fb_r_sof1, fb_r_sof2, fb_r_ctrl, fb_r_size,
     fb_w_sof1, fb_w_sof2, fb_w_ctrl, fb_w_linestride, isp_backgnd_t,
-    isp_backgnd_d;
+    isp_backgnd_d, glob_tile_clip, fb_x_clip, fb_y_clip;
 
 // 5f8128, 5f8138
 static uint32_t ta_vertbuf_pos, ta_vertbuf_start;
@@ -176,6 +176,24 @@ isp_backgnd_d_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 isp_backgnd_d_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                 void const *buf, addr32_t addr, unsigned len);
+static int
+glob_tile_clip_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void *buf, addr32_t addr, unsigned len);
+static int
+glob_tile_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                 void const *buf, addr32_t addr, unsigned len);
+static int
+fb_x_clip_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len);
+static int
+fb_x_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len);
+static int
+fb_y_clip_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len);
+static int
+fb_y_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len);
 
 static struct pvr2_core_mem_mapped_reg {
     char const *reg_name;
@@ -221,9 +239,9 @@ static struct pvr2_core_mem_mapped_reg {
     { "FB_W_SOF2", 0x5f8064, 4,
       fb_w_sof2_reg_read_handler, fb_w_sof2_reg_write_handler },
     { "FB_X_CLIP", 0x5f8068, 4,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      fb_x_clip_reg_read_handler, fb_x_clip_reg_write_handler },
     { "FB_Y_CLIP", 0x5f806c, 4,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      fb_y_clip_reg_read_handler, fb_y_clip_reg_write_handler },
     { "FPU_SHAD_SCALE", 0x5f8074, 4,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "FPU_CULL_VAL", 0x5f8078, 4,
@@ -295,7 +313,7 @@ static struct pvr2_core_mem_mapped_reg {
     { "TA_OL_LIMIT", 0x5f812c, 4,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "TA_GLOB_TILE_CLIP", 0x5f813c, 4,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      glob_tile_clip_reg_read_handler, glob_tile_clip_reg_write_handler },
     { "TA_ALLOC_CTRL", 0x5f8140, 4,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "TA_RESET", 0x5f8144, 4,
@@ -999,4 +1017,94 @@ uint32_t get_isp_backgnd_d(void) {
 
 uint32_t get_isp_backgnd_t(void) {
     return isp_backgnd_t;
+}
+
+uint32_t get_glob_tile_clip(void) {
+    return glob_tile_clip;
+}
+
+uint32_t get_fb_x_clip(void) {
+    return fb_x_clip;
+}
+
+uint32_t get_fb_y_clip(void) {
+    return fb_y_clip;
+}
+
+unsigned get_fb_x_clip_min(void) {
+    return fb_x_clip & 0x7ff;
+}
+
+unsigned get_fb_y_clip_min(void) {
+    return fb_y_clip & 0x3ff;
+}
+
+unsigned get_fb_x_clip_max(void) {
+    return (fb_x_clip >> 16) & 0x7ff;
+}
+
+unsigned get_fb_y_clip_max(void) {
+    return (fb_y_clip >> 16) & 0x3ff;
+}
+
+unsigned get_glob_tile_clip_x(void) {
+    return (glob_tile_clip & 0x3f) + 1;
+}
+
+unsigned get_glob_tile_clip_y(void) {
+    return ((glob_tile_clip >> 16) & 0xf) + 1;
+}
+
+static int
+glob_tile_clip_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &glob_tile_clip, sizeof(glob_tile_clip));
+    return 0;
+}
+
+static int
+glob_tile_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                 void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&glob_tile_clip, buf, sizeof(glob_tile_clip));
+
+    fprintf(stderr, "WARNING: writing 0x%08x to TA_GLOB_TILE_CLIP\n",
+            (unsigned)glob_tile_clip);
+
+    return 0;
+}
+
+static int
+fb_x_clip_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &fb_x_clip, sizeof(fb_x_clip));
+    return 0;
+}
+
+static int
+fb_x_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&fb_x_clip, buf, sizeof(fb_x_clip));
+
+    fprintf(stderr, "WARNING: writing 0x%08x to FB_X_CLIP\n",
+            (unsigned)fb_x_clip);
+
+    return 0;
+}
+
+static int
+fb_y_clip_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                           void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &fb_y_clip, sizeof(fb_y_clip));
+    return 0;
+}
+
+static int
+fb_y_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                            void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&fb_y_clip, buf, sizeof(fb_y_clip));
+
+    fprintf(stderr, "WARNING: writing 0x%08x to FB_Y_CLIP\n",
+            (unsigned)fb_y_clip);
+
+    return 0;
 }
