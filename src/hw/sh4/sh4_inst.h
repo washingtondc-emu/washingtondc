@@ -23,6 +23,7 @@
 #ifndef SH4_INST_H_
 #define SH4_INST_H_
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -168,7 +169,8 @@ typedef union Sh4OpArgs Sh4OpArgs;
  */
 void sh4_init_inst_lut();
 
-// BOOST_STATIC_ASSERT(sizeof(Sh4OpArgs) == 2);
+static_assert(sizeof(Sh4OpArgs) == 2,
+              "sizeof(Sh4OpArgs) must match the size of an sh4 instruction!");
 
 typedef void (*opcode_func_t)(Sh4*, Sh4OpArgs oa);
 

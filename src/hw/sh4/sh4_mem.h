@@ -23,6 +23,8 @@
 #ifndef SH4_MEM_H_
 #define SH4_MEM_H_
 
+#include <assert.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -63,8 +65,9 @@ enum VirtMemArea {
 #define SH4_P4_REGEND      0xfff00008
 #define SH4_AREA7_REGSTART 0x1f000000
 #define SH4_AREA7_REGEND   0x1ff00008
-// BOOST_STATIC_ASSERT((SH4_P4_REGEND - SH4_P4_REGSTART) ==
-//                     (SH4_AREA7_REGEND - SH4_AREA7_REGSTART));
+static_assert((SH4_P4_REGEND - SH4_P4_REGSTART) ==
+              (SH4_AREA7_REGEND - SH4_AREA7_REGSTART),
+              "AREA7 is not the same size as the P4 area");
 
 /* constants needed for opcache as ram */
 #define SH4_LONGS_PER_OP_CACHE_LINE 8
