@@ -184,7 +184,6 @@ void opengl_video_update_framebuffer() {
     glBindTexture(GL_TEXTURE_2D, fb_poly.tex_obj);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img_width, img_height, 0,
                  GL_RGBA, GL_UNSIGNED_BYTE, img_data);
-    glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     free(img_data);
@@ -237,7 +236,6 @@ static void init_poly() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     fb_poly.vbo = vbo;
