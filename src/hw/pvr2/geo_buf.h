@@ -23,6 +23,8 @@
 #ifndef GEO_BUF_H_
 #define GEO_BUF_H_
 
+#include "pvr2_tex_cache.h"
+
 /*
  * a geo_buf is a pre-allocated buffer used to pass data from the emulation
  * thread to the gfx_thread.  They are stored in a ringbuffer in which the
@@ -44,14 +46,23 @@
  */
 #define GEO_BUF_POS_OFFSET 0
 #define GEO_BUF_COLOR_OFFSET 3
+#define GEO_BUF_TEX_COORD_OFFSET 7
 
 /*
  * the number of elements per vertex.  Currently this means 3 floats for the
  * coordinates and 4 floats for the color.
  */
-#define GEO_BUF_VERT_LEN 7
+#define GEO_BUF_VERT_LEN 9
 
+/*
+ * TODO: due to my own oversights, there is currently no way to use more than
+ * one texture at a time.  This is because there's no infra to mark the
+ * beginning and end of a group of polygons.  This will obviously need to be
+ * fixed in the future.
+ */
 struct geo_buf {
+    struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
+
     float verts[GEO_BUF_VERT_COUNT * GEO_BUF_VERT_LEN];
     unsigned n_verts;
     unsigned frame_stamp;
@@ -61,6 +72,12 @@ struct geo_buf {
 
     float bgcolor[4];
     float bgdepth;
+
+    // which texture in the tex cache to bind
+    int tex_no;
+
+    bool tex_enable;
+    unsigned tex_idx; // only valid if tex_enable=true
 };
 
 /*

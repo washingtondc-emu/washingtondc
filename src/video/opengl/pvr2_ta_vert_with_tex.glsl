@@ -20,34 +20,28 @@
  *
  ******************************************************************************/
 
-#ifndef PVR2_TEX_MEM_H_
-#define PVR2_TEX_MEM_H_
+#version 330 core
+#extension GL_ARB_explicit_uniform_location : enable
 
-#include <stdint.h>
+layout (location = 0) in vec3 vert_pos;
+layout (location = 1) uniform vec2 half_screen_dims;
+layout (location = 2) in vec4 color;
+layout (location = 3) in vec2 tex_coord_in;
 
-#include "mem_areas.h"
+out vec4 vert_color;
+out vec2 st;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+void main() {
+    /*
+     * translate coordinates from the Dreamcast's coordinate system (which is
+     * screen-coordinates with an origin in the upper-left) to OpenGL
+     * coordinates (which are bounded from -1.0 to 1.0, with the upper-left
+     * coordinate being at (-1.0, 1.0)
+     */
+    gl_Position = vec4((vert_pos.x - half_screen_dims.x) / half_screen_dims.x,
+                       -(vert_pos.y - half_screen_dims.y) / half_screen_dims.y,
+                       0.0/* vert_pos.z */, 1.0);
 
-/*
- * I don't yet understand the 32-bit/64-bit access area dichotomy, so I'm
- * keeping them separated for now.  They might both map th the same memory, I'm
- * just not sure yet.
- */
-
-extern uint8_t pvr2_tex32_mem[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
-extern uint8_t pvr2_tex64_mem[ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1];
-
-int pvr2_tex_mem_area32_read(void *buf, size_t addr, size_t len);
-int pvr2_tex_mem_area32_write(void const *buf, size_t addr, size_t len);
-
-int pvr2_tex_mem_area64_read(void *buf, size_t addr, size_t len);
-int pvr2_tex_mem_area64_write(void const *buf, size_t addr, size_t len);
-
-#ifdef __cplusplus
+    st = tex_coord_in;
+    vert_color = color;
 }
-#endif
-
-#endif

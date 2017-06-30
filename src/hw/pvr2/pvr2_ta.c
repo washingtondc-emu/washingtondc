@@ -31,6 +31,7 @@
 #include "hw/sys/holly_intc.h"
 #include "pvr2_core_reg.h"
 #include "pvr2_tex_mem.h"
+#include "pvr2_tex_cache.h"
 
 #include "pvr2_ta.h"
 
@@ -44,6 +45,9 @@
 
 #define TA_CMD_DISP_LIST_SHIFT 24
 #define TA_CMD_DISP_LIST_MASK (0x7 << TA_CMD_DISP_LIST_SHIFT)
+
+#define TA_CMD_TEX_ENABLE_SHIFT 3
+#define TA_CMD_TEX_ENABLE_MASK (1 << TA_CMD_TEX_ENABLE_SHIFT)
 
 #define TA_CMD_TYPE_END_OF_LIST 0x0
 #define TA_CMD_TYPE_USER_CLIP   0x1
@@ -72,12 +76,19 @@ static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 static unsigned expected_ta_fifo_len = 32;
 static unsigned ta_fifo_byte_count = 0;
 
-static unsigned ta_color_fmt;
+static struct poly_state {
+    // used to store the previous two verts when we're rendering a triangle strip
+    float strip_vert1[GEO_BUF_VERT_LEN];
+    float strip_vert2[GEO_BUF_VERT_LEN];
+    unsigned strip_len; // number of verts in the current triangle strip
 
-// used to store the previous two verts when we're rendering a triangle strip
-float strip_vert1[GEO_BUF_VERT_LEN];
-float strip_vert2[GEO_BUF_VERT_LEN];
-unsigned strip_len; // number of verts in the current triangle strip
+    unsigned ta_color_fmt;
+
+    bool tex_enable;
+    unsigned tex_idx;
+
+    int tex_fmt;
+} poly_state;
 
 enum display_list {
     DISPLAY_LIST_OPAQUE,
@@ -185,10 +196,69 @@ static void on_polyhdr_received(void) {
             printf("Opening display list %s\n", display_list_names[list]);
             current_list = list;
             list_submitted[list] = true;
-            strip_len = 0;
+            poly_state.strip_len = 0;
 
-            ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
+            poly_state.ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
                 TA_COLOR_FMT_SHIFT;
+
+            if (ta_fifo32[0] & TA_CMD_TEX_ENABLE_MASK) {
+                poly_state.tex_enable = true;
+                printf("texture enabled\n");
+
+                if (ta_fifo32[3] & TEX_CTRL_NOT_TWIDDLED_MASK)
+                    printf("not twiddled\n");
+                else
+                    printf("twiddled\n");
+
+                printf("the texture format is %d\n",
+                       (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
+                       TEX_CTRL_PIX_FMT_SHIFT);
+
+                uint32_t tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
+                                     TEX_CTRL_TEX_ADDR_SHIFT) << 3;
+                printf("The texture address ix 0x%08x\n", tex_addr);
+
+                // TODO: how do I get texture width, height?
+                unsigned tex_width_shift = 3 +
+                    ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
+                unsigned tex_height_shift = 3 +
+                    ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
+
+                unsigned pix_fmt = (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
+                    TEX_CTRL_PIX_FMT_SHIFT;
+                struct pvr2_tex *ent =
+                    pvr2_tex_cache_find(tex_addr, 1 << tex_width_shift,
+                                        1 << tex_height_shift, pix_fmt);
+
+                printf("texture dimensions are (%u, %u)\n",
+                       1 << tex_width_shift, 1 << tex_height_shift);
+                if (ent) {
+                    printf("Texture 0x%08x found in cache\n", tex_addr);
+                } else {
+                    printf("Adding 0x%08x to texture cache...\n", tex_addr);
+                    ent = pvr2_tex_cache_add(tex_addr, 1 << tex_width_shift,
+                                             1 << tex_height_shift, pix_fmt);
+                }
+
+                if (!ent) {
+                    fprintf(stderr, "WARNING: failed to add texture 0x%08x to "
+                            "the texture cache\n", tex_addr);
+                    poly_state.tex_enable = false;
+                } else {
+                    poly_state.tex_idx = pvr2_tex_cache_get_idx(ent);
+                }
+            } else {
+                /*
+                 * XXX - HACK
+                 * we only clear the tex_enable flag when the STARTRENDER comes
+                 * down because the geo_buf has no concept of separate polygon
+                 * headers.  This means that textures caan be enabled for all
+                 * polygons in the geo_buf or disabled for all polygons in the
+                 * geo_buf.  It also measn that all polygons need to have the
+                 * same texture bound.  This will be fixed eventually.
+                 */
+                /* poly_state.tex_enable = false; */
+            }
         } else {
             printf("WARNING: unable to open list %s because it is already "
                    "closed\n", display_list_names[list]);
@@ -224,16 +294,16 @@ static void on_vertex_received(void) {
      * re-start strips.  It might also be possible to stitch separate strips
      * together with degenerate triangles...
      */
-    if (strip_len >= 3) {
+    if (poly_state.strip_len >= 3) {
         if (geo->n_verts < GEO_BUF_VERT_COUNT) {
-            memcpy(geo->verts + GEO_BUF_VERT_LEN * geo->n_verts, strip_vert1,
-                   sizeof(strip_vert1));
+            memcpy(geo->verts + GEO_BUF_VERT_LEN * geo->n_verts,
+                   poly_state.strip_vert1, sizeof(poly_state.strip_vert1));
             geo->n_verts++;
         }
 
         if (geo->n_verts < GEO_BUF_VERT_COUNT) {
-            memcpy(geo->verts + GEO_BUF_VERT_LEN * geo->n_verts, strip_vert2,
-                   sizeof(strip_vert2));
+            memcpy(geo->verts + GEO_BUF_VERT_LEN * geo->n_verts,
+                   poly_state.strip_vert2, sizeof(poly_state.strip_vert2));
             geo->n_verts++;
         }
     }
@@ -246,9 +316,16 @@ static void on_vertex_received(void) {
         geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_POS_OFFSET + 2] =
             ta_fifo_float[3];
 
+        if (poly_state.tex_enable) {
+            unsigned dst_uv_offset =
+                GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_TEX_COORD_OFFSET;
+            geo->verts[dst_uv_offset + 0] = ta_fifo_float[4];
+            geo->verts[dst_uv_offset + 1] = ta_fifo_float[5];
+        }
+
         float color_r, color_g, color_b, color_a;
 
-        switch (ta_color_fmt) {
+        switch (poly_state.ta_color_fmt) {
         case TA_COLOR_FMT_ARGB8888:
             color_a = (float)((ta_fifo32[6] & 0xff000000) >> 24) / 255.0f;
             color_r = (float)((ta_fifo32[6] & 0x00ff0000) >> 16) / 255.0f;
@@ -257,7 +334,7 @@ static void on_vertex_received(void) {
             break;
         default:
             color_r = color_g = color_b = color_a = 1.0f;
-            fprintf(stderr, "WARNING: unknown TA color format %u\n", ta_color_fmt);
+            fprintf(stderr, "WARNING: unknown TA color format %u\n", poly_state.ta_color_fmt);
         }
 
         geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
@@ -274,16 +351,18 @@ static void on_vertex_received(void) {
              * TODO: handle degenerate cases where the user sends an
              * end-of-strip on the first or second vertex
              */
-            strip_len = 0;
+            poly_state.strip_len = 0;
         } else {
             /*
              * shift the new vert into strip_vert2 and
              * shift strip_vert2 into strip_vert1
              */
-            memcpy(strip_vert1, strip_vert2, sizeof(strip_vert1));
-            memcpy(strip_vert2, geo->verts + GEO_BUF_VERT_LEN * geo->n_verts,
-                   sizeof(strip_vert2));
-            strip_len++;
+            memcpy(poly_state.strip_vert1, poly_state.strip_vert2,
+                   sizeof(poly_state.strip_vert1));
+            memcpy(poly_state.strip_vert2,
+                   geo->verts + GEO_BUF_VERT_LEN * geo->n_verts,
+                   sizeof(poly_state.strip_vert2));
+            poly_state.strip_len++;
         }
 
         geo->n_verts++;
@@ -387,6 +466,17 @@ void pvr2_ta_startrender(void) {
     geo_buf_get_prod()->screen_width = width;
     geo_buf_get_prod()->screen_height = height;
 
+    pvr2_tex_cache_xmit(geo_buf_get_prod());
+
+    if (poly_state.tex_enable) {
+        printf("tex_enable should be true\n");
+        geo_buf_get_prod()->tex_enable = true;
+        geo_buf_get_prod()->tex_idx = poly_state.tex_idx;
+    } else {
+        printf("tex_enable should be false\n");
+        geo_buf_get_prod()->tex_enable = false;
+    }
+
     geo_buf_produce();
     gfx_thread_render_geo_buf();
 
@@ -395,6 +485,8 @@ void pvr2_ta_startrender(void) {
 
     // TODO: This irq definitely should not be triggered immediately
     holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
+
+    poly_state.tex_enable = false;
 }
 
 void pvr2_ta_reinit(void) {

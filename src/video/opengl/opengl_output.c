@@ -219,7 +219,7 @@ static void init_poly() {
                           (GLvoid*)0);
     glEnableVertexAttribArray(SLOT_VERT_POS);
     glVertexAttribPointer(SLOT_VERT_ST, 2, GL_FLOAT, GL_FALSE,
-                          FB_VERT_LEN * sizeof(GL_FLOAT),
+                          FB_VERT_LEN * sizeof(GLfloat),
                           (GLvoid*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(SLOT_VERT_ST);
 

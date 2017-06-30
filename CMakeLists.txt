@@ -116,6 +116,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/spg.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_ta.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_ta.h"
+                "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_tex_cache.c"
+                "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_tex_cache.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/geo_buf.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/geo_buf.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/sys/sys_block.c"
@@ -212,6 +214,8 @@ configure_file("src/video/opengl/final_frag.glsl" "final_frag.glsl")
 configure_file("src/video/opengl/final_vert.glsl" "final_vert.glsl")
 configure_file("src/video/opengl/pvr2_ta_vert.glsl" "pvr2_ta_vert.glsl")
 configure_file("src/video/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl")
+configure_file("src/video/opengl/pvr2_ta_vert_with_tex.glsl" "pvr2_ta_vert_with_tex.glsl")
+configure_file("src/video/opengl/pvr2_ta_frag_with_tex.glsl" "pvr2_ta_frag_with_tex.glsl")
 
 # TODO: These shouldn't all need to be linked against GLFW, but there are some
 # GLFW function calls in Dreamcast.cpp, and since that's linked into libsh4

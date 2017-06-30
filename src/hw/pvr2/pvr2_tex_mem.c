@@ -23,6 +23,7 @@
 #include "mem_code.h"
 #include "MemoryMap.h"
 #include "pvr2_core_reg.h"
+#include "pvr2_tex_cache.h"
 #include "video/opengl/framebuffer.h"
 
 uint8_t pvr2_tex32_mem[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
@@ -98,6 +99,10 @@ int pvr2_tex_mem_area64_write(void const *buf, size_t addr, size_t len) {
         return MEM_ACCESS_FAILURE;
     }
 
+    /* printf("area64: writing %u bytes to 0x%08x\n", (unsigned)len, (unsigned)addr); */
+
     memcpy(start_addr, buf, len);
+    pvr2_tex_cache_notify_write(addr, len);
+
     return MEM_ACCESS_SUCCESS;
 }
