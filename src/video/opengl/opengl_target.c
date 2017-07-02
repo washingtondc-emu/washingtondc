@@ -27,6 +27,8 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
+#include "error.h"
+
 #include "opengl_target.h"
 
 static GLuint fbo;
@@ -83,8 +85,16 @@ void opengl_target_end(void) {
 }
 
 void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
+    size_t length_expect = fbo_width * fbo_height * 4 * sizeof(uint8_t);
+
+    if (buf_size < length_expect) {
+        error_set_length(buf_size);
+        error_set_expected_length(length_expect);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     glBindTexture(GL_TEXTURE_2D, tex);
-    glGetnTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf_size, out);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, out);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
