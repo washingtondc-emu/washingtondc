@@ -124,14 +124,17 @@ static void on_vertex_received(void);
 static void on_end_of_list_received(void);
 
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
+#ifdef PVR2_LOG_VERBOSE
     fprintf(stderr, "WARNING: trying to read %u bytes from the TA polygon FIFO "
             "(you get all 0s)\n", (unsigned)len);
+#endif
     memset(buf, 0, len);
 
     return 0;
 }
 
 int pvr2_ta_fifo_poly_write(void const *buf, size_t addr, size_t len) {
+#ifdef PVR2_LOG_VERBOSE
     fprintf(stderr, "WARNING: writing %u bytes to TA polygon FIFO:\n",
             (unsigned)len);
 
@@ -148,6 +151,7 @@ int pvr2_ta_fifo_poly_write(void const *buf, size_t addr, size_t len) {
         while (len_copy--)
             fprintf(stderr, "\t%02x\n", (unsigned)*ptr++);
     }
+#endif
 
     uint8_t *ptr = (uint8_t*)buf;
     while (len--)
@@ -277,7 +281,9 @@ static void on_vertex_received(void) {
     uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
     float const *ta_fifo_float = (float const*)ta_fifo;
 
+#ifdef PVR2_LOG_VERBOSE
     printf("vertex received!\n");
+#endif
     struct geo_buf *geo = geo_buf_get_prod();
 
     if (current_list != DISPLAY_LIST_OPAQUE) {
