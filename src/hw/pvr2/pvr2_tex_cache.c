@@ -84,13 +84,14 @@ static unsigned tex_twiddle(unsigned x, unsigned y,
 }
 
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, unsigned w,
-                                     unsigned h, int pix_fmt) {
+                                     unsigned h, int pix_fmt, bool twiddled) {
     unsigned idx;
     struct pvr2_tex *tex;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
         if (tex->valid && (tex->addr_first == addr) &&
-            (tex->w == w) && (tex->h == h) && (tex->pix_fmt == pix_fmt)) {
+            (tex->w == w) && (tex->h == h) && (tex->pix_fmt == pix_fmt) &&
+            tex->twiddled == twiddled) {
             return tex;
         }
     }
@@ -100,7 +101,7 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, unsigned w,
 
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
                                     unsigned w, unsigned h,
-                                    int pix_fmt) {
+                                    int pix_fmt, bool twiddled) {
     assert(pix_fmt < TEX_CTRL_PIX_FMT_INVALID);
 
     unsigned idx;// = addr & PVR2_TEX_CACHE_MASK;
@@ -127,6 +128,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
 
     tex->valid = true;
     tex->dirty = true;
+    tex->twiddled = twiddled;
 
     /*
      * We defer reading the actual data from texture memory until we're ready
@@ -208,6 +210,7 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
             tex_out->w = tex_in->w;
             tex_out->h = tex_in->h;
             tex_out->pix_fmt = tex_in->pix_fmt;
+            tex_out->twiddled = tex_in->twiddled;
 
             // TODO: better error-handling
             if ((ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1) <=
@@ -226,19 +229,26 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
              * TODO: don't do this unconditionally
              * not all textures are twiddled
              */
-            unsigned row, col;
             uint8_t const *beg = pvr2_tex64_mem + tex_in->addr_first;
-            for (row = 0; row < tex_in->h; row++) {
-                for (col = 0; col < tex_in->w; col++) {
-                    unsigned twid_idx = tex_twiddle(col, row,
-                                                   pvr2_log2(tex_in->w),
-                                                   pvr2_log2(tex_in->h));
+            if (tex_in->twiddled) {
+                unsigned row, col;
+                for (row = 0; row < tex_in->h; row++) {
+                    for (col = 0; col < tex_in->w; col++) {
+                        unsigned twid_idx = tex_twiddle(col, row,
+                                                        pvr2_log2(tex_in->w),
+                                                        pvr2_log2(tex_in->h));
 
-
-                    memcpy(tex_out->dat + (row * tex_in->w + col) * pixel_sizes[tex_in->pix_fmt],
-                           beg + twid_idx * pixel_sizes[tex_in->pix_fmt],
-                           pixel_sizes[tex_in->pix_fmt]);
+                        void *dst_ptr = tex_out->dat +
+                            (row * tex_in->w + col) *
+                            pixel_sizes[tex_in->pix_fmt];
+                        memcpy(dst_ptr,
+                               beg + twid_idx * pixel_sizes[tex_in->pix_fmt],
+                               pixel_sizes[tex_in->pix_fmt]);
+                    }
                 }
+            } else {
+                memcpy(tex_out->dat, beg,
+                       pixel_sizes[tex_in->pix_fmt] * tex_in->w * tex_in->h);
             }
 
             // this is what you'd have to do for a non-twiddled texture, I think

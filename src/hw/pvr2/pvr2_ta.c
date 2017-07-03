@@ -211,11 +211,6 @@ static void on_polyhdr_received(void) {
                 poly_state.tex_enable = true;
                 printf("texture enabled\n");
 
-                if (ta_fifo32[3] & TEX_CTRL_NOT_TWIDDLED_MASK)
-                    printf("not twiddled\n");
-                else
-                    printf("twiddled\n");
-
                 printf("the texture format is %d\n",
                        (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
                        TEX_CTRL_PIX_FMT_SHIFT);
@@ -232,9 +227,16 @@ static void on_polyhdr_received(void) {
 
                 unsigned pix_fmt = (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
                     TEX_CTRL_PIX_FMT_SHIFT;
+                bool twiddled =
+                    !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
+                if (twiddled)
+                    printf("not twiddled\n");
+                else
+                    printf("twiddled\n");
+
                 struct pvr2_tex *ent =
                     pvr2_tex_cache_find(tex_addr, 1 << tex_width_shift,
-                                        1 << tex_height_shift, pix_fmt);
+                                        1 << tex_height_shift, pix_fmt, twiddled);
 
                 printf("texture dimensions are (%u, %u)\n",
                        1 << tex_width_shift, 1 << tex_height_shift);
@@ -243,7 +245,7 @@ static void on_polyhdr_received(void) {
                 } else {
                     printf("Adding 0x%08x to texture cache...\n", tex_addr);
                     ent = pvr2_tex_cache_add(tex_addr, 1 << tex_width_shift,
-                                             1 << tex_height_shift, pix_fmt);
+                                             1 << tex_height_shift, pix_fmt, twiddled);
                 }
 
                 if (!ent) {
