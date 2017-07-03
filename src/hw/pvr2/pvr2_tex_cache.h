@@ -57,14 +57,8 @@ struct pvr2_tex {
      */
     bool dirty;
 
-    /*
-     * TODO: this is a pretty big waste of memory
-     * 4 MB * PVR2_TEX_CACHE_SIZE * (1 + GEO_BUF_COUNT) bytes
-     *
-     * since we only use this when the texture needs to be updated, a malloc'd
-     * pointer will probably be good enough.
-     */
-    uint8_t dat[PVR2_TEX_MAX_BYTES];
+    // texture data (if dirty is true)
+    uint8_t *dat;
 };
 
 // insert the given texture into the cache

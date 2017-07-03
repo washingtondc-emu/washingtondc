@@ -171,7 +171,9 @@ void render_next_geo_buf(void) {
                 glTexImage2D(GL_TEXTURE_2D, 0, format, tex->w, tex->h, 0,
                              format, tex_formats[tex->pix_fmt], tex->dat);
                 glBindTexture(GL_TEXTURE_2D, 0);
-                tex->dirty = 0;
+                tex->dirty = false;
+                free(tex->dat);
+                tex->dat = NULL;
             }
         }
 

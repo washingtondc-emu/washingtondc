@@ -113,9 +113,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     }
 
     if (idx >= PVR2_TEX_CACHE_SIZE) {
-        /*
-         * This is where we should evict an old texture
-         */
+        // TODO: This is where we should evict an old texture
         fprintf(stderr, "ERROR: TEXTURE CACHE OVERFLOW\n");
         return NULL;
     }
@@ -218,6 +216,10 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
             }
 
             printf("tex_in->addr_first is 0x%08x\n", tex_in->addr_first);
+
+            size_t n_bytes = sizeof(uint8_t) *
+                tex_in->w * tex_in->h * pixel_sizes[tex_in->pix_fmt];
+            tex_out->dat = (uint8_t*)malloc(n_bytes);
 
             // de-twiddle
             /*
