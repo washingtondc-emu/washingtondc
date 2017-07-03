@@ -195,12 +195,14 @@ static void on_polyhdr_received(void) {
         (enum display_list)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
                             TA_CMD_DISP_LIST_SHIFT);
 
+    // reset triangle strips
+    poly_state.strip_len = 0;
+
     if (current_list == DISPLAY_LIST_NONE) {
         if (!list_submitted[list]) {
             printf("Opening display list %s\n", display_list_names[list]);
             current_list = list;
             list_submitted[list] = true;
-            poly_state.strip_len = 0;
 
             poly_state.ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
                 TA_COLOR_FMT_SHIFT;
