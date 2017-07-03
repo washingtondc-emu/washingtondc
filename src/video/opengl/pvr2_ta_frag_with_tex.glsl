@@ -21,12 +21,11 @@
  ******************************************************************************/
 
 #version 330 core
-#extension GL_ARB_explicit_uniform_location : enable
 
 in vec4 vert_color;
 in vec2 st;
 out vec4 color;
-layout (location = 4) uniform sampler2D bound_tex;
+uniform sampler2D bound_tex;
 
 void main() {
     // TODO: how do I combine this with the vertex color?

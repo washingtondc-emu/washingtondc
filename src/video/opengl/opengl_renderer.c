@@ -41,7 +41,8 @@
 #define SCREEN_DIMS_SLOT 1
 #define COLOR_SLOT 2
 #define TEX_COORD_SLOT 3
-#define BOUND_TEX_SLOT 4
+
+static GLuint bound_tex_slot;
 
 static unsigned volatile frame_stamp;
 
@@ -72,6 +73,9 @@ void render_init(void) {
                           "pvr2_ta_frag.glsl");
     shader_init_from_file(&pvr_ta_tex_shader, "pvr2_ta_vert_with_tex.glsl",
                           "pvr2_ta_frag_with_tex.glsl");
+
+    bound_tex_slot = glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj,
+                                          "bound_tex");
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -105,7 +109,7 @@ static void render_do_draw(struct geo_buf *geo) {
         printf("Using texture %u\n", geo->tex_idx);
         glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
         glBindTexture(GL_TEXTURE_2D, tex_cache[geo->tex_idx]);
-        glUniform1i(BOUND_TEX_SLOT, 0);
+        glUniform1i(bound_tex_slot, 0);
         glActiveTexture(GL_TEXTURE0);
     } else {
         printf("not using texture!?\n");
