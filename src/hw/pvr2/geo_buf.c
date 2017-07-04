@@ -104,7 +104,7 @@ void geo_buf_produce(void) {
         abort(); // TODO: error handling
 
     ringbuf[prod_idx].frame_stamp = ++next_frame_stamp;
-    ringbuf[prod_idx].n_verts = 0;
+    assert(ringbuf[prod_idx].n_groups == 0);
 }
 
 unsigned geo_buf_latest_frame_stamp(void) {

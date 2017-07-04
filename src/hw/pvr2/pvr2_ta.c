@@ -123,6 +123,9 @@ static void on_polyhdr_received(void);
 static void on_vertex_received(void);
 static void on_end_of_list_received(void);
 
+static void finish_poly_group(struct geo_buf *geo);
+static void next_poly_group(struct geo_buf *geo);
+
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
 #ifdef PVR2_LOG_VERBOSE
     fprintf(stderr, "WARNING: trying to read %u bytes from the TA polygon FIFO "
@@ -278,6 +281,8 @@ static void on_polyhdr_received(void) {
         return;
     }
 
+    struct geo_buf *geo = geo_buf_get_prod();
+    next_poly_group(geo);
     printf("POLY HEADER PACKET!\n");
 }
 
@@ -295,6 +300,14 @@ static void on_vertex_received(void) {
         return;
     }
 
+    if (geo->n_groups <= 0) {
+        printf("ERROR: unable to render vertex because I'm still waiting to "
+               "see a polygon header\n");
+        return;
+    }
+
+    struct poly_group *group = geo->groups + (geo->n_groups - 1);
+
     /*
      * un-strip triangle strips by duplicating the previous two vertices.
      *
@@ -305,32 +318,32 @@ static void on_vertex_received(void) {
      * together with degenerate triangles...
      */
     if (poly_state.strip_len >= 3) {
-        if (geo->n_verts < GEO_BUF_VERT_COUNT) {
-            memcpy(geo->verts + GEO_BUF_VERT_LEN * geo->n_verts,
+        if (group->n_verts < GEO_BUF_VERT_COUNT) {
+            memcpy(group->verts + GEO_BUF_VERT_LEN * group->n_verts,
                    poly_state.strip_vert1, sizeof(poly_state.strip_vert1));
-            geo->n_verts++;
+            group->n_verts++;
         }
 
-        if (geo->n_verts < GEO_BUF_VERT_COUNT) {
-            memcpy(geo->verts + GEO_BUF_VERT_LEN * geo->n_verts,
+        if (group->n_verts < GEO_BUF_VERT_COUNT) {
+            memcpy(group->verts + GEO_BUF_VERT_LEN * group->n_verts,
                    poly_state.strip_vert2, sizeof(poly_state.strip_vert2));
-            geo->n_verts++;
+            group->n_verts++;
         }
     }
 
-    if (geo->n_verts < GEO_BUF_VERT_COUNT) {
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_POS_OFFSET + 0] =
+    if (group->n_verts < GEO_BUF_VERT_COUNT) {
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
             ta_fifo_float[1];
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_POS_OFFSET + 1] =
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
             ta_fifo_float[2];
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_POS_OFFSET + 2] =
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
             ta_fifo_float[3];
 
         if (poly_state.tex_enable) {
             unsigned dst_uv_offset =
-                GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_TEX_COORD_OFFSET;
-            geo->verts[dst_uv_offset + 0] = ta_fifo_float[4];
-            geo->verts[dst_uv_offset + 1] = ta_fifo_float[5];
+                GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_TEX_COORD_OFFSET;
+            group->verts[dst_uv_offset + 0] = ta_fifo_float[4];
+            group->verts[dst_uv_offset + 1] = ta_fifo_float[5];
         }
 
         float color_r, color_g, color_b, color_a;
@@ -347,13 +360,13 @@ static void on_vertex_received(void) {
             fprintf(stderr, "WARNING: unknown TA color format %u\n", poly_state.ta_color_fmt);
         }
 
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
             color_r;
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
             color_g;
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
             color_b;
-        geo->verts[GEO_BUF_VERT_LEN * geo->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
             color_a;
 
         if (ta_fifo32[0] & TA_CMD_END_OF_STRIP_SHIFT) {
@@ -370,15 +383,15 @@ static void on_vertex_received(void) {
             memcpy(poly_state.strip_vert1, poly_state.strip_vert2,
                    sizeof(poly_state.strip_vert1));
             memcpy(poly_state.strip_vert2,
-                   geo->verts + GEO_BUF_VERT_LEN * geo->n_verts,
+                   group->verts + GEO_BUF_VERT_LEN * group->n_verts,
                    sizeof(poly_state.strip_vert2));
             poly_state.strip_len++;
         }
 
-        geo->n_verts++;
+        group->n_verts++;
     } else {
         fprintf(stderr, "WARNING: dropped vertices: geo_buf contains %u "
-                "verts\n", geo->n_verts);
+                "verts\n", group->n_verts);
 #ifdef INVARIANTS
         abort();
 #endif
@@ -416,6 +429,8 @@ static void on_end_of_list_received(void) {
 
 void pvr2_ta_startrender(void) {
     printf("STARTRENDER requested!\n");
+
+    struct geo_buf *geo = geo_buf_get_prod();
 
     unsigned tile_w = get_glob_tile_clip_x() << 5;
     unsigned tile_h = get_glob_tile_clip_y() << 5;
@@ -465,27 +480,20 @@ void pvr2_ta_startrender(void) {
     float bg_color_r = (float)((bg_color_src & 0x00ff0000) >> 16) / 255.0f;
     float bg_color_g = (float)((bg_color_src & 0x0000ff00) >> 8) / 255.0f;
     float bg_color_b = (float)((bg_color_src & 0x000000ff) >> 0) / 255.0f;
-    geo_buf_get_prod()->bgcolor[0] = bg_color_r;
-    geo_buf_get_prod()->bgcolor[1] = bg_color_g;
-    geo_buf_get_prod()->bgcolor[2] = bg_color_b;
-    geo_buf_get_prod()->bgcolor[3] = bg_color_a;
+    geo->bgcolor[0] = bg_color_r;
+    geo->bgcolor[1] = bg_color_g;
+    geo->bgcolor[2] = bg_color_b;
+    geo->bgcolor[3] = bg_color_a;
 
     uint32_t backgnd_depth_as_int = get_isp_backgnd_d();
-    memcpy(&geo_buf_get_prod()->bgdepth, &backgnd_depth_as_int, sizeof(float));
+    memcpy(&geo->bgdepth, &backgnd_depth_as_int, sizeof(float));
 
-    geo_buf_get_prod()->screen_width = width;
-    geo_buf_get_prod()->screen_height = height;
+    geo->screen_width = width;
+    geo->screen_height = height;
 
-    pvr2_tex_cache_xmit(geo_buf_get_prod());
+    pvr2_tex_cache_xmit(geo);
 
-    if (poly_state.tex_enable) {
-        printf("tex_enable should be true\n");
-        geo_buf_get_prod()->tex_enable = true;
-        geo_buf_get_prod()->tex_idx = poly_state.tex_idx;
-    } else {
-        printf("tex_enable should be false\n");
-        geo_buf_get_prod()->tex_enable = false;
-    }
+    finish_poly_group(geo);
 
     geo_buf_produce();
     gfx_thread_render_geo_buf();
@@ -501,4 +509,39 @@ void pvr2_ta_startrender(void) {
 
 void pvr2_ta_reinit(void) {
     memset(list_submitted, 0, sizeof(list_submitted));
+}
+
+static void finish_poly_group(struct geo_buf *geo) {
+    if (geo->n_groups <= 0) {
+        printf("%s - still waiting for a polygon header to be opened!\n",
+               __func__);
+        return;
+    }
+
+    struct poly_group *group = geo->groups + (geo->n_groups - 1);
+
+    if (poly_state.tex_enable) {
+        printf("tex_enable should be true\n");
+        group->tex_enable = true;
+        group->tex_idx = poly_state.tex_idx;
+    } else {
+        printf("tex_enable should be false\n");
+        group->tex_enable = false;
+    }
+}
+
+static void next_poly_group(struct geo_buf *geo) {
+    if (geo->n_groups >= 1) {
+        finish_poly_group(geo);
+        geo->groups = (struct poly_group*)realloc(geo->groups,
+                                                  sizeof(struct poly_group) *
+                                                  ++geo->n_groups);
+    } else {
+        geo->n_groups = 1;
+        geo->groups = (struct poly_group*)malloc(sizeof(struct poly_group));
+    }
+
+    struct poly_group *new_group = geo->groups + (geo->n_groups - 1);
+    new_group->n_verts = 0;
+    new_group->tex_enable = false;
 }

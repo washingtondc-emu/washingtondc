@@ -104,11 +104,13 @@ void render_cleanup(void) {
     memset(tex_cache, 0, sizeof(tex_cache));
 }
 
-static void render_do_draw(struct geo_buf *geo) {
-    if (geo->tex_enable) {
-        printf("Using texture %u\n", geo->tex_idx);
+static void render_do_draw_group(struct geo_buf *geo, unsigned group_no) {
+    struct poly_group *group = geo->groups + group_no;
+
+    if (group->tex_enable) {
+        printf("Using texture %u\n", group->tex_idx);
         glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
-        glBindTexture(GL_TEXTURE_2D, tex_cache[geo->tex_idx]);
+        glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
         glUniform1i(bound_tex_slot, 0);
         glActiveTexture(GL_TEXTURE0);
     } else {
@@ -118,6 +120,36 @@ static void render_do_draw(struct geo_buf *geo) {
 
     glUniform2f(SCREEN_DIMS_SLOT, (GLfloat)geo->screen_width * 0.5f,
                 (GLfloat)geo->screen_height * 0.5f);
+
+    // now draw the geometry itself
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER,
+                 sizeof(float) * group->n_verts * GEO_BUF_VERT_LEN,
+                 group->verts, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(POSITION_SLOT);
+    glEnableVertexAttribArray(COLOR_SLOT);
+    glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
+                          GEO_BUF_VERT_LEN * sizeof(float),
+                          (GLvoid*)(GEO_BUF_POS_OFFSET * sizeof(float)));
+    glVertexAttribPointer(COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
+                          GEO_BUF_VERT_LEN * sizeof(float),
+                          (GLvoid*)(GEO_BUF_COLOR_OFFSET * sizeof(float)));
+    if (group->tex_enable) {
+        glEnableVertexAttribArray(TEX_COORD_SLOT);
+        glVertexAttribPointer(TEX_COORD_SLOT, 2, GL_FLOAT, GL_FALSE,
+                              GEO_BUF_VERT_LEN * sizeof(float),
+                              (GLvoid*)(GEO_BUF_TEX_COORD_OFFSET * sizeof(float)));
+    }
+    glDrawArrays(GL_TRIANGLES, 0, group->n_verts);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+static void render_do_draw(struct geo_buf *geo) {
+
     /*
      * first draw the background plane
      * TODO: I should actually draw a background plane instead
@@ -127,31 +159,9 @@ static void render_do_draw(struct geo_buf *geo) {
                  geo->bgcolor[2], geo->bgcolor[3]);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // now draw the geometry itself
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(float) * geo->n_verts * GEO_BUF_VERT_LEN,
-                 geo->verts, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(POSITION_SLOT);
-    glEnableVertexAttribArray(COLOR_SLOT);
-    glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
-                          GEO_BUF_VERT_LEN * sizeof(float),
-                          (GLvoid*)(GEO_BUF_POS_OFFSET * sizeof(float)));
-    glVertexAttribPointer(COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
-                          GEO_BUF_VERT_LEN * sizeof(float),
-                          (GLvoid*)(GEO_BUF_COLOR_OFFSET * sizeof(float)));
-    if (geo->tex_enable) {
-        glEnableVertexAttribArray(TEX_COORD_SLOT);
-        glVertexAttribPointer(TEX_COORD_SLOT, 2, GL_FLOAT, GL_FALSE,
-                              GEO_BUF_VERT_LEN * sizeof(float),
-                              (GLvoid*)(GEO_BUF_TEX_COORD_OFFSET * sizeof(float)));
-    }
-    glDrawArrays(GL_TRIANGLES, 0, geo->n_verts);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
+    unsigned group_no;
+    for (group_no = 0; group_no < geo->n_groups; group_no++)
+        render_do_draw_group(geo, group_no);
 }
 
 void render_next_geo_buf(void) {
@@ -196,6 +206,9 @@ void render_next_geo_buf(void) {
             abort(); // TODO: error handling
 
         printf("frame_stamp %u rendered\n", frame_stamp);
+
+        free(geo->groups);
+        geo->n_groups = 0;
 
         geo_buf_consume();
         bufs_rendered++;

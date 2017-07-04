@@ -55,16 +55,24 @@
 #define GEO_BUF_VERT_LEN 9
 
 /*
- * TODO: due to my own oversights, there is currently no way to use more than
- * one texture at a time.  This is because there's no infra to mark the
- * beginning and end of a group of polygons.  This will obviously need to be
- * fixed in the future.
+ * There is one poly_group for each polygon header sent to the pvr2.
+ * The poly-group contains per-header settings such as textures.
  */
+struct poly_group {
+    unsigned n_verts;
+    float verts[GEO_BUF_VERT_COUNT * GEO_BUF_VERT_LEN];
+
+    bool tex_enable;
+    unsigned tex_idx; // only valid if tex_enable=true
+};
+
 struct geo_buf {
     struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
 
-    float verts[GEO_BUF_VERT_COUNT * GEO_BUF_VERT_LEN];
-    unsigned n_verts;
+    // each group of polygons has a distinct texture, shader, depth-sorting etc.
+    unsigned n_groups;
+    struct poly_group *groups;
+
     unsigned frame_stamp;
 
     // render dimensions
@@ -72,12 +80,6 @@ struct geo_buf {
 
     float bgcolor[4];
     float bgdepth;
-
-    // which texture in the tex cache to bind
-    int tex_no;
-
-    bool tex_enable;
-    unsigned tex_idx; // only valid if tex_enable=true
 };
 
 /*
