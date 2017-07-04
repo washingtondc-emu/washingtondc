@@ -364,7 +364,7 @@ static void on_vertex_received(void) {
         group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
             color_a;
 
-        if (ta_fifo32[0] & TA_CMD_END_OF_STRIP_SHIFT) {
+        if (ta_fifo32[0] & TA_CMD_END_OF_STRIP_MASK) {
             /*
              * TODO: handle degenerate cases where the user sends an
              * end-of-strip on the first or second vertex
