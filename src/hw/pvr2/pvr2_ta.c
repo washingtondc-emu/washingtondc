@@ -88,18 +88,11 @@ static struct poly_state {
     unsigned tex_idx;
 
     int tex_fmt;
-} poly_state;
 
-enum display_list {
-    DISPLAY_LIST_OPAQUE,
-    DISPLAY_LIST_OPAQUE_MOD,
-    DISPLAY_LIST_TRANS,
-    DISPLAY_LIST_TRANS_MOD,
-    DISPLAY_LIST_PUNCH_THROUGH,
-
-    DISPLAY_LIST_COUNT,
-
-    DISPLAY_LIST_NONE = -1
+    // which display list is currently open
+    enum display_list_type current_list;
+} poly_state = {
+    .current_list = DISPLAY_LIST_NONE
 };
 
 char const *display_list_names[DISPLAY_LIST_COUNT] = {
@@ -112,9 +105,6 @@ char const *display_list_names[DISPLAY_LIST_COUNT] = {
 
 bool list_submitted[DISPLAY_LIST_COUNT];
 
-// which display list is currently open
-static enum display_list current_list = DISPLAY_LIST_NONE;
-
 static void input_poly_fifo(uint8_t byte);
 
 // this function gets called every time a full packet is received by the TA
@@ -123,8 +113,10 @@ static void on_polyhdr_received(void);
 static void on_vertex_received(void);
 static void on_end_of_list_received(void);
 
-static void finish_poly_group(struct geo_buf *geo);
-static void next_poly_group(struct geo_buf *geo);
+static void finish_poly_group(struct geo_buf *geo,
+                              enum display_list_type disp_list);
+static void next_poly_group(struct geo_buf *geo,
+                            enum display_list_type disp_list);
 
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
 #ifdef PVR2_LOG_VERBOSE
@@ -194,17 +186,17 @@ static void on_packet_received(void) {
 
 static void on_polyhdr_received(void) {
     uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
-    enum display_list list =
-        (enum display_list)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
-                            TA_CMD_DISP_LIST_SHIFT);
+    enum display_list_type list =
+        (enum display_list_type)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
+                                 TA_CMD_DISP_LIST_SHIFT);
 
     // reset triangle strips
     poly_state.strip_len = 0;
 
-    if (current_list == DISPLAY_LIST_NONE) {
+    if (poly_state.current_list == DISPLAY_LIST_NONE) {
         if (!list_submitted[list]) {
             printf("Opening display list %s\n", display_list_names[list]);
-            current_list = list;
+            poly_state.current_list = list;
             list_submitted[list] = true;
 
             poly_state.ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
@@ -274,15 +266,15 @@ static void on_polyhdr_received(void) {
             printf("WARNING: unable to open list %s because it is already "
                    "closed\n", display_list_names[list]);
         }
-    } else if (current_list != list) {
+    } else if (poly_state.current_list != list) {
         printf("WARNING: attempting to input poly header for list %s without "
                "first closing %s\n", display_list_names[list],
-               display_list_names[current_list]);
+               display_list_names[poly_state.current_list]);
         return;
     }
 
     struct geo_buf *geo = geo_buf_get_prod();
-    next_poly_group(geo);
+    next_poly_group(geo, poly_state.current_list);
     printf("POLY HEADER PACKET!\n");
 }
 
@@ -295,18 +287,21 @@ static void on_vertex_received(void) {
 #endif
     struct geo_buf *geo = geo_buf_get_prod();
 
-    if (current_list != DISPLAY_LIST_OPAQUE) {
-        /* printf("display list %d ignored\n", current_list); */
+    if (poly_state.current_list < 0) {
+        printf("ERROR: unable to render vertex because no display lists are "
+               "open\n");
         return;
     }
 
-    if (geo->n_groups <= 0) {
+    struct display_list *list = geo->lists + poly_state.current_list;
+
+    if (list->n_groups <= 0) {
         printf("ERROR: unable to render vertex because I'm still waiting to "
                "see a polygon header\n");
         return;
     }
 
-    struct poly_group *group = geo->groups + (geo->n_groups - 1);
+    struct poly_group *group = list->groups + (list->n_groups - 1);
 
     /*
      * un-strip triangle strips by duplicating the previous two vertices.
@@ -400,10 +395,10 @@ static void on_vertex_received(void) {
 
 static void on_end_of_list_received(void) {
     printf("END-OF-LIST PACKET!\n");
-    printf("Display list \"%s\" closed\n", display_list_names[current_list]);
+    printf("Display list \"%s\" closed\n", display_list_names[poly_state.current_list]);
 
     // TODO: In a real dreamcast this probably would not happen instantly
-    switch (current_list) {
+    switch (poly_state.current_list) {
     case DISPLAY_LIST_OPAQUE:
         holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE);
         break;
@@ -421,10 +416,10 @@ static void on_end_of_list_received(void) {
         break;
     default:
         printf("WARNING: not raising interrupt for closing of list type %d "
-               "(invalid)\n", current_list);
+               "(invalid)\n", poly_state.current_list);
     }
 
-    current_list = DISPLAY_LIST_NONE;
+    poly_state.current_list = DISPLAY_LIST_NONE;
  }
 
 void pvr2_ta_startrender(void) {
@@ -493,13 +488,13 @@ void pvr2_ta_startrender(void) {
 
     pvr2_tex_cache_xmit(geo);
 
-    finish_poly_group(geo);
+    finish_poly_group(geo, poly_state.current_list);
 
     geo_buf_produce();
     gfx_thread_render_geo_buf();
 
     memset(list_submitted, 0, sizeof(list_submitted));
-    current_list = DISPLAY_LIST_NONE;
+    poly_state.current_list = DISPLAY_LIST_NONE;
 
     // TODO: This irq definitely should not be triggered immediately
     holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
@@ -511,14 +506,22 @@ void pvr2_ta_reinit(void) {
     memset(list_submitted, 0, sizeof(list_submitted));
 }
 
-static void finish_poly_group(struct geo_buf *geo) {
-    if (geo->n_groups <= 0) {
+static void finish_poly_group(struct geo_buf *geo,
+                              enum display_list_type disp_list) {
+    if (disp_list < 0) {
+        printf("%s - no lists are open\n", __func__);
+        return;
+    }
+
+    struct display_list *list = geo->lists + disp_list;
+
+    if (list->n_groups <= 0) {
         printf("%s - still waiting for a polygon header to be opened!\n",
                __func__);
         return;
     }
 
-    struct poly_group *group = geo->groups + (geo->n_groups - 1);
+    struct poly_group *group = list->groups + (list->n_groups - 1);
 
     if (poly_state.tex_enable) {
         printf("tex_enable should be true\n");
@@ -530,18 +533,26 @@ static void finish_poly_group(struct geo_buf *geo) {
     }
 }
 
-static void next_poly_group(struct geo_buf *geo) {
-    if (geo->n_groups >= 1) {
-        finish_poly_group(geo);
-        geo->groups = (struct poly_group*)realloc(geo->groups,
-                                                  sizeof(struct poly_group) *
-                                                  ++geo->n_groups);
-    } else {
-        geo->n_groups = 1;
-        geo->groups = (struct poly_group*)malloc(sizeof(struct poly_group));
+static void next_poly_group(struct geo_buf *geo,
+                            enum display_list_type disp_list) {
+    struct display_list *list = geo->lists + disp_list;
+
+    if (disp_list < 0) {
+        printf("%s - no lists are open\n", __func__);
+        return;
     }
 
-    struct poly_group *new_group = geo->groups + (geo->n_groups - 1);
+    if (list->n_groups >= 1) {
+        finish_poly_group(geo, disp_list);
+        list->groups = (struct poly_group*)realloc(list->groups,
+                                                  sizeof(struct poly_group) *
+                                                  ++list->n_groups);
+    } else {
+        list->n_groups = 1;
+        list->groups = (struct poly_group*)malloc(sizeof(struct poly_group));
+    }
+
+    struct poly_group *new_group = list->groups + (list->n_groups - 1);
     new_group->n_verts = 0;
     new_group->tex_enable = false;
 }

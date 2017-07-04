@@ -66,12 +66,42 @@ struct poly_group {
     unsigned tex_idx; // only valid if tex_enable=true
 };
 
+/*
+ * There are five display lists:
+ *
+ * Opaque
+ * Punch-through polygon
+ * Opaque/punch-through modifier volume
+ * Translucent
+ * Translucent modifier volume
+ *
+ * They are rendered by the opengl backend in that order.
+ * Currently all 5 lists are treated as being opaque; this is obviously
+ * incorrect.
+ */
+struct display_list {
+    unsigned n_groups;
+    struct poly_group *groups;
+};
+
+enum display_list_type {
+    DISPLAY_LIST_FIRST,
+    DISPLAY_LIST_OPAQUE = DISPLAY_LIST_FIRST,
+    DISPLAY_LIST_OPAQUE_MOD,
+    DISPLAY_LIST_TRANS,
+    DISPLAY_LIST_TRANS_MOD,
+    DISPLAY_LIST_PUNCH_THROUGH,
+
+    DISPLAY_LIST_COUNT,
+
+    DISPLAY_LIST_NONE = -1
+};
+
 struct geo_buf {
     struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
 
     // each group of polygons has a distinct texture, shader, depth-sorting etc.
-    unsigned n_groups;
-    struct poly_group *groups;
+    struct display_list lists[DISPLAY_LIST_COUNT];
 
     unsigned frame_stamp;
 

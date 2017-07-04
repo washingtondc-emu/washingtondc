@@ -104,7 +104,12 @@ void geo_buf_produce(void) {
         abort(); // TODO: error handling
 
     ringbuf[prod_idx].frame_stamp = ++next_frame_stamp;
-    assert(ringbuf[prod_idx].n_groups == 0);
+
+    enum display_list_type disp_list;
+    for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
+         disp_list++) {
+        assert(ringbuf[prod_idx].lists[disp_list].n_groups == 0);
+    }
 }
 
 unsigned geo_buf_latest_frame_stamp(void) {

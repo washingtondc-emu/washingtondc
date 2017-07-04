@@ -104,8 +104,10 @@ void render_cleanup(void) {
     memset(tex_cache, 0, sizeof(tex_cache));
 }
 
-static void render_do_draw_group(struct geo_buf *geo, unsigned group_no) {
-    struct poly_group *group = geo->groups + group_no;
+static void render_do_draw_group(struct geo_buf *geo,
+                                 enum display_list_type disp_list,
+                                 unsigned group_no) {
+    struct poly_group *group = geo->lists[disp_list].groups + group_no;
 
     if (group->tex_enable) {
         printf("Using texture %u\n", group->tex_idx);
@@ -160,8 +162,13 @@ static void render_do_draw(struct geo_buf *geo) {
     glClear(GL_COLOR_BUFFER_BIT);
 
     unsigned group_no;
-    for (group_no = 0; group_no < geo->n_groups; group_no++)
-        render_do_draw_group(geo, group_no);
+    enum display_list_type disp_list;
+    for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
+         disp_list++) {
+        struct display_list *list = geo->lists + disp_list;
+        for (group_no = 0; group_no < list->n_groups; group_no++)
+            render_do_draw_group(geo, disp_list, group_no);
+    }
 }
 
 void render_next_geo_buf(void) {
@@ -207,8 +214,13 @@ void render_next_geo_buf(void) {
 
         printf("frame_stamp %u rendered\n", frame_stamp);
 
-        free(geo->groups);
-        geo->n_groups = 0;
+        enum display_list_type disp_list;
+        for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
+             disp_list++) {
+            struct display_list *list = geo->lists + disp_list;
+            free(list->groups);
+            list->n_groups = 0;
+        }
 
         geo_buf_consume();
         bufs_rendered++;
