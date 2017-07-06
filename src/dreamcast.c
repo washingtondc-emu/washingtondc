@@ -376,6 +376,7 @@ void dc_print_perf_stats(void) {
 }
 
 void dreamcast_kill(void) {
+    printf("%s called - WashingtonDC will exit soon\n", __func__);
     is_running = false;
     gfx_thread_notify_wake_up();
 }
