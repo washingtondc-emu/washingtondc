@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "error.h"
 #include "geo_buf.h"
 #include "gfx_thread.h"
 #include "hw/sys/holly_intc.h"
@@ -395,7 +396,15 @@ static void on_vertex_received(void) {
 
 static void on_end_of_list_received(void) {
     printf("END-OF-LIST PACKET!\n");
-    printf("Display list \"%s\" closed\n", display_list_names[poly_state.current_list]);
+
+    if (poly_state.current_list != DISPLAY_LIST_NONE) {
+        printf("Display list \"%s\" closed\n",
+               display_list_names[poly_state.current_list]);
+    } else {
+        printf("Unable to close the current display list because no display "
+               "list has been opened\n");
+        return;
+    }
 
     // TODO: In a real dreamcast this probably would not happen instantly
     switch (poly_state.current_list) {
@@ -415,8 +424,11 @@ static void on_end_of_list_received(void) {
         holly_raise_nrm_int(HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE);
         break;
     default:
-        printf("WARNING: not raising interrupt for closing of list type %d "
-               "(invalid)\n", poly_state.current_list);
+        /*
+         * this can never actually happen because this
+         * functionshould have returned early above
+         */
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 
     poly_state.current_list = DISPLAY_LIST_NONE;
