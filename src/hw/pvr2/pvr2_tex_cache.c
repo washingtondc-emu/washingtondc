@@ -36,7 +36,7 @@
 unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
     2,
     2,
-    4,
+    2,
     1,
     0, // TODO: wtf is TEX_CTRL_PIX_FMT_BUMP_MAP???
     0, // TODO: wtf is TEX_CTRL_PIX_FMT_4_BPP_PAL

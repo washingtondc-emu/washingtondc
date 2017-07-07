@@ -68,6 +68,9 @@ static const GLenum tex_formats[TEX_CTRL_PIX_FMT_COUNT] = {
  */
 static void render_do_draw(struct geo_buf *geo);
 
+// converts pixels from ARGB 4444 to RGBA 4444
+static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels);
+
 void render_init(void) {
     shader_init_from_file(&pvr_ta_shader, "pvr2_ta_vert.glsl",
                           "pvr2_ta_frag.glsl");
@@ -184,7 +187,14 @@ void render_next_geo_buf(void) {
                 int n_colors = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ? 3 : 4;
                 GLenum format = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
                     GL_RGB : GL_RGBA;
+
+                if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444)
+                    render_conv_argb_4444((uint16_t*)tex->dat, tex->w * tex->h);
+
                 glBindTexture(GL_TEXTURE_2D, tex_cache[tex_no]);
+
+                // TODO: maybe don't always set this to 1
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                 glTexImage2D(GL_TEXTURE_2D, 0, format, tex->w, tex->h, 0,
                              format, tex_formats[tex->pix_fmt], tex->dat);
                 glBindTexture(GL_TEXTURE_2D, 0);
@@ -241,4 +251,16 @@ void render_wait_for_frame_stamp(unsigned stamp) {
     }
     if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
         abort(); // TODO: error handling
+}
+
+static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels) {
+    for (size_t pix_no = 0; pix_no < n_pixels; pix_no++, pixels++) {
+        uint16_t pix_current = *pixels;
+        uint16_t a = (pix_current & 0x000f) >> 0;
+        uint16_t r = (pix_current & 0x00f0) >> 4;
+        uint16_t g = (pix_current & 0x0f00) >> 8;
+        uint16_t b = (pix_current & 0xf000) >> 12;
+
+        *pixels = r | (g << 4) | (b << 8) | (a << 12);
+    }
 }
