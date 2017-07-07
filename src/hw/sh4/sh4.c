@@ -178,8 +178,8 @@ void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles) {
     int exc_pending;
 
 mulligan:
-    sh4_check_interrupts(sh4);
     do {
+        sh4_check_interrupts(sh4);
         if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
             if (exc_pending == MEM_ACCESS_EXC) {
                 // TODO: some sort of logic to detect infinite loops here
