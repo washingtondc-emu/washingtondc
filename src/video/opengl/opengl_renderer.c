@@ -146,6 +146,24 @@ static void render_do_draw_group(struct geo_buf *geo,
         glUseProgram(pvr_ta_shader.shader_prog_obj);
     }
 
+#ifdef INVARIANTS
+    /*
+     * this check is a little silly, but I get segfaults sometimes when
+     * indexing into src_blend_factors and dst_blend_factors and I don't know
+     * why.
+     */
+    if ((group->src_blend_factor < 0) ||
+        (group->dst_blend_factor < 0) ||
+        (group->src_blend_factor >= PVR2_BLEND_FACTOR_COUNT) ||
+        (group->dst_blend_factor >= PVR2_BLEND_FACTOR_COUNT)) {
+        error_set_src_blend_factor(group->src_blend_factor);
+        error_set_dst_blend_factor(group->dst_blend_factor);
+        error_set_display_list_index((unsigned)disp_list);
+        error_set_geo_buf_group_index(group_no);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+#endif
+
     glBlendFunc(src_blend_factors[(unsigned)group->src_blend_factor],
                 dst_blend_factors[(unsigned)group->dst_blend_factor]);
 

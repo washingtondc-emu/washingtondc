@@ -41,6 +41,11 @@ static struct geo_buf ringbuf[GEO_BUF_COUNT];
 static unsigned next_frame_stamp;
 static unsigned last_prod_frame_stamp;
 
+DEF_ERROR_INT_ATTR(src_blend_factor);
+DEF_ERROR_INT_ATTR(dst_blend_factor);
+DEF_ERROR_INT_ATTR(display_list_index);
+DEF_ERROR_INT_ATTR(geo_buf_group_index);
+
 struct geo_buf *geo_buf_get_cons(void) {
     struct geo_buf *ret;
 

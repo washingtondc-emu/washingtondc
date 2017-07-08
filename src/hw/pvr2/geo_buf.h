@@ -23,6 +23,7 @@
 #ifndef GEO_BUF_H_
 #define GEO_BUF_H_
 
+#include "error.h"
 #include "pvr2_tex_cache.h"
 
 /*
@@ -158,5 +159,10 @@ void geo_buf_produce(void);
 
 // return the frame stamp of the last geo_buf to be produced
 unsigned geo_buf_latest_frame_stamp(void);
+
+ERROR_INT_ATTR(src_blend_factor);
+ERROR_INT_ATTR(dst_blend_factor);
+ERROR_INT_ATTR(display_list_index);
+ERROR_INT_ATTR(geo_buf_group_index);
 
 #endif
