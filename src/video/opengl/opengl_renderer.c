@@ -37,11 +37,11 @@
 
 #include "opengl_renderer.h"
 
-#define POSITION_SLOT     0
-#define SCREEN_DIMS_SLOT  1
-#define COLOR_SLOT        2
-#define CLIP_MIN_MAX_SLOT 3
-#define TEX_COORD_SLOT    4
+#define POSITION_SLOT          0
+#define HALF_SCREEN_DIMS_SLOT  1
+#define COLOR_SLOT             2
+#define CLIP_MIN_MAX_SLOT      3
+#define TEX_COORD_SLOT         4
 
 static GLuint bound_tex_slot;
 
@@ -152,7 +152,7 @@ static void render_do_draw_group(struct geo_buf *geo,
     glUniform2f(CLIP_MIN_MAX_SLOT,
                 (GLfloat)geo->clip_min, (GLfloat)geo->clip_max);
 
-    glUniform2f(SCREEN_DIMS_SLOT, (GLfloat)(geo->screen_width * 0.5f),
+    glUniform2f(HALF_SCREEN_DIMS_SLOT, (GLfloat)(geo->screen_width * 0.5f),
                 (GLfloat)(geo->screen_height * 0.5f));
 
     // now draw the geometry itself
