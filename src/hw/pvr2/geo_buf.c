@@ -80,6 +80,22 @@ void geo_buf_consume(void) {
         abort(); // TODO: error handling
 }
 
+static void init_geo_buf(struct geo_buf *buf) {
+    buf->frame_stamp = ++next_frame_stamp;
+
+    buf->clip_min = -1.0f;
+    buf->clip_max = 1.0f;
+
+#ifdef INVARIANTS
+    enum display_list_type disp_list;
+    for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
+         disp_list++) {
+        if (buf->lists[disp_list].n_groups != 0)
+            RAISE_ERROR(ERROR_INTEGRITY);
+    }
+#endif
+}
+
 void geo_buf_produce(void) {
     unsigned next_prod_idx = (prod_idx + 1) % GEO_BUF_COUNT;
 
@@ -103,13 +119,7 @@ void geo_buf_produce(void) {
     if (pthread_mutex_unlock(&cons_mtx) != 0)
         abort(); // TODO: error handling
 
-    ringbuf[prod_idx].frame_stamp = ++next_frame_stamp;
-
-    enum display_list_type disp_list;
-    for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
-         disp_list++) {
-        assert(ringbuf[prod_idx].lists[disp_list].n_groups == 0);
-    }
+    init_geo_buf(ringbuf + prod_idx);
 }
 
 unsigned geo_buf_latest_frame_stamp(void) {

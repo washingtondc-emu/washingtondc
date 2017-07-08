@@ -128,6 +128,9 @@ struct geo_buf {
 
     float bgcolor[4];
     float bgdepth;
+
+    // near and far clipping plane Z-coordinates
+    float clip_min, clip_max;
 };
 
 /*

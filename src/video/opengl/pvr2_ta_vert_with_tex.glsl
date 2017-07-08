@@ -23,10 +23,17 @@
 #version 330 core
 #extension GL_ARB_explicit_uniform_location : enable
 
+/*
+ * TODO: some sort of common shader library (or maybe pre-processor)
+ * so that I don't have to maintain both textured and non-textured versions
+ * of every shader
+ */
+
 layout (location = 0) in vec3 vert_pos;
 layout (location = 1) uniform vec2 half_screen_dims;
 layout (location = 2) in vec4 color;
-layout (location = 3) in vec2 tex_coord_in;
+layout (location = 3) uniform vec2 clip_min_max;
+layout (location = 4) in vec2 tex_coord_in;
 
 out vec4 vert_color;
 out vec2 st;
@@ -38,9 +45,14 @@ void main() {
      * coordinates (which are bounded from -1.0 to 1.0, with the upper-left
      * coordinate being at (-1.0, 1.0)
      */
-    gl_Position = vec4((vert_pos.x - half_screen_dims.x) / half_screen_dims.x,
-                       -(vert_pos.y - half_screen_dims.y) / half_screen_dims.y,
-                       0.0/* vert_pos.z */, 1.0);
+    float vert_x = (vert_pos.x - half_screen_dims.x) / half_screen_dims.x;
+    float vert_y = -(vert_pos.y - half_screen_dims.y) / half_screen_dims.y;
+
+    float clip_half = (clip_min_max[1] - clip_min_max[0]) * 0.5f;
+    float vert_z = (vert_pos.z - clip_half) /
+        (clip_min_max[1] - clip_min_max[0]);
+
+    gl_Position = vec4(vert_x, vert_y, vert_z, 1.0);
 
     st = tex_coord_in;
     vert_color = color;

@@ -345,6 +345,16 @@ static void on_vertex_received(void) {
     }
 
     if (group->n_verts < GEO_BUF_VERT_COUNT) {
+        // first update the clipping planes in the geo_buf
+        /*
+         * TODO: there are FPU instructions on x86 that can do this without
+         * branching
+         */
+        if (ta_fifo_float[3] < geo->clip_min)
+            geo->clip_min = ta_fifo_float[3];
+        if (ta_fifo_float[3] > geo->clip_max)
+            geo->clip_max = ta_fifo_float[3];
+
         group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
             ta_fifo_float[1];
         group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
