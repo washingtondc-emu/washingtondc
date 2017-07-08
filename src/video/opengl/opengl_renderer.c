@@ -62,6 +62,28 @@ static const GLenum tex_formats[TEX_CTRL_PIX_FMT_COUNT] = {
     [TEX_CTRL_PIX_FMT_ARGB_4444] = GL_UNSIGNED_SHORT_4_4_4_4,
 };
 
+static const GLenum src_blend_factors[PVR2_BLEND_FACTOR_COUNT] = {
+    [PVR2_BLEND_ZERO]                = GL_ZERO,
+    [PVR2_BLEND_ONE]                 = GL_ONE,
+    [PVR2_BLEND_OTHER]               = GL_DST_COLOR,
+    [PVR2_BLEND_ONE_MINUS_OTHER]     = GL_ONE_MINUS_DST_COLOR,
+    [PVR2_BLEND_SRC_ALPHA]           = GL_SRC_ALPHA,
+    [PVR2_BLEND_ONE_MINUS_SRC_ALPHA] = GL_ONE_MINUS_SRC_ALPHA,
+    [PVR2_BLEND_DST_ALPHA]           = GL_DST_ALPHA,
+    [PVR2_BLEND_ONE_MINUS_DST_ALPHA] = GL_ONE_MINUS_DST_ALPHA
+};
+
+static const GLenum dst_blend_factors[PVR2_BLEND_FACTOR_COUNT] = {
+    [PVR2_BLEND_ZERO]                = GL_ZERO,
+    [PVR2_BLEND_ONE]                 = GL_ONE,
+    [PVR2_BLEND_OTHER]               = GL_SRC_COLOR,
+    [PVR2_BLEND_ONE_MINUS_OTHER]     = GL_ONE_MINUS_SRC_COLOR,
+    [PVR2_BLEND_SRC_ALPHA]           = GL_SRC_ALPHA,
+    [PVR2_BLEND_ONE_MINUS_SRC_ALPHA] = GL_ONE_MINUS_SRC_ALPHA,
+    [PVR2_BLEND_DST_ALPHA]           = GL_DST_ALPHA,
+    [PVR2_BLEND_ONE_MINUS_DST_ALPHA] = GL_ONE_MINUS_DST_ALPHA
+};
+
 /*
  * draws the given geo_buf in whatever context is available (ie without setting
  * the shader, or the framebuffer).
@@ -123,6 +145,9 @@ static void render_do_draw_group(struct geo_buf *geo,
         glUseProgram(pvr_ta_shader.shader_prog_obj);
     }
 
+    glBlendFunc(src_blend_factors[(unsigned)group->src_blend_factor],
+                dst_blend_factors[(unsigned)group->dst_blend_factor]);
+
     glUniform2f(SCREEN_DIMS_SLOT, (GLfloat)geo->screen_width * 0.5f,
                 (GLfloat)geo->screen_height * 0.5f);
 
@@ -169,6 +194,12 @@ static void render_do_draw(struct geo_buf *geo) {
     for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
          disp_list++) {
         struct display_list *list = geo->lists + disp_list;
+
+        if (list->blend_enable)
+            glEnable(GL_BLEND);
+        else
+            glDisable(GL_BLEND);
+
         for (group_no = 0; group_no < list->n_groups; group_no++)
             render_do_draw_group(geo, disp_list, group_no);
     }

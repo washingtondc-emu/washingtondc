@@ -72,6 +72,12 @@
 #define ISP_BACKGND_T_SKIP_SHIFT 24
 #define ISP_BACKGND_T_SKIP_MASK (7 << ISP_BACKGND_T_SKIP_SHIFT)
 
+#define TSP_WORD_SRC_ALPHA_FACTOR_SHIFT 29
+#define TSP_WORD_SRC_ALPHA_FACTOR_MASK (7 << TSP_WORD_SRC_ALPHA_FACTOR_SHIFT)
+
+#define TSP_WORD_DST_ALPHA_FACTOR_SHIFT 26
+#define TSP_WORD_DST_ALPHA_FACTOR_MASK (7 << TSP_WORD_DST_ALPHA_FACTOR_SHIFT)
+
 static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 
 static unsigned expected_ta_fifo_len = 32;
@@ -92,6 +98,8 @@ static struct poly_state {
 
     // which display list is currently open
     enum display_list_type current_list;
+
+    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
 } poly_state = {
     .current_list = DISPLAY_LIST_NONE
 };
@@ -195,6 +203,8 @@ static void on_polyhdr_received(void) {
     poly_state.strip_len = 0;
 
     if (poly_state.current_list == DISPLAY_LIST_NONE) {
+        uint32_t tsp_instruction = ta_fifo32[2];
+
         if (!list_submitted[list]) {
             printf("Opening display list %s\n", display_list_names[list]);
             poly_state.current_list = list;
@@ -251,6 +261,13 @@ static void on_polyhdr_received(void) {
                 } else {
                     poly_state.tex_idx = pvr2_tex_cache_get_idx(ent);
                 }
+
+                poly_state.src_blend_factor =
+                    (tsp_instruction & TSP_WORD_SRC_ALPHA_FACTOR_MASK) >>
+                    TSP_WORD_SRC_ALPHA_FACTOR_SHIFT;
+                poly_state.dst_blend_factor =
+                    (tsp_instruction & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
+                    TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
             } else {
                 /*
                  * XXX - HACK
@@ -498,6 +515,13 @@ void pvr2_ta_startrender(void) {
     geo->screen_width = width;
     geo->screen_height = height;
 
+    // set the blend enable flag for translucent-only
+    geo->lists[DISPLAY_LIST_OPAQUE].blend_enable = false;
+    geo->lists[DISPLAY_LIST_OPAQUE_MOD].blend_enable = false;
+    geo->lists[DISPLAY_LIST_TRANS].blend_enable = true;
+    geo->lists[DISPLAY_LIST_TRANS_MOD].blend_enable = false;
+    geo->lists[DISPLAY_LIST_PUNCH_THROUGH].blend_enable = false;
+
     pvr2_tex_cache_xmit(geo);
 
     finish_poly_group(geo, poly_state.current_list);
@@ -543,6 +567,9 @@ static void finish_poly_group(struct geo_buf *geo,
         printf("tex_enable should be false\n");
         group->tex_enable = false;
     }
+
+    group->src_blend_factor = poly_state.src_blend_factor;
+    group->dst_blend_factor = poly_state.dst_blend_factor;
 }
 
 static void next_poly_group(struct geo_buf *geo,

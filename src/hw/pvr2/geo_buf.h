@@ -54,6 +54,19 @@
  */
 #define GEO_BUF_VERT_LEN 9
 
+enum Pvr2BlendFactor {
+    PVR2_BLEND_ZERO,
+    PVR2_BLEND_ONE,
+    PVR2_BLEND_OTHER,
+    PVR2_BLEND_ONE_MINUS_OTHER,
+    PVR2_BLEND_SRC_ALPHA,
+    PVR2_BLEND_ONE_MINUS_SRC_ALPHA,
+    PVR2_BLEND_DST_ALPHA,
+    PVR2_BLEND_ONE_MINUS_DST_ALPHA,
+
+    PVR2_BLEND_FACTOR_COUNT
+};
+
 /*
  * There is one poly_group for each polygon header sent to the pvr2.
  * The poly-group contains per-header settings such as textures.
@@ -64,6 +77,9 @@ struct poly_group {
 
     bool tex_enable;
     unsigned tex_idx; // only valid if tex_enable=true
+
+    // only valid of blend_enable=true in the display_list structure
+    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
 };
 
 /*
@@ -82,6 +98,8 @@ struct poly_group {
 struct display_list {
     unsigned n_groups;
     struct poly_group *groups;
+
+    bool blend_enable;
 };
 
 enum display_list_type {
