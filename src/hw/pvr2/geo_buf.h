@@ -23,6 +23,8 @@
 #ifndef GEO_BUF_H_
 #define GEO_BUF_H_
 
+#include <assert.h>
+
 #include "error.h"
 #include "pvr2_tex_cache.h"
 
@@ -68,6 +70,25 @@ enum Pvr2BlendFactor {
     PVR2_BLEND_FACTOR_COUNT
 };
 
+static_assert(PVR2_BLEND_FACTOR_COUNT == 8,
+              "incorrect number of blending functions");
+
+enum Pvr2DepthFunc {
+    PVR2_DEPTH_NEVER,
+    PVR2_DEPTH_LESS,
+    PVR2_DEPTH_EQUAL,
+    PVR2_DEPTH_LEQUAL,
+    PVR2_DEPTH_GREATER,
+    PVR2_DEPTH_NOTEQUAL,
+    PVR2_DEPTH_GEQUAL,
+    PVR2_DEPTH_ALWAYS,
+
+    PVR2_DEPTH_FUNC_COUNT
+};
+
+static_assert(PVR2_DEPTH_FUNC_COUNT == 8,
+              "incorrect number of depth functions");
+
 /*
  * There is one poly_group for each polygon header sent to the pvr2.
  * The poly-group contains per-header settings such as textures.
@@ -81,6 +102,9 @@ struct poly_group {
 
     // only valid of blend_enable=true in the display_list structure
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
+
+    bool enable_depth_writes;
+    enum Pvr2DepthFunc depth_func;
 };
 
 /*

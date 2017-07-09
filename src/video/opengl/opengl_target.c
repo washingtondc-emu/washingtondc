@@ -32,14 +32,15 @@
 #include "opengl_target.h"
 
 static GLuint fbo;
-static GLuint tex;
+static GLuint color_buf_tex, depth_buf_tex;
 static GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
 static unsigned fbo_width, fbo_height;
 
 void opengl_target_init(void) {
     fbo_width = fbo_height = 0;
     glGenFramebuffers(1, &fbo);
-    glGenTextures(1, &tex);
+    glGenTextures(1, &color_buf_tex);
+    glGenTextures(1, &depth_buf_tex);
 }
 
 void opengl_target_begin(unsigned width, unsigned height) {
@@ -51,22 +52,31 @@ void opengl_target_begin(unsigned width, unsigned height) {
         fbo_height = height;
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glBindTexture(GL_TEXTURE_2D, tex);
 
+        glBindTexture(GL_TEXTURE_2D, color_buf_tex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
                      GL_UNSIGNED_BYTE, NULL);
-
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+        glBindTexture(GL_TEXTURE_2D, depth_buf_tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0,
+                     GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
         glBindTexture(GL_TEXTURE_2D, 0);
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_2D, color_buf_tex, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                               GL_TEXTURE_2D, depth_buf_tex, 0);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glBindTexture(GL_TEXTURE_2D, tex);
+    glBindTexture(GL_TEXTURE_2D, color_buf_tex);
     glDrawBuffers(1, &draw_buffer);
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -93,11 +103,11 @@ void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
-    glBindTexture(GL_TEXTURE_2D, tex);
+    glBindTexture(GL_TEXTURE_2D, color_buf_tex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, out);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 GLuint opengl_target_get_tex(void) {
-    return tex;
+    return color_buf_tex;
 }

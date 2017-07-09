@@ -86,6 +86,21 @@ static const GLenum dst_blend_factors[PVR2_BLEND_FACTOR_COUNT] = {
 };
 
 /*
+ * the PVR2 and OpenGL depth functions are inverted because PVR2's versions are
+ * done based on 1 / z instead of z.
+ */
+static const GLenum depth_funcs[PVR2_DEPTH_FUNC_COUNT] = {
+    [PVR2_DEPTH_NEVER]               = GL_NEVER,
+    [PVR2_DEPTH_LESS]                = GL_GEQUAL,
+    [PVR2_DEPTH_EQUAL]               = GL_EQUAL,
+    [PVR2_DEPTH_LEQUAL]              = GL_GREATER,
+    [PVR2_DEPTH_GREATER]             = GL_LEQUAL,
+    [PVR2_DEPTH_NOTEQUAL]            = GL_NOTEQUAL,
+    [PVR2_DEPTH_GEQUAL]              = GL_LESS,
+    [PVR2_DEPTH_ALWAYS]              = GL_ALWAYS
+};
+
+/*
  * draws the given geo_buf in whatever context is available (ie without setting
  * the shader, or the framebuffer).
  */
@@ -172,6 +187,10 @@ static void render_do_draw_group(struct geo_buf *geo,
     glBlendFunc(src_blend_factors[(unsigned)group->src_blend_factor],
                 dst_blend_factors[(unsigned)group->dst_blend_factor]);
 
+
+    glDepthMask(group->enable_depth_writes ? GL_TRUE : GL_FALSE);
+    glDepthFunc(depth_funcs[group->depth_func]);
+
     glUniform2f(CLIP_MIN_MAX_SLOT,
                 (GLfloat)geo->clip_min, (GLfloat)geo->clip_max);
 
@@ -214,7 +233,8 @@ static void render_do_draw(struct geo_buf *geo) {
      */
     glClearColor(geo->bgcolor[0], geo->bgcolor[1],
                  geo->bgcolor[2], geo->bgcolor[3]);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
 
     unsigned group_no;
     enum display_list_type disp_list;

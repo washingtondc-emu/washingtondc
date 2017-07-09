@@ -78,6 +78,12 @@
 #define TSP_WORD_DST_ALPHA_FACTOR_SHIFT 26
 #define TSP_WORD_DST_ALPHA_FACTOR_MASK (7 << TSP_WORD_DST_ALPHA_FACTOR_SHIFT)
 
+#define DEPTH_FUNC_SHIFT 29
+#define DEPTH_FUNC_MASK (7 << DEPTH_FUNC_SHIFT)
+
+#define DEPTH_WRITE_DISABLE_SHIFT 26
+#define DEPTH_WRITE_DISABLE_MASK (1 << DEPTH_WRITE_DISABLE_SHIFT)
+
 static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 
 static unsigned expected_ta_fifo_len = 32;
@@ -100,6 +106,9 @@ static struct poly_state {
     enum display_list_type current_list;
 
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
+
+    bool enable_depth_writes;
+    enum Pvr2DepthFunc depth_func;
 } poly_state = {
     .current_list = DISPLAY_LIST_NONE
 };
@@ -279,6 +288,12 @@ static void on_polyhdr_received(void) {
             poly_state.dst_blend_factor =
                 (tsp_instruction & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
                 TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
+
+            poly_state.enable_depth_writes =
+                !((ta_fifo32[0] & DEPTH_WRITE_DISABLE_MASK) >>
+                  DEPTH_WRITE_DISABLE_SHIFT);
+            poly_state.depth_func =
+                (ta_fifo32[0] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
         } else {
             printf("WARNING: unable to open list %s because it is already "
                    "closed\n", display_list_names[list]);
@@ -581,6 +596,9 @@ static void finish_poly_group(struct geo_buf *geo,
 
     group->src_blend_factor = poly_state.src_blend_factor;
     group->dst_blend_factor = poly_state.dst_blend_factor;
+
+    group->enable_depth_writes = poly_state.enable_depth_writes;
+    group->depth_func = poly_state.depth_func;
 
     /*
      * this check is a little silly, but I get segfaults sometimes when

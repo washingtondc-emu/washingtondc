@@ -49,7 +49,19 @@ void main() {
     float vert_y = -(vert_pos.y - half_screen_dims.y) / half_screen_dims.y;
 
     float clip_half = (clip_min_max[1] - clip_min_max[0]) * 0.5f;
-    float vert_z = (vert_pos.z - clip_half) /
+
+    /*
+     * TODO: I'm not 100% certain I understand why I'm flipping the
+     * z-coordinates here.  I think it has to be done because in OpenGL
+     * clip-coordinates,  the positive side of the z-axis is closer to the
+     * screen and the negative side is farther away.
+     *
+     * Ultimately, this is something I am doing because I have to do it to get
+     * the glDepthFunc functions to behave the way I expect them to; I'm just
+     * not 100% sure if the math is actually working out the way I think it is.
+     * It does seem weird to multiply the z-coordinates by -1 like this.
+     */
+    float vert_z = -(vert_pos.z - clip_half) /
         (clip_min_max[1] - clip_min_max[0]);
 
     gl_Position = vec4(vert_x, vert_y, vert_z, 1.0);
