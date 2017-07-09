@@ -59,7 +59,7 @@ void error_raise(enum error_type tp) {
     dc_print_perf_stats();
 
     error_print();
-    exit(1);
+    abort(); // abort so we get a core-dump
 }
 
 void error_clear() {
