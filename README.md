@@ -5,7 +5,8 @@ it's only capable of running a handful of homebrew programs because it is still
 at an early stage of development.
 
 ## GALLERY
-![Alt text](media/washingtondc_sega_logo.png "SEGA bootstrap (IP.BIN)") ![Alt text](media/washingtondc_kos_320x240.png "KallistiOS 320x240 example program")
+![Alt text](media/washingtondc_sega_logo.png "the SEGA license statement in this screenshot refers to a program running within WashingtonDC, not WashingtonDC itself")
+![Alt text](media/washingtondc_kos_nehe06.png "KallistiOS version of Nehe's OpenGL tutorial 06")
 
 *(the SEGA license statement in the above screenshot refers to a program running within WashingtonDC, not WashingtonDC itself)*
 
