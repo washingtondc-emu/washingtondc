@@ -261,13 +261,6 @@ static void on_polyhdr_received(void) {
                 } else {
                     poly_state.tex_idx = pvr2_tex_cache_get_idx(ent);
                 }
-
-                poly_state.src_blend_factor =
-                    (tsp_instruction & TSP_WORD_SRC_ALPHA_FACTOR_MASK) >>
-                    TSP_WORD_SRC_ALPHA_FACTOR_SHIFT;
-                poly_state.dst_blend_factor =
-                    (tsp_instruction & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
-                    TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
             } else {
                 /*
                  * XXX - HACK
@@ -280,6 +273,12 @@ static void on_polyhdr_received(void) {
                  */
                 /* poly_state.tex_enable = false; */
             }
+            poly_state.src_blend_factor =
+                (tsp_instruction & TSP_WORD_SRC_ALPHA_FACTOR_MASK) >>
+                TSP_WORD_SRC_ALPHA_FACTOR_SHIFT;
+            poly_state.dst_blend_factor =
+                (tsp_instruction & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
+                TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
         } else {
             printf("WARNING: unable to open list %s because it is already "
                    "closed\n", display_list_names[list]);
