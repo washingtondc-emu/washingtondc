@@ -151,6 +151,11 @@ static void render_do_draw_group(struct geo_buf *geo,
      * this check is a little silly, but I get segfaults sometimes when
      * indexing into src_blend_factors and dst_blend_factors and I don't know
      * why.
+     *
+     * TODO: this was (hopefully) fixed in commit
+     * 92059fe4f1714b914cec75fd2f91e676127d3097 but I am keeping the INVARIANTS
+     * test here just in case.  It should be safe to delete after a couple of
+     * months have gone by without this INVARIANTS test ever failing.
      */
     if ((group->src_blend_factor < 0) ||
         (group->dst_blend_factor < 0) ||
