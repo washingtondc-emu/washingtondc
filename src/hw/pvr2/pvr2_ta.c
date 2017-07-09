@@ -424,6 +424,8 @@ static void on_vertex_received(void) {
 static void on_end_of_list_received(void) {
     printf("END-OF-LIST PACKET!\n");
 
+    finish_poly_group(geo_buf_get_prod(), poly_state.current_list);
+
     if (poly_state.current_list != DISPLAY_LIST_NONE) {
         printf("Display list \"%s\" closed\n",
                display_list_names[poly_state.current_list]);
