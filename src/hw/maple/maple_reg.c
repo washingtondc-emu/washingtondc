@@ -27,6 +27,7 @@
 #include "mem_code.h"
 #include "mem_areas.h"
 #include "types.h"
+#include "MemoryMap.h"
 
 #include "maple_reg.h"
 
@@ -350,8 +351,54 @@ mdst_reg_write_handler(struct maple_mapped_reg const *reg_info,
     uint32_t val;
     memcpy(&val, buf, sizeof(val));
 
-    if (val)
+    if (val) {
         fprintf(stderr, "WARNING: starting maple DMA operation\n");
+        fprintf(stderr, "\tstarting address is %08x\n",
+                (unsigned)maple_dma_cmd_start);
+        addr32_t addr = maple_dma_cmd_start;
+        bool last_packet;
+        unsigned packet_no = 0;
+        do {
+            fprintf(stderr, "packet %u\n", packet_no++);
+            uint32_t msg_length_port;
+
+            memory_map_read(&msg_length_port, addr, sizeof(msg_length_port));
+            addr += 4;
+
+            uint32_t len = msg_length_port & 0xff;
+            uint32_t port = (msg_length_port & (0x3 << 16)) >> 16;
+            uint32_t ptrn = (msg_length_port & (0x7 << 8)) >> 8;
+            last_packet = (bool)(msg_length_port & (1 << 31));
+
+            fprintf(stderr, "\treading %u bytes (port is %u)\n",
+                    (unsigned)len, (unsigned)port);
+            fprintf(stderr, "\tthe pattern is %02x\n", (unsigned)ptrn);
+
+            uint32_t recv_addr;
+            memory_map_read(&recv_addr, addr, sizeof(recv_addr));
+            addr += 4;
+
+            printf("\tthe receive address is 0x%08x\n", (unsigned)recv_addr);
+
+            uint32_t cmd_addr_pack_len;
+            memory_map_read(&cmd_addr_pack_len, addr, sizeof(cmd_addr_pack_len));
+            addr += 4;
+
+            fprintf(stderr, "\tthe command is %02x\n",
+                    cmd_addr_pack_len & 0xff);
+            fprintf(stderr, "\tthe addr is %02x\n",
+                    (cmd_addr_pack_len >> 8) & 0xff);
+            fprintf(stderr, "\tthe packet length is %02x\n",
+                    (cmd_addr_pack_len >> 24) & 0xff);
+
+            if (last_packet)
+                fprintf(stderr, "\tthis was the last packet\n");
+            else
+                fprintf(stderr, "\tthis was not the last packet\n");
+
+            addr += len * 4;
+        } while(!last_packet);
+    }
 
     return 0;
 }
