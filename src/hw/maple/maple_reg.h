@@ -23,12 +23,17 @@
 #ifndef MAPLE_REG_H_
 #define MAPLE_REG_H_
 
+#include "types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 int maple_reg_read(void *buf, size_t addr, size_t len);
 int maple_reg_write(void const *buf, size_t addr, size_t len);
+
+addr32_t maple_get_dma_prot_bot(void);
+addr32_t maple_get_dma_prot_top(void);
 
 #ifdef __cplusplus
 }
