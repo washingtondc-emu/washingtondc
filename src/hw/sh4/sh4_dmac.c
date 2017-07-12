@@ -250,3 +250,11 @@ void sh4_dmac_transfer_to_mem(addr32_t transfer_dst, size_t unit_sz,
         RAISE_ERROR(get_error_pending());
     }
 }
+
+void sh4_dmac_transfer_from_mem(addr32_t transfer_src, size_t unit_sz,
+                                size_t n_units, void *dat) {
+    if (memory_map_read(dat, transfer_src & ~0xe0000000, unit_sz * n_units) !=
+        MEM_ACCESS_SUCCESS) {
+        RAISE_ERROR(get_error_pending());
+    }
+}

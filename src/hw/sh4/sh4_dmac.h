@@ -61,4 +61,14 @@ int sh4_dmac_dmaor_reg_write_handler(Sh4 *sh4, void const *buf,
 void sh4_dmac_transfer_to_mem(addr32_t transfer_dst, size_t unit_sz,
                               size_t n_units, void const *dat);
 
+/*
+ * perform a DMA transfer to some external device from memory.
+ * This completes the transfer immediately instead of
+ * modeling the cycle-steal/burst transfer characteristics.
+ *
+ * this function does not raise any interrupts.
+ */
+void sh4_dmac_transfer_from_mem(addr32_t transfer_src, size_t unit_sz,
+                                size_t n_units, void *dat);
+
 #endif

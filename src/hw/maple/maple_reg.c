@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "sh4.h"
+#include "sh4_dmac.h"
 #include "error.h"
 #include "mem_code.h"
 #include "mem_areas.h"
@@ -362,7 +364,8 @@ mdst_reg_write_handler(struct maple_mapped_reg const *reg_info,
             fprintf(stderr, "packet %u\n", packet_no++);
             uint32_t msg_length_port;
 
-            memory_map_read(&msg_length_port, addr, sizeof(msg_length_port));
+            sh4_dmac_transfer_from_mem(addr, sizeof(msg_length_port),
+                                       1, &msg_length_port);
             addr += 4;
 
             uint32_t len = msg_length_port & 0xff;
@@ -375,13 +378,15 @@ mdst_reg_write_handler(struct maple_mapped_reg const *reg_info,
             fprintf(stderr, "\tthe pattern is %02x\n", (unsigned)ptrn);
 
             uint32_t recv_addr;
-            memory_map_read(&recv_addr, addr, sizeof(recv_addr));
+            sh4_dmac_transfer_from_mem(addr, sizeof(recv_addr),
+                                       1, &recv_addr);
             addr += 4;
 
             printf("\tthe receive address is 0x%08x\n", (unsigned)recv_addr);
 
             uint32_t cmd_addr_pack_len;
-            memory_map_read(&cmd_addr_pack_len, addr, sizeof(cmd_addr_pack_len));
+            sh4_dmac_transfer_from_mem(addr, sizeof(cmd_addr_pack_len),
+                                       1, &cmd_addr_pack_len);
             addr += 4;
 
             fprintf(stderr, "\tthe command is %02x\n",
