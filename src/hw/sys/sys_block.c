@@ -63,6 +63,10 @@ static int ignore_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
 static int sys_sbrev_reg_read_handler(struct sys_mapped_reg const *reg_info,
                                      void *buf, addr32_t addr, unsigned len);
 
+static int sb_c2dst_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                      void const *buf, addr32_t addr,
+                                      unsigned len);
+
 /* yay, interrrupt registers */
 static struct sys_mapped_reg {
     char const *reg_name;
@@ -79,7 +83,7 @@ static struct sys_mapped_reg {
     { "SB_C2DLEN", 0x005f6804, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
     { "SB_C2DST", 0x005f6808, 4,
-      warn_sys_reg_read_handler, warn_sys_reg_write_handler },
+      warn_sys_reg_read_handler, sb_c2dst_reg_write_handler },
     { "SB_SDSTAW", 0x5f6810, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
     { "SB_SDBAAW", 0x5f6814, 4,
@@ -317,4 +321,21 @@ static int sys_sbrev_reg_read_handler(struct sys_mapped_reg const *reg_info,
     uint32_t sbrev = 16;
     memcpy(buf, &sbrev, len);
     return MEM_ACCESS_SUCCESS;
+}
+
+static int sb_c2dst_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                      void const *buf, addr32_t addr,
+                                      unsigned len) {
+    uint32_t dat;
+    memcpy(&dat, buf, sizeof(dat));
+
+    if (dat) {
+        error_set_feature("channel 2 DMA");
+        error_set_address(addr);
+        error_set_length(len);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
+    }
+
+    return warn_sys_reg_write_handler(reg_info, buf, addr, len);
 }
