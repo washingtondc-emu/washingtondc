@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "sh4.h"
@@ -30,6 +31,7 @@
 #include "mem_areas.h"
 #include "types.h"
 #include "MemoryMap.h"
+#include "maple.h"
 
 #include "maple_reg.h"
 
@@ -358,51 +360,16 @@ mdst_reg_write_handler(struct maple_mapped_reg const *reg_info,
         fprintf(stderr, "\tstarting address is %08x\n",
                 (unsigned)maple_dma_cmd_start);
         addr32_t addr = maple_dma_cmd_start;
-        bool last_packet;
         unsigned packet_no = 0;
+        struct maple_frame frame;
         do {
-            fprintf(stderr, "packet %u\n", packet_no++);
-            uint32_t msg_length_port;
+            addr = maple_read_frame(&frame, addr);
 
-            sh4_dmac_transfer_from_mem(addr, sizeof(msg_length_port),
-                                       1, &msg_length_port);
-            addr += 4;
+            maple_handle_frame(&frame);
 
-            uint32_t len = msg_length_port & 0xff;
-            uint32_t port = (msg_length_port & (0x3 << 16)) >> 16;
-            uint32_t ptrn = (msg_length_port & (0x7 << 8)) >> 8;
-            last_packet = (bool)(msg_length_port & (1 << 31));
-
-            fprintf(stderr, "\treading %u bytes (port is %u)\n",
-                    (unsigned)len, (unsigned)port);
-            fprintf(stderr, "\tthe pattern is %02x\n", (unsigned)ptrn);
-
-            uint32_t recv_addr;
-            sh4_dmac_transfer_from_mem(addr, sizeof(recv_addr),
-                                       1, &recv_addr);
-            addr += 4;
-
-            printf("\tthe receive address is 0x%08x\n", (unsigned)recv_addr);
-
-            uint32_t cmd_addr_pack_len;
-            sh4_dmac_transfer_from_mem(addr, sizeof(cmd_addr_pack_len),
-                                       1, &cmd_addr_pack_len);
-            addr += 4;
-
-            fprintf(stderr, "\tthe command is %02x\n",
-                    cmd_addr_pack_len & 0xff);
-            fprintf(stderr, "\tthe addr is %02x\n",
-                    (cmd_addr_pack_len >> 8) & 0xff);
-            fprintf(stderr, "\tthe packet length is %02x\n",
-                    (cmd_addr_pack_len >> 24) & 0xff);
-
-            if (last_packet)
-                fprintf(stderr, "\tthis was the last packet\n");
-            else
-                fprintf(stderr, "\tthis was not the last packet\n");
-
-            addr += len * 4;
-        } while(!last_packet);
+            if (frame.len)
+                free(frame.data);
+        } while(!frame.last_frame);
     }
 
     return 0;
