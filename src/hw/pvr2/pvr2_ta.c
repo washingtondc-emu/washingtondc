@@ -265,83 +265,100 @@ static void on_polyhdr_received(void) {
                                  TA_CMD_DISP_LIST_SHIFT);
     struct poly_hdr hdr;
 
-    // reset triangle strips
-    poly_state.strip_len = 0;
-
     decode_poly_hdr(&hdr);
-    if (poly_state.current_list == DISPLAY_LIST_NONE) {
-        uint32_t tsp_instruction = ta_fifo32[2];
 
-        if (!list_submitted[list]) {
-            printf("Opening display list %s\n", display_list_names[list]);
-            poly_state.current_list = list;
-            list_submitted[list] = true;
+    if ((poly_state.current_list == DISPLAY_LIST_NONE) &&
+        list_submitted[list]) {
+        printf("WARNING: unable to open list %s because it is already "
+               "closed\n", display_list_names[list]);
+        return;
+    }
 
-            poly_state.ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
-                TA_COLOR_FMT_SHIFT;
-
-            if (hdr.tex_enable) {
-                poly_state.tex_enable = true;
-                printf("texture enabled\n");
-
-                printf("the texture format is %d\n", hdr.tex_fmt);
-                printf("The texture address ix 0x%08x\n", hdr.tex_addr);
-
-                if (hdr.tex_twiddle)
-                    printf("not twiddled\n");
-                else
-                    printf("twiddled\n");
-
-                struct pvr2_tex *ent =
-                    pvr2_tex_cache_find(hdr.tex_addr,
-                                        1 << hdr.tex_width_shift,
-                                        1 << hdr.tex_height_shift,
-                                        hdr.tex_fmt, hdr.tex_twiddle);
-
-                printf("texture dimensions are (%u, %u)\n",
-                       1 << hdr.tex_width_shift,
-                       1 << hdr.tex_height_shift);
-                if (ent) {
-                    printf("Texture 0x%08x found in cache\n",
-                           hdr.tex_addr);
-                } else {
-                    printf("Adding 0x%08x to texture cache...\n",
-                           hdr.tex_addr);
-                    ent = pvr2_tex_cache_add(hdr.tex_addr,
-                                             1 << hdr.tex_width_shift,
-                                             1 << hdr.tex_height_shift,
-                                             hdr.tex_fmt,
-                                             hdr.tex_twiddle);
-                }
-
-                if (!ent) {
-                    fprintf(stderr, "WARNING: failed to add texture 0x%08x to "
-                            "the texture cache\n", hdr.tex_addr);
-                    poly_state.tex_enable = false;
-                } else {
-                    poly_state.tex_idx = pvr2_tex_cache_get_idx(ent);
-                }
-            } else {
-                poly_state.tex_enable = false;
-            }
-            poly_state.src_blend_factor = hdr.src_blend_factor;
-            poly_state.dst_blend_factor = hdr.dst_blend_factor;
-
-            poly_state.enable_depth_writes = hdr.enable_depth_writes;
-            poly_state.depth_func = hdr.depth_func;
-        } else {
-            printf("WARNING: unable to open list %s because it is already "
-                   "closed\n", display_list_names[list]);
-        }
-    } else if (poly_state.current_list != list) {
+    if ((poly_state.current_list != DISPLAY_LIST_NONE) &&
+        (poly_state.current_list != list)) {
         printf("WARNING: attempting to input poly header for list %s without "
                "first closing %s\n", display_list_names[list],
                display_list_names[poly_state.current_list]);
         return;
     }
 
+    /*
+     * next_poly_group will finish the current poly_group (if there is one),
+     * and that will reference the poly_state.  Ergo, next_poly_group must be
+     * called BEFORE any poly_state changes are made.
+     */
     struct geo_buf *geo = geo_buf_get_prod();
+
+    if ((poly_state.current_list == DISPLAY_LIST_NONE) &&
+        !list_submitted[list]) {
+
+        // finish the last poly group of the current list
+        if (geo->lists[poly_state.current_list].n_groups >= 1)
+            finish_poly_group(geo, poly_state.current_list);
+
+        printf("Opening display list %s\n", display_list_names[list]);
+        poly_state.current_list = list;
+        list_submitted[list] = true;
+    }
+
     next_poly_group(geo, poly_state.current_list);
+
+    // reset triangle strips
+    poly_state.strip_len = 0;
+
+    poly_state.ta_color_fmt = hdr.ta_color_fmt;
+
+    if (hdr.tex_enable) {
+        poly_state.tex_enable = true;
+        printf("texture enabled\n");
+
+        printf("the texture format is %d\n", hdr.tex_fmt);
+        printf("The texture address ix 0x%08x\n", hdr.tex_addr);
+
+        if (hdr.tex_twiddle)
+            printf("not twiddled\n");
+        else
+            printf("twiddled\n");
+
+        struct pvr2_tex *ent =
+            pvr2_tex_cache_find(hdr.tex_addr,
+                                1 << hdr.tex_width_shift,
+                                1 << hdr.tex_height_shift,
+                                hdr.tex_fmt, hdr.tex_twiddle);
+
+        printf("texture dimensions are (%u, %u)\n",
+               1 << hdr.tex_width_shift,
+               1 << hdr.tex_height_shift);
+        if (ent) {
+            printf("Texture 0x%08x found in cache\n",
+                   hdr.tex_addr);
+        } else {
+            printf("Adding 0x%08x to texture cache...\n",
+                   hdr.tex_addr);
+            ent = pvr2_tex_cache_add(hdr.tex_addr,
+                                     1 << hdr.tex_width_shift,
+                                     1 << hdr.tex_height_shift,
+                                     hdr.tex_fmt,
+                                     hdr.tex_twiddle);
+        }
+
+        if (!ent) {
+            fprintf(stderr, "WARNING: failed to add texture 0x%08x to "
+                    "the texture cache\n", hdr.tex_addr);
+            poly_state.tex_enable = false;
+        } else {
+            poly_state.tex_idx = pvr2_tex_cache_get_idx(ent);
+        }
+    } else {
+        printf("textures are NOT enabled\n");
+        poly_state.tex_enable = false;
+    }
+    poly_state.src_blend_factor = hdr.src_blend_factor;
+    poly_state.dst_blend_factor = hdr.dst_blend_factor;
+
+    poly_state.enable_depth_writes = hdr.enable_depth_writes;
+    poly_state.depth_func = hdr.depth_func;
+
     printf("POLY HEADER PACKET!\n");
 }
 
