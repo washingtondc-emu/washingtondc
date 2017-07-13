@@ -322,16 +322,7 @@ static void on_polyhdr_received(void) {
                     poly_state.tex_idx = pvr2_tex_cache_get_idx(ent);
                 }
             } else {
-                /*
-                 * XXX - HACK
-                 * we only clear the tex_enable flag when the STARTRENDER comes
-                 * down because the geo_buf has no concept of separate polygon
-                 * headers.  This means that textures caan be enabled for all
-                 * polygons in the geo_buf or disabled for all polygons in the
-                 * geo_buf.  It also measn that all polygons need to have the
-                 * same texture bound.  This will be fixed eventually.
-                 */
-                /* poly_state.tex_enable = false; */
+                poly_state.tex_enable = false;
             }
             poly_state.src_blend_factor = hdr.src_blend_factor;
             poly_state.dst_blend_factor = hdr.dst_blend_factor;
@@ -604,8 +595,6 @@ void pvr2_ta_startrender(void) {
 
     // TODO: This irq definitely should not be triggered immediately
     holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
-
-    poly_state.tex_enable = false;
 }
 
 void pvr2_ta_reinit(void) {
