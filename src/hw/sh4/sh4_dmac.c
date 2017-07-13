@@ -49,7 +49,7 @@ int sh4_dmac_sar_reg_read_handler(Sh4 *sh4, void *buf,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
-    printf("WARNING: writing to SH4 DMAC SAR%d register\n", chan);
+    printf("WARNING: reading from SH4 DMAC SAR%d register\n", chan);
 
     return Sh4DefaultRegReadHandler(sh4, buf, reg_info);
 }
@@ -74,7 +74,7 @@ int sh4_dmac_sar_reg_write_handler(Sh4 *sh4, void const *buf,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
-    printf("WARNING: reading from SH4 DMAC SAR%d register\n", chan);
+    printf("WARNING: writing to SH4 DMAC SAR%d register\n", chan);
 
     return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
 }
@@ -99,7 +99,7 @@ int sh4_dmac_dar_reg_read_handler(Sh4 *sh4, void *buf,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
-    printf("WARNING: writing to SH4 DMAC DAR%d register\n", chan);
+    printf("WARNING: reading from SH4 DMAC DAR%d register\n", chan);
 
     return Sh4DefaultRegReadHandler(sh4, buf, reg_info);
 }
@@ -124,7 +124,7 @@ int sh4_dmac_dar_reg_write_handler(Sh4 *sh4, void const *buf,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
-    printf("WARNING: reading from SH4 DMAC DAR%d register\n", chan);
+    printf("WARNING: writing to SH4 DMAC DAR%d register\n", chan);
 
     return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
 }
@@ -149,7 +149,7 @@ int sh4_dmac_dmatcr_reg_read_handler(Sh4 *sh4, void *buf,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
-    printf("WARNING: writing to SH4 DMAC DMATCR%d register\n", chan);
+    printf("WARNING: reading from SH4 DMAC DMATCR%d register\n", chan);
 
     return Sh4DefaultRegReadHandler(sh4, buf, reg_info);
 }
@@ -174,7 +174,7 @@ int sh4_dmac_dmatcr_reg_write_handler(Sh4 *sh4, void const *buf,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
-    printf("WARNING: reading from SH4 DMAC DMATCR%d register\n", chan);
+    printf("WARNING: writing to SH4 DMAC DMATCR%d register\n", chan);
 
     return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
 }
@@ -199,7 +199,7 @@ int sh4_dmac_chcr_reg_read_handler(Sh4 *sh4, void *buf,
     /*     RAISE_ERROR(ERROR_INVALID_PARAM); */
     /* } */
 
-    /* printf("WARNING: writing to SH4 DMAC CHCR%d register\n", chan); */
+    /* printf("WARNING: reading from SH4 DMAC CHCR%d register\n", chan); */
 
     return Sh4DefaultRegReadHandler(sh4, buf, reg_info);
 }
@@ -224,7 +224,7 @@ int sh4_dmac_chcr_reg_write_handler(Sh4 *sh4, void const *buf,
     /*     RAISE_ERROR(ERROR_INVALID_PARAM); */
     /* } */
 
-    /* printf("WARNING: reading from SH4 DMAC CHCR%d register\n", chan); */
+    /* printf("WARNING: writing to SH4 DMAC CHCR%d register\n", chan); */
 
     return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
 }
