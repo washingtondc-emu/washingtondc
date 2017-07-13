@@ -218,8 +218,15 @@ int sh4_dmac_chcr_reg_read_handler(Sh4 *sh4, void *buf,
 
     memcpy(buf, &sh4->dmac.chcr[chan], sizeof(sh4->dmac.chcr[chan]));
 
-    printf("WARNING: reading %08x from SH4 DMAC CHCR%d register\n",
-           (unsigned)sh4->dmac.chcr[chan], chan);
+    /*
+     * TODO: I can't print here because KallistiOS programs seem to be
+     * constantly accessing CHCR3, and the printf statememnts end up causing a
+     * huge performance drop.  I need to investigate further to determine if
+     * this is a result of a bug in WashingtonDC, or if KallistiOS is actually
+     * supposed to be doing this.
+     */
+    /* printf("WARNING: reading %08x from SH4 DMAC CHCR%d register\n", */
+    /*        (unsigned)sh4->dmac.chcr[chan], chan); */
 
     return 0;
 }
@@ -246,8 +253,15 @@ int sh4_dmac_chcr_reg_write_handler(Sh4 *sh4, void const *buf,
 
     memcpy(&sh4->dmac.chcr[chan], buf, sizeof(sh4->dmac.chcr[chan]));
 
-    printf("WARNING: writing %08x to SH4 DMAC CHCR%d register\n",
-           (unsigned)sh4->dmac.chcr[chan], chan);
+    /*
+     * TODO: I can't print here because KallistiOS programs seem to be
+     * constantly accessing CHCR3, and the printf statememnts end up causing a
+     * huge performance drop.  I need to investigate further to determine if
+     * this is a result of a bug in WashingtonDC, or if KallistiOS is actually
+     * supposed to be doing this.
+     */
+    /* printf("WARNING: writing %08x to SH4 DMAC CHCR%d register\n", */
+    /*        (unsigned)sh4->dmac.chcr[chan], chan); */
 
     return 0;
 }
