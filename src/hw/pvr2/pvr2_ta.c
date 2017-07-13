@@ -89,6 +89,8 @@ static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 static unsigned expected_ta_fifo_len = 32;
 static unsigned ta_fifo_byte_count = 0;
 
+static DEF_ERROR_INT_ATTR(ta_fifo_cmd);
+
 static struct poly_state {
     // used to store the previous two verts when we're rendering a triangle strip
     float strip_vert1[GEO_BUF_VERT_LEN];
@@ -199,6 +201,9 @@ static void on_packet_received(void) {
         break;
     default:
         printf("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
+        error_set_feature("PVR2 command type");
+        error_set_ta_fifo_cmd(cmd_tp);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 }
 
