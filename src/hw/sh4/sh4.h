@@ -36,6 +36,7 @@
 #include "sh4_ocache.h"
 #include "sh4_excp.h"
 #include "sh4_scif.h"
+#include "sh4_dmac.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,6 +88,8 @@ struct Sh4 {
     struct sh4_intc intc;
 
     struct sh4_scif scif;
+
+    struct sh4_dmac dmac;
 
     /*
      * pointer to place where memory-mapped registers are stored.

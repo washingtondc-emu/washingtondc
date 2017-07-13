@@ -27,7 +27,18 @@ struct Sh4;
 #include "types.h"
 
 struct sh4_dmac {
-    
+    /*
+     * 1 register per channel.  Channel 0 is inaccessible to guest programs and
+     * therefore practically non-existant, but I still include it here for
+     * posterity's sake.  Plus, by including it the indices of the registers
+     * match the channel numbers.
+     */
+    reg32_t sar[4];
+    reg32_t dar[4];
+    reg32_t dmatcr[4];
+    reg32_t chcr[4];
+
+    reg32_t dmaor;
 };
 
 int sh4_dmac_sar_reg_read_handler(Sh4 *sh4, void *buf,
