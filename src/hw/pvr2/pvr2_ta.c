@@ -91,6 +91,22 @@ static unsigned ta_fifo_byte_count = 0;
 
 static DEF_ERROR_INT_ATTR(ta_fifo_cmd);
 
+struct poly_hdr {
+    enum display_list_type list;
+
+    bool tex_enable;
+    uint32_t tex_addr;
+    unsigned tex_width_shift, tex_height_shift;
+    bool tex_twiddle;
+    int tex_fmt;
+
+    unsigned ta_color_fmt;
+    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
+
+    bool enable_depth_writes;
+    enum Pvr2DepthFunc depth_func;
+};
+
 static struct poly_state {
     // used to store the previous two verts when we're rendering a triangle strip
     float strip_vert1[GEO_BUF_VERT_LEN];
@@ -101,8 +117,6 @@ static struct poly_state {
 
     bool tex_enable;
     unsigned tex_idx;
-
-    int tex_fmt;
 
     // which display list is currently open
     enum display_list_type current_list;
@@ -137,6 +151,8 @@ static void finish_poly_group(struct geo_buf *geo,
                               enum display_list_type disp_list);
 static void next_poly_group(struct geo_buf *geo,
                             enum display_list_type disp_list);
+
+static void decode_poly_hdr(struct poly_hdr *hdr);
 
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
 #ifdef PVR2_LOG_VERBOSE
@@ -207,15 +223,52 @@ static void on_packet_received(void) {
     }
 }
 
+static void decode_poly_hdr(struct poly_hdr *hdr) {
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
+
+    hdr->list =
+        (enum display_list_type)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
+                                 TA_CMD_DISP_LIST_SHIFT);
+    hdr->tex_enable = (bool)(ta_fifo32[0] & TA_CMD_TEX_ENABLE_MASK);
+    hdr->ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
+        TA_COLOR_FMT_SHIFT;
+    if (hdr->tex_enable) {
+        hdr->tex_fmt = (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
+            TEX_CTRL_PIX_FMT_SHIFT;
+        hdr->tex_width_shift = 3 +
+            ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
+        hdr->tex_height_shift = 3 +
+            ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
+        hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
+        hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
+                         TEX_CTRL_TEX_ADDR_SHIFT) << 3;
+    }
+
+    hdr->src_blend_factor =
+        (ta_fifo32[2] & TSP_WORD_SRC_ALPHA_FACTOR_MASK) >>
+        TSP_WORD_SRC_ALPHA_FACTOR_SHIFT;
+    hdr->dst_blend_factor =
+        (ta_fifo32[2] & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
+        TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
+
+    hdr->enable_depth_writes =
+        !((ta_fifo32[0] & DEPTH_WRITE_DISABLE_MASK) >>
+          DEPTH_WRITE_DISABLE_SHIFT);
+    hdr->depth_func =
+        (ta_fifo32[0] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
+}
+
 static void on_polyhdr_received(void) {
     uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
     enum display_list_type list =
         (enum display_list_type)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
                                  TA_CMD_DISP_LIST_SHIFT);
+    struct poly_hdr hdr;
 
     // reset triangle strips
     poly_state.strip_len = 0;
 
+    decode_poly_hdr(&hdr);
     if (poly_state.current_list == DISPLAY_LIST_NONE) {
         uint32_t tsp_instruction = ta_fifo32[2];
 
@@ -227,50 +280,43 @@ static void on_polyhdr_received(void) {
             poly_state.ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
                 TA_COLOR_FMT_SHIFT;
 
-            if (ta_fifo32[0] & TA_CMD_TEX_ENABLE_MASK) {
+            if (hdr.tex_enable) {
                 poly_state.tex_enable = true;
                 printf("texture enabled\n");
 
-                printf("the texture format is %d\n",
-                       (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
-                       TEX_CTRL_PIX_FMT_SHIFT);
+                printf("the texture format is %d\n", hdr.tex_fmt);
+                printf("The texture address ix 0x%08x\n", hdr.tex_addr);
 
-                uint32_t tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
-                                     TEX_CTRL_TEX_ADDR_SHIFT) << 3;
-                printf("The texture address ix 0x%08x\n", tex_addr);
-
-                // TODO: how do I get texture width, height?
-                unsigned tex_width_shift = 3 +
-                    ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
-                unsigned tex_height_shift = 3 +
-                    ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
-
-                unsigned pix_fmt = (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
-                    TEX_CTRL_PIX_FMT_SHIFT;
-                bool twiddled =
-                    !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
-                if (twiddled)
+                if (hdr.tex_twiddle)
                     printf("not twiddled\n");
                 else
                     printf("twiddled\n");
 
                 struct pvr2_tex *ent =
-                    pvr2_tex_cache_find(tex_addr, 1 << tex_width_shift,
-                                        1 << tex_height_shift, pix_fmt, twiddled);
+                    pvr2_tex_cache_find(hdr.tex_addr,
+                                        1 << hdr.tex_width_shift,
+                                        1 << hdr.tex_height_shift,
+                                        hdr.tex_fmt, hdr.tex_twiddle);
 
                 printf("texture dimensions are (%u, %u)\n",
-                       1 << tex_width_shift, 1 << tex_height_shift);
+                       1 << hdr.tex_width_shift,
+                       1 << hdr.tex_height_shift);
                 if (ent) {
-                    printf("Texture 0x%08x found in cache\n", tex_addr);
+                    printf("Texture 0x%08x found in cache\n",
+                           hdr.tex_addr);
                 } else {
-                    printf("Adding 0x%08x to texture cache...\n", tex_addr);
-                    ent = pvr2_tex_cache_add(tex_addr, 1 << tex_width_shift,
-                                             1 << tex_height_shift, pix_fmt, twiddled);
+                    printf("Adding 0x%08x to texture cache...\n",
+                           hdr.tex_addr);
+                    ent = pvr2_tex_cache_add(hdr.tex_addr,
+                                             1 << hdr.tex_width_shift,
+                                             1 << hdr.tex_height_shift,
+                                             hdr.tex_fmt,
+                                             hdr.tex_twiddle);
                 }
 
                 if (!ent) {
                     fprintf(stderr, "WARNING: failed to add texture 0x%08x to "
-                            "the texture cache\n", tex_addr);
+                            "the texture cache\n", hdr.tex_addr);
                     poly_state.tex_enable = false;
                 } else {
                     poly_state.tex_idx = pvr2_tex_cache_get_idx(ent);
@@ -287,18 +333,11 @@ static void on_polyhdr_received(void) {
                  */
                 /* poly_state.tex_enable = false; */
             }
-            poly_state.src_blend_factor =
-                (tsp_instruction & TSP_WORD_SRC_ALPHA_FACTOR_MASK) >>
-                TSP_WORD_SRC_ALPHA_FACTOR_SHIFT;
-            poly_state.dst_blend_factor =
-                (tsp_instruction & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
-                TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
+            poly_state.src_blend_factor = hdr.src_blend_factor;
+            poly_state.dst_blend_factor = hdr.dst_blend_factor;
 
-            poly_state.enable_depth_writes =
-                !((ta_fifo32[0] & DEPTH_WRITE_DISABLE_MASK) >>
-                  DEPTH_WRITE_DISABLE_SHIFT);
-            poly_state.depth_func =
-                (ta_fifo32[0] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
+            poly_state.enable_depth_writes = hdr.enable_depth_writes;
+            poly_state.depth_func = hdr.depth_func;
         } else {
             printf("WARNING: unable to open list %s because it is already "
                    "closed\n", display_list_names[list]);
