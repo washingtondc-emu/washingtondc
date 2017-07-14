@@ -47,8 +47,37 @@
 #define TA_CMD_DISP_LIST_SHIFT 24
 #define TA_CMD_DISP_LIST_MASK (0x7 << TA_CMD_DISP_LIST_SHIFT)
 
+/*
+ * this has something to do with swapping out the ISP parameters
+ * when modifier volumes are in use, I think
+ */
+#define TA_CMD_SHADOW_SHIFT 7
+#define TA_CMD_SHADOW_MASK (1 << TA_CMD_SHADOW_SHIFT)
+
+#define TA_CMD_TWO_VOLUMES_SHIFT 6
+#define TA_CMD_TWO_VOLUMES_MASK (1 << TA_CMD_TWO_VOLUMES_SHIFT)
+
+#define TA_CMD_COLOR_TYPE_SHIFT 4
+#define TA_CMD_COLOR_TYPE_MASK (3 << TA_CMD_COLOR_TYPE_SHIFT)
+
 #define TA_CMD_TEX_ENABLE_SHIFT 3
 #define TA_CMD_TEX_ENABLE_MASK (1 << TA_CMD_TEX_ENABLE_SHIFT)
+
+#define TA_CMD_OFFSET_COLOR_SHIFT 2
+#define TA_CMD_OFFSET_COLOR_MASK (1 << TA_CMD_OFFSET_COLOR_SHIFT)
+
+#define TA_CMD_GOURAD_SHADING_SHIFT 1
+#define TA_CMD_GOURAD_SHADING_MASK (1 << TA_CMD_GOURAD_SHADING_SHIFT)
+
+#define TA_CMD_16_BIT_TEX_COORD_SHIFT 0
+#define TA_CMD_16_BIT_TEX_COORD_MASK (1 << TA_CMD_16_BIT_TEX_COORD_SHIFT)
+
+enum ta_color_type {
+    TA_COLOR_TYPE_PACKED,
+    TA_COLOR_TYPE_FLOAT,
+    TA_COLOR_INTENSITY_MODE_1,
+    TA_COLOR_INTENSITY_MODE_2
+};
 
 #define TA_CMD_TYPE_END_OF_LIST 0x0
 #define TA_CMD_TYPE_USER_CLIP   0x1
@@ -58,10 +87,6 @@
 #define TA_CMD_TYPE_SPRITE      0x5
 // what is 6?
 #define TA_CMD_TYPE_VERTEX      0x7
-
-#define TA_COLOR_FMT_ARGB8888 0
-#define TA_COLOR_FMT_FLOAT    1
-// TODO: there ought to be two more color formats...
 
 #define TA_COLOR_FMT_SHIFT 4
 #define TA_COLOR_FMT_MASK (3 << TA_COLOR_FMT_SHIFT)
@@ -86,8 +111,27 @@
 
 static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 
-static unsigned expected_ta_fifo_len = 32;
 static unsigned ta_fifo_byte_count = 0;
+
+enum vert_type {
+    VERT_NO_TEX_PACKED_COLOR,
+    VERT_NO_TEX_FLOAT_COLOR,
+    VERT_NO_TEX_INTENSITY,
+    VERT_TEX_PACKED_COLOR,
+    VERT_TEX_PACKED_COLOR_16_BIT_TEX_COORD,
+    VERT_TEX_FLOATING_COLOR,
+    VERT_TEX_FLOATING_COLOR_16_BIT_TEX_COORD,
+    VERT_TEX_INTENSITY,
+    VERT_TEX_INTENSITY_16_BIT_TEX_COORD,
+    VERT_NO_TEX_PACKED_COLOR_TWO_VOLUMES,
+    VERT_NO_TEX_INTENSITY_TWO_VOLUMES,
+    VERT_TEX_PACKED_COLOR_TWO_VOLUMES,
+    VERT_TEX_PACKED_COLOR_TWO_VOLUMES_16_BIT_TEX_COORD,
+    VERT_TEX_INTENSITY_TWO_VOLUMES,
+    VERT_TEX_INTENSITY_TWO_VOLUMES_16_BIT_TEX_COORD,
+
+    N_VERT_TYPES
+};
 
 static DEF_ERROR_INT_ATTR(ta_fifo_cmd);
 
@@ -105,6 +149,13 @@ struct poly_hdr {
 
     bool enable_depth_writes;
     enum Pvr2DepthFunc depth_func;
+
+    bool shadow;
+    bool two_volumes_mode;
+    enum ta_color_type color_type;
+    bool offset_color_enable;
+    bool gourad_shading_enable;
+    bool tex_coord_16_bit_enable;
 };
 
 static struct poly_state {
@@ -116,6 +167,8 @@ static struct poly_state {
     unsigned ta_color_fmt;
 
     bool tex_enable;
+
+    // index into the texture cache
     unsigned tex_idx;
 
     // which display list is currently open
@@ -125,8 +178,19 @@ static struct poly_state {
 
     bool enable_depth_writes;
     enum Pvr2DepthFunc depth_func;
+
+    bool shadow;
+    bool two_volumes_mode;
+    enum ta_color_type color_type;
+    bool offset_color_enable;
+    bool gourad_shading_enable;
+    bool tex_coord_16_bit_enable;
+
+    // number of 4-byte quads per vertex
+    unsigned vert_len;
 } poly_state = {
-    .current_list = DISPLAY_LIST_NONE
+    .current_list = DISPLAY_LIST_NONE,
+    .vert_len = 8
 };
 
 char const *display_list_names[DISPLAY_LIST_COUNT] = {
@@ -135,6 +199,25 @@ char const *display_list_names[DISPLAY_LIST_COUNT] = {
     "Transparent",
     "Transparent Modifier Volume",
     "Punch-through Polygon"
+};
+
+// lengths of each type of vert, in terms of 32-bit integers
+static const unsigned vert_lengths[N_VERT_TYPES] = {
+    [VERT_NO_TEX_PACKED_COLOR] = 8,
+    [VERT_NO_TEX_FLOAT_COLOR] = 8,
+    [VERT_NO_TEX_INTENSITY] = 8,
+    [VERT_TEX_PACKED_COLOR] = 8,
+    [VERT_TEX_PACKED_COLOR_16_BIT_TEX_COORD] = 8,
+    [VERT_TEX_FLOATING_COLOR] = 16,
+    [VERT_TEX_FLOATING_COLOR_16_BIT_TEX_COORD] = 16,
+    [VERT_TEX_INTENSITY] = 8,
+    [VERT_TEX_INTENSITY_16_BIT_TEX_COORD] = 8,
+    [VERT_NO_TEX_PACKED_COLOR_TWO_VOLUMES] = 8,
+    [VERT_NO_TEX_INTENSITY_TWO_VOLUMES] = 8,
+    [VERT_TEX_PACKED_COLOR_TWO_VOLUMES] = 16,
+    [VERT_TEX_PACKED_COLOR_TWO_VOLUMES_16_BIT_TEX_COORD] = 16,
+    [VERT_TEX_INTENSITY_TWO_VOLUMES] = 16,
+    [VERT_TEX_INTENSITY_TWO_VOLUMES_16_BIT_TEX_COORD] = 16
 };
 
 bool list_submitted[DISPLAY_LIST_COUNT];
@@ -153,6 +236,11 @@ static void next_poly_group(struct geo_buf *geo,
                             enum display_list_type disp_list);
 
 static void decode_poly_hdr(struct poly_hdr *hdr);
+
+// call this whenever a packet has been processed
+static void ta_fifo_finish_packet(void);
+
+static enum vert_type classify_vert(void);
 
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
 #ifdef PVR2_LOG_VERBOSE
@@ -194,10 +282,8 @@ int pvr2_ta_fifo_poly_write(void const *buf, size_t addr, size_t len) {
 static void input_poly_fifo(uint8_t byte) {
     ta_fifo[ta_fifo_byte_count++] = byte;
 
-    if (ta_fifo_byte_count == expected_ta_fifo_len) {
+    if (!(ta_fifo_byte_count % 32)) {
         on_packet_received();
-        expected_ta_fifo_len = 32;
-        ta_fifo_byte_count = 0;
     }
 }
 
@@ -256,6 +342,17 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
           DEPTH_WRITE_DISABLE_SHIFT);
     hdr->depth_func =
         (ta_fifo32[0] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
+
+    hdr->shadow = (bool)(ta_fifo32[0] & TA_CMD_SHADOW_MASK);
+    hdr->two_volumes_mode = (bool)(ta_fifo32[0] & TA_CMD_TWO_VOLUMES_MASK);
+    hdr->color_type =
+        (enum ta_color_type)((ta_fifo32[0] & TA_CMD_COLOR_TYPE_MASK) >>
+                             TA_CMD_COLOR_TYPE_SHIFT);
+    hdr->offset_color_enable = (bool)(ta_fifo32[0] & TA_CMD_OFFSET_COLOR_MASK);
+    hdr->gourad_shading_enable =
+        (bool)(ta_fifo32[0] & TA_CMD_GOURAD_SHADING_MASK);
+    hdr->tex_coord_16_bit_enable =
+        (bool)(ta_fifo32[0] & TA_CMD_16_BIT_TEX_COORD_MASK);
 }
 
 static void on_polyhdr_received(void) {
@@ -271,7 +368,7 @@ static void on_polyhdr_received(void) {
         list_submitted[list]) {
         printf("WARNING: unable to open list %s because it is already "
                "closed\n", display_list_names[list]);
-        return;
+        goto the_end;
     }
 
     if ((poly_state.current_list != DISPLAY_LIST_NONE) &&
@@ -279,7 +376,7 @@ static void on_polyhdr_received(void) {
         printf("WARNING: attempting to input poly header for list %s without "
                "first closing %s\n", display_list_names[list],
                display_list_names[poly_state.current_list]);
-        return;
+        goto the_end;
     }
 
     /*
@@ -359,12 +456,32 @@ static void on_polyhdr_received(void) {
     poly_state.enable_depth_writes = hdr.enable_depth_writes;
     poly_state.depth_func = hdr.depth_func;
 
+    poly_state.shadow = hdr.shadow;
+    poly_state.two_volumes_mode = hdr.two_volumes_mode;
+    poly_state.color_type = hdr.color_type;
+    poly_state.offset_color_enable = hdr.offset_color_enable;
+    poly_state.gourad_shading_enable = hdr.gourad_shading_enable;
+    poly_state.tex_coord_16_bit_enable = hdr.tex_coord_16_bit_enable;
+
+    poly_state.vert_len = vert_lengths[classify_vert()];
+
     printf("POLY HEADER PACKET!\n");
+
+the_end:
+    ta_fifo_finish_packet();
 }
 
 static void on_vertex_received(void) {
     uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
     float const *ta_fifo_float = (float const*)ta_fifo;
+
+    /*
+     * if the vertex is not long enough, return and make input_poly_fifo call
+     * us again later when there is more data.  Practically, this means that we
+     * are expecting 64 bytes, but we only have 32 bytes so far.
+     */
+    if (ta_fifo_byte_count != (poly_state.vert_len * 4))
+        return;
 
 #ifdef PVR2_LOG_VERBOSE
     printf("vertex received!\n");
@@ -374,6 +491,7 @@ static void on_vertex_received(void) {
     if (poly_state.current_list < 0) {
         printf("ERROR: unable to render vertex because no display lists are "
                "open\n");
+        ta_fifo_finish_packet();
         return;
     }
 
@@ -382,6 +500,7 @@ static void on_vertex_received(void) {
     if (list->n_groups <= 0) {
         printf("ERROR: unable to render vertex because I'm still waiting to "
                "see a polygon header\n");
+        ta_fifo_finish_packet();
         return;
     }
 
@@ -438,7 +557,7 @@ static void on_vertex_received(void) {
         float color_r, color_g, color_b, color_a;
 
         switch (poly_state.ta_color_fmt) {
-        case TA_COLOR_FMT_ARGB8888:
+        case TA_COLOR_TYPE_PACKED:
             color_a = (float)((ta_fifo32[6] & 0xff000000) >> 24) / 255.0f;
             color_r = (float)((ta_fifo32[6] & 0x00ff0000) >> 16) / 255.0f;
             color_g = (float)((ta_fifo32[6] & 0x0000ff00) >> 8) / 255.0f;
@@ -485,6 +604,8 @@ static void on_vertex_received(void) {
         abort();
 #endif
     }
+
+    ta_fifo_finish_packet();
 }
 
 static void on_end_of_list_received(void) {
@@ -498,7 +619,7 @@ static void on_end_of_list_received(void) {
     } else {
         printf("Unable to close the current display list because no display "
                "list has been opened\n");
-        return;
+        goto the_end;
     }
 
     // TODO: In a real dreamcast this probably would not happen instantly
@@ -527,7 +648,10 @@ static void on_end_of_list_received(void) {
     }
 
     poly_state.current_list = DISPLAY_LIST_NONE;
- }
+
+the_end:
+    ta_fifo_finish_packet();
+}
 
 void pvr2_ta_startrender(void) {
     printf("STARTRENDER requested!\n");
@@ -694,4 +818,64 @@ static void next_poly_group(struct geo_buf *geo,
     struct poly_group *new_group = list->groups + (list->n_groups - 1);
     new_group->n_verts = 0;
     new_group->tex_enable = false;
+}
+
+static enum vert_type classify_vert(void) {
+    if (poly_state.tex_enable) {
+        if (poly_state.two_volumes_mode) {
+            if (poly_state.tex_coord_16_bit_enable) {
+                if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
+                    return VERT_TEX_PACKED_COLOR_TWO_VOLUMES_16_BIT_TEX_COORD;
+                if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
+                    (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                    return VERT_TEX_INTENSITY_TWO_VOLUMES_16_BIT_TEX_COORD;
+            } else {
+                if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
+                    return VERT_TEX_PACKED_COLOR_TWO_VOLUMES;
+                if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
+                    (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                    return VERT_TEX_INTENSITY_TWO_VOLUMES;
+            }
+        } else {
+            if (poly_state.tex_coord_16_bit_enable) {
+                if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
+                    return VERT_TEX_PACKED_COLOR_16_BIT_TEX_COORD;
+                if (poly_state.color_type == TA_COLOR_TYPE_FLOAT)
+                    return VERT_TEX_FLOATING_COLOR_16_BIT_TEX_COORD;
+                if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
+                    (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                    return VERT_TEX_INTENSITY_16_BIT_TEX_COORD;
+            } else {
+                if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
+                    return VERT_TEX_PACKED_COLOR;
+                if (poly_state.color_type == TA_COLOR_TYPE_FLOAT)
+                    return VERT_TEX_FLOATING_COLOR;
+                if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
+                    (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                    return VERT_TEX_INTENSITY;
+            }
+        }
+    } else {
+        if (poly_state.two_volumes_mode) {
+            if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
+                return VERT_NO_TEX_PACKED_COLOR_TWO_VOLUMES;
+            if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
+                (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                return VERT_NO_TEX_INTENSITY_TWO_VOLUMES;
+        } else {
+            if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
+                return VERT_NO_TEX_PACKED_COLOR;
+            if (poly_state.color_type == TA_COLOR_TYPE_FLOAT)
+                return VERT_NO_TEX_FLOAT_COLOR;
+            if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
+                (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                return VERT_NO_TEX_INTENSITY;
+        }
+    }
+
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static void ta_fifo_finish_packet(void) {
+    ta_fifo_byte_count = 0;
 }
