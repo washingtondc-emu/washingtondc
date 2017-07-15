@@ -41,6 +41,8 @@ static uint32_t fb_r_sof1, fb_r_sof2, fb_r_ctrl, fb_r_size,
 // 5f8128, 5f8138
 static uint32_t ta_vertbuf_pos, ta_vertbuf_start;
 
+static uint32_t ta_next_opb_init;
+
 #define N_PVR2_CORE_REGS (ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1)
 static reg32_t pvr2_core_regs[N_PVR2_CORE_REGS];
 
@@ -195,6 +197,18 @@ static int
 fb_y_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len);
 
+static int
+ta_next_opb_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                             void *buf, addr32_t addr, unsigned len);
+
+static int
+ta_next_opb_init_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                  void *buf, addr32_t addr, unsigned len);
+static int
+ta_next_opb_init_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                   void const *buf, addr32_t addr, unsigned len);
+
+
 static struct pvr2_core_mem_mapped_reg {
     char const *reg_name;
 
@@ -308,6 +322,8 @@ static struct pvr2_core_mem_mapped_reg {
       ta_vertbuf_start_reg_read_handler, ta_vertbuf_start_reg_write_handler },
     { "TA_ISP_LIMIT", 0x5f8130, 4,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+    { "TA_NEXT_OPB", 0x5f8134, 4,
+      ta_next_opb_reg_read_handler, pvr2_core_read_only_reg_write_handler },
     { "TA_VERTBUF_POS", 0x5f8138, 4,
       ta_vertbuf_pos_reg_read_handler, pvr2_core_read_only_reg_write_handler },
     { "TA_OL_LIMIT", 0x5f812c, 4,
@@ -319,7 +335,7 @@ static struct pvr2_core_mem_mapped_reg {
     { "TA_RESET", 0x5f8144, 4,
       ta_reset_reg_read_handler, ta_reset_reg_write_handler },
     { "TA_NEXT_OPB_INIT", 0x5f8164, 4,
-      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+      ta_next_opb_init_reg_read_handler, ta_next_opb_init_reg_write_handler },
 
     // The PVR2 fog table - 128 single-precision floats
     { "FOG_TABLE_00", 0x5f8200, 4,
@@ -1106,5 +1122,40 @@ fb_y_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     fprintf(stderr, "WARNING: writing 0x%08x to FB_Y_CLIP\n",
             (unsigned)fb_y_clip);
 
+    return 0;
+}
+
+static int
+ta_next_opb_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                             void *buf, addr32_t addr, unsigned len) {
+    // TODO: actually track the positions of where the OPB blocks should go
+
+
+    fprintf(stderr, "You should *really* come up with a real implementation of "
+            "%s at line %d of %s\n", __func__, __LINE__, __FILE__);
+
+    memcpy(buf, &ta_next_opb_init, len);
+
+    fprintf(stderr, "WARNING reading 0x%08x from TA_NEXT_OPB\n",
+            (unsigned)ta_next_opb_init);
+
+    return 0;
+}
+
+static int
+ta_next_opb_init_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                  void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &ta_next_opb_init, len);
+    fprintf(stderr, "WARNING reading 0x%08x from TA_NEXT_OPB_INIT\n",
+            (unsigned)ta_next_opb_init);
+    return 0;
+}
+
+static int
+ta_next_opb_init_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                   void const *buf, addr32_t addr, unsigned len) {
+    memcpy(&ta_next_opb_init, buf, sizeof(ta_next_opb_init));
+    fprintf(stderr, "WARNING writing 0x%08x to TA_NEXT_OPB_INIT\n",
+            (unsigned)ta_next_opb_init);
     return 0;
 }
