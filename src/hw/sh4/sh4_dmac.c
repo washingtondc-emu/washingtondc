@@ -32,6 +32,7 @@
 #include "sh4_dmac.h"
 #include "mem_areas.h"
 #include "hw/pvr2/pvr2_ta.h"
+#include "hw/sys/holly_intc.h"
 
 int sh4_dmac_sar_reg_read_handler(Sh4 *sh4, void *buf,
                                   struct Sh4MemMappedReg const *reg_info) {
@@ -350,4 +351,6 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
     // raise the interrupt
     sh4->dmac.chcr[2] |= SH4_DMAC_CHCR_TE_MASK;
     sh4_set_interrupt(sh4, SH4_IRQ_DMAC, SH4_EXCP_DMAC_DMTE2);
+
+    holly_raise_nrm_int(HOLLY_REG_ISTNRM_CHANNEL2_DMA_COMPLETE);
 }
