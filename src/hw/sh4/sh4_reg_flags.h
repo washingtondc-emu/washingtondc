@@ -507,6 +507,15 @@ extern "C" {
 #define SH4_STBCR_MSTP0_SHIFT 0
 #define SH4_STBCR_MSTP0_MASK (1 << SH4_STBCR_MSTP0_SHIFT)
 
+/*******************************************************************************
+ *
+ * SH-4 DMA Controller
+ *
+ ******************************************************************************/
+
+#define SH4_DMAC_CHCR_TE_SHIFT 1
+#define SH4_DMAC_CHCR_TE_MASK (1 << SH4_DMAC_CHCR_TE_SHIFT)
+
 #ifdef __cplusplus
 }
 #endif

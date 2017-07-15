@@ -27,8 +27,11 @@
 
 #include "sh4.h"
 #include "sh4_reg.h"
+#include "sh4_reg_flags.h"
 #include "MemoryMap.h"
 #include "sh4_dmac.h"
+#include "mem_areas.h"
+#include "hw/pvr2/pvr2_ta.h"
 
 int sh4_dmac_sar_reg_read_handler(Sh4 *sh4, void *buf,
                                   struct Sh4MemMappedReg const *reg_info) {
@@ -300,4 +303,51 @@ void sh4_dmac_transfer_from_mem(addr32_t transfer_src, size_t unit_sz,
         MEM_ACCESS_SUCCESS) {
         RAISE_ERROR(get_error_pending());
     }
+}
+
+void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
+    /*
+     * TODO: check DMAOR to make sure DMA is enabled.  Maybe check a few other
+     * registers as well (I think CHCR2 has a per-channel enable bit for this?)
+     */
+
+    if (n_bytes != (32 * sh4->dmac.dmatcr[2])) {
+        error_set_feature("whatever happens when there's a channel-2 DMA "
+                          "length mismatch");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    if (!((transfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&
+          (transfer_dst <= ADDR_TA_FIFO_POLY_LAST))) {
+        error_set_feature("channel-2 DMA transfers to destinations other than "
+                          "the TA fifo");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    addr32_t transfer_src = sh4->dmac.sar[2];
+
+    fprintf(stderr, "SH4 - initiating %u-byte DMA transfer from 0x%08x to "
+            "0x%08x\n", n_bytes, transfer_src, transfer_dst);
+
+    /*
+     * n_bytes has already been established to be divisible by 32,
+     * so it must also be divisible by 4
+     */
+    unsigned n_words = n_bytes / 4;
+
+    while (n_words--) {
+        uint32_t buf;
+        if (sh4_do_read_mem(sh4, &buf, transfer_src, sizeof(buf))
+            != MEM_ACCESS_SUCCESS) {
+            RAISE_ERROR(get_error_pending());
+        }
+
+        pvr2_ta_fifo_poly_write(&buf, transfer_dst, sizeof(buf));
+        transfer_dst += sizeof(buf);
+        transfer_src += sizeof(buf);
+    }
+
+    // raise the interrupt
+    sh4->dmac.chcr[2] |= SH4_DMAC_CHCR_TE_MASK;
+    sh4_set_interrupt(sh4, SH4_IRQ_DMAC, SH4_EXCP_DMAC_DMTE2);
 }

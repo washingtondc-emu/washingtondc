@@ -26,11 +26,16 @@
 #include "hw/gdrom/gdrom_reg.h"
 #include "holly_intc.h"
 #include "mem_code.h"
+#include "dreamcast.h"
+#include "hw/sh4/sh4.h"
+#include "hw/sh4/sh4_dmac.h"
 
 #include "sys_block.h"
 
 #define N_SYS_REGS (ADDR_SYS_LAST - ADDR_SYS_FIRST + 1)
 static reg32_t sys_regs[N_SYS_REGS];
+
+static uint32_t reg_sb_c2dstat, reg_sb_c2dlen;
 
 struct sys_mapped_reg;
 
@@ -63,9 +68,23 @@ static int ignore_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
 static int sys_sbrev_reg_read_handler(struct sys_mapped_reg const *reg_info,
                                      void *buf, addr32_t addr, unsigned len);
 
+static int sb_c2dst_reg_read_handler(struct sys_mapped_reg const *reg_info,
+                                     void *buf, addr32_t addr, unsigned len);
 static int sb_c2dst_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                       void const *buf, addr32_t addr,
                                       unsigned len);
+
+static int sb_c2dstat_reg_read_handler(struct sys_mapped_reg const *reg_info,
+                                       void *buf, addr32_t addr, unsigned len);
+static int sb_c2dstat_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                        void const *buf, addr32_t addr,
+                                        unsigned len);
+
+static int sb_c2dlen_reg_read_handler(struct sys_mapped_reg const *reg_info,
+                                      void *buf, addr32_t addr, unsigned len);
+static int sb_c2dlen_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                       void const *buf, addr32_t addr,
+                                       unsigned len);
 
 /* yay, interrrupt registers */
 static struct sys_mapped_reg {
@@ -79,11 +98,11 @@ static struct sys_mapped_reg {
     sys_reg_write_handler_t on_write;
 } sys_reg_info[] = {
     { "SB_C2DSTAT", 0x005f6800, 4,
-      warn_sys_reg_read_handler, warn_sys_reg_write_handler },
+      sb_c2dstat_reg_read_handler, sb_c2dstat_reg_write_handler },
     { "SB_C2DLEN", 0x005f6804, 4,
-      warn_sys_reg_read_handler, warn_sys_reg_write_handler },
+      sb_c2dlen_reg_read_handler, sb_c2dlen_reg_write_handler },
     { "SB_C2DST", 0x005f6808, 4,
-      warn_sys_reg_read_handler, sb_c2dst_reg_write_handler },
+      sb_c2dst_reg_read_handler, sb_c2dst_reg_write_handler },
     { "SB_SDSTAW", 0x5f6810, 4,
       warn_sys_reg_read_handler, warn_sys_reg_write_handler },
     { "SB_SDBAAW", 0x5f6814, 4,
@@ -323,6 +342,16 @@ static int sys_sbrev_reg_read_handler(struct sys_mapped_reg const *reg_info,
     return MEM_ACCESS_SUCCESS;
 }
 
+static int sb_c2dst_reg_read_handler(struct sys_mapped_reg const *reg_info,
+                                     void *buf, addr32_t addr, unsigned len) {
+    fprintf(stderr, "WARNING: reading 0 from SB_C2DST\n");
+
+    memset(buf, 0, len);
+
+    return 0;
+}
+
+
 static int sb_c2dst_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                       void const *buf, addr32_t addr,
                                       unsigned len) {
@@ -330,12 +359,50 @@ static int sb_c2dst_reg_write_handler(struct sys_mapped_reg const *reg_info,
     memcpy(&dat, buf, sizeof(dat));
 
     if (dat) {
-        error_set_feature("channel 2 DMA");
-        error_set_address(addr);
-        error_set_length(len);
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
+        sh4_dmac_channel2(dreamcast_get_cpu(), reg_sb_c2dstat, reg_sb_c2dlen);
     }
 
-    return warn_sys_reg_write_handler(reg_info, buf, addr, len);
+    return 0;
+}
+
+static int sb_c2dlen_reg_read_handler(struct sys_mapped_reg const *reg_info,
+                                      void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &reg_sb_c2dlen, len);
+
+    fprintf(stderr, "WARNING: reading %08x from SB_C2DLEN\n",
+            (unsigned)reg_sb_c2dlen);
+
+    return 0;
+}
+
+static int sb_c2dlen_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                       void const *buf, addr32_t addr,
+                                       unsigned len) {
+    memcpy(&reg_sb_c2dlen, buf, sizeof(reg_sb_c2dlen));
+
+    fprintf(stderr, "WARNING: writing %08x to SB_C2DLEN\n",
+            (unsigned)reg_sb_c2dlen);
+
+    return 0;
+}
+
+static int sb_c2dstat_reg_read_handler(struct sys_mapped_reg const *reg_info,
+                                      void *buf, addr32_t addr, unsigned len) {
+    memcpy(buf, &reg_sb_c2dstat, len);
+
+    fprintf(stderr, "WARNING: reading %08x from SB_C2DSTAT\n",
+            (unsigned)reg_sb_c2dstat);
+
+    return 0;
+}
+
+static int sb_c2dstat_reg_write_handler(struct sys_mapped_reg const *reg_info,
+                                       void const *buf, addr32_t addr,
+                                       unsigned len) {
+    memcpy(&reg_sb_c2dstat, buf, sizeof(reg_sb_c2dstat));
+
+    fprintf(stderr, "WARNING: writing %08x to SB_C2DSTAT\n",
+            (unsigned)reg_sb_c2dstat);
+
+    return 0;
 }
