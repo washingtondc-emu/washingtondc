@@ -5,6 +5,14 @@ are not recorded here.
 General:
 * Implement a scheduler instead of ticking down the clock of every component on every cycle
 
+DMA:
+* I think there might be a few places where I need to be making sure that
+  certain DMA channels are enabled before I perform a DMA.
+* There are definitely a few places where there are DMA protection registers
+  that are supposed to prevent DMA writes outside of certain address ranges;
+  these aren't all implemented.  I'm fairly certain it is not implemented for
+  maplebus yet.
+
 sh4:
 * MMU support for Store Queues
 * Store queue timing (Is it really supposed to be instant?)
