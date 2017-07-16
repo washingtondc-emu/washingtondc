@@ -71,6 +71,25 @@ void modelview_project_transform() {
      * the glDepthFunc functions to behave the way I expect them to; I'm just
      * not 100% sure if the math is actually working out the way I think it is.
      * It does seem weird to multiply the z-coordinates by -1 like this.
+     *
+     * HYPOTHESIS:
+     * the math here is a little wonky because what we see as the Z-value
+     * is actually 1 / z.  The perspective divide would have already been done
+     * by the guest software before it passed the coordinates to the TA, so this
+     * only really effects the depth-sorting.  Nevertheless, this may need to be
+     * revisitied in the future since this code was all written under the
+     * assumption that the z-coordinate is actually the z-coordinate.
+     *
+     * the way we quantize the vertex from (clip_min_max[0], clip_min_max[1])
+     * to (-1.0, 1.0) is especially an area of concern because mip_min_max
+     * represents the minimum/maximum values of 1/z instead of z, but I thought
+     * it was z when I write this code.
+     *
+     * This could very well be why I have to multiply vert_z by -1.  if
+     * vert_pos.z is clip min_max[0], then vert_z will be -1.0, which would mean
+     * that in clip-coordinates it's the closest vertex to the camera even
+     * though having a minimal 1/z means that Z is very large (far away from
+     * the camera).
      */
     float vert_z = -(vert_pos.z - clip_half) /
         (clip_min_max[1] - clip_min_max[0]);
