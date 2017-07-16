@@ -90,6 +90,16 @@ static_assert(PVR2_DEPTH_FUNC_COUNT == 8,
               "incorrect number of depth functions");
 
 /*
+ * how to combine a polygon's vertex color with a texture
+ */
+enum tex_inst {
+    TEX_INST_DECAL,
+    TEX_INST_MOD,
+    TEXT_INST_DECAL_ALPHA,
+    TEX_INST_MOD_ALPHA
+};
+
+/*
  * There is one poly_group for each polygon header sent to the pvr2.
  * The poly-group contains per-header settings such as textures.
  */
@@ -99,6 +109,7 @@ struct poly_group {
 
     bool tex_enable;
     unsigned tex_idx; // only valid if tex_enable=true
+    enum tex_inst tex_inst;
 
     // only valid of blend_enable=true in the display_list structure
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;

@@ -44,6 +44,7 @@
 #define TEX_COORD_SLOT         4
 
 static GLuint bound_tex_slot;
+static GLuint tex_inst_slot;
 
 static unsigned volatile frame_stamp;
 
@@ -124,6 +125,8 @@ void render_init(void) {
 
     bound_tex_slot = glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj,
                                           "bound_tex");
+    tex_inst_slot = glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj,
+                                         "tex_inst");
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -162,6 +165,7 @@ static void render_do_draw_group(struct geo_buf *geo,
         glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
         glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
         glUniform1i(bound_tex_slot, 0);
+        glUniform1i(tex_inst_slot, group->tex_inst);
         glActiveTexture(GL_TEXTURE0);
     } else {
         printf("not using texture!?\n");

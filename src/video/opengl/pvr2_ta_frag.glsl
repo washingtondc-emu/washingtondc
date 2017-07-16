@@ -26,12 +26,37 @@ out vec4 color;
 #ifdef TEX_ENABLE
 in vec2 st;
 uniform sampler2D bound_tex;
+uniform int tex_inst;
 #endif
 
 void main() {
 #ifdef TEX_ENABLE
-    // TODO: how do I combine the texture samplewith the vertex color?
-    color = texture(bound_tex, st);
+    vec4 tex_color = texture(bound_tex, st);
+
+    // TODO: add the offset values to the rgb components
+    switch (tex_inst) {
+    default:
+    case 0:
+        // decal
+        color.rgb = tex_color.rgb;
+        color.a = tex_color.a;
+        break;
+    case 1:
+        // modulate
+        color.rgb = tex_color.rgb * vert_color.rgb;
+        color.a = tex_color.a;
+        break;
+    case 2:
+        // decal with alpha
+        color.rgb = tex_color.rgb * tex_color.a +
+            vert_color.rgb * (1.0 - tex_color.a);
+        color.a = vert_color.a;
+        break;
+    case 3:
+        // modulate with alpha
+        color = tex_color * vert_color;
+        break;
+    }
 #else
     color = vert_color;
 #endif

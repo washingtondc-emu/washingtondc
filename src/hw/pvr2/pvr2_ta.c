@@ -75,8 +75,8 @@
 enum ta_color_type {
     TA_COLOR_TYPE_PACKED,
     TA_COLOR_TYPE_FLOAT,
-    TA_COLOR_INTENSITY_MODE_1,
-    TA_COLOR_INTENSITY_MODE_2
+    TA_COLOR_TYPE_INTENSITY_MODE_1,
+    TA_COLOR_TYPE_INTENSITY_MODE_2
 };
 
 #define TA_CMD_TYPE_END_OF_LIST 0x0
@@ -143,6 +143,7 @@ struct poly_hdr {
     unsigned tex_width_shift, tex_height_shift;
     bool tex_twiddle;
     int tex_fmt;
+    enum tex_inst tex_inst;
 
     unsigned ta_color_fmt;
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
@@ -156,6 +157,8 @@ struct poly_hdr {
     bool offset_color_enable;
     bool gourad_shading_enable;
     bool tex_coord_16_bit_enable;
+
+    float poly_color_rgba[4];
 };
 
 static struct poly_state {
@@ -186,8 +189,14 @@ static struct poly_state {
     bool gourad_shading_enable;
     bool tex_coord_16_bit_enable;
 
+    enum tex_inst tex_inst;
+
     // number of 4-byte quads per vertex
     unsigned vert_len;
+
+    float poly_color_rgba[4];
+
+    enum vert_type vert_type;
 } poly_state = {
     .current_list = DISPLAY_LIST_NONE,
     .vert_len = 8
@@ -325,6 +334,8 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
             ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
         hdr->tex_height_shift = 3 +
             ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
+        hdr->tex_inst = (ta_fifo32[2] & TSP_TEX_INST_MASK) >>
+            TSP_TEX_INST_SHIFT;
         hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
         hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
                          TEX_CTRL_TEX_ADDR_SHIFT) << 3;
@@ -353,6 +364,12 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
         (bool)(ta_fifo32[0] & TA_CMD_GOURAD_SHADING_MASK);
     hdr->tex_coord_16_bit_enable =
         (bool)(ta_fifo32[0] & TA_CMD_16_BIT_TEX_COORD_MASK);
+
+    if (hdr->color_type == TA_COLOR_TYPE_INTENSITY_MODE_1 ||
+        hdr->color_type == TA_COLOR_TYPE_INTENSITY_MODE_2) {
+        memcpy(hdr->poly_color_rgba, ta_fifo32 + 5, 3 * sizeof(float));
+        memcpy(hdr->poly_color_rgba + 3, ta_fifo32 + 4, sizeof(float));
+    }
 }
 
 static void on_polyhdr_received(void) {
@@ -463,7 +480,13 @@ static void on_polyhdr_received(void) {
     poly_state.gourad_shading_enable = hdr.gourad_shading_enable;
     poly_state.tex_coord_16_bit_enable = hdr.tex_coord_16_bit_enable;
 
-    poly_state.vert_len = vert_lengths[classify_vert()];
+    poly_state.vert_type = classify_vert();
+    poly_state.vert_len = vert_lengths[poly_state.vert_type];
+
+    poly_state.tex_inst = hdr.tex_inst;
+
+    memcpy(poly_state.poly_color_rgba, hdr.poly_color_rgba,
+           sizeof(poly_state.poly_color_rgba));
 
     printf("POLY HEADER PACKET!\n");
 
@@ -555,6 +578,7 @@ static void on_vertex_received(void) {
         }
 
         float color_r, color_g, color_b, color_a;
+        float intensity;
 
         switch (poly_state.ta_color_fmt) {
         case TA_COLOR_TYPE_PACKED:
@@ -562,6 +586,25 @@ static void on_vertex_received(void) {
             color_r = (float)((ta_fifo32[6] & 0x00ff0000) >> 16) / 255.0f;
             color_g = (float)((ta_fifo32[6] & 0x0000ff00) >> 8) / 255.0f;
             color_b = (float)((ta_fifo32[6] & 0x000000ff) >> 0) / 255.0f;
+            break;
+        case TA_COLOR_TYPE_FLOAT:
+            memcpy(&color_a, ta_fifo32 + 4, sizeof(color_a));
+            memcpy(&color_r, ta_fifo32 + 5, sizeof(color_r));
+            memcpy(&color_g, ta_fifo32 + 6, sizeof(color_g));
+            memcpy(&color_b, ta_fifo32 + 7, sizeof(color_b));
+            break;
+        case TA_COLOR_TYPE_INTENSITY_MODE_1:
+            color_a = poly_state.poly_color_rgba[3];
+
+            memcpy(&intensity, ta_fifo32 + 6, sizeof(float));
+            color_r = intensity * poly_state.poly_color_rgba[0];
+            color_g = intensity * poly_state.poly_color_rgba[1];
+            color_b = intensity * poly_state.poly_color_rgba[2];
+
+            break;
+        case TA_COLOR_TYPE_INTENSITY_MODE_2:
+            error_set_feature("intensity color mode 2");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
             break;
         default:
             color_r = color_g = color_b = color_a = 1.0f;
@@ -774,6 +817,8 @@ static void finish_poly_group(struct geo_buf *geo,
     group->enable_depth_writes = poly_state.enable_depth_writes;
     group->depth_func = poly_state.depth_func;
 
+    group->tex_inst = poly_state.tex_inst;
+
     /*
      * this check is a little silly, but I get segfaults sometimes when
      * indexing into src_blend_factors and dst_blend_factors and I don't know
@@ -826,14 +871,14 @@ static enum vert_type classify_vert(void) {
             if (poly_state.tex_coord_16_bit_enable) {
                 if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
                     return VERT_TEX_PACKED_COLOR_TWO_VOLUMES_16_BIT_TEX_COORD;
-                if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
-                    (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
+                    (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
                     return VERT_TEX_INTENSITY_TWO_VOLUMES_16_BIT_TEX_COORD;
             } else {
                 if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
                     return VERT_TEX_PACKED_COLOR_TWO_VOLUMES;
-                if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
-                    (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
+                    (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
                     return VERT_TEX_INTENSITY_TWO_VOLUMES;
             }
         } else {
@@ -842,16 +887,16 @@ static enum vert_type classify_vert(void) {
                     return VERT_TEX_PACKED_COLOR_16_BIT_TEX_COORD;
                 if (poly_state.color_type == TA_COLOR_TYPE_FLOAT)
                     return VERT_TEX_FLOATING_COLOR_16_BIT_TEX_COORD;
-                if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
-                    (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
+                    (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
                     return VERT_TEX_INTENSITY_16_BIT_TEX_COORD;
             } else {
                 if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
                     return VERT_TEX_PACKED_COLOR;
                 if (poly_state.color_type == TA_COLOR_TYPE_FLOAT)
                     return VERT_TEX_FLOATING_COLOR;
-                if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
-                    (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+                if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
+                    (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
                     return VERT_TEX_INTENSITY;
             }
         }
@@ -859,16 +904,16 @@ static enum vert_type classify_vert(void) {
         if (poly_state.two_volumes_mode) {
             if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
                 return VERT_NO_TEX_PACKED_COLOR_TWO_VOLUMES;
-            if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
-                (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+            if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
+                (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
                 return VERT_NO_TEX_INTENSITY_TWO_VOLUMES;
         } else {
             if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
                 return VERT_NO_TEX_PACKED_COLOR;
             if (poly_state.color_type == TA_COLOR_TYPE_FLOAT)
                 return VERT_NO_TEX_FLOAT_COLOR;
-            if ((poly_state.color_type == TA_COLOR_INTENSITY_MODE_1) ||
-                (poly_state.color_type == TA_COLOR_INTENSITY_MODE_2))
+            if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
+                (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
                 return VERT_NO_TEX_INTENSITY;
         }
     }
