@@ -36,11 +36,34 @@ static char *read_txt(char const *path);
 #define LOG_LEN_GLSL 1024
 GLchar shader_log[LOG_LEN_GLSL];
 
-void shader_init(struct shader *out,
-                 char const *vert_shader_src,
-                 char const *frag_shader_src) {
+void shader_load_vert(struct shader *out, char const *vert_shader_src) {
+    shader_load_vert_with_preamble(out, vert_shader_src, NULL);
+}
+
+void shader_load_frag(struct shader *out, char const *frag_shader_src) {
+    shader_load_frag_with_preamble(out, frag_shader_src, NULL);
+}
+
+void shader_load_vert_with_preamble(struct shader *out,
+                                    char const *vert_shader_src,
+                                    char const *preamble) {
+    int n_shader_strings;
+    char const *shader_strings[3];
+
+    if (preamble) {
+        shader_strings[0] = "#version 330 core\n";
+        shader_strings[1] = preamble;
+        shader_strings[2] = vert_shader_src;
+        n_shader_strings = 3;
+    } else {
+        shader_strings[0] = "#version 330 core\n";
+        shader_strings[1] = vert_shader_src;
+        shader_strings[2] = NULL;
+        n_shader_strings = 2;
+    }
+
     GLuint vert_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vert_shader, 1, &vert_shader_src, NULL);
+    glShaderSource(vert_shader, n_shader_strings, shader_strings, NULL);
     glCompileShader(vert_shader);
 
     GLint shader_success;
@@ -53,38 +76,93 @@ void shader_init(struct shader *out,
         errx(1, "Error compiling shader: %s\n", shader_log);
     }
 
+    out->vert_shader = vert_shader;
+}
+
+void shader_load_frag_with_preamble(struct shader *out,
+                                    char const *frag_shader_src,
+                                    char const *preamble) {
+    int n_shader_strings;
+    char const *shader_strings[3];
+
+    if (preamble) {
+        shader_strings[0] = "#version 330 core\n";
+        shader_strings[1] = preamble;
+        shader_strings[2] = frag_shader_src;
+        n_shader_strings = 3;
+    } else {
+        shader_strings[0] = "#version 330 core\n";
+        shader_strings[1] = frag_shader_src;
+        n_shader_strings = 2;
+    }
+
     GLuint frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(frag_shader, 1, &frag_shader_src, NULL);
+    glShaderSource(frag_shader, n_shader_strings, shader_strings, NULL);
     glCompileShader(frag_shader);
 
+    GLint shader_success;
     glGetShaderiv(frag_shader, GL_COMPILE_STATUS, &shader_success);
     if (!shader_success) {
         glGetShaderInfoLog(frag_shader, LOG_LEN_GLSL, NULL, shader_log);
 
-        glDeleteShader(vert_shader);
-        glDeleteShader(frag_shader);
-
         errx(1, "Error compiling shader: %s\n", shader_log);
     }
 
+    out->frag_shader = frag_shader;
+}
+
+void shader_load_vert_from_file_with_preamble(struct shader *out,
+                                              char const *vert_shader_path,
+                                              char const *preamble) {
+    char *vert_shader_src;
+
+    vert_shader_src = read_txt(vert_shader_path);
+
+    shader_load_vert_with_preamble(out, vert_shader_src, preamble);
+
+    free(vert_shader_src);
+}
+
+void shader_load_frag_from_file_with_preamble(struct shader *out,
+                                              char const *frag_shader_path,
+                                              char const *preamble) {
+    char *frag_shader_src;
+
+    frag_shader_src = read_txt(frag_shader_path);
+
+    shader_load_frag_with_preamble(out, frag_shader_src, preamble);
+
+    free(frag_shader_src);
+}
+
+void shader_load_vert_from_file(struct shader *out, char const *vert_shader_path) {
+    shader_load_vert_from_file_with_preamble(out, vert_shader_path, NULL);
+}
+
+void shader_load_frag_from_file(struct shader *out, char const *frag_shader_path) {
+    shader_load_frag_from_file_with_preamble(out, frag_shader_path, NULL);
+}
+
+void shader_link(struct shader *out) {
     GLuint shader_obj = glCreateProgram();
-    glAttachShader(shader_obj, vert_shader);
-    glAttachShader(shader_obj, frag_shader);
+    glAttachShader(shader_obj, out->vert_shader);
+    glAttachShader(shader_obj, out->frag_shader);
     glLinkProgram(shader_obj);
 
+    GLint shader_success;
     glGetProgramiv(shader_obj, GL_LINK_STATUS, &shader_success);
     if (!shader_success) {
         glGetProgramInfoLog(shader_obj, LOG_LEN_GLSL, NULL, shader_log);
 
-        glDeleteShader(vert_shader);
-        glDeleteShader(frag_shader);
+        glDeleteShader(out->vert_shader);
+        glDeleteShader(out->frag_shader);
         glDeleteProgram(shader_obj);
+
+        out->vert_shader = out->frag_shader = 0;
 
         errx(1, "Error compiling shader: %s\n", shader_log);
     }
 
-    out->vert_shader = vert_shader;
-    out->frag_shader = frag_shader;
     out->shader_prog_obj = shader_obj;
 }
 
@@ -113,20 +191,6 @@ static char *read_txt(char const *path) {
     fclose(txt_fp);
 
     return src;
-}
-
-void shader_init_from_file(struct shader *out,
-                           char const *vert_shader_path,
-                           char const *frag_shader_path) {
-    char *vert_shader_src, *frag_shader_src;
-
-    vert_shader_src = read_txt(vert_shader_path);
-    frag_shader_src = read_txt(frag_shader_path);
-
-    shader_init(out, vert_shader_src, frag_shader_src);
-
-    free(vert_shader_src);
-    free(frag_shader_src);
 }
 
 void shader_cleanup(struct shader *shader) {

@@ -110,10 +110,17 @@ static void render_do_draw(struct geo_buf *geo);
 static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels);
 
 void render_init(void) {
-    shader_init_from_file(&pvr_ta_shader, "pvr2_ta_vert.glsl",
-                          "pvr2_ta_frag.glsl");
-    shader_init_from_file(&pvr_ta_tex_shader, "pvr2_ta_vert_with_tex.glsl",
-                          "pvr2_ta_frag_with_tex.glsl");
+    shader_load_vert_from_file(&pvr_ta_shader, "pvr2_ta_vert.glsl");
+    shader_load_frag_from_file(&pvr_ta_shader, "pvr2_ta_frag.glsl");
+    shader_link(&pvr_ta_shader);
+
+    shader_load_vert_from_file_with_preamble(&pvr_ta_tex_shader,
+                                             "pvr2_ta_vert.glsl",
+                                             "#define TEX_ENABLE\n");
+    shader_load_frag_from_file_with_preamble(&pvr_ta_tex_shader,
+                                             "pvr2_ta_frag.glsl",
+                                             "#define TEX_ENABLE\n");
+    shader_link(&pvr_ta_tex_shader);
 
     bound_tex_slot = glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj,
                                           "bound_tex");

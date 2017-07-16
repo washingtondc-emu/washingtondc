@@ -20,11 +20,19 @@
  *
  ******************************************************************************/
 
-#version 330 core
-
 in vec4 vert_color;
 out vec4 color;
 
+#ifdef TEX_ENABLE
+in vec2 st;
+uniform sampler2D bound_tex;
+#endif
+
 void main() {
+#ifdef TEX_ENABLE
+    // TODO: how do I combine the texture samplewith the vertex color?
+    color = texture(bound_tex, st);
+#else
     color = vert_color;
+#endif
 }

@@ -102,7 +102,10 @@ static unsigned volatile fb_read_width, fb_read_height;
 static pthread_mutex_t fb_read_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void opengl_video_output_init() {
-    shader_init_from_file(&fb_shader, "final_vert.glsl", "final_frag.glsl");
+    shader_load_vert_from_file(&fb_shader, "final_vert.glsl");
+    shader_load_frag_from_file(&fb_shader, "final_frag.glsl");
+    shader_link(&fb_shader);
+
     init_poly();
 }
 

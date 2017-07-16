@@ -32,13 +32,41 @@ struct shader {
     GLuint shader_prog_obj;
 };
 
-void shader_init_from_file(struct shader *out,
-                           char const *vert_shader_path,
-                           char const *frag_shader_path);
+/*
+ * the preamble is a string that will get prepended to the beginning of the
+ * shader.  The intended purpose of this is to define preprocessor macros.
+ *
+ * it is safe to send NULL if no preamble is needed.
+ */
+void shader_load_vert_with_preamble(struct shader *out,
+                                    char const *vert_shader_src,
+                                    char const *preamble);
+void shader_load_frag_with_preamble(struct shader *out,
+                                    char const *frag_shader_src,
+                                    char const *preamble);
 
-void shader_init(struct shader *out,
-                 char const *vert_shader_src,
-                 char const *frag_shader_src);
+/*
+ * In these versions, the preamble is expected to be a string, not a path to
+ * a file.
+ */
+void shader_load_vert_from_file_with_preamble(struct shader *out,
+                                              char const *vert_shader_path,
+                                              char const *preamble);
+void shader_load_frag_from_file_with_preamble(struct shader *out,
+                                              char const *frag_shader_path,
+                                              char const *preamble);
+
+/*
+ * these functions are equivalent to calling the _with_preamble versions with
+ * a NULL preamble (ie no preamble).
+ */
+void shader_load_vert_from_file(struct shader *out, char const *vert_shader_path);
+void shader_load_frag_from_file(struct shader *out, char const *frag_shader_path);
+void shader_load_vert(struct shader *out, char const *vert_shader_src);
+void shader_load_frag(struct shader *out, char const *frag_shader_src);
+
+void shader_link(struct shader *out);
+
 void shader_cleanup(struct shader *shader);
 
 #ifdef __cplusplus
