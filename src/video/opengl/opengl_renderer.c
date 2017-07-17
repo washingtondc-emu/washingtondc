@@ -345,11 +345,11 @@ void render_wait_for_frame_stamp(unsigned stamp) {
 static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels) {
     for (size_t pix_no = 0; pix_no < n_pixels; pix_no++, pixels++) {
         uint16_t pix_current = *pixels;
-        uint16_t a = (pix_current & 0x000f) >> 0;
-        uint16_t r = (pix_current & 0x00f0) >> 4;
-        uint16_t g = (pix_current & 0x0f00) >> 8;
-        uint16_t b = (pix_current & 0xf000) >> 12;
+        uint16_t b = (pix_current & 0x000f) >> 0;
+        uint16_t g = (pix_current & 0x00f0) >> 4;
+        uint16_t r = (pix_current & 0x0f00) >> 8;
+        uint16_t a = (pix_current & 0xf000) >> 12;
 
-        *pixels = r | (g << 4) | (b << 8) | (a << 12);
+        *pixels = a | (b << 4) | (g << 8) | (r << 12);
     }
 }
