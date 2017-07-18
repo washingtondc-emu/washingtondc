@@ -621,7 +621,7 @@ warn_gdrom_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
         }
     }
 
-    return 0;
+    return ret_code;
 }
 
 static int
