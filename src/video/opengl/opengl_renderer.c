@@ -317,8 +317,15 @@ void render_next_geo_buf(void) {
         for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
              disp_list++) {
             struct display_list *list = geo->lists + disp_list;
-            free(list->groups);
-            list->n_groups = 0;
+            if (list->n_groups) {
+                /*
+                 * current protocol is that list->groups is only valid if
+                 * list->n_groups is non-valid; ergo it's safe to leave a
+                 * hangning pointer here.
+                 */
+                free(list->groups);
+                list->n_groups = 0;
+            }
         }
 
         geo_buf_consume();
