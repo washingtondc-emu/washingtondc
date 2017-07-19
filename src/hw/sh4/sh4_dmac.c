@@ -32,6 +32,7 @@
 #include "sh4_dmac.h"
 #include "mem_areas.h"
 #include "hw/pvr2/pvr2_ta.h"
+#include "hw/pvr2/pvr2_tex_mem.h"
 #include "hw/sys/holly_intc.h"
 
 int sh4_dmac_sar_reg_read_handler(Sh4 *sh4, void *buf,
@@ -318,34 +319,73 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    if (!((transfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&
-          (transfer_dst <= ADDR_TA_FIFO_POLY_LAST))) {
-        error_set_feature("channel-2 DMA transfers to destinations other than "
-                          "the TA fifo");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    addr32_t transfer_src = sh4->dmac.sar[2];
-
-    fprintf(stderr, "SH4 - initiating %u-byte DMA transfer from 0x%08x to "
-            "0x%08x\n", n_bytes, transfer_src, transfer_dst);
-
     /*
      * n_bytes has already been established to be divisible by 32,
      * so it must also be divisible by 4
      */
     unsigned n_words = n_bytes / 4;
 
-    while (n_words--) {
-        uint32_t buf;
-        if (sh4_do_read_mem(sh4, &buf, transfer_src, sizeof(buf))
-            != MEM_ACCESS_SUCCESS) {
-            RAISE_ERROR(get_error_pending());
-        }
+    addr32_t transfer_src = sh4->dmac.sar[2];
 
-        pvr2_ta_fifo_poly_write(&buf, transfer_dst, sizeof(buf));
-        transfer_dst += sizeof(buf);
-        transfer_src += sizeof(buf);
+    fprintf(stderr, "SH4 - initiating %u-byte DMA transfer from 0x%08x to "
+            "0x%08x\n", n_bytes, transfer_src, transfer_dst);
+
+    if ((transfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&
+        (transfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
+        while (n_words--) {
+            uint32_t buf;
+            if (sh4_do_read_mem(sh4, &buf, transfer_src, sizeof(buf))
+                != MEM_ACCESS_SUCCESS) {
+                RAISE_ERROR(get_error_pending());
+            }
+
+            pvr2_ta_fifo_poly_write(&buf, transfer_dst, sizeof(buf));
+            transfer_dst += sizeof(buf);
+            transfer_src += sizeof(buf);
+        }
+    } else if ((transfer_dst >= ADDR_AREA4_TEX64_FIRST) &&
+               (transfer_dst <= ADDR_AREA4_TEX64_LAST)) {
+        // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
+        transfer_dst = transfer_dst - ADDR_AREA4_TEX64_FIRST + ADDR_TEX64_FIRST;
+
+        while (n_words--) {
+            uint32_t buf;
+            if (sh4_do_read_mem(sh4, &buf, transfer_src, sizeof(buf))
+                != MEM_ACCESS_SUCCESS) {
+                RAISE_ERROR(get_error_pending());
+            }
+
+            if (pvr2_tex_mem_area64_write(&buf, transfer_dst, sizeof(buf)) !=
+                MEM_ACCESS_SUCCESS) {
+                RAISE_ERROR(get_error_pending());
+            }
+            transfer_dst += sizeof(buf);
+            transfer_src += sizeof(buf);
+        }
+    } else if ((transfer_dst >= ADDR_AREA4_TEX32_FIRST) &&
+               (transfer_dst <= ADDR_AREA4_TEX32_LAST)) {
+        // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
+        transfer_dst = transfer_dst - ADDR_AREA4_TEX32_FIRST + ADDR_TEX32_FIRST;
+
+        while (n_words--) {
+            uint32_t buf;
+            if (sh4_do_read_mem(sh4, &buf, transfer_src, sizeof(buf))
+                != MEM_ACCESS_SUCCESS) {
+                RAISE_ERROR(get_error_pending());
+            }
+
+            if (pvr2_tex_mem_area32_write(&buf, transfer_dst, sizeof(buf)) !=
+                MEM_ACCESS_SUCCESS) {
+                RAISE_ERROR(get_error_pending());
+            }
+            transfer_dst += sizeof(buf);
+            transfer_src += sizeof(buf);
+        }
+    } else {
+        error_set_address(transfer_dst);
+        error_set_length(n_bytes);
+        error_set_feature("channel-2 DMA transfers to an unknown destination");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     // raise the interrupt

@@ -117,6 +117,16 @@ extern "C" {
 #define ADDR_TEX32_FIRST       0x05000000
 #define ADDR_TEX32_LAST        0x057fffff
 
+/*
+ * mirror images of the texture memory areas in ADDR_TEX32_FIRST/ADDR_TEX32_LAST
+ * and ADDR_TEX64_FIRST/ADDR_TEX64_LAST.  These get used for channel-2 dma to
+ * texture memory.
+ */
+#define ADDR_AREA4_TEX64_FIRST 0x11000000
+#define ADDR_AREA4_TEX64_LAST  0x117fffff
+#define ADDR_AREA4_TEX32_FIRST 0x11800000
+#define ADDR_AREA4_TEX32_LAST  0x11ffffff
+
 // area 4 is used by the tile accelerator
 #define ADDR_AREA4_FIRST 0x10000000
 #define ADDR_AREA4_LAST  0x13ffffff
