@@ -36,12 +36,13 @@
 #include "hw/sh4/sh4.h"
 #include "hw/sh4/sh4_dmac.h"
 #include "cdrom.h"
+#include "dreamcast.h"
 
 #include "gdrom_reg.h"
 
 #define GDROM_TRACE(msg, ...)                   \
     do {                                        \
-        printf("GD-ROM: ");                     \
+        printf("GD-ROM (PC=%08x): ", (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]); \
         printf(msg, ##__VA_ARGS__);             \
     } while (0)
 
@@ -675,7 +676,6 @@ gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     GDROM_TRACE("read 0x%02x from alternate status register\n",
                 (unsigned)stat_reg);
-
     memcpy(buf, &stat_reg, len > 4 ? 4 : len);
 
     return MEM_ACCESS_SUCCESS;
@@ -752,7 +752,7 @@ gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                             void *buf, addr32_t addr, unsigned len) {
     uint8_t *ptr = buf;
 
-    /* printf("WARNING: reading %u values from GD-ROM data register:\n", len); */
+    GDROM_TRACE("reading %u values from GD-ROM data register:\n", len);
 
     while (len--) {
         unsigned dat;
@@ -812,6 +812,8 @@ gdrom_features_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
 static void gdrom_cmd_set_features(void) {
     bool set;
+
+    GDROM_TRACE("SET_FEATURES command received\n");
 
     if ((feat_reg & 0x7f) == 3) {
         set = (bool)(feat_reg >> 7);
@@ -1345,6 +1347,8 @@ gdrom_sect_cnt_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(&sect_cnt_reg, buf, n_bytes);
 
+    GDROM_TRACE("Read %08x from sec_cnt_reg\n", (unsigned)sect_cnt_reg);
+
     return MEM_ACCESS_SUCCESS;
 }
 
@@ -1354,6 +1358,8 @@ gdrom_dev_ctrl_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     size_t n_bytes = len < sizeof(dev_ctrl_reg) ? len : sizeof(dev_ctrl_reg);
 
     memcpy(&dev_ctrl_reg, buf, n_bytes);
+
+    GDROM_TRACE("Write %08x to dev_ctrl_reg\n", (unsigned)dev_ctrl_reg);
 
     return MEM_ACCESS_SUCCESS;
 }
