@@ -147,6 +147,13 @@ static void* gfx_main(void *arg) {
         win_check_events();
     } while (dc_is_running());
 
+    if (!atomic_flag_test_and_set(&not_pending_redraw))
+        printf("%s - there was a pending redraw\n", __func__);
+    if (!atomic_flag_test_and_set(&not_reading_framebuffer))
+        printf("%s - there was a pending framebuffer read\n", __func__);
+    if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
+        printf("%s - there was a pending geo_buf render\n", __func__);
+
     render_cleanup();
 
     opengl_video_output_cleanup();
