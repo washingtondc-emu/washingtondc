@@ -68,6 +68,7 @@
 #define GDROM_PKT_TEST_UNIT  0x00
 #define GDROM_PKT_REQ_STAT   0x10
 #define GDROM_PKT_REQ_MODE   0x11
+#define GDROM_PKT_REQ_ERROR  0x13
 #define GDROM_PKT_READ_TOC   0x14
 #define GDROM_PKT_READ       0x30
 #define GDROM_PKT_START_DISK 0x70
@@ -240,6 +241,11 @@ enum sense_key {
     SENSE_KEY_CMD_ABORT = 11
 };
 
+enum additional_sense {
+    ADDITIONAL_SENSE_NO_ERROR = 0,
+    ADDITIONAL_SENSE_NO_DISC = 0x3a
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // GD-ROM drive state
@@ -293,6 +299,8 @@ struct error_reg {
     uint32_t mcr : 1;
     uint32_t sense_key : 4;
 } error_reg;
+
+enum additional_sense additional_sense;
 
 static_assert(sizeof(error_reg) == sizeof(uint32_t), "bad error_reg size");
 
@@ -517,6 +525,8 @@ static void gdrom_input_packet(void);
 
 static void gdrom_input_req_mode_packet(void);
 
+static void gdrom_input_req_error_packet(void);
+
 static void gdrom_input_test_unit_packet(void);
 
 static void gdrom_input_start_disk_packet(void);
@@ -726,7 +736,6 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
         // TODO: implement packets instead of pretending to receive them
         gdrom_cmd_begin_packet();
         return MEM_ACCESS_SUCCESS;
-        break;
     case GDROM_CMD_SET_FEAT:
         gdrom_cmd_set_features();
         break;
@@ -907,6 +916,11 @@ static void gdrom_cmd_identify(void) {
 static void gdrom_cmd_begin_packet(void) {
     GDROM_TRACE("PACKET command received\n");
 
+    // clear errors
+    // TODO: I'm not sure if this should be done for all commands, or just packet commands
+    stat_reg &= ~STAT_CHECK_MASK;
+    /* memset(&error_reg, 0, sizeof(error_reg)); */
+
     int_reason_reg &= ~INT_REASON_IO_MASK;
     int_reason_reg |= INT_REASON_COD_MASK;
     stat_reg |= STAT_DRQ_MASK;
@@ -936,6 +950,9 @@ static void gdrom_input_packet(void) {
         break;
     case GDROM_PKT_REQ_MODE:
         gdrom_input_req_mode_packet();
+        break;
+    case GDROM_PKT_REQ_ERROR:
+        gdrom_input_req_error_packet();
         break;
     case GDROM_PKT_START_DISK:
         gdrom_input_start_disk_packet();
@@ -970,8 +987,56 @@ static void gdrom_input_test_unit_packet(void) {
 
     state = GDROM_STATE_NORM;
 
-    stat_reg &= ~STAT_CHECK_MASK;
     memset(&error_reg, 0, sizeof(error_reg));
+    if (mount_check()) {
+        stat_reg &= ~STAT_CHECK_MASK;
+    } else {
+        stat_reg |= STAT_CHECK_MASK;
+        error_reg.sense_key = SENSE_KEY_NOT_READY;
+        additional_sense = ADDITIONAL_SENSE_NO_DISC;
+    }
+}
+
+static void gdrom_input_req_error_packet(void) {
+    GDROM_TRACE("REQ_ERROR packet received\n");
+
+    uint8_t len = pkt_buf[4];
+
+    uint8_t dat_out[10] = {
+        0xf0,
+        0,
+        error_reg.sense_key & 0xf,
+        0,
+        0,
+        0,
+        0,
+        0,
+        (uint8_t)(additional_sense),
+        0
+    };
+
+    if (len > 10)
+        len = 10;
+
+    bufq_clear();
+
+    if (len != 0) {
+        struct gdrom_bufq_node *node =
+            (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+        node->idx = 0;
+        node->len = len;
+        memcpy(&node->dat, dat_out, len);
+        fifo_push(&bufq, &node->fifo_node);
+        data_byte_count = node->len;
+    }
+
+    int_reason_reg |= INT_REASON_IO_MASK;
+    int_reason_reg &= ~INT_REASON_COD_MASK;
+    stat_reg |= STAT_DRQ_MASK;
+    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+
+    state = GDROM_STATE_NORM;
 }
 
 /*
