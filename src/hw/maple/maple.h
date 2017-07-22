@@ -34,6 +34,9 @@ enum maple_cmd {
     MAPLE_CMD_DEVINFO = 1
 };
 
+#define MAPLE_FRAME_OUTPUT_DATA_LEN 1024
+#define MAPLE_FRAME_INPUT_DATA_LEN 1024
+
 struct maple_frame {
     /* enum maple_cmd cmd; */
     unsigned port;
@@ -46,14 +49,17 @@ struct maple_frame {
     unsigned maple_addr;
     unsigned pack_len;
 
-    unsigned len;
-    void *data;
+    unsigned input_len; // length of input in bytes (not words)
+    uint8_t input_data[MAPLE_FRAME_INPUT_DATA_LEN];
+
+    unsigned output_len; // length of input in bytes (not words)
+    uint8_t output_data[MAPLE_FRAME_OUTPUT_DATA_LEN];
 };
 
 void maple_handle_frame(struct maple_frame *frame);
 
 uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr);
-uint32_t maple_write_frame(struct maple_frame const *frame, uint32_t addr);
+void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code);
 
 #define MAPLE_TRACE(msg, ...) maple_do_trace(msg, ##__VA_ARGS__)
 

@@ -53,10 +53,12 @@
 #define MAPLE_PACK_LEN_MASK (0xff << MAPLE_PACK_LEN_SHIFT)
 
 static void maple_handle_devinfo(struct maple_frame *frame);
+static void maple_decode_frame(struct maple_frame *frame_out,
+                               uint32_t const dat[3]);
 
 void maple_handle_frame(struct maple_frame *frame) {
     MAPLE_TRACE("frame received!\n");
-    MAPLE_TRACE("\tlength: %u\n", frame->len);
+    MAPLE_TRACE("\tlength: %u\n", frame->input_len);
     MAPLE_TRACE("\tport: %u\n", frame->port);
     MAPLE_TRACE("\tpattern: %u\n", frame->ptrn);
     MAPLE_TRACE("\treceive address: 0x%08x\n", (unsigned)frame->recv_addr);
@@ -82,69 +84,37 @@ void maple_handle_frame(struct maple_frame *frame) {
 static void maple_handle_devinfo(struct maple_frame *frame) {
     MAPLE_TRACE("DEVINFO maplebus frame received\n");
 
-    struct maple_frame resp;
-    memset(&resp, 0, sizeof(resp));
-
-    resp.port = frame->port;
-    resp.ptrn = frame->ptrn;
-    resp.recv_addr = frame->recv_addr;
-    resp.last_frame = frame->last_frame;
-    resp.maple_addr = frame->maple_addr;
-
     // for now, hardcode all controller ports as being unplugged
-    resp.cmd = MAPLE_RESP_NONE;
+    frame->output_len = 0;
+    maple_write_frame_resp(frame, MAPLE_RESP_NONE);
 
-    maple_write_frame(&resp, frame->recv_addr);
     holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
 }
 
-uint32_t maple_write_frame(struct maple_frame const *frame, uint32_t addr) {
-    uint32_t cmd = (((unsigned)frame->cmd) << MAPLE_CMD_SHIFT) & MAPLE_CMD_MASK;
-    uint32_t maple_addr = (frame->maple_addr << MAPLE_ADDR_SHIFT) &
-        MAPLE_ADDR_MASK;
-    uint32_t pack_len = (frame->pack_len << MAPLE_PACK_LEN_SHIFT) &
-        MAPLE_PACK_LEN_MASK;
-    uint32_t cmd_addr_pack_len = cmd | maple_addr | pack_len;
+void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code) {
+    unsigned len = frame->output_len / 4;
+    uint32_t pkt_hdr = ((resp_code << MAPLE_CMD_SHIFT) & MAPLE_CMD_MASK) |
+        ((frame->maple_addr << MAPLE_ADDR_SHIFT) & MAPLE_ADDR_MASK) |
+        ((len << MAPLE_PACK_LEN_SHIFT) & MAPLE_PACK_LEN_MASK);
 
-    MAPLE_TRACE("\t%08x\n", (unsigned)cmd_addr_pack_len);
-    sh4_dmac_transfer_to_mem(addr, sizeof(cmd_addr_pack_len), 1,
-                             &cmd_addr_pack_len);
-    addr += 4;
-
-    MAPLE_TRACE("\tlength is %u bytes\n", frame->len);
-
-    /* if (frame->len / 4) { */
-    /*     sh4_dmac_transfer_to_mem(addr, 4, frame->len / 4, frame->data); */
-    /*     addr += frame->len; */
-    /* } */
-
-    return addr;
+    sh4_dmac_transfer_to_mem(frame->recv_addr, sizeof(pkt_hdr), 1, &pkt_hdr);
 }
 
-uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr) {
-    uint32_t msg_length_port;
+static void maple_decode_frame(struct maple_frame *frame_out,
+                               uint32_t const dat[3]) {
+    uint32_t msg_length_port = dat[0];
+    uint32_t recv_addr = dat[1];
+    uint32_t cmd_addr_pack_len = dat[2];
 
-    sh4_dmac_transfer_from_mem(addr, sizeof(msg_length_port),
-                               1, &msg_length_port);
-    addr += 4;
+    for (unsigned idx = 0; idx < 3; idx++)
+        MAPLE_TRACE("%08x\n", dat[idx]);
 
-    frame_out->len = (msg_length_port & MAPLE_LENGTH_MASK) >>
+    frame_out->input_len = (msg_length_port & MAPLE_LENGTH_MASK) >>
         MAPLE_LENGTH_SHIFT;
-    frame_out->len *= 4;
+    frame_out->input_len *= 4;
     frame_out->port = (msg_length_port & MAPLE_PORT_MASK) >> MAPLE_PORT_SHIFT;
     frame_out->ptrn = (msg_length_port & MAPLE_PTRN_MASK) >> MAPLE_PTRN_SHIFT;
     frame_out->last_frame = (bool)(msg_length_port & MAPLE_LAST_MASK);
-
-    uint32_t recv_addr;
-    sh4_dmac_transfer_from_mem(addr, sizeof(recv_addr),
-                               1, &recv_addr);
-    addr += 4;
-    frame_out->recv_addr = recv_addr;
-
-    uint32_t cmd_addr_pack_len;
-    sh4_dmac_transfer_from_mem(addr, sizeof(cmd_addr_pack_len),
-                               1, &cmd_addr_pack_len);
-    addr += 4;
 
     frame_out->cmd = (enum maple_cmd)((cmd_addr_pack_len & MAPLE_CMD_MASK) >>
                                       MAPLE_CMD_SHIFT);
@@ -153,15 +123,29 @@ uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr) {
     frame_out->pack_len = (cmd_addr_pack_len & MAPLE_PACK_LEN_MASK) >>
         MAPLE_PACK_LEN_SHIFT;
 
-    if (frame_out->len) {
-        frame_out->data = malloc(frame_out->len);
-        sh4_dmac_transfer_from_mem(addr, 4, frame_out->len / 4,
-                                   frame_out->data);
-    } else {
-        frame_out->data = NULL;
+    frame_out->recv_addr = recv_addr;
+
+    if (frame_out->input_len != (4 * frame_out->pack_len)) {
+        // IDK if these two values are supposed to always be the same or not
+        error_set_feature("maple frames with differing lengths");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr) {
+    uint32_t frame_hdr[3];
+
+    sh4_dmac_transfer_from_mem(addr, sizeof(frame_hdr[0]), 3, frame_hdr);
+    maple_decode_frame(frame_out, frame_hdr);
+
+    addr += 12;
+
+    if (frame_out->input_len) {
+        sh4_dmac_transfer_from_mem(addr, 4, frame_out->input_len / 4,
+                                   frame_out->input_data);
     }
 
-    addr += frame_out->len;
+    addr += frame_out->input_len;
 
     return addr;
 }

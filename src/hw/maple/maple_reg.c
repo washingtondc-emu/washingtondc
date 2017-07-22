@@ -359,14 +359,14 @@ mdst_reg_write_handler(struct maple_mapped_reg const *reg_info,
                     (unsigned)maple_dma_cmd_start);
         addr32_t addr = maple_dma_cmd_start;
         unsigned packet_no = 0;
-        struct maple_frame frame;
+
+        // it's static because I don't want it allocated on the stack
+        static struct maple_frame frame;
+
         do {
             addr = maple_read_frame(&frame, addr);
 
             maple_handle_frame(&frame);
-
-            if (frame.len)
-                free(frame.data);
         } while(!frame.last_frame);
     }
 
