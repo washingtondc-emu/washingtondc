@@ -28,6 +28,8 @@
 #include "sh4.h"
 #include "sh4_dmac.h"
 #include "hw/sys/holly_intc.h"
+#include "maple_device.h"
+#include "error.h"
 
 #include "maple.h"
 
@@ -53,8 +55,12 @@
 #define MAPLE_PACK_LEN_MASK (0xff << MAPLE_PACK_LEN_SHIFT)
 
 static void maple_handle_devinfo(struct maple_frame *frame);
+static void maple_handle_getcond(struct maple_frame *frame);
+
 static void maple_decode_frame(struct maple_frame *frame_out,
                                uint32_t const dat[3]);
+
+static DEF_ERROR_INT_ATTR(maple_command);
 
 void maple_handle_frame(struct maple_frame *frame) {
     MAPLE_TRACE("frame received!\n");
@@ -75,18 +81,53 @@ void maple_handle_frame(struct maple_frame *frame) {
     case MAPLE_CMD_DEVINFO:
         maple_handle_devinfo(frame);
         break;
+    case MAPLE_CMD_GETCOND:
+        maple_handle_getcond(frame);
+        break;
     default:
-        MAPLE_TRACE("ERROR: no handler for maplebus command-frame %02x\n",
-                    (unsigned)frame->cmd);
+        error_set_feature("ERROR: no handler for maplebus command frame");
+        error_set_maple_command(frame->cmd);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 }
 
 static void maple_handle_devinfo(struct maple_frame *frame) {
     MAPLE_TRACE("DEVINFO maplebus frame received\n");
 
-    // for now, hardcode all controller ports as being unplugged
-    frame->output_len = 0;
-    maple_write_frame_resp(frame, MAPLE_RESP_NONE);
+    struct maple_device *dev = maple_device_get(frame->maple_addr);
+
+    if (dev->enable) {
+        struct maple_devinfo devinfo;
+        maple_device_info(dev, &devinfo);
+        maple_compile_devinfo(&devinfo, frame->output_data);
+        frame->output_len = MAPLE_DEVINFO_SIZE;
+        maple_write_frame_resp(frame, MAPLE_RESP_DEVINFO);
+    } else {
+        // this port/unit combo is not plugged in
+        frame->output_len = 0;
+        maple_write_frame_resp(frame, MAPLE_RESP_NONE);
+    }
+
+    holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
+}
+
+static void maple_handle_getcond(struct maple_frame *frame) {
+    MAPLE_TRACE("GETCOND maplebus frame received\n");
+
+    struct maple_device *dev = maple_device_get(frame->maple_addr);
+
+    if (dev->enable) {
+        struct maple_cond cond;
+
+        maple_device_cond(dev, &cond);
+        maple_compile_cond(&cond, frame->output_data);
+        frame->output_len = MAPLE_COND_SIZE;
+        maple_write_frame_resp(frame, MAPLE_RESP_DATATRF);
+    } else {
+        error_set_feature("proper response for when the guest tries to send "
+                          "the GETCOND command to an empty maple port");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 
     holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
 }
@@ -98,6 +139,10 @@ void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code) {
         ((len << MAPLE_PACK_LEN_SHIFT) & MAPLE_PACK_LEN_MASK);
 
     sh4_dmac_transfer_to_mem(frame->recv_addr, sizeof(pkt_hdr), 1, &pkt_hdr);
+    if (len) {
+        sh4_dmac_transfer_to_mem(frame->recv_addr + 4, 1,
+                                 frame->output_len, frame->output_data);
+    }
 }
 
 static void maple_decode_frame(struct maple_frame *frame_out,
@@ -159,4 +204,46 @@ void maple_do_trace(char const *msg, ...) {
     vprintf(msg, var_args);
 
     va_end(var_args);
+}
+
+void maple_addr_unpack(unsigned addr, unsigned *port_out, unsigned *unit_out) {
+    unsigned unit, port;
+
+    if ((addr & 0x3f) == 0x20)
+        unit = 0;
+    else if ((addr & 0x1f) == 1)
+        unit = 1;
+    else if ((addr & 0x1f) == 2)
+        unit = 2;
+    else if ((addr & 0x1f) == 4)
+        unit = 3;
+    else if ((addr & 0x1f) == 8)
+        unit = 4;
+    else if ((addr & 0x1f) == 16)
+        unit = 5;
+    else
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    port = (addr >> 6) & 0x3;
+
+    *port_out = port;
+    *unit_out = unit;
+}
+
+unsigned maple_addr_pack(unsigned port, unsigned unit) {
+#ifdef INVARIANTS
+    if (port >= MAPLE_PORT_COUNT || unit >= MAPLE_UNIT_COUNT)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+    unsigned addr;
+
+    if (unit > 0)
+        addr =  (1 << (unit - 1)) & 0x1f;
+    else
+        addr = 0x20;
+
+    addr |= port << 6;
+
+    return addr;
 }

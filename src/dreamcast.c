@@ -35,6 +35,8 @@
 #include "MemoryMap.h"
 #include "gfx_thread.h"
 #include "hw/aica/aica_rtc.h"
+#include "hw/maple/maple.h"
+#include "hw/maple/maple_device.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
@@ -251,6 +253,15 @@ void dreamcast_run() {
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
+    /*
+     * hardcode a controller plugged into the first port with no additional
+     * maple devices attached.
+     * TODO: don't hardcode this
+     */
+    struct maple_device *cont = maple_device_get(maple_addr_pack(0, 0));
+    cont->sw = &maple_controller_switch_table;
+    maple_device_init(cont);
+
     while (is_running) {
         /*
          * The below logic will run the dc_event_base if the debugger is
@@ -348,6 +359,9 @@ void dreamcast_run() {
         printf("program execution ended for unknown reasons\n");
         break;
     }
+
+    // TODO: don't hardcode this
+    maple_device_cleanup(cont);
 
     dc_print_perf_stats();
 

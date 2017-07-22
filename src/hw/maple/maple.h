@@ -29,9 +29,12 @@
 enum maple_cmd {
     // maplebus response codes
     MAPLE_RESP_NONE = -1,
+    MAPLE_RESP_DEVINFO = 5,
+    MAPLE_RESP_DATATRF = 8,
 
     // maplebus command codes
-    MAPLE_CMD_DEVINFO = 1
+    MAPLE_CMD_DEVINFO = 1,
+    MAPLE_CMD_GETCOND = 9
 };
 
 #define MAPLE_FRAME_OUTPUT_DATA_LEN 1024
@@ -65,5 +68,11 @@ void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code);
 
 // don't call this directly, use the MAPLE_TRACE macro instead
 void maple_do_trace(char const *msg, ...);
+
+#define MAPLE_PORT_COUNT 4
+#define MAPLE_UNIT_COUNT 6
+
+unsigned maple_addr_pack(unsigned port, unsigned unit);
+void maple_addr_unpack(unsigned addr, unsigned *port_out, unsigned *unit_out);
 
 #endif
