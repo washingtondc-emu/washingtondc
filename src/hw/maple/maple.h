@@ -55,4 +55,9 @@ void maple_handle_frame(struct maple_frame *frame);
 uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr);
 uint32_t maple_write_frame(struct maple_frame const *frame, uint32_t addr);
 
+#define MAPLE_TRACE(msg, ...) maple_do_trace(msg, ##__VA_ARGS__)
+
+// don't call this directly, use the MAPLE_TRACE macro instead
+void maple_do_trace(char const *msg, ...);
+
 #endif

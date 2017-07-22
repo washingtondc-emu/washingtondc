@@ -199,28 +199,26 @@ warn_maple_reg_read_handler(struct maple_mapped_reg const *reg_info,
     int ret_code = default_maple_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        fprintf(stderr, "WARNING: read from maple register %s\n",
-                reg_info->reg_name);
+        MAPLE_TRACE("read from register \"%s\"\n", reg_info->reg_name);
     } else {
         switch (reg_info->len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            fprintf(stderr, "WARNING: read 0x%02x from maple register %s\n",
-                    (unsigned)val8, reg_info->reg_name);
+            MAPLE_TRACE("read 0x%02x from register \"%s\"\n",
+                        (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            fprintf(stderr, "WARNING: read 0x%04x from maple register %s\n",
-                    (unsigned)val16, reg_info->reg_name);
+            MAPLE_TRACE("read 0x%04x from register \"%s\"\n",
+                        (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            fprintf(stderr, "WARNING: read 0x%08x from maple register %s\n",
-                    (unsigned)val32, reg_info->reg_name);
+            MAPLE_TRACE("read 0x%08x from register \"%s\"\n",
+                        (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            fprintf(stderr, "WARNING: read from maple register %s\n",
-                    reg_info->reg_name);
+            MAPLE_TRACE("read from register \"%s\"\n", reg_info->reg_name);
         }
     }
 
@@ -237,22 +235,22 @@ warn_maple_reg_write_handler(struct maple_mapped_reg const *reg_info,
     switch (reg_info->len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        fprintf(stderr, "WARNING: writing 0x%02x to maple register %s\n",
-                (unsigned)val8, reg_info->reg_name);
+        MAPLE_TRACE("writing 0x%02x to register \"%s\"\n",
+                    (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        fprintf(stderr, "WARNING: writing 0x%04x to maple register %s\n",
-                (unsigned)val16, reg_info->reg_name);
+        MAPLE_TRACE("writing 0x%04x to register \"%s\"\n",
+                    (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        fprintf(stderr, "WARNING: writing 0x%08x to maple register %s\n",
-                (unsigned)val32, reg_info->reg_name);
+        MAPLE_TRACE("writing 0x%08x to register \"%s\"\n",
+                    (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        fprintf(stderr, "WARNING: writing to maple register %s\n",
-                reg_info->reg_name);
+        MAPLE_TRACE("writing to register \"%s\"\n",
+                    reg_info->reg_name);
     }
 
     return default_maple_reg_write_handler(reg_info, buf, addr, len);
@@ -276,7 +274,7 @@ mden_reg_read_handler(struct maple_mapped_reg const *reg_info,
 
     memcpy(buf, &val_out, len);
 
-    fprintf(stderr, "WARNING: reading 0 from maple\'s SB_MDEN register\n");
+    MAPLE_TRACE("reading 0 from register \"SB_MDEN\"\n");
 
     return 0;
 }
@@ -288,9 +286,9 @@ mden_reg_write_handler(struct maple_mapped_reg const *reg_info,
     memcpy(&val, buf, sizeof(val));
 
     if (val)
-        fprintf(stderr, "WARNING: enabling maplebus DMA\n");
+        MAPLE_TRACE("WARNING: enabling DMA\n");
     else
-        fprintf(stderr, "WARNING: aborting maplebus DMA\n");
+        MAPLE_TRACE("WARNING: aborting DMA\n");
 
     return 0;
 }
@@ -299,8 +297,8 @@ static int
 mdstar_reg_read_handler(struct maple_mapped_reg const *reg_info,
                         void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &maple_dma_cmd_start, len);
-    fprintf(stderr, "reading %08x from MDSTAR\n",
-            (unsigned)maple_dma_cmd_start);
+    MAPLE_TRACE("reading %08x from MDSTAR\n",
+                (unsigned)maple_dma_cmd_start);
     return 0;
 }
 
@@ -308,8 +306,8 @@ static int
 mdstar_reg_write_handler(struct maple_mapped_reg const *reg_info,
                          void const *buf, addr32_t addr, unsigned len) {
     memcpy(&maple_dma_cmd_start, buf, sizeof(maple_dma_cmd_start));
-    fprintf(stderr, "writing %08x to MDSTAR\n",
-            (unsigned)maple_dma_cmd_start);
+    MAPLE_TRACE("writing %08x to MDSTAR\n",
+                (unsigned)maple_dma_cmd_start);
     return 0;
 }
 
@@ -319,7 +317,7 @@ mdtsel_reg_read_handler(struct maple_mapped_reg const *reg_info,
     uint32_t val = 0;
     memcpy(buf, &val, len);
 
-    fprintf(stderr, "reading 0 from MDTSEL\n");
+    MAPLE_TRACE("reading 0 from MDTSEL\n");
 
     return 0;
 }
@@ -344,7 +342,7 @@ mdst_reg_read_handler(struct maple_mapped_reg const *reg_info,
     uint32_t val = 0;
     memcpy(buf, &val, len);
 
-    fprintf(stderr, "WARNING: reading 0 from MDST\n");
+    MAPLE_TRACE("reading 0 from MDST\n");
 
     return 0;
 }
@@ -356,9 +354,9 @@ mdst_reg_write_handler(struct maple_mapped_reg const *reg_info,
     memcpy(&val, buf, sizeof(val));
 
     if (val) {
-        fprintf(stderr, "WARNING: starting maple DMA operation\n");
-        fprintf(stderr, "\tstarting address is %08x\n",
-                (unsigned)maple_dma_cmd_start);
+        MAPLE_TRACE("starting maple DMA operation\n");
+        MAPLE_TRACE("\tstarting address is %08x\n",
+                    (unsigned)maple_dma_cmd_start);
         addr32_t addr = maple_dma_cmd_start;
         unsigned packet_no = 0;
         struct maple_frame frame;

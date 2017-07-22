@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,32 +55,32 @@
 static void maple_handle_devinfo(struct maple_frame *frame);
 
 void maple_handle_frame(struct maple_frame *frame) {
-    fprintf(stderr, "Maple frame received!\n");
-    fprintf(stderr, "\tlength: %u\n", frame->len);
-    fprintf(stderr, "\tport: %u\n", frame->port);
-    fprintf(stderr, "\tpattern: %u\n", frame->ptrn);
-    fprintf(stderr, "\treceive address: %08x\n", (unsigned)frame->recv_addr);
-    fprintf(stderr, "\tcommand: %02x\n", (unsigned)frame->cmd);
-    fprintf(stderr, "\tmaple address: %02x\n", frame->maple_addr);
-    fprintf(stderr, "\tpacket length: %u\n", frame->pack_len);
+    MAPLE_TRACE("frame received!\n");
+    MAPLE_TRACE("\tlength: %u\n", frame->len);
+    MAPLE_TRACE("\tport: %u\n", frame->port);
+    MAPLE_TRACE("\tpattern: %u\n", frame->ptrn);
+    MAPLE_TRACE("\treceive address: 0x%08x\n", (unsigned)frame->recv_addr);
+    MAPLE_TRACE("\tcommand: %02x\n", (unsigned)frame->cmd);
+    MAPLE_TRACE("\tmaple address: %02x\n", frame->maple_addr);
+    MAPLE_TRACE("\tpacket length: %u\n", frame->pack_len);
 
     if (frame->last_frame)
-        fprintf(stderr, "\tthis was the last frame\n");
+        MAPLE_TRACE("\tthis was the last frame\n");
     else
-        fprintf(stderr, "\tthis was not the last frame\n");
+        MAPLE_TRACE("\tthis was not the last frame\n");
 
     switch (frame->cmd) {
     case MAPLE_CMD_DEVINFO:
         maple_handle_devinfo(frame);
         break;
     default:
-        fprintf(stderr, "ERROR: no handler for maplebus command-frame %02x\n",
-                (unsigned)frame->cmd);
+        MAPLE_TRACE("ERROR: no handler for maplebus command-frame %02x\n",
+                    (unsigned)frame->cmd);
     }
 }
 
 static void maple_handle_devinfo(struct maple_frame *frame) {
-    fprintf(stderr, "DEVINFO maplebus frame received\n");
+    MAPLE_TRACE("DEVINFO maplebus frame received\n");
 
     struct maple_frame resp;
     memset(&resp, 0, sizeof(resp));
@@ -105,12 +106,12 @@ uint32_t maple_write_frame(struct maple_frame const *frame, uint32_t addr) {
         MAPLE_PACK_LEN_MASK;
     uint32_t cmd_addr_pack_len = cmd | maple_addr | pack_len;
 
-    fprintf(stderr, "\t%08x\n", (unsigned)cmd_addr_pack_len);
+    MAPLE_TRACE("\t%08x\n", (unsigned)cmd_addr_pack_len);
     sh4_dmac_transfer_to_mem(addr, sizeof(cmd_addr_pack_len), 1,
                              &cmd_addr_pack_len);
     addr += 4;
 
-    fprintf(stderr, "\tlength is %u bytes\n", frame->len);
+    MAPLE_TRACE("\tlength is %u bytes\n", frame->len);
 
     /* if (frame->len / 4) { */
     /*     sh4_dmac_transfer_to_mem(addr, 4, frame->len / 4, frame->data); */
@@ -163,4 +164,15 @@ uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr) {
     addr += frame_out->len;
 
     return addr;
+}
+
+void maple_do_trace(char const *msg, ...) {
+    va_list var_args;
+    va_start(var_args, msg);
+
+    printf("MAPLE: ");
+
+    vprintf(msg, var_args);
+
+    va_end(var_args);
 }
