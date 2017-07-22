@@ -161,8 +161,9 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_SERIAL_SERVER
         dreamcast_enable_serial_server();
 #else
-        fprintf(stderr, "WARNING: Unable to enable TCP serial server\n"
+        fprintf(stderr, "ERROR: Unable to enable TCP serial server\n"
                 "Please rebuild with -DENABLE_SERIAL_SERVER\n");
+        exit(1);
 #endif
     }
 
@@ -170,8 +171,9 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_DEBUGGER
         dreamcast_enable_debugger();
 #else
-        fprintf(stderr, "WARNING: Unable to enable remote gdb stub.\n"
+        fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
                 "Please rebuild with -DENABLE_DEBUGGER=On\n");
+        exit(1);
 #endif
     }
 
