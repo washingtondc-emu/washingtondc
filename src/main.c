@@ -129,6 +129,12 @@ int main(int argc, char **argv) {
             exit(1);
         }
 
+        if (!path_syscalls_bin) {
+            fprintf(stderr, "Error: cannot direct-boot without a system call "
+                    "table (-s flag).\n");
+            exit(1);
+        }
+
         path_ip_bin = argv[0];
         path_1st_read_bin = argv[1];
 
