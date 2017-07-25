@@ -56,6 +56,9 @@ static int
 warn_g2_reg_write_handler(struct g2_mem_mapped_reg const *reg_info,
                           void const *buf, addr32_t addr, unsigned len);
 
+static int sb_adst_reg_write_handler(struct g2_mem_mapped_reg const *reg_info,
+                                     void const *buf, addr32_t addr, unsigned len);
+
 static struct g2_mem_mapped_reg {
     char const *reg_name;
 
@@ -79,7 +82,7 @@ static struct g2_mem_mapped_reg {
     { "SB_ADEN", 0x5f7814, 4,
       warn_g2_reg_read_handler, warn_g2_reg_write_handler },
     { "SB_ADST", 0x5f7818, 4,
-      warn_g2_reg_read_handler, warn_g2_reg_write_handler },
+      warn_g2_reg_read_handler, sb_adst_reg_write_handler },
     { "SB_ADSUSP", 0x5f781c, 4,
       warn_g2_reg_read_handler, warn_g2_reg_write_handler },
     { "SB_E1STAG", 0x5f7820, 4,
@@ -301,4 +304,21 @@ warn_g2_reg_write_handler(struct g2_mem_mapped_reg const *reg_info,
     }
 
     return default_g2_reg_write_handler(reg_info, buf, addr, len);
+}
+
+static int sb_adst_reg_write_handler(struct g2_mem_mapped_reg const *reg_info,
+                                     void const *buf, addr32_t addr, unsigned len) {
+    uint32_t val = 0;
+
+    if (len != sizeof(val)) {
+        error_set_feature("weird ADST len");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    memcpy(&val, buf, sizeof(val));
+
+    if (val) {
+        error_set_feature("AICA DMA");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
