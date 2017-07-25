@@ -23,7 +23,9 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "dreamcast.h"
 #include "MemoryMap.h"
+#include "dc_sched.h"
 
 #include "aica_rtc.h"
 
@@ -41,20 +43,33 @@
  * Unix's infamous 2038 problem in 2018.  It's a good thing the RTC battery
  * isn't reliable enough to last that long.
  */
-static const uint32_t RTC_DEFAULT = 631152000 + 365 * 24 * 60 * 60 * 30;
+#define RTC_DEFAULT (631152000 + 365 * 24 * 60 * 60 * 30)
+
+static uint32_t cur_rtc_val = RTC_DEFAULT;
+
+static struct SchedEvent aica_rtc_event;
+static void aica_rtc_event_handler(SchedEvent *ev);
+static void sched_aica_rtc_event(void);
 
 static uint8_t aica_rtc[ADDR_AICA_RTC_LAST - ADDR_AICA_RTC_FIRST + 1];
+
+void aica_rtc_init(void) {
+    sched_aica_rtc_event();
+}
 
 int aica_rtc_read(void *buf, size_t addr, size_t len) {
     addr32_t first_byte = addr;
     addr32_t last_byte = addr + (len - 1);
 
+    printf("Reading %u bytes from AICA RTC address 0x%08x\n",
+           (unsigned)len, (unsigned)addr);
+
     // HACK
     uint32_t tmp;
     if (addr == 0x710000)
-        tmp = RTC_DEFAULT >> 16;
+        tmp = cur_rtc_val >> 16;
     else if (addr == 0x710004)
-        tmp = RTC_DEFAULT & 0xffff;
+        tmp = cur_rtc_val & 0xffff;
     else
         tmp = 0;
 
@@ -63,9 +78,6 @@ int aica_rtc_read(void *buf, size_t addr, size_t len) {
         memcpy(buf, &tmp, len);
         return MEM_ACCESS_SUCCESS;
     }
-
-    printf("Reading %u bytes from AICA RTC address 0x%08x\n",
-           (unsigned)len, (unsigned)addr);
 
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
@@ -76,6 +88,9 @@ int aica_rtc_read(void *buf, size_t addr, size_t len) {
 }
 
 int aica_rtc_write(void const *buf, size_t addr, size_t len) {
+    printf("Writing %u bytes to AICA RTC address 0x%08x\n",
+           (unsigned)len, (unsigned)addr);
+
     addr32_t first_byte = addr;
     addr32_t last_byte = addr + (len - 1);
     if (first_byte >= ADDR_AICA_RTC_FIRST && first_byte <= ADDR_AICA_RTC_LAST &&
@@ -84,13 +99,24 @@ int aica_rtc_write(void const *buf, size_t addr, size_t len) {
         return MEM_ACCESS_SUCCESS;
     }
 
-    printf("Writing %u bytes to AICA RTC address 0x%08x\n",
-           (unsigned)len, (unsigned)addr);
-
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
     error_set_address(addr);
     error_set_length(len);
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
+}
+
+static void aica_rtc_event_handler(SchedEvent *ev) {
+    cur_rtc_val++;
+
+    printf("***BEEEEP*** the time is now %08x\n", cur_rtc_val);
+
+    sched_aica_rtc_event();
+}
+
+static void sched_aica_rtc_event(void) {
+    aica_rtc_event.when = dc_cycle_stamp() + (200 * 1000 * 1000);
+    aica_rtc_event.handler = aica_rtc_event_handler;
+    sched_event(&aica_rtc_event);
 }

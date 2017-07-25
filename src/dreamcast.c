@@ -34,6 +34,7 @@
 #include "window.h"
 #include "MemoryMap.h"
 #include "gfx_thread.h"
+#include "hw/aica/aica_rtc.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
@@ -112,6 +113,8 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
         sh4_scif_connect_server(&cpu, &serial_server);
     }
 #endif
+
+    aica_rtc_init();
 }
 
 #ifdef ENABLE_DIRECT_BOOT
@@ -203,6 +206,8 @@ void dreamcast_init_direct(char const *path_ip_bin,
      * IP.BIN runs, and that the value seen by 1ST_READ.BIN is set by IP.BIN.
      */
     cpu.reg[SH4_REG_VBR] = 0x8c00f400;
+
+    aica_rtc_init();
 }
 #endif
 
