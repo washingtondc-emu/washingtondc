@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "maple.h"
 #include "maple_device.h"
 
 #define MAPLE_CONTROLLER_STRING "Dreamcast Controller         "
@@ -31,12 +32,15 @@ static int controller_dev_init(struct maple_device *dev);
 static void controller_dev_cleanup(struct maple_device *dev);
 static void controller_dev_info(struct maple_device *dev,
                                 struct maple_devinfo *output);
+static void controller_dev_get_cond(struct maple_device *dev,
+                                    struct maple_cond *cond);
 
 struct maple_switch_table maple_controller_switch_table = {
     .device_type = "controller",
     .dev_init = controller_dev_init,
     .dev_cleanup = controller_dev_cleanup,
-    .dev_info = controller_dev_info
+    .dev_info = controller_dev_info,
+    .dev_get_cond = controller_dev_get_cond
 };
 
 static int controller_dev_init(struct maple_device *dev) {
@@ -57,4 +61,12 @@ static void controller_dev_info(struct maple_device *dev,
     strncpy(output->dev_name, MAPLE_CONTROLLER_STRING, MAPLE_DEV_NAME_LEN);
     output->dev_name[MAPLE_DEV_NAME_LEN-1] = '\0';
     output->func = MAPLE_FUNC_CONTROLLER;
+}
+
+static void controller_dev_get_cond(struct maple_device *dev,
+                                    struct maple_cond *cond) {
+    memset(cond, 0, sizeof(*cond));
+
+    cond->func = MAPLE_FUNC_CONTROLLER;
+    cond->btn = ~0; // Dreamcast controller has active-low buttons, I think
 }

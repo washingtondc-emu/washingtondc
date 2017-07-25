@@ -101,6 +101,8 @@ void maple_compile_devinfo(struct maple_devinfo const *devinfo_in, void *out) {
 void maple_compile_cond(struct maple_cond const *cond, void *out) {
     uint8_t *cond_out = (uint8_t*)out;
 
+    memcpy(cond_out, &cond->func, sizeof(cond->func));
+    cond_out += sizeof(cond->func);
     memcpy(cond_out, &cond->btn, sizeof(cond->btn));
     cond_out += sizeof(cond->btn);
     memcpy(cond_out, &cond->trig_r, sizeof(cond->trig_r));
