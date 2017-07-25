@@ -31,18 +31,18 @@ struct maple_device;
 #define MAPLE_FUNC_CONTROLLER 0x01000000
 
 #define MAPLE_DEV_NAME_LEN 30
-#define MAPLE_DEV_META_LEN 60
+#define MAPLE_DEV_LICENSE_LEN 60
 
 // I don't trust structure padding
-#define MAPLE_DEVINFO_SIZE ( \
-    sizeof(uint32_t) +       \
-    sizeof(uint32_t) * 3 +   \
-    sizeof(uint8_t) +        \
-    sizeof(uint8_t) +        \
-    MAPLE_DEV_NAME_LEN +     \
-    MAPLE_DEV_META_LEN +     \
-    sizeof(uint16_t) +       \
-    sizeof(uint16_t))
+#define MAPLE_DEVINFO_SIZE (    \
+        sizeof(uint32_t) +      \
+        sizeof(uint32_t) * 3 +  \
+        sizeof(uint8_t) +       \
+        sizeof(uint8_t) +       \
+        MAPLE_DEV_NAME_LEN +    \
+        MAPLE_DEV_LICENSE_LEN + \
+        sizeof(uint16_t) +      \
+        sizeof(uint16_t))
 
 #define MAPLE_COND_SIZE ( \
         sizeof(uint32_t) + \
@@ -52,15 +52,15 @@ struct maple_device;
 // device information (responsse to MAPLE_CMD_DEVINFO)
 struct maple_devinfo {
     uint32_t func;
-    uint32_t data[3];
-    uint8_t region;
+    uint32_t func_data[3];
+    uint8_t area_code;
     uint8_t dir;
 
     // should be padded with spaces instead of 0s.
     // TODO: IDK if the last byte should be a 0 or a space
     char dev_name[MAPLE_DEV_NAME_LEN];
 
-    char meta[MAPLE_DEV_META_LEN];
+    char license[MAPLE_DEV_LICENSE_LEN];
     uint16_t standby_power;
     uint16_t max_power;
 };

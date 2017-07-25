@@ -27,6 +27,8 @@
 #include "maple_device.h"
 
 #define MAPLE_CONTROLLER_STRING "Dreamcast Controller         "
+#define MAPLE_CONTROLLER_LICENSE \
+    "Produced By or Under License From SEGA ENTERPRISES,LTD.    "
 
 static int controller_dev_init(struct maple_device *dev);
 static void controller_dev_cleanup(struct maple_device *dev);
@@ -57,10 +59,21 @@ static void controller_dev_info(struct maple_device *dev,
 
     memset(output, 0, sizeof(*output));
 
-    // TODO: should the last char be a space or a '\0'?
-    strncpy(output->dev_name, MAPLE_CONTROLLER_STRING, MAPLE_DEV_NAME_LEN);
-    output->dev_name[MAPLE_DEV_NAME_LEN-1] = '\0';
     output->func = MAPLE_FUNC_CONTROLLER;
+    output->func_data[0] = 0xfe060f00;
+    output->func_data[1] = 0x00000000;
+    output->func_data[2] = 0x724400ff;
+
+    output->area_code = 0xff;
+    output->dir = 0;
+
+    strncpy(output->dev_name, MAPLE_CONTROLLER_STRING, MAPLE_DEV_NAME_LEN);
+    output->dev_name[MAPLE_DEV_NAME_LEN - 1] = '\0';
+    strncpy(output->license, MAPLE_CONTROLLER_LICENSE, MAPLE_DEV_LICENSE_LEN);
+    output->license[MAPLE_DEV_LICENSE_LEN - 1] = '\0';
+
+    output->standby_power = 0x01ae;
+    output->max_power = 0x01f4;
 }
 
 static void controller_dev_get_cond(struct maple_device *dev,

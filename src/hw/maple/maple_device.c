@@ -81,16 +81,16 @@ void maple_compile_devinfo(struct maple_devinfo const *devinfo_in, void *out) {
 
     memcpy(devinfo_out, &devinfo_in->func, sizeof(devinfo_in->func));
     devinfo_out += sizeof(devinfo_in->func);
-    memcpy(devinfo_out, devinfo_in->data, sizeof(devinfo_in->data));
-    devinfo_out += sizeof(devinfo_in->data);
-    memcpy(devinfo_out, &devinfo_in->region, sizeof(devinfo_in->region));
-    devinfo_out += sizeof(devinfo_in->region);
+    memcpy(devinfo_out, devinfo_in->func_data, sizeof(devinfo_in->func_data));
+    devinfo_out += sizeof(devinfo_in->func_data);
+    memcpy(devinfo_out, &devinfo_in->area_code, sizeof(devinfo_in->area_code));
+    devinfo_out += sizeof(devinfo_in->area_code);
     memcpy(devinfo_out, &devinfo_in->dir, sizeof(devinfo_in->dir));
     devinfo_out += sizeof(devinfo_in->dir);
     memcpy(devinfo_out, devinfo_in->dev_name, sizeof(devinfo_in->dev_name));
     devinfo_out += sizeof(devinfo_in->dev_name);
-    memcpy(devinfo_out, devinfo_in->meta, sizeof(devinfo_in->meta));
-    devinfo_out += sizeof(devinfo_in->meta);
+    memcpy(devinfo_out, devinfo_in->license, sizeof(devinfo_in->license));
+    devinfo_out += sizeof(devinfo_in->license);
     memcpy(devinfo_out, &devinfo_in->standby_power,
            sizeof(devinfo_in->standby_power));
     devinfo_out += sizeof(devinfo_in->standby_power);
