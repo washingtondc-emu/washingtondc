@@ -46,6 +46,8 @@
         printf(msg, ##__VA_ARGS__);             \
     } while (0)
 
+static DEF_ERROR_INT_ATTR(gdrom_command);
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // ATA commands
@@ -744,8 +746,9 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
         return MEM_ACCESS_SUCCESS;
         break;
     default:
-        GDROM_TRACE( "WARNING: unknown command 0x%2x input to command "
-                     "register\n", (unsigned)cmd);
+        error_set_feature("unknown GD-ROM command");
+        error_set_gdrom_command(cmd);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     int_reason_reg |= INT_REASON_COD_MASK; // is this correct ?
@@ -967,8 +970,10 @@ static void gdrom_input_packet(void) {
         gdrom_input_packet_71();
         break;
     default:
-        GDROM_TRACE("unknown packet 0x%02x received\n", (unsigned)pkt_buf[0]);
-        state = GDROM_STATE_NORM;
+        error_set_feature("unknown GD-ROM packet command");
+        error_set_gdrom_command((unsigned)pkt_buf[0]);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        /* state = GDROM_STATE_NORM; */
     }
 }
 
