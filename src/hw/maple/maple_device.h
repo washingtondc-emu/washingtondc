@@ -130,6 +130,4 @@ void maple_compile_devinfo(struct maple_devinfo const *devinfo, void *out);
 // out must be at least MAPLE_COND_SIZE bytes long
 void maple_compile_cond(struct maple_cond const *cond, void *out);
 
-extern struct maple_switch_table maple_controller_switch_table;
-
 #endif

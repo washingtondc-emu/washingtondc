@@ -37,6 +37,7 @@
 #include "hw/aica/aica_rtc.h"
 #include "hw/maple/maple.h"
 #include "hw/maple/maple_device.h"
+#include "hw/maple/maple_controller.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
