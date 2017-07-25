@@ -82,4 +82,10 @@ static void controller_dev_get_cond(struct maple_device *dev,
 
     cond->func = MAPLE_FUNC_CONTROLLER;
     cond->btn = ~0; // Dreamcast controller has active-low buttons, I think
+
+    // leave the analog sticks in neutral
+    cond->js_x = 128;
+    cond->js_y = 128;
+    cond->js_x2 = 128;
+    cond->js_y2 = 128;
 }
