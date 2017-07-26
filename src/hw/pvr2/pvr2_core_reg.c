@@ -219,8 +219,15 @@ static struct pvr2_core_mem_mapped_reg {
     pvr2_core_reg_read_handler_t on_read;
     pvr2_core_reg_write_handler_t on_write;
 } pvr2_core_reg_info[] = {
+    /*
+     * in theory this is read-only, but in practise the BIOS tries to write 0
+     * to it for some reason which I do not know.  Ergo, let it think it won by
+     * sending the write to warn_pvr2_core_reg_write_handler.  This will not effect
+     * the output of pvr2_core_id_read_handler.
+     */
     { "ID", 0x5f8000, 4,
-      pvr2_core_id_read_handler, pvr2_core_read_only_reg_write_handler },
+      pvr2_core_id_read_handler, warn_pvr2_core_reg_write_handler },
+
     { "REVISION", 0x5f8004, 4,
       pvr2_core_revision_read_handler, pvr2_core_read_only_reg_write_handler },
     { "SOFTRESET", 0x5f8008, 4,
