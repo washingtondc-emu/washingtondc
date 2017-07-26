@@ -70,6 +70,7 @@ static DEF_ERROR_INT_ATTR(gdrom_command);
 #define GDROM_PKT_TEST_UNIT  0x00
 #define GDROM_PKT_REQ_STAT   0x10
 #define GDROM_PKT_REQ_MODE   0x11
+#define GDROM_PKT_SET_MODE   0x12
 #define GDROM_PKT_REQ_ERROR  0x13
 #define GDROM_PKT_READ_TOC   0x14
 #define GDROM_PKT_READ       0x30
@@ -319,10 +320,17 @@ static uint32_t trans_mode_vals[TRANS_MODE_COUNT];
 
 enum gdrom_state {
     GDROM_STATE_NORM,
-    GDROM_STATE_INPUT_PKT
+    GDROM_STATE_INPUT_PKT,
+    GDROM_STATE_SET_MODE // waiting for PIO input for the SET_MODE packet
 };
 
 static enum gdrom_state state;
+
+/*
+ * number of bytes we're waiting for.  This only holds meaning when
+ * state == GDROM_STATE_SET_MODE.
+ */
+int set_mode_bytes_remaining;
 
 #define PKT_LEN 12
 static uint8_t pkt_buf[PKT_LEN];
@@ -526,6 +534,8 @@ static void gdrom_cmd_identify(void);
 static void gdrom_input_packet(void);
 
 static void gdrom_input_req_mode_packet(void);
+
+static void gdrom_input_set_mode_packet(void);
 
 static void gdrom_input_req_error_packet(void);
 
@@ -805,6 +815,18 @@ gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
             n_bytes_received = 0;
             gdrom_input_packet();
         }
+    } else if (state == GDROM_STATE_SET_MODE) {
+        set_mode_bytes_remaining -= len;
+        GDROM_TRACE("received data for SET_MODE, %u bytes remaining\n",
+                    set_mode_bytes_remaining);
+
+        if (set_mode_bytes_remaining <= 0) {
+            stat_reg &= ~STAT_DRQ_MASK;
+            state = GDROM_STATE_NORM;
+
+            if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+                holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        }
     }
 
     return MEM_ACCESS_SUCCESS;
@@ -953,6 +975,9 @@ static void gdrom_input_packet(void) {
         break;
     case GDROM_PKT_REQ_MODE:
         gdrom_input_req_mode_packet();
+        break;
+    case GDROM_PKT_SET_MODE:
+        gdrom_input_set_mode_packet();
         break;
     case GDROM_PKT_REQ_ERROR:
         gdrom_input_req_error_packet();
@@ -1234,6 +1259,29 @@ static void gdrom_input_packet_71(void) {
 
     stat_reg &= ~STAT_CHECK_MASK;
     memset(&error_reg, 0, sizeof(error_reg));
+}
+
+static void gdrom_input_set_mode_packet(void) {
+    // TODO: actually implement this for real instead of ignoring the data
+
+    unsigned starting_addr = pkt_buf[2];
+    unsigned len = pkt_buf[4];
+
+    GDROM_TRACE("SET_MODE command received\n");
+    GDROM_TRACE("read %u bytes starting at %u\n", len, starting_addr);
+
+    // read features, byte count here
+    set_mode_bytes_remaining = data_byte_count;
+    GDROM_TRACE("data_byte_count is %u\n", (unsigned)data_byte_count);
+
+    if (feat_reg & 1) {
+        error_set_feature("GD-ROM SET_MODE command DMA support");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    int_reason_reg |= INT_REASON_IO_MASK;
+    int_reason_reg &= ~INT_REASON_COD_MASK;
+    stat_reg |= STAT_DRQ_MASK;
 }
 
 static void gdrom_input_req_mode_packet(void) {
