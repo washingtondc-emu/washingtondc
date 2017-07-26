@@ -29,22 +29,7 @@
 
 #include "aica_rtc.h"
 
-/*
- * HACK
- * We hardcode the RTC value for now and never increment it.
- *
- * this should be approximately january 1 2000 at 12:00 AM.  I say it's
- * approximate because I didn't take leap years or leap seconds
- * into account.  The value of 631152000 comes from KallistiOS and represents
- * the offset between the Dreamcast epoch and the Unix epoch.
- *
- * The Dreamcast epoch is January 1, 1950 at 12:00 AM for some reason.
- * This means that the Sega Dreamcast will experience it's own version of
- * Unix's infamous 2038 problem in 2018.  It's a good thing the RTC battery
- * isn't reliable enough to last that long.
- */
-#define RTC_DEFAULT (631152000 + 365 * 24 * 60 * 60 * 30)
-
+#define RTC_DEFAULT 0
 static uint32_t cur_rtc_val = RTC_DEFAULT;
 
 static struct SchedEvent aica_rtc_event;
