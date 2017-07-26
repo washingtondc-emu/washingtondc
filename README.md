@@ -1,12 +1,12 @@
 # WashingtonDC
 
 WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  Currently
-it's only capable of running a handful of homebrew programs because it is still
-at an early stage of development.
+it's only capable of running the Dreamcast firmware and a handful of homebrew
+programs because it is still at an early stage of development.
 
 ## GALLERY
 ![Alt text](media/washingtondc_spiral_swirl.png "SEGA Dreamcast firmware")
-![Alt text](media/washingtondc_set_clock.png "Setting the Dreamcast's RTC from the firmware")
+![Alt text](media/bios_menu.png "The main menu from the SEGA Dreamcast's NTSC-U firmware")
 
 ## COMPILING
 ```
@@ -40,4 +40,35 @@ OPTIONS:
 -s path to dreamcast system call image (only needed for direct boot)
 -t establish serial server over TCP port 1998
 -h display this message and exit
+
+```
+The emulator currently only supports one controller, and the controls cannot be
+rebinded yet.  It must be controlled using a keyboard with a number pad.
+```
+    |============================|
+    | keyboard   |     Dreamcast |
+    |============================|
+    | W          | UP    (D-PAD) |
+    | S          | DOWN  (D-PAD) |
+    | A          | LEFT  (D-PAD) |
+    | D          | RIGHT (D-PAD) |
+    | 2 (numpad) | A             |
+    | 6 (numpad) | B             |
+    | 4 (numpad) | X             |
+    | 8 (numpad) | Y             |
+    |============================|
+
+```
+## EXAMPLES
+load the firmware (dc_bios.bin) with no .gdi disc image mounted:
+```
+./washingtondc -b dc_bios.bin -f dc_flash.bin
+```
+load the firmware with a .gdi disc image mounted:
+```
+./washingtondc -b dc_bios.bin -f dc_flash.bin -m /path/to/disc.gdi
+```
+direct-boot a homebrew program (requires a system call table dump):
+```
+./washingtondc -b dc_bios.bin -f dc_flash.bin -s syscallsbin IP.BIN 1st_read.bin
 ```
