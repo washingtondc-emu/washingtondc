@@ -30,6 +30,14 @@
 #define MAPLE_CONTROLLER_LICENSE \
     "Produced By or Under License From SEGA ENTERPRISES,LTD.    "
 
+/*
+ * TODO: the current controller implementation has a single global state which
+ * effects all controllers, meaning that they all have the same buttons pressed
+ * at the same time.  Obviously this will need to be reworked when I add support
+ * for multiple controllers.
+ */
+static volatile uint32_t btn_state;
+
 static int controller_dev_init(struct maple_device *dev);
 static void controller_dev_cleanup(struct maple_device *dev);
 static void controller_dev_info(struct maple_device *dev,
@@ -81,11 +89,21 @@ static void controller_dev_get_cond(struct maple_device *dev,
     memset(cond, 0, sizeof(*cond));
 
     cond->func = MAPLE_FUNC_CONTROLLER;
-    cond->btn = ~0; // Dreamcast controller has active-low buttons, I think
+    cond->btn = ~btn_state; // Dreamcast controller has active-low buttons
 
     // leave the analog sticks in neutral
     cond->js_x = 128;
     cond->js_y = 128;
     cond->js_x2 = 128;
     cond->js_y2 = 128;
+}
+
+// mark all buttons in btns as being pressed
+void maple_controller_press_btns(uint32_t btns) {
+    btn_state |= btns;
+}
+
+// mark all buttons in btns as being released
+void maple_controller_release_btns(uint32_t btns) {
+    btn_state &= ~btns;
 }

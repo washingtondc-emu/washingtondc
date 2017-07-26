@@ -75,4 +75,19 @@
 
 extern struct maple_switch_table maple_controller_switch_table;
 
+/*
+ * CONTROLLER API
+ * There's only one global state that all controllers share.  This is
+ * sufficient for now because you can't have more than one controller plugged
+ * in anyways.  Obviously this will be reworked in the future.
+ *
+ * These two functions can be safely called from any thread.
+ */
+// mark all buttons in btns as being pressed
+void maple_controller_press_btns(uint32_t btns);
+
+// mark all buttons in btns as being released
+void maple_controller_release_btns(uint32_t btns);
+
+
 #endif

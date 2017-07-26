@@ -31,6 +31,7 @@
 
 #include "video/opengl/opengl_output.h"
 #include "dreamcast.h"
+#include "hw/maple/maple_controller.h"
 
 #include "window.h"
 
@@ -38,6 +39,8 @@ static unsigned res_x, res_y;
 static GLFWwindow *win;
 
 static void expose_callback(GLFWwindow *win);
+static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
+                             int action, int mods);
 
 void win_init(unsigned width, unsigned height) {
     res_x = width;
@@ -65,6 +68,8 @@ void win_init(unsigned width, unsigned height) {
 
     glfwSetWindowRefreshCallback(win, expose_callback);
     glfwSwapInterval(0);
+
+    glfwSetKeyCallback(win, win_on_key_press);
 }
 
 void win_cleanup() {
@@ -97,4 +102,79 @@ void win_update() {
 static void expose_callback(GLFWwindow *win) {
     opengl_video_present();
     win_update();
+}
+
+static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
+                             int action, int mods) {
+    if (action == GLFW_PRESS) {
+        switch (key) {
+        case GLFW_KEY_W:
+            maple_controller_press_btns(MAPLE_CONT_BTN_DPAD_UP_MASK);
+            printf("Up pressed\n");
+            break;
+        case GLFW_KEY_S:
+            maple_controller_press_btns(MAPLE_CONT_BTN_DPAD_DOWN_MASK);
+            printf("Down pressed\n");
+            break;
+        case GLFW_KEY_A:
+            maple_controller_press_btns(MAPLE_CONT_BTN_DPAD_LEFT_MASK);
+            printf("Left pressed\n");
+            break;
+        case GLFW_KEY_D:
+            maple_controller_press_btns(MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
+            printf("Right pressed\n");
+            break;
+        case GLFW_KEY_KP_2:
+            maple_controller_press_btns(MAPLE_CONT_BTN_A_MASK);
+            printf("A pressed\n");
+            break;
+        case GLFW_KEY_KP_6:
+            maple_controller_press_btns(MAPLE_CONT_BTN_B_MASK);
+            printf("B pressed\n");
+            break;
+        case GLFW_KEY_KP_4:
+            maple_controller_press_btns(MAPLE_CONT_BTN_X_MASK);
+            printf("X pressed\n");
+            break;
+        case GLFW_KEY_KP_8:
+            maple_controller_press_btns(MAPLE_CONT_BTN_Y_MASK);
+            printf("Y pressed\n");
+            break;
+        }
+    } else {
+        switch (key) {
+        case GLFW_KEY_W:
+            maple_controller_release_btns(MAPLE_CONT_BTN_DPAD_UP_MASK);
+            printf("Up released\n");
+            break;
+        case GLFW_KEY_S:
+            maple_controller_release_btns(MAPLE_CONT_BTN_DPAD_DOWN_MASK);
+            printf("Down released\n");
+            break;
+        case GLFW_KEY_A:
+            maple_controller_release_btns(MAPLE_CONT_BTN_DPAD_LEFT_MASK);
+            printf("Left released\n");
+            break;
+        case GLFW_KEY_D:
+            maple_controller_release_btns(MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
+            printf("Right released\n");
+            break;
+        case GLFW_KEY_KP_2:
+            maple_controller_release_btns(MAPLE_CONT_BTN_A_MASK);
+            printf("A released\n");
+            break;
+        case GLFW_KEY_KP_6:
+            maple_controller_release_btns(MAPLE_CONT_BTN_B_MASK);
+            printf("B released\n");
+            break;
+        case GLFW_KEY_KP_4:
+            maple_controller_release_btns(MAPLE_CONT_BTN_X_MASK);
+            printf("X released\n");
+            break;
+        case GLFW_KEY_KP_8:
+            maple_controller_release_btns(MAPLE_CONT_BTN_Y_MASK);
+            printf("Y released\n");
+            break;
+        }
+    }
 }
