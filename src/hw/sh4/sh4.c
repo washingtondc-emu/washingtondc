@@ -139,11 +139,17 @@ void sh4_set_individual_reg(Sh4 *sh4, unsigned reg_no, reg32_t reg_val) {
     if (reg_no == SH4_REG_FPSCR) {
         sh4_set_fpscr(sh4, reg_val);
     } else if (reg_no == SH4_REG_SR) {
-        sh4_bank_switch_maybe(sh4, sh4->reg[SH4_REG_SR], reg_val);
+        reg32_t old_sr_val = sh4->reg[SH4_REG_SR];
         sh4->reg[SH4_REG_SR] = reg_val;
+        sh4_on_sr_change(sh4, old_sr_val);
     } else {
         sh4->reg[reg_no] = reg_val;
     }
+}
+
+// this function should be called every time sr is written to
+void sh4_on_sr_change(Sh4 *sh4, reg32_t old_sr) {
+    sh4_bank_switch_maybe(sh4, old_sr, sh4->reg[SH4_REG_SR]);
 }
 
 void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {

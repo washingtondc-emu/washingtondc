@@ -129,8 +129,9 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     new_sr |= (SH4_SR_BL_MASK | SH4_SR_MD_MASK | SH4_SR_RB_MASK);
     new_sr &= ~SH4_SR_FD_MASK;
 
-    sh4_bank_switch_maybe(sh4, reg[SH4_REG_SR], new_sr);
+    reg32_t old_sr_val = reg[SH4_REG_SR];
     reg[SH4_REG_SR] = new_sr;
+    sh4_on_sr_change(sh4, old_sr_val);
 
     if (vector == SH4_EXCP_POWER_ON_RESET ||
         vector == SH4_EXCP_MANUAL_RESET ||

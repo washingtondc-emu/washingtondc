@@ -288,6 +288,12 @@ static inline double *sh4_fpu_xd(Sh4 *sh4, unsigned reg_no) {
     return (double*)(sh4->reg + SH4_REG_XD0 + (reg_no << 1));
 }
 
+/*
+ * this function should be called every time sr has just been written to and
+ * bits other than T/Q/M/S may have changed
+ */
+void sh4_on_sr_change(Sh4 *sh4, reg32_t old_sr);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1260,8 +1260,9 @@ void sh4_inst_rte(Sh4 *sh4, Sh4OpArgs inst) {
      */
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_SPC];
 
-    sh4_bank_switch_maybe(sh4, sh4->reg[SH4_REG_SR], sh4->reg[SH4_REG_SSR]);
+    reg32_t old_sr_val = sh4->reg[SH4_REG_SR];
     sh4->reg[SH4_REG_SR] = sh4->reg[SH4_REG_SSR];
+    sh4_on_sr_change(sh4, old_sr_val);
 
     sh4_next_inst(sh4);
 }
@@ -2163,9 +2164,9 @@ void sh4_inst_binary_ldc_gen_sr(Sh4 *sh4, Sh4OpArgs inst) {
     }
 #endif
 
-    reg32_t new_sr = *sh4_gen_reg(sh4, inst.gen_reg);
-    sh4_bank_switch_maybe(sh4, sh4->reg[SH4_REG_SR], new_sr);
-    sh4->reg[SH4_REG_SR] = new_sr;
+    reg32_t old_sr = sh4->reg[SH4_REG_SR];
+    sh4->reg[SH4_REG_SR] = *sh4_gen_reg(sh4, inst.gen_reg);
+    sh4_on_sr_change(sh4, old_sr);
 
     sh4_next_inst(sh4);
 }
@@ -2455,8 +2456,9 @@ void sh4_inst_binary_ldcl_indgeninc_sr(Sh4 *sh4, Sh4OpArgs inst) {
     }
 
     (*src_reg) += 4;
-    sh4_bank_switch_maybe(sh4, sh4->reg[SH4_REG_SR], val);
+    reg32_t old_sr_val = sh4->reg[SH4_REG_SR];
     sh4->reg[SH4_REG_SR] = val;
+    sh4_on_sr_change(sh4, old_sr_val);
 
     sh4_next_inst(sh4);
 }
