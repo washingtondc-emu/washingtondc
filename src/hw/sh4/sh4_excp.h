@@ -23,6 +23,8 @@
 #ifndef SH4_EXCP_H_
 #define SH4_EXCP_H_
 
+#include <stdbool.h>
+
 #include "sh4_reg.h"
 
 #ifdef __cplusplus
@@ -153,8 +155,23 @@ struct Sh4ExcpMeta {
 
 typedef struct Sh4ExcpMeta Sh4ExcpMeta;
 
+// structure containing all data necessary to activate a pending IRQ
+struct sh4_irq_meta {
+    bool is_irl;
+    int code;
+
+    // interrupt line, only valid if is_irl is false
+    unsigned line;
+};
+
 struct sh4_intc {
     Sh4ExceptionCode irq_lines[SH4_IRQ_COUNT];
+
+    // if true, then there is an interrupt or exception pending
+    bool is_irq_pending;
+
+    // this is only valid if is_irq_pending is true
+    struct sh4_irq_meta pending_irq;
 };
 
 typedef struct sh4_intc sh4_intc;
@@ -181,6 +198,32 @@ void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line, Sh4ExceptionCode intp_code);
 
 /* check IRQ lines and enter interrupt state if necessary */
 void sh4_check_interrupts(Sh4 *sh4);
+
+/*
+ * The following registers (in addition to the IMASK and BL bits in SR) all
+ * effect the algorithm which decides when interrupt handlers run; ergo the
+ * next pending interrupt needs to be reccomputed every time one of these
+ * registers changes (in addtion to the aforementioned bits in SR)
+ */
+int sh4_excp_icr_reg_write_handler(Sh4 *sh4, void const *buf,
+                                   struct Sh4MemMappedReg const *reg_info);
+int sh4_excp_ipra_reg_write_handler(Sh4 *sh4, void const *buf,
+                                    struct Sh4MemMappedReg const *reg_info);
+int sh4_excp_iprb_reg_write_handler(Sh4 *sh4, void const *buf,
+                                    struct Sh4MemMappedReg const *reg_info);
+int sh4_excp_iprc_reg_write_handler(Sh4 *sh4, void const *buf,
+                                    struct Sh4MemMappedReg const *reg_info);
+int sh4_excp_iprd_reg_write_handler(Sh4 *sh4, void const *buf,
+                                    struct Sh4MemMappedReg const *reg_info);
+
+// bits in the SR register which (when changed) can effect the intc
+#define SH4_INTC_SR_BITS (SH4_SR_IMASK_MASK | SH4_SR_BL_MASK)
+
+/*
+ * call this every time the interrupt controller's state may have changed to
+ * check if there are any interrupts that should be pending
+ */
+void sh4_refresh_intc(Sh4 *sh4);
 
 #ifdef __cplusplus
 }

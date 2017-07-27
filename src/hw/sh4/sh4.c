@@ -150,6 +150,9 @@ void sh4_set_individual_reg(Sh4 *sh4, unsigned reg_no, reg32_t reg_val) {
 // this function should be called every time sr is written to
 void sh4_on_sr_change(Sh4 *sh4, reg32_t old_sr) {
     sh4_bank_switch_maybe(sh4, old_sr, sh4->reg[SH4_REG_SR]);
+
+    if ((old_sr & SH4_INTC_SR_BITS) != (sh4->reg[SH4_REG_SR] & SH4_INTC_SR_BITS))
+        sh4_refresh_intc(sh4);
 }
 
 void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {

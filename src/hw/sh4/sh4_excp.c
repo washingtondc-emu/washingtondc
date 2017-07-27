@@ -20,20 +20,14 @@
  *
  ******************************************************************************/
 
+#include <string.h>
+
 #include "sh4.h"
 #include "sh4_excp.h"
+#include "mem_code.h"
 #include "error.h"
 
 static DEF_ERROR_INT_ATTR(sh4_exception_code)
-
-// structure containing all data necessary to activate a pending IRQ
-struct sh4_irq_meta {
-    bool is_irl;
-    int code;
-
-    // interrupt line, only valid if is_irl is false
-    unsigned line;
-};
 
 static void sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta);
 static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta);
@@ -129,9 +123,19 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     new_sr |= (SH4_SR_BL_MASK | SH4_SR_MD_MASK | SH4_SR_RB_MASK);
     new_sr &= ~SH4_SR_FD_MASK;
 
+    /*
+     * TODO: there's a slight inefficiency in calling sh4_on_sr_change here
+     * instead of calling sh4_bank_switch_maybe directly because
+     * sh4_on_sr_change is guaranteed call sh4_refresh_intc, and
+     * sh4_refresh_intc  won't do anything because we just set the BL bit.
+     */
     reg32_t old_sr_val = reg[SH4_REG_SR];
     reg[SH4_REG_SR] = new_sr;
     sh4_on_sr_change(sh4, old_sr_val);
+    /*
+     * XXX There's no need to clear is_irq_pending here because
+     * sh4_on_sr_change will do that for us
+     */
 
     if (vector == SH4_EXCP_POWER_ON_RESET ||
         vector == SH4_EXCP_MANUAL_RESET ||
@@ -158,6 +162,7 @@ void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
 void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line,
                        Sh4ExceptionCode intp_code) {
     sh4->intc.irq_lines[irq_line] = intp_code;
+    sh4_refresh_intc(sh4);
 }
 
 void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
@@ -182,6 +187,8 @@ void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
         sh4->intc.irq_lines[SH4_IRQ_IRL3] = SH4_EXCP_IRL3;
     else
         sh4->intc.irq_lines[SH4_IRQ_IRL3] = (Sh4ExceptionCode)0;
+
+    sh4_refresh_intc(sh4);
 }
 
 static void sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
@@ -205,6 +212,7 @@ static void sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
         sh4_set_irl_interrupt(sh4, 0xf);
     } else {
         sh4->intc.irq_lines[irq_meta->line] = (Sh4ExceptionCode)0;
+        sh4_refresh_intc(sh4);
     }
 
     // exit sleep/standby mode
@@ -212,18 +220,6 @@ static void sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
 }
 
 void sh4_check_interrupts(Sh4 *sh4) {
-    struct sh4_irq_meta irq_meta;
-    if (sh4_get_next_irq_line(sh4, &irq_meta) >= 0)
-        sh4_enter_irq_from_meta(sh4, &irq_meta);
-}
-
-/*
- * return the highest-priority pending IRQ, or -1 if there are none.
- *
- * the exception code will be placed into *code_ptr.  A valid pointer must be
- * provided even if you don't need it.
- */
-static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) {
     /*
      * for the purposes of interrupt handling, I treat delayed-branch slots
      * as atomic units because if I allowed an interrupt to happen between the
@@ -236,8 +232,24 @@ static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) 
      * implemented, so I'm *assuming* that it doesn't allow interrupts in the
      * middle of delay slots either.
      */
-    if (sh4->delayed_branch)
-        return -1;
+    if (!sh4->delayed_branch && sh4->intc.is_irq_pending) {
+        sh4_enter_irq_from_meta(sh4, &sh4->intc.pending_irq);
+        sh4->intc.is_irq_pending = false;
+    }
+}
+
+void sh4_refresh_intc(Sh4 *sh4) {
+    sh4->intc.is_irq_pending =
+        (sh4_get_next_irq_line(sh4, &sh4->intc.pending_irq) >= 0);
+}
+
+/*
+ * return the highest-priority pending IRQ, or -1 if there are none.
+ *
+ * the exception code will be placed into *code_ptr.  A valid pointer must be
+ * provided even if you don't need it.
+ */
+static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) {
     if (sh4->reg[SH4_REG_SR] & SH4_SR_BL_MASK)
         return -1;
 
@@ -383,4 +395,49 @@ static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) 
     }
 
     return -1;
+}
+
+int sh4_excp_icr_reg_write_handler(Sh4 *sh4, void const *buf,
+                                   struct Sh4MemMappedReg const *reg_info) {
+    memcpy(sh4->reg + SH4_REG_ICR, buf, sizeof(sh4->reg[SH4_REG_ICR]));
+
+    sh4_refresh_intc(sh4);
+
+    return MEM_ACCESS_SUCCESS;
+}
+
+int sh4_excp_ipra_reg_write_handler(Sh4 *sh4, void const *buf,
+                                    struct Sh4MemMappedReg const *reg_info) {
+    memcpy(sh4->reg + SH4_REG_IPRA, buf, sizeof(sh4->reg[SH4_REG_IPRA]));
+
+    sh4_refresh_intc(sh4);
+
+    return MEM_ACCESS_SUCCESS;
+}
+
+int sh4_excp_iprb_reg_write_handler(Sh4 *sh4, void const *buf,
+                                    struct Sh4MemMappedReg const *reg_info) {
+    memcpy(sh4->reg + SH4_REG_IPRB, buf, sizeof(sh4->reg[SH4_REG_IPRB]));
+
+    sh4_refresh_intc(sh4);
+
+    return MEM_ACCESS_SUCCESS;
+}
+
+int sh4_excp_iprc_reg_write_handler(Sh4 *sh4, void const *buf,
+                                    struct Sh4MemMappedReg const *reg_info) {
+    memcpy(sh4->reg + SH4_REG_IPRC, buf, sizeof(sh4->reg[SH4_REG_IPRC]));
+
+    sh4_refresh_intc(sh4);
+
+    return MEM_ACCESS_SUCCESS;
+}
+
+int sh4_excp_iprd_reg_write_handler(Sh4 *sh4, void const *buf,
+                                    struct Sh4MemMappedReg const *reg_info) {
+    memcpy(sh4->reg + SH4_REG_IPRD, buf, sizeof(sh4->reg[SH4_REG_IPRD]));
+
+    sh4_refresh_intc(sh4);
+
+    return MEM_ACCESS_SUCCESS;
 }

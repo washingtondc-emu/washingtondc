@@ -302,15 +302,15 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
 
     /* interrupt controller */
     { "ICR", 0xffd00000, ~((addr32_t)0), 2, SH4_REG_ICR, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      Sh4DefaultRegReadHandler, sh4_excp_icr_reg_write_handler, 0, 0 },
     { "IPRA", 0xffd00004, ~((addr32_t)0), 2, SH4_REG_IPRA, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      Sh4DefaultRegReadHandler, sh4_excp_ipra_reg_write_handler, 0, 0 },
     { "IPRB", 0xffd00008, ~((addr32_t)0), 2, SH4_REG_IPRB, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      Sh4DefaultRegReadHandler, sh4_excp_iprb_reg_write_handler, 0, 0 },
     { "IPRC", 0xffd0000c, ~((addr32_t)0), 2, SH4_REG_IPRC, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      Sh4DefaultRegReadHandler, sh4_excp_iprc_reg_write_handler, 0, 0 },
     { "IPRD", 0xffd0000d, ~((addr32_t)0), 2, SH4_REG_IPRD, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0xda74, 0xda74 },
+      Sh4DefaultRegReadHandler, sh4_excp_iprd_reg_write_handler, 0xda74, 0xda74 },
 
     /* User Break Controller - I don't need this, I got my own debugger */
     { "BARA", 0xff200000, ~((addr32_t)0), 4, (sh4_reg_idx_t)-1, true,
