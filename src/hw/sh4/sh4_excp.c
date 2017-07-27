@@ -36,7 +36,7 @@ struct sh4_irq_meta {
 };
 
 static void sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta);
-static int sh4_get_next_irq_line(Sh4 *sh4, struct sh4_irq_meta *irq_meta);
+static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta);
 
 static Sh4ExcpMeta const sh4_excp_meta[SH4_EXCP_COUNT] = {
     // exception code                         prio_level   prio_order   offset
@@ -223,7 +223,7 @@ void sh4_check_interrupts(Sh4 *sh4) {
  * the exception code will be placed into *code_ptr.  A valid pointer must be
  * provided even if you don't need it.
  */
-static int sh4_get_next_irq_line(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
+static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) {
     /*
      * for the purposes of interrupt handling, I treat delayed-branch slots
      * as atomic units because if I allowed an interrupt to happen between the
