@@ -26,6 +26,18 @@
 
 static DEF_ERROR_INT_ATTR(sh4_exception_code)
 
+// structure containing all data necessary to activate a pending IRQ
+struct sh4_irq_meta {
+    bool is_irl;
+    int code;
+
+    // interrupt line, only valid if is_irl is false
+    unsigned line;
+};
+
+static void sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta);
+static int sh4_get_next_irq_line(Sh4 *sh4, struct sh4_irq_meta *irq_meta);
+
 static Sh4ExcpMeta const sh4_excp_meta[SH4_EXCP_COUNT] = {
     // exception code                         prio_level   prio_order   offset
     { SH4_EXCP_POWER_ON_RESET,                    1,           1,           0      },
@@ -171,7 +183,46 @@ void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
         sh4->intc.irq_lines[SH4_IRQ_IRL3] = (Sh4ExceptionCode)0;
 }
 
+static void sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
+    /*
+     * TODO: instead of accepting the INTEVT value from whoever raised the
+     * interrupt, we should be figuring out what it should be ourselves
+     * based on the IRQ line.
+     *
+     * (the value currently being used here ultimately originates from the
+     * intp_code parameter sent to sh4_set_interrupt).
+     */
+    sh4->reg[SH4_REG_INTEVT] =
+        (irq_meta->code << SH4_INTEVT_CODE_SHIFT) &
+        SH4_INTEVT_CODE_MASK;
+
+    sh4_enter_exception(sh4, (Sh4ExceptionCode)irq_meta->code);
+
+    if (irq_meta->is_irl) {
+        // TODO: is it right to clear the irl lines like
+        //       this after an IRQ has been served?
+        sh4_set_irl_interrupt(sh4, 0xf);
+    } else {
+        sh4->intc.irq_lines[irq_meta->line] = (Sh4ExceptionCode)0;
+    }
+
+    // exit sleep/standby mode
+    sh4->exec_state = SH4_EXEC_STATE_NORM;
+}
+
 void sh4_check_interrupts(Sh4 *sh4) {
+    struct sh4_irq_meta irq_meta;
+    if (sh4_get_next_irq_line(sh4, &irq_meta) >= 0)
+        sh4_enter_irq_from_meta(sh4, &irq_meta);
+}
+
+/*
+ * return the highest-priority pending IRQ, or -1 if there are none.
+ *
+ * the exception code will be placed into *code_ptr.  A valid pointer must be
+ * provided even if you don't need it.
+ */
+static int sh4_get_next_irq_line(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
     /*
      * for the purposes of interrupt handling, I treat delayed-branch slots
      * as atomic units because if I allowed an interrupt to happen between the
@@ -185,9 +236,9 @@ void sh4_check_interrupts(Sh4 *sh4) {
      * middle of delay slots either.
      */
     if (sh4->delayed_branch)
-        return;
+        return -1;
     if (sh4->reg[SH4_REG_SR] & SH4_SR_BL_MASK)
-        return;
+        return -1;
 
     /* TODO - NMIs */
 
@@ -315,49 +366,20 @@ void sh4_check_interrupts(Sh4 *sh4) {
             if (prio > max_prio &&
                 (prio > (int)((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
                               SH4_SR_IMASK_SHIFT))) {
-                /*
-                 * TODO: instead of accepting the INTEVT value from whoever
-                 * raised the interrupt, we should be figuring out what it
-                 * should be ourselves based on the IRQ line.
-                 *
-                 * (the value currently being used here ultimately originates
-                 * from the intp_code parameter sent to sh4_set_interrupt).
-                 */
-                sh4->reg[SH4_REG_INTEVT] = (code << SH4_INTEVT_CODE_SHIFT) &
-                    SH4_INTEVT_CODE_MASK;
+                irq_meta->is_irl = true;
+                irq_meta->code = code;
 
-                sh4_enter_exception(sh4, code);
-
-                // TODO: is it right to clear the irl lines like
-                //       this after an IRQ has been served?
-                sh4_set_irl_interrupt(sh4, 0xf);
-
-                // exit sleep/standby mode
-                sh4->exec_state = SH4_EXEC_STATE_NORM;
-
-                return;
+                return prio;
             }
         }
     }
 
     if (max_prio >= 0) {
-        /*
-         * TODO: instead of accepting the INTEVT value from whoever raised the
-         * interrupt, we should be figuring out what it should be ourselves
-         * based on the IRQ line.
-         *
-         * (the value currently being used here ultimately originates from the
-         * intp_code parameter sent to sh4_set_interrupt).
-         */
-        sh4->reg[SH4_REG_INTEVT] =
-            (sh4->intc.irq_lines[max_prio_line] << SH4_INTEVT_CODE_SHIFT) &
-            SH4_INTEVT_CODE_MASK;
-
-        sh4_enter_exception(
-            sh4, (Sh4ExceptionCode)sh4->intc.irq_lines[max_prio_line]);
-        sh4->intc.irq_lines[max_prio_line] = (Sh4ExceptionCode)0;
-
-        // exit sleep/standby mode
-        sh4->exec_state = SH4_EXEC_STATE_NORM;
+        irq_meta->is_irl = false;
+        irq_meta->code = sh4->intc.irq_lines[max_prio_line];
+        irq_meta->line = max_prio_line;
+        return max_prio;
     }
+
+    return -1;
 }
