@@ -35,6 +35,8 @@
 #include "debugger.h"
 #endif
 
+static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
+
 /*
  * TODO: need to adequately return control to the debugger when there's a memory
  * error and the debugger has its error-handler set up.  longjmp is the obvious
@@ -290,7 +292,17 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
     return MEM_ACCESS_EXC;
 }
 
-enum VirtMemArea sh4_get_mem_area(addr32_t addr) {
+static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr) {
+    /*
+     * XXX I tried replacing this block of if statements with a lookup table,
+     * but somehow it turned out to be slower that way.  This is possibly
+     * because the lookup-table was not in the cache and had to be fetched from
+     * memory.
+     *
+     * If you ever want to look into this again, the trick is to use the upper
+     * four bits as the index into the lookup table (P0 will be 0-7,
+     * P1 will be 8-9, etc.)
+     */
     if (addr <= SH4_AREA_P0_LAST)
         return SH4_AREA_P0;
     if (addr >= SH4_AREA_P1_FIRST && addr <= SH4_AREA_P1_LAST)

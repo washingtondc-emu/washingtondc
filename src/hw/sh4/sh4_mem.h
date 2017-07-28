@@ -94,8 +94,6 @@ int sh4_do_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
 
 int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr);
 
-enum VirtMemArea sh4_get_mem_area(addr32_t addr);
-
 /*
  * generally you'll call these functions through do_read_mem/do_write_mem
  * instead of calling these functions directly
