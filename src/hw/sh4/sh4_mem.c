@@ -61,6 +61,11 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 
     enum VirtMemArea virt_area = sh4_get_mem_area(addr);
 
+#if 0
+    /*
+     * this is commented out because you can't leave privileged mode without
+     * raising an EROR_UNIMPLEMENTED (see sh4_on_sr_change in sh4.c)
+     */
     bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
 
     if (virt_area != SH4_AREA_P0 && !privileged) {
@@ -79,6 +84,7 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
         PENDING_ERROR(ERROR_UNIMPLEMENTED);
         return MEM_ACCESS_FAILURE;
     }
+#endif
 
     switch (virt_area) {
     case SH4_AREA_P0:
@@ -141,6 +147,11 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
 
     enum VirtMemArea virt_area = sh4_get_mem_area(addr);
 
+#if 0
+    /*
+     * this is commented out because you can't leave privileged mode without
+     * raising an EROR_UNIMPLEMENTED (see sh4_on_sr_change in sh4.c)
+     */
     bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
 
     if (virt_area != SH4_AREA_P0 && !privileged) {
@@ -159,6 +170,7 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
         PENDING_ERROR(ERROR_UNIMPLEMENTED);
         return MEM_ACCESS_FAILURE;
     }
+#endif
 
     switch (virt_area) {
     case SH4_AREA_P0:
@@ -242,6 +254,11 @@ int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
 int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
     enum VirtMemArea virt_area = sh4_get_mem_area(addr);
 
+#if 0
+    /*
+     * this is commented out because you can't leave privileged mode without
+     * raising an EROR_UNIMPLEMENTED (see sh4_on_sr_change in sh4.c)
+     */
     bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
 
     if (virt_area != SH4_AREA_P0 && !privileged) {
@@ -258,6 +275,7 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
         PENDING_ERROR(ERROR_UNIMPLEMENTED);
         return MEM_ACCESS_FAILURE;
     }
+#endif
 
     switch (virt_area) {
     case SH4_AREA_P0:
