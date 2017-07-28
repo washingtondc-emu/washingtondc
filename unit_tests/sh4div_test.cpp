@@ -490,7 +490,7 @@ int main(int argc, char **argv) {
     bios_file_init_empty(&test_state.bios);
 
     try {
-        memory_init(&test_state.mem, 16 * 1024 * 1024);
+        memory_init(&test_state.mem);
         memory_map_init(&test_state.bios, &test_state.mem);
         sh4_init(&test_state.sh4);
 

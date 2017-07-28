@@ -25,29 +25,58 @@
 
 #include <stdint.h>
 
+#include "error.h"
 #include "types.h"
 #include "mem_code.h"
+#include "host_branch_pred.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#define MEMORY_SIZE_SHIFT 24
+#define MEMORY_SIZE (1 << MEMORY_SIZE_SHIFT)
+
 struct Memory {
-    size_t size;
     uint8_t *mem;
 };
 
-void memory_init(struct Memory *mem, size_t size);
+void memory_init(struct Memory *mem);
 
 void memory_cleanup(struct Memory *mem);
 
 /* zero out all the memory */
 void memory_clear(struct Memory *mem);
 
-size_t memory_size(struct Memory const *mem);
+static inline int
+memory_read(struct Memory const *mem, void *buf, size_t addr, size_t len) {
+    size_t end_addr = addr + (len - 1);
+    if (unlikely(end_addr & ~(MEMORY_SIZE - 1))) {
+        error_set_address(addr);
+        error_set_length(len);
+        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+        return MEM_ACCESS_FAILURE;
+    }
 
-int memory_read(struct Memory const *mem, void *buf, size_t addr, size_t len);
-int memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len);
+    memcpy(buf, mem->mem + addr, len);
+
+    return 0;
+}
+
+static inline int
+memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len) {
+    size_t end_addr = addr + (len - 1);
+    if (unlikely(end_addr & ~(MEMORY_SIZE - 1))) {
+        error_set_address(addr);
+        error_set_length(len);
+        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+        return MEM_ACCESS_FAILURE;
+    }
+
+    memcpy(mem->mem + addr, buf, len);
+
+    return 0;
+}
 
 #ifdef __cplusplus
 }

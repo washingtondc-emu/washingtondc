@@ -23,15 +23,12 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "error.h"
+#include "host_branch_pred.h"
 
 #include "memory.h"
 
-
-
-void memory_init(struct Memory *mem, size_t size) {
-    mem->mem = (uint8_t*)malloc(sizeof(uint8_t) * size);
-    mem->size = size;
+void memory_init(struct Memory *mem) {
+    mem->mem = (uint8_t*)malloc(sizeof(uint8_t) * MEMORY_SIZE);
 
     memory_clear(mem);
 }
@@ -41,39 +38,6 @@ void memory_cleanup(struct Memory *mem) {
 }
 
 void memory_clear(struct Memory *mem) {
-    memset(mem->mem, 0, sizeof(mem->mem[0]) * mem->size);
+    memset(mem->mem, 0, sizeof(mem->mem[0]) * MEMORY_SIZE);
 }
 
-size_t memory_size(struct Memory const *mem) {
-    return mem->size;
-}
-
-int memory_read(struct Memory const *mem, void *buf,
-                size_t addr, size_t len) {
-    size_t end_addr = addr + (len - 1);
-    if (addr >= mem->size || end_addr >= mem->size || end_addr < addr) {
-        error_set_address(addr);
-        error_set_length(len);
-        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
-        return MEM_ACCESS_FAILURE;
-    }
-
-    memcpy(buf, mem->mem + addr, len);
-
-    return 0;
-}
-
-int memory_write(struct Memory *mem, void const *buf,
-                 size_t addr, size_t len) {
-    size_t end_addr = addr + (len - 1);
-    if (addr >= mem->size || end_addr >= mem->size || end_addr < addr) {
-        error_set_address(addr);
-        error_set_length(len);
-        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
-        return MEM_ACCESS_FAILURE;
-    }
-
-    memcpy(mem->mem + addr, buf, len);
-
-    return 0;
-}

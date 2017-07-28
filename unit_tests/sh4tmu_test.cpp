@@ -223,7 +223,7 @@ int main(int argc, char **argv) {
         int ret_code = 0;
 
         bios_file_init_empty(&bios);
-        memory_init(&mem, 16 * 1024 * 1024);
+        memory_init(&mem);
         memory_map_init(&bios, &mem);
         sh4_init(&sh4);
 

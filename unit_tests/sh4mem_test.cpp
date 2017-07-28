@@ -157,7 +157,7 @@ public:
 
         gen.reset();
         addr32_t start = offset + ADDR_AREA3_FIRST;
-        addr32_t end = std::min(memory_size(ram), (size_t)0x1fffffff) +
+        addr32_t end = std::min((size_t)MEMORY_SIZE, (size_t)0x1fffffff) +
             ADDR_AREA3_FIRST;
         static const addr32_t CACHELINE_MASK = ~0x1f;
         for (addr32_t addr = start;
@@ -725,7 +725,7 @@ int run_tests() {
 
 int main(int argc, char **argv) {
     Memory mem;
-    memory_init(&mem, 16 * 1024 * 1024);
+    memory_init(&mem);
     BiosFile bios;
     memory_map_init(&bios, &mem);
     Sh4 cpu;

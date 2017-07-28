@@ -49,8 +49,6 @@
 
 #include "dreamcast.h"
 
-static const size_t MEM_SZ = 16 * 1024 * 1024;
-
 static Sh4 cpu;
 static BiosFile bios;
 static struct Memory mem;
@@ -102,7 +100,7 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     }
 #endif
 
-    memory_init(&mem, MEM_SZ);
+    memory_init(&mem);
     if (flash_path)
         flash_mem_load(flash_path);
     bios_file_init(&bios, bios_path);
@@ -137,7 +135,7 @@ void dreamcast_init_direct(char const *path_ip_bin,
     dc_event_base = event_base_new(); // TODO: check for NULL
 #endif
 
-    memory_init(&mem, MEM_SZ);
+    memory_init(&mem);
     if (flash_path)
         flash_mem_load(flash_path);
     if (bios_path)
