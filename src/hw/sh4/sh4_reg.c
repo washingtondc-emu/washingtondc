@@ -40,13 +40,16 @@ static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
 static int sh4_id_reg_read_handler(Sh4 *sh4, void *buf,
                                    struct Sh4MemMappedReg const *reg_info);
 
+static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
+                                       struct Sh4MemMappedReg const *reg_info);
+
 static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "EXPEVT", 0xff000024, ~((addr32_t)0), 4, SH4_REG_EXPEVT, false,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0x20 },
     { "INTEVT", 0xff000028, ~((addr32_t)0), 4, SH4_REG_INTEVT, false,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0x20 },
     { "MMUCR", 0xff000010, ~((addr32_t)0), 4, SH4_REG_MMUCR, false,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      Sh4WarnRegReadHandler, sh4_mmucr_reg_write_handler, 0, 0 },
     { "CCR", 0xff00001c, ~((addr32_t)0), 4, SH4_REG_CCR, false,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
     { "QACR0", 0xff000038, ~((addr32_t)0), 4, SH4_REG_QACR0, false,
@@ -674,5 +677,20 @@ static int sh4_id_reg_read_handler(Sh4 *sh4, void *buf,
     // this value was obtained empircally on a real dreamcast
     uint32_t id_val = 0x040205c1;
     memcpy(buf, &id_val, sizeof(id_val));
+    return 0;
+}
+
+static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
+                                       struct Sh4MemMappedReg const *reg_info) {
+    uint32_t new_val;
+    memcpy(&new_val, buf, sizeof(new_val));
+
+    sh4->reg[SH4_REG_MMUCR] = new_val;
+
+    if (new_val & SH4_MMUCR_AT_MASK) {
+        error_set_feature("SH4 MMU support");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
     return 0;
 }

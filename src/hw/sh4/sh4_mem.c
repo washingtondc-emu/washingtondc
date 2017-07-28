@@ -89,32 +89,26 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
     switch (virt_area) {
     case SH4_AREA_P0:
     case SH4_AREA_P3:
-        if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
-#ifdef ENABLE_SH4_MMU
-            return sh4_mmu_write_mem(sh4, data, addr, len);
-#else // ifdef ENABLE_SH4_MMU
-            error_set_feature("MMU");
-            error_set_advice("run cmake with -DENABLE_SH4_MMU=ON and rebuild");
-            PENDING_ERROR(ERROR_UNIMPLEMENTED);
-            return MEM_ACCESS_FAILURE;
-#endif
-        } else {
-            // handle the case where OCE is enabled and ORA is
-            // enabled but we don't have Ocache available
-            if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
-                (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
-                sh4_ocache_in_ram_area(addr)) {
-                sh4_ocache_do_write_ora(sh4, data, addr, len);
-                return MEM_ACCESS_SUCCESS;
-            }
+        /*
+         * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise an
+         * error or do TLB lookups accordingly.
+         *
+         * currently it is impossible for this to be set because of the
+         * ERROR_UNIMPLEMENTED that gets raised if you set this bit in sh4_reg.c
+         */
 
-            // don't use the cache
-            return memory_map_write(data, addr & 0x1fffffff, len);
+        // handle the case where OCE is enabled and ORA is
+        // enabled but we don't have Ocache available
+        if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
+            (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
+            sh4_ocache_in_ram_area(addr)) {
+            sh4_ocache_do_write_ora(sh4, data, addr, len);
+            return MEM_ACCESS_SUCCESS;
         }
-        break;
+
+        // don't use the cache
+        // INTENTIONAL FALLTHROUGH
     case SH4_AREA_P1:
-        return memory_map_write(data, addr & 0x1fffffff, len);
-        break;
     case SH4_AREA_P2:
         return memory_map_write(data, addr & 0x1fffffff, len);
     case SH4_AREA_P4:
@@ -175,32 +169,26 @@ int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
     switch (virt_area) {
     case SH4_AREA_P0:
     case SH4_AREA_P3:
-        if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
-#ifdef ENABLE_SH4_MMU
-            return sh4_mmu_read_mem(sh4, data, addr, len);
-#else // ifdef ENABLE_SH4_MMU
-            error_set_feature("MMU");
-            error_set_advice("run cmake with -DENABLE_SH4_MMU=ON and rebuild");
-            PENDING_ERROR(ERROR_UNIMPLEMENTED);
-            return MEM_ACCESS_FAILURE;
-#endif
-        } else {
-            // handle the case where OCE is enabled and ORA is
-            // enabled but we don't have Ocache available
-            if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
-                (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
-                sh4_ocache_in_ram_area(addr)) {
-                sh4_ocache_do_read_ora(sh4, data, addr, len);
-                return MEM_ACCESS_SUCCESS;
-            }
+        /*
+         * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise an
+         * error or do TLB lookups accordingly.
+         *
+         * currently it is impossible for this to be set because of the
+         * ERROR_UNIMPLEMENTED that gets raised if you set this bit in sh4_reg.c
+         */
 
-            // don't use the cache
-            return memory_map_read(data, addr & 0x1fffffff, len);
+        // handle the case where OCE is enabled and ORA is
+        // enabled but we don't have Ocache available
+        if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
+            (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
+            sh4_ocache_in_ram_area(addr)) {
+            sh4_ocache_do_read_ora(sh4, data, addr, len);
+            return MEM_ACCESS_SUCCESS;
         }
-        break;
+
+        // don't use the cache
+        // INTENTIONAL FALLTHROUGH
     case SH4_AREA_P1:
-        return memory_map_read(data, addr & 0x1fffffff, len);
-        break;
     case SH4_AREA_P2:
         return memory_map_read(data, addr & 0x1fffffff, len);
     case SH4_AREA_P4:
@@ -280,22 +268,14 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
     switch (virt_area) {
     case SH4_AREA_P0:
     case SH4_AREA_P3:
-        if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
-#ifdef ENABLE_SH4_MMU
-            return sh4_mmu_read_inst(sh4, out, addr);
-#else // ifdef ENABLE_SH4_MMU
-            error_set_feature("MMU");
-            error_set_advice("run cmake with -DENABLE_SH4_MMU=ON and rebuild");
-            PENDING_ERROR(ERROR_UNIMPLEMENTED);
-            return MEM_ACCESS_FAILURE;
-#endif
-        } else {
-            return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
-        }
-        break;
+        /*
+         * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise an
+         * error or do TLB lookups accordingly.
+         *
+         * currently it is impossible for this to be set because of the
+         * ERROR_UNIMPLEMENTED that gets raised if you set this bit in sh4_reg.c
+         */
     case SH4_AREA_P1:
-        return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
-        break;
     case SH4_AREA_P2:
         return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
     case SH4_AREA_P4:
