@@ -68,6 +68,9 @@ static volatile unsigned fb_out_size;
 static pthread_cond_t fb_read_condition = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t fb_out_lock = PTHREAD_MUTEX_INITIALIZER;
 
+static pthread_cond_t gfx_thread_work_condition = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t gfx_thread_work_lock = PTHREAD_MUTEX_INITIALIZER;
+
 static unsigned win_width, win_height;
 
 static void* gfx_main(void *arg);
@@ -91,14 +94,17 @@ void gfx_thread_join(void) {
 
 void gfx_thread_redraw() {
     atomic_flag_clear(&not_pending_redraw);
+    gfx_thread_notify_wake_up();
 }
 
 void gfx_thread_render_geo_buf(void) {
     atomic_flag_clear(&not_rendering_geo_buf);
+    gfx_thread_notify_wake_up();
 }
 
 void gfx_thread_expose(void) {
     atomic_flag_clear(&not_pending_expose);
+    gfx_thread_notify_wake_up();
 }
 
 static void* gfx_main(void *arg) {
@@ -124,6 +130,9 @@ static void* gfx_main(void *arg) {
     opengl_target_end();
 
     glClear(GL_COLOR_BUFFER_BIT);
+
+    if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
+        abort(); // TODO: error handling
 
     do {
         if (!atomic_flag_test_and_set(&not_pending_redraw)) {
@@ -155,7 +164,13 @@ static void* gfx_main(void *arg) {
 
         if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
             render_next_geo_buf();
+
+        if (pthread_cond_wait(&gfx_thread_work_condition, &gfx_thread_work_lock) != 0)
+            abort(); // TODO: error handling
     } while (dc_is_running());
+
+    if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
+        abort(); // TODO: error handling
 
     if (!atomic_flag_test_and_set(&not_pending_redraw))
         printf("%s - there was a pending redraw\n", __func__);
@@ -180,6 +195,8 @@ void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
     fb_out_size = n_bytes;
     atomic_flag_clear(&not_reading_framebuffer);
 
+    gfx_thread_notify_wake_up();
+
     while (fb_out) {
         pthread_cond_wait(&fb_read_condition, &fb_out_lock);
     }
@@ -189,4 +206,12 @@ void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
 }
 
 void gfx_thread_notify_wake_up(void) {
+    if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
+        abort(); // TODO: error handling
+
+    if (pthread_cond_signal(&gfx_thread_work_condition) != 0)
+        abort(); // TODO: error handling
+
+    if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
+        abort(); // TODO: error handling
 }

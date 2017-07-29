@@ -68,19 +68,7 @@ void win_cleanup() {
 }
 
 void win_check_events(void) {
-    /*
-     * TODO: I used to be calling glfwWaitEvents here, but I seem to be
-     * running into a problem where it sometimes misses a glfwPostEmptyEvent
-     * and hangs the emulator.
-     *
-     * This might be my fault or it might be a bug in glfw; I've spent a lot of
-     * time looking into both possibilities and they both seem unlikely, so
-     * I've opted for this workaround that burns CPU time instead.
-     *
-     * Ideally I wouldn't have this dilemna because I shouldn't be using X11's
-     * message queue as a de-facto condition variable anyways.
-     */
-    glfwPollEvents();
+    glfwWaitEvents();
 
     if (glfwWindowShouldClose(win))
         dreamcast_kill();
