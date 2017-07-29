@@ -29,6 +29,7 @@
 #include "dreamcast.h"
 #include "window.h"
 #include "gfx_thread.h"
+#include "win_thread.h"
 #include "video/opengl/framebuffer.h"
 #include "video/opengl/opengl_output.h"
 #include "mount.h"
@@ -178,6 +179,7 @@ int main(int argc, char **argv) {
     }
 
     framebuffer_init(640, 480);
+    win_thread_launch(640, 480);
     gfx_thread_launch(640, 480);
 
     dreamcast_run();
@@ -185,6 +187,10 @@ int main(int argc, char **argv) {
     printf("Waiting for gfx_thread to exit...\n");
     gfx_thread_join();
     printf("gfx_thread has exited.\n");
+
+    printf("Waiting for win_thread to exit...\n");
+    win_thread_join();
+    printf("win_thread has exited.\n");
 
     if (mount_check())
         mount_eject();

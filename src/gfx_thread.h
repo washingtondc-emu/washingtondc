@@ -46,6 +46,9 @@ void gfx_thread_redraw();
 // signals the gfx thread to wake up and consume a geo_buf (by drawing it)
 void gfx_thread_render_geo_buf(void);
 
+// signals for the gfx thread to wake up and refresh the window
+void gfx_thread_expose(void);
+
 /*
  * causes the gfx_thread to wakeup and check for work that needs to be done.
  * The only reason to call this is when dc_is_running starts returning false

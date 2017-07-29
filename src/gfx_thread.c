@@ -32,8 +32,6 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include <GLFW/glfw3.h>
-
 #include "window.h"
 #include "dreamcast.h"
 #include "video/opengl/opengl_output.h"
@@ -42,11 +40,6 @@
 
 #include "gfx_thread.h"
 
-/*
- * used to pass the window width/height from the main thread to the gfx
- * thread for the win_init function
- */
-static unsigned win_width, win_height;
 static pthread_t gfx_thread;
 
 // if this is cleared, it means that there's been a vblank
@@ -59,6 +52,12 @@ static atomic_flag not_reading_framebuffer = ATOMIC_FLAG_INIT;
 static atomic_flag not_rendering_geo_buf = ATOMIC_FLAG_INIT;
 
 /*
+ * if this is cleared, it means that there's nothing to draw
+ * but we need to refresh the window
+ */
+static atomic_flag not_pending_expose = ATOMIC_FLAG_INIT;
+
+/*
  * when gfx_thread_read_framebuffer gets called it sets this to point to where
  * the framebuffer should be written to, clears not_reading_framebuffer, then
  * waits on the fb_read_condtion condition.
@@ -68,6 +67,8 @@ static volatile unsigned fb_out_size;
 
 static pthread_cond_t fb_read_condition = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t fb_out_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static unsigned win_width, win_height;
 
 static void* gfx_main(void *arg);
 
@@ -90,16 +91,22 @@ void gfx_thread_join(void) {
 
 void gfx_thread_redraw() {
     atomic_flag_clear(&not_pending_redraw);
-    glfwPostEmptyEvent();
 }
 
 void gfx_thread_render_geo_buf(void) {
     atomic_flag_clear(&not_rendering_geo_buf);
-    glfwPostEmptyEvent();
+}
+
+void gfx_thread_expose(void) {
+    atomic_flag_clear(&not_pending_expose);
 }
 
 static void* gfx_main(void *arg) {
-    win_init(win_width, win_height);
+    win_make_context_current();
+
+    glewExperimental = GL_TRUE;
+    glewInit();
+    glViewport(0, 0, win_width, win_height);
 
     opengl_target_init();
     opengl_video_output_init();
@@ -125,6 +132,11 @@ static void* gfx_main(void *arg) {
             win_update();
         }
 
+        if (!atomic_flag_test_and_set(&not_pending_expose)) {
+            opengl_video_present();
+            win_update();
+        }
+
         if (!atomic_flag_test_and_set(&not_reading_framebuffer)) {
             if (pthread_mutex_lock(&fb_out_lock) != 0)
                 abort(); // TODO: error handling
@@ -143,8 +155,6 @@ static void* gfx_main(void *arg) {
 
         if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
             render_next_geo_buf();
-
-        win_check_events();
     } while (dc_is_running());
 
     if (!atomic_flag_test_and_set(&not_pending_redraw))
@@ -157,7 +167,6 @@ static void* gfx_main(void *arg) {
     render_cleanup();
 
     opengl_video_output_cleanup();
-    win_cleanup();
 
     pthread_exit(NULL);
     return NULL; /* this line will never execute */
@@ -172,7 +181,6 @@ void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
     atomic_flag_clear(&not_reading_framebuffer);
 
     while (fb_out) {
-        glfwPostEmptyEvent();
         pthread_cond_wait(&fb_read_condition, &fb_out_lock);
     }
 
@@ -181,5 +189,4 @@ void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
 }
 
 void gfx_thread_notify_wake_up(void) {
-    glfwPostEmptyEvent();
 }

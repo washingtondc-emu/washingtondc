@@ -186,7 +186,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_dmac.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_tbl.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_tbl.c"
-                "${PROJECT_SOURCE_DIR}/src/host_branch_pred.h")
+                "${PROJECT_SOURCE_DIR}/src/host_branch_pred.h"
+                "${PROJECT_SOURCE_DIR}/src/win_thread.h"
+                "${PROJECT_SOURCE_DIR}/src/win_thread.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)

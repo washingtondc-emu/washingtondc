@@ -23,15 +23,12 @@
 #include <err.h>
 #include <stdbool.h>
 
-#define GL3_PROTOTYPES 1
-#include <GL/glew.h>
-#include <GL/gl.h>
-
 #include <GLFW/glfw3.h>
 
 #include "video/opengl/opengl_output.h"
 #include "dreamcast.h"
 #include "hw/maple/maple_controller.h"
+#include "gfx_thread.h"
 
 #include "window.h"
 
@@ -59,13 +56,6 @@ void win_init(unsigned width, unsigned height) {
 
     if (!win)
         errx(1, "unable to create window");
-
-    glfwMakeContextCurrent(win);
-
-    glewExperimental = GL_TRUE;
-    glewInit();
-
-    glViewport(0, 0, res_x, res_y);
 
     glfwSetWindowRefreshCallback(win, expose_callback);
     glfwSwapInterval(0);
@@ -101,8 +91,7 @@ void win_update() {
 }
 
 static void expose_callback(GLFWwindow *win) {
-    opengl_video_present();
-    win_update();
+    gfx_thread_expose();
 }
 
 static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
@@ -178,4 +167,8 @@ static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
             break;
         }
     }
+}
+
+void win_make_context_current(void) {
+    glfwMakeContextCurrent(win);
 }
