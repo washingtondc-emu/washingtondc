@@ -31,7 +31,7 @@
 #include "flash_memory.h"
 #include "dc_sched.h"
 #include "hw/pvr2/spg.h"
-#include "window.h"
+#include "glfw/window.h"
 #include "MemoryMap.h"
 #include "gfx_thread.h"
 #include "hw/aica/aica_rtc.h"

@@ -32,7 +32,7 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "window.h"
+#include "glfw/window.h"
 #include "dreamcast.h"
 #include "video/opengl/opengl_output.h"
 #include "video/opengl/opengl_target.h"

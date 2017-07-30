@@ -28,7 +28,7 @@
 
 #include "dreamcast.h"
 
-#include "window.h"
+#include "glfw/window.h"
 
 /*
  * used to pass the window width/height from the main thread to the window
