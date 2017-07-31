@@ -29,7 +29,7 @@
 #include "mem_code.h"
 #include "MemoryMap.h"
 #include "error.h"
-#include "video/opengl/framebuffer.h"
+#include "video/framebuffer.h"
 #include "pvr2_ta.h"
 
 #include "pvr2_core_reg.h"

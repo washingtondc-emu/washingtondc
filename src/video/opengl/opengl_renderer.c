@@ -32,7 +32,7 @@
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "shader.h"
 #include "opengl_target.h"
-#include "framebuffer.h"
+#include "video/framebuffer.h"
 #include "dreamcast.h"
 
 #include "opengl_renderer.h"

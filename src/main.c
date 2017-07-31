@@ -30,7 +30,7 @@
 #include "glfw/window.h"
 #include "gfx_thread.h"
 #include "win_thread.h"
-#include "video/opengl/framebuffer.h"
+#include "video/framebuffer.h"
 #include "video/opengl/opengl_output.h"
 #include "mount.h"
 #include "gdi.h"

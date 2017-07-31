@@ -30,11 +30,11 @@
 #include "hw/pvr2/spg.h"
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
-#include "opengl_output.h"
-#include "opengl_target.h"
+#include "video/opengl/opengl_output.h"
+#include "video/opengl/opengl_target.h"
 #include "gfx_thread.h"
 #include "hw/pvr2/geo_buf.h"
-#include "opengl_renderer.h"
+#include "video/opengl/opengl_renderer.h"
 
 #include "framebuffer.h"
 
