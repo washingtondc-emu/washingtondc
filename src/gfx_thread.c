@@ -61,12 +61,13 @@ static atomic_flag not_pending_expose = ATOMIC_FLAG_INIT;
  * when gfx_thread_read_framebuffer gets called it sets this to point to where
  * the framebuffer should be written to, clears not_reading_framebuffer, then
  * waits on the fb_read_condtion condition.
+ *
+ * These variables should only be accessed by whomever holds the gfx_thread_work_lock
  */
 static void * volatile fb_out;
 static volatile unsigned fb_out_size;
 
 static pthread_cond_t fb_read_condition = PTHREAD_COND_INITIALIZER;
-static pthread_mutex_t fb_out_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_cond_t gfx_thread_work_condition = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t gfx_thread_work_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -147,18 +148,12 @@ static void* gfx_main(void *arg) {
         }
 
         if (!atomic_flag_test_and_set(&not_reading_framebuffer)) {
-            if (pthread_mutex_lock(&fb_out_lock) != 0)
-                abort(); // TODO: error handling
-
             // TODO: render 3d graphics here
             opengl_target_grab_pixels(fb_out, fb_out_size);
             fb_out = NULL;
             fb_out_size = 0;
 
             if (pthread_cond_signal(&fb_read_condition) != 0)
-                abort(); // TODO: error handling
-
-            if (pthread_mutex_unlock(&fb_out_lock) != 0)
                 abort(); // TODO: error handling
         }
 
@@ -188,20 +183,21 @@ static void* gfx_main(void *arg) {
 }
 
 void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
-    if (pthread_mutex_lock(&fb_out_lock) != 0)
+    if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
         abort(); // TODO: error handling
 
     fb_out = dat;
     fb_out_size = n_bytes;
     atomic_flag_clear(&not_reading_framebuffer);
 
-    gfx_thread_notify_wake_up();
+    if (pthread_cond_signal(&gfx_thread_work_condition) != 0)
+        abort(); // TODO: error handling
 
     while (fb_out) {
-        pthread_cond_wait(&fb_read_condition, &fb_out_lock);
+        pthread_cond_wait(&fb_read_condition, &gfx_thread_work_lock);
     }
 
-    if (pthread_mutex_unlock(&fb_out_lock) != 0)
+    if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
         abort(); // TODO: error handling
 }
 
