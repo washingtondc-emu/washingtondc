@@ -90,8 +90,8 @@ static sh4_reg_idx_t const chan_tcor[3] = {
     SH4_REG_TCOR0, SH4_REG_TCOR1, SH4_REG_TCOR2
 };
 
-static inline uint32_t chan_get_tcnt(Sh4 *sh4, unsigned chan) {
-    return sh4->reg[chan_tcnt[chan]];
+static inline tmu_cycle_t chan_get_tcnt(Sh4 *sh4, unsigned chan) {
+    return (tmu_cycle_t)sh4->reg[chan_tcnt[chan]];
 }
 
 static void chan_set_tcnt(Sh4 *sh4, unsigned chan, uint32_t val) {
