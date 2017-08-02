@@ -28,7 +28,6 @@
 #include "error.h"
 #include "dreamcast.h"
 #include "framebuffer.h"
-#include "glfw/window.h"
 #include "hw/sh4/sh4.h"
 #include "hw/sys/holly_intc.h"
 

@@ -32,7 +32,7 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "glfw/window.h"
+#include "win/win_thread.h"
 #include "dreamcast.h"
 #include "gfx/opengl/opengl_output.h"
 #include "gfx/opengl/opengl_target.h"
@@ -110,7 +110,7 @@ void gfx_thread_expose(void) {
 }
 
 static void* gfx_main(void *arg) {
-    win_make_context_current();
+    win_thread_make_context_current();
 
     glewExperimental = GL_TRUE;
     glewInit();
@@ -137,30 +137,7 @@ static void* gfx_main(void *arg) {
         abort(); // TODO: error handling
 
     do {
-        if (!atomic_flag_test_and_set(&not_pending_redraw)) {
-            opengl_video_update_framebuffer();
-            opengl_video_present();
-            win_update();
-        }
-
-        if (!atomic_flag_test_and_set(&not_pending_expose)) {
-            opengl_video_present();
-            win_update();
-        }
-
-        if (!atomic_flag_test_and_set(&not_reading_framebuffer)) {
-            // TODO: render 3d graphics here
-            opengl_target_grab_pixels(fb_out, fb_out_size);
-            fb_out = NULL;
-            fb_out_size = 0;
-
-            if (pthread_cond_signal(&fb_read_condition) != 0)
-                abort(); // TODO: error handling
-        }
-
-        if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
-            render_next_geo_buf();
-
+        gfx_thread_run_once();
         if (pthread_cond_wait(&gfx_thread_work_condition, &gfx_thread_work_lock) != 0)
             abort(); // TODO: error handling
     } while (dc_is_running());
@@ -181,6 +158,32 @@ static void* gfx_main(void *arg) {
 
     pthread_exit(NULL);
     return NULL; /* this line will never execute */
+}
+
+void gfx_thread_run_once(void) {
+    if (!atomic_flag_test_and_set(&not_pending_redraw)) {
+        opengl_video_update_framebuffer();
+        opengl_video_present();
+        win_thread_update();
+    }
+
+    if (!atomic_flag_test_and_set(&not_pending_expose)) {
+        opengl_video_present();
+        win_thread_update();
+    }
+
+    if (!atomic_flag_test_and_set(&not_reading_framebuffer)) {
+        // TODO: render 3d graphics here
+        opengl_target_grab_pixels(fb_out, fb_out_size);
+        fb_out = NULL;
+        fb_out_size = 0;
+
+        if (pthread_cond_signal(&fb_read_condition) != 0)
+            abort(); // TODO: error handling
+    }
+
+    if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
+        render_next_geo_buf();
 }
 
 void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {

@@ -27,9 +27,8 @@
 #include <stdlib.h>
 
 #include "dreamcast.h"
-#include "glfw/window.h"
 #include "gfx/gfx_thread.h"
-#include "win_thread.h"
+#include "win/win_thread.h"
 #include "hw/pvr2/framebuffer.h"
 #include "gfx/opengl/opengl_output.h"
 #include "mount.h"

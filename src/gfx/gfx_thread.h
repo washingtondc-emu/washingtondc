@@ -71,6 +71,8 @@ void gfx_thread_post_framebuffer(uint32_t const *fb_new,
                                  unsigned fb_new_width,
                                  unsigned fb_new_height);
 
+void gfx_thread_run_once(void);
+
 #ifdef __cplusplus
 }
 #endif

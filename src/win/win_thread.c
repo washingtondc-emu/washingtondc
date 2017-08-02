@@ -83,3 +83,11 @@ static void* win_main(void *arg) {
 void win_thread_join(void) {
     pthread_join(win_thread, NULL);
 }
+
+void win_thread_update(void) {
+    win_update();
+}
+
+void win_thread_make_context_current(void) {
+    win_make_context_current();
+}
