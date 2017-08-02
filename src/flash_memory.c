@@ -33,6 +33,9 @@
 
 #define FLASH_MEM_TRACE(msg, ...) flash_mem_do_trace(msg, ##__VA_ARGS__)
 
+// uncomment this to log all flash memory read/write operations
+// #define FLASH_MEM_VERBOSE
+
 // don't call this directly, use the FLASH_MEM_TRACE macro instead
 void flash_mem_do_trace(char const *msg, ...);
 
@@ -96,6 +99,7 @@ int flash_mem_read(void *buf, size_t addr, size_t len) {
         return MEM_ACCESS_FAILURE;
     }
 
+#ifdef FLASH_MEM_VERBOSE
     if (len == 1) {
         uint8_t val;
         memcpy(&val, flash_mem + (addr - ADDR_FLASH_FIRST), sizeof(val));
@@ -112,6 +116,7 @@ int flash_mem_read(void *buf, size_t addr, size_t len) {
         FLASH_MEM_TRACE("read %08x bytes from %08x\n",
                         (unsigned)len, (unsigned)addr);
     }
+#endif
 
     memcpy(buf, flash_mem + (addr - ADDR_FLASH_FIRST), len);
 
@@ -126,6 +131,7 @@ int flash_mem_write(void const *buf, size_t addr, size_t len) {
         return MEM_ACCESS_FAILURE;
     }
 
+#ifdef FLASH_MEM_VERBOSE
     if (len == 1) {
         uint8_t val;
         memcpy(&val, buf, sizeof(val));
@@ -142,6 +148,7 @@ int flash_mem_write(void const *buf, size_t addr, size_t len) {
         FLASH_MEM_TRACE("write %08x bytes to %08x\n",
                         (unsigned)len, (unsigned)addr);
     }
+#endif
 
     memcpy(flash_mem + (addr - ADDR_FLASH_FIRST), buf, len);
 
