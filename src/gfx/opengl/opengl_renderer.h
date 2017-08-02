@@ -33,6 +33,7 @@ void render_next_geo_buf(void);
  * block until the geo_buf with the given frame_stamp has rendered.
  *
  * This can only be called from outside of the gfx_thread.
+ * It should only be called indirectly via gfx_thread_wait_for_geo_buf_stamp.
  */
 void render_wait_for_frame_stamp(unsigned stamp);
 

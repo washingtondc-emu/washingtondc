@@ -73,6 +73,8 @@ extern "C" {
  * storage area.
  *
  * this function is safe to call from outside of the graphics thread
+ * from outside of the graphics thread, it should only be called indirectly via
+ * gfx_thread_post_framebuffer.
  */
 void opengl_video_new_framebuffer(uint32_t const *fb_new,
                                   unsigned fb_new_width,

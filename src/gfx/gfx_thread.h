@@ -46,6 +46,9 @@ void gfx_thread_render_geo_buf(void);
 // signals for the gfx thread to wake up and refresh the window
 void gfx_thread_expose(void);
 
+// block until the gfx_thread has rendered the given geo_buf
+void gfx_thread_wait_for_geo_buf_stamp(unsigned stamp);
+
 /*
  * causes the gfx_thread to wakeup and check for work that needs to be done.
  * The only reason to call this is when dc_is_running starts returning false
@@ -63,6 +66,10 @@ void gfx_thread_notify_wake_up(void);
  * (width*height*4) bytes.
  */
 void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes);
+
+void gfx_thread_post_framebuffer(uint32_t const *fb_new,
+                                 unsigned fb_new_width,
+                                 unsigned fb_new_height);
 
 #ifdef __cplusplus
 }

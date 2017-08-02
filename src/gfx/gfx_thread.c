@@ -37,6 +37,7 @@
 #include "gfx/opengl/opengl_output.h"
 #include "gfx/opengl/opengl_target.h"
 #include "gfx/opengl/opengl_renderer.h"
+#include "gfx/opengl/opengl_output.h"
 
 #include "gfx/gfx_thread.h"
 
@@ -210,4 +211,14 @@ void gfx_thread_notify_wake_up(void) {
 
     if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
         abort(); // TODO: error handling
+}
+
+void gfx_thread_wait_for_geo_buf_stamp(unsigned stamp) {
+    render_wait_for_frame_stamp(stamp);
+}
+
+void gfx_thread_post_framebuffer(uint32_t const *fb_new,
+                                 unsigned fb_new_width,
+                                 unsigned fb_new_height) {
+    opengl_video_new_framebuffer(fb_new, fb_new_width, fb_new_height);
 }

@@ -30,11 +30,8 @@
 #include "hw/pvr2/spg.h"
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
-#include "gfx/opengl/opengl_output.h"
-#include "gfx/opengl/opengl_target.h"
 #include "gfx/gfx_thread.h"
 #include "hw/pvr2/geo_buf.h"
-#include "gfx/opengl/opengl_renderer.h"
 
 #include "framebuffer.h"
 
@@ -411,7 +408,7 @@ void framebuffer_render() {
     printf("passing framebuffer dimensions=(%u, %u)\n", fb_width, fb_height);
     printf("interlacing is %s\n", interlace ? "enabled" : "disabled");
 
-    opengl_video_new_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
+    gfx_thread_post_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
 }
 
 int framebuffer_get_current(void) {
@@ -500,7 +497,7 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
 void framebuffer_sync_from_host(void) {
     // update the framebuffer from the opengl target
 
-    render_wait_for_frame_stamp(current_fb_stamp);
+    gfx_thread_wait_for_geo_buf_stamp(current_fb_stamp);
 
     uint32_t fb_w_ctrl = get_fb_w_ctrl();
     gfx_thread_read_framebuffer(ogl_fb, sizeof(ogl_fb));
