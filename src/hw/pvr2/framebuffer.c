@@ -30,11 +30,11 @@
 #include "hw/pvr2/spg.h"
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
-#include "video/opengl/opengl_output.h"
-#include "video/opengl/opengl_target.h"
-#include "gfx_thread.h"
+#include "gfx/opengl/opengl_output.h"
+#include "gfx/opengl/opengl_target.h"
+#include "gfx/gfx_thread.h"
 #include "hw/pvr2/geo_buf.h"
-#include "video/opengl/opengl_renderer.h"
+#include "gfx/opengl/opengl_renderer.h"
 
 #include "framebuffer.h"
 
@@ -45,7 +45,8 @@
 static uint8_t *fb_tex_mem;
 static unsigned fb_width, fb_height;
 
-static int current_fb = FRAMEBUFFER_CURRENT_HOST;
+static int current_fb = FRAMEBUFFER_CURRENT_VIRT;
+static unsigned current_fb_stamp;
 
 #define OGL_FB_W_MAX (0x3ff + 1)
 #define OGL_FB_H_MAX (0x3ff + 1)
@@ -499,7 +500,7 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
 void framebuffer_sync_from_host(void) {
     // update the framebuffer from the opengl target
 
-    render_wait_for_frame_stamp(geo_buf_latest_frame_stamp());
+    render_wait_for_frame_stamp(current_fb_stamp);
 
     uint32_t fb_w_ctrl = get_fb_w_ctrl();
     gfx_thread_read_framebuffer(ogl_fb, sizeof(ogl_fb));
@@ -551,6 +552,7 @@ void framebuffer_sync_from_host_maybe(void) {
         framebuffer_sync_from_host();
 }
 
-void framebuffer_set_current(int current) {
-    current_fb = current;
+void framebuffer_set_current_host(unsigned stamp) {
+    current_fb = FRAMEBUFFER_CURRENT_HOST;
+    current_fb_stamp = stamp;
 }

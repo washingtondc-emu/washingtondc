@@ -126,7 +126,3 @@ void geo_buf_produce(void) {
 
     init_geo_buf(ringbuf + prod_idx);
 }
-
-unsigned geo_buf_latest_frame_stamp(void) {
-    return last_prod_frame_stamp;
-}

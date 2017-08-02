@@ -34,7 +34,7 @@
 
 #include "opengl_output.h"
 #include "shader.h"
-#include "gfx_thread.h"
+#include "gfx/gfx_thread.h"
 
 static void init_poly();
 

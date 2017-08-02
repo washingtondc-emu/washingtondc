@@ -27,10 +27,7 @@
 extern "C"{
 #endif
 
-/*
- * The purpose of the GFX thread is to handle all the OpenGL and windowing
- * related things.
- */
+// The purpose of the GFX thread is to handle all the OpenGL-related things.
 
 void gfx_thread_launch(unsigned width, unsigned height);
 

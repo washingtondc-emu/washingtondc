@@ -28,11 +28,12 @@
 
 #include "error.h"
 #include "geo_buf.h"
-#include "gfx_thread.h"
+#include "gfx/gfx_thread.h"
 #include "hw/sys/holly_intc.h"
 #include "pvr2_core_reg.h"
 #include "pvr2_tex_mem.h"
 #include "pvr2_tex_cache.h"
+#include "framebuffer.h"
 
 #include "pvr2_ta.h"
 
@@ -771,6 +772,7 @@ void pvr2_ta_startrender(void) {
 
     finish_poly_group(geo, poly_state.current_list);
 
+    framebuffer_set_current_host(geo->frame_stamp);
     geo_buf_produce();
     gfx_thread_render_geo_buf();
 

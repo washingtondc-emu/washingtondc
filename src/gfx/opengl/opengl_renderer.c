@@ -32,7 +32,6 @@
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "shader.h"
 #include "opengl_target.h"
-#include "video/framebuffer.h"
 #include "dreamcast.h"
 
 #include "opengl_renderer.h"
@@ -297,8 +296,6 @@ void render_next_geo_buf(void) {
         render_do_draw(geo);
         opengl_target_end();
 
-        framebuffer_set_current(FRAMEBUFFER_CURRENT_HOST);
-
         /*
          * TODO: I wish I had a good idea for how to handle this without a
          * mutex/condition var
@@ -344,6 +341,10 @@ void render_wait_for_frame_stamp(unsigned stamp) {
     while (frame_stamp < stamp && dc_is_running()) {
         printf("waiting for frame_stamp %u (current is %u)\n", stamp, frame_stamp);
         pthread_cond_wait(&frame_stamp_update_cond, &frame_stamp_mtx);
+    }
+    if (frame_stamp != stamp) {
+        printf("ERROR: missed frame stamp %u (you get %u instead)\n",
+               stamp, frame_stamp);
     }
     if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
         abort(); // TODO: error handling

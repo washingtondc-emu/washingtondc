@@ -158,18 +158,18 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/dc_sched.c"
                 "${PROJECT_SOURCE_DIR}/src/glfw/window.c"
                 "${PROJECT_SOURCE_DIR}/src/glfw/window.h"
-                "${PROJECT_SOURCE_DIR}/src/video/framebuffer.c"
-                "${PROJECT_SOURCE_DIR}/src/video/framebuffer.h"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/shader.c"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/shader.h"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_output.h"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_output.c"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_target.h"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_target.c"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_renderer.h"
-                "${PROJECT_SOURCE_DIR}/src/video/opengl/opengl_renderer.c"
-                "${PROJECT_SOURCE_DIR}/src/gfx_thread.h"
-                "${PROJECT_SOURCE_DIR}/src/gfx_thread.c"
+                "${PROJECT_SOURCE_DIR}/src/hw/pvr2/framebuffer.c"
+                "${PROJECT_SOURCE_DIR}/src/hw/pvr2/framebuffer.h"
+                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/shader.c"
+                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/shader.h"
+                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/opengl_output.h"
+                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/opengl_output.c"
+                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/opengl_target.h"
+                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/opengl_target.c"
+                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/opengl_renderer.h"
+                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/opengl_renderer.c"
+                "${PROJECT_SOURCE_DIR}/src/gfx/gfx_thread.h"
+                "${PROJECT_SOURCE_DIR}/src/gfx/gfx_thread.c"
                 "${PROJECT_SOURCE_DIR}/src/error.c"
                 "${PROJECT_SOURCE_DIR}/src/error.h"
                 "${PROJECT_SOURCE_DIR}/src/mem_areas.h"
@@ -224,10 +224,10 @@ add_library(sh4asm_core ${sh4asm_core_sources})
 add_library(sh4 ${sh4_sources})
 
 # TODO: I wish there was an easy way to do this as a dependency like in make...
-configure_file("src/video/opengl/final_frag.glsl" "final_frag.glsl")
-configure_file("src/video/opengl/final_vert.glsl" "final_vert.glsl")
-configure_file("src/video/opengl/pvr2_ta_vert.glsl" "pvr2_ta_vert.glsl")
-configure_file("src/video/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl")
+configure_file("src/gfx/opengl/final_frag.glsl" "final_frag.glsl")
+configure_file("src/gfx/opengl/final_vert.glsl" "final_vert.glsl")
+configure_file("src/gfx/opengl/pvr2_ta_vert.glsl" "pvr2_ta_vert.glsl")
+configure_file("src/gfx/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl")
 
 # TODO: These shouldn't all need to be linked against GLFW, but there are some
 # GLFW function calls in Dreamcast.cpp, and since that's linked into libsh4

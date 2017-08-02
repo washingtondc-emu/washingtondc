@@ -33,7 +33,7 @@
 #include "hw/pvr2/spg.h"
 #include "glfw/window.h"
 #include "MemoryMap.h"
-#include "gfx_thread.h"
+#include "gfx/gfx_thread.h"
 #include "hw/aica/aica_rtc.h"
 #include "hw/maple/maple.h"
 #include "hw/maple/maple_device.h"

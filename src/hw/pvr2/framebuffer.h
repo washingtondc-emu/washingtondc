@@ -99,7 +99,13 @@ enum {
 };
 
 int framebuffer_get_current(void);
-void framebuffer_set_current(int current);
+
+/*
+ * set the current framebuffer state to FRAMEBUFFER_CURRENT_HOST.
+ * stamp should be the geo_buf frame_stamp that is the last one submitted
+ * (ie the one that's "current").
+ */
+void framebuffer_set_current_host(unsigned stamp);
 
 /*
  * Copy the framebuffer from OpenGL memory into the Dreamcast's texture memory,

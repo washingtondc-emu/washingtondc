@@ -28,10 +28,10 @@
 
 #include "dreamcast.h"
 #include "glfw/window.h"
-#include "gfx_thread.h"
+#include "gfx/gfx_thread.h"
 #include "win_thread.h"
-#include "video/framebuffer.h"
-#include "video/opengl/opengl_output.h"
+#include "hw/pvr2/framebuffer.h"
+#include "gfx/opengl/opengl_output.h"
 #include "mount.h"
 #include "gdi.h"
 

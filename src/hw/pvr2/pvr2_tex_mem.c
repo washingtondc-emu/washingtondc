@@ -24,7 +24,7 @@
 #include "MemoryMap.h"
 #include "pvr2_core_reg.h"
 #include "pvr2_tex_cache.h"
-#include "video/framebuffer.h"
+#include "framebuffer.h"
 
 uint8_t pvr2_tex32_mem[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
 uint8_t pvr2_tex64_mem[ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1];

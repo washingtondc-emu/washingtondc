@@ -25,10 +25,10 @@
 
 #include <GLFW/glfw3.h>
 
-#include "video/opengl/opengl_output.h"
+#include "gfx/opengl/opengl_output.h"
 #include "dreamcast.h"
 #include "hw/maple/maple_controller.h"
-#include "gfx_thread.h"
+#include "gfx/gfx_thread.h"
 
 #include "window.h"
 

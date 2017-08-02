@@ -34,11 +34,11 @@
 
 #include "glfw/window.h"
 #include "dreamcast.h"
-#include "video/opengl/opengl_output.h"
-#include "video/opengl/opengl_target.h"
-#include "video/opengl/opengl_renderer.h"
+#include "gfx/opengl/opengl_output.h"
+#include "gfx/opengl/opengl_target.h"
+#include "gfx/opengl/opengl_renderer.h"
 
-#include "gfx_thread.h"
+#include "gfx/gfx_thread.h"
 
 static pthread_t gfx_thread;
 
