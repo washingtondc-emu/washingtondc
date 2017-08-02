@@ -141,7 +141,7 @@ static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
             printf("Y pressed\n");
             break;
         }
-    } else {
+    } else if (action == GLFW_RELEASE) {
         switch (key) {
         case GLFW_KEY_W:
             maple_controller_release_btns(MAPLE_CONT_BTN_DPAD_UP_MASK);
