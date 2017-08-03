@@ -193,6 +193,8 @@ void opengl_video_update_framebuffer() {
 }
 
 void opengl_video_present() {
+    glDisable(GL_DEPTH_TEST);
+
     glViewport(0, 0, 640, 480); // TODO: don't hardcode
     glUseProgram(fb_shader.shader_prog_obj);
     glBindTexture(GL_TEXTURE_2D, fb_poly.tex_obj);
