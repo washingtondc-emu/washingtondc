@@ -11309,10 +11309,11 @@ public:
         sh4_exec_inst(cpu);
 
         float val_expect = src0 * src1 + src2;
-        if (val_expect != *(float*)(cpu->reg + SH4_REG_FR0 + fr_dst)) {
+        float val_actual;
+        memcpy(&val_actual, cpu->reg + SH4_REG_FR0 + fr_dst, sizeof(val_actual));
+        if (val_expect != val_actual) {
             std::cout << "ERROR while running " << cmd << std::endl;
-            std::cout << "actual val is " <<
-                *(float*)(cpu->reg + SH4_REG_FR0 + fr_dst) << std::endl;
+            std::cout << "actual val is " << val_actual << std::endl;
             std::cout << "expected val is " << val_expect << std::endl;
             std::cout << "inputs are " << src0 << ", " << src1 << ", " << src2 <<
                 std::endl;
