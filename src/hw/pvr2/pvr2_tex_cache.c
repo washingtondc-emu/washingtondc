@@ -148,7 +148,7 @@ static inline bool check_overlap(uint32_t range1_start, uint32_t range1_end,
         return true;
     if ((range2_end >= range1_start) && (range2_end <= range1_end))
         return true;
-    return false;        
+    return false;
 }
 
 void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
@@ -159,7 +159,8 @@ void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
         struct pvr2_tex *tex = tex_cache + idx;
         if (tex->valid &&
             check_overlap(addr_first, addr_last,
-                          tex->addr_first, tex->addr_last)) {
+                          tex->addr_first + ADDR_TEX64_FIRST,
+                          tex->addr_last + ADDR_TEX64_FIRST)) {
             tex->dirty = true;
         }
     }
