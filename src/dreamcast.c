@@ -37,6 +37,7 @@
 #include "hw/maple/maple.h"
 #include "hw/maple/maple_device.h"
 #include "hw/maple/maple_controller.h"
+#include "io/io_thread.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
@@ -409,6 +410,7 @@ void dreamcast_kill(void) {
     printf("%s called - WashingtonDC will exit soon\n", __func__);
     is_running = false;
     gfx_thread_notify_wake_up();
+    io_thread_kick();
 }
 
 Sh4 *dreamcast_get_cpu() {
