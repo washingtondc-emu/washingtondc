@@ -145,6 +145,7 @@ struct poly_hdr {
     bool tex_twiddle;
     int tex_fmt;
     enum tex_inst tex_inst;
+    enum tex_filter tex_filter;
 
     unsigned ta_color_fmt;
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
@@ -191,6 +192,7 @@ static struct poly_state {
     bool tex_coord_16_bit_enable;
 
     enum tex_inst tex_inst;
+    enum tex_filter tex_filter;
 
     // number of 4-byte quads per vertex
     unsigned vert_len;
@@ -340,6 +342,8 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
         hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
         hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
                          TEX_CTRL_TEX_ADDR_SHIFT) << 3;
+        hdr->tex_filter = (hdr->tex_filter & TSP_TEX_INST_FILTER_MASK) >>
+            TSP_TEX_INST_FILTER_SHIFT;
     }
 
     hdr->src_blend_factor =
@@ -485,6 +489,7 @@ static void on_polyhdr_received(void) {
     poly_state.vert_len = vert_lengths[poly_state.vert_type];
 
     poly_state.tex_inst = hdr.tex_inst;
+    poly_state.tex_filter = hdr.tex_filter;
 
     memcpy(poly_state.poly_color_rgba, hdr.poly_color_rgba,
            sizeof(poly_state.poly_color_rgba));
@@ -820,6 +825,7 @@ static void finish_poly_group(struct geo_buf *geo,
     group->depth_func = poly_state.depth_func;
 
     group->tex_inst = poly_state.tex_inst;
+    group->tex_filter = poly_state.tex_filter;
 
     /*
      * this check is a little silly, but I get segfaults sometimes when

@@ -99,6 +99,13 @@ enum tex_inst {
     TEX_INST_MOD_ALPHA
 };
 
+enum tex_filter {
+    TEX_FILTER_NEAREST,
+    TEX_FILTER_BILINEAR,
+    TEX_FILTER_TRILINEAR_A,
+    TEX_FILTER_TRILINEAR_B
+};
+
 /*
  * There is one poly_group for each polygon header sent to the pvr2.
  * The poly-group contains per-header settings such as textures.
@@ -110,6 +117,7 @@ struct poly_group {
     bool tex_enable;
     unsigned tex_idx; // only valid if tex_enable=true
     enum tex_inst tex_inst;
+    enum tex_filter tex_filter;
 
     // only valid of blend_enable=true in the display_list structure
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;

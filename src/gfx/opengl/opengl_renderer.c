@@ -136,8 +136,6 @@ void render_init(void) {
         glBindTexture(GL_TEXTURE_2D, tex_no);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
@@ -163,6 +161,20 @@ static void render_do_draw_group(struct geo_buf *geo,
         printf("Using texture %u\n", group->tex_idx);
         glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
         glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
+        switch (group->tex_filter) {
+        case TEX_FILTER_TRILINEAR_A:
+        case TEX_FILTER_TRILINEAR_B:
+            printf("WARNING: trilinear filtering is not yet supported\n");
+            // intentional fall-through
+        case TEX_FILTER_NEAREST:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            break;
+        case TEX_FILTER_BILINEAR:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            break;
+        }
         glUniform1i(bound_tex_slot, 0);
         glUniform1i(tex_inst_slot, group->tex_inst);
         glActiveTexture(GL_TEXTURE0);
