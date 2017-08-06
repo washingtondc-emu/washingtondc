@@ -25,7 +25,7 @@
 #include <stdbool.h>
 
 #ifdef ENABLE_SERIAL_SERVER
-#include "serial_server.h"
+#include "io/serial_server.h"
 #endif
 
 #include "dreamcast.h"
@@ -67,10 +67,10 @@ static void check_tx_trig(Sh4 *sh4);
 static void check_rx_reset(Sh4 *sh4);
 static void check_tx_reset(Sh4 *sh4);
 
-static void push_queue(struct fifo_head *queue, uint8_t val);
+/* static void push_queue(struct fifo_head *queue, uint8_t val); */
 
-// returns false if the queue was empty; else true
-static bool pop_queue(struct fifo_head *queue, uint8_t *val);
+/* // returns false if the queue was empty; else true */
+/* static bool pop_queue(struct fifo_head *queue, uint8_t *val); */
 
 /*
  * when the number of bytes remaining in the tx fifo falls below the value
@@ -102,22 +102,24 @@ static inline unsigned rx_fifo_trigger(Sh4 *sh4) {
 void sh4_scif_init(sh4_scif *scif) {
     memset(scif, 0, sizeof(*scif));
 
-    fifo_init(&scif->txq);
-    fifo_init(&scif->rxq);
+    text_ring_init(&scif->rxq);
+    text_ring_init(&scif->txq);
+
+    atomic_flag_test_and_set(&scif->nothing_pending);
 }
 
 void sh4_scif_cleanup(sh4_scif *scif) {
-    struct fifo_node *nodep;
-    while ((nodep = fifo_pop(&scif->txq)))
-        free(&FIFO_DEREF(nodep, struct sh4_scif_byte, node));
-    while ((nodep = fifo_pop(&scif->rxq)))
-        free(&FIFO_DEREF(nodep, struct sh4_scif_byte, node));
+    /* struct fifo_node *nodep; */
+    /* while ((nodep = fifo_pop(&scif->txq))) */
+    /*     free(&FIFO_DEREF(nodep, struct sh4_scif_byte, node)); */
+    /* while ((nodep = fifo_pop(&scif->rxq))) */
+    /*     free(&FIFO_DEREF(nodep, struct sh4_scif_byte, node)); */
 
     memset(scif, 0, sizeof(*scif));
 }
 
-void sh4_scif_connect_server(Sh4 *sh4, struct serial_server *ser_srv) {
-    sh4->scif.ser_srv = ser_srv;
+void sh4_scif_connect_server(Sh4 *sh4) {
+    sh4->scif.ser_srv_connected = true;
 }
 
 int
@@ -125,8 +127,8 @@ sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,
                             struct Sh4MemMappedReg const *reg_info) {
     struct sh4_scif *scif = &sh4->scif;
 
-    size_t rx_sz = fifo_len(&scif->rxq);
-    size_t tx_sz = fifo_len(&scif->txq);
+    size_t rx_sz = text_ring_len(&scif->rxq);
+    size_t tx_sz = text_ring_len(&scif->txq);
 
     if (rx_sz > 16)
         rx_sz = 16;
@@ -147,8 +149,9 @@ sh4_scfrdr2_reg_read_handler(Sh4 *sh4, void *buf,
    struct sh4_scif *scif = &sh4->scif;
    uint8_t val;
 
-   if (pop_queue(&scif->rxq, &val)) {
-       if (fifo_len(&sh4->scif.rxq) >= rx_fifo_trigger(sh4)) {
+   if (!text_ring_empty(&scif->rxq)) {
+       val = text_ring_consume(&scif->rxq);
+       if (text_ring_len(&sh4->scif.rxq) >= rx_fifo_trigger(sh4)) {
            sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_DR_MASK;
            sh4->scif.dr_read = false;
        }
@@ -168,12 +171,12 @@ int
 sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
                               struct Sh4MemMappedReg const *reg_info) {
 #ifdef ENABLE_SERIAL_SERVER
-    if (sh4->scif.ser_srv) {
+    if (sh4->scif.ser_srv_connected) {
         uint8_t dat;
 
         memcpy(&dat, buf, sizeof(dat));
-        push_queue(&sh4->scif.txq, dat);
-        serial_server_notify_tx_ready(sh4->scif.ser_srv);
+        text_ring_produce(&sh4->scif.txq, (char)dat);
+        serial_server_notify_tx_ready();
     }
 #endif
 
@@ -183,37 +186,19 @@ sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
 #ifdef ENABLE_SERIAL_SERVER
 
 void sh4_scif_cts(Sh4 *sh4) {
-    if (sh4->scif.ser_srv) {
-        struct fifo_head *txq = &sh4->scif.txq;
-        uint8_t val;
-
-        check_tx_reset(sh4);
-
-        if (pop_queue(txq, &val)) {
-            serial_server_put(sh4->scif.ser_srv, val);
-            check_tx_trig(sh4);
-        } else {
-            sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_TEND_MASK;
-        }
-    }
+    atomic_flag_clear(&sh4->scif.nothing_pending);
 }
 
 #endif
 
-void sh4_scif_rx(Sh4 *sh4, uint8_t dat) {
-    push_queue(&sh4->scif.rxq, dat);
-
-    if (fifo_len(&sh4->scif.rxq) >= rx_fifo_trigger(sh4))
-        sh4->reg[SH4_REG_SCFSR2] &= ~SH4_SCFSR2_DR_MASK;
-
-    check_rx_reset(sh4);
-    check_rx_trig(sh4);
+void sh4_scif_rx(Sh4 *sh4) {
+    atomic_flag_clear(&sh4->scif.nothing_pending);
 }
 
 static void check_rx_trig(Sh4 *sh4) {
     unsigned rtrg = rx_fifo_trigger(sh4);
 
-    if (fifo_len(&sh4->scif.rxq) >= rtrg) {
+    if (text_ring_len(&sh4->scif.rxq) >= rtrg) {
         sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_RDF_MASK;
 
         if (rx_interrupt_enabled(sh4))
@@ -224,7 +209,7 @@ static void check_rx_trig(Sh4 *sh4) {
 static void check_tx_trig(Sh4 *sh4) {
     unsigned ttrg = tx_fifo_trigger(sh4);
 
-    if (fifo_len(&sh4->scif.txq) <= ttrg) {
+    if (text_ring_len(&sh4->scif.txq) <= ttrg) {
         sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_TDFE_MASK;
 
         if (tx_interrupt_enabled(sh4))
@@ -234,8 +219,8 @@ static void check_tx_trig(Sh4 *sh4) {
 
 static void check_rx_reset(Sh4 *sh4) {
     if (sh4->reg[SH4_REG_SCFCR2] & SH4_SCFCR2_RFRST_MASK) {
-        while (pop_queue(&sh4->scif.rxq, NULL))
-            ;
+        while (!text_ring_empty(&sh4->scif.rxq))
+            text_ring_consume(&sh4->scif.rxq);
 
         sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_DR_MASK;
     }
@@ -243,8 +228,15 @@ static void check_rx_reset(Sh4 *sh4) {
 
 static void check_tx_reset(Sh4 *sh4) {
     if (sh4->reg[SH4_REG_SCFCR2] & SH4_SCFCR2_TFRST_MASK) {
-        while (pop_queue(&sh4->scif.txq, NULL))
-            ;
+        /*
+         * TODO implement this without creating a race condition
+         *
+         * The complication here is that only the serial_server is allowed to
+         * consume from the txq, yet somehow we need to empty it here.
+         */
+        fprintf(stderr, "WARNING: %s not implemented\n", __func__);
+        /* while (pop_queue(&sh4->scif.txq, NULL)) */
+        /*     ; */
     }
 }
 
@@ -339,8 +331,8 @@ sh4_scfsr2_reg_write_handler(Sh4 *sh4, void const *buf,
 
     orig_val = sh4->reg[SH4_REG_SCFSR2];
 
-    size_t tx_sz = fifo_len(&sh4->scif.txq);
-    size_t rx_sz = fifo_len(&sh4->scif.rxq);
+    size_t tx_sz = text_ring_len(&sh4->scif.txq);
+    size_t rx_sz = text_ring_len(&sh4->scif.rxq);
 
     bool turning_off_tend = !(new_val & SH4_SCFSR2_TEND_MASK) &&
         (orig_val & SH4_SCFSR2_TEND_MASK);
@@ -375,28 +367,18 @@ sh4_scfsr2_reg_write_handler(Sh4 *sh4, void const *buf,
     return 0;
 }
 
-static void push_queue(struct fifo_head *queue, uint8_t val) {
-    struct sh4_scif_byte *cont =
-        (struct sh4_scif_byte*)malloc(sizeof(struct sh4_scif_byte));
-    if (!cont) {
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
+void sh4_scif_periodic(Sh4 *sh4) {
+    check_rx_reset(sh4);
+    check_tx_reset(sh4);
+    check_rx_trig(sh4);
+    check_tx_trig(sh4);
+
+    if (text_ring_empty(&sh4->scif.txq)) {
+        sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_TEND_MASK;
     }
 
-    cont->dat = val;
-    fifo_push(queue, &cont->node);
-}
-
-static bool pop_queue(struct fifo_head *queue, uint8_t *val) {
-    struct fifo_node *nodep = fifo_pop(queue);
-
-    if (!nodep)
-        return false;
-
-    struct sh4_scif_byte *cont = &FIFO_DEREF(nodep, struct sh4_scif_byte, node);
-
-    if (val)
-        *val = cont->dat;
-
-    free(cont);
-    return true;
+    if (!text_ring_empty(&sh4->scif.rxq)) {
+        if (text_ring_len(&sh4->scif.rxq) >= rx_fifo_trigger(sh4))
+            sh4->reg[SH4_REG_SCFSR2] &= ~SH4_SCFSR2_DR_MASK;
+    }
 }

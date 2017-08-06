@@ -25,6 +25,7 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <stdatomic.h>
 
 #include "error.h"
 #include "types.h"
@@ -299,6 +300,19 @@ static inline double *sh4_fpu_xd(Sh4 *sh4, unsigned reg_no) {
  * bits other than T/Q/M/S may have changed
  */
 void sh4_on_sr_change(Sh4 *sh4, reg32_t old_sr);
+
+/*
+ * The purpose of this function is to do things which need to be performed
+ * periodically, but not with any urgency or hard timing requirements.
+ *
+ * Currently, that means the only thing it does is check to see if the serial
+ * server wants to communicate with the SCIF; in the future other tasks may be
+ * added in here as well if I need them.
+ */
+static inline void sh4_periodic(Sh4 *sh4) {
+    if (!atomic_flag_test_and_set(&sh4->scif.nothing_pending))
+        sh4_scif_periodic(sh4);
+}
 
 #ifdef __cplusplus
 }

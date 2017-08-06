@@ -35,7 +35,7 @@
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
-#include "serial_server.h"
+#include "io/serial_server.h"
 #endif
 
 #ifdef __cplusplus

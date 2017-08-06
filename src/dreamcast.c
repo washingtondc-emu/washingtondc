@@ -44,7 +44,7 @@
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
-#include "serial_server.h"
+#include "io/serial_server.h"
 #endif
 
 #include "dreamcast.h"
@@ -58,12 +58,11 @@ static volatile bool is_running;
 static bool using_debugger;
 
 #ifdef ENABLE_SERIAL_SERVER
-static struct serial_server serial_server;
 bool serial_server_in_use;
 #endif
 
-#if defined ENABLE_DEBUGGER || defined ENABLE_SERIAL_SERVER
-// Used by the GdbStub and serial_server (if enabled) to do async network I/O
+#if defined ENABLE_DEBUGGER
+// Used by the GdbStub to do async network I/O
 struct event_base *dc_event_base;
 #endif
 
@@ -89,7 +88,7 @@ static void dc_single_step(Sh4 *sh4);
 void dreamcast_init(char const *bios_path, char const *flash_path) {
     is_running = true;
 
-#if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
+#if defined(ENABLE_DEBUGGER)
     dc_event_base = event_base_new();
     if (!dc_event_base) {
         RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -105,10 +104,7 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     spg_init();
 
 #ifdef ENABLE_SERIAL_SERVER
-    if (serial_server_in_use) {
-        serial_server_attach(&serial_server);
-        sh4_scif_connect_server(&cpu, &serial_server);
-    }
+    /* dreamcast_enable_serial_server(); */
 #endif
 
     aica_rtc_init();
@@ -127,7 +123,7 @@ void dreamcast_init_direct(char const *path_ip_bin,
 //     debugger = NULL;
 // #endif
 
-#if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
+#if defined(ENABLE_DEBUGGER)
     dc_event_base = event_base_new(); // TODO: check for NULL
 #endif
 
@@ -215,16 +211,11 @@ void dreamcast_cleanup() {
     debug_cleanup();
 #endif
 
-#ifdef ENABLE_SERIAL_SERVER
-    if (serial_server_in_use)
-        serial_server_cleanup(&serial_server);
-#endif
-
     sh4_cleanup(&cpu);
     bios_file_cleanup(&bios);
     memory_cleanup(&mem);
 
-#if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
+#if defined(ENABLE_DEBUGGER)
     event_base_free(dc_event_base);
 #endif
 }
@@ -287,14 +278,19 @@ void dreamcast_run() {
             RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
-#else
-#ifdef ENABLE_SERIAL_SERVER
-        if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
-            dreamcast_kill();
-            break;
-        }
-#endif
-#endif
+#endif // #ifdef ENABLE_DEBUGGER
+        /*
+         * TODO: reconsider this placement.
+         *
+         * "Normal" serial port speed is approx 10kbaud, and the Dreamcast's
+         * serial port can go up to approx 1mbaud.  Calling sh4_periodic here
+         * will force it to (in the worst-case scenario) update on a per-hblank
+         * basis, which is less accurate.
+         *
+         * Moving this to somewhere like sh4_check_interrupts would be way more
+         * accurate, but IDK if I want to add an atomic test-and-set there...
+         */
+        /* sh4_periodic(&cpu); */
 
 #ifdef ENABLE_DEBUGGER
         /*
@@ -333,6 +329,7 @@ void dreamcast_run() {
         }
 #endif
     }
+
     switch (term_reason) {
     case TERM_REASON_NORM:
         printf("program execution ended normally\n");
@@ -429,9 +426,8 @@ void dreamcast_enable_debugger(void) {
 #ifdef ENABLE_SERIAL_SERVER
 void dreamcast_enable_serial_server(void) {
     serial_server_in_use = true;
-    serial_server_init(&serial_server, &cpu);
-    serial_server_attach(&serial_server);
-    sh4_scif_connect_server(&cpu, &serial_server);
+    serial_server_attach();
+    sh4_scif_connect_server(&cpu);
 }
 #endif
 

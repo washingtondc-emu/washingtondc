@@ -24,14 +24,13 @@
 #define SH4_SCIF_H_
 
 #include <stdint.h>
+#include <stdatomic.h>
 
-#include "fifo.h"
+#include "text_ring.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct serial_server;
 
 /*
  * SH4 SCIF (Serial Port) emulation
@@ -64,14 +63,10 @@ struct serial_server;
  * with the Neo Geo Pocket stuff, that's a long way into the future.
  */
 
-struct sh4_scif_byte {
-    struct fifo_node node;
-
-    uint8_t dat;
-};
-
 struct sh4_scif {
-    struct fifo_head txq, rxq;
+    // for txq, the SCIF is the producer
+    // for rxq, the SCIF is the consumer
+    struct text_ring txq, rxq;
 
     /*
      * For the DR, TEND, TDFE and RDF bits in SCFSR2, the SH4 spec states that
@@ -81,7 +76,9 @@ struct sh4_scif {
      */
     bool tend_read, dr_read, tdfe_read, rdf_read;
 
-    struct serial_server *ser_srv;
+    bool ser_srv_connected;
+
+    atomic_flag nothing_pending;
 };
 
 typedef struct sh4_scif sh4_scif;
@@ -91,7 +88,7 @@ struct Sh4;
 void sh4_scif_init(sh4_scif *scif);
 void sh4_scif_cleanup(sh4_scif *scif);
 
-void sh4_scif_connect_server(Sh4 *sh4, struct serial_server *ser_srv);
+void sh4_scif_connect_server(Sh4 *sh4);
 
 int
 sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,
@@ -145,7 +142,9 @@ sh4_scfsr2_reg_write_handler(Sh4 *sh4, void const *buf,
 void sh4_scif_cts(Sh4 *sh4);
 
 // Called by the serial server whenever it has another byte.
-void sh4_scif_rx(Sh4 *sh4, uint8_t dat);
+void sh4_scif_rx(Sh4 *sh4);
+
+void sh4_scif_periodic(Sh4 *sh4);
 
 #ifdef __cplusplus
 }

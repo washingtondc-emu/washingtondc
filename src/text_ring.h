@@ -20,28 +20,37 @@
  *
  ******************************************************************************/
 
-#include <event2/event.h>
+#ifndef TEXT_RING_H_
+#define TEXT_RING_H_
+
+#include <stdbool.h>
 
 /*
- * the io thread runs libevent in a separate thread to perform asynchronus IO
- * on behalf of other threads without impacting performance (calling
- * event_base_loop from the emulation thread was causing a noticible loss of
- * performance even with EVLOOP_NONBLOCK).
- *
- * Users register callbacks for read/write operations.  These callbacks will be
- * called from the io thread, so it is up to them to move the data to whatever
- * thread needs the data in a safe manner.
+ * This is a ringbuffer designed to buffer text between threads.
+ * In the event of an overflow, this buffer will drop incoming data at the
+ * producer-side.
  */
 
-void io_thread_launch(void);
+#define TEXT_RING_LEN_SHIFT 10
+#define TEXT_RING_LEN (1 << TEXT_RING_LEN_SHIFT)
 
-void io_thread_join(void);
+struct text_ring {
+    volatile unsigned prod_idx, cons_idx;
 
-/*
- * tell the io thread to wake up and check dc_is_running.
- * If dreamcast_kill has not yet been called, then this function is effectively
- * a no-op.
- */
-void io_thread_kick(void);
+    volatile char buf[TEXT_RING_LEN];
+};
 
-extern struct event_base *event_base;
+#define TEXT_RING_INITIALIZER { .prod_idx = 0, .cons_idx = 0 }
+
+void text_ring_init(struct text_ring *ring);
+
+/* char text_ring_get_prod(struct text_ring *ring); */
+void text_ring_produce(struct text_ring *ring, char ch);
+
+bool text_ring_empty(struct text_ring *ring);
+
+unsigned text_ring_len(struct text_ring *ring);
+
+char text_ring_consume(struct text_ring *ring);
+
+#endif

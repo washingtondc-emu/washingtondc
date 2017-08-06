@@ -158,16 +158,6 @@ int main(int argc, char **argv) {
     }
 #endif
 
-    if (enable_serial) {
-#ifdef ENABLE_SERIAL_SERVER
-        dreamcast_enable_serial_server();
-#else
-        fprintf(stderr, "ERROR: Unable to enable TCP serial server\n"
-                "Please rebuild with -DENABLE_SERIAL_SERVER\n");
-        exit(1);
-#endif
-    }
-
     if (enable_debugger) {
 #ifdef ENABLE_DEBUGGER
         dreamcast_enable_debugger();
@@ -182,6 +172,16 @@ int main(int argc, char **argv) {
     win_thread_launch(640, 480);
     gfx_thread_launch(640, 480);
     io_thread_launch();
+
+    if (enable_serial) {
+#ifdef ENABLE_SERIAL_SERVER
+        dreamcast_enable_serial_server();
+#else
+        fprintf(stderr, "ERROR: Unable to enable TCP serial server\n"
+                "Please rebuild with -DENABLE_SERIAL_SERVER\n");
+        exit(1);
+#endif
+    }
 
     dreamcast_run();
 

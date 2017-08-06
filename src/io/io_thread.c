@@ -32,11 +32,15 @@
 #include <event2/buffer.h>
 #include <event2/thread.h>
 
+#ifdef ENABLE_SERIAL_SERVER
+#include "serial_server.h"
+#endif
+
 #include "dreamcast.h"
 
 #include "io_thread.h"
 
-static struct event_base *event_base;
+struct event_base *event_base;
 
 static pthread_t io_thread;
 
@@ -83,9 +87,22 @@ static void *io_main(void *arg) {
     if (pthread_mutex_unlock(&io_thread_create_mutex) != 0)
         abort(); // TODO: error handling
 
-    while (event_base_loop(event_base, EVLOOP_ONCE) >= 0)
+#ifdef ENABLE_SERIAL_SERVER
+    serial_server_init(dreamcast_get_cpu());
+#endif
+
+    while (event_base_loop(event_base, EVLOOP_ONCE) >= 0) {
         if (!dc_is_running())
             break;
+
+#ifdef ENABLE_SERIAL_SERVER
+        serial_server_run();
+#endif
+    }
+
+#ifdef ENABLE_SERIAL_SERVER
+    serial_server_cleanup();
+#endif
 
     event_base_free(event_base);
 

@@ -43,23 +43,11 @@ struct Sh4;
 // it's 'cause 1998 is the year the Dreamcast came out in Japan
 #define SERIAL_PORT_NO 1998
 
-struct serial_server {
-    struct evconnlistener *listener;
-    struct bufferevent *bev;
-    struct evbuffer *outbound;
+void serial_server_init(struct Sh4 *cpu);
+void serial_server_cleanup(void);
 
-    struct Sh4 *cpu;
-
-    bool is_listening;
-    bool ready_to_write;
-};
-
-void serial_server_init(struct serial_server *srv, struct Sh4 *cpu);
-void serial_server_cleanup(struct serial_server *srv);
-
-void serial_server_attach(struct serial_server *srv);
-
-void serial_server_put(struct serial_server *srv, uint8_t dat);
+// this function can be safely called from outside of the context of the io thread
+void serial_server_attach(void);
 
 /*
  * The SCIF calls this to let us know that it has data ready to transmit.
@@ -69,7 +57,13 @@ void serial_server_put(struct serial_server *srv, uint8_t dat);
  * If the SerialServer is active, this function does nothing and the server will call
  * sh4_scif_cts later when it is ready.
  */
-void serial_server_notify_tx_ready(struct serial_server *srv);
+void serial_server_notify_tx_ready(void);
+
+/*
+ * This gets called every time the io_thread wakes up.  It will check if any
+ * work needs to be done, and it will perform that work.
+ */
+void serial_server_run(void);
 
 #ifdef __cplusplus
 }

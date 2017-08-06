@@ -190,7 +190,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/win/win_thread.h"
                 "${PROJECT_SOURCE_DIR}/src/win/win_thread.c"
                 "${PROJECT_SOURCE_DIR}/src/io/io_thread.h"
-                "${PROJECT_SOURCE_DIR}/src/io/io_thread.c")
+                "${PROJECT_SOURCE_DIR}/src/io/io_thread.c"
+                "${PROJECT_SOURCE_DIR}/src/text_ring.h"
+                "${PROJECT_SOURCE_DIR}/src/text_ring.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
@@ -210,8 +212,8 @@ endif()
 
 if (ENABLE_SERIAL_SERVER)
   add_definitions(-DENABLE_SERIAL_SERVER)
-  set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/serial_server.h"
-                                 "${PROJECT_SOURCE_DIR}/src/serial_server.c")
+  set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/io/serial_server.h"
+                                 "${PROJECT_SOURCE_DIR}/src/io/serial_server.c")
 endif()
 
 set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/tool/sh4asm/Inst.cpp"
