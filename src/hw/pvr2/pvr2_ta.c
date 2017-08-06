@@ -342,7 +342,7 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
         hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
         hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
                          TEX_CTRL_TEX_ADDR_SHIFT) << 3;
-        hdr->tex_filter = (hdr->tex_filter & TSP_TEX_INST_FILTER_MASK) >>
+        hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>
             TSP_TEX_INST_FILTER_SHIFT;
     }
 
