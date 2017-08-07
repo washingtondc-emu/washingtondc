@@ -67,11 +67,6 @@ static void check_tx_trig(Sh4 *sh4);
 static void check_rx_reset(Sh4 *sh4);
 static void check_tx_reset(Sh4 *sh4);
 
-/* static void push_queue(struct fifo_head *queue, uint8_t val); */
-
-/* // returns false if the queue was empty; else true */
-/* static bool pop_queue(struct fifo_head *queue, uint8_t *val); */
-
 /*
  * when the number of bytes remaining in the tx fifo falls below the value
  * returned by this fucntion, we have to tell the software about it via the
@@ -109,12 +104,6 @@ void sh4_scif_init(sh4_scif *scif) {
 }
 
 void sh4_scif_cleanup(sh4_scif *scif) {
-    /* struct fifo_node *nodep; */
-    /* while ((nodep = fifo_pop(&scif->txq))) */
-    /*     free(&FIFO_DEREF(nodep, struct sh4_scif_byte, node)); */
-    /* while ((nodep = fifo_pop(&scif->rxq))) */
-    /*     free(&FIFO_DEREF(nodep, struct sh4_scif_byte, node)); */
-
     memset(scif, 0, sizeof(*scif));
 }
 
