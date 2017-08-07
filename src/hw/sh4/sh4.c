@@ -194,7 +194,6 @@ void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles) {
 
 mulligan:
     do {
-        sh4_periodic(sh4);
         sh4_check_interrupts(sh4);
         if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
             if (exc_pending == MEM_ACCESS_EXC) {
@@ -263,7 +262,6 @@ void sh4_fetch_inst(Sh4 *sh4, inst_t *inst_out, InstOpcode const **op_out,
     unsigned n_cycles;
 
 mulligan:
-    sh4_periodic(sh4);
     sh4_check_interrupts(sh4);
 
     if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {

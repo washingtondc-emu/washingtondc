@@ -290,7 +290,7 @@ void dreamcast_run() {
          * Moving this to somewhere like sh4_check_interrupts would be way more
          * accurate, but IDK if I want to add an atomic test-and-set there...
          */
-        /* sh4_periodic(&cpu); */
+        sh4_periodic(&cpu);
 
 #ifdef ENABLE_DEBUGGER
         /*
