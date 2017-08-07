@@ -158,16 +158,6 @@ int main(int argc, char **argv) {
     }
 #endif
 
-    if (enable_debugger) {
-#ifdef ENABLE_DEBUGGER
-        dreamcast_enable_debugger();
-#else
-        fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
-                "Please rebuild with -DENABLE_DEBUGGER=On\n");
-        exit(1);
-#endif
-    }
-
     framebuffer_init(640, 480);
     win_thread_launch(640, 480);
     gfx_thread_launch(640, 480);
@@ -179,6 +169,16 @@ int main(int argc, char **argv) {
 #else
         fprintf(stderr, "ERROR: Unable to enable TCP serial server\n"
                 "Please rebuild with -DENABLE_SERIAL_SERVER\n");
+        exit(1);
+#endif
+    }
+
+    if (enable_debugger) {
+#ifdef ENABLE_DEBUGGER
+        dreamcast_enable_debugger();
+#else
+        fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
+                "Please rebuild with -DENABLE_DEBUGGER=On\n");
         exit(1);
 #endif
     }
