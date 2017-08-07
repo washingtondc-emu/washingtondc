@@ -40,6 +40,8 @@
 
 #include "io_thread.h"
 
+static atomic_bool io_thread_running = ATOMIC_VAR_INIT(false);
+
 struct event_base *event_base;
 
 static pthread_t io_thread;
@@ -84,6 +86,8 @@ static void *io_main(void *arg) {
     if (pthread_cond_signal(&io_thread_create_condition) != 0)
         abort(); // TODO: error handling
 
+    atomic_store(&io_thread_running, true);
+
     if (pthread_mutex_unlock(&io_thread_create_mutex) != 0)
         abort(); // TODO: error handling
 
@@ -100,6 +104,7 @@ static void *io_main(void *arg) {
 #endif
     }
 
+    atomic_store(&io_thread_running, false);
 #ifdef ENABLE_SERIAL_SERVER
     serial_server_cleanup();
 #endif
@@ -111,5 +116,6 @@ static void *io_main(void *arg) {
 }
 
 void io_thread_kick(void) {
-    event_base_loopbreak(event_base);
+    if (atomic_load(&io_thread_running))
+        event_base_loopbreak(event_base);
 }
