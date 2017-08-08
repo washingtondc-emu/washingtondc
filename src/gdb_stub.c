@@ -699,10 +699,6 @@ static void read_mem_1(struct gdb_stub *stub, struct string *out,
     }
 }
 
-/*
- * TODO: bounds checking (not that I expect there to be any hackers going in
- * through the debugger of all places)
- */
 static void handle_M_packet(struct gdb_stub *stub, struct string *out,
                             struct string const *dat) {
     int addr_idx = string_find_last_of(dat, "M");
