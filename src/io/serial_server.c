@@ -107,9 +107,9 @@ void serial_server_attach(void) {
     sin.sin_port = htons(SERIAL_PORT_NO);
     unsigned evflags = LEV_OPT_THREADSAFE | LEV_OPT_REUSEABLE |
         LEV_OPT_CLOSE_ON_FREE;
-    srv.listener = evconnlistener_new_bind(event_base, listener_cb, &srv,
-                                           evflags, -1, (struct sockaddr*)&sin,
-                                           sizeof(sin));
+    srv.listener = evconnlistener_new_bind(io_thread_event_base, listener_cb,
+                                           &srv, evflags, -1,
+                                           (struct sockaddr*)&sin, sizeof(sin));
 
     if (!srv.listener)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -170,7 +170,8 @@ listener_cb(struct evconnlistener *listener,
             int socklen, void *arg) {
     ser_srv_lock();
 
-    srv.bev = bufferevent_socket_new(event_base, fd, BEV_OPT_CLOSE_ON_FREE);
+    srv.bev = bufferevent_socket_new(io_thread_event_base, fd,
+                                     BEV_OPT_CLOSE_ON_FREE);
     if (!srv.bev)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 

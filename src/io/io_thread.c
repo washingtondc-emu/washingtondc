@@ -42,7 +42,7 @@
 
 static atomic_bool io_thread_running = ATOMIC_VAR_INIT(false);
 
-struct event_base *event_base;
+struct event_base *io_thread_event_base;
 
 static pthread_t io_thread;
 
@@ -79,8 +79,8 @@ static void *io_main(void *arg) {
 
     evthread_use_pthreads();
 
-    event_base = event_base_new();
-    if (!event_base)
+    io_thread_event_base = event_base_new();
+    if (!io_thread_event_base)
         errx(1, "event_base_new returned -1!");
 
     if (pthread_cond_signal(&io_thread_create_condition) != 0)
@@ -96,7 +96,7 @@ static void *io_main(void *arg) {
 #endif
 
     int const evflags = EVLOOP_ONCE | EVLOOP_NO_EXIT_ON_EMPTY;
-    while (event_base_loop(event_base, evflags) >= 0) {
+    while (event_base_loop(io_thread_event_base, evflags) >= 0) {
         if (!dc_is_running())
             break;
 
@@ -110,7 +110,7 @@ static void *io_main(void *arg) {
     serial_server_cleanup();
 #endif
 
-    event_base_free(event_base);
+    event_base_free(io_thread_event_base);
 
     pthread_exit(NULL);
     return NULL; // this line never executes
@@ -118,5 +118,5 @@ static void *io_main(void *arg) {
 
 void io_thread_kick(void) {
     if (atomic_load(&io_thread_running))
-        event_base_loopbreak(event_base);
+        event_base_loopbreak(io_thread_event_base);
 }

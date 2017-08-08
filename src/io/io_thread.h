@@ -44,4 +44,4 @@ void io_thread_join(void);
  */
 void io_thread_kick(void);
 
-extern struct event_base *event_base;
+extern struct event_base *io_thread_event_base;
