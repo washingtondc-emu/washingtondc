@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "hw/sh4/sh4.h"
+#include "hw/sh4/sh4_reg.h"
 #include "dreamcast.h"
 
 #include "gdb_stub.h"
@@ -52,7 +52,7 @@ static int decode_hex(char ch);
 static void write_start(struct gdb_stub *stub);
 static void extract_packet(struct string *out, struct string const *packet_in);
 static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
-                   unsigned reg_no, reg32_t reg_val, bool bank);
+                   unsigned reg_no, reg32_t reg_val);
 static void handle_packet(struct gdb_stub *stub, struct string *pkt);
 static void transmit_pkt(struct gdb_stub *stub, struct string const *pkt);
 static bool next_packet(struct gdb_stub *stub, struct string *pkt);
@@ -81,13 +81,6 @@ static void handle_Z_packet(struct gdb_stub *stub, struct string *out,
                             struct string const *dat);
 static void handle_z_packet(struct gdb_stub *stub, struct string *out,
                             struct string const *dat);
-
-static void read_mem_4(struct gdb_stub *stub, struct string *out,
-                       addr32_t addr, unsigned len);
-static void read_mem_2(struct gdb_stub *stub, struct string *out,
-                       addr32_t addr, unsigned len);
-static void read_mem_1(struct gdb_stub *stub, struct string *out,
-                       addr32_t addr, unsigned len);
 
 static void
 listener_cb(struct evconnlistener *listener,
@@ -277,19 +270,18 @@ static void gdb_on_write_watchpoint(addr32_t addr, void *arg) {
 }
 
 static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
-    Sh4 *cpu = dreamcast_get_cpu();
     reg32_t reg_file[SH4_REGISTER_COUNT];
-    sh4_get_regs(cpu, reg_file);
+    debug_get_all_regs(reg_file);
     reg32_t regs[N_REGS] = { 0 };
 
     // general-purpose registers
     for (int i = 0; i < 16; i++)
-        regs[R0 + i] = reg_file[sh4_gen_reg_idx(cpu, i)];
+        regs[R0 + i] = reg_file[debug_gen_reg_idx(i)];
 
     // banked registers
     for (int i = 0; i < 8; i++) {
-        regs[R0B0 + i] = reg_file[sh4_bank0_reg_idx(cpu, i)];
-        regs[R0B1 + i] = reg_file[sh4_bank1_reg_idx(cpu, i)];
+        regs[R0B0 + i] = reg_file[debug_bank0_reg_idx(reg_file[SH4_REG_SR], i)];
+        regs[R0B1 + i] = reg_file[debug_bank1_reg_idx(reg_file[SH4_REG_SR], i)];
     }
 
     // FPU registers
@@ -413,15 +405,13 @@ static void extract_packet(struct string *out, struct string const *packet_in) {
     string_substr(out, packet_in, dollar_idx + 1, pound_idx - 1);
 }
 
-static int conv_reg_idx_to_sh4(unsigned reg_no) {
-    Sh4 *sh4 = dreamcast_get_cpu();
-
+static int conv_reg_idx_to_sh4(unsigned reg_no, reg32_t reg_sr) {
     if (reg_no >= R0 && reg_no <= R15)
-        return sh4_gen_reg_idx(sh4, reg_no - R0);
+        return debug_gen_reg_idx(reg_no - R0);
     else if (reg_no >= R0B0 && reg_no <= R7B0)
-        return sh4_bank0_reg_idx(sh4, reg_no - R0B0);
+        return debug_bank0_reg_idx(reg_sr, reg_no - R0B0);
     else if (reg_no >= R0B1 && reg_no <= R7B1)
-        return sh4_bank1_reg_idx(sh4, reg_no - R0B1);
+        return debug_bank1_reg_idx(reg_sr, reg_no - R0B1);
     else if (reg_no == PC)
         return SH4_REG_PC;
     else if (reg_no == PR)
@@ -452,56 +442,19 @@ static int conv_reg_idx_to_sh4(unsigned reg_no) {
 }
 
 static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
-                   unsigned reg_no, reg32_t reg_val, bool bank) {
-    Sh4 *sh4 = dreamcast_get_cpu();
+                   unsigned reg_no, reg32_t reg_val) {
 
-    // TODO: floating point registers
-    if (reg_no >= R0 && reg_no <= R15) {
-        unsigned idx = reg_no - R0;
-
-        if (idx < 8) {
-            if (bank)
-                reg_file[sh4_bank1_reg_idx(sh4, idx)] = reg_val;
-            else
-                reg_file[sh4_bank0_reg_idx(sh4, idx)] = reg_val;
-        } else {
-            reg_file[SH4_REG_R8 + (idx + 8)] = reg_val;
-        }
-    } else if (reg_no >= R0B0 && reg_no <= R7B0) {
+    if ((reg_no >= R0B0 && reg_no <= R7B0) ||
+        (reg_no >= R0B1 && reg_no <= R7B1)) {
         fprintf(stderr, "WARNING: this gdb stub does not allow writes to "
                 "banked registers\n");
-        /* reg_file[sh4_bank0_reg_idx(sh4, reg_no - R0B0)] = reg_val; */
-    } else if (reg_no >= R0B1 && reg_no <= R7B1) {
-        fprintf(stderr, "WARNING: this gdb stub does not allow writes to "
-                "banked registers\n");
-        /* reg_file[sh4_bank1_reg_idx(sh4, reg_no - R0B1)] = reg_val; */
-    } else if (reg_no == PC) {
-        reg_file[SH4_REG_PC] = reg_val;
-    } else if (reg_no == PR) {
-        reg_file[SH4_REG_PR] = reg_val;
-    } else if (reg_no == GBR) {
-        reg_file[SH4_REG_GBR] = reg_val;
-    } else if (reg_no == VBR) {
-        reg_file[SH4_REG_VBR] = reg_val;
-    } else if (reg_no == MACH) {
-        reg_file[SH4_REG_MACH] = reg_val;
-    } else if (reg_no == MACL) {
-        reg_file[SH4_REG_MACL] = reg_val;
-    } else if (reg_no == SR) {
-        reg_file[SH4_REG_SR] = reg_val;
-    } else if (reg_no == SSR) {
-        reg_file[SH4_REG_SSR] = reg_val;
-    } else if (reg_no == SPC) {
-        reg_file[SH4_REG_SPC] = reg_val;
-    } else if (reg_no == FPUL) {
-        reg_file[SH4_REG_FPUL] = reg_val;
-    } else if (reg_no == FPSCR) {
-        reg_file[SH4_REG_FPSCR] = reg_val;
-    } else if (reg_no >= FR0 && reg_no <= FR15) {
-        // FPU registers
-        // TODO: implement the other types of FPU registers
-        // AFAIK, GDB only supports FRn, DRn and fVn.
-        memcpy(reg_file + SH4_REG_FR0 + (reg_no - FR0), &reg_val, sizeof(float));
+        return 0;
+    }
+
+    int idx = conv_reg_idx_to_sh4(reg_no, reg_file[SH4_REG_SR]);
+
+    if (idx >= 0) {
+        reg_file[idx] = reg_val;
     } else {
 #ifdef GDBSTUB_VERBOSE
         printf("WARNING: GdbStub unable to set value of register %x to %x\n",
@@ -629,74 +582,18 @@ static void handle_m_packet(struct gdb_stub *stub, struct string *out,
     string_cleanup(&addr_str);
     string_cleanup(&len_str);
 
-    if (len % 4 == 0)
-        return read_mem_4(stub, out, addr, len);
-    else if (len % 2 == 0)
-        return read_mem_2(stub, out, addr, len);
-    else
-        return read_mem_1(stub, out, addr, len);
-}
-
-static void read_mem_4(struct gdb_stub *stub, struct string *out,
-                       addr32_t addr, unsigned len) {
-    while (len) {
-        uint32_t val;
-
-        int err = sh4_do_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
-
-        // TODO: ideally this code would be smart enough to not raise CPU exceptions
-        if (err != MEM_ACCESS_SUCCESS) {
-            error_clear();
-            err_str(out, EINVAL);
-            return;
-        }
-
-        addr += 4;
-
-        serialize_data(out, &val, sizeof(val));
-        len -= 4;
+    void *data_buf = malloc(len);
+    if (!data_buf) {
+        error_set_length(len);
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
     }
-}
 
-static void read_mem_2(struct gdb_stub *stub, struct string *out,
-                       addr32_t addr, unsigned len) {
-    while (len) {
-        uint16_t val;
+    if (debug_read_mem(data_buf, addr, len) < 0)
+        goto cleanup;
+    serialize_data(out, data_buf, len);
 
-        int err = sh4_do_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
-
-        // TODO: ideally this code would be smart enough to not raise CPU exceptions
-        if (err != MEM_ACCESS_SUCCESS) {
-            error_clear();
-            err_str(out, EINVAL);
-            return;
-        }
-
-        addr += 2;
-
-        serialize_data(out, &val, sizeof(val));
-        len -= 2;
-    }
-}
-
-static void read_mem_1(struct gdb_stub *stub, struct string *out,
-                       addr32_t addr, unsigned len) {
-    while (len--) {
-        uint8_t val;
-
-        int err = sh4_do_read_mem(dreamcast_get_cpu(), &val, addr, sizeof(val));
-
-        // TODO: ideally this code would be smart enough to not raise CPU exceptions
-        if (err != MEM_ACCESS_SUCCESS) {
-            error_clear();
-            err_str(out, EINVAL);
-            return;
-        }
-
-        addr++;
-
-        serialize_data(out, &val, sizeof(val));
-    }
+cleanup:
+    free(data_buf);
 }
 
 static void handle_M_packet(struct gdb_stub *stub, struct string *out,
@@ -733,10 +630,10 @@ static void handle_M_packet(struct gdb_stub *stub, struct string *out,
     if (len < 1024) {
         uint8_t *buf = (uint8_t*)malloc(sizeof(uint8_t) * len);
         deserialize_data(&new_dat, buf, len);
-        int err = sh4_do_write_mem(dreamcast_get_cpu(), buf, addr, len);
+        int err = debug_write_mem(buf, addr, len);
         free(buf);
 
-        if (err != MEM_ACCESS_SUCCESS) {
+        if (err < 0) {
             err_str(out, EINVAL);
             string_cleanup(&new_dat);
             return;
@@ -766,19 +663,18 @@ static void handle_G_packet(struct gdb_stub *stub, struct string *out,
     string_cleanup(&tmp);
 
     reg32_t new_regs[SH4_REGISTER_COUNT];
-    sh4_get_regs(dreamcast_get_cpu(), new_regs);
+    debug_get_all_regs(new_regs);
     bool bank = new_regs[SH4_REG_SR] & SH4_SR_RB_MASK;
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
-        set_reg(new_regs, reg_no, regs[reg_no], bank);
-    sh4_set_regs(dreamcast_get_cpu(), new_regs);
+        set_reg(new_regs, reg_no, regs[reg_no]);
+    debug_set_all_regs(new_regs);
 
     string_set(out, "OK");
 }
 
 static void handle_P_packet(struct gdb_stub *stub, struct string *out,
                             struct string const *dat) {
-    reg32_t regs[SH4_REGISTER_COUNT];
     int equals_idx = string_find_first_of(dat, "=");
 
     if ((equals_idx < 0) || ((size_t)equals_idx >= (string_length(dat) - 1))) {
@@ -814,10 +710,10 @@ static void handle_P_packet(struct gdb_stub *stub, struct string *out,
         fprintf(stderr, "WARNING: this gdb stub does not allow writes to "
                 "banked registers\n");
     } else {
-        int sh4_reg_no = conv_reg_idx_to_sh4(reg_no);
+        int sh4_reg_no = conv_reg_idx_to_sh4(reg_no, debug_get_reg(SH4_REG_SR));
 
         if (sh4_reg_no >= 0)
-            sh4_set_individual_reg(dreamcast_get_cpu(), sh4_reg_no, reg_val);
+            debug_set_reg(sh4_reg_no, reg_val);
     }
 
     string_set(out, "OK");

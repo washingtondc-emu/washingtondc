@@ -30,6 +30,7 @@
 #include <stdbool.h>
 
 #include "types.h"
+#include "hw/sh4/sh4_reg.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -127,6 +128,22 @@ bool debug_is_r_watch(struct debugger *dbg, addr32_t addr, unsigned len);
 void debug_on_detach(struct debugger *dbg);
 
 bool debug_step(struct debugger *dbg, addr32_t pc);
+
+void debug_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]);
+
+void debug_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]);
+
+void debug_set_reg(unsigned reg_no, reg32_t val);
+
+reg32_t debug_get_reg(unsigned reg_no);
+
+unsigned debug_gen_reg_idx(unsigned idx);
+unsigned debug_bank0_reg_idx(unsigned reg_sr, unsigned idx);
+unsigned debug_bank1_reg_idx(unsigned reg_sr, unsigned idx);
+
+int debug_read_mem(void *out, addr32_t addr, unsigned len);
+
+int debug_write_mem(void const *input, addr32_t addr, unsigned len);
 
 #ifdef __cplusplus
 }

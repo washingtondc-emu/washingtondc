@@ -24,6 +24,8 @@
 #include <errno.h>
 #include <stdbool.h>
 
+#include "dreamcast.h"
+
 #include "debugger.h"
 
 #ifndef ENABLE_DEBUGGER
@@ -263,4 +265,111 @@ static void frontend_on_softbreak(struct debug_frontend *frontend, inst_t inst,
 static void frontend_on_cleanup(struct debug_frontend *frontend) {
     if (frontend->on_cleanup)
         frontend->on_cleanup(frontend->arg);
+}
+
+void debug_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]) {
+    sh4_get_regs(dreamcast_get_cpu(), reg_file);
+}
+
+void debug_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]) {
+    sh4_set_regs(dreamcast_get_cpu(), reg_file);
+}
+
+void debug_set_reg(unsigned reg_no, reg32_t val) {
+    sh4_set_individual_reg(dreamcast_get_cpu(), reg_no, val);
+}
+
+reg32_t debug_get_reg(unsigned reg_no) {
+    reg32_t reg_file[SH4_REGISTER_COUNT];
+    debug_get_all_regs(reg_file);
+    return reg_file[reg_no];
+}
+
+unsigned debug_gen_reg_idx(unsigned idx) {
+    return SH4_REG_R0 + idx;
+}
+
+unsigned debug_bank0_reg_idx(unsigned reg_sr, unsigned idx) {
+    if (reg_sr & SH4_SR_RB_MASK)
+        return SH4_REG_R0_BANK + idx;
+    return SH4_REG_R0 + idx;
+}
+
+unsigned debug_bank1_reg_idx(unsigned reg_sr, unsigned idx) {
+    if (reg_sr & SH4_SR_RB_MASK)
+        return SH4_REG_R0 + idx;
+    return SH4_REG_R0_BANK + idx;
+}
+
+int debug_read_mem(void *out, addr32_t addr, unsigned len) {
+    unsigned unit_len, n_units;
+
+    if (len % 4 == 0) {
+        unit_len = 4;
+        n_units = len / 4;
+    } else if (len % 2 == 0) {
+        unit_len = 2;
+        n_units = len / 2;
+    } else {
+        unit_len = 1;
+        n_units = len;
+    }
+
+    uint8_t *out_byte_ptr = out;
+
+    while (n_units) {
+        int err = sh4_do_read_mem(dreamcast_get_cpu(), out_byte_ptr,
+                                  addr, unit_len);
+
+        if (err != MEM_ACCESS_SUCCESS) {
+            error_clear();
+            return -1;
+        }
+
+        out_byte_ptr += unit_len;
+        addr += unit_len;
+        n_units--;
+    }
+
+    return 0;
+}
+
+int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
+    unsigned unit_len, n_units;
+
+    if (len % 4 == 0) {
+        unit_len = 4;
+        n_units = len / 4;
+    } else if (len % 2 == 0) {
+        unit_len = 2;
+        n_units = len / 2;
+    } else {
+        unit_len = 1;
+        n_units = len;
+    }
+
+    uint8_t const *input_byte_ptr = input;
+
+    while (n_units) {
+        int err = sh4_do_write_mem(dreamcast_get_cpu(), input_byte_ptr,
+                                   addr, unit_len);
+
+        if (err != MEM_ACCESS_SUCCESS) {
+            /*
+             * Ideally none of the writes would go through if there's a
+             * failure at any point down the line, but that's not the way I've
+             * implemented this.
+             */
+            fprintf(stderr, "WARNING: failed %u-byte write to address "
+                    "0x%08x\n.  Past writes may not have failed!\n", len, addr);
+            error_clear();
+            return -1;
+        }
+
+        input_byte_ptr += unit_len;
+        addr += unit_len;
+        n_units--;
+    }
+
+    return 0;
 }
