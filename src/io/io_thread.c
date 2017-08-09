@@ -40,8 +40,6 @@
 
 #include "io_thread.h"
 
-static atomic_bool io_thread_running = ATOMIC_VAR_INIT(false);
-
 struct event_base *io_thread_event_base;
 
 /*
@@ -98,8 +96,6 @@ static void *io_main(void *arg) {
     if (pthread_cond_signal(&io_thread_create_condition) != 0)
         abort(); // TODO: error handling
 
-    atomic_store(&io_thread_running, true);
-
 #ifdef ENABLE_SERIAL_SERVER
     serial_server_init(dreamcast_get_cpu());
 #endif
@@ -119,7 +115,6 @@ static void *io_main(void *arg) {
 
     printf("io thread finished\n");
 
-    atomic_store(&io_thread_running, false);
     event_free(io_thread_work_event);
 
 #ifdef ENABLE_SERIAL_SERVER
@@ -133,8 +128,7 @@ static void *io_main(void *arg) {
 }
 
 void io_thread_kick(void) {
-    if (atomic_load(&io_thread_running))
-        event_active(io_thread_work_event, 0, 0);
+    event_active(io_thread_work_event, 0, 0);
 }
 
 static void io_work_callback(evutil_socket_t fd, short ev, void *arg) {

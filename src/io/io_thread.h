@@ -41,6 +41,18 @@ void io_thread_join(void);
  * tell the io thread to wake up and check dc_is_running.
  * If dreamcast_kill has not yet been called, then this function is effectively
  * a no-op.
+ *
+ * TODO: this thread can only be safely called from the emu (main) thread and
+ * the io_thread because it calls libevent functions, and those functions might
+ * not work if libevent is not initialized.  There's no way to know if libevent
+ * is initialized from within this function so the only threads that can call
+ * this are threads that implicitly know whether or not libevent is initialized.
+ * That means the io_thread can call this (although I'm not sure there's any
+ * good reason to) and the main/emu thread can call this (because it is the
+ * thread which signals the io_thread to clean up and exit).  This is good
+ * enough for now because the main/emu thread is the only thread which uses this
+ * function anyways.  In the future I will need to revise this behavior if I
+ * ever choose to let more threads call this function.
  */
 void io_thread_kick(void);
 

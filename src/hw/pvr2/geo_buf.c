@@ -83,7 +83,7 @@ void geo_buf_produce(void) {
     if (next_prod_idx == cons_idx) {
         fprintf(stderr, "WARNING %s: prod_idx == %u, cons_idx == %u.  "
                 "This thread will spin while the ring drains...\n", __func__, prod_idx, cons_idx);
-        while (next_prod_idx == cons_idx && dc_is_running())
+        while (next_prod_idx == cons_idx && dc_emu_thread_is_running())
             ;
         fprintf(stderr, "the ring has drained\n");
     }

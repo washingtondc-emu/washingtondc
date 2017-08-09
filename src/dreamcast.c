@@ -54,6 +54,7 @@ static BiosFile bios;
 static struct Memory mem;
 
 static volatile bool is_running;
+static volatile bool signal_exit_threads;
 
 static bool using_debugger;
 
@@ -330,6 +331,13 @@ void dreamcast_run() {
 #endif
     }
 
+    // tell the other threads it's time to clean up and exit
+    signal_exit_threads = true;
+
+    // kick the gfx_thread and io_thread so they know to check dc_is_running
+    gfx_thread_notify_wake_up();
+    io_thread_kick();
+
     switch (term_reason) {
     case TERM_REASON_NORM:
         printf("program execution ended normally\n");
@@ -406,8 +414,6 @@ void dc_print_perf_stats(void) {
 void dreamcast_kill(void) {
     printf("%s called - WashingtonDC will exit soon\n", __func__);
     is_running = false;
-    gfx_thread_notify_wake_up();
-    io_thread_kick();
 }
 
 Sh4 *dreamcast_get_cpu() {
@@ -469,6 +475,10 @@ close_fp:
 }
 
 bool dc_is_running(void) {
+    return !signal_exit_threads;
+}
+
+bool dc_emu_thread_is_running(void) {
     return is_running;
 }
 

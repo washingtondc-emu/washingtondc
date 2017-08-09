@@ -109,6 +109,12 @@ void dc_print_perf_stats(void);
 
 bool dc_is_running(void);
 
+/*
+ * this function should only ever be called from the emulation thread.
+ * all other threads should call dc_is_running() instead.
+ */
+bool dc_emu_thread_is_running(void);
+
 void dreamcast_kill(void);
 
 bool dc_debugger_enabled(void);
