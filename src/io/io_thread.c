@@ -44,12 +44,19 @@ static atomic_bool io_thread_running = ATOMIC_VAR_INIT(false);
 
 struct event_base *io_thread_event_base;
 
+/*
+ * event that gets invoked whenever somebody calls io_thread_kick
+ * to tell the io_thread that it has work to do
+ */
+static struct event *io_thread_work_event;
+
 static pthread_t io_thread;
 
 static pthread_mutex_t io_thread_create_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t io_thread_create_condition = PTHREAD_COND_INITIALIZER;
 
 static void *io_main(void *arg);
+static void io_work_callback(evutil_socket_t fd, short ev, void *arg);
 
 void io_thread_launch(void) {
     int err_code;
@@ -83,19 +90,24 @@ static void *io_main(void *arg) {
     if (!io_thread_event_base)
         errx(1, "event_base_new returned -1!");
 
+    io_thread_work_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+                                     io_work_callback, NULL);
+    if (!io_thread_work_event)
+        errx(1, "event_new returned NULL!");
+
     if (pthread_cond_signal(&io_thread_create_condition) != 0)
         abort(); // TODO: error handling
 
     atomic_store(&io_thread_running, true);
 
-    if (pthread_mutex_unlock(&io_thread_create_mutex) != 0)
-        abort(); // TODO: error handling
-
 #ifdef ENABLE_SERIAL_SERVER
     serial_server_init(dreamcast_get_cpu());
 #endif
 
-    int const evflags = EVLOOP_ONCE | EVLOOP_NO_EXIT_ON_EMPTY;
+    if (pthread_mutex_unlock(&io_thread_create_mutex) != 0)
+        abort(); // TODO: error handling
+
+    int const evflags = EVLOOP_NO_EXIT_ON_EMPTY;
     while (event_base_loop(io_thread_event_base, evflags) >= 0) {
         if (!dc_is_running())
             break;
@@ -105,7 +117,11 @@ static void *io_main(void *arg) {
 #endif
     }
 
+    printf("io thread finished\n");
+
     atomic_store(&io_thread_running, false);
+    event_free(io_thread_work_event);
+
 #ifdef ENABLE_SERIAL_SERVER
     serial_server_cleanup();
 #endif
@@ -118,5 +134,14 @@ static void *io_main(void *arg) {
 
 void io_thread_kick(void) {
     if (atomic_load(&io_thread_running))
+        event_active(io_thread_work_event, 0, 0);
+}
+
+static void io_work_callback(evutil_socket_t fd, short ev, void *arg) {
+    if (!dc_is_running())
         event_base_loopbreak(io_thread_event_base);
+
+#ifdef ENABLE_SERIAL_SERVER
+    serial_server_run();
+#endif
 }
