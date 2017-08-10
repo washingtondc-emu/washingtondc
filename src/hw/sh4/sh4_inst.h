@@ -201,7 +201,16 @@ typedef enum sh4_inst_group {
     SH4_GROUP_BR,
     SH4_GROUP_LS,
     SH4_GROUP_FE,
-    SH4_GROUP_CO
+    SH4_GROUP_CO,
+
+    /*
+     * used by the sh4_single_step code to indicate that the previous
+     * instruction was an "even" instruction, meaning that this instruction
+     * will not be free under any circumstance (althoutgh the next one might).
+     *
+     * Obviously this is not a real instruction group.
+     */
+    SH4_GROUP_NONE
 } sh4_inst_group_t;
 
 struct InstOpcode {

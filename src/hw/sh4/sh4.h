@@ -149,6 +149,24 @@ void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles);
 void sh4_single_step(Sh4 *sh4);
 
 /*
+ * Fetches the given instruction and returns it into inst_out.
+ *
+ * the number of cycles this instruction requires will be returned into
+ * *n_cycles.  This is not the same as the instruction's issue cycles due to
+ * the dual-issue pipeline of the sh4.
+ *
+ * If there's an exception generated while fetching the instruction, this
+ * function will automatically handle that and return the first instruction of
+ * the exception handler.  In this case, the cycles returned will not take into
+ * account the cycles wasted trying to fetch the instruction or the cycles spent
+ * jumping to the exception handler.  The reason for this is that I'm not sure
+ * how many cycles should be taken.  Also, it's probably not a very common case
+ * anyways.
+ */
+void sh4_fetch_inst(Sh4 *sh4, inst_t *inst_out, InstOpcode const **op_out,
+                    unsigned *n_cycles_out);
+
+/*
  * run until pc == stop_addr.
  * This is primarily intended for unit testing code.
  *

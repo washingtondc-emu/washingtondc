@@ -104,7 +104,7 @@ void sh4_on_hard_reset(Sh4 *sh4) {
      * default to CO-type instructions so that the first instruction executed
      * costs a CPU cycle.
      */
-    sh4->last_inst_type = SH4_GROUP_CO;
+    sh4->last_inst_type = SH4_GROUP_NONE;
 
     sh4_ocache_clear(&sh4->ocache);
 
@@ -258,7 +258,33 @@ mulligan:
 /* executes a single instruction and maybe ticks the clock. */
 void sh4_single_step(Sh4 *sh4) {
     inst_t inst;
+    unsigned n_cycles;
     int exc_pending;
+    InstOpcode const *op;
+
+    sh4_fetch_inst(sh4, &inst, &op, &n_cycles);
+
+    dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp() + n_cycles;
+
+    // I *wish* I could find a way to keep  this code in Dreamcast.cpp...
+    SchedEvent *next_event;
+    while ((next_event = peek_event()) &&
+           (next_event->when <= tgt_stamp)) {
+        pop_event();
+        dc_cycle_advance(next_event->when - dc_cycle_stamp());
+        next_event->handler(next_event);
+    }
+
+    sh4_do_exec_inst(sh4, inst, op);
+
+    dc_cycle_advance(tgt_stamp - dc_cycle_stamp());
+}
+
+void sh4_fetch_inst(Sh4 *sh4, inst_t *inst_out, InstOpcode const **op_out,
+                    unsigned *n_cycles_out) {
+    inst_t inst;
+    int exc_pending;
+    unsigned n_cycles;
 
 mulligan:
     sh4_check_interrupts(sh4);
@@ -273,27 +299,32 @@ mulligan:
 
     InstOpcode const *op = sh4_inst_lut[inst];
 
-    dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp();
-    if ((op->group == SH4_GROUP_CO) ||
-        (sh4->last_inst_type == SH4_GROUP_CO) ||
-        ((sh4->last_inst_type != op->group) && (op->group != SH4_GROUP_MT))) {
-        tgt_stamp += op->issue;
+    if ((sh4->last_inst_type == SH4_GROUP_NONE) ||
+        ((op->group == SH4_GROUP_CO) ||
+         (sh4->last_inst_type == SH4_GROUP_CO) ||
+         ((sh4->last_inst_type != op->group) && (op->group != SH4_GROUP_MT)))) {
+        // This instruction was not free
+        n_cycles = op->issue;
+
+        /*
+         * no need to check for SH4_GROUP_CO here because we'll do that when we
+         * check for last_inst_type==SH4_GROUP_CO next time we're in this if
+         * statement
+         */
+        sh4->last_inst_type = op->group;
+    } else {
+        /*
+         * cash in on the dual-issue pipeline's "free" instruction and set
+         * last_inst_type to SH4_GROUP_NONE so that the next instruction is
+         * not free.
+         */
+        n_cycles = 0;
+        sh4->last_inst_type = SH4_GROUP_NONE;
     }
 
-    // I *wish* I could find a way to keep  this code in Dreamcast.cpp...
-    SchedEvent *next_event;
-    while ((next_event = peek_event()) &&
-           (next_event->when <= tgt_stamp)) {
-        pop_event();
-        dc_cycle_advance(next_event->when - dc_cycle_stamp());
-        next_event->handler(next_event);
-    }
-
-    sh4_do_exec_inst(sh4, inst, op);
-
-    sh4->last_inst_type = op->group;
-
-    dc_cycle_advance(tgt_stamp - dc_cycle_stamp());
+    *inst_out = inst;
+    *op_out = op;
+    *n_cycles_out = n_cycles;
 }
 
 void sh4_run_until(Sh4 *sh4, addr32_t stop_addr) {
