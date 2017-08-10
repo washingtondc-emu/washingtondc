@@ -255,31 +255,6 @@ mulligan:
     } while (n_cycles);
 }
 
-/* executes a single instruction and maybe ticks the clock. */
-void sh4_single_step(Sh4 *sh4) {
-    inst_t inst;
-    unsigned n_cycles;
-    int exc_pending;
-    InstOpcode const *op;
-
-    sh4_fetch_inst(sh4, &inst, &op, &n_cycles);
-
-    dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp() + n_cycles;
-
-    // I *wish* I could find a way to keep  this code in Dreamcast.cpp...
-    SchedEvent *next_event;
-    while ((next_event = peek_event()) &&
-           (next_event->when <= tgt_stamp)) {
-        pop_event();
-        dc_cycle_advance(next_event->when - dc_cycle_stamp());
-        next_event->handler(next_event);
-    }
-
-    sh4_do_exec_inst(sh4, inst, op);
-
-    dc_cycle_advance(tgt_stamp - dc_cycle_stamp());
-}
-
 void sh4_fetch_inst(Sh4 *sh4, inst_t *inst_out, InstOpcode const **op_out,
                     unsigned *n_cycles_out) {
     inst_t inst;
@@ -325,11 +300,6 @@ mulligan:
     *inst_out = inst;
     *op_out = op;
     *n_cycles_out = n_cycles;
-}
-
-void sh4_run_until(Sh4 *sh4, addr32_t stop_addr) {
-    while (sh4->reg[SH4_REG_PC] != stop_addr)
-        sh4_single_step(sh4);
 }
 
 void sh4_bank_switch(Sh4 *sh4) {

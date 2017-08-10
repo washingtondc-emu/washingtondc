@@ -85,6 +85,8 @@ static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
 
+static void dc_single_step(Sh4 *sh4);
+
 void dreamcast_init(char const *bios_path, char const *flash_path) {
     is_running = true;
 
@@ -307,7 +309,7 @@ void dreamcast_run() {
          * TODO: don't single-step if there's no
          * chance of us hitting a breakpoint
          */
-        sh4_single_step(&cpu);
+        dc_single_step(&cpu);
 #else
         SchedEvent *next_event = peek_event();
 
@@ -339,10 +341,6 @@ void dreamcast_run() {
         }
 #endif
     }
-    /* } catch(const BaseException& exc) { */
-    /*     std::cerr << boost::diagnostic_information(exc); */
-    /*     term_reason = TERM_REASON_ERROR; */
-    /* } */
     switch (term_reason) {
     case TERM_REASON_NORM:
         printf("program execution ended normally\n");
@@ -364,6 +362,30 @@ void dreamcast_run() {
     dc_print_perf_stats();
 
     dreamcast_cleanup();
+}
+
+/* executes a single instruction and maybe ticks the clock. */
+static void dc_single_step(Sh4 *sh4) {
+    inst_t inst;
+    unsigned n_cycles;
+    int exc_pending;
+    InstOpcode const *op;
+
+    sh4_fetch_inst(sh4, &inst, &op, &n_cycles);
+
+    dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp() + n_cycles;
+
+    SchedEvent *next_event;
+    while ((next_event = peek_event()) &&
+           (next_event->when <= tgt_stamp)) {
+        pop_event();
+        dc_cycle_advance(next_event->when - dc_cycle_stamp());
+        next_event->handler(next_event);
+    }
+
+    sh4_do_exec_inst(sh4, inst, op);
+
+    dc_cycle_advance(tgt_stamp - dc_cycle_stamp());
 }
 
 void dc_print_perf_stats(void) {

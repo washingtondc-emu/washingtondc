@@ -106,7 +106,7 @@ struct Sh4 {
     unsigned cycles_accum;
 
     /*
-     * this is used by sh4_single_step to track the type of the last
+     * this is used by sh4_fetch_inst to track the type of the last
      * instruction that was executed.  This is used to determine if the next
      * instruction to be executed should advance the cycle count, or if it
      * would have been executed by the second pipeline on a real sh4.
@@ -145,9 +145,6 @@ void sh4_on_hard_reset(Sh4 *sh4);
  */
 void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles);
 
-/* executes a single instruction and maybe ticks the clock. */
-void sh4_single_step(Sh4 *sh4);
-
 /*
  * Fetches the given instruction and returns it into inst_out.
  *
@@ -165,15 +162,6 @@ void sh4_single_step(Sh4 *sh4);
  */
 void sh4_fetch_inst(Sh4 *sh4, inst_t *inst_out, InstOpcode const **op_out,
                     unsigned *n_cycles_out);
-
-/*
- * run until pc == stop_addr.
- * This is primarily intended for unit testing code.
- *
- * if pc is already equal to stop_addr when the function is first called
- * then no instructions will be executed
- */
-void sh4_run_until(Sh4 *sh4, addr32_t stop_addr);
 
 // returns the program counter
 reg32_t sh4_get_pc(Sh4 *sh4);
