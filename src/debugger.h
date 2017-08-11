@@ -37,9 +37,19 @@ extern "C" {
 #endif
 
 enum debug_state {
+    // the debugger is not suspending the dreamcast
     DEBUG_STATE_NORM,
-    DEBUG_STATE_PRE_STEP,
-    DEBUG_STATE_POST_STEP,
+
+    /*
+     * the debugger has allowed the dreamcast to run for one instruction,
+     * but it should break immediately after
+     */
+    DEBUG_STATE_STEP,
+
+    /*
+     * the debugger is holding at a breakpoint pending permission to continue
+     * from the user.
+     */
     DEBUG_STATE_BREAK
 };
 
@@ -101,8 +111,6 @@ void debug_cleanup(struct debugger *dbg);
 
 void debug_attach(struct debugger *dbg);
 
-bool debug_should_break(struct debugger *dbg, addr32_t pc);
-
 void debug_on_softbreak(struct debugger *dbg, inst_t inst, addr32_t pc);
 
 // these functions return 0 on success, nonzer on failure
@@ -121,14 +129,6 @@ int debug_remove_w_watch(struct debugger *dbg, addr32_t addr, unsigned len);
 bool debug_is_w_watch(struct debugger *dbg, addr32_t addr, unsigned len);
 bool debug_is_r_watch(struct debugger *dbg, addr32_t addr, unsigned len);
 
-/*
- * call this when gdb sends a detach packet.
- * This clears out break points and such.
- */
-void debug_on_detach(struct debugger *dbg);
-
-bool debug_step(struct debugger *dbg, addr32_t pc);
-
 void debug_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]);
 
 void debug_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]);
@@ -144,6 +144,32 @@ unsigned debug_bank1_reg_idx(unsigned reg_sr, unsigned idx);
 int debug_read_mem(void *out, addr32_t addr, unsigned len);
 
 int debug_write_mem(void const *input, addr32_t addr, unsigned len);
+
+/*
+ * called by the dreamcast code to notify the debugger that a new instruction
+ * is about to execute.  This should check for hardware breakpoints and set the
+ * emulator's state to DC_STATE_DEBUG if a breakpoint has been hit.
+ */
+void debug_notify_inst(struct debugger *dbg, Sh4 *sh4);
+
+/*
+ * called by the gdb_stub to tell the debugger to continue executing if
+ * execution is suspended.
+ */
+void debug_request_continue(struct debugger *dbg);
+
+/*
+ * called by the gdb_stub to tell the debugger to single-step.
+ */
+void debug_request_single_step(struct debugger *dbg);
+
+/*
+ * called by the gdb_stub to tell the debugger that the remote gdb frontend is
+ * detaching.  This clears out break points and such.
+ */
+void debug_request_detach(struct debugger *dbg);
+
+void debug_request_break(struct debugger *dbg);
 
 #ifdef __cplusplus
 }

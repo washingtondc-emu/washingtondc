@@ -114,6 +114,21 @@ void dc_print_perf_stats(void);
 bool dc_is_running(void);
 
 void dreamcast_kill(void);
+
+enum dc_state {
+    // the emulation thread has not been started yet
+    DC_STATE_NOT_RUNNING,
+
+    // the emulation thread is currently executing
+    DC_STATE_RUNNING,
+
+    // the emulation thread has been suspended by the gdb stub
+    DC_STATE_DEBUG
+};
+
+enum dc_state dc_get_state(void);
+void dc_state_transition(enum dc_state state_new);
+
 #ifdef __cplusplus
 }
 #endif

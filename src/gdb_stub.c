@@ -241,8 +241,6 @@ static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg) {
         string_set(&resp, "T05swbreak:");
     }
 
-    stub->dbg->cur_state = DEBUG_STATE_BREAK;
-
     craft_packet(&pkt, &resp);
     transmit_pkt(stub, &pkt);
 }
@@ -485,7 +483,7 @@ static void err_str(struct string *err_out, unsigned err_val) {
 
 static void handle_c_packet(struct gdb_stub *stub, struct string *out,
                             struct string *dat) {
-    stub->dbg->cur_state = DEBUG_STATE_NORM;
+    debug_request_continue(stub->dbg);
 }
 
 static void handle_q_packet(struct gdb_stub *stub, struct string *out,
@@ -649,7 +647,7 @@ static void handle_M_packet(struct gdb_stub *stub, struct string *out,
 
 static void handle_s_packet(struct gdb_stub *stub, struct string *out,
                             struct string const *dat) {
-    stub->dbg->cur_state = DEBUG_STATE_PRE_STEP;
+    debug_request_single_step(stub->dbg);
 }
 
 static void handle_G_packet(struct gdb_stub *stub, struct string *out,
@@ -725,9 +723,7 @@ cleanup:
 
 static void handle_D_packet(struct gdb_stub *stub, struct string *out,
                             struct string const *dat) {
-    stub->dbg->cur_state = DEBUG_STATE_NORM;
-
-    debug_on_detach(stub->dbg);
+    debug_request_detach(stub->dbg);
 
     string_set(out, "OK");
 }
@@ -931,7 +927,7 @@ static void handle_z_packet(struct gdb_stub *stub, struct string *out,
         string_substr(&addr_str, &dat_local, first_comma_idx + 1, last_comma_idx - 1);
 
         uint32_t length = string_read_hex32(&len_str, 0);
-        addr32_t watch_addr = string_read_hex32(&addr_str, 0);;
+        addr32_t watch_addr = string_read_hex32(&addr_str, 0);
 
         string_cleanup(&addr_str);
         string_cleanup(&len_str);
@@ -1227,10 +1223,8 @@ static void handle_read(struct bufferevent *bev, void *arg) {
             } else if (c == 3) {
                 // user pressed ctrl+c (^C) on the gdb frontend
                 printf("GDBSTUB: user requested breakpoint (ctrl-C)\n");
-                if (stub->dbg->cur_state == DEBUG_STATE_NORM) {
-                    gdb_on_break(stub);
-                    stub->dbg->cur_state = DEBUG_STATE_BREAK;
-                }
+                if (stub->dbg->cur_state == DEBUG_STATE_NORM)
+                    debug_request_break(stub->dbg);
             } else {
                 fprintf(stderr, "WARNING: ignoring unexpected character %c\n", c);
             }

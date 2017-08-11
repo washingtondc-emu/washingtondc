@@ -57,21 +57,16 @@ void debug_cleanup(struct debugger *dbg) {
     frontend_on_cleanup(&dbg->frontend);
 }
 
-bool debug_should_break(struct debugger *dbg, addr32_t pc) {
+void debug_check_break(struct debugger *dbg, Sh4 *sh4) {
     // hold at a breakpoint for user interaction
     if (dbg->cur_state == DEBUG_STATE_BREAK)
-        return true;
+        return;
 
-    if (dbg->cur_state == DEBUG_STATE_POST_STEP) {
-        frontend_on_break(&dbg->frontend);
+    if (dbg->cur_state == DEBUG_STATE_STEP) {
         dbg->cur_state = DEBUG_STATE_BREAK;
-        return true;
-    }
-
-    // allow it to step once then break
-    if (dbg->cur_state == DEBUG_STATE_PRE_STEP) {
-        dbg->cur_state = DEBUG_STATE_POST_STEP;
-        return false;
+        frontend_on_break(&dbg->frontend);
+        dc_state_transition(DC_STATE_DEBUG);
+        return;
     }
 
     if (dbg->at_watchpoint) {
@@ -80,29 +75,35 @@ bool debug_should_break(struct debugger *dbg, addr32_t pc) {
         else
             frontend_on_write_watchpoint(&dbg->frontend, dbg->watchpoint_addr);
         dbg->cur_state = DEBUG_STATE_BREAK;
+        dc_state_transition(DC_STATE_DEBUG);
         dbg->at_watchpoint = false;
-        return true;
+        return;
     }
 
     for (unsigned bp_idx = 0; bp_idx < DEBUG_N_BREAKPOINTS; bp_idx++) {
+        reg32_t pc = sh4->reg[SH4_REG_PC];
         if (dbg->breakpoint_enable[bp_idx] && pc == dbg->breakpoints[bp_idx]) {
             frontend_on_break(&dbg->frontend);
             dbg->cur_state = DEBUG_STATE_BREAK;
-            return true;
+            dc_state_transition(DC_STATE_DEBUG);
+            return;
         }
     }
 
-    return false;
+    return;
 }
 
-bool debug_step(struct debugger *dbg, addr32_t pc) {
-    return debug_should_break(dbg, pc);
+void debug_notify_inst(struct debugger *dbg, Sh4 *sh4) {
+    debug_check_break(dbg, sh4);
 }
 
-void debug_on_detach(struct debugger *dbg) {
+void debug_request_detach(struct debugger *dbg) {
     memset(dbg->breakpoint_enable, 0, sizeof(dbg->breakpoint_enable));
     memset(dbg->w_watchpoint_enable, 0, sizeof(dbg->w_watchpoint_enable));
     memset(dbg->r_watchpoint_enable, 0, sizeof(dbg->r_watchpoint_enable));
+
+    dbg->cur_state = DEBUG_STATE_NORM;
+    dc_state_transition(DC_STATE_RUNNING);
 }
 
 int debug_add_break(struct debugger *dbg, addr32_t addr) {
@@ -227,11 +228,15 @@ bool debug_is_r_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
 }
 
 void debug_on_softbreak(struct debugger *dbg, inst_t inst, addr32_t pc) {
+    dbg->cur_state = DEBUG_STATE_BREAK;
+    dc_state_transition(DC_STATE_DEBUG);
     frontend_on_softbreak(&dbg->frontend, inst, pc);
 }
 
 void debug_attach(struct debugger *dbg) {
     frontend_attach(&dbg->frontend);
+    dbg->cur_state = DEBUG_STATE_BREAK;
+    dc_state_transition(DC_STATE_DEBUG);
 }
 
 static void frontend_attach(struct debug_frontend *frontend) {
@@ -372,4 +377,22 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
     }
 
     return 0;
+}
+
+void debug_request_continue(struct debugger *dbg) {
+    dbg->cur_state = DEBUG_STATE_NORM;
+    dc_state_transition(DC_STATE_RUNNING);
+}
+
+void debug_request_single_step(struct debugger *dbg) {
+    dbg->cur_state = DEBUG_STATE_STEP;
+    dc_state_transition(DC_STATE_RUNNING);
+}
+
+void debug_request_break(struct debugger *dbg) {
+    if (dbg->cur_state == DEBUG_STATE_NORM) {
+        dbg->cur_state = DEBUG_STATE_BREAK;
+        dc_state_transition(DC_STATE_DEBUG);
+        frontend_on_break(&dbg->frontend);
+    }
 }

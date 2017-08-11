@@ -81,6 +81,8 @@ enum TermReason {
 // this stores the reason the dreamcast suspended execution
 enum TermReason term_reason = TERM_REASON_NORM;
 
+static enum dc_state dc_state = DC_STATE_RUNNING;
+
 static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
@@ -89,10 +91,6 @@ static void dc_single_step(Sh4 *sh4);
 
 void dreamcast_init(char const *bios_path, char const *flash_path) {
     is_running = true;
-
-// #ifdef ENABLE_DEBUGGER
-//     debugger = NULL;
-// #endif
 
 #if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
     dc_event_base = event_base_new();
@@ -282,19 +280,21 @@ void dreamcast_run() {
          * If we do have permission to single-step, then we call
          * dc_io_service.poll instead because we don't want to block.
          */
-        if (using_debugger && debug_step(&debugger, sh4_get_pc(&cpu))) {
-            if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
-                dreamcast_kill();
-                break;
-            }
+        if (using_debugger) {
+            debug_notify_inst(&debugger, &cpu);
 
-            continue;
-        } else {
-            if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
-                dreamcast_kill();
-                break;
+            while (dc_state == DC_STATE_DEBUG)
+                if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
+                    dreamcast_kill();
+                    break;
             }
         }
+
+#ifdef INVARIANTS
+        if (!using_debugger && dc_state == DC_STATE_DEBUG)
+            RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
 #else
 #ifdef ENABLE_SERIAL_SERVER
         if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
@@ -481,4 +481,12 @@ close_fp:
 
 bool dc_is_running(void) {
     return is_running;
+}
+
+enum dc_state dc_get_state(void) {
+    return dc_state;
+}
+
+void dc_state_transition(enum dc_state state_new) {
+    dc_state = state_new;
 }
