@@ -586,8 +586,10 @@ static void handle_m_packet(struct gdb_stub *stub, struct string *out,
         RAISE_ERROR(ERROR_FAILED_ALLOC);
     }
 
-    if (debug_read_mem(data_buf, addr, len) < 0)
+    if (debug_read_mem(data_buf, addr, len) < 0) {
+        err_str(out, EINVAL);
         goto cleanup;
+    }
     serialize_data(out, data_buf, len);
 
 cleanup:
