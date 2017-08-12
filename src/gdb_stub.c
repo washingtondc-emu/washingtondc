@@ -49,7 +49,7 @@ static void serialize_data(struct string *out, void const *buf,
 static size_t deserialize_data(struct string const *input_str,
                                void *out, size_t max_sz);
 static int decode_hex(char ch);
-static void write_start(struct gdb_stub *stub);
+static void do_write(struct gdb_stub *stub);
 static void extract_packet(struct string *out, struct string const *packet_in);
 static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
                    unsigned reg_no, reg32_t reg_val);
@@ -88,7 +88,6 @@ listener_cb(struct evconnlistener *listener,
             int socklen, void *arg);
 static void handle_events(struct bufferevent *bev, short events, void *arg);
 static void handle_read(struct bufferevent *bev, void *arg);
-static void handle_write(struct bufferevent *bev, void *arg);
 
 static size_t deserialize_data(struct string const *input_str,
                                void *out, size_t max_sz) {
@@ -125,7 +124,6 @@ void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
     string_init(&stub->input_packet);
 
     stub->frontend_supports_swbreak = false;
-    stub->is_writing = false;
     stub->listener = NULL;
     stub->is_listening = false;
     stub->bev = NULL;
@@ -357,17 +355,11 @@ static void transmit(struct gdb_stub *stub, struct string const *data) {
             RAISE_ERROR(ERROR_FAILED_ALLOC);
         }
 
-        write_start(stub);
+        do_write(stub);
     }
 }
 
-static void write_start(struct gdb_stub *stub) {
-    if (!evbuffer_get_length(stub->output_buffer))
-        stub->is_writing = false;
-
-    if (stub->is_writing || !evbuffer_get_length(stub->output_buffer))
-        return;
-
+static void do_write(struct gdb_stub *stub) {
     bufferevent_write_buffer(stub->bev, stub->output_buffer);
 }
 
@@ -1147,7 +1139,7 @@ listener_cb(struct evconnlistener *listener,
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     bufferevent_setcb(stub->bev, handle_read,
-                      handle_write, handle_events, stub);
+                      NULL, handle_events, stub);
     bufferevent_enable(stub->bev, EV_WRITE);
     bufferevent_enable(stub->bev, EV_READ);
 
@@ -1176,6 +1168,14 @@ static void handle_read(struct bufferevent *bev, void *arg) {
         char c = tmp;
 
         if (string_length(&stub->input_packet)) {
+
+            if (string_length(&stub->unack_packet)) {
+                printf("WARNING: new packet incoming; no acknowledgement was "
+                       "ever received for \"%s\"\n",
+                       string_get(&stub->unack_packet));
+                string_set(&stub->unack_packet, "");
+            }
+
             string_append_char(&stub->input_packet, c);
 
             struct string pkt;
@@ -1232,19 +1232,4 @@ static void handle_read(struct bufferevent *bev, void *arg) {
             }
         }
     }
-}
-
-/*
- * this function gets called when libevent is done writing
- * and is hungry for more data
- */
-static void handle_write(struct bufferevent *bev, void *arg) {
-    struct gdb_stub *stub = (struct gdb_stub*)arg;
-
-    stub->is_writing = false;
-
-    if (!evbuffer_get_length(stub->output_buffer))
-        return;
-
-    write_start(stub);
 }

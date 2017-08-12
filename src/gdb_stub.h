@@ -72,8 +72,6 @@ struct gdb_stub {
 
     struct evbuffer *output_buffer;
 
-    bool is_writing;
-
     // the last unsuccessfully acknowledged packet, or empty if there is none
     struct string unack_packet;
 
