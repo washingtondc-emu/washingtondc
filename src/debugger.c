@@ -32,6 +32,8 @@
 #error This file should not be included unless the debugger is enabled
 #endif
 
+#define DBG_TRACE(msg, ...) dbg_do_trace(msg, ##__VA_ARGS__)
+
 static void frontend_attach(struct debug_frontend *frontend);
 static void frontend_on_break(struct debug_frontend *frontend);
 static void frontend_on_read_watchpoint(struct debug_frontend *frontend,
@@ -41,6 +43,12 @@ static void frontend_on_write_watchpoint(struct debug_frontend *frontend,
 static void frontend_on_softbreak(struct debug_frontend *frontend, inst_t inst,
                                   addr32_t addr);
 static void frontend_on_cleanup(struct debug_frontend *frontend);
+
+// don't call this directly, use the DBG_TRACE macro instead
+static void dbg_do_trace(char const *msg, ...);
+
+static void dbg_state_transition(struct debugger *dbg,
+                                 enum debug_state new_state);
 
 void debug_init(struct debugger *dbg) {
     dbg->cur_state = DEBUG_STATE_BREAK;
@@ -63,7 +71,7 @@ void debug_check_break(struct debugger *dbg, Sh4 *sh4) {
         return;
 
     if (dbg->cur_state == DEBUG_STATE_STEP) {
-        dbg->cur_state = DEBUG_STATE_BREAK;
+        dbg_state_transition(dbg, DEBUG_STATE_BREAK);
         frontend_on_break(&dbg->frontend);
         dc_state_transition(DC_STATE_DEBUG);
         return;
@@ -84,7 +92,7 @@ void debug_check_break(struct debugger *dbg, Sh4 *sh4) {
          * we intentionally do not return here because we still want to check
          * the breakpoints below.
          */
-        dbg->cur_state = DEBUG_STATE_NORM;
+        dbg_state_transition(dbg, DEBUG_STATE_NORM);
     }
 
     if (dbg->cur_state == DEBUG_STATE_PRE_WATCH) {
@@ -92,7 +100,7 @@ void debug_check_break(struct debugger *dbg, Sh4 *sh4) {
             frontend_on_read_watchpoint(&dbg->frontend, dbg->watchpoint_addr);
         else
             frontend_on_write_watchpoint(&dbg->frontend, dbg->watchpoint_addr);
-        dbg->cur_state = DEBUG_STATE_WATCH;
+        dbg_state_transition(dbg, DEBUG_STATE_WATCH);
         dc_state_transition(DC_STATE_DEBUG);
         return;
     }
@@ -101,7 +109,7 @@ void debug_check_break(struct debugger *dbg, Sh4 *sh4) {
         reg32_t pc = sh4->reg[SH4_REG_PC];
         if (dbg->breakpoint_enable[bp_idx] && pc == dbg->breakpoints[bp_idx]) {
             frontend_on_break(&dbg->frontend);
-            dbg->cur_state = DEBUG_STATE_BREAK;
+            dbg_state_transition(dbg, DEBUG_STATE_BREAK);
             dc_state_transition(DC_STATE_DEBUG);
             return;
         }
@@ -115,15 +123,18 @@ void debug_notify_inst(struct debugger *dbg, Sh4 *sh4) {
 }
 
 void debug_request_detach(struct debugger *dbg) {
+    DBG_TRACE("detach request\n");
     memset(dbg->breakpoint_enable, 0, sizeof(dbg->breakpoint_enable));
     memset(dbg->w_watchpoint_enable, 0, sizeof(dbg->w_watchpoint_enable));
     memset(dbg->r_watchpoint_enable, 0, sizeof(dbg->r_watchpoint_enable));
 
-    dbg->cur_state = DEBUG_STATE_NORM;
+    dbg_state_transition(dbg, DEBUG_STATE_NORM);
     dc_state_transition(DC_STATE_RUNNING);
 }
 
 int debug_add_break(struct debugger *dbg, addr32_t addr) {
+    DBG_TRACE("request to add hardware breakpoint at 0x%08x\n",
+        (unsigned)addr);
     for (unsigned idx = 0; idx < DEBUG_N_BREAKPOINTS; idx++)
         if (!dbg->breakpoint_enable[idx]) {
             dbg->breakpoints[idx] = addr;
@@ -131,21 +142,29 @@ int debug_add_break(struct debugger *dbg, addr32_t addr) {
             return 0;
         }
 
+    DBG_TRACE("unable to add hardware breakpoint at 0x%08x (there are already "
+              "%u breakpoints)\n",
+              (unsigned)addr, (unsigned)DEBUG_N_BREAKPOINTS);
     return ENOBUFS;
 }
 
 int debug_remove_break(struct debugger *dbg, addr32_t addr) {
+    DBG_TRACE("request to remove hardware breakpoint at 0x%08x\n",
+              (unsigned)addr);
     for (unsigned idx = 0; idx < DEBUG_N_BREAKPOINTS; idx++)
         if (dbg->breakpoint_enable[idx] && dbg->breakpoints[idx] == addr) {
             dbg->breakpoint_enable[idx] = false;
             return 0;
         }
 
+    DBG_TRACE("unable to remove hardware breakpoint at 0x%08x (it does not "
+              "exist)\n", (unsigned)addr);
     return EINVAL;
 }
 
 // these functions return 0 on success, nonzero on failure
 int debug_add_r_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
+    DBG_TRACE("request to add read-watchpoint at 0x%08x\n", (unsigned)addr);
     for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++)
         if (!dbg->r_watchpoint_enable[idx]) {
             dbg->r_watchpoints[idx] = addr;
@@ -154,10 +173,14 @@ int debug_add_r_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
             return 0;
         }
 
+    DBG_TRACE("unable to add read-watchpoint at 0x%08x (there are already %u "
+              "read-watchpoints)\n",
+              (unsigned)addr, (unsigned)DEBUG_N_R_WATCHPOINTS);
     return ENOBUFS;
 }
 
 int debug_remove_r_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
+    DBG_TRACE("request to remove read-watchpoint at 0x%08x\n", (unsigned)addr);
     for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++)
         if (dbg->r_watchpoint_enable[idx] && dbg->r_watchpoints[idx] == addr &&
             dbg->r_watchpoint_len[idx] == len) {
@@ -165,11 +188,14 @@ int debug_remove_r_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
             return 0;
         }
 
+    DBG_TRACE("unable to remove read-watchpoint at 0x%08x (it does not "
+              "exist)\n", (unsigned)addr);
     return EINVAL;
 }
 
 // these functions return 0 on success, nonzer on failure
 int debug_add_w_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
+    DBG_TRACE("request to add write-watchpoint at 0x%08x\n", (unsigned)addr);
     for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++)
         if (!dbg->w_watchpoint_enable[idx]) {
             dbg->w_watchpoints[idx] = addr;
@@ -178,10 +204,14 @@ int debug_add_w_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
             return 0;
         }
 
+    DBG_TRACE("unable to add write-watchpoint at 0x%08x (there are already %u "
+              "read-watchpoints)\n",
+              (unsigned)addr, (unsigned)DEBUG_N_W_WATCHPOINTS);
     return ENOBUFS;
 }
 
 int debug_remove_w_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
+    DBG_TRACE("request to remove write-watchpoint at 0x%08x\n", (unsigned)addr);
     for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++)
         if (dbg->w_watchpoint_enable[idx] && dbg->w_watchpoints[idx] == addr &&
             dbg->w_watchpoint_len[idx] == len) {
@@ -189,6 +219,8 @@ int debug_remove_w_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
             return 0;
         }
 
+    DBG_TRACE("unable to remove write-watchpoint at 0x%08x (it does not "
+              "exist)\n", (unsigned)addr);
     return EINVAL;
 }
 
@@ -208,9 +240,11 @@ bool debug_is_w_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
                 (access_last >= watch_first && access_last <= watch_last) ||
                 (watch_first >= access_first && watch_first <= access_last) ||
                 (watch_last >= access_first && watch_last <= access_last)) {
-                dbg->cur_state = DEBUG_STATE_PRE_WATCH;
+                dbg_state_transition(dbg, DEBUG_STATE_PRE_WATCH);
                 dbg->watchpoint_addr = addr;
                 dbg->is_read_watchpoint = false;
+                DBG_TRACE("write-watchpoint at 0x%08x triggered!\n",
+                          (unsigned)addr);
                 return true;
             }
         }
@@ -234,9 +268,11 @@ bool debug_is_r_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
                 (access_last >= watch_first && access_last <= watch_last) ||
                 (watch_first >= access_first && watch_first <= access_last) ||
                 (watch_last >= access_first && watch_last <= access_last)) {
-                dbg->cur_state = DEBUG_STATE_PRE_WATCH;
+                dbg_state_transition(dbg, DEBUG_STATE_PRE_WATCH);
                 dbg->watchpoint_addr = addr;
                 dbg->is_read_watchpoint = true;
+                DBG_TRACE("read-watchpoint at 0x%08x triggered!\n",
+                          (unsigned)addr);
                 return true;
             }
         }
@@ -245,14 +281,16 @@ bool debug_is_r_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
 }
 
 void debug_on_softbreak(struct debugger *dbg, inst_t inst, addr32_t pc) {
-    dbg->cur_state = DEBUG_STATE_BREAK;
+    DBG_TRACE("softbreak at 0x%08x\n", (unsigned)pc);
+    dbg_state_transition(dbg, DEBUG_STATE_BREAK);
     dc_state_transition(DC_STATE_DEBUG);
     frontend_on_softbreak(&dbg->frontend, inst, pc);
 }
 
 void debug_attach(struct debugger *dbg) {
+    DBG_TRACE("debugger attached\n");
     frontend_attach(&dbg->frontend);
-    dbg->cur_state = DEBUG_STATE_BREAK;
+    dbg_state_transition(dbg, DEBUG_STATE_BREAK);
     dc_state_transition(DC_STATE_DEBUG);
 }
 
@@ -294,10 +332,13 @@ void debug_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]) {
 }
 
 void debug_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]) {
+    DBG_TRACE("writing to all registers\n");
     sh4_set_regs(dreamcast_get_cpu(), reg_file);
 }
 
 void debug_set_reg(unsigned reg_no, reg32_t val) {
+    DBG_TRACE("setting register index %u to 0x%08x\n",
+              (unsigned)reg_no, (unsigned)val);
     sh4_set_individual_reg(dreamcast_get_cpu(), reg_no, val);
 }
 
@@ -325,6 +366,9 @@ unsigned debug_bank1_reg_idx(unsigned reg_sr, unsigned idx) {
 
 int debug_read_mem(void *out, addr32_t addr, unsigned len) {
     unsigned unit_len, n_units;
+
+    DBG_TRACE("request to read %u bytes from %08x\n",
+              (unsigned)len, (unsigned)addr);
 
     if (len % 4 == 0) {
         unit_len = 4;
@@ -359,6 +403,9 @@ int debug_read_mem(void *out, addr32_t addr, unsigned len) {
 int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
     unsigned unit_len, n_units;
 
+    DBG_TRACE("request to write %u bytes to 0x%08x\n",
+              (unsigned)len, (unsigned)addr);
+
     if (len % 4 == 0) {
         unit_len = 4;
         n_units = len / 4;
@@ -382,8 +429,9 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
              * failure at any point down the line, but that's not the way I've
              * implemented this.
              */
-            fprintf(stderr, "WARNING: failed %u-byte write to address "
-                    "0x%08x\n.  Past writes may not have failed!\n", len, addr);
+            DBG_TRACE("WARNING: failed %u-byte write to address "
+                      "0x%08x\n.  Past writes may not have failed!\n",
+                      len, addr);
             error_clear();
             return -1;
         }
@@ -398,21 +446,48 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
 
 void debug_request_continue(struct debugger *dbg) {
     if (dbg->cur_state == DEBUG_STATE_WATCH)
-        dbg->cur_state = DEBUG_STATE_POST_WATCH;
+        dbg_state_transition(dbg, DEBUG_STATE_POST_WATCH);
     else
-        dbg->cur_state = DEBUG_STATE_NORM;
+        dbg_state_transition(dbg, DEBUG_STATE_NORM);
     dc_state_transition(DC_STATE_RUNNING);
 }
 
 void debug_request_single_step(struct debugger *dbg) {
-    dbg->cur_state = DEBUG_STATE_STEP;
+    dbg_state_transition(dbg, DEBUG_STATE_STEP);
     dc_state_transition(DC_STATE_RUNNING);
 }
 
 void debug_request_break(struct debugger *dbg) {
     if (dbg->cur_state == DEBUG_STATE_NORM) {
-        dbg->cur_state = DEBUG_STATE_BREAK;
+        dbg_state_transition(dbg, DEBUG_STATE_BREAK);
         dc_state_transition(DC_STATE_DEBUG);
         frontend_on_break(&dbg->frontend);
     }
+}
+
+void dbg_do_trace(char const *msg, ...) {
+    va_list var_args;
+    va_start(var_args, msg);
+
+    printf("DEBUGGER: ");
+
+    vprintf(msg, var_args);
+
+    va_end(var_args);
+}
+
+static char const* dbg_state_names[DEBUG_STATE_COUNT] = {
+    "DEBUG_STATE_NORM",
+    "DEBUG_STATE_STEP",
+    "DEBUG_STATE_BREAK",
+    "DEBUG_STATE_PRE_WATCH",
+    "DEBUG_STATE_WATCH",
+    "DEBUG_STATE_POST_WATCH"
+};
+
+static void dbg_state_transition(struct debugger *dbg,
+                                 enum debug_state new_state) {
+    DBG_TRACE("state transition from %s to %s\n",
+              dbg_state_names[dbg->cur_state], dbg_state_names[new_state]);
+    dbg->cur_state = new_state;
 }

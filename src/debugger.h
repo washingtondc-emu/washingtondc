@@ -71,7 +71,9 @@ enum debug_state {
      * the debugger just left a watchpoint and needs to be smart enough not to
      * trigger that same watchpoint.  This state only lasts for one instruction.
      */
-    DEBUG_STATE_POST_WATCH
+    DEBUG_STATE_POST_WATCH,
+
+    DEBUG_STATE_COUNT
 };
 
 struct debug_frontend {
