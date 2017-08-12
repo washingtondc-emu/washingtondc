@@ -50,7 +50,28 @@ enum debug_state {
      * the debugger is holding at a breakpoint pending permission to continue
      * from the user.
      */
-    DEBUG_STATE_BREAK
+    DEBUG_STATE_BREAK,
+
+    /*
+     * during a memory access, the debugger detected that the CPU was triggering
+     * a watchpoint or rwatchpoint.  The debugger has not yet notified the gdb
+     * stub that this happened.
+     */
+    DEBUG_STATE_PRE_WATCH,
+
+    /*
+     * the debugger is holding at a watchpoint or rwatchpoint pending
+     * permission to continue from the user.  This is really the same thing as
+     * DEBUG_STATE_BREAK, except DEBUG_STATE_WATCH will transition to
+     * DEBUG_STATE_POST_WATCH when the user is ready to continue.
+     */
+    DEBUG_STATE_WATCH,
+
+    /*
+     * the debugger just left a watchpoint and needs to be smart enough not to
+     * trigger that same watchpoint.  This state only lasts for one instruction.
+     */
+    DEBUG_STATE_POST_WATCH
 };
 
 struct debug_frontend {
@@ -90,7 +111,6 @@ struct debugger {
 
     // when a watchpoint gets triggered, at_watchpoint is set to true
     // and the memory address is placed in watchpoint_addr
-    bool at_watchpoint;
     addr32_t watchpoint_addr;
 
     // when this is true and at_watchpoint is true: read-watchpoint

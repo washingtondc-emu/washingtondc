@@ -44,7 +44,6 @@ static void frontend_on_cleanup(struct debug_frontend *frontend);
 
 void debug_init(struct debugger *dbg) {
     dbg->cur_state = DEBUG_STATE_BREAK;
-    dbg->at_watchpoint = false;
 
     memset(&dbg->frontend, 0, sizeof(dbg->frontend));
 
@@ -59,7 +58,8 @@ void debug_cleanup(struct debugger *dbg) {
 
 void debug_check_break(struct debugger *dbg, Sh4 *sh4) {
     // hold at a breakpoint for user interaction
-    if (dbg->cur_state == DEBUG_STATE_BREAK)
+    if ((dbg->cur_state == DEBUG_STATE_BREAK) ||
+        (dbg->cur_state == DEBUG_STATE_WATCH))
         return;
 
     if (dbg->cur_state == DEBUG_STATE_STEP) {
@@ -69,14 +69,31 @@ void debug_check_break(struct debugger *dbg, Sh4 *sh4) {
         return;
     }
 
-    if (dbg->at_watchpoint) {
+    /*
+     * transition out of post-watch state.
+     *
+     * After a transition out of DC_STATE_DEBUG, the main loop in dreamcast_run
+     * will execute an instruction and it will not call this function until the
+     * next instruciton after that is about to be called; therefore it is always
+     * correct for this function to to transition to DEBUG_STATE_NORM when the
+     * cur_state is DEBUG_STATE_POST_WATCH.
+     *
+     */
+    if (dbg->cur_state == DEBUG_STATE_POST_WATCH) {
+        /*
+         * we intentionally do not return here because we still want to check
+         * the breakpoints below.
+         */
+        dbg->cur_state = DEBUG_STATE_NORM;
+    }
+
+    if (dbg->cur_state == DEBUG_STATE_PRE_WATCH) {
         if (dbg->is_read_watchpoint)
             frontend_on_read_watchpoint(&dbg->frontend, dbg->watchpoint_addr);
         else
             frontend_on_write_watchpoint(&dbg->frontend, dbg->watchpoint_addr);
-        dbg->cur_state = DEBUG_STATE_BREAK;
+        dbg->cur_state = DEBUG_STATE_WATCH;
         dc_state_transition(DC_STATE_DEBUG);
-        dbg->at_watchpoint = false;
         return;
     }
 
@@ -191,7 +208,7 @@ bool debug_is_w_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
                 (access_last >= watch_first && access_last <= watch_last) ||
                 (watch_first >= access_first && watch_first <= access_last) ||
                 (watch_last >= access_first && watch_last <= access_last)) {
-                dbg->at_watchpoint = true;
+                dbg->cur_state = DEBUG_STATE_PRE_WATCH;
                 dbg->watchpoint_addr = addr;
                 dbg->is_read_watchpoint = false;
                 return true;
@@ -217,7 +234,7 @@ bool debug_is_r_watch(struct debugger *dbg, addr32_t addr, unsigned len) {
                 (access_last >= watch_first && access_last <= watch_last) ||
                 (watch_first >= access_first && watch_first <= access_last) ||
                 (watch_last >= access_first && watch_last <= access_last)) {
-                dbg->at_watchpoint = true;
+                dbg->cur_state = DEBUG_STATE_PRE_WATCH;
                 dbg->watchpoint_addr = addr;
                 dbg->is_read_watchpoint = true;
                 return true;
@@ -380,7 +397,10 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
 }
 
 void debug_request_continue(struct debugger *dbg) {
-    dbg->cur_state = DEBUG_STATE_NORM;
+    if (dbg->cur_state == DEBUG_STATE_WATCH)
+        dbg->cur_state = DEBUG_STATE_POST_WATCH;
+    else
+        dbg->cur_state = DEBUG_STATE_NORM;
     dc_state_transition(DC_STATE_RUNNING);
 }
 
