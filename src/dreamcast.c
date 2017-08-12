@@ -280,14 +280,17 @@ void dreamcast_run() {
          * If we do have permission to single-step, then we call
          * dc_io_service.poll instead because we don't want to block.
          */
-        if (using_debugger) {
-            debug_notify_inst(&debugger, &cpu);
-
-            while (dc_state == DC_STATE_DEBUG)
+        debug_notify_inst(&debugger, &cpu);
+        if (dc_state == DC_STATE_DEBUG) {
+            do {
                 if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
                     dreamcast_kill();
                     break;
-            }
+                }
+            } while (dc_state == DC_STATE_DEBUG);
+        } else if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
+            dreamcast_kill();
+            break;
         }
 
 #ifdef INVARIANTS
