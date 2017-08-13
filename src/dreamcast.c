@@ -26,6 +26,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <stdatomic.h>
 
 #include "error.h"
 #include "flash_memory.h"
@@ -40,7 +42,7 @@
 #include "io/io_thread.h"
 
 #ifdef ENABLE_DEBUGGER
-#include "gdb_stub.h"
+#include "io/gdb_stub.h"
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
@@ -62,10 +64,8 @@ static bool using_debugger;
 bool serial_server_in_use;
 #endif
 
-#if defined ENABLE_DEBUGGER
-// Used by the GdbStub to do async network I/O
-struct event_base *dc_event_base;
-#endif
+static pthread_mutex_t emu_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t emu_cond = PTHREAD_COND_INITIALIZER;
 
 dc_cycle_stamp_t dc_cycle_stamp_priv_;
 
@@ -78,7 +78,7 @@ enum TermReason {
 // this stores the reason the dreamcast suspended execution
 enum TermReason term_reason = TERM_REASON_NORM;
 
-static enum dc_state dc_state = DC_STATE_RUNNING;
+static atomic_int dc_state = ATOMIC_VAR_INIT(DC_STATE_RUNNING);
 
 static void dc_sigint_handler(int param);
 
@@ -88,13 +88,6 @@ static void dc_single_step(Sh4 *sh4);
 
 void dreamcast_init(char const *bios_path, char const *flash_path) {
     is_running = true;
-
-#if defined(ENABLE_DEBUGGER)
-    dc_event_base = event_base_new();
-    if (!dc_event_base) {
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-    }
-#endif
 
     memory_init(&mem);
     if (flash_path)
@@ -119,14 +112,6 @@ void dreamcast_init_direct(char const *path_ip_bin,
                            char const *syscalls_path,
                            bool skip_ip_bin) {
     is_running = true;
-
-// #ifdef ENABLE_DEBUGGER
-//     debugger = NULL;
-// #endif
-
-#if defined(ENABLE_DEBUGGER)
-    dc_event_base = event_base_new(); // TODO: check for NULL
-#endif
 
     memory_init(&mem);
     if (flash_path)
@@ -215,10 +200,6 @@ void dreamcast_cleanup() {
     sh4_cleanup(&cpu);
     bios_file_cleanup(&bios);
     memory_cleanup(&mem);
-
-#if defined(ENABLE_DEBUGGER)
-    event_base_free(dc_event_base);
-#endif
 }
 
 /*
@@ -241,45 +222,24 @@ void dreamcast_run() {
     cont->sw = &maple_controller_switch_table;
     maple_device_init(cont);
 
+   dc_lock();
+
     while (is_running) {
-        /*
-         * The below logic will run the dc_event_base if the debugger is
-         * enabled or if the serial server is enabled.  If only the
-         * debugger is enabled *or* both the debugger and the serial server
-         * are enabled then it will pick either run_one or poll depending
-         * on whether the debugger has suspended execution.  If only the
-         * serial server is enabled, then it will unconditionally run
-         * dc_ios_service.poll.
-         */
 #ifdef ENABLE_DEBUGGER
         /*
          * If the debugger is enabled, make sure we have its permission to
-         * single-step; if we don't then we call dc_io_service.run_one to
-         * block until something interresting happens, and then we skip the
-         * rest of the loop.
-         *
-         * If we do have permission to single-step, then we call
-         * dc_io_service.poll instead because we don't want to block.
+         * single-step; if we don't then  block until something interresting
+         * happens, and then skip the rest of the loop.
          */
         debug_notify_inst(&cpu);
-        if (dc_state == DC_STATE_DEBUG) {
+
+        enum dc_state cur_state = dc_get_state();
+        if (unlikely(cur_state == DC_STATE_DEBUG)) {
             do {
-                if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
-                    dreamcast_kill();
-                    break;
-                }
-            } while (dc_state == DC_STATE_DEBUG);
-        } else if (event_base_loop(dc_event_base, EVLOOP_NONBLOCK) < 0) {
-            dreamcast_kill();
-            break;
+                debug_run_once();
+            } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG);
         }
-
-#ifdef INVARIANTS
-        if (!using_debugger && dc_state == DC_STATE_DEBUG)
-            RAISE_ERROR(ERROR_INTEGRITY);
 #endif
-
-#endif // #ifdef ENABLE_DEBUGGER
         /*
          * TODO: reconsider this placement.
          *
@@ -330,6 +290,8 @@ void dreamcast_run() {
         }
 #endif
     }
+
+    dc_unlock();
 
     // tell the other threads it's time to clean up and exit
     signal_exit_threads = true;
@@ -424,7 +386,6 @@ Sh4 *dreamcast_get_cpu() {
 void dreamcast_enable_debugger(void) {
     using_debugger = true;
     debug_init();
-    gdb_init();
     debug_attach(&gdb_frontend);
 }
 #endif
@@ -483,13 +444,46 @@ bool dc_emu_thread_is_running(void) {
 }
 
 enum dc_state dc_get_state(void) {
-    return dc_state;
+    return (enum dc_state)atomic_load(&dc_state);
 }
 
-void dc_state_transition(enum dc_state state_new) {
-    dc_state = state_new;
+void dc_state_transition(enum dc_state state_new, enum dc_state state_old) {
+    int expected = (int)state_old;
+
+    if (!atomic_compare_exchange_strong(&dc_state, &expected, (int)state_new))
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    /*
+     * TODO: don't call dc_wake without calling dc_lock first
+     * but calling dc_lock here is undesirable because the dc_lock only gets
+     * released by the main loop when it calls dc_unlock.
+     *
+     * what to do, what to do...
+     */
+    if (state_new == DC_STATE_RUNNING)
+        dc_wake();
 }
 
 bool dc_debugger_enabled(void) {
     return using_debugger;
+}
+
+void dc_lock(void) {
+    if (pthread_mutex_lock(&emu_mutex) < 0)
+        abort(); // TODO: error handling
+}
+
+void dc_unlock(void) {
+    if (pthread_mutex_unlock(&emu_mutex) < 0)
+        abort(); // TODO: error handling
+}
+
+void dc_sleep(void) {
+    if (pthread_cond_wait(&emu_cond, &emu_mutex) < 0)
+        abort(); // TODO: error handling
+}
+
+void dc_wake(void) {
+    if (pthread_cond_signal(&emu_cond) < 0)
+        abort(); // TODO: error handling
 }

@@ -25,18 +25,37 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #include "hw/sh4/sh4_reg.h"
 #include "dreamcast.h"
+#include "io/io_thread.h"
 
 #include "gdb_stub.h"
 
 // uncomment this to log all traffic in/out of the debugger to stdout
 // #define GDBSTUB_VERBOSE
 
+#ifdef INVARIANTS
+#define GDB_ASSERT(x)                           \
+    do {                                        \
+        if (!(x))                               \
+            RAISE_ERROR(ERROR_INTEGRITY);       \
+    } while (0)
+#else
+#define GDB_ASSERT(x)
+#endif
+
+enum gdb_state {
+    GDB_STATE_DISABLED,
+
+    GDB_STATE_LISTENING,
+
+    GDB_STATE_NORM
+};
+
 struct gdb_stub {
     struct evconnlistener *listener;
-    bool is_listening;
     struct bufferevent *bev;
 
     struct evbuffer *output_buffer;
@@ -47,14 +66,42 @@ struct gdb_stub {
     struct string input_packet;
 
     bool frontend_supports_swbreak;
+
+    /*
+     * the reason we need a lock here even though we use libevent with pthread
+     * support is that transmit_pkt first writes to output_buffer and then
+     * dumps that output_buffer into the bufferevent.  Since these two
+     * operations are not a single atomic unit, there needs to be a lock held
+     * during the interim.
+     */
+    pthread_mutex_t lock;
+
+    pthread_cond_t cond;
+
+    enum gdb_state state;
+
+    /*
+     * variable used to transport breakpoint/watchpoint addresses into the
+     * io_thread.  This is only used when one of those events is activated.
+     */
+    addr32_t break_addr;
 };
 
-static struct gdb_stub stub;
+static struct gdb_stub stub = {
+    .lock = PTHREAD_MUTEX_INITIALIZER,
+    .cond = PTHREAD_COND_INITIALIZER,
+    .state = GDB_STATE_DISABLED
+};
 
-static void gdb_on_break(void *arg);
-static void gdb_on_read_watchpoint(addr32_t addr, void *arg);
-static void gdb_on_write_watchpoint(addr32_t addr, void *arg);
-static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg);
+static struct event *gdb_request_listen_event,
+    *gdb_inform_break_event, *gdb_inform_softbreak_event,
+    *gdb_inform_read_watchpoint_event, *gdb_inform_write_watchpoint_event;
+
+static void gdb_callback_attach(void *argptr);
+static void gdb_callback_break(void *arg);
+static void gdb_callback_read_watchpoint(addr32_t addr, void *arg);
+static void gdb_callback_write_watchpoint(addr32_t addr, void *arg);
+static void gdb_callback_softbreak(inst_t inst, addr32_t addr, void *arg);
 static int decode_hex(char ch);
 
 static void craft_packet(struct string *out, struct string const *in);
@@ -94,14 +141,43 @@ listener_cb(struct evconnlistener *listener,
 static void handle_events(struct bufferevent *bev, short events, void *arg);
 static void handle_read(struct bufferevent *bev, void *arg);
 
+static void gdb_stub_lock(void);
+static void gdb_stub_unlock(void);
+
+/*
+ * gdb_stub_wait should only be called from the emulation thread and
+ * gdb_stub_signal should only be called from the io thread
+ */
+static void gdb_stub_wait(void);
+static void gdb_stub_signal(void);
+
+static void gdb_state_transition(enum gdb_state new_state);
+
+/*
+ * libevent callback that gets called when the emulation thread
+ * would like to listen for incoming connections.
+ */
+static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg);
+
+// libevent callback for when the debugger backend hits a hardware breakpoint
+static void on_break_event(evutil_socket_t fd, short ev, void *arg);
+
+// libevent callback for when the debugger backend hits a software breakpoint
+static void on_softbreak_event(evutil_socket_t fd, short ev, void *arg);
+
+//libevent callback for when the debugger backend hits a read-watchpoint
+static void on_read_watchpoint_event(evutil_socket_t fd, short ev, void *arg);
+
+//libevent callback for when the debugger backend hits a write-watchpoint
+static void on_write_watchpoint_event(evutil_socket_t fd, short ev, void *arg);
+
 struct debug_frontend const gdb_frontend = {
     .step = NULL,
-    .attach = gdb_attach,
-    .on_break = gdb_on_break,
-    .on_read_watchpoint = gdb_on_read_watchpoint,
-    .on_write_watchpoint = gdb_on_write_watchpoint,
-    .on_softbreak = gdb_on_softbreak,
-    .on_cleanup = gdb_cleanup
+    .attach = gdb_callback_attach,
+    .on_break = gdb_callback_break,
+    .on_read_watchpoint = gdb_callback_read_watchpoint,
+    .on_write_watchpoint = gdb_callback_write_watchpoint,
+    .on_softbreak = gdb_callback_softbreak,
 };
 
 static size_t deserialize_data(struct string const *input_str,
@@ -133,22 +209,31 @@ static size_t deserialize_data(struct string const *input_str,
 }
 
 void gdb_init(void) {
-    memset(&stub, 0, sizeof(stub));
+    gdb_request_listen_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+                                         on_request_listen_event, NULL);
+    gdb_inform_break_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+                                       on_break_event, NULL);
+    gdb_inform_softbreak_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+                                           on_softbreak_event, NULL);
+    gdb_inform_read_watchpoint_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+                                                 on_read_watchpoint_event, NULL);
+    gdb_inform_write_watchpoint_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+                                                  on_write_watchpoint_event, NULL);
 
     string_init(&stub.unack_packet);
     string_init(&stub.input_packet);
 
     stub.frontend_supports_swbreak = false;
     stub.listener = NULL;
-    stub.is_listening = false;
     stub.bev = NULL;
+    stub.state = GDB_STATE_DISABLED;
 
     stub.output_buffer = evbuffer_new();
     if (!stub.output_buffer)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 }
 
-void gdb_cleanup(void *arg) {
+void gdb_cleanup(void) {
     if (stub.bev) {
         /*
          * TODO - HACK
@@ -183,79 +268,56 @@ void gdb_cleanup(void *arg) {
 
     string_cleanup(&stub.input_packet);
     string_cleanup(&stub.unack_packet);
+
+    event_free(gdb_inform_write_watchpoint_event);
+    event_free(gdb_inform_read_watchpoint_event);
+    event_free(gdb_inform_softbreak_event);
+    event_free(gdb_inform_break_event);
+    event_free(gdb_request_listen_event);
 }
 
-void gdb_attach(void *argptr) {
+static void gdb_callback_attach(void *argptr) {
     printf("Awaiting remote GDB connection on port %d...\n", GDB_PORT_NO);
 
-    struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(GDB_PORT_NO);
-    unsigned event_flags = LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE;
-    stub.listener = evconnlistener_new_bind(dc_event_base, listener_cb, NULL,
-                                            event_flags, -1,
-                                            (struct sockaddr*)&sin, sizeof(sin));
+    gdb_stub_lock();
 
-    if (!stub.listener)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    event_active(gdb_request_listen_event, 0, 0);
 
-    // the listener_cb will set is_listening = false when we have a connection
-    stub.is_listening = true;
-    do {
-        printf("still waiting...\n");
-        if (event_base_loop(dc_event_base, EVLOOP_ONCE) != 0)
-            exit(4);
-    } while (stub.is_listening);
+    gdb_stub_wait();
+
+    // TODO: maybe verify that there was a successful connection here.
+
+    gdb_stub_unlock();
 
     printf("Connection established.\n");
 }
 
-static void gdb_on_break(void *arg) {
-    struct string resp, pkt;
-    string_init(&pkt);
-    string_init_txt(&resp, "S05");
-
-    craft_packet(&pkt, &resp);
-    transmit_pkt(&pkt);
-
-    string_cleanup(&resp);
-    string_cleanup(&pkt);
+static void gdb_callback_break(void *arg) {
+    event_active(gdb_inform_break_event, 0, 0);
 }
 
-static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg) {
-    struct string resp, pkt;
-    string_init(&pkt);
-    string_init(&resp);
+static void gdb_callback_softbreak(inst_t inst, addr32_t addr, void *arg) {
+    gdb_stub_lock();
+    stub.break_addr = addr;
+    gdb_stub_unlock();
 
-    if (stub.frontend_supports_swbreak) {
-        string_set(&resp, "T05swbreak:");
-        string_append_hex32(&resp, addr);
-        string_append_char(&resp, ';');
-    } else {
-        string_set(&resp, "T05swbreak:");
-    }
-
-    craft_packet(&pkt, &resp);
-    transmit_pkt(&pkt);
+    event_active(gdb_inform_softbreak_event, 0, 0);
 }
 
-static void gdb_on_read_watchpoint(addr32_t addr, void *arg) {
-    struct string resp, pkt;
-    string_init(&pkt);
-    string_init_txt(&resp, "S05");
+static void gdb_callback_read_watchpoint(addr32_t addr, void *arg) {
+    gdb_stub_lock();
+    stub.break_addr = addr;
+    gdb_stub_unlock();
 
-    craft_packet(&pkt, &resp);
-    transmit_pkt(&pkt);
+    event_active(gdb_inform_read_watchpoint_event, 0, 0);
 }
 
-static void gdb_on_write_watchpoint(addr32_t addr, void *arg) {
-    struct string resp, pkt;
-    string_init(&pkt);
-    string_init_txt(&resp, "S05");
+static void gdb_callback_write_watchpoint(addr32_t addr, void *arg) {
+    gdb_stub_lock();
+    stub.break_addr = addr;
+    gdb_stub_unlock();
 
-    craft_packet(&pkt, &resp);
-    transmit_pkt(&pkt);
+    event_active(gdb_inform_write_watchpoint_event, 0, 0);
 }
 
 static void gdb_serialize_regs(struct string *out) {
@@ -1105,14 +1167,24 @@ cleanup:
     return found_pkt;
 }
 
+/*
+ * this function gets called by libevent when a remote gdb stub connects
+ */
 static void
 listener_cb(struct evconnlistener *listener,
             evutil_socket_t fd, struct sockaddr *saddr,
             int socklen, void *arg) {
-    if (!stub.is_listening)
-        return;
+    gdb_stub_lock();
 
-    stub.bev = bufferevent_socket_new(dc_event_base, fd,
+    if (stub.state != GDB_STATE_LISTENING) {
+        fprintf(stderr, "WARNING: %s called when state is not "
+                "GDB_STATE_LISTENING (state is %u)\n",
+                __func__, (unsigned)stub.state);
+        gdb_stub_unlock();
+        return;
+    }
+
+    stub.bev = bufferevent_socket_new(io_thread_event_base, fd,
                                       BEV_OPT_CLOSE_ON_FREE);
     if (!stub.bev)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -1122,7 +1194,13 @@ listener_cb(struct evconnlistener *listener,
     bufferevent_enable(stub.bev, EV_WRITE);
     bufferevent_enable(stub.bev, EV_READ);
 
-    stub.is_listening = false;
+    gdb_state_transition(GDB_STATE_NORM);
+
+    gdb_stub_signal();
+
+    // TODO: free stub.listener
+
+    gdb_stub_unlock();
 }
 
 static void handle_events(struct bufferevent *bev, short events, void *arg) {
@@ -1134,6 +1212,8 @@ static void handle_read(struct bufferevent *bev, void *arg) {
 
     if (!(read_buffer = evbuffer_new()))
         RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    gdb_stub_lock();
 
     bufferevent_read_buffer(bev, read_buffer);
     size_t buflen = evbuffer_get_length(read_buffer);
@@ -1209,4 +1289,120 @@ static void handle_read(struct bufferevent *bev, void *arg) {
             }
         }
     }
+
+    gdb_stub_unlock();
+}
+
+static void gdb_stub_lock(void) {
+    if (pthread_mutex_lock(&stub.lock) < 0)
+        abort(); // TODO error handling
+}
+
+static void gdb_stub_unlock(void) {
+    if (pthread_mutex_unlock(&stub.lock) < 0)
+        abort(); // TODO error handling
+}
+
+static void gdb_stub_wait(void) {
+    if (pthread_cond_wait(&stub.cond, &stub.lock) < 0)
+        abort(); // TODO error handling
+}
+
+static void gdb_stub_signal(void) {
+    if (pthread_cond_signal(&stub.cond) < 0)
+        abort(); // TODO error handling
+}
+
+static void gdb_state_transition(enum gdb_state new_state) {
+    stub.state = new_state;
+}
+
+static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg) {
+    gdb_stub_lock();
+
+    gdb_state_transition(GDB_STATE_LISTENING);
+
+    struct sockaddr_in sin;
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(GDB_PORT_NO);
+    unsigned event_flags = LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE;
+    stub.listener = evconnlistener_new_bind(io_thread_event_base, listener_cb, NULL,
+                                            event_flags, -1,
+                                            (struct sockaddr*)&sin, sizeof(sin));
+
+    if (!stub.listener)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    gdb_stub_unlock();
+}
+
+static void on_break_event(evutil_socket_t fd, short ev, void *arg) {
+    struct string resp, pkt;
+    string_init(&pkt);
+    string_init_txt(&resp, "S05");
+
+    craft_packet(&pkt, &resp);
+
+    gdb_stub_lock();
+    transmit_pkt(&pkt);
+    gdb_stub_unlock();
+
+    string_cleanup(&resp);
+    string_cleanup(&pkt);
+}
+
+static void on_softbreak_event(evutil_socket_t fd, short ev, void *arg) {
+    struct string resp, pkt;
+    string_init(&pkt);
+    string_init(&resp);
+
+    gdb_stub_lock();
+
+    if (stub.frontend_supports_swbreak) {
+        string_set(&resp, "T05swbreak:");
+        string_append_hex32(&resp, stub.break_addr);
+        string_append_char(&resp, ';');
+    } else {
+        string_set(&resp, "T05swbreak:");
+    }
+
+    craft_packet(&pkt, &resp);
+
+
+    transmit_pkt(&pkt);
+    gdb_stub_unlock();
+
+    string_cleanup(&resp);
+    string_cleanup(&pkt);
+}
+
+static void on_read_watchpoint_event(evutil_socket_t fd, short ev, void *arg) {
+    struct string resp, pkt;
+    string_init(&pkt);
+    string_init_txt(&resp, "S05");
+
+    craft_packet(&pkt, &resp);
+
+    gdb_stub_lock();
+    transmit_pkt(&pkt);
+    gdb_stub_unlock();
+
+    string_cleanup(&resp);
+    string_cleanup(&pkt);
+}
+
+static void on_write_watchpoint_event(evutil_socket_t fd, short ev, void *arg) {
+    struct string resp, pkt;
+    string_init(&pkt);
+    string_init_txt(&resp, "S05");
+
+    craft_packet(&pkt, &resp);
+
+    gdb_stub_lock();
+    transmit_pkt(&pkt);
+    gdb_stub_unlock();
+
+    string_cleanup(&resp);
+    string_cleanup(&pkt);
 }

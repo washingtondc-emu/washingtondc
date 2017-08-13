@@ -206,8 +206,8 @@ if (ENABLE_DEBUGGER)
     add_definitions(-DENABLE_DEBUGGER)
     set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/debugger.h"
                                    "${PROJECT_SOURCE_DIR}/src/debugger.c"
-                                   "${PROJECT_SOURCE_DIR}/src/gdb_stub.h"
-                                   "${PROJECT_SOURCE_DIR}/src/gdb_stub.c")
+                                   "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.h"
+                                   "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.c")
 endif()
 
 if (ENABLE_SERIAL_SERVER)

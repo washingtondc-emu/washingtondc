@@ -64,9 +64,7 @@ enum gdb_reg_order {
 };
 
 void gdb_init(void);
-void gdb_cleanup(void *arg);
-
-void gdb_attach(void *argptr);
+void gdb_cleanup(void);
 
 extern struct debug_frontend const gdb_frontend;
 

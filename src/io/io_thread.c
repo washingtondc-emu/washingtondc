@@ -38,6 +38,10 @@
 
 #include "dreamcast.h"
 
+#ifdef ENABLE_DEBUGGER
+#include "gdb_stub.h"
+#endif
+
 #include "io_thread.h"
 
 struct event_base *io_thread_event_base;
@@ -100,6 +104,10 @@ static void *io_main(void *arg) {
     serial_server_init(dreamcast_get_cpu());
 #endif
 
+#ifdef ENABLE_DEBUGGER
+    gdb_init();
+#endif
+
     if (pthread_mutex_unlock(&io_thread_create_mutex) != 0)
         abort(); // TODO: error handling
 
@@ -116,6 +124,10 @@ static void *io_main(void *arg) {
     printf("io thread finished\n");
 
     event_free(io_thread_work_event);
+
+#ifdef ENABLE_DEBUGGER
+    gdb_cleanup();
+#endif
 
 #ifdef ENABLE_SERIAL_SERVER
     serial_server_cleanup();

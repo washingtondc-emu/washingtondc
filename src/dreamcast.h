@@ -131,7 +131,12 @@ enum dc_state {
 };
 
 enum dc_state dc_get_state(void);
-void dc_state_transition(enum dc_state state_new);
+void dc_state_transition(enum dc_state state_new, enum dc_state state_old);
+
+void dc_lock(void);
+void dc_unlock(void);
+void dc_sleep(void);
+void dc_wake(void);
 
 #ifdef __cplusplus
 }
