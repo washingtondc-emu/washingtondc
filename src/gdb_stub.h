@@ -63,29 +63,12 @@ enum gdb_reg_order {
     N_REGS
 };
 
-struct gdb_stub {
-    struct debugger *dbg;
-
-    struct evconnlistener *listener;
-    bool is_listening;
-    struct bufferevent *bev;
-
-    struct evbuffer *output_buffer;
-
-    // the last unsuccessfully acknowledged packet, or empty if there is none
-    struct string unack_packet;
-
-    struct string input_packet;
-
-    bool frontend_supports_swbreak;
-};
-
-void gdb_init(struct gdb_stub *stub, struct debugger *dbg);
+void gdb_init(void);
 void gdb_cleanup(void *arg);
 
 void gdb_attach(void *argptr);
 
-extern struct debug_frontend gdb_debug_frontend;
+extern struct debug_frontend const gdb_frontend;
 
 #ifdef __cplusplus
 }

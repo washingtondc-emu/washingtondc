@@ -2016,9 +2016,8 @@ void sh4_inst_unary_trapa_disp(Sh4 *sh4, Sh4OpArgs inst) {
      * next case, which would jump to exception handling code if I had bothered
      * to implement it.
      */
-    struct debugger *dbg = dreamcast_get_debugger();
-    if (dbg) {
-        debug_on_softbreak(dbg, inst.inst, sh4->reg[SH4_REG_PC]);
+    if (dc_debugger_enabled()) {
+        debug_on_softbreak(inst.inst, sh4->reg[SH4_REG_PC]);
         return;
     }
 #endif /* ifdef ENABLE_DEBUGGER */

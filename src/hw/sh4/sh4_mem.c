@@ -45,8 +45,7 @@ static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
 
 int sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_DEBUGGER
-    struct debugger *dbg = dreamcast_get_debugger();
-    if (dbg && debug_is_w_watch(dbg, addr, len)) {
+    if (dc_debugger_enabled() && debug_is_w_watch(addr, len)) {
         sh4->aborted_operation = true;
         return MEM_ACCESS_EXC;
     }
@@ -126,8 +125,7 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 
 int sh4_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
 #ifdef ENABLE_DEBUGGER
-    struct debugger *dbg = dreamcast_get_debugger();
-    if (dbg && debug_is_r_watch(dbg, addr, len)) {
+    if (dc_debugger_enabled() && debug_is_r_watch(addr, len)) {
         sh4->aborted_operation = true;
         return MEM_ACCESS_EXC;
     }

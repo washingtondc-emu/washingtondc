@@ -55,8 +55,6 @@ static struct Memory mem;
 static volatile bool is_running;
 
 #ifdef ENABLE_DEBUGGER
-static struct debugger debugger;
-static struct gdb_stub gdb_stub;
 static bool using_debugger;
 #endif
 
@@ -215,7 +213,7 @@ void dreamcast_cleanup() {
     spg_cleanup();
 
 #ifdef ENABLE_DEBUGGER
-    debug_cleanup(&debugger);
+    debug_cleanup();
 #endif
 
 #ifdef ENABLE_SERIAL_SERVER
@@ -231,14 +229,6 @@ void dreamcast_cleanup() {
     event_base_free(dc_event_base);
 #endif
 }
-
-#ifdef ENABLE_DEBUGGER
-struct debugger *dreamcast_get_debugger() {
-    if (using_debugger)
-        return &debugger;
-    return NULL;
-}
-#endif
 
 /*
  * this is used to store the irl timestamp right before execution begins.
@@ -280,7 +270,7 @@ void dreamcast_run() {
          * If we do have permission to single-step, then we call
          * dc_io_service.poll instead because we don't want to block.
          */
-        debug_notify_inst(&debugger, &cpu);
+        debug_notify_inst(&cpu);
         if (dc_state == DC_STATE_DEBUG) {
             do {
                 if (event_base_loop(dc_event_base, EVLOOP_ONCE) < 0) {
@@ -430,9 +420,9 @@ Sh4 *dreamcast_get_cpu() {
 #ifdef ENABLE_DEBUGGER
 void dreamcast_enable_debugger(void) {
     using_debugger = true;
-    debug_init(&debugger);
-    gdb_init(&gdb_stub, &debugger);
-    debug_attach(&debugger);
+    debug_init();
+    gdb_init();
+    debug_attach(&gdb_frontend);
 }
 #endif
 
@@ -492,4 +482,8 @@ enum dc_state dc_get_state(void) {
 
 void dc_state_transition(enum dc_state state_new) {
     dc_state = state_new;
+}
+
+bool dc_debugger_enabled(void) {
+    return using_debugger;
 }

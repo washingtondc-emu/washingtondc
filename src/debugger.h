@@ -99,57 +99,32 @@ struct debug_frontend {
 #define DEBUG_N_W_WATCHPOINTS 16
 #define DEBUG_N_R_WATCHPOINTS 16
 
-struct debugger {
-    addr32_t breakpoints[DEBUG_N_BREAKPOINTS];
-    bool breakpoint_enable[DEBUG_N_BREAKPOINTS];
-
-    addr32_t w_watchpoints[DEBUG_N_W_WATCHPOINTS];
-    unsigned w_watchpoint_len[DEBUG_N_W_WATCHPOINTS];
-    bool w_watchpoint_enable[DEBUG_N_W_WATCHPOINTS];
-
-    addr32_t r_watchpoints[DEBUG_N_R_WATCHPOINTS];
-    unsigned r_watchpoint_len[DEBUG_N_R_WATCHPOINTS];
-    bool r_watchpoint_enable[DEBUG_N_R_WATCHPOINTS];
-
-    // when a watchpoint gets triggered, at_watchpoint is set to true
-    // and the memory address is placed in watchpoint_addr
-    addr32_t watchpoint_addr;
-
-    // when this is true and at_watchpoint is true: read-watchpoint
-    // when this is false and at_watchpoint is true: write-watchpoint
-    bool is_read_watchpoint;
-
-    enum debug_state cur_state;
-
-    struct debug_frontend frontend;
-};
-
 /*
  * it is safe to call debug_init before the frontend is initialized as long as
  * it gets initialized before you call any other debug_* functions.
  */
-void debug_init(struct debugger *dbg);
-void debug_cleanup(struct debugger *dbg);
+void debug_init(void);
+void debug_cleanup(void);
 
-void debug_attach(struct debugger *dbg);
+void debug_attach(struct debug_frontend const *frontend);
 
-void debug_on_softbreak(struct debugger *dbg, inst_t inst, addr32_t pc);
-
-// these functions return 0 on success, nonzer on failure
-int debug_add_break(struct debugger *dbg, addr32_t addr);
-int debug_remove_break(struct debugger *dbg, addr32_t addr);
+void debug_on_softbreak(inst_t inst, addr32_t pc);
 
 // these functions return 0 on success, nonzer on failure
-int debug_add_r_watch(struct debugger *dbg, addr32_t addr, unsigned len);
-int debug_remove_r_watch(struct debugger *dbg, addr32_t addr, unsigned len);
+int debug_add_break(addr32_t addr);
+int debug_remove_break(addr32_t addr);
 
 // these functions return 0 on success, nonzer on failure
-int debug_add_w_watch(struct debugger *dbg, addr32_t addr, unsigned len);
-int debug_remove_w_watch(struct debugger *dbg, addr32_t addr, unsigned len);
+int debug_add_r_watch(addr32_t addr, unsigned len);
+int debug_remove_r_watch(addr32_t addr, unsigned len);
+
+// these functions return 0 on success, nonzer on failure
+int debug_add_w_watch(addr32_t addr, unsigned len);
+int debug_remove_w_watch(addr32_t addr, unsigned len);
 
 // return true if the given addr and len trigger a watchpoint
-bool debug_is_w_watch(struct debugger *dbg, addr32_t addr, unsigned len);
-bool debug_is_r_watch(struct debugger *dbg, addr32_t addr, unsigned len);
+bool debug_is_w_watch(addr32_t addr, unsigned len);
+bool debug_is_r_watch(addr32_t addr, unsigned len);
 
 void debug_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]);
 
@@ -172,26 +147,26 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len);
  * is about to execute.  This should check for hardware breakpoints and set the
  * emulator's state to DC_STATE_DEBUG if a breakpoint has been hit.
  */
-void debug_notify_inst(struct debugger *dbg, Sh4 *sh4);
+void debug_notify_inst(Sh4 *sh4);
 
 /*
  * called by the gdb_stub to tell the debugger to continue executing if
  * execution is suspended.
  */
-void debug_request_continue(struct debugger *dbg);
+void debug_request_continue(void);
 
 /*
  * called by the gdb_stub to tell the debugger to single-step.
  */
-void debug_request_single_step(struct debugger *dbg);
+void debug_request_single_step(void);
 
 /*
  * called by the gdb_stub to tell the debugger that the remote gdb frontend is
  * detaching.  This clears out break points and such.
  */
-void debug_request_detach(struct debugger *dbg);
+void debug_request_detach(void);
 
-void debug_request_break(struct debugger *dbg);
+void debug_request_break(void);
 
 #ifdef __cplusplus
 }

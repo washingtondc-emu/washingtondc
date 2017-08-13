@@ -34,6 +34,23 @@
 // uncomment this to log all traffic in/out of the debugger to stdout
 // #define GDBSTUB_VERBOSE
 
+struct gdb_stub {
+    struct evconnlistener *listener;
+    bool is_listening;
+    struct bufferevent *bev;
+
+    struct evbuffer *output_buffer;
+
+    // the last unsuccessfully acknowledged packet, or empty if there is none
+    struct string unack_packet;
+
+    struct string input_packet;
+
+    bool frontend_supports_swbreak;
+};
+
+static struct gdb_stub stub;
+
 static void gdb_on_break(void *arg);
 static void gdb_on_read_watchpoint(addr32_t addr, void *arg);
 static void gdb_on_write_watchpoint(addr32_t addr, void *arg);
@@ -41,7 +58,7 @@ static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg);
 static int decode_hex(char ch);
 
 static void craft_packet(struct string *out, struct string const *in);
-static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out);
+static void gdb_serialize_regs(struct string *out);
 static void deserialize_regs(struct string const *input_str,
                              reg32_t regs[N_REGS]);
 static void serialize_data(struct string *out, void const *buf,
@@ -49,38 +66,26 @@ static void serialize_data(struct string *out, void const *buf,
 static size_t deserialize_data(struct string const *input_str,
                                void *out, size_t max_sz);
 static int decode_hex(char ch);
-static void do_write(struct gdb_stub *stub);
+static void do_write(void);
 static void extract_packet(struct string *out, struct string const *packet_in);
 static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
                    unsigned reg_no, reg32_t reg_val);
-static void handle_packet(struct gdb_stub *stub, struct string *pkt);
-static void transmit_pkt(struct gdb_stub *stub, struct string const *pkt);
-static bool next_packet(struct gdb_stub *stub, struct string *pkt);
+static void handle_packet(struct string *pkt);
+static void transmit_pkt(struct string const *pkt);
+static bool next_packet(struct string *pkt);
 
-static void handle_c_packet(struct gdb_stub *stub, struct string *out,
-                            struct string *dat);
-static void handle_q_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_g_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_m_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_M_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_s_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_G_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_P_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_D_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_K_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_Z_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
-static void handle_z_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat);
+static void handle_c_packet(struct string *out, struct string *dat);
+static void handle_q_packet(struct string *out, struct string const *dat);
+static void handle_g_packet(struct string *out, struct string const *dat);
+static void handle_m_packet(struct string *out, struct string const *dat);
+static void handle_M_packet(struct string *out, struct string const *dat);
+static void handle_s_packet(struct string *out, struct string const *dat);
+static void handle_G_packet(struct string *out, struct string const *dat);
+static void handle_P_packet(struct string *out, struct string const *dat);
+static void handle_D_packet(struct string *out, struct string const *dat);
+static void handle_K_packet(struct string *out, struct string const *dat);
+static void handle_Z_packet(struct string *out, struct string const *dat);
+static void handle_z_packet(struct string *out, struct string const *dat);
 
 static void
 listener_cb(struct evconnlistener *listener,
@@ -88,6 +93,16 @@ listener_cb(struct evconnlistener *listener,
             int socklen, void *arg);
 static void handle_events(struct bufferevent *bev, short events, void *arg);
 static void handle_read(struct bufferevent *bev, void *arg);
+
+struct debug_frontend const gdb_frontend = {
+    .step = NULL,
+    .attach = gdb_attach,
+    .on_break = gdb_on_break,
+    .on_read_watchpoint = gdb_on_read_watchpoint,
+    .on_write_watchpoint = gdb_on_write_watchpoint,
+    .on_softbreak = gdb_on_softbreak,
+    .on_cleanup = gdb_cleanup
+};
 
 static size_t deserialize_data(struct string const *input_str,
                                void *out, size_t max_sz) {
@@ -117,36 +132,24 @@ static size_t deserialize_data(struct string const *input_str,
     return bytes_written;
 }
 
-void gdb_init(struct gdb_stub *stub, struct debugger *dbg) {
-    memset(stub, 0, sizeof(*stub));
+void gdb_init(void) {
+    memset(&stub, 0, sizeof(stub));
 
-    string_init(&stub->unack_packet);
-    string_init(&stub->input_packet);
+    string_init(&stub.unack_packet);
+    string_init(&stub.input_packet);
 
-    stub->frontend_supports_swbreak = false;
-    stub->listener = NULL;
-    stub->is_listening = false;
-    stub->bev = NULL;
-    stub->dbg = dbg;
+    stub.frontend_supports_swbreak = false;
+    stub.listener = NULL;
+    stub.is_listening = false;
+    stub.bev = NULL;
 
-    stub->output_buffer = evbuffer_new();
-    if (!stub->output_buffer)
+    stub.output_buffer = evbuffer_new();
+    if (!stub.output_buffer)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    dbg->frontend.step = NULL;
-    dbg->frontend.attach = gdb_attach;
-    dbg->frontend.on_break = gdb_on_break;
-    dbg->frontend.on_read_watchpoint = gdb_on_read_watchpoint;
-    dbg->frontend.on_write_watchpoint = gdb_on_write_watchpoint;
-    dbg->frontend.on_softbreak = gdb_on_softbreak;
-    dbg->frontend.on_cleanup = gdb_cleanup;
-    dbg->frontend.arg = stub;
 }
 
 void gdb_cleanup(void *arg) {
-    struct gdb_stub *stub = (struct gdb_stub*)arg;
-
-    if (stub->bev) {
+    if (stub.bev) {
         /*
          * TODO - HACK
          * Some versions of gdb will hang after sending the K packet
@@ -172,19 +175,17 @@ void gdb_cleanup(void *arg) {
         printf("Artificial 10-second delay to work around a bug present in "
                "some gdb installations, please be patient...\n");
         sleep(10);
-        bufferevent_free(stub->bev);
+        bufferevent_free(stub.bev);
     }
 
-    if (stub->listener)
-        evconnlistener_free(stub->listener);
+    if (stub.listener)
+        evconnlistener_free(stub.listener);
 
-    string_cleanup(&stub->input_packet);
-    string_cleanup(&stub->unack_packet);
+    string_cleanup(&stub.input_packet);
+    string_cleanup(&stub.unack_packet);
 }
 
 void gdb_attach(void *argptr) {
-    struct gdb_stub *stub = (struct gdb_stub*)argptr;
-
     printf("Awaiting remote GDB connection on port %d...\n", GDB_PORT_NO);
 
     struct sockaddr_in sin;
@@ -192,46 +193,42 @@ void gdb_attach(void *argptr) {
     sin.sin_family = AF_INET;
     sin.sin_port = htons(GDB_PORT_NO);
     unsigned event_flags = LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE;
-    stub->listener = evconnlistener_new_bind(dc_event_base, listener_cb, stub,
-                                             event_flags, -1,
-                                             (struct sockaddr*)&sin, sizeof(sin));
+    stub.listener = evconnlistener_new_bind(dc_event_base, listener_cb, NULL,
+                                            event_flags, -1,
+                                            (struct sockaddr*)&sin, sizeof(sin));
 
-    if (!stub->listener)
+    if (!stub.listener)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     // the listener_cb will set is_listening = false when we have a connection
-    stub->is_listening = true;
+    stub.is_listening = true;
     do {
         printf("still waiting...\n");
         if (event_base_loop(dc_event_base, EVLOOP_ONCE) != 0)
             exit(4);
-    } while (stub->is_listening);
+    } while (stub.is_listening);
 
     printf("Connection established.\n");
 }
 
 static void gdb_on_break(void *arg) {
-    struct gdb_stub *stub = (struct gdb_stub*)arg;
-
     struct string resp, pkt;
     string_init(&pkt);
     string_init_txt(&resp, "S05");
 
     craft_packet(&pkt, &resp);
-    transmit_pkt(stub, &pkt);
+    transmit_pkt(&pkt);
 
     string_cleanup(&resp);
     string_cleanup(&pkt);
 }
 
 static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg) {
-    struct gdb_stub *stub = (struct gdb_stub*)arg;
-
     struct string resp, pkt;
     string_init(&pkt);
     string_init(&resp);
 
-    if (stub->frontend_supports_swbreak) {
+    if (stub.frontend_supports_swbreak) {
         string_set(&resp, "T05swbreak:");
         string_append_hex32(&resp, addr);
         string_append_char(&resp, ';');
@@ -240,32 +237,28 @@ static void gdb_on_softbreak(inst_t inst, addr32_t addr, void *arg) {
     }
 
     craft_packet(&pkt, &resp);
-    transmit_pkt(stub, &pkt);
+    transmit_pkt(&pkt);
 }
 
 static void gdb_on_read_watchpoint(addr32_t addr, void *arg) {
-    struct gdb_stub *stub = (struct gdb_stub*)arg;
-
     struct string resp, pkt;
     string_init(&pkt);
     string_init_txt(&resp, "S05");
 
     craft_packet(&pkt, &resp);
-    transmit_pkt(stub, &pkt);
+    transmit_pkt(&pkt);
 }
 
 static void gdb_on_write_watchpoint(addr32_t addr, void *arg) {
-    struct gdb_stub *stub = (struct gdb_stub*)arg;
-
     struct string resp, pkt;
     string_init(&pkt);
     string_init_txt(&resp, "S05");
 
     craft_packet(&pkt, &resp);
-    transmit_pkt(stub, &pkt);
+    transmit_pkt(&pkt);
 }
 
-static void gdb_serialize_regs(struct gdb_stub *stub, struct string *out) {
+static void gdb_serialize_regs(struct string *out) {
     reg32_t reg_file[SH4_REGISTER_COUNT];
     debug_get_all_regs(reg_file);
     reg32_t regs[N_REGS] = { 0 };
@@ -345,22 +338,22 @@ static int decode_hex(char ch)
     return -1;
 }
 
-static void transmit(struct gdb_stub *stub, struct string const *data) {
+static void transmit(struct string const *data) {
     int len = string_length(data);
     if (len > 0) {
         char const *data_c_str = string_get(data);
 
-        if (evbuffer_add(stub->output_buffer, data_c_str,
+        if (evbuffer_add(stub.output_buffer, data_c_str,
                          sizeof(char) * len) < 0) {
             RAISE_ERROR(ERROR_FAILED_ALLOC);
         }
 
-        do_write(stub);
+        do_write();
     }
 }
 
-static void do_write(struct gdb_stub *stub) {
-    bufferevent_write_buffer(stub->bev, stub->output_buffer);
+static void do_write(void) {
+    bufferevent_write_buffer(stub.bev, stub.output_buffer);
 }
 
 static void craft_packet(struct string *out, struct string const *in) {
@@ -473,13 +466,11 @@ static void err_str(struct string *err_out, unsigned err_val) {
     string_append_char(err_out, hex_chars[err_val]);
 }
 
-static void handle_c_packet(struct gdb_stub *stub, struct string *out,
-                            struct string *dat) {
-    debug_request_continue(stub->dbg);
+static void handle_c_packet(struct string *out, struct string *dat) {
+    debug_request_continue();
 }
 
-static void handle_q_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat_orig) {
+static void handle_q_packet(struct string *out, struct string const *dat_orig) {
     struct string dat, tok;
     string_init(&dat);
     string_init(&tok);
@@ -521,7 +512,7 @@ static void handle_q_packet(struct gdb_stub *stub, struct string *out,
 
             if (strcmp(string_get(&tok), "swbreak") == 0) {
                 if (supported) {
-                    stub->frontend_supports_swbreak = true;
+                    stub.frontend_supports_swbreak = true;
                     string_append(out, "swbreak+;");
                 } else {
                     string_append(out, "swbreak-;");
@@ -540,13 +531,11 @@ cleanup:
     string_cleanup(&dat);
 }
 
-static void handle_g_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
-    gdb_serialize_regs(stub, out);
+static void handle_g_packet(struct string *out, struct string const *dat) {
+    gdb_serialize_regs(out);
 }
 
-static void handle_m_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
+static void handle_m_packet(struct string *out, struct string const *dat) {
     int addr_idx = string_find_last_of(dat, "m");
     int comma_idx = string_find_last_of(dat, ",");
     int len_idx = comma_idx;
@@ -588,8 +577,7 @@ cleanup:
     free(data_buf);
 }
 
-static void handle_M_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
+static void handle_M_packet(struct string *out, struct string const *dat) {
     int addr_idx = string_find_last_of(dat, "M");
     int comma_idx = string_find_last_of(dat, ",");
     int colon_idx = string_find_last_of(dat, ":");
@@ -639,13 +627,11 @@ static void handle_M_packet(struct gdb_stub *stub, struct string *out,
     string_set(out, "OK");
 }
 
-static void handle_s_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
-    debug_request_single_step(stub->dbg);
+static void handle_s_packet(struct string *out, struct string const *dat) {
+    debug_request_single_step();
 }
 
-static void handle_G_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
+static void handle_G_packet(struct string *out, struct string const *dat) {
     reg32_t regs[N_REGS];
 
     struct string tmp;
@@ -665,8 +651,7 @@ static void handle_G_packet(struct gdb_stub *stub, struct string *out,
     string_set(out, "OK");
 }
 
-static void handle_P_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
+static void handle_P_packet(struct string *out, struct string const *dat) {
     int equals_idx = string_find_first_of(dat, "=");
 
     if ((equals_idx < 0) || ((size_t)equals_idx >= (string_length(dat) - 1))) {
@@ -715,22 +700,19 @@ cleanup:
     string_cleanup(&reg_no_str);
 }
 
-static void handle_D_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
-    debug_request_detach(stub->dbg);
+static void handle_D_packet(struct string *out, struct string const *dat) {
+    debug_request_detach();
 
     string_set(out, "OK");
 }
 
-static void handle_K_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
+static void handle_K_packet(struct string *out, struct string const *dat) {
     dreamcast_kill();
 
     string_set(out, "OK");
 }
 
-static void handle_Z_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
+static void handle_Z_packet(struct string *out, struct string const *dat) {
     char const *dat_c_str = string_get(dat);
     struct string dat_local;
     string_init(&dat_local);
@@ -761,7 +743,7 @@ static void handle_Z_packet(struct gdb_stub *stub, struct string *out,
 
         addr32_t break_addr = string_read_hex32(&dat_local, 0);
 
-        int err_code = debug_add_break(stub->dbg, break_addr);
+        int err_code = debug_add_break(break_addr);
 
         if (err_code == 0)
             string_set(out, "OK");
@@ -800,7 +782,7 @@ static void handle_Z_packet(struct gdb_stub *stub, struct string *out,
         string_cleanup(&addr_str);
         string_cleanup(&len_str);
 
-        int err_code = debug_add_w_watch(stub->dbg, watch_addr, length);
+        int err_code = debug_add_w_watch(watch_addr, length);
 
         if (err_code == 0)
             string_set(out, "OK");
@@ -839,7 +821,7 @@ static void handle_Z_packet(struct gdb_stub *stub, struct string *out,
         string_cleanup(&addr_str);
         string_cleanup(&len_str);
 
-        int err_code = debug_add_r_watch(stub->dbg, watch_addr, length);
+        int err_code = debug_add_r_watch(watch_addr, length);
 
         if (err_code == 0)
             string_set(out, "OK");
@@ -856,8 +838,7 @@ cleanup:
     string_cleanup(&dat_local);
 }
 
-static void handle_z_packet(struct gdb_stub *stub, struct string *out,
-                            struct string const *dat) {
+static void handle_z_packet(struct string *out, struct string const *dat) {
     char const *dat_c_str = string_get(dat);
     struct string dat_local;
     string_init(&dat_local);
@@ -888,7 +869,7 @@ static void handle_z_packet(struct gdb_stub *stub, struct string *out,
 
         addr32_t break_addr = string_read_hex32(&dat_local, 0);
 
-        int err_code = debug_remove_break(stub->dbg, break_addr);
+        int err_code = debug_remove_break(break_addr);
 
         if (err_code == 0)
             string_set(out, "OK");
@@ -926,7 +907,7 @@ static void handle_z_packet(struct gdb_stub *stub, struct string *out,
         string_cleanup(&addr_str);
         string_cleanup(&len_str);
 
-        int err_code = debug_remove_w_watch(stub->dbg, watch_addr, length);
+        int err_code = debug_remove_w_watch(watch_addr, length);
 
         if (err_code == 0)
             string_set(out, "OK");
@@ -965,7 +946,7 @@ static void handle_z_packet(struct gdb_stub *stub, struct string *out,
         string_cleanup(&addr_str);
         string_cleanup(&len_str);
 
-        int err_code = debug_remove_r_watch(stub->dbg, watch_addr, length);
+        int err_code = debug_remove_r_watch(watch_addr, length);
 
         if (err_code == 0)
             string_set(out, "OK");
@@ -982,7 +963,7 @@ cleanup:
     string_cleanup(&dat_local);
 }
 
-static void handle_packet(struct gdb_stub *stub,  struct string *pkt) {
+static void handle_packet(struct string *pkt) {
     struct string dat;
     struct string response;
     struct string resp_pkt;
@@ -996,38 +977,38 @@ static void handle_packet(struct gdb_stub *stub,  struct string *pkt) {
     if (string_length(&dat)) {
         char first_ch = string_get(&dat)[0];
         if (first_ch == 'q') {
-            handle_q_packet(stub, &response, &dat);
+            handle_q_packet(&response, &dat);
         } else if (first_ch == 'g') {
-            handle_g_packet(stub, &response, &dat);
+            handle_g_packet(&response, &dat);
         } else if (first_ch == 'G') {
-            handle_G_packet(stub, &response, &dat);
+            handle_G_packet(&response, &dat);
         } else if (first_ch == 'm') {
-            handle_m_packet(stub, &response, &dat);
+            handle_m_packet(&response, &dat);
         } else if (first_ch == 'M') {
-            handle_M_packet(stub, &response, &dat);
+            handle_M_packet(&response, &dat);
         } else if (first_ch == '?') {
             string_set(&response, "S05 create:");
         } else if (first_ch == 's') {
-            handle_s_packet(stub, &response, &dat);
+            handle_s_packet(&response, &dat);
             goto cleanup;
         } else if (first_ch == 'c') {
-            handle_c_packet(stub, &response, &dat);
+            handle_c_packet(&response, &dat);
             goto cleanup;
         } else if (first_ch == 'P') {
-            handle_P_packet(stub, &response, &dat);
+            handle_P_packet(&response, &dat);
         } else if (first_ch == 'D') {
-            handle_D_packet(stub, &response, &dat);
+            handle_D_packet(&response, &dat);
         } else if (first_ch == 'k') {
-            handle_K_packet(stub, &response, &dat);
+            handle_K_packet(&response, &dat);
         } else if (first_ch == 'z') {
-            handle_z_packet(stub, &response, &dat);
+            handle_z_packet(&response, &dat);
         } else if (first_ch == 'Z') {
-            handle_Z_packet(stub, &response, &dat);
+            handle_Z_packet(&response, &dat);
         }
     }
 
     craft_packet(&resp_pkt, &response);
-    transmit_pkt(stub, &resp_pkt);
+    transmit_pkt(&resp_pkt);
 
 cleanup:
     string_cleanup(&resp_pkt);
@@ -1035,23 +1016,23 @@ cleanup:
     string_cleanup(&dat);
 }
 
-static void transmit_pkt(struct gdb_stub *stub, struct string const *pkt) {
+static void transmit_pkt(struct string const *pkt) {
 #ifdef GDBSTUB_VERBOSE
     printf(">>>> %s\n", string_get(pkt));
 #endif
 
-    string_copy(&stub->unack_packet, pkt);
-    transmit(stub, pkt);
+    string_copy(&stub.unack_packet, pkt);
+    transmit(pkt);
 }
 
-static bool next_packet(struct gdb_stub *stub, struct string *pkt) {
+static bool next_packet(struct string *pkt) {
     struct string pktbuf_tmp;
     struct string tmp_str;
     char ch;
     bool found_pkt = false;
 
     string_init(&pktbuf_tmp);
-    string_copy(&pktbuf_tmp, &stub->input_packet);
+    string_copy(&pktbuf_tmp, &stub.input_packet);
 
     // wait around for the start character, ignore all other characters
     do {
@@ -1111,7 +1092,7 @@ static bool next_packet(struct gdb_stub *stub, struct string *pkt) {
     memcpy(&pktbuf_tmp, &tmp_str, sizeof(pktbuf_tmp));
     string_append_char(pkt, ch);
 
-    string_set(&stub->input_packet, string_get(&pktbuf_tmp));
+    string_set(&stub.input_packet, string_get(&pktbuf_tmp));
 
 #ifdef GDBSTUB_VERBOSE
     printf("<<<< %s\n", string_get(pkt));
@@ -1128,22 +1109,20 @@ static void
 listener_cb(struct evconnlistener *listener,
             evutil_socket_t fd, struct sockaddr *saddr,
             int socklen, void *arg) {
-    struct gdb_stub *stub = (struct gdb_stub*)arg;
-
-    if (!stub->is_listening)
+    if (!stub.is_listening)
         return;
 
-    stub->bev = bufferevent_socket_new(dc_event_base, fd,
-                                       BEV_OPT_CLOSE_ON_FREE);
-    if (!stub->bev)
+    stub.bev = bufferevent_socket_new(dc_event_base, fd,
+                                      BEV_OPT_CLOSE_ON_FREE);
+    if (!stub.bev)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    bufferevent_setcb(stub->bev, handle_read,
-                      NULL, handle_events, stub);
-    bufferevent_enable(stub->bev, EV_WRITE);
-    bufferevent_enable(stub->bev, EV_READ);
+    bufferevent_setcb(stub.bev, handle_read,
+                      NULL, handle_events, NULL);
+    bufferevent_enable(stub.bev, EV_WRITE);
+    bufferevent_enable(stub.bev, EV_READ);
 
-    stub->is_listening = false;
+    stub.is_listening = false;
 }
 
 static void handle_events(struct bufferevent *bev, short events, void *arg) {
@@ -1152,7 +1131,6 @@ static void handle_events(struct bufferevent *bev, short events, void *arg) {
 
 static void handle_read(struct bufferevent *bev, void *arg) {
     struct evbuffer *read_buffer;
-    struct gdb_stub *stub = (struct gdb_stub*)arg;
 
     if (!(read_buffer = evbuffer_new()))
         RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -1167,22 +1145,22 @@ static void handle_read(struct bufferevent *bev, void *arg) {
 
         char c = tmp;
 
-        if (string_length(&stub->input_packet)) {
+        if (string_length(&stub.input_packet)) {
 
-            if (string_length(&stub->unack_packet)) {
+            if (string_length(&stub.unack_packet)) {
                 printf("WARNING: new packet incoming; no acknowledgement was "
                        "ever received for \"%s\"\n",
-                       string_get(&stub->unack_packet));
-                string_set(&stub->unack_packet, "");
+                       string_get(&stub.unack_packet));
+                string_set(&stub.unack_packet, "");
             }
 
-            string_append_char(&stub->input_packet, c);
+            string_append_char(&stub.input_packet, c);
 
             struct string pkt;
             string_init(&pkt);
-            bool pkt_valid = next_packet(stub, &pkt);
+            bool pkt_valid = next_packet(&pkt);
             if (string_length(&pkt) && pkt_valid) {
-                string_set(&stub->input_packet, "");
+                string_set(&stub.input_packet, "");
 
                 // TODO: verify the checksum
 
@@ -1191,9 +1169,9 @@ static void handle_read(struct bufferevent *bev, void *arg) {
 #endif
                 struct string plus_symbol;
                 string_init_txt(&plus_symbol, "+");
-                transmit(stub, &plus_symbol);
+                transmit(&plus_symbol);
                 string_cleanup(&plus_symbol);
-                handle_packet(stub, &pkt);
+                handle_packet(&pkt);
             }
 
             string_cleanup(&pkt);
@@ -1202,31 +1180,30 @@ static void handle_read(struct bufferevent *bev, void *arg) {
 #ifdef GDBSTUB_VERBOSE
                 printf("<<<< +\n");
 #endif
-                if (!string_length(&stub->unack_packet))
+                if (!string_length(&stub.unack_packet))
                     fprintf(stderr, "WARNING: received acknowledgement for "
                             "unsent packet\n");
-                string_set(&stub->unack_packet, "");
+                string_set(&stub.unack_packet, "");
             } else if (c == '-') {
 #ifdef GDBSTUB_VERBOSE
                 printf("<<<< -\n");
 #endif
-                if (!string_length(&stub->unack_packet)) {
+                if (!string_length(&stub.unack_packet)) {
                     fprintf(stderr, "WARNING: received negative "
                             "acknowledgement for unsent packet\n");
                 } else {
 #ifdef GDBSTUB_VERBOSE
-                    printf(">>>> %s\n",  string_get(&stub->unack_packet));
+                    printf(">>>> %s\n",  string_get(&stub.unack_packet));
 #endif
-                    transmit(stub, &stub->unack_packet);
+                    transmit(&stub.unack_packet);
                 }
             } else if (c == '$') {
                 // new packet
-                string_set(&stub->input_packet, "$");
+                string_set(&stub.input_packet, "$");
             } else if (c == 3) {
                 // user pressed ctrl+c (^C) on the gdb frontend
                 printf("GDBSTUB: user requested breakpoint (ctrl-C)\n");
-                if (stub->dbg->cur_state == DEBUG_STATE_NORM)
-                    debug_request_break(stub->dbg);
+                debug_request_break();
             } else {
                 fprintf(stderr, "WARNING: ignoring unexpected character %c\n", c);
             }

@@ -85,10 +85,6 @@ void dreamcast_kill();
 
 Sh4 *dreamcast_get_cpu();
 
-#ifdef ENABLE_DEBUGGER
-struct debugger *dreamcast_get_debugger();
-#endif
-
 #if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
 extern struct event_base *dc_event_base;
 #endif
@@ -114,6 +110,8 @@ void dc_print_perf_stats(void);
 bool dc_is_running(void);
 
 void dreamcast_kill(void);
+
+bool dc_debugger_enabled(void);
 
 enum dc_state {
     // the emulation thread has not been started yet
