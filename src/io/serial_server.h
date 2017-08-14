@@ -30,10 +30,6 @@
 #include <event2/listener.h>
 #include <event2/buffer.h>
 
-#ifndef ENABLE_SERIAL_SERVER
-#error This file should not be included unless the serial server is enabled
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif

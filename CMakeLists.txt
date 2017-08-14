@@ -57,7 +57,6 @@ option(ENABLE_DEBUGGER "Enable the debugger" ON)
 option(ENABLE_DIRECT_BOOT "Enable direct boot mode (skip boot rom and \
 immediately load IP.BIN or 1ST_READ.BIN)" ON)
 option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
-option(ENABLE_SERIAL_SERVER "Enable serial server over TCP port 1998" ON)
 option(INVARIANTS "runtime sanity checks that should never fail" ON)
 option(SH4_FPU_PEDANTIC "enable FPU error-checking which most games *probably* don't use" OFF)
 option(PVR2_LOG_VERBOSE "enable this to make the pvr2 code log mundane events" OFF)
@@ -192,7 +191,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/io/io_thread.h"
                 "${PROJECT_SOURCE_DIR}/src/io/io_thread.c"
                 "${PROJECT_SOURCE_DIR}/src/text_ring.h"
-                "${PROJECT_SOURCE_DIR}/src/text_ring.c")
+                "${PROJECT_SOURCE_DIR}/src/text_ring.c"
+                "${PROJECT_SOURCE_DIR}/src/io/serial_server.h"
+                "${PROJECT_SOURCE_DIR}/src/io/serial_server.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
@@ -208,12 +209,6 @@ if (ENABLE_DEBUGGER)
                                    "${PROJECT_SOURCE_DIR}/src/debugger.c"
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.h"
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.c")
-endif()
-
-if (ENABLE_SERIAL_SERVER)
-  add_definitions(-DENABLE_SERIAL_SERVER)
-  set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/io/serial_server.h"
-                                 "${PROJECT_SOURCE_DIR}/src/io/serial_server.c")
 endif()
 
 set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/tool/sh4asm/Inst.cpp"

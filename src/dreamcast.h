@@ -34,9 +34,7 @@
 #include "debugger.h"
 #endif
 
-#ifdef ENABLE_SERIAL_SERVER
 #include "io/serial_server.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,10 +68,8 @@ void dreamcast_cleanup();
 void dreamcast_enable_debugger(void);
 #endif
 
-#ifdef ENABLE_SERIAL_SERVER
 // this must be called before run or not at all
 void dreamcast_enable_serial_server(void);
-#endif
 
 void dreamcast_run();
 
@@ -85,7 +81,7 @@ void dreamcast_kill();
 
 Sh4 *dreamcast_get_cpu();
 
-#if defined(ENABLE_DEBUGGER) || defined(ENABLE_SERIAL_SERVER)
+#if defined(ENABLE_DEBUGGER)
 extern struct event_base *dc_event_base;
 #endif
 

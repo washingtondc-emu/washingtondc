@@ -45,9 +45,7 @@
 #include "io/gdb_stub.h"
 #endif
 
-#ifdef ENABLE_SERIAL_SERVER
 #include "io/serial_server.h"
-#endif
 
 #include "dreamcast.h"
 
@@ -60,9 +58,7 @@ static volatile bool signal_exit_threads;
 
 static bool using_debugger;
 
-#ifdef ENABLE_SERIAL_SERVER
 bool serial_server_in_use;
-#endif
 
 static pthread_mutex_t emu_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t emu_cond = PTHREAD_COND_INITIALIZER;
@@ -96,10 +92,6 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     memory_map_init(&bios, &mem);
     sh4_init(&cpu);
     spg_init();
-
-#ifdef ENABLE_SERIAL_SERVER
-    /* dreamcast_enable_serial_server(); */
-#endif
 
     aica_rtc_init();
 }
@@ -390,13 +382,11 @@ void dreamcast_enable_debugger(void) {
 }
 #endif
 
-#ifdef ENABLE_SERIAL_SERVER
 void dreamcast_enable_serial_server(void) {
     serial_server_in_use = true;
     serial_server_attach();
     sh4_scif_connect_server(&cpu);
 }
-#endif
 
 static void dc_sigint_handler(int param) {
     is_running = false;

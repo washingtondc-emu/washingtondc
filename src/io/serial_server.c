@@ -32,10 +32,6 @@
 
 #include "serial_server.h"
 
-#ifndef ENABLE_SERIAL_SERVER
-#error This file should not be built unless the serial server is enabled
-#endif
-
 static struct serial_server {
     struct evconnlistener *listener;
     struct bufferevent *bev;

@@ -23,7 +23,6 @@ ENABLE_DIRECT_BOOT=On(default)/Off - Enable direct boot mode (optionally skip
                                      boot rom)
 DBG_EXIT_ON_UNDEFINED_OPCODE=Of/Off(default) - Bail out if the emulator hits an
                                                undefined opcode
-ENABLE_SERIAL_SERVER=On(default)/Off - Enable serial server over TCP port 1998
 INVARIANTS=On(default)/Off - runtime sanity checks that should never fail
 ```
 ## USAGE

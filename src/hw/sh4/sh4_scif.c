@@ -24,10 +24,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#ifdef ENABLE_SERIAL_SERVER
 #include "io/serial_server.h"
-#endif
-
 #include "dreamcast.h"
 #include "sh4_reg.h"
 #include "sh4_reg_flags.h"
@@ -159,7 +156,6 @@ sh4_scfrdr2_reg_read_handler(Sh4 *sh4, void *buf,
 int
 sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
                               struct Sh4MemMappedReg const *reg_info) {
-#ifdef ENABLE_SERIAL_SERVER
     if (sh4->scif.ser_srv_connected) {
         uint8_t dat;
 
@@ -167,18 +163,13 @@ sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
         text_ring_produce(&sh4->scif.txq, (char)dat);
         serial_server_notify_tx_ready();
     }
-#endif
 
     return 0;
 }
 
-#ifdef ENABLE_SERIAL_SERVER
-
 void sh4_scif_cts(Sh4 *sh4) {
     atomic_flag_clear(&sh4->scif.nothing_pending);
 }
-
-#endif
 
 void sh4_scif_rx(Sh4 *sh4) {
     atomic_flag_clear(&sh4->scif.nothing_pending);

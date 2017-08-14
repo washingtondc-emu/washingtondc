@@ -32,10 +32,7 @@
 #include <event2/buffer.h>
 #include <event2/thread.h>
 
-#ifdef ENABLE_SERIAL_SERVER
 #include "serial_server.h"
-#endif
-
 #include "dreamcast.h"
 
 #ifdef ENABLE_DEBUGGER
@@ -100,9 +97,7 @@ static void *io_main(void *arg) {
     if (pthread_cond_signal(&io_thread_create_condition) != 0)
         abort(); // TODO: error handling
 
-#ifdef ENABLE_SERIAL_SERVER
     serial_server_init(dreamcast_get_cpu());
-#endif
 
 #ifdef ENABLE_DEBUGGER
     gdb_init();
@@ -116,9 +111,7 @@ static void *io_main(void *arg) {
         if (!dc_is_running())
             break;
 
-#ifdef ENABLE_SERIAL_SERVER
         serial_server_run();
-#endif
     }
 
     printf("io thread finished\n");
@@ -129,9 +122,7 @@ static void *io_main(void *arg) {
     gdb_cleanup();
 #endif
 
-#ifdef ENABLE_SERIAL_SERVER
     serial_server_cleanup();
-#endif
 
     event_base_free(io_thread_event_base);
 
@@ -147,7 +138,5 @@ static void io_work_callback(evutil_socket_t fd, short ev, void *arg) {
     if (!dc_is_running())
         event_base_loopbreak(io_thread_event_base);
 
-#ifdef ENABLE_SERIAL_SERVER
     serial_server_run();
-#endif
 }
