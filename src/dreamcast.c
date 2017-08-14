@@ -54,9 +54,7 @@ static struct Memory mem;
 
 static volatile bool is_running;
 
-#ifdef ENABLE_DEBUGGER
 static bool using_debugger;
-#endif
 
 #ifdef ENABLE_SERIAL_SERVER
 static struct serial_server serial_server;
