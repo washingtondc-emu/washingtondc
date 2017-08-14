@@ -81,10 +81,6 @@ void dreamcast_kill();
 
 Sh4 *dreamcast_get_cpu();
 
-#if defined(ENABLE_DEBUGGER)
-extern struct event_base *dc_event_base;
-#endif
-
 /*
  * This is being made extern so that dc_cycle_stamp() can be an inline function.
  * This variable should not be read from or written to from outside of
