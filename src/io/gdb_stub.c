@@ -186,6 +186,12 @@ static reg32_t gdb_stub_get_reg(unsigned reg_no);
 static void gdb_stub_set_reg(unsigned reg_no, reg32_t val);
 static int gdb_stub_read_mem(void *out, addr32_t addr, unsigned len);
 static int gdb_stub_write_mem(void const *input, addr32_t addr, unsigned len);
+static int gdb_stub_add_break(addr32_t addr);
+static int gdb_stub_remove_break(addr32_t addr);
+static int gdb_stub_add_write_watchpoint(addr32_t addr, unsigned len);
+static int gdb_stub_remove_write_watchpoint(addr32_t addr, unsigned len);
+static int gdb_stub_add_read_watchpoint(addr32_t addr, unsigned len);
+static int gdb_stub_remove_read_watchpoint(addr32_t addr, unsigned len);
 
 /*
  * drain the deferred cmd queue.  This should only be called from the emulation
@@ -655,7 +661,7 @@ static void handle_m_packet(struct string *out, struct string const *dat) {
         RAISE_ERROR(ERROR_FAILED_ALLOC);
     }
 
-    if (debug_read_mem(data_buf, addr, len) < 0) {
+    if (gdb_stub_read_mem(data_buf, addr, len) < 0) {
         err_str(out, EINVAL);
         goto cleanup;
     }
@@ -698,7 +704,7 @@ static void handle_M_packet(struct string *out, struct string const *dat) {
     if (len < 1024) {
         uint8_t *buf = (uint8_t*)malloc(sizeof(uint8_t) * len);
         deserialize_data(&new_dat, buf, len);
-        int err = debug_write_mem(buf, addr, len);
+        int err = gdb_stub_write_mem(buf, addr, len);
         free(buf);
 
         if (err < 0) {
@@ -831,12 +837,12 @@ static void handle_Z_packet(struct string *out, struct string const *dat) {
 
         addr32_t break_addr = string_read_hex32(&dat_local, 0);
 
-        int err_code = debug_add_break(break_addr);
+        int err_code = gdb_stub_add_break(break_addr);
 
         if (err_code == 0)
             string_set(out, "OK");
         else
-            err_str(out, err_code);
+            err_str(out, ENOBUFS);
 
         goto cleanup;
     } else if (dat_c_str[1] == '2') {
@@ -870,12 +876,12 @@ static void handle_Z_packet(struct string *out, struct string const *dat) {
         string_cleanup(&addr_str);
         string_cleanup(&len_str);
 
-        int err_code = debug_add_w_watch(watch_addr, length);
+        int err_code = gdb_stub_add_write_watchpoint(watch_addr, length);
 
         if (err_code == 0)
             string_set(out, "OK");
         else
-            err_str(out, err_code);
+            err_str(out, ENOBUFS);
 
         goto cleanup;
     } else if (dat_c_str[1] == '3') {
@@ -909,12 +915,12 @@ static void handle_Z_packet(struct string *out, struct string const *dat) {
         string_cleanup(&addr_str);
         string_cleanup(&len_str);
 
-        int err_code = debug_add_r_watch(watch_addr, length);
+        int err_code = gdb_stub_add_read_watchpoint(watch_addr, length);
 
         if (err_code == 0)
             string_set(out, "OK");
         else
-            err_str(out, err_code);
+            err_str(out, ENOBUFS);
 
         goto cleanup;
     } else {
@@ -957,7 +963,7 @@ static void handle_z_packet(struct string *out, struct string const *dat) {
 
         addr32_t break_addr = string_read_hex32(&dat_local, 0);
 
-        int err_code = debug_remove_break(break_addr);
+        int err_code = gdb_stub_remove_break(break_addr);
 
         if (err_code == 0)
             string_set(out, "OK");
@@ -995,12 +1001,12 @@ static void handle_z_packet(struct string *out, struct string const *dat) {
         string_cleanup(&addr_str);
         string_cleanup(&len_str);
 
-        int err_code = debug_remove_w_watch(watch_addr, length);
+        int err_code = gdb_stub_remove_write_watchpoint(watch_addr, length);
 
         if (err_code == 0)
             string_set(out, "OK");
         else
-            err_str(out, err_code);
+            err_str(out, EINVAL);
 
         goto cleanup;
     } else if (dat_c_str[1] == '3') {
@@ -1034,12 +1040,12 @@ static void handle_z_packet(struct string *out, struct string const *dat) {
         string_cleanup(&addr_str);
         string_cleanup(&len_str);
 
-        int err_code = debug_remove_r_watch(watch_addr, length);
+        int err_code = gdb_stub_remove_read_watchpoint(watch_addr, length);
 
         if (err_code == 0)
             string_set(out, "OK");
         else
-            err_str(out, err_code);
+            err_str(out, EINVAL);
 
         goto cleanup;
     } else {
@@ -1432,6 +1438,7 @@ static void on_write_watchpoint_event(evutil_socket_t fd, short ev, void *arg) {
     string_cleanup(&resp);
     string_cleanup(&pkt);
 }
+
 /*
  * For functions that read/write to the sh4 or memory, I need to be able to
  * move data from the emulation thread into io_thread.  To do this safely, I
@@ -1451,7 +1458,31 @@ enum deferred_cmd_type {
     DEFERRED_CMD_SET_ALL_REGS,
     DEFERRED_CMD_SET_REG,
     DEFERRED_CMD_READ_MEM,
-    DEFERRED_CMD_WRITE_MEM
+    DEFERRED_CMD_WRITE_MEM,
+
+    DEFERRED_CMD_ADD_BREAK,
+    DEFERRED_CMD_REMOVE_BREAK,
+    DEFERRED_CMD_ADD_WRITE_WATCH,
+    DEFERRED_CMD_REMOVE_WRITE_WATCH,
+    DEFERRED_CMD_ADD_READ_WATCH,
+    DEFERRED_CMD_REMOVE_READ_WATCH,
+
+    N_DEFERRED_CMD
+};
+
+char const *deferred_cmd_names[N_DEFERRED_CMD] = {
+    "DEFERRED_CMD_GET_ALL_REGS",
+    "DEFERRED_CMD_SET_ALL_REGS",
+    "DEFERRED_CMD_SET_REG",
+    "DEFERRED_CMD_READ_MEM",
+    "DEFERRED_CMD_WRITE_MEM",
+
+    "DEFERRED_CMD_ADD_BREAK",
+    "DEFERRED_CMD_REMOVE_BREAK",
+    "DEFERRED_CMD_ADD_WRITE_WATCH",
+    "DEFERRED_CMD_REMOVE_WRITE_WATCH",
+    "DEFERRED_CMD_ADD_READ_WATCH",
+    "DEFERRED_CMD_REMOVE_READ_WATCH"
 };
 
 struct meta_deferred_cmd_get_all_regs {
@@ -1479,12 +1510,46 @@ struct meta_deferred_cmd_write_mem {
     addr32_t addr;
 };
 
+struct meta_deferred_cmd_add_break {
+    addr32_t addr;
+};
+
+struct meta_deferred_cmd_remove_break {
+    addr32_t addr;
+};
+
+struct meta_deferred_cmd_add_write_watch {
+    addr32_t addr;
+    unsigned len;
+};
+
+struct meta_deferred_cmd_remove_write_watch {
+    addr32_t addr;
+    unsigned len;
+};
+
+struct meta_deferred_cmd_add_read_watch {
+    addr32_t addr;
+    unsigned len;
+};
+
+struct meta_deferred_cmd_remove_read_watch {
+    addr32_t addr;
+    unsigned len;
+};
+
 union deferred_cmd_meta {
     struct meta_deferred_cmd_get_all_regs get_all_regs;
     struct meta_deferred_cmd_set_all_regs set_all_regs;
     struct meta_deferred_cmd_set_reg set_reg;
     struct meta_deferred_cmd_read_mem read_mem;
     struct meta_deferred_cmd_write_mem write_mem;
+    struct meta_deferred_cmd_add_break add_break;
+    struct meta_deferred_cmd_remove_break remove_break;
+    struct meta_deferred_cmd_add_write_watch add_write_watch;
+    struct meta_deferred_cmd_remove_write_watch remove_write_watch;
+    struct meta_deferred_cmd_add_read_watch add_read_watch;
+    struct meta_deferred_cmd_remove_read_watch remove_read_watch;
 };
 
 enum deferred_cmd_status {
@@ -1499,6 +1564,11 @@ struct deferred_cmd {
     enum deferred_cmd_status status;
     struct fifo_node fifo;
 };
+
+static void deferred_cmd_init(struct deferred_cmd *cmd) {
+    memset(cmd, 0, sizeof(*cmd));
+    cmd->cmd_type = DEFERRED_CMD_IN_PROGRESS;
+}
 
 static pthread_mutex_t deferred_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t deferred_cmd_cond = PTHREAD_COND_INITIALIZER;
@@ -1529,6 +1599,17 @@ static void deferred_cmd_push_nolock(struct deferred_cmd *cmd) {
     fifo_push(&deferred_cmd_fifo, &cmd->fifo);
 }
 
+static void deferred_cmd_exec(struct deferred_cmd *cmd) {
+    deferred_cmd_lock();
+
+    deferred_cmd_push_nolock(cmd);
+
+    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
+        deferred_cmd_wait();
+
+    deferred_cmd_unlock();
+}
+
 static struct deferred_cmd *deferred_cmd_pop_nolock(void) {
     struct fifo_node *ret = fifo_pop(&deferred_cmd_fifo);
     if (ret)
@@ -1537,45 +1618,23 @@ static struct deferred_cmd *deferred_cmd_pop_nolock(void) {
 }
 
 void gdb_stub_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]) {
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    struct deferred_cmd cmd;
 
-    cmd->cmd_type = DEFERRED_CMD_GET_ALL_REGS;
-    cmd->meta.get_all_regs.reg_file_out = reg_file;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_GET_ALL_REGS;
+    cmd.meta.get_all_regs.reg_file_out = reg_file;
 
-    deferred_cmd_lock();
-
-    deferred_cmd_push_nolock(cmd);
-
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
-
-    deferred_cmd_unlock();
-
-    free(cmd);
+    deferred_cmd_exec(&cmd);
 }
 
 void gdb_stub_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]) {
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    struct deferred_cmd cmd;
 
-    cmd->cmd_type = DEFERRED_CMD_SET_ALL_REGS;
-    cmd->meta.set_all_regs.reg_file_in = reg_file;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_SET_ALL_REGS;
+    cmd.meta.set_all_regs.reg_file_in = reg_file;
 
-    deferred_cmd_lock();
-
-    deferred_cmd_push_nolock(cmd);
-
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
-
-    deferred_cmd_unlock();
-
-    free(cmd);
+    deferred_cmd_exec(&cmd);
 }
 
 // this one's just a layer on top of get_all_regs
@@ -1586,87 +1645,134 @@ reg32_t gdb_stub_get_reg(unsigned reg_no) {
 }
 
 void gdb_stub_set_reg(unsigned reg_no, reg32_t val) {
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    struct deferred_cmd cmd;
 
-    cmd->cmd_type = DEFERRED_CMD_SET_REG;
-    cmd->meta.set_reg.idx = reg_no;
-    cmd->meta.set_reg.val = val;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_SET_REG;
+    cmd.meta.set_reg.idx = reg_no;
+    cmd.meta.set_reg.val = val;
 
-    deferred_cmd_lock();
-
-    deferred_cmd_push_nolock(cmd);
-
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
-
-    deferred_cmd_unlock();
-
-    free(cmd);
+    deferred_cmd_exec(&cmd);
 }
 
 int gdb_stub_read_mem(void *out, addr32_t addr, unsigned len) {
-    int ret_val;
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    struct deferred_cmd cmd;
 
-    cmd->cmd_type = DEFERRED_CMD_READ_MEM;
-    cmd->meta.read_mem.out_buf = out;
-    cmd->meta.read_mem.addr = addr;
-    cmd->meta.read_mem.len = len;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_READ_MEM;
+    cmd.meta.read_mem.out_buf = out;
+    cmd.meta.read_mem.addr = addr;
+    cmd.meta.read_mem.len = len;
 
-    deferred_cmd_lock();
+    deferred_cmd_exec(&cmd);
 
-    deferred_cmd_push_nolock(cmd);
-
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
-
-    deferred_cmd_unlock();
-
-    if (cmd->status == DEFERRED_CMD_SUCCESS)
-        ret_val = 0;
-    else
-        ret_val = -1;
-
-    free(cmd);
-
-    return ret_val;
+    if (cmd.status == DEFERRED_CMD_SUCCESS)
+        return 0;
+    return -1;
 }
 
 int gdb_stub_write_mem(void const *input, addr32_t addr, unsigned len) {
-    int ret_val;
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    struct deferred_cmd cmd;
 
-    cmd->cmd_type = DEFERRED_CMD_WRITE_MEM;
-    cmd->meta.write_mem.in_buf = input;
-    cmd->meta.write_mem.addr = addr;
-    cmd->meta.write_mem.len = len;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_WRITE_MEM;
+    cmd.meta.write_mem.in_buf = input;
+    cmd.meta.write_mem.addr = addr;
+    cmd.meta.write_mem.len = len;
 
-    deferred_cmd_lock();
+    deferred_cmd_exec(&cmd);
 
-    deferred_cmd_push_nolock(cmd);
+    if (cmd.status == DEFERRED_CMD_SUCCESS)
+        return 0;
+    return -1;
+}
 
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
+static int gdb_stub_add_break(addr32_t addr) {
+    struct deferred_cmd cmd;
 
-    deferred_cmd_unlock();
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_ADD_BREAK;
+    cmd.meta.add_break.addr = addr;
 
-    if (cmd->status == DEFERRED_CMD_SUCCESS)
-        ret_val = 0;
-    else
-        ret_val = -1;
+    deferred_cmd_exec(&cmd);
 
-    free(cmd);
+    if (cmd.status == DEFERRED_CMD_SUCCESS)
+        return 0;
+    return -1;
+}
 
-    return ret_val;
+static int gdb_stub_remove_break(addr32_t addr) {
+    struct deferred_cmd cmd;
+
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_REMOVE_BREAK;
+    cmd.meta.remove_break.addr = addr;
+
+    deferred_cmd_exec(&cmd);
+
+    if (cmd.status == DEFERRED_CMD_SUCCESS)
+        return 0;
+    return -1;
+}
+
+static int gdb_stub_add_write_watchpoint(addr32_t addr, unsigned len) {
+    struct deferred_cmd cmd;
+
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_ADD_WRITE_WATCH;
+    cmd.meta.add_write_watch.addr = addr;
+    cmd.meta.add_write_watch.len = len;
+
+    deferred_cmd_exec(&cmd);
+
+    if (cmd.status == DEFERRED_CMD_SUCCESS)
+        return 0;
+    return -1;
+}
+
+static int gdb_stub_remove_write_watchpoint(addr32_t addr, unsigned len) {
+    struct deferred_cmd cmd;
+
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_REMOVE_WRITE_WATCH;
+    cmd.meta.remove_write_watch.addr = addr;
+    cmd.meta.remove_write_watch.len = len;
+
+    deferred_cmd_exec(&cmd);
+
+    if (cmd.status == DEFERRED_CMD_SUCCESS)
+        return 0;
+    return -1;
+}
+
+static int gdb_stub_add_read_watchpoint(addr32_t addr, unsigned len) {
+    struct deferred_cmd cmd;
+
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_ADD_READ_WATCH;
+    cmd.meta.add_read_watch.addr = addr;
+    cmd.meta.add_read_watch.len = len;
+
+    deferred_cmd_exec(&cmd);
+
+    if (cmd.status == DEFERRED_CMD_SUCCESS)
+        return 0;
+    return -1;
+}
+
+static int gdb_stub_remove_read_watchpoint(addr32_t addr, unsigned len) {
+    struct deferred_cmd cmd;
+
+    deferred_cmd_init(&cmd);
+    cmd.cmd_type = DEFERRED_CMD_REMOVE_READ_WATCH;
+    cmd.meta.remove_read_watch.addr = addr;
+    cmd.meta.remove_read_watch.len = len;
+
+    deferred_cmd_exec(&cmd);
+
+    if (cmd.status == DEFERRED_CMD_SUCCESS)
+        return 0;
+    return -1;
 }
 
 static void deferred_cmd_do_get_all_regs(struct deferred_cmd *cmd) {
@@ -1706,12 +1812,65 @@ static void deferred_cmd_do_write_mem(struct deferred_cmd *cmd) {
         cmd->status = DEFERRED_CMD_SUCCESS;
 }
 
+static void deferred_cmd_do_add_break(struct deferred_cmd *cmd) {
+    addr32_t addr = cmd->meta.add_break.addr;
+    if (debug_add_break(addr) != 0)
+        cmd->status = DEFERRED_CMD_FAILURE;
+    else
+        cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_do_remove_break(struct deferred_cmd *cmd) {
+    addr32_t addr = cmd->meta.remove_break.addr;
+    if (debug_remove_break(addr) != 0)
+        cmd->status = DEFERRED_CMD_FAILURE;
+    else
+        cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_do_add_write_watch(struct deferred_cmd *cmd) {
+    addr32_t addr = cmd->meta.add_write_watch.addr;
+    unsigned len = cmd->meta.add_write_watch.len;
+    if (debug_add_w_watch(addr, len) != 0)
+        cmd->status = DEFERRED_CMD_FAILURE;
+    else
+        cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_do_remove_write_watch(struct deferred_cmd *cmd) {
+    addr32_t addr = cmd->meta.remove_write_watch.addr;
+    unsigned len = cmd->meta.remove_write_watch.len;
+    if (debug_remove_w_watch(addr, len) != 0)
+        cmd->status = DEFERRED_CMD_FAILURE;
+    else
+        cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_do_add_read_watch(struct deferred_cmd *cmd) {
+    addr32_t addr = cmd->meta.add_read_watch.addr;
+    unsigned len = cmd->meta.add_read_watch.len;
+    if (debug_add_r_watch(addr, len) != 0)
+        cmd->status = DEFERRED_CMD_FAILURE;
+    else
+        cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_do_remove_read_watch(struct deferred_cmd *cmd) {
+    addr32_t addr = cmd->meta.remove_read_watch.addr;
+    unsigned len = cmd->meta.remove_read_watch.len;
+    if (debug_remove_r_watch(addr, len) != 0)
+        cmd->status = DEFERRED_CMD_FAILURE;
+    else
+        cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
 static void deferred_cmd_run(void) {
     struct deferred_cmd *cmd;
 
     deferred_cmd_lock();
 
     while ((cmd = deferred_cmd_pop_nolock())) {
+        printf("gdb_stub: deferred cmd %s\n", deferred_cmd_names[cmd->cmd_type]);
         switch (cmd->cmd_type) {
         case DEFERRED_CMD_GET_ALL_REGS:
             deferred_cmd_do_get_all_regs(cmd);
@@ -1727,6 +1886,24 @@ static void deferred_cmd_run(void) {
             break;
         case DEFERRED_CMD_WRITE_MEM:
             deferred_cmd_do_write_mem(cmd);
+            break;
+        case DEFERRED_CMD_ADD_BREAK:
+            deferred_cmd_do_add_break(cmd);
+            break;
+        case DEFERRED_CMD_REMOVE_BREAK:
+            deferred_cmd_do_remove_break(cmd);
+            break;
+        case DEFERRED_CMD_ADD_WRITE_WATCH:
+            deferred_cmd_do_add_write_watch(cmd);
+            break;
+        case DEFERRED_CMD_REMOVE_WRITE_WATCH:
+            deferred_cmd_do_remove_write_watch(cmd);
+            break;
+        case DEFERRED_CMD_ADD_READ_WATCH:
+            deferred_cmd_do_add_read_watch(cmd);
+            break;
+        case DEFERRED_CMD_REMOVE_READ_WATCH:
+            deferred_cmd_do_remove_read_watch(cmd);
             break;
         default:
             RAISE_ERROR(ERROR_INTEGRITY);
