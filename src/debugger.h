@@ -102,6 +102,15 @@ struct debug_frontend {
 
     void(*on_cleanup)(void*);
 
+    /*
+     * this function gets called periodically when the debugger is at a
+     * breakpoint or watchpoint.  The purpose of it is to give the gdb_stub a
+     * place to do work from within the emulation thread.  This function should
+     * not block and it should not have any hard timing requirements (although
+     * it will get called often).
+     */
+    void(*run_once)(void*);
+
     void *arg;
 };
 

@@ -30,6 +30,7 @@
 #include "hw/sh4/sh4_reg.h"
 #include "dreamcast.h"
 #include "io/io_thread.h"
+#include "fifo.h"
 
 #include "gdb_stub.h"
 
@@ -102,6 +103,7 @@ static void gdb_callback_break(void *arg);
 static void gdb_callback_read_watchpoint(addr32_t addr, void *arg);
 static void gdb_callback_write_watchpoint(addr32_t addr, void *arg);
 static void gdb_callback_softbreak(inst_t inst, addr32_t addr, void *arg);
+static void gdb_callback_run_once(void *argptr);
 static int decode_hex(char ch);
 
 static void craft_packet(struct string *out, struct string const *in);
@@ -171,13 +173,33 @@ static void on_read_watchpoint_event(evutil_socket_t fd, short ev, void *arg);
 //libevent callback for when the debugger backend hits a write-watchpoint
 static void on_write_watchpoint_event(evutil_socket_t fd, short ev, void *arg);
 
+/*
+ * the following functions make use of the deferred command infrastructure (see
+ * the bottom of this file) to call the corresponding debug_* functions from
+ * within the emulation thread.  The point of this is that I want all access to
+ * the emulation state to be thread-safe but I also don't want to adapt the
+ * emulation code to suit the debugger.
+ */
+static void gdb_stub_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]);
+static void gdb_stub_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]);
+static reg32_t gdb_stub_get_reg(unsigned reg_no);
+static void gdb_stub_set_reg(unsigned reg_no, reg32_t val);
+static int gdb_stub_read_mem(void *out, addr32_t addr, unsigned len);
+static int gdb_stub_write_mem(void const *input, addr32_t addr, unsigned len);
+
+/*
+ * drain the deferred cmd queue.  This should only be called from the emulation
+ * thread
+ */
+static void deferred_cmd_run(void);
+
 struct debug_frontend const gdb_frontend = {
-    .step = NULL,
     .attach = gdb_callback_attach,
     .on_break = gdb_callback_break,
     .on_read_watchpoint = gdb_callback_read_watchpoint,
     .on_write_watchpoint = gdb_callback_write_watchpoint,
     .on_softbreak = gdb_callback_softbreak,
+    .run_once = gdb_callback_run_once
 };
 
 static size_t deserialize_data(struct string const *input_str,
@@ -290,6 +312,10 @@ static void gdb_callback_attach(void *argptr) {
     gdb_stub_unlock();
 
     printf("Connection established.\n");
+}
+
+static void gdb_callback_run_once(void *argptr) {
+    deferred_cmd_run();
 }
 
 static void gdb_callback_break(void *arg) {
@@ -1405,4 +1431,309 @@ static void on_write_watchpoint_event(evutil_socket_t fd, short ev, void *arg) {
 
     string_cleanup(&resp);
     string_cleanup(&pkt);
+}
+/*
+ * For functions that read/write to the sh4 or memory, I need to be able to
+ * move data from the emulation thread into io_thread.  To do this safely, I
+ * can either adapt the emulation code to suit the debugger (such as locking) or
+ * I can shift all the responsibility onto the gdb_stub.  The latter is more
+ * complicated but it keeps all the synchronization code in one place and it
+ * doesn't impact performance when I'm not using the debugger so that's what I
+ * went with.
+ *
+ * The deferred_cmd infra below queues up data buffers in a fifo protected by a
+ * mutex so that I only have to poke around at the hardware from within the
+ * emulation thread.  The deferred commands are executed within the emulation
+ * thread by the gdb_stub's run_once handler.
+ */
+enum deferred_cmd_type {
+    DEFERRED_CMD_GET_ALL_REGS,
+    DEFERRED_CMD_SET_ALL_REGS,
+    DEFERRED_CMD_SET_REG,
+    DEFERRED_CMD_READ_MEM,
+    DEFERRED_CMD_WRITE_MEM
+};
+
+struct meta_deferred_cmd_get_all_regs {
+    reg32_t *reg_file_out;
+};
+
+struct meta_deferred_cmd_set_all_regs {
+    reg32_t const *reg_file_in;
+};
+
+struct meta_deferred_cmd_set_reg {
+    unsigned idx;
+    reg32_t val;
+};
+
+struct meta_deferred_cmd_read_mem {
+    void *out_buf;
+    unsigned len;
+    addr32_t addr;
+};
+
+struct meta_deferred_cmd_write_mem {
+    void const *in_buf;
+    unsigned len;
+    addr32_t addr;
+};
+
+union deferred_cmd_meta {
+    struct meta_deferred_cmd_get_all_regs get_all_regs;
+    struct meta_deferred_cmd_set_all_regs set_all_regs;
+    struct meta_deferred_cmd_set_reg set_reg;
+    struct meta_deferred_cmd_read_mem read_mem;
+    struct meta_deferred_cmd_write_mem write_mem;
+};
+
+enum deferred_cmd_status {
+    DEFERRED_CMD_IN_PROGRESS,
+    DEFERRED_CMD_SUCCESS,
+    DEFERRED_CMD_FAILURE
+};
+
+struct deferred_cmd {
+    enum deferred_cmd_type cmd_type;
+    union deferred_cmd_meta meta;
+    enum deferred_cmd_status status;
+    struct fifo_node fifo;
+};
+
+static pthread_mutex_t deferred_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t deferred_cmd_cond = PTHREAD_COND_INITIALIZER;
+static struct fifo_head deferred_cmd_fifo =
+    FIFO_HEAD_INITIALIZER(deferred_cmd_fifo);
+
+static void deferred_cmd_lock(void) {
+    if (pthread_mutex_lock(&deferred_cmd_mutex) < 0)
+        abort(); // TODO error handling
+}
+
+static void deferred_cmd_unlock(void) {
+    if (pthread_mutex_unlock(&deferred_cmd_mutex) < 0)
+        abort(); // TODO error handling
+}
+
+static void deferred_cmd_wait(void) {
+    if (pthread_cond_wait(&deferred_cmd_cond, &deferred_cmd_mutex) != 0)
+        abort(); // TODO error handling
+}
+
+static void deferred_cmd_signal(void) {
+    if (pthread_cond_signal(&deferred_cmd_cond) != 0)
+        abort(); // TODO error handling
+}
+
+static void deferred_cmd_push_nolock(struct deferred_cmd *cmd) {
+    fifo_push(&deferred_cmd_fifo, &cmd->fifo);
+}
+
+static struct deferred_cmd *deferred_cmd_pop_nolock(void) {
+    struct fifo_node *ret = fifo_pop(&deferred_cmd_fifo);
+    if (ret)
+        return &FIFO_DEREF(ret, struct deferred_cmd, fifo);
+    return NULL;
+}
+
+void gdb_stub_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]) {
+    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
+    if (!cmd)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    cmd->cmd_type = DEFERRED_CMD_GET_ALL_REGS;
+    cmd->meta.get_all_regs.reg_file_out = reg_file;
+    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+
+    deferred_cmd_lock();
+
+    deferred_cmd_push_nolock(cmd);
+
+    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
+        deferred_cmd_wait();
+
+    deferred_cmd_unlock();
+
+    free(cmd);
+}
+
+void gdb_stub_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]) {
+    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
+    if (!cmd)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    cmd->cmd_type = DEFERRED_CMD_SET_ALL_REGS;
+    cmd->meta.set_all_regs.reg_file_in = reg_file;
+    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+
+    deferred_cmd_lock();
+
+    deferred_cmd_push_nolock(cmd);
+
+    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
+        deferred_cmd_wait();
+
+    deferred_cmd_unlock();
+
+    free(cmd);
+}
+
+// this one's just a layer on top of get_all_regs
+reg32_t gdb_stub_get_reg(unsigned reg_no) {
+    reg32_t reg_file[SH4_REGISTER_COUNT];
+    gdb_stub_get_all_regs(reg_file);
+    return reg_file[reg_no];
+}
+
+void gdb_stub_set_reg(unsigned reg_no, reg32_t val) {
+    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
+    if (!cmd)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    cmd->cmd_type = DEFERRED_CMD_SET_REG;
+    cmd->meta.set_reg.idx = reg_no;
+    cmd->meta.set_reg.val = val;
+    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+
+    deferred_cmd_lock();
+
+    deferred_cmd_push_nolock(cmd);
+
+    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
+        deferred_cmd_wait();
+
+    deferred_cmd_unlock();
+
+    free(cmd);
+}
+
+int gdb_stub_read_mem(void *out, addr32_t addr, unsigned len) {
+    int ret_val;
+    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
+    if (!cmd)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    cmd->cmd_type = DEFERRED_CMD_READ_MEM;
+    cmd->meta.read_mem.out_buf = out;
+    cmd->meta.read_mem.addr = addr;
+    cmd->meta.read_mem.len = len;
+    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+
+    deferred_cmd_lock();
+
+    deferred_cmd_push_nolock(cmd);
+
+    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
+        deferred_cmd_wait();
+
+    deferred_cmd_unlock();
+
+    if (cmd->status == DEFERRED_CMD_SUCCESS)
+        ret_val = 0;
+    else
+        ret_val = -1;
+
+    free(cmd);
+
+    return ret_val;
+}
+
+int gdb_stub_write_mem(void const *input, addr32_t addr, unsigned len) {
+    int ret_val;
+    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
+    if (!cmd)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    cmd->cmd_type = DEFERRED_CMD_WRITE_MEM;
+    cmd->meta.write_mem.in_buf = input;
+    cmd->meta.write_mem.addr = addr;
+    cmd->meta.write_mem.len = len;
+    cmd->status = DEFERRED_CMD_IN_PROGRESS;
+
+    deferred_cmd_lock();
+
+    deferred_cmd_push_nolock(cmd);
+
+    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
+        deferred_cmd_wait();
+
+    deferred_cmd_unlock();
+
+    if (cmd->status == DEFERRED_CMD_SUCCESS)
+        ret_val = 0;
+    else
+        ret_val = -1;
+
+    free(cmd);
+
+    return ret_val;
+}
+
+static void deferred_cmd_do_get_all_regs(struct deferred_cmd *cmd) {
+    debug_get_all_regs(cmd->meta.get_all_regs.reg_file_out);
+    cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_do_set_all_regs(struct deferred_cmd *cmd) {
+    debug_set_all_regs(cmd->meta.set_all_regs.reg_file_in);
+    cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_do_set_reg(struct deferred_cmd *cmd) {
+    debug_set_reg(cmd->meta.set_reg.idx, cmd->meta.set_reg.val);
+    cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_do_read_mem(struct deferred_cmd *cmd) {
+    void *out = cmd->meta.read_mem.out_buf;
+    unsigned len = cmd->meta.read_mem.len;
+    addr32_t addr = cmd->meta.read_mem.addr;
+
+    if (debug_read_mem(out, addr, len) != 0)
+        cmd->status = DEFERRED_CMD_FAILURE;
+    else
+        cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_do_write_mem(struct deferred_cmd *cmd) {
+    void const *input = cmd->meta.write_mem.in_buf;
+    unsigned len = cmd->meta.write_mem.len;
+    addr32_t addr = cmd->meta.write_mem.addr;
+
+    if (debug_write_mem(input, addr, len) != 0)
+        cmd->status = DEFERRED_CMD_FAILURE;
+    else
+        cmd->status = DEFERRED_CMD_SUCCESS;
+}
+
+static void deferred_cmd_run(void) {
+    struct deferred_cmd *cmd;
+
+    deferred_cmd_lock();
+
+    while ((cmd = deferred_cmd_pop_nolock())) {
+        switch (cmd->cmd_type) {
+        case DEFERRED_CMD_GET_ALL_REGS:
+            deferred_cmd_do_get_all_regs(cmd);
+            break;
+        case DEFERRED_CMD_SET_ALL_REGS:
+            deferred_cmd_do_set_all_regs(cmd);
+            break;
+        case DEFERRED_CMD_SET_REG:
+            deferred_cmd_do_set_reg(cmd);
+            break;
+        case DEFERRED_CMD_READ_MEM:
+            deferred_cmd_do_read_mem(cmd);
+            break;
+        case DEFERRED_CMD_WRITE_MEM:
+            deferred_cmd_do_write_mem(cmd);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+    }
+
+    deferred_cmd_signal();
+
+    deferred_cmd_unlock();
 }

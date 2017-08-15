@@ -103,14 +103,12 @@ static void frontend_on_read_watchpoint(addr32_t addr);
 static void frontend_on_write_watchpoint(addr32_t addr);
 static void frontend_on_softbreak(inst_t inst, addr32_t addr);
 static void frontend_on_cleanup(void);
+static void frontend_run_once(void);
 
 // don't call this directly, use the DBG_TRACE macro instead
 static void dbg_do_trace(char const *msg, ...);
 
 static void dbg_state_transition(enum debug_state new_state);
-
-// drain the deferred cmd queue.  This hsould only be called by debug_run_once
-static void deferred_cmd_run(void);
 
 void debug_init(void) {
     memset(&dbg, 0, sizeof(dbg));
@@ -373,6 +371,11 @@ static void frontend_attach(void) {
         dbg.frontend->attach(dbg.frontend->arg);
 }
 
+static void frontend_run_once(void) {
+    if (dbg.frontend && dbg.frontend->run_once)
+        dbg.frontend->run_once(dbg.frontend->arg);
+}
+
 static void frontend_on_break(void) {
     if (dbg.frontend && dbg.frontend->on_break)
         dbg.frontend->on_break(dbg.frontend->arg);
@@ -471,7 +474,7 @@ void debug_signal(void) {
 }
 
 void debug_run_once(void) {
-    deferred_cmd_run();
+    frontend_run_once();
 
     if ((dbg.cur_state != DEBUG_STATE_BREAK) &&
         (dbg.cur_state != DEBUG_STATE_WATCH)) {
@@ -504,151 +507,13 @@ void debug_run_once(void) {
     }
 }
 
-/*
- * For functions that read/write to the sh4 or memory, I need to be able to
- * move data from the emulation thread into io_thread (or possibly some other
- * thread if I write a non-gdb debugger).  Locking is one way to do this safely,
- * but it's not scalable because I don't want to acquire locks in code outside
- * of the debugger solely for the benefit of the debugger.
- *
- * The deferred_cmd infra below queues up data buffers in a fifo protected by a
- * mutex so that I only have to poke around at the hardware from within the
- * emulation thread.  In some ways this makes things more complicated than they
- * need to be, but I feel better knowing that the state of the emulated hardware
- * can only be modified by the emulation thread.
- */
-enum deferred_cmd_type {
-    DEFERRED_CMD_GET_ALL_REGS,
-    DEFERRED_CMD_SET_ALL_REGS,
-    DEFERRED_CMD_SET_REG,
-    DEFERRED_CMD_READ_MEM,
-    DEFERRED_CMD_WRITE_MEM
-};
-
-struct meta_deferred_cmd_get_all_regs {
-    reg32_t *reg_file_out;
-    /* reg32_t reg_file[SH4_REGISTER_COUNT]; */
-};
-
-struct meta_deferred_cmd_set_all_regs {
-    reg32_t const *reg_file_in;
-    /* reg32_t reg_file[SH4_REGISTER_COUNT]; */
-};
-
-struct meta_deferred_cmd_set_reg {
-    unsigned idx;
-    reg32_t val;
-};
-
-struct meta_deferred_cmd_read_mem {
-    void *out_buf;
-    unsigned len;
-    addr32_t addr;
-};
-
-struct meta_deferred_cmd_write_mem {
-    void const *in_buf;
-    unsigned len;
-    addr32_t addr;
-};
-
-union deferred_cmd_meta {
-    struct meta_deferred_cmd_get_all_regs get_all_regs;
-    struct meta_deferred_cmd_set_all_regs set_all_regs;
-    struct meta_deferred_cmd_set_reg set_reg;
-    struct meta_deferred_cmd_read_mem read_mem;
-    struct meta_deferred_cmd_write_mem write_mem;
-};
-
-enum deferred_cmd_status {
-    DEFERRED_CMD_IN_PROGRESS,
-    DEFERRED_CMD_SUCCESS,
-    DEFERRED_CMD_FAILURE
-};
-
-struct deferred_cmd {
-    enum deferred_cmd_type cmd_type;
-    union deferred_cmd_meta meta;
-    enum deferred_cmd_status status;
-    struct fifo_node fifo;
-};
-
-static pthread_mutex_t deferred_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t deferred_cmd_cond = PTHREAD_COND_INITIALIZER;
-static struct fifo_head deferred_cmd_fifo =
-    FIFO_HEAD_INITIALIZER(deferred_cmd_fifo);
-
-static void deferred_cmd_lock(void) {
-    if (pthread_mutex_lock(&deferred_cmd_mutex) < 0)
-        abort(); // TODO error handling
-}
-
-static void deferred_cmd_unlock(void) {
-    if (pthread_mutex_unlock(&deferred_cmd_mutex) < 0)
-        abort(); // TODO error handling
-}
-
-static void deferred_cmd_wait(void) {
-    if (pthread_cond_wait(&deferred_cmd_cond, &deferred_cmd_mutex) != 0)
-        abort(); // TODO error handling
-}
-
-static void deferred_cmd_signal(void) {
-    if (pthread_cond_signal(&deferred_cmd_cond) != 0)
-        abort(); // TODO error handling
-}
-
-static void deferred_cmd_push_nolock(struct deferred_cmd *cmd) {
-    fifo_push(&deferred_cmd_fifo, &cmd->fifo);
-}
-
-static struct deferred_cmd *deferred_cmd_pop_nolock(void) {
-    struct fifo_node *ret = fifo_pop(&deferred_cmd_fifo);
-    if (ret)
-        return &FIFO_DEREF(ret, struct deferred_cmd, fifo);
-    return NULL;
-}
-
 void debug_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]) {
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    cmd->cmd_type = DEFERRED_CMD_GET_ALL_REGS;
-    cmd->meta.get_all_regs.reg_file_out = reg_file;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
-
-    deferred_cmd_lock();
-
-    deferred_cmd_push_nolock(cmd);
-
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
-
-    deferred_cmd_unlock();
-
-    free(cmd);
+    sh4_get_regs(dreamcast_get_cpu(), reg_file);
 }
 
 void debug_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]) {
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    cmd->cmd_type = DEFERRED_CMD_SET_ALL_REGS;
-    cmd->meta.set_all_regs.reg_file_in = reg_file;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
-
-    deferred_cmd_lock();
-
-    deferred_cmd_push_nolock(cmd);
-
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
-
-    deferred_cmd_unlock();
-
-    free(cmd);
+    DBG_TRACE("writing to all registers\n");
+    sh4_set_regs(dreamcast_get_cpu(), reg_file);
 }
 
 // this one's just a layer on top of get_all_regs
@@ -659,114 +524,14 @@ reg32_t debug_get_reg(unsigned reg_no) {
 }
 
 void debug_set_reg(unsigned reg_no, reg32_t val) {
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    cmd->cmd_type = DEFERRED_CMD_SET_REG;
-    cmd->meta.set_reg.idx = reg_no;
-    cmd->meta.set_reg.val = val;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
-
-    deferred_cmd_lock();
-
-    deferred_cmd_push_nolock(cmd);
-
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
-
-    deferred_cmd_unlock();
-
-    free(cmd);
+    DBG_TRACE("setting register index %u to 0x%08x\n",
+              (unsigned)reg_no, (unsigned)val);
+    sh4_set_individual_reg(dreamcast_get_cpu(),
+                           (unsigned)reg_no, (unsigned)val);
 }
 
 int debug_read_mem(void *out, addr32_t addr, unsigned len) {
-    int ret_val;
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    cmd->cmd_type = DEFERRED_CMD_READ_MEM;
-    cmd->meta.read_mem.out_buf = out;
-    cmd->meta.read_mem.addr = addr;
-    cmd->meta.read_mem.len = len;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
-
-    deferred_cmd_lock();
-
-    deferred_cmd_push_nolock(cmd);
-
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
-
-    deferred_cmd_unlock();
-
-    if (cmd->status == DEFERRED_CMD_SUCCESS)
-        ret_val = 0;
-    else
-        ret_val = -1;
-
-    free(cmd);
-
-    return ret_val;
-}
-
-int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
-    int ret_val;
-    struct deferred_cmd *cmd = malloc(sizeof(struct deferred_cmd));
-    if (!cmd)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    cmd->cmd_type = DEFERRED_CMD_WRITE_MEM;
-    cmd->meta.write_mem.in_buf = input;
-    cmd->meta.write_mem.addr = addr;
-    cmd->meta.write_mem.len = len;
-    cmd->status = DEFERRED_CMD_IN_PROGRESS;
-
-    deferred_cmd_lock();
-
-    deferred_cmd_push_nolock(cmd);
-
-    while (cmd->status == DEFERRED_CMD_IN_PROGRESS)
-        deferred_cmd_wait();
-
-    deferred_cmd_unlock();
-
-    if (cmd->status == DEFERRED_CMD_SUCCESS)
-        ret_val = 0;
-    else
-        ret_val = -1;
-
-    free(cmd);
-
-    return ret_val;
-}
-
-static void deferred_cmd_do_get_all_regs(struct deferred_cmd *cmd) {
-    sh4_get_regs(dreamcast_get_cpu(), cmd->meta.get_all_regs.reg_file_out);
-    cmd->status = DEFERRED_CMD_SUCCESS;
-}
-
-static void deferred_cmd_do_set_all_regs(struct deferred_cmd *cmd) {
-    DBG_TRACE("writing to all registers\n");
-    sh4_set_regs(dreamcast_get_cpu(), cmd->meta.set_all_regs.reg_file_in);
-    cmd->status = DEFERRED_CMD_SUCCESS;
-}
-
-static void deferred_cmd_do_set_reg(struct deferred_cmd *cmd) {
-    DBG_TRACE("setting register index %u to 0x%08x\n",
-              (unsigned)cmd->meta.set_reg.idx, (unsigned)cmd->meta.set_reg.val);
-    sh4_set_individual_reg(dreamcast_get_cpu(),
-                           cmd->meta.set_reg.idx, cmd->meta.set_reg.val);
-    cmd->status = DEFERRED_CMD_SUCCESS;
-}
-
-static void deferred_cmd_do_read_mem(struct deferred_cmd *cmd) {
     unsigned unit_len, n_units;
-
-    void *out = cmd->meta.read_mem.out_buf;
-    unsigned len = cmd->meta.read_mem.len;
-    addr32_t addr = cmd->meta.read_mem.addr;
 
     DBG_TRACE("request to read %u bytes from %08x\n",
               (unsigned)len, (unsigned)addr);
@@ -790,8 +555,7 @@ static void deferred_cmd_do_read_mem(struct deferred_cmd *cmd) {
 
         if (err != MEM_ACCESS_SUCCESS) {
             error_clear();
-            cmd->status = DEFERRED_CMD_FAILURE;
-            return;
+            return -1;
         }
 
         out_byte_ptr += unit_len;
@@ -799,15 +563,11 @@ static void deferred_cmd_do_read_mem(struct deferred_cmd *cmd) {
         n_units--;
     }
 
-    cmd->status = DEFERRED_CMD_SUCCESS;
+    return 0;
 }
 
-static void deferred_cmd_do_write_mem(struct deferred_cmd *cmd) {
+int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
     unsigned unit_len, n_units;
-
-    void const *input = cmd->meta.write_mem.in_buf;
-    unsigned len = cmd->meta.write_mem.len;
-    addr32_t addr = cmd->meta.write_mem.addr;
 
     DBG_TRACE("request to write %u bytes to 0x%08x\n",
               (unsigned)len, (unsigned)addr);
@@ -839,8 +599,7 @@ static void deferred_cmd_do_write_mem(struct deferred_cmd *cmd) {
                       "0x%08x\n.  Past writes may not have failed!\n",
                       len, addr);
             error_clear();
-            cmd->status = DEFERRED_CMD_FAILURE;
-            return;
+            return -1;
         }
 
         input_byte_ptr += unit_len;
@@ -848,37 +607,5 @@ static void deferred_cmd_do_write_mem(struct deferred_cmd *cmd) {
         n_units--;
     }
 
-    cmd->status = DEFERRED_CMD_SUCCESS;
-}
-
-static void deferred_cmd_run(void) {
-    struct deferred_cmd *cmd;
-
-    deferred_cmd_lock();
-
-    while ((cmd = deferred_cmd_pop_nolock())) {
-        switch (cmd->cmd_type) {
-        case DEFERRED_CMD_GET_ALL_REGS:
-            deferred_cmd_do_get_all_regs(cmd);
-            break;
-        case DEFERRED_CMD_SET_ALL_REGS:
-            deferred_cmd_do_set_all_regs(cmd);
-            break;
-        case DEFERRED_CMD_SET_REG:
-            deferred_cmd_do_set_reg(cmd);
-            break;
-        case DEFERRED_CMD_READ_MEM:
-            deferred_cmd_do_read_mem(cmd);
-            break;
-        case DEFERRED_CMD_WRITE_MEM:
-            deferred_cmd_do_write_mem(cmd);
-            break;
-        default:
-            RAISE_ERROR(ERROR_INTEGRITY);
-        }
-    }
-
-    deferred_cmd_signal();
-
-    deferred_cmd_unlock();
+    return 0;
 }
