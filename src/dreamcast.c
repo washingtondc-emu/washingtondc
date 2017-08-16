@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <unistd.h>
 
 #include "error.h"
 #include "flash_memory.h"
@@ -228,7 +229,9 @@ void dreamcast_run() {
         enum dc_state cur_state = dc_get_state();
         if (unlikely(cur_state == DC_STATE_DEBUG)) {
             do {
+                // call debug_run_once 100 times per second
                 debug_run_once();
+                usleep(1000 * 1000 / 100);
             } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG);
         }
 #endif
