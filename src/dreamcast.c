@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <stdatomic.h>
 #include <unistd.h>
 
@@ -60,9 +59,6 @@ static volatile bool signal_exit_threads;
 static bool using_debugger;
 
 bool serial_server_in_use;
-
-static pthread_mutex_t emu_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t emu_cond = PTHREAD_COND_INITIALIZER;
 
 dc_cycle_stamp_t dc_cycle_stamp_priv_;
 
@@ -215,8 +211,6 @@ void dreamcast_run() {
     cont->sw = &maple_controller_switch_table;
     maple_device_init(cont);
 
-   dc_lock();
-
     while (is_running) {
 #ifdef ENABLE_DEBUGGER
         /*
@@ -285,8 +279,6 @@ void dreamcast_run() {
         }
 #endif
     }
-
-    dc_unlock();
 
     // tell the other threads it's time to clean up and exit
     signal_exit_threads = true;
@@ -445,38 +437,8 @@ void dc_state_transition(enum dc_state state_new, enum dc_state state_old) {
 
     if (!atomic_compare_exchange_strong(&dc_state, &expected, (int)state_new))
         RAISE_ERROR(ERROR_INTEGRITY);
-
-    /*
-     * TODO: don't call dc_wake without calling dc_lock first
-     * but calling dc_lock here is undesirable because the dc_lock only gets
-     * released by the main loop when it calls dc_unlock.
-     *
-     * what to do, what to do...
-     */
-    if (state_new == DC_STATE_RUNNING)
-        dc_wake();
 }
 
 bool dc_debugger_enabled(void) {
     return using_debugger;
-}
-
-void dc_lock(void) {
-    if (pthread_mutex_lock(&emu_mutex) < 0)
-        abort(); // TODO: error handling
-}
-
-void dc_unlock(void) {
-    if (pthread_mutex_unlock(&emu_mutex) < 0)
-        abort(); // TODO: error handling
-}
-
-void dc_sleep(void) {
-    if (pthread_cond_wait(&emu_cond, &emu_mutex) < 0)
-        abort(); // TODO: error handling
-}
-
-void dc_wake(void) {
-    if (pthread_cond_signal(&emu_cond) < 0)
-        abort(); // TODO: error handling
 }
