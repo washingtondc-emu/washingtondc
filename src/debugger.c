@@ -118,6 +118,11 @@ void debug_init(void) {
     memset(dbg.breakpoint_enable, 0, sizeof(dbg.breakpoint_enable));
     memset(dbg.w_watchpoint_enable, 0, sizeof(dbg.w_watchpoint_enable));
     memset(dbg.r_watchpoint_enable, 0, sizeof(dbg.r_watchpoint_enable));
+
+    atomic_flag_test_and_set(&not_request_break);
+    atomic_flag_test_and_set(&not_single_step);
+    atomic_flag_test_and_set(&not_continue);
+    atomic_flag_test_and_set(&not_detach);
 }
 
 void debug_cleanup(void) {
@@ -397,7 +402,7 @@ static void frontend_on_softbreak(inst_t inst, addr32_t addr) {
 }
 
 static void frontend_on_cleanup(void) {
-    if (dbg.frontend->on_cleanup)
+    if (dbg.frontend && dbg.frontend->on_cleanup)
         dbg.frontend->on_cleanup(dbg.frontend->arg);
 }
 

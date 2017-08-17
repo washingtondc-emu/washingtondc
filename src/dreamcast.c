@@ -29,6 +29,7 @@
 #include <stdatomic.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "error.h"
 #include "flash_memory.h"
 #include "dc_sched.h"
@@ -211,6 +212,15 @@ void dreamcast_run() {
     cont->sw = &maple_controller_switch_table;
     maple_device_init(cont);
 
+    if (config_get_ser_srv_enable())
+        dreamcast_enable_serial_server();
+
+#ifdef ENABLE_DEBUGGER
+    debug_init();
+    if (config_get_dbg_enable())
+        dreamcast_enable_debugger();
+#endif
+
     while (is_running) {
 #ifdef ENABLE_DEBUGGER
         /*
@@ -372,7 +382,6 @@ Sh4 *dreamcast_get_cpu() {
 #ifdef ENABLE_DEBUGGER
 void dreamcast_enable_debugger(void) {
     using_debugger = true;
-    debug_init();
     debug_attach(&gdb_frontend);
 }
 #endif

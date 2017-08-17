@@ -34,6 +34,7 @@
 #include "gfx/opengl/opengl_output.h"
 #include "mount.h"
 #include "gdi.h"
+#include "config.h"
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [IP.BIN 1ST_READ.BIN]\n\n", cmd);
@@ -163,16 +164,19 @@ int main(int argc, char **argv) {
     gfx_thread_launch(640, 480);
     io_thread_launch();
 
-    if (enable_serial)
-        dreamcast_enable_serial_server();
+    config_set_ser_srv_enable(enable_serial);
 
     if (enable_debugger) {
 #ifdef ENABLE_DEBUGGER
-        dreamcast_enable_debugger();
+        config_set_dbg_enable(true);
 #else
         fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
                 "Please rebuild with -DENABLE_DEBUGGER=On\n");
         exit(1);
+#endif
+    } else {
+#ifdef ENABLE_DEBUGGER
+        config_set_dbg_enable(false);
 #endif
     }
 
