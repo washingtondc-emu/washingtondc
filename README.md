@@ -69,5 +69,5 @@ load the firmware with a .gdi disc image mounted:
 ```
 direct-boot a homebrew program (requires a system call table dump):
 ```
-./washingtondc -b dc_bios.bin -f dc_flash.bin -s syscallsbin IP.BIN 1st_read.bin
+./washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -du IP.BIN 1st_read.bin
 ```
