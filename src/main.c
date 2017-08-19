@@ -78,22 +78,10 @@ int main(int argc, char **argv) {
             enable_debugger = true;
             break;
         case 'd':
-#ifdef ENABLE_DIRECT_BOOT
             boot_direct = true;
-#else
-            fprintf(stderr, "unable to boot in direct-mode: it's not enabled!\n"
-                    "rebuild with -DENABLE_DIRECT_BOOT\n");
-            exit(1);
-#endif
             break;
         case 'u':
-#ifdef ENABLE_DIRECT_BOOT
             skip_ip_bin = true;
-#else
-            fprintf(stderr, "unable to boot in direct-mode: it's not enabled!\n"
-                    "rebuild with -DENABLE_DIRECT_BOOT\n");
-            exit(1);
-#endif
             break;
         case 's':
             path_syscalls_bin = optarg;
@@ -147,17 +135,13 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-#ifdef ENABLE_DIRECT_BOOT
     if (boot_direct) {
         dreamcast_init_direct(path_ip_bin, path_1st_read_bin,
                               bios_path, flash_path, path_syscalls_bin,
                               skip_ip_bin);
     } else {
-#endif
         dreamcast_init(bios_path, flash_path);
-#ifdef ENABLE_DIRECT_BOOT
     }
-#endif
 
     framebuffer_init(640, 480);
     win_thread_launch(640, 480);

@@ -94,7 +94,6 @@ void dreamcast_init(char const *bios_path, char const *flash_path) {
     aica_rtc_init();
 }
 
-#ifdef ENABLE_DIRECT_BOOT
 void dreamcast_init_direct(char const *path_ip_bin,
                            char const *path_1st_read_bin,
                            char const *bios_path,
@@ -178,7 +177,6 @@ void dreamcast_init_direct(char const *path_ip_bin,
 
     aica_rtc_init();
 }
-#endif
 
 void dreamcast_cleanup() {
     spg_cleanup();

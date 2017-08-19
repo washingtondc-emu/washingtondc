@@ -42,7 +42,6 @@ extern "C" {
 
 void dreamcast_init(char const *bios_path, char const *flash_path);
 
-#ifdef ENABLE_DIRECT_BOOT
 #define ADDR_IP_BIN        0x8c008000
 #define ADDR_1ST_READ_BIN  0x8c010000
 #define ADDR_BOOTSTRAP     0x8c008300
@@ -59,7 +58,6 @@ void dreamcast_init_direct(char const *path_ip_bin,
                            char const *flash_path,
                            char const *syscalls_path,
                            bool skip_ip_bin);
-#endif
 
 void dreamcast_cleanup();
 
