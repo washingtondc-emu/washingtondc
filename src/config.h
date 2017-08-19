@@ -29,10 +29,42 @@
     bool config_get_ ## prop(void);             \
     void config_set_ ## prop(bool new_val)
 
+#define CONFIG_DECL_INT(prop)                   \
+    int config_get_ ## prop(void);              \
+    void config_set_ ## prop(int new_val)
+
+#define CONFIG_STR_LEN 256
+#define CONFIG_DECL_STRING(prop)                        \
+    char const *config_get_ ## prop(void);              \
+    void config_set_ ## prop(char const *new_val)
+
 #ifdef ENABLE_DEBUGGER
+// if true, enable the remote GDB debugger
 CONFIG_DECL_BOOL(dbg_enable);
 #endif
 
+// if true, enable the TCP/IP serial server
 CONFIG_DECL_BOOL(ser_srv_enable);
+
+// path to the dreamcast bios file
+CONFIG_DECL_STRING(dc_bios_path);
+
+// path to the dreamcast flash image
+CONFIG_DECL_STRING(dc_flash_path);
+
+// path to the syscalls.bin system call image
+CONFIG_DECL_STRING(syscall_path);
+
+// if true, then direct-boot mode has been enabled
+CONFIG_DECL_INT(boot_mode);
+
+// path to the disc.gdi file
+CONFIG_DECL_STRING(gdi_image);
+
+// path to the IP.BIN file
+CONFIG_DECL_STRING(ip_bin_path);
+
+// path to the 1st_read.bin file
+CONFIG_DECL_STRING(exec_bin_path);
 
 #endif

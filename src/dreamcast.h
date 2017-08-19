@@ -40,26 +40,15 @@
 extern "C" {
 #endif
 
-void dreamcast_init(char const *bios_path, char const *flash_path);
-
 #define ADDR_IP_BIN        0x8c008000
 #define ADDR_1ST_READ_BIN  0x8c010000
 #define ADDR_BOOTSTRAP     0x8c008300
 #define ADDR_SYSCALLS      0x8c000000
 #define LEN_SYSCALLS           0x8000
 
-/*
- * version of dreamcast_init for direct boots (ie boots that skip BIOS and go
- * straight to IP.BIN or 1ST_READ.BIN
- */
-void dreamcast_init_direct(char const *path_ip_bin,
-                           char const *path_1st_read_bin,
-                           char const *bios_path,
-                           char const *flash_path,
-                           char const *syscalls_path,
-                           bool skip_ip_bin);
+void dreamcast_init(void);
 
-void dreamcast_cleanup();
+/* void dreamcast_cleanup(); */
 
 #ifdef ENABLE_DEBUGGER
 // this must be called before run or not at all
@@ -122,6 +111,17 @@ enum dc_state {
 
 enum dc_state dc_get_state(void);
 void dc_state_transition(enum dc_state state_new, enum dc_state state_old);
+
+enum dc_boot_mode {
+    // standard boot into firmware
+    DC_BOOT_FIRMWARE,
+
+    // boot directly to IP.BIN and then continue into 1st_read.bin
+    DC_BOOT_IP_BIN,
+
+    // skip the firmware and IP.BIN and boot directly into 1st_read.bin
+    DC_BOOT_DIRECT
+};
 
 #ifdef __cplusplus
 }

@@ -80,100 +80,83 @@ static void *load_file(char const *path, long *len);
 
 static void dc_single_step(Sh4 *sh4);
 
-void dreamcast_init(char const *bios_path, char const *flash_path) {
+void dreamcast_init(void) {
     is_running = true;
 
     memory_init(&mem);
-    if (flash_path)
-        flash_mem_load(flash_path);
-    bios_file_init(&bios, bios_path);
-    memory_map_init(&bios, &mem);
-    sh4_init(&cpu);
-    spg_init();
-
-    aica_rtc_init();
-}
-
-void dreamcast_init_direct(char const *path_ip_bin,
-                           char const *path_1st_read_bin,
-                           char const *bios_path,
-                           char const *flash_path,
-                           char const *syscalls_path,
-                           bool skip_ip_bin) {
-    is_running = true;
-
-    memory_init(&mem);
-    if (flash_path)
-        flash_mem_load(flash_path);
-    if (bios_path)
-        bios_file_init(&bios, bios_path);
-    else
-        bios_file_init_empty(&bios);
+    flash_mem_load(config_get_dc_flash_path());
+    bios_file_init(&bios, config_get_dc_bios_path());
     memory_map_init(&bios, &mem);
 
-    long len_ip_bin;
-    void *dat_ip_bin = load_file(path_ip_bin, &len_ip_bin);
-    if (!dat_ip_bin) {
-        error_set_file_path(path_ip_bin);
-        error_set_errno_val(errno);
-        RAISE_ERROR(ERROR_FILE_IO);
-    }
-    memory_map_write(dat_ip_bin, ADDR_IP_BIN & ~0xe0000000, len_ip_bin);
-    free(dat_ip_bin);
+    int boot_mode = config_get_boot_mode();
+    if (boot_mode == (int)DC_BOOT_IP_BIN || boot_mode == (int)DC_BOOT_DIRECT) {
+        long len_ip_bin;
+        char const *ip_bin_path = config_get_ip_bin_path();
+        void *dat_ip_bin = load_file(ip_bin_path, &len_ip_bin);
+        if (!dat_ip_bin) {
+            error_set_file_path(ip_bin_path);
+            error_set_errno_val(errno);
+            RAISE_ERROR(ERROR_FILE_IO);
+        }
+        memory_map_write(dat_ip_bin, ADDR_IP_BIN & ~0xe0000000, len_ip_bin);
+        free(dat_ip_bin);
 
-    long len_1st_read_bin;
-    void *dat_1st_read_bin = load_file(path_1st_read_bin, &len_1st_read_bin);
-    if (!dat_1st_read_bin) {
-        error_set_file_path(path_1st_read_bin);
-        error_set_errno_val(errno);
-        RAISE_ERROR(ERROR_FILE_IO);
-    }
-    memory_map_write(dat_1st_read_bin, ADDR_1ST_READ_BIN & ~0xe0000000,
-                     len_1st_read_bin);
-    free(dat_1st_read_bin);
+        long len_1st_read_bin;
+        char const *exec_bin_path = config_get_exec_bin_path();
+        void *dat_1st_read_bin = load_file(exec_bin_path, &len_1st_read_bin);
+        if (!dat_1st_read_bin) {
+            error_set_file_path(exec_bin_path);
+            error_set_errno_val(errno);
+            RAISE_ERROR(ERROR_FILE_IO);
+        }
+        memory_map_write(dat_1st_read_bin, ADDR_1ST_READ_BIN & ~0xe0000000,
+                         len_1st_read_bin);
+        free(dat_1st_read_bin);
 
-    if (syscalls_path) {
-        long syscalls_len;
-        void *dat_syscalls = load_file(syscalls_path, &syscalls_len);
+        char const *syscall_path = config_get_syscall_path();
+        long syscall_len;
+        void *dat_syscall = load_file(syscall_path, &syscall_len);
 
-        if (!dat_syscalls) {
-            error_set_file_path(syscalls_path);
+        if (!dat_syscall) {
+            error_set_file_path(syscall_path);
             error_set_errno_val(errno);
             RAISE_ERROR(ERROR_FILE_IO);
         }
 
-        if (syscalls_len != LEN_SYSCALLS) {
-            error_set_length(syscalls_len);
+        if (syscall_len != LEN_SYSCALLS) {
+            error_set_length(syscall_len);
             error_set_expected_length(LEN_SYSCALLS);
             RAISE_ERROR(ERROR_INVALID_FILE_LEN);
         }
 
-        memory_map_write(dat_syscalls, ADDR_SYSCALLS & ~0xe0000000, syscalls_len);
-        free(dat_syscalls);
+        memory_map_write(dat_syscall, ADDR_SYSCALLS & ~0xe0000000, syscall_len);
+        free(dat_syscall);
     }
 
     sh4_init(&cpu);
-
     spg_init();
 
     /* set the PC to the booststrap code within IP.BIN */
-    if (skip_ip_bin)
+    if (boot_mode == (int)DC_BOOT_DIRECT)
         cpu.reg[SH4_REG_PC] = ADDR_1ST_READ_BIN;
-    else
+    else if (boot_mode == (int)DC_BOOT_IP_BIN)
         cpu.reg[SH4_REG_PC] = ADDR_BOOTSTRAP;
 
-    /*
-     * set the VBR to what it would have been after a BIOS boot.
-     * This was obtained empirically on a real Dreamcast.
-     *
-     * XXX not sure if there should be a different value depending on whether
-     * or not we skip IP.BIN.  All I do know is that this value is correct when
-     * we do skip IP.BIN because I obtained it by running a homebrew that prints
-     * the VBR value when it starts, which would be immediately after IP.BIN is
-     * run.  It is possible that there's a different value immediately before
-     * IP.BIN runs, and that the value seen by 1ST_READ.BIN is set by IP.BIN.
-     */
-    cpu.reg[SH4_REG_VBR] = 0x8c00f400;
+    if (boot_mode == (int)DC_BOOT_IP_BIN || boot_mode == (int)DC_BOOT_DIRECT) {
+        /*
+         * set the VBR to what it would have been after a BIOS boot.
+         * This was obtained empirically on a real Dreamcast.
+         *
+         * XXX not sure if there should be a different value depending on
+         * whether or not we skip IP.BIN.  All I do know is that this value is
+         * correct when we do skip IP.BIN because I obtained it by running a
+         * homebrew that prints the VBR value when it starts, which would be
+         * immediately after IP.BIN is run.  It is possible that there's a
+         * different value immediately before IP.BIN runs, and that the value
+         * seen by 1ST_READ.BIN is set by IP.BIN.
+         */
+        cpu.reg[SH4_REG_VBR] = 0x8c00f400;
+    }
 
     aica_rtc_init();
 }

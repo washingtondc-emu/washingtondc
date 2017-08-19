@@ -104,15 +104,6 @@ int main(int argc, char **argv) {
     if (path_gdi)
         mount_gdi(path_gdi);
 
-    if (skip_ip_bin && !boot_direct) {
-        fprintf(stderr, "Error: -u option is meaningless with -d!\n");
-        exit(1);
-    }
-
-    if (path_syscalls_bin && !boot_direct)
-        fprintf(stderr, "Warning: -s option is meaningless when not "
-                "performing a direct boot (-d option)\n");
-
     if (boot_direct) {
         if (argc != 2) {
             print_usage(cmd);
@@ -136,12 +127,32 @@ int main(int argc, char **argv) {
     }
 
     if (boot_direct) {
-        dreamcast_init_direct(path_ip_bin, path_1st_read_bin,
-                              bios_path, flash_path, path_syscalls_bin,
-                              skip_ip_bin);
+        if (skip_ip_bin)
+            config_set_boot_mode(DC_BOOT_DIRECT);
+        else
+            config_set_boot_mode(DC_BOOT_IP_BIN);
+        config_set_ip_bin_path(path_ip_bin);
+        config_set_exec_bin_path(path_1st_read_bin);
+        config_set_syscall_path(path_syscalls_bin);
     } else {
-        dreamcast_init(bios_path, flash_path);
+        if (skip_ip_bin) {
+            fprintf(stderr, "Error: -u option is meaningless with -d!\n");
+            exit(1);
+        }
+
+        if (path_syscalls_bin) {
+            fprintf(stderr, "Error: -s option is meaningless when not "
+                    "performing a direct boot (-d option)\n");
+            exit(1);
+        }
+
+        config_set_boot_mode(DC_BOOT_FIRMWARE);
     }
+
+    config_set_dc_bios_path(bios_path);
+    config_set_dc_flash_path(flash_path);
+
+    dreamcast_init();
 
     framebuffer_init(640, 480);
     win_thread_launch(640, 480);

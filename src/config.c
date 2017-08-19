@@ -21,6 +21,9 @@
  ******************************************************************************/
 
 #include <stdbool.h>
+#include <string.h>
+
+#include "config.h"
 
 #define CONFIG_DEF_BOOL(prop)                           \
     static bool config_ ## prop;                        \
@@ -31,9 +34,45 @@
         config_ ## prop = new_val;                      \
     }
 
+#define CONFIG_DEF_INT(prop)                    \
+    static int config_ ## prop;                 \
+    int config_get_ ## prop(void) {             \
+        return config_ ## prop;                 \
+    }                                           \
+    void config_set_ ## prop(int new_val) {     \
+        config_ ## prop = new_val;              \
+    }
+
+#define CONFIG_DEF_STRING(prop)                                         \
+    static char config_ ##prop[CONFIG_STR_LEN];                         \
+    char const *config_get_ ## prop(void) {                             \
+        return config_ ##prop;                                          \
+    }                                                                   \
+    void config_set_ ## prop(char const *new_val) {                     \
+        if (new_val) {                                                  \
+            strncpy(config_ ## prop, new_val, sizeof(char) * CONFIG_STR_LEN); \
+            config_ ## prop[CONFIG_STR_LEN - 1] = '\0';                 \
+        } else {                                                        \
+            memset(config_ ## prop, 0, sizeof(config_ ## prop));        \
+        }                                                               \
+    }
 
 #ifdef ENABLE_DEBUGGER
 CONFIG_DEF_BOOL(dbg_enable)
 #endif
 
 CONFIG_DEF_BOOL(ser_srv_enable)
+
+CONFIG_DEF_STRING(dc_bios_path);
+
+CONFIG_DEF_STRING(dc_flash_path);
+
+CONFIG_DEF_STRING(syscall_path);
+
+CONFIG_DEF_INT(boot_mode);
+
+CONFIG_DEF_STRING(gdi_image);
+
+CONFIG_DEF_STRING(ip_bin_path);
+
+CONFIG_DEF_STRING(exec_bin_path);
