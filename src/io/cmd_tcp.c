@@ -35,6 +35,7 @@
 #include "error.h"
 #include "text_ring.h"
 #include "io_thread.h"
+#include "cmd/cmd_thread.h"
 
 #include "cmd_tcp.h"
 
@@ -69,6 +70,8 @@ static void listener_signal(void);
 static void handle_read(struct bufferevent *bev, void *arg);
 
 static void on_check_tx_event(evutil_socket_t fd, short ev, void *arg);
+
+static void drain_tx(void);
 
 static pthread_mutex_t listener_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t listener_cond = PTHREAD_COND_INITIALIZER;
@@ -135,11 +138,19 @@ listener_cb(struct evconnlistener *listener,
         goto signal_listener;
     }
 
+    bufferevent_setcb(bev, handle_read, NULL, NULL, NULL);
+    bufferevent_enable(bev, EV_READ);
+
     state = CMD_TCP_ATTACHED;
 
 signal_listener:
     listener_signal();
     listener_unlock();
+
+    // kick the cmd_thread so it runs the cmd_tcp_link and drains the rx_ring
+    cmd_thread_kick();
+
+    drain_tx();
 }
 
 void cmd_tcp_cleanup(void) {
@@ -160,7 +171,7 @@ static void handle_read(struct bufferevent *bev, void *arg) {
     struct evbuffer *read_buffer;
 
     if (!(read_buffer = evbuffer_new())) {
-        warnx("%s unable to allocate a new evbuffer\n", __func__);
+        warnx("CMD_THREAD %s unable to allocate a new evbuffer\n", __func__);
         return;
     }
 
@@ -171,14 +182,14 @@ static void handle_read(struct bufferevent *bev, void *arg) {
     for (idx = 0; idx < buflen; idx++) {
         uint8_t tmp;
         if (evbuffer_remove(read_buffer, &tmp, sizeof(tmp)) < 0) {
-            warnx("%s unable to remove text\n", __func__);
+            warnx("CMD_THREAD %s unable to remove text\n", __func__);
             continue;
         }
 
         text_ring_produce(&rx_ring, (char)tmp);
     }
 
-    // TODO: kick the cmd_thread here when the cmd_thread is implemented.
+    cmd_thread_kick();
 }
 
 /*
@@ -186,7 +197,12 @@ static void handle_read(struct bufferevent *bev, void *arg) {
  * cmd_thread calls cmd_tcp_put
  */
 static void on_check_tx_event(evutil_socket_t fd, short ev, void *arg) {
-    // drain the tx_ring
+    if (state == CMD_TCP_ATTACHED)
+        drain_tx();
+}
+
+// drain the tx_ring
+static void drain_tx(void) {
     while (!text_ring_empty(&tx_ring)) {
         char c = text_ring_consume(&tx_ring);
 
@@ -220,10 +236,10 @@ void cmd_tcp_put_text(char const *txt) {
 bool cmd_tcp_get(char *out) {
     bool is_empty = text_ring_empty(&rx_ring);
 
-    if (is_empty)
+    if (!is_empty)
         *out = text_ring_consume(&rx_ring);
 
-    return is_empty;
+    return !is_empty;
 }
 
 static void listener_lock(void) {

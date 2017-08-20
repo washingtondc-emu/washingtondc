@@ -23,6 +23,8 @@
 #ifndef CMD_TCP_H_
 #define CMD_TCP_H_
 
+#include <stdbool.h>
+
 /*
  * TCP/IP frontend for WashingtonDC's command-line interface.
  *
