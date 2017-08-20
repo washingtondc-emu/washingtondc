@@ -43,12 +43,21 @@
 #include "io/io_thread.h"
 #include "io/serial_server.h"
 #include "io/cmd_tcp.h"
+#include "cmd/cons.h"
+#include "cmd/cmd_thread.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
 #endif
 
 #include "dreamcast.h"
+
+// this gets printed to the dev console every time the emulator starts
+static char const *login_banner =
+    "WashingtonDC Copyright (C) 2016, 2017 snickerbockers\n"
+    "This program comes with ABSOLUTELY NO WARRANTY;\n"
+    "This is free software, and you are welcome to redistribute it\n"
+    "under the terms of the GNU GPL version 3.\n";
 
 static Sh4 cpu;
 static BiosFile bios;
@@ -214,6 +223,9 @@ void dreamcast_run() {
     if (config_get_dbg_enable())
         dreamcast_enable_debugger();
 #endif
+
+    cons_puts(login_banner);
+    cmd_thread_kick();
 
     while (is_running) {
 #ifdef ENABLE_DEBUGGER

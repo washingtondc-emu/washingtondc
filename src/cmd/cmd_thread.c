@@ -24,16 +24,11 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+#include "cons.h"
 #include "dreamcast.h"
 #include "cmd_tcp_link.h"
 
 #include "cmd_thread.h"
-
-static char const *banner =
-    "WashingtonDC Copyright (C) 2016, 2017 snickerbockers\n"
-    "This program comes with ABSOLUTELY NO WARRANTY;\n"
-    "This is free software, and you are welcome to redistribute it\n"
-    "under the terms of the GNU GPL version 3;\n";
 
 static pthread_mutex_t cmd_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cmd_thread_create_cond = PTHREAD_COND_INITIALIZER;
@@ -47,6 +42,11 @@ static void cmd_thread_wait(void);
 static void cmd_thread_signal(void);
 
 static void *cmd_thread_main(void *arg);
+
+static void cmd_thread_drain_cons(void);
+
+// dump the given string onto all of the cmd frontends
+static void cmd_thread_print_no_lock(char const *txt);
 
 void cmd_thread_launch(void) {
     int err_code;
@@ -72,8 +72,8 @@ static void *cmd_thread_main(void *arg) {
     if (pthread_cond_signal(&cmd_thread_create_cond) < 0)
         abort(); // TODO: error handling
 
-    cmd_thread_print(banner);
     while (dc_is_running()) {
+        cmd_thread_drain_cons();
         cmd_tcp_link_run_once();
         cmd_thread_wait();
     }
@@ -96,7 +96,37 @@ void cmd_thread_put_char(char c) {
         printf("CMD_THREAD: \"%02x\" received\n", (unsigned)c);
 }
 
-void cmd_thread_print(char const *txt) {
+/*
+ * this function drains the cons tx ring and sends data one line at a time.
+ *
+ * If there's any data left over after the last line or there are lines longer
+ * than 1024 characters, then this function can send partial lines.
+ */
+#define CONS_BUF_LINE_LEN_SHIFT 10
+#define CONS_BUF_LINE_LEN (1 << CONS_BUF_LINE_LEN_SHIFT)
+static void cmd_thread_drain_cons(void) {
+    static char cons_buf_line[CONS_BUF_LINE_LEN];
+    unsigned idx = 0;
+    char ch;
+
+    while (cons_tx_drain_single(&ch)) {
+        cons_buf_line[idx++] = ch;
+
+        if ((idx == (CONS_BUF_LINE_LEN - 1)) || (ch == '\n')) {
+            cons_buf_line[idx] = '\0';
+            cmd_thread_print_no_lock(cons_buf_line);
+            idx = 0;
+        }
+    }
+
+    if (idx) {
+        cons_buf_line[idx] = '\0';
+        cmd_thread_print_no_lock(cons_buf_line);
+    }
+}
+
+static void cmd_thread_print_no_lock(char const *txt) {
+    // TODO: pass data on to other frontends here, too
     cmd_tcp_link_put_text(txt);
 }
 

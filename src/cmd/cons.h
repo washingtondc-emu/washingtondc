@@ -20,22 +20,28 @@
  *
  ******************************************************************************/
 
-#ifndef CMD_THREAD_H_
-#define CMD_THREAD_H_
+#ifndef CONS_H_
+#define CONS_H_
 
-void cmd_thread_launch(void);
-
-void cmd_thread_join(void);
-
-void cmd_thread_kick(void);
+#include <stdbool.h>
 
 /*
- * input a character to the cmd system.
- * This is NOT the function you call to print to the console, it's the function
- * you call to input a character as if it was typed by the user.
- *
- * This should only be called from within the cmd_thread
+ * cons is the text-buffering system used by the cmd_thread.
+ * it stores both an rx ring for user input and a tx ring for program output
  */
-void cmd_thread_put_char(char c);
+
+/*
+ * this function can be called from any thread.  It will print the given string
+ * to console's program-output (tx ring).
+ *
+ * This does NOT kick the cmd_thread, you have to do that yourself.
+ */
+void cons_puts(char const *txt);
+
+/*
+ * this function drains a single character from the tx ring.  It can only be
+ * safely called from the cmd thread.
+ */
+bool cons_tx_drain_single(char *out);
 
 #endif

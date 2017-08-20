@@ -20,22 +20,42 @@
  *
  ******************************************************************************/
 
-#ifndef CMD_THREAD_H_
-#define CMD_THREAD_H_
+#include <stdlib.h>
+#include <pthread.h>
 
-void cmd_thread_launch(void);
+#include "cmd_thread.h"
+#include "text_ring.h"
 
-void cmd_thread_join(void);
+#include "cons.h"
 
-void cmd_thread_kick(void);
+// fifo queue for program-output being printed to the console
+static struct text_ring cons_txq = TEXT_RING_INITIALIZER;
 
-/*
- * input a character to the cmd system.
- * This is NOT the function you call to print to the console, it's the function
- * you call to input a character as if it was typed by the user.
- *
- * This should only be called from within the cmd_thread
- */
-void cmd_thread_put_char(char c);
+static pthread_mutex_t cons_mtx = PTHREAD_MUTEX_INITIALIZER;
 
-#endif
+static void cons_lock(void);
+static void cons_unlock(void);
+
+void cons_puts(char const *txt) {
+    cons_lock();
+    while (*txt)
+        text_ring_produce(&cons_txq, *txt++);
+    cons_unlock();
+}
+
+bool cons_tx_drain_single(char *out) {
+    if (text_ring_empty(&cons_txq))
+        return false;
+    *out = text_ring_consume(&cons_txq);
+    return true;
+}
+
+static void cons_lock(void) {
+    if (pthread_mutex_lock(&cons_mtx) < 0)
+        abort(); // TODO: error checking
+}
+
+static void cons_unlock(void) {
+    if (pthread_mutex_unlock(&cons_mtx) < 0)
+        abort(); // TODO: error checking
+}
