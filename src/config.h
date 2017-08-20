@@ -46,6 +46,9 @@ CONFIG_DECL_BOOL(dbg_enable);
 // if true, enable the TCP/IP serial server
 CONFIG_DECL_BOOL(ser_srv_enable);
 
+// if true, enable the TCP/IP remote cli frontend
+CONFIG_DECL_BOOL(enable_cmd_tcp);
+
 // path to the dreamcast bios file
 CONFIG_DECL_STRING(dc_bios_path);
 

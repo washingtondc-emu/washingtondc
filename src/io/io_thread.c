@@ -34,6 +34,7 @@
 
 #include "serial_server.h"
 #include "dreamcast.h"
+#include "cmd_tcp.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
@@ -94,14 +95,16 @@ static void *io_main(void *arg) {
     if (!io_thread_work_event)
         errx(1, "event_new returned NULL!");
 
-    if (pthread_cond_signal(&io_thread_create_condition) != 0)
-        abort(); // TODO: error handling
+    cmd_tcp_init();
 
     serial_server_init(dreamcast_get_cpu());
 
 #ifdef ENABLE_DEBUGGER
     gdb_init();
 #endif
+
+    if (pthread_cond_signal(&io_thread_create_condition) != 0)
+        abort(); // TODO: error handling
 
     if (pthread_mutex_unlock(&io_thread_create_mutex) != 0)
         abort(); // TODO: error handling
@@ -123,6 +126,8 @@ static void *io_main(void *arg) {
 #endif
 
     serial_server_cleanup();
+
+    cmd_tcp_cleanup();
 
     event_base_free(io_thread_event_base);
 

@@ -41,12 +41,12 @@
 #include "hw/maple/maple_device.h"
 #include "hw/maple/maple_controller.h"
 #include "io/io_thread.h"
+#include "io/serial_server.h"
+#include "io/cmd_tcp.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
 #endif
-
-#include "io/serial_server.h"
 
 #include "dreamcast.h"
 
@@ -79,6 +79,16 @@ static void dc_sigint_handler(int param);
 static void *load_file(char const *path, long *len);
 
 static void dc_single_step(Sh4 *sh4);
+
+#ifdef ENABLE_DEBUGGER
+// this must be called before run or not at all
+static void dreamcast_enable_debugger(void);
+#endif
+
+// this must be called before run or not at all
+static void dreamcast_enable_serial_server(void);
+
+static void dreamcast_enable_cmd_tcp(void);
 
 void dreamcast_init(void) {
     is_running = true;
@@ -195,6 +205,9 @@ void dreamcast_run() {
 
     if (config_get_ser_srv_enable())
         dreamcast_enable_serial_server();
+
+    if (config_get_enable_cmd_tcp())
+        dreamcast_enable_cmd_tcp();
 
 #ifdef ENABLE_DEBUGGER
     debug_init();
@@ -361,16 +374,20 @@ Sh4 *dreamcast_get_cpu() {
 }
 
 #ifdef ENABLE_DEBUGGER
-void dreamcast_enable_debugger(void) {
+static void dreamcast_enable_debugger(void) {
     using_debugger = true;
     debug_attach(&gdb_frontend);
 }
 #endif
 
-void dreamcast_enable_serial_server(void) {
+static void dreamcast_enable_serial_server(void) {
     serial_server_in_use = true;
     serial_server_attach();
     sh4_scif_connect_server(&cpu);
+}
+
+void dreamcast_enable_cmd_tcp(void) {
+    cmd_tcp_attach();
 }
 
 static void dc_sigint_handler(int param) {

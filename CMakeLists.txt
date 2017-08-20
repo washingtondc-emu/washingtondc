@@ -193,6 +193,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/text_ring.c"
                 "${PROJECT_SOURCE_DIR}/src/io/serial_server.h"
                 "${PROJECT_SOURCE_DIR}/src/io/serial_server.c"
+                "${PROJECT_SOURCE_DIR}/src/io/cmd_tcp.h"
+                "${PROJECT_SOURCE_DIR}/src/io/cmd_tcp.c"
                 "${PROJECT_SOURCE_DIR}/src/config.h"
                 "${PROJECT_SOURCE_DIR}/src/config.c")
 

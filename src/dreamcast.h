@@ -50,14 +50,6 @@ void dreamcast_init(void);
 
 /* void dreamcast_cleanup(); */
 
-#ifdef ENABLE_DEBUGGER
-// this must be called before run or not at all
-void dreamcast_enable_debugger(void);
-#endif
-
-// this must be called before run or not at all
-void dreamcast_enable_serial_server(void);
-
 void dreamcast_run();
 
 /*

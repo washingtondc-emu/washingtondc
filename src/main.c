@@ -65,11 +65,15 @@ int main(int argc, char **argv) {
     char const *path_syscalls_bin = NULL;
     char const *path_gdi = NULL;
     bool enable_serial = false;
+    bool enable_cmd_tcp = false;
 
-    while ((opt = getopt(argc, argv, "b:f:s:m:gduht")) != -1) {
+    while ((opt = getopt(argc, argv, "cb:f:s:m:gduht")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
+            break;
+        case 'c':
+            enable_cmd_tcp = true;
             break;
         case 'f':
             flash_path = optarg;
@@ -159,6 +163,7 @@ int main(int argc, char **argv) {
     gfx_thread_launch(640, 480);
     io_thread_launch();
 
+    config_set_enable_cmd_tcp(enable_cmd_tcp);
     config_set_ser_srv_enable(enable_serial);
 
     if (enable_debugger) {
