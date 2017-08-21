@@ -26,6 +26,7 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "gfx/gfx_config.h"
 #include "cons.h"
 
 #include "cmd.h"
@@ -38,6 +39,7 @@ unsigned cmd_buf_len;
 
 static int cmd_echo(int argc, char **argv);
 static int cmd_help(int argc, char **argv);
+static int cmd_render_set_mode(int argc, char **argv);
 
 struct cmd {
     char const *cmd_name;
@@ -64,6 +66,17 @@ struct cmd {
         "When invoked with the name of a command, help will display the \n"
         "documentation for that command.\n",
         .cmd_handler = cmd_help
+    },
+    {
+        .cmd_name = "render-set-mode",
+        .summary = "set the 3D graphics rendering mode",
+        .help_str =
+        "render-set-mode default|wireframe\n"
+        "\n"
+        "change the way that 3D graphics are rendered\n"
+        "if you ever feel lost, \'render-set-mode default\' will restore the\n"
+        "default rendering settings.\n",
+        .cmd_handler = cmd_render_set_mode
     },
     { NULL }
 };
@@ -199,6 +212,25 @@ static int cmd_help(int argc, char **argv) {
             cons_puts("\n");
             cmd++;
         }
+    }
+
+    return 0;
+}
+
+static int cmd_render_set_mode(int argc, char **argv) {
+    if (argc != 2) {
+        cons_puts("usage: render-set-mode default|wireframe\n");
+        return 1;
+    }
+
+    char const *mode_str = argv[1];
+    if (strcmp(mode_str, "default") == 0) {
+        gfx_config_default();
+    } else if (strcmp(mode_str, "wireframe") == 0) {
+        gfx_config_wireframe();
+    } else {
+        cons_puts("ERROR: unrecognized graphics rendering mode\n");
+        return 1;
     }
 
     return 0;

@@ -33,6 +33,7 @@
 #include "shader.h"
 #include "opengl_target.h"
 #include "dreamcast.h"
+#include "gfx/gfx_config.h"
 
 #include "opengl_renderer.h"
 
@@ -56,6 +57,8 @@ static struct shader pvr_ta_tex_shader;
 static GLuint vbo, vao;
 
 static GLuint tex_cache[PVR2_TEX_CACHE_SIZE];
+
+static struct gfx_cfg rend_cfg;
 
 static const GLenum tex_formats[TEX_CTRL_PIX_FMT_COUNT] = {
     [TEX_CTRL_PIX_FMT_ARGB_1555] = GL_UNSIGNED_SHORT_1_5_5_5_REV,
@@ -247,6 +250,19 @@ static void render_do_draw_group(struct geo_buf *geo,
 }
 
 static void render_do_draw(struct geo_buf *geo) {
+    gfx_config_read(&rend_cfg);
+
+    if (!rend_cfg.wireframe) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    } else {
+        glLineWidth(1);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
+
+    if (rend_cfg.tex_enable)
+        glEnable(GL_TEXTURE_2D);
+    else
+        glDisable(GL_TEXTURE_2D);
 
     /*
      * first draw the background plane
@@ -256,7 +272,11 @@ static void render_do_draw(struct geo_buf *geo) {
     glClearColor(geo->bgcolor[0], geo->bgcolor[1],
                  geo->bgcolor[2], geo->bgcolor[3]);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
+
+    if (rend_cfg.depth_enable)
+        glEnable(GL_DEPTH_TEST);
+    else
+        glDisable(GL_DEPTH_TEST);
 
     unsigned group_no;
     enum display_list_type disp_list;
@@ -264,10 +284,14 @@ static void render_do_draw(struct geo_buf *geo) {
          disp_list++) {
         struct display_list *list = geo->lists + disp_list;
 
-        if (list->blend_enable)
-            glEnable(GL_BLEND);
-        else
+        if (rend_cfg.blend_enable) {
+            if (list->blend_enable)
+                glEnable(GL_BLEND);
+            else
+                glDisable(GL_BLEND);
+        } else {
             glDisable(GL_BLEND);
+        }
 
         for (group_no = 0; group_no < list->n_groups; group_no++)
             render_do_draw_group(geo, disp_list, group_no);

@@ -193,6 +193,7 @@ void opengl_video_update_framebuffer() {
 }
 
 void opengl_video_present() {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
 
     glViewport(0, 0, 640, 480); // TODO: don't hardcode
