@@ -37,14 +37,38 @@ static char cmd_buf[CMD_BUF_SIZE];
 unsigned cmd_buf_len;
 
 static int cmd_echo(int argc, char **argv);
+static int cmd_help(int argc, char **argv);
 
 struct cmd {
     char const *cmd_name;
+    char const *summary;
+    char const *help_str;
     int(*cmd_handler)(int, char**);
 } cmd_list[] = {
-    { "echo", cmd_echo },
-    { NULL, NULL }
+    {
+        .cmd_name = "echo",
+        .summary = "echo text to the console",
+        .help_str =
+        "echo [text]\n"
+        "\n"
+        "echo prints all of its arguments to the console\n",
+        .cmd_handler = cmd_echo
+    },
+    {
+        .cmd_name = "help",
+        .summary = "online command documentation",
+        .help_str =
+        "help [cmd]\n"
+        "\n"
+        "When invoked without any arguments, help will list all commands\n"
+        "When invoked with the name of a command, help will display the \n"
+        "documentation for that command.\n",
+        .cmd_handler = cmd_help
+    },
+    { NULL }
 };
+
+static struct cmd const* find_cmd_by_name(char const *name);
 
 static void cmd_run_cmd(void);
 
@@ -120,22 +144,29 @@ static void cmd_run_cmd(void) {
     // now run the command
     char const *cmd_name = argv[0];
 
-    struct cmd const *cmd = cmd_list;
-    while (cmd->cmd_name) {
-        if (strcmp(cmd->cmd_name, cmd_name) == 0) {
-            cmd->cmd_handler(argc, argv); // TODO: check the return value
-            break;
-        }
-        cmd++;
-    }
-
-    if (!cmd->cmd_name)
+    struct cmd const *cmd = find_cmd_by_name(cmd_name);
+    if (cmd)
+        cmd->cmd_handler(argc, argv); // TODO: check the return value
+    else
         cons_puts("ERROR: unable to run command\n");
 
     // free argv
     for (idx = 0; idx < argc; idx++)
         free(argv[idx]);
     free(argv);
+}
+
+static struct cmd const* find_cmd_by_name(char const *name) {
+    struct cmd const *cmd = cmd_list;
+    while (cmd->cmd_name) {
+        if (strcmp(cmd->cmd_name, name) == 0) {
+            return cmd;
+
+            break;
+        }
+        cmd++;
+    }
+    return NULL;
 }
 
 static int cmd_echo(int argc, char **argv) {
@@ -146,6 +177,30 @@ static int cmd_echo(int argc, char **argv) {
         cons_puts(argv[idx]);
     }
     cons_puts("\n");
+    return 0;
+}
+
+static int cmd_help(int argc, char **argv) {
+    struct cmd const *cmd;
+    if (argc >= 2) {
+        cmd = find_cmd_by_name(argv[1]);
+        if (cmd) {
+            cons_puts(cmd->help_str);
+        } else {
+            cons_puts("ERROR: unable to find cmd\n");
+            return 1;
+        }
+    } else {
+        cmd = cmd_list;
+        while (cmd->cmd_name) {
+            cons_puts(cmd->cmd_name);
+            cons_puts(" - ");
+            cons_puts(cmd->summary);
+            cons_puts("\n");
+            cmd++;
+        }
+    }
+
     return 0;
 }
 
