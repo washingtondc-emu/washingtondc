@@ -202,7 +202,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/cmd/cmd_tcp_link.h"
                 "${PROJECT_SOURCE_DIR}/src/cmd/cmd_tcp_link.c"
                 "${PROJECT_SOURCE_DIR}/src/cmd/cons.h"
-                "${PROJECT_SOURCE_DIR}/src/cmd/cons.c")
+                "${PROJECT_SOURCE_DIR}/src/cmd/cons.c"
+                "${PROJECT_SOURCE_DIR}/src/cmd/cmd.h"
+                "${PROJECT_SOURCE_DIR}/src/cmd/cmd.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)

@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+#include "cmd.h"
 #include "cons.h"
 #include "dreamcast.h"
 #include "cmd_tcp_link.h"
@@ -74,9 +75,16 @@ static void *cmd_thread_main(void *arg) {
         abort(); // TODO: error handling
 
     while (dc_is_running()) {
+        /*
+         * the ordering here is very important.  We have to drain the tx last
+         * because we want to make sure that any calls to cons_put that come
+         * from the cmd_thread get processed.  cmd_thread_kick is not viable
+         * from within the cmd_thread because it would deadlock trying to grab
+         * the cmd_thread_lock.
+         */
         cmd_thread_drain_cons_rx();
         cmd_thread_drain_cons_tx();
-        /* cmd_tcp_link_run_once(); */
+
         cmd_thread_wait();
     }
 
@@ -93,8 +101,7 @@ void cmd_thread_kick(void) {
 }
 
 void cmd_thread_put_char(char c) {
-    if (c)
-        printf("CMD_THREAD: 0x%02x received\n", (unsigned)c);
+    cmd_put_char(c);
 }
 
 /*
