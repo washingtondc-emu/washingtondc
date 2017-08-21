@@ -32,10 +32,6 @@
  * transfers between the cmd_thread and the cmd_tcp code in the io_thread.
  */
 void cmd_tcp_link_run_once(void) {
-    char ch;
-
-    while (cmd_tcp_get(&ch))
-        cmd_thread_put_char(ch);
 }
 
 void cmd_tcp_link_put_text(char const *txt) {

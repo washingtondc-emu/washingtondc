@@ -39,9 +39,25 @@
 void cons_puts(char const *txt);
 
 /*
+ * remove a user-input character from the rx ring.
+ * If this function returns false, then *ch is not valid and the ring is empty.
+ * If this function returns true, then *ch is valid.
+ *
+ * this function should only be called from the cmd thread.
+ */
+bool cons_getc(char *ch);
+
+/*
  * this function drains a single character from the tx ring.  It can only be
  * safely called from the cmd thread.
  */
 bool cons_tx_drain_single(char *out);
+
+/*
+ * These functions input data into the cons as if it was input from the user.
+ * they can safely be called from any thread.
+ */
+void cons_rx_recv_single(char ch);
+void cons_rx_recv_text(char const *txt);
 
 #endif

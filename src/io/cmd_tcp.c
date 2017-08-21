@@ -32,6 +32,7 @@
 #include <event2/listener.h>
 #include <event2/buffer.h>
 
+#include "cmd/cons.h"
 #include "error.h"
 #include "text_ring.h"
 #include "io_thread.h"
@@ -166,8 +167,12 @@ void cmd_tcp_cleanup(void) {
     bev = NULL;
 }
 
+#define CMD_TCP_READ_BUF_LEN_SHIFT 10
+#define CMD_TCP_READ_BUF_LEN (1 << CMD_TCP_READ_BUF_LEN_SHIFT)
+
 // libevent callback for when the socket has data for us to read
 static void handle_read(struct bufferevent *bev, void *arg) {
+    static char read_buf[CMD_TCP_READ_BUF_LEN];
     struct evbuffer *read_buffer;
 
     if (!(read_buffer = evbuffer_new())) {
@@ -179,6 +184,7 @@ static void handle_read(struct bufferevent *bev, void *arg) {
     size_t buflen = evbuffer_get_length(read_buffer);
 
     size_t idx;
+    unsigned read_buf_idx = 0;
     for (idx = 0; idx < buflen; idx++) {
         uint8_t tmp;
         if (evbuffer_remove(read_buffer, &tmp, sizeof(tmp)) < 0) {
@@ -186,10 +192,27 @@ static void handle_read(struct bufferevent *bev, void *arg) {
             continue;
         }
 
-        text_ring_produce(&rx_ring, (char)tmp);
+        /*
+         * transmit data in CMD_TCP_READ_BUF_LEN-sized chunks
+         * we call cmd_thread_kick every time to make sure that these don't
+         * all get dropped by cons' text_ring, although some characters
+         * probably will still get dropped anyways.
+         */
+        read_buf[read_buf_idx++] = (char)tmp;
+        if (read_buf_idx >= (CMD_TCP_READ_BUF_LEN - 1)) {
+            read_buf[CMD_TCP_READ_BUF_LEN - 1] = '\0';
+            cons_rx_recv_text(read_buf);
+            read_buf_idx = 0;
+            cmd_thread_kick();
+        }
     }
 
-    cmd_thread_kick();
+    // transmit any residual data.
+    if (read_buf_idx) {
+        read_buf[read_buf_idx] = '\0';
+        cons_rx_recv_text(read_buf);
+        cmd_thread_kick();
+    }
 }
 
 /*

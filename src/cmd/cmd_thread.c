@@ -43,7 +43,8 @@ static void cmd_thread_signal(void);
 
 static void *cmd_thread_main(void *arg);
 
-static void cmd_thread_drain_cons(void);
+static void cmd_thread_drain_cons_tx(void);
+static void cmd_thread_drain_cons_rx(void);
 
 // dump the given string onto all of the cmd frontends
 static void cmd_thread_print_no_lock(char const *txt);
@@ -73,8 +74,9 @@ static void *cmd_thread_main(void *arg) {
         abort(); // TODO: error handling
 
     while (dc_is_running()) {
-        cmd_thread_drain_cons();
-        cmd_tcp_link_run_once();
+        cmd_thread_drain_cons_rx();
+        cmd_thread_drain_cons_tx();
+        /* cmd_tcp_link_run_once(); */
         cmd_thread_wait();
     }
 
@@ -91,9 +93,8 @@ void cmd_thread_kick(void) {
 }
 
 void cmd_thread_put_char(char c) {
-    // TODO: buffer the incoming text and parse out commands
     if (c)
-        printf("CMD_THREAD: \"%02x\" received\n", (unsigned)c);
+        printf("CMD_THREAD: 0x%02x received\n", (unsigned)c);
 }
 
 /*
@@ -104,7 +105,7 @@ void cmd_thread_put_char(char c) {
  */
 #define CONS_BUF_LINE_LEN_SHIFT 10
 #define CONS_BUF_LINE_LEN (1 << CONS_BUF_LINE_LEN_SHIFT)
-static void cmd_thread_drain_cons(void) {
+static void cmd_thread_drain_cons_tx(void) {
     static char cons_buf_line[CONS_BUF_LINE_LEN];
     unsigned idx = 0;
     char ch;
@@ -123,6 +124,12 @@ static void cmd_thread_drain_cons(void) {
         cons_buf_line[idx] = '\0';
         cmd_thread_print_no_lock(cons_buf_line);
     }
+}
+
+static void cmd_thread_drain_cons_rx(void) {
+    char ch;
+    while (cons_getc(&ch))
+        cmd_thread_put_char(ch);
 }
 
 static void cmd_thread_print_no_lock(char const *txt) {

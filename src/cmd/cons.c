@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 
@@ -31,16 +32,32 @@
 // fifo queue for program-output being printed to the console
 static struct text_ring cons_txq = TEXT_RING_INITIALIZER;
 
-static pthread_mutex_t cons_mtx = PTHREAD_MUTEX_INITIALIZER;
+// fifo queue for user-input text
+static struct text_ring cons_rxq = TEXT_RING_INITIALIZER;
 
-static void cons_lock(void);
-static void cons_unlock(void);
+static pthread_mutex_t cons_tx_mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t cons_rx_mtx = PTHREAD_MUTEX_INITIALIZER;
+
+static void cons_tx_prod_lock(void);
+static void cons_tx_prod_unlock(void);
+
+static void cons_rx_prod_lock(void);
+static void cons_rx_prod_unlock(void);
+
+static void cons_rx_recv_single_no_lock(char ch);
 
 void cons_puts(char const *txt) {
-    cons_lock();
+    cons_tx_prod_lock();
     while (*txt)
         text_ring_produce(&cons_txq, *txt++);
-    cons_unlock();
+    cons_tx_prod_unlock();
+}
+
+bool cons_getc(char *ch) {
+    if (text_ring_empty(&cons_rxq))
+        return false;
+    *ch = text_ring_consume(&cons_rxq);
+    return true;
 }
 
 bool cons_tx_drain_single(char *out) {
@@ -50,12 +67,39 @@ bool cons_tx_drain_single(char *out) {
     return true;
 }
 
-static void cons_lock(void) {
-    if (pthread_mutex_lock(&cons_mtx) < 0)
+void cons_rx_recv_single(char ch) {
+    cons_rx_prod_lock();
+    cons_rx_recv_single_no_lock(ch);
+    cons_rx_prod_unlock();
+}
+
+void cons_rx_recv_text(char const *txt) {
+    cons_rx_prod_lock();
+    while (*txt)
+        cons_rx_recv_single_no_lock(*txt++);
+    cons_rx_prod_unlock();
+}
+
+static void cons_rx_recv_single_no_lock(char ch) {
+    text_ring_produce(&cons_rxq, ch);
+}
+
+static void cons_tx_prod_lock(void) {
+    if (pthread_mutex_lock(&cons_tx_mtx) < 0)
         abort(); // TODO: error checking
 }
 
-static void cons_unlock(void) {
-    if (pthread_mutex_unlock(&cons_mtx) < 0)
+static void cons_tx_prod_unlock(void) {
+    if (pthread_mutex_unlock(&cons_tx_mtx) < 0)
+        abort(); // TODO: error checking
+}
+
+static void cons_rx_prod_lock(void) {
+    if (pthread_mutex_lock(&cons_rx_mtx) < 0)
+        abort(); // TODO: error checking
+}
+
+static void cons_rx_prod_unlock(void) {
+    if (pthread_mutex_unlock(&cons_rx_mtx) < 0)
         abort(); // TODO: error checking
 }
