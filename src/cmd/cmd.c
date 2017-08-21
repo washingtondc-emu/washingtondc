@@ -59,11 +59,13 @@ void cmd_put_char(char ch) {
         if (ch == '\n') {
             cmd_run_cmd();
             cmd_buf_len = 0;
+            cmd_print_prompt();
         }
     } else {
         if (ch == '\n') {
             cons_puts("ignoring command due to excessive length\n");
             cmd_buf_len = 0;
+            cmd_print_prompt();
         }
     }
 }
@@ -145,4 +147,20 @@ static int cmd_echo(int argc, char **argv) {
     }
     cons_puts("\n");
     return 0;
+}
+
+// this gets printed to the dev console every time the emulator starts
+static char const *login_banner =
+    "WashingtonDC Copyright (C) 2016, 2017 snickerbockers\n"
+    "This program comes with ABSOLUTELY NO WARRANTY;\n"
+    "This is free software, and you are welcome to redistribute it\n"
+    "under the terms of the GNU GPL version 3.\n";
+
+void cmd_print_banner(void) {
+    cons_puts(login_banner);
+    cmd_print_prompt();
+}
+
+void cmd_print_prompt(void) {
+    cons_puts("> ");
 }

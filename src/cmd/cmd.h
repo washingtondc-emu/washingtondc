@@ -36,4 +36,8 @@
  */
 void cmd_put_char(char ch);
 
+void cmd_print_prompt(void);
+
+void cmd_print_banner(void);
+
 #endif
