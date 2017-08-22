@@ -29,7 +29,8 @@ static struct gfx_cfg const gfx_cfg_default = {
     .tex_enable = true,
     .depth_enable = true,
     .blend_enable = true,
-    .bgcolor_enable = true
+    .bgcolor_enable = true,
+    .color_enable = true
 };
 
 static struct gfx_cfg const gfx_cfg_wireframe = {
@@ -37,7 +38,8 @@ static struct gfx_cfg const gfx_cfg_wireframe = {
     .tex_enable = false,
     .depth_enable = false,
     .blend_enable = false,
-    .bgcolor_enable = false
+    .bgcolor_enable = false,
+    .color_enable = false
 };
 
 static struct gfx_cfg const * volatile cur_profile = &gfx_cfg_default;

@@ -98,7 +98,11 @@ void modelview_project_transform() {
 }
 
 void color_transform() {
+#ifdef COLOR_DISABLE
+    vert_color = vec4(1.0, 1.0, 1.0, 1.0);
+#else
     vert_color = color;
+#endif
 }
 
 void main() {

@@ -54,6 +54,14 @@ static pthread_mutex_t frame_stamp_mtx = PTHREAD_MUTEX_INITIALIZER;
 static struct shader pvr_ta_shader;
 static struct shader pvr_ta_tex_shader;
 
+/*
+ * special shader for wireframe mode that ignores vertex colors and textures
+ * TODO: this shader also ignores textures.  This is not desirable since
+ * textures are a separate config, but ultimately it's not that big of a deal
+ * since wireframe mode always disables textures anyways
+ */
+static struct shader pvr_ta_no_color_shader;
+
 static GLuint vbo, vao;
 
 static GLuint tex_cache[PVR2_TEX_CACHE_SIZE];
@@ -125,6 +133,14 @@ void render_init(void) {
                                              "#define TEX_ENABLE\n");
     shader_link(&pvr_ta_tex_shader);
 
+    shader_load_vert_from_file_with_preamble(&pvr_ta_no_color_shader,
+                                             "pvr2_ta_vert.glsl",
+                                             "#define COLOR_DISABLE\n");
+    shader_load_frag_from_file_with_preamble(&pvr_ta_no_color_shader,
+                                             "pvr2_ta_frag.glsl",
+                                             "#define COLOR_DISABLE\n");
+    shader_link(&pvr_ta_no_color_shader);
+
     bound_tex_slot = glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj,
                                           "bound_tex");
     tex_inst_slot = glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj,
@@ -147,6 +163,7 @@ void render_cleanup(void) {
     glDeleteTextures(PVR2_TEX_CACHE_SIZE, tex_cache);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
+    shader_cleanup(&pvr_ta_no_color_shader);
     shader_cleanup(&pvr_ta_tex_shader);
     shader_cleanup(&pvr_ta_shader);
 
@@ -160,7 +177,11 @@ static void render_do_draw_group(struct geo_buf *geo,
                                  unsigned group_no) {
     struct poly_group *group = geo->lists[disp_list].groups + group_no;
 
-    if (group->tex_enable && rend_cfg.tex_enable) {
+    /*
+     * TODO: currently disable color also disables textures; ideally these
+     * would be two independent settings.
+     */
+    if (group->tex_enable && rend_cfg.tex_enable && rend_cfg.color_enable) {
         printf("Using texture %u\n", group->tex_idx);
         glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
         glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
@@ -181,9 +202,11 @@ static void render_do_draw_group(struct geo_buf *geo,
         glUniform1i(bound_tex_slot, 0);
         glUniform1i(tex_inst_slot, group->tex_inst);
         glActiveTexture(GL_TEXTURE0);
-    } else {
+    } else if (rend_cfg.color_enable) {
         printf("not using texture!?\n");
         glUseProgram(pvr_ta_shader.shader_prog_obj);
+    } else {
+        glUseProgram(pvr_ta_no_color_shader.shader_prog_obj);
     }
 
 #ifdef INVARIANTS

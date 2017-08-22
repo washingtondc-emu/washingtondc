@@ -55,6 +55,9 @@ struct gfx_cfg {
 
     // if false, the background color will always be black
     bool bgcolor_enable;
+
+    // if false, all polygons will be white
+    bool color_enable;
 };
 
 /*
