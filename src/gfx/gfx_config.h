@@ -52,6 +52,9 @@ struct gfx_cfg {
 
     // if false, blending will be forcibly disabled
     bool blend_enable;
+
+    // if false, the background color will always be black
+    bool bgcolor_enable;
 };
 
 /*

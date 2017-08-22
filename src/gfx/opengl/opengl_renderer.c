@@ -160,7 +160,7 @@ static void render_do_draw_group(struct geo_buf *geo,
                                  unsigned group_no) {
     struct poly_group *group = geo->lists[disp_list].groups + group_no;
 
-    if (group->tex_enable) {
+    if (group->tex_enable && rend_cfg.tex_enable) {
         printf("Using texture %u\n", group->tex_idx);
         glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
         glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
@@ -269,8 +269,12 @@ static void render_do_draw(struct geo_buf *geo) {
      * TODO: I should actually draw a background plane instead
      * of just calling glClear
      */
-    glClearColor(geo->bgcolor[0], geo->bgcolor[1],
-                 geo->bgcolor[2], geo->bgcolor[3]);
+    if (rend_cfg.bgcolor_enable) {
+        glClearColor(geo->bgcolor[0], geo->bgcolor[1],
+                     geo->bgcolor[2], geo->bgcolor[3]);
+    } else {
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     if (rend_cfg.depth_enable)
