@@ -28,6 +28,7 @@
 
 #include "gfx/gfx_config.h"
 #include "cons.h"
+#include "dreamcast.h"
 
 #include "cmd.h"
 
@@ -40,6 +41,7 @@ unsigned cmd_buf_len;
 static int cmd_echo(int argc, char **argv);
 static int cmd_help(int argc, char **argv);
 static int cmd_render_set_mode(int argc, char **argv);
+static int cmd_exit(int argc, char **argv);
 
 struct cmd {
     char const *cmd_name;
@@ -55,6 +57,15 @@ struct cmd {
         "\n"
         "echo prints all of its arguments to the console\n",
         .cmd_handler = cmd_echo
+    },
+    {
+        .cmd_name = "exit",
+        .summary = "exit WashingtonDC immediately",
+        .help_str = "exit\n"
+        "\n"
+        "It does exactly what you think it does.  There's no confirmation\n"
+        "prompt, so be careful not to type this in absentmindedly\n",
+        .cmd_handler = cmd_exit
     },
     {
         .cmd_name = "help",
@@ -233,6 +244,11 @@ static int cmd_render_set_mode(int argc, char **argv) {
         return 1;
     }
 
+    return 0;
+}
+
+static int cmd_exit(int argc, char **argv) {
+    dreamcast_kill();
     return 0;
 }
 
