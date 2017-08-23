@@ -354,7 +354,6 @@ struct Sh4MemMappedReg {
      * with addr
      */
     addr32_t addr;  // addr shoud be the p4 addr, not the area7 addr
-    addr32_t addr_mask;
 
     unsigned len;
 
