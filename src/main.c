@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
     config_set_dc_bios_path(bios_path);
     config_set_dc_flash_path(flash_path);
 
-    dreamcast_init();
+    dreamcast_init(enable_cmd_tcp);
 
     framebuffer_init(640, 480);
     win_thread_launch(640, 480);

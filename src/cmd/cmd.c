@@ -42,6 +42,8 @@ static int cmd_echo(int argc, char **argv);
 static int cmd_help(int argc, char **argv);
 static int cmd_render_set_mode(int argc, char **argv);
 static int cmd_exit(int argc, char **argv);
+static int cmd_resume_execution(int argc, char **argv);
+static int cmd_suspend_execution(int argc, char **argv);
 
 struct cmd {
     char const *cmd_name;
@@ -49,6 +51,11 @@ struct cmd {
     char const *help_str;
     int(*cmd_handler)(int, char**);
 } cmd_list[] = {
+    /*
+     * XXX when adding new commands, remember to keep this list in alphabetical
+     * order.  The help command is not cognizant enough to sort these, so it
+     * will print them in whatever order they are listed.
+     */
     {
         .cmd_name = "echo",
         .summary = "echo text to the console",
@@ -88,6 +95,40 @@ struct cmd {
         "if you ever feel lost, \'render-set-mode default\' will restore the\n"
         "default rendering settings.\n",
         .cmd_handler = cmd_render_set_mode
+    },
+    {
+        .cmd_name = "resume-execution",
+        .summary = "resume execution while the emulator is suspended.",
+        .help_str =
+        "resume-execution\n"
+        "\n"
+        "If WashingtonDC is suspended, then resume execution.\n"
+#ifdef ENABLE_DEBUGGER
+        "This command does not work on builds with the remote GDB frontend\n"
+        "enabled.  Use the gdb frontend to control execution instead.\n",
+#else
+        "This command is enabled because the remote GDB frontend is not\n"
+        "enabled.  If WashingtonDC had been built with -DENABLE_DEBUGGER=On,\n"
+        "then this command would not be available.\n",
+#endif
+        .cmd_handler = cmd_resume_execution
+    },
+    {
+        .cmd_name = "suspend-execution",
+        .summary = "suspend execution while the emulator is running.",
+        .help_str =
+        "suspend-execution\n"
+        "\n"
+        "If WashingtonDC is running, then suspend execution.\n"
+#ifdef ENABLE_DEBUGGER
+        "This command does not work on builds with the remote GDB frontend\n"
+        "enabled.  Use the gdb frontend to control execution instead.\n",
+#else
+        "This command is enabled because the remote GDB frontend is not\n"
+        "enabled.  If WashingtonDC had been built with -DENABLE_DEBUGGER=On,\n"
+        "then this command would not be available.\n",
+#endif
+        .cmd_handler = cmd_suspend_execution
     },
     { NULL }
 };
@@ -250,6 +291,44 @@ static int cmd_render_set_mode(int argc, char **argv) {
 static int cmd_exit(int argc, char **argv) {
     dreamcast_kill();
     return 0;
+}
+
+static int cmd_resume_execution(int argc, char **argv) {
+#ifdef ENABLE_DEBUGGER
+    cons_puts("ERROR: unable to control execution from the cmd prompt in gdb "
+              "builds\n");
+    return 1;
+#else
+    enum dc_state dc_state = dc_get_state();
+
+    if (dc_state == DC_STATE_SUSPEND) {
+        dc_state_transition(DC_STATE_RUNNING, DC_STATE_SUSPEND);
+        return 0;
+    }
+
+    cons_puts("ERROR: unable to resume execution because WashingtonDC is not "
+              "suspended\n");
+    return 1;
+#endif
+}
+
+static int cmd_suspend_execution(int argc, char **argv) {
+#ifdef ENABLE_DEBUGGER
+    cons_puts("ERROR: unable to control execution from the cmd prompt in gdb "
+              "builds\n");
+    return 1;
+#else
+    enum dc_state dc_state = dc_get_state();
+
+    if (dc_state == DC_STATE_RUNNING) {
+        dc_state_transition(DC_STATE_SUSPEND, DC_STATE_RUNNING);
+        return 0;
+    }
+
+    cons_puts("ERROR: unable to suspend execution because WashingtonDC is not "
+              "running\n");
+    return 1;
+#endif
 }
 
 // this gets printed to the dev console every time the emulator starts

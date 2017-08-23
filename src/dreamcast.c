@@ -75,7 +75,7 @@ enum TermReason {
 // this stores the reason the dreamcast suspended execution
 enum TermReason term_reason = TERM_REASON_NORM;
 
-static atomic_int dc_state = ATOMIC_VAR_INIT(DC_STATE_RUNNING);
+static atomic_int dc_state = ATOMIC_VAR_INIT(DC_STATE_NOT_RUNNING);
 
 static void dc_sigint_handler(int param);
 
@@ -86,6 +86,8 @@ static void dc_single_step(Sh4 *sh4);
 #ifdef ENABLE_DEBUGGER
 // this must be called before run or not at all
 static void dreamcast_enable_debugger(void);
+
+static void dreamcast_check_debugger(void);
 #endif
 
 // this must be called before run or not at all
@@ -93,7 +95,7 @@ static void dreamcast_enable_serial_server(void);
 
 static void dreamcast_enable_cmd_tcp(void);
 
-void dreamcast_init(void) {
+void dreamcast_init(bool cmd_session) {
     is_running = true;
 
     memory_init(&mem);
@@ -172,6 +174,16 @@ void dreamcast_init(void) {
     }
 
     aica_rtc_init();
+
+    if (cmd_session) {
+#ifdef ENABLE_DEBUGGER
+        dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
+#else
+        dc_state_transition(DC_STATE_SUSPEND, DC_STATE_NOT_RUNNING);
+#endif
+    } else {
+        dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
+    }
 }
 
 void dreamcast_cleanup() {
@@ -223,22 +235,49 @@ void dreamcast_run() {
 
     while (is_running) {
 #ifdef ENABLE_DEBUGGER
-        /*
-         * If the debugger is enabled, make sure we have its permission to
-         * single-step; if we don't then  block until something interresting
-         * happens, and then skip the rest of the loop.
-         */
-        debug_notify_inst(&cpu);
-
-        enum dc_state cur_state = dc_get_state();
-        if (unlikely(cur_state == DC_STATE_DEBUG)) {
-            do {
-                // call debug_run_once 100 times per second
-                debug_run_once();
-                usleep(1000 * 1000 / 100);
-            } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG);
-        }
+        dreamcast_check_debugger();
 #endif
+
+        /*
+         * TODO:
+         * maybe turn this into a dc_sched event so I don't have to check it as
+         * often?  dc_get_state does turn into an atomic read...
+         */
+        enum dc_state cur_state = dc_get_state();
+        if (unlikely(cur_state == DC_STATE_SUSPEND)) {
+            cons_puts("Execution suspended.  To resume, enter "
+                      "\"resume-execution\" into the CLI prompt.\n");
+            cmd_thread_kick();
+            do {
+                /*
+                 * TODO: sleep on a pthread condition or something instead of
+                 * polling.
+                 */
+                usleep(1000 * 1000 / 10);
+            } while ((cur_state = dc_get_state()) == DC_STATE_SUSPEND &&
+                     is_running);
+            if (dc_is_running()) {
+                cons_puts("execution resumed\n");
+            } else {
+                /*
+                 * TODO: this message doesn't actually get printed.  The likely
+                 * cause is that the cmd thread does not have time to print it.
+                 * it may be worthwile to drain all output before the cmd
+                 * thread exits, but I'd also have to be careful not to spend
+                 * too long waiting on an ack from an external system...
+                 */
+                cons_puts("responding to request to exit\n");
+            }
+            cmd_thread_kick();
+
+            /*
+             * we do a continue here so that we have to check is_running again
+             * and potentially exit the loop without executing any more
+             * instructions.
+             */
+            continue;
+        }
+
         /*
          * TODO: reconsider this placement.
          *
@@ -319,6 +358,26 @@ void dreamcast_run() {
 
     dreamcast_cleanup();
 }
+
+#ifdef ENABLE_DEBUGGER
+static void dreamcast_check_debugger(void) {
+    /*
+     * If the debugger is enabled, make sure we have its permission to
+     * single-step; if we don't then  block until something interresting
+     * happens, and then skip the rest of the loop.
+     */
+    debug_notify_inst(&cpu);
+
+    enum dc_state cur_state = dc_get_state();
+    if (unlikely(cur_state == DC_STATE_DEBUG)) {
+        do {
+            // call debug_run_once 100 times per second
+            debug_run_once();
+            usleep(1000 * 1000 / 100);
+        } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG);
+    }
+}
+#endif
 
 /* executes a single instruction and maybe ticks the clock. */
 static void dc_single_step(Sh4 *sh4) {

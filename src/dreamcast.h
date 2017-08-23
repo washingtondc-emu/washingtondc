@@ -46,7 +46,7 @@ extern "C" {
 #define ADDR_SYSCALLS      0x8c000000
 #define LEN_SYSCALLS           0x8000
 
-void dreamcast_init(void);
+void dreamcast_init(bool cmd_session);
 
 /* void dreamcast_cleanup(); */
 
@@ -98,7 +98,10 @@ enum dc_state {
     DC_STATE_RUNNING,
 
     // the emulation thread has been suspended by the gdb stub
-    DC_STATE_DEBUG
+    DC_STATE_DEBUG,
+
+    // the emulation thread has been suspended by the command-line interface
+    DC_STATE_SUSPEND
 };
 
 enum dc_state dc_get_state(void);
