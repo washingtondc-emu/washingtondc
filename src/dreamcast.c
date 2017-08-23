@@ -178,9 +178,12 @@ void dreamcast_init(bool cmd_session) {
     if (cmd_session) {
 #ifdef ENABLE_DEBUGGER
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
-#else
-        dc_state_transition(DC_STATE_SUSPEND, DC_STATE_NOT_RUNNING);
 #endif
+        /*
+         * if there's no debugging support and we have a remote cmd session
+         * attached, then leave the system in DC_STATE_NOT_RUNNING until the
+         * user executes the begin-execution command.
+         */
     } else {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
     }
@@ -232,6 +235,13 @@ void dreamcast_run() {
 
     cmd_print_banner();
     cmd_thread_kick();
+
+    /*
+     * if there's a cmd session attached, then hang here until the user enters
+     * the begin-execution command.
+     */
+    while (is_running && (dc_get_state() == DC_STATE_NOT_RUNNING))
+        usleep(1000 * 1000 / 10);
 
     while (is_running) {
 #ifdef ENABLE_DEBUGGER

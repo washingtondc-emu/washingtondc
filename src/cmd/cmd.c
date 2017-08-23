@@ -44,6 +44,7 @@ static int cmd_render_set_mode(int argc, char **argv);
 static int cmd_exit(int argc, char **argv);
 static int cmd_resume_execution(int argc, char **argv);
 static int cmd_suspend_execution(int argc, char **argv);
+static int cmd_begin_execution(int argc, char **argv);
 
 struct cmd {
     char const *cmd_name;
@@ -56,6 +57,15 @@ struct cmd {
      * order.  The help command is not cognizant enough to sort these, so it
      * will print them in whatever order they are listed.
      */
+    {
+        .cmd_name = "begin-execution",
+        .summary = "begin executing with the input settings",
+        .help_str =
+        "begin-execution\n"
+        "\n"
+        "start emulator execution\n",
+        .cmd_handler = cmd_begin_execution
+    },
     {
         .cmd_name = "echo",
         .summary = "echo text to the console",
@@ -327,6 +337,25 @@ static int cmd_suspend_execution(int argc, char **argv) {
 
     cons_puts("ERROR: unable to suspend execution because WashingtonDC is not "
               "running\n");
+    return 1;
+#endif
+}
+
+static int cmd_begin_execution(int argc, char **argv) {
+#ifdef ENABLE_DEBUGGER
+    cons_puts("ERROR: unable to control execution from the cmd prompt in gdb "
+              "builds\n");
+    return 1;
+#else
+    enum dc_state dc_state = dc_get_state();
+
+    if (dc_state == DC_STATE_NOT_RUNNING) {
+        dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
+        return 0;
+    }
+
+    cons_puts("ERROR: unable to begin execution because WashingtonDC is "
+              "already running\n");
     return 1;
 #endif
 }
