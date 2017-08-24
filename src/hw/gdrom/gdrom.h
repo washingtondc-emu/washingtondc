@@ -23,6 +23,11 @@
 #ifndef GDROM_H_
 #define GDROM_H_
 
+#include <stdint.h>
+#include <stdbool.h>
+
+#include "fifo.h"
+
 struct gdrom_status {
     // get off the phone!
     bool bsy;
@@ -83,5 +88,73 @@ struct gdrom_dev_ctrl {
     bool nien;
     bool srst;
 };
+
+enum gdrom_state {
+    GDROM_STATE_NORM,
+    GDROM_STATE_INPUT_PKT,
+    GDROM_STATE_SET_MODE // waiting for PIO input for the SET_MODE packet
+};
+
+enum additional_sense {
+    ADDITIONAL_SENSE_NO_ERROR = 0,
+    ADDITIONAL_SENSE_NO_DISC = 0x3a
+};
+
+struct gdrom_ctxt {
+    struct gdrom_status stat_reg;
+    struct gdrom_error error_reg;
+    struct gdrom_features feat_reg;       // features register
+    struct gdrom_sector_count sect_cnt_reg;   // sector count register
+    struct gdrom_int_reason int_reason_reg; // interrupt reason register
+    struct gdrom_dev_ctrl dev_ctrl_reg;   // device control register
+    unsigned data_byte_count;// byte-count low/high registers
+
+    // GD-ROM DMA memory protecion
+    uint32_t gdapro_reg;
+
+    // ???
+    uint32_t g1gdrc_reg;
+
+    // GD-ROM DMA start address
+    uint32_t dma_start_addr_reg;
+
+    // GD-ROM DMA transfer length (in bytes)
+    uint32_t dma_len_reg;
+
+    // GD-ROM DMA transfer direction
+    uint32_t dma_dir_reg;
+
+    // GD-ROM DMA enable
+    uint32_t dma_en_reg;
+
+    // GD-ROM DMA start
+    uint32_t dma_start_reg;
+
+    // length of DMA result
+    uint32_t gdlend_reg;
+
+    enum additional_sense additional_sense;
+
+    uint32_t trans_mode_vals[TRANS_MODE_COUNT];
+
+    enum gdrom_state state;
+
+    /*
+     * number of bytes we're waiting for.  This only holds meaning when
+     * state == GDROM_STATE_SET_MODE.
+     */
+    int set_mode_bytes_remaining;
+
+#define PKT_LEN 12
+    uint8_t pkt_buf[PKT_LEN];
+
+    struct fifo_head bufq;
+};
+
+/*
+ * reset the gdrom system to its default state.
+ * This is effectively a hard-reset.
+ */
+void gdrom_init(void);
 
 #endif

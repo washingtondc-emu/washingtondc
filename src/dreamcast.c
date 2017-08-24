@@ -37,6 +37,7 @@
 #include "MemoryMap.h"
 #include "gfx/gfx_thread.h"
 #include "hw/aica/aica_rtc.h"
+#include "hw/gdrom/gdrom.h"
 #include "hw/maple/maple.h"
 #include "hw/maple/maple_device.h"
 #include "hw/maple/maple_controller.h"
@@ -154,6 +155,7 @@ void dreamcast_init(bool cmd_session) {
 
     sh4_init(&cpu);
     spg_init();
+    gdrom_init();
 
     /* set the PC to the booststrap code within IP.BIN */
     if (boot_mode == (int)DC_BOOT_DIRECT)

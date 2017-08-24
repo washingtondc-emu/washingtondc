@@ -170,11 +170,6 @@ enum sense_key {
     SENSE_KEY_CMD_ABORT = 11
 };
 
-enum additional_sense {
-    ADDITIONAL_SENSE_NO_ERROR = 0,
-    ADDITIONAL_SENSE_NO_DISC = 0x3a
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 // GD-ROM drive state
@@ -190,58 +185,7 @@ enum additional_sense {
 #define GDROM_GDST_DEFAULT   0x00000000
 #define GDROM_GDLEND_DEFAULT 0x00000000 // undefined
 
-static struct gdrom_status stat_reg;
-static struct gdrom_error error_reg;
-static struct gdrom_features feat_reg;       // features register
-static struct gdrom_sector_count sect_cnt_reg;   // sector count register
-static struct gdrom_int_reason  int_reason_reg; // interrupt reason register
-static struct gdrom_dev_ctrl dev_ctrl_reg;   // device control register
-static unsigned data_byte_count;// byte-count low/high registers
-
-// GD-ROM DMA memory protecion
-static uint32_t gdapro_reg = GDROM_GDAPRO_DEFAULT;
-
-// ???
-static uint32_t g1gdrc_reg = GDROM_G1GDRC_DEFAULT;
-
-// GD-ROM DMA start address
-static uint32_t dma_start_addr_reg = GDROM_GDSTAR_DEFAULT;
-
-// GD-ROM DMA transfer length (in bytes)
-static uint32_t dma_len_reg = GDROM_GDLEN_DEFAULT;
-
-// GD-ROM DMA transfer direction
-static uint32_t dma_dir_reg = GDROM_GDDIR_DEFAULT;
-
-// GD-ROM DMA enable
-static uint32_t dma_en_reg = GDROM_GDEN_DEFAULT;
-
-// GD-ROM DMA start
-static uint32_t dma_start_reg = GDROM_GDST_DEFAULT;
-
-// length of DMA result
-static uint32_t gdlend_reg = GDROM_GDLEND_DEFAULT;
-
-enum additional_sense additional_sense;
-
-static uint32_t trans_mode_vals[TRANS_MODE_COUNT];
-
-enum gdrom_state {
-    GDROM_STATE_NORM,
-    GDROM_STATE_INPUT_PKT,
-    GDROM_STATE_SET_MODE // waiting for PIO input for the SET_MODE packet
-};
-
-static enum gdrom_state state;
-
-/*
- * number of bytes we're waiting for.  This only holds meaning when
- * state == GDROM_STATE_SET_MODE.
- */
-int set_mode_bytes_remaining;
-
-#define PKT_LEN 12
-static uint8_t pkt_buf[PKT_LEN];
+static struct gdrom_ctxt gdrom;
 
 // Empty out the bufq and free resources.
 static void bufq_clear(void);
@@ -286,8 +230,6 @@ struct gdrom_bufq_node {
     uint8_t dat[GDROM_BUFQ_LEN];
 };
 
-static struct fifo_head bufq = FIFO_HEAD_INITIALIZER(bufq);
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 // GD-ROM drive function implementation
@@ -295,11 +237,11 @@ static struct fifo_head bufq = FIFO_HEAD_INITIALIZER(bufq);
 ////////////////////////////////////////////////////////////////////////////////
 
 static unsigned gdrom_dma_prot_top(void) {
-    return (((gdapro_reg & 0x7f00) >> 8) << 20) | 0x08000000;
+    return (((gdrom.gdapro_reg & 0x7f00) >> 8) << 20) | 0x08000000;
 }
 
 static unsigned gdrom_dma_prot_bot(void) {
-    return ((gdapro_reg & 0x7f) << 20) | 0x080fffff;
+    return ((gdrom.gdapro_reg & 0x7f) << 20) | 0x080fffff;
 }
 
 unsigned n_bytes_received;
@@ -446,6 +388,23 @@ static void gdrom_input_read_toc_packet(void);
 static void gdrom_input_read_packet(void);
 
 static void gdrom_input_packet_71(void);
+
+void gdrom_init(void) {
+    memset(&gdrom, 0, sizeof(gdrom));
+
+    gdrom.gdapro_reg = GDROM_GDAPRO_DEFAULT;
+    gdrom.g1gdrc_reg = GDROM_G1GDRC_DEFAULT;
+    gdrom.dma_start_addr_reg = GDROM_GDSTAR_DEFAULT;
+    gdrom.dma_len_reg = GDROM_GDLEN_DEFAULT;
+    gdrom.dma_dir_reg = GDROM_GDDIR_DEFAULT;
+    gdrom.dma_en_reg = GDROM_GDEN_DEFAULT;
+    gdrom.dma_start_reg = GDROM_GDST_DEFAULT;
+    gdrom.gdlend_reg = GDROM_GDLEND_DEFAULT;
+
+    gdrom.additional_sense = ADDITIONAL_SENSE_NO_ERROR;
+
+    fifo_init(&gdrom.bufq);
+}
 
 int gdrom_reg_read(void *buf, size_t addr, size_t len) {
     struct gdrom_mem_mapped_reg *curs = gdrom_reg_info;
@@ -594,7 +553,7 @@ gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     // val |= 1 << 6; // DRDY
     // val |= 1 << 3; // DRQ
 
-    reg32_t stat_bin = gdrom_get_status_reg(&stat_reg);
+    reg32_t stat_bin = gdrom_get_status_reg(&gdrom.stat_reg);
     GDROM_TRACE("read 0x%02x from alternate status register\n",
                 (unsigned)stat_bin);
     memcpy(buf, &stat_bin, len > 4 ? 4 : len);
@@ -612,7 +571,7 @@ gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     holly_clear_ext_int(HOLLY_EXT_INT_GDROM);
 
-    reg32_t stat_bin = gdrom_get_status_reg(&stat_reg);
+    reg32_t stat_bin = gdrom_get_status_reg(&gdrom.stat_reg);
     GDROM_TRACE("read 0x%02x from status register\n", (unsigned)stat_bin);
 
     memcpy(buf, &stat_bin, len > 4 ? 4 : len);
@@ -623,7 +582,7 @@ gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_error_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                              void *buf, addr32_t addr, unsigned len) {
-    reg32_t tmp = gdrom_get_error_reg(&error_reg);
+    reg32_t tmp = gdrom_get_error_reg(&gdrom.error_reg);
     GDROM_TRACE("read 0x%02x from error register\n", (unsigned)tmp);
 
     memcpy(buf, &tmp, len > 4 ? 4 : len);
@@ -660,9 +619,9 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    int_reason_reg.cod = true; // is this correct ?
+    gdrom.int_reason_reg.cod = true; // is this correct ?
 
-    if (!dev_ctrl_reg.nien)
+    if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     return MEM_ACCESS_SUCCESS;
@@ -683,12 +642,12 @@ gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
             *ptr++ = 0;
     }
 
-    if (fifo_empty(&bufq)) {
+    if (fifo_empty(&gdrom.bufq)) {
         // done transmitting data from gdrom to host - notify host
-        stat_reg.drq = false;
-        stat_reg.bsy = false;
-        stat_reg.drdy = true;
-        if (!dev_ctrl_reg.nien)
+        gdrom.stat_reg.drq = false;
+        gdrom.stat_reg.bsy = false;
+        gdrom.stat_reg.drdy = true;
+        if (!gdrom.dev_ctrl_reg.nien)
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
     }
 
@@ -706,25 +665,25 @@ gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
     GDROM_TRACE("write 0x%04x to data register (%u bytes)\n",
                 (unsigned)dat, (unsigned)len);
 
-    if (state == GDROM_STATE_INPUT_PKT) {
-        pkt_buf[n_bytes_received] = dat & 0xff;
-        pkt_buf[n_bytes_received + 1] = (dat >> 8) & 0xff;
+    if (gdrom.state == GDROM_STATE_INPUT_PKT) {
+        gdrom.pkt_buf[n_bytes_received] = dat & 0xff;
+        gdrom.pkt_buf[n_bytes_received + 1] = (dat >> 8) & 0xff;
         n_bytes_received += 2;
 
         if (n_bytes_received >= 12) {
             n_bytes_received = 0;
             gdrom_input_packet();
         }
-    } else if (state == GDROM_STATE_SET_MODE) {
-        set_mode_bytes_remaining -= len;
+    } else if (gdrom.state == GDROM_STATE_SET_MODE) {
+        gdrom.set_mode_bytes_remaining -= len;
         GDROM_TRACE("received data for SET_MODE, %u bytes remaining\n",
-                    set_mode_bytes_remaining);
+                    gdrom.set_mode_bytes_remaining);
 
-        if (set_mode_bytes_remaining <= 0) {
-            stat_reg.drq = false;
-            state = GDROM_STATE_NORM;
+        if (gdrom.set_mode_bytes_remaining <= 0) {
+            gdrom.stat_reg.drq = false;
+            gdrom.state = GDROM_STATE_NORM;
 
-            if (!dev_ctrl_reg.nien)
+            if (!gdrom.dev_ctrl_reg.nien)
                 holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
         }
     }
@@ -742,7 +701,7 @@ gdrom_features_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     GDROM_TRACE("write 0x%08x to the features register\n", (unsigned)tmp);
 
-    gdrom_set_features_reg(&feat_reg, tmp);
+    gdrom_set_features_reg(&gdrom.feat_reg, tmp);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -752,7 +711,7 @@ static void gdrom_cmd_set_features(void) {
 
     GDROM_TRACE("SET_FEATURES command received\n");
 
-    if (feat_reg.set_feat_enable) {
+    if (gdrom.feat_reg.set_feat_enable) {
         /* set = (bool)(feat_reg >> 7); */
     } else {
         GDROM_TRACE("software executed \"Set Features\" command without "
@@ -760,31 +719,36 @@ static void gdrom_cmd_set_features(void) {
         return;
     }
 
-    switch (sect_cnt_reg.trans_mode) {
+    switch (gdrom.sect_cnt_reg.trans_mode) {
     case TRANS_MODE_PIO_DFLT:
-        trans_mode_vals[TRANS_MODE_PIO_DFLT] = sect_cnt_reg.mode_val;
+        gdrom.trans_mode_vals[TRANS_MODE_PIO_DFLT] =
+            gdrom.sect_cnt_reg.mode_val;
         GDROM_TRACE("default PIO transfer mode set to 0x%02x\n",
-                    (unsigned)trans_mode_vals[TRANS_MODE_PIO_DFLT]);
+                    (unsigned)gdrom.trans_mode_vals[TRANS_MODE_PIO_DFLT]);
         break;
     case TRANS_MODE_PIO_FLOW_CTRL:
-        trans_mode_vals[TRANS_MODE_PIO_FLOW_CTRL] = sect_cnt_reg.mode_val;
+        gdrom.trans_mode_vals[TRANS_MODE_PIO_FLOW_CTRL] =
+            gdrom.sect_cnt_reg.mode_val;
         GDROM_TRACE("flow-control PIO transfer mode set to 0x%02x\n",
-                    (unsigned)trans_mode_vals[TRANS_MODE_PIO_FLOW_CTRL]);
+                    (unsigned)gdrom.trans_mode_vals[TRANS_MODE_PIO_FLOW_CTRL]);
         break;
     case TRANS_MODE_SINGLE_WORD_DMA:
-        trans_mode_vals[TRANS_MODE_SINGLE_WORD_DMA] = sect_cnt_reg.mode_val;
+        gdrom.trans_mode_vals[TRANS_MODE_SINGLE_WORD_DMA] =
+            gdrom.sect_cnt_reg.mode_val;
         GDROM_TRACE("single-word DMA transfer mode set to 0x%02x\n",
-                    (unsigned)trans_mode_vals[TRANS_MODE_SINGLE_WORD_DMA]);
+                    (unsigned)gdrom.trans_mode_vals[TRANS_MODE_SINGLE_WORD_DMA]);
         break;
     case TRANS_MODE_MULTI_WORD_DMA:
-        trans_mode_vals[TRANS_MODE_MULTI_WORD_DMA] = sect_cnt_reg.mode_val;
+        gdrom.trans_mode_vals[TRANS_MODE_MULTI_WORD_DMA] =
+            gdrom.sect_cnt_reg.mode_val;
         GDROM_TRACE("multi-word DMA transfer mode set to 0x%02x\n",
-                    (unsigned)trans_mode_vals[TRANS_MODE_MULTI_WORD_DMA]);
+                    (unsigned)gdrom.trans_mode_vals[TRANS_MODE_MULTI_WORD_DMA]);
         break;
     case TRANS_MODE_PSEUDO_DMA:
-        trans_mode_vals[TRANS_MODE_PSEUDO_DMA] = sect_cnt_reg.mode_val;
+        gdrom.trans_mode_vals[TRANS_MODE_PSEUDO_DMA] =
+            gdrom.sect_cnt_reg.mode_val;
         GDROM_TRACE("pseudo-DMA transfer mode set to 0x%02x\n",
-                    (unsigned)trans_mode_vals[TRANS_MODE_PSEUDO_DMA]);
+                    (unsigned)gdrom.trans_mode_vals[TRANS_MODE_PSEUDO_DMA]);
         break;
     default:
         /*
@@ -802,19 +766,19 @@ static void gdrom_cmd_set_features(void) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    stat_reg.check = false;
+    gdrom.stat_reg.check = false;
     gdrom_clear_error();
 }
 
 static void gdrom_cmd_identify(void) {
     GDROM_TRACE("IDENTIFY command received\n");
 
-    state = GDROM_STATE_NORM;
+    gdrom.state = GDROM_STATE_NORM;
 
-    stat_reg.bsy = false;
-    stat_reg.drq = true;
+    gdrom.stat_reg.bsy = false;
+    gdrom.stat_reg.drq = true;
 
-    if (!dev_ctrl_reg.nien)
+    if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     bufq_clear();
@@ -829,11 +793,11 @@ static void gdrom_cmd_identify(void) {
     node->len = GDROM_IDENT_RESP_LEN;
     memcpy(node->dat, gdrom_ident_resp, sizeof(gdrom_ident_resp));
 
-    data_byte_count = GDROM_IDENT_RESP_LEN;
+    gdrom.data_byte_count = GDROM_IDENT_RESP_LEN;
 
-    fifo_push(&bufq, &node->fifo_node);
+    fifo_push(&gdrom.bufq, &node->fifo_node);
 
-    stat_reg.check = false;
+    gdrom.stat_reg.check = false;
     gdrom_clear_error();
 }
 
@@ -842,14 +806,14 @@ static void gdrom_cmd_begin_packet(void) {
 
     // clear errors
     // TODO: I'm not sure if this should be done for all commands, or just packet commands
-    stat_reg.check = false;
+    gdrom.stat_reg.check = false;
     /* memset(&error_reg, 0, sizeof(error_reg)); */
 
-    int_reason_reg.io = false;
-    int_reason_reg.cod = true;
-    stat_reg.drq = true;
+    gdrom.int_reason_reg.io = false;
+    gdrom.int_reason_reg.cod = true;
+    gdrom.stat_reg.drq = true;
     n_bytes_received = 0;
-    state = GDROM_STATE_INPUT_PKT;
+    gdrom.state = GDROM_STATE_INPUT_PKT;
 }
 
 /*
@@ -858,20 +822,20 @@ static void gdrom_cmd_begin_packet(void) {
  * GDROM_STATE_INPUT_PKT
  */
 static void gdrom_input_packet(void) {
-    stat_reg.drq = false;
-    stat_reg.bsy = false;
+    gdrom.stat_reg.drq = false;
+    gdrom.stat_reg.bsy = false;
 
-    if (!dev_ctrl_reg.nien)
+    if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
 
-    switch (pkt_buf[0]) {
+    switch (gdrom.pkt_buf[0]) {
     case GDROM_PKT_TEST_UNIT:
         gdrom_input_test_unit_packet();
         break;
     case GDROM_PKT_REQ_STAT:
         GDROM_TRACE("REQ_STAT command received!\n");
-        state = GDROM_STATE_NORM; // TODO: implement
+        gdrom.state = GDROM_STATE_NORM; // TODO: implement
         break;
     case GDROM_PKT_REQ_MODE:
         gdrom_input_req_mode_packet();
@@ -896,7 +860,7 @@ static void gdrom_input_packet(void) {
         break;
     default:
         error_set_feature("unknown GD-ROM packet command");
-        error_set_gdrom_command((unsigned)pkt_buf[0]);
+        error_set_gdrom_command((unsigned)gdrom.pkt_buf[0]);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
         /* state = GDROM_STATE_NORM; */
     }
@@ -906,44 +870,44 @@ static void gdrom_input_test_unit_packet(void) {
     GDROM_TRACE("TEST_UNIT packet received\n");
 
     // is this correct?
-    int_reason_reg.cod = true;
-    int_reason_reg.io = true;
-    stat_reg.drdy = true;
-    stat_reg.bsy = false;
-    stat_reg.drq = false;
+    gdrom.int_reason_reg.cod = true;
+    gdrom.int_reason_reg.io = true;
+    gdrom.stat_reg.drdy = true;
+    gdrom.stat_reg.bsy = false;
+    gdrom.stat_reg.drq = false;
 
     // raise interrupt if it is enabled - this is already done from
     // gdrom_input_packet
     /* if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK)) */
     /*     holly_raise_ext_int(HOLLY_EXT_INT_GDROM); */
 
-    state = GDROM_STATE_NORM;
+    gdrom.state = GDROM_STATE_NORM;
 
     gdrom_clear_error();
     if (mount_check()) {
-        stat_reg.check = false;
+        gdrom.stat_reg.check = false;
     } else {
-        stat_reg.check = true;
-        error_reg.sense_key = SENSE_KEY_NOT_READY;
-        additional_sense = ADDITIONAL_SENSE_NO_DISC;
+        gdrom.stat_reg.check = true;
+        gdrom.error_reg.sense_key = SENSE_KEY_NOT_READY;
+        gdrom.additional_sense = ADDITIONAL_SENSE_NO_DISC;
     }
 }
 
 static void gdrom_input_req_error_packet(void) {
     GDROM_TRACE("REQ_ERROR packet received\n");
 
-    uint8_t len = pkt_buf[4];
+    uint8_t len = gdrom.pkt_buf[4];
 
     uint8_t dat_out[10] = {
         0xf0,
         0,
-        error_reg.sense_key & 0xf,
+        gdrom.error_reg.sense_key & 0xf,
         0,
         0,
         0,
         0,
         0,
-        (uint8_t)(additional_sense),
+        (uint8_t)(gdrom.additional_sense),
         0
     };
 
@@ -958,17 +922,17 @@ static void gdrom_input_req_error_packet(void) {
         node->idx = 0;
         node->len = len;
         memcpy(&node->dat, dat_out, len);
-        fifo_push(&bufq, &node->fifo_node);
-        data_byte_count = node->len;
+        fifo_push(&gdrom.bufq, &node->fifo_node);
+        gdrom.data_byte_count = node->len;
     }
 
-    int_reason_reg.io = true;
-    int_reason_reg.cod = false;
-    stat_reg.drq = true;
-    if (!dev_ctrl_reg.nien)
+    gdrom.int_reason_reg.io = true;
+    gdrom.int_reason_reg.cod = false;
+    gdrom.stat_reg.drq = true;
+    if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
-    state = GDROM_STATE_NORM;
+    gdrom.state = GDROM_STATE_NORM;
 }
 
 /*
@@ -981,20 +945,20 @@ static void gdrom_input_start_disk_packet(void) {
     GDROM_TRACE("START_DISK(=0x70) packet received\n");
 
     // is this correct?
-    int_reason_reg.cod = true;
-    int_reason_reg.io = true;
-    stat_reg.drdy = true;
-    stat_reg.bsy = false;
-    stat_reg.drq = false;
+    gdrom.int_reason_reg.cod = true;
+    gdrom.int_reason_reg.io = true;
+    gdrom.stat_reg.drdy = true;
+    gdrom.stat_reg.bsy = false;
+    gdrom.stat_reg.drq = false;
 
     // raise interrupt if it is enabled - this is already done from
     // gdrom_input_packet
     /* if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK)) */
     /*     holly_raise_ext_int(HOLLY_EXT_INT_GDROM); */
 
-    state = GDROM_STATE_NORM;
+    gdrom.state = GDROM_STATE_NORM;
 
-    stat_reg.check = false;
+    gdrom.stat_reg.check = false;
     gdrom_clear_error();
 }
 
@@ -1031,48 +995,48 @@ static void gdrom_input_packet_71(void) {
      */
     memcpy(node->dat, pkt71_resp, GDROM_PKT_71_RESP_LEN);
 
-    data_byte_count = GDROM_PKT_71_RESP_LEN;
+    gdrom.data_byte_count = GDROM_PKT_71_RESP_LEN;
 
-    fifo_push(&bufq, &node->fifo_node);
+    fifo_push(&gdrom.bufq, &node->fifo_node);
 
-    int_reason_reg.io = true;
-    int_reason_reg.cod = false;
-    stat_reg.drq = true;
-    if (!dev_ctrl_reg.nien)
+    gdrom.int_reason_reg.io = true;
+    gdrom.int_reason_reg.cod = false;
+    gdrom.stat_reg.drq = true;
+    if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
-    state = GDROM_STATE_NORM;
+    gdrom.state = GDROM_STATE_NORM;
 
-    stat_reg.check = false;
+    gdrom.stat_reg.check = false;
     gdrom_clear_error();
 }
 
 static void gdrom_input_set_mode_packet(void) {
     // TODO: actually implement this for real instead of ignoring the data
 
-    unsigned starting_addr = pkt_buf[2];
-    unsigned len = pkt_buf[4];
+    unsigned starting_addr = gdrom.pkt_buf[2];
+    unsigned len = gdrom.pkt_buf[4];
 
     GDROM_TRACE("SET_MODE command received\n");
     GDROM_TRACE("read %u bytes starting at %u\n", len, starting_addr);
 
     // read features, byte count here
-    set_mode_bytes_remaining = data_byte_count;
-    GDROM_TRACE("data_byte_count is %u\n", (unsigned)data_byte_count);
+    gdrom.set_mode_bytes_remaining = gdrom.data_byte_count;
+    GDROM_TRACE("data_byte_count is %u\n", (unsigned)gdrom.data_byte_count);
 
-    if (feat_reg.dma_enable) {
+    if (gdrom.feat_reg.dma_enable) {
         error_set_feature("GD-ROM SET_MODE command DMA support");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    int_reason_reg.io = true;
-    int_reason_reg.cod = false;
-    stat_reg.drq = true;
+    gdrom.int_reason_reg.io = true;
+    gdrom.int_reason_reg.cod = false;
+    gdrom.stat_reg.drq = true;
 }
 
 static void gdrom_input_req_mode_packet(void) {
-    unsigned starting_addr = pkt_buf[2];
-    unsigned len = pkt_buf[4];
+    unsigned starting_addr = gdrom.pkt_buf[2];
+    unsigned len = gdrom.pkt_buf[4];
 
     GDROM_TRACE("REQ_MODE command received\n");
     GDROM_TRACE("read %u bytes starting at %u\n", len, starting_addr);
@@ -1096,25 +1060,25 @@ static void gdrom_input_req_mode_packet(void) {
                node->len * sizeof(uint8_t));
 
         bufq_clear();
-        fifo_push(&bufq, &node->fifo_node);
-        data_byte_count = node->len;
+        fifo_push(&gdrom.bufq, &node->fifo_node);
+        gdrom.data_byte_count = node->len;
     }
 
-    int_reason_reg.io = true;
-    int_reason_reg.cod = false;
-    stat_reg.drq = true;
-    if (!dev_ctrl_reg.nien)
+    gdrom.int_reason_reg.io = true;
+    gdrom.int_reason_reg.cod = false;
+    gdrom.stat_reg.drq = true;
+    if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
-    state = GDROM_STATE_NORM;
+    gdrom.state = GDROM_STATE_NORM;
 
-    stat_reg.check = false;
+    gdrom.stat_reg.check = false;
     gdrom_clear_error();
 }
 
 static void gdrom_input_read_toc_packet(void) {
-    unsigned session = pkt_buf[1] & 1;
-    unsigned len = (((unsigned)pkt_buf[3]) << 8) | pkt_buf[4];
+    unsigned session = gdrom.pkt_buf[1] & 1;
+    unsigned len = (((unsigned)gdrom.pkt_buf[3]) << 8) | gdrom.pkt_buf[4];
 
     GDROM_TRACE("GET_TOC command received\n");
     GDROM_TRACE("request to read %u bytes from the Table of Contents for "
@@ -1138,19 +1102,19 @@ static void gdrom_input_read_toc_packet(void) {
     node->idx = 0;
     node->len = len;
     memcpy(node->dat, ptr, len);
-    data_byte_count = len;
+    gdrom.data_byte_count = len;
 
-    fifo_push(&bufq, &node->fifo_node);
+    fifo_push(&gdrom.bufq, &node->fifo_node);
 
-    int_reason_reg.io = true;
-    int_reason_reg.cod = false;
-    stat_reg.drq = true;
-    if (!dev_ctrl_reg.nien)
+    gdrom.int_reason_reg.io = true;
+    gdrom.int_reason_reg.cod = false;
+    gdrom.stat_reg.drq = true;
+    if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
-    state = GDROM_STATE_NORM;
+    gdrom.state = GDROM_STATE_NORM;
 
-    stat_reg.check = false;
+    gdrom.stat_reg.check = false;
     gdrom_clear_error();
 }
 
@@ -1158,11 +1122,11 @@ static void gdrom_input_read_packet(void) {
     // TODO implement
     GDROM_TRACE("READ_PACKET command received\n");
 
-    unsigned start_addr = (pkt_buf[2] << 16) | (pkt_buf[3] << 8) | pkt_buf[4];
-    unsigned trans_len = (pkt_buf[8] << 16) | (pkt_buf[9] << 8) | pkt_buf[10];
-    unsigned data_sel = pkt_buf[1] >> 4;
-    unsigned data_tp_expect = (pkt_buf[1] >> 1) & 0x7;
-    unsigned param_tp = pkt_buf[1] & 1;
+    unsigned start_addr = (gdrom.pkt_buf[2] << 16) | (gdrom.pkt_buf[3] << 8) | gdrom.pkt_buf[4];
+    unsigned trans_len = (gdrom.pkt_buf[8] << 16) | (gdrom.pkt_buf[9] << 8) | gdrom.pkt_buf[10];
+    unsigned data_sel = gdrom.pkt_buf[1] >> 4;
+    unsigned data_tp_expect = (gdrom.pkt_buf[1] >> 1) & 0x7;
+    unsigned param_tp = gdrom.pkt_buf[1] & 1;
 
     if (data_sel != 0x2) {
         error_set_feature("CD-ROM header/subheader access");
@@ -1183,7 +1147,7 @@ static void gdrom_input_read_packet(void) {
     GDROM_TRACE("request to read %u sectors from FAD %u\n",
                 trans_len, start_addr);
 
-    if (feat_reg.dma_enable) {
+    if (gdrom.feat_reg.dma_enable) {
         GDROM_TRACE("DMA READ ACCESS\n");
         /* error_set_feature("GD-ROM DMA access"); */
         /* RAISE_ERROR(ERROR_UNIMPLEMENTED); */
@@ -1191,7 +1155,7 @@ static void gdrom_input_read_packet(void) {
 
     bufq_clear();
 
-    data_byte_count = CDROM_FRAME_DATA_SIZE * trans_len;
+    gdrom.data_byte_count = CDROM_FRAME_DATA_SIZE * trans_len;
 
     while (trans_len--) {
         struct gdrom_bufq_node *node =
@@ -1203,31 +1167,31 @@ static void gdrom_input_read_packet(void) {
         if (mount_read_sectors(node->dat, start_addr, 1) < 0) {
             free(node);
 
-            error_reg.sense_key = SENSE_KEY_ILLEGAL_REQ;
-            stat_reg.check = true;
-            state = GDROM_STATE_NORM;
+            gdrom.error_reg.sense_key = SENSE_KEY_ILLEGAL_REQ;
+            gdrom.stat_reg.check = true;
+            gdrom.state = GDROM_STATE_NORM;
             return;
         }
 
         node->idx = 0;
         node->len = CDROM_FRAME_DATA_SIZE;
 
-        fifo_push(&bufq, &node->fifo_node);
+        fifo_push(&gdrom.bufq, &node->fifo_node);
     }
 
-    if (feat_reg.dma_enable) {
+    if (gdrom.feat_reg.dma_enable) {
         return; // wait for them to write 1 to GDST before doing something
     } else {
-        int_reason_reg.io = true;
-        int_reason_reg.cod = false;
-        stat_reg.drq = true;
+        gdrom.int_reason_reg.io = true;
+        gdrom.int_reason_reg.cod = false;
+        gdrom.stat_reg.drq = true;
     }
 
-    if (!dev_ctrl_reg.nien)
+    if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
-    state = GDROM_STATE_NORM;
-    stat_reg.check = false;
+    gdrom.state = GDROM_STATE_NORM;
+    gdrom.stat_reg.check = false;
     gdrom_clear_error();
 }
 
@@ -1241,7 +1205,7 @@ gdrom_sect_cnt_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     GDROM_TRACE("Write %08x to sec_cnt_reg\n", (unsigned)tmp);
 
-    gdrom_set_sect_cnt_reg(&sect_cnt_reg, tmp);
+    gdrom_set_sect_cnt_reg(&gdrom.sect_cnt_reg, tmp);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -1254,7 +1218,7 @@ gdrom_dev_ctrl_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     memcpy(&tmp, buf, n_bytes);
 
-    gdrom_set_dev_ctrl_reg(&dev_ctrl_reg, tmp);
+    gdrom_set_dev_ctrl_reg(&gdrom.dev_ctrl_reg, tmp);
 
     GDROM_TRACE("Write %08x to dev_ctrl_reg\n", (unsigned)tmp);
 
@@ -1264,7 +1228,7 @@ gdrom_dev_ctrl_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_int_reason_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len) {
-    reg32_t tmp = gdrom_get_int_reason_reg(&int_reason_reg);
+    reg32_t tmp = gdrom_get_int_reason_reg(&gdrom.int_reason_reg);
     size_t n_bytes = len < sizeof(tmp) ? len : sizeof(tmp);
 
     GDROM_TRACE("int_reason is 0x%08x\n", (unsigned)tmp);
@@ -1296,7 +1260,7 @@ gdrom_sector_num_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_byte_count_low_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                       void *buf, addr32_t addr, unsigned len) {
-    uint32_t low = data_byte_count & 0xff;
+    uint32_t low = gdrom.data_byte_count & 0xff;
     memcpy(buf, &low, len < sizeof(low) ? len : sizeof(low));
 
     GDROM_TRACE("read 0x%02x from byte_count_low\n", (unsigned)low);
@@ -1310,7 +1274,7 @@ gdrom_byte_count_low_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_in
     uint32_t tmp = 0;
     memcpy(&tmp, buf, len < sizeof(tmp) ? len : sizeof(tmp));
 
-    data_byte_count = (data_byte_count & ~0xff) | (tmp & 0xff);
+    gdrom.data_byte_count = (gdrom.data_byte_count & ~0xff) | (tmp & 0xff);
     GDROM_TRACE("write 0x%02x to byte_count_low\n", (unsigned)(tmp & 0xff));
 
     return 0;
@@ -1319,7 +1283,7 @@ gdrom_byte_count_low_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_in
 static int
 gdrom_byte_count_high_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                        void *buf, addr32_t addr, unsigned len) {
-    uint32_t high = (data_byte_count & 0xff00) >> 8;
+    uint32_t high = (gdrom.data_byte_count & 0xff00) >> 8;
     memcpy(buf, &high, len < sizeof(high) ? len : sizeof(high));
 
     GDROM_TRACE("read 0x%02x from byte_count_high\n", (unsigned)high);
@@ -1333,7 +1297,8 @@ gdrom_byte_count_high_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_i
     uint32_t tmp = 0;
     memcpy(&tmp, buf, len < sizeof(tmp) ? len : sizeof(tmp));
 
-    data_byte_count = (data_byte_count & ~0xff00) | ((tmp & 0xff) << 8);
+    gdrom.data_byte_count =
+        (gdrom.data_byte_count & ~0xff00) | ((tmp & 0xff) << 8);
     GDROM_TRACE("write 0x%02x to byte_count_high\n",
                 (unsigned)((tmp & 0xff) << 8));
     return 0;
@@ -1342,8 +1307,8 @@ gdrom_byte_count_high_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_i
 int
 gdrom_gdapro_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdapro_reg, len);
-    GDROM_TRACE("read %08x from GDAPRO\n", gdapro_reg);
+    memcpy(buf, &gdrom.gdapro_reg, len);
+    GDROM_TRACE("read %08x from GDAPRO\n", gdrom.gdapro_reg);
 
     return 0;
 }
@@ -1358,11 +1323,11 @@ gdrom_gdapro_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
     if ((val & 0xffff0000) != 0x88430000)
         return 0;
 
-    gdapro_reg = val;
+    gdrom.gdapro_reg = val;
 
     GDROM_TRACE("GDAPRO (0x%08x) - allowing writes from 0x%08x through "
                 "0x%08x\n",
-                gdapro_reg, gdrom_dma_prot_top(), gdrom_dma_prot_bot());
+                gdrom.gdapro_reg, gdrom_dma_prot_top(), gdrom_dma_prot_bot());
 
     return 0;
 }
@@ -1370,111 +1335,111 @@ gdrom_gdapro_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
 int
 gdrom_g1gdrc_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &g1gdrc_reg, len);
-    GDROM_TRACE("read %08x from G1GDRC\n", g1gdrc_reg);
+    memcpy(buf, &gdrom.g1gdrc_reg, len);
+    GDROM_TRACE("read %08x from G1GDRC\n", gdrom.g1gdrc_reg);
     return 0;
 }
 
 int
 gdrom_g1gdrc_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&g1gdrc_reg, buf, sizeof(g1gdrc_reg));
-    GDROM_TRACE("write %08x to G1GDRC\n", g1gdrc_reg);
+    memcpy(&gdrom.g1gdrc_reg, buf, sizeof(gdrom.g1gdrc_reg));
+    GDROM_TRACE("write %08x to G1GDRC\n", gdrom.g1gdrc_reg);
     return 0;
 }
 
 int
 gdrom_gdstar_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &dma_start_addr_reg, len);
-    GDROM_TRACE("read %08x from GDSTAR\n", dma_start_addr_reg);
+    memcpy(buf, &gdrom.dma_start_addr_reg, len);
+    GDROM_TRACE("read %08x from GDSTAR\n", gdrom.dma_start_addr_reg);
     return 0;
 }
 
 int
 gdrom_gdstar_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&dma_start_addr_reg, buf, sizeof(dma_start_addr_reg));
-    dma_start_addr_reg &= ~0xe0000000;
-    GDROM_TRACE("write %08x to GDSTAR\n", dma_start_addr_reg);
+    memcpy(&gdrom.dma_start_addr_reg, buf, sizeof(gdrom.dma_start_addr_reg));
+    gdrom.dma_start_addr_reg &= ~0xe0000000;
+    GDROM_TRACE("write %08x to GDSTAR\n", gdrom.dma_start_addr_reg);
     return 0;
 }
 
 int
 gdrom_gdlen_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                              void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &dma_len_reg, len);
-    GDROM_TRACE("read %08x from GDLEN\n", dma_len_reg);
+    memcpy(buf, &gdrom.dma_len_reg, len);
+    GDROM_TRACE("read %08x from GDLEN\n", gdrom.dma_len_reg);
     return 0;
 }
 
 int
 gdrom_gdlen_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
                               void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&dma_len_reg, buf, sizeof(dma_len_reg));
-    GDROM_TRACE("write %08x to GDLEN\n", dma_len_reg);
+    memcpy(&gdrom.dma_len_reg, buf, sizeof(gdrom.dma_len_reg));
+    GDROM_TRACE("write %08x to GDLEN\n", gdrom.dma_len_reg);
     return 0;
 }
 
 int
 gdrom_gddir_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                              void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &dma_dir_reg, len);
-    GDROM_TRACE("read %08x from GDDIR\n", dma_dir_reg);
+    memcpy(buf, &gdrom.dma_dir_reg, len);
+    GDROM_TRACE("read %08x from GDDIR\n", gdrom.dma_dir_reg);
     return 0;
 }
 
 int
 gdrom_gddir_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
                               void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&dma_dir_reg, buf, sizeof(dma_dir_reg));
-    GDROM_TRACE("write %08x to GDDIR\n", dma_dir_reg);
+    memcpy(&gdrom.dma_dir_reg, buf, sizeof(gdrom.dma_dir_reg));
+    GDROM_TRACE("write %08x to GDDIR\n", gdrom.dma_dir_reg);
     return 0;
 }
 
 int
 gdrom_gden_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &dma_en_reg, len);
-    GDROM_TRACE("read %08x from GDEN\n", dma_en_reg);
+    memcpy(buf, &gdrom.dma_en_reg, len);
+    GDROM_TRACE("read %08x from GDEN\n", gdrom.dma_en_reg);
     return 0;
 }
 
 int
 gdrom_gden_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&dma_en_reg, buf, sizeof(dma_en_reg));
-    GDROM_TRACE("write %08x to GDEN\n", dma_en_reg);
+    memcpy(&gdrom.dma_en_reg, buf, sizeof(gdrom.dma_en_reg));
+    GDROM_TRACE("write %08x to GDEN\n", gdrom.dma_en_reg);
     return 0;
 }
 
 int
 gdrom_gdst_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &dma_start_reg, len);
-    GDROM_TRACE("read %08x from GDST\n", dma_start_reg);
+    memcpy(buf, &gdrom.dma_start_reg, len);
+    GDROM_TRACE("read %08x from GDST\n", gdrom.dma_start_reg);
     return 0;
 }
 
 int
 gdrom_gdst_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&dma_start_reg, buf, sizeof(dma_start_reg));
-    GDROM_TRACE("write %08x to GDST\n", dma_start_reg);
+    memcpy(&gdrom.dma_start_reg, buf, sizeof(gdrom.dma_start_reg));
+    GDROM_TRACE("write %08x to GDST\n", gdrom.dma_start_reg);
 
-    if (dma_start_reg) {
-        int_reason_reg.io = true;
-        int_reason_reg.cod = true;
-        stat_reg.drdy = true;
-        stat_reg.drq = false;
+    if (gdrom.dma_start_reg) {
+        gdrom.int_reason_reg.io = true;
+        gdrom.int_reason_reg.cod = true;
+        gdrom.stat_reg.drdy = true;
+        gdrom.stat_reg.drq = false;
         gdrom_complete_dma();
     }
 
-    if (!dev_ctrl_reg.nien)
+    if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
-    state = GDROM_STATE_NORM;
-    stat_reg.check = false;
+    gdrom.state = GDROM_STATE_NORM;
+    gdrom.stat_reg.check = false;
     gdrom_clear_error();
 
     return 0;
@@ -1483,18 +1448,20 @@ gdrom_gdst_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
 int
 gdrom_gdlend_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdlend_reg, len);
-    GDROM_TRACE("read %08x from GDLEND\n", gdlend_reg);
+    memcpy(buf, &gdrom.gdlend_reg, len);
+    GDROM_TRACE("read %08x from GDLEND\n", gdrom.gdlend_reg);
     return 0;
 }
 
 static void bufq_clear(void) {
-    while (!fifo_empty(&bufq))
-        free(&FIFO_DEREF(fifo_pop(&bufq), struct gdrom_bufq_node, fifo_node));
+    while (!fifo_empty(&gdrom.bufq)) {
+        free(&FIFO_DEREF(fifo_pop(&gdrom.bufq),
+                         struct gdrom_bufq_node, fifo_node));
+    }
 }
 
 static int bufq_consume_byte(unsigned *byte) {
-    struct fifo_node *node = fifo_peek(&bufq);
+    struct fifo_node *node = fifo_peek(&gdrom.bufq);
 
     if (node) {
         struct gdrom_bufq_node *bufq_node =
@@ -1503,7 +1470,7 @@ static int bufq_consume_byte(unsigned *byte) {
         *byte = (unsigned)bufq_node->dat[bufq_node->idx++];
 
         if (bufq_node->idx >= bufq_node->len) {
-            fifo_pop(&bufq);
+            fifo_pop(&gdrom.bufq);
             free(bufq_node);
         }
 
@@ -1515,11 +1482,11 @@ static int bufq_consume_byte(unsigned *byte) {
 
 static void gdrom_complete_dma(void) {
     unsigned bytes_transmitted = 0;
-    unsigned bytes_to_transmit = dma_len_reg;
-    unsigned addr = dma_start_addr_reg;
+    unsigned bytes_to_transmit = gdrom.dma_len_reg;
+    unsigned addr = gdrom.dma_start_addr_reg;
 
     while (bytes_transmitted < bytes_to_transmit) {
-        struct fifo_node *fifo_node = fifo_pop(&bufq);
+        struct fifo_node *fifo_node = fifo_pop(&gdrom.bufq);
 
         if (!fifo_node)
             goto done;
@@ -1562,8 +1529,8 @@ static void gdrom_complete_dma(void) {
 
 done:
     // set GD_LEND, etc here
-    gdlend_reg = bytes_transmitted;
-    dma_start_reg = 0;
+    gdrom.gdlend_reg = bytes_transmitted;
+    gdrom.dma_start_reg = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1605,7 +1572,7 @@ static reg32_t gdrom_get_error_reg(struct gdrom_error const *error_in) {
 }
 
 static void gdrom_clear_error(void) {
-    memset(&error_reg, 0, sizeof(error_reg));
+    memset(&gdrom.error_reg, 0, sizeof(gdrom.error_reg));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
