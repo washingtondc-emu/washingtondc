@@ -38,6 +38,7 @@
 #include "cdrom.h"
 #include "dreamcast.h"
 #include "gdrom_response.h"
+#include "gdrom.h"
 
 #include "gdrom_reg.h"
 
@@ -48,6 +49,24 @@
     } while (0)
 
 static DEF_ERROR_INT_ATTR(gdrom_command);
+
+static reg32_t
+gdrom_get_status_reg(struct gdrom_status const *stat_in);
+static reg32_t
+gdrom_get_error_reg(struct gdrom_error const *error_in);
+static reg32_t
+gdrom_get_int_reason_reg(struct gdrom_int_reason *int_reason_in);
+
+static void
+gdrom_set_features_reg(struct gdrom_features *features_out, reg32_t feat_reg);
+static void
+gdrom_set_sect_cnt_reg(struct gdrom_sector_count *sect_cnt_out,
+                       reg32_t sect_cnt_reg);
+static void
+gdrom_set_dev_ctrl_reg(struct gdrom_dev_ctrl *dev_ctrl_out,
+                       reg32_t dev_ctrl_reg);
+
+static void gdrom_clear_error(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -77,100 +96,6 @@ static DEF_ERROR_INT_ATTR(gdrom_command);
 #define GDROM_PKT_READ       0x30
 #define GDROM_PKT_START_DISK 0x70
 #define GDROM_PKT_UNKNOWN_71 0x71
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Transfer Modes (for the sector count register in GDROM_CMD_SEAT_FEAT)
-//
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRANS_MODE_PIO_DFLT_MASK        0xfe
-#define TRANS_MODE_PIO_DFLT_VAL         0x00
-
-#define TRANS_MODE_PIO_FLOW_CTRL_MASK   0xf8
-#define TRANS_MODE_PIO_FLOW_CTRL_VAL    0x08
-
-#define TRANS_MODE_SINGLE_WORD_DMA_MASK 0xf8
-#define TRANS_MODE_SINGLE_WORD_DMA_VAL  0x10
-
-#define TRANS_MODE_MULTI_WORD_DMA_MASK  0xf8
-#define TRANS_MODE_MULTI_WORD_DMA_VAL   0x20
-
-#define TRANS_MODE_PSEUDO_DMA_MASK      0xf8
-#define TRANS_MODE_PSEUDO_DMA_VAL       0x18
-
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Status register flags
-//
-////////////////////////////////////////////////////////////////////////////////
-
-// the drive is processing a command
-#define STAT_BSY_SHIFT 7
-#define STAT_BSY_MASK (1 << STAT_BSY_SHIFT)
-
-// response to ATA command is possible
-#define STAT_DRDY_SHIFT 6
-#define STAT_DRDY_MASK (1 << STAT_DRDY_SHIFT)
-
-// drive fault
-#define STAT_DF_SHIFT 5
-#define STAT_DF_MASK (1 << STAT_DF_SHIFT)
-
-// seek processing is complete
-#define STAT_DSC_SHIFT 4
-#define STAT_DSC_MASK (1 << STAT_DSC_SHIFT)
-
-// data transfer possible
-#define STAT_DRQ_SHIFT 3
-#define STAT_DRQ_MASK (1 << STAT_DRQ_SHIFT)
-
-// correctable error flag
-#define STAT_CORR_SHIFT 2
-#define STAT_CORR_MASK (1 << STAT_CORR_SHIFT)
-
-// error flag
-#define STAT_CHECK_SHIFT 0
-#define STAT_CHECK_MASK (1 << STAT_CHECK_SHIFT)
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Interrupt Reason register flags
-//
-////////////////////////////////////////////////////////////////////////////////
-
-// ready to receive command
-#define INT_REASON_COD_SHIFT 0
-#define INT_REASON_COD_MASK (1 << INT_REASON_COD_SHIFT)
-
-/*
- * ready to receive data from software to drive if set
- * ready to send data from drive to software if not set
- */
-#define INT_REASON_IO_SHIFT 1
-#define INT_REASON_IO_MASK (1 << INT_REASON_IO_SHIFT)
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Device control register flags
-//
-////////////////////////////////////////////////////////////////////////////////
-
-#define DEV_CTRL_NIEN_SHIFT 1
-#define DEV_CTRL_NIEN_MASK (1 << DEV_CTRL_NIEN_SHIFT)
-
-#define DEV_CTRL_SRST_SHIFT 2
-#define DEV_CTRL_SRST_MASK (1 << DEV_CTRL_SRST_SHIFT)
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// feature register flags
-//
-////////////////////////////////////////////////////////////////////////////////
-
-#define FEAT_REG_DMA_SHIFT 0
-#define FEAT_REG_DMA_MASK (1 << FEAT_REG_DMA_SHIFT)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -265,11 +190,12 @@ enum additional_sense {
 #define GDROM_GDST_DEFAULT   0x00000000
 #define GDROM_GDLEND_DEFAULT 0x00000000 // undefined
 
-static uint32_t stat_reg;       // status register
-static uint32_t feat_reg;       // features register
-static uint32_t sect_cnt_reg;   // sector count register
-static uint32_t int_reason_reg; // interrupt reason register
-static uint32_t dev_ctrl_reg;   // device control register
+static struct gdrom_status stat_reg;
+static struct gdrom_error error_reg;
+static struct gdrom_features feat_reg;       // features register
+static struct gdrom_sector_count sect_cnt_reg;   // sector count register
+static struct gdrom_int_reason  int_reason_reg; // interrupt reason register
+static struct gdrom_dev_ctrl dev_ctrl_reg;   // device control register
 static unsigned data_byte_count;// byte-count low/high registers
 
 // GD-ROM DMA memory protecion
@@ -296,27 +222,8 @@ static uint32_t dma_start_reg = GDROM_GDST_DEFAULT;
 // length of DMA result
 static uint32_t gdlend_reg = GDROM_GDLEND_DEFAULT;
 
-struct error_reg {
-    uint32_t ili : 1;
-    uint32_t eomf : 1;
-    uint32_t abrt : 1;
-    uint32_t mcr : 1;
-    uint32_t sense_key : 4;
-} error_reg;
-
 enum additional_sense additional_sense;
 
-static_assert(sizeof(error_reg) == sizeof(uint32_t), "bad error_reg size");
-
-enum {
-    TRANS_MODE_PIO_DFLT,
-    TRANS_MODE_PIO_FLOW_CTRL,
-    TRANS_MODE_SINGLE_WORD_DMA,
-    TRANS_MODE_MULTI_WORD_DMA,
-    TRANS_MODE_PSEUDO_DMA,
-
-    TRANS_MODE_COUNT
-};
 static uint32_t trans_mode_vals[TRANS_MODE_COUNT];
 
 enum gdrom_state {
@@ -386,15 +293,6 @@ static struct fifo_head bufq = FIFO_HEAD_INITIALIZER(bufq);
 // GD-ROM drive function implementation
 //
 ////////////////////////////////////////////////////////////////////////////////
-
-/* get off the phone! */
-__attribute__((unused)) static bool bsy_signal() {
-    return (bool)(stat_reg & STAT_BSY_MASK);
-}
-
-__attribute__((unused)) static bool drq_signal() {
-    return (bool)(stat_reg & STAT_DRQ_MASK);
-}
 
 static unsigned gdrom_dma_prot_top(void) {
     return (((gdapro_reg & 0x7f00) >> 8) << 20) | 0x08000000;
@@ -491,7 +389,6 @@ gdrom_byte_count_high_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_in
 static int
 gdrom_byte_count_high_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                         void const *buf, addr32_t addr, unsigned len);
-
 
 static struct gdrom_mem_mapped_reg {
     char const *reg_name;
@@ -697,9 +594,10 @@ gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
     // val |= 1 << 6; // DRDY
     // val |= 1 << 3; // DRQ
 
+    reg32_t stat_bin = gdrom_get_status_reg(&stat_reg);
     GDROM_TRACE("read 0x%02x from alternate status register\n",
-                (unsigned)stat_reg);
-    memcpy(buf, &stat_reg, len > 4 ? 4 : len);
+                (unsigned)stat_bin);
+    memcpy(buf, &stat_bin, len > 4 ? 4 : len);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -714,9 +612,10 @@ gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     holly_clear_ext_int(HOLLY_EXT_INT_GDROM);
 
-    GDROM_TRACE("read 0x%02x from status register\n", (unsigned)stat_reg);
+    reg32_t stat_bin = gdrom_get_status_reg(&stat_reg);
+    GDROM_TRACE("read 0x%02x from status register\n", (unsigned)stat_bin);
 
-    memcpy(buf, &stat_reg, len > 4 ? 4 : len);
+    memcpy(buf, &stat_bin, len > 4 ? 4 : len);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -724,11 +623,10 @@ gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_error_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                              void *buf, addr32_t addr, unsigned len) {
-    uint32_t tmp;
-    memcpy(&tmp, &error_reg, sizeof(tmp));
+    reg32_t tmp = gdrom_get_error_reg(&error_reg);
     GDROM_TRACE("read 0x%02x from error register\n", (unsigned)tmp);
 
-    memcpy(buf, &error_reg, len > 4 ? 4 : len);
+    memcpy(buf, &tmp, len > 4 ? 4 : len);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -762,9 +660,9 @@ gdrom_cmd_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    int_reason_reg |= INT_REASON_COD_MASK; // is this correct ?
+    int_reason_reg.cod = true; // is this correct ?
 
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+    if (!dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     return MEM_ACCESS_SUCCESS;
@@ -775,7 +673,7 @@ gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                             void *buf, addr32_t addr, unsigned len) {
     uint8_t *ptr = buf;
 
-    GDROM_TRACE("reading %u values from GD-ROM data register:\n", len);
+    /* GDROM_TRACE("reading %u values from GD-ROM data register:\n", len); */
 
     while (len--) {
         unsigned dat;
@@ -787,9 +685,10 @@ gdrom_data_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 
     if (fifo_empty(&bufq)) {
         // done transmitting data from gdrom to host - notify host
-        stat_reg &= ~(STAT_DRQ_MASK | STAT_BSY_MASK);
-        stat_reg |= STAT_DRDY_MASK;
-        if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+        stat_reg.drq = false;
+        stat_reg.bsy = false;
+        stat_reg.drdy = true;
+        if (!dev_ctrl_reg.nien)
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
     }
 
@@ -822,10 +721,10 @@ gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                     set_mode_bytes_remaining);
 
         if (set_mode_bytes_remaining <= 0) {
-            stat_reg &= ~STAT_DRQ_MASK;
+            stat_reg.drq = false;
             state = GDROM_STATE_NORM;
 
-            if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+            if (!dev_ctrl_reg.nien)
                 holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
         }
     }
@@ -836,64 +735,75 @@ gdrom_data_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_features_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                  void const *buf, addr32_t addr, unsigned len) {
-    size_t n_bytes = len < sizeof(feat_reg) ? len : sizeof(feat_reg);
+    reg32_t tmp;
+    size_t n_bytes = len < sizeof(tmp) ? len : sizeof(tmp);
 
-    memcpy(&feat_reg, buf, n_bytes);
+    memcpy(&tmp, buf, n_bytes);
 
-    GDROM_TRACE("write 0x%08x to the features register\n", (unsigned)feat_reg);
+    GDROM_TRACE("write 0x%08x to the features register\n", (unsigned)tmp);
+
+    gdrom_set_features_reg(&feat_reg, tmp);
 
     return MEM_ACCESS_SUCCESS;
 }
 
 static void gdrom_cmd_set_features(void) {
-    bool set;
+    /* bool set; */
 
     GDROM_TRACE("SET_FEATURES command received\n");
 
-    if ((feat_reg & 0x7f) == 3) {
-        set = (bool)(feat_reg >> 7);
+    if (feat_reg.set_feat_enable) {
+        /* set = (bool)(feat_reg >> 7); */
     } else {
         GDROM_TRACE("software executed \"Set Features\" command without "
                     "writing 3 to the features register\n");
         return;
     }
 
-    if ((sect_cnt_reg & TRANS_MODE_PIO_DFLT_MASK) ==
-        TRANS_MODE_PIO_DFLT_VAL) {
-        trans_mode_vals[TRANS_MODE_PIO_DFLT] = sect_cnt_reg;
+    switch (sect_cnt_reg.trans_mode) {
+    case TRANS_MODE_PIO_DFLT:
+        trans_mode_vals[TRANS_MODE_PIO_DFLT] = sect_cnt_reg.mode_val;
         GDROM_TRACE("default PIO transfer mode set to 0x%02x\n",
                     (unsigned)trans_mode_vals[TRANS_MODE_PIO_DFLT]);
-    } else if ((sect_cnt_reg & TRANS_MODE_PIO_FLOW_CTRL_MASK) ==
-               TRANS_MODE_PIO_FLOW_CTRL_VAL) {
-        trans_mode_vals[TRANS_MODE_PIO_FLOW_CTRL] =
-            sect_cnt_reg & ~TRANS_MODE_PIO_FLOW_CTRL_MASK;
+        break;
+    case TRANS_MODE_PIO_FLOW_CTRL:
+        trans_mode_vals[TRANS_MODE_PIO_FLOW_CTRL] = sect_cnt_reg.mode_val;
         GDROM_TRACE("flow-control PIO transfer mode set to 0x%02x\n",
                     (unsigned)trans_mode_vals[TRANS_MODE_PIO_FLOW_CTRL]);
-    } else if ((sect_cnt_reg & TRANS_MODE_SINGLE_WORD_DMA_MASK) ==
-               TRANS_MODE_SINGLE_WORD_DMA_VAL) {
-        trans_mode_vals[TRANS_MODE_SINGLE_WORD_DMA] =
-            sect_cnt_reg & ~TRANS_MODE_SINGLE_WORD_DMA_MASK;
+        break;
+    case TRANS_MODE_SINGLE_WORD_DMA:
+        trans_mode_vals[TRANS_MODE_SINGLE_WORD_DMA] = sect_cnt_reg.mode_val;
         GDROM_TRACE("single-word DMA transfer mode set to 0x%02x\n",
                     (unsigned)trans_mode_vals[TRANS_MODE_SINGLE_WORD_DMA]);
-    } else if ((sect_cnt_reg & TRANS_MODE_MULTI_WORD_DMA_MASK) ==
-               TRANS_MODE_MULTI_WORD_DMA_MASK) {
-        trans_mode_vals[TRANS_MODE_MULTI_WORD_DMA] =
-            sect_cnt_reg & ~TRANS_MODE_MULTI_WORD_DMA_MASK;
+        break;
+    case TRANS_MODE_MULTI_WORD_DMA:
+        trans_mode_vals[TRANS_MODE_MULTI_WORD_DMA] = sect_cnt_reg.mode_val;
         GDROM_TRACE("multi-word DMA transfer mode set to 0x%02x\n",
                     (unsigned)trans_mode_vals[TRANS_MODE_MULTI_WORD_DMA]);
-    } else if ((sect_cnt_reg & TRANS_MODE_PSEUDO_DMA_MASK) ==
-               TRANS_MODE_PSEUDO_DMA_VAL) {
-        trans_mode_vals[TRANS_MODE_PSEUDO_DMA] =
-            sect_cnt_reg & ~TRANS_MODE_PSEUDO_DMA_MASK;
+        break;
+    case TRANS_MODE_PSEUDO_DMA:
+        trans_mode_vals[TRANS_MODE_PSEUDO_DMA] = sect_cnt_reg.mode_val;
         GDROM_TRACE("pseudo-DMA transfer mode set to 0x%02x\n",
                     (unsigned)trans_mode_vals[TRANS_MODE_PSEUDO_DMA]);
-    } else {
-        GDROM_TRACE("unrecognized transfer mode (sec_cnt_reg is 0x%08x)\n",
-                    sect_cnt_reg);
+        break;
+    default:
+        /*
+         * I'm pretty sure this can never happen due to the
+         * 'unrecognized transfer mode' ERROR_UNIMPLEMENTED in
+         * gdrom_set_sect_cnt_reg.  If that ever gets changed from an error to
+         * a warning, then we're going to have to set the trans_mode to some
+         * special constant value to show that it's invalid.
+         *
+         * One other problem is that of the default value; currently it
+         * defaults to TRANS_MODE_PIO_DFLT (because that's zero), but I'm not
+         * sure if this is the correct default value for the sector count
+         * register.
+         */
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    stat_reg &= ~STAT_CHECK_MASK;
-    memset(&error_reg, 0, sizeof(error_reg));
+    stat_reg.check = false;
+    gdrom_clear_error();
 }
 
 static void gdrom_cmd_identify(void) {
@@ -901,10 +811,10 @@ static void gdrom_cmd_identify(void) {
 
     state = GDROM_STATE_NORM;
 
-    stat_reg &= ~STAT_BSY_MASK;
-    stat_reg |= STAT_DRQ_MASK;
+    stat_reg.bsy = false;
+    stat_reg.drq = true;
 
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+    if (!dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     bufq_clear();
@@ -923,8 +833,8 @@ static void gdrom_cmd_identify(void) {
 
     fifo_push(&bufq, &node->fifo_node);
 
-    stat_reg &= ~STAT_CHECK_MASK;
-    memset(&error_reg, 0, sizeof(error_reg));
+    stat_reg.check = false;
+    gdrom_clear_error();
 }
 
 static void gdrom_cmd_begin_packet(void) {
@@ -932,12 +842,12 @@ static void gdrom_cmd_begin_packet(void) {
 
     // clear errors
     // TODO: I'm not sure if this should be done for all commands, or just packet commands
-    stat_reg &= ~STAT_CHECK_MASK;
+    stat_reg.check = false;
     /* memset(&error_reg, 0, sizeof(error_reg)); */
 
-    int_reason_reg &= ~INT_REASON_IO_MASK;
-    int_reason_reg |= INT_REASON_COD_MASK;
-    stat_reg |= STAT_DRQ_MASK;
+    int_reason_reg.io = false;
+    int_reason_reg.cod = true;
+    stat_reg.drq = true;
     n_bytes_received = 0;
     state = GDROM_STATE_INPUT_PKT;
 }
@@ -948,9 +858,10 @@ static void gdrom_cmd_begin_packet(void) {
  * GDROM_STATE_INPUT_PKT
  */
 static void gdrom_input_packet(void) {
-    stat_reg &= ~(STAT_DRQ_MASK | STAT_BSY_MASK);
+    stat_reg.drq = false;
+    stat_reg.bsy = false;
 
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+    if (!dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
 
@@ -995,9 +906,11 @@ static void gdrom_input_test_unit_packet(void) {
     GDROM_TRACE("TEST_UNIT packet received\n");
 
     // is this correct?
-    int_reason_reg |= (INT_REASON_COD_MASK | INT_REASON_IO_MASK);
-    stat_reg |= STAT_DRDY_MASK;
-    stat_reg &= ~(STAT_BSY_MASK | STAT_DRQ_MASK);
+    int_reason_reg.cod = true;
+    int_reason_reg.io = true;
+    stat_reg.drdy = true;
+    stat_reg.bsy = false;
+    stat_reg.drq = false;
 
     // raise interrupt if it is enabled - this is already done from
     // gdrom_input_packet
@@ -1006,11 +919,11 @@ static void gdrom_input_test_unit_packet(void) {
 
     state = GDROM_STATE_NORM;
 
-    memset(&error_reg, 0, sizeof(error_reg));
+    gdrom_clear_error();
     if (mount_check()) {
-        stat_reg &= ~STAT_CHECK_MASK;
+        stat_reg.check = false;
     } else {
-        stat_reg |= STAT_CHECK_MASK;
+        stat_reg.check = true;
         error_reg.sense_key = SENSE_KEY_NOT_READY;
         additional_sense = ADDITIONAL_SENSE_NO_DISC;
     }
@@ -1049,10 +962,10 @@ static void gdrom_input_req_error_packet(void) {
         data_byte_count = node->len;
     }
 
-    int_reason_reg |= INT_REASON_IO_MASK;
-    int_reason_reg &= ~INT_REASON_COD_MASK;
-    stat_reg |= STAT_DRQ_MASK;
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+    int_reason_reg.io = true;
+    int_reason_reg.cod = false;
+    stat_reg.drq = true;
+    if (!dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
@@ -1068,9 +981,11 @@ static void gdrom_input_start_disk_packet(void) {
     GDROM_TRACE("START_DISK(=0x70) packet received\n");
 
     // is this correct?
-    int_reason_reg |= (INT_REASON_COD_MASK | INT_REASON_IO_MASK);
-    stat_reg |= STAT_DRDY_MASK;
-    stat_reg &= ~(STAT_BSY_MASK | STAT_DRQ_MASK);
+    int_reason_reg.cod = true;
+    int_reason_reg.io = true;
+    stat_reg.drdy = true;
+    stat_reg.bsy = false;
+    stat_reg.drq = false;
 
     // raise interrupt if it is enabled - this is already done from
     // gdrom_input_packet
@@ -1079,8 +994,8 @@ static void gdrom_input_start_disk_packet(void) {
 
     state = GDROM_STATE_NORM;
 
-    stat_reg &= ~STAT_CHECK_MASK;
-    memset(&error_reg, 0, sizeof(error_reg));
+    stat_reg.check = false;
+    gdrom_clear_error();
 }
 
 /*
@@ -1120,16 +1035,16 @@ static void gdrom_input_packet_71(void) {
 
     fifo_push(&bufq, &node->fifo_node);
 
-    int_reason_reg |= INT_REASON_IO_MASK;
-    int_reason_reg &= ~INT_REASON_COD_MASK;
-    stat_reg |= STAT_DRQ_MASK;
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+    int_reason_reg.io = true;
+    int_reason_reg.cod = false;
+    stat_reg.drq = true;
+    if (!dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
 
-    stat_reg &= ~STAT_CHECK_MASK;
-    memset(&error_reg, 0, sizeof(error_reg));
+    stat_reg.check = false;
+    gdrom_clear_error();
 }
 
 static void gdrom_input_set_mode_packet(void) {
@@ -1145,14 +1060,14 @@ static void gdrom_input_set_mode_packet(void) {
     set_mode_bytes_remaining = data_byte_count;
     GDROM_TRACE("data_byte_count is %u\n", (unsigned)data_byte_count);
 
-    if (feat_reg & 1) {
+    if (feat_reg.dma_enable) {
         error_set_feature("GD-ROM SET_MODE command DMA support");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    int_reason_reg |= INT_REASON_IO_MASK;
-    int_reason_reg &= ~INT_REASON_COD_MASK;
-    stat_reg |= STAT_DRQ_MASK;
+    int_reason_reg.io = true;
+    int_reason_reg.cod = false;
+    stat_reg.drq = true;
 }
 
 static void gdrom_input_req_mode_packet(void) {
@@ -1185,16 +1100,16 @@ static void gdrom_input_req_mode_packet(void) {
         data_byte_count = node->len;
     }
 
-    int_reason_reg |= INT_REASON_IO_MASK;
-    int_reason_reg &= ~INT_REASON_COD_MASK;
-    stat_reg |= STAT_DRQ_MASK;
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+    int_reason_reg.io = true;
+    int_reason_reg.cod = false;
+    stat_reg.drq = true;
+    if (!dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
 
-    stat_reg &= ~STAT_CHECK_MASK;
-    memset(&error_reg, 0, sizeof(error_reg));
+    stat_reg.check = false;
+    gdrom_clear_error();
 }
 
 static void gdrom_input_read_toc_packet(void) {
@@ -1227,16 +1142,16 @@ static void gdrom_input_read_toc_packet(void) {
 
     fifo_push(&bufq, &node->fifo_node);
 
-    int_reason_reg |= INT_REASON_IO_MASK;
-    int_reason_reg &= ~INT_REASON_COD_MASK;
-    stat_reg |= STAT_DRQ_MASK;
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+    int_reason_reg.io = true;
+    int_reason_reg.cod = false;
+    stat_reg.drq = true;
+    if (!dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
 
-    stat_reg &= ~STAT_CHECK_MASK;
-    memset(&error_reg, 0, sizeof(error_reg));
+    stat_reg.check = false;
+    gdrom_clear_error();
 }
 
 static void gdrom_input_read_packet(void) {
@@ -1268,7 +1183,7 @@ static void gdrom_input_read_packet(void) {
     GDROM_TRACE("request to read %u sectors from FAD %u\n",
                 trans_len, start_addr);
 
-    if (feat_reg & FEAT_REG_DMA_MASK) {
+    if (feat_reg.dma_enable) {
         GDROM_TRACE("DMA READ ACCESS\n");
         /* error_set_feature("GD-ROM DMA access"); */
         /* RAISE_ERROR(ERROR_UNIMPLEMENTED); */
@@ -1289,7 +1204,7 @@ static void gdrom_input_read_packet(void) {
             free(node);
 
             error_reg.sense_key = SENSE_KEY_ILLEGAL_REQ;
-            stat_reg |= STAT_CHECK_MASK;
+            stat_reg.check = true;
             state = GDROM_STATE_NORM;
             return;
         }
@@ -1300,30 +1215,33 @@ static void gdrom_input_read_packet(void) {
         fifo_push(&bufq, &node->fifo_node);
     }
 
-    if (feat_reg & FEAT_REG_DMA_MASK) {
+    if (feat_reg.dma_enable) {
         return; // wait for them to write 1 to GDST before doing something
     } else {
-        int_reason_reg |= INT_REASON_IO_MASK;
-        int_reason_reg &= ~INT_REASON_COD_MASK;
-        stat_reg |= STAT_DRQ_MASK;
+        int_reason_reg.io = true;
+        int_reason_reg.cod = false;
+        stat_reg.drq = true;
     }
 
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+    if (!dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
-    stat_reg &= ~STAT_CHECK_MASK;
-    memset(&error_reg, 0, sizeof(error_reg));
+    stat_reg.check = false;
+    gdrom_clear_error();
 }
 
 static int
 gdrom_sect_cnt_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                  void const *buf, addr32_t addr, unsigned len) {
-    size_t n_bytes = len < sizeof(sect_cnt_reg) ? len : sizeof(sect_cnt_reg);
+    reg32_t tmp;
+    size_t n_bytes = len < sizeof(tmp) ? len : sizeof(tmp);
 
-    memcpy(&sect_cnt_reg, buf, n_bytes);
+    memcpy(&tmp, buf, n_bytes);
 
-    GDROM_TRACE("Read %08x from sec_cnt_reg\n", (unsigned)sect_cnt_reg);
+    GDROM_TRACE("Write %08x to sec_cnt_reg\n", (unsigned)tmp);
+
+    gdrom_set_sect_cnt_reg(&sect_cnt_reg, tmp);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -1331,11 +1249,14 @@ gdrom_sect_cnt_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_dev_ctrl_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                  void const *buf, addr32_t addr, unsigned len) {
-    size_t n_bytes = len < sizeof(dev_ctrl_reg) ? len : sizeof(dev_ctrl_reg);
+    reg32_t tmp;
+    size_t n_bytes = len < sizeof(tmp) ? len : sizeof(tmp);
 
-    memcpy(&dev_ctrl_reg, buf, n_bytes);
+    memcpy(&tmp, buf, n_bytes);
 
-    GDROM_TRACE("Write %08x to dev_ctrl_reg\n", (unsigned)dev_ctrl_reg);
+    gdrom_set_dev_ctrl_reg(&dev_ctrl_reg, tmp);
+
+    GDROM_TRACE("Write %08x to dev_ctrl_reg\n", (unsigned)tmp);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -1343,11 +1264,12 @@ gdrom_dev_ctrl_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_int_reason_reg_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len) {
-    size_t n_bytes = len < sizeof(int_reason_reg) ? len : sizeof(int_reason_reg);
+    reg32_t tmp = gdrom_get_int_reason_reg(&int_reason_reg);
+    size_t n_bytes = len < sizeof(tmp) ? len : sizeof(tmp);
 
-    GDROM_TRACE("int_reason is 0x%08x\n", (unsigned)int_reason_reg);
+    GDROM_TRACE("int_reason is 0x%08x\n", (unsigned)tmp);
 
-    memcpy(buf, &int_reason_reg, n_bytes);
+    memcpy(buf, &tmp, n_bytes);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -1541,18 +1463,19 @@ gdrom_gdst_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
     GDROM_TRACE("write %08x to GDST\n", dma_start_reg);
 
     if (dma_start_reg) {
-        int_reason_reg |= (INT_REASON_IO_MASK | INT_REASON_COD_MASK);
-        stat_reg |= STAT_DRDY_MASK;
-        stat_reg &= ~STAT_DRQ_MASK;
+        int_reason_reg.io = true;
+        int_reason_reg.cod = true;
+        stat_reg.drdy = true;
+        stat_reg.drq = false;
         gdrom_complete_dma();
     }
 
-    if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK))
+    if (!dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
     state = GDROM_STATE_NORM;
-    stat_reg &= ~STAT_CHECK_MASK;
-    memset(&error_reg, 0, sizeof(error_reg));
+    stat_reg.check = false;
+    gdrom_clear_error();
 
     return 0;
 }
@@ -1641,4 +1564,225 @@ done:
     // set GD_LEND, etc here
     gdlend_reg = bytes_transmitted;
     dma_start_reg = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Error register flags
+//
+////////////////////////////////////////////////////////////////////////////////
+
+#define GDROM_ERROR_SENSE_KEY_SHIFT 4
+#define GDROM_ERROR_SENSE_KEY_MASK (0xf << GDROM_ERROR_SENSE_KEY_SHIFT)
+
+#define GDROM_ERROR_MCR_SHIFT 3
+#define GDROM_ERROR_MCR_MASK (1 << GDROM_ERROR_MCR_SHIFT)
+
+#define GDROM_ERROR_ABRT_SHIFT 2
+#define GDROM_ERROR_ABRT_MASK (1 << GDROM_ERROR_ABRT_SHIFT)
+
+#define GDROM_ERROR_EOMF_SHIFT 1
+#define GDROM_ERROR_EOMF_MASK (1 << GDROM_ERROR_EOMF_SHIFT)
+
+#define GDROM_ERROR_ILI_SHIFT 0
+#define GDROM_ERROR_ILI_MASK (1 << GDROM_ERROR_ILI_SHIFT)
+
+static reg32_t gdrom_get_error_reg(struct gdrom_error const *error_in) {
+    reg32_t error_reg =
+        (((reg32_t)error_in->sense_key) << GDROM_ERROR_SENSE_KEY_SHIFT) &
+        GDROM_ERROR_SENSE_KEY_MASK;
+
+    if (error_in->ili)
+        error_reg |= GDROM_ERROR_ILI_MASK;
+    if (error_in->eomf)
+        error_reg |= GDROM_ERROR_EOMF_MASK;
+    if (error_in->abrt)
+        error_reg |= GDROM_ERROR_ABRT_MASK;
+    if (error_in->mcr)
+        error_reg |= GDROM_ERROR_MCR_MASK;
+
+    return error_reg;
+}
+
+static void gdrom_clear_error(void) {
+    memset(&error_reg, 0, sizeof(error_reg));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Status register flags
+//
+////////////////////////////////////////////////////////////////////////////////
+
+// the drive is processing a command
+#define GDROM_STAT_BSY_SHIFT 7
+#define GDROM_STAT_BSY_MASK (1 << GDROM_STAT_BSY_SHIFT)
+
+// response to ATA command is possible
+#define GDROM_STAT_DRDY_SHIFT 6
+#define GDROM_STAT_DRDY_MASK (1 << GDROM_STAT_DRDY_SHIFT)
+
+// drive fault
+#define GDROM_STAT_DF_SHIFT 5
+#define GDROM_STAT_DF_MASK (1 << GDROM_STAT_DF_SHIFT)
+
+// seek processing is complete
+#define GDROM_STAT_DSC_SHIFT 4
+#define GDROM_STAT_DSC_MASK (1 << GDROM_STAT_DSC_SHIFT)
+
+// data transfer possible
+#define GDROM_STAT_DRQ_SHIFT 3
+#define GDROM_STAT_DRQ_MASK (1 << GDROM_STAT_DRQ_SHIFT)
+
+// correctable error flag
+#define GDROM_STAT_CORR_SHIFT 2
+#define GDROM_STAT_CORR_MASK (1 << GDROM_STAT_CORR_SHIFT)
+
+// error flag
+#define GDROM_STAT_CHECK_SHIFT 0
+#define GDROM_STAT_CHECK_MASK (1 << GDROM_STAT_CHECK_SHIFT)
+
+static reg32_t gdrom_get_status_reg(struct gdrom_status const *stat_in) {
+    reg32_t stat_reg = 0;
+
+    if (stat_in->bsy)
+        stat_reg |= GDROM_STAT_BSY_MASK;
+    if (stat_in->drdy)
+        stat_reg |= GDROM_STAT_DRDY_MASK;
+    if (stat_in->df)
+        stat_reg |= GDROM_STAT_DF_MASK;
+    if (stat_in->dsc)
+        stat_reg |= GDROM_STAT_DSC_MASK;
+    if (stat_in->drq)
+        stat_reg |= GDROM_STAT_DRQ_MASK;
+    if (stat_in->corr)
+        stat_reg |= GDROM_STAT_CORR_MASK;
+    if (stat_in->check)
+        stat_reg |= GDROM_STAT_CHECK_MASK;
+
+    return stat_reg;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// feature register flags
+//
+////////////////////////////////////////////////////////////////////////////////
+
+#define FEAT_REG_DMA_SHIFT 0
+#define FEAT_REG_DMA_MASK (1 << FEAT_REG_DMA_SHIFT)
+
+static void
+gdrom_set_features_reg(struct gdrom_features *features_out, reg32_t feat_reg) {
+    if (feat_reg & FEAT_REG_DMA_MASK)
+        features_out->dma_enable = true;
+    else
+        features_out->dma_enable = false;
+
+    if ((feat_reg & 0x7f) == 3)
+        features_out->set_feat_enable = true;
+    else
+        features_out->set_feat_enable = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Transfer Modes (for the sector count register in GDROM_CMD_SEAT_FEAT)
+//
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRANS_MODE_PIO_DFLT_MASK        0xfe
+#define TRANS_MODE_PIO_DFLT_VAL         0x00
+
+#define TRANS_MODE_PIO_FLOW_CTRL_MASK   0xf8
+#define TRANS_MODE_PIO_FLOW_CTRL_VAL    0x08
+
+#define TRANS_MODE_SINGLE_WORD_DMA_MASK 0xf8
+#define TRANS_MODE_SINGLE_WORD_DMA_VAL  0x10
+
+#define TRANS_MODE_MULTI_WORD_DMA_MASK  0xf8
+#define TRANS_MODE_MULTI_WORD_DMA_VAL   0x20
+
+#define TRANS_MODE_PSEUDO_DMA_MASK      0xf8
+#define TRANS_MODE_PSEUDO_DMA_VAL       0x18
+
+#define SECT_CNT_MODE_VAL_SHIFT 0
+#define SECT_CNT_MODE_VAL_MASK (0xf << SECT_CNT_MODE_VAL_SHIFT)
+
+static void
+gdrom_set_sect_cnt_reg(struct gdrom_sector_count *sect_cnt_out,
+                       reg32_t sect_cnt_reg) {
+    unsigned mode_val =
+        (sect_cnt_reg & SECT_CNT_MODE_VAL_MASK) >> SECT_CNT_MODE_VAL_SHIFT;
+    if ((sect_cnt_reg & TRANS_MODE_PIO_DFLT_MASK) ==
+        TRANS_MODE_PIO_DFLT_VAL) {
+        sect_cnt_out->trans_mode = TRANS_MODE_PIO_DFLT;
+    } else if ((sect_cnt_reg & TRANS_MODE_PIO_FLOW_CTRL_MASK) ==
+               TRANS_MODE_PIO_FLOW_CTRL_VAL) {
+        sect_cnt_out->trans_mode = TRANS_MODE_PIO_FLOW_CTRL;
+    } else if ((sect_cnt_reg & TRANS_MODE_SINGLE_WORD_DMA_MASK) ==
+               TRANS_MODE_SINGLE_WORD_DMA_VAL) {
+        sect_cnt_out->trans_mode = TRANS_MODE_SINGLE_WORD_DMA;
+    } else if ((sect_cnt_reg & TRANS_MODE_MULTI_WORD_DMA_MASK) ==
+               TRANS_MODE_MULTI_WORD_DMA_MASK) {
+        sect_cnt_out->trans_mode = TRANS_MODE_MULTI_WORD_DMA;
+    } else if ((sect_cnt_reg & TRANS_MODE_PSEUDO_DMA_MASK) ==
+               TRANS_MODE_PSEUDO_DMA_VAL) {
+        sect_cnt_out->trans_mode = TRANS_MODE_PSEUDO_DMA;
+    } else {
+        // TODO: maybe this should be a soft warning instead of an error
+        GDROM_TRACE("unrecognized transfer mode (sec_cnt_reg is 0x%08x)\n",
+                    sect_cnt_reg);
+        error_set_feature("unrecognized transfer mode\n");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    sect_cnt_out->mode_val = mode_val;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Interrupt Reason register flags
+//
+////////////////////////////////////////////////////////////////////////////////
+
+// ready to receive command
+#define INT_REASON_COD_SHIFT 0
+#define INT_REASON_COD_MASK (1 << INT_REASON_COD_SHIFT)
+
+/*
+ * ready to receive data from software to drive if set
+ * ready to send data from drive to software if not set
+ */
+#define INT_REASON_IO_SHIFT 1
+#define INT_REASON_IO_MASK (1 << INT_REASON_IO_SHIFT)
+
+static reg32_t gdrom_get_int_reason_reg(struct gdrom_int_reason *int_reason_in) {
+    reg32_t reg_out = 0;
+
+    if (int_reason_in->cod)
+        reg_out |= INT_REASON_COD_MASK;
+    if (int_reason_in->io)
+        reg_out |= INT_REASON_IO_MASK;
+
+    return reg_out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Device control register flags
+//
+////////////////////////////////////////////////////////////////////////////////
+
+#define DEV_CTRL_NIEN_SHIFT 1
+#define DEV_CTRL_NIEN_MASK (1 << DEV_CTRL_NIEN_SHIFT)
+
+#define DEV_CTRL_SRST_SHIFT 2
+#define DEV_CTRL_SRST_MASK (1 << DEV_CTRL_SRST_SHIFT)
+
+static void
+gdrom_set_dev_ctrl_reg(struct gdrom_dev_ctrl *dev_ctrl_out,
+                       reg32_t dev_ctrl_reg) {
+    dev_ctrl_out->nien = (bool)(dev_ctrl_reg & DEV_CTRL_NIEN_MASK);
+    dev_ctrl_out->srst = (bool)(dev_ctrl_reg & DEV_CTRL_SRST_MASK);
 }
