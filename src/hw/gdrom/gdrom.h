@@ -28,6 +28,13 @@
 
 #include "fifo.h"
 
+#define GDROM_TRACE(msg, ...)                                           \
+    do {                                                                \
+        printf("GD-ROM (PC=%08x): ",                                    \
+               (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);         \
+        printf(msg, ##__VA_ARGS__);                                     \
+    } while (0)
+
 struct gdrom_status {
     // get off the phone!
     bool bsy;
@@ -147,6 +154,7 @@ struct gdrom_ctxt {
 
 #define PKT_LEN 12
     uint8_t pkt_buf[PKT_LEN];
+    unsigned n_bytes_received;
 
     struct fifo_head bufq;
 };
@@ -156,5 +164,61 @@ struct gdrom_ctxt {
  * This is effectively a hard-reset.
  */
 void gdrom_init(void);
+
+// ideally this will never be access from outside of the GD-ROM code.
+extern struct gdrom_ctxt gdrom;
+
+void gdrom_cmd_set_features(void);
+
+// called when the packet command (0xa0) is written to the cmd register
+void gdrom_cmd_begin_packet(void);
+
+void gdrom_cmd_identify(void);
+
+void gdrom_read_data(uint8_t *buf, unsigned n_bytes);
+
+void gdrom_write_data(uint8_t const *buf, unsigned n_bytes);
+
+enum gdrom_disc_type {
+    DISC_TYPE_CDDA = 0,
+    DISC_TYPE_CDROM = 1,
+    DISC_TYPE_CDROM_XA = 2,
+    DISC_TYPE_CDI = 3, // i think this refers to phillips CD-I, not .cdi images
+    DISC_TYPE_GDROM = 8
+};
+
+enum gdrom_disc_state {
+    GDROM_STATE_BUSY  = 0x0,
+    GDROM_STATE_PAUSE = 0x1,
+    GDROM_STATE_STANDBY = 0x2,
+    GDROM_STATE_PLAY = 0x3,
+    GDROM_STATE_SEEK = 0x4,
+    GDROM_STATE_SCAN = 0x5,
+    GDROM_STATE_OPEN = 0x6,
+    GDROM_STATE_NODISC = 0x7,
+    GDROM_STATE_RETRY = 0x8,
+    GDROM_STATE_ERROR = 0x9
+};
+
+/*
+ * should return the type of disc in the drive (which will usually be
+ * DISC_TYPE_GDROM)
+ */
+enum gdrom_disc_type gdrom_get_disc_type(void);
+
+/*
+ * return the state the physical drive is in (GDROM_STATE_NODISC,
+ * GDROM_STATE_PAUSE, etc).
+ */
+enum gdrom_disc_state gdrom_get_drive_state(void);
+
+void gdrom_start_dma(void);
+
+void gdrom_input_cmd(unsigned cmd);
+
+unsigned gdrom_dma_prot_top(void);
+unsigned gdrom_dma_prot_bot(void);
+
+ERROR_INT_ATTR(gdrom_command);
 
 #endif
