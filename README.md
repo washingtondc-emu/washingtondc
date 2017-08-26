@@ -24,6 +24,7 @@ ENABLE_DIRECT_BOOT=On(default)/Off - Enable direct boot mode (optionally skip
 DBG_EXIT_ON_UNDEFINED_OPCODE=Of/Off(default) - Bail out if the emulator hits an
                                                undefined opcode
 INVARIANTS=On(default)/Off - runtime sanity checks that should never fail
+DEEP_SYSCALL_TRACE=On/Off(default) - log system calls made by guest software.
 ```
 ## USAGE
 ```
