@@ -332,11 +332,6 @@ ignore_gdrom_reg_write_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                               void *buf, addr32_t addr, unsigned len) {
-    // immediately acknowledge receipt of everything for now
-    // uint32_t val =  0 /*int(!pending_gdrom_irq)*//*1*/ << 7; // BSY
-    // val |= 1 << 6; // DRDY
-    // val |= 1 << 3; // DRQ
-
     reg32_t stat_bin = gdrom_get_status_reg(&gdrom.stat_reg);
     GDROM_TRACE("read 0x%02x from alternate status register\n",
                 (unsigned)stat_bin);
@@ -348,11 +343,6 @@ gdrom_alt_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
 static int
 gdrom_status_read_handler(struct gdrom_mem_mapped_reg const *reg_info,
                           void *buf, addr32_t addr, unsigned len) {
-    // immediately acknowledge receipt of everything for now
-    // uint32_t val =  0 /*int(!pending_gdrom_irq)*//*1*/ << 7; // BSY
-    // val |= 1 << 6; // DRDY
-    // val |= 1 << 3; // DRQ
-
     /*
      * XXX
      * For the most part, I try to keep all the logic in gdrom.c and all the

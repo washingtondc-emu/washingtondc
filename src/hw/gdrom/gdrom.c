@@ -44,6 +44,7 @@ DEF_ERROR_INT_ATTR(gdrom_command);
 #define GDROM_GDEN_DEFAULT   0x00000000
 #define GDROM_GDST_DEFAULT   0x00000000
 #define GDROM_GDLEND_DEFAULT 0x00000000 // undefined
+#define GDROM_DATA_BYTE_COUNT_DEFAULT 0xeb14
 
 enum sense_key {
     // no sense key (command execution successful)
@@ -178,6 +179,11 @@ void gdrom_init(void) {
     gdrom.gdlend_reg = GDROM_GDLEND_DEFAULT;
 
     gdrom.additional_sense = ADDITIONAL_SENSE_NO_ERROR;
+
+    gdrom.error_reg.ili = true;
+    gdrom.sect_cnt_reg.trans_mode = TRANS_MODE_PIO_DFLT;
+    gdrom.sect_cnt_reg.mode_val = 1;
+    gdrom.data_byte_count = GDROM_DATA_BYTE_COUNT_DEFAULT;
 
     fifo_init(&gdrom.bufq);
 }
@@ -353,7 +359,6 @@ static void gdrom_input_packet(void) {
 
     if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
-
 
     switch (gdrom.pkt_buf[0]) {
     case GDROM_PKT_TEST_UNIT:
