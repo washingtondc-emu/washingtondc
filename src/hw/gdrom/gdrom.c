@@ -574,6 +574,7 @@ static void gdrom_input_req_error_packet(void) {
     gdrom.int_reason_reg.io = true;
     gdrom.int_reason_reg.cod = false;
     gdrom.stat_reg.drq = true;
+    gdrom.stat_reg.bsy = false;
     if (!gdrom.dev_ctrl_reg.nien)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
 
@@ -787,6 +788,8 @@ void gdrom_read_data(uint8_t *buf, unsigned n_bytes) {
         gdrom.stat_reg.drq = false;
         gdrom.stat_reg.bsy = false;
         gdrom.stat_reg.drdy = true;
+        gdrom.int_reason_reg.cod = true;
+        gdrom.int_reason_reg.io = true;
         if (!gdrom.dev_ctrl_reg.nien)
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
     }
