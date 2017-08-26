@@ -86,6 +86,7 @@ static char const* cmd_name(reg32_t r4) {
 void deep_syscall_notify_jump(addr32_t pc) {
     Sh4 *sh4 = dreamcast_get_cpu();
     if (pc == GDROM_SYSCALL_ADDR) {
+        reg32_t r4 = *sh4_gen_reg(sh4, 4);
         reg32_t r6 = *sh4_gen_reg(sh4, 6);
         reg32_t r7= *sh4_gen_reg(sh4, 7);
 
@@ -99,8 +100,8 @@ void deep_syscall_notify_jump(addr32_t pc) {
         } else if (r6 == 0) {
             switch (r7) {
             case 0:
-                SYSCALL_TRACE("GDROM_SEND_COMMAND %s\n",
-                              cmd_name(*sh4_gen_reg(sh4, 4)));
+                SYSCALL_TRACE("GDROM_SEND_COMMAND <0x%02x> %s\n",
+                              (unsigned)r4, cmd_name(r4));
                 break;
             case 1:
                 SYSCALL_TRACE("GDROM_CHECK_COMMAND\n");
