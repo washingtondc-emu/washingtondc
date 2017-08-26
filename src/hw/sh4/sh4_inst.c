@@ -40,6 +40,10 @@
 #include "debugger.h"
 #endif
 
+#ifdef DEEP_SYSCALL_TRACE
+#include "deep_syscall_trace.h"
+#endif
+
 #include "sh4_inst.h"
 
 static DEF_ERROR_STRING_ATTR(opcode_format)
@@ -1054,6 +1058,9 @@ void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
         bool delayed_branch_tmp = sh4->delayed_branch;
         addr32_t delayed_branch_addr_tmp = sh4->delayed_branch_addr;
 
+#ifdef DEEP_SYSCALL_TRACE
+                deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
+#endif
         op_func(sh4, oa);
 
 #ifdef ENABLE_DEBUGGER
@@ -1061,6 +1068,10 @@ void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
             if (delayed_branch_tmp) {
                 sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
                 sh4->delayed_branch = false;
+
+#ifdef DEEP_SYSCALL_TRACE
+                deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
+#endif
             }
         } else {
             sh4->aborted_operation = false;
@@ -1915,10 +1926,14 @@ void sh4_inst_unary_bf_disp(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_10001011dddddddd, INST_CONS_10001011dddddddd);
 
-    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK))
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK)) {
         sh4->reg[SH4_REG_PC] += (((int32_t)inst.simm8) << 1) + 4;
-    else
+#ifdef DEEP_SYSCALL_TRACE
+        deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
+#endif
+    } else {
         sh4_next_inst(sh4);
+    }
 }
 
 #define INST_MASK_10001111dddddddd 0xff00
@@ -1947,10 +1962,14 @@ void sh4_inst_unary_bt_disp(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_10001001dddddddd, INST_CONS_10001001dddddddd);
 
-    if (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK)
+    if (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) {
         sh4->reg[SH4_REG_PC] += (((int32_t)inst.simm8) << 1) + 4;
-    else
+#ifdef DEEP_SYSCALL_TRACE
+        deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
+#endif
+    } else {
         sh4_next_inst(sh4);
+    }
 }
 
 #define INST_MASK_10001101dddddddd 0xff00

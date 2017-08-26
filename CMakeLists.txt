@@ -58,6 +58,7 @@ option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined 
 option(INVARIANTS "runtime sanity checks that should never fail" ON)
 option(SH4_FPU_PEDANTIC "enable FPU error-checking which most games *probably* don't use" OFF)
 option(PVR2_LOG_VERBOSE "enable this to make the pvr2 code log mundane events" OFF)
+option(DEEP_SYSCALL_TRACE "enable logging to observe the behavior of system calls" OFF)
 
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)
    add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
@@ -73,6 +74,10 @@ endif()
 
 if (PVR2_LOG_VERBOSE)
   add_definitions(-DPVR2_LOG_VERBOSE)
+endif()
+
+if  (DEEP_SYSCALL_TRACE)
+  add_definitions(-DDEEP_SYSCALL_TRACE)
 endif()
 
 # TODO: this was originally supposed to be just the sh4-related code,
@@ -189,7 +194,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/io/serial_server.h"
                 "${PROJECT_SOURCE_DIR}/src/io/serial_server.c"
                 "${PROJECT_SOURCE_DIR}/src/config.h"
-                "${PROJECT_SOURCE_DIR}/src/config.c")
+                "${PROJECT_SOURCE_DIR}/src/config.c"
+                "${PROJECT_SOURCE_DIR}/src/deep_syscall_trace.h"
+                "${PROJECT_SOURCE_DIR}/src/deep_syscall_trace.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
