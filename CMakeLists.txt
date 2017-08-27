@@ -194,9 +194,7 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/io/serial_server.h"
                 "${PROJECT_SOURCE_DIR}/src/io/serial_server.c"
                 "${PROJECT_SOURCE_DIR}/src/config.h"
-                "${PROJECT_SOURCE_DIR}/src/config.c"
-                "${PROJECT_SOURCE_DIR}/src/deep_syscall_trace.h"
-                "${PROJECT_SOURCE_DIR}/src/deep_syscall_trace.c")
+                "${PROJECT_SOURCE_DIR}/src/config.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
@@ -212,6 +210,12 @@ if (ENABLE_DEBUGGER)
                                    "${PROJECT_SOURCE_DIR}/src/debugger.c"
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.h"
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.c")
+endif()
+
+if (DEEP_SYSCALL_TRACE)
+   set(sh4_sources ${sh4_sources}
+                   "${PROJECT_SOURCE_DIR}/src/deep_syscall_trace.h"
+                   "${PROJECT_SOURCE_DIR}/src/deep_syscall_trace.c")
 endif()
 
 set(sh4asm_core_sources "${PROJECT_SOURCE_DIR}/tool/sh4asm/Inst.cpp"
