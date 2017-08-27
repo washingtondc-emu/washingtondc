@@ -310,6 +310,7 @@ static void gdrom_input_read_packet(void) {
 
     gdrom.data_byte_count = CDROM_FRAME_DATA_SIZE * trans_len;
 
+    unsigned fad_offs = 0;
     while (trans_len--) {
         struct gdrom_bufq_node *node =
             (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
@@ -317,7 +318,7 @@ static void gdrom_input_read_packet(void) {
         if (!node)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-        if (mount_read_sectors(node->dat, start_addr, 1) < 0) {
+        if (mount_read_sectors(node->dat, start_addr + fad_offs++, 1) < 0) {
             free(node);
 
             gdrom.error_reg.sense_key = SENSE_KEY_ILLEGAL_REQ;
