@@ -214,8 +214,6 @@ static struct timespec start_time;
 void dreamcast_run() {
     signal(SIGINT, dc_sigint_handler);
 
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
-
     /*
      * hardcode a controller plugged into the first port with no additional
      * maple devices attached.
@@ -250,6 +248,8 @@ void dreamcast_run() {
      */
     while (is_running && (dc_get_state() == DC_STATE_NOT_RUNNING))
         usleep(1000 * 1000 / 10);
+
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     while (is_running) {
 #ifdef ENABLE_DEBUGGER
@@ -292,6 +292,8 @@ void dreamcast_run() {
 #endif
     }
 
+    dc_print_perf_stats();
+
     // tell the other threads it's time to clean up and exit
     signal_exit_threads = true;
 
@@ -316,8 +318,6 @@ void dreamcast_run() {
 
     // TODO: don't hardcode this
     maple_device_cleanup(cont);
-
-    dc_print_perf_stats();
 
     dreamcast_cleanup();
 }
