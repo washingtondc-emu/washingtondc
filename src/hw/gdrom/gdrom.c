@@ -679,6 +679,8 @@ static void gdrom_input_set_mode_packet(void) {
     gdrom.int_reason_reg.io = true;
     gdrom.int_reason_reg.cod = false;
     gdrom.stat_reg.drq = true;
+
+    gdrom.state = GDROM_STATE_SET_MODE;
 }
 
 static void gdrom_input_req_mode_packet(void) {
