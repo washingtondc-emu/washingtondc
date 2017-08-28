@@ -884,6 +884,13 @@ void gdrom_input_cmd(unsigned cmd) {
     case GDROM_CMD_IDENTIFY:
         gdrom_cmd_identify();
         break;
+    case GDROM_CMD_NOP:
+        /*
+         * TODO: I think this is supposed to be able to interrupt in-progress
+         * operations, but that isn't implemented yet.
+         */
+        fprintf(stderr, "WARNING: GDROM_CMD_NOP is not implemented yet\n");
+        break;
     default:
         error_set_feature("unknown GD-ROM command");
         error_set_gdrom_command(cmd);
