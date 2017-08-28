@@ -43,6 +43,10 @@ static int sh4_id_reg_read_handler(Sh4 *sh4, void *buf,
 static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
                                        struct Sh4MemMappedReg const *reg_info);
 
+static int
+sh4_mystery_ipr_reg_write_handler(Sh4 *sh4, void const *buf,
+                                  struct Sh4MemMappedReg const *reg_info);
+
 /*
  * SDMR2 and SDMR3 are  weird.  When you write to them, the value
  * is discarded and instead the offset from the beginning of the register
@@ -329,6 +333,21 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
       Sh4DefaultRegReadHandler, sh4_excp_iprc_reg_write_handler, 0, 0 },
     { "IPRD", 0xffd0000d, 2, SH4_REG_IPRD, true,
       Sh4DefaultRegReadHandler, sh4_excp_iprd_reg_write_handler, 0xda74, 0xda74 },
+
+    /*
+     * strange "padding" that exists adjacent to the IPR registers.
+     * IP.BIN wants to write 0 to these.  I'm not sure if this is related
+     * to the IPR registers or not.  I'm also not sure if there should be any
+     * similar padding between IPRA/IPRB.
+     */
+    { "IPR_MYSTERY_ffd00002", 0xffd00002, 2, (sh4_reg_idx_t)-1, true,
+      Sh4WriteOnlyRegReadHandler, sh4_mystery_ipr_reg_write_handler },
+    { "IPR_MYSTERY_ffd00006", 0xffd00006, 2, (sh4_reg_idx_t)-1, true,
+      Sh4WriteOnlyRegReadHandler, sh4_mystery_ipr_reg_write_handler },
+    { "IPR_MYSTERY_ffd0000a", 0xffd0000a, 2, (sh4_reg_idx_t)-1, true,
+      Sh4WriteOnlyRegReadHandler, sh4_mystery_ipr_reg_write_handler },
+    { "IPR_MYSTERY_ffd0000e", 0xffd0000e, 2, (sh4_reg_idx_t)-1, true,
+      Sh4WriteOnlyRegReadHandler, sh4_mystery_ipr_reg_write_handler },
 
     /* User Break Controller - I don't need this, I got my own debugger */
     { "BARA", 0xff200000, 4, (sh4_reg_idx_t)-1, true,
@@ -709,6 +728,29 @@ static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
 
     if (new_val & SH4_MMUCR_AT_MASK) {
         error_set_feature("SH4 MMU support");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    return 0;
+}
+
+static int
+sh4_mystery_ipr_reg_write_handler(Sh4 *sh4, void const *buf,
+                                  struct Sh4MemMappedReg const *reg_info) {
+    uint16_t val;
+    memcpy(&val, buf, sizeof(val));
+
+    /*
+     * IDK what these registers do - I think it's just some sort of padding for
+     * the IPR registers because they're each 2-bytes long but they also have 2
+     * bytes of empty space between them.
+     *
+     * I've only ever seen software try to write 0 to these.  If something ever
+     * tries to use a different value then I want to know about it.
+     */
+    if (val) {
+        error_set_feature("writing non-zero to the IPR mystery/padding "
+                          "registers");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
