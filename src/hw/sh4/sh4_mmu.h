@@ -20,6 +20,10 @@
  *
  ******************************************************************************/
 
+#ifndef ENABLE_SH4_MMU
+#error this file should only be built when the MMU is enabled
+#endif
+
 #ifndef SH4_MMU_H_
 #define SH4_MMU_H_
 
@@ -136,8 +140,6 @@ enum PageSize {
     SH4_MMU_ONE_MEGA = 3
 };
 
-#ifdef ENABLE_SH4_MMU
-
 struct sh4_utlb_entry {
     uint32_t key;
     uint32_t ent;
@@ -222,8 +224,6 @@ void sh4_mmu_init(Sh4 *sh4);
 int sh4_mmu_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len);
 int sh4_mmu_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len);
 int sh4_mmu_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr);
-
-#endif
 
 #ifdef __cplusplus
 }

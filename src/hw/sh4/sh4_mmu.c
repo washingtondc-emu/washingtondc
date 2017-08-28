@@ -27,7 +27,9 @@
 
 #include "sh4.h"
 
-#ifdef ENABLE_SH4_MMU
+#ifndef ENABLE_SH4_MMU
+#error this file should only be built when the MMU is enabled
+#endif
 
 void sh4_mmu_init(Sh4 *sh4) {
     memset(&sh4->mmu, 0, sizeof(sh4->mmu));
@@ -584,5 +586,3 @@ int sh4_mmu_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
     sh4->reg[SH4_REG_TEA] = addr;
     return 1;
 }
-
-#endif

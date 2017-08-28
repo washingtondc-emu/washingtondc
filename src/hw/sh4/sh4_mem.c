@@ -22,7 +22,10 @@
 
 #include <stdlib.h>
 
+#ifdef ENABLE_SH4_MMU
 #include "sh4_mmu.h"
+#endif
+
 #include "sh4_excp.h"
 #include "sh4_mem.h"
 #include "sh4_ocache.h"

@@ -28,10 +28,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef ENABLE_SH4_MMU
+#include "sh4_mmu.h"
+#endif
+
 #include "error.h"
 #include "dreamcast.h"
 #include "sh4_ocache.h"
-#include "sh4_mmu.h"
 #include "sh4.h"
 #include "sh4_tbl.h"
 #include "sh4_excp.h"
