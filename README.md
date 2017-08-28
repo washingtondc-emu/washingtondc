@@ -32,6 +32,7 @@ DEEP_SYSCALL_TRACE=On/Off(default) - log system calls made by guest software.
 
 OPTIONS:
 -b <bios_path> path to dreamcast boot ROM
+-c enable development/debugging console access via TCP port 2000
 -f <flash_path> path to dreamcast flash ROM image
 -g enable remote GDB backend via TCP port 1999
 -d enable direct boot (skip BIOS)
