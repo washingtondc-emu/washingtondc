@@ -182,7 +182,6 @@ static void render_do_draw_group(struct geo_buf *geo,
      * would be two independent settings.
      */
     if (group->tex_enable && rend_cfg.tex_enable && rend_cfg.color_enable) {
-        printf("Using texture %u\n", group->tex_idx);
         glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
         glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
         switch (group->tex_filter) {
@@ -203,7 +202,6 @@ static void render_do_draw_group(struct geo_buf *geo,
         glUniform1i(tex_inst_slot, group->tex_inst);
         glActiveTexture(GL_TEXTURE0);
     } else if (rend_cfg.color_enable) {
-        printf("not using texture!?\n");
         glUseProgram(pvr_ta_shader.shader_prog_obj);
     } else {
         glUseProgram(pvr_ta_no_color_shader.shader_prog_obj);
@@ -334,7 +332,6 @@ void render_next_geo_buf(void) {
         for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
             struct pvr2_tex *tex = geo->tex_cache + tex_no;
             if (tex->valid && tex->dirty) {
-                printf("updating texture %u\n", tex_no);
                 int n_colors = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ? 3 : 4;
                 GLenum format = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
                     GL_RGB : GL_RGBA;
