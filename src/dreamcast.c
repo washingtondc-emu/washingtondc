@@ -95,6 +95,10 @@ static void dreamcast_enable_serial_server(void);
 
 static void dreamcast_enable_cmd_tcp(void);
 
+#define DC_PERIODIC_EVENT_PERIOD (200 * 1000 * 1000 / 10)
+static void periodic_event_handler(struct SchedEvent *event);
+static struct SchedEvent periodic_event;
+
 void dreamcast_init(bool cmd_session) {
     is_running = true;
 
@@ -236,6 +240,10 @@ void dreamcast_run() {
     cmd_print_banner();
     cmd_thread_kick();
 
+    periodic_event.when = dc_cycle_stamp() + DC_PERIODIC_EVENT_PERIOD;
+    periodic_event.handler = periodic_event_handler;
+    sched_event(&periodic_event);
+
     /*
      * if there's a cmd session attached, then hang here until the user enters
      * the begin-execution command.
@@ -246,62 +254,7 @@ void dreamcast_run() {
     while (is_running) {
 #ifdef ENABLE_DEBUGGER
         dreamcast_check_debugger();
-#endif
 
-        /*
-         * TODO:
-         * maybe turn this into a dc_sched event so I don't have to check it as
-         * often?  dc_get_state does turn into an atomic read...
-         */
-        enum dc_state cur_state = dc_get_state();
-        if (unlikely(cur_state == DC_STATE_SUSPEND)) {
-            cons_puts("Execution suspended.  To resume, enter "
-                      "\"resume-execution\" into the CLI prompt.\n");
-            cmd_thread_kick();
-            do {
-                /*
-                 * TODO: sleep on a pthread condition or something instead of
-                 * polling.
-                 */
-                usleep(1000 * 1000 / 10);
-            } while ((cur_state = dc_get_state()) == DC_STATE_SUSPEND &&
-                     is_running);
-            if (dc_is_running()) {
-                cons_puts("execution resumed\n");
-            } else {
-                /*
-                 * TODO: this message doesn't actually get printed.  The likely
-                 * cause is that the cmd thread does not have time to print it.
-                 * it may be worthwile to drain all output before the cmd
-                 * thread exits, but I'd also have to be careful not to spend
-                 * too long waiting on an ack from an external system...
-                 */
-                cons_puts("responding to request to exit\n");
-            }
-            cmd_thread_kick();
-
-            /*
-             * we do a continue here so that we have to check is_running again
-             * and potentially exit the loop without executing any more
-             * instructions.
-             */
-            continue;
-        }
-
-        /*
-         * TODO: reconsider this placement.
-         *
-         * "Normal" serial port speed is approx 10kbaud, and the Dreamcast's
-         * serial port can go up to approx 1mbaud.  Calling sh4_periodic here
-         * will force it to (in the worst-case scenario) update on a per-hblank
-         * basis, which is less accurate.
-         *
-         * Moving this to somewhere like sh4_check_interrupts would be way more
-         * accurate, but IDK if I want to add an atomic test-and-set there...
-         */
-        sh4_periodic(&cpu);
-
-#ifdef ENABLE_DEBUGGER
         /*
          * TODO: don't single-step if there's no
          * chance of us hitting a breakpoint
@@ -523,4 +476,54 @@ void dc_state_transition(enum dc_state state_new, enum dc_state state_old) {
 
 bool dc_debugger_enabled(void) {
     return using_debugger;
+}
+
+/*
+ * the purpose of this handler is to perform processing that needs to happen
+ * occasionally but has no hard timing requirements.  The timing of this event
+ * is *technically* deterministic, but users should not assume any determinism
+ * because the frequency of this event is subject to change.
+ */
+static void periodic_event_handler(struct SchedEvent *event) {
+    enum dc_state cur_state = dc_get_state();
+    if (unlikely(cur_state == DC_STATE_SUSPEND)) {
+        cons_puts("Execution suspended.  To resume, enter "
+                  "\"resume-execution\" into the CLI prompt.\n");
+        while (is_running) {
+            cmd_thread_kick();
+            do {
+                /*
+                 * TODO: sleep on a pthread condition or something instead of
+                 * polling.
+                 */
+                usleep(1000 * 1000 / 10);
+            } while ((cur_state = dc_get_state()) == DC_STATE_SUSPEND &&
+                     is_running);
+            if (dc_is_running()) {
+                cons_puts("execution resumed\n");
+            } else {
+                /*
+                 * TODO: this message doesn't actually get printed.  The likely
+                 * cause is that the cmd thread does not have time to print it.
+                 * it may be worthwile to drain all output before the cmd
+                 * thread exits, but I'd also have to be careful not to spend
+                 * too long waiting on an ack from an external system...
+                 */
+                cons_puts("responding to request to exit\n");
+            }
+            cmd_thread_kick();
+
+            /*
+             * we do a continue here so that we have to check is_running again
+             * and potentially exit the loop without executing any more
+             * instructions.
+             */
+            continue;
+        }
+    }
+
+    sh4_periodic(&cpu);
+
+    periodic_event.when = dc_cycle_stamp() + DC_PERIODIC_EVENT_PERIOD;
+    sched_event(&periodic_event);
 }
