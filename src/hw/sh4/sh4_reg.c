@@ -44,8 +44,8 @@ static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
                                        struct Sh4MemMappedReg const *reg_info);
 
 static int
-sh4_mystery_ipr_reg_write_handler(Sh4 *sh4, void const *buf,
-                                  struct Sh4MemMappedReg const *reg_info);
+sh4_zero_only_reg_write_handler(Sh4 *sh4, void const *buf,
+                                struct Sh4MemMappedReg const *reg_info);
 
 /*
  * SDMR2 and SDMR3 are  weird.  When you write to them, the value
@@ -272,6 +272,24 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "TCPR2", 0xffd8002c, 4, SH4_REG_TCPR2, true,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
 
+    /*
+     * DMA channel 0
+     *
+     * software should not attempt to access this because it is controlled by
+     * hardware.  I have seen some programs will zero this out, so I do allow
+     * that through as long as it only writes 0.  I'm not sure what the effect
+     * of this would be on real hardware, or if it even has an effect.
+     */
+    { "SAR0", 0xffa00000, 4, (sh4_reg_idx_t)-1, true,
+      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+    { "DAR0", 0xffa00004, 4, (sh4_reg_idx_t)-1, true,
+      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+    { "DMATCR0", 0xffa00008, 4, (sh4_reg_idx_t)-1, true,
+      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+    { "CHCR0", 0xffa0000c, 4, (sh4_reg_idx_t)-1, true,
+      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+
+
     /* DMA Controller (DMAC) */
     { "SAR1", 0xffa00010, 4, SH4_REG_SAR1, true,
       sh4_dmac_sar_reg_read_handler, sh4_dmac_sar_reg_write_handler, 0, 0 },
@@ -341,13 +359,13 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
      * similar padding between IPRA/IPRB.
      */
     { "IPR_MYSTERY_ffd00002", 0xffd00002, 2, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_mystery_ipr_reg_write_handler },
+      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
     { "IPR_MYSTERY_ffd00006", 0xffd00006, 2, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_mystery_ipr_reg_write_handler },
+      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
     { "IPR_MYSTERY_ffd0000a", 0xffd0000a, 2, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_mystery_ipr_reg_write_handler },
+      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
     { "IPR_MYSTERY_ffd0000e", 0xffd0000e, 2, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_mystery_ipr_reg_write_handler },
+      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
 
     /* User Break Controller - I don't need this, I got my own debugger */
     { "BARA", 0xff200000, 4, (sh4_reg_idx_t)-1, true,
@@ -735,7 +753,7 @@ static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
 }
 
 static int
-sh4_mystery_ipr_reg_write_handler(Sh4 *sh4, void const *buf,
+sh4_zero_only_reg_write_handler(Sh4 *sh4, void const *buf,
                                   struct Sh4MemMappedReg const *reg_info) {
     uint16_t val;
     memcpy(&val, buf, sizeof(val));
@@ -749,8 +767,7 @@ sh4_mystery_ipr_reg_write_handler(Sh4 *sh4, void const *buf,
      * tries to use a different value then I want to know about it.
      */
     if (val) {
-        error_set_feature("writing non-zero to the IPR mystery/padding "
-                          "registers");
+        error_set_feature("writing non-zero to a zero-only register");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
