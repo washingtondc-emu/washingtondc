@@ -408,12 +408,24 @@ static void on_polyhdr_received(void) {
      */
     struct geo_buf *geo = geo_buf_get_prod();
 
-    if ((poly_state.current_list == DISPLAY_LIST_NONE) &&
-        !list_submitted[list]) {
-
+    if (poly_state.current_list != DISPLAY_LIST_NONE &&
+        poly_state.current_list != list) {
         // finish the last poly group of the current list
+
+#ifdef INVARIANTS
+        if (poly_state.current_list < 0 || poly_state.current_list >= DISPLAY_LIST_COUNT) {
+            fprintf(stderr, "ERROR: poly_state.current_list is 0x%08x\n",
+                   (unsigned)poly_state.current_list);
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+#endif
+
         if (geo->lists[poly_state.current_list].n_groups >= 1)
             finish_poly_group(geo, poly_state.current_list);
+    }
+
+    if ((poly_state.current_list != list) &&
+        !list_submitted[list]) {
 
         printf("Opening display list %s\n", display_list_names[list]);
         poly_state.current_list = list;
