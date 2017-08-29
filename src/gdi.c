@@ -61,7 +61,7 @@ static struct mount_ops gdi_mount_ops = {
 };
 
 /* enforce sane limits - MAX_TRACKS might need to be bigger tbh */
-#define MAX_TRACKS 16
+#define MAX_TRACKS 32
 #define MAX_TRACK_FIELDS 16
 
 /*
