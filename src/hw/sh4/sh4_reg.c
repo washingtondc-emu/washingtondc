@@ -755,21 +755,14 @@ static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
 static int
 sh4_zero_only_reg_write_handler(Sh4 *sh4, void const *buf,
                                   struct Sh4MemMappedReg const *reg_info) {
-    uint16_t val;
-    memcpy(&val, buf, sizeof(val));
+    uint8_t *bufp;
+    unsigned n_bytes = reg_info->len;
 
-    /*
-     * IDK what these registers do - I think it's just some sort of padding for
-     * the IPR registers because they're each 2-bytes long but they also have 2
-     * bytes of empty space between them.
-     *
-     * I've only ever seen software try to write 0 to these.  If something ever
-     * tries to use a different value then I want to know about it.
-     */
-    if (val) {
-        error_set_feature("writing non-zero to a zero-only register");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
+    while (n_bytes--)
+        if (*bufp++) {
+            error_set_feature("writing non-zero to a zero-only register");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
 
     return 0;
 }
