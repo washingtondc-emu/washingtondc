@@ -5106,10 +5106,10 @@ void sh4_inst_unary_fabs_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1111nnnn01011101, INST_CONS_1111nnnn01011101);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnnn01011101");
-    error_set_opcode_name("FABS FRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    float *regp = sh4_fpu_fr(sh4, inst.fr_reg);
+    *regp = fabs(*regp);
+
+    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm0000 0xf00f
