@@ -26,6 +26,7 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "hw/aica/aica_wave_mem.h"
 #include "gfx/gfx_config.h"
 #include "cons.h"
 #include "dreamcast.h"
@@ -45,6 +46,7 @@ static int cmd_exit(int argc, char **argv);
 static int cmd_resume_execution(int argc, char **argv);
 static int cmd_suspend_execution(int argc, char **argv);
 static int cmd_begin_execution(int argc, char **argv);
+static int cmd_aica_verbose_log(int argc, char **argv);
 
 struct cmd {
     char const *cmd_name;
@@ -57,6 +59,17 @@ struct cmd {
      * order.  The help command is not cognizant enough to sort these, so it
      * will print them in whatever order they are listed.
      */
+    {
+        .cmd_name = "aica-verbose-log",
+        .summary = "log reads-to/writes-from AICA waveform memory to stdout",
+        .help_str =
+        "aica-verbose-log enable|disable\n"
+        "\n"
+        "This command can be made to log attempts made by the guest software\n"
+        "to access AICA waveform memory.  The logs will be printed to\n"
+        "stdout.\n",
+        .cmd_handler = cmd_aica_verbose_log
+    },
     {
         .cmd_name = "begin-execution",
         .summary = "begin executing with the input settings",
@@ -374,4 +387,31 @@ void cmd_print_banner(void) {
 
 void cmd_print_prompt(void) {
     cons_puts("> ");
+}
+
+static int cmd_aica_verbose_log(int argc, char **argv) {
+    bool do_enable;
+    if (argc != 2) {
+        cons_puts("Usage: aica-verbose-log enable|disable\n");
+        return 1;
+    }
+
+    if (strcmp(argv[1], "enable") == 0) {
+        do_enable = true;
+    } else if (strcmp(argv[1], "disable") == 0) {
+        do_enable = false;
+    } else {
+        cons_puts("Usage: aica-verbose-log enable|disable\n");
+        return 1;
+    }
+
+    aica_log_verbose(do_enable);
+
+    cons_puts("verbose AICA waveform memory access logging is now ");
+    if (do_enable)
+        cons_puts("enabled.\n");
+    else
+        cons_puts("disabled.\n");
+
+    return 0;
 }

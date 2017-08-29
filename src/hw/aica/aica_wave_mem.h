@@ -23,12 +23,16 @@
 #ifndef AICA_WAVE_MEM_H_
 #define AICA_WAVE_MEM_H_
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 int aica_wave_mem_read(void *buf, size_t addr, size_t len);
 int aica_wave_mem_write(void const *buf, size_t addr, size_t len);
+
+void aica_log_verbose(bool verbose);
 
 #ifdef __cplusplus
 }
