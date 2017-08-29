@@ -325,6 +325,8 @@ static struct pvr2_core_mem_mapped_reg {
       read_spg_status, pvr2_core_read_only_reg_write_handler },
     { "TA_OL_BASE", 0x5f8124, 4,
       warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
+    { "PT_ALPHA_CMP", 0x5f811c, 4, // TODO: punch-through polygon support
+      warn_pvr2_core_reg_read_handler, warn_pvr2_core_reg_write_handler },
     { "TA_VERTBUF_START", 0x5f8128, 4,
       ta_vertbuf_start_reg_read_handler, ta_vertbuf_start_reg_write_handler },
     { "TA_ISP_LIMIT", 0x5f8130, 4,
