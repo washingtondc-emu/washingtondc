@@ -120,6 +120,7 @@ struct gdrom_bufq_node {
 #define GDROM_PKT_REQ_ERROR  0x13
 #define GDROM_PKT_READ_TOC   0x14
 #define GDROM_PKT_READ       0x30
+#define GDROM_PKT_SUBCODE    0x40
 #define GDROM_PKT_START_DISK 0x70
 #define GDROM_PKT_UNKNOWN_71 0x71
 
@@ -154,6 +155,8 @@ static void gdrom_input_read_toc_packet(void);
 static void gdrom_input_read_packet(void);
 
 static void gdrom_input_packet_71(void);
+
+static void gdrom_input_read_subcode_packet(void);
 
 struct gdrom_ctxt gdrom;
 
@@ -383,6 +386,9 @@ static void gdrom_input_packet(void) {
         break;
     case GDROM_PKT_READ_TOC:
         gdrom_input_read_toc_packet();
+        break;
+    case GDROM_PKT_SUBCODE:
+        gdrom_input_read_subcode_packet();
         break;
     case GDROM_PKT_READ:
         gdrom_input_read_packet();
@@ -767,6 +773,39 @@ static void gdrom_input_read_toc_packet(void) {
     gdrom_clear_error();
 }
 
+static void gdrom_input_read_subcode_packet(void) {
+    unsigned idx;
+    unsigned len = (((unsigned)gdrom.pkt_buf[3]) << 8) | gdrom.pkt_buf[4];
+    GDROM_TRACE("WARNING: semi-unimplemented CD_SCD packet received:\n");
+    for (idx = 0; idx < PKT_LEN; idx++)
+        GDROM_TRACE("\t%02x\n", (unsigned)gdrom.pkt_buf[idx]);
+
+
+    bufq_clear();
+    struct gdrom_bufq_node *node =
+        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+
+    node->idx = 0;
+    node->len = len;
+
+    // TODO: fill in with real data instead of all zeroes
+    memset(node->dat, 0, len);
+    gdrom.data_byte_count = len;
+
+    fifo_push(&gdrom.bufq, &node->fifo_node);
+
+    gdrom.int_reason_reg.io = true;
+    gdrom.int_reason_reg.cod = false;
+    gdrom.stat_reg.drq = true;
+    if (!gdrom.dev_ctrl_reg.nien)
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+
+    gdrom.state = GDROM_STATE_NORM;
+
+    gdrom.stat_reg.check = false;
+    gdrom_clear_error();
+}
+
 unsigned gdrom_dma_prot_top(void) {
     return (((gdrom.gdapro_reg & 0x7f00) >> 8) << 20) | 0x08000000;
 }
@@ -891,7 +930,7 @@ void gdrom_input_cmd(unsigned cmd) {
          * TODO: I think this is supposed to be able to interrupt in-progress
          * operations, but that isn't implemented yet.
          */
-        fprintf(stderr, "WARNING: GDROM_CMD_NOP is not implemented yet\n");
+        GDROM_TRACE("WARNING: GDROM_CMD_NOP is not implemented yet\n");
         break;
     default:
         error_set_feature("unknown GD-ROM command");
