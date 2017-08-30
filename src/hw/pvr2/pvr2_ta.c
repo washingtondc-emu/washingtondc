@@ -249,6 +249,7 @@ static void on_packet_received(void);
 static void on_polyhdr_received(void);
 static void on_vertex_received(void);
 static void on_end_of_list_received(void);
+static void on_user_clip_received(void);
 
 static void finish_poly_group(struct geo_buf *geo,
                               enum display_list_type disp_list);
@@ -326,6 +327,9 @@ static void on_packet_received(void) {
         break;
     case TA_CMD_TYPE_END_OF_LIST:
         on_end_of_list_received();
+        break;
+    case TA_CMD_TYPE_USER_CLIP:
+        on_user_clip_received();
         break;
     default:
         printf("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
@@ -733,6 +737,14 @@ static void on_end_of_list_received(void) {
     poly_state.current_list = DISPLAY_LIST_NONE;
 
 the_end:
+    ta_fifo_finish_packet();
+}
+
+static void on_user_clip_received(void) {
+    printf("PVR2 WARNING: UNIMPLEMENTED USER TILE CLIP PACKET RECEIVED!\n");
+
+    // TODO: implement tile clipping
+
     ta_fifo_finish_packet();
 }
 
