@@ -85,7 +85,7 @@ enum ta_color_type {
 // what is 2?
 // what is 3?
 #define TA_CMD_TYPE_POLY_HDR    0x4
-#define TA_CMD_TYPE_SPRITE      0x5
+#define TA_CMD_TYPE_SPRITE_HDR  0x5
 // what is 6?
 #define TA_CMD_TYPE_VERTEX      0x7
 
@@ -136,6 +136,11 @@ enum vert_type {
 
 static DEF_ERROR_INT_ATTR(ta_fifo_cmd);
 
+enum global_param {
+    GLOBAL_PARAM_POLY = 4,
+    GLOBAL_PARAP_SPRITE = 5
+};
+
 struct poly_hdr {
     enum display_list_type list;
 
@@ -165,6 +170,8 @@ struct poly_hdr {
 };
 
 static struct poly_state {
+    enum global_param global_param;
+
     // used to store the previous two verts when we're rendering a triangle strip
     float strip_vert1[GEO_BUF_VERT_LEN];
     float strip_vert2[GEO_BUF_VERT_LEN];
@@ -306,9 +313,15 @@ static void on_packet_received(void) {
 
     switch(cmd_tp) {
     case TA_CMD_TYPE_VERTEX:
-        on_vertex_received();
+        if (poly_state.global_param == GLOBAL_PARAM_POLY)
+            on_vertex_received();
+        else {
+            error_set_feature("PVR2 sprites");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
         break;
     case TA_CMD_TYPE_POLY_HDR:
+    case TA_CMD_TYPE_SPRITE_HDR:
         on_polyhdr_received();
         break;
     case TA_CMD_TYPE_END_OF_LIST:
@@ -509,6 +522,10 @@ static void on_polyhdr_received(void) {
 
     memcpy(poly_state.poly_color_rgba, hdr.poly_color_rgba,
            sizeof(poly_state.poly_color_rgba));
+
+    poly_state.global_param =
+        (enum global_param)((ta_fifo32[0] & TA_CMD_TYPE_MASK) >>
+                            TA_CMD_TYPE_SHIFT);
 
     printf("POLY HEADER PACKET!\n");
 
