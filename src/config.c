@@ -20,41 +20,49 @@
  *
  ******************************************************************************/
 
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <string.h>
 
 #include "config.h"
 
-#define CONFIG_DEF_BOOL(prop)                           \
-    static bool config_ ## prop;                        \
-    bool config_get_ ## prop(void) {                    \
-        return config_ ## prop;                         \
-    }                                                   \
-    void config_set_ ## prop(bool new_val) {            \
-        config_ ## prop = new_val;                      \
+#define CONFIG_DEF_BOOL(prop)                                           \
+    static atomic_bool config_ ## prop = ATOMIC_VAR_INIT(false);        \
+    bool config_get_ ## prop(void) {                                    \
+        return atomic_load_explicit(&config_ ## prop,                   \
+                                    memory_order_relaxed);              \
+    }                                                                   \
+    void config_set_ ## prop(bool new_val) {                            \
+        atomic_store_explicit(&config_ ## prop, new_val,                \
+                              memory_order_relaxed);                    \
     }
 
-#define CONFIG_DEF_INT(prop)                    \
-    static int config_ ## prop;                 \
-    int config_get_ ## prop(void) {             \
-        return config_ ## prop;                 \
-    }                                           \
-    void config_set_ ## prop(int new_val) {     \
-        config_ ## prop = new_val;              \
+#define CONFIG_DEF_INT(prop)                                    \
+    static atomic_int config_ ## prop = ATOMIC_VAR_INIT(0);     \
+    int config_get_ ## prop(void) {                             \
+        return atomic_load_explicit(&config_ ## prop,           \
+                                    memory_order_relaxed);      \
+    }                                                           \
+    void config_set_ ## prop(int new_val) {                     \
+        atomic_store_explicit(&config_ ## prop, new_val,        \
+                              memory_order_relaxed);            \
     }
 
 #define CONFIG_DEF_STRING(prop)                                         \
     static char config_ ##prop[CONFIG_STR_LEN];                         \
     char const *config_get_ ## prop(void) {                             \
+        atomic_thread_fence(memory_order_acquire);                      \
         return config_ ##prop;                                          \
     }                                                                   \
     void config_set_ ## prop(char const *new_val) {                     \
         if (new_val) {                                                  \
-            strncpy(config_ ## prop, new_val, sizeof(char) * CONFIG_STR_LEN); \
+            strncpy(config_ ## prop, new_val,                           \
+                    sizeof(char) * CONFIG_STR_LEN);                     \
             config_ ## prop[CONFIG_STR_LEN - 1] = '\0';                 \
         } else {                                                        \
             memset(config_ ## prop, 0, sizeof(config_ ## prop));        \
         }                                                               \
+        atomic_thread_fence(memory_order_release);                      \
     }
 
 #ifdef ENABLE_DEBUGGER
