@@ -118,6 +118,10 @@ static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
             maple_controller_press_btns(MAPLE_CONT_BTN_Y_MASK);
             printf("Y pressed\n");
             break;
+        case GLFW_KEY_SPACE:
+            maple_controller_press_btns(MAPLE_CONT_BTN_START_MASK);
+            printf("start pressed\n");
+            break;
         }
     } else if (action == GLFW_RELEASE) {
         switch (key) {
@@ -152,6 +156,10 @@ static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
         case GLFW_KEY_KP_8:
             maple_controller_release_btns(MAPLE_CONT_BTN_Y_MASK);
             printf("Y released\n");
+            break;
+        case GLFW_KEY_SPACE:
+            maple_controller_release_btns(MAPLE_CONT_BTN_START_MASK);
+            printf("start released\n");
             break;
         }
     }

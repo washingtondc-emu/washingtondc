@@ -57,6 +57,7 @@ rebinded yet.  It must be controlled using a keyboard with a number pad.
     | 6 (numpad) | B             |
     | 4 (numpad) | X             |
     | 8 (numpad) | Y             |
+    | Space      | Start         |
     |============================|
 
 ```
