@@ -86,3 +86,5 @@ CONFIG_DEF_STRING(ip_bin_path);
 CONFIG_DEF_STRING(exec_bin_path);
 
 CONFIG_DEF_BOOL(enable_cmd_tcp);
+
+CONFIG_DEF_BOOL(hack_power_stone_no_aica);

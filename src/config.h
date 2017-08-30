@@ -70,4 +70,11 @@ CONFIG_DECL_STRING(ip_bin_path);
 // path to the 1st_read.bin file
 CONFIG_DECL_STRING(exec_bin_path);
 
+/*
+ * if true, send a fake response from the AICA's CPU to fool the game into
+ * thinking the AICA CPU is working.  This only applies to Power Stone,
+ * obviously.
+ */
+CONFIG_DECL_BOOL(hack_power_stone_no_aica);
+
 #endif
