@@ -122,8 +122,20 @@ static struct aica_mapped_reg {
       warn_aica_reg_read_handler, warn_aica_reg_write_handler },
     { "AICA_EXTS", 0x7045c0, 4, 0x2,
       warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00702c00", 0x00702c00, 4, 1,
+
+    /*
+     * writing 1 to this register immediately stops whatever the ARM7 is doing
+     * so that a new program can be loaded.  Subsequently writing 0 to this
+     * register will reactivate the ARM7 and cause it to begin executing
+     * instructions starting from 0x00800000 (like a power-on reset).
+     *
+     * I'm not sure what the initial value here ought to be, but logic would
+     * seem to dictate that the ARM7 must be initially disabled since there
+     * won't be any program loaded immediately after the Dreamcast powers on.
+     */
+    { "AICA_ARM7_DISABLE", 0x00702c00, 4, 1,
       warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+
     { "AICA_00702800", 0x00702800, 4, 1,
       warn_aica_reg_read_handler, warn_aica_reg_write_handler },
     { "AICA_0070289c", 0x0070289c, 4, 1,
