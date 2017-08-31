@@ -208,6 +208,12 @@ static struct poly_state {
     float poly_color_rgba[4];
 
     enum vert_type vert_type;
+
+    /*
+     * The last RGBA quad that was specified using MODE 1 intensity.
+     * This is used for as the color for subsequent MODE 2 intensity.
+     */
+    float intensity_rgba[4];
 } poly_state = {
     .current_list = DISPLAY_LIST_NONE,
     .vert_len = 8
@@ -645,10 +651,16 @@ static void on_vertex_received(void) {
             color_g = intensity * poly_state.poly_color_rgba[1];
             color_b = intensity * poly_state.poly_color_rgba[2];
 
+            poly_state.intensity_rgba[0] = color_r;
+            poly_state.intensity_rgba[1] = color_g;
+            poly_state.intensity_rgba[2] = color_b;
+            poly_state.intensity_rgba[3] = color_a;
             break;
         case TA_COLOR_TYPE_INTENSITY_MODE_2:
-            error_set_feature("intensity color mode 2");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            color_r = poly_state.intensity_rgba[0];
+            color_g = poly_state.intensity_rgba[1];
+            color_b = poly_state.intensity_rgba[2];
+            color_a = poly_state.intensity_rgba[3];
             break;
         default:
             color_r = color_g = color_b = color_a = 1.0f;
