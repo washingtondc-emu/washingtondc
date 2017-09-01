@@ -69,6 +69,20 @@
 #define POWER_STONE_HACK_ADDR_3 0x00800288
 #define POWER_STONE_HACK_VAL_3  0x00800004
 
+/*
+ * This value needs to point to AICA waveform memory.  at PC=0xc0e657c,
+ * Power Stone will read from this memory location, add 0x7ff to the value and
+ * then write it back to this same memory location at PC=0xc0e6586.
+ *
+ * The value used here is not the correct value; I do not know what the correct
+ * value is.  Since I don't have a working ARM7 CPU implementation, the safest
+ * bet is to choose somewhere that probably stores executable code.  That way I
+ * know I'm not accidentally trampling over some other value that the SH4 CPU
+ * software tries to access.
+ */
+#define POWER_STONE_HACK_ADDR_4 0x008002e4
+#define POWER_STONE_HACK_VAL_4  0x00800008
+
 atomic_bool aica_log_verbose_val = ATOMIC_VAR_INIT(false);
 
 static uint8_t aica_wave_mem[ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1];
@@ -128,6 +142,22 @@ int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
         if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
             printf("AICA: reading %u from 0x%08x due to the no-AICA Power "
                    "Stone hack\n", POWER_STONE_HACK_VAL_3, POWER_STONE_HACK_ADDR_3);
+        }
+        return MEM_ACCESS_SUCCESS;
+    } else if (addr == POWER_STONE_HACK_ADDR_4 &&
+        config_get_hack_power_stone_no_aica()) {
+        uint32_t val = POWER_STONE_HACK_VAL_4;
+        if (len > sizeof(val)) {
+            error_set_feature("reads of greater than 4 bytes when using the "
+                              "Power Stone no-AICA hack");
+            PENDING_ERROR(ERROR_UNIMPLEMENTED);
+            return MEM_ACCESS_FAILURE;
+        }
+
+        memcpy(buf, &val, len);
+        if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
+            printf("AICA: reading %u from 0x%08x due to the no-AICA Power "
+                   "Stone hack\n", POWER_STONE_HACK_VAL_4, POWER_STONE_HACK_ADDR_4);
         }
         return MEM_ACCESS_SUCCESS;
     }
