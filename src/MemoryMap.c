@@ -134,6 +134,7 @@ boundary_cross:
 }
 
 static inline int read_area0(void *buf, size_t addr, size_t len) {
+    addr32_t addr_orig = addr;
     addr &= ADDR_AREA0_MASK;
     size_t first_addr = addr;
     size_t last_addr = addr + (len - 1);
@@ -178,12 +179,13 @@ boundary_cross:
     error_set_feature("proper response for when the guest writes past a memory "
                       "map's end");
     error_set_length(len);
-    error_set_address(addr);
+    error_set_address(addr_orig);
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
 }
 
 static inline int write_area0(void const *buf, size_t addr, size_t len) {
+    addr32_t addr_orig = addr;
     addr &= ADDR_AREA0_MASK;
     size_t first_addr = addr;
     size_t last_addr = addr + (len - 1);
@@ -228,7 +230,7 @@ boundary_cross:
     error_set_feature("proper response for when the guest writes past a memory "
                       "map's end");
     error_set_length(len);
-    error_set_address(addr);
+    error_set_address(addr_orig);
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
 }
