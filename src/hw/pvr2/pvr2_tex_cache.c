@@ -83,15 +83,16 @@ static unsigned tex_twiddle(unsigned x, unsigned y,
     }
 }
 
-struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, unsigned w,
-                                     unsigned h, int pix_fmt, bool twiddled) {
+struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
+                                     unsigned w_shift, unsigned h_shift,
+                                     int pix_fmt, bool twiddled) {
     unsigned idx;
     struct pvr2_tex *tex;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
         if (tex->valid && (tex->addr_first == addr) &&
-            (tex->w == w) && (tex->h == h) && (tex->pix_fmt == pix_fmt) &&
-            tex->twiddled == twiddled) {
+            (tex->w_shift == w_shift) && (tex->h_shift == h_shift) &&
+            (tex->pix_fmt == pix_fmt) && tex->twiddled == twiddled) {
             return tex;
         }
     }
@@ -100,9 +101,20 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, unsigned w,
 }
 
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
-                                    unsigned w, unsigned h,
+                                    unsigned w_shift, unsigned h_shift,
                                     int pix_fmt, bool twiddled) {
     assert(pix_fmt < TEX_CTRL_PIX_FMT_INVALID);
+
+#ifdef INVARIANTS
+    if (w_shift > 10 || h_shift > 10 || w_shift < 3 || h_shift < 3) {
+        /*
+         * this should not be possible because the width/height shifts are
+         * taken from a 3-bit integer with +3 added, so the smallest possible
+         * value is 3 and the largest is 10.
+         */
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+#endif
 
     unsigned idx;// = addr & PVR2_TEX_CACHE_MASK;
     /* struct pvr2_tex *tex = tex_cache + idx; */
@@ -120,11 +132,12 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     }
 
     tex->addr_first = addr;
-    tex->w = w;
-    tex->h = h;
+    tex->w_shift = w_shift;
+    tex->h_shift = h_shift;
     tex->pix_fmt = pix_fmt;
 
-    tex->addr_last = addr - 1 + pixel_sizes[pix_fmt] * w * h;
+    tex->addr_last = addr - 1 + pixel_sizes[pix_fmt] *
+        (1 << w_shift) * (1 << h_shift);
 
     tex->valid = true;
     tex->dirty = true;
@@ -166,39 +179,6 @@ void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
     }
 }
 
-/*
- * TODO: store the shifts in the textures instead of the width/height
- * so I don't need this stupid function.
- */
-static unsigned pvr2_log2(unsigned in) {
-    switch (in) {
-    case 1:
-        return 0;
-    case 2:
-        return 1;
-    case 4:
-        return 2;
-    case 8:
-        return 3;
-    case 16:
-        return 4;
-    case 32:
-        return 5;
-    case 64:
-        return 6;
-    case 128:
-        return 7;
-    case 256:
-        return 8;
-    case 512:
-        return 9;
-    case 1024:
-        return 10;
-    }
-
-    abort();
-}
-
 void pvr2_tex_cache_xmit(struct geo_buf *out) {
     unsigned idx;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
@@ -208,8 +188,8 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
         if (tex_in->valid && tex_in->dirty) {
             tex_out->addr_first = tex_in->addr_first;
             tex_out->addr_last = tex_in->addr_last;
-            tex_out->w = tex_in->w;
-            tex_out->h = tex_in->h;
+            tex_out->w_shift = tex_in->w_shift;
+            tex_out->h_shift = tex_in->h_shift;
             tex_out->pix_fmt = tex_in->pix_fmt;
             tex_out->twiddled = tex_in->twiddled;
 
@@ -222,7 +202,8 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
             printf("tex_in->addr_first is 0x%08x\n", tex_in->addr_first);
 
             size_t n_bytes = sizeof(uint8_t) *
-                tex_in->w * tex_in->h * pixel_sizes[tex_in->pix_fmt];
+                (1 << tex_in->w_shift) * (1 << tex_in->h_shift) *
+                pixel_sizes[tex_in->pix_fmt];
             tex_out->dat = (uint8_t*)malloc(n_bytes);
 
             // de-twiddle
@@ -231,16 +212,17 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
              * not all textures are twiddled
              */
             uint8_t const *beg = pvr2_tex64_mem + tex_in->addr_first;
+            unsigned tex_w = 1 << tex_in->w_shift, tex_h = 1 << tex_in->h_shift;
             if (tex_in->twiddled) {
                 unsigned row, col;
-                for (row = 0; row < tex_in->h; row++) {
-                    for (col = 0; col < tex_in->w; col++) {
+                for (row = 0; row < tex_h; row++) {
+                    for (col = 0; col < tex_w; col++) {
                         unsigned twid_idx = tex_twiddle(col, row,
-                                                        pvr2_log2(tex_in->w),
-                                                        pvr2_log2(tex_in->h));
+                                                        tex_in->w_shift,
+                                                        tex_in->h_shift);
 
                         void *dst_ptr = tex_out->dat +
-                            (row * tex_in->w + col) *
+                            (row * tex_w + col) *
                             pixel_sizes[tex_in->pix_fmt];
                         memcpy(dst_ptr,
                                beg + twid_idx * pixel_sizes[tex_in->pix_fmt],
@@ -249,7 +231,7 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
                 }
             } else {
                 memcpy(tex_out->dat, beg,
-                       pixel_sizes[tex_in->pix_fmt] * tex_in->w * tex_in->h);
+                       pixel_sizes[tex_in->pix_fmt] * tex_w * tex_h);
             }
 
             // this is what you'd have to do for a non-twiddled texture, I think

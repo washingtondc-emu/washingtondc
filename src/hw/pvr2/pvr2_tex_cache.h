@@ -43,7 +43,7 @@ struct geo_buf;
 struct pvr2_tex {
     uint32_t addr_first, addr_last;
 
-    unsigned w, h;
+    unsigned w_shift, h_shift;
     int pix_fmt;
 
     // if this is not set then this part of the cache is empty
@@ -65,11 +65,12 @@ struct pvr2_tex {
 
 // insert the given texture into the cache
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
-                                    unsigned w, unsigned h,
+                                    unsigned w_shift, unsigned h_shift,
                                     int pix_fmt, bool twiddled);
 
-struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, unsigned w,
-                                     unsigned h, int pix_fmt, bool twiddled);
+struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
+                                     unsigned w_shift, unsigned h_shift,
+                                     int pix_fmt, bool twiddled);
 
 void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len);
 

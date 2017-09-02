@@ -336,14 +336,17 @@ void render_next_geo_buf(void) {
                 GLenum format = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
                     GL_RGB : GL_RGBA;
 
+                unsigned tex_w = 1 << tex->w_shift;
+                unsigned tex_h = 1 << tex->h_shift;
+
                 if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444)
-                    render_conv_argb_4444((uint16_t*)tex->dat, tex->w * tex->h);
+                    render_conv_argb_4444((uint16_t*)tex->dat, tex_w * tex_h);
 
                 glBindTexture(GL_TEXTURE_2D, tex_cache[tex_no]);
 
                 // TODO: maybe don't always set this to 1
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-                glTexImage2D(GL_TEXTURE_2D, 0, format, tex->w, tex->h, 0,
+                glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
                              format, tex_formats[tex->pix_fmt], tex->dat);
                 glBindTexture(GL_TEXTURE_2D, 0);
                 tex->dirty = false;
