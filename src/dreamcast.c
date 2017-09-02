@@ -491,36 +491,27 @@ static void periodic_event_handler(struct SchedEvent *event) {
     if (unlikely(cur_state == DC_STATE_SUSPEND)) {
         cons_puts("Execution suspended.  To resume, enter "
                   "\"resume-execution\" into the CLI prompt.\n");
-        while (is_running) {
+        do {
             cmd_thread_kick();
-            do {
-                /*
-                 * TODO: sleep on a pthread condition or something instead of
-                 * polling.
-                 */
-                usleep(1000 * 1000 / 10);
-            } while ((cur_state = dc_get_state()) == DC_STATE_SUSPEND &&
-                     is_running);
-            if (dc_is_running()) {
-                cons_puts("execution resumed\n");
-            } else {
-                /*
-                 * TODO: this message doesn't actually get printed.  The likely
-                 * cause is that the cmd thread does not have time to print it.
-                 * it may be worthwile to drain all output before the cmd
-                 * thread exits, but I'd also have to be careful not to spend
-                 * too long waiting on an ack from an external system...
-                 */
-                cons_puts("responding to request to exit\n");
-            }
-            cmd_thread_kick();
-
             /*
-             * we do a continue here so that we have to check is_running again
-             * and potentially exit the loop without executing any more
-             * instructions.
+             * TODO: sleep on a pthread condition or something instead of
+             * polling.
              */
-            continue;
+            usleep(1000 * 1000 / 10);
+        } while (is_running &&
+                 ((cur_state = dc_get_state()) == DC_STATE_SUSPEND));
+
+        if (dc_is_running()) {
+            cons_puts("execution resumed\n");
+        } else {
+            /*
+             * TODO: this message doesn't actually get printed.  The likely
+             * cause is that the cmd thread does not have time to print it.
+             * it may be worthwile to drain all output before the cmd
+             * thread exits, but I'd also have to be careful not to spend
+             * too long waiting on an ack from an external system...
+             */
+            cons_puts("responding to request to exit\n");
         }
     }
 
