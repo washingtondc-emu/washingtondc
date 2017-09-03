@@ -51,6 +51,7 @@ static int cmd_suspend_execution(int argc, char **argv);
 static int cmd_begin_execution(int argc, char **argv);
 static int cmd_aica_verbose_log(int argc, char **argv);
 static int cmd_tex_info(int argc, char **argv);
+static int cmd_tex_enum(int argc, char **argv);
 
 struct cmd {
     char const *cmd_name;
@@ -156,6 +157,16 @@ struct cmd {
         "then this command would not be available.\n",
 #endif
         .cmd_handler = cmd_suspend_execution
+    },
+    {
+        .cmd_name = "tex-enum",
+        .summary = "list all active texture cache entries",
+        .help_str =
+        "tex-enum\n"
+        "\n"
+        "This command prints the index of every active entry in the texture \n"
+        "cache\n",
+        .cmd_handler = cmd_tex_enum
     },
     {
         .cmd_name = "tex-info",
@@ -478,6 +489,31 @@ static int cmd_tex_info(int argc, char **argv) {
 
     if (!did_print)
         cons_puts("No textures were found\n");
+
+    return 0;
+}
+
+static int cmd_tex_enum(int argc, char **argv) {
+    unsigned tex_no;
+    struct gfx_tex tex;
+    bool did_print = false;
+
+    for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
+        gfx_thread_get_tex(&tex, tex_no);
+
+        if (tex.valid) {
+            cons_printf("%s%u", did_print ? ", " : "", tex_no);
+            did_print = true;
+
+            if (tex.valid && tex.dat)
+                free(tex.dat);
+        }
+    }
+
+    if (did_print)
+        cons_puts("\n");
+    else
+        cons_puts("the texture cache is currently empty.\n");
 
     return 0;
 }
