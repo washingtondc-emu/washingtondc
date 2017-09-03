@@ -226,3 +226,26 @@ void gfx_thread_post_framebuffer(uint32_t const *fb_new,
                                  unsigned fb_new_height) {
     opengl_video_new_framebuffer(fb_new, fb_new_width, fb_new_height);
 }
+
+void gfx_thread_get_tex(struct gfx_tex *out, unsigned tex_no) {
+    if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
+        abort(); // TODO: error handling
+
+    struct gfx_tex const *in = gfx_tex_cache_get(tex_no);
+
+    if (in && in->valid) {
+        out->valid = true;
+        out->w_shift = in->w_shift;
+        out->h_shift = in->h_shift;
+        out->pvr2_pix_fmt = in->pvr2_pix_fmt;
+        out->dat = NULL; // TODO: implement this for real
+        out->twiddled = in->twiddled;
+        out->addr_first = in->addr_first;
+        out->addr_last = in->addr_last;
+    } else {
+        out->valid = false;
+    }
+
+    if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
+        abort(); // TODO: error handling
+}

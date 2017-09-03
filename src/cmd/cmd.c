@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <err.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -28,6 +29,8 @@
 
 #include "hw/aica/aica_wave_mem.h"
 #include "gfx/gfx_config.h"
+#include "gfx/gfx_thread.h"
+#include "gfx/gfx_tex_cache.h"
 #include "cons.h"
 #include "dreamcast.h"
 
@@ -47,6 +50,7 @@ static int cmd_resume_execution(int argc, char **argv);
 static int cmd_suspend_execution(int argc, char **argv);
 static int cmd_begin_execution(int argc, char **argv);
 static int cmd_aica_verbose_log(int argc, char **argv);
+static int cmd_tex_info(int argc, char **argv);
 
 struct cmd {
     char const *cmd_name;
@@ -152,6 +156,16 @@ struct cmd {
         "then this command would not be available.\n",
 #endif
         .cmd_handler = cmd_suspend_execution
+    },
+    {
+        .cmd_name = "tex-info",
+        .summary = "view metadata for a texture in the texture cache.",
+        .help_str =
+        "tex-info tex_no|all\n"
+        "\n"
+        "Look up the given texture in the texture cache and print its \n"
+        "metadata.\n",
+        .cmd_handler = cmd_tex_info
     },
     { NULL }
 };
@@ -412,6 +426,58 @@ static int cmd_aica_verbose_log(int argc, char **argv) {
         cons_puts("enabled.\n");
     else
         cons_puts("disabled.\n");
+
+    return 0;
+}
+
+static int cmd_tex_info(int argc, char **argv) {
+    unsigned first_tex_no, last_tex_no, tex_no;
+    struct gfx_tex tex;
+    bool print_missing = true;
+    bool did_print = false;
+
+    if (argc != 2) {
+        cons_puts("Usage: tex-info tex_no|all\n");
+        return 1;
+    }
+
+    /*
+     * TODO: one problem with the "all" option is that it fills up the cons
+     * text_ring completely and results in dropped characters.
+     */
+    if (strcmp(argv[1], "all") == 0) {
+        first_tex_no = 0;
+        last_tex_no = PVR2_TEX_CACHE_SIZE - 1;
+        print_missing = false;
+    } else {
+        first_tex_no = last_tex_no = atoi(argv[1]);
+    }
+
+    for (tex_no = first_tex_no; tex_no <= last_tex_no; tex_no++) {
+        gfx_thread_get_tex(&tex, tex_no);
+
+        if (tex.valid) {
+            cons_printf("texture %u:\n", tex_no);
+            cons_printf("\tdimensions: (%u, %u)\n",
+                        1 << tex.w_shift, 1 << tex.h_shift);
+            cons_printf("\tformat: %u\n", (unsigned)tex.pvr2_pix_fmt);
+            cons_printf("\t%s\n", tex.twiddled ? "twiddled" : "not twiddled");
+            cons_printf("\tfirst address: 0x%08x\n", tex.addr_first);
+            cons_printf("\tlast address: 0x%08x\n", tex.addr_last);
+            did_print = true;
+        } else {
+            if (print_missing) {
+                cons_printf("Texture %u is not in the texture cache\n", tex_no);
+                did_print = true;
+            }
+        }
+
+        if (tex.valid && tex.dat)
+            free(tex.dat);
+    }
+
+    if (!did_print)
+        cons_puts("No textures were found\n");
 
     return 0;
 }

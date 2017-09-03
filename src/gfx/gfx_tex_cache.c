@@ -59,5 +59,7 @@ void gfx_tex_cache_evict(unsigned idx) {
 }
 
 struct gfx_tex const* gfx_tex_cache_get(unsigned idx) {
-    return tex_cache + idx;
+    if (idx < PVR2_TEX_CACHE_SIZE)
+        return tex_cache + idx;
+    return NULL;
 }

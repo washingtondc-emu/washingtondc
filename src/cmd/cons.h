@@ -38,6 +38,8 @@
  */
 void cons_puts(char const *txt);
 
+void cons_printf(char const *txt, ...);
+
 /*
  * remove a user-input character from the rx ring.
  * If this function returns false, then *ch is not valid and the ring is empty.

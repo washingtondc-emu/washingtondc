@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <pthread.h>
 
 #include "cmd_thread.h"
@@ -51,6 +52,20 @@ void cons_puts(char const *txt) {
     while (*txt)
         text_ring_produce(&cons_txq, *txt++);
     cons_tx_prod_unlock();
+}
+
+#define CONS_PRINTF_BUF_LEN 128
+
+void cons_printf(char const *txt, ...) {
+    char buf[CONS_PRINTF_BUF_LEN];
+    va_list ap;
+
+    va_start(ap, txt);
+    vsnprintf(buf, CONS_PRINTF_BUF_LEN, txt, ap);
+    buf[CONS_PRINTF_BUF_LEN - 1] = '\0';
+    va_end(ap);
+
+    cons_puts(buf);
 }
 
 bool cons_getc(char *ch) {
