@@ -40,6 +40,7 @@ enable_testing()
 
 find_package(PkgConfig REQUIRED)
 pkg_search_module(GLFW3 REQURED glfw3)
+pkg_search_module(PNG REQUIRED libpng)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
@@ -310,4 +311,4 @@ target_link_libraries(sh4asm m sh4asm_core rt)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-target_link_libraries(washingtondc m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads)
+target_link_libraries(washingtondc m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads ${PNG_STATIC_LIBRARIES})

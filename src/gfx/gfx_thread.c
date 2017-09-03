@@ -238,10 +238,29 @@ void gfx_thread_get_tex(struct gfx_tex *out, unsigned tex_no) {
         out->w_shift = in->w_shift;
         out->h_shift = in->h_shift;
         out->pvr2_pix_fmt = in->pvr2_pix_fmt;
-        out->dat = NULL; // TODO: implement this for real
         out->twiddled = in->twiddled;
         out->addr_first = in->addr_first;
         out->addr_last = in->addr_last;
+
+        unsigned bytes_per_pix;
+        switch (out->pvr2_pix_fmt) {
+        case TEX_CTRL_PIX_FMT_ARGB_1555:
+        case TEX_CTRL_PIX_FMT_ARGB_4444:
+        case TEX_CTRL_PIX_FMT_RGB_565:
+            bytes_per_pix = 2;
+            break;
+        default:
+            bytes_per_pix = 0;
+        }
+
+        if (bytes_per_pix) {
+            size_t n_bytes =
+                bytes_per_pix * (1 << out->w_shift) * (1 << out->h_shift);
+            out->dat = malloc(n_bytes);
+            memcpy(out->dat, in->dat, n_bytes);
+        } else {
+            out->dat = NULL;
+        }
     } else {
         out->valid = false;
     }

@@ -27,6 +27,8 @@
 #include <ctype.h>
 #include <string.h>
 
+#include <png.h>
+
 #include "hw/aica/aica_wave_mem.h"
 #include "gfx/gfx_config.h"
 #include "gfx/gfx_thread.h"
@@ -52,6 +54,9 @@ static int cmd_begin_execution(int argc, char **argv);
 static int cmd_aica_verbose_log(int argc, char **argv);
 static int cmd_tex_info(int argc, char **argv);
 static int cmd_tex_enum(int argc, char **argv);
+static int cmd_tex_dump(int argc, char **argv);
+
+static int save_tex(char const *path, struct gfx_tex const *tex);
 
 struct cmd {
     char const *cmd_name;
@@ -157,6 +162,15 @@ struct cmd {
         "then this command would not be available.\n",
 #endif
         .cmd_handler = cmd_suspend_execution
+    },
+    {
+        .cmd_name = "tex-dump",
+        .summary = "dump a texture in the cache to a .png file",
+        .help_str = "tex-dump tex_no file\n"
+        "\n"
+        "save the texture indicated by tex_no into file.\n"
+        "the resulting file will be a .png image.\n",
+        .cmd_handler = cmd_tex_dump
     },
     {
         .cmd_name = "tex-enum",
@@ -516,4 +530,178 @@ static int cmd_tex_enum(int argc, char **argv) {
         cons_puts("the texture cache is currently empty.\n");
 
     return 0;
+}
+
+static int cmd_tex_dump(int argc, char **argv) {
+    unsigned tex_no;
+    struct gfx_tex tex;
+
+    if (argc != 3) {
+        cons_puts("Usage: tex-dump tex_no file\n");
+        return 1;
+    }
+
+    tex_no = atoi(argv[1]);
+
+    char const *file = argv[2];
+
+    gfx_thread_get_tex(&tex, tex_no);
+
+    if (tex.valid) {
+        if (tex.dat) {
+            save_tex(file, &tex);
+
+            free(tex.dat);
+        } else {
+            cons_printf("Failed to retrieve texture %u from the texture "
+                        "cache\n", tex_no);
+        }
+    } else {
+        cons_printf("Texture %u is not in the texture cache\n", tex_no);
+    }
+
+    return 0;
+}
+
+static int save_tex(char const *path, struct gfx_tex const *tex) {
+    /*
+     * TODO: come up with a way to do the writing asynchronously from the io
+     * thread.
+     */
+    FILE *stream = fopen(path, "wb");
+
+    if (!stream)
+        return -1;
+
+    int err_val = 0;
+    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING,
+                                                  NULL, NULL, NULL);
+    if (!png_ptr) {
+        err_val = -1;
+        goto finish;
+    }
+
+    png_infop info_ptr = png_create_info_struct(png_ptr);
+
+    if (!info_ptr) {
+        err_val = -1;
+        goto cleanup_png;
+    }
+
+    jmp_buf error_point;
+    if (setjmp(error_point)) {
+        err_val = -1;
+        goto cleanup_png;
+    }
+
+    png_init_io(png_ptr, stream);
+
+    if (tex->pvr2_pix_fmt != TEX_CTRL_PIX_FMT_ARGB_1555 &&
+        tex->pvr2_pix_fmt != TEX_CTRL_PIX_FMT_RGB_565 &&
+        tex->pvr2_pix_fmt != TEX_CTRL_PIX_FMT_ARGB_4444) {
+        err_val = -1;
+        goto cleanup_png;
+    }
+
+    int color_tp_png;
+    unsigned n_colors;
+    unsigned pvr2_pix_size;
+    switch (tex->pvr2_pix_fmt) {
+    case TEX_CTRL_PIX_FMT_ARGB_1555:
+    case TEX_CTRL_PIX_FMT_ARGB_4444:
+        color_tp_png = PNG_COLOR_TYPE_RGB_ALPHA;
+        n_colors = 4;
+        pvr2_pix_size = 2;
+        break;
+    case TEX_CTRL_PIX_FMT_RGB_565:
+        color_tp_png = PNG_COLOR_TYPE_RGB;
+        n_colors = 3;
+        pvr2_pix_size = 2;
+        break;
+    default:
+        err_val = -1;
+        goto cleanup_png;
+    }
+
+    unsigned tex_w = 1 << tex->w_shift, tex_h = 1 << tex->h_shift;
+
+    png_bytepp row_pointers = (png_bytepp)calloc(tex_h, sizeof(png_bytep));
+    if (!row_pointers)
+        goto cleanup_png;
+
+    unsigned row, col;
+    for (row = 0; row < tex_h; row++) {
+        png_bytep cur_row = row_pointers[row] =
+            (png_bytep)malloc(sizeof(png_byte) * tex_w * n_colors);
+
+        for (col = 0; col < tex_w; col++) {
+            unsigned pix_idx = row * tex_w + col;
+            uint8_t const *src_pix = tex->dat + pix_idx * pvr2_pix_size;
+            unsigned red, green, blue, alpha;
+
+            switch (tex->pvr2_pix_fmt) {
+            case TEX_CTRL_PIX_FMT_ARGB_1555:
+                alpha = src_pix[1] & 0x80 ? 255 : 0;
+                red = (src_pix[1] & 0x7c) >> 2;
+                green = ((src_pix[1] & 0x03) << 3) | ((src_pix[0] & 0xe0) >> 5);
+                blue = src_pix[0] & 0x1f;
+
+                red <<= 3;
+                green <<= 3;
+                blue <<= 3;
+                break;
+            case TEX_CTRL_PIX_FMT_ARGB_4444:
+                alpha = src_pix[0] & 0x0f;
+                blue = (src_pix[0] & 0xf0) >> 4;
+                green = src_pix[1] & 0x0f;
+                red = (src_pix[1] & 0xf0) >> 4;
+
+                alpha <<= 4;
+                red <<= 4;
+                green <<= 4;
+                blue <<= 4;
+                break;
+            case TEX_CTRL_PIX_FMT_RGB_565:
+                blue = src_pix[0] & 0x1f;
+                green = ((src_pix[0] & 0xe0) >> 5) | ((src_pix[1] & 0x7) << 3);
+                red = (src_pix[1] & 0xf1) >> 3;
+
+                red <<= 3;
+                green <<= 2;
+                blue <<= 3;
+                break;
+            default:
+                err_val = -1;
+                goto cleanup_rows;
+            }
+
+            cur_row[n_colors * col] = (png_byte)red;
+            cur_row[n_colors * col + 1] = (png_byte)green;
+            cur_row[n_colors * col + 2] = (png_byte)blue;
+            if (n_colors == 4)
+                cur_row[n_colors * col + 3] = (png_byte)alpha;
+        }
+    }
+
+    png_set_IHDR(png_ptr, info_ptr, tex_w, tex_h, 8,
+                 color_tp_png, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+                 PNG_FILTER_TYPE_DEFAULT);
+
+    png_write_info(png_ptr, info_ptr);
+    png_write_image(png_ptr, row_pointers);
+    png_write_end(png_ptr, info_ptr);
+
+cleanup_rows:
+    for (row = 0; row < tex_h; row++)
+        if (row_pointers[row])
+            free(row_pointers[row]);
+cleanup_row_pointers:
+    free(row_pointers);
+
+cleanup_png:
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+
+finish:
+    fclose(stream);
+    return err_val;
 }
