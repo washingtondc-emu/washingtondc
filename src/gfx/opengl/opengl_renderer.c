@@ -34,6 +34,7 @@
 #include "opengl_target.h"
 #include "dreamcast.h"
 #include "gfx/gfx_config.h"
+#include "gfx/gfx_tex_cache.h"
 
 #include "opengl_renderer.h"
 
@@ -45,11 +46,6 @@
 
 static GLuint bound_tex_slot;
 static GLuint tex_inst_slot;
-
-static unsigned volatile frame_stamp;
-
-static pthread_cond_t frame_stamp_update_cond = PTHREAD_COND_INITIALIZER;
-static pthread_mutex_t frame_stamp_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 static struct shader pvr_ta_shader;
 static struct shader pvr_ta_tex_shader;
@@ -120,7 +116,21 @@ static void render_do_draw(struct geo_buf *geo);
 // converts pixels from ARGB 4444 to RGBA 4444
 static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels);
 
-void render_init(void) {
+static void opengl_render_init(void);
+static void opengl_render_cleanup(void);
+static void opengl_renderer_update_tex(unsigned tex_obj);
+static void opengl_renderer_release_tex(unsigned tex_obj);
+static void opengl_renderer_do_draw_geo_buf(struct geo_buf *geo);
+
+struct rend_if const opengl_rend_if = {
+    .init = opengl_render_init,
+    .cleanup = opengl_render_cleanup,
+    .update_tex = opengl_renderer_update_tex,
+    .release_tex = opengl_renderer_release_tex,
+    .do_draw_geo_buf = opengl_renderer_do_draw_geo_buf
+};
+
+static void opengl_render_init(void) {
     shader_load_vert_from_file(&pvr_ta_shader, "pvr2_ta_vert.glsl");
     shader_load_frag_from_file(&pvr_ta_shader, "pvr2_ta_frag.glsl");
     shader_link(&pvr_ta_shader);
@@ -159,7 +169,7 @@ void render_init(void) {
     }
 }
 
-void render_cleanup(void) {
+static void opengl_render_cleanup(void) {
     glDeleteTextures(PVR2_TEX_CACHE_SIZE, tex_cache);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
@@ -271,6 +281,34 @@ static void render_do_draw_group(struct geo_buf *geo,
 }
 
 static void render_do_draw(struct geo_buf *geo) {
+}
+
+static void opengl_renderer_update_tex(unsigned tex_obj) {
+    struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
+    int n_colors = tex->pvr2_pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ? 3 : 4;
+    GLenum format = tex->pvr2_pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
+        GL_RGB : GL_RGBA;
+
+    unsigned tex_w = 1 << tex->w_shift;
+    unsigned tex_h = 1 << tex->h_shift;
+
+    if (tex->pvr2_pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444)
+        render_conv_argb_4444((uint16_t*)tex->dat, tex_w * tex_h);
+
+    glBindTexture(GL_TEXTURE_2D, tex_cache[tex_obj]);
+
+    // TODO: maybe don't always set this to 1
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
+                 format, tex_formats[tex->pvr2_pix_fmt], tex->dat);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+static void opengl_renderer_release_tex(unsigned tex_obj) {
+    // do nothing
+}
+
+static void opengl_renderer_do_draw_geo_buf(struct geo_buf *geo) {
     gfx_config_read(&rend_cfg);
 
     if (!rend_cfg.wireframe) {
@@ -321,96 +359,6 @@ static void render_do_draw(struct geo_buf *geo) {
         for (group_no = 0; group_no < list->n_groups; group_no++)
             render_do_draw_group(geo, disp_list, group_no);
     }
-}
-
-void render_next_geo_buf(void) {
-    struct geo_buf *geo;
-    unsigned bufs_rendered = 0;
-
-    while ((geo = geo_buf_get_cons())) {
-        unsigned tex_no;
-        for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
-            struct pvr2_tex *tex = geo->tex_cache + tex_no;
-            if (tex->valid && tex->dirty) {
-                int n_colors = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ? 3 : 4;
-                GLenum format = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
-                    GL_RGB : GL_RGBA;
-
-                unsigned tex_w = 1 << tex->w_shift;
-                unsigned tex_h = 1 << tex->h_shift;
-
-                if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444)
-                    render_conv_argb_4444((uint16_t*)tex->dat, tex_w * tex_h);
-
-                glBindTexture(GL_TEXTURE_2D, tex_cache[tex_no]);
-
-                // TODO: maybe don't always set this to 1
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-                glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                             format, tex_formats[tex->pix_fmt], tex->dat);
-                glBindTexture(GL_TEXTURE_2D, 0);
-                tex->dirty = false;
-                free(tex->dat);
-                tex->dat = NULL;
-            }
-        }
-
-        opengl_target_begin(geo->screen_width, geo->screen_height);
-        render_do_draw(geo);
-        opengl_target_end();
-
-        /*
-         * TODO: I wish I had a good idea for how to handle this without a
-         * mutex/condition var
-         */
-        if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
-            abort(); // TODO: error handling
-        frame_stamp = geo->frame_stamp;
-        if (pthread_cond_signal(&frame_stamp_update_cond) != 0)
-            abort(); // TODO: error handling
-        if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
-            abort(); // TODO: error handling
-
-        printf("frame_stamp %u rendered\n", frame_stamp);
-
-        enum display_list_type disp_list;
-        for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
-             disp_list++) {
-            struct display_list *list = geo->lists + disp_list;
-            if (list->n_groups) {
-                /*
-                 * current protocol is that list->groups is only valid if
-                 * list->n_groups is non-valid; ergo it's safe to leave a
-                 * hangning pointer here.
-                 */
-                free(list->groups);
-                list->n_groups = 0;
-            }
-        }
-
-        geo_buf_consume();
-        bufs_rendered++;
-    }
-
-    if (bufs_rendered)
-        printf("%s - %u geo_bufs rendered\n", __func__, bufs_rendered);
-    else
-        printf("%s - erm...there's nothing to render here?\n", __func__);
-}
-
-void render_wait_for_frame_stamp(unsigned stamp) {
-    if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
-        abort(); // TODO: error handling
-    while (frame_stamp < stamp && dc_is_running()) {
-        printf("waiting for frame_stamp %u (current is %u)\n", stamp, frame_stamp);
-        pthread_cond_wait(&frame_stamp_update_cond, &frame_stamp_mtx);
-    }
-    if (frame_stamp != stamp) {
-        printf("ERROR: missed frame stamp %u (you get %u instead)\n",
-               stamp, frame_stamp);
-    }
-    if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
-        abort(); // TODO: error handling
 }
 
 static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels) {

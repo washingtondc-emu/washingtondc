@@ -20,11 +20,44 @@
  *
  ******************************************************************************/
 
-#ifndef OPENGL_RENDERER_H_
-#define OPENGL_RENDERER_H_
+#include <string.h>
+#include <stdlib.h>
 
-#include "gfx/rend_common.h"
+#include "rend_common.h"
 
-extern struct rend_if const opengl_rend_if;
+#include "gfx_tex_cache.h"
 
-#endif
+static struct gfx_tex tex_cache[PVR2_TEX_CACHE_SIZE];
+
+void gfx_tex_cache_init(void) {
+    memset(tex_cache, 0, sizeof(tex_cache));
+}
+
+void gfx_tex_cache_cleanup(void) {
+    unsigned idx;
+    for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++)
+        if (gfx_tex_cache_get(idx)->valid)
+            gfx_tex_cache_evict(idx);
+}
+
+void gfx_tex_cache_add(unsigned idx, struct gfx_tex const *tex) {
+    struct gfx_tex *slot = tex_cache + idx;
+
+    if (slot->valid)
+        gfx_tex_cache_evict(idx);
+
+    memcpy(slot, tex, sizeof(*slot));
+
+    rend_update_tex(idx);
+}
+
+void gfx_tex_cache_evict(unsigned idx) {
+    struct gfx_tex *slot = tex_cache + idx;
+
+    free(slot->dat);
+    slot->valid = false;
+}
+
+struct gfx_tex const* gfx_tex_cache_get(unsigned idx) {
+    return tex_cache + idx;
+}

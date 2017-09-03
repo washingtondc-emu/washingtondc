@@ -36,8 +36,8 @@
 #include "dreamcast.h"
 #include "gfx/opengl/opengl_output.h"
 #include "gfx/opengl/opengl_target.h"
-#include "gfx/opengl/opengl_renderer.h"
-#include "gfx/opengl/opengl_output.h"
+#include "gfx/rend_common.h"
+#include "gfx/gfx_tex_cache.h"
 
 #include "gfx/gfx_thread.h"
 
@@ -118,7 +118,8 @@ static void* gfx_main(void *arg) {
 
     opengl_target_init();
     opengl_video_output_init();
-    render_init();
+    gfx_tex_cache_init();
+    rend_init();
 
     /*
      * this is just here for some testing/validation so I can make sure that
@@ -152,7 +153,8 @@ static void* gfx_main(void *arg) {
     if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
         printf("%s - there was a pending geo_buf render\n", __func__);
 
-    render_cleanup();
+    gfx_tex_cache_cleanup();
+    rend_cleanup();
 
     opengl_video_output_cleanup();
 
@@ -173,7 +175,6 @@ void gfx_thread_run_once(void) {
     }
 
     if (!atomic_flag_test_and_set(&not_reading_framebuffer)) {
-        // TODO: render 3d graphics here
         opengl_target_grab_pixels(fb_out, fb_out_size);
         fb_out = NULL;
         fb_out_size = 0;
@@ -183,7 +184,7 @@ void gfx_thread_run_once(void) {
     }
 
     if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
-        render_next_geo_buf();
+        rend_draw_next_geo_buf();
 }
 
 void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
@@ -217,7 +218,7 @@ void gfx_thread_notify_wake_up(void) {
 }
 
 void gfx_thread_wait_for_geo_buf_stamp(unsigned stamp) {
-    render_wait_for_frame_stamp(stamp);
+    rend_wait_for_frame_stamp(stamp);
 }
 
 void gfx_thread_post_framebuffer(uint32_t const *fb_new,

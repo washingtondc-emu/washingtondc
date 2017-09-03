@@ -168,6 +168,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/gfx/opengl/opengl_target.c"
                 "${PROJECT_SOURCE_DIR}/src/gfx/opengl/opengl_renderer.h"
                 "${PROJECT_SOURCE_DIR}/src/gfx/opengl/opengl_renderer.c"
+                "${PROJECT_SOURCE_DIR}/src/gfx/rend_common.h"
+                "${PROJECT_SOURCE_DIR}/src/gfx/rend_common.c"
                 "${PROJECT_SOURCE_DIR}/src/gfx/gfx_thread.h"
                 "${PROJECT_SOURCE_DIR}/src/gfx/gfx_thread.c"
                 "${PROJECT_SOURCE_DIR}/src/error.c"
@@ -208,7 +210,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/cmd/cmd.h"
                 "${PROJECT_SOURCE_DIR}/src/cmd/cmd.c"
                 "${PROJECT_SOURCE_DIR}/src/gfx/gfx_config.h"
-                "${PROJECT_SOURCE_DIR}/src/gfx/gfx_config.c")
+                "${PROJECT_SOURCE_DIR}/src/gfx/gfx_config.c"
+                "${PROJECT_SOURCE_DIR}/src/gfx/gfx_tex_cache.h"
+                "${PROJECT_SOURCE_DIR}/src/gfx/gfx_tex_cache.c")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)
