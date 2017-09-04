@@ -204,7 +204,10 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
             size_t n_bytes = sizeof(uint8_t) *
                 (1 << tex_in->w_shift) * (1 << tex_in->h_shift) *
                 pixel_sizes[tex_in->pix_fmt];
-            tex_out->dat = (uint8_t*)malloc(n_bytes);
+            if (n_bytes)
+                tex_out->dat = (uint8_t*)malloc(n_bytes);
+            else
+                tex_out->dat = NULL;
 
             // de-twiddle
             /*
