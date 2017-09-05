@@ -51,6 +51,8 @@ struct pvr2_tex {
 
     bool twiddled;
 
+    bool vq_compression;
+
     /*
      * if this is set, it means that this entry in the texture cache has
      * changed since the last update.  If this is not set, then the data in
@@ -66,11 +68,13 @@ struct pvr2_tex {
 // insert the given texture into the cache
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
                                     unsigned w_shift, unsigned h_shift,
-                                    int pix_fmt, bool twiddled);
+                                    int pix_fmt, bool twiddled,
+                                    bool vq_compression);
 
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
                                      unsigned w_shift, unsigned h_shift,
-                                     int pix_fmt, bool twiddled);
+                                     int pix_fmt, bool twiddled,
+                                     bool vq_compression);
 
 void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len);
 

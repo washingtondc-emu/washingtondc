@@ -143,6 +143,7 @@ struct poly_hdr {
     uint32_t tex_addr;
     unsigned tex_width_shift, tex_height_shift;
     bool tex_twiddle;
+    bool tex_vq_compression;
     int tex_fmt;
     enum tex_inst tex_inst;
     enum tex_filter tex_filter;
@@ -340,6 +341,7 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
         hdr->tex_inst = (ta_fifo32[2] & TSP_TEX_INST_MASK) >>
             TSP_TEX_INST_SHIFT;
         hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
+        hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
         hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
                          TEX_CTRL_TEX_ADDR_SHIFT) << 3;
         hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>
@@ -455,7 +457,8 @@ static void on_polyhdr_received(void) {
             pvr2_tex_cache_find(hdr.tex_addr,
                                 hdr.tex_width_shift,
                                 hdr.tex_height_shift,
-                                hdr.tex_fmt, hdr.tex_twiddle);
+                                hdr.tex_fmt, hdr.tex_twiddle,
+                                hdr.tex_vq_compression);
 
         printf("texture dimensions are (%u, %u)\n",
                1 << hdr.tex_width_shift,
@@ -470,7 +473,8 @@ static void on_polyhdr_received(void) {
                                      hdr.tex_width_shift,
                                      hdr.tex_height_shift,
                                      hdr.tex_fmt,
-                                     hdr.tex_twiddle);
+                                     hdr.tex_twiddle,
+                                     hdr.tex_vq_compression);
         }
 
         if (!ent) {

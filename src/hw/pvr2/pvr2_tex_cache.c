@@ -85,14 +85,16 @@ static unsigned tex_twiddle(unsigned x, unsigned y,
 
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
                                      unsigned w_shift, unsigned h_shift,
-                                     int pix_fmt, bool twiddled) {
+                                     int pix_fmt, bool twiddled,
+                                     bool vq_compression) {
     unsigned idx;
     struct pvr2_tex *tex;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
         if (tex->valid && (tex->addr_first == addr) &&
             (tex->w_shift == w_shift) && (tex->h_shift == h_shift) &&
-            (tex->pix_fmt == pix_fmt) && tex->twiddled == twiddled) {
+            (tex->pix_fmt == pix_fmt) && (tex->twiddled == twiddled) &&
+            (tex->vq_compression == vq_compression)) {
             return tex;
         }
     }
@@ -102,7 +104,8 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
 
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
                                     unsigned w_shift, unsigned h_shift,
-                                    int pix_fmt, bool twiddled) {
+                                    int pix_fmt, bool twiddled,
+                                    bool vq_compression) {
     assert(pix_fmt < TEX_CTRL_PIX_FMT_INVALID);
 
 #ifdef INVARIANTS
@@ -142,6 +145,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     tex->valid = true;
     tex->dirty = true;
     tex->twiddled = twiddled;
+    tex->vq_compression = vq_compression;
 
     /*
      * We defer reading the actual data from texture memory until we're ready
@@ -192,6 +196,7 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
             tex_out->h_shift = tex_in->h_shift;
             tex_out->pix_fmt = tex_in->pix_fmt;
             tex_out->twiddled = tex_in->twiddled;
+            tex_out->vq_compression = tex_in->vq_compression;
 
             // TODO: better error-handling
             if ((ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1) <=

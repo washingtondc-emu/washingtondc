@@ -58,6 +58,7 @@ struct gfx_tex {
      * the addresses are invalid, too.
      */
     bool twiddled;
+    bool vq_compression;
     uint32_t addr_first, addr_last;
 };
 

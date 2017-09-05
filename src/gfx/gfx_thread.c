@@ -239,6 +239,7 @@ void gfx_thread_get_tex(struct gfx_tex *out, unsigned tex_no) {
         out->h_shift = in->h_shift;
         out->pvr2_pix_fmt = in->pvr2_pix_fmt;
         out->twiddled = in->twiddled;
+        out->vq_compression = in->vq_compression;
         out->addr_first = in->addr_first;
         out->addr_last = in->addr_last;
 

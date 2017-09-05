@@ -487,6 +487,8 @@ static int cmd_tex_info(int argc, char **argv) {
                         1 << tex.w_shift, 1 << tex.h_shift);
             cons_printf("\tformat: %u\n", (unsigned)tex.pvr2_pix_fmt);
             cons_printf("\t%s\n", tex.twiddled ? "twiddled" : "not twiddled");
+            cons_printf("\tVQ compression: %s\n",
+                        tex.vq_compression ? "yes" : "no");
             cons_printf("\tfirst address: 0x%08x\n", tex.addr_first);
             cons_printf("\tlast address: 0x%08x\n", tex.addr_last);
             did_print = true;
