@@ -33,6 +33,11 @@
 
 #include "pvr2_tex_cache.h"
 
+#define PVR2_CODE_BOOK_ENTRY_SIZE 8
+#define PVR2_CODE_BOOK_ENTRY_COUNT 256
+#define PVR2_CODE_BOOK_LEN (PVR2_CODE_BOOK_ENTRY_COUNT * \
+                            PVR2_CODE_BOOK_ENTRY_SIZE)
+
 unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
     2,
     2,
@@ -138,15 +143,26 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     tex->w_shift = w_shift;
     tex->h_shift = h_shift;
     tex->pix_fmt = pix_fmt;
-
-    tex->addr_last = addr - 1 + pixel_sizes[pix_fmt] *
-        (1 << w_shift) * (1 << h_shift);
-
-    tex->valid = true;
-    tex->dirty = true;
     tex->twiddled = twiddled;
     tex->vq_compression = vq_compression;
 
+    if (tex->vq_compression && (tex->w_shift != tex->h_shift)) {
+        fprintf(stderr, "PVR2: WARNING - DISABLING VQ COMPRESSION FOR 0x%x "
+                "DUE TO NON-SQUARE DIMENSIONS\n", (unsigned)tex->addr_first);
+        tex->vq_compression = false;
+    }
+
+    if (tex->vq_compression) {
+        unsigned side_len = 1 << w_shift;
+        tex->addr_last = addr - 1 + PVR2_CODE_BOOK_LEN +
+            sizeof(uint8_t) * side_len * side_len / 4;
+    } else {
+        tex->addr_last = addr - 1 + pixel_sizes[pix_fmt] *
+            (1 << w_shift) * (1 << h_shift);
+    }
+
+    tex->valid = true;
+    tex->dirty = true;
     /*
      * We defer reading the actual data from texture memory until we're ready
      * to transmit this to the rendering thread.
@@ -183,6 +199,67 @@ void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
     }
 }
 
+/*
+ * de-twiddle src into dst.  Both src and dst must be preallocated buffers with
+ * a length of (1 << tex_w_shift) * (1 << tex_h_shift) * bytes_per_pix.
+ */
+static void pvr2_tex_detwiddle(void *dst, void const *src,
+                               unsigned tex_w_shift, unsigned tex_h_shift,
+                               unsigned bytes_per_pix) {
+    unsigned tex_w = 1 << tex_w_shift, tex_h = 1 << tex_h_shift;
+    unsigned row, col;
+    for (row = 0; row < tex_h; row++) {
+        for (col = 0; col < tex_w; col++) {
+            unsigned twid_idx = tex_twiddle(col, row,
+                                            tex_w_shift, tex_h_shift);
+            memcpy(dst + (row * tex_w + col) * bytes_per_pix,
+                   src + twid_idx * bytes_per_pix,
+                   bytes_per_pix);
+        }
+    }
+}
+
+/*
+ * decompress src into dst.
+ *
+ * src must be a VQ-encoded texture with a length of
+ * PVR2_CODE_BOOK_LEN + (1 << side_shift) * (1 << side_shift) / 4.
+ *
+ * dst must be a buffer with a length of
+ * 2 * (1 << side_shift) * (1 << side_shift) bytes.  This is because the data
+ * will be uncompressed into dst, and because only 2-byte pixel formats are
+ * supported (TEX_CTRL_PIX_FMT_ARGB_1555, TEX_CTRL_PIX_FMT_RGB_565,
+ * TEX_CTRL_PIX_FMT_ARGB_4444).
+ */
+static void pvr2_tex_vq_decompress(void *dst, void const *src,
+                                   unsigned side_shift) {
+    unsigned dst_side = 1 << side_shift;
+    unsigned src_side = dst_side / 2;
+    unsigned row, col;
+    for (row = 0; row < src_side; row++) {
+        for (col = 0; col < src_side; col++) {
+            unsigned twid_idx = tex_twiddle(col, row, side_shift, side_shift);
+
+            // code book index
+            unsigned idx =
+                ((uint8_t*)src)[PVR2_CODE_BOOK_LEN + twid_idx];
+            uint16_t color[4];
+            memcpy(color, ((uint8_t*)src) + PVR2_CODE_BOOK_ENTRY_SIZE * idx,
+                   PVR2_CODE_BOOK_ENTRY_SIZE);
+
+            unsigned dst_row = row * 2, dst_col = col * 2;
+            memcpy((uint16_t*)dst + dst_row * dst_side + dst_col,
+                   color, sizeof(color[0]));
+            memcpy((uint16_t*)dst + (dst_row + 1) * dst_side + dst_col,
+                   color + 1, sizeof(color[1]));
+            memcpy((uint16_t*)dst + dst_row * dst_side + dst_col + 1,
+                   color + 2, sizeof(color[2]));
+            memcpy((uint16_t*)dst + (dst_row + 1) * dst_side + dst_col + 1,
+                   color + 3, sizeof(color[3]));
+        }
+    }
+}
+
 void pvr2_tex_cache_xmit(struct geo_buf *out) {
     unsigned idx;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
@@ -214,37 +291,35 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
             else
                 tex_out->dat = NULL;
 
-            // de-twiddle
-            /*
-             * TODO: don't do this unconditionally
-             * not all textures are twiddled
-             */
-            uint8_t const *beg = pvr2_tex64_mem + tex_in->addr_first;
-            unsigned tex_w = 1 << tex_in->w_shift, tex_h = 1 << tex_in->h_shift;
-            if (tex_in->twiddled) {
-                unsigned row, col;
-                for (row = 0; row < tex_h; row++) {
-                    for (col = 0; col < tex_w; col++) {
-                        unsigned twid_idx = tex_twiddle(col, row,
-                                                        tex_in->w_shift,
-                                                        tex_in->h_shift);
+            if (!tex_out->dat)
+                RAISE_ERROR(ERROR_INTEGRITY);
 
-                        void *dst_ptr = tex_out->dat +
-                            (row * tex_w + col) *
-                            pixel_sizes[tex_in->pix_fmt];
-                        memcpy(dst_ptr,
-                               beg + twid_idx * pixel_sizes[tex_in->pix_fmt],
-                               pixel_sizes[tex_in->pix_fmt]);
-                    }
+            // de-twiddle
+            uint8_t const *beg = pvr2_tex64_mem + tex_in->addr_first;
+            if (tex_in->vq_compression) {
+                if (pixel_sizes[tex_in->pix_fmt] != 2) {
+                    error_set_feature("proper response for an attempt to use "
+                                      "VQ compression on a non-RGB texture");
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
                 }
+
+                if (tex_in->w_shift != tex_in->h_shift) {
+                    error_set_feature("proper response for an attempt to use "
+                                      "VQ compression on a non-square texture");
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                }
+
+                pvr2_tex_vq_decompress(tex_out->dat, beg, tex_in->w_shift);
+            } else if (tex_in->twiddled) {
+                pvr2_tex_detwiddle(tex_out->dat, beg,
+                                   tex_in->w_shift, tex_in->h_shift,
+                                   pixel_sizes[tex_in->pix_fmt]);
             } else {
+                unsigned tex_w = 1 << tex_in->w_shift,
+                    tex_h = 1 << tex_in->h_shift;
                 memcpy(tex_out->dat, beg,
                        pixel_sizes[tex_in->pix_fmt] * tex_w * tex_h);
             }
-
-            // this is what you'd have to do for a non-twiddled texture, I think
-            /* memcpy(tex_out->dat, pvr2_tex64_mem + tex_in->addr_first, */
-            /*        tex_in->addr_last - tex_in->addr_first + 1); */
 
             tex_in->dirty = false;
             tex_out->dirty = true;
