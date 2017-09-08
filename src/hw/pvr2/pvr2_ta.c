@@ -208,12 +208,6 @@ static struct poly_state {
     float poly_color_rgba[4];
 
     enum vert_type vert_type;
-
-    /*
-     * The last RGBA quad that was specified using MODE 1 intensity.
-     * This is used for as the color for subsequent MODE 2 intensity.
-     */
-    float intensity_rgba[4];
 } poly_state = {
     .current_list = DISPLAY_LIST_NONE,
     .vert_len = 8
@@ -395,10 +389,14 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
     hdr->tex_coord_16_bit_enable =
         (bool)(ta_fifo32[0] & TA_CMD_16_BIT_TEX_COORD_MASK);
 
-    if (hdr->color_type == TA_COLOR_TYPE_INTENSITY_MODE_1 ||
-        hdr->color_type == TA_COLOR_TYPE_INTENSITY_MODE_2) {
-        memcpy(hdr->poly_color_rgba, ta_fifo32 + 5, 3 * sizeof(float));
-        memcpy(hdr->poly_color_rgba + 3, ta_fifo32 + 4, sizeof(float));
+    if (hdr->color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) {
+        if (hdr->offset_color_enable) {
+            memcpy(hdr->poly_color_rgba, ta_fifo32 + 9, 3 * sizeof(float));
+            memcpy(hdr->poly_color_rgba + 3, ta_fifo32 + 8, sizeof(float));
+        } else {
+            memcpy(hdr->poly_color_rgba, ta_fifo32 + 5, 3 * sizeof(float));
+            memcpy(hdr->poly_color_rgba + 3, ta_fifo32 + 4, sizeof(float));
+        }
     }
 }
 
@@ -410,6 +408,20 @@ static void on_polyhdr_received(void) {
     struct poly_hdr hdr;
 
     decode_poly_hdr(&hdr);
+
+    /*
+     * XXX It seems that intensity mode 1 is 64 bits, but mode 2 is only 32.
+     * This is most likely because the point of intensity mode 2 is to reuse
+     * the face color from the previous intensity mode 1 polygon.  I'm not 100%
+     * clear on what the format of an intensity mode 2 header is, and I'm also
+     * not 100% clear on whether or not it has its own offset header.  That
+     * said, I am confident that intensity mode 2 is 32 bits.
+     */
+    if (hdr.color_type != TA_COLOR_TYPE_INTENSITY_MODE_2 &&
+        hdr.offset_color_enable && ta_fifo_byte_count != 64) {
+        // need 64 bytes not, 32.
+        return;
+    }
 
     if ((poly_state.current_list == DISPLAY_LIST_NONE) &&
         list_submitted[list]) {
@@ -530,8 +542,10 @@ static void on_polyhdr_received(void) {
     poly_state.tex_inst = hdr.tex_inst;
     poly_state.tex_filter = hdr.tex_filter;
 
-    memcpy(poly_state.poly_color_rgba, hdr.poly_color_rgba,
-           sizeof(poly_state.poly_color_rgba));
+    if (hdr.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) {
+        memcpy(poly_state.poly_color_rgba, hdr.poly_color_rgba,
+               sizeof(poly_state.poly_color_rgba));
+    }
 
     poly_state.global_param =
         (enum global_param)((ta_fifo32[0] & TA_CMD_TYPE_MASK) >>
@@ -644,23 +658,13 @@ static void on_vertex_received(void) {
             memcpy(&color_b, ta_fifo32 + 7, sizeof(color_b));
             break;
         case TA_COLOR_TYPE_INTENSITY_MODE_1:
+        case TA_COLOR_TYPE_INTENSITY_MODE_2:
             color_a = poly_state.poly_color_rgba[3];
 
             memcpy(&intensity, ta_fifo32 + 6, sizeof(float));
             color_r = intensity * poly_state.poly_color_rgba[0];
             color_g = intensity * poly_state.poly_color_rgba[1];
             color_b = intensity * poly_state.poly_color_rgba[2];
-
-            poly_state.intensity_rgba[0] = color_r;
-            poly_state.intensity_rgba[1] = color_g;
-            poly_state.intensity_rgba[2] = color_b;
-            poly_state.intensity_rgba[3] = color_a;
-            break;
-        case TA_COLOR_TYPE_INTENSITY_MODE_2:
-            color_r = poly_state.intensity_rgba[0];
-            color_g = poly_state.intensity_rgba[1];
-            color_b = poly_state.intensity_rgba[2];
-            color_a = poly_state.intensity_rgba[3];
             break;
         default:
             color_r = color_g = color_b = color_a = 1.0f;
