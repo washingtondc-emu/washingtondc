@@ -580,17 +580,18 @@ static void on_vertex_received(void) {
          * TODO: there are FPU instructions on x86 that can do this without
          * branching
          */
-        if (ta_fifo_float[3] < geo->clip_min)
-            geo->clip_min = ta_fifo_float[3];
-        if (ta_fifo_float[3] > geo->clip_max)
-            geo->clip_max = ta_fifo_float[3];
+        float z_recip = 1.0 / ta_fifo_float[3];
+        if (z_recip < geo->clip_min)
+            geo->clip_min = z_recip;
+        if (z_recip > geo->clip_max)
+            geo->clip_max = z_recip;
 
         group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
             ta_fifo_float[1];
         group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
             ta_fifo_float[2];
         group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
-            ta_fifo_float[3];
+            z_recip;
 
         if (poly_state.tex_enable) {
             unsigned dst_uv_offset =

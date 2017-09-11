@@ -52,7 +52,8 @@ void tex_transform() {
  * coordinate being at (-1.0, 1.0)
  */
 void modelview_project_transform() {
-    gl_Position = trans_mat * vec4(vert_pos, 1);
+    vec4 pos = vec4(vert_pos, 1);
+    gl_Position = trans_mat * pos;
 }
 
 void color_transform() {

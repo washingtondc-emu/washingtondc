@@ -93,7 +93,20 @@ static const GLenum dst_blend_factors[PVR2_BLEND_FACTOR_COUNT] = {
 
 /*
  * the PVR2 and OpenGL depth functions are inverted because PVR2's versions are
- * done based on 1 / z instead of z.
+ * done based on 1 / z instead of z.  On PVR2 a closer depth-value will
+ * actually be larger, and a further depth value will be smaller.  Since we
+ * convert 1/z to z (in pvr2_ta.c), we also need to invert the depth comparison.
+ *
+ * For example, guest software which configures the depth function as
+ * PVR2_DEPTH_GREATER will expect fragments with larger ("greater") depth
+ * values to be in front, but after the z-component is replaced by its own
+ * reciprocal, fragments with larger z-values will now have smaller z-values,
+ * and fragments with smaller z-values will now have larger z-values.
+ *
+ * TODO: one thing I'm not sure about is whether it's coorect to convert
+ * LEQUAL to GREATER, and GEQUAL to LESSER.  Mathematically these functions are
+ * inversions of one another, but I'm not sure if that's what I want to do if
+ * all I'm doing is accounting for the reciprocal.
  */
 static const GLenum depth_funcs[PVR2_DEPTH_FUNC_COUNT] = {
     [PVR2_DEPTH_NEVER]               = GL_NEVER,
@@ -258,13 +271,15 @@ static void render_do_draw_group(struct geo_buf *geo,
         (GLfloat)(geo->screen_width * 0.5),
         (GLfloat)(geo->screen_height * 0.5)
     };
+    GLfloat clip_delta = geo->clip_max - geo->clip_min;
     GLfloat trans_mat[16] = {
-        1.0f / half_screen_dims[0], 0, 0, 0,
-        0, -1.0 / half_screen_dims[1], 0, 0,
-        0, 0, -1.0 / (geo->clip_max - geo->clip_min), 0,
-        -1, 1, geo->clip_min / (geo->clip_max - geo->clip_min), 1
+        1.0 / half_screen_dims[0], 0, 0, -1,
+        0, -1.0 / half_screen_dims[1], 0, 1,
+        0, 0, 2.0 / clip_delta, -2.0 * geo->clip_min / clip_delta - 1,
+        0, 0, 0, 1
     };
-    glUniformMatrix4fv(TRANS_MAT_SLOT, 1, GL_FALSE, trans_mat);
+
+    glUniformMatrix4fv(TRANS_MAT_SLOT, 1, GL_TRUE, trans_mat);
 
     // now draw the geometry itself
     glBindVertexArray(vao);
