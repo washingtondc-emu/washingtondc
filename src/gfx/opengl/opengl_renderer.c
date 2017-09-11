@@ -39,10 +39,9 @@
 #include "opengl_renderer.h"
 
 #define POSITION_SLOT          0
-#define HALF_SCREEN_DIMS_SLOT  1
+#define TRANS_MAT_SLOT         1
 #define COLOR_SLOT             2
-#define CLIP_MIN_MAX_SLOT      3
-#define TEX_COORD_SLOT         4
+#define TEX_COORD_SLOT         3
 
 static GLuint bound_tex_slot;
 static GLuint tex_inst_slot;
@@ -247,11 +246,25 @@ static void render_do_draw_group(struct geo_buf *geo,
     glDepthMask(group->enable_depth_writes ? GL_TRUE : GL_FALSE);
     glDepthFunc(depth_funcs[group->depth_func]);
 
-    glUniform2f(CLIP_MIN_MAX_SLOT,
-                (GLfloat)geo->clip_min, (GLfloat)geo->clip_max);
-
-    glUniform2f(HALF_SCREEN_DIMS_SLOT, (GLfloat)(geo->screen_width * 0.5f),
-                (GLfloat)(geo->screen_height * 0.5f));
+    /*
+     * Orthographic projection.  Map all coordinates into the (-1, -1, -1) to
+     * (1, 1, 1).  Anything less than -half_screen_dims or greater than
+     * half_screen_dims on the x/y axes or anything not between
+     * clip_min_max[0]/clip_min_max[1] on the z-axis will be clipped.  Ideally
+     * nothing should be clipped on the z-axis because clip_min_max is derived
+     * from the minimum and maximum depths.
+     */
+    GLfloat half_screen_dims[2] = {
+        (GLfloat)(geo->screen_width * 0.5),
+        (GLfloat)(geo->screen_height * 0.5)
+    };
+    GLfloat trans_mat[16] = {
+        1.0f / half_screen_dims[0], 0, 0, 0,
+        0, -1.0 / half_screen_dims[1], 0, 0,
+        0, 0, -1.0 / (geo->clip_max - geo->clip_min), 0,
+        -1, 1, geo->clip_min / (geo->clip_max - geo->clip_min), 1
+    };
+    glUniformMatrix4fv(TRANS_MAT_SLOT, 1, GL_FALSE, trans_mat);
 
     // now draw the geometry itself
     glBindVertexArray(vao);

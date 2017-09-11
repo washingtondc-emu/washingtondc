@@ -23,12 +23,11 @@
 #extension GL_ARB_explicit_uniform_location : enable
 
 layout (location = 0) in vec3 vert_pos;
-layout (location = 1) uniform vec2 half_screen_dims;
+layout (location = 1) uniform mat4 trans_mat;
 layout (location = 2) in vec4 color;
-layout (location = 3) uniform vec2 clip_min_max;
 
 #ifdef TEX_ENABLE
-layout (location = 4) in vec2 tex_coord_in;
+layout (location = 3) in vec2 tex_coord_in;
 #endif
 
 out vec4 vert_color;
@@ -53,22 +52,7 @@ void tex_transform() {
  * coordinate being at (-1.0, 1.0)
  */
 void modelview_project_transform() {
-    /*
-     * Orthographic projection.  Map all coordinates into the (-1, -1, -1) to
-     * (1, 1, 1).  Anything less than -half_screen_dims or greater than
-     * half_screen_dims on the x/y axes or anything not between
-     * clip_min_max[0]/clip_min_max[1] on the z-axis will be clipped.  Ideally
-     * nothing should be clipped on the z-axis because clip_min_max is derived
-     * from the minimum and maximum depths.
-     */
-    mat4 ortho2d = mat4(
-                        vec4(1.0 / half_screen_dims.x, 0, 0, 0),
-                        vec4(0, -1.0 / half_screen_dims.y, 0, 0),
-                        vec4(0, 0, -1.0 / (clip_min_max[1] - clip_min_max[0]), 0),
-                        vec4(-1, 1, clip_min_max[0] / (clip_min_max[1] - clip_min_max[0]), 1)
-                        );
-
-    gl_Position = ortho2d * vec4(vert_pos, 1);
+    gl_Position = trans_mat * vec4(vert_pos, 1);
 }
 
 void color_transform() {
