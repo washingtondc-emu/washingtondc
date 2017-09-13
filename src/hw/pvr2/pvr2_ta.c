@@ -82,7 +82,7 @@ enum ta_color_type {
 
 #define TA_CMD_TYPE_END_OF_LIST 0x0
 #define TA_CMD_TYPE_USER_CLIP   0x1
-// what is 2?
+#define TA_CMD_TYPE_INPUT_LIST  0x2
 // what is 3?
 #define TA_CMD_TYPE_POLY_HDR    0x4
 #define TA_CMD_TYPE_SPRITE_HDR  0x5
@@ -335,6 +335,12 @@ static void on_packet_received(void) {
         break;
     case TA_CMD_TYPE_USER_CLIP:
         on_user_clip_received();
+        break;
+    case TA_CMD_TYPE_INPUT_LIST:
+        // I only semi-understand what this is
+        fprintf(stderr, "WARNING: TA_CMD_TYPE_INPUT_LIST received on pvr2 ta "
+                "fifo!\n");
+        ta_fifo_finish_packet();
         break;
     default:
         printf("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
