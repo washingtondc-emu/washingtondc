@@ -755,7 +755,7 @@ static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
 static int
 sh4_zero_only_reg_write_handler(Sh4 *sh4, void const *buf,
                                   struct Sh4MemMappedReg const *reg_info) {
-    uint8_t *bufp;
+    uint8_t const *bufp = (uint8_t const*)buf;
     unsigned n_bytes = reg_info->len;
 
     while (n_bytes--)
