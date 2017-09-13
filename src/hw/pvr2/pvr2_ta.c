@@ -135,10 +135,11 @@ enum vert_type {
 };
 
 static DEF_ERROR_INT_ATTR(ta_fifo_cmd);
+static DEF_ERROR_INT_ATTR(pvr2_global_param);
 
 enum global_param {
     GLOBAL_PARAM_POLY = 4,
-    GLOBAL_PARAP_SPRITE = 5
+    GLOBAL_PARAM_SPRITE = 5
 };
 
 struct poly_hdr {
@@ -248,6 +249,7 @@ static void input_poly_fifo(uint8_t byte);
 static void on_packet_received(void);
 static void on_polyhdr_received(void);
 static void on_vertex_received(void);
+static void on_sprite_received(void);
 static void on_end_of_list_received(void);
 static void on_user_clip_received(void);
 
@@ -314,10 +316,13 @@ static void on_packet_received(void) {
 
     switch(cmd_tp) {
     case TA_CMD_TYPE_VERTEX:
-        if (poly_state.global_param == GLOBAL_PARAM_POLY)
+        if (poly_state.global_param == GLOBAL_PARAM_POLY) {
             on_vertex_received();
-        else {
-            error_set_feature("PVR2 sprites");
+        } else if (poly_state.global_param == GLOBAL_PARAM_SPRITE) {
+            on_sprite_received();
+        } else {
+            error_set_feature("some unknown vertex type");
+            error_set_pvr2_global_param(poly_state.global_param);
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
         break;
@@ -554,6 +559,149 @@ static void on_polyhdr_received(void) {
     printf("POLY HEADER PACKET!\n");
 
 the_end:
+    ta_fifo_finish_packet();
+}
+
+static void on_sprite_received(void) {
+    struct geo_buf *geo = geo_buf_get_prod();
+
+    if (poly_state.current_list < 0) {
+        printf("ERROR: unable to render vertex because no display lists are "
+               "open\n");
+        ta_fifo_finish_packet();
+        return;
+    }
+
+    struct display_list *list = geo->lists + poly_state.current_list;
+
+    if (list->n_groups <= 0) {
+        printf("ERROR: unable to render vertex because I'm still waiting to "
+               "see a polygon header\n");
+        ta_fifo_finish_packet();
+        return;
+    }
+
+    struct poly_group *group = list->groups + (list->n_groups - 1);
+
+    if (group->n_verts + 4 >= GEO_BUF_VERT_COUNT) {
+        fprintf(stderr, "ERROR: PVR2's GEO_BUF_VERT_COUNT has been reached!\n");
+        return;
+    }
+
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
+    float const *ta_fifo_float = (float const*)ta_fifo;
+
+    /*
+     * four quadrilateral vertices.  the z-coordinate of p4 is determined
+     * automatically by the PVR2 so it is not possible to specify a non-coplanar
+     * set of vertices.
+     */
+    float p1[3] = { ta_fifo_float[1], ta_fifo_float[2], ta_fifo_float[3] };
+    float p2[3] = { ta_fifo_float[4], ta_fifo_float[5], ta_fifo_float[6] };
+    float p3[3] = { ta_fifo_float[7], ta_fifo_float[8], ta_fifo_float[9] };
+    float p4[3] = { ta_fifo_float[10], ta_fifo_float[11] };
+
+    /*
+     * any three non-colinear points will define a 2-dimensional hyperplane in
+     * 3-dimensionl space.  The hyperplane consists of all points where the
+     * following relationship is true:
+     *
+     * dot(n, p) + d == 0
+     *
+     * where n is a vector orthogonal to the hyperplane, d is the translation
+     * from the origin to the hyperplane along n, and p is any point on the
+     * plane.
+     *
+     * n is usually a normalized vector, but for our purposes that is not
+     * necessary because d will scale accordingly.
+     *
+     * If the magnitude of n is zero, then all three points are colinear (or
+     * coincidental) and they do not define a single hyperplane because there
+     * are inifinite hyperplanes which contain all three points.  In this case
+     * the quadrilateral is considered degenerate and should not be rendered.
+     *
+     * Because the three existing vertices are coplanar, the fourth vertex's
+     * z-coordinate can be determined based on the hyperplane defined by the
+     * other three points.
+     *
+     * dot(n, p) + d == 0
+     * n.x * p.x + n.y * p.y + n.z * p.z + d == 0
+     * n.z * p.z = -(d + n.x * p.x + n.y * p.y)
+     * p.z = -(d + n.x * p.x + n.y * p.y) / n.z
+     *
+     * In the case where n.z is 0, the hyperplane is oriented orthogonally with
+     * respect to the observer.  The only dimension on which the quadrilateral
+     * is visible is the one which is infinitely thin, so it should not be
+     * rendered.
+     */
+
+    // side-vectors
+    float v1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
+    float v2[3] = { p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[1] };
+
+    // hyperplane normal
+    float norm[3] = {
+        v1[1] * v2[2] - v1[2] * v2[1],
+        v1[2] * v2[0] - v1[0] * v2[2],
+        v1[0] * v2[1] - v1[1] * v2[0]
+    };
+
+    /*
+     * return early if the quad is degenerate or it is oriented orthoganally to
+     * the viewer.
+     *
+     * TODO: consider using a floating-point tolerance instead of comparing to
+     * zero directly.
+     */
+    if ((norm[2] == 0.0f) ||
+        (norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2] == 0.0f))
+        return;
+
+    // hyperplane translation
+    float dist = -norm[0] * p1[0] - norm[1] * p1[1] - norm[2] * p1[2];
+
+    p4[2] = -1.0f * (dist + norm[0] * p4[0] + norm[1] * p4[1]) / norm[2];
+
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
+        p1[0];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
+        p1[1];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
+        p1[2];
+    memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
+           GEO_BUF_VERT_LEN * sizeof(float));
+
+    group->n_verts++;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
+        p2[0];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
+        p2[1];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
+        p2[2];
+    memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
+           GEO_BUF_VERT_LEN * sizeof(float));
+
+    group->n_verts++;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
+        p3[0];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
+        p3[1];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
+        p3[2];
+    memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
+           GEO_BUF_VERT_LEN * sizeof(float));
+
+    group->n_verts++;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
+        p4[0];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
+        p4[1];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
+        p4[2];
+    memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
+           GEO_BUF_VERT_LEN * sizeof(float));
+    group->n_verts++;
+
     ta_fifo_finish_packet();
 }
 
