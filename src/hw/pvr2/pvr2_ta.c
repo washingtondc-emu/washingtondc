@@ -86,7 +86,7 @@ enum ta_color_type {
 // what is 3?
 #define TA_CMD_TYPE_POLY_HDR    0x4
 #define TA_CMD_TYPE_SPRITE_HDR  0x5
-// what is 6?
+#define TA_CMD_TYPE_UNKNOWN     0x6  // I can't find any info on what this is
 #define TA_CMD_TYPE_VERTEX      0x7
 
 #define TA_COLOR_FMT_SHIFT 4
@@ -339,6 +339,11 @@ static void on_packet_received(void) {
     case TA_CMD_TYPE_INPUT_LIST:
         // I only semi-understand what this is
         fprintf(stderr, "WARNING: TA_CMD_TYPE_INPUT_LIST received on pvr2 ta "
+                "fifo!\n");
+        ta_fifo_finish_packet();
+        break;
+    case TA_CMD_TYPE_UNKNOWN:
+        fprintf(stderr, "WARNING: TA_CMD_TYPE_UNKNOWN received on pvr2 ta "
                 "fifo!\n");
         ta_fifo_finish_packet();
         break;
