@@ -567,6 +567,10 @@ static void on_polyhdr_received(void) {
         (enum global_param)((ta_fifo32[0] & TA_CMD_TYPE_MASK) >>
                             TA_CMD_TYPE_SHIFT);
 
+    // TODO: not all sprites should have textures disabled
+    if (poly_state.global_param == GLOBAL_PARAM_SPRITE)
+        poly_state.tex_enable = false;
+
     printf("POLY HEADER PACKET!\n");
 
 the_end:
@@ -576,8 +580,16 @@ the_end:
 static void on_sprite_received(void) {
     struct geo_buf *geo = geo_buf_get_prod();
 
+    /*
+     * if the vertex is not long enough, return and make input_poly_fifo call
+     * us again later when there is more data.  Practically, this means that we
+     * are expecting 64 bytes, but we only have 32 bytes so far.
+     */
+    if (ta_fifo_byte_count != 64)
+        return;
+
     if (poly_state.current_list < 0) {
-        printf("ERROR: unable to render vertex because no display lists are "
+        printf("ERROR: unable to render sprite because no display lists are "
                "open\n");
         ta_fifo_finish_packet();
         return;
@@ -586,7 +598,7 @@ static void on_sprite_received(void) {
     struct display_list *list = geo->lists + poly_state.current_list;
 
     if (list->n_groups <= 0) {
-        printf("ERROR: unable to render vertex because I'm still waiting to "
+        printf("ERROR: unable to render sprite because I'm still waiting to "
                "see a polygon header\n");
         ta_fifo_finish_packet();
         return;
@@ -594,12 +606,12 @@ static void on_sprite_received(void) {
 
     struct poly_group *group = list->groups + (list->n_groups - 1);
 
-    if (group->n_verts + 4 >= GEO_BUF_VERT_COUNT) {
-        fprintf(stderr, "ERROR: PVR2's GEO_BUF_VERT_COUNT has been reached!\n");
+    if (group->n_verts + 6 >= GEO_BUF_VERT_COUNT) {
+        fprintf(stderr, "ERROR (while rendering a sprite): PVR2's "
+                "GEO_BUF_VERT_COUNT has been reached!\n");
         return;
     }
 
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
     float const *ta_fifo_float = (float const*)ta_fifo;
 
     /*
@@ -607,9 +619,9 @@ static void on_sprite_received(void) {
      * automatically by the PVR2 so it is not possible to specify a non-coplanar
      * set of vertices.
      */
-    float p1[3] = { ta_fifo_float[1], ta_fifo_float[2], ta_fifo_float[3] };
-    float p2[3] = { ta_fifo_float[4], ta_fifo_float[5], ta_fifo_float[6] };
-    float p3[3] = { ta_fifo_float[7], ta_fifo_float[8], ta_fifo_float[9] };
+    float p1[3] = { ta_fifo_float[1], ta_fifo_float[2], 1.0 / ta_fifo_float[3] };
+    float p2[3] = { ta_fifo_float[4], ta_fifo_float[5], 1.0 / ta_fifo_float[6] };
+    float p3[3] = { ta_fifo_float[7], ta_fifo_float[8], 1.0 / ta_fifo_float[9] };
     float p4[3] = { ta_fifo_float[10], ta_fifo_float[11] };
 
     /*
@@ -648,7 +660,7 @@ static void on_sprite_received(void) {
 
     // side-vectors
     float v1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
-    float v2[3] = { p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[1] };
+    float v2[3] = { p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2] };
 
     // hyperplane normal
     float norm[3] = {
@@ -673,45 +685,133 @@ static void on_sprite_received(void) {
 
     p4[2] = -1.0f * (dist + norm[0] * p4[0] + norm[1] * p4[1]) / norm[2];
 
+    memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
+           GEO_BUF_VERT_LEN * sizeof(float));
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
         p1[0];
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
         p1[1];
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
         p1[2];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
+        1.0f;
+    group->n_verts++;
+
     memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
            GEO_BUF_VERT_LEN * sizeof(float));
-
-    group->n_verts++;
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
         p2[0];
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
         p2[1];
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
         p2[2];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
+        1.0f;
+    group->n_verts++;
+
     memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
            GEO_BUF_VERT_LEN * sizeof(float));
-
-    group->n_verts++;
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
         p3[0];
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
         p3[1];
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
         p3[2];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
+        1.0f;
+    group->n_verts++;
+
     memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
            GEO_BUF_VERT_LEN * sizeof(float));
-
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
+        p1[0];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
+        p1[1];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
+        p1[2];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
+        1.0f;
     group->n_verts++;
+
+    memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
+           GEO_BUF_VERT_LEN * sizeof(float));
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
+        p3[0];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
+        p3[1];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
+        p3[2];
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
+        1.0f;
+    group->n_verts++;
+
+    memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
+           GEO_BUF_VERT_LEN * sizeof(float));
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
         p4[0];
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
         p4[1];
     group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
         p4[2];
-    memset(group->verts + GEO_BUF_VERT_LEN * group->n_verts, 0,
-           GEO_BUF_VERT_LEN * sizeof(float));
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
+        1.0f;
+    group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
+        1.0f;
     group->n_verts++;
+
+    if (p1[2] < geo->clip_min)
+        geo->clip_min = p1[2];
+    if (p1[2] > geo->clip_max)
+        geo->clip_max = p1[2];
+
+    if (p2[2] < geo->clip_min)
+        geo->clip_min = p2[2];
+    if (p2[2] > geo->clip_max)
+        geo->clip_max = p2[2];
+
+    if (p3[2] < geo->clip_min)
+        geo->clip_min = p3[2];
+    if (p3[2] > geo->clip_max)
+        geo->clip_max = p3[2];
+
+    if (p4[2] < geo->clip_min)
+        geo->clip_min = p4[2];
+    if (p4[2] > geo->clip_max)
+        geo->clip_max = p4[2];
 
     ta_fifo_finish_packet();
 }
