@@ -165,7 +165,7 @@ int sh4_dmac_dmatcr_reg_read_handler(Sh4 *sh4, void *buf,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
-    memcpy(buf, &sh4->dmac.dmatcr[chan], sizeof(&sh4->dmac.dmatcr[chan]));
+    memcpy(buf, &sh4->dmac.dmatcr[chan], sizeof(sh4->dmac.dmatcr[chan]));
 
     printf("WARNING: reading %08x from SH4 DMAC DMATCR%d register\n",
            (unsigned)sh4->dmac.dmatcr[chan], chan);
@@ -193,7 +193,7 @@ int sh4_dmac_dmatcr_reg_write_handler(Sh4 *sh4, void const *buf,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
-    memcpy(&sh4->dmac.dmatcr[chan], buf, sizeof(&sh4->dmac.dmatcr[chan]));
+    memcpy(&sh4->dmac.dmatcr[chan], buf, sizeof(sh4->dmac.dmatcr[chan]));
 
     printf("WARNING: writing %08x to SH4 DMAC DMATCR%d register\n",
            (unsigned)sh4->dmac.dmatcr[chan], chan);

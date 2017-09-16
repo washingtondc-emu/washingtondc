@@ -1567,7 +1567,7 @@ struct deferred_cmd {
 
 static void deferred_cmd_init(struct deferred_cmd *cmd) {
     memset(cmd, 0, sizeof(*cmd));
-    cmd->cmd_type = DEFERRED_CMD_IN_PROGRESS;
+    cmd->status = DEFERRED_CMD_IN_PROGRESS;
 }
 
 static pthread_mutex_t deferred_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;

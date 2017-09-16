@@ -55,6 +55,7 @@ struct maple_switch_table maple_controller_switch_table = {
 
 static int controller_dev_init(struct maple_device *dev) {
     dev->ctxt = NULL;
+    return 0;
 }
 
 static void controller_dev_cleanup(struct maple_device *dev) {

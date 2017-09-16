@@ -321,4 +321,6 @@ static int sb_adst_reg_write_handler(struct g2_mem_mapped_reg const *reg_info,
         error_set_feature("AICA DMA");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+
+    return 0;
 }

@@ -1195,10 +1195,8 @@ static void finish_poly_group(struct geo_buf *geo,
      * test here just in case.  It should be safe to delete after a couple of
      * months have gone by without this INVARIANTS test ever failing.
      */
-    if ((group->src_blend_factor < 0) ||
-        (group->dst_blend_factor < 0) ||
-        (group->src_blend_factor >= PVR2_BLEND_FACTOR_COUNT) ||
-        (group->dst_blend_factor >= PVR2_BLEND_FACTOR_COUNT)) {
+    if (((unsigned)group->src_blend_factor >= PVR2_BLEND_FACTOR_COUNT) ||
+        ((unsigned)group->dst_blend_factor >= PVR2_BLEND_FACTOR_COUNT)) {
         error_set_src_blend_factor(group->src_blend_factor);
         error_set_dst_blend_factor(group->dst_blend_factor);
         error_set_display_list_index((unsigned)disp_list);
