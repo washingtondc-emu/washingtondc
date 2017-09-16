@@ -267,6 +267,8 @@ static void ta_fifo_finish_packet(void);
 
 static enum vert_type classify_vert(void);
 
+static void unpack_uv16(float *u_coord, float *v_coord, void const *input);
+
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
 #ifdef PVR2_LOG_VERBOSE
     fprintf(stderr, "WARNING: trying to read %u bytes from the TA polygon FIFO "
@@ -409,6 +411,8 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
 
     if (((ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT) ==
         TA_CMD_TYPE_SPRITE_HDR) {
+        hdr->tex_coord_16_bit_enable = true; // force this on
+
         // unpack the sprite color
         uint32_t base_color = ta_fifo32[4];
         uint32_t offset_color = ta_fifo32[5];
@@ -611,7 +615,7 @@ the_end:
     ta_fifo_finish_packet();
 }
 
-// unpack a sprite's texture coordinates into two floats
+// unpack 16-bit texture coordinates into two floats
 static void unpack_uv16(float *u_coord, float *v_coord, void const *input) {
     uint32_t val = *(uint32_t*)input;
     uint32_t u_val = val & 0xffff0000;
@@ -919,8 +923,18 @@ static void on_vertex_received(void) {
         if (poly_state.tex_enable) {
             unsigned dst_uv_offset =
                 GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_TEX_COORD_OFFSET;
-            group->verts[dst_uv_offset + 0] = ta_fifo_float[4];
-            group->verts[dst_uv_offset + 1] = ta_fifo_float[5];
+
+            float uv[2];
+
+            if (poly_state.tex_coord_16_bit_enable) {
+                unpack_uv16(uv, uv + 1, ta_fifo_float + 4);
+            } else {
+                uv[0] = ta_fifo_float[4];
+                uv[1] = ta_fifo_float[5];
+            }
+
+            group->verts[dst_uv_offset + 0] = uv[0];
+            group->verts[dst_uv_offset + 1] = uv[1];
         }
 
         float color_r, color_g, color_b, color_a;
