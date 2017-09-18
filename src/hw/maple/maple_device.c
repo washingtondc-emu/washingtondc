@@ -95,7 +95,7 @@ void maple_compile_devinfo(struct maple_devinfo const *devinfo_in, void *out) {
            sizeof(devinfo_in->standby_power));
     devinfo_out += sizeof(devinfo_in->standby_power);
     memcpy(devinfo_out, &devinfo_in->max_power, sizeof(devinfo_in->max_power));
-    devinfo_out += sizeof(devinfo_in->max_power);
+    /* devinfo_out += sizeof(devinfo_in->max_power); */
 }
 
 void maple_compile_cond(struct maple_cond const *cond, void *out) {

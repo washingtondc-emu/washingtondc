@@ -368,22 +368,21 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
     hdr->tex_enable = (bool)(ta_fifo32[0] & TA_CMD_TEX_ENABLE_MASK);
     hdr->ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
         TA_COLOR_FMT_SHIFT;
-    if (hdr->tex_enable) {
-        hdr->tex_fmt = (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
-            TEX_CTRL_PIX_FMT_SHIFT;
-        hdr->tex_width_shift = 3 +
-            ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
-        hdr->tex_height_shift = 3 +
-            ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
-        hdr->tex_inst = (ta_fifo32[2] & TSP_TEX_INST_MASK) >>
-            TSP_TEX_INST_SHIFT;
-        hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
-        hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
-        hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
-                         TEX_CTRL_TEX_ADDR_SHIFT) << 3;
-        hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>
-            TSP_TEX_INST_FILTER_SHIFT;
-    }
+
+    hdr->tex_fmt = (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
+        TEX_CTRL_PIX_FMT_SHIFT;
+    hdr->tex_width_shift = 3 +
+        ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
+    hdr->tex_height_shift = 3 +
+        ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
+    hdr->tex_inst = (ta_fifo32[2] & TSP_TEX_INST_MASK) >>
+        TSP_TEX_INST_SHIFT;
+    hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
+    hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
+    hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
+                     TEX_CTRL_TEX_ADDR_SHIFT) << 3;
+    hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>
+        TSP_TEX_INST_FILTER_SHIFT;
 
     hdr->src_blend_factor =
         (ta_fifo32[2] & TSP_WORD_SRC_ALPHA_FACTOR_MASK) >>
@@ -412,37 +411,37 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
     if (((ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT) ==
         TA_CMD_TYPE_SPRITE_HDR) {
         hdr->tex_coord_16_bit_enable = true; // force this on
-
-        // unpack the sprite color
-        uint32_t base_color = ta_fifo32[4];
-        uint32_t offset_color = ta_fifo32[5];
-        unsigned base_r = (base_color & 0x00ff0000) >> 16;
-        unsigned base_g = (base_color & 0x0000ff00) >> 8;
-        unsigned base_b = base_color & 0x000000ff;
-        unsigned base_a = (base_color & 0xff000000) >> 24;
-        unsigned offset_r = (offset_color & 0x00ff0000) >> 16;
-        unsigned offset_g = (offset_color & 0x0000ff00) >> 8;
-        unsigned offset_b = offset_color & 0x000000ff;
-        unsigned offset_a = (offset_color & 0xff000000) >> 24;
-        unsigned col_r = base_r + offset_r;
-        unsigned col_g = base_g + offset_g;
-        unsigned col_b = base_b + offset_b;
-        unsigned col_a = base_a + offset_a;
-
-        if (col_r > 255)
-            col_r = 255;
-        if (col_g > 255)
-            col_g = 255;
-        if (col_b > 255)
-            col_b = 255;
-        if (col_a > 255)
-            col_a = 255;
-
-        hdr->sprite_color_rgba[0] = col_r / 255.0f;
-        hdr->sprite_color_rgba[1] = col_g / 255.0f;
-        hdr->sprite_color_rgba[2] = col_b / 255.0f;
-        hdr->sprite_color_rgba[3] = col_a / 255.0f;
     }
+
+    // unpack the sprite color
+    uint32_t base_color = ta_fifo32[4];
+    uint32_t offset_color = ta_fifo32[5];
+    unsigned base_r = (base_color & 0x00ff0000) >> 16;
+    unsigned base_g = (base_color & 0x0000ff00) >> 8;
+    unsigned base_b = base_color & 0x000000ff;
+    unsigned base_a = (base_color & 0xff000000) >> 24;
+    unsigned offset_r = (offset_color & 0x00ff0000) >> 16;
+    unsigned offset_g = (offset_color & 0x0000ff00) >> 8;
+    unsigned offset_b = offset_color & 0x000000ff;
+    unsigned offset_a = (offset_color & 0xff000000) >> 24;
+    unsigned col_r = base_r + offset_r;
+    unsigned col_g = base_g + offset_g;
+    unsigned col_b = base_b + offset_b;
+    unsigned col_a = base_a + offset_a;
+
+    if (col_r > 255)
+        col_r = 255;
+    if (col_g > 255)
+        col_g = 255;
+    if (col_b > 255)
+        col_b = 255;
+    if (col_a > 255)
+        col_a = 255;
+
+    hdr->sprite_color_rgba[0] = col_r / 255.0f;
+    hdr->sprite_color_rgba[1] = col_g / 255.0f;
+    hdr->sprite_color_rgba[2] = col_b / 255.0f;
+    hdr->sprite_color_rgba[3] = col_a / 255.0f;
 
     if (hdr->color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) {
         if (hdr->offset_color_enable) {
@@ -452,6 +451,8 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
             memcpy(hdr->poly_color_rgba, ta_fifo32 + 5, 3 * sizeof(float));
             memcpy(hdr->poly_color_rgba + 3, ta_fifo32 + 4, sizeof(float));
         }
+    } else {
+        memset(hdr->poly_color_rgba, 0, sizeof(hdr->poly_color_rgba));
     }
 }
 

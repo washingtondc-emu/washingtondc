@@ -237,7 +237,6 @@ int string_find_first_of(struct string const *src, char const *delim) {
 
 int string_find_last_of(struct string const *src, char const *delim) {
     char const *str_beg = string_get(src);
-    char const *str_end = str_beg + (strlen(str_beg) - 1);
     char const *str = str_beg + (strlen(str_beg) - 1);
 
     if (!strlen(str_beg))

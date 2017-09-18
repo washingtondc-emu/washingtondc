@@ -71,7 +71,7 @@ static struct mount_ops gdi_mount_ops = {
 #define MIN_TRACKS 3
 
 void parse_gdi(struct gdi_info *outp, char const *path) {
-    unsigned track_count;
+    unsigned track_count = 0;
     long file_sz;
     struct string whole_file_txt;
     struct gdi_track *tracks;
@@ -184,7 +184,7 @@ void parse_gdi(struct gdi_info *outp, char const *path) {
         line_no++;
     }
 
-    if (n_tracks_loaded != track_count) {
+    if (!track_count || n_tracks_loaded != track_count) {
         error_set_file_path(path);
         RAISE_ERROR(ERROR_MISSING_DATA);
     }

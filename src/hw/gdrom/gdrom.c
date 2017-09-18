@@ -281,7 +281,6 @@ static void gdrom_input_read_packet(void) {
     unsigned start_addr = (gdrom.pkt_buf[2] << 16) | (gdrom.pkt_buf[3] << 8) | gdrom.pkt_buf[4];
     unsigned trans_len = (gdrom.pkt_buf[8] << 16) | (gdrom.pkt_buf[9] << 8) | gdrom.pkt_buf[10];
     unsigned data_sel = gdrom.pkt_buf[1] >> 4;
-    unsigned data_tp_expect = (gdrom.pkt_buf[1] >> 1) & 0x7;
     unsigned param_tp = gdrom.pkt_buf[1] & 1;
 
     if (data_sel != 0x2) {

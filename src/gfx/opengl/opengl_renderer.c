@@ -311,7 +311,6 @@ static void render_do_draw(struct geo_buf *geo) {
 
 static void opengl_renderer_update_tex(unsigned tex_obj) {
     struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
-    int n_colors = tex->pvr2_pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ? 3 : 4;
     GLenum format = tex->pvr2_pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
         GL_RGB : GL_RGBA;
 

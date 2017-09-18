@@ -664,7 +664,18 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
         goto cleanup_png;
     }
 
+    /*
+     * prevent integer overflows when we call malloc below.
+     *
+     * Also, the max texture-side-log2 on pvr2 is 10 anyways.
+     */
+    if (tex->w_shift > 10 || tex->h_shift > 10)
+        RAISE_ERROR(ERROR_INTEGRITY);
     unsigned tex_w = 1 << tex->w_shift, tex_h = 1 << tex->h_shift;
+
+    // this should not be possible, but scan-build thinks it is...?
+    if (!tex_w || !tex_h)
+        RAISE_ERROR(ERROR_INTEGRITY);
 
     png_bytepp row_pointers = (png_bytepp)calloc(tex_h, sizeof(png_bytep));
     if (!row_pointers)
