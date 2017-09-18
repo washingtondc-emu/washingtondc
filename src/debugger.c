@@ -95,7 +95,14 @@ static atomic_flag not_continue = ATOMIC_FLAG_INIT;
  */
 static atomic_flag not_detach = ATOMIC_FLAG_INIT;
 
+// uncomment this line to make the debugger print what it's doing
+// #define DEBUGGER_LOG_VERBOSE
+
+#ifdef DEBUGGER_LOG_VERBOSE
 #define DBG_TRACE(msg, ...) dbg_do_trace(msg, ##__VA_ARGS__)
+#else
+#define DBG_TRACE(msg, ...)
+#endif
 
 static void frontend_attach(void);
 static void frontend_on_break(void);
