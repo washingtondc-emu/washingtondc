@@ -658,6 +658,7 @@ static void on_sprite_received(void) {
     if (group->n_verts + 6 >= GEO_BUF_VERT_COUNT) {
         fprintf(stderr, "ERROR (while rendering a sprite): PVR2's "
                 "GEO_BUF_VERT_COUNT has been reached!\n");
+        ta_fifo_finish_packet();
         return;
     }
 
@@ -747,8 +748,10 @@ static void on_sprite_received(void) {
      * zero directly.
      */
     if ((norm[2] == 0.0f) ||
-        (norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2] == 0.0f))
+        (norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2] == 0.0f)) {
+        ta_fifo_finish_packet();
         return;
+    }
 
     // hyperplane translation
     float dist = -norm[0] * p1[0] - norm[1] * p1[1] - norm[2] * p1[2];
