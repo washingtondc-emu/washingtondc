@@ -1,12 +1,12 @@
 # WashingtonDC
 
-WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  Currently
-it's only capable of running the Dreamcast firmware and a handful of homebrew
-programs because it is still at an early stage of development.
+WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  It's still at
+an early stage of development; currently it can only run the Dreamcast firmware,
+a handful of homebrew programs and Power Stone.
 
 ## GALLERY
 ![Alt text](media/washingtondc_spiral_swirl.png "SEGA Dreamcast firmware")
-![Alt text](media/bios_menu.png "The main menu from the SEGA Dreamcast's NTSC-U firmware")
+![Alt text](media/washingtondc_power_stone_in_game.png "Power Stone")
 
 ## COMPILING
 ```
@@ -28,7 +28,7 @@ DEEP_SYSCALL_TRACE=On/Off(default) - log system calls made by guest software.
 ```
 ## USAGE
 ```
-./washingtondc [options] [IP.BIN 1ST_READ.BIN]
+./washingtondc -b dc_bios.bin -f dc_flash.bin [options] [IP.BIN 1ST_READ.BIN]
 
 OPTIONS:
 -b <bios_path> path to dreamcast boot ROM
@@ -45,6 +45,26 @@ OPTIONS:
 ```
 The emulator currently only supports one controller, and the controls cannot be
 rebinded yet.  It must be controlled using a keyboard with a number pad.
+
+The -b and -f options are mandatory because we need a firmware to boot.  To do a
+direct-boot, the -s option is also needed to provide a system call image since
+the firmware won't have had a chance to load one itself.
+
+The -c command opens up a TCP on port 2000 that you can connect to via telnet to
+control the emulator via a text-based command-line interface; this is the
+closest thing to a UI that WashingtonDC has.
+
+You can view online command documentation with the 'help' command.
+'begin-execution' is the command to start the emulator.
+
+The only game I know to work so far is Power Stone, and it needs a special
+workaround to boot because WashingtonDC doesn't implement the Dreamcast's AICA
+audio system yet.  To boot Power Stone, you need to open up the CLI by starting
+WashingtonDC with the -c option, then connect to the CLI using telnet on port
+2000.  The 'hack-power-stone-no-aica enable' command will enable the workaround
+that Power Stone needs to boot past the SEGA logo, and 'begin-execution' will
+start the emulator.
+
 ```
     |============================|
     | keyboard   |     Dreamcast |
