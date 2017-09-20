@@ -83,6 +83,15 @@
 #define POWER_STONE_HACK_ADDR_4 0x008002e4
 #define POWER_STONE_HACK_VAL_4  0x00800008
 
+/*
+ * Once again, at PC=0x0c0e65ae the SH4 will read a 4-byte pointer from this
+ * address and write something to the location it points to.  I'm not sure what
+ * the correct address is, but having it write to (probable) ARM7 instruction
+ * memory makes things work.
+ */
+#define POWER_STONE_HACK_ADDR_5 0x008002e8
+#define POWER_STONE_HACK_VAL_5  0x0080000c
+
 atomic_bool aica_log_verbose_val = ATOMIC_VAR_INIT(false);
 
 static uint8_t aica_wave_mem[ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1];
@@ -158,6 +167,22 @@ int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
         if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
             printf("AICA: reading %u from 0x%08x due to the no-AICA Power "
                    "Stone hack\n", POWER_STONE_HACK_VAL_4, POWER_STONE_HACK_ADDR_4);
+        }
+        return MEM_ACCESS_SUCCESS;
+    } else if (addr == POWER_STONE_HACK_ADDR_5 &&
+        config_get_hack_power_stone_no_aica()) {
+        uint32_t val = POWER_STONE_HACK_VAL_5;
+        if (len > sizeof(val)) {
+            error_set_feature("reads of greater than 4 bytes when using the "
+                              "Power Stone no-AICA hack");
+            PENDING_ERROR(ERROR_UNIMPLEMENTED);
+            return MEM_ACCESS_FAILURE;
+        }
+
+        memcpy(buf, &val, len);
+        if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
+            printf("AICA: reading %u from 0x%08x due to the no-AICA Power "
+                   "Stone hack\n", POWER_STONE_HACK_VAL_5, POWER_STONE_HACK_ADDR_5);
         }
         return MEM_ACCESS_SUCCESS;
     }
