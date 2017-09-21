@@ -494,6 +494,17 @@ static int cmd_power_stone_hack(int argc, char **argv) {
     return 0;
 }
 
+static char const *tex_fmt_names[TEX_CTRL_PIX_FMT_COUNT] = {
+    [TEX_CTRL_PIX_FMT_ARGB_1555] = "ARGB_1555",
+    [TEX_CTRL_PIX_FMT_RGB_565] = "RGB_565",
+    [TEX_CTRL_PIX_FMT_ARGB_4444] = "ARGB_4444",
+    [TEX_CTRL_PIX_FMT_YUV_422] = "YUV_422",
+    [TEX_CTRL_PIX_FMT_BUMP_MAP] = "BUMP_MAP",
+    [TEX_CTRL_PIX_FMT_4_BPP_PAL] = "PAL_4BPP",
+    [TEX_CTRL_PIX_FMT_8_BPP_PAL] = "PAL_8BPP",
+    [TEX_CTRL_PIX_FMT_INVALID] = "<invalid format>",
+};
+
 static int cmd_tex_info(int argc, char **argv) {
     unsigned first_tex_no, last_tex_no, tex_no;
     struct gfx_tex tex;
@@ -524,7 +535,9 @@ static int cmd_tex_info(int argc, char **argv) {
             cons_printf("texture %u:\n", tex_no);
             cons_printf("\tdimensions: (%u, %u)\n",
                         1 << tex.w_shift, 1 << tex.h_shift);
-            cons_printf("\tformat: %u\n", (unsigned)tex.pvr2_pix_fmt);
+            cons_printf("\tformat: %s\n",
+                        tex.pvr2_pix_fmt < TEX_CTRL_PIX_FMT_COUNT ?
+                        tex_fmt_names[tex.pvr2_pix_fmt] : "<invalid format>");
             cons_printf("\t%s\n", tex.twiddled ? "twiddled" : "not twiddled");
             cons_printf("\tVQ compression: %s\n",
                         tex.vq_compression ? "yes" : "no");
