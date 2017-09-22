@@ -57,13 +57,7 @@ closest thing to a UI that WashingtonDC has.
 You can view online command documentation with the 'help' command.
 'begin-execution' is the command to start the emulator.
 
-The only game I know to work so far is Power Stone, and it needs a special
-workaround to boot because WashingtonDC doesn't implement the Dreamcast's AICA
-audio system yet.  To boot Power Stone, you need to open up the CLI by starting
-WashingtonDC with the -c option, then connect to the CLI using telnet on port
-2000.  The 'hack-power-stone-no-aica enable' command will enable the workaround
-that Power Stone needs to boot past the SEGA logo, and 'begin-execution' will
-start the emulator.
+The only game I know to work so far is Power Stone.
 
 ```
     |============================|

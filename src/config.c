@@ -26,8 +26,8 @@
 
 #include "config.h"
 
-#define CONFIG_DEF_BOOL(prop)                                           \
-    static atomic_bool config_ ## prop = ATOMIC_VAR_INIT(false);        \
+#define CONFIG_DEF_BOOL(prop, defval)                                   \
+    static atomic_bool config_ ## prop = ATOMIC_VAR_INIT(defval);       \
     bool config_get_ ## prop(void) {                                    \
         return atomic_load_explicit(&config_ ## prop,                   \
                                     memory_order_relaxed);              \
@@ -37,15 +37,15 @@
                               memory_order_relaxed);                    \
     }
 
-#define CONFIG_DEF_INT(prop)                                    \
-    static atomic_int config_ ## prop = ATOMIC_VAR_INIT(0);     \
-    int config_get_ ## prop(void) {                             \
-        return atomic_load_explicit(&config_ ## prop,           \
-                                    memory_order_relaxed);      \
-    }                                                           \
-    void config_set_ ## prop(int new_val) {                     \
-        atomic_store_explicit(&config_ ## prop, new_val,        \
-                              memory_order_relaxed);            \
+#define CONFIG_DEF_INT(prop, defval)                                 \
+    static atomic_int config_ ## prop = ATOMIC_VAR_INIT(defval);     \
+    int config_get_ ## prop(void) {                                  \
+        return atomic_load_explicit(&config_ ## prop,                \
+                                    memory_order_relaxed);           \
+    }                                                                \
+    void config_set_ ## prop(int new_val) {                          \
+        atomic_store_explicit(&config_ ## prop, new_val,             \
+                              memory_order_relaxed);                 \
     }
 
 #define CONFIG_DEF_STRING(prop)                                         \
@@ -66,10 +66,10 @@
     }
 
 #ifdef ENABLE_DEBUGGER
-CONFIG_DEF_BOOL(dbg_enable)
+CONFIG_DEF_BOOL(dbg_enable, false)
 #endif
 
-CONFIG_DEF_BOOL(ser_srv_enable)
+CONFIG_DEF_BOOL(ser_srv_enable, false)
 
 CONFIG_DEF_STRING(dc_bios_path);
 
@@ -77,7 +77,7 @@ CONFIG_DEF_STRING(dc_flash_path);
 
 CONFIG_DEF_STRING(syscall_path);
 
-CONFIG_DEF_INT(boot_mode);
+CONFIG_DEF_INT(boot_mode, 0);
 
 CONFIG_DEF_STRING(gdi_image);
 
@@ -85,6 +85,6 @@ CONFIG_DEF_STRING(ip_bin_path);
 
 CONFIG_DEF_STRING(exec_bin_path);
 
-CONFIG_DEF_BOOL(enable_cmd_tcp);
+CONFIG_DEF_BOOL(enable_cmd_tcp, false);
 
-CONFIG_DEF_BOOL(hack_power_stone_no_aica);
+CONFIG_DEF_BOOL(hack_power_stone_no_aica, true);
