@@ -76,31 +76,17 @@ static unsigned tex_twiddle(unsigned x, unsigned y,
 
     unsigned w_next = 1 << w_shift_next;
     unsigned h_next = 1 << h_shift_next;
-
     unsigned quad_shift = w_shift_next + h_shift_next;
-    unsigned quad_sz = 1 << quad_shift;
 
-    if (x < w_next) {
-        if (y < h_next) {
-            // upper-left corner
-            return tex_twiddle(x, y, w_shift_next, h_shift_next);
-        } else {
-            // lower-left corner
-            return (1 << quad_shift) |
-                tex_twiddle(x, y - h_next, w_shift_next, h_shift_next);
-        }
-    } else {
-        if (y < h_next) {
-            // upper-right corner
-            return (1 << (quad_shift + 1)) |
-                tex_twiddle(x - w_next, y, w_shift_next, h_shift_next);
-        } else {
-            // lower-right corner
-            // alternatively, do 3 << quad_shift
-            return (1 << (quad_shift + 1)) | (1 << quad_shift) |
-                tex_twiddle(x - w_next, y - h_next, w_shift_next, h_shift_next);
-        }
-    }
+    unsigned flag = 0;
+    if (x >= w_next)
+        flag |= 2;
+    if (y >= h_next)
+        flag |= 1;
+    flag <<= quad_shift;
+
+    return flag | tex_twiddle(x & ~w_next, y & ~h_next,
+                              w_shift_next, h_shift_next);
 }
 
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
