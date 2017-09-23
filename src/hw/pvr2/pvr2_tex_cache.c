@@ -73,18 +73,28 @@ static unsigned tex_twiddle(unsigned x, unsigned y,
     if (h_shift)
         h_shift_next--;
 
-    if (x < (1 << w_shift_next) && y < (1 << h_shift_next)) {
+    unsigned w_next = 1 << w_shift_next;
+    unsigned h_next = 1 << h_shift_next;
+
+    unsigned quad_shift = w_shift_next + h_shift_next;
+    unsigned quad_sz = 1 << quad_shift;
+
+    if (x < w_next && y < h_next) {
+        // upper-left corner
         return tex_twiddle(x, y, w_shift_next, h_shift_next);
-    } else if (x < (1 << w_shift_next) && y >= (1 << h_shift_next)) {
-        return (1 << w_shift_next) * (1 << h_shift_next) +
-            tex_twiddle(x, y - (1 << h_shift_next), w_shift_next, h_shift_next);
-    } else if (x >= (1 << w_shift_next) && y < (1 << h_shift_next)) {
-        return 2 * (1 << w_shift_next) * (1 << h_shift_next) +
-            tex_twiddle(x - (1 << w_shift_next), y, w_shift_next, h_shift_next);
+    } else if (x < w_next && y >= h_next) {
+        // lower-left corner
+        return (1 << quad_shift) |
+            tex_twiddle(x, y - h_next, w_shift_next, h_shift_next);
+    } else if (x >= w_next && y < h_next) {
+        // upper-right corner
+        return (1 << (quad_shift + 1)) |
+            tex_twiddle(x - w_next, y, w_shift_next, h_shift_next);
     } else {
-        return 3 * (1 << w_shift_next) * (1 << h_shift_next) +
-            tex_twiddle(x - (1 << w_shift_next), y - (1 << h_shift_next),
-                        w_shift_next, h_shift_next);
+        // lower-right corner
+        // alternatively, do 3 << quad_shift
+        return (1 << (quad_shift + 1)) | (1 << quad_shift) | 
+            tex_twiddle(x - w_next, y - h_next, w_shift_next, h_shift_next);
     }
 }
 
