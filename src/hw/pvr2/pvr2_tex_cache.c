@@ -60,6 +60,7 @@ static unsigned tex_twiddle(unsigned x, unsigned y,
  */
 static unsigned tex_twiddle(unsigned x, unsigned y,
                             unsigned w_shift, unsigned h_shift) {
+    // keep in mind that w_shift <= 10 && h_shift <= 10
     assert(x < (1 << w_shift));
     assert(y < (1 << h_shift));
 
@@ -79,22 +80,26 @@ static unsigned tex_twiddle(unsigned x, unsigned y,
     unsigned quad_shift = w_shift_next + h_shift_next;
     unsigned quad_sz = 1 << quad_shift;
 
-    if (x < w_next && y < h_next) {
-        // upper-left corner
-        return tex_twiddle(x, y, w_shift_next, h_shift_next);
-    } else if (x < w_next && y >= h_next) {
-        // lower-left corner
-        return (1 << quad_shift) |
-            tex_twiddle(x, y - h_next, w_shift_next, h_shift_next);
-    } else if (x >= w_next && y < h_next) {
-        // upper-right corner
-        return (1 << (quad_shift + 1)) |
-            tex_twiddle(x - w_next, y, w_shift_next, h_shift_next);
+    if (x < w_next) {
+        if (y < h_next) {
+            // upper-left corner
+            return tex_twiddle(x, y, w_shift_next, h_shift_next);
+        } else {
+            // lower-left corner
+            return (1 << quad_shift) |
+                tex_twiddle(x, y - h_next, w_shift_next, h_shift_next);
+        }
     } else {
-        // lower-right corner
-        // alternatively, do 3 << quad_shift
-        return (1 << (quad_shift + 1)) | (1 << quad_shift) | 
-            tex_twiddle(x - w_next, y - h_next, w_shift_next, h_shift_next);
+        if (y < h_next) {
+            // upper-right corner
+            return (1 << (quad_shift + 1)) |
+                tex_twiddle(x - w_next, y, w_shift_next, h_shift_next);
+        } else {
+            // lower-right corner
+            // alternatively, do 3 << quad_shift
+            return (1 << (quad_shift + 1)) | (1 << quad_shift) |
+                tex_twiddle(x - w_next, y - h_next, w_shift_next, h_shift_next);
+        }
     }
 }
 
