@@ -44,7 +44,29 @@ struct pvr2_tex {
     uint32_t addr_first, addr_last;
 
     unsigned w_shift, h_shift;
+
+    /*
+     * The difference between pix_fmt and tex_fmt is that pix_fmt documents
+     * what the format is in the texture cache, while tex_fmt documents what the
+     * format is in the PVR2 texture memory.  Usually they're both the same
+     * thing, but in the case of paletted textures they can be different.  The
+     * pix_fmt is what is used for rendering; tex_fmt exists mainly so that it's
+     * available for debugging and the tex-info cli command.  tex_fmt *is* one
+     * of the parameters that has to match for the pvr2_tex_cache_find function,
+     * so there's that too.
+     */
     int pix_fmt;
+    int tex_fmt;
+
+    /*
+     * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
+     * palette address referenced by this texture.  It needs to be shifted left
+     * by 2 or 6 bits and ORed with pixel values to get palette addresses.
+     *
+     * this field only holds meaning if tex_fmt is TEX_CTRL_PIX_FMT_4_BPP_PAL
+     * or TEX_CTRL_PIX_FMT_8_BPP_PAL; otherwise it is meaningless.
+     */
+    uint32_t tex_palette_start;
 
     // if this is not set then this part of the cache is empty
     bool valid;
@@ -68,15 +90,18 @@ struct pvr2_tex {
 // insert the given texture into the cache
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
                                     unsigned w_shift, unsigned h_shift,
-                                    int pix_fmt, bool twiddled,
+                                    int tex_fmt, bool twiddled,
                                     bool vq_compression);
 
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
                                      unsigned w_shift, unsigned h_shift,
-                                     int pix_fmt, bool twiddled,
+                                     int tex_fmt, bool twiddled,
                                      bool vq_compression);
 
 void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len);
+
+void pvr2_tex_cache_notify_palette_write(uint32_t addr_first, uint32_t len);
+void pvr2_tex_cache_notify_palette_tp_change(void);
 
 int pvr2_tex_cache_get_idx(struct pvr2_tex const *tex);
 

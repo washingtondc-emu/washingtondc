@@ -39,6 +39,9 @@
 #include "gfx/rend_common.h"
 #include "gfx/gfx_tex_cache.h"
 
+// for the palette_tp stuff
+#include "hw/pvr2/pvr2_core_reg.h"
+
 #include "gfx/gfx_thread.h"
 
 static pthread_t gfx_thread;
@@ -238,6 +241,7 @@ void gfx_thread_get_tex(struct gfx_tex *out, unsigned tex_no) {
         out->w_shift = in->w_shift;
         out->h_shift = in->h_shift;
         out->pvr2_pix_fmt = in->pvr2_pix_fmt;
+        out->pvr2_tex_fmt = in->pvr2_tex_fmt;
         out->twiddled = in->twiddled;
         out->vq_compression = in->vq_compression;
         out->addr_first = in->addr_first;

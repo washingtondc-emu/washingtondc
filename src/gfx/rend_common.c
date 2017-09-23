@@ -77,6 +77,7 @@ void rend_draw_next_geo_buf(void) {
                     .w_shift = tex->w_shift,
                     .h_shift = tex->h_shift,
                     .pvr2_pix_fmt = tex->pix_fmt,
+                    .pvr2_tex_fmt = tex->tex_fmt,
                     .twiddled = tex->twiddled,
                     .vq_compression = tex->vq_compression,
                     .addr_first = tex->addr_first,

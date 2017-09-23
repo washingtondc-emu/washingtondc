@@ -147,6 +147,17 @@ struct poly_hdr {
 
     bool tex_enable;
     uint32_t tex_addr;
+
+    /*
+     * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
+     * palette address referenced by this texture.  It needs to be shifted left
+     * by 2 or 6 bits and ORed with pixel values to get palette addresses.
+     *
+     * this field only holds meaning if tex_fmt is TEX_CTRL_PIX_FMT_4_BPP_PAL
+     * or TEX_CTRL_PIX_FMT_8_BPP_PAL; otherwise it is meaningless.
+     */
+    uint32_t tex_palette_start;
+
     unsigned tex_width_shift, tex_height_shift;
     bool tex_twiddle;
     bool tex_vq_compression;
@@ -371,6 +382,14 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
 
     hdr->tex_fmt = (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
         TEX_CTRL_PIX_FMT_SHIFT;
+
+    /* if (hdr->tex_fmt == TEX_CTRL_PIX_FMT_BUMP_MAP || */
+    /*     hdr->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL || */
+    /*     hdr->tex_fmt == TEX_CTRL_PIX_FMT_YUV_422 || */
+    /*     hdr->tex_fmt >= TEX_CTRL_PIX_FMT_INVALID) */
+    if (hdr->tex_fmt == TEX_CTRL_PIX_FMT_YUV_422)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
     hdr->tex_width_shift = 3 +
         ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
     hdr->tex_height_shift = 3 +
@@ -381,6 +400,8 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
     hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
     hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
                      TEX_CTRL_TEX_ADDR_SHIFT) << 3;
+    hdr->tex_palette_start = (ta_fifo32[3] & TEX_CTRL_PALETTE_START_MASK) >>
+        TEX_CTRL_PALETTE_START_SHIFT;
     hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>
         TSP_TEX_INST_FILTER_SHIFT;
 

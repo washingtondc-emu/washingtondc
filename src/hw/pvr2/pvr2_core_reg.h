@@ -41,6 +41,12 @@ extern "C" {
 #define PVR2_PIXEL_DOUBLE_SHIFT 8
 #define PVR2_PIXEL_DOUBLE_MASK (1 << PVR2_PIXEL_DOUBLE_SHIFT)
 
+#define PVR2_PALETTE_RAM_FIRST 0x5f9000
+#define PVR2_PALETTE_RAM_LAST  0x5f9fff
+#define PVR2_PALETTE_RAM_LEN \
+    (PVR2_PALETTE_RAM_LAST - PVR2_PALETTE_RAM_FIRST + 1)
+extern uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
+
 int pvr2_core_reg_read(void *buf, size_t addr, size_t len);
 int pvr2_core_reg_write(void const *buf, size_t addr, size_t len);
 
@@ -72,6 +78,17 @@ unsigned get_glob_tile_clip_y(void);
 
 uint32_t get_isp_backgnd_d(void);
 uint32_t get_isp_backgnd_t(void);
+
+enum palette_tp {
+    PALETTE_TP_ARGB_1555,
+    PALETTE_TP_RGB_565,
+    PALETTE_TP_ARGB_4444,
+    PALETTE_TP_ARGB_8888,
+
+    PALETTE_TP_COUNT
+};
+
+enum palette_tp get_palette_tp(void);
 
 #ifdef __cplusplus
 }

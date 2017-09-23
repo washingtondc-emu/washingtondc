@@ -36,6 +36,7 @@
 #include "cons.h"
 #include "dreamcast.h"
 #include "config.h"
+#include "hw/pvr2/pvr2_core_reg.h"
 
 #include "cmd.h"
 
@@ -535,9 +536,12 @@ static int cmd_tex_info(int argc, char **argv) {
             cons_printf("texture %u:\n", tex_no);
             cons_printf("\tdimensions: (%u, %u)\n",
                         1 << tex.w_shift, 1 << tex.h_shift);
-            cons_printf("\tformat: %s\n",
+            cons_printf("\tpix_fmt: %s\n",
                         tex.pvr2_pix_fmt < TEX_CTRL_PIX_FMT_COUNT ?
                         tex_fmt_names[tex.pvr2_pix_fmt] : "<invalid format>");
+            cons_printf("\ttex_fmt: %s\n",
+                        tex.pvr2_tex_fmt < TEX_CTRL_PIX_FMT_COUNT ?
+                        tex_fmt_names[tex.pvr2_tex_fmt] : "<invalid format>");
             cons_printf("\t%s\n", tex.twiddled ? "twiddled" : "not twiddled");
             cons_printf("\tVQ compression: %s\n",
                         tex.vq_compression ? "yes" : "no");

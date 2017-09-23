@@ -31,12 +31,15 @@
 #include "error.h"
 #include "framebuffer.h"
 #include "pvr2_ta.h"
+#include "pvr2_tex_cache.h"
 
 #include "pvr2_core_reg.h"
 
 static uint32_t fb_r_sof1, fb_r_sof2, fb_r_ctrl, fb_r_size,
     fb_w_sof1, fb_w_sof2, fb_w_ctrl, fb_w_linestride, isp_backgnd_t,
     isp_backgnd_d, glob_tile_clip, fb_x_clip, fb_y_clip;
+
+static enum palette_tp palette_tp;
 
 // 5f8128, 5f8138
 static uint32_t ta_vertbuf_pos, ta_vertbuf_start;
@@ -45,6 +48,8 @@ static uint32_t ta_next_opb_init;
 
 #define N_PVR2_CORE_REGS (ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1)
 static reg32_t pvr2_core_regs[N_PVR2_CORE_REGS];
+
+uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
 
 struct pvr2_core_mem_mapped_reg;
 
@@ -208,6 +213,20 @@ static int
 ta_next_opb_init_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                    void const *buf, addr32_t addr, unsigned len);
 
+static int
+ta_palette_tp_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                               void *buf, addr32_t addr, unsigned len);
+static int
+ta_palette_tp_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void const *buf, addr32_t addr, unsigned len);
+
+static int
+ta_palette_ram_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void *buf, addr32_t addr, unsigned len);
+static int
+ta_palette_ram_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                 void const *buf, addr32_t addr, unsigned len);
+
 
 static struct pvr2_core_mem_mapped_reg {
     char const *reg_name;
@@ -321,6 +340,8 @@ static struct pvr2_core_mem_mapped_reg {
       default_pvr2_core_reg_read_handler, default_pvr2_core_reg_write_handler },
     { "VO_STARTY", 0x5f80f0, 4,
       default_pvr2_core_reg_read_handler, default_pvr2_core_reg_write_handler },
+    { "PALETTE_TP", 0x5f8108, 4,
+      ta_palette_tp_reg_read_handler, ta_palette_tp_reg_write_handler },
     { "SPG_STATUS", 0x5f810c, 4,
       read_spg_status, pvr2_core_read_only_reg_write_handler },
     { "TA_OL_BASE", 0x5f8124, 4,
@@ -606,6 +627,11 @@ static struct pvr2_core_mem_mapped_reg {
     { NULL }
 };
 
+static struct pvr2_core_mem_mapped_reg pal_ram_reg = {
+    "PALETTE_RAM", 0x5f9000, 4,
+    ta_palette_ram_reg_read_handler, ta_palette_ram_reg_write_handler
+};
+
 int pvr2_core_reg_read(void *buf, size_t addr, size_t len) {
     struct pvr2_core_mem_mapped_reg *curs = pvr2_core_reg_info;
 
@@ -614,6 +640,9 @@ int pvr2_core_reg_read(void *buf, size_t addr, size_t len) {
             return curs->on_read(curs, buf, addr, len);
         curs++;
     }
+
+    if (addr >= 0x5f9000 && addr <= 0x5f9fff)
+        return pal_ram_reg.on_read(curs, buf, addr, len);
 
     error_set_feature("reading from one of the pvr2 core registers");
     error_set_address(addr);
@@ -630,6 +659,9 @@ int pvr2_core_reg_write(void const *buf, size_t addr, size_t len) {
             return curs->on_write(curs, buf, addr, len);
         curs++;
     }
+
+    if (addr >= 0x5f9000 && addr <= 0x5f9fff)
+        return pal_ram_reg.on_write(curs, buf, addr, len);
 
     error_set_feature("writing to one of the pvr2 core registers");
     error_set_address(addr);
@@ -1080,6 +1112,10 @@ unsigned get_glob_tile_clip_y(void) {
     return ((glob_tile_clip >> 16) & 0xf) + 1;
 }
 
+enum palette_tp get_palette_tp(void) {
+    return palette_tp;
+}
+
 static int
 glob_tile_clip_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                 void *buf, addr32_t addr, unsigned len) {
@@ -1166,5 +1202,77 @@ ta_next_opb_init_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_in
     memcpy(&ta_next_opb_init, buf, sizeof(ta_next_opb_init));
     fprintf(stderr, "WARNING writing 0x%08x to TA_NEXT_OPB_INIT\n",
             (unsigned)ta_next_opb_init);
+    return 0;
+}
+
+static int
+ta_palette_tp_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                               void *buf, addr32_t addr, unsigned len) {
+    *(uint32_t*)buf = (uint32_t)palette_tp;
+    return 0;
+}
+static int
+ta_palette_tp_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void const *buf, addr32_t addr, unsigned len) {
+    uint32_t const *in_val = (uint32_t const*)buf;
+    palette_tp = (enum palette_tp)(*in_val);
+
+    printf("PVR2: palette type set to: ");
+
+    switch (palette_tp) {
+    case PALETTE_TP_ARGB_1555:
+        printf("ARGB1555\n");
+        break;
+    case PALETTE_TP_RGB_565:
+        printf("RGB565\n");
+        break;
+    case PALETTE_TP_ARGB_4444:
+        printf("ARGB4444\n");
+        break;
+    case PALETTE_TP_ARGB_8888:
+        printf("ARGB8888\n");
+        break;
+    default:
+        printf("<unknown %u>\n", (unsigned)palette_tp);
+    }
+
+    pvr2_tex_cache_notify_palette_tp_change();
+    return 0;
+}
+
+static int
+ta_palette_ram_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                void *buf, addr32_t addr, unsigned len) {
+    if (addr >= PVR2_PALETTE_RAM_FIRST &&
+        (addr + len) <= PVR2_PALETTE_RAM_LAST) {
+        memcpy(buf, pvr2_palette_ram + (addr - PVR2_PALETTE_RAM_FIRST), len);
+    } else {
+        error_set_address(addr);
+        error_set_length(len);
+        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+    return 0;
+}
+
+static int
+ta_palette_ram_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
+                                 void const *buf, addr32_t addr, unsigned len) {
+    printf("%s reached (%u-byte write to %08x): ", __func__, len, addr);
+    addr32_t addr_tmp;
+    uint8_t *buf8 = (uint8_t*)buf;
+    for (addr_tmp = addr+len-1; addr_tmp >= addr; addr_tmp--) {
+        printf("%02x", (unsigned)*buf8++);
+    }
+    printf("\n");
+
+    if (addr >= PVR2_PALETTE_RAM_FIRST &&
+        (addr - 1 + len) <= PVR2_PALETTE_RAM_LAST) {
+        memcpy(pvr2_palette_ram + (addr - PVR2_PALETTE_RAM_FIRST), buf, len);
+        pvr2_tex_cache_notify_write(addr, len);
+    } else {
+        error_set_address(addr);
+        error_set_length(len);
+        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
     return 0;
 }

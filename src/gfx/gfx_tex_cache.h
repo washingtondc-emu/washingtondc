@@ -41,8 +41,16 @@ struct gfx_tex {
     // base-2 logarithim of the width and height of the texture
     unsigned w_shift, h_shift;
 
-    // the texture format, as pvr2 sees it
+    // the underlying pixel format the gfx_thread sees
     int pvr2_pix_fmt;
+
+    /*
+     * the texture format that's actually stored in pvr2 texture memory.
+     * Usually this and pvr2_pix_fmt are the same thing, but they can be
+     * different if the texture format is paletted (because the pvr2 emulation
+     * code decodes the palette before it sends the texture to the gfx thread).
+     */
+    int pvr2_tex_fmt;
 
     /*
      * the image data.  This pointer belongs to the gfx thread and will be

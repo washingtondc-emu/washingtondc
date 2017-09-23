@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include "pvr2_tex_mem.h"
+#include "pvr2_core_reg.h"
 #include "mem_areas.h"
 
 #include "geo_buf.h"
@@ -39,14 +40,14 @@
                             PVR2_CODE_BOOK_ENTRY_SIZE)
 
 unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
-    2,
-    2,
-    2,
-    1,
-    0, // TODO: wtf is TEX_CTRL_PIX_FMT_BUMP_MAP???
-    0, // TODO: wtf is TEX_CTRL_PIX_FMT_4_BPP_PAL
-    0, // TODO: wtf is TEX_CTRL_PIX_FMT_8_BPP_PAL
-    0
+    [TEX_CTRL_PIX_FMT_ARGB_1555] = 2,
+    [TEX_CTRL_PIX_FMT_RGB_565]   = 2,
+    [TEX_CTRL_PIX_FMT_ARGB_4444] = 2,
+    [TEX_CTRL_PIX_FMT_YUV_422]   = 1,
+    [TEX_CTRL_PIX_FMT_BUMP_MAP]  = 0, // TODO: implement this
+    [TEX_CTRL_PIX_FMT_4_BPP_PAL] = 0, // TODO: implement this
+    [TEX_CTRL_PIX_FMT_8_BPP_PAL] = 1,
+    [TEX_CTRL_PIX_FMT_INVALID]   = 0
 };
 
 static struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
@@ -118,7 +119,7 @@ static unsigned tex_twiddle(unsigned x, unsigned y, unsigned w_shift, unsigned h
 
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
                                      unsigned w_shift, unsigned h_shift,
-                                     int pix_fmt, bool twiddled,
+                                     int tex_fmt, bool twiddled,
                                      bool vq_compression) {
     unsigned idx;
     struct pvr2_tex *tex;
@@ -126,7 +127,7 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
         tex = tex_cache + idx;
         if (tex->valid && (tex->addr_first == addr) &&
             (tex->w_shift == w_shift) && (tex->h_shift == h_shift) &&
-            (tex->pix_fmt == pix_fmt) && (tex->twiddled == twiddled) &&
+            (tex->tex_fmt == tex_fmt) && (tex->twiddled == twiddled) &&
             (tex->vq_compression == vq_compression)) {
             return tex;
         }
@@ -137,9 +138,9 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
 
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
                                     unsigned w_shift, unsigned h_shift,
-                                    int pix_fmt, bool twiddled,
+                                    int tex_fmt, bool twiddled,
                                     bool vq_compression) {
-    assert(pix_fmt < TEX_CTRL_PIX_FMT_INVALID);
+    assert(tex_fmt < TEX_CTRL_PIX_FMT_INVALID);
 
 #ifdef INVARIANTS
     if (w_shift > 10 || h_shift > 10 || w_shift < 3 || h_shift < 3) {
@@ -170,7 +171,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     tex->addr_first = addr;
     tex->w_shift = w_shift;
     tex->h_shift = h_shift;
-    tex->pix_fmt = pix_fmt;
+    tex->tex_fmt = tex_fmt;
     tex->twiddled = twiddled;
     tex->vq_compression = vq_compression;
 
@@ -185,7 +186,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
         tex->addr_last = addr - 1 + PVR2_CODE_BOOK_LEN +
             sizeof(uint8_t) * side_len * side_len / 4;
     } else {
-        tex->addr_last = addr - 1 + pixel_sizes[pix_fmt] *
+        tex->addr_last = addr - 1 + pixel_sizes[tex_fmt] *
             (1 << w_shift) * (1 << h_shift);
     }
 
@@ -224,6 +225,27 @@ void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
                           tex->addr_last + ADDR_TEX64_FIRST)) {
             tex->dirty = true;
         }
+    }
+}
+
+void pvr2_tex_cache_notify_palette_write(uint32_t addr_first, uint32_t len) {
+    /*
+     * TODO: all paletted textures will be invalidated whenever there is a
+     * write to the PVR2's palette memory.  Obviously this is suboptimal
+     * compared to only invalidating the textures that reference the part of
+     * palette memory which is being written to, but I'm keeping it this way
+     * for now because it is simpler.
+     */
+    pvr2_tex_cache_notify_palette_tp_change();
+}
+
+void pvr2_tex_cache_notify_palette_tp_change(void) {
+    unsigned idx;
+    for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
+        struct pvr2_tex *tex = tex_cache + idx;
+        if (tex->valid && (tex->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
+                           tex->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL))
+            tex->dirty = true;
     }
 }
 
@@ -294,13 +316,15 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex_in = tex_cache + idx;
         struct pvr2_tex *tex_out = out->tex_cache + idx;
+        unsigned tex_w = 1 << tex_in->w_shift,
+            tex_h = 1 << tex_in->h_shift;
 
         if (tex_in->valid && tex_in->dirty) {
             tex_out->addr_first = tex_in->addr_first;
             tex_out->addr_last = tex_in->addr_last;
             tex_out->w_shift = tex_in->w_shift;
             tex_out->h_shift = tex_in->h_shift;
-            tex_out->pix_fmt = tex_in->pix_fmt;
+            tex_out->tex_fmt = tex_in->tex_fmt;
             tex_out->twiddled = tex_in->twiddled;
             tex_out->vq_compression = tex_in->vq_compression;
 
@@ -314,19 +338,19 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
 
             size_t n_bytes = sizeof(uint8_t) *
                 (1 << tex_in->w_shift) * (1 << tex_in->h_shift) *
-                pixel_sizes[tex_in->pix_fmt];
-            if (n_bytes)
-                tex_out->dat = (uint8_t*)malloc(n_bytes);
-            else
-                tex_out->dat = NULL;
+                pixel_sizes[tex_in->tex_fmt];
 
-            if (!tex_out->dat)
+            void *tex_dat = NULL;
+            if (n_bytes)
+                tex_dat = malloc(n_bytes);
+
+            if (!tex_dat)
                 RAISE_ERROR(ERROR_INTEGRITY);
 
             // de-twiddle
             uint8_t const *beg = pvr2_tex64_mem + tex_in->addr_first;
             if (tex_in->vq_compression) {
-                if (pixel_sizes[tex_in->pix_fmt] != 2) {
+                if (pixel_sizes[tex_in->tex_fmt] != 2) {
                     error_set_feature("proper response for an attempt to use "
                                       "VQ compression on a non-RGB texture");
                     RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -338,16 +362,69 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
                     RAISE_ERROR(ERROR_UNIMPLEMENTED);
                 }
 
-                pvr2_tex_vq_decompress(tex_out->dat, beg, tex_in->w_shift);
+                pvr2_tex_vq_decompress(tex_dat, beg, tex_in->w_shift);
             } else if (tex_in->twiddled) {
-                pvr2_tex_detwiddle(tex_out->dat, beg,
+                pvr2_tex_detwiddle(tex_dat, beg,
                                    tex_in->w_shift, tex_in->h_shift,
-                                   pixel_sizes[tex_in->pix_fmt]);
+                                   pixel_sizes[tex_in->tex_fmt]);
             } else {
-                unsigned tex_w = 1 << tex_in->w_shift,
-                    tex_h = 1 << tex_in->h_shift;
-                memcpy(tex_out->dat, beg,
-                       pixel_sizes[tex_in->pix_fmt] * tex_w * tex_h);
+                memcpy(tex_dat, beg,
+                       pixel_sizes[tex_in->tex_fmt] * tex_w * tex_h);
+            }
+
+            if (tex_in->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
+                uint32_t tex_size_actual;
+                enum palette_tp palette_tp = get_palette_tp();
+                switch (palette_tp) {
+                case PALETTE_TP_ARGB_1555:
+                    tex_out->pix_fmt = TEX_CTRL_PIX_FMT_ARGB_1555;
+                    tex_size_actual = 2;
+                    break;
+                case PALETTE_TP_RGB_565:
+                    tex_out->pix_fmt = TEX_CTRL_PIX_FMT_RGB_565;
+                    tex_size_actual = 2;
+                    break;
+                case PALETTE_TP_ARGB_4444:
+                    tex_out->pix_fmt = TEX_CTRL_PIX_FMT_ARGB_4444;
+                    tex_size_actual = 2;
+                    break;
+                case PALETTE_TP_ARGB_8888:
+                    tex_size_actual = 4;
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                    break;
+                default:
+                    RAISE_ERROR(ERROR_INTEGRITY);
+                }
+                uint8_t *tex_dat_no_palette =
+                    (uint8_t*)malloc(tex_size_actual * tex_w * tex_h);
+                if (!tex_dat_no_palette)
+                    RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+                uint32_t pal_start = (tex_out->tex_palette_start & 0x30) << 4;
+                uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
+
+                unsigned row, col;
+                for (row = 0; row < tex_h; row++) {
+                    for (col = 0; col < tex_w; col++) {
+                        unsigned pix_idx = row * tex_w + col;
+                        uint8_t *pix_out = tex_dat_no_palette +
+                            pix_idx * tex_size_actual;
+                        uint8_t pix_in = tex_dat8[pix_idx];
+                        uint32_t palette_addr =
+                            (pal_start | (uint32_t)pix_in) * 4;
+                        memcpy(pix_out, pvr2_palette_ram + palette_addr, tex_size_actual);
+                    }
+                }
+                tex_out->dat = tex_dat_no_palette;
+                free(tex_dat);
+                printf("PVR2 paletted texture: tex_palette_start is 0x%04x\n",
+                       (unsigned)tex_out->tex_palette_start);
+            } else if (tex_out->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+                error_set_feature("4BPP paletted textures");
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            } else {
+                tex_out->pix_fmt = tex_in->tex_fmt;
+                tex_out->dat = tex_dat;
             }
 
             tex_in->dirty = false;
