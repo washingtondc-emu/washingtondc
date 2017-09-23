@@ -51,42 +51,34 @@ unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
 
 static struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
 
-static unsigned tex_twiddle(unsigned x, unsigned y,
-                            unsigned w_shift, unsigned h_shift);
+static unsigned tex_twiddle(unsigned x, unsigned y, unsigned side_shift);
 
 /*
  * maps from a normal row-major configuration to the
  * pvr2's own "twiddled" format
  */
-static unsigned tex_twiddle(unsigned x, unsigned y,
-                            unsigned w_shift, unsigned h_shift) {
-    // keep in mind that w_shift <= 10 && h_shift <= 10
-    assert(x < (1 << w_shift));
-    assert(y < (1 << h_shift));
+static unsigned tex_twiddle(unsigned x, unsigned y, unsigned shift) {
+    assert(x < (1 << shift));
+    assert(shift <= 10);
 
-    if (w_shift == 0 && h_shift == 0)
+    if (shift == 0)
         return 0;
 
-    unsigned w_shift_next = w_shift;
-    unsigned h_shift_next = h_shift;
-    if (w_shift)
-        w_shift_next--;
-    if (h_shift)
-        h_shift_next--;
+    unsigned shift_next = shift - 1;
 
-    unsigned w_next = 1 << w_shift_next;
-    unsigned h_next = 1 << h_shift_next;
-    unsigned quad_shift = w_shift_next + h_shift_next;
+    unsigned quad_side = 1 << shift_next;
+
+    // this is the log2 of the area of (1<<shift)*(1<<shift) / 4
+    unsigned quad_shift = shift_next*2;
 
     unsigned flag = 0;
-    if (x >= w_next)
+    if (x >= quad_side)
         flag |= 2;
-    if (y >= h_next)
+    if (y >= quad_side)
         flag |= 1;
     flag <<= quad_shift;
 
-    return flag | tex_twiddle(x & ~w_next, y & ~h_next,
-                              w_shift_next, h_shift_next);
+    return flag | tex_twiddle(x & ~quad_side, y & ~quad_side, shift_next);
 }
 
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
@@ -211,8 +203,7 @@ static void pvr2_tex_detwiddle(void *dst, void const *src,
     unsigned row, col;
     for (row = 0; row < tex_h; row++) {
         for (col = 0; col < tex_w; col++) {
-            unsigned twid_idx = tex_twiddle(col, row,
-                                            tex_w_shift, tex_h_shift);
+            unsigned twid_idx = tex_twiddle(col, row, 10);
             memcpy(dst + (row * tex_w + col) * bytes_per_pix,
                    src + twid_idx * bytes_per_pix,
                    bytes_per_pix);
@@ -239,7 +230,7 @@ static void pvr2_tex_vq_decompress(void *dst, void const *src,
     unsigned row, col;
     for (row = 0; row < src_side; row++) {
         for (col = 0; col < src_side; col++) {
-            unsigned twid_idx = tex_twiddle(col, row, side_shift, side_shift);
+            unsigned twid_idx = tex_twiddle(col, row, 10);
 
             // code book index
             unsigned idx =
