@@ -59,24 +59,23 @@ static unsigned tex_twiddle(unsigned x, unsigned y);
  */
 static unsigned tex_twiddle(unsigned x, unsigned y) {
     unsigned twid_idx = 0;
-    unsigned shift;
-    for (shift = 10; shift >= 1; shift--) {
-        unsigned shift_next = shift - 1;
-
-        unsigned quad_side = 1 << shift_next;
+    int quadrant_side_shift;
+    for (quadrant_side_shift = 9; quadrant_side_shift >= 0;
+         quadrant_side_shift--) {
+        unsigned quadrant_side = 1 << quadrant_side_shift;
 
         // this is the log2 of the area of (1<<shift)*(1<<shift) / 4
-        unsigned quad_shift = shift_next*2;
+        unsigned quadrant_area_shift = quadrant_side_shift*2;
 
         unsigned flag = 0;
-        if (x >= quad_side)
+        if (x >= quadrant_side)
             flag |= 2;
-        if (y >= quad_side)
+        if (y >= quadrant_side)
             flag |= 1;
-        flag <<= quad_shift;
+        flag <<= quadrant_area_shift;
 
-        x &= ~quad_side;
-        y &= ~quad_side;
+        x &= ~quadrant_side;
+        y &= ~quadrant_side;
 
         twid_idx |= flag;
     }
