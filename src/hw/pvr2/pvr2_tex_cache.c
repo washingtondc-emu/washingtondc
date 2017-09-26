@@ -51,34 +51,68 @@ unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
 
 static struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
 
-static unsigned tex_twiddle(unsigned x, unsigned y);
+static unsigned tex_twiddle(unsigned x, unsigned y,
+                            unsigned w_shift, unsigned h_shift);
 
 /*
  * maps from a normal row-major configuration to the
- * pvr2's own "twiddled" format
+ * pvr2's own "twiddled" format.
+ *
+ * The twiddled format is a recursive way of ordering pixels in which the image
+ * is divided up into four sub-images.  Those four subimages are stored in the
+ * following order: upper-left, lower-left, upper-right, lower-right.  Each of
+ * these subimages are themselves twiddled into four smaller subimages, and this
+ * recursion continues until you reach the point where each subimage is a single
+ * pixel.
+ *
+ * twiddled rectangular textures are stored as a series of squares each
+ * with a width and height of min(w, h) (where w and h denote the width and
+ * height of the full rectangular texture).
+ *
+ * Each one of these squares is twiddled internally, but the squares
+ * themselves are stored in order from left to right (when width > height)
+ * or from top to bottom (when height > width).
  */
-static unsigned tex_twiddle(unsigned x, unsigned y) {
+static unsigned tex_twiddle(unsigned x, unsigned y, unsigned w_shift, unsigned h_shift) {
     unsigned twid_idx = 0;
     int quadrant_side_shift;
-    for (quadrant_side_shift = 9; quadrant_side_shift >= 0;
-         quadrant_side_shift--) {
-        unsigned quadrant_side = 1 << quadrant_side_shift;
 
-        // this is the log2 of the area of (1<<shift)*(1<<shift) / 4
-        unsigned quadrant_area_shift = quadrant_side_shift*2;
-
-        unsigned flag = 0;
-        if (x >= quadrant_side)
-            flag |= 2;
-        if (y >= quadrant_side)
-            flag |= 1;
-        flag <<= quadrant_area_shift;
-
-        x &= ~quadrant_side;
-        y &= ~quadrant_side;
-
-        twid_idx |= flag;
+    unsigned w = 1 << w_shift;
+    unsigned h = 1 << h_shift;
+    unsigned min_square, min_square_shift;
+    if (w < h) {
+        min_square = w;
+        min_square_shift = w_shift;
+    } else {
+        min_square = h;
+        min_square_shift = h_shift;
     }
+
+    unsigned x_resid = x & ~(min_square - 1);
+    unsigned y_resid = y & ~(min_square - 1);
+    unsigned x_sq = x & (min_square - 1);
+    unsigned y_sq = y & (min_square - 1);
+
+    unsigned shift;
+
+    for (shift = 0; shift <= min_square_shift; shift++) {
+        unsigned mask = (1 << (shift + 1)) - 1;
+        unsigned pow = 1 << shift;
+
+        if (shift <= min_square_shift) {
+            if ((x_sq & mask) >= pow)
+                twid_idx |= 1 << (shift * 2 + 1);
+            if ((y_sq & mask) >= pow)
+                twid_idx |= 1 << (shift * 2);
+        }
+    }
+
+    if (x_resid) {
+        twid_idx += (x / min_square) * min_square * min_square;
+    } else if (y_resid) {
+        twid_idx += (y / min_square) * min_square * min_square;
+    }
+
     return twid_idx;
 }
 
@@ -204,7 +238,7 @@ static void pvr2_tex_detwiddle(void *dst, void const *src,
     unsigned row, col;
     for (row = 0; row < tex_h; row++) {
         for (col = 0; col < tex_w; col++) {
-            unsigned twid_idx = tex_twiddle(col, row);
+            unsigned twid_idx = tex_twiddle(col, row, tex_w_shift, tex_h_shift);
             memcpy(dst + (row * tex_w + col) * bytes_per_pix,
                    src + twid_idx * bytes_per_pix,
                    bytes_per_pix);
@@ -227,11 +261,13 @@ static void pvr2_tex_detwiddle(void *dst, void const *src,
 static void pvr2_tex_vq_decompress(void *dst, void const *src,
                                    unsigned side_shift) {
     unsigned dst_side = 1 << side_shift;
-    unsigned src_side = dst_side / 2;
+    unsigned src_side_shift = side_shift - 1;
+    unsigned src_side = 1 << src_side_shift;
     unsigned row, col;
     for (row = 0; row < src_side; row++) {
         for (col = 0; col < src_side; col++) {
-            unsigned twid_idx = tex_twiddle(col, row);
+            unsigned twid_idx = tex_twiddle(col, row,
+                                            src_side_shift, src_side_shift);
 
             // code book index
             unsigned idx =
