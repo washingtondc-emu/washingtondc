@@ -261,6 +261,12 @@ static void pvr2_tex_detwiddle(void *dst, void const *src,
     for (row = 0; row < tex_h; row++) {
         for (col = 0; col < tex_w; col++) {
             unsigned twid_idx = tex_twiddle(col, row, tex_w_shift, tex_h_shift);
+
+#ifdef INVARIANTS
+            if (twid_idx * bytes_per_pix >= tex_w * tex_h * bytes_per_pix)
+                RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
             memcpy(dst + (row * tex_w + col) * bytes_per_pix,
                    src + twid_idx * bytes_per_pix,
                    bytes_per_pix);
