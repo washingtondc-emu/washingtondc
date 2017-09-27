@@ -31,66 +31,69 @@
 #include "hw/sh4/sh4.h"
 #include "config.h"
 
-/*
- * this value needs to be non-zero.  I don't think it matters what the value is
- * as long as it is non-zero.
- *
- * This is read by Power Stone at PC=0xc0e5596.  It will spin forever until
- * this value is non-zero
- */
-#define POWER_STONE_HACK_ADDR_1 0x0080005c
-#define POWER_STONE_HACK_VAL_1  1
+static struct aica_mem_hack {
+    uint32_t addr;
+    uint32_t val;
+    bool end;
+} no_aica_hack[] = {
+    /*
+     * this value needs to be non-zero.  I don't think it matters what the value is
+     * as long as it is non-zero.
+     *
+     * This is read by Power Stone at PC=0xc0e5596.  It will spin forever until
+     * this value is non-zero
+     */
+    { .addr = 0x0080005c, .val = 1 },
 
-/*
- * This value needs to point to AICA waveform memory.  at PC=0xc0e657c,
- * Power Stone will read from this memory location, add 0x7ff to the value and
- * then write it back to this same memory location at PC=0xc0e6586.
- *
- * The value used here is not the correct value; I do not know what the correct
- * value is.  Since I don't have a working ARM7 CPU implementation, the safest
- * bet is to choose somewhere that probably stores executable code.  That way I
- * know I'm not accidentally trampling over some other value that the SH4 CPU
- * software tries to access.
- */
-#define POWER_STONE_HACK_ADDR_2 0x00800284
-#define POWER_STONE_HACK_VAL_2  0x00800000
+    /*
+     * This value needs to point to AICA waveform memory.  at PC=0xc0e657c,
+     * Power Stone will read from this memory location, add 0x7ff to the value and
+     * then write it back to this same memory location at PC=0xc0e6586.
+     *
+     * The value used here is not the correct value; I do not know what the correct
+     * value is.  Since I don't have a working ARM7 CPU implementation, the safest
+     * bet is to choose somewhere that probably stores executable code.  That way I
+     * know I'm not accidentally trampling over some other value that the SH4 CPU
+     * software tries to access.
+     */
+    { .addr = 0x00800284, .val = 0x00800000 },
 
-/*
- * This value needs to point to AICA waveform memory.  at PC=0xc0e65ae,
- * Power Stone will read from this memory location, add 0x7ff to the value and
- * then write it back to this same memory location at PC=0xc0e65b8.
- *
- * The value used here is not the correct value; I do not know what the correct
- * value is.  Since I don't have a working ARM7 CPU implementation, the safest
- * bet is to choose somewhere that probably stores executable code.  That way I
- * know I'm not accidentally trampling over some other value that the SH4 CPU
- * software tries to access.
- */
-#define POWER_STONE_HACK_ADDR_3 0x00800288
-#define POWER_STONE_HACK_VAL_3  0x00800004
+    /*
+     * This value needs to point to AICA waveform memory.  at PC=0xc0e65ae,
+     * Power Stone will read from this memory location, add 0x7ff to the value and
+     * then write it back to this same memory location at PC=0xc0e65b8.
+     *
+     * The value used here is not the correct value; I do not know what the correct
+     * value is.  Since I don't have a working ARM7 CPU implementation, the safest
+     * bet is to choose somewhere that probably stores executable code.  That way I
+     * know I'm not accidentally trampling over some other value that the SH4 CPU
+     * software tries to access.
+     */
+    { .addr = 0x00800288, .val = 0x00800004 },
 
-/*
- * This value needs to point to AICA waveform memory.  at PC=0xc0e657c,
- * Power Stone will read from this memory location, add 0x7ff to the value and
- * then write it back to this same memory location at PC=0xc0e6586.
- *
- * The value used here is not the correct value; I do not know what the correct
- * value is.  Since I don't have a working ARM7 CPU implementation, the safest
- * bet is to choose somewhere that probably stores executable code.  That way I
- * know I'm not accidentally trampling over some other value that the SH4 CPU
- * software tries to access.
- */
-#define POWER_STONE_HACK_ADDR_4 0x008002e4
-#define POWER_STONE_HACK_VAL_4  0x00800008
+    /*
+     * This value needs to point to AICA waveform memory.  at PC=0xc0e657c,
+     * Power Stone will read from this memory location, add 0x7ff to the value and
+     * then write it back to this same memory location at PC=0xc0e6586.
+     *
+     * The value used here is not the correct value; I do not know what the correct
+     * value is.  Since I don't have a working ARM7 CPU implementation, the safest
+     * bet is to choose somewhere that probably stores executable code.  That way I
+     * know I'm not accidentally trampling over some other value that the SH4 CPU
+     * software tries to access.
+     */
+    { .addr = 0x008002e4, .val = 0x00800008 },
 
-/*
- * Once again, at PC=0x0c0e65ae the SH4 will read a 4-byte pointer from this
- * address and write something to the location it points to.  I'm not sure what
- * the correct address is, but having it write to (probable) ARM7 instruction
- * memory makes things work.
- */
-#define POWER_STONE_HACK_ADDR_5 0x008002e8
-#define POWER_STONE_HACK_VAL_5  0x0080000c
+    /*
+     * Once again, in Power Stone at PC=0x0c0e65ae the SH4 will read a 4-byte
+     * pointer from this address and write something to the location it points
+     * to.  I'm not sure what the correct address is, but having it write to
+     * (probable) ARM7 instruction memory makes things work.
+     */
+    { .addr = 0x008002e8, .val = 0x0080000c },
+
+    { .end = true }
+};
 
 atomic_bool aica_log_verbose_val = ATOMIC_VAR_INIT(false);
 
@@ -99,92 +102,30 @@ static uint8_t aica_wave_mem[ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1];
 int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
     void const *start_addr = aica_wave_mem + (addr - ADDR_AICA_WAVE_FIRST);
 
-    /*
-     * If enabled, trick power-stone into thinking we have a working CPU.
-     *
-     * It reads from POWER_STONE_HACK_ADDR_1 at PC=0xc0e5596 and will not progress
-     * unless the value it reads is non-zero.
-     */
-    if (addr == POWER_STONE_HACK_ADDR_1 &&
-        config_get_hack_power_stone_no_aica()) {
-        uint32_t val = POWER_STONE_HACK_VAL_1;
-        if (len > sizeof(val)) {
-            error_set_feature("reads of greater than 4 bytes when using the "
-                              "Power Stone no-AICA hack");
-            PENDING_ERROR(ERROR_UNIMPLEMENTED);
-            return MEM_ACCESS_FAILURE;
-        }
+    // If enabled, trick games into thinking we have a working AICA CPU.
+    if (config_get_hack_power_stone_no_aica()) {
+        struct aica_mem_hack const *cursor = &no_aica_hack[0];
+        while (!cursor->end) {
+            if (addr == cursor->addr) {
+                if (len > sizeof(cursor->val)) {
+                    error_set_feature("reads of greater than 4 bytes when "
+                                      "using the Power Stone no-AICA hack");
+                    PENDING_ERROR(ERROR_UNIMPLEMENTED);
+                    return MEM_ACCESS_FAILURE;
+                }
 
-        memcpy(buf, &val, len);
-        if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
-            printf("AICA: reading %u from 0x%08x due to the no-AICA Power "
-                   "Stone hack\n", POWER_STONE_HACK_VAL_1, POWER_STONE_HACK_ADDR_1);
-        }
-        return MEM_ACCESS_SUCCESS;
-    } else if (addr == POWER_STONE_HACK_ADDR_2 &&
-        config_get_hack_power_stone_no_aica()) {
-        uint32_t val = POWER_STONE_HACK_VAL_2;
-        if (len > sizeof(val)) {
-            error_set_feature("reads of greater than 4 bytes when using the "
-                              "Power Stone no-AICA hack");
-            PENDING_ERROR(ERROR_UNIMPLEMENTED);
-            return MEM_ACCESS_FAILURE;
-        }
+                memcpy(buf, &cursor->val, len);
+                if (atomic_load_explicit(&aica_log_verbose_val,
+                                         memory_order_relaxed)) {
+                    printf("AICA: reading %u from 0x%08x due to the no-AICA "
+                           "Power Stone hack\n",
+                           (unsigned)cursor->val, (unsigned)cursor->addr);
+                }
+                return MEM_ACCESS_SUCCESS;
+            }
 
-        memcpy(buf, &val, len);
-        if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
-            printf("AICA: reading %u from 0x%08x due to the no-AICA Power "
-                   "Stone hack\n", POWER_STONE_HACK_VAL_2, POWER_STONE_HACK_ADDR_2);
+            cursor++;
         }
-        return MEM_ACCESS_SUCCESS;
-    } else if (addr == POWER_STONE_HACK_ADDR_3 &&
-        config_get_hack_power_stone_no_aica()) {
-        uint32_t val = POWER_STONE_HACK_VAL_3;
-        if (len > sizeof(val)) {
-            error_set_feature("reads of greater than 4 bytes when using the "
-                              "Power Stone no-AICA hack");
-            PENDING_ERROR(ERROR_UNIMPLEMENTED);
-            return MEM_ACCESS_FAILURE;
-        }
-
-        memcpy(buf, &val, len);
-        if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
-            printf("AICA: reading %u from 0x%08x due to the no-AICA Power "
-                   "Stone hack\n", POWER_STONE_HACK_VAL_3, POWER_STONE_HACK_ADDR_3);
-        }
-        return MEM_ACCESS_SUCCESS;
-    } else if (addr == POWER_STONE_HACK_ADDR_4 &&
-        config_get_hack_power_stone_no_aica()) {
-        uint32_t val = POWER_STONE_HACK_VAL_4;
-        if (len > sizeof(val)) {
-            error_set_feature("reads of greater than 4 bytes when using the "
-                              "Power Stone no-AICA hack");
-            PENDING_ERROR(ERROR_UNIMPLEMENTED);
-            return MEM_ACCESS_FAILURE;
-        }
-
-        memcpy(buf, &val, len);
-        if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
-            printf("AICA: reading %u from 0x%08x due to the no-AICA Power "
-                   "Stone hack\n", POWER_STONE_HACK_VAL_4, POWER_STONE_HACK_ADDR_4);
-        }
-        return MEM_ACCESS_SUCCESS;
-    } else if (addr == POWER_STONE_HACK_ADDR_5 &&
-        config_get_hack_power_stone_no_aica()) {
-        uint32_t val = POWER_STONE_HACK_VAL_5;
-        if (len > sizeof(val)) {
-            error_set_feature("reads of greater than 4 bytes when using the "
-                              "Power Stone no-AICA hack");
-            PENDING_ERROR(ERROR_UNIMPLEMENTED);
-            return MEM_ACCESS_FAILURE;
-        }
-
-        memcpy(buf, &val, len);
-        if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
-            printf("AICA: reading %u from 0x%08x due to the no-AICA Power "
-                   "Stone hack\n", POWER_STONE_HACK_VAL_5, POWER_STONE_HACK_ADDR_5);
-        }
-        return MEM_ACCESS_SUCCESS;
     }
 
     if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
