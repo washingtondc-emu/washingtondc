@@ -92,6 +92,16 @@ static struct aica_mem_hack {
      */
     { .addr = 0x008002e8, .val = 0x0080000c },
 
+    /*
+     * Crazy Taxi reads from this one location at PC=0x0c07f462.  If it is
+     * nonzero, it interprets that value as a pointer, and reads from what that
+     * points to.  That value is then ANDed with 0x7ff and written back.
+     *
+     * So the value at address 0x00800104 needs to be a pointer to a place where
+     * Crazy Taxi can read a 4-byte integer, and it with 0x7ff and write back.
+     */
+    { .addr = 0x00800104, .val = 0x00800010 },
+
     { .end = true }
 };
 
