@@ -56,6 +56,7 @@ static int cmd_begin_execution(int argc, char **argv);
 static int cmd_aica_verbose_log(int argc, char **argv);
 static int cmd_tex_info(int argc, char **argv);
 static int cmd_tex_enum(int argc, char **argv);
+static int cmd_tex_dump_all(int argc, char **argv);
 static int cmd_tex_dump(int argc, char **argv);
 static int cmd_power_stone_hack(int argc, char **argv);
 
@@ -184,6 +185,14 @@ struct cmd {
         "save the texture indicated by tex_no into file.\n"
         "the resulting file will be a .png image.\n",
         .cmd_handler = cmd_tex_dump
+    },
+    {
+        .cmd_name = "tex-dump-all",
+        .summary = "dump the entire texture cache into .png files in a directory",
+        .help_str = "tex-dump directory\n"
+        "\n"
+        "Save every texture in the cache into the given directory as PNG images\n",
+        .cmd_handler = cmd_tex_dump_all
     },
     {
         .cmd_name = "tex-enum",
@@ -616,6 +625,43 @@ static int cmd_tex_dump(int argc, char **argv) {
         }
     } else {
         cons_printf("Texture %u is not in the texture cache\n", tex_no);
+    }
+
+    return 0;
+}
+
+#define TEX_DUMP_ALL_PATH_LEN 512
+static int cmd_tex_dump_all(int argc, char **argv) {
+    unsigned tex_no;
+    char const *dir_path;
+    char const *path_last_char;
+    char total_path[TEX_DUMP_ALL_PATH_LEN];
+    struct gfx_tex tex;
+
+    if (argc != 2) {
+        cons_puts("Usage: tex-dump-all directory\n");
+        return 1;
+    }
+
+    dir_path = argv[1];
+    path_last_char = dir_path + strlen(dir_path);
+
+    for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
+        gfx_thread_get_tex(&tex, tex_no);
+
+        if (tex.valid && tex.dat) {
+            if (*path_last_char == '/') {
+                snprintf(total_path, TEX_DUMP_ALL_PATH_LEN, "%stex_%03u.png",
+                         dir_path, tex_no);
+            } else {
+                snprintf(total_path, TEX_DUMP_ALL_PATH_LEN, "%s/tex_%03u.png",
+                         dir_path, tex_no);
+            }
+            total_path[TEX_DUMP_ALL_PATH_LEN - 1] = '\0';
+
+            save_tex(total_path, &tex);
+            free(tex.dat);
+        }
     }
 
     return 0;
