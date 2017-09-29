@@ -2,11 +2,11 @@
 
 WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  It's still at
 an early stage of development; currently it can only run the Dreamcast firmware,
-a handful of homebrew programs and Power Stone.
+Crazy Taxi, Power Stone and a handful of homebrew programs.
 
 ## GALLERY
-![Alt text](media/washingtondc_spiral_swirl.png "SEGA Dreamcast firmware")
 ![Alt text](media/washingtondc_power_stone_in_game.png "Power Stone")
+![Alt text](media/washingtondc_crazy_taxi_in_game.png "Crazy Taxi")
 
 ## COMPILING
 ```
@@ -57,7 +57,7 @@ closest thing to a UI that WashingtonDC has.
 You can view online command documentation with the 'help' command.
 'begin-execution' is the command to start the emulator.
 
-The only game I know to work so far is Power Stone.
+The only games I know to work so far are Power Stone and Crazy Taxi.
 
 ```
     |============================|
