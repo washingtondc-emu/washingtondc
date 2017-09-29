@@ -102,6 +102,14 @@ static struct aica_mem_hack {
      */
     { .addr = 0x00800104, .val = 0x00800010 },
 
+    /*
+     * another Crazy Taxi situation, similar to the previous one.  This one
+     * happens at PC=0x0c07f462.  I'm just assuming that it wants to see a
+     * pointer to aica memory again.  All I know for sure is that it will hang
+     * until this is nonzero.
+     */
+    { .addr = 0x00800164, .val = 0x00800014 },
+
     { .end = true }
 };
 
