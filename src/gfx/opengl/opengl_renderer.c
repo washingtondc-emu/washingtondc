@@ -174,9 +174,17 @@ static void opengl_render_init(void) {
 
     unsigned tex_no;
     for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
+        /*
+         * unconditionally set the texture wrapping mode to repeat.
+         *
+         * TODO: I know for sure that a lot of games need repeating texture,
+         * coordinates but I don't know if there are any that need clamped
+         * texture coordinates.  In the future I will need to determine if this
+         * functionality exists in PVR2.
+         */
         glBindTexture(GL_TEXTURE_2D, tex_no);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
