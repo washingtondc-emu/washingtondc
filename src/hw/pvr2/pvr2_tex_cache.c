@@ -100,12 +100,10 @@ static unsigned tex_twiddle(unsigned x, unsigned y, unsigned w_shift, unsigned h
         unsigned mask = (1 << (shift + 1)) - 1;
         unsigned pow = 1 << shift;
 
-        if (shift <= min_square_shift) {
-            if ((x_sq & mask) >= pow)
-                twid_idx |= 1 << (shift * 2 + 1);
-            if ((y_sq & mask) >= pow)
-                twid_idx |= 1 << (shift * 2);
-        }
+        if ((x_sq & mask) >= pow)
+            twid_idx |= 1 << (shift * 2 + 1);
+        if ((y_sq & mask) >= pow)
+            twid_idx |= 1 << (shift * 2);
     }
 
     if (x_resid) {
