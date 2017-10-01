@@ -160,6 +160,7 @@ struct poly_hdr {
 
     unsigned tex_width_shift, tex_height_shift;
     bool tex_twiddle;
+    bool stride_sel;
     bool tex_vq_compression;
     bool tex_mipmap;
     int tex_fmt;
@@ -398,6 +399,7 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
     hdr->tex_inst = (ta_fifo32[2] & TSP_TEX_INST_MASK) >>
         TSP_TEX_INST_SHIFT;
     hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
+    hdr->stride_sel = (bool)(TEX_CTRL_STRIDE_SEL_MASK & ta_fifo32[3]);
     hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
     hdr->tex_mipmap = (bool)(TEX_CTRL_MIP_MAPPED_MASK & ta_fifo32[3]);
     hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
@@ -573,7 +575,8 @@ static void on_polyhdr_received(void) {
                                 hdr.tex_height_shift,
                                 hdr.tex_fmt, hdr.tex_twiddle,
                                 hdr.tex_vq_compression,
-                                hdr.tex_mipmap);
+                                hdr.tex_mipmap,
+                                hdr.stride_sel);
 
         printf("texture dimensions are (%u, %u)\n",
                1 << hdr.tex_width_shift,
@@ -590,7 +593,8 @@ static void on_polyhdr_received(void) {
                                      hdr.tex_fmt,
                                      hdr.tex_twiddle,
                                      hdr.tex_vq_compression,
-                                     hdr.tex_mipmap);
+                                     hdr.tex_mipmap,
+                                     hdr.stride_sel);
         }
 
         if (!ent) {

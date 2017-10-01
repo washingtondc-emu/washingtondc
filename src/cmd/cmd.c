@@ -556,6 +556,8 @@ static int cmd_tex_info(int argc, char **argv) {
                         tex.vq_compression ? "yes" : "no");
             cons_printf("\tmipmapped: %s\n",
                         tex.mipmap ? "enabled" : "disabled");
+            cons_printf("\tstride type: %s\n",
+                        tex.stride_sel ? "from texinfo" : "from texture");
             cons_printf("\tfirst address: 0x%08x\n", tex.addr_first);
             cons_printf("\tlast address: 0x%08x\n", tex.addr_last);
             did_print = true;

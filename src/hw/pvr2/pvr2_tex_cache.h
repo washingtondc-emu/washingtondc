@@ -73,6 +73,8 @@ struct pvr2_tex {
 
     bool twiddled;
 
+    bool stride_sel;
+
     bool vq_compression;
 
     bool mipmap;
@@ -93,12 +95,14 @@ struct pvr2_tex {
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
                                     unsigned w_shift, unsigned h_shift,
                                     int tex_fmt, bool twiddled,
-                                    bool vq_compression, bool mipmap);
+                                    bool vq_compression, bool mipmap,
+                                    bool stride_sel);
 
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
                                      unsigned w_shift, unsigned h_shift,
                                      int tex_fmt, bool twiddled,
-                                     bool vq_compression, bool mipmap);
+                                     bool vq_compression, bool mipmap,
+                                     bool stride_sel);
 
 void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len);
 

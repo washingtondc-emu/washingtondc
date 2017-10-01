@@ -81,6 +81,7 @@ void rend_draw_next_geo_buf(void) {
                     .twiddled = tex->twiddled,
                     .vq_compression = tex->vq_compression,
                     .mipmap = tex->mipmap,
+                    .stride_sel = tex->stride_sel,
                     .addr_first = tex->addr_first,
                     .addr_last = tex->addr_last,
                     .dat = tex->dat

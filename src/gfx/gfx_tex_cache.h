@@ -68,6 +68,7 @@ struct gfx_tex {
     bool twiddled;
     bool vq_compression;
     bool mipmap;
+    bool stride_sel;
     uint32_t addr_first, addr_last;
 };
 

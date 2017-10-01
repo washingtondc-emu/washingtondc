@@ -118,7 +118,8 @@ static unsigned tex_twiddle(unsigned x, unsigned y, unsigned w_shift, unsigned h
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
                                      unsigned w_shift, unsigned h_shift,
                                      int tex_fmt, bool twiddled,
-                                     bool vq_compression, bool mipmap) {
+                                     bool vq_compression, bool mipmap,
+                                     bool stride_sel) {
     unsigned idx;
     struct pvr2_tex *tex;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
@@ -138,7 +139,8 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
                                     unsigned w_shift, unsigned h_shift,
                                     int tex_fmt, bool twiddled,
-                                    bool vq_compression, bool mipmap) {
+                                    bool vq_compression, bool mipmap,
+                                    bool stride_sel) {
     assert(tex_fmt < TEX_CTRL_PIX_FMT_INVALID);
 
 #ifdef INVARIANTS
@@ -174,6 +176,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     tex->twiddled = twiddled;
     tex->vq_compression = vq_compression;
     tex->mipmap = mipmap;
+    tex->stride_sel = stride_sel;
 
     if (tex->vq_compression && (tex->w_shift != tex->h_shift)) {
         fprintf(stderr, "PVR2: WARNING - DISABLING VQ COMPRESSION FOR 0x%x "
