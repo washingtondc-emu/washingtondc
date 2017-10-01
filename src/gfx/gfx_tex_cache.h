@@ -67,6 +67,7 @@ struct gfx_tex {
      */
     bool twiddled;
     bool vq_compression;
+    bool mipmap;
     uint32_t addr_first, addr_last;
 };
 

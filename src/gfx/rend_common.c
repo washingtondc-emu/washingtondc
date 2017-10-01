@@ -80,6 +80,7 @@ void rend_draw_next_geo_buf(void) {
                     .pvr2_tex_fmt = tex->tex_fmt,
                     .twiddled = tex->twiddled,
                     .vq_compression = tex->vq_compression,
+                    .mipmap = tex->mipmap,
                     .addr_first = tex->addr_first,
                     .addr_last = tex->addr_last,
                     .dat = tex->dat

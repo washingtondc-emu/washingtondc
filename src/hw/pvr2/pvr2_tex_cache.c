@@ -118,7 +118,7 @@ static unsigned tex_twiddle(unsigned x, unsigned y, unsigned w_shift, unsigned h
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
                                      unsigned w_shift, unsigned h_shift,
                                      int tex_fmt, bool twiddled,
-                                     bool vq_compression) {
+                                     bool vq_compression, bool mipmap) {
     unsigned idx;
     struct pvr2_tex *tex;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
@@ -126,7 +126,8 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
         if (tex->valid && (tex->addr_first == addr) &&
             (tex->w_shift == w_shift) && (tex->h_shift == h_shift) &&
             (tex->tex_fmt == tex_fmt) && (tex->twiddled == twiddled) &&
-            (tex->vq_compression == vq_compression)) {
+            (tex->vq_compression == vq_compression) &&
+            (mipmap == tex->mipmap)) {
             return tex;
         }
     }
@@ -137,7 +138,7 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
 struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
                                     unsigned w_shift, unsigned h_shift,
                                     int tex_fmt, bool twiddled,
-                                    bool vq_compression) {
+                                    bool vq_compression, bool mipmap) {
     assert(tex_fmt < TEX_CTRL_PIX_FMT_INVALID);
 
 #ifdef INVARIANTS
@@ -172,6 +173,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     tex->tex_fmt = tex_fmt;
     tex->twiddled = twiddled;
     tex->vq_compression = vq_compression;
+    tex->mipmap = mipmap;
 
     if (tex->vq_compression && (tex->w_shift != tex->h_shift)) {
         fprintf(stderr, "PVR2: WARNING - DISABLING VQ COMPRESSION FOR 0x%x "
