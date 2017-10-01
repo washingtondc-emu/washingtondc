@@ -41,7 +41,7 @@
 
 // this needs to be left-shifted by 3 to get the actual address
 #define TEX_CTRL_TEX_ADDR_SHIFT 0
-#define TEX_CTRL_TEX_ADDR_MASK (0xfffff << TEX_CTRL_TEX_ADDR_SHIFT)
+#define TEX_CTRL_TEX_ADDR_MASK (0x1fffff << TEX_CTRL_TEX_ADDR_SHIFT)
 
 #define TEX_CTRL_PALETTE_START_SHIFT 21
 #define TEX_CTRL_PALETTE_START_MASK (0x3f << TEX_CTRL_PALETTE_START_SHIFT)
