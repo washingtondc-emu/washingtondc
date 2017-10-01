@@ -34,7 +34,7 @@
 
 #include "pvr2_tex_cache.h"
 
-#define PVR2_CODE_BOOK_ENTRY_SIZE 8
+#define PVR2_CODE_BOOK_ENTRY_SIZE (4 * sizeof(uint16_t))
 #define PVR2_CODE_BOOK_ENTRY_COUNT 256
 #define PVR2_CODE_BOOK_LEN (PVR2_CODE_BOOK_ENTRY_COUNT * \
                             PVR2_CODE_BOOK_ENTRY_SIZE)
@@ -256,6 +256,7 @@ void pvr2_tex_cache_notify_palette_tp_change(void) {
 static void pvr2_tex_detwiddle(void *dst, void const *src,
                                unsigned tex_w_shift, unsigned tex_h_shift,
                                unsigned bytes_per_pix) {
+    uint8_t *dst8 = (uint8_t*)dst;
     unsigned tex_w = 1 << tex_w_shift, tex_h = 1 << tex_h_shift;
     unsigned row, col;
     for (row = 0; row < tex_h; row++) {
@@ -267,7 +268,7 @@ static void pvr2_tex_detwiddle(void *dst, void const *src,
                 RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
-            memcpy(dst + (row * tex_w + col) * bytes_per_pix,
+            memcpy(dst8 + (row * tex_w + col) * bytes_per_pix,
                    src + twid_idx * bytes_per_pix,
                    bytes_per_pix);
         }
@@ -292,26 +293,29 @@ static void pvr2_tex_vq_decompress(void *dst, void const *src,
     unsigned src_side_shift = side_shift - 1;
     unsigned src_side = 1 << src_side_shift;
     unsigned row, col;
+    uint8_t const *code_book_src = (uint8_t const*)src;
+    uint8_t const *img_dat_src = code_book_src + PVR2_CODE_BOOK_LEN;
+    uint16_t *dst_img = (uint16_t*)dst;
+
     for (row = 0; row < src_side; row++) {
         for (col = 0; col < src_side; col++) {
             unsigned twid_idx = tex_twiddle(col, row,
                                             src_side_shift, src_side_shift);
 
             // code book index
-            unsigned idx =
-                ((uint8_t*)src)[PVR2_CODE_BOOK_LEN + twid_idx];
+            unsigned idx = img_dat_src[twid_idx];
             uint16_t color[4];
-            memcpy(color, ((uint8_t*)src) + PVR2_CODE_BOOK_ENTRY_SIZE * idx,
+            memcpy(color, code_book_src + PVR2_CODE_BOOK_ENTRY_SIZE * idx,
                    PVR2_CODE_BOOK_ENTRY_SIZE);
 
             unsigned dst_row = row * 2, dst_col = col * 2;
-            memcpy((uint16_t*)dst + dst_row * dst_side + dst_col,
+            memcpy(dst_img + dst_row * dst_side + dst_col,
                    color, sizeof(color[0]));
-            memcpy((uint16_t*)dst + (dst_row + 1) * dst_side + dst_col,
+            memcpy(dst_img + (dst_row + 1) * dst_side + dst_col,
                    color + 1, sizeof(color[1]));
-            memcpy((uint16_t*)dst + dst_row * dst_side + dst_col + 1,
+            memcpy(dst_img + dst_row * dst_side + dst_col + 1,
                    color + 2, sizeof(color[2]));
-            memcpy((uint16_t*)dst + (dst_row + 1) * dst_side + dst_col + 1,
+            memcpy(dst_img + (dst_row + 1) * dst_side + dst_col + 1,
                    color + 3, sizeof(color[3]));
         }
     }
