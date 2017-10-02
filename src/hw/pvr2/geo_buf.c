@@ -92,3 +92,7 @@ void geo_buf_produce(void) {
 
     init_geo_buf(ringbuf + prod_idx);
 }
+
+unsigned get_cur_frame_stamp(void) {
+    return next_frame_stamp;
+}

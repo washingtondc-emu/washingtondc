@@ -200,6 +200,8 @@ void geo_buf_consume(void);
  */
 void geo_buf_produce(void);
 
+unsigned get_cur_frame_stamp(void);
+
 ERROR_INT_ATTR(src_blend_factor);
 ERROR_INT_ATTR(dst_blend_factor);
 ERROR_INT_ATTR(display_list_index);

@@ -129,6 +129,7 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
             (tex->tex_fmt == tex_fmt) && (tex->twiddled == twiddled) &&
             (tex->vq_compression == vq_compression) &&
             (mipmap == tex->mipmap)) {
+            tex->frame_stamp_last_used = get_cur_frame_stamp();
             return tex;
         }
     }
@@ -142,6 +143,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
                                     bool vq_compression, bool mipmap,
                                     bool stride_sel) {
     assert(tex_fmt < TEX_CTRL_PIX_FMT_INVALID);
+    unsigned cur_frame_stamp = get_cur_frame_stamp();
 
 #ifdef INVARIANTS
     if (w_shift > 10 || h_shift > 10 || w_shift < 3 || h_shift < 3) {
@@ -159,7 +161,9 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     struct pvr2_tex *tex;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
-        if (!tex->valid)
+
+        // TODO: don't replace an existing texture unless the cache is full
+        if (!tex->valid || tex->frame_stamp_last_used < (cur_frame_stamp - 1))
             break;
     }
 
@@ -177,6 +181,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     tex->vq_compression = vq_compression;
     tex->mipmap = mipmap;
     tex->stride_sel = stride_sel;
+    tex->frame_stamp_last_used = cur_frame_stamp;
 
     if (tex->vq_compression && (tex->w_shift != tex->h_shift)) {
         fprintf(stderr, "PVR2: WARNING - DISABLING VQ COMPRESSION FOR 0x%x "

@@ -79,6 +79,9 @@ struct pvr2_tex {
 
     bool mipmap;
 
+    // the frame stamp from the last time this texture was referenced
+    unsigned frame_stamp_last_used;
+
     /*
      * if this is set, it means that this entry in the texture cache has
      * changed since the last update.  If this is not set, then the data in
