@@ -158,19 +158,28 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
 
     unsigned idx;// = addr & PVR2_TEX_CACHE_MASK;
     /* struct pvr2_tex *tex = tex_cache + idx; */
-    struct pvr2_tex *tex;
+    struct pvr2_tex *tex, *oldest_tex = NULL;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
 
-        // TODO: don't replace an existing texture unless the cache is full
-        if (!tex->valid || tex->frame_stamp_last_used < (cur_frame_stamp - 1))
+        if (!tex->valid)
             break;
+
+        if (tex->frame_stamp_last_used < cur_frame_stamp) {
+            if (!oldest_tex ||
+                tex->frame_stamp_last_used < oldest_tex->frame_stamp_last_used)
+                oldest_tex = tex;
+        }
     }
 
     if (idx >= PVR2_TEX_CACHE_SIZE) {
-        // TODO: This is where we should evict an old texture
-        fprintf(stderr, "ERROR: TEXTURE CACHE OVERFLOW\n");
-        return NULL;
+        // kick the oldest tex out of the cache to make room
+        if (oldest_tex) {
+            tex = oldest_tex;
+        } else {
+            fprintf(stderr, "ERROR: TEXTURE CACHE OVERFLOW\n");
+            return NULL;
+        }
     }
 
     tex->addr_first = addr;
