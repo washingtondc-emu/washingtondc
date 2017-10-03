@@ -371,6 +371,8 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
             tex_out->tex_fmt = tex_in->tex_fmt;
             tex_out->twiddled = tex_in->twiddled;
             tex_out->vq_compression = tex_in->vq_compression;
+            tex_out->mipmap = tex_in->mipmap;
+            tex_out->stride_sel = tex_in->stride_sel;
 
             // TODO: better error-handling
             if ((ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1) <=

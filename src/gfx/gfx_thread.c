@@ -246,6 +246,8 @@ void gfx_thread_get_tex(struct gfx_tex *out, unsigned tex_no) {
         out->vq_compression = in->vq_compression;
         out->addr_first = in->addr_first;
         out->addr_last = in->addr_last;
+        out->mipmap = in->mipmap;
+        out->stride_sel = in->stride_sel;
 
         unsigned bytes_per_pix;
         switch (out->pvr2_pix_fmt) {
