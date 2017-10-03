@@ -213,7 +213,15 @@ static void render_do_draw_group(struct geo_buf *geo,
      */
     if (group->tex_enable && rend_cfg.tex_enable && rend_cfg.color_enable) {
         glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
-        glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
+
+        if (gfx_tex_cache_get(group->tex_idx)->valid) {
+            glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
+        } else {
+            fprintf(stderr, "WARNING: attempt to bind invalid texture %u\n",
+                    (unsigned)group->tex_idx);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+
         switch (group->tex_filter) {
         case TEX_FILTER_TRILINEAR_A:
         case TEX_FILTER_TRILINEAR_B:

@@ -51,11 +51,22 @@ void gfx_tex_cache_add(unsigned idx, struct gfx_tex const *tex) {
     rend_update_tex(idx);
 }
 
+/*
+ * This function is called to inform the tex cache that the given texture slot
+ * does not hold valid data.  The caller does not have to check if there was
+ * already valid data or not, so the onus is on this function to make sure it
+ * doesn't accidentally double-free something.
+ */
 void gfx_tex_cache_evict(unsigned idx) {
     struct gfx_tex *slot = tex_cache + idx;
 
-    free(slot->dat);
-    slot->valid = false;
+    if (slot->valid) {
+        if (slot->dat) {
+            free(slot->dat);
+            slot->dat = NULL;
+        }
+        slot->valid = false;
+    }
 }
 
 struct gfx_tex const* gfx_tex_cache_get(unsigned idx) {

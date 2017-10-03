@@ -340,13 +340,30 @@ static void pvr2_tex_vq_decompress(void *dst, void const *src,
 
 void pvr2_tex_cache_xmit(struct geo_buf *out) {
     unsigned idx;
+    unsigned cur_frame_stamp = out->frame_stamp;
+
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex_in = tex_cache + idx;
         struct pvr2_tex *tex_out = out->tex_cache + idx;
         unsigned tex_w = 1 << tex_in->w_shift,
             tex_h = 1 << tex_in->h_shift;
 
+        tex_out->dirty = tex_in->dirty;
+        tex_out->valid = tex_in->valid;
+
         if (tex_in->valid && tex_in->dirty) {
+
+            /*
+             * If the texture has been written to this frame but it is not
+             * actively in use then tell the gfx system to evict it from the
+             * cache by marking the valid bit as false.
+             */
+            if (tex_in->frame_stamp_last_used != cur_frame_stamp) {
+                tex_out->valid = false;
+                tex_in->valid = false;
+                continue;
+            }
+
             tex_out->addr_first = tex_in->addr_first;
             tex_out->addr_last = tex_in->addr_last;
             tex_out->w_shift = tex_in->w_shift;
@@ -455,8 +472,6 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
             }
 
             tex_in->dirty = false;
-            tex_out->dirty = true;
-            tex_out->valid = true;
         }
     }
 }

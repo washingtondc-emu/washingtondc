@@ -89,6 +89,8 @@ void rend_draw_next_geo_buf(void) {
                 tex->dat = NULL;
                 tex->dirty = false;
                 gfx_tex_cache_add(tex_no, &new_tex_entry);
+            } else if (!tex->valid) {
+                gfx_tex_cache_evict(tex_no);
             }
         }
 
