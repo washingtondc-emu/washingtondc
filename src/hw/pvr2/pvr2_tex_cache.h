@@ -37,7 +37,7 @@ struct geo_buf;
  * because I want to make sure the system can properly swap textures in/out
  * of the cache.
  */
-#define PVR2_TEX_CACHE_SIZE 128
+#define PVR2_TEX_CACHE_SIZE 512
 #define PVR2_TEX_CACHE_MASK (PVR2_TEX_CACHE_SIZE - 1)
 
 struct pvr2_tex {
