@@ -52,6 +52,21 @@ unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
 
 static struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
 
+// byte offsets for mipmaps for 4bpp and 8bpp paletted textures
+static unsigned mipmap_byte_offset_palette[11] = {
+    0x3, 0x4, 0x8, 0x18, 0x58, 0x158, 0x558, 0x1558, 0x5558, 0x15558, 0x55558
+};
+
+// byte offsets for mipmaps for VQ textures
+static unsigned mipmap_byte_offset_vq[11] = {
+    0x0, 0x1, 0x2, 0x6, 0x16, 0x56, 0x156, 0x556, 0x1556, 0x5556, 0x15556
+};
+
+// byte offsets for mipmaps for "normal" textures
+static unsigned mipmap_byte_offset_norm[11] = {
+    0x6, 0x8, 0x10, 0x30, 0xb0, 0x2b0, 0xab0, 0x2ab0, 0xaab0, 0x2aab0, 0xaaab0
+};
+
 static unsigned tex_twiddle(unsigned x, unsigned y,
                             unsigned w_shift, unsigned h_shift);
 
@@ -205,6 +220,32 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     } else {
         tex->addr_last = addr - 1 + pixel_sizes[tex_fmt] *
             (1 << w_shift) * (1 << h_shift);
+        if (tex->mipmap) {
+            if (tex->w_shift != tex->h_shift) {
+                error_set_feature("proper response for attempt to enable "
+                                  "mipmaps on a rectangular texture");
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            }
+            if (tex->vq_compression) {
+                tex->addr_last += mipmap_byte_offset_vq[w_shift];
+            } else {
+                switch (tex->tex_fmt) {
+                case TEX_CTRL_PIX_FMT_ARGB_1555:
+                case TEX_CTRL_PIX_FMT_RGB_565:
+                case TEX_CTRL_PIX_FMT_YUV_422:
+                case TEX_CTRL_PIX_FMT_ARGB_4444:
+                    tex->addr_last += mipmap_byte_offset_norm[w_shift];
+                    break;
+                case TEX_CTRL_PIX_FMT_4_BPP_PAL:
+                case TEX_CTRL_PIX_FMT_8_BPP_PAL:
+                    tex->addr_last += mipmap_byte_offset_palette[w_shift];
+                    break;
+                default:
+                case TEX_CTRL_PIX_FMT_BUMP_MAP:
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                }
+            }
+        }
     }
 
     tex->valid = true;
@@ -304,14 +345,14 @@ static void pvr2_tex_detwiddle(void *dst, void const *src,
  * supported (TEX_CTRL_PIX_FMT_ARGB_1555, TEX_CTRL_PIX_FMT_RGB_565,
  * TEX_CTRL_PIX_FMT_ARGB_4444).
  */
-static void pvr2_tex_vq_decompress(void *dst, void const *src,
-                                   unsigned side_shift) {
+static void pvr2_tex_vq_decompress(void *dst, void const *code_book,
+                                   void const *src, unsigned side_shift) {
     unsigned dst_side = 1 << side_shift;
     unsigned src_side_shift = side_shift - 1;
     unsigned src_side = 1 << src_side_shift;
     unsigned row, col;
-    uint8_t const *code_book_src = (uint8_t const*)src;
-    uint8_t const *img_dat_src = code_book_src + PVR2_CODE_BOOK_LEN;
+    uint8_t const *code_book_src = (uint8_t const*)code_book;
+    uint8_t const *img_dat_src = (uint8_t const*)src;
     uint16_t *dst_img = (uint16_t*)dst;
 
     for (row = 0; row < src_side; row++) {
@@ -393,8 +434,61 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
             if (!tex_dat)
                 RAISE_ERROR(ERROR_INTEGRITY);
 
-            // de-twiddle
-            uint8_t const *beg = pvr2_tex64_mem + tex_in->addr_first;
+            uint8_t const *beg;
+            uint8_t const *code_book; // points to the code book if this is VQ
+
+            /*
+             * handle mipmaps.
+             *
+             * Currently they're not actually implemented, I just select the
+             * highest-order mipmap (which is the one at the end).  To
+             * accomplish this, we have to offset the addr_first by the offset
+             * to the highest-order mipmap.
+             */
+            if (tex_in->mipmap) {
+                if (tex_in->w_shift != tex_in->h_shift) {
+                    error_set_feature("proper response for attempting to "
+                                      "enable mipmapping on a rectangular "
+                                      "texture");
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                }
+
+                unsigned side_shift = tex_in->w_shift;
+
+                if (tex_in->vq_compression) {
+                    code_book = pvr2_tex64_mem + tex_in->addr_first;
+                    beg = code_book + PVR2_CODE_BOOK_LEN +
+                        mipmap_byte_offset_vq[side_shift];
+                } else {
+                    switch (tex_in->tex_fmt) {
+                    case TEX_CTRL_PIX_FMT_ARGB_1555:
+                    case TEX_CTRL_PIX_FMT_RGB_565:
+                    case TEX_CTRL_PIX_FMT_YUV_422:
+                    case TEX_CTRL_PIX_FMT_ARGB_4444:
+                        beg = pvr2_tex64_mem + tex_in->addr_first +
+                            mipmap_byte_offset_norm[tex_in->w_shift];
+                        break;
+                    case TEX_CTRL_PIX_FMT_4_BPP_PAL:
+                    case TEX_CTRL_PIX_FMT_8_BPP_PAL:
+                        beg = pvr2_tex64_mem + tex_in->addr_first +
+                            mipmap_byte_offset_palette[tex_in->w_shift];
+                        break;
+                    default:
+                        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                    }
+                }
+            } else {
+                /*
+                 * mipmaps are disabled, tex_in->addr_first is actually the
+                 * first byte of the texture.
+                 */
+                beg = pvr2_tex64_mem + tex_in->addr_first;
+                if (tex_in->vq_compression) {
+                    code_book = beg;
+                    beg += PVR2_CODE_BOOK_LEN;
+                }
+            }
+
             if (tex_in->vq_compression) {
                 if (pixel_sizes[tex_in->tex_fmt] != 2) {
                     error_set_feature("proper response for an attempt to use "
@@ -408,7 +502,7 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
                     RAISE_ERROR(ERROR_UNIMPLEMENTED);
                 }
 
-                pvr2_tex_vq_decompress(tex_dat, beg, tex_in->w_shift);
+                pvr2_tex_vq_decompress(tex_dat, code_book, beg, tex_in->w_shift);
             } else if (tex_in->twiddled) {
                 pvr2_tex_detwiddle(tex_dat, beg,
                                    tex_in->w_shift, tex_in->h_shift,

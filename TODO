@@ -33,3 +33,8 @@ Sync Pulse Generator:
   amongst other things)
 * Get the clock division right, current implementation is a bit off because of integer divison
   (200 / 27 does not divide evenly)
+
+PVR2:
+* implement mipmaps.  The current implementation always uses the
+  highest-resolution version of the textures instead of picking one based on
+  distance like it should.
