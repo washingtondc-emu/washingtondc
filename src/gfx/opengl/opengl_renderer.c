@@ -236,6 +236,38 @@ static void render_do_draw_group(struct geo_buf *geo,
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             break;
         }
+
+        GLenum tex_wrap_mode_gl[2];
+        switch (group->tex_wrap_mode[0]) {
+        case TEX_WRAP_REPEAT:
+            tex_wrap_mode_gl[0] = GL_REPEAT;
+            break;
+        case TEX_WRAP_FLIP:
+            tex_wrap_mode_gl[0] = GL_MIRRORED_REPEAT;
+            break;
+        case TEX_WRAP_CLAMP:
+            tex_wrap_mode_gl[0] = GL_CLAMP_TO_EDGE;
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+        switch (group->tex_wrap_mode[1]) {
+        case TEX_WRAP_REPEAT:
+            tex_wrap_mode_gl[1] = GL_REPEAT;
+            break;
+        case TEX_WRAP_FLIP:
+            tex_wrap_mode_gl[1] = GL_MIRRORED_REPEAT;
+            break;
+        case TEX_WRAP_CLAMP:
+            tex_wrap_mode_gl[1] = GL_CLAMP_TO_EDGE;
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex_wrap_mode_gl[0]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex_wrap_mode_gl[1]);
+
         glUniform1i(bound_tex_slot, 0);
         glUniform1i(tex_inst_slot, group->tex_inst);
         glActiveTexture(GL_TEXTURE0);

@@ -166,6 +166,7 @@ struct poly_hdr {
     int tex_fmt;
     enum tex_inst tex_inst;
     enum tex_filter tex_filter;
+    enum tex_wrap_mode tex_wrap_mode[2];
 
     unsigned ta_color_fmt;
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
@@ -203,6 +204,7 @@ static struct poly_state {
     enum display_list_type current_list;
 
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
+    enum tex_wrap_mode tex_wrap_mode[2];
 
     bool enable_depth_writes;
     enum Pvr2DepthFunc depth_func;
@@ -416,6 +418,20 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
         (ta_fifo32[2] & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
         TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
 
+    if (ta_fifo32[2] & (2 << TSP_TEX_CLAMP_SHIFT))
+        hdr->tex_wrap_mode[0] = TEX_WRAP_CLAMP;
+    else if (ta_fifo32[2] & (2 << TSP_TEX_FLIP_SHIFT))
+        hdr->tex_wrap_mode[0] = TEX_WRAP_FLIP;
+    else
+        hdr->tex_wrap_mode[0] = TEX_WRAP_REPEAT;
+
+    if (ta_fifo32[2] & (1 << TSP_TEX_CLAMP_SHIFT))
+        hdr->tex_wrap_mode[1] = TEX_WRAP_CLAMP;
+    else if (ta_fifo32[2] & (1 << TSP_TEX_FLIP_SHIFT))
+        hdr->tex_wrap_mode[1] = TEX_WRAP_FLIP;
+    else
+        hdr->tex_wrap_mode[1] = TEX_WRAP_REPEAT;
+
     hdr->enable_depth_writes =
         !((ta_fifo32[0] & DEPTH_WRITE_DISABLE_MASK) >>
           DEPTH_WRITE_DISABLE_SHIFT);
@@ -610,6 +626,8 @@ static void on_polyhdr_received(void) {
     }
     poly_state.src_blend_factor = hdr.src_blend_factor;
     poly_state.dst_blend_factor = hdr.dst_blend_factor;
+    memcpy(poly_state.tex_wrap_mode, hdr.tex_wrap_mode,
+           sizeof(poly_state.tex_wrap_mode));
 
     poly_state.enable_depth_writes = hdr.enable_depth_writes;
     poly_state.depth_func = hdr.depth_func;
@@ -1211,6 +1229,8 @@ static void finish_poly_group(struct geo_buf *geo,
 
     group->src_blend_factor = poly_state.src_blend_factor;
     group->dst_blend_factor = poly_state.dst_blend_factor;
+    memcpy(group->tex_wrap_mode, poly_state.tex_wrap_mode,
+           sizeof(group->tex_wrap_mode));
 
     group->enable_depth_writes = poly_state.enable_depth_writes;
     group->depth_func = poly_state.depth_func;

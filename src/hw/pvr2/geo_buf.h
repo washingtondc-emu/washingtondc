@@ -106,6 +106,20 @@ enum tex_filter {
     TEX_FILTER_TRILINEAR_B
 };
 
+enum tex_wrap_mode {
+    // repeat the texture when coordinates are greater than 1.0 (tiling effect)
+    TEX_WRAP_REPEAT,
+
+    /*
+     * this is similar to TEXT_WRAP_REPEAT, except the tiles alternate between
+     * not-flipped tiles and flipped tiles
+     */
+    TEX_WRAP_FLIP,
+
+    // all coordinates greater than 1.0 are clamped to 1.0
+    TEX_WRAP_CLAMP
+};
+
 /*
  * There is one poly_group for each polygon header sent to the pvr2.
  * The poly-group contains per-header settings such as textures.
@@ -118,6 +132,7 @@ struct poly_group {
     unsigned tex_idx; // only valid if tex_enable=true
     enum tex_inst tex_inst;
     enum tex_filter tex_filter;
+    enum tex_wrap_mode tex_wrap_mode[2]; // wrap mode for u and v coordinates
 
     // only valid of blend_enable=true in the display_list structure
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
