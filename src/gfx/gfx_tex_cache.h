@@ -35,41 +35,16 @@
  */
 
 struct gfx_tex {
+    struct pvr2_tex_meta meta;
+
     // if false, none of the other members of this struct are valid
     bool valid;
-
-    // base-2 logarithim of the width and height of the texture
-    unsigned w_shift, h_shift;
-
-    // the underlying pixel format the gfx_thread sees
-    int pvr2_pix_fmt;
-
-    /*
-     * the texture format that's actually stored in pvr2 texture memory.
-     * Usually this and pvr2_pix_fmt are the same thing, but they can be
-     * different if the texture format is paletted (because the pvr2 emulation
-     * code decodes the palette before it sends the texture to the gfx thread).
-     */
-    int pvr2_tex_fmt;
 
     /*
      * the image data.  This pointer belongs to the gfx thread and will be
      * freed by it when this texture gets evicted from the cache.
      */
     void *dat;
-
-    /*
-     * everything after this comment is just useless metadata we hold on to
-     * in case the cmd_thread wants to see what's in the texture cache.
-     * Textures are detwiddled by the emulation thread before it sends them to
-     * the gfx_thread, and the gfx code never touches the pvr2 texture memory so
-     * the addresses are invalid, too.
-     */
-    bool twiddled;
-    bool vq_compression;
-    bool mipmap;
-    bool stride_sel;
-    uint32_t addr_first, addr_last;
 };
 
 /*

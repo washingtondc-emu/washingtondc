@@ -359,13 +359,13 @@ static void render_do_draw(struct geo_buf *geo) {
 
 static void opengl_renderer_update_tex(unsigned tex_obj) {
     struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
-    GLenum format = tex->pvr2_pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
+    GLenum format = tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
         GL_RGB : GL_RGBA;
 
-    unsigned tex_w = 1 << tex->w_shift;
-    unsigned tex_h = 1 << tex->h_shift;
+    unsigned tex_w = 1 << tex->meta.w_shift;
+    unsigned tex_h = 1 << tex->meta.h_shift;
 
-    if (tex->pvr2_pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444)
+    if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444)
         render_conv_argb_4444((uint16_t*)tex->dat, tex_w * tex_h);
 
     glBindTexture(GL_TEXTURE_2D, tex_cache[tex_obj]);
@@ -373,7 +373,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
     // TODO: maybe don't always set this to 1
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                 format, tex_formats[tex->pvr2_pix_fmt], tex->dat);
+                 format, tex_formats[tex->meta.pix_fmt], tex->dat);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 

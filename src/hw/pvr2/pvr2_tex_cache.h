@@ -40,7 +40,7 @@ struct geo_buf;
 #define PVR2_TEX_CACHE_SIZE 512
 #define PVR2_TEX_CACHE_MASK (PVR2_TEX_CACHE_SIZE - 1)
 
-struct pvr2_tex {
+struct pvr2_tex_meta {
     uint32_t addr_first, addr_last;
 
     unsigned w_shift, h_shift;
@@ -68,9 +68,6 @@ struct pvr2_tex {
      */
     uint32_t tex_palette_start;
 
-    // if this is not set then this part of the cache is empty
-    bool valid;
-
     bool twiddled;
 
     bool stride_sel;
@@ -78,6 +75,10 @@ struct pvr2_tex {
     bool vq_compression;
 
     bool mipmap;
+};
+
+struct pvr2_tex {
+    struct pvr2_tex_meta meta;
 
     // the frame stamp from the last time this texture was referenced
     unsigned frame_stamp_last_used;
@@ -89,6 +90,9 @@ struct pvr2_tex {
      * OpenGL's tex cache is).
      */
     bool dirty;
+
+    // if this is not set then this part of the cache is empty
+    bool valid;
 
     // texture data (if dirty is true)
     uint8_t *dat;

@@ -544,22 +544,22 @@ static int cmd_tex_info(int argc, char **argv) {
         if (tex.valid) {
             cons_printf("texture %u:\n", tex_no);
             cons_printf("\tdimensions: (%u, %u)\n",
-                        1 << tex.w_shift, 1 << tex.h_shift);
+                        1 << tex.meta.w_shift, 1 << tex.meta.h_shift);
             cons_printf("\tpix_fmt: %s\n",
-                        tex.pvr2_pix_fmt < TEX_CTRL_PIX_FMT_COUNT ?
-                        tex_fmt_names[tex.pvr2_pix_fmt] : "<invalid format>");
+                        tex.meta.pix_fmt < TEX_CTRL_PIX_FMT_COUNT ?
+                        tex_fmt_names[tex.meta.pix_fmt] : "<invalid format>");
             cons_printf("\ttex_fmt: %s\n",
-                        tex.pvr2_tex_fmt < TEX_CTRL_PIX_FMT_COUNT ?
-                        tex_fmt_names[tex.pvr2_tex_fmt] : "<invalid format>");
-            cons_printf("\t%s\n", tex.twiddled ? "twiddled" : "not twiddled");
+                        tex.meta.tex_fmt < TEX_CTRL_PIX_FMT_COUNT ?
+                        tex_fmt_names[tex.meta.tex_fmt] : "<invalid format>");
+            cons_printf("\t%s\n", tex.meta.twiddled ? "twiddled" : "not twiddled");
             cons_printf("\tVQ compression: %s\n",
-                        tex.vq_compression ? "yes" : "no");
+                        tex.meta.vq_compression ? "yes" : "no");
             cons_printf("\tmipmapped: %s\n",
-                        tex.mipmap ? "enabled" : "disabled");
+                        tex.meta.mipmap ? "enabled" : "disabled");
             cons_printf("\tstride type: %s\n",
-                        tex.stride_sel ? "from texinfo" : "from texture");
-            cons_printf("\tfirst address: 0x%08x\n", tex.addr_first);
-            cons_printf("\tlast address: 0x%08x\n", tex.addr_last);
+                        tex.meta.stride_sel ? "from texinfo" : "from texture");
+            cons_printf("\tfirst address: 0x%08x\n", tex.meta.addr_first);
+            cons_printf("\tlast address: 0x%08x\n", tex.meta.addr_last);
             did_print = true;
         } else {
             if (print_missing) {
@@ -704,9 +704,9 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
 
     png_init_io(png_ptr, stream);
 
-    if (tex->pvr2_pix_fmt != TEX_CTRL_PIX_FMT_ARGB_1555 &&
-        tex->pvr2_pix_fmt != TEX_CTRL_PIX_FMT_RGB_565 &&
-        tex->pvr2_pix_fmt != TEX_CTRL_PIX_FMT_ARGB_4444) {
+    if (tex->meta.pix_fmt != TEX_CTRL_PIX_FMT_ARGB_1555 &&
+        tex->meta.pix_fmt != TEX_CTRL_PIX_FMT_RGB_565 &&
+        tex->meta.pix_fmt != TEX_CTRL_PIX_FMT_ARGB_4444) {
         err_val = -1;
         goto cleanup_png;
     }
@@ -714,7 +714,7 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
     int color_tp_png;
     unsigned n_colors;
     unsigned pvr2_pix_size;
-    switch (tex->pvr2_pix_fmt) {
+    switch (tex->meta.pix_fmt) {
     case TEX_CTRL_PIX_FMT_ARGB_1555:
     case TEX_CTRL_PIX_FMT_ARGB_4444:
         color_tp_png = PNG_COLOR_TYPE_RGB_ALPHA;
@@ -736,9 +736,9 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
      *
      * Also, the max texture-side-log2 on pvr2 is 10 anyways.
      */
-    if (tex->w_shift > 10 || tex->h_shift > 10)
+    if (tex->meta.w_shift > 10 || tex->meta.h_shift > 10)
         RAISE_ERROR(ERROR_INTEGRITY);
-    unsigned tex_w = 1 << tex->w_shift, tex_h = 1 << tex->h_shift;
+    unsigned tex_w = 1 << tex->meta.w_shift, tex_h = 1 << tex->meta.h_shift;
 
     // this should not be possible, but scan-build thinks it is...?
     if (!tex_w || !tex_h)
@@ -758,7 +758,7 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
             uint8_t const *src_pix = tex->dat + pix_idx * pvr2_pix_size;
             unsigned red, green, blue, alpha;
 
-            switch (tex->pvr2_pix_fmt) {
+            switch (tex->meta.pix_fmt) {
             case TEX_CTRL_PIX_FMT_ARGB_1555:
                 alpha = src_pix[1] & 0x80 ? 255 : 0;
                 red = (src_pix[1] & 0x7c) >> 2;

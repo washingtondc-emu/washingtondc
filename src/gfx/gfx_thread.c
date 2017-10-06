@@ -238,19 +238,10 @@ void gfx_thread_get_tex(struct gfx_tex *out, unsigned tex_no) {
 
     if (in && in->valid) {
         out->valid = true;
-        out->w_shift = in->w_shift;
-        out->h_shift = in->h_shift;
-        out->pvr2_pix_fmt = in->pvr2_pix_fmt;
-        out->pvr2_tex_fmt = in->pvr2_tex_fmt;
-        out->twiddled = in->twiddled;
-        out->vq_compression = in->vq_compression;
-        out->addr_first = in->addr_first;
-        out->addr_last = in->addr_last;
-        out->mipmap = in->mipmap;
-        out->stride_sel = in->stride_sel;
+        out->meta = in->meta;
 
         unsigned bytes_per_pix;
-        switch (out->pvr2_pix_fmt) {
+        switch (out->meta.pix_fmt) {
         case TEX_CTRL_PIX_FMT_ARGB_1555:
         case TEX_CTRL_PIX_FMT_ARGB_4444:
         case TEX_CTRL_PIX_FMT_RGB_565:
@@ -262,7 +253,7 @@ void gfx_thread_get_tex(struct gfx_tex *out, unsigned tex_no) {
 
         if (bytes_per_pix) {
             size_t n_bytes =
-                bytes_per_pix * (1 << out->w_shift) * (1 << out->h_shift);
+                bytes_per_pix * (1 << out->meta.w_shift) * (1 << out->meta.h_shift);
             out->dat = malloc(n_bytes);
             memcpy(out->dat, in->dat, n_bytes);
         } else {
