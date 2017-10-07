@@ -110,6 +110,15 @@ static struct aica_mem_hack {
      */
     { .addr = 0x00800164, .val = 0x00800014 },
 
+    /*
+     * Crazy Taxi again.  As before, I don't know what the correct value is, I
+     * just know that it should be non-zero.  Current value chosen is a pointer
+     * to (presumably) program data in the audio memory.
+     *
+     * This happens in Crazy Taxi at PC=0x0c07f462
+     */
+    { .addr = 0x00800224, .val = 0x00800018 },
+
     { .end = true }
 };
 
