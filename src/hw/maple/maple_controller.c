@@ -20,10 +20,13 @@
  *
  ******************************************************************************/
 
+#include <stdio.h>
 #include <stddef.h>
 #include <string.h>
 
+#include "error.h"
 #include "maple.h"
+#include "maple_controller.h"
 #include "maple_device.h"
 
 #define MAPLE_CONTROLLER_STRING "Dreamcast Controller         "
@@ -36,7 +39,6 @@
  * at the same time.  Obviously this will need to be reworked when I add support
  * for multiple controllers.
  */
-static volatile uint32_t btn_state;
 
 static int controller_dev_init(struct maple_device *dev);
 static void controller_dev_cleanup(struct maple_device *dev);
@@ -54,16 +56,25 @@ struct maple_switch_table maple_controller_switch_table = {
 };
 
 static int controller_dev_init(struct maple_device *dev) {
-    dev->ctxt = NULL;
+    if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER)))
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    atomic_init(&dev->ctxt.cont.btns, 0);
     return 0;
 }
 
 static void controller_dev_cleanup(struct maple_device *dev) {
+    if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER)))
+        RAISE_ERROR(ERROR_INTEGRITY);
+
     // do nothing
 }
 
 static void controller_dev_info(struct maple_device *dev,
                                 struct maple_devinfo *output) {
+    if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER)))
+        RAISE_ERROR(ERROR_INTEGRITY);
+
     // TODO: fill out this structure for real
 
     memset(output, 0, sizeof(*output));
@@ -87,10 +98,17 @@ static void controller_dev_info(struct maple_device *dev,
 
 static void controller_dev_get_cond(struct maple_device *dev,
                                     struct maple_cond *cond) {
+    if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER)))
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    struct maple_controller *cont = &dev->ctxt.cont;
+
     memset(cond, 0, sizeof(*cond));
 
     cond->func = MAPLE_FUNC_CONTROLLER;
-    cond->btn = ~btn_state; // Dreamcast controller has active-low buttons
+
+    // invert because Dreamcast controller has active-low buttons
+    cond->btn = ~atomic_load_explicit(&cont->btns, memory_order_relaxed);
 
     // leave the analog sticks in neutral
     cond->js_x = 128;
@@ -100,11 +118,31 @@ static void controller_dev_get_cond(struct maple_device *dev,
 }
 
 // mark all buttons in btns as being pressed
-void maple_controller_press_btns(uint32_t btns) {
-    btn_state |= btns;
+void maple_controller_press_btns(unsigned port_no, uint32_t btns) {
+    unsigned addr = maple_addr_pack(port_no, 0);
+    struct maple_device *dev = maple_device_get(addr);
+
+    if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
+        fprintf(stderr, "Error: unable to press buttons on port %u because "
+                "there is no controller plugged in.\n", port_no);
+    }
+
+    struct maple_controller *cont = &dev->ctxt.cont;
+
+    atomic_fetch_or_explicit(&cont->btns, btns, memory_order_relaxed);
 }
 
 // mark all buttons in btns as being released
-void maple_controller_release_btns(uint32_t btns) {
-    btn_state &= ~btns;
+void maple_controller_release_btns(unsigned port_no, uint32_t btns) {
+    unsigned addr = maple_addr_pack(port_no, 0);
+    struct maple_device *dev = maple_device_get(addr);
+
+    if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
+        fprintf(stderr, "Error: unable to press buttons on port %u because "
+                "there is no controller plugged in.\n", port_no);
+    }
+
+    struct maple_controller *cont = &dev->ctxt.cont;
+
+    atomic_fetch_and_explicit(&cont->btns, ~btns, memory_order_relaxed);
 }

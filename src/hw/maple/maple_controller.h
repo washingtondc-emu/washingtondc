@@ -23,7 +23,8 @@
 #ifndef MAPLE_CONTROLLER_H_
 #define MAPLE_CONTROLLER_H_
 
-#include "maple_device.h"
+#include <stdatomic.h>
+#include <assert.h>
 
 #define MAPLE_CONT_BTN_C_SHIFT 0
 #define MAPLE_CONT_BTN_C_MASK (1 << MAPLE_CONT_BTN_C_SHIFT)
@@ -75,6 +76,13 @@
 
 extern struct maple_switch_table maple_controller_switch_table;
 
+struct maple_controller {
+    atomic_uint btns;
+};
+
+static_assert(sizeof(sizeof(atomic_uint) >= sizeof(uint32_t)),
+              "sizeof(unsigned int) is not large enough on this platform");
+
 /*
  * CONTROLLER API
  * There's only one global state that all controllers share.  This is
@@ -84,10 +92,10 @@ extern struct maple_switch_table maple_controller_switch_table;
  * These two functions can be safely called from any thread.
  */
 // mark all buttons in btns as being pressed
-void maple_controller_press_btns(uint32_t btns);
+void maple_controller_press_btns(unsigned port_no, uint32_t btns);
 
 // mark all buttons in btns as being released
-void maple_controller_release_btns(uint32_t btns);
+void maple_controller_release_btns(unsigned port_no, uint32_t btns);
 
 
 #endif

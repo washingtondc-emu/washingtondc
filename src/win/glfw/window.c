@@ -87,78 +87,78 @@ static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
     if (action == GLFW_PRESS) {
         switch (key) {
         case GLFW_KEY_W:
-            maple_controller_press_btns(MAPLE_CONT_BTN_DPAD_UP_MASK);
+            maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_UP_MASK);
             printf("Up pressed\n");
             break;
         case GLFW_KEY_S:
-            maple_controller_press_btns(MAPLE_CONT_BTN_DPAD_DOWN_MASK);
+            maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_DOWN_MASK);
             printf("Down pressed\n");
             break;
         case GLFW_KEY_A:
-            maple_controller_press_btns(MAPLE_CONT_BTN_DPAD_LEFT_MASK);
+            maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_LEFT_MASK);
             printf("Left pressed\n");
             break;
         case GLFW_KEY_D:
-            maple_controller_press_btns(MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
+            maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
             printf("Right pressed\n");
             break;
         case GLFW_KEY_KP_2:
-            maple_controller_press_btns(MAPLE_CONT_BTN_A_MASK);
+            maple_controller_press_btns(0, MAPLE_CONT_BTN_A_MASK);
             printf("A pressed\n");
             break;
         case GLFW_KEY_KP_6:
-            maple_controller_press_btns(MAPLE_CONT_BTN_B_MASK);
+            maple_controller_press_btns(0, MAPLE_CONT_BTN_B_MASK);
             printf("B pressed\n");
             break;
         case GLFW_KEY_KP_4:
-            maple_controller_press_btns(MAPLE_CONT_BTN_X_MASK);
+            maple_controller_press_btns(0, MAPLE_CONT_BTN_X_MASK);
             printf("X pressed\n");
             break;
         case GLFW_KEY_KP_8:
-            maple_controller_press_btns(MAPLE_CONT_BTN_Y_MASK);
+            maple_controller_press_btns(0, MAPLE_CONT_BTN_Y_MASK);
             printf("Y pressed\n");
             break;
         case GLFW_KEY_SPACE:
-            maple_controller_press_btns(MAPLE_CONT_BTN_START_MASK);
+            maple_controller_press_btns(0, MAPLE_CONT_BTN_START_MASK);
             printf("start pressed\n");
             break;
         }
     } else if (action == GLFW_RELEASE) {
         switch (key) {
         case GLFW_KEY_W:
-            maple_controller_release_btns(MAPLE_CONT_BTN_DPAD_UP_MASK);
+            maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_UP_MASK);
             printf("Up released\n");
             break;
         case GLFW_KEY_S:
-            maple_controller_release_btns(MAPLE_CONT_BTN_DPAD_DOWN_MASK);
+            maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_DOWN_MASK);
             printf("Down released\n");
             break;
         case GLFW_KEY_A:
-            maple_controller_release_btns(MAPLE_CONT_BTN_DPAD_LEFT_MASK);
+            maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_LEFT_MASK);
             printf("Left released\n");
             break;
         case GLFW_KEY_D:
-            maple_controller_release_btns(MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
+            maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
             printf("Right released\n");
             break;
         case GLFW_KEY_KP_2:
-            maple_controller_release_btns(MAPLE_CONT_BTN_A_MASK);
+            maple_controller_release_btns(0, MAPLE_CONT_BTN_A_MASK);
             printf("A released\n");
             break;
         case GLFW_KEY_KP_6:
-            maple_controller_release_btns(MAPLE_CONT_BTN_B_MASK);
+            maple_controller_release_btns(0, MAPLE_CONT_BTN_B_MASK);
             printf("B released\n");
             break;
         case GLFW_KEY_KP_4:
-            maple_controller_release_btns(MAPLE_CONT_BTN_X_MASK);
+            maple_controller_release_btns(0, MAPLE_CONT_BTN_X_MASK);
             printf("X released\n");
             break;
         case GLFW_KEY_KP_8:
-            maple_controller_release_btns(MAPLE_CONT_BTN_Y_MASK);
+            maple_controller_release_btns(0, MAPLE_CONT_BTN_Y_MASK);
             printf("Y released\n");
             break;
         case GLFW_KEY_SPACE:
-            maple_controller_release_btns(MAPLE_CONT_BTN_START_MASK);
+            maple_controller_release_btns(0, MAPLE_CONT_BTN_START_MASK);
             printf("start released\n");
             break;
         }

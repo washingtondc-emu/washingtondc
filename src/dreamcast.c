@@ -221,9 +221,7 @@ void dreamcast_run() {
      * maple devices attached.
      * TODO: don't hardcode this
      */
-    struct maple_device *cont = maple_device_get(maple_addr_pack(0, 0));
-    cont->sw = &maple_controller_switch_table;
-    maple_device_init(cont);
+    maple_device_init(maple_addr_pack(0, 0), MAPLE_DEVICE_CONTROLLER);
 
     if (config_get_ser_srv_enable())
         dreamcast_enable_serial_server();
@@ -319,7 +317,7 @@ void dreamcast_run() {
     }
 
     // TODO: don't hardcode this
-    maple_device_cleanup(cont);
+    maple_device_cleanup(maple_addr_pack(0, 0));
 
     dreamcast_cleanup();
 }

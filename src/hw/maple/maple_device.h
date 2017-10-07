@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "maple_controller.h"
+
 struct maple_device;
 
 #define MAPLE_FUNC_CONTROLLER 0x01000000
@@ -49,7 +51,7 @@ struct maple_device;
         sizeof(uint16_t) + \
         sizeof(uint8_t) * 6)
 
-// device information (responsse to MAPLE_CMD_DEVINFO)
+// device information (response to MAPLE_CMD_DEVINFO)
 struct maple_devinfo {
     uint32_t func;
     uint32_t func_data[3];
@@ -101,20 +103,29 @@ struct maple_switch_table {
     void (*dev_get_cond)(struct maple_device*, struct maple_cond*);
 };
 
+enum maple_device_type {
+    MAPLE_DEVICE_CONTROLLER
+};
+
+union maple_device_ctxt {
+    struct maple_controller cont;
+};
+
 struct maple_device {
     struct maple_switch_table const *sw;
 
-    // device-specific context pointer
-    void *ctxt;
+    enum maple_device_type tp;
 
     // if true, this device is plugged in
     // if false, this device is not plugged in
     bool enable;
+
+    union maple_device_ctxt ctxt;
 };
 
-int maple_device_init(struct maple_device *dev);
+int maple_device_init(unsigned maple_addr, enum maple_device_type tp);
 
-void maple_device_cleanup(struct maple_device *dev);
+void maple_device_cleanup(unsigned addr);
 
 void maple_device_info(struct maple_device *dev, struct maple_devinfo *devinfo);
 

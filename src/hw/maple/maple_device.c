@@ -34,7 +34,6 @@ struct maple_device devs[MAPLE_PORT_COUNT][MAPLE_UNIT_COUNT];
 
 struct maple_device *maple_device_get(unsigned addr) {
     unsigned port, unit;
-
     maple_addr_unpack(addr, &port, &unit);
 
     if (port >= MAPLE_PORT_COUNT || unit >= MAPLE_UNIT_COUNT)
@@ -42,14 +41,34 @@ struct maple_device *maple_device_get(unsigned addr) {
     return &devs[port][unit];
 }
 
-int maple_device_init(struct maple_device *dev) {
+int maple_device_init(unsigned maple_addr, enum maple_device_type tp) {
+    unsigned port, unit;
+    maple_addr_unpack(maple_addr, &port, &unit);
+    struct maple_device *dev = &devs[port][unit];
+
+    if (dev->enable)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    switch (tp) {
+    case MAPLE_DEVICE_CONTROLLER:
+        dev->sw = &maple_controller_switch_table;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
     dev->enable = true;
+    dev->tp = tp;
     if (dev->sw->dev_init)
         return dev->sw->dev_init(dev);
     return 0;
 }
 
-void maple_device_cleanup(struct maple_device *dev) {
+void maple_device_cleanup(unsigned addr) {
+    unsigned port, unit;
+    maple_addr_unpack(addr, &port, &unit);
+    struct maple_device *dev = &devs[port][unit];
+
     if (dev->sw->dev_cleanup)
         dev->sw->dev_cleanup(dev);
     dev->enable = false;
