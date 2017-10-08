@@ -33,6 +33,14 @@ extern "C" {
 
 typedef uint64_t dc_cycle_stamp_t;
 
+/*
+ * This represents the timestamp of the next event.
+ * outside of dc_sched.c, this should be treated as a read-only variable.
+ *
+ * It can change whenever an event is scheduled, canceled, or popped.
+ */
+extern dc_cycle_stamp_t dc_sched_target_stamp;
+
 struct SchedEvent;
 typedef void(*dc_event_handler_t)(struct SchedEvent *event);
 

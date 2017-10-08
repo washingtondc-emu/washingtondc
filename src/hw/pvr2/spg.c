@@ -203,23 +203,6 @@ static void spg_sync() {
 static void spg_handle_hblank(SchedEvent *event) {
     spg_sync();
 
-    /*
-     * TODO: these invairants checks can trigger because the code in
-     * dreamcast_run in dreamcast.c can't correctly handle the situation in
-     * which a new event is scheduled to happen prior to what is currently the
-     * next scheduled event.  This is because it gets the current event, then
-     * runs the number of cycles to that event and then runs that event in
-     * addition to any new events which may have been scheduled to happen before
-     * that in the interim.
-     *
-     * This problem will only get worse in the future when I have the JIT.  I
-     * need to adjust the workings of the emulator so that no matter how many
-     * CPU cycles have executed between two given SPG events, the number of
-     * time-related events (namely SH4 TMU events) will remain correct.  This way,
-     * the CPU may appear to randomly get faster (from the perspective of guest
-     * software), but events which have hard timing requirements will always be
-     * consistent with respect to each other.
-     */
 #ifdef INVARIANTS
     unsigned hblank_int_mode = get_hblank_int_mode();
     unsigned hblank_int_comp_val = get_hblank_int_comp_val();

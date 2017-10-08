@@ -22,9 +22,35 @@
 
 #include <stddef.h>
 
+#include "dreamcast.h"
+
 #include "dc_sched.h"
 
+dc_cycle_stamp_t dc_sched_target_stamp;
+
 static struct SchedEvent *ev_next;
+
+static void update_target_stamp(void) {
+    if (ev_next) {
+        dc_sched_target_stamp = ev_next->when;
+    } else {
+        /*
+         * Somehow there are no events scheduled.
+         *
+         * Hard to say what to do here.  Constantly checking to see if
+         * a new event got pushed would be costly.  Instead I just run
+         * the cpu a little, but not so much that I drastically overrun
+         * anything that might get scheduled.  The number of cycles to
+         * run here is arbitrary, but if it's too low then performance
+         * will be negatively impacted and if it's too high then
+         * accuracy will be negatively impacted.
+         *
+         * TBH, I'm not even 100% sure this problem can even happen since
+         * there's no way to turn off SPG, TMU, etc.
+         */
+        dc_sched_target_stamp = dc_cycle_stamp() + 16;
+    }
+}
 
 void sched_event(struct SchedEvent *event) {
     struct SchedEvent *next_ptr = ev_next;
@@ -38,6 +64,8 @@ void sched_event(struct SchedEvent *event) {
         next_ptr->pprev_event = &event->next_event;
     event->next_event = next_ptr;
     event->pprev_event = pprev_ptr;
+
+    update_target_stamp();
 }
 
 void cancel_event(struct SchedEvent *event) {
@@ -48,6 +76,8 @@ void cancel_event(struct SchedEvent *event) {
     // XXX this is unnecessary, but I'm trying to be extra-safe here
     event->next_event = NULL;
     event->pprev_event = NULL;
+
+    update_target_stamp();
 }
 
 struct SchedEvent *pop_event() {
@@ -64,6 +94,8 @@ struct SchedEvent *pop_event() {
         ev_ret->next_event = NULL;
         ev_ret->pprev_event = NULL;
     }
+
+    update_target_stamp();
 
     return ev_ret;
 }

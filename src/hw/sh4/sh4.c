@@ -48,7 +48,6 @@ void sh4_init(Sh4 *sh4) {
     sh4_mmu_init(sh4);
 #endif
 
-    sh4->cycles_accum = 0;
     memset(sh4->reg, 0, sizeof(sh4->reg));
 
     sh4_ocache_init(&sh4->ocache);
@@ -189,73 +188,6 @@ void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {
         fesetround(FE_TOWARDZERO);
     else
         fesetround(FE_TONEAREST);
-}
-
-void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles) {
-    inst_t inst;
-    int exc_pending;
-
-mulligan:
-    do {
-        sh4_check_interrupts(sh4);
-        if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
-            if (exc_pending == MEM_ACCESS_EXC) {
-                // TODO: some sort of logic to detect infinite loops here
-                goto mulligan;
-            } else {
-                RAISE_ERROR(get_error_pending());
-            }
-        }
-
-        InstOpcode const *op = sh4_inst_lut[inst];
-
-        if (op->issue > (n_cycles + sh4->cycles_accum)) {
-            dc_cycle_advance(n_cycles);
-            sh4->cycles_accum += n_cycles;
-            return;
-        }
-
-        if (op->issue > sh4->cycles_accum) {
-            unsigned adv_cycles = op->issue - sh4->cycles_accum;
-            dc_cycle_advance(adv_cycles);
-            n_cycles -= adv_cycles;
-            sh4->cycles_accum = 0;
-        } else {
-            sh4->cycles_accum -= op->issue;
-        }
-
-        sh4_do_exec_inst(sh4, inst, op);
-
-        if (op->group != SH4_GROUP_CO) {
-            /*
-             * fetch the next instruction and potentially execute it.
-             * the rule is that CO can never execute in parallel with anything,
-             * MT can execute in parallel with anything but CO, and every other
-             * group can execute in parallel with anything but itself and CO.
-             */
-
-            /*
-             * if there's an exception we'll deal with it next time this
-             * function gets called
-             */
-            if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
-                if (exc_pending == MEM_ACCESS_EXC)
-                    goto mulligan; // TODO: might be better to return here instead
-                else
-                    RAISE_ERROR(get_error_pending());
-            }
-
-            InstOpcode const *second_op = sh4_inst_lut[inst];
-
-            if (second_op->group == SH4_GROUP_CO)
-                continue;
-
-            if ((op->group != second_op->group) ||
-                (op->group == SH4_GROUP_MT)) {
-                sh4_do_exec_inst(sh4, inst, second_op);
-            }
-        }
-    } while (n_cycles);
 }
 
 void sh4_fetch_inst(Sh4 *sh4, inst_t *inst_out, InstOpcode const **op_out,

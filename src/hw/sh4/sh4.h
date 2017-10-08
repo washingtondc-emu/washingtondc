@@ -103,13 +103,6 @@ struct Sh4 {
     uint8_t *reg_area;
 
     /*
-     * cycles_accum stores unused cycles for situations where the CPU has to
-     * run a multi-cycle instruciton but  it hasn't been given enough cycles
-     * to do so.  See sh4_run_cycles.
-     */
-    unsigned cycles_accum;
-
-    /*
      * this is used by sh4_fetch_inst to track the type of the last
      * instruction that was executed.  This is used to determine if the next
      * instruction to be executed should advance the cycle count, or if it
@@ -135,19 +128,6 @@ void sh4_cleanup(Sh4 *sh4);
 
 // reset all values to their power-on-reset values
 void sh4_on_hard_reset(Sh4 *sh4);
-
-/*
- * run the sh4 for the given number of cycles.
- * This function will not tick the tmu or any external clocks (such as pvr2).
- *
- * In general, the number of cycles each instruction takes is equal to its issue
- * delay.  We do not take pipeline stalling into account, nor do we take the
- * dual-issue nature of the pipeline into account.
- *
- * Any leftover cycles will be stored in the cycles_accum member of struct Sh4
- * and added to the cycle count next time you call sh4_run_cycles.
- */
-void sh4_run_cycles(Sh4 *sh4, unsigned n_cycles);
 
 /*
  * Fetches the given instruction and returns it into inst_out.

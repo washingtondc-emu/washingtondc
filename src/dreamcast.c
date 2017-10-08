@@ -84,6 +84,9 @@ static void *load_file(char const *path, long *len);
 
 static void dc_single_step(Sh4 *sh4);
 
+// Run until the next scheduled event (in dc_sched) should occur
+static void dc_run_to_next_event(Sh4 *sh4);
+
 #ifdef ENABLE_DEBUGGER
 // this must be called before run or not at all
 static void dreamcast_enable_debugger(void);
@@ -261,34 +264,11 @@ void dreamcast_run() {
          */
         dc_single_step(&cpu);
 #else
-        SchedEvent *next_event = peek_event();
 
-        /*
-         * if, during the last big chunk of SH4 instructions, there was an
-         * event pushed that predated what was originally the next event,
-         * then we will have accidentally skipped over it.
-         * In this case, we want to run that event immediately without
-         * running the CPU
-         */
-        if (next_event) {
-            if (dc_cycle_stamp_priv_ < next_event->when) {
-                sh4_run_cycles(&cpu, next_event->when - dc_cycle_stamp_priv_);
-            } else {
-                pop_event();
-                next_event->handler(next_event);
-            }
-        } else {
-            /*
-             * Hard to say what to do here.  Constantly checking to see if
-             * a new event got pushed would be costly.  Instead I just run
-             * the cpu a little, but not so much that I drastically overrun
-             * anything that might get scheduled.  The number of cycles to
-             * run here is arbitrary, but if it's too low then performance
-             * will be negatively impacted and if it's too high then
-             * accuracy will be negatively impacted.
-             */
-            sh4_run_cycles(&cpu, 16);
-        }
+        dc_run_to_next_event(&cpu);
+        struct SchedEvent *next_event = pop_event();
+        if (next_event)
+            next_event->handler(next_event);
 #endif
     }
 
@@ -342,6 +322,42 @@ static void dreamcast_check_debugger(void) {
 }
 #endif
 
+static void dc_run_to_next_event(Sh4 *sh4) {
+    inst_t inst;
+    int exc_pending;
+    InstOpcode const *op;
+    unsigned inst_cycles;
+
+mulligan:
+    while (dc_sched_target_stamp > dc_cycle_stamp()) {
+        sh4_fetch_inst(sh4, &inst, &op, &inst_cycles);
+
+        /*
+         * Advance the cycle counter based on how many cycles this instruction
+         * will take.  If this would take us past the target stamp, that means
+         * the next event should occur while this instruction is executing.
+         * Instead of trying to implement that, I execute the instruction
+         * without advancing the cycle count beyond dc_sched_target_stamp.  This
+         * way, the CPU may appear to be a little faster than it should be from
+         * a guest program's perspective, but the passage of time will still be
+         * consistent.
+         */
+        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() + inst_cycles;
+        if (cycles_after > dc_sched_target_stamp)
+            cycles_after = dc_sched_target_stamp;
+
+        sh4_do_exec_inst(sh4, inst, op);
+
+        /*
+         * advance the cycles, being careful not to skip over any new events
+         * which may have been added
+         */
+        if (cycles_after > dc_sched_target_stamp)
+            cycles_after = dc_sched_target_stamp;
+        dc_cycle_advance(cycles_after - dc_cycle_stamp());
+    }
+}
+
 /* executes a single instruction and maybe ticks the clock. */
 static void dc_single_step(Sh4 *sh4) {
     inst_t inst;
@@ -351,19 +367,32 @@ static void dc_single_step(Sh4 *sh4) {
 
     sh4_fetch_inst(sh4, &inst, &op, &n_cycles);
 
-    dc_cycle_stamp_t tgt_stamp = dc_cycle_stamp() + n_cycles;
+    /*
+     * Advance the cycle counter based on how many cycles this instruction
+     * will take.  If this would take us past the target stamp, that means
+     * the next event should occur while this instruction is executing.
+     * Instead of trying to implement that, I execute the instruction
+     * without advancing the cycle count beyond dc_sched_target_stamp.  This
+     * way, the CPU may appear to be a little faster than it should be from
+     * a guest program's perspective, but the passage of time will still be
+     * consistent.
+     */
+    dc_cycle_stamp_t cycles_after = dc_cycle_stamp() + n_cycles;
+    if (cycles_after > dc_sched_target_stamp)
+        cycles_after = dc_sched_target_stamp;
 
+    sh4_do_exec_inst(sh4, inst, op);
+
+    // now execute any events which would have happened during that instruction
     SchedEvent *next_event;
     while ((next_event = peek_event()) &&
-           (next_event->when <= tgt_stamp)) {
+           (next_event->when <= cycles_after)) {
         pop_event();
         dc_cycle_advance(next_event->when - dc_cycle_stamp());
         next_event->handler(next_event);
     }
 
-    sh4_do_exec_inst(sh4, inst, op);
-
-    dc_cycle_advance(tgt_stamp - dc_cycle_stamp());
+    dc_cycle_advance(cycles_after - dc_cycle_stamp());
 }
 
 void dc_print_perf_stats(void) {
