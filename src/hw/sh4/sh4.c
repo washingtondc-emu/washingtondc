@@ -212,7 +212,7 @@ mulligan:
     if ((sh4->last_inst_type == SH4_GROUP_NONE) ||
         ((op->group == SH4_GROUP_CO) ||
          (sh4->last_inst_type == SH4_GROUP_CO) ||
-         ((sh4->last_inst_type != op->group) && (op->group != SH4_GROUP_MT)))) {
+         ((sh4->last_inst_type == op->group) && (op->group != SH4_GROUP_MT)))) {
         // This instruction was not free
         n_cycles = op->issue;
 
