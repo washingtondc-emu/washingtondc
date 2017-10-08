@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <assert.h>
 
 #include "error.h"
 #include "dreamcast.h"
@@ -357,7 +356,10 @@ static void sched_next_vblank_in_event() {
     vblank_in_event.when = (SPG_VCLK_DIV * pclk_div) *
         (pixels_until_vblank_in + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
 
-    assert(vblank_in_event.when - dc_cycle_stamp() < (200 * 1000 * 1000));
+#ifdef INVARIANTS
+    if (vblank_in_event.when - dc_cycle_stamp() >= (200 * 1000 * 1000))
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
     sched_event(&vblank_in_event);
     vblank_in_event_scheduled = true;
@@ -383,7 +385,10 @@ static void sched_next_vblank_out_event() {
     vblank_out_event.when = (SPG_VCLK_DIV * pclk_div) *
         (pixels_until_vblank_out + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
 
-    assert(vblank_out_event.when - dc_cycle_stamp() < (200 * 1000 * 1000));
+#ifdef INVARIANTS
+    if (vblank_out_event.when - dc_cycle_stamp() >= (200 * 1000 * 1000))
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
     sched_event(&vblank_out_event);
     vblank_out_event_scheduled = true;
