@@ -62,28 +62,8 @@ static DEF_ERROR_INT_ATTR(hblank_int_mode)
  * However, the actuall interrupts happen based on the SPG_HBLANK_INT and SPG_VBLANK_INT registers?
  */
 
-/*
- * Ugh.  This if statement is really painful to write.  the video clock
- * is supposed to be 27 MHz, which doesn't evenly divide from 200 MHz.
- * I tick it on every 7th cycle, which means that the video clock is
- * actually running a little fast at approx 28.57 MHz.
- *
- * A better way to do this would probably be to track the missed cycles
- * and let them accumulate so that sometimes the video clock ticks
- * after 7 cycles and sometimes it ticks after 8 cycles.  This is not
- * that complicated to do, but my head is in no state to do Algebra
- * right now.
- *
- * The perfect way to do this would be to divide both 27 MHz and
- * 200 MHz from their LCD (which is 5400 MHz according to
- * Wolfram Alpha).  *Maybe* this will be feasible later when I have a
- * scheduler implemented; I can't think of a good reason why it wouldn't
- * be, but it does sound too good to be true.  I'm a mess right now
- * after spending an entire weekend stressing out over this and
- * VBLANK/HBLANK timings so I'm in no mood to contemplate the
- * possibilities.
- */
-#define SPG_VCLK_DIV (7 * SH4_CLOCK_SCALE)
+// SPG vclk frequency is 27MHz, with an optional divide to turn it into 13.5 MHz
+#define SPG_VCLK_DIV (SCHED_FREQUENCY / (27 * 1000 * 1000))
 
 static_assert(SCHED_FREQUENCY % (27 * 1000 * 1000) == 0,
               "scheduler frequency does not cleanly divide by SPG frequency");
