@@ -29,7 +29,11 @@
 extern "C" {
 #endif
 
-#define SCHED_FREQUENCY (200 * 1000 * 1000)
+/*
+ * this is the least common denominator of 13.5MHz (SPG VCLK)
+ * and 200MHz (SH4 CPU clock)
+ */
+#define SCHED_FREQUENCY 5400000000
 
 // simple priority-queue scheduler
 

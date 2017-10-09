@@ -53,7 +53,10 @@ extern "C" {
  * To convert dc_sched cycles to sh4 cycles, divide by SH4_CLOCK_SCALE
  * To convert sh4 cycles to dc_sched_cycles, multiply by SH4_CLOCK_SCALE
  */
-#define SH4_CLOCK_SCALE 1
+#define SH4_CLOCK_SCALE (SCHED_FREQUENCY / (200 * 1000 * 1000))
+
+static_assert(SCHED_FREQUENCY % (200 * 1000 * 1000) == 0,
+              "scheduler frequency does not cleanly divide by SH4 frequency");
 
 /* Hitachi SuperH-4 interpreter */
 

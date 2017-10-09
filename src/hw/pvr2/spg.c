@@ -85,6 +85,9 @@ static DEF_ERROR_INT_ATTR(hblank_int_mode)
  */
 #define SPG_VCLK_DIV (7 * SH4_CLOCK_SCALE)
 
+static_assert(SCHED_FREQUENCY % (27 * 1000 * 1000) == 0,
+              "scheduler frequency does not cleanly divide by SPG frequency");
+
 /*
  * this should be either 1 (for 27 MHz pixel clock) or
  * 2 (for 13.5 MHz pixel clock).

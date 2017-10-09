@@ -419,7 +419,7 @@ void dc_print_perf_stats(void) {
     double seconds = delta_time.tv_sec +
         ((double)delta_time.tv_nsec) / 1000000000.0;
     double hz = (double)sh4_get_cycles() / seconds;
-    double hz_ratio = hz / (double)SCHED_FREQUENCY;
+    double hz_ratio = hz / (double)(200 * 1000 * 1000);
 
     printf("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
 }
