@@ -171,7 +171,7 @@ static void aica_rtc_event_handler(SchedEvent *ev) {
 }
 
 static void sched_aica_rtc_event(void) {
-    aica_rtc_event.when = dc_cycle_stamp() + (200 * 1000 * 1000);
+    aica_rtc_event.when = dc_cycle_stamp() + SCHED_FREQUENCY;
     aica_rtc_event.handler = aica_rtc_event_handler;
     sched_event(&aica_rtc_event);
 }

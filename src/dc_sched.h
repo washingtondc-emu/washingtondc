@@ -29,6 +29,8 @@
 extern "C" {
 #endif
 
+#define SCHED_FREQUENCY (200 * 1000 * 1000)
+
 // simple priority-queue scheduler
 
 typedef uint64_t dc_cycle_stamp_t;

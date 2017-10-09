@@ -99,7 +99,7 @@ static void dreamcast_enable_serial_server(void);
 
 static void dreamcast_enable_cmd_tcp(void);
 
-#define DC_PERIODIC_EVENT_PERIOD (200 * 1000 * 1000 / 10)
+#define DC_PERIODIC_EVENT_PERIOD (SCHED_FREQUENCY / 10)
 static void periodic_event_handler(struct SchedEvent *event);
 static struct SchedEvent periodic_event;
 
@@ -416,7 +416,7 @@ void dc_print_perf_stats(void) {
     double seconds = delta_time.tv_sec +
         ((double)delta_time.tv_nsec) / 1000000000.0;
     double hz = ((double)dc_cycle_stamp()) / seconds;
-    double hz_ratio = hz / 200000000.0;
+    double hz_ratio = hz / (double)SCHED_FREQUENCY;
 
     printf("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
 }

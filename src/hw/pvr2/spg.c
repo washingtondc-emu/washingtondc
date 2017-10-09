@@ -340,7 +340,7 @@ static void sched_next_vblank_in_event() {
         (pixels_until_vblank_in + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
 
 #ifdef INVARIANTS
-    if (vblank_in_event.when - dc_cycle_stamp() >= (200 * 1000 * 1000))
+    if (vblank_in_event.when - dc_cycle_stamp() >= SCHED_FREQUENCY)
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
@@ -369,7 +369,7 @@ static void sched_next_vblank_out_event() {
         (pixels_until_vblank_out + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
 
 #ifdef INVARIANTS
-    if (vblank_out_event.when - dc_cycle_stamp() >= (200 * 1000 * 1000))
+    if (vblank_out_event.when - dc_cycle_stamp() >= SCHED_FREQUENCY)
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
