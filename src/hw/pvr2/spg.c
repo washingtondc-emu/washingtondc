@@ -83,7 +83,7 @@ static DEF_ERROR_INT_ATTR(hblank_int_mode)
  * VBLANK/HBLANK timings so I'm in no mood to contemplate the
  * possibilities.
  */
-#define SPG_VCLK_DIV 7
+#define SPG_VCLK_DIV (7 * SH4_CLOCK_SCALE)
 
 /*
  * this should be either 1 (for 27 MHz pixel clock) or

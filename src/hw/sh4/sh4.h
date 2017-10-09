@@ -46,6 +46,15 @@
 extern "C" {
 #endif
 
+/*
+ * The clock-scale is here defined as the number of scheduler cyclers per sh4
+ * cycle.
+ *
+ * To convert dc_sched cycles to sh4 cycles, divide by SH4_CLOCK_SCALE
+ * To convert sh4 cycles to dc_sched_cycles, multiply by SH4_CLOCK_SCALE
+ */
+#define SH4_CLOCK_SCALE 1
+
 /* Hitachi SuperH-4 interpreter */
 
 #define SH4_N_FLOAT_REGS 16
@@ -296,6 +305,8 @@ static inline void sh4_periodic(Sh4 *sh4) {
     if (!atomic_flag_test_and_set(&sh4->scif.nothing_pending))
         sh4_scif_periodic(sh4);
 }
+
+dc_cycle_stamp_t sh4_get_cycles(void);
 
 #ifdef __cplusplus
 }

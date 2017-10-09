@@ -28,7 +28,6 @@
 #include "BiosFile.h"
 #include "memory.h"
 #include "hw/sh4/sh4.h"
-#include "dc_sched.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debugger.h"

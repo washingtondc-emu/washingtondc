@@ -261,6 +261,10 @@ void sh4_fpu_bank_switch_maybe(Sh4 *sh4, reg32_t old_fpscr, reg32_t new_fpscr) {
         sh4_fpu_bank_switch(sh4);
 }
 
+dc_cycle_stamp_t sh4_get_cycles(void) {
+    return dc_cycle_stamp() / SH4_CLOCK_SCALE;
+}
+
 static DEF_ERROR_U32_ATTR(sh4_reg_sr)
 static DEF_ERROR_U32_ATTR(sh4_reg_ssr)
 static DEF_ERROR_U32_ATTR(sh4_reg_pc)

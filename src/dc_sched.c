@@ -23,6 +23,7 @@
 #include <stddef.h>
 
 #include "error.h"
+#include "hw/sh4/sh4.h" // for SH4_CLOCK_SCALE
 #include "dreamcast.h"
 
 #include "dc_sched.h"
@@ -52,7 +53,7 @@ static void update_target_stamp(void) {
          * TBH, I'm not even 100% sure this problem can even happen since
          * there's no way to turn off SPG, TMU, etc.
          */
-        dc_sched_target_stamp = dc_cycle_stamp() + 16;
+        dc_sched_target_stamp = dc_cycle_stamp() + 16 * SH4_CLOCK_SCALE;
     }
 }
 

@@ -72,7 +72,7 @@ static void chan_event_unsched(unsigned chan) {
 }
 
 static inline tmu_cycle_t tmu_cycle_stamp() {
-    return dc_cycle_stamp() >> TMU_DIV_SHIFT;
+    return sh4_get_cycles() >> TMU_DIV_SHIFT;
 }
 
 // lookup table for TCR register indices
@@ -258,8 +258,8 @@ static void chan_event_sched_next(Sh4 *sh4, unsigned chan) {
         return;
     }
 
-    ev->when = (next_chan_event(sh4, chan) + dc_cycle_stamp() / TMU_DIV) *
-        TMU_DIV;
+    ev->when = (next_chan_event(sh4, chan) +
+                sh4_get_cycles() / TMU_DIV) * TMU_DIV * SH4_CLOCK_SCALE;
     chan_event_scheduled[chan] = true;
     sched_event(ev);
 }

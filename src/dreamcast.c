@@ -342,7 +342,8 @@ mulligan:
          * a guest program's perspective, but the passage of time will still be
          * consistent.
          */
-        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() + inst_cycles;
+        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+            inst_cycles * SH4_CLOCK_SCALE;
         if (cycles_after > dc_sched_target_stamp)
             cycles_after = dc_sched_target_stamp;
 
@@ -377,7 +378,8 @@ static void dc_single_step(Sh4 *sh4) {
      * a guest program's perspective, but the passage of time will still be
      * consistent.
      */
-    dc_cycle_stamp_t cycles_after = dc_cycle_stamp() + n_cycles;
+    dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+        n_cycles * SH4_CLOCK_SCALE;
     if (cycles_after > dc_sched_target_stamp)
         cycles_after = dc_sched_target_stamp;
 
@@ -411,11 +413,12 @@ void dc_print_perf_stats(void) {
     printf("Total elapsed time: %u seconds and %u nanoseconds\n",
            (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
 
-    printf("%u SH4 CPU cycles executed\n", (unsigned)dc_cycle_stamp());
+    printf("%u SH4 CPU cycles executed\n",
+           (unsigned)sh4_get_cycles());
 
     double seconds = delta_time.tv_sec +
         ((double)delta_time.tv_nsec) / 1000000000.0;
-    double hz = ((double)dc_cycle_stamp()) / seconds;
+    double hz = (double)sh4_get_cycles() / seconds;
     double hz_ratio = hz / (double)SCHED_FREQUENCY;
 
     printf("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
