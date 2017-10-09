@@ -100,6 +100,11 @@ static void print_attr(struct error_attr const *attr) {
         break;
     case ERROR_TYPE_U32:
         fprintf(stderr, "[%s] = %x\n", attr->attr_name, (int)attr->val.as_u32);
+        break;
+    case ERROR_TYPE_U64:
+        fprintf(stderr, "[%s] = %llx\n", attr->attr_name,
+                (long long)attr->val.as_u32);
+        break;
     default:
         break;
     }

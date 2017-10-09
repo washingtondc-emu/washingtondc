@@ -75,13 +75,15 @@ enum error_type {
 enum error_attr_type {
     ERROR_TYPE_STRING,
     ERROR_TYPE_INT,
-    ERROR_TYPE_U32
+    ERROR_TYPE_U32,
+    ERROR_TYPE_U64
 };
 
 union error_dat {
     char const *as_str;
     int as_int;
     uint32_t as_u32;
+    uint64_t as_u64;
 };
 
 /*
@@ -168,6 +170,9 @@ void error_rm_callback(struct error_callback *cb);
 #define ERROR_U32_ATTR(the_attr_name)                   \
     void error_set_##the_attr_name(uint32_t attr_val)
 
+#define ERROR_U64_ATTR(the_attr_name)                   \
+    void error_set_##the_attr_name(uint64_t attr_val)
+
 #define DEF_ERROR_STRING_ATTR(the_attr_name)            \
     ERROR_STRING_ATTR(the_attr_name) {                  \
         static struct error_attr attr;                  \
@@ -195,8 +200,19 @@ void error_rm_callback(struct error_callback *cb);
         static struct error_attr attr;                  \
                                                         \
         attr.attr_name = #the_attr_name;                \
-        attr.tp = ERROR_TYPE_INT;                       \
+        attr.tp = ERROR_TYPE_U32;                       \
         attr.val.as_u32 = attr_val;                     \
+                                                        \
+        error_add_attr(&attr);                          \
+    }                                                   \
+
+#define DEF_ERROR_U64_ATTR(the_attr_name)               \
+    ERROR_U64_ATTR(the_attr_name) {                     \
+        static struct error_attr attr;                  \
+                                                        \
+        attr.attr_name = #the_attr_name;                \
+        attr.tp = ERROR_TYPE_INT;                       \
+        attr.val.as_u64 = attr_val;                     \
                                                         \
         error_add_attr(&attr);                          \
     }                                                   \

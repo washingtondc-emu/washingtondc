@@ -22,6 +22,7 @@
 
 #include <stddef.h>
 
+#include "error.h"
 #include "dreamcast.h"
 
 #include "dc_sched.h"
@@ -29,6 +30,9 @@
 dc_cycle_stamp_t dc_sched_target_stamp;
 
 static struct SchedEvent *ev_next;
+
+static DEF_ERROR_U64_ATTR(current_dc_cycle_stamp)
+static DEF_ERROR_U64_ATTR(event_sched_dc_cycle_stamp)
 
 static void update_target_stamp(void) {
     if (ev_next) {
@@ -53,6 +57,19 @@ static void update_target_stamp(void) {
 }
 
 void sched_event(struct SchedEvent *event) {
+#ifdef INVARIANTS
+    /*
+     * check to make sure the event isn't being scheduled after it should have
+     * already executed.
+     */
+    dc_cycle_stamp_t cur_stamp = dc_cycle_stamp();
+    if (event->when < cur_stamp) {
+        error_set_current_dc_cycle_stamp(cur_stamp);
+        error_set_event_sched_dc_cycle_stamp(event->when);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+#endif
+
     struct SchedEvent *next_ptr = ev_next;
     struct SchedEvent **pprev_ptr = &ev_next;
     while (next_ptr && next_ptr->when < event->when) {
@@ -69,6 +86,19 @@ void sched_event(struct SchedEvent *event) {
 }
 
 void cancel_event(struct SchedEvent *event) {
+#ifdef INVARIANTS
+    /*
+     * check to make sure the event isn't being canceled after it should have
+     * already executed.
+     */
+    dc_cycle_stamp_t cur_stamp = dc_cycle_stamp();
+    if (event->when < cur_stamp) {
+        error_set_current_dc_cycle_stamp(cur_stamp);
+        error_set_event_sched_dc_cycle_stamp(event->when);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+#endif
+
     if (event->next_event)
         event->next_event->pprev_event = event->pprev_event;
     *event->pprev_event = event->next_event;
@@ -82,6 +112,19 @@ void cancel_event(struct SchedEvent *event) {
 
 struct SchedEvent *pop_event() {
     struct SchedEvent *ev_ret = ev_next;
+
+#ifdef INVARIANTS
+    /*
+     * check to make sure the event isn't being canceled after it should have
+     * already executed.
+     */
+    dc_cycle_stamp_t cur_stamp = dc_cycle_stamp();
+    if (ev_ret && (ev_ret->when < cur_stamp)) {
+        error_set_current_dc_cycle_stamp(cur_stamp);
+        error_set_event_sched_dc_cycle_stamp(ev_ret->when);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+#endif
 
     if (ev_next) {
         ev_next = ev_next->next_event;
