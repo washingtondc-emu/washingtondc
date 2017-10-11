@@ -106,6 +106,20 @@ int main(int argc, char **argv) {
     argv += optind;
     argc -= optind;
 
+    if (enable_debugger) {
+#ifdef ENABLE_DEBUGGER
+        config_set_dbg_enable(true);
+#else
+        fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
+                "Please rebuild with -DENABLE_DEBUGGER=On\n");
+        exit(1);
+#endif
+    } else {
+#ifdef ENABLE_DEBUGGER
+        config_set_dbg_enable(false);
+#endif
+    }
+
     if (path_gdi)
         mount_gdi(path_gdi);
 
@@ -167,20 +181,6 @@ int main(int argc, char **argv) {
 
     config_set_enable_cmd_tcp(enable_cmd_tcp);
     config_set_ser_srv_enable(enable_serial);
-
-    if (enable_debugger) {
-#ifdef ENABLE_DEBUGGER
-        config_set_dbg_enable(true);
-#else
-        fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
-                "Please rebuild with -DENABLE_DEBUGGER=On\n");
-        exit(1);
-#endif
-    } else {
-#ifdef ENABLE_DEBUGGER
-        config_set_dbg_enable(false);
-#endif
-    }
 
     dreamcast_run();
 
