@@ -89,6 +89,8 @@ direct-boot a homebrew program (requires a system call table dump):
 ./washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -du IP.BIN 1st_read.bin
 ```
 ## CONTACT
-You can reach me at my public-facing e-mail address, chimerasaurusrex@gmail.com
+You can reach me at my public-facing e-mail address, chimerasaurusrex@gmail.com.
+
 I'm also @sbockers on twitter if you can tolerate my lame sense of humor.
+
 WashingtonDC's official website (such as it is) can be found at http://snickerbockers.github.io.
