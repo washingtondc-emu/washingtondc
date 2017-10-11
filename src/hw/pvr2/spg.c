@@ -29,6 +29,7 @@
 #include "framebuffer.h"
 #include "hw/sh4/sh4.h"
 #include "hw/sys/holly_intc.h"
+#include "dreamcast.h"
 
 #include "spg.h"
 
@@ -236,6 +237,7 @@ static void spg_handle_vblank_in(SchedEvent *event) {
 
     printf("vcount is %u\n", get_vcount());
     framebuffer_render();
+    dc_end_frame();
 }
 
 static void spg_handle_vblank_out(SchedEvent *event) {

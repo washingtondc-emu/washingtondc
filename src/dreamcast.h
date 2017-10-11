@@ -89,6 +89,14 @@ void dreamcast_kill(void);
 
 bool dc_debugger_enabled(void);
 
+/*
+ * called by the SPG code on every v-blank to notify the rest of the emulator
+ * that a frame has just ended.  This does not necessarily mean the frame has
+ * been rendered yet (because the gfx_thread does rendering in parallel), it
+ * just means that the emulation code is done simulating that frame.
+ */
+void dc_end_frame(void);
+
 enum dc_state {
     // the emulation thread has not been started yet
     DC_STATE_NOT_RUNNING,

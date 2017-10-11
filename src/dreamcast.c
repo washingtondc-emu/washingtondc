@@ -47,6 +47,7 @@
 #include "cmd/cons.h"
 #include "cmd/cmd_thread.h"
 #include "cmd/cmd.h"
+#include "glfw/window.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -315,6 +316,7 @@ static void dreamcast_check_debugger(void) {
     if (unlikely(cur_state == DC_STATE_DEBUG)) {
         do {
             // call debug_run_once 100 times per second
+            win_check_events();
             debug_run_once();
             usleep(1000 * 1000 / 100);
         } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG);
@@ -522,12 +524,13 @@ static void periodic_event_handler(struct SchedEvent *event) {
         cons_puts("Execution suspended.  To resume, enter "
                   "\"resume-execution\" into the CLI prompt.\n");
         do {
+            win_check_events();
             cmd_thread_kick();
             /*
              * TODO: sleep on a pthread condition or something instead of
              * polling.
              */
-            usleep(1000 * 1000 / 10);
+            usleep(1000 * 1000 / 60);
         } while (is_running &&
                  ((cur_state = dc_get_state()) == DC_STATE_SUSPEND));
 
@@ -549,4 +552,8 @@ static void periodic_event_handler(struct SchedEvent *event) {
 
     periodic_event.when = dc_cycle_stamp() + DC_PERIODIC_EVENT_PERIOD;
     sched_event(&periodic_event);
+}
+
+void dc_end_frame(void) {
+    win_check_events();
 }

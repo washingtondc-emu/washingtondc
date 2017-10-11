@@ -68,7 +68,7 @@ void win_cleanup() {
 }
 
 void win_check_events(void) {
-    glfwWaitEvents();
+    glfwPollEvents();
 
     if (glfwWindowShouldClose(win))
         dreamcast_kill();

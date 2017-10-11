@@ -20,24 +20,34 @@
  *
  ******************************************************************************/
 
-#ifndef WIN_THREAD_H_
-#define WIN_THREAD_H_
+#ifndef WINDOW_H_
+#define WINDOW_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void win_thread_launch(unsigned width, unsigned height);
+void win_init(unsigned width, unsigned height);
+void win_cleanup();
 
-void win_thread_join(void);
+void win_check_events(void);
 
-void win_thread_update(void);
+/*
+ * this function can safely be called from outside of the window thread
+ * It's best if  you call it indirectly through win_update()
+ */
+void win_update(void);
 
-void win_thread_make_context_current(void);
+/*
+ * this function can safely be called from outside of the window thread.
+ * It should only be called from the gfx_thread.
+ *
+ * It's best if you call it indirectly through win_make_context_current
+ */
+void win_make_context_current(void);
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif

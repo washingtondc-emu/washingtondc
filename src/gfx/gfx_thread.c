@@ -32,7 +32,7 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "win/win_thread.h"
+#include "glfw/window.h"
 #include "dreamcast.h"
 #include "gfx/opengl/opengl_output.h"
 #include "gfx/opengl/opengl_target.h"
@@ -113,7 +113,7 @@ void gfx_thread_expose(void) {
 }
 
 static void* gfx_main(void *arg) {
-    win_thread_make_context_current();
+    win_make_context_current();
 
     glewExperimental = GL_TRUE;
     glewInit();
@@ -169,12 +169,12 @@ void gfx_thread_run_once(void) {
     if (!atomic_flag_test_and_set(&not_pending_redraw)) {
         opengl_video_update_framebuffer();
         opengl_video_present();
-        win_thread_update();
+        win_update();
     }
 
     if (!atomic_flag_test_and_set(&not_pending_expose)) {
         opengl_video_present();
-        win_thread_update();
+        win_update();
     }
 
     if (!atomic_flag_test_and_set(&not_reading_framebuffer)) {
