@@ -59,7 +59,7 @@ static int controller_dev_init(struct maple_device *dev) {
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER)))
         RAISE_ERROR(ERROR_INTEGRITY);
 
-    atomic_init(&dev->ctxt.cont.btns, 0);
+    dev->ctxt.cont.btns = 0;
     return 0;
 }
 
@@ -108,7 +108,7 @@ static void controller_dev_get_cond(struct maple_device *dev,
     cond->func = MAPLE_FUNC_CONTROLLER;
 
     // invert because Dreamcast controller has active-low buttons
-    cond->btn = ~atomic_load_explicit(&cont->btns, memory_order_relaxed);
+    cond->btn = ~cont->btns;
 
     // leave the analog sticks in neutral
     cond->js_x = 128;
@@ -129,7 +129,7 @@ void maple_controller_press_btns(unsigned port_no, uint32_t btns) {
 
     struct maple_controller *cont = &dev->ctxt.cont;
 
-    atomic_fetch_or_explicit(&cont->btns, btns, memory_order_relaxed);
+    cont->btns |= btns;
 }
 
 // mark all buttons in btns as being released
@@ -144,5 +144,5 @@ void maple_controller_release_btns(unsigned port_no, uint32_t btns) {
 
     struct maple_controller *cont = &dev->ctxt.cont;
 
-    atomic_fetch_and_explicit(&cont->btns, ~btns, memory_order_relaxed);
+    cont->btns &= ~btns;
 }

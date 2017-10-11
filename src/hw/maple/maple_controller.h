@@ -23,9 +23,6 @@
 #ifndef MAPLE_CONTROLLER_H_
 #define MAPLE_CONTROLLER_H_
 
-#include <stdatomic.h>
-#include <assert.h>
-
 #define MAPLE_CONT_BTN_C_SHIFT 0
 #define MAPLE_CONT_BTN_C_MASK (1 << MAPLE_CONT_BTN_C_SHIFT)
 
@@ -77,11 +74,8 @@
 extern struct maple_switch_table maple_controller_switch_table;
 
 struct maple_controller {
-    atomic_uint btns;
+    uint32_t btns;
 };
-
-static_assert(sizeof(sizeof(atomic_uint) >= sizeof(uint32_t)),
-              "sizeof(unsigned int) is not large enough on this platform");
 
 /*
  * CONTROLLER API
