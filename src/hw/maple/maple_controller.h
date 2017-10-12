@@ -71,18 +71,26 @@
 #define MAPLE_CONT_BTN_DPAD2_RIGHT_SHIFT 15
 #define MAPLE_CONT_BTN_DPAD2_RIGHT_MASK (1 << MAPLE_CONT_BTN_DPAD2_RIGHT_SHIFT)
 
+enum {
+    MAPLE_CONTROLLER_AXIS_R_TRIG,
+    MAPLE_CONTROLLER_AXIS_L_TRIG,
+    MAPLE_CONTROLLER_AXIS_JOY1_X,
+    MAPLE_CONTROLLER_AXIS_JOY1_Y,
+    MAPLE_CONTROLLER_AXIS_JOY2_X,
+    MAPLE_CONTROLLER_AXIS_JOY2_Y,
+
+    MAPLE_CONTROLLER_N_AXES
+};
+
 extern struct maple_switch_table maple_controller_switch_table;
 
 struct maple_controller {
     uint32_t btns;
+    unsigned axes[MAPLE_CONTROLLER_N_AXES];
 };
 
 /*
  * CONTROLLER API
- * There's only one global state that all controllers share.  This is
- * sufficient for now because you can't have more than one controller plugged
- * in anyways.  Obviously this will be reworked in the future.
- *
  * These two functions can be safely called from any thread.
  */
 // mark all buttons in btns as being pressed
@@ -91,5 +99,7 @@ void maple_controller_press_btns(unsigned port_no, uint32_t btns);
 // mark all buttons in btns as being released
 void maple_controller_release_btns(unsigned port_no, uint32_t btns);
 
+// 0 = min, 255 = max, 128 = half
+void maple_controller_set_axis(unsigned port_no, unsigned axis, unsigned val);
 
 #endif

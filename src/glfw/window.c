@@ -36,8 +36,7 @@ static unsigned res_x, res_y;
 static GLFWwindow *win;
 
 static void expose_callback(GLFWwindow *win);
-static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
-                             int action, int mods);
+static void scan_input(void);
 
 void win_init(unsigned width, unsigned height) {
     res_x = width;
@@ -59,8 +58,6 @@ void win_init(unsigned width, unsigned height) {
 
     glfwSetWindowRefreshCallback(win, expose_callback);
     glfwSwapInterval(0);
-
-    glfwSetKeyCallback(win, win_on_key_press);
 }
 
 void win_cleanup() {
@@ -69,6 +66,8 @@ void win_cleanup() {
 
 void win_check_events(void) {
     glfwPollEvents();
+
+    scan_input();
 
     if (glfwWindowShouldClose(win))
         dreamcast_kill();
@@ -82,87 +81,150 @@ static void expose_callback(GLFWwindow *win) {
     gfx_thread_expose();
 }
 
-static void win_on_key_press(GLFWwindow *win_ptr, int key, int scancode,
-                             int action, int mods) {
-    if (action == GLFW_PRESS) {
-        switch (key) {
-        case GLFW_KEY_W:
-            maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_UP_MASK);
-            printf("Up pressed\n");
-            break;
-        case GLFW_KEY_S:
-            maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_DOWN_MASK);
-            printf("Down pressed\n");
-            break;
-        case GLFW_KEY_A:
-            maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_LEFT_MASK);
-            printf("Left pressed\n");
-            break;
-        case GLFW_KEY_D:
-            maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
-            printf("Right pressed\n");
-            break;
-        case GLFW_KEY_KP_2:
-            maple_controller_press_btns(0, MAPLE_CONT_BTN_A_MASK);
-            printf("A pressed\n");
-            break;
-        case GLFW_KEY_KP_6:
-            maple_controller_press_btns(0, MAPLE_CONT_BTN_B_MASK);
-            printf("B pressed\n");
-            break;
-        case GLFW_KEY_KP_4:
-            maple_controller_press_btns(0, MAPLE_CONT_BTN_X_MASK);
-            printf("X pressed\n");
-            break;
-        case GLFW_KEY_KP_8:
-            maple_controller_press_btns(0, MAPLE_CONT_BTN_Y_MASK);
-            printf("Y pressed\n");
-            break;
-        case GLFW_KEY_SPACE:
-            maple_controller_press_btns(0, MAPLE_CONT_BTN_START_MASK);
-            printf("start pressed\n");
-            break;
-        }
-    } else if (action == GLFW_RELEASE) {
-        switch (key) {
-        case GLFW_KEY_W:
-            maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_UP_MASK);
-            printf("Up released\n");
-            break;
-        case GLFW_KEY_S:
-            maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_DOWN_MASK);
-            printf("Down released\n");
-            break;
-        case GLFW_KEY_A:
-            maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_LEFT_MASK);
-            printf("Left released\n");
-            break;
-        case GLFW_KEY_D:
-            maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
-            printf("Right released\n");
-            break;
-        case GLFW_KEY_KP_2:
-            maple_controller_release_btns(0, MAPLE_CONT_BTN_A_MASK);
-            printf("A released\n");
-            break;
-        case GLFW_KEY_KP_6:
-            maple_controller_release_btns(0, MAPLE_CONT_BTN_B_MASK);
-            printf("B released\n");
-            break;
-        case GLFW_KEY_KP_4:
-            maple_controller_release_btns(0, MAPLE_CONT_BTN_X_MASK);
-            printf("X released\n");
-            break;
-        case GLFW_KEY_KP_8:
-            maple_controller_release_btns(0, MAPLE_CONT_BTN_Y_MASK);
-            printf("Y released\n");
-            break;
-        case GLFW_KEY_SPACE:
-            maple_controller_release_btns(0, MAPLE_CONT_BTN_START_MASK);
-            printf("start released\n");
-            break;
-        }
+enum gamepad_btn {
+    GAMEPAD_BTN_A = 0,
+    GAMEPAD_BTN_B = 1,
+    GAMEPAD_BTN_X = 2,
+    GAMEPAD_BTN_Y = 3,
+    GAMEPAD_BTN_START = 7,
+
+    GAMEPAD_BTN_COUNT
+};
+
+enum gamepad_hat {
+    GAMEPAD_HAT_UP,
+    GAMEPAD_HAT_DOWN,
+    GAMEPAD_HAT_LEFT,
+    GAMEPAD_HAT_RIGHT,
+
+    GAMEPAD_HAT_COUNT
+};
+
+static void scan_input(void) {
+    int btn_cnt, axis_cnt;
+    const unsigned char *gamepad_state =
+        glfwGetJoystickButtons(GLFW_JOYSTICK_1, &btn_cnt);
+    const float *axis_state = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axis_cnt);
+
+    bool btns[GAMEPAD_BTN_COUNT] = { 0 };
+    bool hat[GAMEPAD_HAT_COUNT] = { 0 };
+
+    /*
+     * TODO: these controller bindings are based on my Logitech F510.  They will
+     * be different for other controllers, so there needs to be a custom binding
+     * system
+     */
+    if (gamepad_state && btn_cnt >= GAMEPAD_BTN_COUNT) {
+        btns[GAMEPAD_BTN_A] = gamepad_state[GAMEPAD_BTN_A];
+        btns[GAMEPAD_BTN_B] = gamepad_state[GAMEPAD_BTN_B];
+        btns[GAMEPAD_BTN_X] = gamepad_state[GAMEPAD_BTN_X];
+        btns[GAMEPAD_BTN_Y] = gamepad_state[GAMEPAD_BTN_Y];
+        btns[GAMEPAD_BTN_START] = gamepad_state[GAMEPAD_BTN_START];
     }
+
+    // neutral position
+    unsigned stick_hor = 128;
+    unsigned stick_vert = 128;
+    unsigned hat_hor = 128;
+    unsigned hat_vert = 128;
+    unsigned trig_l = 0, trig_r = 0;
+
+    if (axis_cnt >= 6) {
+        stick_hor = (unsigned)(axis_state[0] * 128) + 128;
+        stick_vert = (unsigned)(axis_state[1] * 128) + 128;
+        hat_hor = (unsigned)(axis_state[6] * 128) + 128;
+        hat_vert = (unsigned)(axis_state[7] * 128) + 128;
+        trig_l = (unsigned)(axis_state[2] * 128) + 128;
+        trig_r = (unsigned)(axis_state[5] * 128) + 128;
+
+        if (stick_hor > 255)
+            stick_hor = 255;
+        if (stick_vert > 255)
+            stick_vert = 255;
+        if (hat_hor > 255)
+            hat_hor = 255;
+        if (hat_vert > 255)
+            hat_vert = 255;
+        if (trig_l > 255)
+            trig_l = 255;
+        if (trig_r > 255)
+            trig_r = 255;
+    }
+
+    if (hat_vert <= 64)
+        hat[GAMEPAD_HAT_UP] = true;
+    else if (hat_vert >= 192)
+        hat[GAMEPAD_HAT_DOWN] = true;
+
+    if (hat_hor <= 64)
+        hat[GAMEPAD_HAT_LEFT] = true;
+    else if (hat_hor >= 192)
+        hat[GAMEPAD_HAT_RIGHT] = true;
+
+    btns[GAMEPAD_BTN_A] = btns[GAMEPAD_BTN_A] ||
+        (glfwGetKey(win, GLFW_KEY_KP_2) == GLFW_PRESS);
+    btns[GAMEPAD_BTN_B] = btns[GAMEPAD_BTN_B] ||
+        (glfwGetKey(win, GLFW_KEY_KP_6) == GLFW_PRESS);
+    btns[GAMEPAD_BTN_X] = btns[GAMEPAD_BTN_X] ||
+        (glfwGetKey(win, GLFW_KEY_KP_4) == GLFW_PRESS);
+    btns[GAMEPAD_BTN_Y] = btns[GAMEPAD_BTN_Y] ||
+        (glfwGetKey(win, GLFW_KEY_KP_8) == GLFW_PRESS);
+    btns[GAMEPAD_BTN_START] = btns[GAMEPAD_BTN_START] ||
+        (glfwGetKey(win, GLFW_KEY_SPACE) == GLFW_PRESS);
+
+    hat[GAMEPAD_HAT_UP] = hat[GAMEPAD_HAT_UP] ||
+        (glfwGetKey(win, GLFW_KEY_W) == GLFW_PRESS);
+    hat[GAMEPAD_HAT_DOWN] = hat[GAMEPAD_HAT_DOWN] ||
+        (glfwGetKey(win, GLFW_KEY_S) == GLFW_PRESS);
+    hat[GAMEPAD_HAT_LEFT] = hat[GAMEPAD_HAT_LEFT] ||
+        (glfwGetKey(win, GLFW_KEY_A) == GLFW_PRESS);
+    hat[GAMEPAD_HAT_RIGHT] = hat[GAMEPAD_HAT_RIGHT] ||
+        (glfwGetKey(win, GLFW_KEY_D) == GLFW_PRESS);
+
+    if (btns[GAMEPAD_BTN_A])
+        maple_controller_press_btns(0, MAPLE_CONT_BTN_A_MASK);
+    else
+        maple_controller_release_btns(0, MAPLE_CONT_BTN_A_MASK);
+    if (btns[GAMEPAD_BTN_B])
+        maple_controller_press_btns(0, MAPLE_CONT_BTN_B_MASK);
+    else
+        maple_controller_release_btns(0, MAPLE_CONT_BTN_B_MASK);
+    if (btns[GAMEPAD_BTN_X])
+        maple_controller_press_btns(0, MAPLE_CONT_BTN_X_MASK);
+    else
+        maple_controller_release_btns(0, MAPLE_CONT_BTN_X_MASK);
+    if (btns[GAMEPAD_BTN_Y])
+        maple_controller_press_btns(0, MAPLE_CONT_BTN_Y_MASK);
+    else
+        maple_controller_release_btns(0, MAPLE_CONT_BTN_Y_MASK);
+    if (btns[GAMEPAD_BTN_START])
+        maple_controller_press_btns(0, MAPLE_CONT_BTN_START_MASK);
+    else
+        maple_controller_release_btns(0, MAPLE_CONT_BTN_START_MASK);
+
+    if (hat[GAMEPAD_HAT_UP])
+        maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_UP_MASK);
+    else
+        maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_UP_MASK);
+    if (hat[GAMEPAD_HAT_DOWN])
+        maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_DOWN_MASK);
+    else
+        maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_DOWN_MASK);
+    if (hat[GAMEPAD_HAT_LEFT])
+        maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_LEFT_MASK);
+    else
+        maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_LEFT_MASK);
+    if (hat[GAMEPAD_HAT_RIGHT])
+        maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
+    else
+        maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
+
+    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_R_TRIG, trig_r);
+    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_L_TRIG, trig_l);
+    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY1_X, stick_hor);
+    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY1_Y, stick_vert);
+    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY2_X, 0);
+    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY2_Y, 0);
 }
 
 void win_make_context_current(void) {

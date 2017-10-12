@@ -60,6 +60,10 @@ static int controller_dev_init(struct maple_device *dev) {
         RAISE_ERROR(ERROR_INTEGRITY);
 
     dev->ctxt.cont.btns = 0;
+    memset(dev->ctxt.cont.axes, 0, sizeof(dev->ctxt.cont.axes));
+    dev->ctxt.cont.axes[MAPLE_CONTROLLER_AXIS_JOY1_X] = 128;
+    dev->ctxt.cont.axes[MAPLE_CONTROLLER_AXIS_JOY1_Y] = 128;
+
     return 0;
 }
 
@@ -110,11 +114,13 @@ static void controller_dev_get_cond(struct maple_device *dev,
     // invert because Dreamcast controller has active-low buttons
     cond->btn = ~cont->btns;
 
-    // leave the analog sticks in neutral
-    cond->js_x = 128;
-    cond->js_y = 128;
-    cond->js_x2 = 128;
-    cond->js_y2 = 128;
+    cond->trig_r = cont->axes[MAPLE_CONTROLLER_AXIS_R_TRIG];
+    cond->trig_l = cont->axes[MAPLE_CONTROLLER_AXIS_L_TRIG];
+
+    cond->js_x = cont->axes[MAPLE_CONTROLLER_AXIS_JOY1_X];
+    cond->js_y = cont->axes[MAPLE_CONTROLLER_AXIS_JOY1_Y];
+    cond->js_x2 = cont->axes[MAPLE_CONTROLLER_AXIS_JOY2_X];
+    cond->js_y2 = cont->axes[MAPLE_CONTROLLER_AXIS_JOY2_X];
 }
 
 // mark all buttons in btns as being pressed
@@ -145,4 +151,21 @@ void maple_controller_release_btns(unsigned port_no, uint32_t btns) {
     struct maple_controller *cont = &dev->ctxt.cont;
 
     cont->btns &= ~btns;
+}
+
+void maple_controller_set_axis(unsigned port_no, unsigned axis, unsigned val) {
+    unsigned addr = maple_addr_pack(port_no, 0);
+    struct maple_device *dev = maple_device_get(addr);
+
+    if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
+        fprintf(stderr, "Error: unable to press buttons on port %u because "
+                "there is no controller plugged in.\n", port_no);
+    }
+
+    struct maple_controller *cont = &dev->ctxt.cont;
+
+    if (axis >= MAPLE_CONTROLLER_N_AXES)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    cont->axes[axis] = val;
 }
