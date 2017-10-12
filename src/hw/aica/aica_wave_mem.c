@@ -119,6 +119,12 @@ static struct aica_mem_hack {
      */
     { .addr = 0x00800224, .val = 0x00800018 },
 
+    /*
+     * More Crazy Taxi.
+     * AICA: reading 0x00000000 from 0x008001c4 (PC is 0x0c07f462)
+     */
+    { .addr = 0x008001c4, .val = 0x0080001c },
+
     { .end = true }
 };
 
