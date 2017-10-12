@@ -31,8 +31,7 @@ sh4:
 Sync Pulse Generator:
 * Take interlacing into account (this effects the number of lines per field
   amongst other things)
-* Get the clock division right, current implementation is a bit off because of integer divison
-  (200 / 27 does not divide evenly)
+
 
 PVR2:
 * implement mipmaps.  The current implementation always uses the
