@@ -400,14 +400,26 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
         ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
     hdr->tex_inst = (ta_fifo32[2] & TSP_TEX_INST_MASK) >>
         TSP_TEX_INST_SHIFT;
-    hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
-    hdr->stride_sel = (bool)(TEX_CTRL_STRIDE_SEL_MASK & ta_fifo32[3]);
+
+    if (hdr->tex_fmt != TEX_CTRL_PIX_FMT_4_BPP_PAL &&
+        hdr->tex_fmt != TEX_CTRL_PIX_FMT_8_BPP_PAL) {
+        hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
+        if (!hdr->tex_twiddle)
+            hdr->stride_sel = (bool)(TEX_CTRL_STRIDE_SEL_MASK & ta_fifo32[3]);
+        else
+            hdr->stride_sel = false;
+        hdr->tex_palette_start = 0xdeadbeef;
+    } else {
+        hdr->tex_twiddle = true;
+        hdr->stride_sel = false;
+        hdr->tex_palette_start = (ta_fifo32[3] & TEX_CTRL_PALETTE_START_MASK) >>
+            TEX_CTRL_PALETTE_START_SHIFT;
+    }
+
     hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
     hdr->tex_mipmap = (bool)(TEX_CTRL_MIP_MAPPED_MASK & ta_fifo32[3]);
     hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
                      TEX_CTRL_TEX_ADDR_SHIFT) << 3;
-    hdr->tex_palette_start = (ta_fifo32[3] & TEX_CTRL_PALETTE_START_MASK) >>
-        TEX_CTRL_PALETTE_START_SHIFT;
     hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>
         TSP_TEX_INST_FILTER_SHIFT;
 
