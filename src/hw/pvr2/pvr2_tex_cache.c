@@ -130,20 +130,25 @@ static unsigned tex_twiddle(unsigned x, unsigned y, unsigned w_shift, unsigned h
     return twid_idx;
 }
 
-struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
+struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, uint32_t pal_addr,
                                      unsigned w_shift, unsigned h_shift,
                                      int tex_fmt, bool twiddled,
                                      bool vq_compression, bool mipmap,
                                      bool stride_sel) {
     unsigned idx;
     struct pvr2_tex *tex;
+    bool pal_tex =
+        tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
+        tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL;
+
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
         if (tex->valid && (tex->meta.addr_first == addr) &&
             (tex->meta.w_shift == w_shift) && (tex->meta.h_shift == h_shift) &&
             (tex->meta.tex_fmt == tex_fmt) && (tex->meta.twiddled == twiddled) &&
             (tex->meta.vq_compression == vq_compression) &&
-            (mipmap == tex->meta.mipmap)) {
+            (mipmap == tex->meta.mipmap) &&
+            (!pal_tex || pal_addr == tex->meta.tex_palette_start)) {
             tex->frame_stamp_last_used = get_cur_frame_stamp();
             return tex;
         }
@@ -152,7 +157,7 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr,
     return NULL;
 }
 
-struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
+struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
                                     unsigned w_shift, unsigned h_shift,
                                     int tex_fmt, bool twiddled,
                                     bool vq_compression, bool mipmap,
@@ -205,6 +210,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr,
     tex->meta.vq_compression = vq_compression;
     tex->meta.mipmap = mipmap;
     tex->meta.stride_sel = stride_sel;
+    tex->meta.tex_palette_start = pal_addr;
     tex->frame_stamp_last_used = cur_frame_stamp;
 
     if (tex->meta.vq_compression && (tex->meta.w_shift != tex->meta.h_shift)) {

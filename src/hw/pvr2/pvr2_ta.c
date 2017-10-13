@@ -598,7 +598,7 @@ static void on_polyhdr_received(void) {
             printf("twiddled\n");
 
         struct pvr2_tex *ent =
-            pvr2_tex_cache_find(hdr.tex_addr,
+            pvr2_tex_cache_find(hdr.tex_addr, hdr.tex_palette_start,
                                 hdr.tex_width_shift,
                                 hdr.tex_height_shift,
                                 hdr.tex_fmt, hdr.tex_twiddle,
@@ -615,7 +615,7 @@ static void on_polyhdr_received(void) {
         } else {
             printf("Adding 0x%08x to texture cache...\n",
                    hdr.tex_addr);
-            ent = pvr2_tex_cache_add(hdr.tex_addr,
+            ent = pvr2_tex_cache_add(hdr.tex_addr, hdr.tex_palette_start,
                                      hdr.tex_width_shift,
                                      hdr.tex_height_shift,
                                      hdr.tex_fmt,
