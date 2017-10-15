@@ -140,3 +140,10 @@ void const* mount_encode_toc(struct mount_toc const *toc) {
 
     return toc_out;
 }
+
+int mount_get_meta(struct mount_meta *meta) {
+    if (!mount_check() || !img.ops->get_meta)
+        return -1;
+
+    return img.ops->get_meta(&img, meta);
+}

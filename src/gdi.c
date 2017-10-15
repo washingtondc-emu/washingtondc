@@ -53,11 +53,14 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad);
 // return true if this is a legitimate gd-rom; else return false
 static bool gdi_validate_fmt(struct gdi_info const *info);
 
+static int mount_gdi_get_meta(struct mount *mount, struct mount_meta *meta);
+
 static struct mount_ops gdi_mount_ops = {
     .session_count = mount_gdi_session_count,
     .read_toc = mount_gdi_read_toc,
     .read_sector = mount_read_sector,
-    .cleanup = mount_gdi_cleanup
+    .cleanup = mount_gdi_cleanup,
+    .get_meta = mount_gdi_get_meta
 };
 
 /* enforce sane limits - MAX_TRACKS might need to be bigger tbh */
@@ -394,4 +397,35 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
 
 return_err:
     return -1;
+}
+
+static int mount_gdi_get_meta(struct mount *mount, struct mount_meta *meta) {
+    struct gdi_mount const *gdi_mount = (struct gdi_mount const*)mount->state;
+    struct gdi_info const *info = &gdi_mount->meta;
+    uint8_t buffer[256];
+
+    if (info->n_tracks < 3)
+        return -1;
+
+    if (fseek(gdi_mount->track_streams[2], 16, SEEK_SET))
+        return -1;
+
+    if (fread(buffer, sizeof(buffer), 1, gdi_mount->track_streams[2]) != 1)
+        return -1;
+
+    memset(meta, 0, sizeof(*meta));
+
+    memcpy(meta->hardware, buffer, MOUNT_META_HARDWARE_LEN);
+    memcpy(meta->maker, buffer + 16, MOUNT_META_MAKER_LEN);
+    memcpy(meta->dev_info, buffer + 32, MOUNT_META_DEV_INFO_LEN);
+    memcpy(meta->region, buffer + 48, MOUNT_META_REGION_LEN);
+    memcpy(meta->periph_support, buffer + 56, MOUNT_META_PERIPH_LEN);
+    memcpy(meta->product_id, buffer + 64, MOUNT_META_PRODUCT_ID_LEN);
+    memcpy(meta->product_version, buffer + 74, MOUNT_META_PRODUCT_VERSION_LEN);
+    memcpy(meta->rel_date, buffer + 80, MOUNT_META_REL_DATE_LEN);
+    memcpy(meta->boot_file, buffer + 96, MOUNT_META_BOOT_FILE_LEN);
+    memcpy(meta->company, buffer + 112, MOUNT_META_COMPANY_LEN);
+    memcpy(meta->title, buffer + 128, MOUNT_META_TITLE_LEN);
+
+    return 0;
 }

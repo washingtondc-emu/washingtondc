@@ -72,6 +72,36 @@ struct mount_toc {
     unsigned leadout_adr;
 };
 
+struct mount_meta {
+#define MOUNT_META_HARDWARE_LEN 16
+#define MOUNT_META_MAKER_LEN 16
+#define MOUNT_META_DEV_INFO_LEN 16
+#define MOUNT_META_REGION_LEN 8
+#define MOUNT_META_PERIPH_LEN 8
+#define MOUNT_META_PRODUCT_ID_LEN 10
+#define MOUNT_META_PRODUCT_VERSION_LEN 6
+#define MOUNT_META_REL_DATE_LEN 16
+#define MOUNT_META_BOOT_FILE_LEN 16
+#define MOUNT_META_COMPANY_LEN 16
+#define MOUNT_META_TITLE_LEN 128
+
+    /*
+     * The strings all have length+1 because the DC metadata doesn't use a null
+     * terminator, but I do.
+     */
+    char hardware[MOUNT_META_HARDWARE_LEN + 1];
+    char maker[MOUNT_META_MAKER_LEN + 1];
+    char dev_info[MOUNT_META_DEV_INFO_LEN + 1];
+    char region[MOUNT_META_REGION_LEN + 1];
+    char periph_support[MOUNT_META_PERIPH_LEN + 1];
+    char product_id[MOUNT_META_PRODUCT_ID_LEN + 1];
+    char product_version[MOUNT_META_PRODUCT_VERSION_LEN + 1];
+    char rel_date[MOUNT_META_REL_DATE_LEN + 1];
+    char boot_file[MOUNT_META_BOOT_FILE_LEN + 1];
+    char company[MOUNT_META_COMPANY_LEN + 1];
+    char title[MOUNT_META_TITLE_LEN + 1];
+};
+
 struct mount_ops {
     // return the number of sessions on the disc (shouldn't be more than 2)
     unsigned(*session_count)(struct mount*);
@@ -83,6 +113,8 @@ struct mount_ops {
 
     // release resources held by the mount
     void (*cleanup)(struct mount*);
+
+    int (*get_meta)(struct mount*, struct mount_meta*);
 };
 
 // mount an image as the current disc in the virtual gdrom drive
@@ -100,6 +132,8 @@ unsigned mount_session_count(void);
 int mount_read_toc(struct mount_toc* out, unsigned session);
 
 int mount_read_sectors(void *buf_out, unsigned fad, unsigned sector_count);
+
+int mount_get_meta(struct mount_meta *meta);
 
 /*
  * size of an actual CD-ROM Table-Of-Contents structure.  This is the length of

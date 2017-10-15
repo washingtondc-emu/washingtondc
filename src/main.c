@@ -25,6 +25,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <libgen.h>
 
 #include "dreamcast.h"
 #include "gfx/gfx_thread.h"
@@ -62,11 +63,13 @@ int main(int argc, char **argv) {
     char const *cmd = argv[0];
     bool enable_debugger = false;
     bool boot_direct = false, skip_ip_bin = false;
-    char const *path_1st_read_bin = NULL, *path_ip_bin = NULL;
-    char const *path_syscalls_bin = NULL;
-    char const *path_gdi = NULL;
+    char *path_1st_read_bin = NULL, *path_ip_bin = NULL;
+    char *path_syscalls_bin = NULL;
+    char *path_gdi = NULL;
     bool enable_serial = false;
     bool enable_cmd_tcp = false;
+    char const *title_content = NULL;
+    struct mount_meta content_meta; // only valid if path_gdi is non-null
 
     while ((opt = getopt(argc, argv, "cb:f:s:m:gduht")) != -1) {
         switch (opt) {
@@ -120,8 +123,26 @@ int main(int argc, char **argv) {
 #endif
     }
 
-    if (path_gdi)
+    if (path_gdi) {
         mount_gdi(path_gdi);
+        if (mount_get_meta(&content_meta) == 0) {
+            // dump meta to stdout and set the window title to the game title
+            title_content = content_meta.title;
+
+            printf("GDI image %s mounted:\n", path_gdi);
+            printf("\thardware: %s\n", content_meta.hardware);
+            printf("\tmaker: %s\n", content_meta.maker);
+            printf("\tdevice info: %s\n", content_meta.dev_info);
+            printf("\tregion: %s\n", content_meta.region);
+            printf("\tperipheral support: %s\n", content_meta.periph_support);
+            printf("\tproduct id: %s\n", content_meta.product_id);
+            printf("\tproduct version: %s\n", content_meta.product_version);
+            printf("\trelease date: %s\n", content_meta.rel_date);
+            printf("\tboot file: %s\n", content_meta.boot_file);
+            printf("\tcompany: %s\n", content_meta.company);
+            printf("\ttitle: %s\n", content_meta.title);
+        }
+    }
 
     if (boot_direct) {
         if (argc != 2) {
@@ -140,6 +161,7 @@ int main(int argc, char **argv) {
 
         printf("direct boot enbaled, loading IP.BIN from %s and loading "
                "1ST_READ.BIN from %s\n", path_ip_bin, path_1st_read_bin);
+        title_content = basename(path_1st_read_bin);
     } else if (argc != 0 || !bios_path) {
         print_usage(cmd);
         exit(1);
@@ -168,13 +190,16 @@ int main(int argc, char **argv) {
         config_set_boot_mode(DC_BOOT_FIRMWARE);
     }
 
+    if (!(boot_direct || path_gdi))
+        title_content = "firmware";
+
     config_set_dc_bios_path(bios_path);
     config_set_dc_flash_path(flash_path);
 
     dreamcast_init(enable_cmd_tcp);
 
     framebuffer_init(640, 480);
-    win_init(640, 480);
+    win_init(640, 480, title_content);
     gfx_thread_launch(640, 480);
     io_thread_launch();
     cmd_thread_launch();

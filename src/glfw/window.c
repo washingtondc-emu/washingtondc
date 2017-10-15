@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <err.h>
+#include <ctype.h>
 #include <stdbool.h>
 
 #include <GLFW/glfw3.h>
@@ -38,7 +39,9 @@ static GLFWwindow *win;
 static void expose_callback(GLFWwindow *win);
 static void scan_input(void);
 
-void win_init(unsigned width, unsigned height) {
+static char const *pick_title(char const *content);
+
+void win_init(unsigned width, unsigned height, char const *content) {
     res_x = width;
     res_y = height;
 
@@ -51,7 +54,7 @@ void win_init(unsigned width, unsigned height) {
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     glfwWindowHint(GLFW_DEPTH_BITS, 24);
 
-    win = glfwCreateWindow(res_x, res_y, "WashingtonDC Dreamcast Emulator", NULL, NULL);
+    win = glfwCreateWindow(res_x, res_y, pick_title(content), NULL, NULL);
 
     if (!win)
         errx(1, "unable to create window");
@@ -229,4 +232,23 @@ static void scan_input(void) {
 
 void win_make_context_current(void) {
     glfwMakeContextCurrent(win);
+}
+
+static char const *pick_title(char const *content) {
+#define WINDOW_TITLE_LEN 128
+    static char title[WINDOW_TITLE_LEN];
+
+    if (content)
+        snprintf(title, WINDOW_TITLE_LEN, "WashingtonDC - %s", content);
+    else
+        strncpy(title, "WashingtonDC", WINDOW_TITLE_LEN);
+
+    title[WINDOW_TITLE_LEN - 1] = '\0';
+
+    // trim trailing whitespace
+    size_t idx;
+    for (idx = strlen(title) - 1; (idx >= 0) && isspace(title[idx]); idx--)
+        title[idx] = '\0';
+
+    return title;
 }
