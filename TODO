@@ -3,7 +3,7 @@ subtle enough to be forgotten.  There are many more things I need to do which
 are not recorded here.
 
 General:
-* Implement a scheduler instead of ticking down the clock of every component on every cycle
+* Unit testing
 
 DMA:
 * I think there might be a few places where I need to be making sure that
@@ -17,14 +17,10 @@ sh4:
 * MMU support for Store Queues
 * Store queue timing (Is it really supposed to be instant?)
 * Unit test for store queues
-* CPU Dual Issue pipeline (sometimes the CPU can execute two instructions at
-  once.  The current implementation does not model this).  See section 8.2 of
-  the sh4 software manual, "Parallel-Executability"
 * It might also be a good idea to do a better job counting cycles in general.
   The current implementation assumes that the number of cycles to execute
   each instruction will always be equal to the issue for that instruction.
   There is no emulation of stalls/latency/interdependency.
-* Get a real interrupt controller written, I don't even have priorities working right
 * the sh4 spec says that when two exceptions of equal priority happen at the same time, the sh4
   will chose the one with a higher priority order.  Currently I don't have this implemented.
 
