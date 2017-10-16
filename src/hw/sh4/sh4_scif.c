@@ -347,6 +347,14 @@ sh4_scfsr2_reg_write_handler(Sh4 *sh4, void const *buf,
     return 0;
 }
 
+/*
+ * XXX I wish I could find a way to do SCIF events without relying on the
+ * periodic event handler.  This is currently necessary because I connect
+ * the SCIF to TCP via the io_thread, which means that the io_thread needs
+ * to be able to raise SCIF interrupts.  Signalling the emulation thread to
+ * do that when it's ready seems like the best way to do that, but I really
+ * don't like solutions that rely on polling because it seems inefficient.
+ */
 void sh4_scif_periodic(Sh4 *sh4) {
     check_rx_reset(sh4);
     check_tx_reset(sh4);

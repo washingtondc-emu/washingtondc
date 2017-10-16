@@ -100,7 +100,17 @@ static void dreamcast_enable_serial_server(void);
 
 static void dreamcast_enable_cmd_tcp(void);
 
-#define DC_PERIODIC_EVENT_PERIOD (SCHED_FREQUENCY / 10)
+/*
+ * XXX this used to be (SCHED_FREQUENCY / 10).  Now it's (SCHED_FREQUENCY / 100)
+ * because programs that use the serial port (like KallistiOS) can timeout if
+ * the serial port takes too long to reply.
+ *
+ * If the serial port is ever removed from the periodic event handler, this
+ * should be increased back to (SCHED_FREQUENCY / 10) to save on host CPU
+ * cycles.
+ */
+#define DC_PERIODIC_EVENT_PERIOD (SCHED_FREQUENCY / 100)
+
 static void periodic_event_handler(struct SchedEvent *event);
 static struct SchedEvent periodic_event;
 
