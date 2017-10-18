@@ -52,8 +52,34 @@ void tex_transform() {
  * coordinate being at (-1.0, 1.0)
  */
 void modelview_project_transform() {
-    vec4 pos = vec4(vert_pos, 1);
-    gl_Position = trans_mat * pos;
+    /*
+     * Given that Dreamcast does all its vertex transformations in software on
+     * the SH-4, you might think that it's alright to disregard the perspective
+     * divide and just pass through 1.0 for the w coordinate...and you'd be
+     * wrong for thinking that.
+     *
+     * OpenGL doesn't just use the w-coordinate for perspective divide, it also
+     * uses it for perspect-correct texture-mapping later in the fragment stage.
+     * If the w-coordinate for all vertices in a polygon is the same, then what
+     * you get is effictively the same as affine texture-mapping.  Affine
+     * texture mapping linearly-interpolates the u and v coordinates, and it
+     * looks distorted for polygons where the orthonormal vector doesn't align
+     * with the camera direction because it doesn't take the third-dimension
+     * into account.  This is because fragments closer to the viewer should
+     * sample texels that are closer together to each other than fragments
+     * farther away will (i think), and the affine/linear transformation forces
+     * them all to linearly sample texels that are the same distance from texels
+     * sampled by adjacent fragments.
+     *
+     * ANYWAYS, perspective-correct texture mapping fixes this by taking the
+     * depth-component into account, and it gets that from the w coordinate,
+     * which is the value you divide by for perspective-divide; ergo I must use
+     * the actual depth coordinate for the perspective divide.  Since the
+     * perspective-divide will divide all components by w (which is actually z),
+     * I have to multiply all of them by z.
+     */
+    vec4 pos = trans_mat * vec4(vert_pos, 1.0);
+    gl_Position = vec4(pos.x * vert_pos.z, pos.y * vert_pos.z, pos.z * vert_pos.z, vert_pos.z);
 }
 
 void color_transform() {
