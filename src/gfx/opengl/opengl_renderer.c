@@ -128,6 +128,9 @@ static void render_do_draw(struct geo_buf *geo);
 // converts pixels from ARGB 4444 to RGBA 4444
 static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels);
 
+// converts pixels from ARGB 1555 to ABGR1555
+static void render_conv_argb_1555(uint16_t *pixels, size_t n_pizels);
+
 static void opengl_render_init(void);
 static void opengl_render_cleanup(void);
 static void opengl_renderer_update_tex(unsigned tex_obj);
@@ -367,6 +370,8 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
 
     if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444)
         render_conv_argb_4444((uint16_t*)tex->dat, tex_w * tex_h);
+    else if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_1555)
+        render_conv_argb_1555((uint16_t*)tex->dat, tex_w * tex_h);
 
     glBindTexture(GL_TEXTURE_2D, tex_cache[tex_obj]);
 
@@ -447,5 +452,17 @@ static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels) {
         uint16_t a = (pix_current & 0xf000) >> 12;
 
         *pixels = a | (b << 4) | (g << 8) | (r << 12);
+    }
+}
+
+static void render_conv_argb_1555(uint16_t *pixels, size_t n_pixels) {
+    for (size_t pix_no = 0; pix_no < n_pixels; pix_no++, pixels++) {
+        uint16_t pix_current = *pixels;
+        uint16_t b = (pix_current & 0x001f) >> 0;
+        uint16_t g = (pix_current & 0x03e0) >> 5;
+        uint16_t r = (pix_current & 0x7c00) >> 10;
+        uint16_t a = (pix_current & 0x8000) >> 15;
+
+        *pixels = (a << 15) | (b << 10) | (g << 5) | (r << 0);
     }
 }
