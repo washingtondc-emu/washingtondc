@@ -368,17 +368,43 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
     unsigned tex_w = 1 << tex->meta.w_shift;
     unsigned tex_h = 1 << tex->meta.h_shift;
 
-    if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444)
-        render_conv_argb_4444((uint16_t*)tex->dat, tex_w * tex_h);
-    else if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_1555)
-        render_conv_argb_1555((uint16_t*)tex->dat, tex_w * tex_h);
-
     glBindTexture(GL_TEXTURE_2D, tex_cache[tex_obj]);
-
     // TODO: maybe don't always set this to 1
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                 format, tex_formats[tex->meta.pix_fmt], tex->dat);
+
+    /*
+     * TODO: ideally I wouldn't need to copy ARGB_4444 and ARGB_1555 into a
+     * separate buffer to do the pixel conversion.  The reason I do this is that
+     * the tex-dump command in the cmd thread also sees the texture data in the
+     * struct gfx_tex, so I don't want to modify that.  Maybe someday I'll
+     * change things to remove this mostly-unnecessary buffering...
+     */
+    if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444) {
+        size_t n_bytes =
+            sizeof(uint16_t) << (tex->meta.w_shift + tex->meta.h_shift);
+        uint16_t *tex_dat = (uint16_t*)malloc(n_bytes);
+        if (!tex_dat)
+            abort();
+        memcpy(tex_dat, tex->dat, n_bytes);
+        render_conv_argb_4444(tex_dat, tex_w * tex_h);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
+                     format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_4444], tex_dat);
+        free(tex_dat);
+    } else if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_1555) {
+        size_t n_bytes =
+            sizeof(uint16_t) << (tex->meta.w_shift + tex->meta.h_shift);
+        uint16_t *tex_dat = (uint16_t*)malloc(n_bytes);
+        if (!tex_dat)
+            abort();
+        memcpy(tex_dat, tex->dat, n_bytes);
+        render_conv_argb_1555(tex_dat, tex_w * tex_h);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
+                     format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_1555], tex_dat);
+        free(tex_dat);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
+                     format, tex_formats[tex->meta.pix_fmt], tex->dat);
+    }
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
