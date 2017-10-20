@@ -686,7 +686,7 @@ PtrnList get_patterns() {
     // SHLD Rm, Rn
     // 0100nnnnmmmm1101
     list.push_back(PtrnPtr(new BinaryOperator<INST_PTRN(shld), Ptrn_GenReg,
-                           Ptrn_GenReg, 0x400c, 0xf00f, 4, 8>));
+                           Ptrn_GenReg, 0x400d, 0xf00f, 4, 8>));
 
     /***************************************************************************
      **
