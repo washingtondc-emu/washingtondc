@@ -245,7 +245,9 @@ set(sh4asm_core_sources
                         "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4asm.cpp"
                         "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4asm.hpp"
                         "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_bin_emit.h"
-                        "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_bin_emit.c")
+                        "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_bin_emit.c"
+                        "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_asm_emit.h"
+                        "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_asm_emit.c")
 
 include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
