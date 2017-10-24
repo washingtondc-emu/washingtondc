@@ -169,21 +169,21 @@
 #define OPCODE_TSTB_IMM8_A_R0_GBR 0xcc00 // TST.B #imm, @(R0, GBR)
 #define OPCODE_XOR_IMM8_R0        0xca00 // XOR #imm, R0
 #define OPCODE_XORB_IMM8_A_R0_GBR 0xce00 // XOR.B #imm, @(R0, GBR)
-#define OPCODE_BF_IMM8            0x8b00 // BF label
-#define OPCODE_BFS_IMM8           0x8f00 // BF/S label
-#define OPCODE_BT_IMM8            0x8900 // BT label
-#define OPCODE_BTS_IMM8           0x8d00 // BT/S label
+#define OPCODE_BF_DISP8           0x8b00 // BF label
+#define OPCODE_BFS_DISP8          0x8f00 // BF/S label
+#define OPCODE_BT_DISP8           0x8900 // BT label
+#define OPCODE_BTS_DISP8          0x8d00 // BT/S label
 #define OPCODE_TRAPA_IMM8         0xc300 // TRAPA #immed
 
-#define OPCODE_MOVB_R0_A_DISP_GBR 0xc000 // MOV.B R0, @(disp, GBR)
-#define OPCODE_MOVW_R0_A_DISP_GBR 0xc100 // MOV.W R0, @(disp, GBR)
-#define OPCODE_MOVL_R0_A_DISP_GBR 0xc200 // MOV.L R0, @(disp, GBR)
+#define OPCODE_MOVB_R0_A_DISP8_GBR 0xc000 // MOV.B R0, @(disp, GBR)
+#define OPCODE_MOVW_R0_A_DISP8_GBR 0xc100 // MOV.W R0, @(disp, GBR)
+#define OPCODE_MOVL_R0_A_DISP8_GBR 0xc200 // MOV.L R0, @(disp, GBR)
 
-#define OPCODE_MOVB_A_DISP_GBR_R0 0xc400 // MOV.B @(disp, GBR), R0
-#define OPCODE_MOVW_A_DISP_GBR_R0 0xc500 // MOV.W @(disp, GBR), R0
-#define OPCODE_MOVL_A_DISP_GBR_R0 0xc600 // MOV.L @(disp, GBR), R0
+#define OPCODE_MOVB_A_DISP8_GBR_R0 0xc400 // MOV.B @(disp, GBR), R0
+#define OPCODE_MOVW_A_DISP8_GBR_R0 0xc500 // MOV.W @(disp, GBR), R0
+#define OPCODE_MOVL_A_DISP8_GBR_R0 0xc600 // MOV.L @(disp, GBR), R0
 
-#define OPCODE_MOVA_A_DISP_PC_R0 0xc700 // MOVA @(disp, PC), R0
+#define OPCODE_MOVA_A_DISP8_PC_R0 0xc700 // MOVA @(disp, PC), R0
 
 /*******************************************************************************
  *
@@ -191,18 +191,18 @@
  *
  ******************************************************************************/
 
-#define OPCODE_BRA_IMM12 0xa000 // BRA label
-#define OPCODE_BSR_IMM12 0xb000 // BSR label
+#define OPCODE_BRA_DISP12 0xa000 // BRA label
+#define OPCODE_BSR_DISP12 0xb000 // BSR label
 
 #define OPCODE_MOV_IMM8_RN 0xe000 // MOV #imm, Rn
 #define OPCODE_ADD_IMM8_RN 0x7000 // ADD #imm, Rn
 
-#define OPCODE_MOVW_A_DISP_PC_RN 0x9000 // MOV.W @(disp, PC), Rn
-#define OPCODE_MOVL_A_DISP_PC_RN 0xd000 // MOV.L @(disp, PC), Rn
+#define OPCODE_MOVW_A_DISP8_PC_RN 0x9000 // MOV.W @(disp, PC), Rn
+#define OPCODE_MOVL_A_DISP8_PC_RN 0xd000 // MOV.L @(disp, PC), Rn
 
-#define OPCODE_MOVL_RM_A_DISP_RN 0x1000 // MOV.L Rm, @(disp, Rn)
+#define OPCODE_MOVL_RM_A_DISP4_RN 0x1000 // MOV.L Rm, @(disp, Rn)
 
-#define OPCODE_MOVL_A_DISP_RM_RN 0x5000 // MOV.L @(disp, Rm), Rn
+#define OPCODE_MOVL_A_DISP4_RM_RN 0x5000 // MOV.L @(disp, Rm), Rn
 
 /*******************************************************************************
  *
@@ -272,7 +272,7 @@
 #define OPCODE_MOVL_ARMP_RN 0x6006 // MOV.L @Rm+, Rn
 
 #define OPCODE_MACL_ARMP_ARNP 0x000f // MAC.L @Rm+, @Rn+
-#define OPCODE_MACH_ARMP_ARNP 0x400f // MAC.W @Rm+, @Rn+
+#define OPCODE_MACW_ARMP_ARNP 0x400f // MAC.W @Rm+, @Rn+
 
 #define OPCODE_FMOV_FRM_FRN 0xf00c      // FMOV FRm, FRn
 #define OPCODE_FMOVS_ARM_FRN 0xf008     // FMOV.S @Rm, FRn
@@ -296,10 +296,10 @@
  *
  ******************************************************************************/
 
-#define OPCODE_LDC_RM_RNBANK 0x408e    // LDC Rm, Rn_BANK
-#define OPCODE_LDCL_ARMP_RNBANK 0x4087 // LDC.L @Rm+, Rn_BANK
-#define OPCODE_STC_RMBANK_RN 0x0082    // STC Rm_BANK, Rn
-#define OPCODE_STCL_RMBANK_AMRN 0x4083 // STC.L Rm_BANK, @-Rn
+#define OPCODE_LDC_RM_RN_BANK 0x408e    // LDC Rm, Rn_BANK
+#define OPCODE_LDCL_ARMP_RN_BANK 0x4087 // LDC.L @Rm+, Rn_BANK
+#define OPCODE_STC_RM_BANK_RN 0x0082    // STC Rm_BANK, Rn
+#define OPCODE_STCL_RM_BANK_AMRN 0x4083 // STC.L Rm_BANK, @-Rn
 
 /*******************************************************************************
  *
@@ -307,11 +307,11 @@
  *
  ******************************************************************************/
 
-#define OPCODE_MOVB_R0_A_DISP_RN 0x8000 // MOV.B R0, @(disp, Rn)
-#define OPCODE_MOVW_R0_A_DISP_RN 0x8100 // MOV.W R0, @(disp, Rn)
+#define OPCODE_MOVB_R0_A_DISP4_RN 0x8000 // MOV.B R0, @(disp, Rn)
+#define OPCODE_MOVW_R0_A_DISP4_RN 0x8100 // MOV.W R0, @(disp, Rn)
 
-#define OPCODE_MOVB_A_DISP_RM_R0 0x8400 // MOV.B @(disp, Rm), R0
-#define OPCODE_MOVW_A_DISP_RM_R0 0x8500 // MOV.W @(disp, Rm), R0
+#define OPCODE_MOVB_A_DISP4_RM_R0 0x8400 // MOV.B @(disp, Rm), R0
+#define OPCODE_MOVW_A_DISP4_RM_R0 0x8500 // MOV.W @(disp, Rm), R0
 
 /*******************************************************************************
  *

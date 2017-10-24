@@ -61,7 +61,7 @@ uint16_t assemble_bin_rm_rn(uint16_t opcode, unsigned rm, unsigned rn) {
     return opcode | (uint16_t)((rm & 15) << 4) | (uint16_t)((rn & 15) << 8);
 }
 
-uint16_t assemble_bin_rm_rnbank(uint16_t opcode,
+uint16_t assemble_bin_rm_rn_bank(uint16_t opcode,
                                 unsigned rm, unsigned rn_bank) {
     return opcode | (uint16_t)((rm & 15) << 8) | (uint16_t)((rn_bank & 7) << 4);
 }
