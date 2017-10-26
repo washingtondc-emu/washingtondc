@@ -143,8 +143,6 @@ enum global_param {
 };
 
 struct poly_hdr {
-    enum display_list_type list;
-
     bool tex_enable;
     uint32_t tex_addr;
 
@@ -383,9 +381,6 @@ static void on_packet_received(void) {
 static void decode_poly_hdr(struct poly_hdr *hdr) {
     uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
 
-    hdr->list =
-        (enum display_list_type)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
-                                 TA_CMD_DISP_LIST_SHIFT);
     hdr->tex_enable = (bool)(ta_fifo32[0] & TA_CMD_TEX_ENABLE_MASK);
     hdr->ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
         TA_COLOR_FMT_SHIFT;
@@ -522,6 +517,11 @@ static void on_polyhdr_received(void) {
         (enum display_list_type)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
                                  TA_CMD_DISP_LIST_SHIFT);
     struct poly_hdr hdr;
+
+    if (list >= DISPLAY_LIST_COUNT || list < 0) {
+        error_set_feature("correct response for invalid display list indices");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 
     decode_poly_hdr(&hdr);
 
