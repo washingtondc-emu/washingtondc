@@ -48,14 +48,16 @@
  * these are in terms of sizeof(float)
  */
 #define GEO_BUF_POS_OFFSET 0
-#define GEO_BUF_COLOR_OFFSET 3
-#define GEO_BUF_TEX_COORD_OFFSET 7
+#define GEO_BUF_BASE_COLOR_OFFSET 3
+#define GEO_BUF_OFFS_COLOR_OFFSET 7
+#define GEO_BUF_TEX_COORD_OFFSET 11
 
 /*
  * the number of elements per vertex.  Currently this means 3 floats for the
- * coordinates and 4 floats for the color.
+ * coordinates, 4 floats for the base color, 4 floats for the offset color and
+ * two floats for the texture coordinates
  */
-#define GEO_BUF_VERT_LEN 9
+#define GEO_BUF_VERT_LEN 13
 
 enum Pvr2BlendFactor {
     PVR2_BLEND_ZERO,

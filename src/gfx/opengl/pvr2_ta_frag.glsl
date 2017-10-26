@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 
-in vec4 vert_color;
+in vec4 vert_base_color, vert_offs_color;
 out vec4 color;
 
 #ifdef TEX_ENABLE
@@ -33,31 +33,32 @@ void main() {
 #ifdef TEX_ENABLE
     vec4 tex_color = texture(bound_tex, st);
 
-    // TODO: add the offset values to the rgb components
+    // TODO: is the offset alpha color supposed to be used for anything?
     switch (tex_inst) {
     default:
     case 0:
         // decal
-        color.rgb = tex_color.rgb;
+        color.rgb = tex_color.rgb + vert_offs_color.rgb;
         color.a = tex_color.a;
         break;
     case 1:
         // modulate
-        color.rgb = tex_color.rgb * vert_color.rgb;
+        color.rgb = tex_color.rgb * vert_base_color.rgb + vert_offs_color.rgb;
         color.a = tex_color.a;
         break;
     case 2:
         // decal with alpha
         color.rgb = tex_color.rgb * tex_color.a +
-            vert_color.rgb * (1.0 - tex_color.a);
-        color.a = vert_color.a;
+            vert_base_color.rgb * (1.0 - tex_color.a) + vert_offs_color.rgb;
+        color.a = vert_base_color.a;
         break;
     case 3:
         // modulate with alpha
-        color = tex_color * vert_color;
+        color.rgb = tex_color.rgb * vert_base_color.rgb + vert_offs_color.rgb;
+        color.a = tex_color.a * vert_base_color.a;
         break;
     }
 #else
-    color = vert_color;
+    color = vert_base_color;
 #endif
 }

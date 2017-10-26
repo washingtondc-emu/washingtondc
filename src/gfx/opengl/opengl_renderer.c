@@ -40,8 +40,9 @@
 
 #define POSITION_SLOT          0
 #define TRANS_MAT_SLOT         1
-#define COLOR_SLOT             2
-#define TEX_COORD_SLOT         3
+#define BASE_COLOR_SLOT        2
+#define OFFS_COLOR_SLOT        3
+#define TEX_COORD_SLOT         4
 
 static GLuint bound_tex_slot;
 static GLuint tex_inst_slot;
@@ -337,13 +338,17 @@ static void render_do_draw_group(struct geo_buf *geo,
                  sizeof(float) * group->n_verts * GEO_BUF_VERT_LEN,
                  group->verts, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(POSITION_SLOT);
-    glEnableVertexAttribArray(COLOR_SLOT);
+    glEnableVertexAttribArray(BASE_COLOR_SLOT);
+    glEnableVertexAttribArray(OFFS_COLOR_SLOT);
     glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
                           GEO_BUF_VERT_LEN * sizeof(float),
                           (GLvoid*)(GEO_BUF_POS_OFFSET * sizeof(float)));
-    glVertexAttribPointer(COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
+    glVertexAttribPointer(BASE_COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
                           GEO_BUF_VERT_LEN * sizeof(float),
-                          (GLvoid*)(GEO_BUF_COLOR_OFFSET * sizeof(float)));
+                          (GLvoid*)(GEO_BUF_BASE_COLOR_OFFSET * sizeof(float)));
+    glVertexAttribPointer(OFFS_COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
+                          GEO_BUF_VERT_LEN * sizeof(float),
+                          (GLvoid*)(GEO_BUF_OFFS_COLOR_OFFSET * sizeof(float)));
     if (group->tex_enable) {
         glEnableVertexAttribArray(TEX_COORD_SLOT);
         glVertexAttribPointer(TEX_COORD_SLOT, 2, GL_FLOAT, GL_FALSE,

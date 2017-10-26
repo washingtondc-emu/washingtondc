@@ -181,8 +181,11 @@ struct poly_hdr {
     bool gourad_shading_enable;
     bool tex_coord_16_bit_enable;
 
-    float poly_color_rgba[4];
-    float sprite_color_rgba[4];
+    float poly_base_color_rgba[4];
+    float poly_offs_color_rgba[4];
+
+    float sprite_base_color_rgba[4];
+    float sprite_offs_color_rgba[4];
 };
 
 static struct poly_state {
@@ -222,8 +225,11 @@ static struct poly_state {
     // number of 4-byte quads per vertex
     unsigned vert_len;
 
-    float poly_color_rgba[4];
-    float sprite_color_rgba[4];
+    float poly_base_color_rgba[4];
+    float poly_offs_color_rgba[4];
+
+    float sprite_base_color_rgba[4];
+    float sprite_offs_color_rgba[4];
 
     enum vert_type vert_type;
 } poly_state = {
@@ -477,35 +483,36 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
     unsigned offset_g = (offset_color & 0x0000ff00) >> 8;
     unsigned offset_b = offset_color & 0x000000ff;
     unsigned offset_a = (offset_color & 0xff000000) >> 24;
-    unsigned col_r = base_r + offset_r;
-    unsigned col_g = base_g + offset_g;
-    unsigned col_b = base_b + offset_b;
-    unsigned col_a = base_a + offset_a;
 
-    if (col_r > 255)
-        col_r = 255;
-    if (col_g > 255)
-        col_g = 255;
-    if (col_b > 255)
-        col_b = 255;
-    if (col_a > 255)
-        col_a = 255;
+    hdr->sprite_base_color_rgba[0] = base_r / 255.0f;
+    hdr->sprite_base_color_rgba[1] = base_g / 255.0f;
+    hdr->sprite_base_color_rgba[2] = base_b / 255.0f;
+    hdr->sprite_base_color_rgba[3] = base_a / 255.0f;
 
-    hdr->sprite_color_rgba[0] = col_r / 255.0f;
-    hdr->sprite_color_rgba[1] = col_g / 255.0f;
-    hdr->sprite_color_rgba[2] = col_b / 255.0f;
-    hdr->sprite_color_rgba[3] = col_a / 255.0f;
+    if (hdr->offset_color_enable) {
+        hdr->sprite_offs_color_rgba[0] = offset_r / 255.0f;
+        hdr->sprite_offs_color_rgba[1] = offset_g / 255.0f;
+        hdr->sprite_offs_color_rgba[2] = offset_b / 255.0f;
+        hdr->sprite_offs_color_rgba[3] = offset_a / 255.0f;
+    } else {
+        memset(hdr->sprite_offs_color_rgba, 0,
+               sizeof(hdr->sprite_offs_color_rgba));
+    }
 
     if (hdr->color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) {
         if (hdr->offset_color_enable) {
-            memcpy(hdr->poly_color_rgba, ta_fifo32 + 9, 3 * sizeof(float));
-            memcpy(hdr->poly_color_rgba + 3, ta_fifo32 + 8, sizeof(float));
+            memcpy(hdr->poly_base_color_rgba, ta_fifo32 + 9, 3 * sizeof(float));
+            memcpy(hdr->poly_base_color_rgba + 3, ta_fifo32 + 8, sizeof(float));
+            memcpy(hdr->poly_offs_color_rgba, ta_fifo32 + 13, 3 * sizeof(float));
+            memcpy(hdr->poly_offs_color_rgba + 3, ta_fifo32 + 12, sizeof(float));
         } else {
-            memcpy(hdr->poly_color_rgba, ta_fifo32 + 5, 3 * sizeof(float));
-            memcpy(hdr->poly_color_rgba + 3, ta_fifo32 + 4, sizeof(float));
+            memcpy(hdr->poly_base_color_rgba, ta_fifo32 + 5, 3 * sizeof(float));
+            memcpy(hdr->poly_base_color_rgba + 3, ta_fifo32 + 4, sizeof(float));
+            memset(hdr->poly_offs_color_rgba, 0, sizeof(float) * 4);
         }
     } else {
-        memset(hdr->poly_color_rgba, 0, sizeof(hdr->poly_color_rgba));
+        memset(hdr->poly_base_color_rgba, 0, sizeof(hdr->poly_base_color_rgba));
+        memset(hdr->poly_offs_color_rgba, 0, sizeof(hdr->poly_offs_color_rgba));
     }
 }
 
@@ -658,12 +665,16 @@ static void on_polyhdr_received(void) {
     poly_state.tex_filter = hdr.tex_filter;
 
     if (hdr.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) {
-        memcpy(poly_state.poly_color_rgba, hdr.poly_color_rgba,
-               sizeof(poly_state.poly_color_rgba));
+        memcpy(poly_state.poly_base_color_rgba, hdr.poly_base_color_rgba,
+               sizeof(poly_state.poly_base_color_rgba));
+        memcpy(poly_state.poly_offs_color_rgba, hdr.poly_offs_color_rgba,
+               sizeof(poly_state.poly_offs_color_rgba));
     }
 
-    memcpy(poly_state.sprite_color_rgba, hdr.sprite_color_rgba,
-           sizeof(poly_state.sprite_color_rgba));
+    memcpy(poly_state.sprite_base_color_rgba, hdr.sprite_base_color_rgba,
+           sizeof(poly_state.sprite_base_color_rgba));
+    memcpy(poly_state.sprite_offs_color_rgba, hdr.sprite_offs_color_rgba,
+           sizeof(poly_state.sprite_offs_color_rgba));
 
     poly_state.global_param =
         (enum global_param)((ta_fifo32[0] & TA_CMD_TYPE_MASK) >>
@@ -822,8 +833,10 @@ static void on_sprite_received(void) {
     vert_ptr[GEO_BUF_POS_OFFSET + 0] = p1[0];
     vert_ptr[GEO_BUF_POS_OFFSET + 1] = p1[1];
     vert_ptr[GEO_BUF_POS_OFFSET + 2] = p1[2];
-    memcpy(vert_ptr + GEO_BUF_COLOR_OFFSET,
-           poly_state.sprite_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+           poly_state.sprite_base_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+           poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[0][0];
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[0][1];
     group->n_verts++;
@@ -833,8 +846,10 @@ static void on_sprite_received(void) {
     vert_ptr[GEO_BUF_POS_OFFSET + 0] = p2[0];
     vert_ptr[GEO_BUF_POS_OFFSET + 1] = p2[1];
     vert_ptr[GEO_BUF_POS_OFFSET + 2] = p2[2];
-    memcpy(vert_ptr + GEO_BUF_COLOR_OFFSET,
-           poly_state.sprite_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+           poly_state.sprite_base_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+           poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[1][0];
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[1][1];
     group->n_verts++;
@@ -844,8 +859,10 @@ static void on_sprite_received(void) {
     vert_ptr[GEO_BUF_POS_OFFSET + 0] = p3[0];
     vert_ptr[GEO_BUF_POS_OFFSET + 1] = p3[1];
     vert_ptr[GEO_BUF_POS_OFFSET + 2] = p3[2];
-    memcpy(vert_ptr + GEO_BUF_COLOR_OFFSET,
-           poly_state.sprite_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+           poly_state.sprite_base_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+           poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[2][0];
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[2][1];
     group->n_verts++;
@@ -855,8 +872,10 @@ static void on_sprite_received(void) {
     vert_ptr[GEO_BUF_POS_OFFSET + 0] = p1[0];
     vert_ptr[GEO_BUF_POS_OFFSET + 1] = p1[1];
     vert_ptr[GEO_BUF_POS_OFFSET + 2] = p1[2];
-    memcpy(vert_ptr + GEO_BUF_COLOR_OFFSET,
-           poly_state.sprite_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+           poly_state.sprite_base_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+           poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[0][0];
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[0][1];
     group->n_verts++;
@@ -866,8 +885,10 @@ static void on_sprite_received(void) {
     vert_ptr[GEO_BUF_POS_OFFSET + 0] = p3[0];
     vert_ptr[GEO_BUF_POS_OFFSET + 1] = p3[1];
     vert_ptr[GEO_BUF_POS_OFFSET + 2] = p3[2];
-    memcpy(vert_ptr + GEO_BUF_COLOR_OFFSET,
-           poly_state.sprite_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+           poly_state.sprite_base_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+           poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[2][0];
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[2][1];
     group->n_verts++;
@@ -877,8 +898,10 @@ static void on_sprite_received(void) {
     vert_ptr[GEO_BUF_POS_OFFSET + 0] = p4[0];
     vert_ptr[GEO_BUF_POS_OFFSET + 1] = p4[1];
     vert_ptr[GEO_BUF_POS_OFFSET + 2] = p4[2];
-    memcpy(vert_ptr + GEO_BUF_COLOR_OFFSET,
-           poly_state.sprite_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+           poly_state.sprite_base_color_rgba, sizeof(float) * 4);
+    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+           poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[3][0];
     vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[3][1];
     group->n_verts++;
@@ -1000,44 +1023,68 @@ static void on_vertex_received(void) {
             group->verts[dst_uv_offset + 1] = uv[1];
         }
 
-        float color_r, color_g, color_b, color_a;
-        float intensity;
+        float base_color_r, base_color_g, base_color_b, base_color_a;
+        float offs_color_r = 0.0f, offs_color_g = 0.0f,
+            offs_color_b = 0.0f, offs_color_a = 0.0f;
+        float base_intensity, offs_intensity;
 
         switch (poly_state.ta_color_fmt) {
         case TA_COLOR_TYPE_PACKED:
-            color_a = (float)((ta_fifo32[6] & 0xff000000) >> 24) / 255.0f;
-            color_r = (float)((ta_fifo32[6] & 0x00ff0000) >> 16) / 255.0f;
-            color_g = (float)((ta_fifo32[6] & 0x0000ff00) >> 8) / 255.0f;
-            color_b = (float)((ta_fifo32[6] & 0x000000ff) >> 0) / 255.0f;
+            base_color_a = (float)((ta_fifo32[6] & 0xff000000) >> 24) / 255.0f;
+            base_color_r = (float)((ta_fifo32[6] & 0x00ff0000) >> 16) / 255.0f;
+            base_color_g = (float)((ta_fifo32[6] & 0x0000ff00) >> 8) / 255.0f;
+            base_color_b = (float)((ta_fifo32[6] & 0x000000ff) >> 0) / 255.0f;
             break;
         case TA_COLOR_TYPE_FLOAT:
-            memcpy(&color_a, ta_fifo32 + 4, sizeof(color_a));
-            memcpy(&color_r, ta_fifo32 + 5, sizeof(color_r));
-            memcpy(&color_g, ta_fifo32 + 6, sizeof(color_g));
-            memcpy(&color_b, ta_fifo32 + 7, sizeof(color_b));
+            memcpy(&base_color_a, ta_fifo32 + 4, sizeof(base_color_a));
+            memcpy(&base_color_r, ta_fifo32 + 5, sizeof(base_color_r));
+            memcpy(&base_color_g, ta_fifo32 + 6, sizeof(base_color_g));
+            memcpy(&base_color_b, ta_fifo32 + 7, sizeof(base_color_b));
             break;
         case TA_COLOR_TYPE_INTENSITY_MODE_1:
         case TA_COLOR_TYPE_INTENSITY_MODE_2:
-            color_a = poly_state.poly_color_rgba[3];
+            base_color_a = poly_state.poly_base_color_rgba[3];
 
-            memcpy(&intensity, ta_fifo32 + 6, sizeof(float));
-            color_r = intensity * poly_state.poly_color_rgba[0];
-            color_g = intensity * poly_state.poly_color_rgba[1];
-            color_b = intensity * poly_state.poly_color_rgba[2];
+            memcpy(&base_intensity, ta_fifo32 + 6, sizeof(float));
+            memcpy(&offs_intensity, ta_fifo32 + 7, sizeof(float));
+
+            base_color_r = base_intensity * poly_state.poly_base_color_rgba[0];
+            base_color_g = base_intensity * poly_state.poly_base_color_rgba[1];
+            base_color_b = base_intensity * poly_state.poly_base_color_rgba[2];
+
+            if (poly_state.offset_color_enable) {
+                offs_color_r =
+                    offs_intensity * poly_state.poly_offs_color_rgba[0];
+                offs_color_g =
+                    offs_intensity * poly_state.poly_offs_color_rgba[1];
+                offs_color_b =
+                    offs_intensity * poly_state.poly_offs_color_rgba[2];
+                offs_color_a =
+                    offs_intensity * poly_state.poly_offs_color_rgba[3];
+            }
             break;
         default:
-            color_r = color_g = color_b = color_a = 1.0f;
+            base_color_r = base_color_g = base_color_b = base_color_a = 1.0f;
             fprintf(stderr, "WARNING: unknown TA color format %u\n", poly_state.ta_color_fmt);
         }
 
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 0] =
-            color_r;
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 1] =
-            color_g;
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 2] =
-            color_b;
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_COLOR_OFFSET + 3] =
-            color_a;
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_BASE_COLOR_OFFSET + 0] =
+            base_color_r;
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_BASE_COLOR_OFFSET + 1] =
+            base_color_g;
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_BASE_COLOR_OFFSET + 2] =
+            base_color_b;
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_BASE_COLOR_OFFSET + 3] =
+            base_color_a;
+
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_OFFS_COLOR_OFFSET + 0] =
+            offs_color_r;
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_OFFS_COLOR_OFFSET + 1] =
+            offs_color_g;
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_OFFS_COLOR_OFFSET + 2] =
+            offs_color_b;
+        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_OFFS_COLOR_OFFSET + 3] =
+            offs_color_a;
 
         if (ta_fifo32[0] & TA_CMD_END_OF_STRIP_MASK) {
             /*

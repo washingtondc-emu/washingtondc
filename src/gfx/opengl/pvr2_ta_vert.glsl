@@ -24,13 +24,14 @@
 
 layout (location = 0) in vec3 vert_pos;
 layout (location = 1) uniform mat4 trans_mat;
-layout (location = 2) in vec4 color;
+layout (location = 2) in vec4 base_color;
+layout (location = 3) in vec4 offs_color;
 
 #ifdef TEX_ENABLE
-layout (location = 3) in vec2 tex_coord_in;
+layout (location = 4) in vec2 tex_coord_in;
 #endif
 
-out vec4 vert_color;
+out vec4 vert_base_color, vert_offs_color;
 #ifdef TEX_ENABLE
 out vec2 st;
 #endif
@@ -84,9 +85,11 @@ void modelview_project_transform() {
 
 void color_transform() {
 #ifdef COLOR_DISABLE
-    vert_color = vec4(1.0, 1.0, 1.0, 1.0);
+    vert_base_color = vec4(1.0, 1.0, 1.0, 1.0);
+    vert_offs_color = vec4(0.0, 0.0, 0.0, 0.0);
 #else
-    vert_color = color;
+    vert_base_color = base_color;
+    vert_offs_color = offs_color;
 #endif
 }
 
