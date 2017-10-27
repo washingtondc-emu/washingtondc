@@ -25,7 +25,7 @@
 #include <stdarg.h>
 #include <pthread.h>
 
-#include "cmd_thread.h"
+#include "cmd_sys.h"
 #include "text_ring.h"
 
 #include "cons.h"

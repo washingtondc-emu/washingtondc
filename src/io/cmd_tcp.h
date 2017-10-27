@@ -28,8 +28,8 @@
 /*
  * TCP/IP frontend for WashingtonDC's command-line interface.
  *
- * This runs from the io_thread and pushes moves text to the cmd_thread over a
- * text_ring.  It has a handler that runs in the cmd_thread and pushes the text
+ * This runs from the io_thread and pushes moves text to the cmd system via a
+ * text_ring.  It has a handler that runs in the emu_thread and pushes the text
  * into the command-line interface.
  */
 

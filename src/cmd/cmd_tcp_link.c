@@ -23,17 +23,14 @@
 #include <stdio.h>
 
 #include "io/cmd_tcp.h"
-#include "cmd_thread.h"
+#include "cmd_sys.h"
 
 #include "cmd_tcp_link.h"
 
 /*
- * the code in this file runs in the cmd_thread and is used to facilitate
- * transfers between the cmd_thread and the cmd_tcp code in the io_thread.
+ * the code in this file runs in the emu thread and is used to facilitate
+ * transfers between the cmd system and the cmd_tcp code in the io_thread.
  */
-void cmd_tcp_link_run_once(void) {
-}
-
 void cmd_tcp_link_put_text(char const *txt) {
     cmd_tcp_put_text(txt);
 }

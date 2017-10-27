@@ -24,10 +24,10 @@
 #define CMD_H_
 
 /*
- * CMD is the component of the cmd_thread which actually implements a
+ * This is the component of the cmd system which actually implements a
  * command-line by parsing incoming text and running commands.
  *
- * Everything here runs from the cmd_thread, even the commands themselves.
+ * Everything here runs from the emu thread, even the commands themselves.
  */
 
 /*

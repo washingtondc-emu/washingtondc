@@ -23,8 +23,6 @@
 #ifndef CMD_TCP_LINK_H_
 #define CMD_TCP_LINK_H_
 
-void cmd_tcp_link_run_once(void);
-
 void cmd_tcp_link_put_text(char const *txt);
 
 #endif

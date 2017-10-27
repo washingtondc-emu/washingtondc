@@ -36,7 +36,6 @@
 #include "mount.h"
 #include "gdi.h"
 #include "config.h"
-#include "cmd/cmd_thread.h"
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [IP.BIN 1ST_READ.BIN]\n\n", cmd);
@@ -202,7 +201,6 @@ int main(int argc, char **argv) {
     win_init(640, 480, title_content);
     gfx_thread_launch(640, 480);
     io_thread_launch();
-    cmd_thread_launch();
 
     config_set_enable_cmd_tcp(enable_cmd_tcp);
     config_set_ser_srv_enable(enable_serial);
@@ -215,11 +213,6 @@ int main(int argc, char **argv) {
 
     printf("killing the window...\n");
     win_cleanup();
-
-    printf("waiting for the cmd_thread to exit...\n");
-    cmd_thread_kick();
-    cmd_thread_join();
-    printf("cmd_thread has exited\n");
 
     printf("Waiting for io_thread to exit...\n");
     io_thread_join();

@@ -26,15 +26,13 @@
 #include <stdbool.h>
 
 /*
- * cons is the text-buffering system used by the cmd_thread.
+ * cons is the text-buffering system used by the cmd system.
  * it stores both an rx ring for user input and a tx ring for program output
  */
 
 /*
  * this function can be called from any thread.  It will print the given string
  * to console's program-output (tx ring).
- *
- * This does NOT kick the cmd_thread, you have to do that yourself.
  */
 void cons_puts(char const *txt);
 
@@ -45,13 +43,13 @@ void cons_printf(char const *txt, ...);
  * If this function returns false, then *ch is not valid and the ring is empty.
  * If this function returns true, then *ch is valid.
  *
- * this function should only be called from the cmd thread.
+ * this function should only be called from the emu thread.
  */
 bool cons_getc(char *ch);
 
 /*
  * this function drains a single character from the tx ring.  It can only be
- * safely called from the cmd thread.
+ * safely called from the emu thread.
  */
 bool cons_tx_drain_single(char *out);
 

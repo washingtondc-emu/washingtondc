@@ -36,7 +36,7 @@
 #include "error.h"
 #include "text_ring.h"
 #include "io_thread.h"
-#include "cmd/cmd_thread.h"
+#include "cmd/cmd_sys.h"
 
 #include "cmd_tcp.h"
 
@@ -148,9 +148,6 @@ signal_listener:
     listener_signal();
     listener_unlock();
 
-    // kick the cmd_thread so it runs the cmd_tcp_link and drains the rx_ring
-    cmd_thread_kick();
-
     drain_tx();
 }
 
@@ -193,17 +190,14 @@ static void handle_read(struct bufferevent *bev, void *arg) {
         }
 
         /*
-         * transmit data in CMD_TCP_READ_BUF_LEN-sized chunks
-         * we call cmd_thread_kick every time to make sure that these don't
-         * all get dropped by cons' text_ring, although some characters
-         * probably will still get dropped anyways.
+         * transmit data in CMD_TCP_READ_BUF_LEN-sized chunks.
+         * Some characters will get dropped if the buffer overflows
          */
         read_buf[read_buf_idx++] = (char)tmp;
         if (read_buf_idx >= (CMD_TCP_READ_BUF_LEN - 1)) {
             read_buf[CMD_TCP_READ_BUF_LEN - 1] = '\0';
             cons_rx_recv_text(read_buf);
             read_buf_idx = 0;
-            cmd_thread_kick();
         }
     }
 
@@ -211,13 +205,12 @@ static void handle_read(struct bufferevent *bev, void *arg) {
     if (read_buf_idx) {
         read_buf[read_buf_idx] = '\0';
         cons_rx_recv_text(read_buf);
-        cmd_thread_kick();
     }
 }
 
 /*
  * this is a libevent callback for an event that gets triggered whenever the
- * cmd_thread calls cmd_tcp_put
+ * cmd code calls cmd_tcp_put
  */
 static void on_check_tx_event(evutil_socket_t fd, short ev, void *arg) {
     if (state == CMD_TCP_ATTACHED)
@@ -254,7 +247,7 @@ void cmd_tcp_put_text(char const *txt) {
  * otherwise *out is valid.  It might be empty, but you can only know by
  * calling cmd_tcp_get again
  *
- * this function gets called from the cmd_thread
+ * this function gets called from the emu thread
  */
 bool cmd_tcp_get(char *out) {
     bool is_empty = text_ring_empty(&rx_ring);

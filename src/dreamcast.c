@@ -45,7 +45,7 @@
 #include "io/serial_server.h"
 #include "io/cmd_tcp.h"
 #include "cmd/cons.h"
-#include "cmd/cmd_thread.h"
+#include "cmd/cmd_sys.h"
 #include "cmd/cmd.h"
 #include "glfw/window.h"
 
@@ -250,7 +250,7 @@ void dreamcast_run() {
 #endif
 
     cmd_print_banner();
-    cmd_thread_kick();
+    cmd_run_once();
 
     periodic_event.when = dc_cycle_stamp() + DC_PERIODIC_EVENT_PERIOD;
     periodic_event.handler = periodic_event_handler;
@@ -260,8 +260,10 @@ void dreamcast_run() {
      * if there's a cmd session attached, then hang here until the user enters
      * the begin-execution command.
      */
-    while (is_running && (dc_get_state() == DC_STATE_NOT_RUNNING))
+    while (is_running && (dc_get_state() == DC_STATE_NOT_RUNNING)) {
         usleep(1000 * 1000 / 10);
+        cmd_run_once();
+    }
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
@@ -535,7 +537,7 @@ static void periodic_event_handler(struct SchedEvent *event) {
                   "\"resume-execution\" into the CLI prompt.\n");
         do {
             win_check_events();
-            cmd_thread_kick();
+            cmd_run_once();
             /*
              * TODO: sleep on a pthread condition or something instead of
              * polling.
@@ -566,4 +568,5 @@ static void periodic_event_handler(struct SchedEvent *event) {
 
 void dc_end_frame(void) {
     win_check_events();
+    cmd_run_once();
 }

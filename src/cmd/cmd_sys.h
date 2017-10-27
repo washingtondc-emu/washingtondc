@@ -20,22 +20,11 @@
  *
  ******************************************************************************/
 
-#ifndef CMD_THREAD_H_
-#define CMD_THREAD_H_
+#ifndef CMD_SYS_H_
+#define CMD_SYS_H_
 
-void cmd_thread_launch(void);
+void cmd_init(void);
 
-void cmd_thread_join(void);
-
-void cmd_thread_kick(void);
-
-/*
- * input a character to the cmd system.
- * This is NOT the function you call to print to the console, it's the function
- * you call to input a character as if it was typed by the user.
- *
- * This should only be called from within the cmd_thread
- */
-void cmd_thread_put_char(char c);
+void cmd_run_once(void);
 
 #endif
