@@ -770,10 +770,10 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
                 blue <<= 3;
                 break;
             case TEX_CTRL_PIX_FMT_ARGB_4444:
-                alpha = src_pix[0] & 0x0f;
-                red = (src_pix[0] & 0xf0) >> 4;
-                green = src_pix[1] & 0x0f;
-                blue = (src_pix[1] & 0xf0) >> 4;
+                blue = src_pix[0] & 0x0f;
+                green = (src_pix[0] & 0xf0) >> 4;
+                red = src_pix[1] & 0x0f;
+                alpha = (src_pix[1] & 0xf0) >> 4;
 
                 alpha <<= 4;
                 red <<= 4;
