@@ -134,8 +134,25 @@ enum vert_type {
     N_VERT_TYPES
 };
 
-static DEF_ERROR_INT_ATTR(ta_fifo_cmd);
-static DEF_ERROR_INT_ATTR(pvr2_global_param);
+static DEF_ERROR_INT_ATTR(ta_fifo_cmd)
+static DEF_ERROR_INT_ATTR(pvr2_global_param)
+static DEF_ERROR_INT_ATTR(ta_fifo_byte_count)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_0)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_1)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_2)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_3)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_4)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_5)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_6)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_7)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_8)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_9)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_a)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_b)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_c)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_d)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_e)
+static DEF_ERROR_U32_ATTR(ta_fifo_word_f)
 
 enum global_param {
     GLOBAL_PARAM_POLY = 4,
@@ -521,6 +538,23 @@ static void on_polyhdr_received(void) {
     if (list >= DISPLAY_LIST_COUNT || list < 0) {
         error_set_feature("correct response for invalid display list indices");
         error_set_display_list_index(list);
+        error_set_ta_fifo_byte_count(ta_fifo_byte_count);
+        error_set_ta_fifo_word_0(ta_fifo32[0]);
+        error_set_ta_fifo_word_1(ta_fifo32[1]);
+        error_set_ta_fifo_word_2(ta_fifo32[2]);
+        error_set_ta_fifo_word_3(ta_fifo32[3]);
+        error_set_ta_fifo_word_4(ta_fifo32[4]);
+        error_set_ta_fifo_word_5(ta_fifo32[5]);
+        error_set_ta_fifo_word_6(ta_fifo32[6]);
+        error_set_ta_fifo_word_7(ta_fifo32[7]);
+        error_set_ta_fifo_word_8(ta_fifo32[8]);
+        error_set_ta_fifo_word_9(ta_fifo32[9]);
+        error_set_ta_fifo_word_a(ta_fifo32[10]);
+        error_set_ta_fifo_word_b(ta_fifo32[11]);
+        error_set_ta_fifo_word_c(ta_fifo32[12]);
+        error_set_ta_fifo_word_d(ta_fifo32[13]);
+        error_set_ta_fifo_word_e(ta_fifo32[14]);
+        error_set_ta_fifo_word_f(ta_fifo32[15]);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
