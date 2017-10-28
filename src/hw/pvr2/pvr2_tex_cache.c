@@ -213,6 +213,13 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
     tex->meta.tex_palette_start = pal_addr;
     tex->frame_stamp_last_used = cur_frame_stamp;
 
+    if (tex_fmt != TEX_CTRL_PIX_FMT_4_BPP_PAL &&
+        tex_fmt != TEX_CTRL_PIX_FMT_8_BPP_PAL) {
+        tex->meta.pix_fmt = tex_fmt;
+    } else {
+        tex->meta.pix_fmt = get_palette_tp();
+    }
+
     if (tex->meta.vq_compression && (tex->meta.w_shift != tex->meta.h_shift)) {
         fprintf(stderr, "PVR2: WARNING - DISABLING VQ COMPRESSION FOR 0x%x "
                 "DUE TO NON-SQUARE DIMENSIONS\n",
@@ -412,7 +419,7 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
                 continue;
             }
 
-            memcpy(&tex_out->meta, &tex_in->meta, sizeof(tex_out->meta));
+            pvr2_tex_get_meta(&tex_out->meta, idx);
 
             // TODO: better error-handling
             if ((ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1) <=
@@ -573,4 +580,13 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
 
 int pvr2_tex_cache_get_idx(struct pvr2_tex const *tex) {
     return tex - tex_cache;
+}
+
+int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx) {
+    struct pvr2_tex const *tex_in = tex_cache + tex_idx;
+    if (tex_in->valid) {
+        memcpy(meta, &tex_in->meta, sizeof(struct pvr2_tex_meta));
+        return 0;
+    }
+    return -1;
 }

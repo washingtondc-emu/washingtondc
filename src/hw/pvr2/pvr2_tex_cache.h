@@ -131,4 +131,11 @@ int pvr2_tex_cache_get_idx(struct pvr2_tex const *tex);
  */
 void pvr2_tex_cache_xmit(struct geo_buf *out);
 
+/*
+ * Read the meta-information of the given texture.  This function will return
+ * -1 if the slot indicated by tex_idx points to an invalid texture; else it
+ * will return 0.
+ */
+int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx);
+
 #endif

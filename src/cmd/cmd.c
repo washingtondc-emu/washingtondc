@@ -517,7 +517,6 @@ static char const *tex_fmt_names[TEX_CTRL_PIX_FMT_COUNT] = {
 
 static int cmd_tex_info(int argc, char **argv) {
     unsigned first_tex_no, last_tex_no, tex_no;
-    struct gfx_tex tex;
     bool print_missing = true;
     bool did_print = false;
 
@@ -539,27 +538,26 @@ static int cmd_tex_info(int argc, char **argv) {
     }
 
     for (tex_no = first_tex_no; tex_no <= last_tex_no; tex_no++) {
-        gfx_thread_get_tex(&tex, tex_no);
-
-        if (tex.valid) {
+        struct pvr2_tex_meta meta;
+        if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
             cons_printf("texture %u:\n", tex_no);
             cons_printf("\tdimensions: (%u, %u)\n",
-                        1 << tex.meta.w_shift, 1 << tex.meta.h_shift);
+                        1 << meta.w_shift, 1 << meta.h_shift);
             cons_printf("\tpix_fmt: %s\n",
-                        tex.meta.pix_fmt < TEX_CTRL_PIX_FMT_COUNT ?
-                        tex_fmt_names[tex.meta.pix_fmt] : "<invalid format>");
+                        meta.pix_fmt < TEX_CTRL_PIX_FMT_COUNT ?
+                        tex_fmt_names[meta.pix_fmt] : "<invalid format>");
             cons_printf("\ttex_fmt: %s\n",
-                        tex.meta.tex_fmt < TEX_CTRL_PIX_FMT_COUNT ?
-                        tex_fmt_names[tex.meta.tex_fmt] : "<invalid format>");
-            cons_printf("\t%s\n", tex.meta.twiddled ? "twiddled" : "not twiddled");
+                        meta.tex_fmt < TEX_CTRL_PIX_FMT_COUNT ?
+                        tex_fmt_names[meta.tex_fmt] : "<invalid format>");
+            cons_printf("\t%s\n", meta.twiddled ? "twiddled" : "not twiddled");
             cons_printf("\tVQ compression: %s\n",
-                        tex.meta.vq_compression ? "yes" : "no");
+                        meta.vq_compression ? "yes" : "no");
             cons_printf("\tmipmapped: %s\n",
-                        tex.meta.mipmap ? "enabled" : "disabled");
+                        meta.mipmap ? "enabled" : "disabled");
             cons_printf("\tstride type: %s\n",
-                        tex.meta.stride_sel ? "from texinfo" : "from texture");
-            cons_printf("\tfirst address: 0x%08x\n", tex.meta.addr_first);
-            cons_printf("\tlast address: 0x%08x\n", tex.meta.addr_last);
+                        meta.stride_sel ? "from texinfo" : "from texture");
+            cons_printf("\tfirst address: 0x%08x\n", meta.addr_first);
+            cons_printf("\tlast address: 0x%08x\n", meta.addr_last);
             did_print = true;
         } else {
             if (print_missing) {
@@ -567,9 +565,6 @@ static int cmd_tex_info(int argc, char **argv) {
                 did_print = true;
             }
         }
-
-        if (tex.valid && tex.dat)
-            free(tex.dat);
     }
 
     if (!did_print)
@@ -584,9 +579,8 @@ static int cmd_tex_enum(int argc, char **argv) {
     bool did_print = false;
 
     for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
-        gfx_thread_get_tex(&tex, tex_no);
-
-        if (tex.valid) {
+        struct pvr2_tex_meta meta;
+        if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
             cons_printf("%s%u", did_print ? ", " : "", tex_no);
             did_print = true;
 
