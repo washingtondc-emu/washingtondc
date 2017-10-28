@@ -393,6 +393,156 @@ static void pvr2_tex_vq_decompress(void *dst, void const *code_book,
     }
 }
 
+void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
+    unsigned tex_w = 1 << meta->w_shift, tex_h = 1 << meta->h_shift;
+
+    // TODO: better error-handling
+    if ((ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1) <=
+        (meta->addr_last - meta->addr_first + 1)) {
+        abort();
+    }
+
+    size_t n_bytes = sizeof(uint8_t) *
+        (1 << meta->w_shift) * (1 << meta->h_shift) *
+        pixel_sizes[meta->tex_fmt];
+
+    void *tex_dat = NULL;
+    if (n_bytes)
+        tex_dat = malloc(n_bytes);
+
+    if (!tex_dat)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    uint8_t const *beg;
+    uint8_t const *code_book; // points to the code book if this is VQ
+
+    /*
+     * handle mipmaps.
+     *
+     * Currently they're not actually implemented, I just select the
+     * highest-order mipmap (which is the one at the end).  To
+     * accomplish this, we have to offset the addr_first by the offset
+     * to the highest-order mipmap.
+     */
+    if (meta->mipmap) {
+        if (meta->w_shift != meta->h_shift) {
+            error_set_feature("proper response for attempting to "
+                              "enable mipmapping on a rectangular "
+                              "texture");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        unsigned side_shift = meta->w_shift;
+
+        if (meta->vq_compression) {
+            code_book = pvr2_tex64_mem + meta->addr_first;
+            beg = code_book + PVR2_CODE_BOOK_LEN +
+                mipmap_byte_offset_vq[side_shift];
+        } else {
+            switch (meta->tex_fmt) {
+            case TEX_CTRL_PIX_FMT_ARGB_1555:
+            case TEX_CTRL_PIX_FMT_RGB_565:
+            case TEX_CTRL_PIX_FMT_YUV_422:
+            case TEX_CTRL_PIX_FMT_ARGB_4444:
+                beg = pvr2_tex64_mem + meta->addr_first +
+                    mipmap_byte_offset_norm[meta->w_shift];
+                break;
+            case TEX_CTRL_PIX_FMT_4_BPP_PAL:
+            case TEX_CTRL_PIX_FMT_8_BPP_PAL:
+                beg = pvr2_tex64_mem + meta->addr_first +
+                    mipmap_byte_offset_palette[meta->w_shift];
+                break;
+            default:
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            }
+        }
+    } else {
+        /*
+         * mipmaps are disabled, tex_in->addr_first is actually the
+         * first byte of the texture.
+         */
+        beg = pvr2_tex64_mem + meta->addr_first;
+        if (meta->vq_compression) {
+            code_book = beg;
+            beg += PVR2_CODE_BOOK_LEN;
+        }
+    }
+
+    if (meta->vq_compression) {
+        if (pixel_sizes[meta->tex_fmt] != 2) {
+            error_set_feature("proper response for an attempt to use "
+                              "VQ compression on a non-RGB texture");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        if (meta->w_shift != meta->h_shift) {
+            error_set_feature("proper response for an attempt to use "
+                              "VQ compression on a non-square texture");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        pvr2_tex_vq_decompress(tex_dat, code_book, beg, meta->w_shift);
+    } else if (meta->twiddled) {
+        pvr2_tex_detwiddle(tex_dat, beg,
+                           meta->w_shift, meta->h_shift,
+                           pixel_sizes[meta->tex_fmt]);
+    } else {
+        memcpy(tex_dat, beg,
+               pixel_sizes[meta->tex_fmt] * tex_w * tex_h);
+    }
+
+    if (meta->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
+        uint32_t tex_size_actual;
+        enum palette_tp palette_tp = get_palette_tp();
+        switch (palette_tp) {
+        case PALETTE_TP_ARGB_1555:
+            tex_size_actual = 2;
+            break;
+        case PALETTE_TP_RGB_565:
+            tex_size_actual = 2;
+            break;
+        case PALETTE_TP_ARGB_4444:
+            tex_size_actual = 2;
+            break;
+        case PALETTE_TP_ARGB_8888:
+            tex_size_actual = 4;
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+        uint8_t *tex_dat_no_palette =
+            (uint8_t*)malloc(tex_size_actual * tex_w * tex_h);
+        if (!tex_dat_no_palette)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+        uint32_t pal_start = (meta->tex_palette_start & 0x30) << 4;
+        uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
+
+        unsigned row, col;
+        for (row = 0; row < tex_h; row++) {
+            for (col = 0; col < tex_w; col++) {
+                unsigned pix_idx = row * tex_w + col;
+                uint8_t *pix_out = tex_dat_no_palette +
+                    pix_idx * tex_size_actual;
+                uint8_t pix_in = tex_dat8[pix_idx];
+                uint32_t palette_addr =
+                    (pal_start | (uint32_t)pix_in) * 4;
+                memcpy(pix_out, pvr2_palette_ram + palette_addr, tex_size_actual);
+            }
+        }
+        free(tex_dat);
+        tex_dat = tex_dat_no_palette;
+        printf("PVR2 paletted texture: tex_palette_start is 0x%04x\n",
+               (unsigned)meta->tex_palette_start);
+    } else if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+        error_set_feature("4BPP paletted textures");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    *tex_dat_out = tex_dat;
+}
+
 void pvr2_tex_cache_xmit(struct geo_buf *out) {
     unsigned idx;
     unsigned cur_frame_stamp = out->frame_stamp;
@@ -407,7 +557,6 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
         tex_out->valid = tex_in->valid;
 
         if (tex_in->valid && tex_in->dirty) {
-
             /*
              * If the texture has been written to this frame but it is not
              * actively in use then tell the gfx system to evict it from the
@@ -419,159 +568,11 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
                 continue;
             }
 
-            pvr2_tex_get_meta(&tex_out->meta, idx);
-
-            // TODO: better error-handling
-            if ((ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1) <=
-                (tex_in->meta.addr_last - tex_in->meta.addr_first + 1)) {
-                abort();
-            }
-
-            printf("tex_in->addr_first is 0x%08x\n", tex_in->meta.addr_first);
-
-            size_t n_bytes = sizeof(uint8_t) *
-                (1 << tex_in->meta.w_shift) * (1 << tex_in->meta.h_shift) *
-                pixel_sizes[tex_in->meta.tex_fmt];
-
-            void *tex_dat = NULL;
-            if (n_bytes)
-                tex_dat = malloc(n_bytes);
-
-            if (!tex_dat)
-                RAISE_ERROR(ERROR_INTEGRITY);
-
-            uint8_t const *beg;
-            uint8_t const *code_book; // points to the code book if this is VQ
-
-            /*
-             * handle mipmaps.
-             *
-             * Currently they're not actually implemented, I just select the
-             * highest-order mipmap (which is the one at the end).  To
-             * accomplish this, we have to offset the addr_first by the offset
-             * to the highest-order mipmap.
-             */
-            if (tex_in->meta.mipmap) {
-                if (tex_in->meta.w_shift != tex_in->meta.h_shift) {
-                    error_set_feature("proper response for attempting to "
-                                      "enable mipmapping on a rectangular "
-                                      "texture");
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                }
-
-                unsigned side_shift = tex_in->meta.w_shift;
-
-                if (tex_in->meta.vq_compression) {
-                    code_book = pvr2_tex64_mem + tex_in->meta.addr_first;
-                    beg = code_book + PVR2_CODE_BOOK_LEN +
-                        mipmap_byte_offset_vq[side_shift];
-                } else {
-                    switch (tex_in->meta.tex_fmt) {
-                    case TEX_CTRL_PIX_FMT_ARGB_1555:
-                    case TEX_CTRL_PIX_FMT_RGB_565:
-                    case TEX_CTRL_PIX_FMT_YUV_422:
-                    case TEX_CTRL_PIX_FMT_ARGB_4444:
-                        beg = pvr2_tex64_mem + tex_in->meta.addr_first +
-                            mipmap_byte_offset_norm[tex_in->meta.w_shift];
-                        break;
-                    case TEX_CTRL_PIX_FMT_4_BPP_PAL:
-                    case TEX_CTRL_PIX_FMT_8_BPP_PAL:
-                        beg = pvr2_tex64_mem + tex_in->meta.addr_first +
-                            mipmap_byte_offset_palette[tex_in->meta.w_shift];
-                        break;
-                    default:
-                        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                    }
-                }
-            } else {
-                /*
-                 * mipmaps are disabled, tex_in->addr_first is actually the
-                 * first byte of the texture.
-                 */
-                beg = pvr2_tex64_mem + tex_in->meta.addr_first;
-                if (tex_in->meta.vq_compression) {
-                    code_book = beg;
-                    beg += PVR2_CODE_BOOK_LEN;
-                }
-            }
-
-            if (tex_in->meta.vq_compression) {
-                if (pixel_sizes[tex_in->meta.tex_fmt] != 2) {
-                    error_set_feature("proper response for an attempt to use "
-                                      "VQ compression on a non-RGB texture");
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                }
-
-                if (tex_in->meta.w_shift != tex_in->meta.h_shift) {
-                    error_set_feature("proper response for an attempt to use "
-                                      "VQ compression on a non-square texture");
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                }
-
-                pvr2_tex_vq_decompress(tex_dat, code_book, beg, tex_in->meta.w_shift);
-            } else if (tex_in->meta.twiddled) {
-                pvr2_tex_detwiddle(tex_dat, beg,
-                                   tex_in->meta.w_shift, tex_in->meta.h_shift,
-                                   pixel_sizes[tex_in->meta.tex_fmt]);
-            } else {
-                memcpy(tex_dat, beg,
-                       pixel_sizes[tex_in->meta.tex_fmt] * tex_w * tex_h);
-            }
-
-            if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
-                uint32_t tex_size_actual;
-                enum palette_tp palette_tp = get_palette_tp();
-                switch (palette_tp) {
-                case PALETTE_TP_ARGB_1555:
-                    tex_out->meta.pix_fmt = TEX_CTRL_PIX_FMT_ARGB_1555;
-                    tex_size_actual = 2;
-                    break;
-                case PALETTE_TP_RGB_565:
-                    tex_out->meta.pix_fmt = TEX_CTRL_PIX_FMT_RGB_565;
-                    tex_size_actual = 2;
-                    break;
-                case PALETTE_TP_ARGB_4444:
-                    tex_out->meta.pix_fmt = TEX_CTRL_PIX_FMT_ARGB_4444;
-                    tex_size_actual = 2;
-                    break;
-                case PALETTE_TP_ARGB_8888:
-                    tex_size_actual = 4;
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                    break;
-                default:
-                    RAISE_ERROR(ERROR_INTEGRITY);
-                }
-                uint8_t *tex_dat_no_palette =
-                    (uint8_t*)malloc(tex_size_actual * tex_w * tex_h);
-                if (!tex_dat_no_palette)
-                    RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-                uint32_t pal_start = (tex_out->meta.tex_palette_start & 0x30) << 4;
-                uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
-
-                unsigned row, col;
-                for (row = 0; row < tex_h; row++) {
-                    for (col = 0; col < tex_w; col++) {
-                        unsigned pix_idx = row * tex_w + col;
-                        uint8_t *pix_out = tex_dat_no_palette +
-                            pix_idx * tex_size_actual;
-                        uint8_t pix_in = tex_dat8[pix_idx];
-                        uint32_t palette_addr =
-                            (pal_start | (uint32_t)pix_in) * 4;
-                        memcpy(pix_out, pvr2_palette_ram + palette_addr, tex_size_actual);
-                    }
-                }
-                tex_out->dat = tex_dat_no_palette;
-                free(tex_dat);
-                printf("PVR2 paletted texture: tex_palette_start is 0x%04x\n",
-                       (unsigned)tex_out->meta.tex_palette_start);
-            } else if (tex_out->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-                error_set_feature("4BPP paletted textures");
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
-            } else {
-                tex_out->meta.pix_fmt = tex_in->meta.tex_fmt;
-                tex_out->dat = tex_dat;
-            }
+            memcpy(&tex_out->meta, &tex_in->meta, sizeof(tex_out->meta));
+            if (tex_out->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+                tex_out->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL)
+                tex_out->meta.pix_fmt = get_palette_tp();
+            pvr2_tex_cache_read(&tex_out->dat, &tex_out->meta);
 
             tex_in->dirty = false;
         }

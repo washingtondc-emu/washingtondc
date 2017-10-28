@@ -95,7 +95,7 @@ struct pvr2_tex {
     bool valid;
 
     // texture data (if dirty is true)
-    uint8_t *dat;
+    void *dat;
 };
 
 /*
@@ -137,5 +137,7 @@ void pvr2_tex_cache_xmit(struct geo_buf *out);
  * will return 0.
  */
 int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx);
+
+void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta);
 
 #endif

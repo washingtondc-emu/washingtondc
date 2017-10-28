@@ -32,7 +32,6 @@
 #include "hw/aica/aica_wave_mem.h"
 #include "gfx/gfx_config.h"
 #include "gfx/gfx_thread.h"
-#include "gfx/gfx_tex_cache.h"
 #include "cons.h"
 #include "dreamcast.h"
 #include "config.h"
@@ -60,7 +59,8 @@ static int cmd_tex_dump_all(int argc, char **argv);
 static int cmd_tex_dump(int argc, char **argv);
 static int cmd_power_stone_hack(int argc, char **argv);
 
-static int save_tex(char const *path, struct gfx_tex const *tex);
+static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
+                    void const *dat);
 
 struct cmd {
     char const *cmd_name;
@@ -583,9 +583,6 @@ static int cmd_tex_enum(int argc, char **argv) {
         if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
             cons_printf("%s%u", did_print ? ", " : "", tex_no);
             did_print = true;
-
-            if (tex.valid && tex.dat)
-                free(tex.dat);
         }
     }
 
@@ -599,7 +596,6 @@ static int cmd_tex_enum(int argc, char **argv) {
 
 static int cmd_tex_dump(int argc, char **argv) {
     unsigned tex_no;
-    struct gfx_tex tex;
 
     if (argc != 3) {
         cons_puts("Usage: tex-dump tex_no file\n");
@@ -610,13 +606,15 @@ static int cmd_tex_dump(int argc, char **argv) {
 
     char const *file = argv[2];
 
-    gfx_thread_get_tex(&tex, tex_no);
+    struct pvr2_tex_meta meta;
 
-    if (tex.valid) {
-        if (tex.dat) {
-            save_tex(file, &tex);
+    if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
+        void *tex_dat;
+        pvr2_tex_cache_read(&tex_dat, &meta);
+        if (tex_dat) {
+            save_tex(file, &meta, tex_dat);
 
-            free(tex.dat);
+            free(tex_dat);
         } else {
             cons_printf("Failed to retrieve texture %u from the texture "
                         "cache\n", tex_no);
@@ -634,7 +632,6 @@ static int cmd_tex_dump_all(int argc, char **argv) {
     char const *dir_path;
     char const *path_last_char;
     char total_path[TEX_DUMP_ALL_PATH_LEN];
-    struct gfx_tex tex;
 
     if (argc != 2) {
         cons_puts("Usage: tex-dump-all directory\n");
@@ -645,9 +642,10 @@ static int cmd_tex_dump_all(int argc, char **argv) {
     path_last_char = dir_path + strlen(dir_path);
 
     for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
-        gfx_thread_get_tex(&tex, tex_no);
-
-        if (tex.valid && tex.dat) {
+        struct pvr2_tex_meta meta;
+        if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
+            void *tex_dat;
+            pvr2_tex_cache_read(&tex_dat, &meta);
             if (*path_last_char == '/') {
                 snprintf(total_path, TEX_DUMP_ALL_PATH_LEN, "%stex_%03u.png",
                          dir_path, tex_no);
@@ -657,15 +655,16 @@ static int cmd_tex_dump_all(int argc, char **argv) {
             }
             total_path[TEX_DUMP_ALL_PATH_LEN - 1] = '\0';
 
-            save_tex(total_path, &tex);
-            free(tex.dat);
+            save_tex(total_path, &meta, tex_dat);
+            free(tex_dat);
         }
     }
 
     return 0;
 }
 
-static int save_tex(char const *path, struct gfx_tex const *tex) {
+static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
+                    void const *dat) {
     /*
      * TODO: come up with a way to do the writing asynchronously from the io
      * thread.
@@ -698,9 +697,9 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
 
     png_init_io(png_ptr, stream);
 
-    if (tex->meta.pix_fmt != TEX_CTRL_PIX_FMT_ARGB_1555 &&
-        tex->meta.pix_fmt != TEX_CTRL_PIX_FMT_RGB_565 &&
-        tex->meta.pix_fmt != TEX_CTRL_PIX_FMT_ARGB_4444) {
+    if (meta->pix_fmt != TEX_CTRL_PIX_FMT_ARGB_1555 &&
+        meta->pix_fmt != TEX_CTRL_PIX_FMT_RGB_565 &&
+        meta->pix_fmt != TEX_CTRL_PIX_FMT_ARGB_4444) {
         err_val = -1;
         goto cleanup_png;
     }
@@ -708,7 +707,7 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
     int color_tp_png;
     unsigned n_colors;
     unsigned pvr2_pix_size;
-    switch (tex->meta.pix_fmt) {
+    switch (meta->pix_fmt) {
     case TEX_CTRL_PIX_FMT_ARGB_1555:
     case TEX_CTRL_PIX_FMT_ARGB_4444:
         color_tp_png = PNG_COLOR_TYPE_RGB_ALPHA;
@@ -730,9 +729,9 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
      *
      * Also, the max texture-side-log2 on pvr2 is 10 anyways.
      */
-    if (tex->meta.w_shift > 10 || tex->meta.h_shift > 10)
+    if (meta->w_shift > 10 || meta->h_shift > 10)
         RAISE_ERROR(ERROR_INTEGRITY);
-    unsigned tex_w = 1 << tex->meta.w_shift, tex_h = 1 << tex->meta.h_shift;
+    unsigned tex_w = 1 << meta->w_shift, tex_h = 1 << meta->h_shift;
 
     // this should not be possible, but scan-build thinks it is...?
     if (!tex_w || !tex_h)
@@ -749,10 +748,12 @@ static int save_tex(char const *path, struct gfx_tex const *tex) {
 
         for (col = 0; col < tex_w; col++) {
             unsigned pix_idx = row * tex_w + col;
-            uint8_t const *src_pix = tex->dat + pix_idx * pvr2_pix_size;
+            uint8_t src_pix[4];
             unsigned red, green, blue, alpha;
 
-            switch (tex->meta.pix_fmt) {
+            memcpy(src_pix, dat + pix_idx * pvr2_pix_size, sizeof(src_pix));
+
+            switch (meta->pix_fmt) {
             case TEX_CTRL_PIX_FMT_ARGB_1555:
                 alpha = src_pix[1] & 0x80 ? 255 : 0;
                 red = (src_pix[1] & 0x7c) >> 2;

@@ -75,13 +75,6 @@ void gfx_thread_post_framebuffer(uint32_t const *fb_new,
 
 void gfx_thread_run_once(void);
 
-/*
- * grab a copy of a given texture from the texture cache.  This function will
- * create a new copy of the texture data, and it will be the caller's
- * responsibility to free that eventually.
- */
-void gfx_thread_get_tex(struct gfx_tex *out, unsigned tex_no);
-
 #ifdef __cplusplus
 }
 #endif
