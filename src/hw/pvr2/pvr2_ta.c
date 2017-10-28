@@ -520,6 +520,7 @@ static void on_polyhdr_received(void) {
 
     if (list >= DISPLAY_LIST_COUNT || list < 0) {
         error_set_feature("correct response for invalid display list indices");
+        error_set_display_list_index(list);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
