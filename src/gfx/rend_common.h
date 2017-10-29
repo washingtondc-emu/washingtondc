@@ -40,7 +40,7 @@ struct rend_if {
      * called to notify the renderer that it needs to update the given
      * texture from the texture cache
      */
-    void (*update_tex)(unsigned tex_obj);
+    void (*update_tex)(unsigned tex_obj, void const*);
 
     /*
      * called to notify the renderer that it needs to release the resources
@@ -62,7 +62,7 @@ void rend_init(void);
 void rend_cleanup(void);
 
 // tell the renderer to update the given texture from the cache
-void rend_update_tex(unsigned tex_no);
+void rend_update_tex(unsigned tex_no, void const *tex_dat);
 
 // tell the renderer to release the given texture from the cache
 void rend_release_tex(unsigned tex_no);

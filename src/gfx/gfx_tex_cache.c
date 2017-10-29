@@ -40,7 +40,8 @@ void gfx_tex_cache_cleanup(void) {
             gfx_tex_cache_evict(idx);
 }
 
-void gfx_tex_cache_add(unsigned idx, struct gfx_tex const *tex) {
+void gfx_tex_cache_add(unsigned idx, struct gfx_tex const *tex,
+                       void const *tex_data) {
     struct gfx_tex *slot = tex_cache + idx;
 
     if (slot->valid)
@@ -48,7 +49,7 @@ void gfx_tex_cache_add(unsigned idx, struct gfx_tex const *tex) {
 
     memcpy(slot, tex, sizeof(*slot));
 
-    rend_update_tex(idx);
+    rend_update_tex(idx, tex_data);
 }
 
 /*
@@ -58,15 +59,7 @@ void gfx_tex_cache_add(unsigned idx, struct gfx_tex const *tex) {
  * doesn't accidentally double-free something.
  */
 void gfx_tex_cache_evict(unsigned idx) {
-    struct gfx_tex *slot = tex_cache + idx;
-
-    if (slot->valid) {
-        if (slot->dat) {
-            free(slot->dat);
-            slot->dat = NULL;
-        }
-        slot->valid = false;
-    }
+    tex_cache[idx].valid = false;
 }
 
 struct gfx_tex const* gfx_tex_cache_get(unsigned idx) {

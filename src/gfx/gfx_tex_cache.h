@@ -39,12 +39,6 @@ struct gfx_tex {
 
     // if false, none of the other members of this struct are valid
     bool valid;
-
-    /*
-     * the image data.  This pointer belongs to the gfx thread and will be
-     * freed by it when this texture gets evicted from the cache.
-     */
-    void *dat;
 };
 
 /*
@@ -56,7 +50,8 @@ struct gfx_tex {
  *
  * gfx_tex_cache_add will automatically evict the existing texture if there is one.
  */
-void gfx_tex_cache_add(unsigned idx, struct gfx_tex const *tex);
+void gfx_tex_cache_add(unsigned idx, struct gfx_tex const *tex,
+                       void const *tex_data);
 
 void gfx_tex_cache_evict(unsigned idx);
 

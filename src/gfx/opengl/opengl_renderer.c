@@ -134,7 +134,7 @@ static void render_conv_argb_1555(uint16_t *pixels, size_t n_pizels);
 
 static void opengl_render_init(void);
 static void opengl_render_cleanup(void);
-static void opengl_renderer_update_tex(unsigned tex_obj);
+static void opengl_renderer_update_tex(unsigned tex_obj, void const* tex_dat);
 static void opengl_renderer_release_tex(unsigned tex_obj);
 static void opengl_renderer_do_draw_geo_buf(struct geo_buf *geo);
 
@@ -365,7 +365,7 @@ static void render_do_draw_group(struct geo_buf *geo,
 static void render_do_draw(struct geo_buf *geo) {
 }
 
-static void opengl_renderer_update_tex(unsigned tex_obj) {
+static void opengl_renderer_update_tex(unsigned tex_obj, void const *tex_dat) {
     struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
     GLenum format = tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
         GL_RGB : GL_RGBA;
@@ -387,28 +387,28 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
     if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444) {
         size_t n_bytes =
             sizeof(uint16_t) << (tex->meta.w_shift + tex->meta.h_shift);
-        uint16_t *tex_dat = (uint16_t*)malloc(n_bytes);
-        if (!tex_dat)
+        uint16_t *tex_dat_conv = (uint16_t*)malloc(n_bytes);
+        if (!tex_dat_conv)
             abort();
-        memcpy(tex_dat, tex->dat, n_bytes);
-        render_conv_argb_4444(tex_dat, tex_w * tex_h);
+        memcpy(tex_dat_conv, tex_dat, n_bytes);
+        render_conv_argb_4444(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_4444], tex_dat);
-        free(tex_dat);
+                     format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_4444], tex_dat_conv);
+        free(tex_dat_conv);
     } else if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_1555) {
         size_t n_bytes =
             sizeof(uint16_t) << (tex->meta.w_shift + tex->meta.h_shift);
-        uint16_t *tex_dat = (uint16_t*)malloc(n_bytes);
-        if (!tex_dat)
+        uint16_t *tex_dat_conv = (uint16_t*)malloc(n_bytes);
+        if (!tex_dat_conv)
             abort();
-        memcpy(tex_dat, tex->dat, n_bytes);
-        render_conv_argb_1555(tex_dat, tex_w * tex_h);
+        memcpy(tex_dat_conv, tex_dat, n_bytes);
+        render_conv_argb_1555(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_1555], tex_dat);
-        free(tex_dat);
+                     format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_1555], tex_dat_conv);
+        free(tex_dat_conv);
     } else {
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, tex_formats[tex->meta.pix_fmt], tex->dat);
+                     format, tex_formats[tex->meta.pix_fmt], tex_dat);
     }
     glBindTexture(GL_TEXTURE_2D, 0);
 }

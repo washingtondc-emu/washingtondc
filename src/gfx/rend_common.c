@@ -49,8 +49,8 @@ void rend_cleanup(void) {
 }
 
 // tell the renderer to update the given texture from the cache
-void rend_update_tex(unsigned tex_no) {
-    rend_ifp->update_tex(tex_no);
+void rend_update_tex(unsigned tex_no, void const *tex_dat) {
+    rend_ifp->update_tex(tex_no, tex_dat);
 }
 
 // tell the renderer to release the given texture from the cache
@@ -74,12 +74,12 @@ void rend_draw_next_geo_buf(void) {
             if (tex->state == PVR2_TEX_DIRTY) {
                 struct gfx_tex new_tex_entry = {
                     .valid =  true,
-                    .dat = tex->dat,
                     .meta = tex->meta
                 };
-                tex->dat = NULL;
                 tex->state = PVR2_TEX_READY;
-                gfx_tex_cache_add(tex_no, &new_tex_entry);
+                gfx_tex_cache_add(tex_no, &new_tex_entry, tex->dat);
+                free(tex->dat);
+                tex->dat = NULL;
             } else if (tex->state == PVR2_TEX_INVALID) {
                 gfx_tex_cache_evict(tex_no);
             }
