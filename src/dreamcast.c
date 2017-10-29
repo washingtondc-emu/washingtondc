@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdatomic.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -77,7 +76,7 @@ enum TermReason {
 // this stores the reason the dreamcast suspended execution
 enum TermReason term_reason = TERM_REASON_NORM;
 
-static atomic_int dc_state = ATOMIC_VAR_INIT(DC_STATE_NOT_RUNNING);
+static enum dc_state dc_state = DC_STATE_NOT_RUNNING;
 
 static void dc_sigint_handler(int param);
 
@@ -510,14 +509,13 @@ bool dc_emu_thread_is_running(void) {
 }
 
 enum dc_state dc_get_state(void) {
-    return (enum dc_state)atomic_load(&dc_state);
+    return dc_state;
 }
 
 void dc_state_transition(enum dc_state state_new, enum dc_state state_old) {
-    int expected = (int)state_old;
-
-    if (!atomic_compare_exchange_strong(&dc_state, &expected, (int)state_new))
+    if (state_old != dc_state)
         RAISE_ERROR(ERROR_INTEGRITY);
+    dc_state = state_new;
 }
 
 bool dc_debugger_enabled(void) {
