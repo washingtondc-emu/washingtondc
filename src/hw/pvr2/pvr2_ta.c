@@ -34,6 +34,7 @@
 #include "pvr2_tex_mem.h"
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"
+#include "host_branch_pred.h"
 
 #include "pvr2_ta.h"
 
@@ -257,7 +258,9 @@ char const *display_list_names[DISPLAY_LIST_COUNT] = {
     "Opaque Modifier Volume",
     "Transparent",
     "Transparent Modifier Volume",
-    "Punch-through Polygon"
+    "Punch-through Polygon",
+    "Unknown Display list 6",
+    "Unknown Display list 7"
 };
 
 // lengths of each type of vert, in terms of 32-bit integers
@@ -356,6 +359,35 @@ static void on_packet_received(void) {
 
     switch(cmd_tp) {
     case TA_CMD_TYPE_VERTEX:
+        /*
+         * Crazyy Taxi seems to send headers for all 8 possible polygon lists
+         * even though only 5 lists actually exist.  It never submits vertex
+         * data for the three which don't actually exist.  Here we panic if it
+         * does try to send vertex data to one of those three lists.
+         */
+        if (unlikely(poly_state.current_list < DISPLAY_LIST_FIRST ||
+                     poly_state.current_list > DISPLAY_LIST_LAST)) {
+            error_set_feature("unknown display list type");
+            error_set_display_list_index(poly_state.current_list);
+            error_set_ta_fifo_byte_count(ta_fifo_byte_count);
+            error_set_ta_fifo_word_0(ta_fifo32[0]);
+            error_set_ta_fifo_word_1(ta_fifo32[1]);
+            error_set_ta_fifo_word_2(ta_fifo32[2]);
+            error_set_ta_fifo_word_3(ta_fifo32[3]);
+            error_set_ta_fifo_word_4(ta_fifo32[4]);
+            error_set_ta_fifo_word_5(ta_fifo32[5]);
+            error_set_ta_fifo_word_6(ta_fifo32[6]);
+            error_set_ta_fifo_word_7(ta_fifo32[7]);
+            error_set_ta_fifo_word_8(ta_fifo32[8]);
+            error_set_ta_fifo_word_9(ta_fifo32[9]);
+            error_set_ta_fifo_word_a(ta_fifo32[10]);
+            error_set_ta_fifo_word_b(ta_fifo32[11]);
+            error_set_ta_fifo_word_c(ta_fifo32[12]);
+            error_set_ta_fifo_word_d(ta_fifo32[13]);
+            error_set_ta_fifo_word_e(ta_fifo32[14]);
+            error_set_ta_fifo_word_f(ta_fifo32[15]);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
         if (poly_state.global_param == GLOBAL_PARAM_POLY) {
             on_vertex_received();
         } else if (poly_state.global_param == GLOBAL_PARAM_SPRITE) {

@@ -452,7 +452,7 @@ static void opengl_renderer_do_draw_geo_buf(struct geo_buf *geo) {
 
     unsigned group_no;
     enum display_list_type disp_list;
-    for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
+    for (disp_list = DISPLAY_LIST_FIRST; disp_list <= DISPLAY_LIST_LAST;
          disp_list++) {
         if (disp_list == DISPLAY_LIST_OPAQUE_MOD ||
             disp_list == DISPLAY_LIST_TRANS_MOD)

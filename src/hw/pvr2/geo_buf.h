@@ -170,6 +170,12 @@ enum display_list_type {
     DISPLAY_LIST_TRANS,
     DISPLAY_LIST_TRANS_MOD,
     DISPLAY_LIST_PUNCH_THROUGH,
+    DISPLAY_LIST_LAST = DISPLAY_LIST_PUNCH_THROUGH,
+
+    // These three list types are invalid, but I do see DISPLAY_LIST_7 sometimes
+    DISPLAY_LIST_5,
+    DISPLAY_LIST_6,
+    DISPLAY_LIST_7,
 
     DISPLAY_LIST_COUNT,
 
