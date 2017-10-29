@@ -67,6 +67,14 @@ static unsigned mipmap_byte_offset_norm[11] = {
     0x6, 0x8, 0x10, 0x30, 0xb0, 0x2b0, 0xab0, 0x2ab0, 0xaab0, 0x2aab0, 0xaaab0
 };
 
+static bool pvr2_tex_valid(enum pvr2_tex_state state) {
+    return state == PVR2_TEX_READY || state == PVR2_TEX_DIRTY;
+}
+
+static bool pvr2_tex_dirty(enum pvr2_tex_state state) {
+    return state == PVR2_TEX_DIRTY;
+}
+
 static unsigned tex_twiddle(unsigned x, unsigned y,
                             unsigned w_shift, unsigned h_shift);
 
@@ -143,7 +151,7 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, uint32_t pal_addr,
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
-        if (tex->valid && (tex->meta.addr_first == addr) &&
+        if (pvr2_tex_valid(tex->state) && (tex->meta.addr_first == addr) &&
             (tex->meta.w_shift == w_shift) && (tex->meta.h_shift == h_shift) &&
             (tex->meta.tex_fmt == tex_fmt) && (tex->meta.twiddled == twiddled) &&
             (tex->meta.vq_compression == vq_compression) &&
@@ -182,7 +190,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
 
-        if (!tex->valid)
+        if (!pvr2_tex_valid(tex->state))
             break;
 
         if (tex->frame_stamp_last_used < cur_frame_stamp) {
@@ -262,8 +270,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
         }
     }
 
-    tex->valid = true;
-    tex->dirty = true;
+    tex->state = PVR2_TEX_DIRTY;
     /*
      * We defer reading the actual data from texture memory until we're ready
      * to transmit this to the rendering thread.
@@ -291,11 +298,11 @@ void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex = tex_cache + idx;
-        if (tex->valid &&
+        if (tex->state == PVR2_TEX_READY &&
             check_overlap(addr_first, addr_last,
                           tex->meta.addr_first + ADDR_TEX64_FIRST,
                           tex->meta.addr_last + ADDR_TEX64_FIRST)) {
-            tex->dirty = true;
+            tex->state = PVR2_TEX_DIRTY;
         }
     }
 }
@@ -315,9 +322,10 @@ void pvr2_tex_cache_notify_palette_tp_change(void) {
     unsigned idx;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex = tex_cache + idx;
-        if (tex->valid && (tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
-                           tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL))
-            tex->dirty = true;
+        if (tex->state == PVR2_TEX_READY &&
+            (tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
+             tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL))
+            tex->state = PVR2_TEX_DIRTY;
     }
 }
 
@@ -553,18 +561,17 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
         unsigned tex_w = 1 << tex_in->meta.w_shift,
             tex_h = 1 << tex_in->meta.h_shift;
 
-        tex_out->dirty = tex_in->dirty;
-        tex_out->valid = tex_in->valid;
+        tex_out->state = tex_in->state;
 
-        if (tex_in->valid && tex_in->dirty) {
+        if (tex_in->state == PVR2_TEX_DIRTY) {
             /*
              * If the texture has been written to this frame but it is not
              * actively in use then tell the gfx system to evict it from the
              * cache by marking the valid bit as false.
              */
             if (tex_in->frame_stamp_last_used != cur_frame_stamp) {
-                tex_out->valid = false;
-                tex_in->valid = false;
+                tex_out->state = PVR2_TEX_INVALID;
+                tex_in->state = PVR2_TEX_INVALID;
                 continue;
             }
 
@@ -574,7 +581,7 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
                 tex_out->meta.pix_fmt = get_palette_tp();
             pvr2_tex_cache_read(&tex_out->dat, &tex_out->meta);
 
-            tex_in->dirty = false;
+            tex_in->state = PVR2_TEX_READY;
         }
     }
 }
@@ -585,7 +592,7 @@ int pvr2_tex_cache_get_idx(struct pvr2_tex const *tex) {
 
 int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx) {
     struct pvr2_tex const *tex_in = tex_cache + tex_idx;
-    if (tex_in->valid) {
+    if (pvr2_tex_valid(tex_in->state)) {
         memcpy(meta, &tex_in->meta, sizeof(struct pvr2_tex_meta));
         return 0;
     }

@@ -40,6 +40,22 @@ struct geo_buf;
 #define PVR2_TEX_CACHE_SIZE 512
 #define PVR2_TEX_CACHE_MASK (PVR2_TEX_CACHE_SIZE - 1)
 
+enum pvr2_tex_state {
+    // the texture in this slot is invaldi
+    PVR2_TEX_INVALID,
+
+    /*
+     * if this is the state, it means that this entry in the texture cache has
+     * changed since the last update.  This is the only state ofr which the
+     * data in dat is not valid (although the data in the corresponding entry
+     * in OpenGL's tex cache is).
+     */
+    PVR2_TEX_DIRTY,
+
+    // texture is valid and has already been submitted to the renderer
+    PVR2_TEX_READY
+};
+
 struct pvr2_tex_meta {
     uint32_t addr_first, addr_last;
 
@@ -83,18 +99,9 @@ struct pvr2_tex {
     // the frame stamp from the last time this texture was referenced
     unsigned frame_stamp_last_used;
 
-    /*
-     * if this is set, it means that this entry in the texture cache has
-     * changed since the last update.  If this is not set, then the data in
-     * dat is not valid (although the data in the corresponding entry in
-     * OpenGL's tex cache is).
-     */
-    bool dirty;
+    enum pvr2_tex_state state;
 
-    // if this is not set then this part of the cache is empty
-    bool valid;
-
-    // texture data (if dirty is true)
+    // texture data (if the state is dirty)
     void *dat;
 };
 

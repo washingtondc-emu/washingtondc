@@ -71,16 +71,16 @@ void rend_draw_next_geo_buf(void) {
         unsigned tex_no;
         for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
             struct pvr2_tex *tex = geo->tex_cache + tex_no;
-            if (tex->valid && tex->dirty) {
+            if (tex->state == PVR2_TEX_DIRTY) {
                 struct gfx_tex new_tex_entry = {
                     .valid =  true,
                     .dat = tex->dat,
                     .meta = tex->meta
                 };
                 tex->dat = NULL;
-                tex->dirty = false;
+                tex->state = PVR2_TEX_READY;
                 gfx_tex_cache_add(tex_no, &new_tex_entry);
-            } else if (!tex->valid) {
+            } else if (tex->state == PVR2_TEX_INVALID) {
                 gfx_tex_cache_evict(tex_no);
             }
         }
