@@ -31,11 +31,11 @@
 
 #include "hw/aica/aica_wave_mem.h"
 #include "gfx/gfx_config.h"
-#include "gfx/gfx_thread.h"
 #include "cons.h"
 #include "dreamcast.h"
 #include "config.h"
 #include "hw/pvr2/pvr2_core_reg.h"
+#include "hw/pvr2/pvr2_tex_cache.h"
 
 #include "cmd.h"
 
@@ -575,7 +575,6 @@ static int cmd_tex_info(int argc, char **argv) {
 
 static int cmd_tex_enum(int argc, char **argv) {
     unsigned tex_no;
-    struct gfx_tex tex;
     bool did_print = false;
 
     for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
