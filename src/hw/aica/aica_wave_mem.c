@@ -20,7 +20,6 @@
  *
  ******************************************************************************/
 
-#include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -128,7 +127,7 @@ static struct aica_mem_hack {
     { .end = true }
 };
 
-atomic_bool aica_log_verbose_val = ATOMIC_VAR_INIT(false);
+bool aica_log_verbose_val;
 
 static uint8_t aica_wave_mem[ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1];
 
@@ -148,8 +147,7 @@ int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
                 }
 
                 memcpy(buf, &cursor->val, len);
-                if (atomic_load_explicit(&aica_log_verbose_val,
-                                         memory_order_relaxed)) {
+                if (aica_log_verbose_val) {
                     printf("AICA: reading %u from 0x%08x due to the no-AICA "
                            "Power Stone hack\n",
                            (unsigned)cursor->val, (unsigned)cursor->addr);
@@ -171,7 +169,7 @@ int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
 
     memcpy(buf, start_addr, len);
 
-    if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
+    if (aica_log_verbose_val) {
         unsigned pc = dreamcast_get_cpu()->reg[SH4_REG_PC];
         if (len == 4) {
             uint32_t frak;
@@ -190,7 +188,7 @@ int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
 int aica_wave_mem_write(void const *buf, size_t addr, size_t len) {
     void *start_addr = aica_wave_mem + (addr - ADDR_AICA_WAVE_FIRST);
 
-    if (atomic_load_explicit(&aica_log_verbose_val, memory_order_relaxed)) {
+    if (aica_log_verbose_val) {
         unsigned pc = dreamcast_get_cpu()->reg[SH4_REG_PC];
         if (len == 4) {
             uint32_t frak;
@@ -216,5 +214,5 @@ int aica_wave_mem_write(void const *buf, size_t addr, size_t len) {
 }
 
 void aica_log_verbose(bool verbose) {
-    atomic_store_explicit(&aica_log_verbose_val, verbose, memory_order_relaxed);
+    aica_log_verbose_val = verbose;
 }
