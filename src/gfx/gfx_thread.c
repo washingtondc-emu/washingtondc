@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <err.h>
 #include <stdbool.h>
-#include <stdatomic.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -46,24 +45,27 @@
 
 static pthread_t gfx_thread;
 
-// if this is cleared, it means that there's been a vblank
-static atomic_flag not_pending_redraw = ATOMIC_FLAG_INIT;
-
-// if this is cleared, it means that userspace is waiting for us to read the framebuffer
-static atomic_flag not_reading_framebuffer = ATOMIC_FLAG_INIT;
-
-// if this is cleared, it means that there's a geo_buf waiting for us
-static atomic_flag not_rendering_geo_buf = ATOMIC_FLAG_INIT;
+// if this is set, it means that there's been a vblank
+static bool pending_redraw;
 
 /*
- * if this is cleared, it means that there's nothing to draw
+ * if this is set, it means that userspace is waiting for us to read the
+ * framebuffer.
+ */
+static bool reading_framebuffer;
+
+// if this is set, it means that there's a geo_buf waiting for us
+static bool rendering_geo_buf;
+
+/*
+ * if this is set, it means that there's nothing to draw
  * but we need to refresh the window
  */
-static atomic_flag not_pending_expose = ATOMIC_FLAG_INIT;
+static bool pending_expose;
 
 /*
  * when gfx_thread_read_framebuffer gets called it sets this to point to where
- * the framebuffer should be written to, clears not_reading_framebuffer, then
+ * the framebuffer should be written to, sets reading_framebuffer, then
  * waits on the fb_read_condtion condition.
  *
  * These variables should only be accessed by whomever holds the gfx_thread_work_lock
@@ -80,14 +82,17 @@ static unsigned win_width, win_height;
 
 static void* gfx_main(void *arg);
 
+// Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
+static void gfx_thread_lock(void);
+static void gfx_thread_unlock(void);
+static void gfx_thread_signal(void);
+static void gfx_thread_wait(void);
+
 void gfx_thread_launch(unsigned width, unsigned height) {
     int err_code;
 
     win_width = width;
     win_height = height;
-
-    atomic_flag_test_and_set(&not_pending_redraw);
-    atomic_flag_test_and_set(&not_reading_framebuffer);
 
     if ((err_code = pthread_create(&gfx_thread, NULL, gfx_main, NULL)) != 0)
         err(errno, "Unable to launch gfx thread");
@@ -98,18 +103,24 @@ void gfx_thread_join(void) {
 }
 
 void gfx_thread_redraw() {
-    atomic_flag_clear(&not_pending_redraw);
-    gfx_thread_notify_wake_up();
+    gfx_thread_lock();
+    pending_redraw = true;
+    gfx_thread_signal();
+    gfx_thread_unlock();
 }
 
 void gfx_thread_render_geo_buf(void) {
-    atomic_flag_clear(&not_rendering_geo_buf);
-    gfx_thread_notify_wake_up();
+    gfx_thread_lock();
+    rendering_geo_buf = true;
+    gfx_thread_signal();
+    gfx_thread_unlock();
 }
 
 void gfx_thread_expose(void) {
-    atomic_flag_clear(&not_pending_expose);
-    gfx_thread_notify_wake_up();
+    gfx_thread_lock();
+    pending_expose = true;
+    gfx_thread_signal();
+    gfx_thread_unlock();
 }
 
 static void* gfx_main(void *arg) {
@@ -137,24 +148,21 @@ static void* gfx_main(void *arg) {
 
     glClear(GL_COLOR_BUFFER_BIT);
 
-    if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
-        abort(); // TODO: error handling
+    gfx_thread_lock();
 
     do {
         gfx_thread_run_once();
-        if (pthread_cond_wait(&gfx_thread_work_condition, &gfx_thread_work_lock) != 0)
-            abort(); // TODO: error handling
+        gfx_thread_wait();
     } while (dc_is_running());
 
-    if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
-        abort(); // TODO: error handling
-
-    if (!atomic_flag_test_and_set(&not_pending_redraw))
+    if (pending_redraw)
         printf("%s - there was a pending redraw\n", __func__);
-    if (!atomic_flag_test_and_set(&not_reading_framebuffer))
+    if (reading_framebuffer)
         printf("%s - there was a pending framebuffer read\n", __func__);
-    if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
+    if (rendering_geo_buf)
         printf("%s - there was a pending geo_buf render\n", __func__);
+
+    gfx_thread_unlock();
 
     gfx_tex_cache_cleanup();
     rend_cleanup();
@@ -166,18 +174,21 @@ static void* gfx_main(void *arg) {
 }
 
 void gfx_thread_run_once(void) {
-    if (!atomic_flag_test_and_set(&not_pending_redraw)) {
+    if (pending_redraw) {
+        pending_redraw = false;
         opengl_video_update_framebuffer();
         opengl_video_present();
         win_update();
     }
 
-    if (!atomic_flag_test_and_set(&not_pending_expose)) {
+    if (pending_expose) {
+        pending_expose = false;
         opengl_video_present();
         win_update();
     }
 
-    if (!atomic_flag_test_and_set(&not_reading_framebuffer)) {
+    if (reading_framebuffer) {
+        reading_framebuffer = false;
         opengl_target_grab_pixels(fb_out, fb_out_size);
         fb_out = NULL;
         fb_out_size = 0;
@@ -186,38 +197,32 @@ void gfx_thread_run_once(void) {
             abort(); // TODO: error handling
     }
 
-    if (!atomic_flag_test_and_set(&not_rendering_geo_buf))
+    if (rendering_geo_buf) {
+        rendering_geo_buf = false;
         rend_draw_next_geo_buf();
+    }
 }
 
 void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
-    if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
-        abort(); // TODO: error handling
+    gfx_thread_lock();
 
     fb_out = dat;
     fb_out_size = n_bytes;
-    atomic_flag_clear(&not_reading_framebuffer);
+    reading_framebuffer = true;
 
-    if (pthread_cond_signal(&gfx_thread_work_condition) != 0)
-        abort(); // TODO: error handling
+    gfx_thread_signal();
 
     while (fb_out) {
         pthread_cond_wait(&fb_read_condition, &gfx_thread_work_lock);
     }
 
-    if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
-        abort(); // TODO: error handling
+    gfx_thread_unlock();
 }
 
 void gfx_thread_notify_wake_up(void) {
-    if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
-        abort(); // TODO: error handling
-
-    if (pthread_cond_signal(&gfx_thread_work_condition) != 0)
-        abort(); // TODO: error handling
-
-    if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
-        abort(); // TODO: error handling
+    gfx_thread_lock();
+    gfx_thread_signal();
+    gfx_thread_unlock();
 }
 
 void gfx_thread_wait_for_geo_buf_stamp(unsigned stamp) {
@@ -228,4 +233,24 @@ void gfx_thread_post_framebuffer(uint32_t const *fb_new,
                                  unsigned fb_new_width,
                                  unsigned fb_new_height) {
     opengl_video_new_framebuffer(fb_new, fb_new_width, fb_new_height);
+}
+
+static void gfx_thread_lock(void) {
+    if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
+        abort(); // TODO: error handling
+}
+
+static void gfx_thread_unlock(void) {
+    if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
+        abort(); // TODO: error handling
+}
+
+static void gfx_thread_signal(void) {
+    if (pthread_cond_signal(&gfx_thread_work_condition) != 0)
+        abort(); // TODO: error handling
+}
+
+static void gfx_thread_wait(void) {
+    if (pthread_cond_wait(&gfx_thread_work_condition, &gfx_thread_work_lock) != 0)
+        abort(); // TODO: error handling
 }
