@@ -71,7 +71,7 @@ void rend_release_tex(unsigned tex_no);
 void rend_do_draw_geo_buf(struct geo_buf *geo);
 
 // this should only be called from the gfx_thread
-void rend_draw_next_geo_buf(void);
+void rend_draw_geo_buf(struct geo_buf *geo);
 
 /*
  * block until the geo_buf with the given frame_stamp has rendered.

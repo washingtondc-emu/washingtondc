@@ -63,69 +63,56 @@ void rend_do_draw_geo_buf(struct geo_buf *geo) {
     rend_ifp->do_draw_geo_buf(geo);
 }
 
-void rend_draw_next_geo_buf(void) {
-    struct geo_buf *geo;
-    unsigned bufs_rendered = 0;
-
-    while ((geo = geo_buf_get_cons())) {
-        unsigned tex_no;
-        for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
-            struct pvr2_tex *tex = geo->tex_cache + tex_no;
-            if (tex->state == PVR2_TEX_DIRTY) {
-                struct gfx_tex new_tex_entry = {
-                    .valid =  true,
-                    .meta = tex->meta
-                };
-                tex->state = PVR2_TEX_READY;
-                gfx_tex_cache_add(tex_no, &new_tex_entry, tex->dat);
-                free(tex->dat);
-                tex->dat = NULL;
-            } else if (tex->state == PVR2_TEX_INVALID) {
-                gfx_tex_cache_evict(tex_no);
-            }
+void rend_draw_geo_buf(struct geo_buf *geo) {
+    unsigned tex_no;
+    for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
+        struct pvr2_tex *tex = geo->tex_cache + tex_no;
+        if (tex->state == PVR2_TEX_DIRTY) {
+            struct gfx_tex new_tex_entry = {
+                .valid =  true,
+                .meta = tex->meta
+            };
+            tex->state = PVR2_TEX_READY;
+            gfx_tex_cache_add(tex_no, &new_tex_entry, tex->dat);
+            free(tex->dat);
+            tex->dat = NULL;
+        } else if (tex->state == PVR2_TEX_INVALID) {
+            gfx_tex_cache_evict(tex_no);
         }
-
-        opengl_target_begin(geo->screen_width, geo->screen_height);
-        rend_do_draw_geo_buf(geo);
-        opengl_target_end();
-
-        /*
-         * TODO: I wish I had a good idea for how to handle this without a
-         * mutex/condition var
-         */
-        if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
-            abort(); // TODO: error handling
-        frame_stamp = geo->frame_stamp;
-        if (pthread_cond_signal(&frame_stamp_update_cond) != 0)
-            abort(); // TODO: error handling
-        if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
-            abort(); // TODO: error handling
-
-        printf("frame_stamp %u rendered\n", frame_stamp);
-
-        enum display_list_type disp_list;
-        for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
-             disp_list++) {
-            struct display_list *list = geo->lists + disp_list;
-            if (list->n_groups) {
-                /*
-                 * current protocol is that list->groups is only valid if
-                 * list->n_groups is non-valid; ergo it's safe to leave a
-                 * hangning pointer here.
-                 */
-                free(list->groups);
-                list->n_groups = 0;
-            }
-        }
-
-        geo_buf_consume();
-        bufs_rendered++;
     }
 
-    if (bufs_rendered)
-        printf("%s - %u geo_bufs rendered\n", __func__, bufs_rendered);
-    else
-        printf("%s - erm...there's nothing to render here?\n", __func__);
+    opengl_target_begin(geo->screen_width, geo->screen_height);
+    rend_do_draw_geo_buf(geo);
+    opengl_target_end();
+
+    /*
+     * TODO: I wish I had a good idea for how to handle this without a
+     * mutex/condition var
+     */
+    if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
+        abort(); // TODO: error handling
+    frame_stamp = geo->frame_stamp;
+    if (pthread_cond_signal(&frame_stamp_update_cond) != 0)
+        abort(); // TODO: error handling
+    if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
+        abort(); // TODO: error handling
+
+    printf("frame_stamp %u rendered\n", frame_stamp);
+
+    enum display_list_type disp_list;
+    for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
+         disp_list++) {
+        struct display_list *list = geo->lists + disp_list;
+        if (list->n_groups) {
+            /*
+             * current protocol is that list->groups is only valid if
+             * list->n_groups is non-valid; ergo it's safe to leave a
+             * hangning pointer here.
+             */
+            free(list->groups);
+            list->n_groups = 0;
+        }
+    }
 }
 
 void rend_wait_for_frame_stamp(unsigned stamp) {

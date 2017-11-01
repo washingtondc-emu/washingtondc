@@ -80,6 +80,8 @@ static pthread_mutex_t gfx_thread_work_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static unsigned win_width, win_height;
 
+static struct geo_buf *next_geo_buf;
+
 static void* gfx_main(void *arg);
 
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
@@ -109,9 +111,10 @@ void gfx_thread_redraw() {
     gfx_thread_unlock();
 }
 
-void gfx_thread_render_geo_buf(void) {
+void gfx_thread_render_geo_buf(struct geo_buf *geo) {
     gfx_thread_lock();
     rendering_geo_buf = true;
+    next_geo_buf = geo;
     gfx_thread_signal();
     gfx_thread_unlock();
 }
@@ -199,7 +202,7 @@ void gfx_thread_run_once(void) {
 
     if (rendering_geo_buf) {
         rendering_geo_buf = false;
-        rend_draw_next_geo_buf();
+        rend_draw_geo_buf(next_geo_buf);
     }
 }
 

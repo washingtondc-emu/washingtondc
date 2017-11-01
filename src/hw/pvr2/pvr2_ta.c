@@ -308,6 +308,28 @@ static enum vert_type classify_vert(void);
 
 static void unpack_uv16(float *u_coord, float *v_coord, void const *input);
 
+/*
+ * simple buffer of two geo_bufs.  One of these is being written to from here,
+ * the other is being rendered by the gfx_thread (and therefore should not be
+ * touched by the pvr2 code).  geo_buf_prod_idx indicates the one we are
+ * writing to.
+ *
+ * The gfx_thread's mutex provides synchronization for this because
+ * gfx_thread_render_geo_buf will block trying to grab the mutex if the gfx
+ * thread is already running; thus the PVR2 code's only responsibility is not
+ * to write to the last geo_buf it submitted.
+ */
+static unsigned geo_buf_prod_idx;
+
+/*
+ * TODO: we should call geo_buf_init when WashingtonDC starts instead of
+ * hardcoding a couple of fresh geo_bufs here.
+ */
+static struct geo_buf geo_buf_array[2] = {
+    { .clip_min = -1.0f, .clip_max = 1.0f },
+    { .clip_min = -1.0f, .clip_max = 1.0f }
+};
+
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
 #ifdef PVR2_LOG_VERBOSE
     fprintf(stderr, "WARNING: trying to read %u bytes from the TA polygon FIFO "
@@ -626,7 +648,7 @@ static void on_polyhdr_received(void) {
      * and that will reference the poly_state.  Ergo, next_poly_group must be
      * called BEFORE any poly_state changes are made.
      */
-    struct geo_buf *geo = geo_buf_get_prod();
+    struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
 
     if (poly_state.current_list != DISPLAY_LIST_NONE &&
         poly_state.current_list != list) {
@@ -764,7 +786,7 @@ static void unpack_uv16(float *u_coord, float *v_coord, void const *input) {
 }
 
 static void on_sprite_received(void) {
-    struct geo_buf *geo = geo_buf_get_prod();
+    struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
 
     /*
      * if the vertex is not long enough, return and make input_poly_fifo call
@@ -1011,7 +1033,7 @@ static void on_vertex_received(void) {
 #ifdef PVR2_LOG_VERBOSE
     printf("vertex received!\n");
 #endif
-    struct geo_buf *geo = geo_buf_get_prod();
+    struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
 
     if (poly_state.current_list < 0) {
         printf("ERROR: unable to render vertex because no display lists are "
@@ -1187,7 +1209,7 @@ static void on_vertex_received(void) {
 static void on_end_of_list_received(void) {
     printf("END-OF-LIST PACKET!\n");
 
-    finish_poly_group(geo_buf_get_prod(), poly_state.current_list);
+    finish_poly_group(geo_buf_array + geo_buf_prod_idx, poly_state.current_list);
 
     if (poly_state.current_list != DISPLAY_LIST_NONE) {
         printf("Display list \"%s\" closed\n",
@@ -1240,7 +1262,7 @@ static void on_user_clip_received(void) {
 void pvr2_ta_startrender(void) {
     printf("STARTRENDER requested!\n");
 
-    struct geo_buf *geo = geo_buf_get_prod();
+    struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
 
     unsigned tile_w = get_glob_tile_clip_x() << 5;
     unsigned tile_h = get_glob_tile_clip_y() << 5;
@@ -1313,8 +1335,10 @@ void pvr2_ta_startrender(void) {
     finish_poly_group(geo, poly_state.current_list);
 
     framebuffer_set_current_host(geo->frame_stamp);
-    geo_buf_produce();
-    gfx_thread_render_geo_buf();
+
+    gfx_thread_render_geo_buf(geo_buf_array + geo_buf_prod_idx);
+    geo_buf_prod_idx = !geo_buf_prod_idx;
+    geo_buf_init(geo_buf_array + geo_buf_prod_idx);
 
     memset(list_submitted, 0, sizeof(list_submitted));
     poly_state.current_list = DISPLAY_LIST_NONE;

@@ -200,28 +200,7 @@ struct geo_buf {
     float clip_min, clip_max;
 };
 
-/*
- * return the next geo_buf to be consumed, or NULL if there are none.
- * This function never blocks.
- */
-struct geo_buf *geo_buf_get_cons(void);
-
-/*
- * return the next geo_buf to be produced.  This function never returns NULL.
- */
-struct geo_buf *geo_buf_get_prod(void);
-
-// consume the current geo_buf (which is the one returned by geo_buf_get_cons)
-void geo_buf_consume(void);
-
-/*
- * mark the current geo_buf as having been consumed.
- *
- * This function can block if the buffer is full; this is not ideal
- * and I would like to find a way to revisit this some time in the future.  For
- * now, stability trumps performance.
- */
-void geo_buf_produce(void);
+void geo_buf_init(struct geo_buf *buf);
 
 unsigned get_cur_frame_stamp(void);
 

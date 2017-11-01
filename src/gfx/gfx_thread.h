@@ -24,6 +24,7 @@
 #define GFX_THREAD_H_
 
 #include "gfx/gfx_tex_cache.h"
+#include "hw/pvr2/geo_buf.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -43,7 +44,7 @@ void gfx_thread_join(void);
 void gfx_thread_redraw();
 
 // signals the gfx thread to wake up and consume a geo_buf (by drawing it)
-void gfx_thread_render_geo_buf(void);
+void gfx_thread_render_geo_buf(struct geo_buf *geo_buf);
 
 // signals for the gfx thread to wake up and refresh the window
 void gfx_thread_expose(void);
