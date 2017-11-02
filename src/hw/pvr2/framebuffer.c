@@ -369,7 +369,8 @@ void framebuffer_render() {
     switch ((fb_r_ctrl & 0xc) >> 2) {
     case 0:
         // 16-bit 555 RGB
-        printf("Warning: unsupported video mode RGB555\n");
+        error_set_feature("video mode RGB555");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case 1:
         // 16-bit 565 RGB
@@ -389,7 +390,8 @@ void framebuffer_render() {
         break;
     case 2:
         // 24-bit 888 RGB
-        printf("Warning: unsupported video mode RGB888\n");
+        error_set_feature("video mode RGB888");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case 3:
         // 32-bit 08888 RGB
@@ -509,32 +511,32 @@ void framebuffer_sync_from_host(void) {
         break;
     case 2:
         // 4444 ARGB 16-bit
-        printf("WARNING: unable to sync framebuffer from OpenGL: "
-               "packmode 2 unsupported\n");
+        error_set_feature("framebuffer packmode 2");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case 3:
         // 1555 ARGB 16-bit
-        printf("WARNING: unable to sync framebuffer from OpenGL: "
-               "packmode 3 unsupported\n");
+        error_set_feature("framebuffer packmode 3");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case 4:
         // 888 RGB 24-bit
-        printf("WARNING: unable to sync framebuffer from OpenGL: "
-               "packmode 4 unsupported\n");
+        error_set_feature("framebuffer packmode 4");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case  5:
         // 0888 KRGB 32-bit
-        printf("WARNING: unable to sync framebuffer from OpenGL: "
-               "packmode 5 unsupported\n");
+        error_set_feature("framebuffer packmode 5");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case 6:
         // 8888 ARGB 32-bit
-        printf("WARNING: unable to sync framebuffer from OpenGL: "
-               "packmode 6 unsupported\n");
+        error_set_feature("framebuffer packmode 6");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     default:
-        printf("WARNING: unable to sync framebuffer from OpenGL: "
-               "packmode %d unsupported\n", fb_w_ctrl & 7);
+        error_set_feature("unknown framebuffer packmode");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     current_fb = FRAMEBUFFER_CURRENT_VIRT;
