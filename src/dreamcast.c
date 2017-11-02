@@ -47,6 +47,7 @@
 #include "cmd/cmd_sys.h"
 #include "cmd/cmd.h"
 #include "glfw/window.h"
+#include "hw/pvr2/framebuffer.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -565,6 +566,7 @@ static void periodic_event_handler(struct SchedEvent *event) {
 }
 
 void dc_end_frame(void) {
+    framebuffer_render();
     win_check_events();
     cmd_run_once();
 }

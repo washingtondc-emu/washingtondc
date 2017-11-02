@@ -87,8 +87,6 @@ enum FramebufferFormat {
 void framebuffer_init(unsigned width, unsigned height);
 
 void framebuffer_render();
-// void conv_rgb888_to_rgb888(uint32_t *pixels_out, uint8_t const *pixels_in,
-//                            unsigned n_pixels);
 
 enum {
     // the current framebuffer is the one in PVR2 texture memory

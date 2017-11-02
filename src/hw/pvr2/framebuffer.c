@@ -432,8 +432,6 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
     assert((width * height * 4) < OGL_FB_BYTES);
     /* assert(width <= stride); */
 
-    gfx_thread_read_framebuffer(ogl_fb, OGL_FB_BYTES);
-
     unsigned row, col;
     for (row = 0; row < height; row++) {
         // TODO: take interlacing into account here
@@ -473,8 +471,6 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
 
     assert((width * height * 4) < OGL_FB_BYTES);
     /* assert(width <= stride); */
-
-    gfx_thread_read_framebuffer(ogl_fb, OGL_FB_BYTES);
 
     unsigned row, col;
     for (row = y_min; row <= y_max; row++) {
