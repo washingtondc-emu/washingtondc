@@ -443,6 +443,7 @@ static void opengl_renderer_do_draw_geo_buf(struct geo_buf *geo) {
     } else {
         glClearColor(0.0, 0.0, 0.0, 1.0);
     }
+    glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     if (rend_cfg.depth_enable)
