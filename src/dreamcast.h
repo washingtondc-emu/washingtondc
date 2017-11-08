@@ -97,6 +97,8 @@ bool dc_debugger_enabled(void);
  */
 void dc_end_frame(void);
 
+void dc_single_step(Sh4 *sh4);
+
 enum dc_state {
     // the emulation thread has not been started yet
     DC_STATE_NOT_RUNNING,

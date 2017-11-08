@@ -83,8 +83,6 @@ static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
 
-static void dc_single_step(Sh4 *sh4);
-
 // Run until the next scheduled event (in dc_sched) should occur
 static void dc_run_to_next_event(Sh4 *sh4);
 
@@ -374,7 +372,7 @@ mulligan:
 }
 
 /* executes a single instruction and maybe ticks the clock. */
-static void dc_single_step(Sh4 *sh4) {
+void dc_single_step(Sh4 *sh4) {
     inst_t inst;
     unsigned n_cycles;
     int exc_pending;
