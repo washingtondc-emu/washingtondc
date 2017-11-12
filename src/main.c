@@ -53,7 +53,8 @@ static void print_usage(char const *cmd) {
             "direct boot)\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
-            "\t-m\t\tmount the given image in the GD-ROM drive\n");
+            "\t-m\t\tmount the given image in the GD-ROM drive\n"
+            "\t-p\t\tdo graphics rendering in parallel via a separate thread");
 }
 
 int main(int argc, char **argv) {
@@ -69,6 +70,7 @@ int main(int argc, char **argv) {
     bool enable_cmd_tcp = false;
     char const *title_content = NULL;
     struct mount_meta content_meta; // only valid if path_gdi is non-null
+    bool separate_gfx_thread = false;
 
     while ((opt = getopt(argc, argv, "cb:f:s:m:gduht")) != -1) {
         switch (opt) {
@@ -98,6 +100,9 @@ int main(int argc, char **argv) {
             break;
         case 'm':
             path_gdi = optarg;
+            break;
+        case 'p':
+            separate_gfx_thread = true;
             break;
         case 'h':
             print_usage(cmd);
@@ -199,7 +204,7 @@ int main(int argc, char **argv) {
 
     framebuffer_init(640, 480);
     win_init(640, 480, title_content);
-    gfx_thread_launch(640, 480);
+    gfx_thread_launch(640, 480, separate_gfx_thread);
     io_thread_launch();
 
     config_set_enable_cmd_tcp(enable_cmd_tcp);

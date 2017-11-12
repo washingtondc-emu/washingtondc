@@ -32,7 +32,8 @@ extern "C"{
 
 // The purpose of the GFX thread is to handle all the OpenGL-related things.
 
-void gfx_thread_launch(unsigned width, unsigned height);
+void gfx_thread_launch(unsigned width, unsigned height,
+                       bool separate_gfx_thread);
 
 /*
  * make sure dc_is_running() is false AND make sure to call

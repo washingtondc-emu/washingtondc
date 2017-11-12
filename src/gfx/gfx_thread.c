@@ -20,10 +20,7 @@
  *
  ******************************************************************************/
 
-#ifdef GFX_SEPARATE_THREAD
 #include <pthread.h>
-#endif
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -76,12 +73,10 @@ static bool pending_expose;
 static void * volatile fb_out;
 static volatile unsigned fb_out_size;
 
-#ifdef GFX_SEPARATE_THREAD
 static pthread_cond_t fb_read_condition = PTHREAD_COND_INITIALIZER;
 
 static pthread_cond_t gfx_thread_work_condition = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t gfx_thread_work_lock = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 static unsigned win_width, win_height;
 
@@ -95,26 +90,31 @@ static void gfx_thread_unlock(void);
 static void gfx_thread_signal(void);
 static void gfx_init(void);
 
-#ifdef GFX_SEPARATE_THREAD
 static void gfx_thread_wait(void);
-#endif
 
-void gfx_thread_launch(unsigned width, unsigned height) {
+static bool separate_gfx_thread;
+
+void gfx_thread_launch(unsigned width, unsigned height, bool separate_thread) {
     win_width = width;
     win_height = height;
 
-#ifdef GFX_SEPARATE_THREAD
-    if (pthread_create(&gfx_thread, NULL, gfx_main, NULL) != 0)
-        err(errno, "Unable to launch gfx thread");
-#else
-    gfx_init();
-#endif
+    separate_gfx_thread = separate_thread;
+
+    if (separate_gfx_thread) {
+        printf("GFX: rendering graphics from a dedicated thread.\n");
+
+        if (pthread_create(&gfx_thread, NULL, gfx_main, NULL) != 0)
+            err(errno, "Unable to launch gfx thread");
+    } else {
+        printf("GFX: rendering graphics from within the main emulation "
+               "thread\n");
+        gfx_init();
+    }
 }
 
 void gfx_thread_join(void) {
-#ifdef GFX_SEPARATE_THREAD
-    pthread_join(gfx_thread, NULL);
-#endif
+    if (separate_gfx_thread)
+        pthread_join(gfx_thread, NULL);
 }
 
 void gfx_thread_redraw() {
@@ -154,8 +154,13 @@ static void gfx_init(void) {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-#ifdef GFX_SEPARATE_THREAD
 static void* gfx_main(void *arg) {
+    if (!separate_gfx_thread) {
+        fprintf(stderr, "ERROR: gfx_main called without separate gfx thread "
+                "enabled\n");
+        abort();
+    }
+
     gfx_init();
 
     gfx_thread_lock();
@@ -182,7 +187,6 @@ static void* gfx_main(void *arg) {
     pthread_exit(NULL);
     return NULL; /* this line will never execute */
 }
-#endif
 
 void gfx_thread_run_once(void) {
     if (pending_redraw) {
@@ -204,10 +208,9 @@ void gfx_thread_run_once(void) {
         fb_out = NULL;
         fb_out_size = 0;
 
-#ifdef GFX_SEPARATE_THREAD
-        if (pthread_cond_signal(&fb_read_condition) != 0)
-            abort(); // TODO: error handling
-#endif
+        if (separate_gfx_thread)
+            if (pthread_cond_signal(&fb_read_condition) != 0)
+                abort(); // TODO: error handling
     }
 
     if (rendering_geo_buf) {
@@ -225,11 +228,10 @@ void gfx_thread_read_framebuffer(void *dat, unsigned n_bytes) {
 
     gfx_thread_signal();
 
-#ifdef GFX_SEPARATE_THREAD
-    while (fb_out) {
-        pthread_cond_wait(&fb_read_condition, &gfx_thread_work_lock);
-    }
-#endif
+    if (separate_gfx_thread)
+        while (fb_out) {
+            pthread_cond_wait(&fb_read_condition, &gfx_thread_work_lock);
+        }
 
     gfx_thread_unlock();
 }
@@ -251,31 +253,27 @@ void gfx_thread_post_framebuffer(uint32_t const *fb_new,
 }
 
 static void gfx_thread_lock(void) {
-#ifdef GFX_SEPARATE_THREAD
-    if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
-        abort(); // TODO: error handling
-#endif
+    if (separate_gfx_thread)
+        if (pthread_mutex_lock(&gfx_thread_work_lock) != 0)
+            abort(); // TODO: error handling
 }
 
 static void gfx_thread_unlock(void) {
-#ifdef GFX_SEPARATE_THREAD
-    if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
-        abort(); // TODO: error handling
-#endif
+    if (separate_gfx_thread)
+        if (pthread_mutex_unlock(&gfx_thread_work_lock) != 0)
+            abort(); // TODO: error handling
 }
 
 static void gfx_thread_signal(void) {
-#ifdef GFX_SEPARATE_THREAD
-    if (pthread_cond_signal(&gfx_thread_work_condition) != 0)
-        abort(); // TODO: error handling
-#else
-    gfx_thread_run_once();
-#endif
+    if (separate_gfx_thread) {
+        if (pthread_cond_signal(&gfx_thread_work_condition) != 0)
+            abort(); // TODO: error handling
+    } else {
+        gfx_thread_run_once();
+    }
 }
 
-#ifdef GFX_SEPARATE_THREAD
 static void gfx_thread_wait(void) {
     if (pthread_cond_wait(&gfx_thread_work_condition, &gfx_thread_work_lock) != 0)
         abort(); // TODO: error handling
 }
-#endif
