@@ -321,11 +321,30 @@ static void render_do_draw_group(struct geo_buf *geo,
         (GLfloat)(geo->screen_width * 0.5),
         (GLfloat)(geo->screen_height * 0.5)
     };
-    GLfloat clip_delta = geo->clip_max - geo->clip_min;
+
+    /*
+     * The trans_mat matrix will map z=clip_min to -1 and z=clip_max to +1.
+     *
+     * depending on the depth function used, this can cause fragments at the
+     * extremes to not be rendered even with depth clamping enabled.  For
+     * example, GL_LESS will fail anything at z=clip_min because that will get
+     * mapped to -1 by this matrix, and then to +1 later in the OpenGL pipeline;
+     * +1 is the furthest away value in the depth buffer, +1 will fail the depth
+     * test.
+     *
+     * expanding clip_min and clip_max will mitigate this problem.  Obviously we
+     * don't want to expand the depth range by much because that will lead to
+     * precision problems, but we still want to expand it enough to make sure
+     * that the minimum and maximum depth values don't get culled.
+     */
+    float clip_min = geo->clip_min * 1.01f;
+    float clip_max = geo->clip_max * 1.01f;
+
+    GLfloat clip_delta = clip_max - clip_min;
     GLfloat trans_mat[16] = {
         1.0 / half_screen_dims[0], 0, 0, -1,
         0, -1.0 / half_screen_dims[1], 0, 1,
-        0, 0, 2.0 / clip_delta, -2.0 * geo->clip_min / clip_delta - 1,
+        0, 0, 2.0 / clip_delta, -2.0 * clip_min / clip_delta - 1,
         0, 0, 0, 1
     };
 
