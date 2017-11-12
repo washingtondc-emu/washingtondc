@@ -138,17 +138,6 @@ static void* gfx_main(void *arg) {
     gfx_tex_cache_init();
     rend_init();
 
-    /*
-     * this is just here for some testing/validation so I can make sure that
-     * the picture in opengl makes its way to the framebuffer and back, feel
-     * free to delete it at any time.
-     */
-    opengl_target_begin(640, 480);
-    glClearColor(1.0, 0.0, 0.0, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glClearColor(0.0, 0.0, 0.0, 1.0);
-    opengl_target_end();
-
     glClear(GL_COLOR_BUFFER_BIT);
 
     gfx_thread_lock();
