@@ -451,6 +451,15 @@ static void opengl_renderer_do_draw_geo_buf(struct geo_buf *geo) {
     else
         glDisable(GL_DEPTH_TEST);
 
+    /*
+     * Strictly speaking, this isn't needed since we transform the
+     * depth-component such that geo->clip_max maps to +1 and geo->clip_min
+     * maps to -1, but we enable it just in case there are any floating-point
+     * precision errors that push something to be greater than +1 or less
+     * than -1.
+     */
+    glEnable(GL_DEPTH_CLAMP);
+
     unsigned group_no;
     enum display_list_type disp_list;
     for (disp_list = DISPLAY_LIST_FIRST; disp_list <= DISPLAY_LIST_LAST;
