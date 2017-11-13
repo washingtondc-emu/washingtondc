@@ -175,12 +175,18 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
         emit_bin_inst((em), assemble_bin_imm8(val, imm8));              \
     }
 
-// OP disp8
-// xxxxxxxxiiiiiiii
-#define DEF_BIN_DISP8(op, val, disp_shift)                              \
-    static inline void sh4_bin_##op##_disp8(emit_bin_handler_func em,   \
-                                            unsigned disp8) {           \
-        emit_bin_inst((em), assemble_bin_imm8(val, (disp8) >> disp_shift)); \
+/*
+ * OP offset (relative to PC)
+ * xxxxxxxxiiiiiiii
+ *
+ * the input to the generated function is the offset from the program-counter
+ * register.  The target-address is this offset plus the PC.
+ */
+#define DEF_BIN_OFFS8(op, val, disp_shift, trans)                       \
+    static inline void sh4_bin_##op##_offs8(emit_bin_handler_func em,   \
+                                            unsigned offset) {          \
+        unsigned disp8 = ((offset - (trans)) >> (disp_shift)) & 0xff;   \
+        emit_bin_inst((em), assemble_bin_imm8(val, disp8));             \
     }
 
 // OP REG, @(disp8, REG)
@@ -196,17 +202,33 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
 // xxxxxxxxiiiiiiii
 #define DEF_BIN_A_DISP8_REG_REG(op, val, reg1, reg2, disp_shift)        \
     static inline void                                                  \
-    sh4_bin_##op##_A_DISP8_##reg1##_##reg2(emit_bin_handler_func em,    \
+    sh4_bin_##op##_a_disp8_##reg1##_##reg2(emit_bin_handler_func em,    \
                                            unsigned disp8) {            \
         emit_bin_inst((em), assemble_bin_imm8(val, (disp8) >> disp_shift)); \
     }
 
-// OP disp12
-// xxxxiiiiiiiiiiii
-#define DEF_BIN_DISP12(op, val, disp_shift)                             \
+/*
+ * OP @(offset, REG), REG
+ * xxxxxxxxiiiiiiii
+ *
+ * the input to the generated function is the offset from the program-counter
+ * register.  The target-address is this offset plus the PC.
+ */
+#define DEF_BIN_A_OFFS8_REG_REG(op, val, reg1, reg2, disp_shift, trans) \
     static inline void                                                  \
-    sh4_bin_##op##_disp12(emit_bin_handler_func em, unsigned disp12) {  \
-        emit_bin_inst((em), assemble_bin_imm12(val, (disp12) >> disp_shift)); \
+    sh4_bin_##op##_a_offs8_##reg1##_##reg2(emit_bin_handler_func em,    \
+                                           unsigned offset) {           \
+        unsigned disp8 = ((offset - (trans)) >> (disp_shift)) & 0xff;   \
+        emit_bin_inst((em), assemble_bin_imm8(val, disp8)); \
+    }
+
+// OP offs12
+// xxxxiiiiiiiiiiii
+#define DEF_BIN_OFFS12(op, val, disp_shift, trans)                      \
+    static inline void                                                  \
+    sh4_bin_##op##_offs12(emit_bin_handler_func em, unsigned offset) {  \
+        unsigned disp12 = ((offset - (trans)) >> (disp_shift)) & 0xfff; \
+        emit_bin_inst((em), assemble_bin_imm12(val, disp12));           \
     }
 
 // OP #imm8, Rn
@@ -220,12 +242,12 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
 
 // OP @(disp8, REG), Rn
 // xxxxnnnniiiiiiii
-#define DEF_BIN_A_DISP8_REG_RN(op, val, reg, disp_shift)                \
+#define DEF_BIN_A_OFFS8_REG_RN(op, val, reg, disp_shift, trans)         \
     static inline void                                                  \
     sh4_bin_##op##_a_disp8_##reg##_rn(emit_bin_handler_func em,         \
-                                      unsigned disp8, unsigned rn) {    \
-        emit_bin_inst((em), assemble_bin_rn_imm8((val), rn,             \
-                                                 disp8 >> (disp_shift))); \
+                                      unsigned offset, unsigned rn) {   \
+        unsigned disp8 = ((offset - (trans)) >> (disp_shift)) & 0xff;   \
+        emit_bin_inst((em), assemble_bin_rn_imm8((val), rn, disp8)); \
     }
 
 // OP Rm, Rn
@@ -720,14 +742,10 @@ DEF_BIN_IMM8_A_REG_REG(orb, OPCODE_ORB_IMM8_A_R0_GBR, r0, gbr)
 DEF_BIN_IMM8_A_REG_REG(tstb, OPCODE_TSTB_IMM8_A_R0_GBR, r0, gbr)
 DEF_BIN_IMM8_A_REG_REG(xorb, OPCODE_XORB_IMM8_A_R0_GBR, r0, gbr)
 
-/*
- * TODO: these all put DISP8*2+4+PC into the PC.  Currently I account for the *2
- * part, but not the +4 part.
- */
-DEF_BIN_DISP8(bf, OPCODE_BF_DISP8, 1)
-DEF_BIN_DISP8(bfs, OPCODE_BFS_DISP8, 1)
-DEF_BIN_DISP8(bt, OPCODE_BT_DISP8, 1)
-DEF_BIN_DISP8(bts, OPCODE_BTS_DISP8, 1)
+DEF_BIN_OFFS8(bf, OPCODE_BF_DISP8, 1, 4);
+DEF_BIN_OFFS8(bfs, OPCODE_BFS_DISP8, 1, 4)
+DEF_BIN_OFFS8(bt, OPCODE_BT_DISP8, 1, 4)
+DEF_BIN_OFFS8(bts, OPCODE_BTS_DISP8, 1, 4)
 
 DEF_BIN_IMM8(trapa, OPCODE_TRAPA_IMM8)
 
@@ -739,28 +757,16 @@ DEF_BIN_A_DISP8_REG_REG(movb, OPCODE_MOVB_A_DISP8_GBR_R0, gbr, r0, 0)
 DEF_BIN_A_DISP8_REG_REG(movw, OPCODE_MOVW_A_DISP8_GBR_R0, gbr, r0, 1)
 DEF_BIN_A_DISP8_REG_REG(movl, OPCODE_MOVL_A_DISP8_GBR_R0, gbr, r0, 2)
 
-/*
- * TODO: this one puts DISP8*4+4+PC into R0.  Currently I account for the *4
- * part, but not the +4 part.
- */
-DEF_BIN_A_DISP8_REG_REG(mova, OPCODE_MOVA_A_DISP8_PC_R0, pc, r0, 2)
+DEF_BIN_A_OFFS8_REG_REG(mova, OPCODE_MOVA_A_DISP8_PC_R0, pc, r0, 2, 4)
 
-/*
- * TODO: these all put DISP8*2+4+PC into the PC.  Currently I account for the *2
- * part, but not the +4 part.
- */
-DEF_BIN_DISP12(bra, OPCODE_BRA_DISP12, 1)
-DEF_BIN_DISP12(bsr, OPCODE_BSR_DISP12, 1)
+DEF_BIN_OFFS12(bra, OPCODE_BRA_DISP12, 1, 4)
+DEF_BIN_OFFS12(bsr, OPCODE_BSR_DISP12, 1, 4)
 
 DEF_BIN_IMM8_RN(mov, OPCODE_MOV_IMM8_RN)
 DEF_BIN_IMM8_RN(add, OPCODE_ADD_IMM8_RN)
 
-/*
- * TODO: these respectively put (DISP8*2+4+PC) and (DISP8*4+4+PC) into the Rn.
- * Currently I account for the *2/*4 part, but not the +4 part.
- */
-DEF_BIN_A_DISP8_REG_RN(movw, OPCODE_MOVW_A_DISP8_PC_RN, pc, 1)
-DEF_BIN_A_DISP8_REG_RN(movL, OPCODE_MOVL_A_DISP8_PC_RN, pc, 2)
+DEF_BIN_A_OFFS8_REG_RN(movw, OPCODE_MOVW_A_DISP8_PC_RN, pc, 1, 4)
+DEF_BIN_A_OFFS8_REG_RN(movL, OPCODE_MOVL_A_DISP8_PC_RN, pc, 2, 4)
 
 DEF_BIN_RM_RN(mov, OPCODE_MOV_RM_RN)
 DEF_BIN_RM_RN(swapb, OPCODE_SWAPB_RM_RN)
