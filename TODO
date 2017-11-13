@@ -33,3 +33,6 @@ PVR2:
 * implement mipmaps.  The current implementation always uses the
   highest-resolution version of the textures instead of picking one based on
   distance like it should.
+* Figure out what to do when the 1/z value input by guest-programs is zero.
+  Obviously this fucks things up when we do the divide to get z.  It might be
+  that 1/z==0 is never a valid input value, but I need to verify.
