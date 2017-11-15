@@ -296,10 +296,6 @@ add_test(NAME sh4asm_test COMMAND ./sh4asm_test)
 ## should be able to have in C sooner rather than later...
 ###############################################################################
 
-# add_executable(sh4mem_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4mem_test.cpp" ${common_headers})
-# target_link_libraries(sh4mem_test m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread event)
-# add_test(NAME sh4mem_test COMMAND ./sh4mem_test)
-
 # add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp" ${common_headers})
 # target_link_libraries(sh4inst_test m sh4 sh4asm_core rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread event)
 # target_include_directories(sh4inst_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
