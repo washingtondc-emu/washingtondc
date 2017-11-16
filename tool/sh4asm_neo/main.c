@@ -33,8 +33,23 @@
 
 #include <stdio.h>
 
+#include "lexer.h"
+
+static void emit(struct tok const *tk);
+
 int main(int argc, char **argv) {
     printf("PLUS ULTRA!\n");
 
+    if (argc >= 2) {
+        char *txt = argv[1];
+        do {
+            lexer_input_char(*txt, emit);
+        } while (*txt++);
+    }
+
     return 0;
+}
+
+static void emit(struct tok const *tk) {
+    printf("tk->tp is %s\n", tok_as_str(tk));
 }
