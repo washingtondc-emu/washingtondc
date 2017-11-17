@@ -253,6 +253,8 @@ set(sh4asm_neo_sources
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_asm_emit.c"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/lexer.c"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/lexer.h"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/parser.c"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/parser.h"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/main.c")
 
 include_directories("${PROJECT_SOURCE_DIR}/src/"

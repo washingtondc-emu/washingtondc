@@ -39,6 +39,7 @@ enum tok_tp {
     TOK_OPENPAREN,
     TOK_CLOSEPAREN,
     TOK_AT,
+    TOK_NEWLINE,
 
     // opcodes
     TOK_DIV0U,

@@ -50,6 +50,7 @@ static struct tok_mapping {
     { "(", TOK_OPENPAREN },
     { ")", TOK_CLOSEPAREN },
     { "@", TOK_AT },
+    { "\\n", TOK_NEWLINE },
     { "div0u", TOK_DIV0U },
     { "rts", TOK_RTS },
     { "clrmac", TOK_CLRMAC },
@@ -267,7 +268,7 @@ void lexer_input_char(char ch, emit_tok_func emit) {
         err(1, "Token is too long");
 
     if (isspace(ch) || ch == ',' || ch == '@' ||
-        ch == '(' || ch == ')' || ch == '\0') {
+        ch == '(' || ch == ')' || ch == '\0' || ch == '\n') {
         if (tok_len) {
             cur_tok[tok_len] = '\0';
 
@@ -315,6 +316,11 @@ void lexer_input_char(char ch, emit_tok_func emit) {
         } else if (ch == '@') {
             struct tok tk = {
                 .tp = TOK_AT
+            };
+            emit(&tk);
+        } else if (ch == '\n') {
+            struct tok tk = {
+                .tp = TOK_NEWLINE
             };
             emit(&tk);
         }
