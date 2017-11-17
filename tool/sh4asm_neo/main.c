@@ -31,21 +31,107 @@
  *
  ******************************************************************************/
 
+#include <err.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <stdint.h>
 
 #include "lexer.h"
+#include "parser.h"
 
-static void emit(struct tok const *tk);
+static FILE *output;
+static FILE *input;
+
+static struct options {
+    char const *filename_in, *filename_out;
+    bool bin_mode;
+    bool print_addrs;
+    bool disas;
+    bool hex_comments;
+} options;
+
+static void print_usage(char const *cmd) {
+    fprintf(stderr, "Usage: %s -[bdlc] [-i input] [-o output] instruction\n",
+            cmd);
+}
+
+static void do_emit_bin(uint16_t inst) {
+    if (options.bin_mode) {
+        fwrite(&inst, sizeof(inst), 1, output);
+    } else {
+        fprintf(output, "%02x\n%02x\n", (unsigned)(inst & 255), (unsigned)(inst >> 8));
+    }
+}
+
+static void do_asm(void) {
+    int ch;
+
+    parser_set_emitter(do_emit_bin);
+
+    while ((ch = fgetc(input)) != EOF)
+        lexer_input_char(ch, parser_input_token);
+}
 
 int main(int argc, char **argv) {
-    printf("PLUS ULTRA!\n");
+    int opt;
+    char const *cmd = argv[0];
 
-    if (argc >= 2) {
-        char *txt = argv[1];
-        do {
-            lexer_input_char(*txt, emit);
-        } while (*txt++);
+    FILE *file_out = NULL;
+    FILE *file_in = NULL;
+    output = stdout;
+    input = stdin;
+
+    while ((opt = getopt(argc, argv, "bcdli:o:")) != -1) {
+        switch (opt) {
+        case 'b':
+            options.bin_mode = true;
+            break;
+        case 'c':
+            options.hex_comments = true;
+            break;
+        case 'd':
+            options.disas = true;
+            break;
+        case 'l':
+            options.print_addrs = true;
+            break;
+        case 'i':
+            options.filename_in = optarg;
+            break;
+        case 'o':
+            options.filename_out = optarg;
+            break;
+        default:
+            print_usage(cmd);
+            return 1;
+        }
     }
+
+    argv += optind;
+    argc -= optind;
+
+    if (argc != 0) {
+        print_usage(cmd);
+        return 1;
+    }
+
+    if (options.filename_in)
+        input = file_in = fopen(options.filename_in, "rb");
+
+    if (options.filename_out)
+        output = file_out = fopen(options.filename_out, "wb");
+
+    if (options.disas)
+        errx(1, "disassembly is not yet implemented");
+    else
+        do_asm();
+
+    if (file_in)
+        fclose(file_in);
+    if (file_out)
+        fclose(file_out);
 
     return 0;
 }
