@@ -51,6 +51,7 @@ static struct tok_mapping {
     { ")", TOK_CLOSEPAREN },
     { "@", TOK_AT },
     { "\\n", TOK_NEWLINE },
+    { "+", TOK_PLUS },
     { "div0u", TOK_DIV0U },
     { "rts", TOK_RTS },
     { "clrmac", TOK_CLRMAC },
@@ -151,6 +152,8 @@ static struct tok_mapping {
     { "mov.b", TOK_MOVB },
     { "mova", TOK_MOVA },
     { "movca.l", TOK_MOVCAL },
+    { "mac.w", TOK_MAC_DOT_W },
+    { "mac.l", TOK_MAC_DOT_L },
     { "fldi0", TOK_FLDI0 },
     { "fldi1", TOK_FLDI1 },
     { "fmov", TOK_FMOV },
@@ -173,6 +176,9 @@ static struct tok_mapping {
     { "fcnvsd", TOK_FCNVSD },
     { "fipr", TOK_FIPR },
     { "ftrv", TOK_FTRV },
+    { "fsca", TOK_FSCA },
+    { "fsrra", TOK_FSRRA },
+
 
     { "sr", TOK_SR },
     { "gbr", TOK_GBR },
@@ -182,6 +188,8 @@ static struct tok_mapping {
     { "sgr", TOK_SGR },
     { "dbr", TOK_DBR },
     { "pc", TOK_PC },
+    { "mach", TOK_MACH },
+    { "macl", TOK_MACL },
     { "pr", TOK_PR },
     { "fpul", TOK_FPUL },
     { "fpscr", TOK_FPSCR },
@@ -198,8 +206,9 @@ static struct tok_mapping const* check_tok(void) {
     struct tok_mapping const *curs = tok_map;
 
     while (curs->txt) {
-        if (strcmp(cur_tok, curs->txt) == 0)
+        if (strcmp(cur_tok, curs->txt) == 0) {
             return curs;
+        }
         curs++;
     }
 
@@ -211,7 +220,7 @@ void lexer_input_char(char ch, emit_tok_func emit) {
         err(1, "Token is too long");
 
     if (isspace(ch) || ch == ',' || ch == '@' ||
-        ch == '(' || ch == ')' || ch == '\0' || ch == '\n') {
+        ch == '(' || ch == ')' || ch == '\0' || ch == '\n' || ch == '-') {
         if (tok_len) {
             cur_tok[tok_len] = '\0';
 
@@ -229,7 +238,7 @@ void lexer_input_char(char ch, emit_tok_func emit) {
                 if (errno)
                     err(1, "failed to decode integer literal");
                 struct tok tk = {
-                    .tp = TOK_INTEGER_LITERAL,
+                    .tp = TOK_IMM,
                     .val = { .as_int = val_as_long }
                 };
                 emit(&tk);
@@ -240,6 +249,19 @@ void lexer_input_char(char ch, emit_tok_func emit) {
                     errx(1, "invalid register index %d", reg_no);
                 struct tok tk = {
                     .tp = TOK_RN,
+                    .val = { .reg_idx = reg_no }
+                };
+                emit(&tk);
+            } else if (cur_tok[0] == 'r' && (tok_len == 7 || tok_len == 8) &&
+                       cur_tok[tok_len - 1] == 'k' && cur_tok[tok_len - 2] == 'n' &&
+                       cur_tok[tok_len - 3] == 'a' && cur_tok[tok_len - 4] == 'b' &&
+                       cur_tok[tok_len - 5] == '_') {
+                // banked general-purpose register
+                int reg_no = atoi(cur_tok + 1);
+                if (reg_no < 0 || reg_no > 15)
+                    errx(1, "invalid banked register index %d", reg_no);
+                struct tok tk = {
+                    .tp = TOK_RN_BANK,
                     .val = { .reg_idx = reg_no }
                 };
                 emit(&tk);
@@ -292,7 +314,20 @@ void lexer_input_char(char ch, emit_tok_func emit) {
                 };
                 emit(&tk);
             } else {
-                errx(1, "unrecognized token \"%s\"", cur_tok);
+                /*
+                 * Maybe it's an offset (which is an integer literal without a
+                 * preceding '#' character).  Try to decode it as one, and
+                 * error out if that assumption does not fit.
+                 */
+                errno = 0;
+                long val_as_long = strtol(cur_tok + 1, NULL, 0);
+                if (errno)
+                    errx(1, "unrecognized token \"%s\"", cur_tok);
+                struct tok tk = {
+                    .tp = TOK_DISP,
+                    .val = { .as_int = val_as_long }
+                };
+                emit(&tk);
             }
 
             tok_len = 0;
@@ -324,6 +359,16 @@ void lexer_input_char(char ch, emit_tok_func emit) {
                 .tp = TOK_NEWLINE
             };
             emit(&tk);
+        } else if (ch == '+') {
+            struct tok tk = {
+                .tp = TOK_PLUS
+            };
+            emit(&tk);
+        } else if (ch == '-') {
+            struct tok tk = {
+                .tp = TOK_MINUS
+            };
+            emit(&tk);
         }
     } else {
         cur_tok[tok_len++] = ch;
@@ -333,12 +378,16 @@ void lexer_input_char(char ch, emit_tok_func emit) {
 char const *tok_as_str(struct tok const *tk) {
     static char buf[TOK_LEN_MAX];
 
-    if (tk->tp == TOK_INTEGER_LITERAL) {
+    if (tk->tp == TOK_IMM) {
         snprintf(buf, TOK_LEN_MAX, "#0x%x", tk->val.as_int);
         buf[TOK_LEN_MAX - 1] = '\0';
         return buf;
     } else if (tk->tp == TOK_RN) {
         snprintf(buf, TOK_LEN_MAX, "r%u", tk->val.reg_idx);
+        buf[TOK_LEN_MAX - 1] = '\0';
+        return buf;
+    } else if (tk->tp == TOK_RN_BANK) {
+        snprintf(buf, TOK_LEN_MAX, "r%u_bank", tk->val.reg_idx);
         buf[TOK_LEN_MAX - 1] = '\0';
         return buf;
     } else if (tk->tp == TOK_FRN) {
@@ -355,6 +404,10 @@ char const *tok_as_str(struct tok const *tk) {
         return buf;
     } else if (tk->tp == TOK_FVN) {
         snprintf(buf, TOK_LEN_MAX, "fv%u", tk->val.reg_idx);
+        buf[TOK_LEN_MAX - 1] = '\0';
+        return buf;
+    } else if (tk->tp == TOK_DISP) {
+        snprintf(buf, TOK_LEN_MAX, "0x%x", tk->val.as_int);
         buf[TOK_LEN_MAX - 1] = '\0';
         return buf;
     }

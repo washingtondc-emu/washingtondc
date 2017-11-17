@@ -40,6 +40,8 @@ enum tok_tp {
     TOK_CLOSEPAREN,
     TOK_AT,
     TOK_NEWLINE,
+    TOK_PLUS,
+    TOK_MINUS,
 
     // opcodes
     TOK_DIV0U,
@@ -142,6 +144,8 @@ enum tok_tp {
     TOK_MOVB,
     TOK_MOVA,
     TOK_MOVCAL,
+    TOK_MAC_DOT_L,
+    TOK_MAC_DOT_W,
     TOK_FLDI0,
     TOK_FLDI1,
     TOK_FMOV,
@@ -176,11 +180,14 @@ enum tok_tp {
     TOK_SGR,
     TOK_DBR,
     TOK_PC,
+    TOK_MACH,
+    TOK_MACL,
     TOK_PR,
     TOK_FPUL,
     TOK_FPSCR,
 
     TOK_RN,
+    TOK_RN_BANK,
     TOK_FRN,
     TOK_DRN,
     TOK_XDN,
@@ -188,7 +195,8 @@ enum tok_tp {
 
     TOK_XMTRX,
 
-    TOK_INTEGER_LITERAL
+    TOK_IMM,
+    TOK_DISP
 };
 
 union tok_val {

@@ -70,8 +70,9 @@ static void do_asm(void) {
 
     parser_set_emitter(do_emit_bin);
 
-    while ((ch = fgetc(input)) != EOF)
+    while ((ch = fgetc(input)) != EOF) {
         lexer_input_char(ch, parser_input_token);
+    }
 }
 
 int main(int argc, char **argv) {

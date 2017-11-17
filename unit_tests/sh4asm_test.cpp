@@ -417,7 +417,7 @@ int test_all_insts(unsigned seed) {
     }
 
     double percent = 100.0 * double(n_success) / double(n_tests);
-    std::cout << n_tests << " tests run - " << n_success <<
+    std::cout << std::dec << n_tests << " tests run - " << n_success <<
         " successes " << "(" << percent << "%)" << std::endl;
 
     if (n_success == n_tests)

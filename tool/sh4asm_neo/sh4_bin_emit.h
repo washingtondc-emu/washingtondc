@@ -244,7 +244,7 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
 // xxxxnnnniiiiiiii
 #define DEF_BIN_A_OFFS8_REG_RN(op, val, reg, disp_shift, trans)         \
     static inline void                                                  \
-    sh4_bin_##op##_a_disp8_##reg##_rn(emit_bin_handler_func em,         \
+    sh4_bin_##op##_a_offs8_##reg##_rn(emit_bin_handler_func em,         \
                                       unsigned offset, unsigned rn) {   \
         unsigned disp8 = ((offset - (trans)) >> (disp_shift)) & 0xff;   \
         emit_bin_inst((em), assemble_bin_rn_imm8((val), rn, disp8)); \
@@ -463,11 +463,11 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
         emit_bin_inst((em), assemble_bin_drm_drn((val), drm, drn));     \
     }
 
-// OP DRm, XRn
+// OP DRm, XDn
 // xxxxnnnxmmmxxxxx
 #define DEF_BIN_DRM_XDN(op, val)                                        \
     static inline void                                                  \
-    sh4_bin_##op##_drm_xrn(emit_bin_handler_func em,                    \
+    sh4_bin_##op##_drm_xdn(emit_bin_handler_func em,                    \
                            unsigned drm, unsigned xdn) {                \
         emit_bin_inst((em), assemble_bin_drm_drn((val), drm, xdn));     \
     }
@@ -549,7 +549,7 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
 // OP DRm, @-Rn
 #define DEF_BIN_DRM_AMRN(op, val)                                       \
     static inline void                                                  \
-    sh4_##op##_drm_amrn(emit_bin_handler_func em,                       \
+    sh4_bin_##op##_drm_amrn(emit_bin_handler_func em,                   \
                         unsigned drm, unsigned rn) {                    \
         emit_bin_inst((em), assemble_bin_drm_rn((val), drm, rn));       \
     }
@@ -557,7 +557,7 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
 // OP DRm, @(REG, Rn)
 #define DEF_BIN_DRM_A_REG_RN(op, val, reg)                              \
     static inline void                                                  \
-    sh4_##op##_drm_a_##reg##_rn(emit_bin_handler_func em,               \
+    sh4_bin_##op##_drm_a_##reg##_rn(emit_bin_handler_func em,           \
                                 unsigned drm, unsigned rn) {            \
         emit_bin_inst((em), assemble_bin_drm_rn((val), drm, rn));       \
     }
@@ -565,7 +565,7 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
 // OP XDm, @Rn
 #define DEF_BIN_XDM_ARN(op, val)                                        \
     static inline void                                                  \
-    sh4_##op##_xdm_arn(emit_bin_handler_func em,                        \
+    sh4_bin_##op##_xdm_arn(emit_bin_handler_func em,                    \
                        unsigned xdm, unsigned rn) {                     \
         emit_bin_inst((em), assemble_bin_drm_rn((val), xdm, rn));       \
     }
@@ -573,7 +573,7 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
 // OP XDm, @-Rn
 #define DEF_BIN_XDM_AMRN(op, val)                                       \
     static inline void                                                  \
-    sh4_##op##_xdm_amrn(emit_bin_handler_func em,                       \
+    sh4_bin_##op##_xdm_amrn(emit_bin_handler_func em,                   \
                         unsigned xdm, unsigned rn) {                    \
         emit_bin_inst((em), assemble_bin_drm_rn((val), xdm, rn));       \
     }
@@ -581,7 +581,7 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
 // OP XDm, @(REG, Rn)
 #define DEF_BIN_XDM_A_REG_RN(op, val, reg)                              \
     static inline void                                                  \
-    sh4_##op##_xdm_a_##reg##_rn(emit_bin_handler_func em,               \
+    sh4_bin_##op##_xdm_a_##reg##_rn(emit_bin_handler_func em,           \
                                 unsigned xdm, unsigned rn) {            \
         emit_bin_inst((em), assemble_bin_drm_rn((val), xdm, rn));       \
     }
@@ -589,36 +589,37 @@ void emit_bin_inst(emit_bin_handler_func emit, uint16_t inst);
 // OP DRn
 #define DEF_BIN_DRN(op, val)                                            \
     static inline void                                                  \
-    sh4_##op##_drn(emit_bin_handler_func em, unsigned drn) {            \
+    sh4_bin_##op##_drn(emit_bin_handler_func em, unsigned drn) {        \
         emit_bin_inst((em), assemble_bin_drn((val), drn));              \
     }
 
 // OP DRm, REG
 #define DEF_BIN_DRM_REG(op, val, reg)                                   \
     static inline void                                                  \
-    sh4_##op##_drm_##reg(emit_bin_handler_func em, unsigned drm) {      \
+    sh4_bin_##op##_drm_##reg(emit_bin_handler_func em, unsigned drm) {  \
         emit_bin_inst((em), assemble_bin_drn((val), drm));              \
     }
 
 // OP REG, DRn
 #define DEF_BIN_REG_DRN(op, val, reg)                                   \
     static inline void                                                  \
-    sh4_##op##_##reg##_drn(emit_bin_handler_func em, unsigned drn) {    \
+    sh4_bin_##op##_##reg##_drn(emit_bin_handler_func em, unsigned drn) { \
         emit_bin_inst((em), assemble_bin_drn((val), drn));              \
     }
 
 // OP FVm, FVn
-#define DEF_BIN_FVM_FVN(op, val)                \
-    static inline void                          \
-    sh4_##op##_fvm_fvn(emit_bin_handler_func em, unsigned fvm, unsigned fvn) { \
+#define DEF_BIN_FVM_FVN(op, val)                                        \
+    static inline void                                                  \
+    sh4_bin_##op##_fvm_fvn(emit_bin_handler_func em,                    \
+                           unsigned fvm, unsigned fvn) {                \
         emit_bin_inst((em), assemble_bin_fvm_fvn((val), fvm, fvn));     \
     }
 
 // OP REG, FVn
 // xxxxnnxxxxxxxxxx
-#define DEF_BIN_REG_FVN(op, val, reg)           \
-    static inline void                          \
-    sh4_##op##_##reg##_fvn(emit_bin_handler_func em, unsigned fvn) {    \
+#define DEF_BIN_REG_FVN(op, val, reg)                                   \
+    static inline void                                                  \
+    sh4_bin_##op##_##reg##_fvn(emit_bin_handler_func em, unsigned fvn) { \
         emit_bin_inst((em), assemble_bin_fvn((val), fvn));              \
     }
 
