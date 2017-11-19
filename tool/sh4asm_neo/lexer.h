@@ -180,62 +180,11 @@ enum tok_tp {
     TOK_FPUL,
     TOK_FPSCR,
 
-    TOK_R0,
-    TOK_R1,
-    TOK_R2,
-    TOK_R3,
-    TOK_R4,
-    TOK_R5,
-    TOK_R6,
-    TOK_R7,
-    TOK_R8,
-    TOK_R9,
-    TOK_R10,
-    TOK_R11,
-    TOK_R12,
-    TOK_R13,
-    TOK_R14,
-    TOK_R15,
-
-    TOK_FR0,
-    TOK_FR1,
-    TOK_FR2,
-    TOK_FR3,
-    TOK_FR4,
-    TOK_FR5,
-    TOK_FR6,
-    TOK_FR7,
-    TOK_FR8,
-    TOK_FR9,
-    TOK_FR10,
-    TOK_FR11,
-    TOK_FR12,
-    TOK_FR13,
-    TOK_FR14,
-    TOK_FR15,
-
-    TOK_DR0,
-    TOK_DR2,
-    TOK_DR4,
-    TOK_DR6,
-    TOK_DR8,
-    TOK_DR10,
-    TOK_DR12,
-    TOK_DR14,
-
-    TOK_XD0,
-    TOK_XD2,
-    TOK_XD4,
-    TOK_XD6,
-    TOK_XD8,
-    TOK_XD10,
-    TOK_XD12,
-    TOK_XD14,
-
-    TOK_FV0,
-    TOK_FV4,
-    TOK_FV8,
-    TOK_FV12,
+    TOK_RN,
+    TOK_FRN,
+    TOK_DRN,
+    TOK_XDN,
+    TOK_FVN,
 
     TOK_XMTRX,
 
@@ -244,6 +193,7 @@ enum tok_tp {
 
 union tok_val {
     int as_int;
+    int reg_idx;
 };
 
 struct tok {

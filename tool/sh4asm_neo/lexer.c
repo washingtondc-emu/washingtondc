@@ -186,63 +186,6 @@ static struct tok_mapping {
     { "fpul", TOK_FPUL },
     { "fpscr", TOK_FPSCR },
 
-    { "r0", TOK_R0 },
-    { "r1", TOK_R1 },
-    { "r2", TOK_R2 },
-    { "r3", TOK_R3 },
-    { "r4", TOK_R4 },
-    { "r5", TOK_R5 },
-    { "r6", TOK_R6 },
-    { "r7", TOK_R7 },
-    { "r8", TOK_R8 },
-    { "r9", TOK_R9 },
-    { "r10", TOK_R10 },
-    { "r11", TOK_R11 },
-    { "r12", TOK_R12 },
-    { "r13", TOK_R13 },
-    { "r14", TOK_R14 },
-    { "r15", TOK_R15 },
-
-    { "fr0", TOK_FR0 },
-    { "fr1", TOK_FR1 },
-    { "fr2", TOK_FR2 },
-    { "fr3", TOK_FR3 },
-    { "fr4", TOK_FR4 },
-    { "fr5", TOK_FR5 },
-    { "fr6", TOK_FR6 },
-    { "fr7", TOK_FR7 },
-    { "fr8", TOK_FR8 },
-    { "fr9", TOK_FR9 },
-    { "fr10", TOK_FR10 },
-    { "fr11", TOK_FR11 },
-    { "fr12", TOK_FR12 },
-    { "fr13", TOK_FR13 },
-    { "fr14", TOK_FR14 },
-    { "fr15", TOK_FR15 },
-
-    { "dr0", TOK_DR0 },
-    { "dr2", TOK_DR2 },
-    { "dr4", TOK_DR4 },
-    { "dr6", TOK_DR6 },
-    { "dr8", TOK_DR8 },
-    { "dr10", TOK_DR10 },
-    { "dr12", TOK_DR12 },
-    { "dr14", TOK_DR14 },
-
-    { "xd0", TOK_XD0 },
-    { "xd2", TOK_XD2 },
-    { "xd4", TOK_XD4 },
-    { "xd6", TOK_XD6 },
-    { "xd8", TOK_XD8 },
-    { "xd10", TOK_XD10 },
-    { "xd12", TOK_XD12 },
-    { "xd14", TOK_XD14 },
-
-    { "fv0", TOK_FV0 },
-    { "fv4", TOK_FV4 },
-    { "fv8", TOK_FV8 },
-    { "fv12", TOK_FV12 },
-
     { "xmtrx", TOK_XMTRX },
 
     { NULL }
@@ -279,7 +222,7 @@ void lexer_input_char(char ch, emit_tok_func emit) {
                     .tp = mapping->tok
                 };
                 emit(&tk);
-            } else if (cur_tok[0] == '#') {
+            } else if (cur_tok[0] == '#' && tok_len > 1) {
                 // string literal
                 errno = 0;
                 long val_as_long = strtol(cur_tok + 1, NULL, 0);
@@ -288,6 +231,64 @@ void lexer_input_char(char ch, emit_tok_func emit) {
                 struct tok tk = {
                     .tp = TOK_INTEGER_LITERAL,
                     .val = { .as_int = val_as_long }
+                };
+                emit(&tk);
+            } else if (cur_tok[0] == 'r' && (tok_len == 2 || tok_len == 3)) {
+                // general-purpose register
+                int reg_no = atoi(cur_tok + 1);
+                if (reg_no < 0 || reg_no > 15)
+                    errx(1, "invalid register index %d", reg_no);
+                struct tok tk = {
+                    .tp = TOK_RN,
+                    .val = { .reg_idx = reg_no }
+                };
+                emit(&tk);
+            } else if ((tok_len == 3 || tok_len == 4) &&
+                       cur_tok[0] == 'f' && cur_tok[1] == 'r') {
+                // floating-point register
+                int reg_no = atoi(cur_tok + 2);
+                if (reg_no < 0 || reg_no > 15)
+                    errx(1, "invalid floating-point register index %d",
+                         reg_no);
+                struct tok tk = {
+                    .tp = TOK_FRN,
+                    .val = { .reg_idx = reg_no }
+                };
+                emit(&tk);
+            } else if ((tok_len == 3 || tok_len == 4) &&
+                       cur_tok[0] == 'd' && cur_tok[1] == 'r') {
+                // double-precision floating-point register
+                int reg_no = atoi(cur_tok + 2);
+                if (reg_no < 0 || reg_no > 15 || (reg_no & 1))
+                    errx(1, "invalid double-precision floating-point "
+                         "register index %d", reg_no);
+                struct tok tk = {
+                    .tp = TOK_DRN,
+                    .val = { .reg_idx = reg_no }
+                };
+                emit(&tk);
+            } else if ((tok_len == 3 || tok_len == 4) &&
+                       cur_tok[0] == 'x' && cur_tok[1] == 'd') {
+                // double-precision floating-point register (banked-out)
+                int reg_no = atoi(cur_tok + 2);
+                if (reg_no < 0 || reg_no > 15 || (reg_no & 1))
+                    errx(1, "invalid banked double-precision floating-point "
+                         "register index %d", reg_no);
+                struct tok tk = {
+                    .tp = TOK_XDN,
+                    .val = { .reg_idx = reg_no }
+                };
+                emit(&tk);
+            } else if ((tok_len == 3 || tok_len == 4) &&
+                       cur_tok[0] == 'f' && cur_tok[1] == 'v') {
+                // floating-point vector register
+                int reg_no = atoi(cur_tok + 2);
+                if (reg_no < 0 || reg_no > 15 || (reg_no & 3))
+                    errx(1, "invalid floating-point vector register index "
+                         "%d\n", reg_no);
+                struct tok tk = {
+                    .tp = TOK_FVN,
+                    .val = { .reg_idx = reg_no }
                 };
                 emit(&tk);
             } else {
@@ -334,6 +335,26 @@ char const *tok_as_str(struct tok const *tk) {
 
     if (tk->tp == TOK_INTEGER_LITERAL) {
         snprintf(buf, TOK_LEN_MAX, "#0x%x", tk->val.as_int);
+        buf[TOK_LEN_MAX - 1] = '\0';
+        return buf;
+    } else if (tk->tp == TOK_RN) {
+        snprintf(buf, TOK_LEN_MAX, "r%u", tk->val.reg_idx);
+        buf[TOK_LEN_MAX - 1] = '\0';
+        return buf;
+    } else if (tk->tp == TOK_FRN) {
+        snprintf(buf, TOK_LEN_MAX, "fr%u", tk->val.reg_idx);
+        buf[TOK_LEN_MAX - 1] = '\0';
+        return buf;
+    } else if (tk->tp == TOK_DRN) {
+        snprintf(buf, TOK_LEN_MAX, "dr%u", tk->val.reg_idx);
+        buf[TOK_LEN_MAX - 1] = '\0';
+        return buf;
+    } else if (tk->tp == TOK_XDN) {
+        snprintf(buf, TOK_LEN_MAX, "xd%u", tk->val.reg_idx);
+        buf[TOK_LEN_MAX - 1] = '\0';
+        return buf;
+    } else if (tk->tp == TOK_FVN) {
+        snprintf(buf, TOK_LEN_MAX, "fv%u", tk->val.reg_idx);
         buf[TOK_LEN_MAX - 1] = '\0';
         return buf;
     }
