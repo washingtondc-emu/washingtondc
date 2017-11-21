@@ -219,8 +219,8 @@ void lexer_input_char(char ch, emit_tok_func emit) {
     if (tok_len >= (TOK_LEN_MAX - 1))
         err(1, "Token is too long");
 
-    if (isspace(ch) || ch == ',' || ch == '@' ||
-        ch == '(' || ch == ')' || ch == '\0' || ch == '\n' || ch == '-') {
+    if (isspace(ch) || ch == ',' || ch == '@' || ch == '(' || ch == ')' ||
+        ch == '\0' || ch == '\n' || ch == '+' || ch == '-') {
         if (tok_len) {
             cur_tok[tok_len] = '\0';
 
