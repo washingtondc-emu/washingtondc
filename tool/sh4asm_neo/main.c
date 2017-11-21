@@ -33,6 +33,7 @@
 
 #include <err.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -50,10 +51,11 @@ static struct options {
     bool print_addrs;
     bool disas;
     bool hex_comments;
+    bool case_insensitive;
 } options;
 
 static void print_usage(char const *cmd) {
-    fprintf(stderr, "Usage: %s -[bdlc] [-i input] [-o output] instruction\n",
+    fprintf(stderr, "Usage: %s -[bdlcu] [-i input] [-o output] instruction\n",
             cmd);
 }
 
@@ -71,6 +73,8 @@ static void do_asm(void) {
     parser_set_emitter(do_emit_bin);
 
     while ((ch = fgetc(input)) != EOF) {
+        if (options.case_insensitive)
+            ch = tolower(ch);
         lexer_input_char(ch, parser_input_token);
     }
 }
@@ -84,7 +88,7 @@ int main(int argc, char **argv) {
     output = stdout;
     input = stdin;
 
-    while ((opt = getopt(argc, argv, "bcdli:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "bcdli:o:u")) != -1) {
         switch (opt) {
         case 'b':
             options.bin_mode = true;
@@ -97,6 +101,9 @@ int main(int argc, char **argv) {
             break;
         case 'l':
             options.print_addrs = true;
+            break;
+        case 'u':
+            options.case_insensitive = true;
             break;
         case 'i':
             options.filename_in = optarg;
