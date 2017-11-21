@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include <err.h>
+#include <cctype>
 #include <iostream>
 #include <cstdlib>
 
@@ -27,6 +29,7 @@
 #include <boost/tokenizer.hpp>
 
 #include "sh4asm/sh4asm.hpp"
+#include "sh4asm_neo/sh4asm_neo.h"
 #include "RandGenerator.hpp"
 #include "BaseException.hpp"
 
@@ -37,6 +40,17 @@ typedef boost::error_info<struct tag_nbits_error_info, unsigned>
 errinfo_nbits;
 
 typedef boost::error_info<struct tag_scale_error_info, unsigned> errinfo_scale;
+
+#define SH4ASM_NEO_BUF_MAX 1
+unsigned sh4asm_neo_buf_len;
+static inst_t sh4asm_neo_buf[SH4ASM_NEO_BUF_MAX];
+
+static void neo_emit(inst_t dat) {
+    if (sh4asm_neo_buf_len >= SH4ASM_NEO_BUF_MAX)
+        errx(1, "sh4asm_neo buffer overflow");
+
+    sh4asm_neo_buf[sh4asm_neo_buf_len++] = dat;
+}
 
 /*
  * This function tests assembler and disassembler functionality on the given
@@ -55,7 +69,7 @@ typedef boost::error_info<struct tag_scale_error_info, unsigned> errinfo_scale;
  */
 bool test_inst(std::string const& inst) {
     Sh4Prog prog;
-    inst_t inst1, inst2;
+    inst_t inst1, inst2, inst3;
     std::string inst1_as_txt;
 
     if (inst.at(inst.size() - 1) != '\n') {
@@ -71,7 +85,18 @@ bool test_inst(std::string const& inst) {
     inst1_as_txt = prog.disassemble_inst(inst1) + "\n";
     inst2 = prog.assemble_inst(inst1_as_txt);
 
-    if (inst1 == inst2) {
+    sh4asm_neo_buf_len = 0;
+    sh4asm_neo_set_emitter(neo_emit);
+    for (std::string::const_iterator it = inst.begin(); it != inst.end(); it++)
+        sh4asm_neo_input_char(tolower(*it));
+
+    if (sh4asm_neo_buf_len != 1) {
+        errx(1, "invalid sh4asm_neo output length (expected 1, got %u)",
+             sh4asm_neo_buf_len);
+    }
+    inst3 = sh4asm_neo_buf[0];
+
+    if (inst1 == inst2 && inst1 == inst3) {
         std::cout << "success!" << std::endl;
         return true;
     }
@@ -128,12 +153,6 @@ char const *insts_to_test[] = {
     "TST.B #<8>, @(R0, GBR)",
     "XOR #<8>, R0",
     "XOR.B #<8>, @(R0, GBR)",
-    "BF <8>",
-    "BF/S <8>",
-    "BT <8>",
-    "BT/S <8>",
-    "BRA <12>",
-    "BSR <12>",
     "TRAPA #<8>",
     "TAS.B @R<4>",
     "OCBI @R<4>",
@@ -170,8 +189,6 @@ char const *insts_to_test[] = {
     "STC.L DBR, @-R<4>",
     "MOV #<8>, R<4>",
     "ADD #<8>, R<4>",
-    "MOV.W @(<8,4>, PC), R<4>",
-    "MOV.L @(<8,4>, PC), R<4>",
     "MOV R<4>, R<4>",
     "SWAP.B R<4>, R<4>",
     "SWAP.W R<4>, R<4>",
@@ -256,7 +273,6 @@ char const *insts_to_test[] = {
     "MOV.B @(<8,1>, GBR), R0",
     "MOV.W @(<8,2>, GBR), R0",
     "MOV.L @(<8,4>, GBR), R0",
-    "MOVA @(<8,4>, PC), R0",
     "MOVCA.L R0, @R<4>",
     "FLDI0 FR<4>",
     "FLDI1 FR<4>",
@@ -324,6 +340,29 @@ char const *insts_to_test[] = {
     "FSCHG",
     "FSCA FPUL, DR<3,2>",
     "FSRRA FR<4>",
+
+    /*
+     * TODO: these instructions have been temporarily commented out for the
+     * benefit of sh4asm/sh4asm_neo compliance testing.  In sh4asm_neo, I
+     * changed the instructions which require immediate offset-values based on
+     * PC so that the displacement from PC will be specified instead of the
+     * value that is actually input to the opcode; this obviously makes
+     * sh4asm_neo incompatible with sh4asm, so I can't expect these opcodes to
+     * be compatible.  Later, when I'm satisified that sh4asm_neo is compatible
+     * with sh4asm, I will delete sh4asm and restore these opcodes.
+
+    "MOV.W @(<8,4>, PC), R<4>",
+    "MOV.L @(<8,4>, PC), R<4>",
+    "MOVA @(<8,4>, PC), R0",
+    "BF <8>",
+    "BF/S <8>",
+    "BT <8>",
+    "BT/S <8>",
+    "BRA <12>",
+    "BSR <12>",
+     */
+
+
     NULL
 };
 
