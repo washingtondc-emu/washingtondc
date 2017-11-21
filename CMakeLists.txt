@@ -245,7 +245,7 @@ set(sh4asm_core_sources
                         "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4asm.cpp"
                         "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4asm.hpp")
 
-set(sh4asm_neo_sources
+set(sh4asm_neo_core_sources
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_opcodes.h"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_bin_emit.h"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_bin_emit.c"
@@ -255,7 +255,8 @@ set(sh4asm_neo_sources
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/lexer.h"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/parser.c"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/parser.h"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/main.c")
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4asm_neo.h"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4asm_neo.c")
 
 include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
@@ -263,6 +264,7 @@ include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/external")
 
 add_library(sh4asm_core ${sh4asm_core_sources})
+add_library(sh4asm_neo_core ${sh4asm_neo_core_sources})
 add_library(sh4 ${sh4_sources})
 
 # TODO: I wish there was an easy way to do this as a dependency like in make...
@@ -318,7 +320,8 @@ add_test(NAME sh4div_test COMMAND ./sh4div_test)
 add_executable(sh4asm "${PROJECT_SOURCE_DIR}/tool/sh4asm/main.cpp" ${common_headers})
 target_link_libraries(sh4asm m sh4asm_core rt)
 
-add_executable(sh4asm_neo ${sh4asm_neo_sources} ${common_headers})
+add_executable(sh4asm_neo "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/main.c" ${common_headers})
+target_link_libraries(sh4asm_neo sh4asm_neo_core)
 
 add_executable(washingtondc ${washingtondc_sources})
 
