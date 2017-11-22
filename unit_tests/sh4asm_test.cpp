@@ -71,6 +71,7 @@ bool test_inst(std::string const& inst) {
     Sh4Prog prog;
     inst_t inst1, inst2, inst3;
     std::string inst1_as_txt;
+    bool success = true;
 
     if (inst.at(inst.size() - 1) != '\n') {
         // maybe an exception would be more appropriate here, idgaf
@@ -97,14 +98,22 @@ bool test_inst(std::string const& inst) {
     }
     inst3 = sh4asm_neo_buf[0];
 
-    if (inst1 == inst2 && inst1 == inst3) {
-        std::cout << "success!" << std::endl;
-        return true;
+    if (inst1 != inst2) {
+        std::cout << "Failure: expected " << std::hex << inst1 << " but got " <<
+            std::hex << inst2 << std::endl;
+        success = false;
     }
 
-    std::cout << "Failure: expected " << std::hex << inst1 << " but got " <<
-        std::hex << inst2 << std::endl;
-    return false;
+    if (inst1 != inst3) {
+        std::cout << "Failure: sh4asm returned " << std::hex << inst1 <<
+            " but sh4asm_neo returned " << std::hex << inst3 << std::endl;
+        success = false;
+    }
+
+    if (success)
+        std::cout << "success!" << std::endl;
+
+    return success;
 }
 
 /*
