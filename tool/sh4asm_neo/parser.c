@@ -42,7 +42,8 @@
 struct tok tokens[MAX_TOKENS];
 unsigned n_tokens;
 
-#define CHECK(cond) do_check((cond), #cond, __func__, __LINE__, __FILE__)
+#define CHECK_(cond, func, line, file) do_check((cond), #cond, func, line, file)
+#define CHECK(cond) CHECK_((cond), __func__, __LINE__, __FILE__)
 
 static void do_check(bool success, char const *cond, char const *func,
                      unsigned line, char const *file) {
@@ -51,43 +52,44 @@ static void do_check(bool success, char const *cond, char const *func,
              func, cond, line, file);
 }
 
-#define CHECK_RN(tok_idx) CHECK(tokens[(tok_idx)].tp == TOK_RN)
-#define CHECK_RN_BANK(tok_idx) CHECK(tokens[(tok_idx)].tp == TOK_RN_BANK)
-#define CHECK_FRN(tok_idx) CHECK(tokens[(tok_idx)].tp == TOK_FRN)
-#define CHECK_DRN(tok_idx) do_check_drn((tok_idx), __LINE__, __FILE__)
+#define CHECK_RN_(tok_idx, func, line, file)                    \
+    CHECK_(tokens[(tok_idx)].tp == TOK_RN, func, line, file)
+#define CHECK_RN(tok_idx) CHECK_RN_(tok_idx, __func__, __LINE__, __FILE__)
+#define CHECK_RN_BANK(tok_idx) CHECK_(tokens[(tok_idx)].tp == TOK_RN_BANK, \
+                                      __func__, __LINE__, __FILE__)
+#define CHECK_FRN(tok_idx) CHECK_FRN_(tok_idx, __func__, __LINE__, __FILE__)
+#define CHECK_FRN_(tok_idx, func, line, file)                           \
+    CHECK_(tokens[(tok_idx)].tp == TOK_FRN, func, line, file)
+#define CHECK_DRN(tok_idx) CHECK_DRN_((tok_idx), __func__, __LINE__, __FILE__)
+#define CHECK_DRN_(tok_idx, func, line, file) do_check_drn((tok_idx), func, line, file)
 #define CHECK_XDN(tok_idx) do_check_xdn((tok_idx), __LINE__, __FILE__)
 #define CHECK_FVN(tok_idx) do_check_fvn((tok_idx), __LINE__, __FILE__)
-#define CHECK_IMM(tok_idx) CHECK(tokens[(tok_idx)].tp == TOK_IMM)
-#define CHECK_DISP(tok_idx) CHECK(tokens[(tok_idx)].tp == TOK_DISP)
+#define CHECK_IMM(tok_idx) CHECK_(tokens[(tok_idx)].tp == TOK_IMM,  \
+                                  __func__, __LINE__, __FILE__)
+#define CHECK_DISP(tok_idx) CHECK_(tokens[(tok_idx)].tp == TOK_DISP,    \
+                                   __func__, __LINE__, __FILE__)
 
-#define CHECK_R0(tok_idx) do_check_r0((tok_idx), __LINE__, __FILE__)
-#define CHECK_FR0(tok_idx) do_check_fr0((tok_idx), __LINE__, __FILE__)
+#define CHECK_R0(tok_idx) do_check_r0((tok_idx), __func__, __LINE__, __FILE__)
+#define CHECK_FR0(tok_idx) do_check_fr0((tok_idx), __func__, __LINE__, __FILE__)
 
-static void do_check_r0(unsigned tok_idx, unsigned line, char const *file) {
-    CHECK_RN(tok_idx);
-    if (tokens[tok_idx].val.reg_idx != 0) {
-        errx(1, "invalid nonzero register index (see line %d of %s)",
-             line, file);
-    }
+static void do_check_r0(unsigned tok_idx, char const *func,
+                        unsigned line, char const *file) {
+    CHECK_RN_(tok_idx, func, line, file);
+    CHECK_(tokens[tok_idx].val.reg_idx == 0, func, line, file);
 }
 
-static void do_check_fr0(unsigned tok_idx, unsigned line, char const *file) {
-    CHECK_FRN(tok_idx);
-    if (tokens[tok_idx].val.reg_idx != 0) {
-        errx(1, "invalid nonzero floating-point register index "
-             "(see line %d of %s)", line, file);
-    }
+static void do_check_fr0(unsigned tok_idx, char const *func,
+                         unsigned line, char const *file) {
+    CHECK_FRN_(tok_idx, func, line, file);
+    CHECK_(tokens[tok_idx].val.reg_idx == 0, func, line, file);
 }
 
-static void do_check_drn(unsigned tok_idx, unsigned line, char const *file) {
-    CHECK(tokens[tok_idx].tp == TOK_DRN);
+static void do_check_drn(unsigned tok_idx, char const *func,
+                         unsigned line, char const *file) {
+    CHECK_(tokens[tok_idx].tp == TOK_DRN, func, line, file);
     unsigned reg_idx = tokens[tok_idx].val.reg_idx;
-    if (reg_idx >= 16)
-        errx(1, "invalid out-of-range double-precision floating-point register "
-             "index %u (see line %d of %s)", reg_idx, line, file);
-    if (reg_idx & 1)
-        errx(1, "invalid non-even double-precision floating-point register "
-             "index %u (see line %d of %s)", reg_idx, line, file);
+    CHECK_(reg_idx < 16, func, line, file);
+    CHECK_(!(reg_idx & 1), func, line, file);
 }
 
 static void do_check_xdn(unsigned tok_idx, unsigned line, char const *file) {
