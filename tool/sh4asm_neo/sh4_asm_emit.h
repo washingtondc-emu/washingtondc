@@ -796,7 +796,7 @@ DEF_ASM_REG_AMRN(stsl, "sts.l", pr)
 DEF_ASM_REG_AMRN(stsl, "sts.l", fpscr)
 DEF_ASM_REG_AMRN(stsl, "sts.l", fpul)
 
-DEF_ASM_REG_RN(movcal, "movca.l", r0)
+DEF_ASM_REG_ARN(movcal, "movca.l", r0)
 
 DEF_ASM_FRN(fldi0, "fldi0")
 DEF_ASM_FRN(fldi1, "fldi1")
