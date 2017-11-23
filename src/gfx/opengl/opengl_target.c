@@ -79,8 +79,11 @@ void opengl_target_begin(unsigned width, unsigned height) {
     glBindTexture(GL_TEXTURE_2D, color_buf_tex);
     glDrawBuffers(1, &draw_buffer);
 
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        fprintf(stderr, "%s ERROR: framebuffer status is not complete\n",
+                __func__);
         abort();
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
