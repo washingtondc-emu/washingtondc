@@ -707,6 +707,7 @@ static char const *disp8_str(unsigned disp8, unsigned shift) {
 DEF_ASM_NOARG(div0u, "div0u")
 DEF_ASM_NOARG(rts, "rts")
 DEF_ASM_NOARG(clrmac, "clrmac")
+DEF_ASM_NOARG(clrs, "clrs")
 DEF_ASM_NOARG(clrt, "clrt")
 DEF_ASM_NOARG(ldtlb, "ldtlb")
 DEF_ASM_NOARG(nop, "nop")
