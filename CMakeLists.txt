@@ -256,7 +256,9 @@ set(sh4asm_neo_core_sources
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/parser.c"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/parser.h"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4asm_neo.h"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4asm_neo.c")
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4asm_neo.c"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/disas.c"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/disas.h")
 
 include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
