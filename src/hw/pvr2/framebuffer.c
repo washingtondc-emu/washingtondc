@@ -51,6 +51,14 @@ static unsigned current_fb_stamp;
 static uint8_t ogl_fb[OGL_FB_BYTES];
 
 /*
+ * this is a simple "dumb" memcpy function that doesn't handle the framebuffer
+ * state (this is what makes it different from pvr2_tex_mem_area32_write).  It
+ * does, however, perform bounds-checking and raise an error for out-of-bounds
+ * memory access.
+ */
+static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len);
+
+/*
  * The concat parameter in these functions corresponds to the fb_concat value
  * in FB_R_CTRL; it is appended as the lower 3/2 bits to each color component
  * to convert that component from 5/6 bits to 8 bits.
@@ -212,8 +220,10 @@ void read_framebuffer_rgb565_intl(uint32_t *pixels_out,
 
     unsigned row;
     for (row = 0; row < fb_height; row++) {
-        uint16_t *ptr_row1 = (uint16_t*)(pvr2_tex32_mem + row_start_field1);
-        uint16_t *ptr_row2 = (uint16_t*)(pvr2_tex32_mem + row_start_field2);
+        uint16_t const *ptr_row1 =
+            (uint16_t const*)(pvr2_tex32_mem + row_start_field1);
+        uint16_t const *ptr_row2 =
+            (uint16_t const*)(pvr2_tex32_mem + row_start_field2);
 
         conv_rgb565_to_rgba8888(pixels_out + (row << 1) * fb_width,
                                 ptr_row1, fb_width, concat);
@@ -227,7 +237,7 @@ void read_framebuffer_rgb565_intl(uint32_t *pixels_out,
 
 void read_framebuffer_rgb0888_prog(uint32_t *pixels_out, addr32_t start_addr,
                                    unsigned width, unsigned height) {
-    uint32_t const *pixels_in = (uint32_t*)(pvr2_tex32_mem + start_addr);
+    uint32_t const *pixels_in = (uint32_t const*)(pvr2_tex32_mem + start_addr);
     /*
      * bounds checking
      *
@@ -291,8 +301,10 @@ void read_framebuffer_rgb0888_intl(uint32_t *pixels_out,
 
     unsigned row;
     for (row = 0; row < fb_height; row++) {
-        uint32_t *ptr_row1 = (uint32_t*)(pvr2_tex32_mem + row_start_field1);
-        uint32_t *ptr_row2 = (uint32_t*)(pvr2_tex32_mem + row_start_field2);
+        uint32_t const *ptr_row1 =
+            (uint32_t const*)(pvr2_tex32_mem + row_start_field1);
+        uint32_t const *ptr_row2 =
+            (uint32_t const*)(pvr2_tex32_mem + row_start_field2);
 
         conv_rgb0888_to_rgba8888(pixels_out + (row << 1) * fb_width,
                                  ptr_row1, fb_width);
@@ -437,8 +449,7 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
     unsigned row, col;
     for (row = 0; row < height; row++) {
         // TODO: take interlacing into account here
-        uint16_t *line_start = (uint16_t*)(pvr2_tex32_mem + get_fb_w_sof1() +
-                                           (height - (row + 1)) * stride);
+        unsigned line_offs = get_fb_w_sof1() + (height - (row + 1)) * stride;
 
         for (col = 0; col < width; col++) {
             unsigned ogl_fb_idx = row * width + col;
@@ -447,7 +458,11 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
                 ((ogl_fb[4 * ogl_fb_idx + 1] & 0xf8) << 2) |
                 ((ogl_fb[4 * ogl_fb_idx] & 0xf8) << 7) | k_val;
 
-            line_start[col] = pix_out;
+            /*
+             * XXX this is suboptimal because it does the bounds-checking once
+             * per pixel.
+             */
+            copy_to_tex_mem32(&pix_out, line_offs + 2 * col, sizeof(pix_out));
         }
     }
 }
@@ -477,8 +492,7 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
     unsigned row, col;
     for (row = y_min; row <= y_max; row++) {
         // TODO: take interlacing into account here
-        uint16_t *line_start = (uint16_t*)(pvr2_tex32_mem + get_fb_w_sof1() +
-                                           (height - (row + 1)) * stride);
+        unsigned line_offs = get_fb_w_sof1() + (height - (row + 1)) * stride;
 
         for (col = x_min; col <= x_max; col++) {
             unsigned ogl_fb_idx = row * width + col;
@@ -487,7 +501,11 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
                 ((ogl_fb[4 * ogl_fb_idx + 1] & 0xfc) << 3) |
                 ((ogl_fb[4 * ogl_fb_idx] & 0xf8) << 8) | k_val;
 
-            line_start[col] = pix_out;
+            /*
+             * XXX this is suboptimal because it does the bounds-checking once
+             * per pixel.
+             */
+            copy_to_tex_mem32(&pix_out, line_offs + 2 * col, sizeof(pix_out));
         }
     }
 }
@@ -550,4 +568,15 @@ void framebuffer_sync_from_host_maybe(void) {
 void framebuffer_set_current_host(unsigned stamp) {
     current_fb = FRAMEBUFFER_CURRENT_HOST;
     current_fb_stamp = stamp;
+}
+
+static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len) {
+    addr32_t last_byte = offs - 1 + len;
+    if (last_byte > (ADDR_TEX32_LAST - ADDR_TEX32_FIRST)) {
+        error_set_length(len);
+        error_set_address(offs + ADDR_TEX32_FIRST);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
+    memcpy(pvr2_tex32_mem + offs, in, len);
 }
