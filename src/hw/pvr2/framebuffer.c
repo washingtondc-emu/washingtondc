@@ -30,6 +30,7 @@
 #include "hw/pvr2/spg.h"
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
+#include "hw/pvr2/pvr2_tex_cache.h"
 #include "gfx/gfx_thread.h"
 #include "hw/pvr2/geo_buf.h"
 
@@ -570,13 +571,56 @@ void framebuffer_set_current_host(unsigned stamp) {
     current_fb_stamp = stamp;
 }
 
+/*
+ * returns a pointer to the area that addr belongs in.
+ * Keep in mind that this pointer points to the beginning of that area,
+ * it doesn NOT point to the actual byte that corresponds to the addr.
+ */
+static uint8_t *get_tex_mem_area(addr32_t addr) {
+    switch (addr & 0xff000000) {
+    case 0x04000000:
+    case 0x06000000:
+        return pvr2_tex64_mem;
+    case 0x05000000:
+    case 0x07000000:
+        return pvr2_tex32_mem;
+    default:
+        return NULL;
+    }
+}
+
 static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len) {
     addr32_t last_byte = offs - 1 + len;
-    if (last_byte > (ADDR_TEX32_LAST - ADDR_TEX32_FIRST)) {
+
+    if ((last_byte & 0xff000000) != (offs & 0xff000000)) {
+        error_set_length(len);
+        error_set_address(offs + ADDR_TEX32_FIRST);
+        error_set_feature("texture memory writes across boundaries");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint8_t *tex_mem_ptr = get_tex_mem_area(offs + ADDR_TEX32_FIRST);
+    if (!tex_mem_ptr) {
         error_set_length(len);
         error_set_address(offs + ADDR_TEX32_FIRST);
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
-    memcpy(pvr2_tex32_mem + offs, in, len);
+    /*
+     * AND'ing offs with 0x7fffff here serves two purposes: it makes the offs
+     * relative to whatever memor area tex_mem_ptr points at, and it also
+     * implements mirroring across adjacent versions of the same area (the
+     * memory areas are laid out as two mirrors of the 64-bit area at
+     * 0x04000000 and 0x04800000, followed by two mirrors of the 32-bit area at
+     * 0x05000000 and 0x05800000, and so forth up until 0x08000000)
+     */
+    offs &= 0x7fffff;
+    memcpy(tex_mem_ptr + offs, in, len);
+
+    /*
+     * let the texture tracking system know we may have just overwritten a
+     * texture in the cache.
+     */
+    if (tex_mem_ptr == pvr2_tex64_mem)
+        pvr2_tex_cache_notify_write(offs + ADDR_TEX64_FIRST, len);
 }
