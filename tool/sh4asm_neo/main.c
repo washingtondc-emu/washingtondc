@@ -41,6 +41,7 @@
 
 #include "lexer.h"
 #include "parser.h"
+#include "disas.h"
 
 static FILE *output;
 static FILE *input;
@@ -53,6 +54,17 @@ static struct options {
     bool hex_comments;
     bool case_insensitive;
 } options;
+
+static unsigned to_hex(char ch) {
+    if (ch >= '0' && ch <= '9')
+        return ch - '0';
+    if (ch >= 'a' && ch <= 'f')
+        return ch - 'a' + 10;
+    if (ch >= 'A' && ch <= 'F')
+        return ch - 'A' + 10;
+
+    errx(1, "character \"%c\" is not hex\n", ch);
+}
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "Usage: %s -[bdlcu] [-i input] [-o output] instruction\n",
@@ -76,6 +88,69 @@ static void do_asm(void) {
         if (options.case_insensitive)
             ch = tolower(ch);
         lexer_input_char(ch, parser_input_token);
+    }
+}
+
+static void do_emit_asm(char ch) {
+    fputc(ch, output);
+}
+
+static void do_disasm(void) {
+    unsigned pc = 0;
+
+    if (options.bin_mode) {
+        uint16_t dat;
+        while (fread(&dat, sizeof(dat), 1, input) == 1) {
+            if (options.print_addrs)
+                fprintf(output, "%08x:    ", pc);
+            disas_inst(dat, do_emit_asm);
+            pc += 2;
+            if (options.hex_comments)
+                fprintf(output, " ! 0x%04x", (unsigned)dat);
+            fputc('\n', output);
+        }
+    } else {
+        bool even = true;
+        int ch;
+#define DAT_BUF_LEN 2
+        int dat_buf[DAT_BUF_LEN];
+        int dat;
+        int n_bytes = 0;
+        while ((ch = fgetc(input)) != EOF) {
+
+            if (!isxdigit(ch)) {
+                if (!even)
+                    dat_buf[n_bytes++] = dat;
+                even = true;
+                goto drain;
+            }
+
+            if (even) {
+                dat = to_hex(ch);
+            } else {
+                dat = (dat << 4) | to_hex(ch);
+                dat_buf[n_bytes++] = dat;
+            }
+
+            even = !even;
+
+        drain:
+            if (n_bytes == DAT_BUF_LEN) {
+                size_t idx = 0;
+                uint16_t dat16 = (dat_buf[0] & 0xff) |
+                    ((dat_buf[1] & 0xff) << 8);
+
+                if (options.print_addrs)
+                    fprintf(output, "%08x:    ", pc);
+                disas_inst(dat16, do_emit_asm);
+                pc += 2;
+                if (options.hex_comments)
+                    fprintf(output, " ! 0x%04x", (unsigned)dat16);
+                fputc('\n', output);
+
+                n_bytes = 0;
+            }
+        }
     }
 }
 
@@ -132,7 +207,7 @@ int main(int argc, char **argv) {
         output = file_out = fopen(options.filename_out, "wb");
 
     if (options.disas)
-        errx(1, "disassembly is not yet implemented");
+        do_disasm();
     else
         do_asm();
 
