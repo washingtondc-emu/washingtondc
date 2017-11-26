@@ -36,9 +36,17 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // this must match the asm_emit_handler_func typedef in sh4_asm_emit.h
 typedef void(*disas_emit_func)(char);
 
 void disas_inst(uint16_t inst, disas_emit_func em);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

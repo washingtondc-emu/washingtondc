@@ -30,6 +30,7 @@
 
 #include "sh4asm/sh4asm.hpp"
 #include "sh4asm_neo/sh4asm_neo.h"
+#include "sh4asm_neo/disas.h"
 #include "RandGenerator.hpp"
 #include "BaseException.hpp"
 
@@ -45,11 +46,17 @@ typedef boost::error_info<struct tag_scale_error_info, unsigned> errinfo_scale;
 unsigned sh4asm_neo_buf_len;
 static inst_t sh4asm_neo_buf[SH4ASM_NEO_BUF_MAX];
 
+static std::string sh4asm_neo_disas;
+
 static void neo_emit(inst_t dat) {
     if (sh4asm_neo_buf_len >= SH4ASM_NEO_BUF_MAX)
         errx(1, "sh4asm_neo buffer overflow");
 
     sh4asm_neo_buf[sh4asm_neo_buf_len++] = dat;
+}
+
+static void neo_asm_emit(char ch) {
+    sh4asm_neo_disas += ch;
 }
 
 /*
@@ -85,6 +92,35 @@ bool test_inst(std::string const& inst) {
     inst1 = prog.assemble_inst(inst);
     inst1_as_txt = prog.disassemble_inst(inst1) + "\n";
     inst2 = prog.assemble_inst(inst1_as_txt);
+
+    sh4asm_neo_disas = "";
+    disas_inst(inst1, neo_asm_emit);
+    sh4asm_neo_disas += '\n'; // sh4asm does this automatically
+    if (inst1_as_txt.size() != sh4asm_neo_disas.size()) {
+        std::cout << "error: length of sh4asm output (" << inst1_as_txt.size() <<
+            ") does not equal length of sh4asm_neo output (" <<
+            sh4asm_neo_disas.size() << ")" << std::endl;
+        std::cout << "sh4asm output is:" << std::endl;
+        std::cout << inst1_as_txt << std::endl;
+        std::cout << "sh4asm_neo output is:" << std::endl;
+        std::cout << sh4asm_neo_disas << std::endl;
+        success = false;
+    } else {
+        for (unsigned idx = 0; idx < inst1_as_txt.size(); idx++) {
+            char ch_sh4asm = inst1_as_txt.at(idx);
+            char ch_sh4asm_neo = sh4asm_neo_disas.at(idx);
+            if (toupper(ch_sh4asm) != toupper(ch_sh4asm_neo)) {
+                std::cout << "error: mismatch between sh4asm output and "
+                    "sh4asm_neo output" << std::endl;
+                std::cout << "sh4asm output is:" << std::endl;
+                std::cout << inst1_as_txt << std::endl;
+                std::cout << "sh4asm_neo output is:" << std::endl;
+                std::cout << sh4asm_neo_disas << std::endl;
+                success = false;
+                break;
+            }
+        }
+    }
 
     sh4asm_neo_buf_len = 0;
     sh4asm_neo_set_emitter(neo_emit);
