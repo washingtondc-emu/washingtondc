@@ -92,32 +92,36 @@ static char const *fv_reg_str(unsigned idx) {
 }
 
 static char const *imm8_str(unsigned imm8, unsigned shift) {
+    // TODO: pad output to two digits
     static char buf[8];
-    snprintf(buf, sizeof(buf), "0x%02x",
+    snprintf(buf, sizeof(buf), "0x%x", //"0x%02x",
              imm8 & ((256 << shift) - 1) & ~((1 << shift) - 1));
     buf[7] = '\0';
     return buf;
 }
 
 static char const *imm12_str(unsigned imm12, unsigned shift) {
+    // TODO: pad output to three digits
     static char buf[8];
-    snprintf(buf, sizeof(buf), "0x%03x",
+    snprintf(buf, sizeof(buf), "0x%x", //"0x%03x",
              imm12 & ((4096 << shift) - 1) & ~((1 << shift) - 1));
     buf[7] = '\0';
     return buf;
 }
 
 static char const *disp4_str(unsigned disp4, unsigned shift) {
+    // convert to hex
     static char buf[8];
-    snprintf(buf, sizeof(buf), "0x%01x",
+    snprintf(buf, sizeof(buf), "%d", //"0x%x",
              disp4 & ((16 << shift) - 1) & ~((1 << shift)-1));
     buf[7] = '\0';
     return buf;
 }
 
 static char const *disp8_str(unsigned disp8, unsigned shift) {
+    // TODO: pad output to two hex digits
     static char buf[8];
-    snprintf(buf, sizeof(buf), "0x%02x",
+    snprintf(buf, sizeof(buf), "%d", //"0x%02x",
              disp8 & ((256 << shift) - 1) & ~((1 << shift)-1));
     buf[7] = '\0';
     return buf;
