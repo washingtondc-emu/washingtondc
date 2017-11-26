@@ -508,7 +508,7 @@ static void disas_4xx7(unsigned const *quads, disas_emit_func em) {
     case 13:
     case 14:
     case 15:
-        sh4_asm_ldcl_armp_rn_bank(em, quads[1], quads[2] & 7);
+        sh4_asm_ldcl_armp_rn_bank(em, quads[2], quads[1] & 7);
         break;
     default:
         opcode_non_inst(quads, em);
