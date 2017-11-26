@@ -91,8 +91,9 @@ bool test_inst(std::string const& inst) {
         sh4asm_neo_input_char(tolower(*it));
 
     if (sh4asm_neo_buf_len != 1) {
-        errx(1, "invalid sh4asm_neo output length (expected 1, got %u)",
-             sh4asm_neo_buf_len);
+        std::cout << "invalid sh4asm_neo output length (expected 1, got " <<
+            sh4asm_neo_buf_len << ")" << std::endl;
+        return false;
     }
     inst3 = sh4asm_neo_buf[0];
 
