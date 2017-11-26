@@ -241,7 +241,7 @@ static char const *disp8_str(unsigned disp8, unsigned shift) {
     static inline void                                                  \
     sh4_asm_##op##_##reg1##_a_disp8_##reg2(asm_emit_handler_func em,    \
                                            unsigned disp8) {            \
-        emit_str(em, lit " " #reg1 "@(");                               \
+        emit_str(em, lit " " #reg1 ", @(");                             \
         emit_str(em, disp8_str(disp8, disp_shift));                     \
         emit_str(em, ", " #reg2 ")");                                   \
     }
@@ -364,6 +364,7 @@ static char const *disp8_str(unsigned disp8, unsigned shift) {
         emit_str(em, gen_reg_str(rm));                                  \
         emit_str(em, ", @(" #reg", ");                                  \
         emit_str(em, gen_reg_str(rn));                                  \
+        emit_str(em, ")");                                              \
     }
 
 // OP @(REG, Rm), Rn
@@ -543,6 +544,7 @@ static char const *disp8_str(unsigned disp8, unsigned shift) {
         emit_str(em, gen_reg_str(rm));                                  \
         emit_str(em, ", @(");                                           \
         emit_str(em, disp4_str(disp4, disp_shift));                     \
+        emit_str(em, ", ");                                             \
         emit_str(em, gen_reg_str(rn));                                  \
         emit_str(em, ")");                                              \
     }
@@ -853,8 +855,8 @@ DEF_ASM_A_DISP8_REG_RN(movw, "mov.w", pc, 1)
 DEF_ASM_A_DISP8_REG_RN(movl, "mov.l", pc, 2)
 
 DEF_ASM_RM_RN(mov, "mov")
-DEF_ASM_RM_RN(swapb, "swapb")
-DEF_ASM_RM_RN(swapw, "swapw")
+DEF_ASM_RM_RN(swapb, "swap.b")
+DEF_ASM_RM_RN(swapw, "swap.w")
 DEF_ASM_RM_RN(xtrct, "xtrct")
 DEF_ASM_RM_RN(add, "add")
 DEF_ASM_RM_RN(addc, "addc")
