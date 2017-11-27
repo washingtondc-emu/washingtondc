@@ -31,6 +31,8 @@
  *
  ******************************************************************************/
 
+#include <stdio.h>
+
 #include "lexer.h"
 #include "parser.h"
 #include "sh4asm_neo.h"

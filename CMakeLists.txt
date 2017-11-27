@@ -284,7 +284,7 @@ configure_file("src/gfx/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl")
 
 set(common_headers "${PROJECT_SOURCE_DIR}/common/BaseException.hpp")
 
-add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.cpp" ${common_headers})
+add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.c" ${common_headers})
 target_link_libraries(sh4asm_test m sh4asm_core sh4asm_neo_core rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread)
 target_include_directories(sh4asm_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4asm_test COMMAND ./sh4asm_test)
