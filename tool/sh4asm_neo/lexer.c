@@ -320,7 +320,7 @@ void lexer_input_char(char ch, emit_tok_func emit) {
                  * error out if that assumption does not fit.
                  */
                 errno = 0;
-                long val_as_long = strtol(cur_tok + 1, NULL, 0);
+                long val_as_long = strtol(cur_tok, NULL, 0);
                 if (errno)
                     errx(1, "unrecognized token \"%s\"", cur_tok);
                 struct tok tk = {
