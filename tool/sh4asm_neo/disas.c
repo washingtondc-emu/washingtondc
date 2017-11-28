@@ -309,7 +309,7 @@ static void disas_1xxx(unsigned const *quads, disas_emit_func em) {
     unsigned rm = quads[1];
     unsigned disp = quads[0];
 
-    sh4_asm_movl_rm_a_disp4_rn(em, rm, disp, rn);
+    sh4_asm_movl_rm_a_disp4_rn(em, rm, disp << 2, rn);
 }
 
 static void disas_2xxx(unsigned const *quads, disas_emit_func em) {
@@ -759,7 +759,7 @@ static void disas_4xxx(unsigned const *quads, disas_emit_func em) {
 
 static void disas_5xxx(unsigned const *quads, disas_emit_func em) {
     // mask is 0xf000
-    sh4_asm_movl_a_disp4_rm_rn(em, quads[0], quads[1], quads[2]);
+    sh4_asm_movl_a_disp4_rm_rn(em, quads[0] << 2, quads[1], quads[2]);
 }
 
 static void disas_6xxx(unsigned const *quads, disas_emit_func em) {
@@ -831,13 +831,13 @@ static void disas_8xxx(unsigned const *quads, disas_emit_func em) {
         sh4_asm_movb_r0_a_disp4_rn(em, quads[0], quads[1]);
         break;
     case 1:
-        sh4_asm_movw_r0_a_disp4_rn(em, quads[0], quads[1]);
+        sh4_asm_movw_r0_a_disp4_rn(em, quads[0] << 1, quads[1]);
         break;
     case 4:
         sh4_asm_movb_a_disp4_rm_r0(em, quads[0], quads[1]);
         break;
     case 5:
-        sh4_asm_movw_a_disp4_rm_r0(em, quads[0], quads[1]);
+        sh4_asm_movw_a_disp4_rm_r0(em, quads[0] << 1, quads[1]);
         break;
     case 8:
         sh4_asm_cmpeq_imm8_r0(em, (quads[1] << 4) | quads[0]);
@@ -886,10 +886,10 @@ static void disas_cxxx(unsigned const *quads, disas_emit_func em) {
         sh4_asm_movb_r0_a_disp8_gbr(em, imm_val);
         break;
     case 1:
-        sh4_asm_movw_r0_a_disp8_gbr(em, imm_val);
+        sh4_asm_movw_r0_a_disp8_gbr(em, imm_val << 1);
         break;
     case 2:
-        sh4_asm_movl_r0_a_disp8_gbr(em, imm_val);
+        sh4_asm_movl_r0_a_disp8_gbr(em, imm_val << 2);
         break;
     case 3:
         sh4_asm_trapa_imm8(em, imm_val);
@@ -898,10 +898,10 @@ static void disas_cxxx(unsigned const *quads, disas_emit_func em) {
         sh4_asm_movb_a_disp8_gbr_r0(em, imm_val);
         break;
     case 5:
-        sh4_asm_movw_a_disp8_gbr_r0(em, imm_val);
+        sh4_asm_movw_a_disp8_gbr_r0(em, imm_val << 1);
         break;
     case 6:
-        sh4_asm_movl_a_disp8_gbr_r0(em, imm_val);
+        sh4_asm_movl_a_disp8_gbr_r0(em, imm_val << 2);
         break;
     case 7:
         sh4_asm_mova_a_disp8_pc_r0(em, imm_val);
