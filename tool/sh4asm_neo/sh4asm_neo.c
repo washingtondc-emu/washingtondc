@@ -44,3 +44,8 @@ void sh4asm_neo_set_emitter(sh4asm_neo_emit_func emit) {
 void sh4asm_neo_input_char(char ch) {
     lexer_input_char(ch, parser_input_token);
 }
+
+void sh4asm_neo_input_string(char const *txt) {
+    while (*txt)
+        sh4asm_neo_input_char(*txt++);
+}

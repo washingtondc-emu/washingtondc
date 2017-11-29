@@ -29,7 +29,7 @@
 #include "hw/sh4/sh4.h"
 #include "BiosFile.h"
 #include "memory.h"
-#include "sh4asm_neo/sh4_bin_emit.h"
+#include "sh4asm_neo/sh4asm_neo.h"
 #include "MemoryMap.h"
 
 #define INST_MAX 256
@@ -157,42 +157,45 @@ unsigned_div_test_32_16(struct div_test *test, struct div_test_state *state) {
      */
     uint32_t dividend, divisor, quotient;
 
+    static char const *prog_asm =
+        "shll16 r1\n"
+        "mov #16, r0\n"
+        "div0u\n"
+
+        /*
+         * looping is untenable here because we don't want to touch the T flag
+         * it *is* possible to save/restore the T flag on every iteration, but
+         * it's easier to just copy/paste the same instruction 16 times.
+         */
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+
+        "rotcl r2\n"
+        "extu.w r2, r2\n";
+    // final address should be 0x2a
+
+    sh4asm_neo_input_string(prog_asm);
+
     do {
         dividend = pick_rand32();
         divisor = pick_rand16();
     } while ((!divisor) || (dividend >= (divisor << 16)));
 
     quotient = dividend / divisor;
-
-    sh4_bin_shll16_rn(emit, 1);       // shll16 r1
-    sh4_bin_mov_imm8_rn(emit, 16, 0); // mov #16, r0
-    sh4_bin_div0u(emit);              // div0u
-
-    /*
-     * looping is untenable here because we don't want to touch the T flag
-     * it *is* possible to save/restore the T flag on every iteration, but
-     * it's easier to just copy/paste the same instruction 16 times.
-     */
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-
-    sh4_bin_rotcl_rn(emit, 2);        // rotcl r2
-    sh4_bin_extuw_rm_rn(emit, 2, 2);  // extu.w r2, r2
-    // final address should be 0x2a
 
     return run_div_test(0xa000002a, state, test->test_name,
                         dividend, divisor, quotient);
@@ -201,36 +204,39 @@ unsigned_div_test_32_16(struct div_test *test, struct div_test_state *state) {
 static int
 signed_div_test_16_16(struct div_test *test, struct div_test_state *state) {
 
-    sh4_bin_shll16_rn(emit, 1);       // shll16 r1
-    sh4_bin_extsw_rm_rn(emit, 2, 2);  // exts.w r2, r2
-    sh4_bin_xor_rm_rn(emit, 0, 0);    // xor r0, r0
-    sh4_bin_mov_rm_rn(emit, 2, 3);    // mov r2, r3
-    sh4_bin_rotcl_rn(emit, 3);        // rotcl r3
-    sh4_bin_subc_rm_rn(emit, 0, 2);   // subc r0, r2
+    static char const *prog_asm =
+        "shll16 r1\n"
+        "exts.w r2, r2\n"
+        "xor r0, r0\n"
+        "mov r2, r3\n"
+        "rotcl r3\n"
+        "subc r0, r2\n"
 
-    sh4_bin_div0s_rm_rn(emit, 1, 2);  // div0s r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
-    sh4_bin_div1_rm_rn(emit, 1, 2);   // div1 r1, r2
+        "div0s r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
+        "div1 r1, r2\n"
 
-    sh4_bin_extsw_rm_rn(emit, 2, 2);  // exts.w r2, r2
-    sh4_bin_rotcl_rn(emit, 2);        // rotcl r2
-    sh4_bin_addc_rm_rn(emit, 0, 2);   // addc r0, r2
-    sh4_bin_extsw_rm_rn(emit, 2, 2);  // exts.w r2, r2
+        "exts.w r2, r2\n"
+        "rotcl r2\n"
+        "addc r0, r2\n"
+        "exts.w r2, r2\n";
     // exit at pc=0x34
+
+    sh4asm_neo_input_string(prog_asm);
 
     /*
      * pick random 16-bit signed integers.
@@ -265,87 +271,86 @@ static int
 signed_div_test_32_32(struct div_test *test, struct div_test_state *state) {
     int32_t dividend, divisor, quotient;
 
-    /*
-     * R1 is the divisor, R2 is the lower 32-bits of the dividend and
-     * R0 is the upper 32-bits of the dividend.
-     */
-    sh4_bin_mov_rm_rn(emit, 2, 3);   // mov r2, r3
-    sh4_bin_rotcl_rn(emit, 3);       // rotcl r3
-    sh4_bin_subc_rm_rn(emit, 0, 0);  // subc r0, r0
-    sh4_bin_xor_rm_rn(emit, 3, 3);   // xor r3, r3
-    sh4_bin_subc_rm_rn(emit, 3, 2);  // subc r3, r2
+    static char const *prog_asm =
+        "mov r2, r3\n"
+        "rotcl r3\n"
+        "subc r0, r0\n"
+        "xor r3, r3\n"
+        "subc r3, r2\n"
 
-    // at this point the dividend is in one's-complement
-    sh4_bin_div0s_rm_rn(emit, 1, 0); // div0s r1, r0
+        // at this point the dividend is in one's-complement
+        "div0s r1, r0\n"
 
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 1, 0);  // div1 r1, r0
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
+        "rotcl r2\n"
+        "div1 r1, r0\n"
 
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_addc_rm_rn(emit, 3, 2);  // addc r3, r2
+        "rotcl r2\n"
+        "addc r3, r2\n";
     // should end at PC=0x90
+
+    sh4asm_neo_input_string(prog_asm);
 
     do {
         dividend = pick_rand32();
@@ -369,74 +374,77 @@ unsigned_div_test_64_32(struct div_test *test, struct div_test_state *state) {
      * and the lower 4 bytes in R2.  The divisor goes in R3.  The quotient will be
      * left in R2.
      */
-    sh4_bin_div0u(emit);
+    static char const *prog_asm =
+        "div0u\n"
 
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
-    sh4_bin_div1_rm_rn(emit, 3, 1);  // div1 r3, r1
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
+        "rotcl r2\n"
+        "div1 r3, r1\n"
 
-    sh4_bin_rotcl_rn(emit, 2);       // rotcl r2
+        "rotcl r2\n";
+
+    sh4asm_neo_input_string(prog_asm);
 
     do {
         dividend_high = pick_rand32();
@@ -504,6 +512,8 @@ int main(int argc, char **argv) {
     memory_init(&test_state.mem);
     memory_map_init(&test_state.bios, &test_state.mem);
     sh4_init(&test_state.sh4);
+
+    sh4asm_neo_set_emitter(emit);
 
     unsigned iteration;
     for (iteration = 0; iteration < N_TEST_ITERATIONS; iteration++) {

@@ -305,8 +305,8 @@ target_link_libraries(sh4tmu_test m sh4 rt GL  ${GLFW3_STATIC_LIBRARIES} GLEW pt
 target_include_directories(sh4tmu_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test)
 
-add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.c" tool/sh4asm_neo/sh4_bin_emit.h tool/sh4asm_neo/sh4_bin_emit.c tool/sh4asm_neo/sh4_opcodes.h)
-target_link_libraries(sh4div_test m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
+add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.c")
+target_link_libraries(sh4div_test m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread pthread event event_pthreads ${PNG_STATIC_LIBRARIES} sh4asm_neo_core)
 target_include_directories(sh4div_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4div_test COMMAND ./sh4div_test)
 

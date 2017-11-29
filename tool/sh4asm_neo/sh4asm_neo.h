@@ -43,6 +43,7 @@ typedef void(*sh4asm_neo_emit_func)(uint16_t);
 
 void sh4asm_neo_set_emitter(sh4asm_neo_emit_func emit);
 void sh4asm_neo_input_char(char ch);
+void sh4asm_neo_input_string(char const *txt);
 
 #ifdef __cplusplus
 }
