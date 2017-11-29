@@ -239,12 +239,6 @@ if (DEEP_SYSCALL_TRACE)
                    "${PROJECT_SOURCE_DIR}/src/deep_syscall_trace.c")
 endif()
 
-set(sh4asm_core_sources
-                        "${PROJECT_SOURCE_DIR}/tool/sh4asm/Inst.cpp"
-                        "${PROJECT_SOURCE_DIR}/tool/sh4asm/Inst.hpp"
-                        "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4asm.cpp"
-                        "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4asm.hpp")
-
 set(sh4asm_neo_core_sources
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_opcodes.h"
     "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_bin_emit.h"
@@ -265,7 +259,6 @@ include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/common"
                     "${PROJECT_SOURCE_DIR}/external")
 
-add_library(sh4asm_core ${sh4asm_core_sources})
 add_library(sh4asm_neo_core ${sh4asm_neo_core_sources})
 add_library(sh4 ${sh4_sources})
 
@@ -285,7 +278,7 @@ configure_file("src/gfx/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl")
 set(common_headers "${PROJECT_SOURCE_DIR}/common/BaseException.hpp")
 
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.c" ${common_headers})
-target_link_libraries(sh4asm_test m sh4asm_core sh4asm_neo_core rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread)
+target_link_libraries(sh4asm_test m sh4asm_neo_core rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread)
 target_include_directories(sh4asm_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4asm_test COMMAND ./sh4asm_test)
 
@@ -310,17 +303,14 @@ add_test(NAME sh4asm_test COMMAND ./sh4asm_test)
 # add_test(NAME sh4inst_test COMMAND ./sh4inst_test)
 
 add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.c" ${common_headers} tool/sh4asm_neo/sh4_bin_emit.h tool/sh4asm_neo/sh4_bin_emit.c tool/sh4asm_neo/sh4_opcodes.h)
-target_link_libraries(sh4tmu_test m sh4 sh4asm_core rt GL  ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
+target_link_libraries(sh4tmu_test m sh4 rt GL  ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
 target_include_directories(sh4tmu_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test)
 
 add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.c" ${common_headers} tool/sh4asm_neo/sh4_bin_emit.h tool/sh4asm_neo/sh4_bin_emit.c tool/sh4asm_neo/sh4_opcodes.h)
-target_link_libraries(sh4div_test m sh4 sh4asm_core rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
+target_link_libraries(sh4div_test m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
 target_include_directories(sh4div_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4div_test COMMAND ./sh4div_test)
-
-add_executable(sh4asm "${PROJECT_SOURCE_DIR}/tool/sh4asm/main.cpp" ${common_headers})
-target_link_libraries(sh4asm m sh4asm_core rt)
 
 add_executable(sh4asm_neo "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/main.c" ${common_headers})
 target_link_libraries(sh4asm_neo sh4asm_neo_core)
