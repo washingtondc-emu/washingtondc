@@ -29,7 +29,7 @@
 #include "hw/sh4/sh4.h"
 #include "BiosFile.h"
 #include "memory.h"
-#include "sh4asm_neo/sh4asm_neo.h"
+#include "sh4asm/sh4asm.h"
 #include "MemoryMap.h"
 
 #define INST_MAX 256
@@ -188,7 +188,7 @@ unsigned_div_test_32_16(struct div_test *test, struct div_test_state *state) {
         "extu.w r2, r2\n";
     // final address should be 0x2a
 
-    sh4asm_neo_input_string(prog_asm);
+    sh4asm_input_string(prog_asm);
 
     do {
         dividend = pick_rand32();
@@ -236,7 +236,7 @@ signed_div_test_16_16(struct div_test *test, struct div_test_state *state) {
         "exts.w r2, r2\n";
     // exit at pc=0x34
 
-    sh4asm_neo_input_string(prog_asm);
+    sh4asm_input_string(prog_asm);
 
     /*
      * pick random 16-bit signed integers.
@@ -350,7 +350,7 @@ signed_div_test_32_32(struct div_test *test, struct div_test_state *state) {
         "addc r3, r2\n";
     // should end at PC=0x90
 
-    sh4asm_neo_input_string(prog_asm);
+    sh4asm_input_string(prog_asm);
 
     do {
         dividend = pick_rand32();
@@ -444,7 +444,7 @@ unsigned_div_test_64_32(struct div_test *test, struct div_test_state *state) {
 
         "rotcl r2\n";
 
-    sh4asm_neo_input_string(prog_asm);
+    sh4asm_input_string(prog_asm);
 
     do {
         dividend_high = pick_rand32();
@@ -513,7 +513,7 @@ int main(int argc, char **argv) {
     memory_map_init(&test_state.bios, &test_state.mem);
     sh4_init(&test_state.sh4);
 
-    sh4asm_neo_set_emitter(emit);
+    sh4asm_set_emitter(emit);
 
     unsigned iteration;
     for (iteration = 0; iteration < N_TEST_ITERATIONS; iteration++) {

@@ -30,36 +30,36 @@
 #include <time.h>
 #include <getopt.h>
 
-#include "sh4asm_neo/sh4asm_neo.h"
-#include "sh4asm_neo/disas.h"
+#include "sh4asm/sh4asm.h"
+#include "sh4asm/disas.h"
 
-#define SH4ASM_NEO_BUF_MAX 1
-unsigned sh4asm_neo_buf_len;
-static uint16_t sh4asm_neo_buf[SH4ASM_NEO_BUF_MAX];
+#define SH4ASM_BUF_MAX 1
+unsigned sh4asm_buf_len;
+static uint16_t sh4asm_buf[SH4ASM_BUF_MAX];
 
-#define SH4ASM_NEO_TXT_LEN 128
-static char sh4asm_neo_disas[SH4ASM_NEO_TXT_LEN];
-unsigned sh4asm_neo_disas_len;
+#define SH4ASM_TXT_LEN 128
+static char sh4asm_disas[SH4ASM_TXT_LEN];
+unsigned sh4asm_disas_len;
 
 static void neo_bin_emit(uint16_t dat) {
-    if (sh4asm_neo_buf_len >= SH4ASM_NEO_BUF_MAX)
-        errx(1, "sh4asm_neo buffer overflow");
+    if (sh4asm_buf_len >= SH4ASM_BUF_MAX)
+        errx(1, "sh4asm buffer overflow");
 
-    sh4asm_neo_buf[sh4asm_neo_buf_len++] = dat;
+    sh4asm_buf[sh4asm_buf_len++] = dat;
 }
 
 static void clear_bin(void) {
-    sh4asm_neo_buf_len = 0;
+    sh4asm_buf_len = 0;
 }
 
 static void neo_asm_emit(char ch) {
-    if (sh4asm_neo_disas_len >= SH4ASM_NEO_TXT_LEN)
-        errx(1, "sh4asm_neo disassembler buffer overflow");
-    sh4asm_neo_disas[sh4asm_neo_disas_len++] = ch;
+    if (sh4asm_disas_len >= SH4ASM_TXT_LEN)
+        errx(1, "sh4asm disassembler buffer overflow");
+    sh4asm_disas[sh4asm_disas_len++] = ch;
 }
 
 static void clear_asm(void) {
-    sh4asm_neo_disas_len = 0;
+    sh4asm_disas_len = 0;
 }
 
 /*
@@ -92,15 +92,15 @@ bool test_inst(char const *inst) {
 
     // first assemble the instruction
     clear_bin();
-    sh4asm_neo_set_emitter(neo_bin_emit);
+    sh4asm_set_emitter(neo_bin_emit);
     while (*inst)
-        sh4asm_neo_input_char(tolower(*inst++));
-    if (sh4asm_neo_buf_len != 1) {
-        printf("invalid sh4asm_neo output length (expected 1, got %u)\n",
-               sh4asm_neo_buf_len);
+        sh4asm_input_char(tolower(*inst++));
+    if (sh4asm_buf_len != 1) {
+        printf("invalid sh4asm output length (expected 1, got %u)\n",
+               sh4asm_buf_len);
         return false;
     }
-    uint16_t inst_bin = sh4asm_neo_buf[0];
+    uint16_t inst_bin = sh4asm_buf[0];
 
     // now disassemble it
     clear_asm();
@@ -110,22 +110,22 @@ bool test_inst(char const *inst) {
     neo_asm_emit('\n');
     neo_asm_emit('\0');
 
-    char const *new_inst = sh4asm_neo_disas;
+    char const *new_inst = sh4asm_disas;
     // now reassemble the instruction
     clear_bin();
-    sh4asm_neo_set_emitter(neo_bin_emit);
+    sh4asm_set_emitter(neo_bin_emit);
     while (*new_inst)
-        sh4asm_neo_input_char(*new_inst++);
-    if (sh4asm_neo_buf_len != 1) {
-        printf("invalid sh4asm_neo output length (expected 1, got %u)\n",
-               sh4asm_neo_buf_len);
+        sh4asm_input_char(*new_inst++);
+    if (sh4asm_buf_len != 1) {
+        printf("invalid sh4asm output length (expected 1, got %u)\n",
+               sh4asm_buf_len);
         return false;
     }
 
-    if (sh4asm_neo_buf[0] != inst_bin) {
+    if (sh4asm_buf[0] != inst_bin) {
         printf("Error: first assembly returned 0x%04x, second assembly "
                "returned 0x%04x\n",
-               (unsigned)inst_bin, (unsigned)sh4asm_neo_buf[0]);
+               (unsigned)inst_bin, (unsigned)sh4asm_buf[0]);
         return false;
     }
 

@@ -239,27 +239,27 @@ if (DEEP_SYSCALL_TRACE)
                    "${PROJECT_SOURCE_DIR}/src/deep_syscall_trace.c")
 endif()
 
-set(sh4asm_neo_core_sources
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_opcodes.h"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_bin_emit.h"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_bin_emit.c"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_asm_emit.h"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4_asm_emit.c"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/lexer.c"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/lexer.h"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/parser.c"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/parser.h"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4asm_neo.h"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/sh4asm_neo.c"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/disas.c"
-    "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/disas.h")
+set(sh4asm_core_sources
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_opcodes.h"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_bin_emit.h"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_bin_emit.c"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_asm_emit.h"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4_asm_emit.c"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/lexer.c"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/lexer.h"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/parser.c"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/parser.h"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4asm.h"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/sh4asm.c"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/disas.c"
+    "${PROJECT_SOURCE_DIR}/tool/sh4asm/disas.h")
 
 include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
                     "${PROJECT_SOURCE_DIR}/common"
                     "${PROJECT_SOURCE_DIR}/external")
 
-add_library(sh4asm_neo_core ${sh4asm_neo_core_sources})
+add_library(sh4asm_core ${sh4asm_core_sources})
 add_library(sh4 ${sh4_sources})
 
 # TODO: I wish there was an easy way to do this as a dependency like in make...
@@ -276,7 +276,7 @@ configure_file("src/gfx/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl")
 # Ideally, only washingtondc should need GLFW
 
 add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.c")
-target_link_libraries(sh4asm_test m sh4asm_neo_core rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread)
+target_link_libraries(sh4asm_test m sh4asm_core rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread)
 target_include_directories(sh4asm_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4asm_test COMMAND ./sh4asm_test)
 
@@ -300,18 +300,18 @@ add_test(NAME sh4asm_test COMMAND ./sh4asm_test)
 # target_include_directories(sh4inst_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 # add_test(NAME sh4inst_test COMMAND ./sh4inst_test)
 
-add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.c" tool/sh4asm_neo/sh4_bin_emit.h tool/sh4asm_neo/sh4_bin_emit.c tool/sh4asm_neo/sh4_opcodes.h)
+add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.c" tool/sh4asm/sh4_bin_emit.h tool/sh4asm/sh4_bin_emit.c tool/sh4asm/sh4_opcodes.h)
 target_link_libraries(sh4tmu_test m sh4 rt GL  ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
 target_include_directories(sh4tmu_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test)
 
 add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.c")
-target_link_libraries(sh4div_test m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread pthread event event_pthreads ${PNG_STATIC_LIBRARIES} sh4asm_neo_core)
+target_link_libraries(sh4div_test m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread pthread event event_pthreads ${PNG_STATIC_LIBRARIES} sh4asm_core)
 target_include_directories(sh4div_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4div_test COMMAND ./sh4div_test)
 
-add_executable(sh4asm_neo "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/main.c")
-target_link_libraries(sh4asm_neo sh4asm_neo_core)
+add_executable(sh4asm "${PROJECT_SOURCE_DIR}/tool/sh4asm/main.c")
+target_link_libraries(sh4asm sh4asm_core)
 
 add_executable(washingtondc ${washingtondc_sources})
 

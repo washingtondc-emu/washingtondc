@@ -31,22 +31,21 @@
  *
  ******************************************************************************/
 
-#ifndef SH4ASM_NEO_H_
-#define SH4ASM_NEO_H_
+#include <stdio.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "lexer.h"
+#include "parser.h"
+#include "sh4asm.h"
 
-// this must match the signature of emit_bin_handler_func in sh4_bin_emit.h
-typedef void(*sh4asm_neo_emit_func)(uint16_t);
-
-void sh4asm_neo_set_emitter(sh4asm_neo_emit_func emit);
-void sh4asm_neo_input_char(char ch);
-void sh4asm_neo_input_string(char const *txt);
-
-#ifdef __cplusplus
+void sh4asm_set_emitter(sh4asm_emit_func emit) {
+    parser_set_emitter(emit);
 }
-#endif
 
-#endif
+void sh4asm_input_char(char ch) {
+    lexer_input_char(ch, parser_input_token);
+}
+
+void sh4asm_input_string(char const *txt) {
+    while (*txt)
+        sh4asm_input_char(*txt++);
+}
