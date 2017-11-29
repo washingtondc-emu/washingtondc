@@ -368,28 +368,15 @@ char const *insts_to_test[] = {
     "FSCHG\n",
     "FSCA FPUL, DR<3,2>\n",
     "FSRRA FR<4>\n",
-
-    /*
-     * TODO: these instructions have been temporarily commented out for the
-     * benefit of sh4asm/sh4asm_neo compliance testing.  In sh4asm_neo, I
-     * changed the instructions which require immediate offset-values based on
-     * PC so that the displacement from PC will be specified instead of the
-     * value that is actually input to the opcode; this obviously makes
-     * sh4asm_neo incompatible with sh4asm, so I can't expect these opcodes to
-     * be compatible.  Later, when I'm satisified that sh4asm_neo is compatible
-     * with sh4asm, I will delete sh4asm and restore these opcodes.
-
-    "MOV.W @(<8,4>, PC), R<4>",
-    "MOV.L @(<8,4>, PC), R<4>",
-    "MOVA @(<8,4>, PC), R0",
-    "BF <8>",
-    "BF/S <8>",
-    "BT <8>",
-    "BT/S <8>",
-    "BRA <12>",
-    "BSR <12>",
-     */
-
+    "MOV.W @(<8,4>, PC), R<4>\n",
+    "MOV.L @(<8,4>, PC), R<4>\n",
+    "MOVA @(<8,4>, PC), R0\n",
+    "BF <8>\n",
+    "BF/S <8>\n",
+    "BT <8>\n",
+    "BT/S <8>\n",
+    "BRA <12>\n",
+    "BSR <12>\n",
 
     NULL
 };

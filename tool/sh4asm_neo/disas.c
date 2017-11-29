@@ -843,16 +843,16 @@ static void disas_8xxx(unsigned const *quads, disas_emit_func em) {
         sh4_asm_cmpeq_imm8_r0(em, (quads[1] << 4) | quads[0]);
         break;
     case 9:
-        sh4_asm_bt_disp8(em, (quads[1] << 4) | quads[0]);
+        sh4_asm_bt_disp8(em, 2 * ((quads[1] << 4) | quads[0]) + 4);
         break;
     case 11:
-        sh4_asm_bf_disp8(em, (quads[1] << 4) | quads[0]);
+        sh4_asm_bf_disp8(em, 2 * ((quads[1] << 4) | quads[0]) + 4);
         break;
     case 13:
-        sh4_asm_bts_disp8(em, (quads[1] << 4) | quads[0]);
+        sh4_asm_bts_disp8(em, 2 * ((quads[1] << 4) | quads[0]) + 4);
         break;
     case 15:
-        sh4_asm_bfs_disp8(em, (quads[1] << 4) | quads[0]);
+        sh4_asm_bfs_disp8(em, 2 * ((quads[1] << 4) | quads[0]) + 4);
         break;
     default:
         opcode_non_inst(quads, em);
@@ -863,19 +863,22 @@ static void disas_9xxx(unsigned const *quads, disas_emit_func em) {
     // mask is 0xf000
     unsigned disp = (quads[1] << 4) | quads[0];
     unsigned reg_no = quads[2];
-    sh4_asm_movw_a_disp8_pc_rn(em, disp, reg_no);
+    sh4_asm_movw_a_disp8_pc_rn(em, 2 * disp + 4, reg_no);
 }
 
 static void disas_axxx(unsigned const *quads, disas_emit_func em) {
     // mask ix 0xf000
     unsigned imm_val = (quads[2] << 8) | (quads[1] << 4) | quads[0];
-    sh4_asm_bra_offs12(em, imm_val);
+    unsigned offs = 2 * imm_val + 4;
+
+    sh4_asm_bra_offs12(em, offs);
 }
 
 static void disas_bxxx(unsigned const *quads, disas_emit_func em) {
     // mask ix 0xf000
     unsigned imm_val = (quads[2] << 8) | (quads[1] << 4) | quads[0];
-    sh4_asm_bsr_offs12(em, imm_val);
+    unsigned offs = 2 * imm_val + 4;
+    sh4_asm_bsr_offs12(em, offs);
 }
 
 static void disas_cxxx(unsigned const *quads, disas_emit_func em) {
@@ -904,7 +907,7 @@ static void disas_cxxx(unsigned const *quads, disas_emit_func em) {
         sh4_asm_movl_a_disp8_gbr_r0(em, imm_val << 2);
         break;
     case 7:
-        sh4_asm_mova_a_disp8_pc_r0(em, imm_val);
+        sh4_asm_mova_a_disp8_pc_r0(em, 4 * imm_val + 4);
         break;
     case 8:
         sh4_asm_tst_imm8_r0(em, imm_val);
@@ -939,7 +942,7 @@ void disas_dxxx(unsigned const *quads, disas_emit_func em) {
     // mask is 0xf000
     unsigned disp = (quads[1] << 4) | quads[0];
     unsigned reg_no = quads[2];
-    sh4_asm_movl_a_disp8_pc_rn(em, disp, reg_no);
+    sh4_asm_movl_a_disp8_pc_rn(em, 4 * disp + 4, reg_no);
 }
 
 void disas_exxx(unsigned const *quads, disas_emit_func em) {
