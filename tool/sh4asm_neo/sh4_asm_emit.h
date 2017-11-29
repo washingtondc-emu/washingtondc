@@ -272,11 +272,11 @@ static char const *disp8_str(unsigned disp8, unsigned shift) {
         emit_str(em, imm8_str(imm8, imm_shift));                        \
     }
 
-// OP #imm12
-#define DEF_ASM_IMM12(op, lit, imm_shift)                               \
-    static inline void sh4_asm_##op##_imm12(asm_emit_handler_func em,   \
-                                            unsigned imm12) {           \
-        emit_str(em, lit " #");                                         \
+// OP offs12
+#define DEF_ASM_OFFS12(op, lit, imm_shift)                              \
+    static inline void sh4_asm_##op##_offs12(asm_emit_handler_func em,  \
+                                             unsigned imm12) {          \
+        emit_str(em, lit " ");                                          \
         emit_str(em, imm12_str(imm12, imm_shift));                      \
     }
 
@@ -845,8 +845,8 @@ DEF_ASM_A_DISP8_REG1_REG2(movw, "mov.w", gbr, r0, 1)
 DEF_ASM_A_DISP8_REG1_REG2(movl, "mov.l", gbr, r0, 2)
 DEF_ASM_A_DISP8_REG1_REG2(mova, "mova", pc, r0, 2)
 
-DEF_ASM_IMM12(bra, "bra", 1)
-DEF_ASM_IMM12(bsr, "bsr", 1)
+DEF_ASM_OFFS12(bra, "bra", 1)
+DEF_ASM_OFFS12(bsr, "bsr", 1)
 
 DEF_ASM_IMM8_RN(mov, "mov", 0)
 DEF_ASM_IMM8_RN(add, "add", 0)

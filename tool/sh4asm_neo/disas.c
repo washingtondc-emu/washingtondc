@@ -869,13 +869,13 @@ static void disas_9xxx(unsigned const *quads, disas_emit_func em) {
 static void disas_axxx(unsigned const *quads, disas_emit_func em) {
     // mask ix 0xf000
     unsigned imm_val = (quads[2] << 8) | (quads[1] << 4) | quads[0];
-    sh4_asm_bra_imm12(em, imm_val);
+    sh4_asm_bra_offs12(em, imm_val);
 }
 
 static void disas_bxxx(unsigned const *quads, disas_emit_func em) {
     // mask ix 0xf000
     unsigned imm_val = (quads[2] << 8) | (quads[1] << 4) | quads[0];
-    sh4_asm_bsr_imm12(em, imm_val);
+    sh4_asm_bsr_offs12(em, imm_val);
 }
 
 static void disas_cxxx(unsigned const *quads, disas_emit_func em) {
