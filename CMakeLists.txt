@@ -275,9 +275,7 @@ configure_file("src/gfx/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl")
 #
 # Ideally, only washingtondc should need GLFW
 
-set(common_headers "${PROJECT_SOURCE_DIR}/common/BaseException.hpp")
-
-add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.c" ${common_headers})
+add_executable(sh4asm_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4asm_test.c")
 target_link_libraries(sh4asm_test m sh4asm_neo_core rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread)
 target_include_directories(sh4asm_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4asm_test COMMAND ./sh4asm_test)
@@ -297,22 +295,22 @@ add_test(NAME sh4asm_test COMMAND ./sh4asm_test)
 ## should be able to have in C sooner rather than later...
 ###############################################################################
 
-# add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp" ${common_headers})
+# add_executable(sh4inst_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4inst_test.cpp")
 # target_link_libraries(sh4inst_test m sh4 sh4asm_core rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread event)
 # target_include_directories(sh4inst_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 # add_test(NAME sh4inst_test COMMAND ./sh4inst_test)
 
-add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.c" ${common_headers} tool/sh4asm_neo/sh4_bin_emit.h tool/sh4asm_neo/sh4_bin_emit.c tool/sh4asm_neo/sh4_opcodes.h)
+add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.c" tool/sh4asm_neo/sh4_bin_emit.h tool/sh4asm_neo/sh4_bin_emit.c tool/sh4asm_neo/sh4_opcodes.h)
 target_link_libraries(sh4tmu_test m sh4 rt GL  ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
 target_include_directories(sh4tmu_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test)
 
-add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.c" ${common_headers} tool/sh4asm_neo/sh4_bin_emit.h tool/sh4asm_neo/sh4_bin_emit.c tool/sh4asm_neo/sh4_opcodes.h)
+add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.c" tool/sh4asm_neo/sh4_bin_emit.h tool/sh4asm_neo/sh4_bin_emit.c tool/sh4asm_neo/sh4_opcodes.h)
 target_link_libraries(sh4div_test m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
 target_include_directories(sh4div_test PUBLIC "${PROJECT_SOURCE_DIR}/tool")
 add_test(NAME sh4div_test COMMAND ./sh4div_test)
 
-add_executable(sh4asm_neo "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/main.c" ${common_headers})
+add_executable(sh4asm_neo "${PROJECT_SOURCE_DIR}/tool/sh4asm_neo/main.c")
 target_link_libraries(sh4asm_neo sh4asm_neo_core)
 
 add_executable(washingtondc ${washingtondc_sources})
