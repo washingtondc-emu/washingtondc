@@ -24,10 +24,7 @@ cmake_minimum_required(VERSION 2.6)
 project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
-set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # i need this for strdup and clock_gettime on Debian for some unknown reason
 add_definitions(-D_POSIX_C_SOURCE=200809L)
@@ -44,13 +41,7 @@ pkg_search_module(PNG REQUIRED libpng)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
-
-    # stupid hack to get around unused static variables in boost/asio/error.hpp
-    if (CMAKE_BUILD_TYPE MATCHES "Release")
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable")
-    endif()
-
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")
 endif()
 
 option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" ON)

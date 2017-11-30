@@ -75,9 +75,8 @@ static struct mount_ops gdi_mount_ops = {
 
 void parse_gdi(struct gdi_info *outp, char const *path) {
     unsigned track_count = 0;
-    long file_sz;
     struct string whole_file_txt;
-    struct gdi_track *tracks;
+    struct gdi_track *tracks = NULL;
 
     FILE *stream = fopen(path, "r");
     if (!stream) {

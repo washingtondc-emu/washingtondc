@@ -35,11 +35,8 @@ static DEF_ERROR_INT_ATTR(character);
 
 static bool is_hex_digit(char c);
 static unsigned get_hex_val(char c);
-static bool check_char_Class(char c, char const *class);
 
 void string_init(struct string *str) {
-    size_t len;
-    
     memset(str, 0, sizeof(*str));
 }
 

@@ -56,8 +56,6 @@ void aica_rtc_init(void) {
 }
 
 int aica_rtc_read(void *buf, size_t addr, size_t len) {
-    addr32_t first_byte = addr;
-
     AICA_RTC_TRACE("Reading %u bytes from AICA RTC address 0x%08x\n",
                    (unsigned)len, (unsigned)addr);
 

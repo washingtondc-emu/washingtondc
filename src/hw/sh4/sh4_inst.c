@@ -1126,6 +1126,7 @@ void sh4_compile_instruction(Sh4 *sh4, struct InstOpcode *op) {
     op->val = val;
 }
 
+#ifdef SH4_FPU_PEDANTIC
 #define SH4_FPU_QNAN 0x7fbfffff
 
 static void sh4_fr_invalid(Sh4 *sh4, unsigned dst_reg) {
@@ -1143,6 +1144,7 @@ static void sh4_fpu_error(Sh4 *sh4) {
     sh4->reg[SH4_REG_FPSCR] |= SH4_FPSCR_CAUSE_E_MASK;
     sh4_set_exception(sh4, SH4_EXCP_FPU);
 }
+#endif
 
 #define INST_MASK_0000000000001011 0xffff
 #define INST_CONS_0000000000001011 0x000b

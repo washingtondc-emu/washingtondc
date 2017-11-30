@@ -87,7 +87,7 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
 
-boundary_cross:
+/* boundary_cross: */
     /*
      * this label is where we go to when the requested read is not
      * contained entirely withing a single mapping.
@@ -123,7 +123,7 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
 
-boundary_cross:
+/* boundary_cross: */
     /* when the write is not contained entirely within one mapping */
     error_set_feature("proper response for when the guest writes past a memory "
                       "map's end");
@@ -174,7 +174,7 @@ static inline int read_area0(void *buf, size_t addr, size_t len) {
         return gdrom_reg_read(buf, addr, len);
     }
 
-boundary_cross:
+/* boundary_cross: */
     /* when the write is not contained entirely within one mapping */
     error_set_feature("proper response for when the guest writes past a memory "
                       "map's end");

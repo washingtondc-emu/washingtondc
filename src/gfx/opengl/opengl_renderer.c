@@ -120,12 +120,6 @@ static const GLenum depth_funcs[PVR2_DEPTH_FUNC_COUNT] = {
     [PVR2_DEPTH_ALWAYS]              = GL_ALWAYS
 };
 
-/*
- * draws the given geo_buf in whatever context is available (ie without setting
- * the shader, or the framebuffer).
- */
-static void render_do_draw(struct geo_buf *geo);
-
 // converts pixels from ARGB 4444 to RGBA 4444
 static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels);
 
@@ -379,9 +373,6 @@ static void render_do_draw_group(struct geo_buf *geo,
     glBindVertexArray(0);
 
     glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-static void render_do_draw(struct geo_buf *geo) {
 }
 
 static void opengl_renderer_update_tex(unsigned tex_obj, void const *tex_dat) {

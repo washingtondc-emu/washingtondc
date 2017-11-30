@@ -808,7 +808,7 @@ cleanup_rows:
     for (row = 0; row < tex_h; row++)
         if (row_pointers[row])
             free(row_pointers[row]);
-cleanup_row_pointers:
+/* cleanup_row_pointers: */
     free(row_pointers);
 
 cleanup_png:

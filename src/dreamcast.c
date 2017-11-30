@@ -336,11 +336,9 @@ static void dreamcast_check_debugger(void) {
 
 static void dc_run_to_next_event(Sh4 *sh4) {
     inst_t inst;
-    int exc_pending;
     InstOpcode const *op;
     unsigned inst_cycles;
 
-mulligan:
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
         sh4_fetch_inst(sh4, &inst, &op, &inst_cycles);
 
@@ -375,7 +373,6 @@ mulligan:
 void dc_single_step(Sh4 *sh4) {
     inst_t inst;
     unsigned n_cycles;
-    int exc_pending;
     InstOpcode const *op;
 
     sh4_fetch_inst(sh4, &inst, &op, &n_cycles);

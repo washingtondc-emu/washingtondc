@@ -358,7 +358,6 @@ mdst_reg_write_handler(struct maple_mapped_reg const *reg_info,
         MAPLE_TRACE("\tstarting address is %08x\n",
                     (unsigned)maple_dma_cmd_start);
         addr32_t addr = maple_dma_cmd_start;
-        unsigned packet_no = 0;
 
         // it's static because I don't want it allocated on the stack
         static struct maple_frame frame;

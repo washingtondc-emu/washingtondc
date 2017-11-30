@@ -71,7 +71,7 @@ static bool pvr2_tex_valid(enum pvr2_tex_state state) {
     return state == PVR2_TEX_READY || state == PVR2_TEX_DIRTY;
 }
 
-static bool pvr2_tex_dirty(enum pvr2_tex_state state) {
+__attribute__((unused)) static bool pvr2_tex_dirty(enum pvr2_tex_state state) {
     return state == PVR2_TEX_DIRTY;
 }
 
@@ -99,7 +99,6 @@ static unsigned tex_twiddle(unsigned x, unsigned y,
  */
 static unsigned tex_twiddle(unsigned x, unsigned y, unsigned w_shift, unsigned h_shift) {
     unsigned twid_idx = 0;
-    int quadrant_side_shift;
 
     unsigned w = 1 << w_shift;
     unsigned h = 1 << h_shift;
@@ -558,8 +557,6 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex_in = tex_cache + idx;
         struct pvr2_tex *tex_out = out->tex_cache + idx;
-        unsigned tex_w = 1 << tex_in->meta.w_shift,
-            tex_h = 1 << tex_in->meta.h_shift;
 
         tex_out->state = tex_in->state;
 
