@@ -29,7 +29,7 @@
 #include "hw/sh4/sh4.h"
 #include "BiosFile.h"
 #include "memory.h"
-#include "sh4asm/sh4asm.h"
+#include "sh4asm_core/sh4asm.h"
 #include "MemoryMap.h"
 
 #define INST_MAX 256

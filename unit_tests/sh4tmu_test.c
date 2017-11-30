@@ -34,7 +34,7 @@
 #include "memory.h"
 #include "BiosFile.h"
 #include "MemoryMap.h"
-#include "sh4asm/sh4_bin_emit.h"
+#include "sh4asm_core/sh4_bin_emit.h"
 #include "dreamcast.h"
 
 #define INST_MAX 256

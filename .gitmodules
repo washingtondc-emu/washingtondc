@@ -1,0 +1,3 @@
+[submodule "external/sh4asm"]
+	path = external/sh4asm
+	url = https://github.com/washingtondc-emu/sh4asm
