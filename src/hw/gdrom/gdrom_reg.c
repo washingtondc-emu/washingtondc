@@ -180,7 +180,7 @@ static struct gdrom_mem_mapped_reg {
     { "Error/features", 0x5f7084, 4,
       gdrom_error_reg_read_handler, gdrom_features_reg_write_handler },
     { "Interrupt reason/sector count", 0x5f7088, 4,
-      gdrom_int_reason_reg_read_handler, warn_gdrom_reg_write_handler },
+      gdrom_int_reason_reg_read_handler, gdrom_sect_cnt_reg_write_handler },
     { "Sector number", 0x5f708c, 4,
       gdrom_sector_num_reg_read_handler, warn_gdrom_reg_write_handler },
     { "Byte Count (low)", 0x5f7090, 4,
