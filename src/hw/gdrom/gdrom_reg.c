@@ -817,7 +817,7 @@ gdrom_set_sect_cnt_reg(struct gdrom_sector_count *sect_cnt_out,
                TRANS_MODE_SINGLE_WORD_DMA_VAL) {
         sect_cnt_out->trans_mode = TRANS_MODE_SINGLE_WORD_DMA;
     } else if ((sect_cnt_reg & TRANS_MODE_MULTI_WORD_DMA_MASK) ==
-               TRANS_MODE_MULTI_WORD_DMA_MASK) {
+               TRANS_MODE_MULTI_WORD_DMA_VAL) {
         sect_cnt_out->trans_mode = TRANS_MODE_MULTI_WORD_DMA;
     } else if ((sect_cnt_reg & TRANS_MODE_PSEUDO_DMA_MASK) ==
                TRANS_MODE_PSEUDO_DMA_VAL) {
