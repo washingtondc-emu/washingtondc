@@ -112,8 +112,10 @@ static void frontend_on_softbreak(inst_t inst, addr32_t addr);
 static void frontend_on_cleanup(void);
 static void frontend_run_once(void);
 
+#ifdef DEBUGGER_LOG_VERBOSE
 // don't call this directly, use the DBG_TRACE macro instead
 static void dbg_do_trace(char const *msg, ...);
+#endif
 
 static void dbg_state_transition(enum debug_state new_state);
 
@@ -441,6 +443,7 @@ void debug_request_break() {
     atomic_flag_clear(&not_request_break);
 }
 
+#ifdef DEBUGGER_LOG_VERBOSE
 void dbg_do_trace(char const *msg, ...) {
     va_list var_args;
     va_start(var_args, msg);
@@ -451,8 +454,11 @@ void dbg_do_trace(char const *msg, ...) {
 
     va_end(var_args);
 }
+#endif
 
-static char const* dbg_state_names[DEBUG_STATE_COUNT] = {
+#ifdef DEBUGGER_LOG_VERBOSE
+static char const*
+dbg_state_names[DEBUG_STATE_COUNT] = {
     "DEBUG_STATE_NORM",
     "DEBUG_STATE_STEP",
     "DEBUG_STATE_BREAK",
@@ -460,6 +466,7 @@ static char const* dbg_state_names[DEBUG_STATE_COUNT] = {
     "DEBUG_STATE_WATCH",
     "DEBUG_STATE_POST_WATCH"
 };
+#endif
 
 static void dbg_state_transition(enum debug_state new_state) {
     DBG_TRACE("state transition from %s to %s\n",

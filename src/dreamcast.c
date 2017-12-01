@@ -83,8 +83,10 @@ static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
 
+#ifndef ENABLE_DEBUGGER
 // Run until the next scheduled event (in dc_sched) should occur
 static void dc_run_to_next_event(Sh4 *sh4);
+#endif
 
 #ifdef ENABLE_DEBUGGER
 // this must be called before run or not at all
@@ -334,6 +336,7 @@ static void dreamcast_check_debugger(void) {
 }
 #endif
 
+#ifndef ENABLE_DEBUGGER
 static void dc_run_to_next_event(Sh4 *sh4) {
     inst_t inst;
     InstOpcode const *op;
@@ -368,6 +371,7 @@ static void dc_run_to_next_event(Sh4 *sh4) {
         dc_cycle_advance(cycles_after - dc_cycle_stamp());
     }
 }
+#endif
 
 /* executes a single instruction and maybe ticks the clock. */
 void dc_single_step(Sh4 *sh4) {

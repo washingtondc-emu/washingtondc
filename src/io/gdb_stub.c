@@ -180,10 +180,6 @@ static void on_write_watchpoint_event(evutil_socket_t fd, short ev, void *arg);
  * the emulation state to be thread-safe but I also don't want to adapt the
  * emulation code to suit the debugger.
  */
-static void gdb_stub_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]);
-static void gdb_stub_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]);
-static reg32_t gdb_stub_get_reg(unsigned reg_no);
-static void gdb_stub_set_reg(unsigned reg_no, reg32_t val);
 static int gdb_stub_read_mem(void *out, addr32_t addr, unsigned len);
 static int gdb_stub_write_mem(void const *input, addr32_t addr, unsigned len);
 static int gdb_stub_add_break(addr32_t addr);
@@ -736,7 +732,6 @@ static void handle_G_packet(struct string *out, struct string const *dat) {
 
     reg32_t new_regs[SH4_REGISTER_COUNT];
     debug_get_all_regs(new_regs);
-    bool bank = new_regs[SH4_REG_SR] & SH4_SR_RB_MASK;
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
         set_reg(new_regs, reg_no, regs[reg_no]);
@@ -1615,44 +1610,6 @@ static struct deferred_cmd *deferred_cmd_pop_nolock(void) {
     if (ret)
         return &FIFO_DEREF(ret, struct deferred_cmd, fifo);
     return NULL;
-}
-
-void gdb_stub_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]) {
-    struct deferred_cmd cmd;
-
-    deferred_cmd_init(&cmd);
-    cmd.cmd_type = DEFERRED_CMD_GET_ALL_REGS;
-    cmd.meta.get_all_regs.reg_file_out = reg_file;
-
-    deferred_cmd_exec(&cmd);
-}
-
-void gdb_stub_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]) {
-    struct deferred_cmd cmd;
-
-    deferred_cmd_init(&cmd);
-    cmd.cmd_type = DEFERRED_CMD_SET_ALL_REGS;
-    cmd.meta.set_all_regs.reg_file_in = reg_file;
-
-    deferred_cmd_exec(&cmd);
-}
-
-// this one's just a layer on top of get_all_regs
-reg32_t gdb_stub_get_reg(unsigned reg_no) {
-    reg32_t reg_file[SH4_REGISTER_COUNT];
-    gdb_stub_get_all_regs(reg_file);
-    return reg_file[reg_no];
-}
-
-void gdb_stub_set_reg(unsigned reg_no, reg32_t val) {
-    struct deferred_cmd cmd;
-
-    deferred_cmd_init(&cmd);
-    cmd.cmd_type = DEFERRED_CMD_SET_REG;
-    cmd.meta.set_reg.idx = reg_no;
-    cmd.meta.set_reg.val = val;
-
-    deferred_cmd_exec(&cmd);
 }
 
 int gdb_stub_read_mem(void *out, addr32_t addr, unsigned len) {
