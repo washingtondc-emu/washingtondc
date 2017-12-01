@@ -44,8 +44,8 @@
 
 #define SYSCALL_TRACE(msg, ...)                                         \
     do {                                                                \
-        printf("SYSCALL: ");                                            \
-        printf(msg, ##__VA_ARGS__);                                     \
+        LOG_DBG("SYSCALL: ");                                           \
+        LOG_DBG(msg, ##__VA_ARGS__);                                    \
     } while (0)
 
 static char const* cmd_name(reg32_t r4) {

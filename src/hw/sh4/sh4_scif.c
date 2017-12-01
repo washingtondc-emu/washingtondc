@@ -30,6 +30,7 @@
 #include "sh4_reg_flags.h"
 #include "sh4.h"
 #include "error.h"
+#include "log.h"
 
 #include "sh4_scif.h"
 
@@ -214,7 +215,7 @@ static void check_tx_reset(Sh4 *sh4) {
          * The complication here is that only the serial_server is allowed to
          * consume from the txq, yet somehow we need to empty it here.
          */
-        fprintf(stderr, "WARNING: %s not implemented\n", __func__);
+        LOG_WARN("WARNING: %s not implemented\n", __func__);
         /* while (pop_queue(&sh4->scif.txq, NULL)) */
         /*     ; */
     }

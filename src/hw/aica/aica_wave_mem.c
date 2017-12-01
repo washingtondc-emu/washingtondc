@@ -29,6 +29,7 @@
 #include "dreamcast.h"
 #include "hw/sh4/sh4.h"
 #include "config.h"
+#include "log.h"
 
 static struct aica_mem_hack {
     uint32_t addr;
@@ -148,9 +149,9 @@ int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
 
                 memcpy(buf, &cursor->val, len);
                 if (aica_log_verbose_val) {
-                    printf("AICA: reading %u from 0x%08x due to the no-AICA "
-                           "Power Stone hack\n",
-                           (unsigned)cursor->val, (unsigned)cursor->addr);
+                    LOG_DBG("AICA: reading %u from 0x%08x due to the no-AICA "
+                            "Power Stone hack\n",
+                            (unsigned)cursor->val, (unsigned)cursor->addr);
                 }
                 return MEM_ACCESS_SUCCESS;
             }
@@ -170,15 +171,16 @@ int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
     memcpy(buf, start_addr, len);
 
     if (aica_log_verbose_val) {
-        unsigned pc = dreamcast_get_cpu()->reg[SH4_REG_PC];
+        __attribute__((unused)) unsigned pc =
+            dreamcast_get_cpu()->reg[SH4_REG_PC];
         if (len == 4) {
             uint32_t frak;
             memcpy(&frak, buf, sizeof(frak));
-            printf("AICA: reading 0x%08x from 0x%08x (PC is 0x%08x)\n",
-                   (unsigned)frak, (unsigned)addr, pc);
+            LOG_DBG("AICA: reading 0x%08x from 0x%08x (PC is 0x%08x)\n",
+                    (unsigned)frak, (unsigned)addr, pc);
         } else {
-            printf("AICA: reading %u bytes from 0x%08x (PC is 0x%08x)\n",
-                   (unsigned)len, (unsigned)addr, pc);
+            LOG_DBG("AICA: reading %u bytes from 0x%08x (PC is 0x%08x)\n",
+                    (unsigned)len, (unsigned)addr, pc);
         }
     }
 
@@ -189,15 +191,16 @@ int aica_wave_mem_write(void const *buf, size_t addr, size_t len) {
     void *start_addr = aica_wave_mem + (addr - ADDR_AICA_WAVE_FIRST);
 
     if (aica_log_verbose_val) {
-        unsigned pc = dreamcast_get_cpu()->reg[SH4_REG_PC];
+        __attribute__((unused)) unsigned pc =
+            dreamcast_get_cpu()->reg[SH4_REG_PC];
         if (len == 4) {
             uint32_t frak;
             memcpy(&frak, buf, sizeof(frak));
-            printf("AICA: writing 0x%08x to 0x%08x (PC is 0x%08x)\n",
-                   (unsigned)frak, (unsigned)addr, pc);
+            LOG_DBG("AICA: writing 0x%08x to 0x%08x (PC is 0x%08x)\n",
+                    (unsigned)frak, (unsigned)addr, pc);
         } else {
-            printf("AICA: writing %u bytes to 0x%08x (PC is 0x%08x)\n",
-                   (unsigned)len, (unsigned)addr, pc);
+            LOG_DBG("AICA: writing %u bytes to 0x%08x (PC is 0x%08x)\n",
+                    (unsigned)len, (unsigned)addr, pc);
         }
     }
 

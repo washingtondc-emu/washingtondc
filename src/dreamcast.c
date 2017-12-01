@@ -48,6 +48,7 @@
 #include "cmd/cmd.h"
 #include "glfw/window.h"
 #include "hw/pvr2/framebuffer.h"
+#include "log.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -296,16 +297,16 @@ void dreamcast_run() {
 
     switch (term_reason) {
     case TERM_REASON_NORM:
-        printf("program execution ended normally\n");
+        LOG_INFO("program execution ended normally\n");
         break;
     case TERM_REASON_ERROR:
-        printf("program execution ended due to an unrecoverable error\n");
+        LOG_INFO("program execution ended due to an unrecoverable error\n");
         break;
     case TERM_REASON_SIGINT:
-        printf("program execution ended due to user-initiated interruption\n");
+        LOG_INFO("program execution ended due to user-initiated interruption\n");
         break;
     default:
-        printf("program execution ended for unknown reasons\n");
+        LOG_INFO("program execution ended for unknown reasons\n");
         break;
     }
 
@@ -423,22 +424,22 @@ void dc_print_perf_stats(void) {
         delta_time.tv_sec = end_time.tv_sec - start_time.tv_sec;
     }
 
-    printf("Total elapsed time: %u seconds and %u nanoseconds\n",
-           (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
+    LOG_INFO("Total elapsed time: %u seconds and %u nanoseconds\n",
+             (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
 
-    printf("%u SH4 CPU cycles executed\n",
-           (unsigned)sh4_get_cycles());
+    LOG_INFO("%u SH4 CPU cycles executed\n",
+             (unsigned)sh4_get_cycles());
 
     double seconds = delta_time.tv_sec +
         ((double)delta_time.tv_nsec) / 1000000000.0;
     double hz = (double)sh4_get_cycles() / seconds;
     double hz_ratio = hz / (double)(200 * 1000 * 1000);
 
-    printf("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
+    LOG_INFO("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
 }
 
 void dreamcast_kill(void) {
-    printf("%s called - WashingtonDC will exit soon\n", __func__);
+    LOG_INFO("%s called - WashingtonDC will exit soon\n", __func__);
     is_running = false;
 }
 

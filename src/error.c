@@ -25,6 +25,7 @@
 
 #include "fifo.h"
 #include "dreamcast.h"
+#include "log.h"
 
 #include "error.h"
 
@@ -80,7 +81,7 @@ void error_add_attr(struct error_attr *attr) {
 }
 
 void error_print() {
-    fprintf(stderr, "ERROR: %s\n", error_type_string(error_type));
+    LOG_ERROR("ERROR: %s\n", error_type_string(error_type));
 
     struct error_attr *curs = first_attr;
     while (curs) {
@@ -93,17 +94,17 @@ void error_print() {
 static void print_attr(struct error_attr const *attr) {
     switch (attr->tp) {
     case ERROR_TYPE_STRING:
-        fprintf(stderr, "[%s] = \"%s\"\n", attr->attr_name, attr->val.as_str);
+        LOG_ERROR("[%s] = \"%s\"\n", attr->attr_name, attr->val.as_str);
         break;
     case ERROR_TYPE_INT:
-        fprintf(stderr, "[%s] = %d\n", attr->attr_name, attr->val.as_int);
+        LOG_ERROR("[%s] = %d\n", attr->attr_name, attr->val.as_int);
         break;
     case ERROR_TYPE_U32:
-        fprintf(stderr, "[%s] = %x\n", attr->attr_name, (int)attr->val.as_u32);
+        LOG_ERROR("[%s] = %x\n", attr->attr_name, (int)attr->val.as_u32);
         break;
     case ERROR_TYPE_U64:
-        fprintf(stderr, "[%s] = %llx\n", attr->attr_name,
-                (long long)attr->val.as_u32);
+        LOG_ERROR("[%s] = %llx\n", attr->attr_name,
+                  (long long)attr->val.as_u32);
         break;
     default:
         break;

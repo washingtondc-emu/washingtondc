@@ -38,6 +38,7 @@
 #include "sh4.h"
 #include "sh4_tbl.h"
 #include "sh4_excp.h"
+#include "log.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debugger.h"
@@ -6198,8 +6199,8 @@ void sh4_inst_unary_fsrra_frn(Sh4  *sh4, Sh4OpArgs inst) {
 }
 
 void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
-    fprintf(stderr, "WARNING - unrecognized opcode at PC=0x%08x\n",
-            sh4->reg[SH4_REG_PC]);
+    LOG_ERROR("ERROR - unrecognized opcode at PC=0x%08x\n",
+              sh4->reg[SH4_REG_PC]);
 
 #ifdef DBG_EXIT_ON_UNDEFINED_OPCODE
 

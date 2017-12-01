@@ -195,17 +195,6 @@ uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr) {
     return addr;
 }
 
-void maple_do_trace(char const *msg, ...) {
-    va_list var_args;
-    va_start(var_args, msg);
-
-    printf("MAPLE: ");
-
-    vprintf(msg, var_args);
-
-    va_end(var_args);
-}
-
 void maple_addr_unpack(unsigned addr, unsigned *port_out, unsigned *unit_out) {
     unsigned unit, port;
 

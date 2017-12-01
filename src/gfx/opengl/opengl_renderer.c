@@ -35,6 +35,7 @@
 #include "dreamcast.h"
 #include "gfx/gfx_config.h"
 #include "gfx/gfx_tex_cache.h"
+#include "log.h"
 
 #include "opengl_renderer.h"
 
@@ -215,15 +216,15 @@ static void render_do_draw_group(struct geo_buf *geo,
         if (gfx_tex_cache_get(group->tex_idx)->valid) {
             glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
         } else {
-            fprintf(stderr, "WARNING: attempt to bind invalid texture %u\n",
-                    (unsigned)group->tex_idx);
+            LOG_WARN("WARNING: attempt to bind invalid texture %u\n",
+                     (unsigned)group->tex_idx);
             glBindTexture(GL_TEXTURE_2D, 0);
         }
 
         switch (group->tex_filter) {
         case TEX_FILTER_TRILINEAR_A:
         case TEX_FILTER_TRILINEAR_B:
-            printf("WARNING: trilinear filtering is not yet supported\n");
+            LOG_WARN("WARNING: trilinear filtering is not yet supported\n");
             // intentional fall-through
         case TEX_FILTER_NEAREST:
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

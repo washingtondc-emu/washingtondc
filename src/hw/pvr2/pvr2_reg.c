@@ -27,6 +27,7 @@
 #include "mem_code.h"
 #include "types.h"
 #include "MemoryMap.h"
+#include "log.h"
 
 #include "pvr2_reg.h"
 
@@ -163,28 +164,26 @@ warn_pvr2_reg_read_handler(struct pvr2_mem_mapped_reg const *reg_info,
     int ret_code = default_pvr2_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        fprintf(stderr, "WARNING: read from pvr2 register %s\n",
-                reg_info->reg_name);
+        LOG_DBG("read from pvr2 register %s\n", reg_info->reg_name);
     } else {
         switch (len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            fprintf(stderr, "WARNING: read 0x%02x from pvr2 register %s\n",
+            LOG_DBG("read 0x%02x from pvr2 register %s\n",
                     (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            fprintf(stderr, "WARNING: read 0x%04x from pvr2 register %s\n",
+            LOG_DBG("read 0x%04x from pvr2 register %s\n",
                     (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            fprintf(stderr, "WARNING: read 0x%08x from pvr2 register %s\n",
+            LOG_DBG("read 0x%08x from pvr2 register %s\n",
                     (unsigned)val32, reg_info->reg_name);
             break;
         default: 
-            fprintf(stderr, "WARNING: read from pvr2 register %s\n",
-                    reg_info->reg_name);
+            LOG_DBG("read from pvr2 register %s\n", reg_info->reg_name);
         }
     }
 
@@ -201,21 +200,21 @@ warn_pvr2_reg_write_handler(struct pvr2_mem_mapped_reg const *reg_info,
     switch (len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        fprintf(stderr, "WARNING: writing 0x%02x to pvr2 register %s\n",
-                    (unsigned)val8, reg_info->reg_name);
+        LOG_DBG("writing 0x%02x to pvr2 register %s\n",
+                (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        fprintf(stderr, "WARNING: writing 0x%04x to pvr2 register %s\n",
+        LOG_DBG("writing 0x%04x to pvr2 register %s\n",
                 (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        fprintf(stderr, "WARNING: writing 0x%08x to pvr2 register %s\n",
+        LOG_DBG("writing 0x%08x to pvr2 register %s\n",
                 (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        fprintf(stderr, "WARNING: writing to pvr2 register %s\n",
+        LOG_DBG("writing to pvr2 register %s\n",
                 reg_info->reg_name);
     }
 

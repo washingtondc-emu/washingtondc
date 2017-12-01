@@ -35,6 +35,7 @@
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"
 #include "host_branch_pred.h"
+#include "log.h"
 
 #include "pvr2_ta.h"
 
@@ -332,7 +333,7 @@ static struct geo_buf geo_buf_array[2] = {
 
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
 #ifdef PVR2_LOG_VERBOSE
-    fprintf(stderr, "WARNING: trying to read %u bytes from the TA polygon FIFO "
+    LOG_DBG(stderr, "WARNING: trying to read %u bytes from the TA polygon FIFO "
             "(you get all 0s)\n", (unsigned)len);
 #endif
     memset(buf, 0, len);
@@ -342,7 +343,7 @@ int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
 
 int pvr2_ta_fifo_poly_write(void const *buf, size_t addr, size_t len) {
 #ifdef PVR2_LOG_VERBOSE
-    fprintf(stderr, "WARNING: writing %u bytes to TA polygon FIFO:\n",
+    LOG_DBG("WARNING: writing %u bytes to TA polygon FIFO:\n",
             (unsigned)len);
 
     unsigned len_copy = len;
@@ -350,13 +351,13 @@ int pvr2_ta_fifo_poly_write(void const *buf, size_t addr, size_t len) {
     if (len_copy % 4 == 0) {
         uint32_t *ptr = (uint32_t*)buf;
         while (len_copy) {
-            fprintf(stderr, "\t%08x\n", (unsigned)*ptr++);
+            LOG_DBG("\t%08x\n", (unsigned)*ptr++);
             len_copy -= 4;
         }
     } else {
         uint8_t *ptr = (uint8_t*)buf;
         while (len_copy--)
-            fprintf(stderr, "\t%02x\n", (unsigned)*ptr++);
+            LOG_DBG("\t%02x\n", (unsigned)*ptr++);
     }
 #endif
 
@@ -432,17 +433,15 @@ static void on_packet_received(void) {
         break;
     case TA_CMD_TYPE_INPUT_LIST:
         // I only semi-understand what this is
-        fprintf(stderr, "WARNING: TA_CMD_TYPE_INPUT_LIST received on pvr2 ta "
-                "fifo!\n");
+        LOG_DBG("TA_CMD_TYPE_INPUT_LIST received on pvr2 ta fifo!\n");
         ta_fifo_finish_packet();
         break;
     case TA_CMD_TYPE_UNKNOWN:
-        fprintf(stderr, "WARNING: TA_CMD_TYPE_UNKNOWN received on pvr2 ta "
-                "fifo!\n");
+        LOG_DBG("WARNING: TA_CMD_TYPE_UNKNOWN received on pvr2 ta fifo!\n");
         ta_fifo_finish_packet();
         break;
     default:
-        printf("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
+        LOG_ERROR("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
         error_set_feature("PVR2 command type");
         error_set_ta_fifo_cmd(cmd_tp);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -630,16 +629,16 @@ static void on_polyhdr_received(void) {
 
     if ((poly_state.current_list == DISPLAY_LIST_NONE) &&
         list_submitted[list]) {
-        printf("WARNING: unable to open list %s because it is already "
-               "closed\n", display_list_names[list]);
+        LOG_WARN("WARNING: unable to open list %s because it is already "
+                 "closed\n", display_list_names[list]);
         goto the_end;
     }
 
     if ((poly_state.current_list != DISPLAY_LIST_NONE) &&
         (poly_state.current_list != list)) {
-        printf("WARNING: attempting to input poly header for list %s without "
-               "first closing %s\n", display_list_names[list],
-               display_list_names[poly_state.current_list]);
+        LOG_WARN("WARNING: attempting to input poly header for list %s without "
+                 "first closing %s\n", display_list_names[list],
+                 display_list_names[poly_state.current_list]);
         goto the_end;
     }
 
@@ -656,7 +655,7 @@ static void on_polyhdr_received(void) {
 
 #ifdef INVARIANTS
         if (poly_state.current_list < 0 || poly_state.current_list >= DISPLAY_LIST_COUNT) {
-            fprintf(stderr, "ERROR: poly_state.current_list is 0x%08x\n",
+            LOG_ERROR("ERROR: poly_state.current_list is 0x%08x\n",
                    (unsigned)poly_state.current_list);
             RAISE_ERROR(ERROR_INTEGRITY);
         }
@@ -669,7 +668,7 @@ static void on_polyhdr_received(void) {
     if ((poly_state.current_list != list) &&
         !list_submitted[list]) {
 
-        printf("Opening display list %s\n", display_list_names[list]);
+        LOG_DBG("Opening display list %s\n", display_list_names[list]);
         poly_state.current_list = list;
         list_submitted[list] = true;
     }
@@ -683,15 +682,15 @@ static void on_polyhdr_received(void) {
 
     if (hdr.tex_enable) {
         poly_state.tex_enable = true;
-        printf("texture enabled\n");
+        LOG_DBG("texture enabled\n");
 
-        printf("the texture format is %d\n", hdr.tex_fmt);
-        printf("The texture address ix 0x%08x\n", hdr.tex_addr);
+        LOG_DBG("the texture format is %d\n", hdr.tex_fmt);
+        LOG_DBG("The texture address ix 0x%08x\n", hdr.tex_addr);
 
         if (hdr.tex_twiddle)
-            printf("not twiddled\n");
+            LOG_DBG("not twiddled\n");
         else
-            printf("twiddled\n");
+            LOG_DBG("twiddled\n");
 
         struct pvr2_tex *ent =
             pvr2_tex_cache_find(hdr.tex_addr, hdr.tex_palette_start,
@@ -702,15 +701,15 @@ static void on_polyhdr_received(void) {
                                 hdr.tex_mipmap,
                                 hdr.stride_sel);
 
-        printf("texture dimensions are (%u, %u)\n",
+        LOG_DBG("texture dimensions are (%u, %u)\n",
                1 << hdr.tex_width_shift,
                1 << hdr.tex_height_shift);
         if (ent) {
-            printf("Texture 0x%08x found in cache\n",
-                   hdr.tex_addr);
+            LOG_DBG("Texture 0x%08x found in cache\n",
+                    hdr.tex_addr);
         } else {
-            printf("Adding 0x%08x to texture cache...\n",
-                   hdr.tex_addr);
+            LOG_DBG("Adding 0x%08x to texture cache...\n",
+                    hdr.tex_addr);
             ent = pvr2_tex_cache_add(hdr.tex_addr, hdr.tex_palette_start,
                                      hdr.tex_width_shift,
                                      hdr.tex_height_shift,
@@ -722,14 +721,14 @@ static void on_polyhdr_received(void) {
         }
 
         if (!ent) {
-            fprintf(stderr, "WARNING: failed to add texture 0x%08x to "
+            LOG_WARN("WARNING: failed to add texture 0x%08x to "
                     "the texture cache\n", hdr.tex_addr);
             poly_state.tex_enable = false;
         } else {
             poly_state.tex_idx = pvr2_tex_cache_get_idx(ent);
         }
     } else {
-        printf("textures are NOT enabled\n");
+        LOG_DBG("textures are NOT enabled\n");
         poly_state.tex_enable = false;
     }
     poly_state.src_blend_factor = hdr.src_blend_factor;
@@ -769,7 +768,7 @@ static void on_polyhdr_received(void) {
         (enum global_param)((ta_fifo32[0] & TA_CMD_TYPE_MASK) >>
                             TA_CMD_TYPE_SHIFT);
 
-    printf("POLY HEADER PACKET!\n");
+    LOG_DBG("POLY HEADER PACKET!\n");
 
 the_end:
     ta_fifo_finish_packet();
@@ -797,8 +796,8 @@ static void on_sprite_received(void) {
         return;
 
     if (poly_state.current_list < 0) {
-        printf("ERROR: unable to render sprite because no display lists are "
-               "open\n");
+        LOG_WARN("WARNING: unable to render sprite because no display lists "
+                 "are open\n");
         ta_fifo_finish_packet();
         return;
     }
@@ -806,8 +805,8 @@ static void on_sprite_received(void) {
     struct display_list *list = geo->lists + poly_state.current_list;
 
     if (list->n_groups <= 0) {
-        printf("ERROR: unable to render sprite because I'm still waiting to "
-               "see a polygon header\n");
+        LOG_WARN("WARNING: unable to render sprite because I'm still waiting "
+                 "to see a polygon header\n");
         ta_fifo_finish_packet();
         return;
     }
@@ -815,8 +814,8 @@ static void on_sprite_received(void) {
     struct poly_group *group = list->groups + (list->n_groups - 1);
 
     if (group->n_verts + 6 >= GEO_BUF_VERT_COUNT) {
-        fprintf(stderr, "ERROR (while rendering a sprite): PVR2's "
-                "GEO_BUF_VERT_COUNT has been reached!\n");
+        LOG_WARN("WARNING (while rendering a sprite): PVR2's "
+                 "GEO_BUF_VERT_COUNT has been reached!\n");
         ta_fifo_finish_packet();
         return;
     }
@@ -1031,13 +1030,13 @@ static void on_vertex_received(void) {
         return;
 
 #ifdef PVR2_LOG_VERBOSE
-    printf("vertex received!\n");
+    LOG_DBG("vertex received!\n");
 #endif
     struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
 
     if (poly_state.current_list < 0) {
-        printf("ERROR: unable to render vertex because no display lists are "
-               "open\n");
+        LOG_WARN("WARNING: unable to render vertex because no display lists "
+                 "are open\n");
         ta_fifo_finish_packet();
         return;
     }
@@ -1045,8 +1044,8 @@ static void on_vertex_received(void) {
     struct display_list *list = geo->lists + poly_state.current_list;
 
     if (list->n_groups <= 0) {
-        printf("ERROR: unable to render vertex because I'm still waiting to "
-               "see a polygon header\n");
+        LOG_WARN("ERROR: unable to render vertex because I'm still waiting to "
+                 "see a polygon header\n");
         ta_fifo_finish_packet();
         return;
     }
@@ -1154,7 +1153,8 @@ static void on_vertex_received(void) {
             break;
         default:
             base_color_r = base_color_g = base_color_b = base_color_a = 1.0f;
-            fprintf(stderr, "WARNING: unknown TA color format %u\n", poly_state.ta_color_fmt);
+            LOG_WARN("WARNING: unknown TA color format %u\n",
+                     poly_state.ta_color_fmt);
         }
 
         group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_BASE_COLOR_OFFSET + 0] =
@@ -1196,8 +1196,8 @@ static void on_vertex_received(void) {
 
         group->n_verts++;
     } else {
-        fprintf(stderr, "WARNING: dropped vertices: geo_buf contains %u "
-                "verts\n", group->n_verts);
+        LOG_WARN("WARNING: dropped vertices: geo_buf contains %u verts\n",
+                 group->n_verts);
 #ifdef INVARIANTS
         abort();
 #endif
@@ -1207,16 +1207,16 @@ static void on_vertex_received(void) {
 }
 
 static void on_end_of_list_received(void) {
-    printf("END-OF-LIST PACKET!\n");
+    LOG_DBG("END-OF-LIST PACKET!\n");
 
     finish_poly_group(geo_buf_array + geo_buf_prod_idx, poly_state.current_list);
 
     if (poly_state.current_list != DISPLAY_LIST_NONE) {
-        printf("Display list \"%s\" closed\n",
-               display_list_names[poly_state.current_list]);
+        LOG_DBG("Display list \"%s\" closed\n",
+                display_list_names[poly_state.current_list]);
     } else {
-        printf("Unable to close the current display list because no display "
-               "list has been opened\n");
+        LOG_WARN("Unable to close the current display list because no display "
+                 "list has been opened\n");
         goto the_end;
     }
 
@@ -1252,7 +1252,7 @@ the_end:
 }
 
 static void on_user_clip_received(void) {
-    printf("PVR2 WARNING: UNIMPLEMENTED USER TILE CLIP PACKET RECEIVED!\n");
+    LOG_WARN("PVR2 WARNING: UNIMPLEMENTED USER TILE CLIP PACKET RECEIVED!\n");
 
     // TODO: implement tile clipping
 
@@ -1260,7 +1260,7 @@ static void on_user_clip_received(void) {
 }
 
 void pvr2_ta_startrender(void) {
-    printf("STARTRENDER requested!\n");
+    LOG_DBG("STARTRENDER requested!\n");
 
     struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
 
@@ -1354,14 +1354,14 @@ void pvr2_ta_reinit(void) {
 static void finish_poly_group(struct geo_buf *geo,
                               enum display_list_type disp_list) {
     if (disp_list < 0) {
-        printf("%s - no lists are open\n", __func__);
+        LOG_DBG("%s - no lists are open\n", __func__);
         return;
     }
 
     struct display_list *list = geo->lists + disp_list;
 
     if (list->n_groups <= 0) {
-        printf("%s - still waiting for a polygon header to be opened!\n",
+        LOG_WARN("%s - still waiting for a polygon header to be opened!\n",
                __func__);
         return;
     }
@@ -1369,11 +1369,11 @@ static void finish_poly_group(struct geo_buf *geo,
     struct poly_group *group = list->groups + (list->n_groups - 1);
 
     if (poly_state.tex_enable) {
-        printf("tex_enable should be true\n");
+        LOG_DBG("tex_enable should be true\n");
         group->tex_enable = true;
         group->tex_idx = poly_state.tex_idx;
     } else {
-        printf("tex_enable should be false\n");
+        LOG_DBG("tex_enable should be false\n");
         group->tex_enable = false;
     }
 
@@ -1413,7 +1413,7 @@ static void next_poly_group(struct geo_buf *geo,
     struct display_list *list = geo->lists + disp_list;
 
     if (disp_list < 0) {
-        printf("%s - no lists are open\n", __func__);
+        LOG_WARN("%s - no lists are open\n", __func__);
         return;
     }
 

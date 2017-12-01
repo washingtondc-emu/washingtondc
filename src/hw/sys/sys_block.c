@@ -29,6 +29,7 @@
 #include "dreamcast.h"
 #include "hw/sh4/sh4.h"
 #include "hw/sh4/sh4_dmac.h"
+#include "log.h"
 
 #include "sys_block.h"
 
@@ -207,28 +208,26 @@ static int warn_sys_reg_read_handler(struct sys_mapped_reg const *reg_info,
     int ret_code = default_sys_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        fprintf(stderr, "WARNING: read from system register %s\n",
-                reg_info->reg_name);
+        LOG_DBG("read from system register %s\n", reg_info->reg_name);
     } else {
         switch (reg_info->len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            fprintf(stderr, "WARNING: read 0x%02x from system register %s\n",
+            LOG_DBG("read 0x%02x from system register %s\n",
                     (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            fprintf(stderr, "WARNING: read 0x%04x from system register %s\n",
+            LOG_DBG("read 0x%04x from system register %s\n",
                     (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            fprintf(stderr, "WARNING: read 0x%08x from system register %s\n",
+            LOG_DBG("read 0x%08x from system register %s\n",
                     (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            fprintf(stderr, "WARNING: read from system register %s\n",
-                    reg_info->reg_name);
+            LOG_DBG("read from system register %s\n", reg_info->reg_name);
         }
     }
 
@@ -245,21 +244,21 @@ static int warn_sys_reg_write_handler(struct sys_mapped_reg const *reg_info,
     switch (reg_info->len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        fprintf(stderr, "WARNING: writing 0x%02x to system register %s\n",
+        LOG_DBG("writing 0x%02x to system register %s\n",
                 (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        fprintf(stderr, "WARNING: writing 0x%04x to system register %s\n",
+        LOG_DBG("writing 0x%04x to system register %s\n",
                 (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        fprintf(stderr, "WARNING: writing 0x%08x to system register %s\n",
+        LOG_DBG("writing 0x%08x to system register %s\n",
                 (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        fprintf(stderr, "WARNING: writing to system register %s\n",
+        LOG_DBG("writing to system register %s\n",
                 reg_info->reg_name);
     }
 
@@ -344,7 +343,7 @@ static int sys_sbrev_reg_read_handler(struct sys_mapped_reg const *reg_info,
 
 static int sb_c2dst_reg_read_handler(struct sys_mapped_reg const *reg_info,
                                      void *buf, addr32_t addr, unsigned len) {
-    fprintf(stderr, "WARNING: reading 0 from SB_C2DST\n");
+    LOG_DBG("WARNING: reading 0 from SB_C2DST\n");
 
     memset(buf, 0, len);
 
@@ -369,8 +368,7 @@ static int sb_c2dlen_reg_read_handler(struct sys_mapped_reg const *reg_info,
                                       void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &reg_sb_c2dlen, len);
 
-    fprintf(stderr, "WARNING: reading %08x from SB_C2DLEN\n",
-            (unsigned)reg_sb_c2dlen);
+    LOG_DBG("reading %08x from SB_C2DLEN\n", (unsigned)reg_sb_c2dlen);
 
     return 0;
 }
@@ -380,8 +378,7 @@ static int sb_c2dlen_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                        unsigned len) {
     memcpy(&reg_sb_c2dlen, buf, sizeof(reg_sb_c2dlen));
 
-    fprintf(stderr, "WARNING: writing %08x to SB_C2DLEN\n",
-            (unsigned)reg_sb_c2dlen);
+    LOG_DBG("writing %08x to SB_C2DLEN\n", (unsigned)reg_sb_c2dlen);
 
     return 0;
 }
@@ -390,8 +387,7 @@ static int sb_c2dstat_reg_read_handler(struct sys_mapped_reg const *reg_info,
                                       void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &reg_sb_c2dstat, len);
 
-    fprintf(stderr, "WARNING: reading %08x from SB_C2DSTAT\n",
-            (unsigned)reg_sb_c2dstat);
+    LOG_DBG("reading %08x from SB_C2DSTAT\n", (unsigned)reg_sb_c2dstat);
 
     return 0;
 }
@@ -401,8 +397,7 @@ static int sb_c2dstat_reg_write_handler(struct sys_mapped_reg const *reg_info,
                                        unsigned len) {
     memcpy(&reg_sb_c2dstat, buf, sizeof(reg_sb_c2dstat));
 
-    fprintf(stderr, "WARNING: writing %08x to SB_C2DSTAT\n",
-            (unsigned)reg_sb_c2dstat);
+    LOG_DBG("writing %08x to SB_C2DSTAT\n", (unsigned)reg_sb_c2dstat);
 
     return 0;
 }

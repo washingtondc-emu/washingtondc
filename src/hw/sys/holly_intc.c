@@ -25,6 +25,7 @@
 #include "hw/gdrom/gdrom_reg.h"
 #include "hw/sh4/sh4_excp.h"
 #include "dreamcast.h"
+#include "log.h"
 
 #include "holly_intc.h"
 
@@ -137,7 +138,7 @@ holly_reg_istext_read_handler(struct sys_mapped_reg const *reg_info,
 
     memcpy(buf, &istext_out, sizeof(istext_out));
 
-    printf("Reading %X from ISTEXT\n", (unsigned)istext_out);
+    LOG_DBG("Reading %X from ISTEXT\n", (unsigned)istext_out);
 
     return 0;
 }

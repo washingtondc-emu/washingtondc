@@ -202,7 +202,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/gfx/gfx_config.h"
                 "${PROJECT_SOURCE_DIR}/src/gfx/gfx_config.c"
                 "${PROJECT_SOURCE_DIR}/src/gfx/gfx_tex_cache.h"
-                "${PROJECT_SOURCE_DIR}/src/gfx/gfx_tex_cache.c")
+                "${PROJECT_SOURCE_DIR}/src/gfx/gfx_tex_cache.c"
+                "${PROJECT_SOURCE_DIR}/src/log.h")
 
 if (ENABLE_SH4_MMU)
     add_definitions(-DENABLE_SH4_MMU)

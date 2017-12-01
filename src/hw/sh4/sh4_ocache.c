@@ -29,6 +29,7 @@
 #include "sh4.h"
 #include "sh4_excp.h"
 #include "error.h"
+#include "log.h"
 
 #include "sh4_ocache.h"
 
@@ -107,7 +108,7 @@ int sh4_sq_write(Sh4 *sh4, void const *buf,
 
     if ((sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK) &&
         !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
-        printf("%s: Address error raised\n", __func__);
+        LOG_DBG("%s: Address error raised\n", __func__);
         sh4_set_exception(sh4, SH4_EXCP_INST_ADDR_ERR);
         return 1;
     }
@@ -147,7 +148,7 @@ int sh4_sq_read(Sh4 *sh4, void *buf, addr32_t addr, unsigned len) {
 
     if ((sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK) &&
         !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
-        printf("%s: Address error raised\n", __func__);
+        LOG_DBG("%s: Address error raised\n", __func__);
         sh4_set_exception(sh4, SH4_EXCP_INST_ADDR_ERR);
         return 1;
     }

@@ -24,6 +24,7 @@
 
 #include "mem_code.h"
 #include "MemoryMap.h"
+#include "log.h"
 
 #include "aica_reg.h"
 
@@ -234,31 +235,32 @@ warn_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
     int ret_code = default_aica_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        fprintf(stderr, "WARNING: read from aica register %s (offset is %u)\n",
+        LOG_DBG("read from aica register %s (offset is %u)\n",
                 reg_info->reg_name, (addr - reg_info->addr) / reg_info->len);
     } else {
         switch (reg_info->len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            fprintf(stderr, "WARNING: read 0x%02x from aica register %s "
-                    "(offset is %u)\n", (unsigned)val8, reg_info->reg_name,
+            LOG_DBG("read 0x%02x from aica register %s (offset is %u)\n",
+                    (unsigned)val8, reg_info->reg_name,
                     (addr - reg_info->addr) / reg_info->len);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            fprintf(stderr, "WARNING: read 0x%04x from aica register %s "
-                    "(offset is %u)\n", (unsigned)val16, reg_info->reg_name,
+            LOG_DBG("read 0x%04x from aica register %s (offset is %u)\n",
+                    (unsigned)val16, reg_info->reg_name,
                     (addr - reg_info->addr) / reg_info->len);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            fprintf(stderr, "WARNING: read 0x%08x from aica register %s "
-                    "(offset is %u)\n", (unsigned)val32, reg_info->reg_name,
+            LOG_DBG("read 0x%08x from aica register %s (offset is %u)\n",
+                    (unsigned)val32, reg_info->reg_name,
                     (addr - reg_info->addr) / reg_info->len);
             break;
         default:
-        fprintf(stderr, "WARNING: read from aica register %s (offset is %u)\n",
-                reg_info->reg_name, (addr - reg_info->addr) / reg_info->len);
+            LOG_DBG("read from aica register %s (offset is %u)\n",
+                    reg_info->reg_name,
+                    (addr - reg_info->addr) / reg_info->len);
         }
     }
 
@@ -275,24 +277,24 @@ warn_aica_reg_write_handler(struct aica_mapped_reg const *reg_info,
     switch (reg_info->len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        fprintf(stderr, "WARNING: writing 0x%02x to aica register %s "
-                "(offset is %u)\n", (unsigned)val8, reg_info->reg_name,
+        LOG_DBG("writing 0x%02x to aica register %s (offset is %u)\n",
+                (unsigned)val8, reg_info->reg_name,
                 (addr - reg_info->addr) / reg_info->len);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        fprintf(stderr, "WARNING: writing 0x%04x to aica register %s "
-                "(offset is %u)\n", (unsigned)val16, reg_info->reg_name,
+        LOG_DBG("writing 0x%04x to aica register %s (offset is %u)\n",
+                (unsigned)val16, reg_info->reg_name,
                 (addr - reg_info->addr) / reg_info->len);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        fprintf(stderr, "WARNING: writing 0x%08x to aica register %s "
-                "(offset is %u)\n", (unsigned)val32, reg_info->reg_name,
+        LOG_DBG("writing 0x%08x to aica register %s (offset is %u)\n",
+                (unsigned)val32, reg_info->reg_name,
                 (addr - reg_info->addr) / reg_info->len);
         break;
     default:
-        fprintf(stderr, "WARNING: writing to aica register %s (offset is %u)\n",
+        LOG_DBG("writing to aica register %s (offset is %u)\n",
                 reg_info->reg_name, (addr - reg_info->addr) / reg_info->len);
     }
 

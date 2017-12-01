@@ -29,6 +29,7 @@
 #include "sh4_tmu.h"
 #include "sh4_dmac.h"
 #include "sh4.h"
+#include "log.h"
 
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);
 
@@ -556,29 +557,29 @@ int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
     int ret_code = Sh4DefaultRegReadHandler(sh4, buf, reg_info);
 
     if (ret_code) {
-        fprintf(stderr, "WARNING: read from register %s\n", reg_info->reg_name);
+        LOG_DBG("read from register %s\n", reg_info->reg_name);
     } else {
         switch (reg_info->len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            fprintf(stderr, "WARNING: read 0x%02x from register %s\n",
+            LOG_DBG("read 0x%02x from register %s\n",
                     (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            fprintf(stderr, "WARNING: read 0x%04x from register %s\n",
+            LOG_DBG("read 0x%04x from register %s\n",
                     (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            fprintf(stderr, "WARNING: read 0x%08x from register %s\n",
+            LOG_DBG("read 0x%08x from register %s\n",
                     (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            fprintf(stderr, "WARNING: read from register %s\n", reg_info->reg_name);
+            LOG_DBG("read from register %s\n", reg_info->reg_name);
         }
     }
-    fprintf(stderr, "(PC is %x)\n", (unsigned)sh4->reg[SH4_REG_PC]);
+    LOG_DBG("(PC is %x)\n", (unsigned)sh4->reg[SH4_REG_PC]);
 
     return ret_code;
 }
@@ -592,21 +593,21 @@ int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
     switch (reg_info->len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        fprintf(stderr, "WARNING: write 0x%02x to register %s\n",
+        LOG_DBG("write 0x%02x to register %s\n",
                 (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        fprintf(stderr, "WARNING: write 0x%04x to register %s\n",
+        LOG_DBG("write 0x%04x to register %s\n",
                 (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        fprintf(stderr, "WARNING: write 0x%08x to register %s\n",
+        LOG_DBG("write 0x%08x to register %s\n",
                 (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        fprintf(stderr, "WARNING: write to register %s\n", reg_info->reg_name);
+        LOG_DBG("write to register %s\n", reg_info->reg_name);
     }
 
     return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
@@ -690,7 +691,7 @@ static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
     memcpy(buf, &out_val, sizeof(out_val));
 
     /* I got my eye on you...*/
-    fprintf(stderr, "WARNING: reading 0x%04x from register %s\n",
+    LOG_DBG("reading 0x%04x from register %s\n",
             (unsigned)out_val, reg_info->reg_name);
 
     return 0;
@@ -700,7 +701,7 @@ static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
                                        struct Sh4MemMappedReg const *reg_info) {
     uint16_t val;
     memcpy(&val, buf, sizeof(val));
-    uint16_t val_orig = val;
+    uint16_t val_orig __attribute__((unused)) = val;
 
     /*
      * n_pup = "not pullup"
@@ -720,7 +721,7 @@ static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
     }
 
     /* I got my eye on you...*/
-    fprintf(stderr, "WARNING: writing 0x%04x to register %s "
+    LOG_DBG("WARNING: writing 0x%04x to register %s "
             "(attempted write was %x)\n",
             (unsigned)val, reg_info->reg_name, (unsigned)val_orig);
 

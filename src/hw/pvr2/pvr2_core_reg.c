@@ -32,6 +32,7 @@
 #include "framebuffer.h"
 #include "pvr2_ta.h"
 #include "pvr2_tex_cache.h"
+#include "log.h"
 
 #include "pvr2_core_reg.h"
 
@@ -698,28 +699,27 @@ warn_pvr2_core_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     int ret_code = default_pvr2_core_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        fprintf(stderr, "WARNING: read from pvr2 core register %s\n",
+        LOG_DBG("read from pvr2 core register %s\n",
                 reg_info->reg_name);
     } else {
         switch (len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            fprintf(stderr, "WARNING: read 0x%02x from pvr2 core register %s\n",
+            LOG_DBG("read 0x%02x from pvr2 core register %s\n",
                     (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            fprintf(stderr, "WARNING: read 0x%04x from pvr2 core register %s\n",
+            LOG_DBG("read 0x%04x from pvr2 core register %s\n",
                     (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            fprintf(stderr, "WARNING: read 0x%08x from pvr2 core register %s\n",
+            LOG_DBG("read 0x%08x from pvr2 core register %s\n",
                     (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            fprintf(stderr, "WARNING: read from pvr2 core register %s\n",
-                    reg_info->reg_name);
+            LOG_DBG("read from pvr2 core register %s\n", reg_info->reg_name);
         }
     }
 
@@ -737,21 +737,21 @@ warn_pvr2_core_reg_write_handler(
     switch (len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        fprintf(stderr, "WARNING: writing 0x%02x from pvr2 core register %s\n",
+        LOG_DBG("writing 0x%02x from pvr2 core register %s\n",
                 (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
-        fprintf(stderr, "WARNING: writing 0x%04x to pvr2 core register %s\n",
+        LOG_DBG("writing 0x%04x to pvr2 core register %s\n",
                 (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        fprintf(stderr, "WARNING: writing 0x%08x to pvr2 core register %s\n",
+        LOG_DBG("writing 0x%08x to pvr2 core register %s\n",
                 (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        fprintf(stderr, "WARNING: reading from pvr2 core register %s\n",
+        LOG_DBG("reading from pvr2 core register %s\n",
                 reg_info->reg_name);
     }
 
@@ -982,7 +982,7 @@ fb_w_linestride_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_inf
 static int
 ta_reset_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                           void *buf, addr32_t addr, unsigned len) {
-    fprintf(stderr, "WARNING: reading 0 from TA_RESET\n");
+    LOG_DBG("reading 0 from TA_RESET\n");
     memset(buf, 0, len);
     return 0;
 }
@@ -994,12 +994,12 @@ ta_reset_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     memcpy(&val, buf, sizeof(val));
 
     if (val & 0x80000000) {
-        fprintf(stderr, "WARNING: TA_RESET!\n");
+        LOG_DBG("TA_RESET!\n");
 
         ta_vertbuf_pos = ta_vertbuf_start;
     } else {
-        fprintf(stderr, "WARNING: TA_RESET was written to but the one bit that "
-                "actually matters was not set\n");
+        LOG_WARN("WARNING: TA_RESET was written to but the one bit that "
+                 "actually matters was not set\n");
     }
 
     pvr2_ta_reinit();
@@ -1128,8 +1128,7 @@ glob_tile_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info
                                  void const *buf, addr32_t addr, unsigned len) {
     memcpy(&glob_tile_clip, buf, sizeof(glob_tile_clip));
 
-    fprintf(stderr, "WARNING: writing 0x%08x to TA_GLOB_TILE_CLIP\n",
-            (unsigned)glob_tile_clip);
+    LOG_DBG("writing 0x%08x to TA_GLOB_TILE_CLIP\n", (unsigned)glob_tile_clip);
 
     return 0;
 }
@@ -1146,8 +1145,7 @@ fb_x_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
     memcpy(&fb_x_clip, buf, sizeof(fb_x_clip));
 
-    fprintf(stderr, "WARNING: writing 0x%08x to FB_X_CLIP\n",
-            (unsigned)fb_x_clip);
+    LOG_DBG("writing 0x%08x to FB_X_CLIP\n", (unsigned)fb_x_clip);
 
     return 0;
 }
@@ -1164,8 +1162,7 @@ fb_y_clip_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                             void const *buf, addr32_t addr, unsigned len) {
     memcpy(&fb_y_clip, buf, sizeof(fb_y_clip));
 
-    fprintf(stderr, "WARNING: writing 0x%08x to FB_Y_CLIP\n",
-            (unsigned)fb_y_clip);
+    LOG_DBG("writing 0x%08x to FB_Y_CLIP\n", (unsigned)fb_y_clip);
 
     return 0;
 }
@@ -1176,13 +1173,12 @@ ta_next_opb_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     // TODO: actually track the positions of where the OPB blocks should go
 
 
-    fprintf(stderr, "You should *really* come up with a real implementation of "
-            "%s at line %d of %s\n", __func__, __LINE__, __FILE__);
+    LOG_WARN("You should *really* come up with a real implementation of "
+             "%s at line %d of %s\n", __func__, __LINE__, __FILE__);
 
     memcpy(buf, &ta_next_opb_init, len);
 
-    fprintf(stderr, "WARNING reading 0x%08x from TA_NEXT_OPB\n",
-            (unsigned)ta_next_opb_init);
+    LOG_DBG("reading 0x%08x from TA_NEXT_OPB\n", (unsigned)ta_next_opb_init);
 
     return 0;
 }
@@ -1191,7 +1187,7 @@ static int
 ta_next_opb_init_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len) {
     memcpy(buf, &ta_next_opb_init, len);
-    fprintf(stderr, "WARNING reading 0x%08x from TA_NEXT_OPB_INIT\n",
+    LOG_DBG("reading 0x%08x from TA_NEXT_OPB_INIT\n",
             (unsigned)ta_next_opb_init);
     return 0;
 }
@@ -1200,7 +1196,7 @@ static int
 ta_next_opb_init_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                    void const *buf, addr32_t addr, unsigned len) {
     memcpy(&ta_next_opb_init, buf, sizeof(ta_next_opb_init));
-    fprintf(stderr, "WARNING writing 0x%08x to TA_NEXT_OPB_INIT\n",
+    LOG_DBG("writing 0x%08x to TA_NEXT_OPB_INIT\n",
             (unsigned)ta_next_opb_init);
     return 0;
 }
@@ -1217,23 +1213,23 @@ ta_palette_tp_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
     uint32_t const *in_val = (uint32_t const*)buf;
     palette_tp = (enum palette_tp)(*in_val);
 
-    printf("PVR2: palette type set to: ");
+    LOG_DBG("PVR2: palette type set to: ");
 
     switch (palette_tp) {
     case PALETTE_TP_ARGB_1555:
-        printf("ARGB1555\n");
+        LOG_DBG("ARGB1555\n");
         break;
     case PALETTE_TP_RGB_565:
-        printf("RGB565\n");
+        LOG_DBG("RGB565\n");
         break;
     case PALETTE_TP_ARGB_4444:
-        printf("ARGB4444\n");
+        LOG_DBG("ARGB4444\n");
         break;
     case PALETTE_TP_ARGB_8888:
-        printf("ARGB8888\n");
+        LOG_DBG("ARGB8888\n");
         break;
     default:
-        printf("<unknown %u>\n", (unsigned)palette_tp);
+        LOG_DBG("<unknown %u>\n", (unsigned)palette_tp);
     }
 
     pvr2_tex_cache_notify_palette_tp_change();
@@ -1257,13 +1253,13 @@ ta_palette_ram_reg_read_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
 static int
 ta_palette_ram_reg_write_handler(struct pvr2_core_mem_mapped_reg const *reg_info,
                                  void const *buf, addr32_t addr, unsigned len) {
-    printf("%s reached (%u-byte write to %08x): ", __func__, len, addr);
+    LOG_DBG("%s reached (%u-byte write to %08x): ", __func__, len, addr);
     addr32_t addr_tmp;
-    uint8_t *buf8 = (uint8_t*)buf;
+    __attribute__((unused)) uint8_t *buf8 = (uint8_t*)buf;
     for (addr_tmp = addr+len-1; addr_tmp >= addr; addr_tmp--) {
-        printf("%02x", (unsigned)*buf8++);
+        LOG_DBG("%02x", (unsigned)*buf8++);
     }
-    printf("\n");
+    LOG_DBG("\n");
 
     if (addr >= PVR2_PALETTE_RAM_FIRST &&
         (addr - 1 + len) <= PVR2_PALETTE_RAM_LAST) {

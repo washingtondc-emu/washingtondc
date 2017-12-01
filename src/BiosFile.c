@@ -28,6 +28,7 @@
 
 #include "mem_code.h"
 #include "error.h"
+#include "log.h"
 
 #include "BiosFile.h"
 
@@ -92,9 +93,9 @@ void bios_file_init(struct BiosFile *bios_file, char const *path) {
     bios_file->dat_len = file_len;
 
     if (file_len != BIOS_SZ_EXPECT) {
-        printf("WARNING - unexpected bios size (expected %d, got %d).  This "
-               "BIOS will still be loaded but it could cause issues.\n",
-               BIOS_SZ_EXPECT, (int)file_len);
+        LOG_WARN("WARNING - unexpected bios size (expected %d, got %d).  This "
+                 "BIOS will still be loaded but it could cause issues.\n",
+                 BIOS_SZ_EXPECT, (int)file_len);
     }
 }
 

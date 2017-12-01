@@ -35,6 +35,7 @@
 #include "opengl_output.h"
 #include "shader.h"
 #include "gfx/gfx_thread.h"
+#include "log.h"
 
 static void init_poly();
 
@@ -131,7 +132,7 @@ void opengl_video_new_framebuffer(uint32_t const *fb_new,
          * about dropped frames, but this is a frame which did not get displayed
          * ergo...a dropped frame
          */
-        printf("WARNING: frame dropped by OpenGL backend\n");
+        LOG_WARN("WARNING: frame dropped by OpenGL backend\n");
 
         /*
          * free fb_read if the new framebuffer isn't the same size as the old

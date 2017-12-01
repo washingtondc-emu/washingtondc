@@ -29,6 +29,7 @@
 #include "pvr2_tex_mem.h"
 #include "pvr2_core_reg.h"
 #include "mem_areas.h"
+#include "log.h"
 
 #include "geo_buf.h"
 
@@ -204,7 +205,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
         if (oldest_tex) {
             tex = oldest_tex;
         } else {
-            fprintf(stderr, "ERROR: TEXTURE CACHE OVERFLOW\n");
+            LOG_ERROR("ERROR: TEXTURE CACHE OVERFLOW\n");
             return NULL;
         }
     }
@@ -228,9 +229,9 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
     }
 
     if (tex->meta.vq_compression && (tex->meta.w_shift != tex->meta.h_shift)) {
-        fprintf(stderr, "PVR2: WARNING - DISABLING VQ COMPRESSION FOR 0x%x "
-                "DUE TO NON-SQUARE DIMENSIONS\n",
-                (unsigned)tex->meta.addr_first);
+        LOG_WARN("PVR2: WARNING - DISABLING VQ COMPRESSION FOR 0x%x "
+                 "DUE TO NON-SQUARE DIMENSIONS\n",
+                 (unsigned)tex->meta.addr_first);
         tex->meta.vq_compression = false;
     }
 
@@ -540,7 +541,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
         }
         free(tex_dat);
         tex_dat = tex_dat_no_palette;
-        printf("PVR2 paletted texture: tex_palette_start is 0x%04x\n",
+        LOG_DBG("PVR2 paletted texture: tex_palette_start is 0x%04x\n",
                (unsigned)meta->tex_palette_start);
     } else if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
         error_set_feature("4BPP paletted textures");

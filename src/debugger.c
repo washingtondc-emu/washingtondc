@@ -99,7 +99,7 @@ static atomic_flag not_detach = ATOMIC_FLAG_INIT;
 // #define DEBUGGER_LOG_VERBOSE
 
 #ifdef DEBUGGER_LOG_VERBOSE
-#define DBG_TRACE(msg, ...) dbg_do_trace(msg, ##__VA_ARGS__)
+#define DBG_TRACE(msg, ...) LOG_INFO(msg, ##__VA_ARGS__)
 #else
 #define DBG_TRACE(msg, ...)
 #endif
@@ -448,8 +448,8 @@ void dbg_do_trace(char const *msg, ...) {
     va_list var_args;
     va_start(var_args, msg);
 
+    // TODO: get this to work with log.h
     printf("DEBUGGER: ");
-
     vprintf(msg, var_args);
 
     va_end(var_args);

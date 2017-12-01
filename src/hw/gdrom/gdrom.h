@@ -27,12 +27,13 @@
 #include <stdbool.h>
 
 #include "fifo.h"
+#include "log.h"
 
 #define GDROM_TRACE(msg, ...)                                           \
     do {                                                                \
-        printf("GD-ROM (PC=%08x): ",                                    \
+        LOG_DBG("GD-ROM (PC=%08x): ",                                   \
                (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);         \
-        printf(msg, ##__VA_ARGS__);                                     \
+        LOG_DBG(msg, ##__VA_ARGS__);                                    \
     } while (0)
 
 struct gdrom_status {

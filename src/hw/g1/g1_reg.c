@@ -32,6 +32,7 @@
 #include "error.h"
 #include "types.h"
 #include "mem_areas.h"
+#include "log.h"
 
 #define N_G1_REGS (ADDR_G1_LAST - ADDR_G1_FIRST + 1)
 static reg32_t g1_regs[N_G1_REGS];
@@ -186,27 +187,26 @@ warn_g1_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
     int ret_code = default_g1_reg_read_handler(reg_info, buf, addr, len);
 
     if (ret_code) {
-        fprintf(stderr, "WARNING: read from g1 register %s\n",
-                reg_info->reg_name);
+        LOG_DBG("read from g1 register %s\n", reg_info->reg_name);
     } else {
         switch (len) {
         case 1:
             memcpy(&val8, buf, sizeof(val8));
-            fprintf(stderr, "WARNING: read 0x%02x from g1 register %s\n",
+            LOG_DBG("read 0x%02x from g1 register %s\n",
                     (unsigned)val8, reg_info->reg_name);
             break;
         case 2:
             memcpy(&val16, buf, sizeof(val16));
-            fprintf(stderr, "WARNING: read 0x%04x from g1 register %s\n",
+            LOG_DBG("read 0x%04x from g1 register %s\n",
                     (unsigned)val16, reg_info->reg_name);
             break;
         case 4:
             memcpy(&val32, buf, sizeof(val32));
-            fprintf(stderr, "WARNING: read 0x%08x from g1 register %s\n",
+            LOG_DBG("read 0x%08x from g1 register %s\n",
                     (unsigned)val32, reg_info->reg_name);
             break;
         default:
-            fprintf(stderr, "WARNING: read from g1 register %s\n",
+            LOG_DBG("read from g1 register %s\n",
                     reg_info->reg_name);
         }
     }
@@ -224,23 +224,22 @@ warn_g1_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
     switch (len) {
     case 1:
         memcpy(&val8, buf, sizeof(val8));
-        fprintf(stderr, "WARNING: write 0x%02x to g1 register %s\n",
+        LOG_DBG("write 0x%02x to g1 register %s\n",
                 (unsigned)val8, reg_info->reg_name);
         break;
     case 2:
         memcpy(&val16, buf, sizeof(val16));
         memcpy(&val16, buf, sizeof(val16));
-        fprintf(stderr, "WARNING: write 0x%04x to g1 register %s\n",
+        LOG_DBG("write 0x%04x to g1 register %s\n",
                 (unsigned)val16, reg_info->reg_name);
         break;
     case 4:
         memcpy(&val32, buf, sizeof(val32));
-        fprintf(stderr, "WARNING: write 0x%08x to g1 register %s\n",
+        LOG_DBG("write 0x%08x to g1 register %s\n",
                 (unsigned)val32, reg_info->reg_name);
         break;
     default:
-        fprintf(stderr, "WARNING: write to g1 register %s\n",
-                reg_info->reg_name);
+        LOG_DBG("write to g1 register %s\n", reg_info->reg_name);
     }
 
     return default_g1_reg_write_handler(reg_info, buf, addr, len);

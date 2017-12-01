@@ -34,6 +34,7 @@
 #include "hw/pvr2/pvr2_ta.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
 #include "hw/sys/holly_intc.h"
+#include "log.h"
 
 int sh4_dmac_sar_reg_read_handler(Sh4 *sh4, void *buf,
                                   struct Sh4MemMappedReg const *reg_info) {
@@ -55,8 +56,8 @@ int sh4_dmac_sar_reg_read_handler(Sh4 *sh4, void *buf,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
-    printf("WARNING: reading %08x from SH4 DMAC SAR%d register\n",
-           (unsigned)sh4->dmac.sar[chan], chan);
+    LOG_DBG("reading %08x from SH4 DMAC SAR%d register\n",
+            (unsigned)sh4->dmac.sar[chan], chan);
 
     memcpy(buf, &sh4->dmac.sar[chan], sizeof(sh4->dmac.sar[chan]));
     return 0;
@@ -84,8 +85,8 @@ int sh4_dmac_sar_reg_write_handler(Sh4 *sh4, void const *buf,
 
     memcpy(&sh4->dmac.sar[chan], buf, sizeof(sh4->dmac.sar[chan]));
 
-    printf("WARNING: writing %08x to SH4 DMAC SAR%d register\n",
-           (unsigned)sh4->dmac.sar[chan], chan);
+    LOG_DBG("writing %08x to SH4 DMAC SAR%d register\n",
+            (unsigned)sh4->dmac.sar[chan], chan);
 
     return 0;
 }
@@ -112,8 +113,8 @@ int sh4_dmac_dar_reg_read_handler(Sh4 *sh4, void *buf,
 
     memcpy(buf, &sh4->dmac.dar[chan], sizeof(sh4->dmac.dar[chan]));
 
-    printf("WARNING: reading %08x from SH4 DMAC DAR%d register\n",
-           (unsigned)sh4->dmac.dar[chan], chan);
+    LOG_DBG("reading %08x from SH4 DMAC DAR%d register\n",
+            (unsigned)sh4->dmac.dar[chan], chan);
 
     return 0;
 }
@@ -140,7 +141,7 @@ int sh4_dmac_dar_reg_write_handler(Sh4 *sh4, void const *buf,
 
     memcpy(&sh4->dmac.dar[chan], buf, sizeof(sh4->dmac.dar[chan]));
 
-    printf("WARNING: writing to SH4 DMAC DAR%d register\n", chan);
+    LOG_DBG("writing to SH4 DMAC DAR%d register\n", chan);
 
     return 0;
 }
@@ -167,8 +168,8 @@ int sh4_dmac_dmatcr_reg_read_handler(Sh4 *sh4, void *buf,
 
     memcpy(buf, &sh4->dmac.dmatcr[chan], sizeof(sh4->dmac.dmatcr[chan]));
 
-    printf("WARNING: reading %08x from SH4 DMAC DMATCR%d register\n",
-           (unsigned)sh4->dmac.dmatcr[chan], chan);
+    LOG_DBG("reading %08x from SH4 DMAC DMATCR%d register\n",
+            (unsigned)sh4->dmac.dmatcr[chan], chan);
 
     return 0;
 }
@@ -195,8 +196,8 @@ int sh4_dmac_dmatcr_reg_write_handler(Sh4 *sh4, void const *buf,
 
     memcpy(&sh4->dmac.dmatcr[chan], buf, sizeof(sh4->dmac.dmatcr[chan]));
 
-    printf("WARNING: writing %08x to SH4 DMAC DMATCR%d register\n",
-           (unsigned)sh4->dmac.dmatcr[chan], chan);
+    LOG_DBG("writing %08x to SH4 DMAC DMATCR%d register\n",
+            (unsigned)sh4->dmac.dmatcr[chan], chan);
 
     return 0;
 }
@@ -275,8 +276,8 @@ int sh4_dmac_dmaor_reg_read_handler(Sh4 *sh4, void *buf,
                                     struct Sh4MemMappedReg const *reg_info) {
     memcpy(buf, &sh4->dmac.dmaor, sizeof(sh4->dmac.dmaor));
 
-    printf("WARNING: reading %08x from SH4 DMAC DMAOR register\n",
-           (unsigned)sh4->dmac.dmaor);
+    LOG_DBG("reading %08x from SH4 DMAC DMAOR register\n",
+            (unsigned)sh4->dmac.dmaor);
 
     return 0;
 }
@@ -285,8 +286,8 @@ int sh4_dmac_dmaor_reg_write_handler(Sh4 *sh4, void const *buf,
                                      struct Sh4MemMappedReg const *reg_info) {
     memcpy(&sh4->dmac.dmaor, buf, sizeof(sh4->dmac.dmaor));
 
-    printf("WARNING: writing %08x to SH4 DMAC DMAOR register\n",
-           (unsigned)sh4->dmac.dmaor);
+    LOG_DBG("writing %08x to SH4 DMAC DMAOR register\n",
+            (unsigned)sh4->dmac.dmaor);
 
     return 0;
 }
@@ -327,7 +328,7 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
 
     addr32_t transfer_src = sh4->dmac.sar[2];
 
-    fprintf(stderr, "SH4 - initiating %u-byte DMA transfer from 0x%08x to "
+    LOG_DBG("SH4 - initiating %u-byte DMA transfer from 0x%08x to "
             "0x%08x\n", n_bytes, transfer_src, transfer_dst);
 
     if ((transfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&

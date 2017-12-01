@@ -37,6 +37,7 @@
 #include "text_ring.h"
 #include "io_thread.h"
 #include "cmd/cmd_sys.h"
+#include "log.h"
 
 #include "cmd_tcp.h"
 
@@ -90,12 +91,12 @@ void cmd_tcp_init(void) {
 }
 
 void cmd_tcp_attach(void) {
-    printf("Awaiting remote cli connection on port %d...\n", CMD_TCP_PORT_NO);
+    LOG_INFO("Awaiting remote cli connection on port %d...\n", CMD_TCP_PORT_NO);
 
     listener_lock();
 
     if (!outbound_buf) {
-        warnx("evbuffer_new returned NULL!\n");
+        LOG_ERROR("evbuffer_new returned NULL!\n");
         goto unlock;
     }
 
@@ -117,9 +118,9 @@ void cmd_tcp_attach(void) {
     } while (state == CMD_TCP_LISTENING);
 
     if (state == CMD_TCP_ATTACHED)
-        printf("CMD remote connection established\n");
+        LOG_INFO("CMD remote connection established\n");
     else
-        warnx("Failed to establish a remote CMD TCP/IP connection.\n");
+        LOG_INFO("Failed to establish a remote CMD TCP/IP connection.\n");
 
 unlock:
     listener_unlock();

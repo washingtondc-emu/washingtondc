@@ -29,6 +29,7 @@
 
 #include "dreamcast.h"
 #include "io_thread.h"
+#include "log.h"
 
 #include "serial_server.h"
 
@@ -89,7 +90,7 @@ void serial_server_cleanup(void) {
 }
 
 void serial_server_attach(void) {
-    printf("Awaiting serial connection on port %d...\n", SERIAL_PORT_NO);
+    LOG_INFO("Awaiting serial connection on port %d...\n", SERIAL_PORT_NO);
 
     ser_srv_lock();
 
@@ -114,7 +115,7 @@ void serial_server_attach(void) {
 
     ser_srv_unlock();
 
-    printf("Connection established.\n");
+    LOG_INFO("Connection established.\n");
 }
 
 static void handle_read(struct bufferevent *bev, void *arg) {
@@ -184,7 +185,7 @@ listener_cb(struct evconnlistener *listener,
 
 static void handle_events(struct bufferevent *bev, short events, void *arg) {
     // I must confess, I don't know why this is here...
-    fprintf(stderr, "%s called - exiting with code 2\n", __func__);
+    LOG_ERROR("%s called - exiting with code 2\n", __func__);
     exit(2);
 }
 
@@ -202,7 +203,7 @@ static void wait_for_connection(void) {
     srv.is_listening = true;
 
     do {
-        printf("still waiting...\n");
+        LOG_INFO("still waiting...\n");
         if (pthread_cond_wait(&listener_condition, &srv_mutex) < 0)
             abort(); // TODO: error handling
 

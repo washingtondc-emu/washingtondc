@@ -36,6 +36,7 @@
 #include "mount.h"
 #include "gdi.h"
 #include "config.h"
+#include "log.h"
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [IP.BIN 1ST_READ.BIN]\n\n", cmd);
@@ -117,8 +118,8 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_DEBUGGER
         config_set_dbg_enable(true);
 #else
-        fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
-                "Please rebuild with -DENABLE_DEBUGGER=On\n");
+        LOG_ERROR("ERROR: Unable to enable remote gdb stub.\n"
+                  "Please rebuild with -DENABLE_DEBUGGER=On\n");
         exit(1);
 #endif
     } else {
@@ -133,18 +134,18 @@ int main(int argc, char **argv) {
             // dump meta to stdout and set the window title to the game title
             title_content = content_meta.title;
 
-            printf("GDI image %s mounted:\n", path_gdi);
-            printf("\thardware: %s\n", content_meta.hardware);
-            printf("\tmaker: %s\n", content_meta.maker);
-            printf("\tdevice info: %s\n", content_meta.dev_info);
-            printf("\tregion: %s\n", content_meta.region);
-            printf("\tperipheral support: %s\n", content_meta.periph_support);
-            printf("\tproduct id: %s\n", content_meta.product_id);
-            printf("\tproduct version: %s\n", content_meta.product_version);
-            printf("\trelease date: %s\n", content_meta.rel_date);
-            printf("\tboot file: %s\n", content_meta.boot_file);
-            printf("\tcompany: %s\n", content_meta.company);
-            printf("\ttitle: %s\n", content_meta.title);
+            LOG_INFO("GDI image %s mounted:\n", path_gdi);
+            LOG_INFO("\thardware: %s\n", content_meta.hardware);
+            LOG_INFO("\tmaker: %s\n", content_meta.maker);
+            LOG_INFO("\tdevice info: %s\n", content_meta.dev_info);
+            LOG_INFO("\tregion: %s\n", content_meta.region);
+            LOG_INFO("\tperipheral support: %s\n", content_meta.periph_support);
+            LOG_INFO("\tproduct id: %s\n", content_meta.product_id);
+            LOG_INFO("\tproduct version: %s\n", content_meta.product_version);
+            LOG_INFO("\trelease date: %s\n", content_meta.rel_date);
+            LOG_INFO("\tboot file: %s\n", content_meta.boot_file);
+            LOG_INFO("\tcompany: %s\n", content_meta.company);
+            LOG_INFO("\ttitle: %s\n", content_meta.title);
         }
     }
 
@@ -155,16 +156,16 @@ int main(int argc, char **argv) {
         }
 
         if (!path_syscalls_bin) {
-            fprintf(stderr, "Error: cannot direct-boot without a system call "
-                    "table (-s flag).\n");
+            LOG_ERROR("Error: cannot direct-boot without a system call "
+                      "table (-s flag).\n");
             exit(1);
         }
 
         path_ip_bin = argv[0];
         path_1st_read_bin = argv[1];
 
-        printf("direct boot enbaled, loading IP.BIN from %s and loading "
-               "1ST_READ.BIN from %s\n", path_ip_bin, path_1st_read_bin);
+        LOG_INFO("direct boot enbaled, loading IP.BIN from %s and loading "
+                 "1ST_READ.BIN from %s\n", path_ip_bin, path_1st_read_bin);
         title_content = basename(path_1st_read_bin);
     } else if (argc != 0 || !bios_path) {
         print_usage(cmd);
@@ -181,13 +182,13 @@ int main(int argc, char **argv) {
         config_set_syscall_path(path_syscalls_bin);
     } else {
         if (skip_ip_bin) {
-            fprintf(stderr, "Error: -u option is meaningless with -d!\n");
+            LOG_ERROR("Error: -u option is meaningless with -d!\n");
             exit(1);
         }
 
         if (path_syscalls_bin) {
-            fprintf(stderr, "Error: -s option is meaningless when not "
-                    "performing a direct boot (-d option)\n");
+            LOG_ERROR("Error: -s option is meaningless when not "
+                      "performing a direct boot (-d option)\n");
             exit(1);
         }
 
@@ -212,16 +213,16 @@ int main(int argc, char **argv) {
 
     dreamcast_run();
 
-    printf("Waiting for gfx_thread to exit...\n");
+    LOG_INFO("Waiting for gfx_thread to exit...\n");
     gfx_thread_join();
-    printf("gfx_thread has exited.\n");
+    LOG_INFO("gfx_thread has exited.\n");
 
-    printf("killing the window...\n");
+    LOG_INFO("killing the window...\n");
     win_cleanup();
 
-    printf("Waiting for io_thread to exit...\n");
+    LOG_INFO("Waiting for io_thread to exit...\n");
     io_thread_join();
-    printf("io_thread has exited.\n");
+    LOG_INFO("io_thread has exited.\n");
 
     if (mount_check())
         mount_eject();

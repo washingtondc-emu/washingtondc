@@ -35,6 +35,7 @@
 #include "serial_server.h"
 #include "dreamcast.h"
 #include "cmd_tcp.h"
+#include "log.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
@@ -117,7 +118,7 @@ static void *io_main(void *arg) {
         serial_server_run();
     }
 
-    printf("io thread finished\n");
+    LOG_INFO("io thread finished\n");
 
     event_free(io_thread_work_event);
 

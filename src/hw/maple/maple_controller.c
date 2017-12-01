@@ -28,6 +28,7 @@
 #include "maple.h"
 #include "maple_controller.h"
 #include "maple_device.h"
+#include "log.h"
 
 #define MAPLE_CONTROLLER_STRING "Dreamcast Controller         "
 #define MAPLE_CONTROLLER_LICENSE \
@@ -129,8 +130,8 @@ void maple_controller_press_btns(unsigned port_no, uint32_t btns) {
     struct maple_device *dev = maple_device_get(addr);
 
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
-        fprintf(stderr, "Error: unable to press buttons on port %u because "
-                "there is no controller plugged in.\n", port_no);
+        LOG_ERROR("Error: unable to press buttons on port %u because "
+                  "there is no controller plugged in.\n", port_no);
     }
 
     struct maple_controller *cont = &dev->ctxt.cont;
@@ -144,8 +145,8 @@ void maple_controller_release_btns(unsigned port_no, uint32_t btns) {
     struct maple_device *dev = maple_device_get(addr);
 
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
-        fprintf(stderr, "Error: unable to press buttons on port %u because "
-                "there is no controller plugged in.\n", port_no);
+        LOG_ERROR("Error: unable to press buttons on port %u because "
+                  "there is no controller plugged in.\n", port_no);
     }
 
     struct maple_controller *cont = &dev->ctxt.cont;
@@ -158,8 +159,8 @@ void maple_controller_set_axis(unsigned port_no, unsigned axis, unsigned val) {
     struct maple_device *dev = maple_device_get(addr);
 
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
-        fprintf(stderr, "Error: unable to press buttons on port %u because "
-                "there is no controller plugged in.\n", port_no);
+        LOG_ERROR("Error: unable to press buttons on port %u because "
+                  "there is no controller plugged in.\n", port_no);
     }
 
     struct maple_controller *cont = &dev->ctxt.cont;

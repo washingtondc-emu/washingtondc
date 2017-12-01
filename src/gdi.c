@@ -35,6 +35,7 @@
 #include "error.h"
 #include "mount.h"
 #include "cdrom.h"
+#include "log.h"
 
 #include "gdi.h"
 
@@ -217,12 +218,12 @@ static bool gdi_validate_fmt(struct gdi_info const *info) {
 }
 
 void print_gdi(struct gdi_info const *gdi) {
-    printf("%u\n", gdi->n_tracks);
+    LOG_INFO("%u\n", gdi->n_tracks);
 
     unsigned track_no;
     for (track_no = 0; track_no < gdi->n_tracks; track_no++) {
         struct gdi_track const *trackp = gdi->tracks + track_no;
-        printf("%u %u %u %u %s %u\n",
+        LOG_INFO("%u %u %u %u %s %u\n",
                track_no + 1, cdrom_fad_to_lba(trackp->fad_start), trackp->ctrl,
                trackp->sector_size, string_get(&trackp->rel_path), trackp->offset);
     }
@@ -237,7 +238,7 @@ void mount_gdi(char const *path) {
 
     parse_gdi(&mount->meta, path);
 
-    printf("about to (attempt to) mount the following image:\n");
+    LOG_INFO("about to (attempt to) mount the following image:\n");
     print_gdi(&mount->meta);
 
     if (!gdi_validate_fmt(&mount->meta))
@@ -377,9 +378,9 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
             unsigned byte_offset = CDROM_FRAME_SIZE * fad_relative +
                 CDROM_MODE1_DATA_OFFSET;
 
-            printf("Select track %d (%u blocks starting from %u)\n",
-                   track_idx + 1, track_fad_count, (unsigned)trackp->fad_start);
-            printf("read 1 sector starting at byte %u\n", byte_offset);
+            LOG_DBG("Select track %d (%u blocks starting from %u)\n",
+                     track_idx + 1, track_fad_count, (unsigned)trackp->fad_start);
+            LOG_DBG("read 1 sector starting at byte %u\n", byte_offset);
 
             // TODO: don't ignore the offset
             if (fseek(gdi_mount->track_streams[track_idx],

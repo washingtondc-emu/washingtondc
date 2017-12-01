@@ -33,6 +33,7 @@
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "gfx/gfx_thread.h"
 #include "hw/pvr2/geo_buf.h"
+#include "log.h"
 
 #include "framebuffer.h"
 
@@ -348,7 +349,7 @@ void framebuffer_render() {
     unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
 
     if (!(fb_r_ctrl & 1)) {
-        printf("framebuffer disabled\n");
+        LOG_DBG("framebuffer disabled\n");
         // framebuffer is not enabled.
         // TODO: display all-white or all black here instead of letting
         // the screen look corrupted?
@@ -420,8 +421,8 @@ void framebuffer_render() {
         break;
     }
 
-    printf("passing framebuffer dimensions=(%u, %u)\n", fb_width, fb_height);
-    printf("interlacing is %s\n", interlace ? "enabled" : "disabled");
+    LOG_DBG("passing framebuffer dimensions=(%u, %u)\n", fb_width, fb_height);
+    LOG_DBG("interlacing is %s\n", interlace ? "enabled" : "disabled");
 
     gfx_thread_post_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
 }

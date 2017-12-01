@@ -29,6 +29,7 @@
 #include "mem_code.h"
 #include "error.h"
 #include "types.h"
+#include "log.h"
 
 #include "flash_memory.h"
 
@@ -235,7 +236,7 @@ static void flash_mem_do_trace(char const *msg, ...) {
     va_list var_args;
     va_start(var_args, msg);
 
-    printf("FLASH_MEM: ");
+    LOG_DBG("FLASH_MEM: ");
 
     vprintf(msg, var_args);
 

@@ -29,6 +29,7 @@
 #include "gfx/opengl/opengl_target.h"
 #include "gfx/opengl/opengl_renderer.h"
 #include "dreamcast.h"
+#include "log.h"
 
 #include "rend_common.h"
 
@@ -97,7 +98,7 @@ void rend_draw_geo_buf(struct geo_buf *geo) {
     if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
         abort(); // TODO: error handling
 
-    printf("frame_stamp %u rendered\n", frame_stamp);
+    LOG_DBG("frame_stamp %u rendered\n", frame_stamp);
 
     enum display_list_type disp_list;
     for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
@@ -119,12 +120,12 @@ void rend_wait_for_frame_stamp(unsigned stamp) {
     if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
         abort(); // TODO: error handling
     while (frame_stamp < stamp && dc_is_running()) {
-        printf("waiting for frame_stamp %u (current is %u)\n", stamp, frame_stamp);
+        LOG_DBG("waiting for frame_stamp %u (current is %u)\n", stamp, frame_stamp);
         pthread_cond_wait(&frame_stamp_update_cond, &frame_stamp_mtx);
     }
     if (frame_stamp != stamp) {
-        printf("ERROR: missed frame stamp %u (you get %u instead)\n",
-               stamp, frame_stamp);
+        LOG_WARN("ERROR: missed frame stamp %u (you get %u instead)\n",
+                 stamp, frame_stamp);
     }
     if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
         abort(); // TODO: error handling

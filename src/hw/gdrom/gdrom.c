@@ -666,8 +666,8 @@ static void gdrom_input_packet_71(void) {
 static void gdrom_input_set_mode_packet(void) {
     // TODO: actually implement this for real instead of ignoring the data
 
-    unsigned starting_addr = gdrom.pkt_buf[2];
-    unsigned len = gdrom.pkt_buf[4];
+    __attribute__((unused)) unsigned starting_addr = gdrom.pkt_buf[2];
+    __attribute__((unused)) unsigned len = gdrom.pkt_buf[4];
 
     GDROM_TRACE("SET_MODE command received\n");
     GDROM_TRACE("read %u bytes starting at %u\n", len, starting_addr);

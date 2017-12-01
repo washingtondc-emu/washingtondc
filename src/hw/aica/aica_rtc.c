@@ -28,13 +28,11 @@
 #include "dreamcast.h"
 #include "MemoryMap.h"
 #include "dc_sched.h"
+#include "log.h"
 
 #include "aica_rtc.h"
 
-#define AICA_RTC_TRACE(msg, ...) aica_rtc_do_trace(msg, ##__VA_ARGS__)
-
-// don't call this directly, use the AICA_RTC_TRACE macro instead
-void aica_rtc_do_trace(char const *msg, ...);
+#define AICA_RTC_TRACE(msg, ...) LOG_DBG("AICA_RTC: "msg, ##__VA_ARGS__)
 
 #define RTC_DEFAULT 0
 static uint32_t cur_rtc_val = RTC_DEFAULT;
@@ -111,7 +109,7 @@ int aica_rtc_write(void const *buf, size_t addr, size_t len) {
     uint32_t val;
     memcpy(&val, buf, sizeof(val));
 
-    uint32_t old_rtc_val = cur_rtc_val;
+    __attribute__((unused)) uint32_t old_rtc_val = cur_rtc_val;
 
     switch (addr) {
     case AICA_RTC_ADDR_HIGH:
@@ -176,15 +174,4 @@ static void sched_aica_rtc_event(void) {
 
 static void cancel_aica_rtc_event(void) {
     cancel_event(&aica_rtc_event);
-}
-
-void aica_rtc_do_trace(char const *msg, ...) {
-    va_list var_args;
-    va_start(var_args, msg);
-
-    printf("AICA_RTC: ");
-
-    vprintf(msg, var_args);
-
-    va_end(var_args);
 }

@@ -28,6 +28,7 @@
 #include <GL/gl.h>
 
 #include "error.h"
+#include "log.h"
 
 #include "opengl_target.h"
 
@@ -80,8 +81,7 @@ void opengl_target_begin(unsigned width, unsigned height) {
     glDrawBuffers(1, &draw_buffer);
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        fprintf(stderr, "%s ERROR: framebuffer status is not complete\n",
-                __func__);
+        LOG_ERROR("%s ERROR: framebuffer status is not complete\n", __func__);
         abort();
     }
 

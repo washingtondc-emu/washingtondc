@@ -28,6 +28,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "log.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -109,8 +111,8 @@ static inline void fifo_erase(struct fifo_head *fifo, struct fifo_node *node) {
         *cursp = node->next;
         node->next = NULL;
     } else {
-        fprintf(stderr, "WARNING: attempting to erase non-present "
-                "element from FIFO\n");
+        LOG_WARN("WARNING: attempting to erase non-present "
+                 "element from FIFO\n");
     }
 }
 

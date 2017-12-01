@@ -23,6 +23,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "log.h"
+
 #include "text_ring.h"
 
 void text_ring_init(struct text_ring *ring) {
@@ -33,7 +35,7 @@ void text_ring_produce(struct text_ring *ring, char ch) {
     unsigned next_prod_idx = (ring->prod_idx + 1) & (TEXT_RING_LEN - 1);
 
     if (next_prod_idx == ring->cons_idx) {
-        printf("WARNING: text_ring character dropped\n");
+        LOG_WARN("WARNING: text_ring character dropped\n");
         return;
     }
 

@@ -37,6 +37,7 @@
 #include "gfx/opengl/opengl_target.h"
 #include "gfx/rend_common.h"
 #include "gfx/gfx_tex_cache.h"
+#include "log.h"
 
 // for the palette_tp stuff
 #include "hw/pvr2/pvr2_core_reg.h"
@@ -101,13 +102,13 @@ void gfx_thread_launch(unsigned width, unsigned height, bool separate_thread) {
     separate_gfx_thread = separate_thread;
 
     if (separate_gfx_thread) {
-        printf("GFX: rendering graphics from a dedicated thread.\n");
+        LOG_INFO("GFX: rendering graphics from a dedicated thread.\n");
 
         if (pthread_create(&gfx_thread, NULL, gfx_main, NULL) != 0)
             err(errno, "Unable to launch gfx thread");
     } else {
-        printf("GFX: rendering graphics from within the main emulation "
-               "thread\n");
+        LOG_INFO("GFX: rendering graphics from within the main emulation "
+                 "thread\n");
         gfx_init();
     }
 }
@@ -156,8 +157,8 @@ static void gfx_init(void) {
 
 static void* gfx_main(void *arg) {
     if (!separate_gfx_thread) {
-        fprintf(stderr, "ERROR: gfx_main called without separate gfx thread "
-                "enabled\n");
+        LOG_ERROR("ERROR: gfx_main called without separate gfx thread "
+                  "enabled\n");
         abort();
     }
 
@@ -171,11 +172,11 @@ static void* gfx_main(void *arg) {
     } while (dc_is_running());
 
     if (pending_redraw)
-        printf("%s - there was a pending redraw\n", __func__);
+        LOG_DBG("%s - there was a pending redraw\n", __func__);
     if (reading_framebuffer)
-        printf("%s - there was a pending framebuffer read\n", __func__);
+        LOG_DBG("%s - there was a pending framebuffer read\n", __func__);
     if (rendering_geo_buf)
-        printf("%s - there was a pending geo_buf render\n", __func__);
+        LOG_DBG("%s - there was a pending geo_buf render\n", __func__);
 
     gfx_thread_unlock();
 
