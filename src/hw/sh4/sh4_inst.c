@@ -58,6 +58,7 @@ static DEF_ERROR_INT_ATTR(instruction_expect)
 static DEF_ERROR_U32_ATTR(fpscr)
 static DEF_ERROR_U32_ATTR(fpscr_expect)
 static DEF_ERROR_U32_ATTR(fpscr_mask)
+static DEF_ERROR_INT_ATTR(inst_bin)
 
 #ifdef SH4_FPU_PEDANTIC
 /*
@@ -6205,6 +6206,7 @@ void sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
 #ifdef DBG_EXIT_ON_UNDEFINED_OPCODE
 
     error_set_feature("SH4 CPU exception for unrecognized opcode");
+    error_set_inst_bin(inst.inst);
     SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
 #else
     /*
