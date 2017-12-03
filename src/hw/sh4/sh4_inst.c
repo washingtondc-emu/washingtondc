@@ -3477,9 +3477,9 @@ void sh4_inst_binary_negc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t flag_t_in = (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) >>
         SH4_SR_FLAG_T_SHIFT;
 
-    int32_t tmp = -src;
-    int32_t dst = tmp - flag_t_in;
-    reg32_t flag_t_out = (tmp > 0 || dst > tmp);
+    uint32_t tmp = -src;
+    uint32_t dst = tmp - flag_t_in;
+    reg32_t flag_t_out = (tmp || dst > tmp);
 
     sh4->reg[SH4_REG_SR] |= (flag_t_out << SH4_SR_FLAG_T_SHIFT);
     *sh4_gen_reg(sh4, inst.dst_reg) = dst;
