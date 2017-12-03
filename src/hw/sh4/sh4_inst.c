@@ -3473,15 +3473,16 @@ void sh4_inst_binary_negc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1010, INST_CONS_0110nnnnmmmm1010);
 
-    int64_t val = -(int64_t)((int32_t)(*sh4_gen_reg(sh4, inst.src_reg)));
-    unsigned carry_bit = ((val & 0x100000000) >> 32) << SH4_SR_FLAG_T_SHIFT;
+    int32_t src = *sh4_gen_reg(sh4, inst.src_reg);
     reg32_t flag_t_in = (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) >>
         SH4_SR_FLAG_T_SHIFT;
 
-    *sh4_gen_reg(sh4, inst.dst_reg) = val - flag_t_in;
+    int32_t tmp = -src;
+    int32_t dst = tmp - flag_t_in;
+    reg32_t flag_t_out = (tmp > 0 || dst > tmp);
 
-    sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
-    sh4->reg[SH4_REG_SR] |= carry_bit;
+    sh4->reg[SH4_REG_SR] |= (flag_t_out << SH4_SR_FLAG_T_SHIFT);
+    *sh4_gen_reg(sh4, inst.dst_reg) = dst;
 
     sh4_next_inst(sh4);
 }
