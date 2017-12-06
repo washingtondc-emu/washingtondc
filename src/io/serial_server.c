@@ -185,8 +185,14 @@ listener_cb(struct evconnlistener *listener,
 
 static void handle_events(struct bufferevent *bev, short events, void *arg) {
     // I must confess, I don't know why this is here...
-    LOG_ERROR("%s called - exiting with code 2\n", __func__);
-    exit(2);
+    if (events != BEV_EVENT_EOF) {
+        LOG_ERROR("%s called - exiting with code 2\n", __func__);
+        exit(2);
+    } else {
+        LOG_WARN("%s called - EOF received\n", __func__);
+        bufferevent_free(srv.bev);
+        srv.bev = NULL;
+    }
 }
 
 static void ser_srv_lock(void) {
