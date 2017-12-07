@@ -185,8 +185,32 @@ listener_cb(struct evconnlistener *listener,
 
 static void handle_events(struct bufferevent *bev, short events, void *arg) {
     // I must confess, I don't know why this is here...
+    char const *ev_type;
+    switch (events) {
+    case BEV_EVENT_EOF:
+        ev_type = "eof";
+        break;
+    case BEV_EVENT_ERROR:
+        ev_type = "error";
+        break;
+    case BEV_EVENT_TIMEOUT:
+        ev_type = "timeout";
+        break;
+    case BEV_EVENT_READING:
+        ev_type = "reading";
+        break;
+    case BEV_EVENT_WRITING:
+        ev_type = "writing";
+        break;
+    case BEV_EVENT_CONNECTED:
+        ev_type = "connected";
+        break;
+    default:
+        ev_type = "unknown";
+    }
     if (events != BEV_EVENT_EOF) {
-        LOG_ERROR("%s called - exiting with code 2\n", __func__);
+        LOG_ERROR("%s called: \"%s\" event received; exiting with code 2\n",
+                  __func__, ev_type);
         exit(2);
     } else {
         LOG_WARN("%s called - EOF received\n", __func__);
