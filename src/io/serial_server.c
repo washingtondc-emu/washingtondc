@@ -209,8 +209,8 @@ static void handle_events(struct bufferevent *bev, short events, void *arg) {
         ev_type = "unknown";
     }
     if (events != BEV_EVENT_EOF) {
-        LOG_ERROR("%s called: \"%s\" event received; exiting with code 2\n",
-                  __func__, ev_type);
+        LOG_ERROR("%s called: \"%s\" (%d) event received; exiting with code 2\n",
+                  __func__, ev_type, (int)events);
         exit(2);
     } else {
         LOG_WARN("%s called - EOF received\n", __func__);
