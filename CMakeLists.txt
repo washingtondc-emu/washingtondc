@@ -245,7 +245,7 @@ configure_file("src/gfx/opengl/pvr2_ta_vert.glsl" "pvr2_ta_vert.glsl" COPYONLY)
 configure_file("src/gfx/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl" COPYONLY)
 
 configure_file("regression_tests/sh4div_test.pl" "sh4div_test.pl" COPYONLY)
-add_test(NAME sh4div_test_neo COMMAND ./sh4div_test.pl)
+add_test(NAME sh4div_test COMMAND ./sh4div_test.pl)
 
 # TODO: These shouldn't all need to be linked against GLFW, but there are some
 # GLFW function calls in Dreamcast.cpp, and since that's linked into libsh4
@@ -258,11 +258,6 @@ add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.c")
 target_link_libraries(sh4tmu_test m sh4 rt GL  ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads ${PNG_STATIC_LIBRARIES} sh4asm_core)
 target_include_directories(sh4tmu_test PUBLIC "${PROJECT_SOURCE_DIR}/tool" "${PROJECT_SOURCE_DIR}/external/sh4asm/")
 add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test)
-
-add_executable(sh4div_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4div_test.c")
-target_link_libraries(sh4div_test m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread pthread event event_pthreads ${PNG_STATIC_LIBRARIES} sh4asm_core)
-target_include_directories(sh4div_test PUBLIC "${PROJECT_SOURCE_DIR}/tool" "${PROJECT_SOURCE_DIR}/external/sh4asm/")
-add_test(NAME sh4div_test COMMAND ./sh4div_test)
 
 add_subdirectory(external/sh4asm)
 
