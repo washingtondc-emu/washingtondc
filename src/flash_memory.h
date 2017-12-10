@@ -25,19 +25,11 @@
 
 #include "mem_areas.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define FLASH_MEM_SZ (ADDR_FLASH_LAST - ADDR_FLASH_FIRST + 1)
 
 void flash_mem_load(char const *path);
 
 int flash_mem_read(void *buf, size_t addr, size_t len);
 int flash_mem_write(void const *buf, size_t addr, size_t len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

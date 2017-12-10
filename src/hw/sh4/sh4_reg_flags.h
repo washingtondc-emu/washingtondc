@@ -23,10 +23,6 @@
 #ifndef SH4_REG_FLAGS_H_
 #define SH4_REG_FLAGS_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*******************************************************************************
  *
  * SH4 status register
@@ -515,9 +511,5 @@ extern "C" {
 
 #define SH4_DMAC_CHCR_TE_SHIFT 1
 #define SH4_DMAC_CHCR_TE_MASK (1 << SH4_DMAC_CHCR_TE_SHIFT)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

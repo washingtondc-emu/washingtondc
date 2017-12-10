@@ -23,10 +23,6 @@
 #ifndef MEM_AREAS_H_
 #define MEM_AREAS_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * XXX Currently the only memory area which has its Image Area implemented is
  * the main RAM.  I don't have it implemented for the texture memory yet because
@@ -133,9 +129,5 @@ extern "C" {
 
 #define ADDR_TA_FIFO_POLY_FIRST 0x10000000
 #define ADDR_TA_FIFO_POLY_LAST  0x107fffff
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

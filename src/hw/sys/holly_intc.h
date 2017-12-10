@@ -27,10 +27,6 @@
 
 #include "types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum HollyExtInt {
     HOLLY_EXT_INT_GDROM,
 
@@ -174,8 +170,4 @@ int holly_reg_iml6ext_read_handler(struct sys_mapped_reg const *reg_info,
 int holly_reg_iml6ext_write_handler(struct sys_mapped_reg const *reg_info,
                                     void const *buf, addr32_t addr,
                                     unsigned len);
-#ifdef __cplusplus
-}
-#endif
-
 #endif

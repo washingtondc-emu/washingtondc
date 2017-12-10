@@ -23,15 +23,7 @@
 #ifndef MODEM_H_
 #define MODEM_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 int modem_read(void *buf, size_t addr, size_t len);
 int modem_write(void const *buf, size_t addr, size_t len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -33,10 +33,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct string {
     /*
      * this is allocated on the heap.  It is null-terminated.
@@ -215,9 +211,5 @@ uint32_t string_read_hex32(struct string const *str, int first_idx);
 
 // dst must be initialized prior to calling this
 void string_dirname(struct string *dst, char const *input);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

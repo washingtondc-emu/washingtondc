@@ -25,10 +25,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // vlck divider bit for the FB_R_CTRL register
 #define PVR2_VCLK_DIV_SHIFT 23
 #define PVR2_VCLK_DIV_MASK (1 << PVR2_VCLK_DIV_SHIFT)
@@ -89,9 +85,5 @@ enum palette_tp {
 };
 
 enum palette_tp get_palette_tp(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -42,10 +42,6 @@
 #include "sh4_scif.h"
 #include "sh4_dmac.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * The clock-scale is here defined as the number of scheduler cyclers per sh4
  * cycle.
@@ -310,9 +306,5 @@ static inline void sh4_periodic(Sh4 *sh4) {
 }
 
 dc_cycle_stamp_t sh4_get_cycles(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -25,10 +25,6 @@
 
 #include "types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 int gdrom_reg_read(void *buf, size_t addr, size_t len);
 int gdrom_reg_write(void const *buf, size_t addr, size_t len);
 
@@ -80,10 +76,5 @@ gdrom_gdst_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
 int
 gdrom_gdlend_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
                               void *buf, addr32_t addr, unsigned len);
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

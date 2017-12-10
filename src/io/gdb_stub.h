@@ -38,10 +38,6 @@
 #include "types.h"
 #include "stringlib.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // it's 'cause 1999 is the year the Dreamcast came out in America
 #define GDB_PORT_NO 1999
 
@@ -67,9 +63,5 @@ void gdb_init(void);
 void gdb_cleanup(void);
 
 extern struct debug_frontend const gdb_frontend;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -27,10 +27,6 @@
 
 #include "mem_areas.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * I don't yet understand the 32-bit/64-bit access area dichotomy, so I'm
  * keeping them separated for now.  They might both map th the same memory, I'm
@@ -45,9 +41,5 @@ int pvr2_tex_mem_area32_write(void const *buf, size_t addr, size_t len);
 
 int pvr2_tex_mem_area64_read(void *buf, size_t addr, size_t len);
 int pvr2_tex_mem_area64_write(void const *buf, size_t addr, size_t len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

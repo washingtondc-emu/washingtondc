@@ -22,10 +22,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * The framebuffer runs in the Dreamcast thread.  On vsync events, it is called
  * to copy data from the Dreamcast's framebuffer (in texture memory) to host
@@ -120,7 +116,3 @@ void framebuffer_sync_from_host(void);
  * FRAMEBUFFER_CURRENT_HOST
  */
 void framebuffer_sync_from_host_maybe(void);
-
-#ifdef __cplusplus
-}
-#endif

@@ -29,10 +29,6 @@
 #include "types.h"
 #include "dc_sched.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct pvr2_core_mem_mapped_reg;
 
 void spg_init();
@@ -109,9 +105,5 @@ read_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
 int
 write_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
                  void const *buf, addr32_t addr, unsigned len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

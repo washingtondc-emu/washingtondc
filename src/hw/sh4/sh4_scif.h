@@ -28,10 +28,6 @@
 
 #include "text_ring.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * SH4 SCIF (Serial Port) emulation
  *
@@ -145,9 +141,5 @@ void sh4_scif_cts(Sh4 *sh4);
 void sh4_scif_rx(Sh4 *sh4);
 
 void sh4_scif_periodic(Sh4 *sh4);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

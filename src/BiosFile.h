@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016 snickerbockers
+ *    Copyright (C) 2016, 2017 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -29,10 +29,6 @@
 #include "types.h"
 #include "error.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define BIOS_SZ_EXPECT (0x1fffff + 1)
 
 struct BiosFile {
@@ -52,9 +48,5 @@ uint8_t *bios_file_end(struct BiosFile *bios_file);
 
 int bios_file_read(struct BiosFile *bios_file, void *buf,
                    size_t addr, size_t len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

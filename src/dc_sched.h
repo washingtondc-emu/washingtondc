@@ -25,10 +25,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * this is the least common denominator of 13.5MHz (SPG VCLK)
  * and 200MHz (SH4 CPU clock)
@@ -73,9 +69,5 @@ void sched_event(struct SchedEvent *event);
 void cancel_event(struct SchedEvent *event);
 struct SchedEvent *pop_event();
 struct SchedEvent *peek_event();
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

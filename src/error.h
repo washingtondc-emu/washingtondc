@@ -29,10 +29,6 @@
 
 #include "fifo.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum error_type {
     ERROR_NONE = 0,
 
@@ -263,9 +259,5 @@ ERROR_INT_ATTR(max_val);
         error_set_pending_error_function(__func__);     \
         set_error_pending(tp);                          \
     } while (0)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

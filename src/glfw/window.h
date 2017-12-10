@@ -23,10 +23,6 @@
 #ifndef WINDOW_H_
 #define WINDOW_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void win_init(unsigned width, unsigned height, char const *content);
 void win_cleanup();
 
@@ -50,9 +46,5 @@ void win_make_context_current(void);
  * Set the name of the game that will be displayed in the window's title bar
  */
 void win_set_content(char const *content);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

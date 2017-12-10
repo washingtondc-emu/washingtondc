@@ -27,10 +27,6 @@
 
 #include "sh4_reg.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum Sh4ExceptionCode {
     // reset-type exceptions
     SH4_EXCP_POWER_ON_RESET           = 0x000,
@@ -224,9 +220,5 @@ int sh4_excp_iprd_reg_write_handler(Sh4 *sh4, void const *buf,
  * check if there are any interrupts that should be pending
  */
 void sh4_refresh_intc(Sh4 *sh4);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

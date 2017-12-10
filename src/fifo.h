@@ -30,10 +30,6 @@
 
 #include "log.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define FIFO_DEREF(nodep, tp, memb) \
     (*((tp*)(((uint8_t*)nodep) - offsetof(tp, memb))))
 
@@ -115,9 +111,5 @@ static inline void fifo_erase(struct fifo_head *fifo, struct fifo_node *node) {
                  "element from FIFO\n");
     }
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

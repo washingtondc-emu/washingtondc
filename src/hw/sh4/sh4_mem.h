@@ -25,10 +25,6 @@
 
 #include <assert.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Sh4;
 
 enum VirtMemArea {
@@ -100,9 +96,5 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr);
  */
 int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
 int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

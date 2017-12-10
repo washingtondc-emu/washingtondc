@@ -35,10 +35,6 @@
 
 #include "io/serial_server.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define ADDR_IP_BIN        0x8c008000
 #define ADDR_1ST_READ_BIN  0x8c010000
 #define ADDR_BOOTSTRAP     0x8c008300
@@ -128,9 +124,5 @@ enum dc_boot_mode {
     // skip the firmware and IP.BIN and boot directly into 1st_read.bin
     DC_BOOT_DIRECT
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

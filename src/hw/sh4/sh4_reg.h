@@ -29,10 +29,6 @@
 #include "types.h"
 #include "sh4_reg_flags.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Sh4;
 typedef struct Sh4 Sh4;
 
@@ -434,9 +430,5 @@ int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
                             addr32_t addr, unsigned len);
 int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
                              addr32_t addr, unsigned len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

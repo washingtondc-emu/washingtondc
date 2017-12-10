@@ -35,10 +35,6 @@
 
 #include "types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef size_t sh4_ocache_line_t;     // index of cache-line (32-bytes/incrment)
 typedef uint32_t sh4_ocache_key_t;
 
@@ -116,9 +112,5 @@ void sh4_ocache_write_addr_array(Sh4 *sh4, void const *dat,
                                  addr32_t paddr, unsigned len);
 void sh4_ocache_read_addr_array(Sh4 *sh4, void *dat,
                                 addr32_t paddr, unsigned len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

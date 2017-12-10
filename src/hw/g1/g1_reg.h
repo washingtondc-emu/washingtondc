@@ -25,10 +25,6 @@
 
 #include "types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct g1_mem_mapped_reg;
 
 typedef int(*g1_reg_read_handler_t)(struct g1_mem_mapped_reg const *reg_info,
@@ -50,9 +46,5 @@ struct g1_mem_mapped_reg {
 
 int g1_reg_read(void *buf, size_t addr, size_t len);
 int g1_reg_write(void const *buf, size_t addr, size_t len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

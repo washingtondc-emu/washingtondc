@@ -30,10 +30,6 @@
 #include <event2/listener.h>
 #include <event2/buffer.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Sh4;
 
 // it's 'cause 1998 is the year the Dreamcast came out in Japan
@@ -60,9 +56,5 @@ void serial_server_notify_tx_ready(void);
  * work needs to be done, and it will perform that work.
  */
 void serial_server_run(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

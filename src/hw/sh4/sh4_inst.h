@@ -29,10 +29,6 @@
 
 #include "types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Sh4;
 typedef struct Sh4 Sh4;
 
@@ -1371,9 +1367,5 @@ DECL_FPU_HANDLER(fsca_fpu);
 // FSRRA FRn
 // 1111nnnn01111101
 DECL_FPU_HANDLER(fsrra_fpu);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

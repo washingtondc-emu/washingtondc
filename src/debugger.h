@@ -32,10 +32,6 @@
 #include "types.h"
 #include "hw/sh4/sh4_reg.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum debug_state {
     // the debugger is not suspending the dreamcast
     DEBUG_STATE_NORM,
@@ -219,9 +215,5 @@ unsigned debug_bank1_reg_idx(unsigned reg_sr, unsigned idx);
 int debug_read_mem(void *out, addr32_t addr, unsigned len);
 
 int debug_write_mem(void const *input, addr32_t addr, unsigned len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

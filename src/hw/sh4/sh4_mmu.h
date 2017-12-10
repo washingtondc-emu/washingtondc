@@ -33,10 +33,6 @@
 #include "sh4_reg.h"
 #include "sh4_reg_flags.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define SH4_MMUPTEH_ASID_SHIFT 0
 #define SH4_MMUPTEH_ASID_MASK (0xff << SH4_MMUPTEH_ASID_SHIFT)
 
@@ -224,9 +220,5 @@ void sh4_mmu_init(Sh4 *sh4);
 int sh4_mmu_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len);
 int sh4_mmu_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len);
 int sh4_mmu_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

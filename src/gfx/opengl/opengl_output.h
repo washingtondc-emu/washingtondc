@@ -63,10 +63,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * this gets called every time the framebuffer has a new frame to render.
  * fb_new belongs to the caller, and its contents will be copied into a new
@@ -85,9 +81,5 @@ void opengl_video_present();
 
 void opengl_video_output_init();
 void opengl_video_output_cleanup();
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -29,10 +29,6 @@
 
 #include "error.h"
 
-#ifdef __cplusplus
-#error oh bother
-#endif
-
 static char const *error_type_string(enum error_type tp);
 static void print_attr(struct error_attr const *attr);
 

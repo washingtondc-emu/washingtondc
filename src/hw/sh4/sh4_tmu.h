@@ -26,10 +26,6 @@
 #include "sh4_reg.h"
 #include "dc_sched.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Sh4;
 
 struct sh4_tmu {
@@ -60,9 +56,5 @@ int sh4_tmu_tcnt_write_handler(Sh4 *sh4, void const *buf,
                                struct Sh4MemMappedReg const *reg_info);
 
 void sh4_tmu_tick(SchedEvent *event);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

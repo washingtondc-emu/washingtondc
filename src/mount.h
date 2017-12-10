@@ -32,10 +32,6 @@
 
 #include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct mount_ops;
 
 struct mount {
@@ -148,9 +144,5 @@ int mount_get_meta(struct mount_meta *meta);
  * mount_encode_toc and it should not be freed.
  */
 void const* mount_encode_toc(struct mount_toc const *toc);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -25,10 +25,6 @@
 
 // common error codes returned by the various memory access/mapping functions
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // sh4 CPU exception raised during memory access; access aborted
 #define MEM_ACCESS_EXC 1
 
@@ -42,9 +38,5 @@ extern "C" {
  * error reporting-system, but the error was not raised.
  */
 #define MEM_ACCESS_FAILURE -1
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

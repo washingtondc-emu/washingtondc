@@ -26,10 +26,6 @@
 #include "gfx/gfx_tex_cache.h"
 #include "hw/pvr2/geo_buf.h"
 
-#ifdef __cplusplus
-extern "C"{
-#endif
-
 // The purpose of the GFX thread is to handle all the OpenGL-related things.
 
 void gfx_thread_launch(unsigned width, unsigned height,
@@ -76,9 +72,5 @@ void gfx_thread_post_framebuffer(uint32_t const *fb_new,
                                  unsigned fb_new_height);
 
 void gfx_thread_run_once(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -27,10 +27,6 @@
 #include "memory.h"
 #include "mem_areas.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new);
 void memory_map_set_bios(BiosFile *bios_new);
 void memory_map_set_mem(struct Memory *mem_new);
@@ -41,9 +37,5 @@ void memory_map_set_mem(struct Memory *mem_new);
  */
 int memory_map_read(void *buf, size_t addr, size_t len);
 int memory_map_write(void const *buf, size_t addr, size_t len);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
