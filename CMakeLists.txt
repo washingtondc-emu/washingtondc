@@ -248,19 +248,7 @@ configure_file("regression_tests/sh4div_test.pl" "sh4div_test.pl" COPYONLY)
 add_test(NAME sh4div_test COMMAND ./sh4div_test.pl)
 
 configure_file("regression_tests/sh4tmu_test.pl" "sh4tmu_test.pl" COPYONLY)
-add_test(NAME sh4tmu_test_neo COMMAND ./sh4tmu_test.pl)
-
-# TODO: These shouldn't all need to be linked against GLFW, but there are some
-# GLFW function calls in Dreamcast.cpp, and since that's linked into libsh4
-# (which it shouldn't be, but it is) everything that uses libsh4 also needs to
-# link against GLFW.
-#
-# Ideally, only washingtondc should need GLFW
-
-add_executable(sh4tmu_test "${PROJECT_SOURCE_DIR}/unit_tests/sh4tmu_test.c")
-target_link_libraries(sh4tmu_test m sh4 rt GL  ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads ${PNG_STATIC_LIBRARIES} sh4asm_core)
-target_include_directories(sh4tmu_test PUBLIC "${PROJECT_SOURCE_DIR}/tool" "${PROJECT_SOURCE_DIR}/external/sh4asm/")
-add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test)
+add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
 
 add_subdirectory(external/sh4asm)
 
