@@ -247,6 +247,9 @@ configure_file("src/gfx/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl" COPYONLY)
 configure_file("regression_tests/sh4div_test.pl" "sh4div_test.pl" COPYONLY)
 add_test(NAME sh4div_test COMMAND ./sh4div_test.pl)
 
+configure_file("regression_tests/sh4tmu_test.pl" "sh4tmu_test.pl" COPYONLY)
+add_test(NAME sh4tmu_test_neo COMMAND ./sh4tmu_test.pl)
+
 # TODO: These shouldn't all need to be linked against GLFW, but there are some
 # GLFW function calls in Dreamcast.cpp, and since that's linked into libsh4
 # (which it shouldn't be, but it is) everything that uses libsh4 also needs to
