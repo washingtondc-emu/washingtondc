@@ -38,7 +38,7 @@ extern "C" {
 #define MEMORY_SIZE (1 << MEMORY_SIZE_SHIFT)
 
 struct Memory {
-    uint8_t *mem;
+    uint8_t mem[MEMORY_SIZE];
 };
 
 void memory_init(struct Memory *mem);

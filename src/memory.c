@@ -28,13 +28,10 @@
 #include "memory.h"
 
 void memory_init(struct Memory *mem) {
-    mem->mem = (uint8_t*)malloc(sizeof(uint8_t) * MEMORY_SIZE);
-
     memory_clear(mem);
 }
 
 void memory_cleanup(struct Memory *mem) {
-    free(mem->mem);
 }
 
 void memory_clear(struct Memory *mem) {
