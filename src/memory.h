@@ -78,6 +78,11 @@ memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len) {
     return 0;
 }
 
+static inline uint16_t
+memory_read16(struct Memory *mem, addr32_t addr) {
+    return ((uint16_t*)mem->mem)[addr >> 1];
+}
+
 #ifdef __cplusplus
 }
 #endif

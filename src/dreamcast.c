@@ -58,7 +58,7 @@
 
 static Sh4 cpu;
 static BiosFile bios;
-static struct Memory mem;
+struct Memory dc_mem;
 
 static volatile bool is_running;
 static volatile bool signal_exit_threads;
@@ -118,10 +118,10 @@ static struct SchedEvent periodic_event;
 void dreamcast_init(bool cmd_session) {
     is_running = true;
 
-    memory_init(&mem);
+    memory_init(&dc_mem);
     flash_mem_load(config_get_dc_flash_path());
     bios_file_init(&bios, config_get_dc_bios_path());
-    memory_map_init(&bios, &mem);
+    memory_map_init(&bios, &dc_mem);
 
     int boot_mode = config_get_boot_mode();
     if (boot_mode == (int)DC_BOOT_IP_BIN || boot_mode == (int)DC_BOOT_DIRECT) {
@@ -219,7 +219,7 @@ void dreamcast_cleanup() {
 
     sh4_cleanup(&cpu);
     bios_file_cleanup(&bios);
-    memory_cleanup(&mem);
+    memory_cleanup(&dc_mem);
 }
 
 /*

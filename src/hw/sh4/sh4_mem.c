@@ -243,7 +243,37 @@ int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
 
 
 int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
+#ifdef INVARIANTS
     enum VirtMemArea virt_area = sh4_get_mem_area(addr);
+    switch (virt_area) {
+    case SH4_AREA_P0:
+    case SH4_AREA_P3:
+        /*
+         * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise an
+         * error or do TLB lookups accordingly.
+         *
+         * currently it is impossible for this to be set because of the
+         * ERROR_UNIMPLEMENTED that gets raised if you set this bit in sh4_reg.c
+         */
+    case SH4_AREA_P1:
+    case SH4_AREA_P2:
+        break;
+    case SH4_AREA_P4:
+        error_set_feature("CPU exception for reading instructions from the P4 "
+                          "memory area");
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
+    default:
+        return MEM_ACCESS_EXC;
+    }
+#endif
+
+    addr &= 0x1fffffff;
+    if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
+        *out = memory_read16(&dc_mem, addr & ADDR_AREA3_MASK);
+        return MEM_ACCESS_SUCCESS;
+    }
+    return memory_map_read(out, addr, sizeof(*out));
 
 #if 0
     /*
@@ -267,30 +297,6 @@ int sh4_read_inst(Sh4 *sh4, inst_t *out, addr32_t addr) {
         return MEM_ACCESS_FAILURE;
     }
 #endif
-
-    switch (virt_area) {
-    case SH4_AREA_P0:
-    case SH4_AREA_P3:
-        /*
-         * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise an
-         * error or do TLB lookups accordingly.
-         *
-         * currently it is impossible for this to be set because of the
-         * ERROR_UNIMPLEMENTED that gets raised if you set this bit in sh4_reg.c
-         */
-    case SH4_AREA_P1:
-    case SH4_AREA_P2:
-        return memory_map_read(out, addr & 0x1fffffff, sizeof(*out));
-    case SH4_AREA_P4:
-        error_set_feature("CPU exception for reading instructions from the P4 "
-                          "memory area");
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
-    default:
-        break;
-    }
-
-    return MEM_ACCESS_EXC;
 }
 
 static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr) {

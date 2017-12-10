@@ -45,6 +45,8 @@ extern "C" {
 #define ADDR_SYSCALLS      0x8c000000
 #define LEN_SYSCALLS           0x8000
 
+extern struct Memory dc_mem;
+
 void dreamcast_init(bool cmd_session);
 
 /* void dreamcast_cleanup(); */
