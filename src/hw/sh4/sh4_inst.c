@@ -3313,8 +3313,8 @@ void sh4_inst_binary_dmulsl_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1101, INST_CONS_0011nnnnmmmm1101);
 
-    int64_t val1 = *sh4_gen_reg(sh4, inst.dst_reg);
-    int64_t val2 = *sh4_gen_reg(sh4, inst.src_reg);
+    int32_t val1 = *sh4_gen_reg(sh4, inst.dst_reg);
+    int32_t val2 = *sh4_gen_reg(sh4, inst.src_reg);
     int64_t res = (int64_t)val1 * (int64_t)val2;
 
     sh4->reg[SH4_REG_MACH] = ((uint64_t)res) >> 32;
