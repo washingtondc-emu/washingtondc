@@ -250,8 +250,6 @@ add_test(NAME sh4div_test COMMAND ./sh4div_test.pl)
 configure_file("regression_tests/sh4tmu_test.pl" "sh4tmu_test.pl" COPYONLY)
 add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
 
-add_subdirectory(external/sh4asm)
-
 add_executable(washingtondc ${washingtondc_sources})
 
 target_link_libraries(washingtondc m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
