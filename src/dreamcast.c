@@ -372,7 +372,8 @@ static void dc_run_to_next_event(Sh4 *sh4) {
         dc_cycle_advance(cycles_after - dc_cycle_stamp());
     }
 }
-#endif
+
+#else
 
 /* executes a single instruction and maybe ticks the clock. */
 void dc_single_step(Sh4 *sh4) {
@@ -410,6 +411,8 @@ void dc_single_step(Sh4 *sh4) {
 
     dc_cycle_advance(cycles_after - dc_cycle_stamp());
 }
+
+#endif
 
 void dc_print_perf_stats(void) {
     struct timespec end_time, delta_time;
