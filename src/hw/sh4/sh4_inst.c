@@ -1027,19 +1027,6 @@ void sh4_init_inst_lut() {
         sh4_inst_lut[inst] = sh4_decode_inst_slow((inst_t)inst);
 }
 
-void sh4_exec_inst(Sh4 *sh4) {
-    inst_t inst;
-    int exc_pending;
-
-    if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
-        // fuck it, i'll commit now and figure what to do here later
-        error_set_feature("SH4 CPU exceptions/traps");
-        SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
-    }
-
-    sh4_do_exec_inst(sh4, inst, sh4_inst_lut[inst]);
-}
-
 // used to initialize the sh4_inst_lut
 static InstOpcode const* sh4_decode_inst_slow(inst_t inst) {
     InstOpcode const *op = opcode_list;

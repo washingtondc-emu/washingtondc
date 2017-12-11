@@ -32,9 +32,6 @@
 struct Sh4;
 typedef struct Sh4 Sh4;
 
-// runs the next instruction, modifies CPU state and sets flags accordingly
-void sh4_exec_inst(Sh4 *sh4);
-
 union Sh4OpArgs {
     inst_t inst;
 
