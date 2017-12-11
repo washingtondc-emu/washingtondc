@@ -193,19 +193,10 @@ void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {
 void sh4_fetch_inst(Sh4 *sh4, inst_t *inst_out, InstOpcode const **op_out,
                     unsigned *n_cycles_out) {
     inst_t inst;
-    int exc_pending;
     unsigned n_cycles;
 
-mulligan:
     sh4_check_interrupts(sh4);
-
-    if ((exc_pending = sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]))) {
-        // TODO: some sort of logic to detect infinite loops here
-        if (exc_pending == MEM_ACCESS_EXC)
-            goto mulligan;
-        else
-            RAISE_ERROR(get_error_pending());
-    }
+    inst = sh4_read_inst(sh4, sh4->reg[SH4_REG_PC]);
 
     InstOpcode const *op = sh4_inst_lut[inst];
 

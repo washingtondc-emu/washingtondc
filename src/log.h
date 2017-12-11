@@ -26,7 +26,7 @@
 #define ENABLE_LOG_ERROR
 #define ENABLE_LOG_WARN
 #define ENABLE_LOG_INFO
-#define ENABLE_LOG_DBG
+// #define ENABLE_LOG_DBG
 
 // imminent problem that will impact WashingtonDC's operation
 #ifdef ENABLE_LOG_ERROR
