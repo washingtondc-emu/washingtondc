@@ -344,7 +344,9 @@ static void dc_run_to_next_event(Sh4 *sh4) {
     unsigned inst_cycles;
 
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
-        sh4_fetch_inst(sh4, &inst, &op, &inst_cycles);
+        inst = sh4_read_inst(sh4);
+        op = sh4_decode_inst(sh4, inst);
+        inst_cycles = sh4_count_inst_cycles(sh4, op);
 
         /*
          * Advance the cycle counter based on how many cycles this instruction
@@ -377,11 +379,9 @@ static void dc_run_to_next_event(Sh4 *sh4) {
 
 /* executes a single instruction and maybe ticks the clock. */
 void dc_single_step(Sh4 *sh4) {
-    inst_t inst;
-    unsigned n_cycles;
-    InstOpcode const *op;
-
-    sh4_fetch_inst(sh4, &inst, &op, &n_cycles);
+    inst_t inst = sh4_read_inst(sh4);
+    InstOpcode const *op = sh4_decode_inst(sh4, inst);
+    unsigned n_cycles = sh4_count_inst_cycles(sh4, op);;
 
     /*
      * Advance the cycle counter based on how many cycles this instruction

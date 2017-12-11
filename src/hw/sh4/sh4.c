@@ -190,44 +190,6 @@ void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {
         fesetround(FE_TONEAREST);
 }
 
-void sh4_fetch_inst(Sh4 *sh4, inst_t *inst_out, InstOpcode const **op_out,
-                    unsigned *n_cycles_out) {
-    inst_t inst;
-    unsigned n_cycles;
-
-    sh4_check_interrupts(sh4);
-    inst = sh4_read_inst(sh4, sh4->reg[SH4_REG_PC]);
-
-    InstOpcode const *op = sh4_inst_lut[inst];
-
-    if ((sh4->last_inst_type == SH4_GROUP_NONE) ||
-        ((op->group == SH4_GROUP_CO) ||
-         (sh4->last_inst_type == SH4_GROUP_CO) ||
-         ((sh4->last_inst_type == op->group) && (op->group != SH4_GROUP_MT)))) {
-        // This instruction was not free
-        n_cycles = op->issue;
-
-        /*
-         * no need to check for SH4_GROUP_CO here because we'll do that when we
-         * check for last_inst_type==SH4_GROUP_CO next time we're in this if
-         * statement
-         */
-        sh4->last_inst_type = op->group;
-    } else {
-        /*
-         * cash in on the dual-issue pipeline's "free" instruction and set
-         * last_inst_type to SH4_GROUP_NONE so that the next instruction is
-         * not free.
-         */
-        n_cycles = 0;
-        sh4->last_inst_type = SH4_GROUP_NONE;
-    }
-
-    *inst_out = inst;
-    *op_out = op;
-    *n_cycles_out = n_cycles;
-}
-
 void sh4_bank_switch(Sh4 *sh4) {
     reg32_t tmp[8];
     memcpy(tmp, sh4->reg + SH4_REG_R0, 8 * sizeof(reg32_t));

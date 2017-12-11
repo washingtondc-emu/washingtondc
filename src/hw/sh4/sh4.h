@@ -111,7 +111,7 @@ struct Sh4 {
     uint8_t *reg_area;
 
     /*
-     * this is used by sh4_fetch_inst to track the type of the last
+     * this is used by sh4_count_inst_cycles to track the type of the last
      * instruction that was executed.  This is used to determine if the next
      * instruction to be executed should advance the cycle count, or if it
      * would have been executed by the second pipeline on a real sh4.
@@ -136,24 +136,6 @@ void sh4_cleanup(Sh4 *sh4);
 
 // reset all values to their power-on-reset values
 void sh4_on_hard_reset(Sh4 *sh4);
-
-/*
- * Fetches the given instruction and returns it into inst_out.
- *
- * the number of cycles this instruction requires will be returned into
- * *n_cycles.  This is not the same as the instruction's issue cycles due to
- * the dual-issue pipeline of the sh4.
- *
- * If there's an exception generated while fetching the instruction, this
- * function will automatically handle that and return the first instruction of
- * the exception handler.  In this case, the cycles returned will not take into
- * account the cycles wasted trying to fetch the instruction or the cycles spent
- * jumping to the exception handler.  The reason for this is that I'm not sure
- * how many cycles should be taken.  Also, it's probably not a very common case
- * anyways.
- */
-void sh4_fetch_inst(Sh4 *sh4, inst_t *inst_out, InstOpcode const **op_out,
-                    unsigned *n_cycles_out);
 
 // returns the program counter
 reg32_t sh4_get_pc(Sh4 *sh4);
@@ -306,5 +288,43 @@ static inline void sh4_periodic(Sh4 *sh4) {
 }
 
 dc_cycle_stamp_t sh4_get_cycles(void);
+
+// Fetches the given instruction's metadata and returns it.
+static inline InstOpcode const *
+sh4_decode_inst(Sh4 *sh4, inst_t inst) {
+    return sh4_inst_lut[inst];
+}
+
+/*
+ * return the number of cycles this instruction requires.  This is not the same
+ * as the instruction's issue cycles due to the dual-issue pipeline of the sh4.
+ */
+static inline unsigned
+sh4_count_inst_cycles(Sh4 *sh4, InstOpcode const *op) {
+    unsigned n_cycles;
+    if ((sh4->last_inst_type == SH4_GROUP_NONE) ||
+        ((op->group == SH4_GROUP_CO) ||
+         (sh4->last_inst_type == SH4_GROUP_CO) ||
+         ((sh4->last_inst_type == op->group) && (op->group != SH4_GROUP_MT)))) {
+        // This instruction was not free
+        n_cycles = op->issue;
+
+        /*
+         * no need to check for SH4_GROUP_CO here because we'll do that when we
+         * check for last_inst_type==SH4_GROUP_CO next time we're in this if
+         * statement
+         */
+        sh4->last_inst_type = op->group;
+    } else {
+        /*
+         * cash in on the dual-issue pipeline's "free" instruction and set
+         * last_inst_type to SH4_GROUP_NONE so that the next instruction is
+         * not free.
+         */
+        n_cycles = 0;
+        sh4->last_inst_type = SH4_GROUP_NONE;
+    }
+    return n_cycles;
+}
 
 #endif

@@ -242,8 +242,10 @@ int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
 }
 
 
-inst_t sh4_read_inst(Sh4 *sh4, addr32_t addr) {
-    addr &= 0x1fffffff;
+inst_t sh4_read_inst(Sh4 *sh4) {
+    sh4_check_interrupts(sh4);
+
+    addr32_t addr = sh4->reg[SH4_REG_PC] & 0x1fffffff;
     if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
         return memory_read16(&dc_mem, addr & ADDR_AREA3_MASK);
     } else {
