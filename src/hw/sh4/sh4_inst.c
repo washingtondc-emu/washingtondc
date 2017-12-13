@@ -1041,45 +1041,6 @@ static InstOpcode const* sh4_decode_inst_slow(inst_t inst) {
     return &invalid_opcode;
 }
 
-void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
-    Sh4OpArgs oa;
-    oa.inst = inst;
-
-    if (!(sh4->delayed_branch && op->is_branch)) {
-        opcode_func_t op_func = op->func;
-        bool delayed_branch_tmp = sh4->delayed_branch;
-        addr32_t delayed_branch_addr_tmp = sh4->delayed_branch_addr;
-
-#ifdef DEEP_SYSCALL_TRACE
-                deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
-#endif
-        op_func(sh4, oa);
-
-#ifdef ENABLE_DEBUGGER
-        if (!sh4->aborted_operation) {
-            if (delayed_branch_tmp) {
-                sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
-                sh4->delayed_branch = false;
-
-#ifdef DEEP_SYSCALL_TRACE
-                deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
-#endif
-            }
-        } else {
-            sh4->aborted_operation = false;
-        }
-#else
-        if (delayed_branch_tmp) {
-            sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
-            sh4->delayed_branch = false;
-        }
-#endif
-    } else {
-        // raise exception for illegal slot instruction
-        sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
-    }
-}
-
 void sh4_compile_instructions(Sh4 *sh4) {
     InstOpcode *op = opcode_list;
 

@@ -247,8 +247,6 @@ typedef struct InstOpcode InstOpcode;
  */
 extern InstOpcode const *sh4_inst_lut[1 << 16];
 
-void sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op);
-
 void sh4_compile_instructions(Sh4 *sh4);
 void sh4_compile_instruction(Sh4 *sh4, struct InstOpcode *op);
 
