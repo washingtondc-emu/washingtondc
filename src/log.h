@@ -26,7 +26,6 @@
 #define ENABLE_LOG_ERROR
 #define ENABLE_LOG_WARN
 #define ENABLE_LOG_INFO
-// #define ENABLE_LOG_DBG
 
 // imminent problem that will impact WashingtonDC's operation
 #ifdef ENABLE_LOG_ERROR
@@ -50,7 +49,7 @@
 #endif
 
 // catch-all for most of the useless crap WashingtonDC dumps to stdout
-#ifdef ENABLE_LOG_DBG
+#ifdef ENABLE_LOG_DEBUG
 #define LOG_DBG(msg, ...) printf(msg, ##__VA_ARGS__)
 #else
 #define LOG_DBG(msg, ...)

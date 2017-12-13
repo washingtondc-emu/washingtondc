@@ -51,6 +51,7 @@ option(INVARIANTS "runtime sanity checks that should never fail" ON)
 option(SH4_FPU_PEDANTIC "enable FPU error-checking which most games *probably* don't use" OFF)
 option(PVR2_LOG_VERBOSE "enable this to make the pvr2 code log mundane events" OFF)
 option(DEEP_SYSCALL_TRACE "enable logging to observe the behavior of system calls" OFF)
+option(ENABLE_LOG_DBG "enable extra debug logs" OFF)
 
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)
    add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
@@ -70,6 +71,10 @@ endif()
 
 if  (DEEP_SYSCALL_TRACE)
   add_definitions(-DDEEP_SYSCALL_TRACE)
+endif()
+
+if (ENABLE_LOG_DEBUG)
+   add_definitions(-DENABLE_LOG_DEBUG)
 endif()
 
 # TODO: this was originally supposed to be just the sh4-related code,
