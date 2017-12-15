@@ -2983,7 +2983,7 @@ void sh4_inst_binary_addv_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1111, INST_CONS_0011nnnnmmmm1111);
 
     // detect overflow using 64-bit math
-    int64_t in_src, in_dst;
+    reg32_t in_src, in_dst;
     reg32_t *src_reg, *dst_reg;
 
     src_reg = sh4_gen_reg(sh4, inst.src_reg);
@@ -2992,15 +2992,22 @@ void sh4_inst_binary_addv_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     in_src = *src_reg;
     in_dst = *dst_reg;
 
-    assert(!(in_src & 0xffffffff00000000));
-    assert(!(in_dst & 0xffffffff00000000));
+    int32_t in_dst_signed = in_dst;
+    int32_t in_src_signed = in_src;
 
-    in_dst += in_src;
-
-    unsigned overflow_bit = (in_dst != (int32_t)in_dst) << SH4_SR_FLAG_T_SHIFT;
+    unsigned overflow_bit;
+    overflow_bit =
+        ((in_dst_signed > 0) && (in_src_signed > INT_MAX - in_dst_signed)) ||
+        ((in_dst_signed < 0) && (in_src_signed < INT_MIN - in_dst_signed));
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
-    sh4->reg[SH4_REG_SR] |= overflow_bit;
+    sh4->reg[SH4_REG_SR] |= (overflow_bit << SH4_SR_FLAG_T_SHIFT);
 
+    /*
+     * IMPORTANT - the actual addition is done as uint32_t because in C the
+     * result of signed integer overflow is undefined, but the result of
+     * unsigned integer overflow will always be modulo 2^32.
+     */
+    in_dst += in_src;
     *dst_reg = in_dst;
 
     sh4_next_inst(sh4);
