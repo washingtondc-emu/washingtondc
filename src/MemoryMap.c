@@ -64,6 +64,101 @@ void memory_map_set_mem(struct Memory *mem_new) {
     mem = mem_new;
 }
 
+#define MEMORY_MAP_READ_TMPL(size)                                      \
+    uint##size##_t memory_map_read_##size(size_t addr) {                \
+        size_t first_addr = addr;                                       \
+        size_t last_addr = sizeof(uint##size##_t) - 1 + first_addr;     \
+                                                                        \
+        if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) { \
+            return memory_read##size(mem, addr & ADDR_AREA3_MASK);      \
+        } else if (first_addr >= ADDR_TEX32_FIRST && last_addr <=       \
+                   ADDR_TEX32_LAST) {                                   \
+            uint##size##_t tmp;                                         \
+            if (pvr2_tex_mem_area32_read(&tmp, addr, sizeof(tmp)) ==    \
+                MEM_ACCESS_SUCCESS)                                     \
+                return tmp;                                             \
+            else                                                        \
+                RAISE_ERROR(get_error_pending());                       \
+        } else if (first_addr >= ADDR_TEX64_FIRST && last_addr <=       \
+                   ADDR_TEX64_LAST) {                                   \
+            uint##size##_t tmp;                                         \
+            if (pvr2_tex_mem_area64_read(&tmp, addr, sizeof(tmp)) ==    \
+                MEM_ACCESS_SUCCESS)                                     \
+                return tmp;                                             \
+            else                                                        \
+                RAISE_ERROR(get_error_pending());                       \
+        } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) { \
+            uint##size##_t tmp;                                         \
+            if (read_area0(&tmp, addr, sizeof(tmp)) == MEM_ACCESS_SUCCESS) \
+                return tmp;                                             \
+            else                                                        \
+                RAISE_ERROR(get_error_pending());                       \
+        } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <=       \
+                   ADDR_AREA4_LAST) {                                   \
+            uint##size##_t tmp;                                         \
+            if (read_area4(&tmp, addr, sizeof(tmp)) == MEM_ACCESS_SUCCESS) \
+                return tmp;                                             \
+            else                                                        \
+                RAISE_ERROR(get_error_pending());                       \
+        }                                                               \
+                                                                        \
+        error_set_feature("memory mapping");                            \
+        error_set_address(addr);                                        \
+        error_set_length(sizeof(uint##size##_t));                       \
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
+    }
+
+MEMORY_MAP_READ_TMPL(8)
+MEMORY_MAP_READ_TMPL(16)
+MEMORY_MAP_READ_TMPL(32)
+
+#define MEMORY_MAP_WRITE_TMPL(size)                                     \
+    void memory_map_write_##size(uint##size##_t val, size_t addr) {     \
+        size_t first_addr = addr;                                       \
+        size_t last_addr = sizeof(uint##size##_t) - 1 + first_addr;     \
+                                                                        \
+        /* check RAM first because that's the case we want to optimize for */ \
+        if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) { \
+            memory_write##size(mem, addr & ADDR_AREA3_MASK, val);       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_TEX32_FIRST && last_addr <=       \
+            ADDR_TEX32_LAST) {                                          \
+            if (pvr2_tex_mem_area32_write(&val, addr, sizeof(val)) ==   \
+            MEM_ACCESS_SUCCESS)                                         \
+                return;                                                 \
+            else                                                        \
+                RAISE_ERROR(get_error_pending());                       \
+        } else if (first_addr >= ADDR_TEX64_FIRST && last_addr <=       \
+                   ADDR_TEX64_LAST) {                                   \
+            if (pvr2_tex_mem_area64_write(&val, addr, sizeof(val)) ==   \
+                MEM_ACCESS_SUCCESS)                                     \
+                return;                                                 \
+            else                                                        \
+                RAISE_ERROR(get_error_pending());                       \
+        } else if (first_addr >= ADDR_AREA0_FIRST && last_addr <=       \
+                   ADDR_AREA0_LAST) {                                   \
+            if (write_area0(&val, addr, sizeof(val)) == MEM_ACCESS_SUCCESS) \
+                return;                                                 \
+            else                                                        \
+                RAISE_ERROR(get_error_pending());                       \
+        } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <=       \
+                   ADDR_AREA4_LAST) {                                   \
+            if (write_area4(&val, addr, sizeof(val)) == MEM_ACCESS_SUCCESS) \
+                return;                                                 \
+            else                                                        \
+                RAISE_ERROR(get_error_pending());                       \
+        }                                                               \
+                                                                        \
+        error_set_feature("memory mapping");                            \
+        error_set_address(addr);                                        \
+        error_set_length(sizeof(val));                                  \
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
+    }
+
+MEMORY_MAP_WRITE_TMPL(8)
+MEMORY_MAP_WRITE_TMPL(16)
+MEMORY_MAP_WRITE_TMPL(32)
+
 int memory_map_read(void *buf, size_t addr, size_t len) {
     size_t first_addr = addr;
     size_t last_addr = addr + (len - 1);
@@ -84,18 +179,6 @@ int memory_map_read(void *buf, size_t addr, size_t len) {
     error_set_feature("memory mapping");
     error_set_address(addr);
     error_set_length(len);
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-
-/* boundary_cross: */
-    /*
-     * this label is where we go to when the requested read is not
-     * contained entirely withing a single mapping.
-     */
-    error_set_feature("proper response for when the guest reads past a memory "
-                      "map's end");
-    error_set_length(len);
-    error_set_address(addr);
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
 }
@@ -120,15 +203,6 @@ int memory_map_write(void const *buf, size_t addr, size_t len) {
     error_set_feature("memory mapping");
     error_set_address(addr);
     error_set_length(len);
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-
-/* boundary_cross: */
-    /* when the write is not contained entirely within one mapping */
-    error_set_feature("proper response for when the guest writes past a memory "
-                      "map's end");
-    error_set_length(len);
-    error_set_address(addr);
     PENDING_ERROR(ERROR_UNIMPLEMENTED);
     return MEM_ACCESS_FAILURE;
 }
@@ -174,7 +248,6 @@ static inline int read_area0(void *buf, size_t addr, size_t len) {
         return gdrom_reg_read(buf, addr, len);
     }
 
-/* boundary_cross: */
     /* when the write is not contained entirely within one mapping */
     error_set_feature("proper response for when the guest writes past a memory "
                       "map's end");
@@ -195,7 +268,12 @@ static inline int write_area0(void const *buf, size_t addr, size_t len) {
          * XXX In case you were wondering: we don't check to see if
          * addr >= ADDR_BIOS_FIRST because ADDR_BIOS_FIRST is 0
          */
-        goto boundary_cross;
+        error_set_feature("proper response for when the guest tries to write "
+                          "to the bios");
+        error_set_length(len);
+        error_set_address(addr_orig);
+        PENDING_ERROR(ERROR_UNIMPLEMENTED);
+        return MEM_ACCESS_FAILURE;
     } else if (first_addr >= ADDR_FLASH_FIRST && last_addr <= ADDR_FLASH_LAST) {
         return flash_mem_write(buf, addr, len);
     } else if (first_addr >= ADDR_G1_FIRST && last_addr <= ADDR_G1_LAST) {
@@ -225,7 +303,6 @@ static inline int write_area0(void const *buf, size_t addr, size_t len) {
         return gdrom_reg_write(buf, addr, len);
     }
 
-boundary_cross:
     /* when the write is not contained entirely within one mapping */
     error_set_feature("proper response for when the guest writes past a memory "
                       "map's end");

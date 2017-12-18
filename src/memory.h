@@ -74,9 +74,40 @@ memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len) {
     return 0;
 }
 
+static inline void
+memory_write8(struct Memory *mem, addr32_t addr, uint8_t val) {
+    // TODO: should there be bounds-checking here?
+    ((uint8_t*)mem->mem)[addr] = val;
+}
+
+static inline void
+memory_write16(struct Memory *mem, addr32_t addr, uint16_t val) {
+    // TODO: should there be bounds-checking here?
+    ((uint16_t*)mem->mem)[addr >> 1] = val;
+}
+
+static inline void
+memory_write32(struct Memory *mem, addr32_t addr, uint32_t val) {
+    // TODO: should there be bounds-checking here?
+    ((uint32_t*)mem->mem)[addr >> 2] = val;
+}
+
+static inline uint8_t
+memory_read8(struct Memory *mem, addr32_t addr) {
+    // TODO: should there be bounds-checking here?
+    return ((uint8_t*)mem->mem)[addr];
+}
+
 static inline uint16_t
 memory_read16(struct Memory *mem, addr32_t addr) {
+    // TODO: should there be bounds-checking here?
     return ((uint16_t*)mem->mem)[addr >> 1];
+}
+
+static inline uint32_t
+memory_read32(struct Memory *mem, addr32_t addr) {
+    // TODO: should there be bounds-checking here?
+    return ((uint32_t*)mem->mem)[addr >> 2];
 }
 
 #endif

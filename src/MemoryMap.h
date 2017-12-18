@@ -38,4 +38,12 @@ void memory_map_set_mem(struct Memory *mem_new);
 int memory_map_read(void *buf, size_t addr, size_t len);
 int memory_map_write(void const *buf, size_t addr, size_t len);
 
+uint8_t memory_map_read_8(size_t addr);
+uint16_t memory_map_read_16(size_t addr);
+uint32_t memory_map_read_32(size_t addr);
+
+void memory_map_write_8(uint8_t val, size_t addr);
+void memory_map_write_16(uint16_t val, size_t addr);
+void memory_map_write_32(uint32_t val, size_t addr);
+
 #endif

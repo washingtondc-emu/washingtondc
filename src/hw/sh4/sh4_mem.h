@@ -75,6 +75,19 @@ static_assert((SH4_P4_REGEND - SH4_P4_REGSTART) ==
 #define SH4_OC_RAM_AREA_SIZE (8 * 1024)
 
 /*
+ * TODO:
+ * These functions do not signal errors in any way at all
+ * If they detect an error, they will call RAISE_ERROR, which panics
+ * WashingtonDC
+ */
+void sh4_write_mem_8(Sh4 *sh4, uint8_t val, addr32_t addr);
+void sh4_write_mem_16(Sh4 *sh4, uint16_t val, addr32_t addr);
+void sh4_write_mem_32(Sh4 *sh4, uint32_t val, addr32_t addr);
+uint8_t sh4_read_mem_8(Sh4 *sh4, addr32_t addr);
+uint16_t sh4_read_mem_16(Sh4 *sh4, addr32_t addr);
+uint32_t sh4_read_mem_32(Sh4 *sh4, addr32_t addr);
+
+/*
  * same as sh4_write_mem/sh4_read_mem, except they don't automatically raise
  * pending errors and they don't check for watchpoints
  */

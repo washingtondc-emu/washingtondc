@@ -1821,19 +1821,13 @@ unsigned sh4_inst_binary_andb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_11001101iiiiiiii, INST_CONS_11001101iiiiiiii);
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val;
-
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    uint8_t val = sh4_read_mem_8(sh4, addr);
 
     val &= inst.imm8;
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_8(sh4, val, addr);
 
     sh4_next_inst(sh4);
-
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 4);
 }
 
@@ -1863,19 +1857,13 @@ unsigned sh4_inst_binary_orb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_11001111iiiiiiii, INST_CONS_11001111iiiiiiii);
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val;
-
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    uint8_t val = sh4_read_mem_8(sh4, addr);
 
     val |= inst.imm8;
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_8(sh4, val, addr);
 
     sh4_next_inst(sh4);
-
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 4);
 }
 
@@ -1924,10 +1912,7 @@ unsigned sh4_inst_binary_tstb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_11001100iiiiiiii, INST_CONS_11001100iiiiiiii);
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val;
-
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    uint8_t val = sh4_read_mem_8(sh4, addr);
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     reg32_t flag = !(inst.imm8 & val) <<
@@ -1936,7 +1921,6 @@ unsigned sh4_inst_binary_tstb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 3);
 }
 
@@ -1966,19 +1950,14 @@ unsigned sh4_inst_binary_xorb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_11001110iiiiiiii, INST_CONS_11001110iiiiiiii);
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val;
-
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    uint8_t val = sh4_read_mem_8(sh4, addr);
 
     val ^= inst.imm8;
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_8(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 4);
 }
 
@@ -2140,11 +2119,9 @@ unsigned sh4_inst_unary_tasb_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint8_t val_new, val_old;
     reg32_t mask;
 
-    if (sh4_read_mem(sh4, &val_old, addr, sizeof(val_old)) != 0)
-        goto count_cycles;
+    val_old = sh4_read_mem_8(sh4, addr);
     val_new = val_old | 0x80;
-    if (sh4_write_mem(sh4, &val_new, addr, sizeof(val_new)) != 0)
-        goto count_cycles;
+    sh4_write_mem_8(sh4, val_new, addr);
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     mask = (!val_old) << SH4_SR_FLAG_T_SHIFT;
@@ -2152,7 +2129,6 @@ unsigned sh4_inst_unary_tasb_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-count_cycles:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 5);
 }
 
@@ -2584,9 +2560,7 @@ unsigned sh4_inst_binary_ldcl_indgeninc_sr(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0) {
-        goto cycle_count;
-    }
+    val = sh4_read_mem_32(sh4, *src_reg);
 
     (*src_reg) += 4;
     reg32_t old_sr_val = sh4->reg[SH4_REG_SR];
@@ -2595,7 +2569,6 @@ unsigned sh4_inst_binary_ldcl_indgeninc_sr(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 4);
 }
 
@@ -2612,16 +2585,13 @@ unsigned sh4_inst_binary_ldcl_indgeninc_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_reg;
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0) {
-        goto cycle_count;
-    }
+    val = sh4_read_mem_32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_GBR] = val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 3);
 }
 
@@ -2647,16 +2617,13 @@ unsigned sh4_inst_binary_ldcl_indgeninc_vbr(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0) {
-        goto cycle_count;
-    }
+    val = sh4_read_mem_32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_VBR] = val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -2682,16 +2649,13 @@ unsigned sh4_inst_binary_ldcl_indgenic_ssr(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0) {
-        goto cycle_count;
-    }
+    val = sh4_read_mem_32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_SSR] = val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -2717,16 +2681,13 @@ unsigned sh4_inst_binary_ldcl_indgeninc_spc(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0) {
-        goto cycle_count;
-    }
+    val = sh4_read_mem_32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_SPC] = val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -2752,16 +2713,13 @@ unsigned sh4_inst_binary_ldcl_indgeninc_dbr(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0) {
-        goto cycle_count;
-    }
+    val = sh4_read_mem_32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_DBR] = val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -2785,15 +2743,12 @@ unsigned sh4_inst_binary_stcl_sr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_SR], addr,
-                       sizeof(sh4->reg[SH4_REG_SR])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_SR], addr);
 
     *regp = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -2808,15 +2763,12 @@ unsigned sh4_inst_binary_stcl_gbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_GBR], addr,
-                       sizeof(sh4->reg[SH4_REG_GBR])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_GBR], addr);
 
     *regp = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -2840,15 +2792,12 @@ unsigned sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_VBR], addr,
-                       sizeof(sh4->reg[SH4_REG_VBR])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_VBR], addr);
 
     *regp = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -2872,15 +2821,12 @@ unsigned sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_SSR], addr,
-                       sizeof(sh4->reg[SH4_REG_SSR])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_SSR], addr);
 
     *regp = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -2904,15 +2850,12 @@ unsigned sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_SPC], addr,
-                       sizeof(sh4->reg[SH4_REG_SPC])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_SPC], addr);
 
     *regp = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -2936,15 +2879,12 @@ unsigned sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_SGR], addr,
-                       sizeof(sh4->reg[SH4_REG_SGR])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_SGR], addr);
 
     *regp = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 3);
 }
 
@@ -2968,15 +2908,12 @@ unsigned sh4_inst_binary_stcl_dbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_DBR], addr,
-                       sizeof(sh4->reg[SH4_REG_DBR])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_DBR], addr);
 
     *regp = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -3025,13 +2962,11 @@ unsigned sh4_inst_binary_movw_binind_disp_pc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int reg_no = inst.gen_reg;
     int16_t mem_in;
 
-    if (sh4_read_mem(sh4, &mem_in, addr, sizeof(mem_in)) != 0)
-        goto cycle_count;
+    mem_in = sh4_read_mem_16(sh4, addr);
     *sh4_gen_reg(sh4, reg_no) = (int32_t)mem_in;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -3048,13 +2983,11 @@ unsigned sh4_inst_binary_movl_binind_disp_pc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int reg_no = inst.gen_reg;
     int32_t mem_in;
 
-    if (sh4_read_mem(sh4, &mem_in, addr, sizeof(mem_in)) != 0)
-        goto cycle_count;
+    mem_in = sh4_read_mem_32(sh4, addr);
     *sh4_gen_reg(sh4, reg_no) = mem_in;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -3974,16 +3907,13 @@ unsigned sh4_inst_binary_ldcl_indgeninc_bank(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, inst.gen_reg);
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0) {
-        goto cycle_count;
-    }
+    val = sh4_read_mem_32(sh4, *src_reg);
 
     (*src_reg) += 4;
     *sh4_bank_reg(sh4, inst.bank_reg) = val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -4034,14 +3964,12 @@ unsigned sh4_inst_binary_stcl_bank_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t src_val = *sh4_bank_reg(sh4, inst.bank_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4_write_mem(sh4, &src_val, addr, sizeof(src_val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, src_val, addr);
 
     *addr_reg = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -4153,8 +4081,7 @@ unsigned sh4_inst_binary_ldsl_indgeninc_mach(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
 
-    if (sh4_read_mem(sh4, &val, *addr_reg, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_32(sh4, *addr_reg);
 
     sh4->reg[SH4_REG_MACH] = val;
 
@@ -4162,7 +4089,6 @@ unsigned sh4_inst_binary_ldsl_indgeninc_mach(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -4178,8 +4104,7 @@ unsigned sh4_inst_binary_ldsl_indgeninc_macl(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
 
-    if (sh4_read_mem(sh4, &val, *addr_reg, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_32(sh4, *addr_reg);
 
     sh4->reg[SH4_REG_MACL] = val;
 
@@ -4187,7 +4112,6 @@ unsigned sh4_inst_binary_ldsl_indgeninc_macl(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -4203,14 +4127,12 @@ unsigned sh4_inst_binary_stsl_mach_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_MACH], addr, sizeof(sh4->reg[SH4_REG_MACH])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_MACH], addr);
 
     *addr_reg = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -4226,14 +4148,12 @@ unsigned sh4_inst_binary_stsl_macl_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_MACL], addr, sizeof(sh4->reg[SH4_REG_MACL])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_MACL], addr);
 
     *addr_reg = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -4249,8 +4169,7 @@ unsigned sh4_inst_binary_ldsl_indgeninc_pr(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
 
-    if (sh4_read_mem(sh4, &val, *addr_reg, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_32(sh4, *addr_reg);
 
     sh4->reg[SH4_REG_PR] = val;
 
@@ -4258,7 +4177,6 @@ unsigned sh4_inst_binary_ldsl_indgeninc_pr(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -4274,14 +4192,12 @@ unsigned sh4_inst_binary_stsl_pr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_PR], addr, sizeof(sh4->reg[SH4_REG_PR])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_PR], addr);
 
     *addr_reg = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -4297,12 +4213,10 @@ unsigned sh4_inst_binary_movb_gen_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     uint8_t mem_val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    if (sh4_write_mem(sh4, &mem_val, addr, sizeof(mem_val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_8(sh4, mem_val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4318,12 +4232,10 @@ unsigned sh4_inst_binary_movw_gen_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     uint16_t mem_val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    if (sh4_write_mem(sh4, &mem_val, addr, sizeof(mem_val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_16(sh4, mem_val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4339,12 +4251,10 @@ unsigned sh4_inst_binary_movl_gen_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     uint32_t mem_val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    if (sh4_write_mem(sh4, &mem_val, addr, sizeof(mem_val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, mem_val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4360,13 +4270,12 @@ unsigned sh4_inst_binary_movb_indgen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, inst.src_reg);
     int8_t mem_val;
 
-    if (sh4_read_mem(sh4, &mem_val, addr, sizeof(mem_val)) != 0)
-        goto cycle_count;
+    mem_val = sh4_read_mem_8(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)mem_val;
 
     sh4_next_inst(sh4);
-cycle_count:
+
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4382,14 +4291,12 @@ unsigned sh4_inst_binary_movw_indgen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, inst.src_reg);
     int16_t mem_val;
 
-    if (sh4_read_mem(sh4, &mem_val, addr, sizeof(mem_val)) != 0)
-        goto cycle_count;
+    mem_val = sh4_read_mem_16(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)mem_val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4405,14 +4312,12 @@ unsigned sh4_inst_binary_movl_indgen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, inst.src_reg);
     int32_t mem_val;
 
-    if (sh4_read_mem(sh4, &mem_val, addr, sizeof(mem_val)) != 0)
-        goto cycle_count;
+    mem_val = sh4_read_mem_32(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = mem_val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4432,14 +4337,12 @@ unsigned sh4_inst_binary_movb_gen_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t dst_reg_val = (*dst_reg) - 1;
     val = *src_reg;
 
-    if (sh4_write_mem(sh4, &val, dst_reg_val, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_8(sh4, val, dst_reg_val);
 
     (*dst_reg) = dst_reg_val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4460,14 +4363,12 @@ unsigned sh4_inst_binary_movw_gen_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     dst_reg_val -= 2;
     val = *src_reg;
 
-    if (sh4_write_mem(sh4, &val, dst_reg_val, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_16(sh4, val, dst_reg_val);
 
     *dst_reg = dst_reg_val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4488,14 +4389,12 @@ unsigned sh4_inst_binary_movl_gen_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     dst_reg_val -= 4;
     val = *src_reg;
 
-    if (sh4_write_mem(sh4, &val, dst_reg_val, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, val, dst_reg_val);
 
     *dst_reg = dst_reg_val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4512,8 +4411,7 @@ unsigned sh4_inst_binary_movb_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
     int8_t val;
 
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_8(sh4, *src_reg);
 
     *dst_reg = (int32_t)val;
 
@@ -4521,7 +4419,6 @@ unsigned sh4_inst_binary_movb_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4538,8 +4435,7 @@ unsigned sh4_inst_binary_movw_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
     int16_t val;
 
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_16(sh4, *src_reg);
 
     *dst_reg = (int32_t)val;
 
@@ -4547,7 +4443,6 @@ unsigned sh4_inst_binary_movw_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4564,8 +4459,7 @@ unsigned sh4_inst_binary_movl_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
     int32_t val;
 
-    if (sh4_read_mem(sh4, &val, *src_reg, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_32(sh4, *src_reg);
 
     *dst_reg = (int32_t)val;
 
@@ -4573,7 +4467,6 @@ unsigned sh4_inst_binary_movl_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4592,9 +4485,8 @@ unsigned sh4_inst_binary_macl_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_addrp = sh4_gen_reg(sh4, inst.src_reg);
 
     reg32_t lhs, rhs;
-    if (sh4_read_mem(sh4, &lhs, *dst_addrp, sizeof(lhs)) != 0 ||
-        sh4_read_mem(sh4, &rhs, *src_addrp, sizeof(rhs)) != 0)
-        goto cycle_count;
+    lhs = sh4_read_mem_32(sh4, *dst_addrp);
+    rhs = sh4_read_mem_32(sh4, *src_addrp);
 
     int64_t product = (int64_t)((int32_t)lhs) * (int64_t)((int32_t)rhs);
     int64_t sum;
@@ -4631,7 +4523,6 @@ unsigned sh4_inst_binary_macl_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -4650,9 +4541,8 @@ unsigned sh4_inst_binary_macw_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *src_addrp = sh4_gen_reg(sh4, inst.src_reg);
 
     int16_t lhs, rhs;
-    if (sh4_read_mem(sh4, &lhs, *dst_addrp, sizeof(lhs)) != 0 ||
-        sh4_read_mem(sh4, &rhs, *src_addrp, sizeof(rhs)) != 0)
-        goto cycle_count;
+    lhs = sh4_read_mem_16(sh4, *dst_addrp);
+    rhs = sh4_read_mem_16(sh4, *src_addrp);
 
     int64_t result = (int64_t)lhs * (int64_t)rhs;
 
@@ -4701,7 +4591,6 @@ unsigned sh4_inst_binary_macw_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 2);
 }
 
@@ -4717,12 +4606,10 @@ unsigned sh4_inst_binary_movb_r0_binind_disp_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = inst.imm4 + *sh4_gen_reg(sh4, inst.base_reg_src);
     int8_t val = *sh4_gen_reg(sh4, 0);
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_8(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4738,12 +4625,10 @@ unsigned sh4_inst_binary_movw_r0_binind_disp_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm4 << 1) + *sh4_gen_reg(sh4, inst.base_reg_src);
     int16_t val = *sh4_gen_reg(sh4, 0);
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_16(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4759,12 +4644,10 @@ unsigned sh4_inst_binary_movl_gen_binind_disp_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm4 << 2) + *sh4_gen_reg(sh4, inst.base_reg_dst);
     int32_t val = *sh4_gen_reg(sh4, inst.base_reg_src);
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4780,14 +4663,12 @@ unsigned sh4_inst_binary_movb_binind_disp_gen_r0(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = inst.imm4 + *sh4_gen_reg(sh4, inst.base_reg_src);
     int8_t val;
 
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_8(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4803,14 +4684,12 @@ unsigned sh4_inst_binary_movw_binind_disp_gen_r0(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm4 << 1) + *sh4_gen_reg(sh4, inst.base_reg_src);
     int16_t val;
 
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_16(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4826,14 +4705,12 @@ unsigned sh4_inst_binary_movl_binind_disp_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm4 << 2) + *sh4_gen_reg(sh4, inst.base_reg_src);
     int32_t val;
 
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_32(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.base_reg_dst) = val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4849,12 +4726,10 @@ unsigned sh4_inst_binary_movb_gen_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     uint8_t val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_8(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4870,12 +4745,10 @@ unsigned sh4_inst_binary_movw_gen_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     uint16_t val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_16(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4891,12 +4764,10 @@ unsigned sh4_inst_binary_movl_gen_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     uint32_t val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4912,14 +4783,12 @@ unsigned sh4_inst_binary_movb_binind_r0_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.src_reg);
     int8_t val;
 
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_8(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4935,14 +4804,12 @@ unsigned sh4_inst_binary_movw_binind_r0_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.src_reg);
     int16_t val;
 
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_16(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4958,14 +4825,12 @@ unsigned sh4_inst_binary_movl_binind_r0_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.src_reg);
     int32_t val;
 
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_32(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -4981,12 +4846,10 @@ unsigned sh4_inst_binary_movb_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = inst.imm8 + sh4->reg[SH4_REG_GBR];
     int8_t val = *sh4_gen_reg(sh4, 0);
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_8(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5002,12 +4865,10 @@ unsigned sh4_inst_binary_movw_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm8 << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val = *sh4_gen_reg(sh4, 0);
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_16(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5023,12 +4884,10 @@ unsigned sh4_inst_binary_movl_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm8 << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val = *sh4_gen_reg(sh4, 0);
 
-    if (sh4_write_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, val, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5044,14 +4903,12 @@ unsigned sh4_inst_binary_movb_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = inst.imm8 + sh4->reg[SH4_REG_GBR];
     int8_t val;
 
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_8(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5067,14 +4924,12 @@ unsigned sh4_inst_binary_movw_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm8 << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val;
 
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_16(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5090,14 +4945,12 @@ unsigned sh4_inst_binary_movl_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm8 << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val;
 
-    if (sh4_read_mem(sh4, &val, addr, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_32(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = val;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5144,12 +4997,10 @@ unsigned sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t src_val = *sh4_gen_reg(sh4, 0);
     addr32_t vaddr = *sh4_gen_reg(sh4, inst.dst_reg);
 
-    if (sh4_write_mem(sh4, &src_val, vaddr, sizeof(src_val)) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, src_val, vaddr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -6284,8 +6135,7 @@ unsigned sh4_inst_binary_ldsl_indgeninc_fpscr(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
 
-    if (sh4_read_mem(sh4, &val, *addr_reg, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_32(sh4, *addr_reg);
 
     sh4_set_fpscr(sh4, val);
 
@@ -6293,7 +6143,6 @@ unsigned sh4_inst_binary_ldsl_indgeninc_fpscr(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -6309,8 +6158,7 @@ unsigned sh4_inst_binary_ldsl_indgeninc_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
 
-    if (sh4_read_mem(sh4, &val, *addr_reg, sizeof(val)) != 0)
-        goto cycle_count;
+    val = sh4_read_mem_32(sh4, *addr_reg);
 
     memcpy(sh4->reg + SH4_REG_FPUL, &val, sizeof(sh4->reg[SH4_REG_FPUL]));
 
@@ -6318,7 +6166,6 @@ unsigned sh4_inst_binary_ldsl_indgeninc_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -6367,15 +6214,12 @@ unsigned sh4_inst_binary_stsl_fpscr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4_write_mem(sh4, &sh4->reg[SH4_REG_FPSCR], addr,
-                      sizeof(sh4->reg[SH4_REG_FPSCR])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_FPSCR], addr);
 
     *addr_reg = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
@@ -6391,15 +6235,12 @@ unsigned sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4_write_mem(sh4, sh4->reg + SH4_REG_FPUL, addr,
-                      sizeof(sh4->reg[SH4_REG_FPUL])) != 0)
-        goto cycle_count;
+    sh4_write_mem_32(sh4, sh4->reg[SH4_REG_FPUL], addr);
 
     *addr_reg = addr;
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_CO, 1);
 }
 
