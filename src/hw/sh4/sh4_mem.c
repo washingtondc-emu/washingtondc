@@ -242,49 +242,6 @@ int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
 }
 
 
-inst_t sh4_read_inst(Sh4 *sh4) {
-    sh4_check_interrupts(sh4);
-
-    addr32_t addr = sh4->reg[SH4_REG_PC] & 0x1fffffff;
-    if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
-        return memory_read16(&dc_mem, addr & ADDR_AREA3_MASK);
-    } else {
-        inst_t instr;
-        if (memory_map_read(&instr, addr, sizeof(instr)) !=
-            MEM_ACCESS_SUCCESS) {
-            error_set_address(addr);
-            error_set_length(2);
-            error_set_feature("reading sh4 program instructions from areas "
-                              "other than the RAM and the firmware");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        return instr;
-    }
-
-#if 0
-    /*
-     * this is commented out because you can't leave privileged mode without
-     * raising an EROR_UNIMPLEMENTED (see sh4_on_sr_change in sh4.c)
-     */
-    bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
-
-    if (virt_area != SH4_AREA_P0 && !privileged) {
-        /*
-         * The spec says user-mode processes can only access the U0 area
-         * (which overlaps with P0) and the store queue area but I can't find
-         * the part where it describes what needs to be done.  Raising the
-         * SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
-         * looks like it's for instances where the page can be looked up in the
-         * TLB.
-         */
-        error_set_feature("CPU exception for unprivileged "
-                          "access to high memory areas");
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
-    }
-#endif
-}
-
 static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr) {
     /*
      * XXX I tried replacing this block of if statements with a lookup table,

@@ -49,6 +49,7 @@
 #include "glfw/window.h"
 #include "hw/pvr2/framebuffer.h"
 #include "log.h"
+#include "hw/sh4/sh4_read_inst.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"

@@ -192,9 +192,6 @@ void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val);
 
 void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line, Sh4ExceptionCode intp_code);
 
-/* check IRQ lines and enter interrupt state if necessary */
-void sh4_check_interrupts(Sh4 *sh4);
-
 /*
  * The following registers (in addition to the IMASK and BL bits in SR) all
  * effect the algorithm which decides when interrupt handlers run; ergo the

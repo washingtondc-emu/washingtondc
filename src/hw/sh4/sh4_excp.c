@@ -29,7 +29,6 @@
 
 static DEF_ERROR_INT_ATTR(sh4_exception_code)
 
-static void sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta);
 static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta);
 
 static Sh4ExcpMeta const sh4_excp_meta[SH4_EXCP_COUNT] = {
@@ -189,53 +188,6 @@ void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
         sh4->intc.irq_lines[SH4_IRQ_IRL3] = (Sh4ExceptionCode)0;
 
     sh4_refresh_intc(sh4);
-}
-
-static void sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
-    /*
-     * TODO: instead of accepting the INTEVT value from whoever raised the
-     * interrupt, we should be figuring out what it should be ourselves
-     * based on the IRQ line.
-     *
-     * (the value currently being used here ultimately originates from the
-     * intp_code parameter sent to sh4_set_interrupt).
-     */
-    sh4->reg[SH4_REG_INTEVT] =
-        (irq_meta->code << SH4_INTEVT_CODE_SHIFT) &
-        SH4_INTEVT_CODE_MASK;
-
-    sh4_enter_exception(sh4, (Sh4ExceptionCode)irq_meta->code);
-
-    if (irq_meta->is_irl) {
-        // TODO: is it right to clear the irl lines like
-        //       this after an IRQ has been served?
-        sh4_set_irl_interrupt(sh4, 0xf);
-    } else {
-        sh4->intc.irq_lines[irq_meta->line] = (Sh4ExceptionCode)0;
-        sh4_refresh_intc(sh4);
-    }
-
-    // exit sleep/standby mode
-    sh4->exec_state = SH4_EXEC_STATE_NORM;
-}
-
-void sh4_check_interrupts(Sh4 *sh4) {
-    /*
-     * for the purposes of interrupt handling, I treat delayed-branch slots
-     * as atomic units because if I allowed an interrupt to happen between the
-     * two instructions then I would need a way to track the delayed branch slot
-     * until the interrupt handler returns, and I would need to account for
-     * situations such as interrupt handlers that never return and interrupt
-     * handlers that enable interrupts.
-     *
-     * And the hardware would have to do that too if that was the way it was
-     * implemented, so I'm *assuming* that it doesn't allow interrupts in the
-     * middle of delay slots either.
-     */
-    if (!sh4->delayed_branch && sh4->intc.is_irq_pending) {
-        sh4_enter_irq_from_meta(sh4, &sh4->intc.pending_irq);
-        sh4->intc.is_irq_pending = false;
-    }
 }
 
 void sh4_refresh_intc(Sh4 *sh4) {
