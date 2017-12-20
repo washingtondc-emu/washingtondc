@@ -31,8 +31,24 @@
 #include "sh4.h"
 #include "error.h"
 #include "log.h"
+#include "dc_sched.h"
+#include "dreamcast.h"
 
 #include "sh4_scif.h"
+
+static void sh4_scif_rxi_int_handler(struct SchedEvent *event);
+static void sh4_scif_txi_int_handler(struct SchedEvent *event);
+
+static struct SchedEvent sh4_scif_rxi_int_event = {
+    .handler = sh4_scif_rxi_int_handler
+};
+
+static struct SchedEvent sh4_scif_txi_int_event = {
+    .handler = sh4_scif_txi_int_handler
+};
+
+static bool sh4_scif_rxi_int_event_scheduled;
+static bool sh4_scif_txi_int_event_scheduled;
 
 /*
  * This shouldn't be too difficult, but the authors of the official sh4
@@ -182,8 +198,14 @@ static void check_rx_trig(Sh4 *sh4) {
     if (text_ring_len(&sh4->scif.rxq) >= rtrg) {
         sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_RDF_MASK;
 
-        if (rx_interrupt_enabled(sh4))
-            sh4_set_interrupt(sh4, SH4_IRQ_SCIF, SH4_EXCP_SCIF_RXI);
+        if (rx_interrupt_enabled(sh4)) {
+            if (!sh4_scif_rxi_int_event_scheduled) {
+                sh4_scif_rxi_int_event_scheduled = true;
+                sh4_scif_rxi_int_event.when = dc_cycle_stamp();
+                sh4_scif_rxi_int_event.arg_ptr = sh4;
+                sched_event(&sh4_scif_rxi_int_event);
+            }
+        }
     }
 }
 
@@ -193,8 +215,14 @@ static void check_tx_trig(Sh4 *sh4) {
     if (text_ring_len(&sh4->scif.txq) <= ttrg) {
         sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_TDFE_MASK;
 
-        if (tx_interrupt_enabled(sh4))
-            sh4_set_interrupt(sh4, SH4_IRQ_SCIF, SH4_EXCP_SCIF_TXI);
+        if (tx_interrupt_enabled(sh4)) {
+            if (!sh4_scif_txi_int_event_scheduled) {
+                sh4_scif_txi_int_event_scheduled = true;
+                sh4_scif_txi_int_event.when = dc_cycle_stamp();
+                sh4_scif_txi_int_event.arg_ptr = sh4;
+                sched_event(&sh4_scif_txi_int_event);
+            }
+        }
     }
 }
 
@@ -370,4 +398,16 @@ void sh4_scif_periodic(Sh4 *sh4) {
         if (text_ring_len(&sh4->scif.rxq) >= rx_fifo_trigger(sh4))
             sh4->reg[SH4_REG_SCFSR2] &= ~SH4_SCFSR2_DR_MASK;
     }
+}
+
+static void sh4_scif_rxi_int_handler(struct SchedEvent *event) {
+    Sh4 *sh4 = (Sh4*)event->arg_ptr;
+    sh4_scif_rxi_int_event_scheduled = false;
+    sh4_set_interrupt(sh4, SH4_IRQ_SCIF, SH4_EXCP_SCIF_RXI);
+}
+
+static void sh4_scif_txi_int_handler(struct SchedEvent *event) {
+    Sh4 *sh4 = (Sh4*)event->arg_ptr;
+    sh4_scif_txi_int_event_scheduled = false;
+    sh4_set_interrupt(sh4, SH4_IRQ_SCIF, SH4_EXCP_SCIF_TXI);
 }
