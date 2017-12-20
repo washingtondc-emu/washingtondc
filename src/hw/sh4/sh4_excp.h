@@ -214,8 +214,13 @@ int sh4_excp_iprd_reg_write_handler(Sh4 *sh4, void const *buf,
 
 /*
  * call this every time the interrupt controller's state may have changed to
- * check if there are any interrupts that should be pending
+ * check if there are any interrupts that should be pending.
+ *
+ * DO NOT CALL THIS FROM CPU CONTEXT!
+ * If you need this from CPU context, then called sh4_refresh_intc_deferred instead.
  */
 void sh4_refresh_intc(Sh4 *sh4);
+
+void sh4_refresh_intc_deferred(Sh4 *sh4);
 
 #endif

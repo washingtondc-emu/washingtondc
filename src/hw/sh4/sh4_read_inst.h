@@ -54,6 +54,9 @@ sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
         sh4_set_irl_interrupt(sh4, 0xf);
     } else {
         sh4->intc.irq_lines[irq_meta->line] = (Sh4ExceptionCode)0;
+
+        // this is safe to call this function here because we're not in CPU
+        // context (although we're about to be)
         sh4_refresh_intc(sh4);
     }
 

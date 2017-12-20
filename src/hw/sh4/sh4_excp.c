@@ -26,6 +26,8 @@
 #include "sh4_excp.h"
 #include "mem_code.h"
 #include "error.h"
+#include "dreamcast.h"
+#include "dc_sched.h"
 
 static DEF_ERROR_INT_ATTR(sh4_exception_code)
 
@@ -190,9 +192,30 @@ void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
     sh4_refresh_intc(sh4);
 }
 
+static bool sh4_refresh_intc_event_scheduled;
+
 void sh4_refresh_intc(Sh4 *sh4) {
     sh4->intc.is_irq_pending =
         (sh4_get_next_irq_line(sh4, &sh4->intc.pending_irq) >= 0);
+}
+
+static void do_sh4_refresh_intc_deferred(SchedEvent *event) {
+    Sh4 *sh4 = (Sh4*)event->arg_ptr;
+    sh4_refresh_intc(sh4);
+    sh4_refresh_intc_event_scheduled = false;
+}
+
+static SchedEvent sh4_refresh_intc_event = {
+    .handler = do_sh4_refresh_intc_deferred
+};
+
+void sh4_refresh_intc_deferred(Sh4 *sh4) {
+    if (!sh4_refresh_intc_event_scheduled) {
+        sh4_refresh_intc_event_scheduled = true;
+        sh4_refresh_intc_event.when = dc_cycle_stamp();
+        sh4_refresh_intc_event.arg_ptr = sh4;
+        sched_event(&sh4_refresh_intc_event);
+    }
 }
 
 /*
@@ -353,7 +376,7 @@ int sh4_excp_icr_reg_write_handler(Sh4 *sh4, void const *buf,
                                    struct Sh4MemMappedReg const *reg_info) {
     memcpy(sh4->reg + SH4_REG_ICR, buf, sizeof(sh4->reg[SH4_REG_ICR]));
 
-    sh4_refresh_intc(sh4);
+    sh4_refresh_intc_deferred(sh4);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -362,7 +385,7 @@ int sh4_excp_ipra_reg_write_handler(Sh4 *sh4, void const *buf,
                                     struct Sh4MemMappedReg const *reg_info) {
     memcpy(sh4->reg + SH4_REG_IPRA, buf, sizeof(sh4->reg[SH4_REG_IPRA]));
 
-    sh4_refresh_intc(sh4);
+    sh4_refresh_intc_deferred(sh4);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -371,7 +394,7 @@ int sh4_excp_iprb_reg_write_handler(Sh4 *sh4, void const *buf,
                                     struct Sh4MemMappedReg const *reg_info) {
     memcpy(sh4->reg + SH4_REG_IPRB, buf, sizeof(sh4->reg[SH4_REG_IPRB]));
 
-    sh4_refresh_intc(sh4);
+    sh4_refresh_intc_deferred(sh4);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -380,7 +403,7 @@ int sh4_excp_iprc_reg_write_handler(Sh4 *sh4, void const *buf,
                                     struct Sh4MemMappedReg const *reg_info) {
     memcpy(sh4->reg + SH4_REG_IPRC, buf, sizeof(sh4->reg[SH4_REG_IPRC]));
 
-    sh4_refresh_intc(sh4);
+    sh4_refresh_intc_deferred(sh4);
 
     return MEM_ACCESS_SUCCESS;
 }
@@ -389,7 +412,7 @@ int sh4_excp_iprd_reg_write_handler(Sh4 *sh4, void const *buf,
                                     struct Sh4MemMappedReg const *reg_info) {
     memcpy(sh4->reg + SH4_REG_IPRD, buf, sizeof(sh4->reg[SH4_REG_IPRD]));
 
-    sh4_refresh_intc(sh4);
+    sh4_refresh_intc_deferred(sh4);
 
     return MEM_ACCESS_SUCCESS;
 }

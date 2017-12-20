@@ -155,7 +155,7 @@ void sh4_on_sr_change(Sh4 *sh4, reg32_t old_sr) {
     sh4_bank_switch_maybe(sh4, old_sr, new_sr);
 
     if ((old_sr & SH4_INTC_SR_BITS) != (new_sr & SH4_INTC_SR_BITS))
-        sh4_refresh_intc(sh4);
+        sh4_refresh_intc_deferred(sh4);
 
     if (!(new_sr & SH4_SR_MD_MASK)) {
         error_set_feature("unprivileged mode");
