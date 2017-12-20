@@ -30,6 +30,8 @@
 #include "hw/sys/holly_intc.h"
 #include "maple_device.h"
 #include "error.h"
+#include "dc_sched.h"
+#include "dreamcast.h"
 
 #include "maple.h"
 
@@ -53,6 +55,23 @@
 
 #define MAPLE_PACK_LEN_SHIFT 24
 #define MAPLE_PACK_LEN_MASK (0xff << MAPLE_PACK_LEN_SHIFT)
+
+/*
+ * delay that specifies how long a DMA transaction should take.
+ * this value is arbitrary.
+ * TODO: it probably should not be 0 since that would be instant.
+ */
+#define MAPLE_DMA_COMPLETE_DELAY 0
+
+static void maple_dma_complete_int_event_handler(struct SchedEvent *event);
+
+static struct SchedEvent maple_dma_complete_int_event = {
+    .handler = maple_dma_complete_int_event_handler
+};
+
+static bool maple_dma_complete_int_event_scheduled;
+
+static void maple_dma_complete(void);
 
 static void maple_handle_devinfo(struct maple_frame *frame);
 static void maple_handle_getcond(struct maple_frame *frame);
@@ -108,7 +127,7 @@ static void maple_handle_devinfo(struct maple_frame *frame) {
         maple_write_frame_resp(frame, MAPLE_RESP_NONE);
     }
 
-    holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
+    maple_dma_complete();
 }
 
 static void maple_handle_getcond(struct maple_frame *frame) {
@@ -129,7 +148,7 @@ static void maple_handle_getcond(struct maple_frame *frame) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
+    maple_dma_complete();
 }
 
 void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code) {
@@ -235,4 +254,18 @@ unsigned maple_addr_pack(unsigned port, unsigned unit) {
     addr |= port << 6;
 
     return addr;
+}
+
+static void maple_dma_complete(void) {
+    if (!maple_dma_complete_int_event_scheduled) {
+        maple_dma_complete_int_event_scheduled = true;
+        maple_dma_complete_int_event.when =
+            dc_cycle_stamp() + MAPLE_DMA_COMPLETE_DELAY;
+        sched_event(&maple_dma_complete_int_event);
+    }
+}
+
+static void maple_dma_complete_int_event_handler(struct SchedEvent *event) {
+    maple_dma_complete_int_event_scheduled = false;
+    holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
 }
