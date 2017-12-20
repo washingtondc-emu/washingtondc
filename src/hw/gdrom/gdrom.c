@@ -31,6 +31,7 @@
 #include "hw/sys/holly_intc.h"
 #include "error.h"
 #include "gdrom_response.h"
+#include "dc_sched.h"
 
 #include "gdrom.h"
 
@@ -45,6 +46,32 @@ DEF_ERROR_INT_ATTR(gdrom_command);
 #define GDROM_GDST_DEFAULT   0x00000000
 #define GDROM_GDLEND_DEFAULT 0x00000000 // undefined
 #define GDROM_DATA_BYTE_COUNT_DEFAULT 0xeb14
+
+static void raise_gdrom_int(void);
+
+static void post_delay_raise_gdrom_int(struct SchedEvent *event);
+
+// how long to wait before raising a gdrom interrupt event
+// this value is arbitrary
+#define GDROM_INT_DELAY 0
+
+static bool gdrom_int_scheduled;
+struct SchedEvent gdrom_int_raise_event = {
+    .handler = post_delay_raise_gdrom_int
+};
+
+static void raise_gdrom_int(void) {
+    if (!gdrom_int_scheduled) {
+        gdrom_int_scheduled = true;
+        gdrom_int_raise_event.when = dc_cycle_stamp() + GDROM_INT_DELAY;
+        sched_event(&gdrom_int_raise_event);
+    }
+}
+
+static void post_delay_raise_gdrom_int(struct SchedEvent *event) {
+    gdrom_int_scheduled = false;
+    holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+}
 
 enum sense_key {
     // no sense key (command execution successful)
@@ -344,7 +371,7 @@ static void gdrom_input_read_packet(void) {
     }
 
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 
     gdrom.state = GDROM_STATE_NORM;
     gdrom.stat_reg.check = false;
@@ -361,7 +388,7 @@ static void gdrom_input_packet(void) {
     gdrom.stat_reg.bsy = false;
 
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 
     switch (gdrom.pkt_buf[0]) {
     case GDROM_PKT_TEST_UNIT:
@@ -468,7 +495,7 @@ void gdrom_cmd_set_features(void) {
     gdrom.int_reason_reg.cod = true; // is this correct ?
 
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 }
 
 void gdrom_cmd_identify(void) {
@@ -480,7 +507,7 @@ void gdrom_cmd_identify(void) {
     gdrom.stat_reg.drq = true;
 
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 
     bufq_clear();
 
@@ -530,7 +557,7 @@ static void gdrom_input_test_unit_packet(void) {
     // raise interrupt if it is enabled - this is already done from
     // gdrom_input_packet
     /* if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK)) */
-    /*     holly_raise_ext_int(HOLLY_EXT_INT_GDROM); */
+    /*     raise_gdrom_int(); */
 
     gdrom.state = GDROM_STATE_NORM;
 
@@ -582,7 +609,7 @@ static void gdrom_input_req_error_packet(void) {
     gdrom.stat_reg.drq = true;
     gdrom.stat_reg.bsy = false;
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 
     gdrom.state = GDROM_STATE_NORM;
 }
@@ -606,7 +633,7 @@ static void gdrom_input_start_disk_packet(void) {
     // raise interrupt if it is enabled - this is already done from
     // gdrom_input_packet
     /* if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK)) */
-    /*     holly_raise_ext_int(HOLLY_EXT_INT_GDROM); */
+    /*     raise_gdrom_int(); */
 
     gdrom.state = GDROM_STATE_NORM;
 
@@ -655,7 +682,7 @@ static void gdrom_input_packet_71(void) {
     gdrom.int_reason_reg.cod = false;
     gdrom.stat_reg.drq = true;
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 
     gdrom.state = GDROM_STATE_NORM;
 
@@ -722,7 +749,7 @@ static void gdrom_input_req_mode_packet(void) {
     gdrom.int_reason_reg.cod = false;
     gdrom.stat_reg.drq = true;
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 
     gdrom.state = GDROM_STATE_NORM;
 
@@ -764,7 +791,7 @@ static void gdrom_input_read_toc_packet(void) {
     gdrom.int_reason_reg.cod = false;
     gdrom.stat_reg.drq = true;
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 
     gdrom.state = GDROM_STATE_NORM;
 
@@ -797,7 +824,7 @@ static void gdrom_input_read_subcode_packet(void) {
     gdrom.int_reason_reg.cod = false;
     gdrom.stat_reg.drq = true;
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 
     gdrom.state = GDROM_STATE_NORM;
 
@@ -832,7 +859,7 @@ void gdrom_read_data(uint8_t *buf, unsigned n_bytes) {
         gdrom.int_reason_reg.cod = true;
         gdrom.int_reason_reg.io = true;
         if (!gdrom.dev_ctrl_reg.nien)
-            holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+            raise_gdrom_int();
     }
 }
 
@@ -864,7 +891,7 @@ void gdrom_write_data(uint8_t const *buf, unsigned n_bytes) {
             gdrom.state = GDROM_STATE_NORM;
 
             if (!gdrom.dev_ctrl_reg.nien)
-                holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+                raise_gdrom_int();
         }
     }
 }
@@ -906,7 +933,7 @@ void gdrom_start_dma(void) {
     }
 
     if (!gdrom.dev_ctrl_reg.nien)
-        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        raise_gdrom_int();
 
     gdrom.state = GDROM_STATE_NORM;
     gdrom.stat_reg.check = false;
