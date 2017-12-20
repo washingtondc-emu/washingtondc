@@ -104,11 +104,17 @@ struct sys_mapped_reg;
 #define HOLLY_REG_ISTEXT_GDROM_SHIFT 0
 #define HOLLY_REG_ISTEXT_GDROM_MASK (1 << HOLLY_REG_ISTEXT_GDROM_SHIFT)
 
-void holly_raise_nrm_int(HollyNrmInt int_type);
-void holly_clear_nrm_int(HollyNrmInt int_type);
 
+/*
+ * these functionse should not be called from within an sh4 instruction handler
+ * or from within a function that could possibly get called from within an sh4
+ * instruction hander.  Best bet is to schedule an event and call it from there.
+ */
 void holly_raise_ext_int(HollyExtInt int_type);
+void holly_raise_nrm_int(HollyNrmInt int_type);
+
 void holly_clear_ext_int(HollyExtInt int_type);
+void holly_clear_nrm_int(HollyNrmInt int_type);
 
 int holly_reg_istnrm_read_handler(struct sys_mapped_reg const *reg_info,
                                   void *buf, addr32_t addr, unsigned len);
