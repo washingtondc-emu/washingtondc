@@ -36,6 +36,8 @@
 #include "framebuffer.h"
 #include "host_branch_pred.h"
 #include "log.h"
+#include "dc_sched.h"
+#include "dreamcast.h"
 
 #include "pvr2_ta.h"
 
@@ -330,6 +332,62 @@ static struct geo_buf geo_buf_array[2] = {
     { .clip_min = -1.0f, .clip_max = 1.0f },
     { .clip_min = -1.0f, .clip_max = 1.0f }
 };
+
+/*
+ * the delay between when the STARTRENDER command is received and when the
+ * RENDER_COMPLETE interrupt gets raised.
+ * this value is arbitrary, for now it is 0 so it happens instantly.
+ * TODO: This irq definitely should not be triggered immediately
+ */
+#define PVR2_RENDER_COMPLETE_INT_DELAY 0
+
+static void pvr2_render_complete_int_event_handler(struct SchedEvent *event);
+
+static struct SchedEvent pvr2_render_complete_int_event = {
+    .handler = pvr2_render_complete_int_event_handler
+};
+
+static bool pvr2_render_complete_int_event_scheduled;
+
+/*
+ * the delay between when a list is rendered and when the list-complete
+ * interrupt happens.
+ * this value is arbitrary, for now it is 0 so it happens instantly.
+ * TODO: In a real dreamcast this probably would not happen instantly
+ */
+#define PVR2_LIST_COMPLETE_INT_DELAY 0
+
+static void pvr2_op_complete_int_event_handler(struct SchedEvent *event);
+static void pvr2_op_mod_complete_int_event_handler(struct SchedEvent *event);
+static void pvr2_trans_complete_int_event_handler(struct SchedEvent *event);
+static void pvr2_trans_mod_complete_int_event_handler(struct SchedEvent *event);
+static void pvr2_pt_complete_int_event_handler(struct SchedEvent *event);
+
+static struct SchedEvent pvr2_op_complete_int_event = {
+    .handler = pvr2_op_complete_int_event_handler
+};
+
+static struct SchedEvent pvr2_op_mod_complete_int_event = {
+    .handler = pvr2_op_mod_complete_int_event_handler
+};
+
+static struct SchedEvent pvr2_trans_complete_int_event = {
+    .handler = pvr2_trans_complete_int_event_handler
+};
+
+static struct SchedEvent pvr2_trans_mod_complete_int_event = {
+    .handler = pvr2_trans_mod_complete_int_event_handler
+};
+
+static struct SchedEvent pvr2_pt_complete_int_event = {
+    .handler = pvr2_pt_complete_int_event_handler
+};
+
+static bool pvr2_op_complete_int_event_scheduled,
+    pvr2_op_mod_complete_int_event_scheduled,
+    pvr2_trans_complete_int_event_scheduled,
+    pvr2_trans_mod_complete_int_event_scheduled,
+    pvr2_pt_complete_int_event_scheduled;
 
 int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
 #ifdef PVR2_LOG_VERBOSE
@@ -1206,6 +1264,36 @@ static void on_vertex_received(void) {
     ta_fifo_finish_packet();
 }
 
+static void
+pvr2_op_complete_int_event_handler(struct SchedEvent *event) {
+    pvr2_op_complete_int_event_scheduled = false;
+    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE);
+}
+
+static void
+pvr2_op_mod_complete_int_event_handler(struct SchedEvent *event) {
+    pvr2_op_mod_complete_int_event_scheduled = false;
+    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE);
+}
+
+static void
+pvr2_trans_complete_int_event_handler(struct SchedEvent *event) {
+    pvr2_trans_complete_int_event_scheduled = false;
+    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE);
+}
+
+static void
+pvr2_trans_mod_complete_int_event_handler(struct SchedEvent *event) {
+    pvr2_trans_mod_complete_int_event_scheduled = false;
+    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE);
+}
+
+static void
+pvr2_pt_complete_int_event_handler(struct SchedEvent *event) {
+    pvr2_pt_complete_int_event_scheduled = false;
+    holly_raise_nrm_int(HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE);
+}
+
 static void on_end_of_list_received(void) {
     LOG_DBG("END-OF-LIST PACKET!\n");
 
@@ -1220,22 +1308,42 @@ static void on_end_of_list_received(void) {
         goto the_end;
     }
 
-    // TODO: In a real dreamcast this probably would not happen instantly
+    dc_cycle_stamp_t int_when = dc_cycle_stamp() + PVR2_LIST_COMPLETE_INT_DELAY;
     switch (poly_state.current_list) {
     case DISPLAY_LIST_OPAQUE:
-        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE);
+        if (!pvr2_op_complete_int_event_scheduled) {
+            pvr2_op_complete_int_event_scheduled = true;
+            pvr2_op_complete_int_event.when = int_when;
+            sched_event(&pvr2_op_complete_int_event);
+        }
         break;
     case DISPLAY_LIST_OPAQUE_MOD:
-        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE);
+        if (!pvr2_op_mod_complete_int_event_scheduled) {
+            pvr2_op_mod_complete_int_event_scheduled = true;
+            pvr2_op_mod_complete_int_event.when = int_when;
+            sched_event(&pvr2_op_mod_complete_int_event);
+        }
         break;
     case DISPLAY_LIST_TRANS:
-        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE);
+        if (!pvr2_trans_complete_int_event_scheduled) {
+            pvr2_trans_complete_int_event_scheduled = true;
+            pvr2_trans_complete_int_event.when = int_when;
+            sched_event(&pvr2_trans_complete_int_event);
+        }
         break;
     case DISPLAY_LIST_TRANS_MOD:
-        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE);
+        if (!pvr2_trans_mod_complete_int_event_scheduled) {
+            pvr2_trans_mod_complete_int_event_scheduled = true;
+            pvr2_trans_mod_complete_int_event.when = int_when;
+            sched_event(&pvr2_trans_mod_complete_int_event);
+        }
         break;
     case DISPLAY_LIST_PUNCH_THROUGH:
-        holly_raise_nrm_int(HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE);
+        if (!pvr2_pt_complete_int_event_scheduled) {
+            pvr2_pt_complete_int_event_scheduled = true;
+            pvr2_pt_complete_int_event.when = int_when;
+            sched_event(&pvr2_pt_complete_int_event);
+        }
         break;
     default:
         /*
@@ -1257,6 +1365,11 @@ static void on_user_clip_received(void) {
     // TODO: implement tile clipping
 
     ta_fifo_finish_packet();
+}
+
+static void pvr2_render_complete_int_event_handler(struct SchedEvent *event) {
+    pvr2_render_complete_int_event_scheduled = false;
+    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
 }
 
 void pvr2_ta_startrender(void) {
@@ -1344,7 +1457,12 @@ void pvr2_ta_startrender(void) {
     poly_state.current_list = DISPLAY_LIST_NONE;
 
     // TODO: This irq definitely should not be triggered immediately
-    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
+    if (!pvr2_render_complete_int_event_scheduled) {
+        pvr2_render_complete_int_event_scheduled = true;
+        pvr2_render_complete_int_event.when = dc_cycle_stamp() +
+            PVR2_RENDER_COMPLETE_INT_DELAY;
+        sched_event(&pvr2_render_complete_int_event);
+    }
 }
 
 void pvr2_ta_reinit(void) {
