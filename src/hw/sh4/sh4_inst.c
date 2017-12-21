@@ -83,7 +83,7 @@ static inline unsigned sh4_branch_delay(Sh4 *sh4, addr32_t branch_addr) {
     sh4->reg[SH4_REG_PC] += 2;
     inst_t delay_slot_inst = sh4_read_inst(sh4);
     InstOpcode const *op = sh4_decode_inst(sh4, delay_slot_inst);
-    if (op->is_branch) {
+    if (op->pc_relative) {
         error_set_feature("delay slot exceptions");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
@@ -167,7 +167,7 @@ static struct InstOpcode opcode_list[] = {
     { "0000000000001001", &sh4_inst_nop, false, SH4_GROUP_MT, 1 },
 
     // RTE
-    { "0000000000101011", &sh4_inst_rte, false, SH4_GROUP_CO, 5 },
+    { "0000000000101011", &sh4_inst_rte, true, SH4_GROUP_CO, 5 },
 
     // SETS
     { "0000000001011000", &sh4_inst_sets, false, SH4_GROUP_CO, 1 },
@@ -470,11 +470,11 @@ static struct InstOpcode opcode_list[] = {
 
     // MOV.W @(disp, PC), Rn
     { "1001nnnndddddddd", &sh4_inst_binary_movw_binind_disp_pc_gen,
-      false, SH4_GROUP_LS, 1 },
+      true, SH4_GROUP_LS, 1 },
 
     // MOV.L @(disp, PC), Rn
     { "1101nnnndddddddd", &sh4_inst_binary_movl_binind_disp_pc_gen,
-      false, SH4_GROUP_LS, 1 },
+      true, SH4_GROUP_LS, 1 },
 
     // MOV Rm, Rn
     { "0110nnnnmmmm0011", &sh4_inst_binary_movw_gen_gen, false,
@@ -817,7 +817,7 @@ static struct InstOpcode opcode_list[] = {
 
     // MOVA @(disp, PC), R0
     { "11000111dddddddd", &sh4_inst_binary_mova_binind_disp_pc_r0,
-      false, SH4_GROUP_EX, 1 },
+      true, SH4_GROUP_EX, 1 },
 
     // MOVCA.L R0, @Rn
     { "0000nnnn11000011", &sh4_inst_binary_movcal_r0_indgen,

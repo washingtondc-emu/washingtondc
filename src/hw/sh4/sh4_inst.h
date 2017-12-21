@@ -214,7 +214,7 @@ struct InstOpcode {
     opcode_func_t func;
 
     // if this is true, this inst cant be called from a delay slot
-    bool is_branch;
+    bool pc_relative;
 
     /*
      * execution group.  If I was emulating the dual-issue nature of the
