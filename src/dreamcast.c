@@ -347,7 +347,8 @@ static void dc_run_to_next_event(Sh4 *sh4) {
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(sh4, inst);
-        inst_cycles = sh4_count_inst_cycles(sh4, op);
+
+        inst_cycles = sh4_do_exec_inst(sh4, inst, op);
 
         /*
          * Advance the cycle counter based on how many cycles this instruction
@@ -364,14 +365,6 @@ static void dc_run_to_next_event(Sh4 *sh4) {
         if (cycles_after > dc_sched_target_stamp)
             cycles_after = dc_sched_target_stamp;
 
-        sh4_do_exec_inst(sh4, inst, op);
-
-        /*
-         * advance the cycles, being careful not to skip over any new events
-         * which may have been added
-         */
-        if (cycles_after > dc_sched_target_stamp)
-            cycles_after = dc_sched_target_stamp;
         dc_cycle_advance(cycles_after - dc_cycle_stamp());
     }
 }

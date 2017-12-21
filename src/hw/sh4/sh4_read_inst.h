@@ -115,18 +115,20 @@ static inline inst_t sh4_read_inst(Sh4 *sh4) {
 #endif
 }
 
-static inline void
+static inline unsigned
 sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
     Sh4OpArgs oa;
     oa.inst = inst;
 
     opcode_func_t op_func = op->func;
 
-    op_func(sh4, oa);
+    unsigned cycles = op_func(sh4, oa);
 
 #ifdef ENABLE_DEBUGGER
     sh4->aborted_operation = false;
 #endif
+
+    return cycles;
 }
 
 #endif
