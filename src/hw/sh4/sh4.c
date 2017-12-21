@@ -99,9 +99,6 @@ void sh4_on_hard_reset(Sh4 *sh4) {
         *sh4_fpu_xf(sh4, idx) = 0.0f;
     }
 
-    sh4->delayed_branch = false;
-    sh4->delayed_branch_addr = 0;
-
     /*
      * default to CO-type instructions so that the first instruction executed
      * costs a CPU cycle.

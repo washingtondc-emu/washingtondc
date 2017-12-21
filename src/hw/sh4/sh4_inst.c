@@ -39,6 +39,7 @@
 #include "sh4_tbl.h"
 #include "sh4_excp.h"
 #include "log.h"
+#include "sh4_read_inst.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debugger.h"
@@ -59,6 +60,36 @@ static DEF_ERROR_U32_ATTR(fpscr)
 static DEF_ERROR_U32_ATTR(fpscr_expect)
 static DEF_ERROR_U32_ATTR(fpscr_mask)
 static DEF_ERROR_INT_ATTR(inst_bin)
+
+static inline void sh4_next_inst(Sh4 *sh4) {
+    sh4->reg[SH4_REG_PC] += 2;
+}
+
+static inline void sh4_branch_delay(Sh4 *sh4, addr32_t branch_addr) {
+    /*
+     * for the purposes of interrupt handling, I treat delayed-branch slots
+     * as atomic units because if I allowed an interrupt to happen between the
+     * two instructions then I would need a way to track the delayed branch slot
+     * until the interrupt handler returns, and I would need to account for
+     * situations such as interrupt handlers that never return and interrupt
+     * handlers that enable interrupts.
+     *
+     * And the hardware would have to do that too if that was the way it was
+     * implemented, so I'm *assuming* that it doesn't allow interrupts in the
+     * middle of delay slots either.
+     */
+
+    // TODO: cycle-counting for the delay-slot inst
+    sh4->reg[SH4_REG_PC] += 2;
+    inst_t delay_slot_inst = sh4_read_inst(sh4);
+    InstOpcode const *op = sh4_decode_inst(sh4, delay_slot_inst);
+    if (op->is_branch) {
+        error_set_feature("delay slot exceptions");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+    sh4_do_exec_inst(sh4, delay_slot_inst, op);
+    sh4->reg[SH4_REG_PC] = branch_addr;
+}
 
 #ifdef SH4_FPU_PEDANTIC
 /*
@@ -1105,10 +1136,7 @@ void sh4_inst_rts(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000001011, INST_CONS_0000000000001011);
 
-    sh4->delayed_branch = true;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PR];
-
-    sh4_next_inst(sh4);
+    sh4_branch_delay(sh4, sh4->reg[SH4_REG_PR]);
 }
 
 #define INST_MASK_0000000000101000 0xffff
@@ -1192,8 +1220,6 @@ void sh4_inst_rte(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000101011, INST_CONS_0000000000101011);
 
-    sh4->delayed_branch = true;
-
     /*
      * TODO: this, along with all other delayed branch instructions, may have
      * an inaccuracy involving the way the the PC is set to its new value after
@@ -1224,13 +1250,13 @@ void sh4_inst_rte(Sh4 *sh4, Sh4OpArgs inst) {
      * booting since any one of 600+ dreamcast games could have something weird
      * that needs this to work right.
      */
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_SPC];
+    addr32_t branch_addr = sh4->reg[SH4_REG_SPC];
 
     reg32_t old_sr_val = sh4->reg[SH4_REG_SR];
     sh4->reg[SH4_REG_SR] = sh4->reg[SH4_REG_SSR];
     sh4_on_sr_change(sh4, old_sr_val);
 
-    sh4_next_inst(sh4);
+    sh4_branch_delay(sh4, branch_addr);
 }
 
 #define INST_MASK_0000000001011000 0xffff
@@ -1683,10 +1709,9 @@ void sh4_inst_unary_braf_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00100011, INST_CONS_0000nnnn00100011);
 
-    sh4->delayed_branch = true;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, inst.gen_reg) + 4;
-
-    sh4_next_inst(sh4);
+    addr32_t branch_addr =
+        sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, inst.gen_reg) + 4;
+    sh4_branch_delay(sh4, branch_addr);
 }
 
 #define INST_MASK_0000nnnn00000011 0xf0ff
@@ -1698,11 +1723,11 @@ void sh4_inst_unary_bsrf_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00000011, INST_CONS_0000nnnn00000011);
 
-    sh4->delayed_branch = true;
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, inst.gen_reg) + 4;
+    addr32_t branch_addr =
+        sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, inst.gen_reg) + 4;
 
-    sh4_next_inst(sh4);
+    sh4_branch_delay(sh4, branch_addr);
 }
 
 #define INST_MASK_10001000iiiiiiii 0xff00
@@ -1901,11 +1926,12 @@ void sh4_inst_unary_bfs_disp(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_10001111dddddddd, INST_CONS_10001111dddddddd);
 
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK)) {
-        sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm8) << 1) + 4;
-        sh4->delayed_branch = true;
+        addr32_t branch_addr =
+            sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm8) << 1) + 4;
+        sh4_branch_delay(sh4, branch_addr);
+    } else {
+        sh4_next_inst(sh4);
     }
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_10001001dddddddd 0xff00
@@ -1937,11 +1963,12 @@ void sh4_inst_unary_bts_disp(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_10001101dddddddd, INST_CONS_10001101dddddddd);
 
     if (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) {
-        sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm8) << 1) + 4;
-        sh4->delayed_branch = true;
+        addr32_t branch_addr =
+            sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm8) << 1) + 4;
+        sh4_branch_delay(sh4, branch_addr);
+    } else {
+        sh4_next_inst(sh4);
     }
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1010dddddddddddd 0xf000
@@ -1953,10 +1980,8 @@ void sh4_inst_unary_bra_disp(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_1010dddddddddddd, INST_CONS_1010dddddddddddd);
 
-    sh4->delayed_branch = true;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm12) << 1) + 4;
-
-    sh4_next_inst(sh4);
+    addr32_t branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm12) << 1) + 4;
+    sh4_branch_delay(sh4, branch_addr);
 }
 
 #define INST_MASK_1011dddddddddddd 0xf000
@@ -1969,10 +1994,10 @@ void sh4_inst_unary_bsr_disp(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1011dddddddddddd, INST_CONS_1011dddddddddddd);
 
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm12) << 1) + 4;
-    sh4->delayed_branch = true;
 
-    sh4_next_inst(sh4);
+    addr32_t branch_addr =
+        sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm12) << 1) + 4;
+    sh4_branch_delay(sh4, branch_addr);
 }
 
 #define INST_MASK_11000011iiiiiiii 0xff00
@@ -2097,10 +2122,8 @@ void sh4_inst_unary_jmp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00101011, INST_CONS_0100nnnn00101011);
 
-    sh4->delayed_branch_addr = *sh4_gen_reg(sh4, inst.gen_reg);
-    sh4->delayed_branch = true;
-
-    sh4_next_inst(sh4);
+    addr32_t branch_addr = *sh4_gen_reg(sh4, inst.gen_reg);
+    sh4_branch_delay(sh4, branch_addr);
 }
 
 #define INST_MASK_0100nnnn00001011 0xf0ff
@@ -2113,10 +2136,8 @@ void sh4_inst_unary_jsr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0100nnnn00001011, INST_CONS_0100nnnn00001011);
 
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
-    sh4->delayed_branch_addr = *sh4_gen_reg(sh4, inst.gen_reg);
-    sh4->delayed_branch = true;
-
-    sh4_next_inst(sh4);
+    addr32_t branch_addr = *sh4_gen_reg(sh4, inst.gen_reg);
+    sh4_branch_delay(sh4, branch_addr);
 }
 
 #define INST_MASK_0100mmmm00001110 0xf0ff
