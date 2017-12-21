@@ -26,6 +26,8 @@
 #include <assert.h>
 
 #include "sh4_excp.h"
+#include "mem_code.h"
+#include "error.h"
 
 struct Sh4;
 
@@ -73,17 +75,6 @@ static_assert((SH4_P4_REGEND - SH4_P4_REGSTART) ==
 #define SH4_OC_RAM_AREA_SIZE (8 * 1024)
 
 /*
- * From within the CPU, these functions should be called instead of
- * the memory's read/write functions because these implement the MMU
- * functionality.  In the event of a CPU exception, these functions will set the
- * appropriate CPU flags for an exception and return non-zero.  On success
- * they will return zero.
- */
-int sh4_write_mem(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
-int sh4_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
-
-
-/*
  * same as sh4_write_mem/sh4_read_mem, except they don't automatically raise
  * pending errors and they don't check for watchpoints
  */
@@ -96,5 +87,36 @@ int sh4_do_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
  */
 int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
 int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
+
+static inline int
+sh4_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
+#ifdef ENABLE_DEBUGGER
+    if (dc_debugger_enabled() && debug_is_r_watch(addr, len)) {
+        sh4->aborted_operation = true;
+        return MEM_ACCESS_EXC;
+    }
+#endif
+    int ret;
+
+    if ((ret = sh4_do_read_mem(sh4, data, addr, len)) == MEM_ACCESS_FAILURE)
+        RAISE_ERROR(get_error_pending());
+    return ret;
+}
+
+static inline int
+sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
+#ifdef ENABLE_DEBUGGER
+    if (dc_debugger_enabled() && debug_is_w_watch(addr, len)) {
+        sh4->aborted_operation = true;
+        return MEM_ACCESS_EXC;
+    }
+#endif
+
+    int ret;
+
+    if ((ret = sh4_do_write_mem(sh4, data, addr, len)) == MEM_ACCESS_FAILURE)
+        RAISE_ERROR(get_error_pending());
+    return ret;
+}
 
 #endif

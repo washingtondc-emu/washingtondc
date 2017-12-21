@@ -46,21 +46,6 @@ static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
  * solution, but until all the codebase is out of C++ I don't want to risk that.
  */
 
-int sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
-#ifdef ENABLE_DEBUGGER
-    if (dc_debugger_enabled() && debug_is_w_watch(addr, len)) {
-        sh4->aborted_operation = true;
-        return MEM_ACCESS_EXC;
-    }
-#endif
-
-    int ret;
-
-    if ((ret = sh4_do_write_mem(sh4, data, addr, len)) == MEM_ACCESS_FAILURE)
-        RAISE_ERROR(get_error_pending());
-    return ret;
-}
-
 int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 
     enum VirtMemArea virt_area = sh4_get_mem_area(addr);
@@ -124,20 +109,6 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
     error_set_wtf("this should not be possible");
     RAISE_ERROR(ERROR_INTEGRITY);
     exit(1); // never happens
-}
-
-int sh4_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
-#ifdef ENABLE_DEBUGGER
-    if (dc_debugger_enabled() && debug_is_r_watch(addr, len)) {
-        sh4->aborted_operation = true;
-        return MEM_ACCESS_EXC;
-    }
-#endif
-    int ret;
-
-    if ((ret = sh4_do_read_mem(sh4, data, addr, len)) == MEM_ACCESS_FAILURE)
-        RAISE_ERROR(get_error_pending());
-    return ret;
 }
 
 int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
