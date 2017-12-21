@@ -28,6 +28,7 @@
 #include "error.h"
 #include "dreamcast.h"
 #include "dc_sched.h"
+#include "sh4_read_inst.h"
 
 static DEF_ERROR_INT_ATTR(sh4_exception_code)
 
@@ -197,6 +198,7 @@ static bool sh4_refresh_intc_event_scheduled;
 void sh4_refresh_intc(Sh4 *sh4) {
     sh4->intc.is_irq_pending =
         (sh4_get_next_irq_line(sh4, &sh4->intc.pending_irq) >= 0);
+    sh4_check_interrupts(sh4);
 }
 
 static void do_sh4_refresh_intc_deferred(SchedEvent *event) {
