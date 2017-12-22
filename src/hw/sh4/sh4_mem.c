@@ -46,9 +46,8 @@ static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
  * solution, but until all the codebase is out of C++ I don't want to risk that.
  */
 
-#define SH4_WRITE_MEM_TMPL(size)                                        \
-    void sh4_write_mem_##size(Sh4 *sh4, uint##size##_t val,             \
-                                 addr32_t addr) {                       \
+#define SH4_WRITE_MEM_TMPL(type, postfix)                               \
+    void sh4_write_mem_##postfix(Sh4 *sh4, type val, addr32_t addr) {   \
         enum VirtMemArea virt_area = sh4_get_mem_area(addr);            \
         switch (virt_area) {                                            \
         case SH4_AREA_P0:                                               \
@@ -75,7 +74,7 @@ static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
             /* INTENTIONAL FALLTHROUGH */                               \
         case SH4_AREA_P1:                                               \
         case SH4_AREA_P2:                                               \
-            memory_map_write_##size(val, addr & 0x1fffffff);            \
+            memory_map_write_##postfix(val, addr & 0x1fffffff);         \
             return;                                                     \
         case SH4_AREA_P4:                                               \
             if (sh4_do_write_p4(sh4, &val, addr, sizeof(val)) ==        \
@@ -92,9 +91,11 @@ static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
         exit(1); /* never happens */                                    \
     }                                                                   \
 
-SH4_WRITE_MEM_TMPL(8)
-SH4_WRITE_MEM_TMPL(16)
-SH4_WRITE_MEM_TMPL(32)
+SH4_WRITE_MEM_TMPL(uint8_t, 8)
+SH4_WRITE_MEM_TMPL(uint16_t, 16)
+SH4_WRITE_MEM_TMPL(uint32_t, 32)
+SH4_WRITE_MEM_TMPL(float, float)
+SH4_WRITE_MEM_TMPL(double, double)
 
 int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
 
@@ -161,9 +162,9 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
     exit(1); // never happens
 }
 
-#define SH4_READ_MEM_TMPL(size)                                         \
-    uint##size##_t sh4_read_mem_##size(Sh4 *sh4, addr32_t addr) {       \
-        uint##size##_t tmp_val;                                         \
+#define SH4_READ_MEM_TMPL(type, postfix)                                \
+    type sh4_read_mem_##postfix(Sh4 *sh4, addr32_t addr) {              \
+        type tmp_val;                                                   \
         enum VirtMemArea virt_area = sh4_get_mem_area(addr);            \
         switch (virt_area) {                                            \
         case SH4_AREA_P0:                                               \
@@ -191,7 +192,7 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
             /* INTENTIONAL FALLTHROUGH */                               \
         case SH4_AREA_P1:                                               \
         case SH4_AREA_P2:                                               \
-            return memory_map_read_##size(addr & 0x1fffffff);           \
+            return memory_map_read_##postfix(addr & 0x1fffffff);        \
         case SH4_AREA_P4:                                               \
             if (sh4_do_read_p4(sh4, &tmp_val, addr, sizeof(tmp_val)) == MEM_ACCESS_SUCCESS) \
                 return tmp_val;                                         \
@@ -204,9 +205,11 @@ int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }
 
-SH4_READ_MEM_TMPL(8);
-SH4_READ_MEM_TMPL(16);
-SH4_READ_MEM_TMPL(32);
+SH4_READ_MEM_TMPL(uint8_t, 8);
+SH4_READ_MEM_TMPL(uint16_t, 16);
+SH4_READ_MEM_TMPL(uint32_t, 32);
+SH4_READ_MEM_TMPL(float, float);
+SH4_READ_MEM_TMPL(double, double);
 
 int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
 

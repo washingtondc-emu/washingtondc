@@ -179,8 +179,11 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
     addr32_t addr_actual = (addr & SH4_SQ_ADDR_MASK) |
         (((qacr & SH4_QACR_MASK) >> SH4_QACR_SHIFT) << 26);
 
-    return sh4_write_mem(sh4, sh4->ocache.sq + sq_idx,
-                         addr_actual, 8 * sizeof(uint32_t));
+    int ret = sh4_do_write_mem(sh4, sh4->ocache.sq + sq_idx,
+                               addr_actual, 8 * sizeof(uint32_t));
+    if (ret == MEM_ACCESS_FAILURE)
+        RAISE_ERROR(get_error_pending());
+    return ret;
 }
 
 void sh4_ocache_write_addr_array(Sh4 *sh4, void const *dat,

@@ -83,9 +83,13 @@ static_assert((SH4_P4_REGEND - SH4_P4_REGSTART) ==
 void sh4_write_mem_8(Sh4 *sh4, uint8_t val, addr32_t addr);
 void sh4_write_mem_16(Sh4 *sh4, uint16_t val, addr32_t addr);
 void sh4_write_mem_32(Sh4 *sh4, uint32_t val, addr32_t addr);
+void sh4_write_mem_float(Sh4 *sh4, float val, addr32_t addr);
+void sh4_write_mem_double(Sh4 *sh4, double val, addr32_t addr);
 uint8_t sh4_read_mem_8(Sh4 *sh4, addr32_t addr);
 uint16_t sh4_read_mem_16(Sh4 *sh4, addr32_t addr);
 uint32_t sh4_read_mem_32(Sh4 *sh4, addr32_t addr);
+float sh4_read_mem_float(Sh4 *sh4, addr32_t addr);
+double sh4_read_mem_double(Sh4 *sh4, addr32_t addr);
 
 /*
  * same as sh4_write_mem/sh4_read_mem, except they don't automatically raise
@@ -100,36 +104,5 @@ int sh4_do_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
  */
 int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
 int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
-
-static inline int
-sh4_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
-#ifdef ENABLE_DEBUGGER
-    if (dc_debugger_enabled() && debug_is_r_watch(addr, len)) {
-        sh4->aborted_operation = true;
-        return MEM_ACCESS_EXC;
-    }
-#endif
-    int ret;
-
-    if ((ret = sh4_do_read_mem(sh4, data, addr, len)) == MEM_ACCESS_FAILURE)
-        RAISE_ERROR(get_error_pending());
-    return ret;
-}
-
-static inline int
-sh4_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
-#ifdef ENABLE_DEBUGGER
-    if (dc_debugger_enabled() && debug_is_w_watch(addr, len)) {
-        sh4->aborted_operation = true;
-        return MEM_ACCESS_EXC;
-    }
-#endif
-
-    int ret;
-
-    if ((ret = sh4_do_write_mem(sh4, data, addr, len)) == MEM_ACCESS_FAILURE)
-        RAISE_ERROR(get_error_pending());
-    return ret;
-}
 
 #endif

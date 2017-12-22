@@ -64,16 +64,16 @@ void memory_map_set_mem(struct Memory *mem_new) {
     mem = mem_new;
 }
 
-#define MEMORY_MAP_READ_TMPL(size)                                      \
-    uint##size##_t memory_map_read_##size(size_t addr) {                \
+#define MEMORY_MAP_READ_TMPL(type, type_postfix)                        \
+    type memory_map_read_##type_postfix(size_t addr) {                  \
         size_t first_addr = addr;                                       \
-        size_t last_addr = sizeof(uint##size##_t) - 1 + first_addr;     \
+        size_t last_addr = sizeof(type) - 1 + first_addr;               \
                                                                         \
         if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) { \
-            return memory_read##size(mem, addr & ADDR_AREA3_MASK);      \
+            return memory_read_##type_postfix(mem, addr & ADDR_AREA3_MASK); \
         } else if (first_addr >= ADDR_TEX32_FIRST && last_addr <=       \
                    ADDR_TEX32_LAST) {                                   \
-            uint##size##_t tmp;                                         \
+            type tmp;                                                   \
             if (pvr2_tex_mem_area32_read(&tmp, addr, sizeof(tmp)) ==    \
                 MEM_ACCESS_SUCCESS)                                     \
                 return tmp;                                             \
@@ -81,21 +81,21 @@ void memory_map_set_mem(struct Memory *mem_new) {
                 RAISE_ERROR(get_error_pending());                       \
         } else if (first_addr >= ADDR_TEX64_FIRST && last_addr <=       \
                    ADDR_TEX64_LAST) {                                   \
-            uint##size##_t tmp;                                         \
+            type tmp;                                                   \
             if (pvr2_tex_mem_area64_read(&tmp, addr, sizeof(tmp)) ==    \
                 MEM_ACCESS_SUCCESS)                                     \
                 return tmp;                                             \
             else                                                        \
                 RAISE_ERROR(get_error_pending());                       \
         } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) { \
-            uint##size##_t tmp;                                         \
+            type tmp;                                                   \
             if (read_area0(&tmp, addr, sizeof(tmp)) == MEM_ACCESS_SUCCESS) \
                 return tmp;                                             \
             else                                                        \
                 RAISE_ERROR(get_error_pending());                       \
         } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <=       \
                    ADDR_AREA4_LAST) {                                   \
-            uint##size##_t tmp;                                         \
+            type tmp;                                                   \
             if (read_area4(&tmp, addr, sizeof(tmp)) == MEM_ACCESS_SUCCESS) \
                 return tmp;                                             \
             else                                                        \
@@ -104,22 +104,24 @@ void memory_map_set_mem(struct Memory *mem_new) {
                                                                         \
         error_set_feature("memory mapping");                            \
         error_set_address(addr);                                        \
-        error_set_length(sizeof(uint##size##_t));                       \
+        error_set_length(sizeof(type));                                 \
         RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }
 
-MEMORY_MAP_READ_TMPL(8)
-MEMORY_MAP_READ_TMPL(16)
-MEMORY_MAP_READ_TMPL(32)
+MEMORY_MAP_READ_TMPL(uint8_t, 8)
+MEMORY_MAP_READ_TMPL(uint16_t, 16)
+MEMORY_MAP_READ_TMPL(uint32_t, 32)
+MEMORY_MAP_READ_TMPL(float, float)
+MEMORY_MAP_READ_TMPL(double, double)
 
-#define MEMORY_MAP_WRITE_TMPL(size)                                     \
-    void memory_map_write_##size(uint##size##_t val, size_t addr) {     \
+#define MEMORY_MAP_WRITE_TMPL(type, type_postfix)                       \
+    void memory_map_write_##type_postfix(type val, size_t addr) {       \
         size_t first_addr = addr;                                       \
-        size_t last_addr = sizeof(uint##size##_t) - 1 + first_addr;     \
+        size_t last_addr = sizeof(type) - 1 + first_addr;               \
                                                                         \
         /* check RAM first because that's the case we want to optimize for */ \
         if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) { \
-            memory_write##size(mem, addr & ADDR_AREA3_MASK, val);       \
+            memory_write_##type_postfix(mem, addr & ADDR_AREA3_MASK, val); \
             return;                                                     \
         } else if (first_addr >= ADDR_TEX32_FIRST && last_addr <=       \
             ADDR_TEX32_LAST) {                                          \
@@ -155,9 +157,11 @@ MEMORY_MAP_READ_TMPL(32)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }
 
-MEMORY_MAP_WRITE_TMPL(8)
-MEMORY_MAP_WRITE_TMPL(16)
-MEMORY_MAP_WRITE_TMPL(32)
+MEMORY_MAP_WRITE_TMPL(uint8_t, 8)
+MEMORY_MAP_WRITE_TMPL(uint16_t, 16)
+MEMORY_MAP_WRITE_TMPL(uint32_t, 32)
+MEMORY_MAP_WRITE_TMPL(float, float)
+MEMORY_MAP_WRITE_TMPL(double, double)
 
 int memory_map_read(void *buf, size_t addr, size_t len) {
     size_t first_addr = addr;

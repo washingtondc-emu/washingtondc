@@ -5068,12 +5068,10 @@ unsigned sh4_inst_binary_fmovs_indgen_fr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *sh4_gen_reg(sh4, inst.src_reg);
     float *dst_ptr = sh4_fpu_fr(sh4, inst.dst_reg);
 
-    if (sh4_read_mem(sh4, dst_ptr, addr, sizeof(*dst_ptr)) != 0)
-        goto cycle_count;
+    *dst_ptr = sh4_read_mem_float(sh4, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5090,12 +5088,10 @@ unsigned sh4_inst_binary_fmovs_binind_r0_gen_fr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, inst.src_reg);
     float *dst_ptr = sh4_fpu_fr(sh4, inst.dst_reg);
 
-    if (sh4_read_mem(sh4, dst_ptr, addr, sizeof(*dst_ptr)) != 0)
-        goto cycle_count;
+    *dst_ptr = sh4_read_mem_float(sh4, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5112,13 +5108,11 @@ unsigned sh4_inst_binary_fmovs_indgeninc_fr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_p = sh4_gen_reg(sh4, inst.src_reg);
     float *dst_ptr = sh4_fpu_fr(sh4, inst.dst_reg);
 
-    if (sh4_read_mem(sh4, dst_ptr, *addr_p, sizeof(*dst_ptr)) != 0)
-        goto cycle_count;
+    *dst_ptr = sh4_read_mem_float(sh4, *addr_p);
 
     *addr_p += 4;
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5135,12 +5129,10 @@ unsigned sh4_inst_binary_fmovs_fr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
 
-    if (sh4_write_mem(sh4, src_p, addr, sizeof(*src_p)) != 0)
-        goto cycle_count;
+    sh4_write_mem_float(sh4, *src_p, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5158,13 +5150,11 @@ unsigned sh4_inst_binary_fmovs_fr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *addr_p - 4;
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
 
-    if (sh4_write_mem(sh4, src_p, addr, sizeof(*src_p)) != 0)
-        goto cycle_count;
+    sh4_write_mem_float(sh4, *src_p, addr);
 
     *addr_p = addr;
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5181,12 +5171,9 @@ unsigned sh4_inst_binary_fmovs_fr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
 
-    if (sh4_write_mem(sh4, src_p, addr, sizeof(*src_p)) != 0)
-        goto cycle_count;
-
+    sh4_write_mem_float(sh4, *src_p, addr);
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5220,12 +5207,10 @@ unsigned sh4_inst_binary_fmov_indgen_dr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *sh4_gen_reg(sh4, inst.src_reg);
     double *dst_ptr = sh4_fpu_dr(sh4, inst.dr_dst);
 
-    if (sh4_read_mem(sh4, dst_ptr, addr, sizeof(*dst_ptr)) != 0)
-        goto cycle_count;
+    *dst_ptr = sh4_read_mem_double(sh4, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5242,12 +5227,10 @@ unsigned sh4_inst_binary_fmov_binind_r0_gen_dr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, inst.src_reg);
     double *dst_ptr = sh4_fpu_dr(sh4, inst.dr_dst);
 
-    if (sh4_read_mem(sh4, dst_ptr, addr, sizeof(*dst_ptr)) != 0)
-        goto cycle_count;
+    *dst_ptr = sh4_read_mem_double(sh4, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5264,13 +5247,11 @@ unsigned sh4_inst_binary_fmov_indgeninc_dr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_p = sh4_gen_reg(sh4, inst.src_reg);
     double *dst_ptr = sh4_fpu_dr(sh4, inst.dr_dst);
 
-    if (sh4_read_mem(sh4, dst_ptr, *addr_p, sizeof(*dst_ptr)) != 0)
-        goto cycle_count;
+    *dst_ptr = sh4_read_mem_double(sh4, *addr_p);
 
     *addr_p += 8;
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5287,12 +5268,10 @@ unsigned sh4_inst_binary_fmov_dr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
 
-    if (sh4_write_mem(sh4, src_p, addr, sizeof(*src_p)) != 0)
-        goto cycle_count;
+    sh4_write_mem_double(sh4, *src_p, addr);
 
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5310,13 +5289,11 @@ unsigned sh4_inst_binary_fmov_dr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *addr_p - 8;
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
 
-    if (sh4_write_mem(sh4, src_p, addr, sizeof(*src_p)) != 0)
-        goto cycle_count;
+    sh4_write_mem_double(sh4, *src_p, addr);
 
     *addr_p = addr;
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -5333,11 +5310,9 @@ unsigned sh4_inst_binary_fmov_dr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
 
-    if (sh4_write_mem(sh4, src_p, addr, sizeof(*src_p)) != 0)
-        goto cycle_count;
+    sh4_write_mem_double(sh4, *src_p, addr);
 
     sh4_next_inst(sh4);
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -6327,13 +6302,11 @@ unsigned sh4_inst_binary_fmov_indgeninc_xd(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_p = sh4_gen_reg(sh4, inst.src_reg);
     double *dst_ptr = sh4_fpu_xd(sh4, inst.dr_dst);
 
-    if (sh4_read_mem(sh4, dst_ptr, *addr_p, sizeof(*dst_ptr)) != 0)
-        goto cycle_count;
+    *dst_ptr = sh4_read_mem_double(sh4, *addr_p);
 
     *addr_p += 8;
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 
@@ -6387,13 +6360,11 @@ unsigned sh4_inst_binary_fmov_xd_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *addr_p - 8;
     double *src_p = sh4_fpu_xd(sh4, inst.dr_src);
 
-    if (sh4_write_mem(sh4, src_p, addr, sizeof(*src_p)) != 0)
-        goto cycle_count;
+    sh4_write_mem_double(sh4, *src_p, addr);
 
     *addr_p = addr;
     sh4_next_inst(sh4);
 
-cycle_count:
     return sh4_count_inst_cycles(sh4, SH4_GROUP_LS, 1);
 }
 

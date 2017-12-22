@@ -77,7 +77,7 @@ static inline void sh4_check_interrupts(Sh4 *sh4) {
 static inline inst_t sh4_read_inst(Sh4 *sh4) {
     addr32_t addr = sh4->reg[SH4_REG_PC] & 0x1fffffff;
     if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
-        return memory_read16(&dc_mem, addr & ADDR_AREA3_MASK);
+        return memory_read_16(&dc_mem, addr & ADDR_AREA3_MASK);
     } else {
         inst_t instr;
         if (memory_map_read(&instr, addr, sizeof(instr)) !=
