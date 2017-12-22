@@ -226,11 +226,11 @@ static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr) {
      */
     if (addr <= SH4_AREA_P0_LAST)
         return SH4_AREA_P0;
-    if (addr >= SH4_AREA_P1_FIRST && addr <= SH4_AREA_P1_LAST)
+    if (addr <= SH4_AREA_P1_LAST)
         return SH4_AREA_P1;
-    if (addr >= SH4_AREA_P2_FIRST && addr <= SH4_AREA_P2_LAST)
+    if (addr <= SH4_AREA_P2_LAST)
         return SH4_AREA_P2;
-    if (addr >= SH4_AREA_P3_FIRST && addr <= SH4_AREA_P3_LAST)
+    if (addr <= SH4_AREA_P3_LAST)
         return SH4_AREA_P3;
     return SH4_AREA_P4;
 }
