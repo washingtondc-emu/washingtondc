@@ -50,6 +50,7 @@
 #include "hw/pvr2/framebuffer.h"
 #include "log.h"
 #include "hw/sh4/sh4_read_inst.h"
+#include "hw/pvr2/pvr2.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -170,7 +171,7 @@ void dreamcast_init(bool cmd_session) {
     }
 
     sh4_init(&cpu);
-    spg_init();
+    pvr2_init();
     gdrom_init();
 
     /* set the PC to the booststrap code within IP.BIN */
@@ -212,7 +213,7 @@ void dreamcast_init(bool cmd_session) {
 }
 
 void dreamcast_cleanup() {
-    spg_cleanup();
+    pvr2_cleanup();
 
 #ifdef ENABLE_DEBUGGER
     debug_cleanup();

@@ -20,15 +20,10 @@
  *
  ******************************************************************************/
 
-#ifndef PVR2_REG_H_
-#define PVR2_REG_H_
+#ifndef PVR2_H_
+#define PVR2_H_
 
-#include <stddef.h>
-
-void pvr2_reg_init(void);
-void pvr2_reg_cleanup(void);
-
-int pvr2_reg_read(void *buf, size_t addr, size_t len);
-int pvr2_reg_write(void const *buf, size_t addr, size_t len);
+void pvr2_init(void);
+void pvr2_cleanup(void);
 
 #endif
