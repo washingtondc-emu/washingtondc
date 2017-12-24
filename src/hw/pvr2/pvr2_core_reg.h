@@ -86,4 +86,7 @@ enum palette_tp {
 
 enum palette_tp get_palette_tp(void);
 
+void pvr2_core_reg_init(void);
+void pvr2_core_reg_cleanup(void);
+
 #endif

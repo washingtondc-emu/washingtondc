@@ -24,6 +24,7 @@
 #define MMIO_H_
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "types.h"
 
@@ -55,6 +56,11 @@ typedef void(*mmio_write_handler)(struct mmio_region*,unsigned,uint32_t);
 // read/write handlers that raise an ERROR_UNIMPLEMENTED
 uint32_t mmio_read_error(struct mmio_region *region, unsigned idx);
 void mmio_write_error(struct mmio_region *region, unsigned idx, uint32_t val);
+
+void mmio_readonly_write_error(struct mmio_region *region,
+                               unsigned idx, uint32_t val);
+uint32_t mmio_writeonly_read_handler(struct mmio_region *region,
+                                     unsigned idx);
 
 struct mmio_cell {
     char const *name;

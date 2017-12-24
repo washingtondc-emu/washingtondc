@@ -90,6 +90,22 @@ void mmio_write_error(struct mmio_region *region, unsigned idx, uint32_t val) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
+void mmio_readonly_write_error(struct mmio_region *region,
+                               unsigned idx, uint32_t val) {
+    error_set_length(4);
+    error_set_address(idx * 4);
+    error_set_feature("proper response for writing to a read-only register");
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint32_t mmio_writeonly_read_handler(struct mmio_region *region,
+                                     unsigned idx) {
+    error_set_length(4);
+    error_set_address(idx * 4);
+    error_set_feature("proper response for reading from a write-only register");
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
 uint32_t mmio_read_32(struct mmio_region *region, addr32_t addr) {
     unsigned idx = (addr - region->beg) / sizeof(uint32_t);
     struct mmio_cell *cell = region->cells + idx;

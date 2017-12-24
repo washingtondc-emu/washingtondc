@@ -20,17 +20,20 @@
  *
  ******************************************************************************/
 
-#include "pvr2.h"
 #include "spg.h"
-
 #include "pvr2_reg.h"
+#include "pvr2_core_reg.h"
+
+#include "pvr2.h"
 
 void pvr2_init(void) {
     pvr2_reg_init();
+    pvr2_core_reg_init();
     spg_init();
 }
 
 void pvr2_cleanup(void) {
     spg_cleanup();
+    pvr2_core_reg_cleanup();
     pvr2_reg_cleanup();
 }

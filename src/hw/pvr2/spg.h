@@ -28,6 +28,7 @@
 
 #include "types.h"
 #include "dc_sched.h"
+#include "mmio.h"
 
 struct pvr2_core_mem_mapped_reg;
 
@@ -41,6 +42,32 @@ void spg_set_pix_double_x(bool val);
 void spg_set_pix_double_y(bool val);
 
 uint32_t get_spg_control();
+
+uint32_t spg_hblank_int_mmio_read(struct mmio_region *region, unsigned idx);
+void spg_hblank_int_mmio_write(struct mmio_region *region, unsigned idx,
+                               uint32_t val);
+
+uint32_t spg_vblank_int_mmio_read(struct mmio_region *region, unsigned idx);
+void spg_vblank_int_mmio_write(struct mmio_region *region, unsigned idx,
+                               uint32_t val);
+
+uint32_t spg_control_mmio_read(struct mmio_region *region, unsigned idx);
+void spg_control_mmio_write(struct mmio_region *region, unsigned idx,
+                            uint32_t val);
+
+uint32_t spg_hblank_mmio_read(struct mmio_region *region, unsigned idx);
+void spg_hblank_mmio_write(struct mmio_region *region, unsigned idx,
+                           uint32_t val);
+
+uint32_t spg_load_mmio_read(struct mmio_region *region, unsigned idx);
+void spg_load_mmio_write(struct mmio_region *region, unsigned idx,
+                         uint32_t val);
+
+uint32_t spg_vblank_mmio_read(struct mmio_region *region, unsigned idx);
+void spg_vblank_mmio_write(struct mmio_region *region, unsigned idx,
+                           uint32_t val);
+
+uint32_t spg_status_mmio_read(struct mmio_region *region, unsigned idx);
 
 int
 read_spg_hblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
