@@ -69,8 +69,19 @@ struct mmio_cell {
     mmio_write_handler on_write;
 };
 
-uint32_t mmio_read_32(struct mmio_region *region, addr32_t addr);
-void mmio_write_32(struct mmio_region *region, addr32_t addr, uint32_t val);
+static inline uint32_t
+mmio_read_32(struct mmio_region *region, addr32_t addr) {
+    unsigned idx = (addr - region->beg) / sizeof(uint32_t);
+    struct mmio_cell *cell = region->cells + idx;
+    return cell->on_read(region, idx);
+}
+
+static inline void
+mmio_write_32(struct mmio_region *region, addr32_t addr, uint32_t val) {
+    unsigned idx = (addr - region->beg) / sizeof(uint32_t);
+    struct mmio_cell *cell = region->cells + idx;
+    cell->on_write(region, idx, val);
+}
 
 // idx here is in terms of uint32_t, not uint8_t
 uint32_t mmio_warn_read_handler(struct mmio_region *region, unsigned idx);

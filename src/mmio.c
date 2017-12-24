@@ -105,15 +105,3 @@ uint32_t mmio_writeonly_read_handler(struct mmio_region *region,
     error_set_feature("proper response for reading from a write-only register");
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
-
-uint32_t mmio_read_32(struct mmio_region *region, addr32_t addr) {
-    unsigned idx = (addr - region->beg) / sizeof(uint32_t);
-    struct mmio_cell *cell = region->cells + idx;
-    return cell->on_read(region, idx);
-}
-
-void mmio_write_32(struct mmio_region *region, addr32_t addr, uint32_t val) {
-    unsigned idx = (addr - region->beg) / sizeof(uint32_t);
-    struct mmio_cell *cell = region->cells + idx;
-    cell->on_write(region, idx, val);
-}
