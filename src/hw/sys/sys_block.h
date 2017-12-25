@@ -30,6 +30,16 @@
 #ifndef SYS_BLOCK_H_
 #define SYS_BLOCK_H_
 
+#include "mmio.h"
+#include "mem_areas.h"
+
+#define N_SYS_REGS (ADDR_SYS_LAST - ADDR_SYS_FIRST + 1)
+
+DECL_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST)
+
+void sys_block_init(void);
+void sys_block_cleanup(void);
+
 int sys_block_read(void *buf, size_t addr, size_t len);
 int sys_block_write(void const *buf, size_t addr, size_t len);
 

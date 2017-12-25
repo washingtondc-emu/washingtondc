@@ -131,210 +131,134 @@ void holly_clear_ext_int(HollyExtInt int_type) {
     reg_istext &= ~mask;
 }
 
-int
-holly_reg_istext_read_handler(struct sys_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len) {
-    reg32_t istext_out = reg_istext & 0xf;
-
-    memcpy(buf, &istext_out, sizeof(istext_out));
-
-    LOG_DBG("Reading %X from ISTEXT\n", (unsigned)istext_out);
-
-    return 0;
-}
-
-int
-holly_reg_istnrm_read_handler(struct sys_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len) {
+uint32_t holly_reg_istnrm_mmio_read(struct mmio_region_sys_block *region,
+                                    unsigned idx) {
     reg32_t istnrm_out = reg_istnrm & 0x3fffff;
 
     istnrm_out |= (!!reg_istext) << 30;
     istnrm_out |= (!!reg_isterr) << 31;
 
-    memcpy(buf, &istnrm_out, sizeof(istnrm_out));
-
-    return 0;
+    return istnrm_out;
 }
 
-int
-holly_reg_istnrm_write_handler(struct sys_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len) {
-    reg32_t in_val;
-
-    memcpy(&in_val, buf, sizeof(in_val));
-    reg_istnrm &= ~in_val;
-
-    return 0;
+void holly_reg_istnrm_mmio_write(struct mmio_region_sys_block *region,
+                                 unsigned idx, uint32_t val) {
+    reg_istnrm &= ~val;
 }
 
-int
-holly_reg_istext_write_handler(struct sys_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len) {
+uint32_t holly_reg_istext_mmio_read(struct mmio_region_sys_block *region,
+                                    unsigned idx) {
+    reg32_t istext_out = reg_istext & 0xf;
+
+    LOG_DBG("Reading %X from ISTEXT\n", (unsigned)istext_out);
+
+    return istext_out;
+}
+
+void holly_reg_istext_mmio_write(struct mmio_region_sys_block *region,
+                                 unsigned idx, uint32_t val) {
     /*
      * You can't write to this register from software, you have to make the
      * hardware clear it for you through other means.
      */
-    return 0;
 }
 
-int
-holly_reg_isterr_read_handler(struct sys_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_isterr, sizeof(reg_isterr));
-
-    return 0;
+uint32_t holly_reg_isterr_mmio_read(struct mmio_region_sys_block *region,
+                                    unsigned idx) {
+    return reg_isterr;
 }
 
-int
-holly_reg_isterr_write_handler(struct sys_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len) {
-    reg32_t in_val;
-
-    memcpy(&in_val, buf, sizeof(in_val));
-    reg_isterr &= ~in_val;
-
-    return 0;
+void holly_reg_isterr_mmio_write(struct mmio_region_sys_block *region,
+                                 unsigned idx, uint32_t val) {
+    reg_isterr &= ~val;
 }
 
-int
-holly_reg_iml2nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml2nrm, sizeof(reg_iml2nrm));
-
-    return 0;
+uint32_t holly_reg_iml2nrm_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx) {
+    return reg_iml2nrm;
 }
 
-int
-holly_reg_iml2nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml2nrm, buf, sizeof(reg_iml2nrm));
-    reg_iml2nrm &= 0x3fffff;
-    return 0;
+void holly_reg_iml2nrm_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val) {
+    reg_iml2nrm = val & 0x3fffff;
 }
 
-int
-holly_reg_iml2err_read_handler(struct sys_mapped_reg const *reg_info,
-                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml2err, sizeof(reg_iml2err));
-
-    return 0;
+uint32_t holly_reg_iml2err_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx) {
+    return reg_iml2err;
 }
 
-
-int
-holly_reg_iml2err_write_handler(struct sys_mapped_reg const *reg_info,
-                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml2err, buf, sizeof(reg_iml2err));
-    return 0;
+void holly_reg_iml2err_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val) {
+    reg_iml2err = val;
 }
 
-int
-holly_reg_iml2ext_read_handler(struct sys_mapped_reg const *reg_info,
-                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml2ext, sizeof(reg_iml2ext));
-
-    return 0;
+uint32_t holly_reg_iml2ext_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx) {
+    return reg_iml2ext;
 }
 
-int
-holly_reg_iml2ext_write_handler(struct sys_mapped_reg const *reg_info,
-                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml2ext, buf, sizeof(reg_iml2ext));
-    reg_iml2ext &= 0xf;
-    return 0;
+void holly_reg_iml2ext_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val) {
+    reg_iml2ext = val & 0xf;
 }
 
-int
-holly_reg_iml4nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml4nrm, sizeof(reg_iml4nrm));
-
-    return 0;
+uint32_t holly_reg_iml4nrm_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx) {
+    return reg_iml4nrm;
 }
 
-int
-holly_reg_iml4nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml4nrm, buf, sizeof(reg_iml4nrm));
-    reg_iml4nrm &= 0x3fffff;
-    return 0;
+void holly_reg_iml4nrm_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val) {
+    reg_iml4nrm = val & 0x3fffff;
 }
 
-int
-holly_reg_iml4err_read_handler(struct sys_mapped_reg const *reg_info,
-                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml4err, sizeof(reg_iml4err));
-
-    return 0;
+uint32_t holly_reg_iml4err_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx) {
+    return reg_iml4err;
 }
 
-int
-holly_reg_iml4err_write_handler(struct sys_mapped_reg const *reg_info,
-                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml4err, buf, sizeof(reg_iml4err));
-    return 0;
+void holly_reg_iml4err_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val) {
+    reg_iml4err = val;
 }
 
-
-int
-holly_reg_iml4ext_read_handler(struct sys_mapped_reg const *reg_info,
-                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml4ext, sizeof(reg_iml4ext));
-
-    return 0;
+uint32_t holly_reg_iml4ext_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx) {
+    return reg_iml4ext;
 }
 
-int
-holly_reg_iml4ext_write_handler(struct sys_mapped_reg const *reg_info,
-                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml4ext, buf, sizeof(reg_iml4ext));
-    reg_iml4ext &= 0xf;
-    return 0;
+void holly_reg_iml4ext_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val) {
+    reg_iml4ext = val & 0xf;
 }
 
-int
-holly_reg_iml6nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml6nrm, sizeof(reg_iml6nrm));
-
-    return 0;
+uint32_t holly_reg_iml6nrm_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx) {
+    return reg_iml6nrm;
 }
 
-int
-holly_reg_iml6nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml6nrm, buf, sizeof(reg_iml6nrm));
-    reg_iml6nrm &= 0x3fffff;
-    return 0;
+void holly_reg_iml6nrm_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val) {
+    reg_iml6nrm = val & 0x3fffff;
 }
 
-int
-holly_reg_iml6err_read_handler(struct sys_mapped_reg const *reg_info,
-                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml6err, sizeof(reg_iml6err));
-
-    return 0;
+uint32_t holly_reg_iml6err_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx) {
+    return reg_iml6err;
 }
 
-int
-holly_reg_iml6err_write_handler(struct sys_mapped_reg const *reg_info,
-                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml6err, buf, sizeof(reg_iml6err));
-    return 0;
+void holly_reg_iml6err_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val) {
+    reg_iml6err = val;
 }
 
-int
-holly_reg_iml6ext_read_handler(struct sys_mapped_reg const *reg_info,
-                               void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &reg_iml6ext, sizeof(reg_iml6ext));
-
-    return 0;
+uint32_t holly_reg_iml6ext_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx) {
+    return reg_iml6ext;
 }
 
-int
-holly_reg_iml6ext_write_handler(struct sys_mapped_reg const *reg_info,
-                                void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&reg_iml6ext, buf, sizeof(reg_iml6ext));
-    reg_iml6ext &= 0xf;
-    return 0;
+void holly_reg_iml6ext_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val) {
+    reg_iml6ext = val & 0xf;
 }

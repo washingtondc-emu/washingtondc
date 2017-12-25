@@ -114,6 +114,20 @@
         region->backing[idx] = val;                                     \
     }                                                                   \
                                                                         \
+    __attribute__((unused)) static uint32_t                             \
+    mmio_region_##name##_silent_read_handler(                           \
+        struct mmio_region_##name *region,                              \
+        unsigned idx) {                                                 \
+        return region->backing[idx];                                    \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused)) static void                                 \
+    mmio_region_##name##_silent_write_handler(                          \
+        struct mmio_region_##name *region,                              \
+        unsigned idx, uint32_t val) {                                   \
+        region->backing[idx] = val;                                     \
+    }                                                                   \
+                                                                        \
     __attribute__((unused))                                             \
     static void init_mmio_region_##name(struct mmio_region_##name *region) { \
         memset(region, 0, sizeof(*region));                             \

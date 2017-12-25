@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "types.h"
+#include "sys_block.h"
 
 enum HollyExtInt {
     HOLLY_EXT_INT_GDROM,
@@ -52,8 +53,6 @@ enum HollyNrmInt {
     HOLLY_NRM_INT_COUNT
 };
 typedef enum HollyNrmInt HollyNrmInt;
-
-struct sys_mapped_reg;
 
 // when the punch-through polygon list has been successfully input
 #define HOLLY_REG_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE_SHIFT 21
@@ -116,64 +115,52 @@ void holly_raise_nrm_int(HollyNrmInt int_type);
 void holly_clear_ext_int(HollyExtInt int_type);
 void holly_clear_nrm_int(HollyNrmInt int_type);
 
-int holly_reg_istnrm_read_handler(struct sys_mapped_reg const *reg_info,
-                                  void *buf, addr32_t addr, unsigned len);
-int holly_reg_istnrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                   void const *buf, addr32_t addr,
-                                   unsigned len);
-int holly_reg_istext_read_handler(struct sys_mapped_reg const *reg_info,
-                                  void *buf, addr32_t addr, unsigned len);
-int holly_reg_istext_write_handler(struct sys_mapped_reg const *reg_info,
-                                   void const *buf, addr32_t addr,
-                                   unsigned len);
-int holly_reg_isterr_read_handler(struct sys_mapped_reg const *reg_info,
-                                  void *buf, addr32_t addr, unsigned len);
-int holly_reg_isterr_write_handler(struct sys_mapped_reg const *reg_info,
-                                   void const *buf, addr32_t addr,
-                                   unsigned len);
-int holly_reg_iml2nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                                   void *buf, addr32_t addr, unsigned len);
-int holly_reg_iml2nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                    void const *buf, addr32_t addr,
-                                    unsigned len);
-int holly_reg_iml2err_read_handler(struct sys_mapped_reg const *reg_info,
-                                   void *buf, addr32_t addr, unsigned len);
-int holly_reg_iml2err_write_handler(struct sys_mapped_reg const *reg_info,
-                                    void const *buf, addr32_t addr,
-                                    unsigned len);
-int holly_reg_iml2ext_read_handler(struct sys_mapped_reg const *reg_info,
-                                   void *buf, addr32_t addr, unsigned len);
-int holly_reg_iml2ext_write_handler(struct sys_mapped_reg const *reg_info,
-                                    void const *buf, addr32_t addr,
-                                    unsigned len);
-int holly_reg_iml4nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                                   void *buf, addr32_t addr, unsigned len);
-int holly_reg_iml4nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                    void const *buf, addr32_t addr,
-                                    unsigned len);
-int holly_reg_iml4err_read_handler(struct sys_mapped_reg const *reg_info,
-                                   void *buf, addr32_t addr, unsigned len);
-int holly_reg_iml4err_write_handler(struct sys_mapped_reg const *reg_info,
-                                    void const *buf, addr32_t addr,
-                                    unsigned len);
-int holly_reg_iml4ext_read_handler(struct sys_mapped_reg const *reg_info,
-                                   void *buf, addr32_t addr, unsigned len);
-int holly_reg_iml4ext_write_handler(struct sys_mapped_reg const *reg_info,
-                                    void const *buf, addr32_t addr,
-                                    unsigned len);
-int holly_reg_iml6nrm_read_handler(struct sys_mapped_reg const *reg_info,
-                                   void *buf, addr32_t addr, unsigned len);
-int holly_reg_iml6nrm_write_handler(struct sys_mapped_reg const *reg_info,
-                                    void const *buf, addr32_t addr,
-                                    unsigned len);
-int holly_reg_iml6err_read_handler(struct sys_mapped_reg const *reg_info,
-                                   void *buf, addr32_t addr, unsigned len);
-int holly_reg_iml6err_write_handler(struct sys_mapped_reg const *reg_info,
-                                    void const *buf, addr32_t addr,
-                                    unsigned len);
-int holly_reg_iml6ext_read_handler(struct sys_mapped_reg const *reg_info,
-                                   void *buf, addr32_t addr, unsigned len);
-int holly_reg_iml6ext_write_handler(struct sys_mapped_reg const *reg_info,
-                                    void const *buf, addr32_t addr,
-                                    unsigned len);
+uint32_t holly_reg_istnrm_mmio_read(struct mmio_region_sys_block *region,
+                                    unsigned idx);
+void holly_reg_istnrm_mmio_write(struct mmio_region_sys_block *region,
+                                 unsigned idx, uint32_t val);
+uint32_t holly_reg_istext_mmio_read(struct mmio_region_sys_block *region,
+                                    unsigned idx);
+void holly_reg_istext_mmio_write(struct mmio_region_sys_block *region,
+                                 unsigned idx, uint32_t val);
+uint32_t holly_reg_isterr_mmio_read(struct mmio_region_sys_block *region,
+                                    unsigned idx);
+void holly_reg_isterr_mmio_write(struct mmio_region_sys_block *region,
+                                 unsigned idx, uint32_t val);
+uint32_t holly_reg_iml2nrm_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx);
+void holly_reg_iml2nrm_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val);
+uint32_t holly_reg_iml2err_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx);
+void holly_reg_iml2err_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val);
+uint32_t holly_reg_iml2ext_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx);
+void holly_reg_iml2ext_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val);
+uint32_t holly_reg_iml4nrm_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx);
+void holly_reg_iml4nrm_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val);
+uint32_t holly_reg_iml4err_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx);
+void holly_reg_iml4err_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val);
+uint32_t holly_reg_iml4ext_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx);
+void holly_reg_iml4ext_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val);
+uint32_t holly_reg_iml6nrm_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx);
+void holly_reg_iml6nrm_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val);
+uint32_t holly_reg_iml6err_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx);
+void holly_reg_iml6err_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val);
+uint32_t holly_reg_iml6ext_mmio_read(struct mmio_region_sys_block *region,
+                                     unsigned idx);
+void holly_reg_iml6ext_mmio_write(struct mmio_region_sys_block *region,
+                                  unsigned idx, uint32_t val);
 #endif

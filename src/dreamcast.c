@@ -51,6 +51,7 @@
 #include "log.h"
 #include "hw/sh4/sh4_read_inst.h"
 #include "hw/pvr2/pvr2.h"
+#include "hw/sys/sys_block.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -171,6 +172,7 @@ void dreamcast_init(bool cmd_session) {
     }
 
     sh4_init(&cpu);
+    sys_block_init();
     pvr2_init();
     gdrom_init();
 
@@ -214,6 +216,8 @@ void dreamcast_init(bool cmd_session) {
 
 void dreamcast_cleanup() {
     pvr2_cleanup();
+
+    sys_block_cleanup();
 
 #ifdef ENABLE_DEBUGGER
     debug_cleanup();
