@@ -33,22 +33,25 @@ void init_mmio_region(struct mmio_region *region,
     region->len = (last - first + 1) / sizeof(uint32_t);
 
     region->backing = calloc(region->len, sizeof(uint32_t));
-    region->cells = malloc(sizeof(struct mmio_cell) * region->len);
+    region->names = calloc(region->len, sizeof(char const*));
+    region->on_read = calloc(region->len, sizeof(mmio_read_handler));
+    region->on_write = calloc(region->len, sizeof(mmio_write_handler));
 
-    if (!region->backing || !region->cells)
+    if (!region->backing)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     size_t cell_no;
     for (cell_no = 0; cell_no < region->len; cell_no++) {
-        struct mmio_cell *cell = region->cells + cell_no;
-        cell->name = "UNKNOWN REGISTER";
-        cell->on_read = mmio_read_error;
-        cell->on_write = mmio_write_error;
+        region->names[cell_no] = "UNKNOWN_REGISTER";
+        region->on_read[cell_no] = mmio_read_error;
+        region->on_write[cell_no] = mmio_write_error;
     }
 }
 
 void cleanup_mmio_region(struct mmio_region *region) {
-    free(region->cells);
+    free(region->on_write);
+    free(region->on_read);
+    free(region->names);
     free(region->backing);
     memset(region, 0, sizeof(*region));
 }
@@ -56,23 +59,21 @@ void cleanup_mmio_region(struct mmio_region *region) {
 void init_mmio_cell(struct mmio_region *region, char const *name,
                     addr32_t addr, mmio_read_handler on_read,
                     mmio_write_handler on_write) {
-    struct mmio_cell *cell = region->cells + (addr - region->beg) / 4;
-    cell->name = name;
-    cell->on_read = on_read;
-    cell->on_write = on_write;
+    unsigned idx = (addr - region->beg) / 4;
+    region->names[idx] = name;
+    region->on_read[idx] = on_read;
+    region->on_write[idx] = on_write;
 }
 
 uint32_t mmio_warn_read_handler(struct mmio_region *region, unsigned idx) {
-    __attribute__((unused)) struct mmio_cell *cell = region->cells + idx;
     uint32_t ret = region->backing[idx];
-    LOG_DBG("Read from \"%s\": 0x%08x\n", cell->name, (unsigned)ret);
+    LOG_DBG("Read from \"%s\": 0x%08x\n", region->names[idx], (unsigned)ret);
     return ret;
 }
 
 void mmio_warn_write_handler(struct mmio_region *region,
                              unsigned idx, uint32_t val) {
-    __attribute__((unused)) struct mmio_cell *cell = region->cells + idx;
-    LOG_DBG("Write to \"%s\": 0x%08x\n", cell->name, (unsigned)val);
+    LOG_DBG("Write to \"%s\": 0x%08x\n", region->names[idx], (unsigned)val);
     region->backing[idx] = val;
 }
 

@@ -28,7 +28,9 @@
 
 #include "types.h"
 
-struct mmio_cell;
+struct mmio_region;
+typedef uint32_t(*mmio_read_handler)(struct mmio_region*,unsigned);
+typedef void(*mmio_write_handler)(struct mmio_region*,unsigned,uint32_t);
 
 struct mmio_region {
     // first and last addresses, in terms of bytes
@@ -43,15 +45,10 @@ struct mmio_region {
      */
     uint32_t * backing;
 
-    /*
-     * this array has a length of (end - beg + 1) so that lookups can be done
-     * in real-time.
-     */
-    struct mmio_cell * cells;
+    char const ** names;
+    mmio_read_handler *on_read;
+    mmio_write_handler *on_write;
 };
-
-typedef uint32_t(*mmio_read_handler)(struct mmio_region*,unsigned);
-typedef void(*mmio_write_handler)(struct mmio_region*,unsigned,uint32_t);
 
 // read/write handlers that raise an ERROR_UNIMPLEMENTED
 uint32_t mmio_read_error(struct mmio_region *region, unsigned idx);
@@ -62,25 +59,16 @@ void mmio_readonly_write_error(struct mmio_region *region,
 uint32_t mmio_writeonly_read_handler(struct mmio_region *region,
                                      unsigned idx);
 
-struct mmio_cell {
-    char const *name;
-
-    mmio_read_handler on_read;
-    mmio_write_handler on_write;
-};
-
 static inline uint32_t
 mmio_read_32(struct mmio_region *region, addr32_t addr) {
     unsigned idx = (addr - region->beg) / sizeof(uint32_t);
-    struct mmio_cell *cell = region->cells + idx;
-    return cell->on_read(region, idx);
+    return region->on_read[idx](region, idx);
 }
 
 static inline void
 mmio_write_32(struct mmio_region *region, addr32_t addr, uint32_t val) {
     unsigned idx = (addr - region->beg) / sizeof(uint32_t);
-    struct mmio_cell *cell = region->cells + idx;
-    cell->on_write(region, idx, val);
+    region->on_write[idx](region, idx, val);
 }
 
 // idx here is in terms of uint32_t, not uint8_t
