@@ -35,43 +35,60 @@
 
 #define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
 
-static struct mmio_region pvr2_reg_mmio;
+DECL_MMIO_REGION(pvr2_reg, N_PVR2_REGS, ADDR_PVR2_FIRST)
+DEF_MMIO_REGION(pvr2_reg, N_PVR2_REGS, ADDR_PVR2_FIRST)
 
 void pvr2_reg_init(void) {
-    init_mmio_region(&pvr2_reg_mmio, ADDR_PVR2_FIRST, ADDR_PVR2_LAST);
+    init_mmio_region_pvr2_reg(&mmio_region_pvr2_reg);
 
-    init_mmio_cell(&pvr2_reg_mmio, "SB_PDSTAP", 0x5f7c00,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_reg_mmio, "SB_PDSTAR", 0x5f7c04,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_reg_mmio, "SB_PDLEN", 0x5f7c08,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_reg_mmio, "SB_PDDIR", 0x5f7c0c,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_reg_mmio, "SB_PDTSEL", 0x5f7c10,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_reg_mmio, "SB_PDEN", 0x5f7c14,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_reg_mmio, "SB_PDST", 0x5f7c18,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_reg_mmio, "SB_PDAPRO", 0x5f7c80,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
+    mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
+                                   "SB_PDSTAP", 0x5f7c00,
+                                   mmio_region_pvr2_reg_warn_read_handler,
+                                   mmio_region_pvr2_reg_warn_write_handler);
+    mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
+                                   "SB_PDSTAR", 0x5f7c04,
+                                   mmio_region_pvr2_reg_warn_read_handler,
+                                   mmio_region_pvr2_reg_warn_write_handler);
+    mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
+                                   "SB_PDLEN", 0x5f7c08,
+                                   mmio_region_pvr2_reg_warn_read_handler,
+                                   mmio_region_pvr2_reg_warn_write_handler);
+    mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
+                                   "SB_PDDIR", 0x5f7c0c,
+                                   mmio_region_pvr2_reg_warn_read_handler,
+                                   mmio_region_pvr2_reg_warn_write_handler);
+    mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
+                                   "SB_PDTSEL", 0x5f7c10,
+                                   mmio_region_pvr2_reg_warn_read_handler,
+                                   mmio_region_pvr2_reg_warn_write_handler);
+    mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
+                                   "SB_PDEN", 0x5f7c14,
+                                   mmio_region_pvr2_reg_warn_read_handler,
+                                   mmio_region_pvr2_reg_warn_write_handler);
+    mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
+                                   "SB_PDST", 0x5f7c18,
+                                   mmio_region_pvr2_reg_warn_read_handler,
+                                   mmio_region_pvr2_reg_warn_write_handler);
+    mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
+                                   "SB_PDAPRO", 0x5f7c80,
+                                   mmio_region_pvr2_reg_warn_read_handler,
+                                   mmio_region_pvr2_reg_warn_write_handler);
 }
 
 void pvr2_reg_cleanup(void) {
-    cleanup_mmio_region(&pvr2_reg_mmio);
+    cleanup_mmio_region_pvr2_reg(&mmio_region_pvr2_reg);
 }
 
 int pvr2_reg_read(void *buf, size_t addr, size_t len) {
     if (len != 4)
         return MEM_ACCESS_FAILURE;
-    *(uint32_t*)buf = mmio_read_32(&pvr2_reg_mmio, addr);
+    *(uint32_t*)buf = mmio_region_pvr2_reg_read_32(&mmio_region_pvr2_reg, addr);
     return MEM_ACCESS_SUCCESS;
 }
 
 int pvr2_reg_write(void const *buf, size_t addr, size_t len) {
     if (len != 4)
         return MEM_ACCESS_FAILURE;
-    mmio_write_32(&pvr2_reg_mmio, addr, *(uint32_t*)buf);
+    mmio_region_pvr2_reg_write_32(&mmio_region_pvr2_reg, addr, *(uint32_t*)buf);
     return MEM_ACCESS_SUCCESS;
 }

@@ -48,286 +48,283 @@ static uint32_t ta_vertbuf_pos, ta_vertbuf_start;
 
 static uint32_t ta_next_opb_init;
 
-#define N_PVR2_CORE_REGS (ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1)
-
-static struct mmio_region pvr2_core_reg_mmio;
+DEF_MMIO_REGION(pvr2_core_reg, N_PVR2_CORE_REGS, ADDR_PVR2_CORE_FIRST)
 
 uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
 
-static uint32_t id_mmio_read(struct mmio_region *region, unsigned idx);
+static uint32_t id_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
 
-static uint32_t revision_mmio_read(struct mmio_region *region, unsigned idx);
+static uint32_t revision_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
 
-static void ta_startrender_mmio_write(struct mmio_region *region,
+static void ta_startrender_mmio_write(struct mmio_region_pvr2_core_reg *region,
                                       unsigned idx, uint32_t val);
 
-static uint32_t fb_r_ctrl_mmio_read(struct mmio_region *region, unsigned idx);
-static void fb_r_ctrl_mmio_write(struct mmio_region *region,
+static uint32_t fb_r_ctrl_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void fb_r_ctrl_mmio_write(struct mmio_region_pvr2_core_reg *region,
                                  unsigned idx, uint32_t val);
 
-static uint32_t fb_w_ctrl_mmio_read(struct mmio_region *region, unsigned idx);
-static void fb_w_ctrl_mmio_write(struct mmio_region *region, unsigned idx,
+static uint32_t fb_w_ctrl_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void fb_w_ctrl_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val);
 
-static uint32_t fb_w_linestride_mmio_read(struct mmio_region *region,
+static uint32_t fb_w_linestride_mmio_read(struct mmio_region_pvr2_core_reg *region,
                                           unsigned idx);
-static void fb_w_linestride_mmio_write(struct mmio_region *region, unsigned idx,
+static void fb_w_linestride_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                        uint32_t val);
 
-static uint32_t fb_r_sof1_mmio_read(struct mmio_region *region, unsigned idx);
-static void fb_r_sof1_mmio_write(struct mmio_region *region, unsigned idx,
+static uint32_t fb_r_sof1_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void fb_r_sof1_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val);
 
-static uint32_t fb_r_sof2_mmio_read(struct mmio_region *region, unsigned idx);
-static void fb_r_sof2_mmio_write(struct mmio_region *region, unsigned idx,
+static uint32_t fb_r_sof2_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void fb_r_sof2_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val);
 
-static uint32_t fb_r_size_mmio_read(struct mmio_region *region, unsigned idx);
-static void fb_r_size_mmio_write(struct mmio_region *region, unsigned idx,
+static uint32_t fb_r_size_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void fb_r_size_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val);
 
-static uint32_t fb_w_sof1_mmio_read(struct mmio_region *region, unsigned idx);
-static void fb_w_sof1_mmio_write(struct mmio_region *region, unsigned idx,
+static uint32_t fb_w_sof1_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void fb_w_sof1_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val);
 
-static uint32_t fb_w_sof2_mmio_read(struct mmio_region *region, unsigned idx);
-static void fb_w_sof2_mmio_write(struct mmio_region *region, unsigned idx,
+static uint32_t fb_w_sof2_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void fb_w_sof2_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val);
 
-static uint32_t fb_x_clip_mmio_read(struct mmio_region *region, unsigned idx);
-static void fb_x_clip_mmio_write(struct mmio_region *region, unsigned idx,
+static uint32_t fb_x_clip_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void fb_x_clip_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val);
 
-static uint32_t fb_y_clip_mmio_read(struct mmio_region *region, unsigned idx);
-static void fb_y_clip_mmio_write(struct mmio_region *region, unsigned idx,
+static uint32_t fb_y_clip_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void fb_y_clip_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val);
 
 static uint32_t
-isp_backgnd_d_mmio_read(struct mmio_region *region, unsigned idx);
-static void isp_backgnd_d_mmio_write(struct mmio_region *region, unsigned idx,
+isp_backgnd_d_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void isp_backgnd_d_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                      uint32_t val);
 
 static uint32_t
-isp_backgnd_t_mmio_read(struct mmio_region *region, unsigned idx);
-static void isp_backgnd_t_mmio_write(struct mmio_region *region, unsigned idx,
+isp_backgnd_t_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void isp_backgnd_t_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                      uint32_t val);
 
 static void
-vo_control_mmio_write(struct mmio_region *region, unsigned idx, uint32_t val);
+vo_control_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx, uint32_t val);
 
 static uint32_t
-ta_palette_tp_mmio_read(struct mmio_region *region, unsigned idx);
+ta_palette_tp_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
 static void
-ta_palette_tp_mmio_write(struct mmio_region *region, unsigned idx,
+ta_palette_tp_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                          uint32_t val);
 
 static uint32_t
-ta_vertbuf_start_mmio_read(struct mmio_region *region, unsigned idx);
+ta_vertbuf_start_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
 static void
-ta_vertbuf_start_mmio_write(struct mmio_region *region, unsigned idx,
+ta_vertbuf_start_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                             uint32_t val);
 
 static uint32_t
-ta_next_opb_mmio_read(struct mmio_region *region, unsigned idx);
+ta_next_opb_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
 
 static uint32_t
-ta_vertbuf_pos_mmio_read(struct mmio_region *region, unsigned idx);
+ta_vertbuf_pos_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
 
 static uint32_t
-ta_glob_tile_clip_mmio_read(struct mmio_region *region, unsigned idx);
+ta_glob_tile_clip_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
 static void
-ta_glob_tile_clip_mmio_write(struct mmio_region *region, unsigned idx,
+ta_glob_tile_clip_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                              uint32_t val);
 
-static uint32_t ta_reset_mmio_read(struct mmio_region *region, unsigned idx);
-static void ta_reset_mmio_write(struct mmio_region *region, unsigned idx,
+static uint32_t ta_reset_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+static void ta_reset_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                 uint32_t val);
 
 static uint32_t
-ta_next_opb_init_mmio_read(struct mmio_region *region, unsigned idx);
+ta_next_opb_init_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
 static void
-ta_next_opb_init_mmio_write(struct mmio_region *region, unsigned idx,
+ta_next_opb_init_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                             uint32_t val);
 
 static uint32_t
-pal_ram_mmio_read(struct mmio_region *region, unsigned idx);
+pal_ram_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
 static void
-pal_ram_mmio_write(struct mmio_region *region, unsigned idx, uint32_t val);
+pal_ram_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx, uint32_t val);
 
 void pvr2_core_reg_init(void) {
-    init_mmio_region(&pvr2_core_reg_mmio,
-                     ADDR_PVR2_CORE_FIRST, ADDR_PVR2_CORE_LAST);
+    init_mmio_region_pvr2_core_reg(&mmio_region_pvr2_core_reg);
 
-    init_mmio_cell(&pvr2_core_reg_mmio, "ID", 0x5f8000,
-                   id_mmio_read, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "REVISION", 0x5f8004,
-                   revision_mmio_read, mmio_readonly_write_error);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SOFTRESET", 0x5f8008,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "STARTRENDER", 0x5f8014,
-                   mmio_writeonly_read_handler, ta_startrender_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "PARAM_BASE", 0x5f8020,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "REGION_BASE", 0x5f802c,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SPAN_SORT_CFG", 0x5f8030,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "VO_BORDER_COL", 0x5f8040,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_R_CTRL", 0x5f8044,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "ID", 0x5f8000,
+                   id_mmio_read, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "REVISION", 0x5f8004,
+                   revision_mmio_read, mmio_region_pvr2_core_reg_readonly_write_error);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SOFTRESET", 0x5f8008,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "STARTRENDER", 0x5f8014,
+                   mmio_region_pvr2_core_reg_writeonly_read_error, ta_startrender_mmio_write);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "PARAM_BASE", 0x5f8020,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "REGION_BASE", 0x5f802c,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPAN_SORT_CFG", 0x5f8030,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "VO_BORDER_COL", 0x5f8040,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_R_CTRL", 0x5f8044,
                    fb_r_ctrl_mmio_read, fb_r_ctrl_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_W_CTRL", 0x5f8048,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_W_CTRL", 0x5f8048,
                    fb_w_ctrl_mmio_read, fb_w_ctrl_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_W_LINESTRIDE", 0x5f804c,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_W_LINESTRIDE", 0x5f804c,
                    fb_w_linestride_mmio_read, fb_w_linestride_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_R_SOF1", 0x5f8050,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_R_SOF1", 0x5f8050,
                    fb_r_sof1_mmio_read, fb_r_sof1_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_R_SOF2", 0x5f8054,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_R_SOF2", 0x5f8054,
                    fb_r_sof2_mmio_read, fb_r_sof2_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_R_SIZE", 0x5f805c,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_R_SIZE", 0x5f805c,
                    fb_r_size_mmio_read, fb_r_size_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_W_SOF1", 0x5f8060,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_W_SOF1", 0x5f8060,
                    fb_w_sof1_mmio_read, fb_w_sof1_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_W_SOF2", 0x5f8064,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_W_SOF2", 0x5f8064,
                    fb_w_sof2_mmio_read, fb_w_sof2_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_X_CLIP", 0x5f8068,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_X_CLIP", 0x5f8068,
                    fb_x_clip_mmio_read, fb_x_clip_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_Y_CLIP", 0x5f806c,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_Y_CLIP", 0x5f806c,
                    fb_y_clip_mmio_read, fb_y_clip_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FPU_SHAD_SCALE", 0x5f8074,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FPU_CULL_VAL", 0x5f8078,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FPU_PARAM_CFG", 0x5f807c,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "HALF_OFFSET", 0x5f8080,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FPU_PERP_VAL", 0x5f8084,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "ISP_BACKGND_D", 0x5f8088,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FPU_SHAD_SCALE", 0x5f8074,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FPU_CULL_VAL", 0x5f8078,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FPU_PARAM_CFG", 0x5f807c,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "HALF_OFFSET", 0x5f8080,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FPU_PERP_VAL", 0x5f8084,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "ISP_BACKGND_D", 0x5f8088,
                    isp_backgnd_d_mmio_read, isp_backgnd_d_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "ISP_BACKGND_T", 0x5f808c,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "ISP_BACKGND_T", 0x5f808c,
                    isp_backgnd_t_mmio_read, isp_backgnd_t_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "ISP_FEED_CFG", 0x5f8098,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FOG_CLAMP_MAX", 0x5f80bc,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FOG_CLAMP_MIN", 0x5f80c0,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TEXT_CONTROL", 0x5f80e4,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SCALER_CTL", 0x5f80f4,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FB_BURSTXTRL", 0x5f8110,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "Y_COEFF", 0x5f8118,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SDRAM_REFRESH", 0x5f80a0,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SDRAM_CFG", 0x5f80a8,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FOG_COL_RAM", 0x5f80b0,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FOG_COL_VERT", 0x5f80b4,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "FOG_DENSITY", 0x5f80b8,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SPG_HBLANK_INT", 0x5f80c8,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "ISP_FEED_CFG", 0x5f8098,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FOG_CLAMP_MAX", 0x5f80bc,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FOG_CLAMP_MIN", 0x5f80c0,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TEXT_CONTROL", 0x5f80e4,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SCALER_CTL", 0x5f80f4,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FB_BURSTXTRL", 0x5f8110,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "Y_COEFF", 0x5f8118,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SDRAM_REFRESH", 0x5f80a0,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SDRAM_CFG", 0x5f80a8,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FOG_COL_RAM", 0x5f80b0,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FOG_COL_VERT", 0x5f80b4,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FOG_DENSITY", 0x5f80b8,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPG_HBLANK_INT", 0x5f80c8,
                    spg_hblank_int_mmio_read, spg_hblank_int_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SPG_VBLANK_INT", 0x5f80cc,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPG_VBLANK_INT", 0x5f80cc,
                    spg_vblank_int_mmio_read, spg_vblank_int_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SPG_CONTROL", 0x5f80d0,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPG_CONTROL", 0x5f80d0,
                    spg_control_mmio_read, spg_control_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SPG_HBLANK", 0x5f80d4,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPG_HBLANK", 0x5f80d4,
                    spg_hblank_mmio_read, spg_hblank_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SPG_LOAD", 0x5f80d8,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPG_LOAD", 0x5f80d8,
                    spg_load_mmio_read, spg_load_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SPG_VBLANK", 0x5f80dc,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPG_VBLANK", 0x5f80dc,
                    spg_vblank_mmio_read, spg_vblank_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SPG_WIDTH", 0x5f80e0,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "VO_CONTROL", 0x5f80e8,
-                   mmio_warn_read_handler, vo_control_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "VO_STARTX", 0x5f80ec,
-                   mmio_warn_read_handler, vo_control_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "VO_STARTY", 0x5f80f0,
-                   mmio_warn_read_handler, vo_control_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "PALETTE_TP", 0x5f8108,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPG_WIDTH", 0x5f80e0,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "VO_CONTROL", 0x5f80e8,
+                   mmio_region_pvr2_core_reg_warn_read_handler, vo_control_mmio_write);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "VO_STARTX", 0x5f80ec,
+                   mmio_region_pvr2_core_reg_warn_read_handler, vo_control_mmio_write);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "VO_STARTY", 0x5f80f0,
+                   mmio_region_pvr2_core_reg_warn_read_handler, vo_control_mmio_write);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "PALETTE_TP", 0x5f8108,
                    ta_palette_tp_mmio_read, ta_palette_tp_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "SPG_STATUS", 0x5f810c,
-                   spg_status_mmio_read, mmio_readonly_write_error);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_OL_BASE", 0x5f8124,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "PT_ALPHA_CMP", 0x5f8124,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_VERTBUF_START", 0x5f8128,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPG_STATUS", 0x5f810c,
+                   spg_status_mmio_read, mmio_region_pvr2_core_reg_readonly_write_error);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_OL_BASE", 0x5f8124,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "PT_ALPHA_CMP", 0x5f8124,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_VERTBUF_START", 0x5f8128,
                    ta_vertbuf_start_mmio_read, ta_vertbuf_start_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_ISP_LIMIT", 0x5f8130,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_NEXT_OPB", 0x5f8134,
-                   ta_next_opb_mmio_read, mmio_readonly_write_error);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_VERTBUF_POS", 0x5f8138,
-                   ta_vertbuf_pos_mmio_read, mmio_readonly_write_error);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_OL_LIMIT", 0x5f812c,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_GLOB_TILE_CLIP", 0x5f813c,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_ISP_LIMIT", 0x5f8130,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_NEXT_OPB", 0x5f8134,
+                   ta_next_opb_mmio_read, mmio_region_pvr2_core_reg_readonly_write_error);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_VERTBUF_POS", 0x5f8138,
+                   ta_vertbuf_pos_mmio_read, mmio_region_pvr2_core_reg_readonly_write_error);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_OL_LIMIT", 0x5f812c,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_GLOB_TILE_CLIP", 0x5f813c,
                    ta_glob_tile_clip_mmio_read, ta_glob_tile_clip_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_ALLOC_CTRL", 0x5f8140,
-                   mmio_warn_read_handler, mmio_warn_write_handler);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_RESET", 0x5f8144,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_ALLOC_CTRL", 0x5f8140,
+                   mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_RESET", 0x5f8144,
                    ta_reset_mmio_read, ta_reset_mmio_write);
-    init_mmio_cell(&pvr2_core_reg_mmio, "TA_NEXT_OPB_INIT", 0x5f8164,
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_NEXT_OPB_INIT", 0x5f8164,
                    ta_next_opb_init_mmio_read, ta_next_opb_init_mmio_write);
 
     // The PVR2 fog table - 128 single-precision floats
     unsigned idx;
     for (idx = 0; idx < 128; idx++)
-        init_mmio_cell(&pvr2_core_reg_mmio, "FOG_TBL", 0x5f8200 + 4 * idx,
-                       mmio_warn_read_handler, mmio_warn_write_handler);
+        mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "FOG_TBL", 0x5f8200 + 4 * idx,
+                       mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
 
     // palette ram
     for (idx = 0; idx < 1024; idx++)
-        init_mmio_cell(&pvr2_core_reg_mmio, "PALETTE_RAM", 0x5f9000 + 4 * idx,
+        mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "PALETTE_RAM", 0x5f9000 + 4 * idx,
                        pal_ram_mmio_read, pal_ram_mmio_write);
 }
 
 int pvr2_core_reg_read(void *buf, size_t addr, size_t len) {
     if (len != 4)
         return MEM_ACCESS_FAILURE;
-    *(uint32_t*)buf = mmio_read_32(&pvr2_core_reg_mmio, addr);
+    *(uint32_t*)buf = mmio_region_pvr2_core_reg_read_32(&mmio_region_pvr2_core_reg, addr);
     return MEM_ACCESS_SUCCESS;
 }
 
 int pvr2_core_reg_write(void const *buf, size_t addr, size_t len) {
     if (len != 4)
         return MEM_ACCESS_FAILURE;
-    mmio_write_32(&pvr2_core_reg_mmio, addr, *(uint32_t*)buf);
+    mmio_region_pvr2_core_reg_write_32(&mmio_region_pvr2_core_reg, addr, *(uint32_t*)buf);
     return MEM_ACCESS_SUCCESS;
 }
 
 void pvr2_core_reg_cleanup(void) {
-    cleanup_mmio_region(&pvr2_core_reg_mmio);
+    cleanup_mmio_region_pvr2_core_reg(&mmio_region_pvr2_core_reg);
 }
 
-static uint32_t id_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t id_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     /* hardcoded hardware ID */
     return 0x17fd11db;
 }
 
-static uint32_t revision_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t revision_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return 17;
 }
 
-static void ta_startrender_mmio_write(struct mmio_region *region,
+static void ta_startrender_mmio_write(struct mmio_region_pvr2_core_reg *region,
                                       unsigned idx, uint32_t val) {
     pvr2_ta_startrender();
 }
 
-static uint32_t fb_r_ctrl_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t fb_r_ctrl_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return fb_r_ctrl;
 }
 
-static void fb_r_ctrl_mmio_write(struct mmio_region *region,
+static void fb_r_ctrl_mmio_write(struct mmio_region_pvr2_core_reg *region,
                                  unsigned idx, uint32_t val) {
     if (val & PVR2_VCLK_DIV_MASK)
         spg_set_pclk_div(1);
@@ -338,128 +335,128 @@ static void fb_r_ctrl_mmio_write(struct mmio_region *region,
     fb_r_ctrl = val;
 }
 
-static uint32_t fb_w_ctrl_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t fb_w_ctrl_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return fb_w_ctrl;
 }
 
-static void fb_w_ctrl_mmio_write(struct mmio_region *region, unsigned idx,
+static void fb_w_ctrl_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
     framebuffer_sync_from_host_maybe();
     fb_w_ctrl = val;
 }
 
-static uint32_t fb_w_linestride_mmio_read(struct mmio_region *region,
+static uint32_t fb_w_linestride_mmio_read(struct mmio_region_pvr2_core_reg *region,
                                           unsigned idx) {
     return fb_w_linestride;
 }
 
-static void fb_w_linestride_mmio_write(struct mmio_region *region,
+static void fb_w_linestride_mmio_write(struct mmio_region_pvr2_core_reg *region,
                                        unsigned idx, uint32_t val) {
     framebuffer_sync_from_host_maybe();
     fb_w_linestride = val;
 }
 
-static uint32_t fb_r_sof1_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t fb_r_sof1_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return fb_r_sof1;
 }
 
-static void fb_r_sof1_mmio_write(struct mmio_region *region, unsigned idx,
+static void fb_r_sof1_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
     fb_r_sof1 = val;
 }
 
-static uint32_t fb_r_sof2_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t fb_r_sof2_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return fb_r_sof2;
 }
 
-static void fb_r_sof2_mmio_write(struct mmio_region *region, unsigned idx,
+static void fb_r_sof2_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
     fb_r_sof2 = val;
 }
 
-static uint32_t fb_r_size_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t fb_r_size_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return fb_r_size;
 }
 
-static void fb_r_size_mmio_write(struct mmio_region *region, unsigned idx,
+static void fb_r_size_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
     fb_r_size = val;
 }
 
-static uint32_t fb_w_sof1_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t fb_w_sof1_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return fb_w_sof1;
 }
 
-static void fb_w_sof1_mmio_write(struct mmio_region *region, unsigned idx,
+static void fb_w_sof1_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
     framebuffer_sync_from_host_maybe();
     fb_w_sof1 = val;
 }
 
-static uint32_t fb_w_sof2_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t fb_w_sof2_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return fb_w_sof2;
 }
 
-static void fb_w_sof2_mmio_write(struct mmio_region *region, unsigned idx,
+static void fb_w_sof2_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
     framebuffer_sync_from_host_maybe();
     fb_w_sof2 = val;
 }
 
-static uint32_t fb_x_clip_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t fb_x_clip_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return fb_x_clip;
 }
 
-static void fb_x_clip_mmio_write(struct mmio_region *region, unsigned idx,
+static void fb_x_clip_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
     fb_x_clip = val;
     LOG_DBG("writing 0x%08x to FB_X_CLIP\n", (unsigned)fb_x_clip);
 }
 
-static uint32_t fb_y_clip_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t fb_y_clip_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return fb_y_clip;
 }
 
-static void fb_y_clip_mmio_write(struct mmio_region *region, unsigned idx,
+static void fb_y_clip_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
     fb_y_clip = val;
     LOG_DBG("writing 0x%08x to FB_Y_CLIP\n", (unsigned)fb_y_clip);
 }
 
 static uint32_t
-isp_backgnd_d_mmio_read(struct mmio_region *region, unsigned idx) {
+isp_backgnd_d_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return isp_backgnd_d;
 }
 
-static void isp_backgnd_d_mmio_write(struct mmio_region *region, unsigned idx,
+static void isp_backgnd_d_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                      uint32_t val) {
     isp_backgnd_d = val;
 }
 
 static uint32_t
-isp_backgnd_t_mmio_read(struct mmio_region *region, unsigned idx) {
+isp_backgnd_t_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return isp_backgnd_t;
 }
 
 static void
-isp_backgnd_t_mmio_write(struct mmio_region *region, unsigned idx,
+isp_backgnd_t_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                          uint32_t val) {
     isp_backgnd_t = val;
 }
 
 static void
-vo_control_mmio_write(struct mmio_region *region, unsigned idx, uint32_t val) {
+vo_control_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx, uint32_t val) {
     spg_set_pix_double_x((bool)(val & PVR2_PIXEL_DOUBLE_MASK));
-    mmio_warn_write_handler(region, idx, val);
+    mmio_region_pvr2_core_reg_warn_write_handler(region, idx, val);
 }
 
 static uint32_t
-ta_palette_tp_mmio_read(struct mmio_region *region, unsigned idx) {
+ta_palette_tp_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return palette_tp;
 }
 
 static void
-ta_palette_tp_mmio_write(struct mmio_region *region, unsigned idx,
+ta_palette_tp_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                          uint32_t val) {
     palette_tp = val;
 
@@ -486,18 +483,18 @@ ta_palette_tp_mmio_write(struct mmio_region *region, unsigned idx,
 }
 
 static uint32_t
-ta_vertbuf_start_mmio_read(struct mmio_region *region, unsigned idx) {
+ta_vertbuf_start_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return ta_vertbuf_start;
 }
 
 static void
-ta_vertbuf_start_mmio_write(struct mmio_region *region, unsigned idx,
+ta_vertbuf_start_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                             uint32_t val) {
     ta_vertbuf_start = val & ~0x3;
 }
 
 static uint32_t
-ta_next_opb_mmio_read(struct mmio_region *region, unsigned idx) {
+ta_next_opb_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     // TODO: actually track the positions of where the OPB blocks should go
 
     LOG_WARN("You should *really* come up with a real implementation of "
@@ -512,28 +509,28 @@ ta_next_opb_mmio_read(struct mmio_region *region, unsigned idx) {
  * ta_vertbuf_start whenever ta_reset gets written to
  */
 static uint32_t
-ta_vertbuf_pos_mmio_read(struct mmio_region *region, unsigned idx) {
+ta_vertbuf_pos_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return ta_vertbuf_pos;
 }
 
 static uint32_t
-ta_glob_tile_clip_mmio_read(struct mmio_region *region, unsigned idx) {
+ta_glob_tile_clip_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return glob_tile_clip;
 }
 
 static void
-ta_glob_tile_clip_mmio_write(struct mmio_region *region, unsigned idx,
+ta_glob_tile_clip_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                              uint32_t val) {
     glob_tile_clip = val;
     LOG_DBG("writing 0x%08x to TA_GLOB_TILE_CLIP\n", (unsigned)glob_tile_clip);
 }
 
-static uint32_t ta_reset_mmio_read(struct mmio_region *region, unsigned idx) {
+static uint32_t ta_reset_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     LOG_DBG("reading 0 from TA_RESET\n");
     return 0;
 }
 
-static void ta_reset_mmio_write(struct mmio_region *region, unsigned idx,
+static void ta_reset_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                 uint32_t val) {
     if (val & 0x80000000) {
         LOG_DBG("TA_RESET!\n");
@@ -548,14 +545,14 @@ static void ta_reset_mmio_write(struct mmio_region *region, unsigned idx,
 }
 
 static uint32_t
-ta_next_opb_init_mmio_read(struct mmio_region *region, unsigned idx) {
+ta_next_opb_init_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     LOG_DBG("reading 0x%08x from TA_NEXT_OPB_INIT\n",
             (unsigned)ta_next_opb_init);
     return ta_next_opb_init;
 }
 
 static void
-ta_next_opb_init_mmio_write(struct mmio_region *region, unsigned idx,
+ta_next_opb_init_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                             uint32_t val) {
     ta_next_opb_init = val;
     LOG_DBG("writing 0x%08x to TA_NEXT_OPB_INIT\n",
@@ -563,7 +560,7 @@ ta_next_opb_init_mmio_write(struct mmio_region *region, unsigned idx,
 }
 
 static uint32_t
-pal_ram_mmio_read(struct mmio_region *region, unsigned idx) {
+pal_ram_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     addr32_t byte_addr = idx * 4 + ADDR_PVR2_CORE_FIRST;
     if (byte_addr >= PVR2_PALETTE_RAM_FIRST && byte_addr + 4 <= PVR2_PALETTE_RAM_LAST) {
         return pvr2_palette_ram[idx - ((PVR2_PALETTE_RAM_FIRST - ADDR_PVR2_CORE_FIRST) / 4)];
@@ -575,7 +572,7 @@ pal_ram_mmio_read(struct mmio_region *region, unsigned idx) {
 }
 
 static void
-pal_ram_mmio_write(struct mmio_region *region, unsigned idx, uint32_t val) {
+pal_ram_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx, uint32_t val) {
     addr32_t byte_addr = idx * 4 + ADDR_PVR2_CORE_FIRST;
     if (byte_addr >= PVR2_PALETTE_RAM_FIRST && byte_addr + 4 <= PVR2_PALETTE_RAM_LAST) {
         pvr2_palette_ram[idx - ((PVR2_PALETTE_RAM_FIRST - ADDR_PVR2_CORE_FIRST) / 4)] = val;

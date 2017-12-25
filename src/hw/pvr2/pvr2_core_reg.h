@@ -25,6 +25,9 @@
 
 #include <stdint.h>
 
+#include "mem_areas.h"
+#include "mmio.h"
+
 // vlck divider bit for the FB_R_CTRL register
 #define PVR2_VCLK_DIV_SHIFT 23
 #define PVR2_VCLK_DIV_MASK (1 << PVR2_VCLK_DIV_SHIFT)
@@ -88,5 +91,8 @@ enum palette_tp get_palette_tp(void);
 
 void pvr2_core_reg_init(void);
 void pvr2_core_reg_cleanup(void);
+
+#define N_PVR2_CORE_REGS (ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1)
+DECL_MMIO_REGION(pvr2_core_reg, N_PVR2_CORE_REGS, ADDR_PVR2_CORE_FIRST)
 
 #endif

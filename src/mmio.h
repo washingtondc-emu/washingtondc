@@ -28,60 +28,119 @@
 
 #include "types.h"
 
-struct mmio_region;
-typedef uint32_t(*mmio_read_handler)(struct mmio_region*,unsigned);
-typedef void(*mmio_write_handler)(struct mmio_region*,unsigned,uint32_t);
+#define DECL_MMIO_REGION(name, len_bytes, beg_bytes)    \
+    struct mmio_region_##name;                                          \
+    typedef uint32_t(*mmio_region_##name##_read_handler)                \
+        (struct mmio_region_##name*,unsigned);                          \
+    typedef void(*mmio_region_##name##_write_handler)                   \
+    (struct mmio_region_##name*,unsigned,uint32_t);                     \
+                                                                        \
+    struct mmio_region_##name {                                         \
+        mmio_region_##name##_read_handler on_read[(len_bytes) / 4];     \
+        mmio_region_##name##_write_handler on_write[(len_bytes) / 4];   \
+        uint32_t backing[(len_bytes) / 4];                              \
+        char const *names[(len_bytes) / 4];                             \
+    } mmio_region_##name;                                               \
 
-struct mmio_region {
-    // first and last addresses, in terms of bytes
-    addr32_t beg;
-    size_t len; // length (in terms of 32-bit integers, not bytes)
-
-    /*
-     * this points to memory used by the default read/write handlers.
-     * custom handlers can use this too, but they don't need to.
-     *
-     * The length of this array is (end - beg + 1) / sizeof(uint32_t)
-     */
-    uint32_t * backing;
-
-    char const ** names;
-    mmio_read_handler *on_read;
-    mmio_write_handler *on_write;
-};
-
-// read/write handlers that raise an ERROR_UNIMPLEMENTED
-uint32_t mmio_read_error(struct mmio_region *region, unsigned idx);
-void mmio_write_error(struct mmio_region *region, unsigned idx, uint32_t val);
-
-void mmio_readonly_write_error(struct mmio_region *region,
-                               unsigned idx, uint32_t val);
-uint32_t mmio_writeonly_read_handler(struct mmio_region *region,
-                                     unsigned idx);
-
-static inline uint32_t
-mmio_read_32(struct mmio_region *region, addr32_t addr) {
-    unsigned idx = (addr - region->beg) / sizeof(uint32_t);
-    return region->on_read[idx](region, idx);
-}
-
-static inline void
-mmio_write_32(struct mmio_region *region, addr32_t addr, uint32_t val) {
-    unsigned idx = (addr - region->beg) / sizeof(uint32_t);
-    region->on_write[idx](region, idx, val);
-}
-
-// idx here is in terms of uint32_t, not uint8_t
-uint32_t mmio_warn_read_handler(struct mmio_region *region, unsigned idx);
-void mmio_warn_write_handler(struct mmio_region *region,
-                             unsigned idx, uint32_t val);
-
-void init_mmio_region(struct mmio_region *region,
-                      addr32_t first, addr32_t last);
-void init_mmio_cell(struct mmio_region *region, char const *name,
-                    addr32_t addr, mmio_read_handler on_read,
-                    mmio_write_handler on_write);
-
-void cleanup_mmio_region(struct mmio_region *region);
+#define DEF_MMIO_REGION(name, len_bytes, beg_bytes)                     \
+                                                                        \
+    __attribute__((unused)) static inline uint32_t                      \
+    mmio_region_##name##_read_32(struct mmio_region_##name *region,     \
+                                 addr32_t addr) {                       \
+        unsigned idx = (addr - (beg_bytes)) / 4;                        \
+        return region->on_read[idx](region, idx);                       \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused)) static inline void                          \
+    mmio_region_##name##_write_32(struct mmio_region_##name *region,    \
+                                  addr32_t addr, uint32_t val) {        \
+        unsigned idx = (addr - beg_bytes) / sizeof(uint32_t);           \
+        region->on_write[idx](region, idx, val);                        \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused)) static uint32_t                             \
+    mmio_region_##name##_read_error(struct mmio_region_##name *region,  \
+                                    unsigned idx) {                     \
+        error_set_length(4);                                            \
+        error_set_address(idx * 4);                                     \
+        error_set_feature("reading from some mmio register");           \
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused)) static void                                 \
+    mmio_region_##name##_write_error(struct mmio_region_##name *region, \
+                                     unsigned idx, uint32_t val) {      \
+        error_set_length(4);                                            \
+        error_set_address(idx * 4);                                     \
+        error_set_feature("writing to some mmio register");             \
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused)) static void                                 \
+    mmio_region_##name##_readonly_write_error(                          \
+        struct mmio_region_##name *region,                              \
+        unsigned idx, uint32_t val) {                                   \
+        error_set_length(4);                                            \
+        error_set_address(idx * 4);                                     \
+        error_set_feature("proper response for writing to a "           \
+                          "read-only register");                        \
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused)) static uint32_t                             \
+    mmio_region_##name##_writeonly_read_error(                          \
+        struct mmio_region_##name *region, unsigned idx) {              \
+        error_set_length(4);                                            \
+        error_set_address(idx * 4);                                     \
+        error_set_feature("proper response for reading from a "         \
+                          "write-only register");                       \
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused)) static uint32_t                             \
+    mmio_region_##name##_warn_read_handler(struct mmio_region_##name *region, \
+                                           unsigned idx) {              \
+        uint32_t ret = region->backing[idx];                            \
+        LOG_DBG("Read from \"%s\": 0x%08x\n",                           \
+                region->names[idx], (unsigned)ret);                     \
+        return ret;                                                     \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused)) static void                                 \
+    mmio_region_##name##_warn_write_handler(struct mmio_region_##name *region, \
+                                            unsigned idx, uint32_t val) { \
+        LOG_DBG("Write to \"%s\": 0x%08x\n",                            \
+                region->names[idx], (unsigned)val);                     \
+        region->backing[idx] = val;                                     \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused))                                             \
+    static void init_mmio_region_##name(struct mmio_region_##name *region) { \
+        memset(region, 0, sizeof(*region));                             \
+        size_t cell_no;                                                 \
+        for (cell_no = 0; cell_no < ((len_bytes) / 4); cell_no++) {     \
+            region->names[cell_no] = "UNKNOWN_REGISTER";                \
+            region->on_read[cell_no] = mmio_region_##name##_read_error; \
+            region->on_write[cell_no] = mmio_region_##name##_write_error; \
+        }                                                               \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused))                                             \
+    static void cleanup_mmio_region_##name(                             \
+        struct mmio_region_##name *region) {                            \
+        memset(region, 0, sizeof(*region));                             \
+    }                                                                   \
+                                                                        \
+    __attribute__((unused)) static void                                 \
+    mmio_region_##name##_init_cell(struct mmio_region_##name *region,   \
+                                   char const *name, addr32_t addr,     \
+                                   mmio_region_##name##_read_handler on_read, \
+                                   mmio_region_##name##_write_handler   \
+                                   on_write) {                          \
+        unsigned idx = (addr - (beg_bytes)) / 4;                        \
+        region->names[idx] = name;                                      \
+        region->on_read[idx] = on_read;                                 \
+        region->on_write[idx] = on_write;                               \
+    }
 
 #endif
