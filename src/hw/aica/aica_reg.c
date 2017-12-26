@@ -25,104 +25,158 @@
 #include "mem_code.h"
 #include "MemoryMap.h"
 #include "log.h"
+#include "mem_areas.h"
+#include "mmio.h"
 
 #include "aica_reg.h"
 
-#define N_AICA_REGS ADDR_AICA_LAST - ADDR_AICA_FIRST + 1
-static reg32_t aica_regs[N_AICA_REGS];
+#define N_AICA_REGS (ADDR_AICA_LAST - ADDR_AICA_FIRST + 1)
 
-struct aica_mapped_reg;
+DECL_MMIO_REGION(aica_reg, N_AICA_REGS, ADDR_AICA_FIRST)
+DEF_MMIO_REGION(aica_reg, N_AICA_REGS, ADDR_AICA_FIRST)
 
-typedef int(*aica_reg_read_handler_t)(struct aica_mapped_reg const *reg_info,
-                                      void *buf, addr32_t addr, unsigned len);
-typedef int(*aica_reg_write_handler_t)(struct aica_mapped_reg const *reg_info,
-                                       void const *buf, addr32_t addr,
-                                       unsigned len);
-static int
-default_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len);
-static int
-default_aica_reg_write_handler(struct aica_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len);
+void aica_reg_init(void) {
+    unsigned idx;
 
-static int
-warn_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
-                           void *buf, addr32_t addr, unsigned len);
-static int
-warn_aica_reg_write_handler(struct aica_mapped_reg const *reg_info,
-                            void const *buf, addr32_t addr, unsigned len);
+    init_mmio_region_aica_reg(&mmio_region_aica_reg);
 
-static struct aica_mapped_reg {
-    char const *reg_name;
-
-    addr32_t addr;
-
-    unsigned len;
-    unsigned n_elem;
-
-    aica_reg_read_handler_t on_read;
-    aica_reg_write_handler_t on_write;
-} aica_reg_info[] = {
     /*
      * two-byte register containing VREG and some other weird unrelated stuff
      * that is part of AICA for reasons which I cannot fathom
      */
-    { "AICA_00700000", 0x00700000, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700004", 0x00700004, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700008", 0x00700008, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_0070000c", 0x0070000c, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700010", 0x00700010, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700014", 0x00700014, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700018", 0x00700018, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_0070001c", 0x0070001c, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700020", 0x00700020, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700024", 0x00700024, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700028", 0x00700028, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_FLV0", 0x0070002c, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_FLV1", 0x00700030, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_FLV2", 0x00700034, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_FLV3", 0x00700038, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_FLV4", 0x0070003c, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700040", 0x00700040, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_00700044", 0x00700044, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_SLOT_CONTROL", 0x700080, 4, 0x7d2,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_DSP_OUT", 0x702000, 4, 18,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_COEF",     0x00703000, 4, 128,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_MADDRS", 0x703200, 4, 64,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_MPRO", 0x703400, 4, 4 * 128,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_TEMP", 0x704000, 4, 0x100,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_MEMS", 0x704400, 4, 0x40,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_MIXS", 0x704500, 4, 0x20,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_EFREG", 0x704580, 4, 0x10,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_EXTS", 0x7045c0, 4, 0x2,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700000", 0x00700000,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700004", 0x00700004,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700008", 0x00700008,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_0070000c", 0x0070000c,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700010", 0x00700010,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700014", 0x00700014,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700018", 0x00700018,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_0070001c", 0x0070001c,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700020", 0x00700020,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700024", 0x00700024,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700028", 0x00700028,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_FLV0", 0x0070002c,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_FLV1", 0x00700030,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_FLV2", 0x00700034,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_FLV3", 0x00700038,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_FLV4", 0x0070003c,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700040", 0x00700040,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00700044", 0x00700044,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+
+    for (idx = 0; idx < 0x7d2; idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_SLOT_CONTROL", 0x700080 + 4 * idx,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
+    for (idx = 0; idx < 18; idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_DSP_OUT", 0x702000 + 4 * idx,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
+    for (idx = 0; idx < 128; idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_COEF", 0x00703000 + 4 * idx,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
+    for (idx = 0; idx < 64; idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_MADDRS", 0x703200 + 4 * idx,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
+    for (idx = 0; idx < (128 * 4); idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_MPRO", 0x703400 + 4 * idx,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
+    for (idx = 0; idx < 256; idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_TEMP", 0x704000 + idx * 4,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
+    for (idx = 0; idx < 64; idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_MEMS", 0x704400 + idx * 4,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
+    for (idx = 0; idx < 32; idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_MIXS", 0x704500 + idx * 4,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
+    for (idx = 0; idx < 16; idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_EFREG", 0x704580 + idx * 4,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
+    for (idx = 0; idx < 2; idx++) {
+        mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                       "AICA_EXTS", 0x7045c0 + idx * 4,
+                                       mmio_region_aica_reg_warn_read_handler,
+                                       mmio_region_aica_reg_warn_write_handler);
+    }
 
     /*
      * writing 1 to this register immediately stops whatever the ARM7 is doing
@@ -134,169 +188,51 @@ static struct aica_mapped_reg {
      * seem to dictate that the ARM7 must be initially disabled since there
      * won't be any program loaded immediately after the Dreamcast powers on.
      */
-    { "AICA_ARM7_DISABLE", 0x00702c00, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_ARM7_DISABLE", 0x00702c00,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
 
-    { "AICA_00702800", 0x00702800, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_0070289c", 0x0070289c, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_007028a0", 0x007028a0, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_007028a4", 0x007028a4, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_007028b4", 0x007028b4, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
-    { "AICA_007028bc", 0x007028bc, 4, 1,
-      warn_aica_reg_read_handler, warn_aica_reg_write_handler },
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_00702800", 0x00702800,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_0070289c", 0x0070289c,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_007028a0", 0x007028a0,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_007028a4", 0x007028a4,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_007028b4", 0x007028b4,
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+    mmio_region_aica_reg_init_cell(&mmio_region_aica_reg,
+                                   "AICA_007028bc", 0x007028bc, 
+                                   mmio_region_aica_reg_warn_read_handler,
+                                   mmio_region_aica_reg_warn_write_handler);
+}
 
-    { NULL }
-};
+void aica_reg_cleanup(void) {
+    cleanup_mmio_region_aica_reg(&mmio_region_aica_reg);
+}
 
 int aica_reg_read(void *buf, size_t addr, size_t len) {
-    struct aica_mapped_reg *curs = aica_reg_info;
-
-    while (curs->reg_name) {
-        if ((addr >= curs->addr) &&
-            (addr < (curs->addr + curs->len * curs->n_elem))) {
-            if (curs->len == len) {
-                return curs->on_read(curs, buf, addr, len);
-            } else {
-                error_set_feature("Whatever happens when you use an "
-                                  "inapproriate length while reading from an "
-                                  "aica register");
-                error_set_address(addr);
-                error_set_length(len);
-                PENDING_ERROR(ERROR_UNIMPLEMENTED);
-                return MEM_ACCESS_FAILURE;
-            }
-        }
-        curs++;
-    }
-
-    error_set_feature("reading from one of the aica registers");
-    error_set_address(addr);
-    error_set_length(len);
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
+    if (len != 4)
+        return MEM_ACCESS_FAILURE;
+    *(uint32_t*)buf = mmio_region_aica_reg_read_32(&mmio_region_aica_reg, addr);
+    return MEM_ACCESS_SUCCESS;
 }
 
 int aica_reg_write(void const *buf, size_t addr, size_t len) {
-    struct aica_mapped_reg *curs = aica_reg_info;
-
-    while (curs->reg_name) {
-        if ((addr >= curs->addr) &&
-            (addr < (curs->addr + curs->len * curs->n_elem))) {
-            if (curs->len == len) {
-                return curs->on_write(curs, buf, addr, len);
-            } else {
-                error_set_feature("Whatever happens when you use an "
-                                  "inapproriate length while writing to an "
-                                  "aica register");
-                error_set_address(addr);
-                error_set_length(len);
-                PENDING_ERROR(ERROR_UNIMPLEMENTED);
-                return MEM_ACCESS_FAILURE;
-            }
-        }
-        curs++;
-    }
-
-    error_set_feature("writing to one of the aica registers");
-    error_set_address(addr);
-    error_set_length(len);
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-}
-
-static int
-default_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len) {
-    size_t idx = (addr - ADDR_AICA_FIRST) >> 2;
-    memcpy(buf, idx + aica_regs, len);
+    if (len != 4)
+        return MEM_ACCESS_FAILURE;
+    mmio_region_aica_reg_write_32(&mmio_region_aica_reg, addr, *(uint32_t*)buf);
     return MEM_ACCESS_SUCCESS;
-}
-
-static int
-default_aica_reg_write_handler(struct aica_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len) {
-    size_t idx = (addr - ADDR_AICA_FIRST) >> 2;
-    memcpy(idx + aica_regs, buf, len);
-    return MEM_ACCESS_SUCCESS;
-}
-
-static int
-warn_aica_reg_read_handler(struct aica_mapped_reg const *reg_info,
-                           void *buf, addr32_t addr, unsigned len) {
-    uint8_t val8;
-    uint16_t val16;
-    uint32_t val32;
-
-    int ret_code = default_aica_reg_read_handler(reg_info, buf, addr, len);
-
-    if (ret_code) {
-        LOG_DBG("read from aica register %s (offset is %u)\n",
-                reg_info->reg_name, (addr - reg_info->addr) / reg_info->len);
-    } else {
-        switch (reg_info->len) {
-        case 1:
-            memcpy(&val8, buf, sizeof(val8));
-            LOG_DBG("read 0x%02x from aica register %s (offset is %u)\n",
-                    (unsigned)val8, reg_info->reg_name,
-                    (addr - reg_info->addr) / reg_info->len);
-            break;
-        case 2:
-            memcpy(&val16, buf, sizeof(val16));
-            LOG_DBG("read 0x%04x from aica register %s (offset is %u)\n",
-                    (unsigned)val16, reg_info->reg_name,
-                    (addr - reg_info->addr) / reg_info->len);
-            break;
-        case 4:
-            memcpy(&val32, buf, sizeof(val32));
-            LOG_DBG("read 0x%08x from aica register %s (offset is %u)\n",
-                    (unsigned)val32, reg_info->reg_name,
-                    (addr - reg_info->addr) / reg_info->len);
-            break;
-        default:
-            LOG_DBG("read from aica register %s (offset is %u)\n",
-                    reg_info->reg_name,
-                    (addr - reg_info->addr) / reg_info->len);
-        }
-    }
-
-    return MEM_ACCESS_SUCCESS;
-}
-
-static int
-warn_aica_reg_write_handler(struct aica_mapped_reg const *reg_info,
-                            void const *buf, addr32_t addr, unsigned len) {
-    uint8_t val8;
-    uint16_t val16;
-    uint32_t val32;
-
-    switch (reg_info->len) {
-    case 1:
-        memcpy(&val8, buf, sizeof(val8));
-        LOG_DBG("writing 0x%02x to aica register %s (offset is %u)\n",
-                (unsigned)val8, reg_info->reg_name,
-                (addr - reg_info->addr) / reg_info->len);
-        break;
-    case 2:
-        memcpy(&val16, buf, sizeof(val16));
-        LOG_DBG("writing 0x%04x to aica register %s (offset is %u)\n",
-                (unsigned)val16, reg_info->reg_name,
-                (addr - reg_info->addr) / reg_info->len);
-        break;
-    case 4:
-        memcpy(&val32, buf, sizeof(val32));
-        LOG_DBG("writing 0x%08x to aica register %s (offset is %u)\n",
-                (unsigned)val32, reg_info->reg_name,
-                (addr - reg_info->addr) / reg_info->len);
-        break;
-    default:
-        LOG_DBG("writing to aica register %s (offset is %u)\n",
-                reg_info->reg_name, (addr - reg_info->addr) / reg_info->len);
-    }
-
-    return default_aica_reg_write_handler(reg_info, buf, addr, len);
 }

@@ -20,15 +20,14 @@
  *
  ******************************************************************************/
 
-#ifndef AICA_REG_H_
-#define AICA_REG_H_
+#include "aica_reg.h"
 
-#include <stddef.h>
+#include "aica.h"
 
-void aica_reg_init(void);
-void aica_reg_cleanup(void);
+void aica_init(void) {
+    aica_reg_init();
+}
 
-int aica_reg_read(void *buf, size_t addr, size_t len);
-int aica_reg_write(void const *buf, size_t addr, size_t len);
-
-#endif
+void aica_cleanup(void) {
+    aica_reg_cleanup();
+}
