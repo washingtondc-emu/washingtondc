@@ -559,26 +559,39 @@ ta_next_opb_init_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned i
             (unsigned)ta_next_opb_init);
 }
 
+#define PAL_RAM_FIRST_IDX ((PVR2_PALETTE_RAM_FIRST - ADDR_PVR2_CORE_FIRST) / 4)
+#define PAL_RAM_LAST_IDX  ((PVR2_PALETTE_RAM_LAST - ADDR_PVR2_CORE_FIRST) / 4)
+
+/*
+ * TODO: bounds-checking in this function seems needlessly pedantic and probably
+ * could be disabled for non-INVARIANTS builds (or alternatively disabled
+ * entirely).
+ */
 static uint32_t
 pal_ram_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
-    addr32_t byte_addr = idx * 4 + ADDR_PVR2_CORE_FIRST;
-    if (byte_addr >= PVR2_PALETTE_RAM_FIRST && byte_addr + 4 <= PVR2_PALETTE_RAM_LAST) {
-        return pvr2_palette_ram[idx - ((PVR2_PALETTE_RAM_FIRST - ADDR_PVR2_CORE_FIRST) / 4)];
+    uint32_t *pal32 = (uint32_t*)pvr2_palette_ram;
+    if (idx >= PAL_RAM_FIRST_IDX && idx <= PAL_RAM_LAST_IDX) {
+        return pal32[idx - PAL_RAM_FIRST_IDX];
     } else {
-        error_set_address(byte_addr);
+        error_set_address(idx * 4 + ADDR_PVR2_CORE_FIRST);
         error_set_length(4);
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 }
 
+/*
+ * TODO: bounds-checking in this function seems needlessly pedantic and probably
+ * could be disabled for non-INVARIANTS builds (or alternatively disabled
+ * entirely).
+ */
 static void
 pal_ram_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx, uint32_t val) {
-    addr32_t byte_addr = idx * 4 + ADDR_PVR2_CORE_FIRST;
-    if (byte_addr >= PVR2_PALETTE_RAM_FIRST && byte_addr + 4 <= PVR2_PALETTE_RAM_LAST) {
-        pvr2_palette_ram[idx - ((PVR2_PALETTE_RAM_FIRST - ADDR_PVR2_CORE_FIRST) / 4)] = val;
-        pvr2_tex_cache_notify_write(byte_addr, 4);
+    uint32_t *pal32 = (uint32_t*)pvr2_palette_ram;
+    if (idx >= PAL_RAM_FIRST_IDX && idx <= PAL_RAM_LAST_IDX) {
+        pal32[idx - PAL_RAM_FIRST_IDX] = val;
+        pvr2_tex_cache_notify_write(idx * 4 + ADDR_PVR2_CORE_FIRST, 4);
     } else {
-        error_set_address(byte_addr);
+        error_set_address(idx * 4 + ADDR_PVR2_CORE_FIRST);
         error_set_length(4);
         PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
