@@ -75,4 +75,7 @@ void maple_do_trace(char const *msg, ...);
 unsigned maple_addr_pack(unsigned port, unsigned unit);
 void maple_addr_unpack(unsigned addr, unsigned *port_out, unsigned *unit_out);
 
+void maple_init(void);
+void maple_cleanup(void);
+
 #endif

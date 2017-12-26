@@ -23,6 +23,8 @@
 #ifndef MAPLE_REG_H_
 #define MAPLE_REG_H_
 
+#include <stddef.h>
+
 #include "types.h"
 
 int maple_reg_read(void *buf, size_t addr, size_t len);
@@ -30,5 +32,8 @@ int maple_reg_write(void const *buf, size_t addr, size_t len);
 
 addr32_t maple_get_dma_prot_bot(void);
 addr32_t maple_get_dma_prot_top(void);
+
+void maple_reg_init(void);
+void maple_reg_cleanup(void);
 
 #endif

@@ -32,6 +32,7 @@
 #include "error.h"
 #include "dc_sched.h"
 #include "dreamcast.h"
+#include "maple_reg.h"
 
 #include "maple.h"
 
@@ -268,4 +269,22 @@ static void maple_dma_complete(void) {
 static void maple_dma_complete_int_event_handler(struct SchedEvent *event) {
     maple_dma_complete_int_event_scheduled = false;
     holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
+}
+
+void maple_init(void) {
+    maple_reg_init();
+
+    /*
+     * hardcode a controller plugged into the first port with no additional
+     * maple devices attached.
+     * TODO: don't hardcode this
+     */
+    maple_device_init(maple_addr_pack(0, 0), MAPLE_DEVICE_CONTROLLER);
+}
+
+void maple_cleanup(void) {
+    // TODO: don't hardcode this
+    maple_device_cleanup(maple_addr_pack(0, 0));
+
+    maple_reg_cleanup();
 }

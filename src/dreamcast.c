@@ -177,6 +177,7 @@ void dreamcast_init(bool cmd_session) {
     aica_init();
     pvr2_init();
     gdrom_init();
+    maple_init();
 
     /* set the PC to the booststrap code within IP.BIN */
     if (boot_mode == (int)DC_BOOT_DIRECT)
@@ -217,6 +218,7 @@ void dreamcast_init(bool cmd_session) {
 }
 
 void dreamcast_cleanup() {
+    maple_cleanup();
     pvr2_cleanup();
     aica_cleanup();
 
@@ -239,13 +241,6 @@ static struct timespec start_time;
 
 void dreamcast_run() {
     signal(SIGINT, dc_sigint_handler);
-
-    /*
-     * hardcode a controller plugged into the first port with no additional
-     * maple devices attached.
-     * TODO: don't hardcode this
-     */
-    maple_device_init(maple_addr_pack(0, 0), MAPLE_DEVICE_CONTROLLER);
 
     if (config_get_ser_srv_enable())
         dreamcast_enable_serial_server();
@@ -318,9 +313,6 @@ void dreamcast_run() {
         LOG_INFO("program execution ended for unknown reasons\n");
         break;
     }
-
-    // TODO: don't hardcode this
-    maple_device_cleanup(maple_addr_pack(0, 0));
 
     dreamcast_cleanup();
 }
