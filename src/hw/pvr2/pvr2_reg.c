@@ -35,8 +35,8 @@
 
 #define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
 
-DECL_MMIO_REGION(pvr2_reg, N_PVR2_REGS, ADDR_PVR2_FIRST)
-DEF_MMIO_REGION(pvr2_reg, N_PVR2_REGS, ADDR_PVR2_FIRST)
+DECL_MMIO_REGION(pvr2_reg, N_PVR2_REGS, ADDR_PVR2_FIRST, uint32_t)
+DEF_MMIO_REGION(pvr2_reg, N_PVR2_REGS, ADDR_PVR2_FIRST, uint32_t)
 
 void pvr2_reg_init(void) {
     init_mmio_region_pvr2_reg(&mmio_region_pvr2_reg);

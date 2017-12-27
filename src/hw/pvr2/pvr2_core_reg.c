@@ -48,7 +48,7 @@ static uint32_t ta_vertbuf_pos, ta_vertbuf_start;
 
 static uint32_t ta_next_opb_init;
 
-DEF_MMIO_REGION(pvr2_core_reg, N_PVR2_CORE_REGS, ADDR_PVR2_CORE_FIRST)
+DEF_MMIO_REGION(pvr2_core_reg, N_PVR2_CORE_REGS, ADDR_PVR2_CORE_FIRST, uint32_t)
 
 uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
 

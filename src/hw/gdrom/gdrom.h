@@ -166,6 +166,8 @@ struct gdrom_ctxt {
  */
 void gdrom_init(void);
 
+void gdrom_cleanup(void);
+
 // ideally this will never be access from outside of the GD-ROM code.
 extern struct gdrom_ctxt gdrom;
 

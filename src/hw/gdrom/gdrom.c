@@ -32,6 +32,7 @@
 #include "error.h"
 #include "gdrom_response.h"
 #include "dc_sched.h"
+#include "gdrom_reg.h"
 
 #include "gdrom.h"
 
@@ -216,6 +217,12 @@ void gdrom_init(void) {
     gdrom.data_byte_count = GDROM_DATA_BYTE_COUNT_DEFAULT;
 
     fifo_init(&gdrom.bufq);
+
+    gdrom_reg_init();
+}
+
+void gdrom_cleanup(void) {
+    gdrom_reg_cleanup();
 }
 
 static void bufq_clear(void) {

@@ -32,8 +32,8 @@
 
 #define N_AICA_REGS (ADDR_AICA_LAST - ADDR_AICA_FIRST + 1)
 
-DECL_MMIO_REGION(aica_reg, N_AICA_REGS, ADDR_AICA_FIRST)
-DEF_MMIO_REGION(aica_reg, N_AICA_REGS, ADDR_AICA_FIRST)
+DECL_MMIO_REGION(aica_reg, N_AICA_REGS, ADDR_AICA_FIRST, uint32_t)
+DEF_MMIO_REGION(aica_reg, N_AICA_REGS, ADDR_AICA_FIRST, uint32_t)
 
 void aica_reg_init(void) {
     unsigned idx;

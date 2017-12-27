@@ -35,7 +35,7 @@
 
 #define N_SYS_REGS (ADDR_SYS_LAST - ADDR_SYS_FIRST + 1)
 
-DECL_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST)
+DECL_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST, uint32_t)
 
 void sys_block_init(void);
 void sys_block_cleanup(void);

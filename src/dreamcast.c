@@ -219,6 +219,7 @@ void dreamcast_init(bool cmd_session) {
 
 void dreamcast_cleanup() {
     maple_cleanup();
+    gdrom_cleanup();
     pvr2_cleanup();
     aica_cleanup();
 

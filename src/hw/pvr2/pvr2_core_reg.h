@@ -93,6 +93,6 @@ void pvr2_core_reg_init(void);
 void pvr2_core_reg_cleanup(void);
 
 #define N_PVR2_CORE_REGS (ADDR_PVR2_CORE_LAST - ADDR_PVR2_CORE_FIRST + 1)
-DECL_MMIO_REGION(pvr2_core_reg, N_PVR2_CORE_REGS, ADDR_PVR2_CORE_FIRST)
+DECL_MMIO_REGION(pvr2_core_reg, N_PVR2_CORE_REGS, ADDR_PVR2_CORE_FIRST, uint32_t)
 
 #endif

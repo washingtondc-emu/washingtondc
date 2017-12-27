@@ -25,6 +25,9 @@
 
 #include "types.h"
 
+void gdrom_reg_init(void);
+void gdrom_reg_cleanup(void);
+
 int gdrom_reg_read(void *buf, size_t addr, size_t len);
 int gdrom_reg_write(void const *buf, size_t addr, size_t len);
 
