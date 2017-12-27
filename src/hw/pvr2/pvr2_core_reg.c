@@ -291,14 +291,14 @@ void pvr2_core_reg_init(void) {
 int pvr2_core_reg_read(void *buf, size_t addr, size_t len) {
     if (len != 4)
         return MEM_ACCESS_FAILURE;
-    *(uint32_t*)buf = mmio_region_pvr2_core_reg_read_32(&mmio_region_pvr2_core_reg, addr);
+    *(uint32_t*)buf = mmio_region_pvr2_core_reg_read(&mmio_region_pvr2_core_reg, addr);
     return MEM_ACCESS_SUCCESS;
 }
 
 int pvr2_core_reg_write(void const *buf, size_t addr, size_t len) {
     if (len != 4)
         return MEM_ACCESS_FAILURE;
-    mmio_region_pvr2_core_reg_write_32(&mmio_region_pvr2_core_reg, addr, *(uint32_t*)buf);
+    mmio_region_pvr2_core_reg_write(&mmio_region_pvr2_core_reg, addr, *(uint32_t*)buf);
     return MEM_ACCESS_SUCCESS;
 }
 

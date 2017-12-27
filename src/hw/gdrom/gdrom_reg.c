@@ -86,15 +86,15 @@ DEF_MMIO_REGION(gdrom_reg_8, N_GDROM_REGS, ADDR_GDROM_FIRST, uint8_t)
 int gdrom_reg_read(void *buf, size_t addr, size_t len) {
     if (len == 4) {
         *(uint32_t*)buf =
-            mmio_region_gdrom_reg_32_read_32(&mmio_region_gdrom_reg_32, addr);
+            mmio_region_gdrom_reg_32_read(&mmio_region_gdrom_reg_32, addr);
         return MEM_ACCESS_SUCCESS;
     } else if (len == 2) {
         *(uint16_t*)buf =
-            mmio_region_gdrom_reg_16_read_32(&mmio_region_gdrom_reg_16, addr);
+            mmio_region_gdrom_reg_16_read(&mmio_region_gdrom_reg_16, addr);
         return MEM_ACCESS_SUCCESS;
     } else if (len == 1) {
         *(uint8_t*)buf =
-            mmio_region_gdrom_reg_8_read_32(&mmio_region_gdrom_reg_8, addr);
+            mmio_region_gdrom_reg_8_read(&mmio_region_gdrom_reg_8, addr);
         return MEM_ACCESS_SUCCESS;
     } else {
         return MEM_ACCESS_FAILURE;
@@ -103,13 +103,13 @@ int gdrom_reg_read(void *buf, size_t addr, size_t len) {
 
 int gdrom_reg_write(void const *buf, size_t addr, size_t len) {
     if (len == 4) {
-        mmio_region_gdrom_reg_32_write_32(&mmio_region_gdrom_reg_32, addr, *(uint32_t*)buf);
+        mmio_region_gdrom_reg_32_write(&mmio_region_gdrom_reg_32, addr, *(uint32_t*)buf);
         return MEM_ACCESS_SUCCESS;
     } else if (len == 2) {
-        mmio_region_gdrom_reg_16_write_32(&mmio_region_gdrom_reg_16, addr, *(uint16_t*)buf);
+        mmio_region_gdrom_reg_16_write(&mmio_region_gdrom_reg_16, addr, *(uint16_t*)buf);
         return MEM_ACCESS_SUCCESS;
     } else if (len == 1) {
-        mmio_region_gdrom_reg_8_write_32(&mmio_region_gdrom_reg_8, addr, *(uint8_t*)buf);
+        mmio_region_gdrom_reg_8_write(&mmio_region_gdrom_reg_8, addr, *(uint8_t*)buf);
         return MEM_ACCESS_SUCCESS;
     } else {
         return MEM_ACCESS_FAILURE;

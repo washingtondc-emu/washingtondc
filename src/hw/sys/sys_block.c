@@ -43,15 +43,14 @@ static uint32_t reg_sb_c2dstat, reg_sb_c2dlen;
 int sys_block_read(void *buf, size_t addr, size_t len) {
     if (len != 4)
         return MEM_ACCESS_FAILURE;
-    *(uint32_t*)buf = mmio_region_sys_block_read_32(&mmio_region_sys_block,
-                                                    addr);
+    *(uint32_t*)buf = mmio_region_sys_block_read(&mmio_region_sys_block, addr);
     return MEM_ACCESS_SUCCESS;
 }
 
 int sys_block_write(void const *buf, size_t addr, size_t len) {
     if (len != 4)
         return MEM_ACCESS_FAILURE;
-    mmio_region_sys_block_write_32(&mmio_region_sys_block, addr, *(uint32_t*)buf);
+    mmio_region_sys_block_write(&mmio_region_sys_block, addr, *(uint32_t*)buf);
     return MEM_ACCESS_SUCCESS;
 }
 

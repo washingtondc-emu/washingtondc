@@ -47,14 +47,14 @@
 #define DEF_MMIO_REGION(name, len_bytes, beg_bytes, type)               \
                                                                         \
     __attribute__((unused)) static inline type                          \
-    mmio_region_##name##_read_32(struct mmio_region_##name *region,     \
-                                 addr32_t addr) {                       \
+    mmio_region_##name##_read(struct mmio_region_##name *region,        \
+                              addr32_t addr) {                          \
         unsigned idx = (addr - (beg_bytes)) / sizeof(type);             \
         return region->on_read[idx](region, idx);                       \
     }                                                                   \
                                                                         \
     __attribute__((unused)) static inline void                          \
-    mmio_region_##name##_write_32(struct mmio_region_##name *region,    \
+    mmio_region_##name##_write(struct mmio_region_##name *region,       \
                                   addr32_t addr, type val) {            \
         unsigned idx = (addr - beg_bytes) / sizeof(type);               \
         region->on_write[idx](region, idx, val);                        \
