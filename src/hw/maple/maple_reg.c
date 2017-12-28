@@ -41,6 +41,8 @@
 DECL_MMIO_REGION(maple_reg, N_MAPLE_REGS, ADDR_MAPLE_FIRST, uint32_t)
 DEF_MMIO_REGION(maple_reg, N_MAPLE_REGS, ADDR_MAPLE_FIRST, uint32_t)
 
+static uint8_t reg_backing[N_MAPLE_REGS];
+
 static addr32_t maple_dma_prot_bot = 0;
 static addr32_t maple_dma_prot_top = (0x1 << 27) | (0x7f << 20);
 
@@ -143,7 +145,7 @@ addr32_t maple_get_dma_prot_top(void) {
 }
 
 void maple_reg_init(void) {
-    init_mmio_region_maple_reg(&mmio_region_maple_reg);
+    init_mmio_region_maple_reg(&mmio_region_maple_reg, (void*)reg_backing);
 
     mmio_region_maple_reg_init_cell(&mmio_region_maple_reg,
                                     "SB_MDSTAR", 0x5f6c04,

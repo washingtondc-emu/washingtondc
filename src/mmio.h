@@ -40,7 +40,7 @@
         on_read[(len_bytes) / sizeof(type)];                            \
         mmio_region_##name##_write_handler                              \
         on_write[(len_bytes) / sizeof(type)];                           \
-        type backing[(len_bytes) / sizeof(type)];                       \
+        type *backing;                                                  \
         char const *names[(len_bytes) / sizeof(type)];                  \
     };                                                                  \
 
@@ -132,8 +132,10 @@
     }                                                                   \
                                                                         \
     __attribute__((unused))                                             \
-    static void init_mmio_region_##name(struct mmio_region_##name *region) { \
+    static void init_mmio_region_##name(struct mmio_region_##name *region, \
+                                        type *backing) {                \
         memset(region, 0, sizeof(*region));                             \
+        region->backing = backing;                                      \
         size_t cell_no;                                                 \
         for (cell_no = 0; cell_no < ((len_bytes) / sizeof(type)); cell_no++) { \
             region->names[cell_no] = "UNKNOWN_REGISTER";                \

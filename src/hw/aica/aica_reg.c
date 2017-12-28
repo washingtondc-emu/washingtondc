@@ -35,10 +35,12 @@
 DECL_MMIO_REGION(aica_reg, N_AICA_REGS, ADDR_AICA_FIRST, uint32_t)
 DEF_MMIO_REGION(aica_reg, N_AICA_REGS, ADDR_AICA_FIRST, uint32_t)
 
+static uint8_t reg_backing[N_AICA_REGS];
+
 void aica_reg_init(void) {
     unsigned idx;
 
-    init_mmio_region_aica_reg(&mmio_region_aica_reg);
+    init_mmio_region_aica_reg(&mmio_region_aica_reg, (void*)reg_backing);
 
     /*
      * two-byte register containing VREG and some other weird unrelated stuff

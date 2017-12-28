@@ -39,6 +39,8 @@
 DECL_MMIO_REGION(g2_reg_32, N_G2_REGS, ADDR_G2_FIRST, uint32_t)
 DEF_MMIO_REGION(g2_reg_32, N_G2_REGS, ADDR_G2_FIRST, uint32_t)
 
+static uint8_t reg_backing[N_G2_REGS];
+
 int g2_reg_read(void *buf, size_t addr, size_t len) {
     if (len != 4)
         return MEM_ACCESS_FAILURE;
@@ -62,7 +64,7 @@ static void sb_adst_reg_mmio_write(struct mmio_region_g2_reg_32 *region,
 }
 
 void g2_reg_init(void) {
-    init_mmio_region_g2_reg_32(&mmio_region_g2_reg_32);
+    init_mmio_region_g2_reg_32(&mmio_region_g2_reg_32, (void*)reg_backing);
 
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADSTAG", 0x5f7800,

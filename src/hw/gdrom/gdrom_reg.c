@@ -83,6 +83,8 @@ DEF_MMIO_REGION(gdrom_reg_16, N_GDROM_REGS, ADDR_GDROM_FIRST, uint16_t)
 DECL_MMIO_REGION(gdrom_reg_8, N_GDROM_REGS, ADDR_GDROM_FIRST, uint8_t)
 DEF_MMIO_REGION(gdrom_reg_8, N_GDROM_REGS, ADDR_GDROM_FIRST, uint8_t)
 
+static uint8_t reg_backing[N_GDROM_REGS];
+
 int gdrom_reg_read(void *buf, size_t addr, size_t len) {
     if (len == 4) {
         *(uint32_t*)buf =
@@ -695,9 +697,9 @@ gdrom_set_dev_ctrl_reg(struct gdrom_dev_ctrl *dev_ctrl_out,
 }
 
 void gdrom_reg_init(void) {
-    init_mmio_region_gdrom_reg_32(&mmio_region_gdrom_reg_32);
-    init_mmio_region_gdrom_reg_16(&mmio_region_gdrom_reg_16);
-    init_mmio_region_gdrom_reg_8(&mmio_region_gdrom_reg_8);
+    init_mmio_region_gdrom_reg_32(&mmio_region_gdrom_reg_32, (void*)reg_backing);
+    init_mmio_region_gdrom_reg_16(&mmio_region_gdrom_reg_16, (void*)reg_backing);
+    init_mmio_region_gdrom_reg_8(&mmio_region_gdrom_reg_8, (void*)reg_backing);
 
     mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
                                     "alt status/device control", 0x5f7018,

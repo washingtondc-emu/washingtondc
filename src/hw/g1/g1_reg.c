@@ -37,6 +37,8 @@
 DEF_MMIO_REGION(g1_reg_32, N_G1_REGS, ADDR_G1_FIRST, uint32_t)
 DEF_MMIO_REGION(g1_reg_16, N_G1_REGS, ADDR_G1_FIRST, uint16_t)
 
+static uint8_t reg_backing[N_G1_REGS];
+
 int g1_reg_read(void *buf, size_t addr, size_t len) {
     if (len == 4) {
         *(uint32_t*)buf =
@@ -70,8 +72,8 @@ int g1_reg_write(void const *buf, size_t addr, size_t len) {
 }
 
 void g1_reg_init(void) {
-    init_mmio_region_g1_reg_32(&mmio_region_g1_reg_32);
-    init_mmio_region_g1_reg_16(&mmio_region_g1_reg_16);
+    init_mmio_region_g1_reg_32(&mmio_region_g1_reg_32, (void*)reg_backing);
+    init_mmio_region_g1_reg_16(&mmio_region_g1_reg_16, (void*)reg_backing);
 
     /* GD-ROM DMA registers */
     mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,

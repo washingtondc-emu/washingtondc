@@ -38,6 +38,8 @@
 
 DEF_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST, uint32_t)
 
+static uint8_t reg_backing[N_SYS_REGS];
+
 static uint32_t reg_sb_c2dstat, reg_sb_c2dlen;
 
 int sys_block_read(void *buf, size_t addr, size_t len) {
@@ -99,7 +101,7 @@ sys_sbrev_mmio_read(struct mmio_region_sys_block *region, unsigned idx) {
 }
 
 void sys_block_init(void) {
-    init_mmio_region_sys_block(&mmio_region_sys_block);
+    init_mmio_region_sys_block(&mmio_region_sys_block, (void*)reg_backing);
 
     mmio_region_sys_block_init_cell(&mmio_region_sys_block,
                                     "SB_C2DSTAT", 0x005f6800,

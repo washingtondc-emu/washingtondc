@@ -49,6 +49,7 @@ static uint32_t ta_vertbuf_pos, ta_vertbuf_start;
 static uint32_t ta_next_opb_init;
 
 DEF_MMIO_REGION(pvr2_core_reg, N_PVR2_CORE_REGS, ADDR_PVR2_CORE_FIRST, uint32_t)
+static uint8_t reg_backing[N_PVR2_CORE_REGS];
 
 uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
 
@@ -153,7 +154,7 @@ static void
 pal_ram_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx, uint32_t val);
 
 void pvr2_core_reg_init(void) {
-    init_mmio_region_pvr2_core_reg(&mmio_region_pvr2_core_reg);
+    init_mmio_region_pvr2_core_reg(&mmio_region_pvr2_core_reg, (void*)reg_backing);
 
     mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "ID", 0x5f8000,
                    id_mmio_read, mmio_region_pvr2_core_reg_warn_write_handler);
