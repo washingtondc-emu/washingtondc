@@ -20,15 +20,14 @@
  *
  ******************************************************************************/
 
-#ifndef G2_REG_H_
-#define G2_REG_H_
+#include "g2_reg.h"
 
-#include <stddef.h>
+#include "g2.h"
 
-int g2_reg_read(void *buf, size_t addr, size_t len);
-int g2_reg_write(void const *buf, size_t addr, size_t len);
+void g2_init(void) {
+    g2_reg_init();
+}
 
-void g2_reg_init(void);
-void g2_reg_cleanup(void);
-
-#endif
+void g2_cleanup(void) {
+    g2_reg_cleanup();
+}
