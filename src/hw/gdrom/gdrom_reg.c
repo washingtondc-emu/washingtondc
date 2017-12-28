@@ -370,140 +370,111 @@ gdrom_byte_count_high_mmio_write(struct mmio_region_gdrom_reg_32 *region,
                 (unsigned)((val & 0xff) << 8));
 }
 
-int
-gdrom_gdapro_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdrom.gdapro_reg, len);
+uint32_t
+gdrom_gdapro_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx) {
     GDROM_TRACE("read %08x from GDAPRO\n", gdrom.gdapro_reg);
-
-    return 0;
+    return gdrom.gdapro_reg;
 }
 
-int
-gdrom_gdapro_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len) {
-    // the g1 bus code will make sure len is equal to 4
-    uint32_t val = *(uint32_t*)buf;
-
+void
+gdrom_gdapro_mmio_write(struct mmio_region_g1_reg_32 *region,
+                        unsigned idx, uint32_t val) {
     // check security code
     if ((val & 0xffff0000) != 0x88430000)
-        return 0;
+        return;
 
     gdrom.gdapro_reg = val;
 
     GDROM_TRACE("GDAPRO (0x%08x) - allowing writes from 0x%08x through "
                 "0x%08x\n",
                 gdrom.gdapro_reg, gdrom_dma_prot_top(), gdrom_dma_prot_bot());
-
-    return 0;
 }
 
-int
-gdrom_g1gdrc_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdrom.g1gdrc_reg, len);
+uint32_t
+gdrom_g1gdrc_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx) {
     GDROM_TRACE("read %08x from G1GDRC\n", gdrom.g1gdrc_reg);
-    return 0;
+    return gdrom.g1gdrc_reg;
 }
 
-int
-gdrom_g1gdrc_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&gdrom.g1gdrc_reg, buf, sizeof(gdrom.g1gdrc_reg));
+void
+gdrom_g1gdrc_mmio_write(struct mmio_region_g1_reg_32 *region,
+                        unsigned idx, uint32_t val) {
     GDROM_TRACE("write %08x to G1GDRC\n", gdrom.g1gdrc_reg);
-    return 0;
+    gdrom.g1gdrc_reg = val;
 }
 
-int
-gdrom_gdstar_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdrom.dma_start_addr_reg, len);
+uint32_t
+gdrom_gdstar_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx) {
     GDROM_TRACE("read %08x from GDSTAR\n", gdrom.dma_start_addr_reg);
-    return 0;
+    return gdrom.dma_start_addr_reg;
 }
 
-int
-gdrom_gdstar_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&gdrom.dma_start_addr_reg, buf, sizeof(gdrom.dma_start_addr_reg));
+void
+gdrom_gdstar_mmio_write(struct mmio_region_g1_reg_32 *region,
+                        unsigned idx, uint32_t val) {
+    gdrom.dma_start_addr_reg = val;
     gdrom.dma_start_addr_reg &= ~0xe0000000;
     GDROM_TRACE("write %08x to GDSTAR\n", gdrom.dma_start_addr_reg);
-    return 0;
 }
 
-int
-gdrom_gdlen_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdrom.dma_len_reg, len);
+uint32_t
+gdrom_gdlen_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx) {
     GDROM_TRACE("read %08x from GDLEN\n", gdrom.dma_len_reg);
-    return 0;
+    return gdrom.dma_len_reg;
 }
 
-int
-gdrom_gdlen_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&gdrom.dma_len_reg, buf, sizeof(gdrom.dma_len_reg));
+void
+gdrom_gdlen_mmio_write(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, uint32_t val) {
+    gdrom.dma_len_reg = val;
     GDROM_TRACE("write %08x to GDLEN\n", gdrom.dma_len_reg);
-    return 0;
 }
 
-int
-gdrom_gddir_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdrom.dma_dir_reg, len);
+uint32_t
+gdrom_gddir_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx) {
     GDROM_TRACE("read %08x from GDDIR\n", gdrom.dma_dir_reg);
-    return 0;
+    return gdrom.dma_dir_reg;
 }
 
-int
-gdrom_gddir_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&gdrom.dma_dir_reg, buf, sizeof(gdrom.dma_dir_reg));
+void
+gdrom_gddir_mmio_write(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, uint32_t val) {
+    gdrom.dma_dir_reg = val;
     GDROM_TRACE("write %08x to GDDIR\n", gdrom.dma_dir_reg);
-    return 0;
 }
 
-int
-gdrom_gden_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdrom.dma_en_reg, len);
+uint32_t
+gdrom_gden_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx) {
     GDROM_TRACE("read %08x from GDEN\n", gdrom.dma_en_reg);
-    return 0;
+    return gdrom.dma_en_reg;
 }
 
-int
-gdrom_gden_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&gdrom.dma_en_reg, buf, sizeof(gdrom.dma_en_reg));
+void
+gdrom_gden_mmio_write(struct mmio_region_g1_reg_32 *region,
+                      unsigned idx, uint32_t val) {
+    gdrom.dma_en_reg = val;
     GDROM_TRACE("write %08x to GDEN\n", gdrom.dma_en_reg);
-    return 0;
 }
 
-int
-gdrom_gdst_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdrom.dma_start_reg, len);
+uint32_t
+gdrom_gdst_reg_read_handler(struct mmio_region_g1_reg_32 *region,
+                            unsigned idx) {
     GDROM_TRACE("read %08x from GDST\n", gdrom.dma_start_reg);
-    return 0;
+    return gdrom.dma_start_reg;
 }
 
-int
-gdrom_gdst_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len) {
-    memcpy(&gdrom.dma_start_reg, buf, sizeof(gdrom.dma_start_reg));
+void
+gdrom_gdst_reg_write_handler(struct mmio_region_g1_reg_32 *region,
+                             unsigned idx, uint32_t val) {
+    gdrom.dma_start_reg = val;
     GDROM_TRACE("write %08x to GDST\n", gdrom.dma_start_reg);
-
     gdrom_start_dma();
-
-    return 0;
 }
 
-int
-gdrom_gdlend_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, &gdrom.gdlend_reg, len);
+uint32_t
+gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx) {
     GDROM_TRACE("read %08x from GDLEND\n", gdrom.gdlend_reg);
-    return 0;
+    return gdrom.gdlend_reg;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

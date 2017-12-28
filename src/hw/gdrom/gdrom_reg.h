@@ -24,6 +24,7 @@
 #define GDROM_REG_H_
 
 #include "types.h"
+#include "hw/g1/g1_reg.h"
 
 void gdrom_reg_init(void);
 void gdrom_reg_cleanup(void);
@@ -34,50 +35,44 @@ int gdrom_reg_write(void const *buf, size_t addr, size_t len);
 // these are GD-ROM DMA registers that lie with in the G1 bus' memory range
 struct g1_mem_mapped_reg;
 
-int
-gdrom_gdapro_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len);
-int
-gdrom_gdapro_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len);
-int
-gdrom_g1gdrc_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len);
-int
-gdrom_g1gdrc_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len);
-int
-gdrom_gdstar_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len);
-int
-gdrom_gdstar_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len);
-int
-gdrom_gdlen_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len);
-int
-gdrom_gdlen_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len);
-int
-gdrom_gddir_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void *buf, addr32_t addr, unsigned len);
-int
-gdrom_gddir_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void const *buf, addr32_t addr, unsigned len);
-int
-gdrom_gden_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len);
-int
-gdrom_gden_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len);
-int
-gdrom_gdst_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len);
-int
-gdrom_gdst_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len);
-int
-gdrom_gdlend_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                              void *buf, addr32_t addr, unsigned len);
+uint32_t
+gdrom_gdapro_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx);
+
+void
+gdrom_gdapro_mmio_write(struct mmio_region_g1_reg_32 *region,
+                        unsigned idx, uint32_t val);
+uint32_t
+gdrom_g1gdrc_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx);
+void
+gdrom_g1gdrc_mmio_write(struct mmio_region_g1_reg_32 *region,
+                        unsigned idx, uint32_t val);
+uint32_t
+gdrom_gdstar_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx);
+void
+gdrom_gdstar_mmio_write(struct mmio_region_g1_reg_32 *region,
+                        unsigned idx, uint32_t val);
+uint32_t
+gdrom_gdlen_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx);
+void
+gdrom_gdlen_mmio_write(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, uint32_t val);
+uint32_t
+gdrom_gddir_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx);
+void
+gdrom_gddir_mmio_write(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, uint32_t val);
+uint32_t
+gdrom_gden_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx);
+void
+gdrom_gden_mmio_write(struct mmio_region_g1_reg_32 *region,
+                      unsigned idx, uint32_t val);
+uint32_t
+gdrom_gdst_reg_read_handler(struct mmio_region_g1_reg_32 *region,
+                            unsigned idx);
+void
+gdrom_gdst_reg_write_handler(struct mmio_region_g1_reg_32 *region,
+                             unsigned idx, uint32_t val);
+uint32_t
+gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx);
 
 #endif

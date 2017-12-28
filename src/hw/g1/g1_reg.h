@@ -23,7 +23,16 @@
 #ifndef G1_REG_H_
 #define G1_REG_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
+#include "mmio.h"
 #include "types.h"
+#include "mem_areas.h"
+
+#define N_G1_REGS (ADDR_G1_LAST - ADDR_G1_FIRST + 1)
+DECL_MMIO_REGION(g1_reg_32, N_G1_REGS, ADDR_G1_FIRST, uint32_t)
+DECL_MMIO_REGION(g1_reg_16, N_G1_REGS, ADDR_G1_FIRST, uint16_t)
 
 struct g1_mem_mapped_reg;
 
@@ -46,5 +55,8 @@ struct g1_mem_mapped_reg {
 
 int g1_reg_read(void *buf, size_t addr, size_t len);
 int g1_reg_write(void const *buf, size_t addr, size_t len);
+
+void g1_reg_init(void);
+void g1_reg_cleanup(void);
 
 #endif

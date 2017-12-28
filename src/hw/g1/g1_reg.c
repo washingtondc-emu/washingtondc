@@ -34,224 +34,138 @@
 #include "mem_areas.h"
 #include "log.h"
 
-#define N_G1_REGS (ADDR_G1_LAST - ADDR_G1_FIRST + 1)
-static reg32_t g1_regs[N_G1_REGS];
-
-static int
-default_g1_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len);
-static int
-default_g1_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len);
-static int
-warn_g1_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                         void *buf, addr32_t addr, unsigned len);
-static int
-warn_g1_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                          void const *buf, addr32_t addr, unsigned len);
-
-// write handler for registers that should be read-only
-static int
-g1_read_only_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len);
-
-static struct g1_mem_mapped_reg g1_reg_info[] = {
-    /* GD-ROM DMA registers */
-    { "SB_GDAPRO", 0x5f74b8, 4,
-      gdrom_gdapro_reg_read_handler, gdrom_gdapro_reg_write_handler },
-    { "SB_G1GDRC", 0x5f74a0, 4,
-      gdrom_g1gdrc_reg_read_handler, gdrom_g1gdrc_reg_write_handler },
-    { "SB_G1GDWC", 0x5f74a4, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-    { "SB_GDSTAR", 0x5f7404, 4,
-      gdrom_gdstar_reg_read_handler, gdrom_gdstar_reg_write_handler },
-    { "SB_GDLEN", 0x5f7408, 4,
-      gdrom_gdlen_reg_read_handler, gdrom_gdlen_reg_write_handler },
-    { "SB_GDDIR", 0x5f740c, 4,
-      gdrom_gddir_reg_read_handler, gdrom_gddir_reg_write_handler },
-    { "SB_GDEN", 0x5f7414, 4,
-      gdrom_gden_reg_read_handler, gdrom_gden_reg_write_handler },
-    { "SB_GDST", 0x5f7418, 4,
-      gdrom_gdst_reg_read_handler, gdrom_gdst_reg_write_handler },
-
-    /* system boot-rom registers */
-    // XXX this is supposed to be write-only, but currently it's readable
-    { "SB_G1RRC", 0x005f7480, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-    { "SB_G1RWC", 0x5f7484, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-
-    /* flash rom registers */
-    { "SB_G1FRC", 0x5f7488, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-    { "SB_G1FWC", 0x5f748c, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-
-    /* GD PIO timing registers - I guess this is related to GD-ROM ? */
-    { "SB_G1CRC", 0x5f7490, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-    { "SB_G1CWC", 0x5f7494, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-
-    // TODO: SB_G1SYSM should be read-only
-    { "SB_G1SYSM", 0x5f74b0, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-    { "SB_G1CRDYC", 0x5f74b4, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-
-    { "UNKNOWN", 0x005f74e4, 4,
-      warn_g1_reg_read_handler, warn_g1_reg_write_handler },
-
-    { "SB_GDLEND", 0x005f74f8, 4,
-      gdrom_gdlend_reg_read_handler, g1_read_only_reg_write_handler },
-
-    { NULL }
-};
+DEF_MMIO_REGION(g1_reg_32, N_G1_REGS, ADDR_G1_FIRST, uint32_t)
+DEF_MMIO_REGION(g1_reg_16, N_G1_REGS, ADDR_G1_FIRST, uint16_t)
 
 int g1_reg_read(void *buf, size_t addr, size_t len) {
-    struct g1_mem_mapped_reg *curs = g1_reg_info;
-
-    while (curs->reg_name) {
-        if (curs->addr == addr) {
-            if (curs->len == len) {
-                return curs->on_read(curs, buf, addr, len);
-            } else {
-                error_set_address(addr);
-                error_set_length(len);
-                error_set_feature("Whatever happens when you use an "
-                                  "inapproriate length while reading "
-                                  "from a g1 register");
-                PENDING_ERROR(ERROR_UNIMPLEMENTED);
-                return MEM_ACCESS_FAILURE;
-            }
-        }
-        curs++;
+    if (len == 4) {
+        *(uint32_t*)buf =
+            mmio_region_g1_reg_32_read(&mmio_region_g1_reg_32, addr);
+        return MEM_ACCESS_SUCCESS;
+    } else if (len == 2) {
+        *(uint16_t*)buf =
+            mmio_region_g1_reg_16_read(&mmio_region_g1_reg_16, addr);
+        return MEM_ACCESS_SUCCESS;
+    } else {
+        error_set_address(addr);
+        error_set_length(len);
+        return MEM_ACCESS_FAILURE;
     }
-
-    error_set_address(addr);
-    error_set_feature("reading from one of the g1 registers");
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
 }
 
 int g1_reg_write(void const *buf, size_t addr, size_t len) {
-    struct g1_mem_mapped_reg *curs = g1_reg_info;
-
-    while (curs->reg_name) {
-        if (curs->addr == addr) {
-            if (curs->len >= len) {
-                return curs->on_write(curs, buf, addr, len);
-            } else {
-                error_set_address(addr);
-                error_set_length(len);
-                error_set_feature("Whatever happens when you use an "
-                                  "inapproriate length while writing to a g1 "
-                                  "register");
-                PENDING_ERROR(ERROR_UNIMPLEMENTED);
-                return MEM_ACCESS_FAILURE;
-            }
-        }
-        curs++;
-    }
-
-    error_set_address(addr);
-    error_set_length(len);
-    error_set_feature("writing to one of the g1 registers");
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-}
-
-static int
-default_g1_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len) {
-    size_t idx = (addr - ADDR_G1_FIRST) >> 2;
-    memcpy(buf, idx + g1_regs, len);
-    return MEM_ACCESS_SUCCESS;
-}
-
-static int
-default_g1_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len) {
-    size_t idx = (addr - ADDR_G1_FIRST) >> 2;
-    memcpy(idx + g1_regs, buf, len);
-    return MEM_ACCESS_SUCCESS;
-}
-
-static int
-warn_g1_reg_read_handler(struct g1_mem_mapped_reg const *reg_info,
-                            void *buf, addr32_t addr, unsigned len) {
-    uint8_t val8;
-    uint16_t val16;
-    uint32_t val32;
-
-    int ret_code = default_g1_reg_read_handler(reg_info, buf, addr, len);
-
-    if (ret_code) {
-        LOG_DBG("read from g1 register %s\n", reg_info->reg_name);
+    if (len == 4) {
+        mmio_region_g1_reg_32_write(&mmio_region_g1_reg_32,
+                                    addr, *(uint32_t*)buf);
+        return MEM_ACCESS_SUCCESS;
+    } else if (len == 2) {
+        mmio_region_g1_reg_16_write(&mmio_region_g1_reg_16,
+                                    addr, *(uint32_t*)buf);
+        return MEM_ACCESS_SUCCESS;
     } else {
-        switch (len) {
-        case 1:
-            memcpy(&val8, buf, sizeof(val8));
-            LOG_DBG("read 0x%02x from g1 register %s\n",
-                    (unsigned)val8, reg_info->reg_name);
-            break;
-        case 2:
-            memcpy(&val16, buf, sizeof(val16));
-            LOG_DBG("read 0x%04x from g1 register %s\n",
-                    (unsigned)val16, reg_info->reg_name);
-            break;
-        case 4:
-            memcpy(&val32, buf, sizeof(val32));
-            LOG_DBG("read 0x%08x from g1 register %s\n",
-                    (unsigned)val32, reg_info->reg_name);
-            break;
-        default:
-            LOG_DBG("read from g1 register %s\n",
-                    reg_info->reg_name);
-        }
+        error_set_address(addr);
+        error_set_length(len);
+        return MEM_ACCESS_FAILURE;
     }
-
-    return MEM_ACCESS_SUCCESS;
 }
 
-static int
-warn_g1_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                             void const *buf, addr32_t addr, unsigned len) {
-    uint8_t val8;
-    uint16_t val16;
-    uint32_t val32;
+void g1_reg_init(void) {
+    init_mmio_region_g1_reg_32(&mmio_region_g1_reg_32);
+    init_mmio_region_g1_reg_16(&mmio_region_g1_reg_16);
 
-    switch (len) {
-    case 1:
-        memcpy(&val8, buf, sizeof(val8));
-        LOG_DBG("write 0x%02x to g1 register %s\n",
-                (unsigned)val8, reg_info->reg_name);
-        break;
-    case 2:
-        memcpy(&val16, buf, sizeof(val16));
-        memcpy(&val16, buf, sizeof(val16));
-        LOG_DBG("write 0x%04x to g1 register %s\n",
-                (unsigned)val16, reg_info->reg_name);
-        break;
-    case 4:
-        memcpy(&val32, buf, sizeof(val32));
-        LOG_DBG("write 0x%08x to g1 register %s\n",
-                (unsigned)val32, reg_info->reg_name);
-        break;
-    default:
-        LOG_DBG("write to g1 register %s\n", reg_info->reg_name);
-    }
+    /* GD-ROM DMA registers */
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDAPRO", 0x5f74b8,
+                                    gdrom_gdapro_mmio_read,
+                                    gdrom_gdapro_mmio_write);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1GDRC", 0x5f74a0,
+                                    gdrom_g1gdrc_mmio_read,
+                                    gdrom_g1gdrc_mmio_write);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1GDWC", 0x5f74a4,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDSTAR", 0x5f7404,
+                                    gdrom_gdstar_mmio_read,
+                                    gdrom_gdstar_mmio_write);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDLEN", 0x5f7408,
+                                    gdrom_gdlen_mmio_read,
+                                    gdrom_gdlen_mmio_write);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDDIR", 0x5f740c,
+                                    gdrom_gddir_mmio_read,
+                                    gdrom_gddir_mmio_write);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDEN", 0x5f7414,
+                                    gdrom_gden_mmio_read,
+                                    gdrom_gden_mmio_write);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDST", 0x5f7418,
+                                    gdrom_gdst_reg_read_handler,
+                                    gdrom_gdst_reg_write_handler);
 
-    return default_g1_reg_write_handler(reg_info, buf, addr, len);
+    /* system boot-rom registers */
+    // XXX this is supposed to be write-only, but currently it's readable
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1RRC", 0x005f7480,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1RWC", 0x5f7484,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+    mmio_region_g1_reg_16_init_cell(&mmio_region_g1_reg_16,
+                                    "SB_G1RRC", 0x005f7480,
+                                    mmio_region_g1_reg_16_warn_read_handler,
+                                    mmio_region_g1_reg_16_warn_write_handler);
+    mmio_region_g1_reg_16_init_cell(&mmio_region_g1_reg_16,
+                                    "SB_G1RWC", 0x5f7484,
+                                    mmio_region_g1_reg_16_warn_read_handler,
+                                    mmio_region_g1_reg_16_warn_write_handler);
+
+    /* flash rom registers */
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1FRC", 0x5f7488,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1FWC", 0x5f748c,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+
+    /* GD PIO timing registers - I guess this is related to GD-ROM ? */
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1CRC", 0x5f7490,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1CWC", 0x5f7494,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+
+    // TODO: SB_G1SYSM should be read-only
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1SYSM", 0x5f74b0,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1CRDYC", 0x5f74b4,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "UNKNOWN", 0x005f74e4,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDLEND", 0x005f74f8,
+                                    gdrom_gdlend_mmio_read,
+                                    mmio_region_g1_reg_32_readonly_write_error);
 }
 
-static int
-g1_read_only_reg_write_handler(struct g1_mem_mapped_reg const *reg_info,
-                               void const *buf, addr32_t addr, unsigned len) {
-    error_set_feature("Whatever happens when you try to write to a read-only "
-                      "G1 bus register");
-    error_set_address(addr);
-    error_set_length(len);
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
+void g1_reg_cleanup(void) {
+    cleanup_mmio_region_g1_reg_32(&mmio_region_g1_reg_32);
+    cleanup_mmio_region_g1_reg_16(&mmio_region_g1_reg_16);
 }
