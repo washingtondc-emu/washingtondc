@@ -729,6 +729,10 @@ void gdrom_reg_init(void) {
                                       "Byte Count (high)", 0x5f7094,
                                       gdrom_byte_count_high_mmio_read_8,
                                       gdrom_byte_count_high_mmio_write_8);
+    mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
+                                      "Drive Select", 0x5f7098,
+                                      mmio_region_gdrom_reg_8_warn_read_handler,
+                                      mmio_region_gdrom_reg_8_warn_write_handler);
 
     mmio_region_gdrom_reg_16_init_cell(&mmio_region_gdrom_reg_16,
                                        "GD-ROM Data", 0x5f7080,
