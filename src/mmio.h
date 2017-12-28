@@ -42,9 +42,10 @@
         on_write[(len_bytes) / sizeof(type)];                           \
         type backing[(len_bytes) / sizeof(type)];                       \
         char const *names[(len_bytes) / sizeof(type)];                  \
-    } mmio_region_##name;                                               \
+    };                                                                  \
 
 #define DEF_MMIO_REGION(name, len_bytes, beg_bytes, type)               \
+    static struct mmio_region_##name mmio_region_##name;                \
                                                                         \
     __attribute__((unused)) static inline type                          \
     mmio_region_##name##_read(struct mmio_region_##name *region,        \
