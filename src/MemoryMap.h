@@ -31,13 +31,6 @@ void memory_map_init(BiosFile *bios_new, struct Memory *mem_new);
 void memory_map_set_bios(BiosFile *bios_new);
 void memory_map_set_mem(struct Memory *mem_new);
 
-/*
- * the error codes returned by these functions are the same as the error codes
- * defined in mem_code.h
- */
-int memory_map_read(void *buf, size_t addr, size_t len);
-int memory_map_write(void const *buf, size_t addr, size_t len);
-
 uint8_t memory_map_read_8(size_t addr);
 uint16_t memory_map_read_16(size_t addr);
 uint32_t memory_map_read_32(size_t addr);

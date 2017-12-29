@@ -139,7 +139,9 @@ void dreamcast_init(bool cmd_session) {
             error_set_errno_val(errno);
             RAISE_ERROR(ERROR_FILE_IO);
         }
-        memory_map_write(dat_ip_bin, ADDR_IP_BIN & ~0xe0000000, len_ip_bin);
+
+        memory_write(&dc_mem, dat_ip_bin, ADDR_IP_BIN & ADDR_AREA3_MASK,
+                     len_ip_bin);
         free(dat_ip_bin);
 
         long len_1st_read_bin;
@@ -150,8 +152,8 @@ void dreamcast_init(bool cmd_session) {
             error_set_errno_val(errno);
             RAISE_ERROR(ERROR_FILE_IO);
         }
-        memory_map_write(dat_1st_read_bin, ADDR_1ST_READ_BIN & ~0xe0000000,
-                         len_1st_read_bin);
+        memory_write(&dc_mem, dat_1st_read_bin,
+                     ADDR_1ST_READ_BIN & ADDR_AREA3_MASK, len_1st_read_bin);
         free(dat_1st_read_bin);
 
         char const *syscall_path = config_get_syscall_path();
@@ -170,7 +172,8 @@ void dreamcast_init(bool cmd_session) {
             RAISE_ERROR(ERROR_INVALID_FILE_LEN);
         }
 
-        memory_map_write(dat_syscall, ADDR_SYSCALLS & ~0xe0000000, syscall_len);
+        memory_write(&dc_mem, dat_syscall,
+                     ADDR_SYSCALLS & ADDR_AREA3_MASK, syscall_len);
         free(dat_syscall);
     }
 
