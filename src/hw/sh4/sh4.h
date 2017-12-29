@@ -27,10 +27,6 @@
 #include <stdint.h>
 #include <stdatomic.h>
 
-#ifdef ENABLE_SH4_MMU
-#include "sh4_mmu.h"
-#endif
-
 #include "error.h"
 #include "types.h"
 #include "sh4_inst.h"
@@ -70,10 +66,6 @@ struct Sh4 {
     Sh4ExecState exec_state;
 
     reg32_t reg[SH4_REGISTER_COUNT];
-
-#ifdef ENABLE_SH4_MMU
-    struct sh4_mmu mmu;
-#endif
 
     struct sh4_tmu tmu;
 

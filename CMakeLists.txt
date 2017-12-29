@@ -44,7 +44,6 @@ if(UNIX)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")
 endif()
 
-option(ENABLE_SH4_MMU "emulate the sh4's Memory Management Unit (MMU)" OFF)
 option(ENABLE_DEBUGGER "Enable the debugger" OFF)
 option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
 option(INVARIANTS "runtime sanity checks that should never fail" ON)
@@ -219,14 +218,6 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/mmio.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2.c")
-
-if (ENABLE_SH4_MMU)
-    add_definitions(-DENABLE_SH4_MMU)
-    set(sh4_sources ${sh4_sources}
-                                   "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.h"
-                                   "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_mmu.c")
-
-endif()
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
                          "${PROJECT_SOURCE_DIR}/src/BiosFile.c"

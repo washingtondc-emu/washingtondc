@@ -24,10 +24,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef ENABLE_SH4_MMU
-#include "sh4_mmu.h"
-#endif
-
 #include "sh4_excp.h"
 #include "sh4_reg.h"
 #include "sh4_inst.h"
@@ -43,10 +39,6 @@ static struct error_callback sh4_error_callback;
 void sh4_init(Sh4 *sh4) {
     memset(sh4, 0, sizeof(*sh4));
     sh4->reg_area = (uint8_t*)malloc(sizeof(uint8_t) * (SH4_P4_REGEND - SH4_P4_REGSTART));
-
-#ifdef ENABLE_SH4_MMU
-    sh4_mmu_init(sh4);
-#endif
 
     memset(sh4->reg, 0, sizeof(sh4->reg));
 

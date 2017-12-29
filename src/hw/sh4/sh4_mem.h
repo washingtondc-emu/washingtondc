@@ -92,14 +92,7 @@ float sh4_read_mem_float(Sh4 *sh4, addr32_t addr);
 double sh4_read_mem_double(Sh4 *sh4, addr32_t addr);
 
 /*
- * same as sh4_write_mem/sh4_read_mem, except they don't automatically raise
- * pending errors and they don't check for watchpoints
- */
-int sh4_do_write_mem(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
-int sh4_do_read_mem(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
-
-/*
- * generally you'll call these functions through do_read_mem/do_write_mem
+ * generally you'll call these functions through sh4_read_mem/sh4_write_mem
  * instead of calling these functions directly
  */
 int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);

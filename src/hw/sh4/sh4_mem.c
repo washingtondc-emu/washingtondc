@@ -22,10 +22,6 @@
 
 #include <stdlib.h>
 
-#ifdef ENABLE_SH4_MMU
-#include "sh4_mmu.h"
-#endif
-
 #include "sh4_excp.h"
 #include "sh4_mem.h"
 #include "sh4_ocache.h"
@@ -97,71 +93,6 @@ SH4_WRITE_MEM_TMPL(uint32_t, 32)
 SH4_WRITE_MEM_TMPL(float, float)
 SH4_WRITE_MEM_TMPL(double, double)
 
-int sh4_do_write_mem(Sh4 *sh4, void const *data, addr32_t addr, unsigned len) {
-
-    enum VirtMemArea virt_area = sh4_get_mem_area(addr);
-
-#if 0
-    /*
-     * this is commented out because you can't leave privileged mode without
-     * raising an EROR_UNIMPLEMENTED (see sh4_on_sr_change in sh4.c)
-     */
-    bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
-
-    if (virt_area != SH4_AREA_P0 && !privileged) {
-        // TODO: allow user-mode access to the store queue area
-
-        /*
-         * The spec says user-mode processes can only write to the U0 area
-         * (which overlaps with P0) and the store queue area but I can't find
-         * the part where it describes what needs to be done.  Raising the
-         * SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
-         * looks like it's for instances where the page can be looked up in the
-         * TLB.
-         */
-        error_set_feature("CPU exception for unprivileged "
-                          "access to high memory areas");
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
-    }
-#endif
-
-    switch (virt_area) {
-    case SH4_AREA_P0:
-    case SH4_AREA_P3:
-        /*
-         * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise an
-         * error or do TLB lookups accordingly.
-         *
-         * currently it is impossible for this to be set because of the
-         * ERROR_UNIMPLEMENTED that gets raised if you set this bit in sh4_reg.c
-         */
-
-        // handle the case where OCE is enabled and ORA is
-        // enabled but we don't have Ocache available
-        if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
-            (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
-            sh4_ocache_in_ram_area(addr)) {
-            sh4_ocache_do_write_ora(sh4, data, addr, len);
-            return MEM_ACCESS_SUCCESS;
-        }
-
-        // don't use the cache
-        // INTENTIONAL FALLTHROUGH
-    case SH4_AREA_P1:
-    case SH4_AREA_P2:
-        return memory_map_write(data, addr & 0x1fffffff, len);
-    case SH4_AREA_P4:
-        return sh4_do_write_p4(sh4, data, addr, len);
-    default:
-        break;
-    }
-
-    error_set_wtf("this should not be possible");
-    RAISE_ERROR(ERROR_INTEGRITY);
-    exit(1); // never happens
-}
-
 #define SH4_READ_MEM_TMPL(type, postfix)                                \
     type sh4_read_mem_##postfix(Sh4 *sh4, addr32_t addr) {              \
         type tmp_val;                                                   \
@@ -210,69 +141,6 @@ SH4_READ_MEM_TMPL(uint16_t, 16);
 SH4_READ_MEM_TMPL(uint32_t, 32);
 SH4_READ_MEM_TMPL(float, float);
 SH4_READ_MEM_TMPL(double, double);
-
-int sh4_do_read_mem(Sh4 *sh4, void *data, addr32_t addr, unsigned len) {
-
-    enum VirtMemArea virt_area = sh4_get_mem_area(addr);
-
-#if 0
-    /*
-     * this is commented out because you can't leave privileged mode without
-     * raising an EROR_UNIMPLEMENTED (see sh4_on_sr_change in sh4.c)
-     */
-    bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
-
-    if (virt_area != SH4_AREA_P0 && !privileged) {
-        // TODO: allow user-mode access to the store queue area
-
-        /*
-         * The spec says user-mode processes can only write to the U0 area
-         * (which overlaps with P0) and the store queue area but I can't find
-         * the part where it describes what needs to be done.  Raising the
-         * SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
-         * looks like it's for instances where the page can be looked up in the
-         * TLB.
-         */
-        error_set_feature("CPU exception for unprivileged "
-                          "access to high memory areas");
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
-    }
-#endif
-
-    switch (virt_area) {
-    case SH4_AREA_P0:
-    case SH4_AREA_P3:
-        /*
-         * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise an
-         * error or do TLB lookups accordingly.
-         *
-         * currently it is impossible for this to be set because of the
-         * ERROR_UNIMPLEMENTED that gets raised if you set this bit in sh4_reg.c
-         */
-
-        // handle the case where OCE is enabled and ORA is
-        // enabled but we don't have Ocache available
-        if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&
-            (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&
-            sh4_ocache_in_ram_area(addr)) {
-            sh4_ocache_do_read_ora(sh4, data, addr, len);
-            return MEM_ACCESS_SUCCESS;
-        }
-
-        // don't use the cache
-        // INTENTIONAL FALLTHROUGH
-    case SH4_AREA_P1:
-    case SH4_AREA_P2:
-        return memory_map_read(data, addr & 0x1fffffff, len);
-    case SH4_AREA_P4:
-        return sh4_do_read_p4(sh4, data, addr, len);
-    default:
-        break;
-    }
-
-    return MEM_ACCESS_EXC;
-}
 
 int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len) {
     if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL)

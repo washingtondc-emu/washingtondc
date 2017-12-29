@@ -79,16 +79,7 @@ static inline inst_t sh4_read_inst(Sh4 *sh4) {
     if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
         return memory_read_16(&dc_mem, addr & ADDR_AREA3_MASK);
     } else {
-        inst_t instr;
-        if (memory_map_read(&instr, addr, sizeof(instr)) !=
-            MEM_ACCESS_SUCCESS) {
-            error_set_address(addr);
-            error_set_length(2);
-            error_set_feature("reading sh4 program instructions from areas "
-                              "other than the RAM and the firmware");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        return instr;
+        return memory_map_read_16(addr);
     }
 
 #if 0
