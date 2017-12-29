@@ -29,8 +29,16 @@
 void gdrom_reg_init(void);
 void gdrom_reg_cleanup(void);
 
-int gdrom_reg_read(void *buf, size_t addr, size_t len);
-int gdrom_reg_write(void const *buf, size_t addr, size_t len);
+float gdrom_reg_read_float(addr32_t addr);
+void gdrom_reg_write_float(addr32_t addr, float val);
+double gdrom_reg_read_double(addr32_t addr);
+void gdrom_reg_write_double(addr32_t addr, double val);
+uint8_t gdrom_reg_read_8(addr32_t addr);
+void gdrom_reg_write_8(addr32_t addr, uint8_t val);
+uint16_t gdrom_reg_read_16(addr32_t addr);
+void gdrom_reg_write_16(addr32_t addr, uint16_t val);
+uint32_t gdrom_reg_read_32(addr32_t addr);
+void gdrom_reg_write_32(addr32_t addr, uint32_t val);
 
 // these are GD-ROM DMA registers that lie with in the G1 bus' memory range
 struct g1_mem_mapped_reg;

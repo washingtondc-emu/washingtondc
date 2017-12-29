@@ -46,7 +46,11 @@ void bios_file_clear(struct BiosFile *bios_file);
 uint8_t *bios_file_begin(struct BiosFile *bios_file);
 uint8_t *bios_file_end(struct BiosFile *bios_file);
 
-int bios_file_read(struct BiosFile *bios_file, void *buf,
-                   size_t addr, size_t len);
+// consider yourself warned: these functions don't do bounds-checking
+uint8_t bios_file_read_8(struct BiosFile *bios_file, addr32_t addr);
+uint16_t bios_file_read_16(struct BiosFile *bios_file, addr32_t addr);
+uint32_t bios_file_read_32(struct BiosFile *bios_file, addr32_t addr);
+float bios_file_read_float(struct BiosFile *bios_file, addr32_t addr);
+double bios_file_read_double(struct BiosFile *bios_file, addr32_t addr);
 
 #endif

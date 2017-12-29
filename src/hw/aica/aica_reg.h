@@ -25,10 +25,20 @@
 
 #include <stddef.h>
 
+#include "types.h"
+
 void aica_reg_init(void);
 void aica_reg_cleanup(void);
 
-int aica_reg_read(void *buf, size_t addr, size_t len);
-int aica_reg_write(void const *buf, size_t addr, size_t len);
+float aica_reg_read_float(addr32_t addr);
+void aica_reg_write_float(addr32_t addr, float val);
+double aica_reg_read_double(addr32_t addr);
+void aica_reg_write_double(addr32_t addr, double val);
+uint32_t aica_reg_read_32(addr32_t addr);
+void aica_reg_write_32(addr32_t addr, uint32_t val);
+uint16_t aica_reg_read_16(addr32_t addr);
+void aica_reg_write_16(addr32_t addr, uint16_t val);
+uint8_t aica_reg_read_8(addr32_t addr);
+void aica_reg_write_8(addr32_t addr, uint8_t val);
 
 #endif

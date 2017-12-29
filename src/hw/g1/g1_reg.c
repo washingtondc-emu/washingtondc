@@ -39,36 +39,57 @@ DEF_MMIO_REGION(g1_reg_16, N_G1_REGS, ADDR_G1_FIRST, uint16_t)
 
 static uint8_t reg_backing[N_G1_REGS];
 
-int g1_reg_read(void *buf, size_t addr, size_t len) {
-    if (len == 4) {
-        *(uint32_t*)buf =
-            mmio_region_g1_reg_32_read(&mmio_region_g1_reg_32, addr);
-        return MEM_ACCESS_SUCCESS;
-    } else if (len == 2) {
-        *(uint16_t*)buf =
-            mmio_region_g1_reg_16_read(&mmio_region_g1_reg_16, addr);
-        return MEM_ACCESS_SUCCESS;
-    } else {
-        error_set_address(addr);
-        error_set_length(len);
-        return MEM_ACCESS_FAILURE;
-    }
+uint8_t g1_reg_read_8(addr32_t addr) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-int g1_reg_write(void const *buf, size_t addr, size_t len) {
-    if (len == 4) {
-        mmio_region_g1_reg_32_write(&mmio_region_g1_reg_32,
-                                    addr, *(uint32_t*)buf);
-        return MEM_ACCESS_SUCCESS;
-    } else if (len == 2) {
-        mmio_region_g1_reg_16_write(&mmio_region_g1_reg_16,
-                                    addr, *(uint32_t*)buf);
-        return MEM_ACCESS_SUCCESS;
-    } else {
-        error_set_address(addr);
-        error_set_length(len);
-        return MEM_ACCESS_FAILURE;
-    }
+void g1_reg_write_8(addr32_t addr, uint8_t val) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint16_t g1_reg_read_16(addr32_t addr) {
+    return mmio_region_g1_reg_16_read(&mmio_region_g1_reg_16, addr);
+}
+
+void g1_reg_write_16(addr32_t addr, uint16_t val) {
+    mmio_region_g1_reg_16_write(&mmio_region_g1_reg_16, addr, val);
+}
+
+uint32_t g1_reg_read_32(addr32_t addr) {
+    return mmio_region_g1_reg_32_read(&mmio_region_g1_reg_32, addr);
+}
+
+void g1_reg_write_32(addr32_t addr, uint32_t val) {
+    mmio_region_g1_reg_32_write(&mmio_region_g1_reg_32, addr, val);
+}
+
+float g1_reg_read_float(addr32_t addr) {
+    uint32_t tmp = mmio_region_g1_reg_32_read(&mmio_region_g1_reg_32, addr);
+    float ret;
+    memcpy(&ret, &tmp, sizeof(ret));
+    return ret;
+}
+
+void g1_reg_write_float(addr32_t addr, float val) {
+    uint32_t tmp;
+    memcpy(&tmp, &val, sizeof(tmp));
+    mmio_region_g1_reg_32_write(&mmio_region_g1_reg_32, addr, tmp);
+}
+
+double g1_reg_read_double(addr32_t addr) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void g1_reg_write_double(addr32_t addr, double val) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void g1_reg_init(void) {

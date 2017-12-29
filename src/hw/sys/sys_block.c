@@ -42,18 +42,61 @@ static uint8_t reg_backing[N_SYS_REGS];
 
 static uint32_t reg_sb_c2dstat, reg_sb_c2dlen;
 
-int sys_block_read(void *buf, size_t addr, size_t len) {
-    if (len != 4)
-        return MEM_ACCESS_FAILURE;
-    *(uint32_t*)buf = mmio_region_sys_block_read(&mmio_region_sys_block, addr);
-    return MEM_ACCESS_SUCCESS;
+float sys_block_read_float(addr32_t addr) {
+    uint32_t tmp = mmio_region_sys_block_read(&mmio_region_sys_block, addr);
+    float ret;
+    memcpy(&ret, &tmp, sizeof(ret));
+    return ret;
 }
 
-int sys_block_write(void const *buf, size_t addr, size_t len) {
-    if (len != 4)
-        return MEM_ACCESS_FAILURE;
-    mmio_region_sys_block_write(&mmio_region_sys_block, addr, *(uint32_t*)buf);
-    return MEM_ACCESS_SUCCESS;
+void sys_block_write_float(addr32_t addr, float val) {
+    uint32_t tmp;
+    memcpy(&tmp, &val, sizeof(tmp));
+    mmio_region_sys_block_write(&mmio_region_sys_block, addr, tmp);
+}
+
+double sys_block_read_double(addr32_t addr) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void sys_block_write_double(addr32_t addr, double val) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint8_t sys_block_read_8(addr32_t addr) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void sys_block_write_8(addr32_t addr, uint8_t val) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint16_t sys_block_read_16(addr32_t addr) {
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void sys_block_write_16(addr32_t addr, uint16_t val) {
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint32_t sys_block_read_32(addr32_t addr) {
+    return mmio_region_sys_block_read(&mmio_region_sys_block, addr);
+}
+
+void sys_block_write_32(addr32_t addr, uint32_t val) {
+    mmio_region_sys_block_write(&mmio_region_sys_block, addr, val);
 }
 
 static uint32_t

@@ -123,3 +123,30 @@ int bios_file_read(struct BiosFile *bios_file, void *buf,
     memcpy(buf, bios_file->dat + addr, len);
     return MEM_ACCESS_SUCCESS;
 }
+
+uint8_t bios_file_read_8(struct BiosFile *bios_file, addr32_t addr) {
+    return bios_file->dat[addr];
+}
+
+uint16_t bios_file_read_16(struct BiosFile *bios_file, addr32_t addr) {
+    uint16_t const *bios16 = (uint16_t const*)bios_file->dat;
+    return bios16[addr / 2];
+}
+
+uint32_t bios_file_read_32(struct BiosFile *bios_file, addr32_t addr) {
+    uint32_t const *bios32 = (uint32_t const*)bios_file->dat;
+    return bios32[addr / 4];
+}
+
+float bios_file_read_float(struct BiosFile *bios_file, addr32_t addr) {
+    uint32_t tmp = bios_file_read_32(bios_file, addr);
+    float ret;
+    memcpy(&ret, &tmp, sizeof(ret));
+    return ret;
+}
+
+double bios_file_read_double(struct BiosFile *bios_file, addr32_t addr) {
+    error_set_address(addr);
+    error_set_length(8);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}

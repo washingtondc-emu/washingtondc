@@ -53,18 +53,34 @@ void aica_rtc_init(void) {
     sched_aica_rtc_event();
 }
 
-int aica_rtc_read(void *buf, size_t addr, size_t len) {
-    AICA_RTC_TRACE("Reading %u bytes from AICA RTC address 0x%08x\n",
-                   (unsigned)len, (unsigned)addr);
+float aica_rtc_read_float(addr32_t addr) {
+    uint32_t tmp = aica_rtc_read_32(addr);
+    float ret;
+    memcpy(&ret, &tmp, sizeof(ret));
+    return ret;
+}
 
-    if (len != 4) {
-        error_set_feature("Whatever happens when you use an inapproriate "
-                          "length while reading from an aica RTC register");
-        error_set_address(addr);
-        error_set_length(len);
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
-    }
+void aica_rtc_write_float(addr32_t addr, float val) {
+    uint32_t tmp;
+    memcpy(&tmp, &val, sizeof(tmp));
+    aica_rtc_write_32(addr, tmp);
+}
+
+double aica_rtc_read_double(addr32_t addr) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void aica_rtc_write_double(addr32_t addr, double val) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint32_t aica_rtc_read_32(addr32_t addr) {
+    AICA_RTC_TRACE("Reading 4 bytes from AICA RTC address 0x%08x\n",
+                   (unsigned)addr);
 
     uint32_t tmp;
     switch (addr) {
@@ -89,25 +105,12 @@ int aica_rtc_read(void *buf, size_t addr, size_t len) {
         return MEM_ACCESS_FAILURE;
     }
 
-    memcpy(buf, &tmp, sizeof(tmp));
-    return MEM_ACCESS_SUCCESS;
+    return tmp;
 }
 
-int aica_rtc_write(void const *buf, size_t addr, size_t len) {
-    AICA_RTC_TRACE("Writing %u bytes to address 0x%08x\n",
-                   (unsigned)len, (unsigned)addr);
-
-    if (len != 4) {
-        error_set_feature("Whatever happens when you use an inapproriate "
-                          "length while reading from an aica RTC register");
-        error_set_address(addr);
-        error_set_length(len);
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
-    }
-
-    uint32_t val;
-    memcpy(&val, buf, sizeof(val));
+void aica_rtc_write_32(addr32_t addr, uint32_t val) {
+    AICA_RTC_TRACE("Writing 4 bytes to address 0x%08x\n",
+                   (unsigned)addr);
 
     __attribute__((unused)) uint32_t old_rtc_val = cur_rtc_val;
 
@@ -151,10 +154,39 @@ int aica_rtc_write(void const *buf, size_t addr, size_t len) {
          * registers in the AICA RTC's address range.
          */
         RAISE_ERROR(ERROR_INTEGRITY);
-        return MEM_ACCESS_FAILURE;
     }
+}
 
-    return MEM_ACCESS_SUCCESS;
+uint16_t aica_rtc_read_16(addr32_t addr) {
+    error_set_feature("Whatever happens when you use an inapproriate "
+                      "length while reading from an aica RTC register");
+    error_set_address(addr);
+    error_set_length(2);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void aica_rtc_write_16(addr32_t addr, uint16_t val) {
+    error_set_feature("Whatever happens when you use an inapproriate "
+                      "length while reading from an aica RTC register");
+    error_set_address(addr);
+    error_set_length(2);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint8_t aica_rtc_read_8(addr32_t addr) {
+    error_set_feature("Whatever happens when you use an inapproriate "
+                      "length while reading from an aica RTC register");
+    error_set_address(addr);
+    error_set_length(1);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void aica_rtc_write_8(addr32_t addr, uint8_t val) {
+    error_set_feature("Whatever happens when you use an inapproriate "
+                      "length while reading from an aica RTC register");
+    error_set_address(addr);
+    error_set_length(1);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static void aica_rtc_event_handler(SchedEvent *ev) {

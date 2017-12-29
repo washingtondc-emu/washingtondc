@@ -41,18 +41,61 @@ DEF_MMIO_REGION(g2_reg_32, N_G2_REGS, ADDR_G2_FIRST, uint32_t)
 
 static uint8_t reg_backing[N_G2_REGS];
 
-int g2_reg_read(void *buf, size_t addr, size_t len) {
-    if (len != 4)
-        return MEM_ACCESS_FAILURE;
-    *(uint32_t*)buf = mmio_region_g2_reg_32_read(&mmio_region_g2_reg_32, addr);
-    return MEM_ACCESS_SUCCESS;
+uint8_t g2_reg_read_8(addr32_t addr) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-int g2_reg_write(void const *buf, size_t addr, size_t len) {
-    if (len != 4)
-        return MEM_ACCESS_FAILURE;
-    mmio_region_g2_reg_32_write(&mmio_region_g2_reg_32, addr, *(uint32_t*)buf);
-    return MEM_ACCESS_SUCCESS;
+void g2_reg_write_8(addr32_t addr, uint8_t val) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint16_t g2_reg_read_16(addr32_t addr) {
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void g2_reg_write_16(addr32_t addr, uint16_t val) {
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint32_t g2_reg_read_32(addr32_t addr) {
+    return mmio_region_g2_reg_32_read(&mmio_region_g2_reg_32, addr);
+}
+
+void g2_reg_write_32(addr32_t addr, uint32_t val) {
+    mmio_region_g2_reg_32_write(&mmio_region_g2_reg_32, addr, val);
+}
+
+float g2_reg_read_float(addr32_t addr) {
+    uint32_t tmp = mmio_region_g2_reg_32_read(&mmio_region_g2_reg_32, addr);
+    float ret;
+    memcpy(&ret, &tmp, sizeof(ret));
+    return ret;
+}
+
+void g2_reg_write_float(addr32_t addr, float val) {
+    uint32_t tmp;
+    memcpy(&tmp, &val, sizeof(tmp));
+    mmio_region_g2_reg_32_write(&mmio_region_g2_reg_32, addr, tmp);
+}
+
+double g2_reg_read_double(addr32_t addr) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void g2_reg_write_double(addr32_t addr, double val) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static void sb_adst_reg_mmio_write(struct mmio_region_g2_reg_32 *region,

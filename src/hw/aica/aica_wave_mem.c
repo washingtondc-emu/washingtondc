@@ -31,6 +31,8 @@
 #include "config.h"
 #include "log.h"
 
+#include "aica_wave_mem.h"
+
 static struct aica_mem_hack {
     uint32_t addr;
     uint32_t val;
@@ -132,6 +134,16 @@ bool aica_log_verbose_val;
 
 static uint8_t aica_wave_mem[ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1];
 
+static struct aica_mem_hack const *check_hack(addr32_t addr) {
+    struct aica_mem_hack const *cursor = &no_aica_hack[0];
+    while (!cursor->end) {
+        if (addr == cursor->addr)
+            return cursor;
+        cursor++;
+    }
+    return NULL;
+}
+
 int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
     void const *start_addr = aica_wave_mem + (addr - ADDR_AICA_WAVE_FIRST);
 
@@ -218,4 +230,167 @@ int aica_wave_mem_write(void const *buf, size_t addr, size_t len) {
 
 void aica_log_verbose(bool verbose) {
     aica_log_verbose_val = verbose;
+}
+
+float aica_wave_mem_read_float(addr32_t addr) {
+    uint32_t val = aica_wave_mem_read_32(addr);
+    float ret;
+    memcpy(&ret, &val, sizeof(ret));
+    return ret;
+}
+
+void aica_wave_mem_write_float(addr32_t addr, float val) {
+    uint32_t tmp;
+    memcpy(&tmp, &val, sizeof(tmp));
+    aica_wave_mem_write_32(addr, tmp);
+}
+
+double aica_wave_mem_read_double(addr32_t addr) {
+    error_set_length(sizeof(double));
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void aica_wave_mem_write_double(addr32_t addr, double val) {
+    error_set_length(sizeof(double));
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint8_t aica_wave_mem_read_8(addr32_t addr) {
+    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
+        ((addr - 1 + sizeof(uint8_t)) > ADDR_AICA_WAVE_LAST) ||
+        ((addr - 1 + sizeof(uint8_t)) < ADDR_AICA_WAVE_FIRST)) {
+        error_set_feature("aw fuck it");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint8_t const *valp = ((uint8_t const*)aica_wave_mem) +
+        (addr - ADDR_AICA_WAVE_FIRST);
+
+    if (aica_log_verbose_val) {
+        __attribute__((unused)) unsigned pc =
+            dreamcast_get_cpu()->reg[SH4_REG_PC];
+            LOG_DBG("AICA: reading 0x%02x from 0x%08x (PC is 0x%08x)\n",
+                    (unsigned)*valp, (unsigned)addr, pc);
+    }
+
+    return *valp;
+}
+
+void aica_wave_mem_write_8(addr32_t addr, uint8_t val) {
+    uint8_t *outp = ((uint8_t*)aica_wave_mem) +
+        (addr - ADDR_AICA_WAVE_FIRST);
+
+    if (aica_log_verbose_val) {
+        __attribute__((unused)) unsigned pc =
+            dreamcast_get_cpu()->reg[SH4_REG_PC];
+        LOG_DBG("AICA: writing 0x%02x to 0x%08x (PC is 0x%08x)\n",
+                (unsigned)val, (unsigned)addr, pc);
+    }
+
+    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
+        ((addr - 1 + sizeof(uint8_t)) > ADDR_AICA_WAVE_LAST) ||
+        ((addr - 1 + sizeof(uint8_t)) < ADDR_AICA_WAVE_FIRST)) {
+        error_set_feature("aw fuck it");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    *outp = val;
+}
+
+uint16_t aica_wave_mem_read_16(addr32_t addr) {
+    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
+        ((addr - 1 + sizeof(uint16_t)) > ADDR_AICA_WAVE_LAST) ||
+        ((addr - 1 + sizeof(uint16_t)) < ADDR_AICA_WAVE_FIRST)) {
+        error_set_feature("aw fuck it");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint16_t const *valp = ((uint16_t const*)aica_wave_mem) +
+        (addr - ADDR_AICA_WAVE_FIRST) / 2;
+
+    if (aica_log_verbose_val) {
+        __attribute__((unused)) unsigned pc =
+            dreamcast_get_cpu()->reg[SH4_REG_PC];
+            LOG_DBG("AICA: reading 0x%04x from 0x%08x (PC is 0x%08x)\n",
+                    (unsigned)*valp, (unsigned)addr, pc);
+    }
+
+    return *valp;
+}
+
+void aica_wave_mem_write_16(addr32_t addr, uint16_t val) {
+    uint16_t *outp = ((uint16_t*)aica_wave_mem) +
+        (addr - ADDR_AICA_WAVE_FIRST) / 2;
+
+    if (aica_log_verbose_val) {
+        __attribute__((unused)) unsigned pc =
+            dreamcast_get_cpu()->reg[SH4_REG_PC];
+        LOG_DBG("AICA: writing 0x%04x to 0x%08x (PC is 0x%08x)\n",
+                (unsigned)val, (unsigned)addr, pc);
+    }
+
+    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
+        ((addr - 1 + sizeof(uint16_t)) > ADDR_AICA_WAVE_LAST) ||
+        ((addr - 1 + sizeof(uint16_t)) < ADDR_AICA_WAVE_FIRST)) {
+        error_set_feature("aw fuck it");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    *outp = val;
+}
+
+uint32_t aica_wave_mem_read_32(addr32_t addr) {
+    if (config_get_hack_power_stone_no_aica()) {
+        struct aica_mem_hack const *hack = check_hack(addr);
+        if (hack) {
+            if (aica_log_verbose_val) {
+                LOG_DBG("AICA: reading %u from 0x%08x due to the no-AICA "
+                        "Power Stone hack\n",
+                        (unsigned)hack->val, (unsigned)hack->addr);
+            }
+            return hack->val;
+        }
+    }
+
+    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
+        ((addr - 1 + sizeof(uint32_t)) > ADDR_AICA_WAVE_LAST) ||
+        ((addr - 1 + sizeof(uint32_t)) < ADDR_AICA_WAVE_FIRST)) {
+        error_set_feature("aw fuck it");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t const *valp = ((uint32_t const*)aica_wave_mem) +
+        (addr - ADDR_AICA_WAVE_FIRST) / 4;
+
+    if (aica_log_verbose_val) {
+        __attribute__((unused)) unsigned pc =
+            dreamcast_get_cpu()->reg[SH4_REG_PC];
+            LOG_DBG("AICA: reading 0x%08x from 0x%08x (PC is 0x%08x)\n",
+                    (unsigned)*valp, (unsigned)addr, pc);
+    }
+
+    return *valp;
+}
+
+void aica_wave_mem_write_32(addr32_t addr, uint32_t val) {
+    uint32_t *outp = ((uint32_t*)aica_wave_mem) +
+        (addr - ADDR_AICA_WAVE_FIRST) / 4;
+
+    if (aica_log_verbose_val) {
+        __attribute__((unused)) unsigned pc =
+            dreamcast_get_cpu()->reg[SH4_REG_PC];
+        LOG_DBG("AICA: writing 0x%08x to 0x%08x (PC is 0x%08x)\n",
+                (unsigned)val, (unsigned)addr, pc);
+    }
+
+    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
+        ((addr - 1 + sizeof(uint32_t)) > ADDR_AICA_WAVE_LAST) ||
+        ((addr - 1 + sizeof(uint32_t)) < ADDR_AICA_WAVE_FIRST)) {
+        error_set_feature("aw fuck it");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    *outp = val;
 }

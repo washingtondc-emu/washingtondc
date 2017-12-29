@@ -23,9 +23,22 @@
 #ifndef AICA_RTC_H_
 #define AICA_RTC_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
+#include "types.h"
+
 void aica_rtc_init(void);
 
-int aica_rtc_read(void *buf, size_t addr, size_t len);
-int aica_rtc_write(void const *buf, size_t addr, size_t len);
+float aica_rtc_read_float(addr32_t addr);
+void aica_rtc_write_float(addr32_t addr, float val);
+double aica_rtc_read_double(addr32_t addr);
+void aica_rtc_write_double(addr32_t addr, double val);
+uint32_t aica_rtc_read_32(addr32_t addr);
+void aica_rtc_write_32(addr32_t addr, uint32_t val);
+uint16_t aica_rtc_read_16(addr32_t addr);
+void aica_rtc_write_16(addr32_t addr, uint16_t val);
+uint8_t aica_rtc_read_8(addr32_t addr);
+void aica_rtc_write_8(addr32_t addr, uint8_t val);
 
 #endif

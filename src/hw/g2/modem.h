@@ -23,7 +23,17 @@
 #ifndef MODEM_H_
 #define MODEM_H_
 
-int modem_read(void *buf, size_t addr, size_t len);
-int modem_write(void const *buf, size_t addr, size_t len);
+#include "types.h"
+
+float modem_read_float(addr32_t addr);
+void modem_write_float(addr32_t addr, float val);
+double modem_read_double(addr32_t addr);
+void modem_write_double(addr32_t addr, double val);
+uint8_t modem_read_8(addr32_t addr);
+void modem_write_8(addr32_t addr, uint8_t val);
+uint16_t modem_read_16(addr32_t addr);
+void modem_write_16(addr32_t addr, uint16_t val);
+uint32_t modem_read_32(addr32_t addr);
+void modem_write_32(addr32_t addr, uint32_t val);
 
 #endif

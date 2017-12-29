@@ -48,20 +48,61 @@ static addr32_t maple_dma_prot_top = (0x1 << 27) | (0x7f << 20);
 
 static addr32_t maple_dma_cmd_start;
 
-int maple_reg_read(void *buf, size_t addr, size_t len) {
-    if (len != 4)
-        return MEM_ACCESS_FAILURE;
-    *(uint32_t*)buf =
-        mmio_region_maple_reg_read(&mmio_region_maple_reg, addr);
-    return MEM_ACCESS_SUCCESS;
+float maple_reg_read_float(addr32_t addr) {
+    uint32_t tmp = mmio_region_maple_reg_read(&mmio_region_maple_reg, addr);
+    float ret;
+    memcpy(&ret, &tmp, sizeof(ret));
+    return ret;
 }
 
-int maple_reg_write(void const *buf, size_t addr, size_t len) {
-    if (len != 4)
-        return MEM_ACCESS_FAILURE;
-    mmio_region_maple_reg_write(&mmio_region_maple_reg,
-                                addr, *(uint32_t*)buf);
-    return MEM_ACCESS_SUCCESS;
+void maple_reg_write_float(addr32_t addr, float val) {
+    uint32_t tmp;
+    memcpy(&tmp, &val, sizeof(tmp));
+    mmio_region_maple_reg_write(&mmio_region_maple_reg, addr, tmp);
+}
+
+double maple_reg_read_double(addr32_t addr) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void maple_reg_write_double(addr32_t addr, double val) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint32_t maple_reg_read_32(addr32_t addr) {
+    return mmio_region_maple_reg_read(&mmio_region_maple_reg, addr);
+}
+
+void maple_reg_write_32(addr32_t addr, uint32_t val) {
+    mmio_region_maple_reg_write(&mmio_region_maple_reg, addr, val);
+}
+
+uint16_t maple_reg_read_16(addr32_t addr) {
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void maple_reg_write_16(addr32_t addr, uint16_t val) {
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint8_t maple_reg_read_8(addr32_t addr) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void maple_reg_write_8(addr32_t addr, uint8_t val) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static uint32_t mden_reg_mmio_read(struct mmio_region_maple_reg *region,

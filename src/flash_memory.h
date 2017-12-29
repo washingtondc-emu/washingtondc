@@ -23,13 +23,22 @@
 #ifndef FLASH_MEMORY_H_
 #define FLASH_MEMORY_H_
 
+#include "types.h"
 #include "mem_areas.h"
 
 #define FLASH_MEM_SZ (ADDR_FLASH_LAST - ADDR_FLASH_FIRST + 1)
 
 void flash_mem_load(char const *path);
 
-int flash_mem_read(void *buf, size_t addr, size_t len);
-int flash_mem_write(void const *buf, size_t addr, size_t len);
+float flash_mem_read_float(addr32_t addr);
+void flash_mem_write_float(addr32_t addr, float val);
+double flash_mem_read_double(addr32_t addr);
+void flash_mem_write_double(addr32_t addr, double val);
+uint32_t flash_mem_read_32(addr32_t addr);
+void flash_mem_write_32(addr32_t addr, uint32_t val);
+uint16_t flash_mem_read_16(addr32_t addr);
+void flash_mem_write_16(addr32_t addr, uint16_t val);
+uint8_t flash_mem_read_8(addr32_t addr);
+void flash_mem_write_8(addr32_t addr, uint8_t val);
 
 #endif

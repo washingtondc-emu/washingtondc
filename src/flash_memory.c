@@ -154,82 +154,110 @@ void flash_mem_load(char const *path) {
     fclose(fp);
 }
 
-int flash_mem_read(void *buf, size_t addr, size_t len) {
-    if ((addr + len - 1 > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
-        error_set_address(addr);
-        error_set_length(len);
-        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
-        return MEM_ACCESS_FAILURE;
-    }
-
-#ifdef FLASH_MEM_VERBOSE
-    if (len == 1) {
-        uint8_t val;
-        memcpy(&val, flash_mem + (addr - ADDR_FLASH_FIRST), sizeof(val));
-        FLASH_MEM_TRACE("read %02x (1 byte) from %08x\n",
-                        (unsigned)val, (unsigned)addr);
-    } else if (len == 2) {
-        uint16_t val;
-        memcpy(&val, flash_mem + (addr - ADDR_FLASH_FIRST), sizeof(val));
-        FLASH_MEM_TRACE("read %04x (2 bytes) from %08x\n",
-                        (unsigned)val, (unsigned)addr);
-    } else if (len == 4) {
-        uint32_t val;
-        memcpy(&val, flash_mem + (addr - ADDR_FLASH_FIRST), sizeof(val));
-        FLASH_MEM_TRACE("read %08x (4 bytes) from %08x\n",
-                        (unsigned)val, (unsigned)addr);
-    } else {
-        FLASH_MEM_TRACE("read %08x bytes from %08x\n",
-                        (unsigned)len, (unsigned)addr);
-    }
-#endif
-
-    memcpy(buf, flash_mem + (addr - ADDR_FLASH_FIRST), len);
-
-    return MEM_ACCESS_SUCCESS;
+float flash_mem_read_float(addr32_t addr) {
+    uint32_t tmp = flash_mem_read_32(addr);
+    float ret;
+    memcpy(&ret, &tmp, sizeof(ret));
+    return ret;
 }
 
-int flash_mem_write(void const *buf, size_t addr, size_t len) {
-    if ((addr + len - 1 > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
-        error_set_address(addr);
-        error_set_length(len);
-        PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
-        return MEM_ACCESS_FAILURE;
-    }
+void flash_mem_write_float(addr32_t addr, float val) {
+    error_set_feature("flash memory write-lengths other than 1-byte");
+    error_set_length(4);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
 
-    if (len != 1) {
-        error_set_feature("flash memory write-lengths other than 1-byte");
-        error_set_length(len);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+double flash_mem_read_double(addr32_t addr) {
+    error_set_address(addr);
+    error_set_length(sizeof(double));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void flash_mem_write_double(addr32_t addr, double val) {
+    error_set_feature("flash memory write-lengths other than 1-byte");
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint32_t flash_mem_read_32(addr32_t addr) {
+    if ((addr + sizeof(uint32_t) - 1 > ADDR_FLASH_LAST) ||
+        (addr < ADDR_FLASH_FIRST)) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint32_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
 #ifdef FLASH_MEM_VERBOSE
-    if (len == 1) {
-        uint8_t val;
-        memcpy(&val, buf, sizeof(val));
-        FLASH_MEM_TRACE("write %02x to %08x\n", (unsigned)val, (unsigned)addr);
-    } else if (len == 2) {
-        uint16_t val;
-        memcpy(&val, buf, sizeof(val));
-        FLASH_MEM_TRACE("write %04x to %08x\n", (unsigned)val, (unsigned)addr);
-    } else if (len == 4) {
-        uint32_t val;
-        memcpy(&val, buf, sizeof(val));
-        FLASH_MEM_TRACE("write %08x to %08x\n", (unsigned)val, (unsigned)addr);
-    } else {
-        FLASH_MEM_TRACE("write %08x bytes to %08x\n",
-                        (unsigned)len, (unsigned)addr);
-    }
+    FLASH_MEM_TRACE("read %08x (4 bytes) from %08x\n",
+                    (unsigned)val, (unsigned)addr);
 #endif
 
-    uint8_t val;
+    uint32_t const *in_ptr = (uint32_t const*)flash_mem;
+    return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint32_t)];
+}
 
-    for (unsigned byte_no = 0; byte_no < len; byte_no++) {
-        memcpy(&val, ((uint8_t*)buf) + byte_no, sizeof(val));
-        flash_mem_input_byte(addr + byte_no, val);
+void flash_mem_write_32(addr32_t addr, uint32_t val) {
+    error_set_feature("flash memory write-lengths other than 1-byte");
+    error_set_length(4);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint16_t flash_mem_read_16(addr32_t addr) {
+    if ((addr + sizeof(uint16_t) - 1 > ADDR_FLASH_LAST) ||
+        (addr < ADDR_FLASH_FIRST)) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint16_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
-    return MEM_ACCESS_SUCCESS;
+#ifdef FLASH_MEM_VERBOSE
+    FLASH_MEM_TRACE("read %04x (2 bytes) from %08x\n",
+                    (unsigned)val, (unsigned)addr);
+#endif
+
+    uint16_t const *in_ptr = (uint16_t const*)flash_mem;
+    return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint16_t)];
+}
+
+void flash_mem_write_16(addr32_t addr, uint16_t val) {
+    error_set_feature("flash memory write-lengths other than 1-byte");
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint8_t flash_mem_read_8(addr32_t addr) {
+    if ((addr + sizeof(uint8_t) - 1 > ADDR_FLASH_LAST) ||
+        (addr < ADDR_FLASH_FIRST)) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint8_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
+#ifdef FLASH_MEM_VERBOSE
+    FLASH_MEM_TRACE("read %02x (1 byte) from %08x\n",
+                    (unsigned)val, (unsigned)addr);
+#endif
+
+    uint8_t const *in_ptr = (uint8_t const*)flash_mem;
+    return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint8_t)];
+}
+
+void flash_mem_write_8(addr32_t addr, uint8_t val) {
+    if ((addr > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
+        error_set_address(addr);
+        error_set_length(1);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
+#ifdef FLASH_MEM_VERBOSE
+    FLASH_MEM_TRACE("write %02x to %08x\n", (unsigned)val, (unsigned)addr);
+#endif
+
+    flash_mem_input_byte(addr, val);
 }
 
 static void flash_mem_do_trace(char const *msg, ...) {

@@ -85,37 +85,54 @@ DEF_MMIO_REGION(gdrom_reg_8, N_GDROM_REGS, ADDR_GDROM_FIRST, uint8_t)
 
 static uint8_t reg_backing[N_GDROM_REGS];
 
-int gdrom_reg_read(void *buf, size_t addr, size_t len) {
-    if (len == 4) {
-        *(uint32_t*)buf =
-            mmio_region_gdrom_reg_32_read(&mmio_region_gdrom_reg_32, addr);
-        return MEM_ACCESS_SUCCESS;
-    } else if (len == 2) {
-        *(uint16_t*)buf =
-            mmio_region_gdrom_reg_16_read(&mmio_region_gdrom_reg_16, addr);
-        return MEM_ACCESS_SUCCESS;
-    } else if (len == 1) {
-        *(uint8_t*)buf =
-            mmio_region_gdrom_reg_8_read(&mmio_region_gdrom_reg_8, addr);
-        return MEM_ACCESS_SUCCESS;
-    } else {
-        return MEM_ACCESS_FAILURE;
-    }
+float gdrom_reg_read_float(addr32_t addr) {
+    uint32_t tmp = mmio_region_gdrom_reg_32_read(&mmio_region_gdrom_reg_32,
+                                                 addr);
+    float val;
+    memcpy(&val, &tmp, sizeof(val));
+    return val;
 }
 
-int gdrom_reg_write(void const *buf, size_t addr, size_t len) {
-    if (len == 4) {
-        mmio_region_gdrom_reg_32_write(&mmio_region_gdrom_reg_32, addr, *(uint32_t*)buf);
-        return MEM_ACCESS_SUCCESS;
-    } else if (len == 2) {
-        mmio_region_gdrom_reg_16_write(&mmio_region_gdrom_reg_16, addr, *(uint16_t*)buf);
-        return MEM_ACCESS_SUCCESS;
-    } else if (len == 1) {
-        mmio_region_gdrom_reg_8_write(&mmio_region_gdrom_reg_8, addr, *(uint8_t*)buf);
-        return MEM_ACCESS_SUCCESS;
-    } else {
-        return MEM_ACCESS_FAILURE;
-    }
+void gdrom_reg_write_float(addr32_t addr, float val) {
+    uint32_t tmp;
+    memcpy(&tmp, &val, sizeof(tmp));
+    mmio_region_gdrom_reg_32_write(&mmio_region_gdrom_reg_32, addr, tmp);
+}
+
+double gdrom_reg_read_double(addr32_t addr) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void gdrom_reg_write_double(addr32_t addr, double val) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint8_t gdrom_reg_read_8(addr32_t addr) {
+    return mmio_region_gdrom_reg_8_read(&mmio_region_gdrom_reg_8, addr);
+}
+
+void gdrom_reg_write_8(addr32_t addr, uint8_t val) {
+    mmio_region_gdrom_reg_8_write(&mmio_region_gdrom_reg_8, addr, val);
+}
+
+uint16_t gdrom_reg_read_16(addr32_t addr) {
+    return mmio_region_gdrom_reg_16_read(&mmio_region_gdrom_reg_16, addr);
+}
+
+void gdrom_reg_write_16(addr32_t addr, uint16_t val) {
+    mmio_region_gdrom_reg_16_write(&mmio_region_gdrom_reg_16, addr, val);
+}
+
+uint32_t gdrom_reg_read_32(addr32_t addr) {
+    return mmio_region_gdrom_reg_32_read(&mmio_region_gdrom_reg_32, addr);
+}
+
+void gdrom_reg_write_32(addr32_t addr, uint32_t val) {
+    mmio_region_gdrom_reg_32_write(&mmio_region_gdrom_reg_32, addr, val);
 }
 
 static uint32_t

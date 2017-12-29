@@ -25,8 +25,18 @@
 
 #include <stddef.h>
 
-int g2_reg_read(void *buf, size_t addr, size_t len);
-int g2_reg_write(void const *buf, size_t addr, size_t len);
+#include "types.h"
+
+uint8_t g2_reg_read_8(addr32_t addr);
+void g2_reg_write_8(addr32_t addr, uint8_t val);
+uint16_t g2_reg_read_16(addr32_t addr);
+void g2_reg_write_16(addr32_t addr, uint16_t val);
+uint32_t g2_reg_read_32(addr32_t addr);
+void g2_reg_write_32(addr32_t addr, uint32_t val);
+float g2_reg_read_float(addr32_t addr);
+void g2_reg_write_float(addr32_t addr, float val);
+double g2_reg_read_double(addr32_t addr);
+void g2_reg_write_double(addr32_t addr, double val);
 
 void g2_reg_init(void);
 void g2_reg_cleanup(void);

@@ -225,16 +225,59 @@ void aica_reg_cleanup(void) {
     cleanup_mmio_region_aica_reg(&mmio_region_aica_reg);
 }
 
-int aica_reg_read(void *buf, size_t addr, size_t len) {
-    if (len != 4)
-        return MEM_ACCESS_FAILURE;
-    *(uint32_t*)buf = mmio_region_aica_reg_read(&mmio_region_aica_reg, addr);
-    return MEM_ACCESS_SUCCESS;
+float aica_reg_read_float(addr32_t addr) {
+    uint32_t tmp = mmio_region_aica_reg_read(&mmio_region_aica_reg, addr);
+    float ret;
+    memcpy(&ret, &tmp, sizeof(ret));
+    return ret;
 }
 
-int aica_reg_write(void const *buf, size_t addr, size_t len) {
-    if (len != 4)
-        return MEM_ACCESS_FAILURE;
-    mmio_region_aica_reg_write(&mmio_region_aica_reg, addr, *(uint32_t*)buf);
-    return MEM_ACCESS_SUCCESS;
+void aica_reg_write_float(addr32_t addr, float val) {
+    uint32_t tmp;
+    memcpy(&tmp, &val, sizeof(tmp));
+    mmio_region_aica_reg_write(&mmio_region_aica_reg, addr, tmp);
+}
+
+double aica_reg_read_double(addr32_t addr) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void aica_reg_write_double(addr32_t addr, double val) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint32_t aica_reg_read_32(addr32_t addr) {
+    return mmio_region_aica_reg_read(&mmio_region_aica_reg, addr);
+}
+
+void aica_reg_write_32(addr32_t addr, uint32_t val) {
+    mmio_region_aica_reg_write(&mmio_region_aica_reg, addr, val);
+}
+
+uint16_t aica_reg_read_16(addr32_t addr) {
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void aica_reg_write_16(addr32_t addr, uint16_t val) {
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+uint8_t aica_reg_read_8(addr32_t addr) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void aica_reg_write_8(addr32_t addr, uint8_t val) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }

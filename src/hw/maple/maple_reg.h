@@ -27,8 +27,16 @@
 
 #include "types.h"
 
-int maple_reg_read(void *buf, size_t addr, size_t len);
-int maple_reg_write(void const *buf, size_t addr, size_t len);
+float maple_reg_read_float(addr32_t addr);
+void maple_reg_write_float(addr32_t addr, float val);
+double maple_reg_read_double(addr32_t addr);
+void maple_reg_write_double(addr32_t addr, double val);
+uint32_t maple_reg_read_32(addr32_t addr);
+void maple_reg_write_32(addr32_t addr, uint32_t val);
+uint16_t maple_reg_read_16(addr32_t addr);
+void maple_reg_write_16(addr32_t addr, uint16_t val);
+uint8_t maple_reg_read_8(addr32_t addr);
+void maple_reg_write_8(addr32_t addr, uint8_t val);
 
 addr32_t maple_get_dma_prot_bot(void);
 addr32_t maple_get_dma_prot_top(void);
