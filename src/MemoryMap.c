@@ -64,6 +64,222 @@ void memory_map_set_mem(struct Memory *mem_new) {
     mem = mem_new;
 }
 
+#define WRITE_AREA0_TMPL(type, type_postfix)                            \
+    static inline void                                                  \
+    write_area0_##type_postfix(size_t addr, type val) {                 \
+        addr32_t addr_orig = addr;                                      \
+        addr &= ADDR_AREA0_MASK;                                        \
+        size_t first_addr = addr;                                       \
+        size_t last_addr = addr + (sizeof(type) - 1);                   \
+                                                                        \
+        if (last_addr <= ADDR_BIOS_LAST) {                              \
+            error_set_feature("proper response for when the guest "     \
+                              "tries to write to the bios");            \
+            error_set_length(sizeof(type));                             \
+            error_set_address(addr_orig);                               \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        } else if (first_addr >= ADDR_FLASH_FIRST &&                    \
+                   last_addr <= ADDR_FLASH_LAST) {                      \
+            if (flash_mem_write(&val, addr, sizeof(val)) !=             \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_G1_FIRST &&                       \
+                   last_addr <= ADDR_G1_LAST) {                         \
+            if (g1_reg_write(&val, addr, sizeof(val)) !=                \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_SYS_FIRST &&                      \
+                   last_addr <= ADDR_SYS_LAST) {                        \
+            if (sys_block_write(&val, addr, sizeof(val)) !=             \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_MAPLE_FIRST &&                    \
+                   last_addr <= ADDR_MAPLE_LAST) {                      \
+            if (maple_reg_write(&val, addr, sizeof(val)) !=             \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_G2_FIRST &&                       \
+                   last_addr <= ADDR_G2_LAST) {                         \
+            if (g2_reg_write(&val, addr, sizeof(val)) !=                \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_PVR2_FIRST &&                     \
+                   last_addr <= ADDR_PVR2_LAST) {                       \
+            if (pvr2_reg_write(&val, addr, sizeof(val)) !=              \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_MODEM_FIRST &&                    \
+                   last_addr <= ADDR_MODEM_LAST) {                      \
+            if (modem_write(&val, addr, sizeof(val)) !=                 \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_PVR2_CORE_FIRST &&                \
+                   last_addr <= ADDR_PVR2_CORE_LAST) {                  \
+            if (pvr2_core_reg_write(&val, addr, sizeof(val)) !=         \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if(first_addr >= ADDR_AICA_FIRST &&                      \
+                  last_addr <= ADDR_AICA_LAST) {                        \
+            if (aica_reg_write(&val, addr, sizeof(val)) !=              \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_AICA_WAVE_FIRST &&                \
+                   last_addr <= ADDR_AICA_WAVE_LAST) {                  \
+            if (aica_wave_mem_write(&val, addr, sizeof(val)) !=         \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_AICA_RTC_FIRST &&                 \
+                   last_addr <= ADDR_AICA_RTC_LAST) {                   \
+            if (aica_rtc_write(&val, addr, sizeof(val)) !=              \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        } else if (first_addr >= ADDR_GDROM_FIRST &&                    \
+                   last_addr <= ADDR_GDROM_LAST) {                      \
+            if (gdrom_reg_write(&val, addr, sizeof(val)) !=             \
+                MEM_ACCESS_SUCCESS)                                     \
+                RAISE_ERROR(get_error_pending());                       \
+            return;                                                     \
+        }                                                               \
+                                                                        \
+        error_set_feature("proper response for when the guest writes "  \
+                          "past a memory map's end");                   \
+        error_set_length(sizeof(type));                                 \
+        error_set_address(addr_orig);                                   \
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
+    }
+
+WRITE_AREA0_TMPL(double, double)
+WRITE_AREA0_TMPL(float, float)
+WRITE_AREA0_TMPL(uint32_t, 32)
+WRITE_AREA0_TMPL(uint16_t, 16)
+WRITE_AREA0_TMPL(uint8_t, 8)
+
+#define READ_AREA0_TMPL(type, type_postfix)                             \
+    static inline type                                                  \
+    read_area0_##type_postfix(size_t addr) {                            \
+        addr32_t addr_orig = addr;                                      \
+        addr &= ADDR_AREA0_MASK;                                        \
+        size_t first_addr = addr;                                       \
+        size_t last_addr = addr + (sizeof(type) - 1);                   \
+                                                                        \
+        type tmp;                                                       \
+        if (last_addr <= ADDR_BIOS_LAST) {                              \
+            if (bios_file_read(bios, &tmp, addr - ADDR_BIOS_FIRST,      \
+                               sizeof(tmp)) != MEM_ACCESS_SUCCESS) {    \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_FLASH_FIRST &&                    \
+                   last_addr <= ADDR_FLASH_LAST) {                      \
+            if (flash_mem_read(&tmp, addr, sizeof(tmp)) !=              \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_G1_FIRST &&                       \
+                   last_addr <= ADDR_G1_LAST) {                         \
+            if (g1_reg_read(&tmp, addr, sizeof(tmp)) !=                 \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_SYS_FIRST &&                      \
+                   last_addr <= ADDR_SYS_LAST) {                        \
+            if (sys_block_read(&tmp, addr, sizeof(tmp)) !=              \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_MAPLE_FIRST &&                    \
+                   last_addr <= ADDR_MAPLE_LAST) {                      \
+            if (maple_reg_read(&tmp, addr, sizeof(tmp)) !=              \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_G2_FIRST &&                       \
+                   last_addr <= ADDR_G2_LAST) {                         \
+            if (g2_reg_read(&tmp, addr, sizeof(tmp)) !=                 \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_PVR2_FIRST &&                     \
+                   last_addr <= ADDR_PVR2_LAST) {                       \
+            if (pvr2_reg_read(&tmp, addr, sizeof(tmp)) !=               \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_MODEM_FIRST &&                    \
+                   last_addr <= ADDR_MODEM_LAST) {                      \
+            if (modem_read(&tmp, addr, sizeof(tmp)) !=                  \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_PVR2_CORE_FIRST &&                \
+                   last_addr <= ADDR_PVR2_CORE_LAST) {                  \
+            if (pvr2_core_reg_read(&tmp, addr, sizeof(tmp)) !=          \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if(first_addr >= ADDR_AICA_FIRST &&                      \
+                  last_addr <= ADDR_AICA_LAST) {                        \
+            if (aica_reg_read(&tmp, addr, sizeof(tmp)) !=               \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_AICA_WAVE_FIRST &&                \
+                   last_addr <= ADDR_AICA_WAVE_LAST) {                  \
+            if (aica_wave_mem_read(&tmp, addr, sizeof(tmp)) !=          \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_AICA_RTC_FIRST &&                 \
+                   last_addr <= ADDR_AICA_RTC_LAST) {                   \
+            if (aica_rtc_read(&tmp, addr, sizeof(tmp)) !=               \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        } else if (first_addr >= ADDR_GDROM_FIRST &&                    \
+                   last_addr <= ADDR_GDROM_LAST) {                      \
+            if (gdrom_reg_read(&tmp, addr, sizeof(tmp)) !=              \
+                MEM_ACCESS_SUCCESS) {                                   \
+                RAISE_ERROR(get_error_pending());                       \
+            }                                                           \
+            return tmp;                                                 \
+        }                                                               \
+                                                                        \
+        /* when the write is not entirely within one mapping */         \
+        error_set_feature("proper response for when the guest writes "  \
+                          "past a memory map's end");                   \
+        error_set_length(sizeof(tmp));                                  \
+        error_set_address(addr_orig);                                   \
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
+    }
+
+READ_AREA0_TMPL(double, double)
+READ_AREA0_TMPL(float, float)
+READ_AREA0_TMPL(uint32_t, 32)
+READ_AREA0_TMPL(uint16_t, 16)
+READ_AREA0_TMPL(uint8_t, 8)
+
 #define MEMORY_MAP_READ_TMPL(type, type_postfix)                        \
     type memory_map_read_##type_postfix(size_t addr) {                  \
         size_t first_addr = addr;                                       \
@@ -88,11 +304,7 @@ void memory_map_set_mem(struct Memory *mem_new) {
             else                                                        \
                 RAISE_ERROR(get_error_pending());                       \
         } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) { \
-            type tmp;                                                   \
-            if (read_area0(&tmp, addr, sizeof(tmp)) == MEM_ACCESS_SUCCESS) \
-                return tmp;                                             \
-            else                                                        \
-                RAISE_ERROR(get_error_pending());                       \
+            return read_area0_##type_postfix(addr);                     \
         } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <=       \
                    ADDR_AREA4_LAST) {                                   \
             type tmp;                                                   \
@@ -139,10 +351,8 @@ MEMORY_MAP_READ_TMPL(double, double)
                 RAISE_ERROR(get_error_pending());                       \
         } else if (first_addr >= ADDR_AREA0_FIRST && last_addr <=       \
                    ADDR_AREA0_LAST) {                                   \
-            if (write_area0(&val, addr, sizeof(val)) == MEM_ACCESS_SUCCESS) \
-                return;                                                 \
-            else                                                        \
-                RAISE_ERROR(get_error_pending());                       \
+            write_area0_##type_postfix(addr, val);                      \
+            return;                                                     \
         } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <=       \
                    ADDR_AREA4_LAST) {                                   \
             if (write_area4(&val, addr, sizeof(val)) == MEM_ACCESS_SUCCESS) \
