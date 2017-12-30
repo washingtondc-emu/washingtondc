@@ -6578,13 +6578,12 @@ unsigned sh4_inst_invalid(Sh4 *sh4, Sh4OpArgs inst) {
      */
 
     /*
-     * Slot Illegal Instruction Exception supersedes General Illegal
-     * Instruction Exception.
+     * TODO - SH4_EXCP_SLOT_ILLEGAL_INST should supersede
+     * SH4_EXCP_GEN_ILLEGAL_INST if the sh4 is in a branch slot.
+     * Currently there's no way to know if this function is being
+     * called from the context of a delay slot.
      */
-    if (sh4->delayed_branch)
-        sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
-    else
-        sh4_set_exception(sh4, SH4_EXCP_GEN_ILLEGAL_INST);
+    sh4_set_exception(sh4, SH4_EXCP_GEN_ILLEGAL_INST);
 #endif /* ifdef DBG_EXIT_ON_UNDEFINED_OPCODE */
     return 1;
 }
