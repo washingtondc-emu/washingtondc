@@ -396,7 +396,7 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
         (transfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
         while (n_words--) {
             uint32_t buf = sh4_read_mem_32(sh4, transfer_src);
-            pvr2_ta_fifo_poly_write(&buf, transfer_dst, sizeof(buf));
+            pvr2_ta_fifo_poly_write_32(transfer_dst, buf);
             transfer_dst += sizeof(buf);
             transfer_src += sizeof(buf);
         }

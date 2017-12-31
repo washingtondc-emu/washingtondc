@@ -389,41 +389,92 @@ static bool pvr2_op_complete_int_event_scheduled,
     pvr2_trans_mod_complete_int_event_scheduled,
     pvr2_pt_complete_int_event_scheduled;
 
-int pvr2_ta_fifo_poly_read(void *buf, size_t addr, size_t len) {
+uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr) {
 #ifdef PVR2_LOG_VERBOSE
-    LOG_DBG(stderr, "WARNING: trying to read %u bytes from the TA polygon FIFO "
-            "(you get all 0s)\n", (unsigned)len);
+    LOG_DBG(stderr, "WARNING: trying to read 4 bytes from the TA polygon FIFO "
+            "(you get all 0s)\n");
 #endif
-    memset(buf, 0, len);
-
     return 0;
 }
 
-int pvr2_ta_fifo_poly_write(void const *buf, size_t addr, size_t len) {
+void pvr2_ta_fifo_poly_write_32(addr32_t addr, uint32_t val) {
 #ifdef PVR2_LOG_VERBOSE
-    LOG_DBG("WARNING: writing %u bytes to TA polygon FIFO:\n",
-            (unsigned)len);
-
-    unsigned len_copy = len;
-
-    if (len_copy % 4 == 0) {
-        uint32_t *ptr = (uint32_t*)buf;
-        while (len_copy) {
-            LOG_DBG("\t%08x\n", (unsigned)*ptr++);
-            len_copy -= 4;
-        }
-    } else {
-        uint8_t *ptr = (uint8_t*)buf;
-        while (len_copy--)
-            LOG_DBG("\t%02x\n", (unsigned)*ptr++);
-    }
+    LOG_DBG("WARNING: writing 4 bytes to TA polygon FIFO: 0x%08x\n",
+            (unsigned)val);
 #endif
+    uint8_t bytes[4] = {
+        val & 0xff,
+        (val >> 8) & 0xff,
+        (val >> 16) & 0xff,
+        (val >> 24) & 0xff
+    };
+    input_poly_fifo(bytes[0]);
+    input_poly_fifo(bytes[1]);
+    input_poly_fifo(bytes[2]);
+    input_poly_fifo(bytes[3]);
+}
 
-    uint8_t *ptr = (uint8_t*)buf;
-    while (len--)
-        input_poly_fifo(*ptr++);
-
+uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr) {
+#ifdef PVR2_LOG_VERBOSE
+    LOG_DBG(stderr, "WARNING: trying to read 2 bytes from the TA polygon FIFO "
+            "(you get all 0s)\n");
+#endif
     return 0;
+}
+
+void pvr2_ta_fifo_poly_write_16(addr32_t addr, uint16_t val) {
+#ifdef PVR2_LOG_VERBOSE
+    LOG_DBG("WARNING: writing 2 bytes to TA polygon FIFO: 0x%04x\n",
+            (unsigned)val);
+#endif
+    uint8_t bytes[2] = {
+        val & 0xff,
+        (val >> 8) & 0xff,
+    };
+    input_poly_fifo(bytes[0]);
+    input_poly_fifo(bytes[1]);
+}
+
+
+uint8_t pvr2_ta_fifo_poly_read_8(addr32_t addr) {
+#ifdef PVR2_LOG_VERBOSE
+    LOG_DBG(stderr, "WARNING: trying to read 1 byte from the TA polygon FIFO "
+            "(you get all 0s)\n");
+#endif
+    return 0;
+}
+
+void pvr2_ta_fifo_poly_write_8(addr32_t addr, uint8_t val) {
+#ifdef PVR2_LOG_VERBOSE
+    LOG_DBG("WARNING: writing 1 byte to TA polygon FIFO: 0x%02x\n",
+            (unsigned)val);
+#endif
+    input_poly_fifo(val);
+}
+
+float pvr2_ta_fifo_poly_read_float(addr32_t addr) {
+    uint32_t tmp = pvr2_ta_fifo_poly_read_32(addr);
+    float ret;
+    memcpy(&ret, &tmp, sizeof(ret));
+    return ret;
+}
+
+void pvr2_ta_fifo_poly_write_float(addr32_t addr, float val) {
+    uint32_t tmp;
+    memcpy(&tmp, &val, sizeof(tmp));
+    pvr2_ta_fifo_poly_write_32(addr, tmp);
+}
+
+double pvr2_ta_fifo_poly_read_double(addr32_t addr) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void pvr2_ta_fifo_poly_write_double(addr32_t addr, double val) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static void input_poly_fifo(uint8_t byte) {

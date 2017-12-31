@@ -44,11 +44,6 @@
 static struct BiosFile *bios;
 static struct Memory *mem;
 
-static inline int read_area3(void *buf, size_t addr, size_t len);
-static inline int write_area3(void const *buf, size_t addr, size_t len);
-static inline int read_area4(void *buf, size_t addr, size_t len);
-static inline int write_area4(void const *buf, size_t addr, size_t len);
-
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new) {
     memory_map_set_bios(bios_new);
     memory_map_set_mem(mem_new);
@@ -196,23 +191,22 @@ READ_AREA0_TMPL(uint8_t, 8)
         size_t first_addr = addr;                                       \
         size_t last_addr = sizeof(type) - 1 + first_addr;               \
                                                                         \
-        if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) { \
-            return memory_read_##type_postfix(mem, addr & ADDR_AREA3_MASK); \
+        if (first_addr >= ADDR_AREA3_FIRST &&                           \
+            last_addr <= ADDR_AREA3_LAST) {                             \
+            return memory_read_##type_postfix(mem,                      \
+                                              addr & ADDR_AREA3_MASK);  \
         } else if (first_addr >= ADDR_TEX32_FIRST && last_addr <=       \
                    ADDR_TEX32_LAST) {                                   \
             return pvr2_tex_mem_area32_read_##type_postfix(addr);       \
         } else if (first_addr >= ADDR_TEX64_FIRST && last_addr <=       \
                    ADDR_TEX64_LAST) {                                   \
             return pvr2_tex_mem_area64_read_##type_postfix(addr);       \
-        } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) { \
+        } else if (addr >= ADDR_AREA0_FIRST &&                          \
+                   addr <= ADDR_AREA0_LAST) {                           \
             return read_area0_##type_postfix(addr);                     \
-        } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <=       \
-                   ADDR_AREA4_LAST) {                                   \
-            type tmp;                                                   \
-            if (read_area4(&tmp, addr, sizeof(tmp)) == MEM_ACCESS_SUCCESS) \
-                return tmp;                                             \
-            else                                                        \
-                RAISE_ERROR(get_error_pending());                       \
+        } else if (first_addr >= ADDR_TA_FIFO_POLY_FIRST &&             \
+                   last_addr <= ADDR_TA_FIFO_POLY_LAST) {               \
+            return pvr2_ta_fifo_poly_read_##type_postfix(addr);         \
         } else {                                                        \
             error_set_feature("memory mapping");                        \
             error_set_address(addr);                                    \
@@ -232,9 +226,11 @@ MEMORY_MAP_READ_TMPL(double, double)
         size_t first_addr = addr;                                       \
         size_t last_addr = sizeof(type) - 1 + first_addr;               \
                                                                         \
-        /* check RAM first because that's the case we want to optimize for */ \
-        if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) { \
-            memory_write_##type_postfix(mem, addr & ADDR_AREA3_MASK, val); \
+        /* check RAM first because that's the case to optimize for */   \
+        if (first_addr >= ADDR_AREA3_FIRST &&                           \
+            last_addr <= ADDR_AREA3_LAST) {                             \
+            memory_write_##type_postfix(mem,                            \
+                                        addr & ADDR_AREA3_MASK, val);   \
             return;                                                     \
         } else if (first_addr >= ADDR_TEX32_FIRST &&                    \
                    last_addr <= ADDR_TEX32_LAST) {                      \
@@ -246,12 +242,9 @@ MEMORY_MAP_READ_TMPL(double, double)
                    ADDR_AREA0_LAST) {                                   \
             write_area0_##type_postfix(addr, val);                      \
             return;                                                     \
-        } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <=       \
-                   ADDR_AREA4_LAST) {                                   \
-            if (write_area4(&val, addr, sizeof(val)) == MEM_ACCESS_SUCCESS) \
-                return;                                                 \
-            else                                                        \
-                RAISE_ERROR(get_error_pending());                       \
+        } else if (first_addr >= ADDR_TA_FIFO_POLY_FIRST &&             \
+                   last_addr <= ADDR_TA_FIFO_POLY_LAST) {               \
+            return pvr2_ta_fifo_poly_write_##type_postfix(addr, val);   \
         } else {                                                        \
             error_set_feature("memory mapping");                        \
             error_set_address(addr);                                    \
@@ -265,33 +258,3 @@ MEMORY_MAP_WRITE_TMPL(uint16_t, 16)
 MEMORY_MAP_WRITE_TMPL(uint32_t, 32)
 MEMORY_MAP_WRITE_TMPL(float, float)
 MEMORY_MAP_WRITE_TMPL(double, double)
-
-static inline int read_area3(void *buf, size_t addr, size_t len) {
-    return memory_read(mem, buf, addr & ADDR_AREA3_MASK, len);
-}
-
-static inline int write_area3(void const *buf, size_t addr, size_t len) {
-    return memory_write(mem, buf, addr & ADDR_AREA3_MASK, len);
-}
-
-static inline int read_area4(void *buf, size_t addr, size_t len) {
-    if (addr >= ADDR_TA_FIFO_POLY_FIRST && addr <= ADDR_TA_FIFO_POLY_LAST)
-        return pvr2_ta_fifo_poly_read(buf, addr, len);
-
-    error_set_feature("AREA4 readable memory map");
-    error_set_length(len);
-    error_set_address(addr);
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-}
-
-static inline int write_area4(void const *buf, size_t addr, size_t len) {
-    if (addr >= ADDR_TA_FIFO_POLY_FIRST && addr <= ADDR_TA_FIFO_POLY_LAST)
-        return pvr2_ta_fifo_poly_write(buf, addr, len);
-
-    error_set_feature("AREA4 writable memory map");
-    error_set_length(len);
-    error_set_address(addr);
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-}
