@@ -274,21 +274,21 @@ sh4_decode_inst(Sh4 *sh4, inst_t inst) {
  * as the instruction's issue cycles due to the dual-issue pipeline of the sh4.
  */
 static inline unsigned
-sh4_count_inst_cycles(Sh4 *sh4, enum sh4_inst_group group, unsigned issue) {
+sh4_count_inst_cycles(Sh4 *sh4, InstOpcode const *op) {
     unsigned n_cycles;
     if ((sh4->last_inst_type == SH4_GROUP_NONE) ||
-        ((group == SH4_GROUP_CO) ||
+        ((op->group == SH4_GROUP_CO) ||
          (sh4->last_inst_type == SH4_GROUP_CO) ||
-         ((sh4->last_inst_type == group) && (group != SH4_GROUP_MT)))) {
+         ((sh4->last_inst_type == op->group) && (op->group != SH4_GROUP_MT)))) {
         // This instruction was not free
-        n_cycles = issue;
+        n_cycles = op->issue;
 
         /*
          * no need to check for SH4_GROUP_CO here because we'll do that when we
          * check for last_inst_type==SH4_GROUP_CO next time we're in this if
          * statement
          */
-        sh4->last_inst_type = group;
+        sh4->last_inst_type = op->group;
     } else {
         /*
          * cash in on the dual-issue pipeline's "free" instruction and set
