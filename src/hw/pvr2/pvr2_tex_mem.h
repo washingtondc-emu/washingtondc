@@ -23,8 +23,10 @@
 #ifndef PVR2_TEX_MEM_H_
 #define PVR2_TEX_MEM_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
+#include "types.h"
 #include "mem_areas.h"
 
 /*
@@ -36,10 +38,26 @@
 extern uint8_t pvr2_tex32_mem[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
 extern uint8_t pvr2_tex64_mem[ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1];
 
-int pvr2_tex_mem_area32_read(void *buf, size_t addr, size_t len);
-int pvr2_tex_mem_area32_write(void const *buf, size_t addr, size_t len);
+uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr);
+void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val);
+uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr);
+void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val);
+uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr);
+void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val);
+float pvr2_tex_mem_area32_read_float(addr32_t addr);
+void pvr2_tex_mem_area32_write_float(addr32_t addr, float val);
+double pvr2_tex_mem_area32_read_double(addr32_t addr);
+void pvr2_tex_mem_area32_write_double(addr32_t addr, double val);
 
-int pvr2_tex_mem_area64_read(void *buf, size_t addr, size_t len);
-int pvr2_tex_mem_area64_write(void const *buf, size_t addr, size_t len);
+uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr);
+void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val);
+uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr);
+void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val);
+uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr);
+void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val);
+float pvr2_tex_mem_area64_read_float(addr32_t addr);
+void pvr2_tex_mem_area64_write_float(addr32_t addr, float val);
+double pvr2_tex_mem_area64_read_double(addr32_t addr);
+void pvr2_tex_mem_area64_write_double(addr32_t addr, double val);
 
 #endif

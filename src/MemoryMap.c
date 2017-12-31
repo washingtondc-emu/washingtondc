@@ -200,20 +200,10 @@ READ_AREA0_TMPL(uint8_t, 8)
             return memory_read_##type_postfix(mem, addr & ADDR_AREA3_MASK); \
         } else if (first_addr >= ADDR_TEX32_FIRST && last_addr <=       \
                    ADDR_TEX32_LAST) {                                   \
-            type tmp;                                                   \
-            if (pvr2_tex_mem_area32_read(&tmp, addr, sizeof(tmp)) ==    \
-                MEM_ACCESS_SUCCESS)                                     \
-                return tmp;                                             \
-            else                                                        \
-                RAISE_ERROR(get_error_pending());                       \
+            return pvr2_tex_mem_area32_read_##type_postfix(addr);       \
         } else if (first_addr >= ADDR_TEX64_FIRST && last_addr <=       \
                    ADDR_TEX64_LAST) {                                   \
-            type tmp;                                                   \
-            if (pvr2_tex_mem_area64_read(&tmp, addr, sizeof(tmp)) ==    \
-                MEM_ACCESS_SUCCESS)                                     \
-                return tmp;                                             \
-            else                                                        \
-                RAISE_ERROR(get_error_pending());                       \
+            return pvr2_tex_mem_area64_read_##type_postfix(addr);       \
         } else if (addr >= ADDR_AREA0_FIRST && addr <= ADDR_AREA0_LAST) { \
             return read_area0_##type_postfix(addr);                     \
         } else if (first_addr >= ADDR_AREA4_FIRST && last_addr <=       \
@@ -223,12 +213,12 @@ READ_AREA0_TMPL(uint8_t, 8)
                 return tmp;                                             \
             else                                                        \
                 RAISE_ERROR(get_error_pending());                       \
+        } else {                                                        \
+            error_set_feature("memory mapping");                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(type));                             \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
         }                                                               \
-                                                                        \
-        error_set_feature("memory mapping");                            \
-        error_set_address(addr);                                        \
-        error_set_length(sizeof(type));                                 \
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }
 
 MEMORY_MAP_READ_TMPL(uint8_t, 8)
@@ -246,20 +236,12 @@ MEMORY_MAP_READ_TMPL(double, double)
         if (first_addr >= ADDR_AREA3_FIRST && last_addr <= ADDR_AREA3_LAST) { \
             memory_write_##type_postfix(mem, addr & ADDR_AREA3_MASK, val); \
             return;                                                     \
-        } else if (first_addr >= ADDR_TEX32_FIRST && last_addr <=       \
-            ADDR_TEX32_LAST) {                                          \
-            if (pvr2_tex_mem_area32_write(&val, addr, sizeof(val)) ==   \
-            MEM_ACCESS_SUCCESS)                                         \
-                return;                                                 \
-            else                                                        \
-                RAISE_ERROR(get_error_pending());                       \
+        } else if (first_addr >= ADDR_TEX32_FIRST &&                    \
+                   last_addr <= ADDR_TEX32_LAST) {                      \
+            pvr2_tex_mem_area32_write_##type_postfix(addr, val);        \
         } else if (first_addr >= ADDR_TEX64_FIRST && last_addr <=       \
                    ADDR_TEX64_LAST) {                                   \
-            if (pvr2_tex_mem_area64_write(&val, addr, sizeof(val)) ==   \
-                MEM_ACCESS_SUCCESS)                                     \
-                return;                                                 \
-            else                                                        \
-                RAISE_ERROR(get_error_pending());                       \
+            pvr2_tex_mem_area64_write_##type_postfix(addr, val);        \
         } else if (first_addr >= ADDR_AREA0_FIRST && last_addr <=       \
                    ADDR_AREA0_LAST) {                                   \
             write_area0_##type_postfix(addr, val);                      \
@@ -270,12 +252,12 @@ MEMORY_MAP_READ_TMPL(double, double)
                 return;                                                 \
             else                                                        \
                 RAISE_ERROR(get_error_pending());                       \
+        } else {                                                        \
+            error_set_feature("memory mapping");                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(val));                              \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
         }                                                               \
-                                                                        \
-        error_set_feature("memory mapping");                            \
-        error_set_address(addr);                                        \
-        error_set_length(sizeof(val));                                  \
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }
 
 MEMORY_MAP_WRITE_TMPL(uint8_t, 8)
