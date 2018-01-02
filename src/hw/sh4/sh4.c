@@ -50,8 +50,6 @@ void sh4_init(Sh4 *sh4) {
 
     sh4_init_regs(sh4);
 
-    sh4_compile_instructions(sh4);
-
     sh4_on_hard_reset(sh4);
 
     sh4_init_inst_lut();

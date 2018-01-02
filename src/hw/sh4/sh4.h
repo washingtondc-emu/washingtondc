@@ -283,8 +283,7 @@ static inline void sh4_periodic(Sh4 *sh4) {
 dc_cycle_stamp_t sh4_get_cycles(void);
 
 // Fetches the given instruction's metadata and returns it.
-static inline InstOpcode const *
-sh4_decode_inst(Sh4 *sh4, inst_t inst) {
+static inline InstOpcode const *sh4_decode_inst(inst_t inst) {
     return sh4_inst_lut[inst];
 }
 
@@ -293,12 +292,13 @@ sh4_decode_inst(Sh4 *sh4, inst_t inst) {
  * as the instruction's issue cycles due to the dual-issue pipeline of the sh4.
  */
 static inline unsigned
-sh4_count_inst_cycles(Sh4 *sh4, InstOpcode const *op) {
+sh4_count_inst_cycles(InstOpcode const *op, unsigned *last_inst_type_p) {
+    unsigned last_inst_type = *last_inst_type_p;
     unsigned n_cycles;
-    if ((sh4->last_inst_type == SH4_GROUP_NONE) ||
+    if ((last_inst_type == SH4_GROUP_NONE) ||
         ((op->group == SH4_GROUP_CO) ||
-         (sh4->last_inst_type == SH4_GROUP_CO) ||
-         ((sh4->last_inst_type == op->group) && (op->group != SH4_GROUP_MT)))) {
+         (last_inst_type == SH4_GROUP_CO) ||
+         ((last_inst_type == op->group) && (op->group != SH4_GROUP_MT)))) {
         // This instruction was not free
         n_cycles = op->issue;
 
@@ -307,7 +307,7 @@ sh4_count_inst_cycles(Sh4 *sh4, InstOpcode const *op) {
          * check for last_inst_type==SH4_GROUP_CO next time we're in this if
          * statement
          */
-        sh4->last_inst_type = op->group;
+        last_inst_type = op->group;
     } else {
         /*
          * cash in on the dual-issue pipeline's "free" instruction and set
@@ -315,8 +315,9 @@ sh4_count_inst_cycles(Sh4 *sh4, InstOpcode const *op) {
          * not free.
          */
         n_cycles = 0;
-        sh4->last_inst_type = SH4_GROUP_NONE;
+        last_inst_type = SH4_GROUP_NONE;
     }
+    *last_inst_type_p = last_inst_type;
     return n_cycles;
 }
 

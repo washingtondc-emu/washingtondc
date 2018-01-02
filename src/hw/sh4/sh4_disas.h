@@ -1,0 +1,97 @@
+/*******************************************************************************
+ *
+ *
+ *    WashingtonDC Dreamcast Emulator
+ *    Copyright (C) 2018 snickerbockers
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ ******************************************************************************/
+
+#ifndef SH4_DISAS_H_
+#define SH4_DISAS_H_
+
+#include <stdbool.h>
+
+#include "types.h"
+
+struct InstOpcode;
+struct jit_code_block;
+
+bool sh4_disas_inst(struct jit_code_block *block, unsigned pc);
+
+/*
+ * these functions return true if the disassembler should keep going, or false
+ * if the dissassembler should end the current block.
+ */
+typedef bool(*sh4_disas_fn)(struct jit_code_block*,unsigned,
+                            struct InstOpcode const*,inst_t);
+
+/*
+ * disassembly function that emits a function call to the instruction's
+ * interpreter implementation.
+ */
+bool sh4_disas_fallback(struct jit_code_block *block, unsigned pc,
+                        struct InstOpcode const *op, inst_t inst);
+
+// disassemble the rts instruction
+bool sh4_disas_rts(struct jit_code_block *block, unsigned pc,
+                   struct InstOpcode const *op, inst_t inst);
+
+// disassemble the rte instruction
+bool sh4_disas_rte(struct jit_code_block *block, unsigned pc,
+                   struct InstOpcode const *op, inst_t inst);
+
+// disassemble the "braf rn" instruction.
+bool sh4_disas_braf_rn(struct jit_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "bsrf rn" instruction"
+bool sh4_disas_bsrf_rn(struct jit_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "bf" instruction
+bool sh4_disas_bf(struct jit_code_block *block, unsigned pc,
+                  struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "bt" instruction
+bool sh4_disas_bt(struct jit_code_block *block, unsigned pc,
+                  struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "bf/s" instruction
+bool sh4_disas_bfs(struct jit_code_block *block, unsigned pc,
+                   struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "bt/s" instruction
+bool sh4_disas_bts(struct jit_code_block *block, unsigned pc,
+                   struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "bra" instruction
+bool sh4_disas_bra(struct jit_code_block *block, unsigned pc,
+                   struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "bsr" instruction
+bool sh4_disas_bsr(struct jit_code_block *block, unsigned pc,
+                   struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "jmp @rn" instruction
+bool sh4_disas_jmp_arn(struct jit_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "jsr @rn" instruction
+bool sh4_disas_jsr_arn(struct jit_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, inst_t inst);
+
+#endif

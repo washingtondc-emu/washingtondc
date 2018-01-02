@@ -30,6 +30,7 @@
 #include "sh4_dmac.h"
 #include "sh4.h"
 #include "log.h"
+#include "jit/code_cache.h"
 
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);
 
@@ -47,6 +48,10 @@ static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
 static int
 sh4_zero_only_reg_write_handler(Sh4 *sh4, void const *buf,
                                 struct Sh4MemMappedReg const *reg_info);
+
+static int
+sh4_ccr_reg_write_handler(Sh4 *sh4, void const *buf,
+                          struct Sh4MemMappedReg const *reg_info);
 
 /*
  * SDMR2 and SDMR3 are  weird.  When you write to them, the value
@@ -90,7 +95,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "MMUCR", 0xff000010, 4, SH4_REG_MMUCR, false,
       Sh4WarnRegReadHandler, sh4_mmucr_reg_write_handler, 0, 0 },
     { "CCR", 0xff00001c, 4, SH4_REG_CCR, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      Sh4DefaultRegReadHandler, sh4_ccr_reg_write_handler, 0, 0 },
     { "QACR0", 0xff000038, 4, SH4_REG_QACR0, false,
       Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
     { "QACR1", 0xff00003c, 4, SH4_REG_QACR1, false,
@@ -766,4 +771,11 @@ sh4_zero_only_reg_write_handler(Sh4 *sh4, void const *buf,
         }
 
     return 0;
+}
+
+static int
+sh4_ccr_reg_write_handler(Sh4 *sh4, void const *buf,
+                          struct Sh4MemMappedReg const *reg_info) {
+    code_cache_invalidate_all();
+    return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
 }

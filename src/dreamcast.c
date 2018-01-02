@@ -55,6 +55,8 @@
 #include "hw/aica/aica.h"
 #include "hw/g1/g1.h"
 #include "hw/g2/g2.h"
+#include "jit/code_block.h"
+#include "jit/code_cache.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -93,6 +95,7 @@ static void *load_file(char const *path, long *len);
 #ifndef ENABLE_DEBUGGER
 // Run until the next scheduled event (in dc_sched) should occur
 static void dc_run_to_next_event(Sh4 *sh4);
+static void dc_run_to_next_event_jit(Sh4 *sh4);
 #endif
 
 #ifdef ENABLE_DEBUGGER
@@ -281,6 +284,8 @@ void dreamcast_run() {
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
+    bool const jit = true;
+
     while (is_running) {
 #ifdef ENABLE_DEBUGGER
         dreamcast_check_debugger();
@@ -292,7 +297,10 @@ void dreamcast_run() {
         dc_single_step(&cpu);
 #else
 
-        dc_run_to_next_event(&cpu);
+        if (jit)
+            dc_run_to_next_event_jit(&cpu);
+        else
+            dc_run_to_next_event(&cpu);
         struct SchedEvent *next_event = pop_event();
         if (next_event)
             next_event->handler(next_event);
@@ -354,8 +362,8 @@ static void dc_run_to_next_event(Sh4 *sh4) {
 
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
         inst = sh4_read_inst(sh4);
-        op = sh4_decode_inst(sh4, inst);
-        inst_cycles = sh4_count_inst_cycles(sh4, op);
+        op = sh4_decode_inst(inst);
+        inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
 
         /*
          * Advance the cycle counter based on how many cycles this instruction
@@ -384,13 +392,32 @@ static void dc_run_to_next_event(Sh4 *sh4) {
     }
 }
 
+static void dc_run_to_next_event_jit(Sh4 *sh4) {
+    while (dc_sched_target_stamp > dc_cycle_stamp()) {
+        addr32_t blk_addr = sh4->reg[SH4_REG_PC];
+        struct cache_entry *ent = code_cache_find(blk_addr);
+        struct jit_code_block *blk = &ent->blk;
+        if (!ent->valid) {
+            jit_code_block_compile(blk, blk_addr);
+            ent->valid = true;
+        }
+
+        jit_code_block_exec(blk);
+
+        if (dc_cycle_stamp() + blk->cycle_count <= dc_sched_target_stamp)
+            dc_cycle_advance(blk->cycle_count);
+        else
+            dc_cycle_advance(dc_sched_target_stamp - dc_cycle_stamp());
+    }
+}
+
 #else
 
 /* executes a single instruction and maybe ticks the clock. */
 void dc_single_step(Sh4 *sh4) {
     inst_t inst = sh4_read_inst(sh4);
-    InstOpcode const *op = sh4_decode_inst(sh4, inst);
-    unsigned n_cycles = sh4_count_inst_cycles(sh4, op);;
+    InstOpcode const *op = sh4_decode_inst(inst);
+    unsigned n_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
 
     /*
      * Advance the cycle counter based on how many cycles this instruction

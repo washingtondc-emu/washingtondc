@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "sh4_disas.h"
 #include "types.h"
 
 struct Sh4;
@@ -209,6 +210,8 @@ typedef enum sh4_inst_group {
 struct InstOpcode {
     // opcode handler function
     opcode_func_t func;
+
+    sh4_disas_fn disas;
 
     // if this is true, this inst cant be called from a delay slot
     bool pc_relative;
