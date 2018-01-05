@@ -20,38 +20,10 @@
  *
  ******************************************************************************/
 
-#ifndef CODE_CACHE_H_
-#define CODE_CACHE_H_
+#ifndef JIT_H_
+#define JIT_H_
 
-#include "code_block.h"
-#include "hw/sh4/types.h"
-
-/*
- * TODO: need to include FPU state in code cache, not just address.
- * Otherwise, this code will trip over anything that tries to switch
- * between single-precision and double-precision floating-point.
- */
-struct cache_entry {
-    addr32_t addr;
-    bool valid;
-    struct jit_code_block blk;
-
-    struct cache_entry *left, *right;
-};
-
-/*
- * this might return a pointer to an invalid cache_entry.  If so, that means
- * the cache entry needs to be filled in by the callee.  This function will
- * allocate a new invalid cache entry if there is no entry for addr.
- *
- * That said, blk will already be init'd no matter what, even if valid is
- * false.
- */
-struct cache_entry *code_cache_find(addr32_t addr);
-
-void code_cache_invalidate_all(void);
-
-void code_cache_init(void);
-void code_cache_cleanup(void);
+void jit_init(void);
+void jit_cleanup(void);
 
 #endif

@@ -227,7 +227,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/jit/code_block.h"
                 "${PROJECT_SOURCE_DIR}/src/jit/code_block.c"
                 "${PROJECT_SOURCE_DIR}/src/jit/code_cache.c"
-                "${PROJECT_SOURCE_DIR}/src/jit/code_cache.h")
+                "${PROJECT_SOURCE_DIR}/src/jit/code_cache.h"
+                "${PROJECT_SOURCE_DIR}/src/jit/jit.h"
+                "${PROJECT_SOURCE_DIR}/src/jit/jit.c")
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
                          "${PROJECT_SOURCE_DIR}/src/BiosFile.c"

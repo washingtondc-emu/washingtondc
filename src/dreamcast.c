@@ -57,6 +57,7 @@
 #include "hw/g2/g2.h"
 #include "jit/code_block.h"
 #include "jit/code_cache.h"
+#include "jit/jit.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -180,6 +181,7 @@ void dreamcast_init(bool cmd_session) {
         free(dat_syscall);
     }
 
+    jit_init();
     sh4_init(&cpu);
     sys_block_init();
     g1_init();
@@ -241,6 +243,7 @@ void dreamcast_cleanup() {
 #endif
 
     sh4_cleanup(&cpu);
+    jit_cleanup();
     bios_file_cleanup(&bios);
     memory_cleanup(&dc_mem);
 }
