@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -287,7 +287,7 @@ void dreamcast_run() {
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-    bool const jit = true;
+    bool const jit = config_get_jit();
 
     while (is_running) {
 #ifdef ENABLE_DEBUGGER

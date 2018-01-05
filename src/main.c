@@ -54,7 +54,8 @@ static void print_usage(char const *cmd) {
             "direct boot)\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
-            "\t-m\t\tmount the given image in the GD-ROM drive\n");
+            "\t-m\t\tmount the given image in the GD-ROM drive\n"
+            "\t-j\t\tenable dynamic recompiler (as opposed to interpreter)\n");
 }
 
 int main(int argc, char **argv) {
@@ -70,8 +71,9 @@ int main(int argc, char **argv) {
     bool enable_cmd_tcp = false;
     char const *title_content = NULL;
     struct mount_meta content_meta; // only valid if path_gdi is non-null
+    bool enable_jit = false;
 
-    while ((opt = getopt(argc, argv, "cb:f:s:m:gduht")) != -1) {
+    while ((opt = getopt(argc, argv, "cb:f:s:m:gduhtj")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -103,6 +105,9 @@ int main(int argc, char **argv) {
         case 'h':
             print_usage(cmd);
             exit(0);
+        case 'j':
+            enable_jit = true;
+            break;
         }
     }
 
@@ -110,6 +115,12 @@ int main(int argc, char **argv) {
     argc -= optind;
 
     if (enable_debugger) {
+        if (enable_jit) {
+            LOG_WARN("Debugger enabled - this overrides the jit compiler "
+                     "and sets WashingtonDC to interpreter mode\n");
+            enable_jit = false;
+        }
+
 #ifdef ENABLE_DEBUGGER
         config_set_dbg_enable(true);
 #else
@@ -122,6 +133,8 @@ int main(int argc, char **argv) {
         config_set_dbg_enable(false);
 #endif
     }
+
+    config_set_jit(enable_jit);
 
     if (path_gdi) {
         mount_gdi(path_gdi);

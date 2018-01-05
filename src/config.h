@@ -85,4 +85,7 @@ CONFIG_DECL_BOOL(hack_power_stone_no_aica);
 CONFIG_DECL_BOOL(enable_auto_screenshot);
 CONFIG_DECL_STRING(auto_screenshot_dir);
 
+// enable the dynamic recompiler, or disable it to use the interpreter
+CONFIG_DECL_BOOL(jit);
+
 #endif

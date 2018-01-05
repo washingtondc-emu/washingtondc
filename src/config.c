@@ -91,3 +91,5 @@ CONFIG_DEF_BOOL(hack_power_stone_no_aica, true);
 
 CONFIG_DEF_BOOL(enable_auto_screenshot, false);
 CONFIG_DEF_STRING(auto_screenshot_dir);
+
+CONFIG_DEF_BOOL(jit, false);
