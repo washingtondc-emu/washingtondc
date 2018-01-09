@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -30,10 +30,13 @@
 #include "pvr2_core_reg.h"
 #include "mem_areas.h"
 #include "log.h"
+#include "error.h"
 
 #include "geo_buf.h"
 
 #include "pvr2_tex_cache.h"
+
+static DEF_ERROR_INT_ATTR(tex_fmt);
 
 #define PVR2_CODE_BOOK_ENTRY_SIZE (4 * sizeof(uint16_t))
 #define PVR2_CODE_BOOK_ENTRY_COUNT 256
@@ -410,16 +413,22 @@ void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
         abort();
     }
 
+    unsigned px_sz = pixel_sizes[meta->tex_fmt];
     size_t n_bytes = sizeof(uint8_t) *
-        (1 << meta->w_shift) * (1 << meta->h_shift) *
-        pixel_sizes[meta->tex_fmt];
+        (1 << meta->w_shift) * (1 << meta->h_shift) * px_sz;
+
+    if (!px_sz) {
+        error_set_tex_fmt(meta->tex_fmt);
+        error_set_feature("some texture format");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 
     void *tex_dat = NULL;
     if (n_bytes)
         tex_dat = malloc(n_bytes);
 
     if (!tex_dat)
-        RAISE_ERROR(ERROR_INTEGRITY);
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     uint8_t const *beg;
     uint8_t const *code_book; // points to the code book if this is VQ
@@ -477,7 +486,20 @@ void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
     }
 
     if (meta->vq_compression) {
+        if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
+            meta->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
+            /*
+             * 4BPP paletted VQ textures store 4x4 blocks in the code-book
+             * instead of 2x2.  8BPP paletted VQ textures store 2x4 blocks
+             * in the code-book.
+             */
+            error_set_feature("VQ compressed palette textures");
+            error_set_tex_fmt(meta->tex_fmt);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
         if (pixel_sizes[meta->tex_fmt] != 2) {
+            error_set_tex_fmt(meta->tex_fmt);
             error_set_feature("proper response for an attempt to use "
                               "VQ compression on a non-RGB texture");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
