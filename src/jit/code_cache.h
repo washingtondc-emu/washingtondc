@@ -36,7 +36,7 @@ struct cache_entry {
     bool valid;
     struct jit_code_block blk;
 
-    struct cache_entry *left, *right;
+    struct cache_entry *left, *right, *parent;
 };
 
 /*

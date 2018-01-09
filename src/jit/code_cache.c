@@ -35,6 +35,33 @@
 // uncomment for basic performance stats
 // #define PERF_STATS
 
+static int node_height(struct cache_entry *node);
+static int node_balance(struct cache_entry *node);
+
+static void clear_cache(struct cache_entry *node);
+
+static struct cache_entry *root;
+static bool nuke;
+
+/*
+ * the maximum number of code-cache entries that can be created before the
+ * cache assumes something is wrong.  This is completely arbitrary, and it may
+ * need to be raised, lowered or removed entirely in the future.
+ *
+ * The reason it is here is that my laptop doesn't have much memory, and when
+ * the cache gets too big then my latop will thrash and become unresponsive.
+ *
+ * Under normal operation, I don't think the cache should get this big.  This
+ * typically only happens when there's a bug in the cache that causes it to
+ * keep making more and more cache entries because it is unable to find the
+ * ones it has already created.  Dreamcast only has 16MB of memory, so it's
+ * very unlikely (albeit not impossible) that this cache would hit 16-million
+ * different jump-in points without getting reset via a write to the SH4's CCR
+ * register.
+ */
+#define MAX_ENTRIES (1024*1024)
+static unsigned n_entries;
+
 #ifdef PERF_STATS
 static unsigned depth, max_depth;
 static unsigned cache_sz;
@@ -75,17 +102,13 @@ static void perf_stats_inc_depth_count(void) {
 static void perf_stats_print(void) {
 #ifdef PERF_STATS
     LOG_INFO("==== Code Cache perf stats ====\n");
-    LOG_INFO("JIT: max depth ws %u\n", max_depth);
+    LOG_INFO("JIT: max depth was %u\n", max_depth);
     LOG_INFO("JIT: max cache size was %u\n", cache_sz);
+    LOG_INFO("JIT: height of root at shutdown is %d\n", node_height(root));
+    LOG_INFO("JIT: balance of root at shutdown is %d\n", node_balance(root));
     LOG_INFO("================================\n");
 #endif
 }
-
-static void clear_cache(struct cache_entry *node);
-
-// TODO: don't use a linear cache, use a tree of some sort.
-static struct cache_entry *root;
-static bool nuke;
 
 void code_cache_init(void) {
     nuke = false;
@@ -110,6 +133,7 @@ void code_cache_invalidate_all(void) {
 }
 
 static void clear_cache(struct cache_entry *node) {
+    n_entries = 0;
 #ifdef PERF_STATS
     cache_sz = 0;
 #endif
@@ -124,6 +148,188 @@ static void clear_cache(struct cache_entry *node) {
     }
 }
 
+static int node_height(struct cache_entry *node) {
+    int max_height = 0;
+    if (node->left) {
+        int left_height = node_height(node->left) + 1;
+        if (left_height > max_height)
+            max_height = left_height;
+    }
+    if (node->right) {
+        int right_height = node_height(node->right) + 1;
+        if (right_height > max_height)
+            max_height = right_height;
+    }
+    return max_height;
+}
+
+static int node_balance(struct cache_entry *node) {
+    int left_height = 0, right_height = 0;
+
+    if (node->right)
+        right_height = node_height(node->right);
+    if (node->left)
+        left_height = node_height(node->left);
+
+    return right_height - left_height;
+}
+
+/*
+ * rotate the subtree right-wards so that the left child is now the root-node.
+ * The original root-node will become the right node.
+ *
+ * The onus is on the caller to make sure the left child exists before calling
+ * this function.
+ *
+ * This function DOES NOT update the balance factors; it is entirely on the
+ * caller to do that.
+ */
+static void rot_right(struct cache_entry *old_root) {
+    struct cache_entry *parent = old_root->parent;
+    struct cache_entry *new_root = old_root->left;
+    struct cache_entry *new_left_subtree = new_root->right;
+
+    if (old_root != root && !parent)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    // update the parent's view of this subtree
+    if (parent) {
+        if (parent->left == old_root)
+            parent->left = new_root;
+        else
+            parent->right = new_root;
+    }
+
+    new_root->parent = parent;
+    old_root->parent = new_root;
+    if (new_left_subtree)
+        new_left_subtree->parent = old_root;
+
+    old_root->left = new_left_subtree;
+    new_root->right = old_root;
+
+    if (root == old_root)
+        root = new_root;
+}
+
+/*
+ * rotate the subtree left-wards so that the right child is now the root-node.
+ * The original root-node will become the left node.
+ *
+ * The onus is on the caller to make sure the right child exists before calling
+ * this function.
+ *
+ * This function DOES NOT update the balance factors; it is entirely on the
+ * caller to do that.
+ */
+static void rot_left(struct cache_entry *old_root) {
+    struct cache_entry *parent = old_root->parent;
+    struct cache_entry *new_root = old_root->right;
+    struct cache_entry *new_right_subtree = new_root->left;
+
+    if (old_root != root && !parent)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    // update the parent's view of this subtree
+    if (parent) {
+        if (parent->left == old_root)
+            parent->left = new_root;
+        else
+            parent->right = new_root;
+    }
+
+    new_root->parent = parent;
+    old_root->parent = new_root;
+    if (new_right_subtree)
+        new_right_subtree->parent = old_root;
+
+    old_root->right = new_right_subtree;
+    new_root->left = old_root;
+
+    if (root == old_root)
+        root = new_root;
+}
+
+static struct cache_entry *
+basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
+             addr32_t addr) {
+    struct cache_entry *new_node =
+        (struct cache_entry*)calloc(1, sizeof(struct cache_entry));
+    if (!new_node)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    *node_p = new_node;
+    if (node_p != &root && !parent)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    new_node->parent = parent;
+    new_node->addr = addr;
+    jit_code_block_init(&new_node->blk);
+
+    n_entries++;
+    if (n_entries >= MAX_ENTRIES)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    /*
+     * now retrace back up to the root using a simple AVL-like rebalancing
+     * algorithm to ensure that the heights of each node's subtrees differ by no
+     * more than 1.
+     */
+    struct cache_entry *cur_node = new_node;
+    while (cur_node != root) {
+        struct cache_entry *parent = cur_node->parent;
+        int cur_node_bal = node_balance(cur_node);
+        int par_node_bal = node_balance(parent);
+
+        if (par_node_bal < -2 || par_node_bal > 2 ||
+            cur_node_bal < -2 || cur_node_bal > 2) {
+            // the AVL algorithm should prevent this from happening
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+
+        if (par_node_bal == -2) {
+            if (cur_node_bal < 0) {
+                // parent leans to the left and cur_node leans to the left
+                rot_right(parent);
+            } else {
+                // parent leans to the right and cur_node leans to the right
+                rot_left(cur_node);
+                rot_right(parent);
+            }
+        } else if (par_node_bal == 2) {
+            if (cur_node_bal > 0) {
+                // parent leans to the right and cur_node leans to the right
+                rot_left(parent);
+            } else {
+                // parent leans to the right and cur_node leans to the left
+                rot_right(cur_node);
+                rot_left(parent);
+            }
+        } else {
+            /*
+             * move up the tree, there are no rotations needed for this node
+             * because it either leans slightly to the left, leans slightly to
+             * the right or is perfectly balanced.  It's parent might need to
+             * be rebalanced, though.
+             *
+             * TODO: I believe it's safe to do an early-exit here in the case
+             * where the node is perfectly balanced because that would mean that
+             * any new subtrees added to this node would have gone into rows
+             * which already existed, meaning that this subtree does not effect
+             * the height of its parent node.
+             */
+            cur_node = parent;
+        }
+    }
+
+    perf_stats_add_node();
+
+    return new_node;
+}
+
+/*
+ * Do a simple search down the tree for the given jump-address.  If no node is
+ * found, an invalid one will be created and returned because any time the code
+ * cache can't find a cache-entry, it will immediately want to create a new one.
+ */
 static struct cache_entry *do_code_cache_find(struct cache_entry *node,
                                               addr32_t addr) {
     perf_stats_reset_depth_count();
@@ -135,16 +341,7 @@ static struct cache_entry *do_code_cache_find(struct cache_entry *node,
                 node = node->left;
                 continue;
             }
-            node->left =
-                (struct cache_entry*)calloc(1, sizeof(struct cache_entry));
-            if (!node->left)
-                RAISE_ERROR(ERROR_FAILED_ALLOC);
-            node->left->addr = addr;
-            jit_code_block_init(&node->left->blk);
-
-            perf_stats_add_node();
-
-            return node->left;
+            return basic_insert(&node->left, node, addr);
         }
 
         if (addr > node->addr) {
@@ -153,15 +350,7 @@ static struct cache_entry *do_code_cache_find(struct cache_entry *node,
                 node = node->right;
                 continue;
             }
-            node->right = (struct cache_entry*)calloc(1, sizeof(struct cache_entry));
-            if (!node->right)
-                RAISE_ERROR(ERROR_FAILED_ALLOC);
-            node->right->addr = addr;
-            jit_code_block_init(&node->right->blk);
-
-            perf_stats_add_node();
-
-            return node->right;
+            return basic_insert(&node->right, node, addr);
         }
 
         return node;
@@ -178,10 +367,6 @@ struct cache_entry *code_cache_find(addr32_t addr) {
     if (root)
         return do_code_cache_find(root, addr);
 
-    perf_stats_add_node();
-
-    root = (struct cache_entry*)calloc(1, sizeof(struct cache_entry));
-    root->addr = addr;
-    jit_code_block_init(&root->blk);
+    basic_insert(&root, NULL, addr);
     return root;
 }
