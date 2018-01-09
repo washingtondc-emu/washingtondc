@@ -49,7 +49,7 @@ unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
     [TEX_CTRL_PIX_FMT_ARGB_4444] = 2,
     [TEX_CTRL_PIX_FMT_YUV_422]   = 1,
     [TEX_CTRL_PIX_FMT_BUMP_MAP]  = 0, // TODO: implement this
-    [TEX_CTRL_PIX_FMT_4_BPP_PAL] = 0, // TODO: implement this
+    [TEX_CTRL_PIX_FMT_4_BPP_PAL] = 0,
     [TEX_CTRL_PIX_FMT_8_BPP_PAL] = 1,
     [TEX_CTRL_PIX_FMT_INVALID]   = 0
 };
@@ -347,13 +347,52 @@ static void pvr2_tex_detwiddle(void *dst, void const *src,
             unsigned twid_idx = tex_twiddle(col, row, tex_w_shift, tex_h_shift);
 
 #ifdef INVARIANTS
-            if (twid_idx * bytes_per_pix >= tex_w * tex_h * bytes_per_pix)
+            if (twid_idx >= tex_w * tex_h)
                 RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
             memcpy(dst8 + (row * tex_w + col) * bytes_per_pix,
                    src + twid_idx * bytes_per_pix,
                    bytes_per_pix);
+        }
+    }
+}
+
+/*
+ * special version of pvr2_tex_detwiddle for 4bpp paletted textures.
+ *
+ * The normal version of pvr2_tex_detwiddle won't work since each byte contains
+ * two packed pixels.
+ */
+static void pvr2_tex_detwiddle_4bpp(void *dst, void const *src,
+                                    unsigned tex_w_shift, unsigned tex_h_shift) {
+    uint8_t *dst8 = (uint8_t*)dst;
+    uint8_t const *src8 = (uint8_t*)src;
+    unsigned tex_w = 1 << tex_w_shift, tex_h = 1 << tex_h_shift;
+    unsigned row, col;
+    for (row = 0; row < tex_h; row++) {
+        for (col = 0; col < tex_w; col++) {
+            unsigned twid_idx = tex_twiddle(col, row, tex_w_shift, tex_h_shift);
+
+#ifdef INVARIANTS
+            if (twid_idx >= tex_w * tex_h)
+                RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+            unsigned dst_idx = row * tex_w + col;
+
+            uint8_t in_px;
+            if (twid_idx % 2 == 0)
+                in_px = src8[twid_idx / 2] & 0xf;
+            else
+                in_px = src8[twid_idx / 2] >> 4;
+
+            if (dst_idx % 2 == 0) {
+                dst8[dst_idx / 2] &= ~0xf;
+                dst8[dst_idx / 2] |= in_px;
+            } else {
+                dst8[dst_idx / 2] &= ~0xf0;
+                dst8[dst_idx / 2] |= (in_px << 4);
+            }
         }
     }
 }
@@ -413,19 +452,23 @@ void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
         abort();
     }
 
-    unsigned px_sz = pixel_sizes[meta->tex_fmt];
-    size_t n_bytes = sizeof(uint8_t) *
-        (1 << meta->w_shift) * (1 << meta->h_shift) * px_sz;
+    size_t n_bytes;
 
-    if (!px_sz) {
-        error_set_tex_fmt(meta->tex_fmt);
-        error_set_feature("some texture format");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+        n_bytes = (tex_w * tex_h) / 2;
+    } else {
+        unsigned px_sz = pixel_sizes[meta->tex_fmt];
+        if (!px_sz) {
+            error_set_tex_fmt(meta->tex_fmt);
+            error_set_feature("some texture format");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+        n_bytes = tex_w * tex_h * px_sz;
     }
 
     void *tex_dat = NULL;
     if (n_bytes)
-        tex_dat = malloc(n_bytes);
+        tex_dat = malloc(n_bytes * sizeof(uint8_t));
 
     if (!tex_dat)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -513,12 +556,15 @@ void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
 
         pvr2_tex_vq_decompress(tex_dat, code_book, beg, meta->w_shift);
     } else if (meta->twiddled) {
-        pvr2_tex_detwiddle(tex_dat, beg,
-                           meta->w_shift, meta->h_shift,
-                           pixel_sizes[meta->tex_fmt]);
+        if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+            pvr2_tex_detwiddle_4bpp(tex_dat, beg, meta->w_shift, meta->h_shift);
+        } else {
+            pvr2_tex_detwiddle(tex_dat, beg,
+                               meta->w_shift, meta->h_shift,
+                               pixel_sizes[meta->tex_fmt]);
+        }
     } else {
-        memcpy(tex_dat, beg,
-               pixel_sizes[meta->tex_fmt] * tex_w * tex_h);
+        memcpy(tex_dat, beg, n_bytes * sizeof(uint8_t));
     }
 
     if (meta->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
@@ -566,8 +612,56 @@ void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
         LOG_DBG("PVR2 paletted texture: tex_palette_start is 0x%04x\n",
                (unsigned)meta->tex_palette_start);
     } else if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-        error_set_feature("4BPP paletted textures");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        uint32_t tex_size_actual;
+        enum palette_tp palette_tp = get_palette_tp();
+        switch (palette_tp) {
+        case PALETTE_TP_ARGB_1555:
+            tex_size_actual = 2;
+            break;
+        case PALETTE_TP_RGB_565:
+            tex_size_actual = 2;
+            break;
+        case PALETTE_TP_ARGB_4444:
+            tex_size_actual = 2;
+            break;
+        case PALETTE_TP_ARGB_8888:
+            tex_size_actual = 4;
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+        uint8_t *tex_dat_no_palette =
+            (uint8_t*)malloc(tex_size_actual * tex_w * tex_h);
+        if (!tex_dat_no_palette)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+        uint32_t pal_start = meta->tex_palette_start << 4;
+        uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
+
+        unsigned row, col;
+        for (row = 0; row < tex_h; row++) {
+            for (col = 0; col < tex_w; col++) {
+                unsigned pix_idx = row * tex_w + col;
+
+                uint8_t *pix_out = tex_dat_no_palette +
+                    pix_idx * tex_size_actual;
+                uint8_t pix_in;
+
+                if (pix_idx % 2 == 0)
+                    pix_in = tex_dat8[pix_idx / 2] & 0xf;
+                else
+                    pix_in = tex_dat8[pix_idx / 2] >> 4;
+
+                uint32_t palette_addr =
+                    (pal_start | (uint32_t)pix_in) * 4;
+                memcpy(pix_out, pvr2_palette_ram + palette_addr, tex_size_actual);
+            }
+        }
+        free(tex_dat);
+        tex_dat = tex_dat_no_palette;
+        LOG_DBG("PVR2 paletted texture: tex_palette_start is 0x%04x\n",
+               (unsigned)meta->tex_palette_start);
     }
 
     *tex_dat_out = tex_dat;
