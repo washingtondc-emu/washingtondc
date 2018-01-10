@@ -167,9 +167,9 @@ static int node_balance(struct cache_entry *node) {
     int left_height = 0, right_height = 0;
 
     if (node->right)
-        right_height = node_height(node->right);
+        right_height = 1 + node_height(node->right);
     if (node->left)
-        left_height = node_height(node->left);
+        left_height = 1 + node_height(node->left);
 
     int bal = right_height - left_height;
 
@@ -181,7 +181,8 @@ static int node_balance(struct cache_entry *node) {
      * that range then this avl tree implementation is incorrect.
      */
     if (abs(bal) > 2) {
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        LOG_ERROR("bal is %d\n", bal);
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 #endif
 
