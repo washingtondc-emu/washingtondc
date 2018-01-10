@@ -171,7 +171,21 @@ static int node_balance(struct cache_entry *node) {
     if (node->left)
         left_height = node_height(node->left);
 
-    return right_height - left_height;
+    int bal = right_height - left_height;
+
+#ifdef INVARIANTS
+    /*
+     * in an avl tree, the balance of any node should never exceed +/-1.
+     * In the course of adding a new node to the tree, some nodes may
+     * temporarily have a balance of +/- 2.  Thus, if there's anything beyond
+     * that range then this avl tree implementation is incorrect.
+     */
+    if (abs(bal) > 2) {
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+#endif
+
+    return bal;
 }
 
 /*
@@ -318,6 +332,11 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
              */
             cur_node = parent;
         }
+
+#ifdef INVARIANTS
+        if (abs(node_balance(cur_node)) > 1)
+            RAISE_ERROR(ERROR_INTEGRITY);
+#endif
     }
 
     perf_stats_add_node();
