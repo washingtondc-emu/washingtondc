@@ -173,21 +173,23 @@ static int node_balance(struct cache_entry *node) {
 
     int bal = right_height - left_height;
 
-#ifdef INVARIANTS
-    /*
-     * in an avl tree, the balance of any node should never exceed +/-1.
-     * In the course of adding a new node to the tree, some nodes may
-     * temporarily have a balance of +/- 2.  Thus, if there's anything beyond
-     * that range then this avl tree implementation is incorrect.
-     */
-    if (abs(bal) > 2) {
-        LOG_ERROR("bal is %d\n", bal);
-        RAISE_ERROR(ERROR_INTEGRITY);
-    }
-#endif
-
     return bal;
 }
+
+#ifdef INVARIANTS
+static void cache_invariant(struct cache_entry *node) {
+    int bal = node_balance(node);
+    if (abs(bal) > 1) {
+        LOG_ERROR("node balance is %d\n", bal);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    if (node->left)
+        cache_invariant(node->left);
+    if (node->right)
+        cache_invariant(node->right);
+}
+#endif
 
 /*
  * rotate the subtree right-wards so that the left child is now the root-node.
@@ -294,12 +296,6 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
         int cur_node_bal = node_balance(cur_node);
         int par_node_bal = node_balance(parent);
 
-        if (par_node_bal < -2 || par_node_bal > 2 ||
-            cur_node_bal < -2 || cur_node_bal > 2) {
-            // the AVL algorithm should prevent this from happening
-            RAISE_ERROR(ERROR_INTEGRITY);
-        }
-
         if (par_node_bal == -2) {
             if (cur_node_bal < 0) {
                 // parent leans to the left and cur_node leans to the left
@@ -333,12 +329,10 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
              */
             cur_node = parent;
         }
-
-#ifdef INVARIANTS
-        if (abs(node_balance(cur_node)) > 1)
-            RAISE_ERROR(ERROR_INTEGRITY);
-#endif
     }
+#ifdef INVARIANTS
+    cache_invariant(root);
+#endif
 
     perf_stats_add_node();
 
