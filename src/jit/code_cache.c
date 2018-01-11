@@ -314,22 +314,24 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
                 rot_right(cur_node);
                 rot_left(parent);
             }
+        } else if (par_node_bal == 0) {
+            /*
+             * do an early exit here.  this is safe because the presence of a
+             * balanced node means that the most recent leaf did not increase
+             * the height
+             */
+            goto the_end;
         } else {
             /*
              * move up the tree, there are no rotations needed for this node
-             * because it either leans slightly to the left, leans slightly to
-             * the right or is perfectly balanced.  It's parent might need to
-             * be rebalanced, though.
-             *
-             * TODO: I believe it's safe to do an early-exit here in the case
-             * where the node is perfectly balanced because that would mean that
-             * any new subtrees added to this node would have gone into rows
-             * which already existed, meaning that this subtree does not effect
-             * the height of its parent node.
+             * because it only leans slightly.  It's parent might still need to
+             * be rebalanced since the height of this subtree has increased.
              */
             cur_node = parent;
         }
     }
+
+ the_end:
 #ifdef INVARIANTS
     cache_invariant(root);
 #endif
