@@ -305,6 +305,14 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
                 rot_left(cur_node);
                 rot_right(parent);
             }
+
+            /*
+             * after a rotation operation ends, either cur_node or one if its
+             * children will have taken parent's place.  The height of this
+             * subtree will be the same as parent's original subtree; therefore
+             * there is no need to continue iterating upwards.
+             */
+            goto the_end;
         } else if (par_node_bal == 2) {
             if (cur_node_bal > 0) {
                 // parent leans to the right and cur_node leans to the right
@@ -314,6 +322,14 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
                 rot_right(cur_node);
                 rot_left(parent);
             }
+
+            /*
+             * after a rotation operation ends, either cur_node or one if its
+             * children will have taken parent's place.  The height of this
+             * subtree will be the same as parent's original subtree; therefore
+             * there is no need to continue iterating upwards.
+             */
+            goto the_end;
         } else if (par_node_bal == 0) {
             /*
              * do an early exit here.  this is safe because the presence of a
