@@ -35,8 +35,10 @@
 // uncomment for basic performance stats
 // #define PERF_STATS
 
+#if defined(INVARIANTS) || defined(PERF_STATS)
 static int node_height(struct cache_entry *node);
 static int node_balance(struct cache_entry *node);
+#endif
 
 static void clear_cache(struct cache_entry *node);
 
@@ -148,6 +150,7 @@ static void clear_cache(struct cache_entry *node) {
     }
 }
 
+#if defined(INVARIANTS) || defined(PERF_STATS)
 static int node_height(struct cache_entry *node) {
     int max_height = 0;
     if (node->left) {
@@ -175,6 +178,7 @@ static int node_balance(struct cache_entry *node) {
 
     return bal;
 }
+#endif
 
 #ifdef INVARIANTS
 static void cache_invariant(struct cache_entry *node) {
@@ -286,65 +290,101 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
         RAISE_ERROR(ERROR_INTEGRITY);
 
     /*
-     * now retrace back up to the root using a simple AVL-like rebalancing
-     * algorithm to ensure that the heights of each node's subtrees differ by no
-     * more than 1.
+     * now retrace back up to the root using a the AVL rebalancing algorithm
+     * to ensure that the heights of each node's subtrees differ by no more
+     * than 1.
      */
     struct cache_entry *cur_node = new_node;
     while (cur_node != root) {
         struct cache_entry *parent = cur_node->parent;
-        int cur_node_bal = node_balance(cur_node);
-        int par_node_bal = node_balance(parent);
-
-        if (par_node_bal == -2) {
-            if (cur_node_bal < 0) {
-                // parent leans to the left and cur_node leans to the left
-                rot_right(parent);
-            } else {
-                // parent leans to the right and cur_node leans to the right
-                rot_left(cur_node);
-                rot_right(parent);
+        if (cur_node == parent->left) {
+            switch (parent->bal) {
+            case 1:
+                // parent-node height is unchanged
+                parent->bal = 0;
+                goto the_end;
+            case 0:
+                /*
+                 * the parent-node does not need to be rebalanced, but its
+                 * height has changed.
+                 */
+                parent->bal = -1;
+                break;
+            case -1:
+                /*
+                 * the parent-node is completely imbalanced and needs to be
+                 * rotated.
+                 */
+                if (cur_node->bal <= 0) {
+                    rot_right(parent);
+                    parent->bal = 0;
+                    cur_node->bal = 0;
+                } else {
+                    int child_bal = cur_node->right->bal;
+                    rot_left(cur_node);
+                    rot_right(parent);
+                    if (child_bal < 0) {
+                        cur_node->bal = 0;
+                        parent->bal = 1;
+                    } else if (child_bal > 0) {
+                        cur_node->bal = -1;
+                        parent->bal = 0;
+                    } else {
+                        cur_node->bal = 0;
+                        parent->bal = 0;
+                    }
+                    cur_node->parent->bal = 0;
+                }
+                goto the_end;
+            default:
+                // should be impossible
+                RAISE_ERROR(ERROR_INTEGRITY);
             }
-
-            /*
-             * after a rotation operation ends, either cur_node or one if its
-             * children will have taken parent's place.  The height of this
-             * subtree will be the same as parent's original subtree; therefore
-             * there is no need to continue iterating upwards.
-             */
-            goto the_end;
-        } else if (par_node_bal == 2) {
-            if (cur_node_bal > 0) {
-                // parent leans to the right and cur_node leans to the right
-                rot_left(parent);
-            } else {
-                // parent leans to the right and cur_node leans to the left
-                rot_right(cur_node);
-                rot_left(parent);
-            }
-
-            /*
-             * after a rotation operation ends, either cur_node or one if its
-             * children will have taken parent's place.  The height of this
-             * subtree will be the same as parent's original subtree; therefore
-             * there is no need to continue iterating upwards.
-             */
-            goto the_end;
-        } else if (par_node_bal == 0) {
-            /*
-             * do an early exit here.  this is safe because the presence of a
-             * balanced node means that the most recent leaf did not increase
-             * the height
-             */
-            goto the_end;
         } else {
-            /*
-             * move up the tree, there are no rotations needed for this node
-             * because it only leans slightly.  It's parent might still need to
-             * be rebalanced since the height of this subtree has increased.
-             */
-            cur_node = parent;
+            switch (parent->bal) {
+            case -1:
+                // parent-node height is unchanged
+                parent->bal = 0;
+                goto the_end;
+            case 0:
+                /*
+                 * the parent-node does not need to be rebalanced, but its
+                 * height has changed.
+                 */
+                parent->bal = 1;
+                break;
+            case 1:
+                /*
+                 * the parent-node is completely imbalanced and needs to be
+                 * rotated.
+                 */
+                if (cur_node->bal >= 0) {
+                    rot_left(parent);
+                    parent->bal = 0;
+                    cur_node->bal = 0;
+                } else {
+                    int child_bal = cur_node->left->bal;
+                    rot_right(cur_node);
+                    rot_left(parent);
+                    if (child_bal < 0) {
+                        parent->bal = 0;
+                        cur_node->bal = 1;
+                    } else if (child_bal > 0) {
+                        cur_node->bal = 0;
+                        parent->bal = -1;
+                    } else {
+                        cur_node->bal = 0;
+                        parent->bal = 0;
+                    }
+                    cur_node->parent->bal = 0;
+                }
+                goto the_end;
+            default:
+                // should be impossible
+                RAISE_ERROR(ERROR_INTEGRITY);
+            }
         }
+        cur_node = parent;
     }
 
  the_end:

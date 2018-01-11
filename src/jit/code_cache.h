@@ -37,6 +37,8 @@ struct cache_entry {
     struct jit_code_block blk;
 
     struct cache_entry *left, *right, *parent;
+
+    int bal;
 };
 
 /*
