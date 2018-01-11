@@ -407,10 +407,12 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
 
         jit_code_block_exec(blk);
 
-        if (dc_cycle_stamp() + blk->cycle_count <= dc_sched_target_stamp)
-            dc_cycle_advance(blk->cycle_count);
-        else
-            dc_cycle_advance(dc_sched_target_stamp - dc_cycle_stamp());
+        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+            blk->cycle_count * SH4_CLOCK_SCALE;
+        if (cycles_after > dc_sched_target_stamp)
+            cycles_after = dc_sched_target_stamp;
+
+        dc_cycle_advance(cycles_after - dc_cycle_stamp());
     }
 }
 
