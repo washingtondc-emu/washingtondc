@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 
 #include "error.h"
 #include "geo_buf.h"
-#include "gfx/gfx_thread.h"
+#include "gfx/gfx.h"
 #include "hw/sys/holly_intc.h"
 #include "pvr2_core_reg.h"
 #include "pvr2_tex_mem.h"
@@ -1500,7 +1500,7 @@ void pvr2_ta_startrender(void) {
 
     framebuffer_set_current_host(geo->frame_stamp);
 
-    gfx_thread_render_geo_buf(geo_buf_array + geo_buf_prod_idx);
+    gfx_render_geo_buf(geo_buf_array + geo_buf_prod_idx);
     geo_buf_prod_idx = !geo_buf_prod_idx;
     geo_buf_init(geo_buf_array + geo_buf_prod_idx);
 

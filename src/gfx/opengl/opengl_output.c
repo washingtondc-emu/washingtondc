@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,15 +26,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <err.h>
-#include <pthread.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
 #include <GL/gl.h>
 
+#include "glfw/window.h"
 #include "opengl_output.h"
 #include "shader.h"
-#include "gfx/gfx_thread.h"
+#include "gfx/gfx.h"
 #include "log.h"
 
 static void init_poly();
@@ -89,18 +89,10 @@ struct fb_poly {
     GLuint tex_obj; // texture object
 } fb_poly;
 
-/*
- * fb_read is allocated by backend_new_framebuffer from outside of the
- * graphics thread.  It is freed upon consumption by the graphics thread,
- * or upon obsoletion by the emulation thread.
- *
- * TODO: Ideally it would not need a mutex to protect it.  I'm imagining maybe
- * some sort of a ringbuffer wherein there are multiple fb_reads and only the
- * newest one is valid
- */
-static uint32_t * volatile fb_read;
-static unsigned volatile fb_read_width, fb_read_height;
-static pthread_mutex_t fb_read_lock = PTHREAD_MUTEX_INITIALIZER;
+static void
+opengl_video_update_framebuffer(uint32_t const *fb_read,
+                                unsigned fb_read_width,
+                                unsigned fb_read_height);
 
 void opengl_video_output_init() {
     shader_load_vert_from_file(&fb_shader, "final_vert.glsl");
@@ -112,85 +104,27 @@ void opengl_video_output_init() {
 
 void opengl_video_output_cleanup() {
     // TODO cleanup OpenGL stuff
-
-    if (fb_read)
-        free(fb_read);
 }
 
 void opengl_video_new_framebuffer(uint32_t const *fb_new,
                                   unsigned fb_new_width,
                                   unsigned fb_new_height) {
-    int ret_code;
-    size_t fb_size = fb_new_width * fb_new_height * sizeof(uint32_t);
-
-    if ((ret_code = pthread_mutex_lock(&fb_read_lock)) != 0)
-        err(errno, "unable to acquire fb_read_lock");
-
-    if (fb_read) {
-        /*
-         * I don't know if this is what people are referring to when they talk
-         * about dropped frames, but this is a frame which did not get displayed
-         * ergo...a dropped frame
-         */
-        LOG_WARN("WARNING: frame dropped by OpenGL backend\n");
-
-        /*
-         * free fb_read if the new framebuffer isn't the same size as the old
-         * one; else we seize the oppurtunity to recycle the old framebuffer
-         */
-        if ((fb_read_width != fb_new_width) ||
-            (fb_read_height != fb_new_height)) {
-            free(fb_read);
-            fb_read = NULL;
-        }
-    }
-
-    if (!fb_read) {
-        fb_read_width = fb_new_width;
-        fb_read_height = fb_new_height;
-
-        fb_read = (uint32_t*)malloc(fb_size);
-        if (!fb_read)
-            err(errno, "unable to allocate memory for %ux%u framebuffer",
-                fb_read_width, fb_read_height);
-    }
-
-    memcpy(fb_read, fb_new, fb_size);
-
-    if ((ret_code = pthread_mutex_unlock(&fb_read_lock)) != 0)
-        err(errno, "unable to release fb_read_lock");
-
-    gfx_thread_redraw();
+    opengl_video_update_framebuffer(fb_new, fb_new_width, fb_new_height);
+    opengl_video_present();
+    win_update();
 }
 
-void opengl_video_update_framebuffer() {
-    int ret_code;
-    unsigned img_width, img_height;
-    uint32_t *img_data;
-
-    if ((ret_code = pthread_mutex_lock(&fb_read_lock)) != 0)
-        err(errno, "unable to acquire fb_read_lock");
-
-    if (!fb_read) {
-        if ((ret_code = pthread_mutex_unlock(&fb_read_lock)) != 0)
-            err(errno, "unable to release fb_read_lock");
+static void
+opengl_video_update_framebuffer(uint32_t const *fb_read,
+                                unsigned fb_read_width,
+                                unsigned fb_read_height) {
+    if (!fb_read)
         return;
-    }
-
-    img_width = fb_read_width;
-    img_height = fb_read_height;
-    img_data = fb_read;
-    fb_read = NULL;
-
-    if ((ret_code = pthread_mutex_unlock(&fb_read_lock)) != 0)
-        err(errno, "unable to release fb_read_lock");
 
     glBindTexture(GL_TEXTURE_2D, fb_poly.tex_obj);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img_width, img_height, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, img_data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_read_width, fb_read_height, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, fb_read);
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    free(img_data);
 }
 
 void opengl_video_present() {

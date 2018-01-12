@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
 #include "hw/pvr2/pvr2_tex_cache.h"
-#include "gfx/gfx_thread.h"
+#include "gfx/gfx.h"
 #include "hw/pvr2/geo_buf.h"
 #include "log.h"
 
@@ -424,7 +424,7 @@ void framebuffer_render() {
     LOG_DBG("passing framebuffer dimensions=(%u, %u)\n", fb_width, fb_height);
     LOG_DBG("interlacing is %s\n", interlace ? "enabled" : "disabled");
 
-    gfx_thread_post_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
+    gfx_post_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
 }
 
 int framebuffer_get_current(void) {
@@ -515,10 +515,8 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
 void framebuffer_sync_from_host(void) {
     // update the framebuffer from the opengl target
 
-    gfx_thread_wait_for_geo_buf_stamp(current_fb_stamp);
-
     uint32_t fb_w_ctrl = get_fb_w_ctrl();
-    gfx_thread_read_framebuffer(ogl_fb, sizeof(ogl_fb));
+    gfx_read_framebuffer(ogl_fb, sizeof(ogl_fb));
 
     switch (fb_w_ctrl & 0x7) {
     case 0:

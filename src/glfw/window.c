@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 #include "gfx/opengl/opengl_output.h"
 #include "dreamcast.h"
 #include "hw/maple/maple_controller.h"
-#include "gfx/gfx_thread.h"
+#include "gfx/gfx.h"
 
 #include "window.h"
 
@@ -81,7 +81,7 @@ void win_update() {
 }
 
 static void expose_callback(GLFWwindow *win) {
-    gfx_thread_expose();
+    gfx_expose();
 }
 
 enum gamepad_btn {

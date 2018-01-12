@@ -34,7 +34,7 @@
 #include "dc_sched.h"
 #include "hw/pvr2/spg.h"
 #include "MemoryMap.h"
-#include "gfx/gfx_thread.h"
+#include "gfx/gfx.h"
 #include "hw/aica/aica_rtc.h"
 #include "hw/gdrom/gdrom.h"
 #include "hw/maple/maple.h"
@@ -304,8 +304,7 @@ void dreamcast_run() {
     // tell the other threads it's time to clean up and exit
     signal_exit_threads = true;
 
-    // kick the gfx_thread and io_thread so they know to check dc_is_running
-    gfx_thread_notify_wake_up();
+    // kick the io_thread so it knows to check dc_is_running
     io_thread_kick();
 
     switch (term_reason) {

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 
 #include "hw/pvr2/geo_buf.h"
 #include "gfx/gfx_tex_cache.h"
@@ -34,9 +33,6 @@
 #include "rend_common.h"
 
 static unsigned frame_stamp;
-
-static pthread_cond_t frame_stamp_update_cond = PTHREAD_COND_INITIALIZER;
-static pthread_mutex_t frame_stamp_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 static struct rend_if const *rend_ifp = &opengl_rend_if;
 
@@ -86,17 +82,7 @@ void rend_draw_geo_buf(struct geo_buf *geo) {
     rend_do_draw_geo_buf(geo);
     opengl_target_end();
 
-    /*
-     * TODO: I wish I had a good idea for how to handle this without a
-     * mutex/condition var
-     */
-    if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
-        abort(); // TODO: error handling
     frame_stamp = geo->frame_stamp;
-    if (pthread_cond_signal(&frame_stamp_update_cond) != 0)
-        abort(); // TODO: error handling
-    if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
-        abort(); // TODO: error handling
 
     LOG_DBG("frame_stamp %u rendered\n", frame_stamp);
 
@@ -114,19 +100,4 @@ void rend_draw_geo_buf(struct geo_buf *geo) {
             list->n_groups = 0;
         }
     }
-}
-
-void rend_wait_for_frame_stamp(unsigned stamp) {
-    if (pthread_mutex_lock(&frame_stamp_mtx) != 0)
-        abort(); // TODO: error handling
-    while (frame_stamp < stamp && dc_is_running()) {
-        LOG_DBG("waiting for frame_stamp %u (current is %u)\n", stamp, frame_stamp);
-        pthread_cond_wait(&frame_stamp_update_cond, &frame_stamp_mtx);
-    }
-    if (frame_stamp != stamp) {
-        LOG_WARN("ERROR: missed frame stamp %u (you get %u instead)\n",
-                 stamp, frame_stamp);
-    }
-    if (pthread_mutex_unlock(&frame_stamp_mtx) != 0)
-        abort(); // TODO: error handling
 }

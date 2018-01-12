@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -72,13 +72,5 @@ void rend_do_draw_geo_buf(struct geo_buf *geo);
 
 // this should only be called from the gfx_thread
 void rend_draw_geo_buf(struct geo_buf *geo);
-
-/*
- * block until the geo_buf with the given frame_stamp has rendered.
- *
- * This can only be called from outside of the gfx_thread.
- * It should only be called indirectly via gfx_thread_wait_for_geo_buf_stamp.
- */
-void rend_wait_for_frame_stamp(unsigned stamp);
 
 #endif

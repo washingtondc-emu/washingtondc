@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016. 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include <libgen.h>
 
 #include "dreamcast.h"
-#include "gfx/gfx_thread.h"
+#include "gfx/gfx.h"
 #include "glfw/window.h"
 #include "io/io_thread.h"
 #include "hw/pvr2/framebuffer.h"
@@ -54,8 +54,7 @@ static void print_usage(char const *cmd) {
             "direct boot)\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
-            "\t-m\t\tmount the given image in the GD-ROM drive\n"
-            "\t-p\t\tdo graphics rendering in parallel via a separate thread");
+            "\t-m\t\tmount the given image in the GD-ROM drive\n");
 }
 
 int main(int argc, char **argv) {
@@ -71,7 +70,6 @@ int main(int argc, char **argv) {
     bool enable_cmd_tcp = false;
     char const *title_content = NULL;
     struct mount_meta content_meta; // only valid if path_gdi is non-null
-    bool separate_gfx_thread = false;
 
     while ((opt = getopt(argc, argv, "cb:f:s:m:gduht")) != -1) {
         switch (opt) {
@@ -101,9 +99,6 @@ int main(int argc, char **argv) {
             break;
         case 'm':
             path_gdi = optarg;
-            break;
-        case 'p':
-            separate_gfx_thread = true;
             break;
         case 'h':
             print_usage(cmd);
@@ -205,17 +200,13 @@ int main(int argc, char **argv) {
 
     framebuffer_init(640, 480);
     win_init(640, 480, title_content);
-    gfx_thread_launch(640, 480, separate_gfx_thread);
+    gfx_init(640, 480);
     io_thread_launch();
 
     config_set_enable_cmd_tcp(enable_cmd_tcp);
     config_set_ser_srv_enable(enable_serial);
 
     dreamcast_run();
-
-    LOG_INFO("Waiting for gfx_thread to exit...\n");
-    gfx_thread_join();
-    LOG_INFO("gfx_thread has exited.\n");
 
     LOG_INFO("killing the window...\n");
     win_cleanup();

@@ -76,7 +76,6 @@ void opengl_video_new_framebuffer(uint32_t const *fb_new,
                                   unsigned fb_new_width,
                                   unsigned fb_new_height);
 
-void opengl_video_update_framebuffer();
 void opengl_video_present();
 
 void opengl_video_output_init();
