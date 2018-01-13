@@ -46,7 +46,9 @@
 static char cmd_buf[CMD_BUF_SIZE];
 unsigned cmd_buf_len;
 
+static int cmd_disable_auto_screenshot(int argc, char **argv);
 static int cmd_echo(int argc, char **argv);
+static int cmd_enable_auto_screenshot(int argc, char **argv);
 static int cmd_help(int argc, char **argv);
 static int cmd_render_set_mode(int argc, char **argv);
 static int cmd_exit(int argc, char **argv);
@@ -94,6 +96,26 @@ struct cmd {
         "\n"
         "start emulator execution\n",
         .cmd_handler = cmd_begin_execution
+    },
+    {
+        .cmd_name = "disable-auto-screenshot",
+        .summary = "don't automatically save screenshots as PNG files",
+        .help_str =
+        "disable-auto-screenshot\n"
+        "\n"
+        "stop saving framebuffers as PNG files (after you previously started\n"
+        "doing this with the enable-auto-screenshot command)\n",
+        .cmd_handler = cmd_disable_auto_screenshot
+    },
+    {
+        .cmd_name = "enable-auto-screenshot",
+        .summary = "automatically save screenshots as PNG files",
+        .help_str =
+        "enable-auto-screenshot dir\n"
+        "\n"
+        "automatically save every framebuffer as a PNG file in the given dir\n"
+        "To disable this, use disable-auto-screenshot\n",
+        .cmd_handler = cmd_enable_auto_screenshot
     },
     {
         .cmd_name = "echo",
@@ -329,6 +351,11 @@ static struct cmd const* find_cmd_by_name(char const *name) {
     return NULL;
 }
 
+static int cmd_disable_auto_screenshot(int argc, char **argv) {
+    config_set_enable_auto_screenshot(false);
+    return 0;
+}
+
 static int cmd_echo(int argc, char **argv) {
     int idx;
     for (idx = 1; idx < argc; idx++) {
@@ -337,6 +364,22 @@ static int cmd_echo(int argc, char **argv) {
         cons_puts(argv[idx]);
     }
     cons_puts("\n");
+    return 0;
+}
+
+static int cmd_enable_auto_screenshot(int argc, char **argv) {
+    if (argc != 2) {
+        cons_puts("usage: enable-auto-screenshot dir\n");
+        return 1;
+    }
+
+    char const *dir = argv[1];
+    config_set_auto_screenshot_dir(dir);
+    config_set_enable_auto_screenshot(true);
+
+    cons_printf("screnshots will be saved to the %s directory\n",
+                dir);
+
     return 0;
 }
 

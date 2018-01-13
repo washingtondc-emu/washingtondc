@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -88,3 +88,6 @@ CONFIG_DEF_STRING(exec_bin_path);
 CONFIG_DEF_BOOL(enable_cmd_tcp, false);
 
 CONFIG_DEF_BOOL(hack_power_stone_no_aica, true);
+
+CONFIG_DEF_BOOL(enable_auto_screenshot, false);
+CONFIG_DEF_STRING(auto_screenshot_dir);

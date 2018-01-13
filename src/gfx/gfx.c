@@ -38,15 +38,21 @@
 #include "gfx/rend_common.h"
 #include "gfx/gfx_tex_cache.h"
 #include "log.h"
+#include "config.h"
 
 // for the palette_tp stuff
 #include "hw/pvr2/pvr2_core_reg.h"
 
 #include "gfx/gfx.h"
+
 static unsigned win_width, win_height;
+
+static unsigned frame_counter;
 
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
 static void gfx_do_init(void);
+
+static void gfx_auto_screenshot(void);
 
 void gfx_init(unsigned width, unsigned height) {
     win_width = width;
@@ -111,6 +117,9 @@ void gfx_post_framebuffer(uint32_t const *fb_new,
     }
 
     memcpy(fb_screengrab, fb_new, fb_screengrab_w * fb_screengrab_h * 4);
+    if (config_get_enable_auto_screenshot())
+        gfx_auto_screenshot();
+    frame_counter++;
 }
 
 /*
@@ -225,4 +234,19 @@ int gfx_save_screenshot(char const *path) {
  free_screengrab:
     free(fb_tmp);
     return err_val;
+}
+
+#define AUTO_SCREEN_PATH_MAX 128
+static void gfx_auto_screenshot(void) {
+    static char path[AUTO_SCREEN_PATH_MAX];
+
+    memset(path, 0, sizeof(path));
+
+    snprintf(path, AUTO_SCREEN_PATH_MAX, "%s/frame_%u.png",
+             config_get_auto_screenshot_dir(), frame_counter);
+
+    path[AUTO_SCREEN_PATH_MAX - 1] = '\0';
+
+    LOG_INFO("saving a screenshot to \"%s\"\n", path);
+    gfx_save_screenshot(path);
 }
