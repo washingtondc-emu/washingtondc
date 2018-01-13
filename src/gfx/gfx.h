@@ -46,4 +46,9 @@ void gfx_post_framebuffer(uint32_t const *fb_new,
                           unsigned fb_new_width,
                           unsigned fb_new_height);
 
+void gfx_grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
+                     unsigned *fb_height_out);
+
+int gfx_save_screenshot(char const *path);
+
 #endif

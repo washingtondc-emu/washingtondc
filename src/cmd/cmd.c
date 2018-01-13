@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 #include "config.h"
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_cache.h"
+#include "gfx/gfx.h"
 
 #include "cmd.h"
 
@@ -50,6 +51,7 @@ static int cmd_help(int argc, char **argv);
 static int cmd_render_set_mode(int argc, char **argv);
 static int cmd_exit(int argc, char **argv);
 static int cmd_resume_execution(int argc, char **argv);
+static int cmd_screenshot(int argc, char **argv);
 static int cmd_suspend_execution(int argc, char **argv);
 static int cmd_begin_execution(int argc, char **argv);
 static int cmd_aica_verbose_log(int argc, char **argv);
@@ -159,6 +161,15 @@ struct cmd {
         "then this command would not be available.\n",
 #endif
         .cmd_handler = cmd_resume_execution
+    },
+    {
+        .cmd_name = "screenshot",
+        .summary = "save a screenshot to a PNG file.",
+        .help_str =
+        "screenshot path\n"
+        "\n"
+        "This command saves a screenshot to the given path as a PNG file.\n",
+        .cmd_handler = cmd_screenshot
     },
     {
         .cmd_name = "suspend-execution",
@@ -394,6 +405,22 @@ static int cmd_resume_execution(int argc, char **argv) {
               "suspended\n");
     return 1;
 #endif
+}
+
+static int cmd_screenshot(int argc, char **argv) {
+    if (argc != 2) {
+        cons_puts("usage: screenshot path\n");
+        return 1;
+    }
+
+    if (gfx_save_screenshot(argv[1]) == 0) {
+        cons_printf("screenshot saved to \"%s\"\n", argv[1]);
+        return 0;
+    } else {
+        cons_printf("error: failed to save screenshot to \"%s\"\n",
+                    argv[1]);
+        return 1;
+    }
 }
 
 static int cmd_suspend_execution(int argc, char **argv) {

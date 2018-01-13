@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -38,8 +38,7 @@ void opengl_target_begin(unsigned width, unsigned height);
 void opengl_target_end(void);
 
 /*
- * This function is intended to be called from the graphics thread.
- * It reads pixels from OpenGL's framebuffer.
+ * read pixels from OpenGL's framebuffer.
  * out must be at least (width*height*4) bytes
  */
 void opengl_target_grab_pixels(void *out, GLsizei buf_size);
