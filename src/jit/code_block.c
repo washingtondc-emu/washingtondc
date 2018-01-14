@@ -69,6 +69,10 @@ void jit_code_block_exec(struct jit_code_block const *block) {
                 inst->immed.prepare_jump.offs;
             inst++;
             break;
+        case JIT_OP_PREPARE_JUMP_CONST:
+            jump_addr = inst->immed.prepare_jump_const.new_pc;
+            inst++;
+            break;
         case JIT_OP_PREPARE_ALT_JUMP:
             alt_jump_addr = inst->immed.prepare_alt_jump.new_pc;
             inst++;
@@ -108,6 +112,10 @@ void jit_code_block_exec(struct jit_code_block const *block) {
             else
                 cpu->reg[SH4_REG_PC] = alt_jump_addr;
             return;
+        case JIT_SET_REG:
+            cpu->reg[inst->immed.set_reg.reg_idx] = inst->immed.set_reg.new_val;
+            inst++;
+            break;
         }
     }
 

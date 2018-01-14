@@ -36,6 +36,9 @@ enum jit_opcode {
      */
     JIT_OP_PREPARE_JUMP,
 
+    // this sets a given constant as the branch destination
+    JIT_OP_PREPARE_JUMP_CONST,
+
     /*
      * This stores a given register plus a constant offset as a jump
      * destination for a failed conditional jump.
@@ -58,7 +61,10 @@ enum jit_opcode {
     JIT_SET_COND_JUMP_BASED_ON_T,
 
     // this will jump iff the conditional jump flag is set
-    JIT_JUMP_COND
+    JIT_JUMP_COND,
+
+    // this will set a register to the given constant value
+    JIT_SET_REG
 };
 
 struct jit_fallback_immed {
@@ -69,6 +75,10 @@ struct jit_fallback_immed {
 struct prepare_jump_immed {
     unsigned reg_idx;
     unsigned offs; // constant offset added to the register
+};
+
+struct prepare_jump_const_immed {
+    unsigned new_pc;
 };
 
 struct prepare_alt_jump_immed {
@@ -88,13 +98,20 @@ struct set_cond_jump_based_on_t_immed {
     unsigned t_flag;
 };
 
+struct set_reg_immed {
+    unsigned reg_idx;
+    uint32_t new_val;
+};
+
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct prepare_jump_immed prepare_jump;
+    struct prepare_jump_const_immed prepare_jump_const;
     struct prepare_alt_jump_immed prepare_alt_jump;
     struct mov_reg_immed mov_reg;
     struct add_const_reg_immed add_const_reg;
     struct set_cond_jump_based_on_t_immed set_cond_jump_based_on_t;
+    struct set_reg_immed set_reg;
 };
 
 struct jit_inst {
@@ -105,6 +122,7 @@ struct jit_inst {
 void jit_fallback(struct jit_inst *op,
                   void(*fallback_fn)(Sh4*,Sh4OpArgs), inst_t inst);
 void jit_prepare_jump(struct jit_inst *op, unsigned sh4_reg_idx, unsigned offs);
+void jit_prepare_jump_const(struct jit_inst *op, unsigned new_pc);
 void jit_prepare_alt_jump(struct jit_inst *op, unsigned new_pc);
 void jit_jump(struct jit_inst *op);
 void jit_mov_reg(struct jit_inst *op, unsigned reg_src, unsigned reg_dst);
@@ -112,5 +130,6 @@ void jit_add_const_reg(struct jit_inst *op, unsigned const_val,
                        unsigned reg_dst);
 void jit_set_cond_jump_based_on_t(struct jit_inst *op, unsigned t_val);
 void jit_jump_cond(struct jit_inst *op);
+void jit_set_reg(struct jit_inst *op, unsigned reg_idx, uint32_t new_val);
 
 #endif

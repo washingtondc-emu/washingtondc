@@ -64,7 +64,7 @@ bool sh4_disas_fallback(struct jit_code_block *block, unsigned pc,
     il_inst.op = JIT_OP_FALLBACK;
     il_inst.immed.fallback.fallback_fn = op->func;
     il_inst.immed.fallback.inst.inst = inst;
-        
+
     jit_code_block_push_inst(block, &il_inst);
 
     return true;
@@ -131,11 +131,10 @@ bool sh4_disas_bsrf_rn(struct jit_code_block *block, unsigned pc,
      * adds 4 to the PC twice: once when it emits the prepare_jump instruction,
      * and again when it adds 4 to the PR after copying over the PC.
      */
-
     jit_prepare_jump(&jit_inst, SH4_REG_R0 + reg_no, jump_offs);
     jit_code_block_push_inst(block, &jit_inst);
 
-    jit_mov_reg(&jit_inst, SH4_REG_PC, SH4_REG_PR);
+    jit_set_reg(&jit_inst, SH4_REG_PR, pc);
     jit_code_block_push_inst(block, &jit_inst);
 
     jit_add_const_reg(&jit_inst, 4, SH4_REG_PR);
@@ -154,7 +153,7 @@ bool sh4_disas_bf(struct jit_code_block *block, unsigned pc,
     struct jit_inst jit_inst;
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
-    jit_prepare_jump(&jit_inst, SH4_REG_PC, jump_offs);
+    jit_prepare_jump_const(&jit_inst, pc + jump_offs);
     jit_code_block_push_inst(block, &jit_inst);
 
     jit_prepare_alt_jump(&jit_inst, pc + 2);
@@ -174,7 +173,7 @@ bool sh4_disas_bt(struct jit_code_block *block, unsigned pc,
     struct jit_inst jit_inst;
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
-    jit_prepare_jump(&jit_inst, SH4_REG_PC, jump_offs);
+    jit_prepare_jump_const(&jit_inst, pc + jump_offs);
     jit_code_block_push_inst(block, &jit_inst);
 
     jit_prepare_alt_jump(&jit_inst, pc + 2);
@@ -194,7 +193,7 @@ bool sh4_disas_bfs(struct jit_code_block *block, unsigned pc,
     struct jit_inst jit_inst;
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
-    jit_prepare_jump(&jit_inst, SH4_REG_PC, jump_offs);
+    jit_prepare_jump_const(&jit_inst, pc + jump_offs);
     jit_code_block_push_inst(block, &jit_inst);
 
     jit_prepare_alt_jump(&jit_inst, pc + 4);
@@ -216,7 +215,7 @@ bool sh4_disas_bts(struct jit_code_block *block, unsigned pc,
     struct jit_inst jit_inst;
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
-    jit_prepare_jump(&jit_inst, SH4_REG_PC, jump_offs);
+    jit_prepare_jump_const(&jit_inst, pc + jump_offs);
     jit_code_block_push_inst(block, &jit_inst);
 
     jit_prepare_alt_jump(&jit_inst, pc + 4);
@@ -241,7 +240,7 @@ bool sh4_disas_bra(struct jit_code_block *block, unsigned pc,
         disp |= 0xfffff000;
     disp = disp * 2 + 4;
 
-    jit_prepare_jump(&jit_inst, SH4_REG_PC, disp);
+    jit_prepare_jump_const(&jit_inst, pc + disp);
     jit_code_block_push_inst(block, &jit_inst);
 
     sh4_disas_delay_slot(block, pc + 2);
@@ -266,10 +265,10 @@ bool sh4_disas_bsr(struct jit_code_block *block, unsigned pc,
      * and again when it adds 4 to the PR after copying over the PC.
      */
 
-    jit_prepare_jump(&jit_inst, SH4_REG_PC, disp);
+    jit_prepare_jump_const(&jit_inst, pc + disp);
     jit_code_block_push_inst(block, &jit_inst);
 
-    jit_mov_reg(&jit_inst, SH4_REG_PC, SH4_REG_PR);
+    jit_set_reg(&jit_inst, SH4_REG_PR, pc);
     jit_code_block_push_inst(block, &jit_inst);
 
     jit_add_const_reg(&jit_inst, 4, SH4_REG_PR);
@@ -307,7 +306,7 @@ bool sh4_disas_jsr_arn(struct jit_code_block *block, unsigned pc,
     jit_prepare_jump(&jit_inst, SH4_REG_R0 + reg_no, 0);
     jit_code_block_push_inst(block, &jit_inst);
 
-    jit_mov_reg(&jit_inst, SH4_REG_PC, SH4_REG_PR);
+    jit_set_reg(&jit_inst, SH4_REG_PR, pc);
     jit_code_block_push_inst(block, &jit_inst);
 
     jit_add_const_reg(&jit_inst, 4, SH4_REG_PR);

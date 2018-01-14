@@ -36,6 +36,11 @@ void jit_prepare_jump(struct jit_inst *op, unsigned sh4_reg_idx,
     op->immed.prepare_jump.offs = offs;
 }
 
+void jit_prepare_jump_const(struct jit_inst *op, unsigned new_pc) {
+    op->op = JIT_OP_PREPARE_JUMP_CONST;
+    op->immed.prepare_jump_const.new_pc = new_pc;
+}
+
 void jit_prepare_alt_jump(struct jit_inst *op, unsigned new_pc) {
     op->op = JIT_OP_PREPARE_ALT_JUMP;
     op->immed.prepare_alt_jump.new_pc = new_pc;
@@ -65,4 +70,10 @@ void jit_set_cond_jump_based_on_t(struct jit_inst *op, unsigned t_val) {
 
 void jit_jump_cond(struct jit_inst *op) {
     op->op = JIT_JUMP_COND;
+}
+
+void jit_set_reg(struct jit_inst *op, unsigned reg_idx, uint32_t new_val) {
+    op->op = JIT_SET_REG;
+    op->immed.set_reg.new_val = new_val;
+    op->immed.set_reg.reg_idx = reg_idx;
 }
