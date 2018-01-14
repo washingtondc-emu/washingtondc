@@ -569,12 +569,16 @@ int debug_read_mem(void *out, addr32_t addr, unsigned len) {
     uint8_t *out_byte_ptr = out;
 
     while (n_units) {
-        int err = sh4_do_read_mem(dreamcast_get_cpu(), out_byte_ptr,
-                                  addr, unit_len);
-
-        if (err != MEM_ACCESS_SUCCESS) {
-            error_clear();
-            return -1;
+        switch (unit_len) {
+        case 4:
+            sh4_read_mem_32(dreamcast_get_cpu(), addr);
+            break;
+        case 2:
+            sh4_read_mem_16(dreamcast_get_cpu(), addr);
+            break;
+        case 1:
+            sh4_read_mem_8(dreamcast_get_cpu(), addr);
+            break;
         }
 
         out_byte_ptr += unit_len;

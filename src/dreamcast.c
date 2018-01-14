@@ -287,7 +287,9 @@ void dreamcast_run() {
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
+#ifndef ENABLE_DEBUGGER
     bool const jit = config_get_jit();
+#endif
 
     while (is_running) {
 #ifdef ENABLE_DEBUGGER
