@@ -1028,7 +1028,7 @@ static struct InstOpcode opcode_list[] = {
 };
 
 static InstOpcode invalid_opcode = {
-    &sh4_inst_invalid, false, (sh4_inst_group_t)0, 0, 0, 0
+    &sh4_inst_invalid, sh4_disas_fallback, false, (sh4_inst_group_t)0, 0, 0, 0
 };
 
 #define SH4_INST_RAISE_ERROR(sh4, error_tp)     \
