@@ -30,12 +30,13 @@
 
 /*
  * This is the gfx_thread's copy of the texture cache.  It mirrors the one
- * in the PVR2 code, and is updated every time a new geo_buf is submitted by
+ * in the geo_buf code, and is updated every time a new geo_buf is submitted by
  * the PVR2 STARTRENDER command.
  */
 
 struct gfx_tex {
-    struct pvr2_tex_meta meta;
+    int pix_fmt;
+    unsigned w_shift, h_shift;
 
     // if false, none of the other members of this struct are valid
     bool valid;

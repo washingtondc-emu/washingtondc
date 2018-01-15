@@ -29,7 +29,7 @@
 #ifndef REND_COMMON_H_
 #define REND_COMMON_H_
 
-#include "hw/pvr2/geo_buf.h"
+#include "gfx/geo_buf.h"
 
 struct rend_if {
     void (*init)(void);

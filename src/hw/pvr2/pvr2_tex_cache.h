@@ -28,33 +28,14 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "gfx/geo_buf.h"
+
 #include "pvr2_ta.h"
 
 struct geo_buf;
 
-/*
- * this is arbitrary.  I chose a value that is smaller than it should be
- * because I want to make sure the system can properly swap textures in/out
- * of the cache.
- */
-#define PVR2_TEX_CACHE_SIZE 512
-#define PVR2_TEX_CACHE_MASK (PVR2_TEX_CACHE_SIZE - 1)
-
-enum pvr2_tex_state {
-    // the texture in this slot is invaldi
-    PVR2_TEX_INVALID,
-
-    /*
-     * if this is the state, it means that this entry in the texture cache has
-     * changed since the last update.  This is the only state ofr which the
-     * data in dat is not valid (although the data in the corresponding entry
-     * in OpenGL's tex cache is).
-     */
-    PVR2_TEX_DIRTY,
-
-    // texture is valid and has already been submitted to the renderer
-    PVR2_TEX_READY
-};
+#define PVR2_TEX_CACHE_SIZE GEO_BUF_TEX_CACHE_SIZE
+#define PVR2_TEX_CACHE_MASK GEO_BUF_TEX_CACHE_MASK
 
 struct pvr2_tex_meta {
     uint32_t addr_first, addr_last;
@@ -99,7 +80,7 @@ struct pvr2_tex {
     // the frame stamp from the last time this texture was referenced
     unsigned frame_stamp_last_used;
 
-    enum pvr2_tex_state state;
+    enum geo_buf_tex_state state;
 
     // texture data (if the state is dirty)
     void *dat;

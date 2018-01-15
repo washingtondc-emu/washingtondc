@@ -27,7 +27,7 @@
 #include <stdbool.h>
 
 #include "error.h"
-#include "geo_buf.h"
+#include "gfx/geo_buf.h"
 #include "gfx/gfx.h"
 #include "hw/sys/holly_intc.h"
 #include "pvr2_core_reg.h"

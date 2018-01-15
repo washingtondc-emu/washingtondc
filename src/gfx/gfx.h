@@ -24,7 +24,7 @@
 #define GFX_THREAD_H_
 
 #include "gfx/gfx_tex_cache.h"
-#include "hw/pvr2/geo_buf.h"
+#include "gfx/geo_buf.h"
 
 // The purpose of the GFX layer is to handle all the OpenGL-related things.
 

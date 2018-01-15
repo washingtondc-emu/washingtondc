@@ -27,7 +27,7 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "hw/pvr2/geo_buf.h"
+#include "gfx/geo_buf.h"
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "shader.h"
 #include "opengl_target.h"
@@ -377,11 +377,11 @@ static void render_do_draw_group(struct geo_buf *geo,
 
 static void opengl_renderer_update_tex(unsigned tex_obj, void const *tex_dat) {
     struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
-    GLenum format = tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
+    GLenum format = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
         GL_RGB : GL_RGBA;
 
-    unsigned tex_w = 1 << tex->meta.w_shift;
-    unsigned tex_h = 1 << tex->meta.h_shift;
+    unsigned tex_w = 1 << tex->w_shift;
+    unsigned tex_h = 1 << tex->h_shift;
 
     glBindTexture(GL_TEXTURE_2D, tex_cache[tex_obj]);
     // TODO: maybe don't always set this to 1
@@ -394,9 +394,9 @@ static void opengl_renderer_update_tex(unsigned tex_obj, void const *tex_dat) {
      * struct gfx_tex, so I don't want to modify that.  Maybe someday I'll
      * change things to remove this mostly-unnecessary buffering...
      */
-    if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444) {
+    if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444) {
         size_t n_bytes =
-            sizeof(uint16_t) << (tex->meta.w_shift + tex->meta.h_shift);
+            sizeof(uint16_t) << (tex->w_shift + tex->h_shift);
         uint16_t *tex_dat_conv = (uint16_t*)malloc(n_bytes);
         if (!tex_dat_conv)
             abort();
@@ -405,9 +405,9 @@ static void opengl_renderer_update_tex(unsigned tex_obj, void const *tex_dat) {
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
                      format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_4444], tex_dat_conv);
         free(tex_dat_conv);
-    } else if (tex->meta.pix_fmt == TEX_CTRL_PIX_FMT_ARGB_1555) {
+    } else if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_1555) {
         size_t n_bytes =
-            sizeof(uint16_t) << (tex->meta.w_shift + tex->meta.h_shift);
+            sizeof(uint16_t) << (tex->w_shift + tex->h_shift);
         uint16_t *tex_dat_conv = (uint16_t*)malloc(n_bytes);
         if (!tex_dat_conv)
             abort();
@@ -418,7 +418,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj, void const *tex_dat) {
         free(tex_dat_conv);
     } else {
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, tex_formats[tex->meta.pix_fmt], tex_dat);
+                     format, tex_formats[tex->pix_fmt], tex_dat);
     }
     glBindTexture(GL_TEXTURE_2D, 0);
 }

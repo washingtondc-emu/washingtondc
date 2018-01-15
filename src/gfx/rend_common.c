@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "hw/pvr2/geo_buf.h"
+#include "gfx/geo_buf.h"
 #include "gfx/gfx_tex_cache.h"
 #include "gfx/opengl/opengl_target.h"
 #include "gfx/opengl/opengl_renderer.h"
@@ -62,18 +62,20 @@ void rend_do_draw_geo_buf(struct geo_buf *geo) {
 
 void rend_draw_geo_buf(struct geo_buf *geo) {
     unsigned tex_no;
-    for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
-        struct pvr2_tex *tex = geo->tex_cache + tex_no;
-        if (tex->state == PVR2_TEX_DIRTY) {
+    for (tex_no = 0; tex_no < GEO_BUF_TEX_CACHE_SIZE; tex_no++) {
+        struct geo_buf_tex *tex = geo->tex_cache + tex_no;
+        if (tex->state == GEO_BUF_TEX_DIRTY) {
             struct gfx_tex new_tex_entry = {
                 .valid =  true,
-                .meta = tex->meta
+                .pix_fmt = tex->pix_fmt,
+                .w_shift = tex->w_shift,
+                .h_shift = tex->h_shift
             };
-            tex->state = PVR2_TEX_READY;
+            tex->state = GEO_BUF_TEX_READY;
             gfx_tex_cache_add(tex_no, &new_tex_entry, tex->dat);
             free(tex->dat);
             tex->dat = NULL;
-        } else if (tex->state == PVR2_TEX_INVALID) {
+        } else if (tex->state == GEO_BUF_TEX_INVALID) {
             gfx_tex_cache_evict(tex_no);
         }
     }

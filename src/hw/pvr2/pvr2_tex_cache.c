@@ -32,7 +32,7 @@
 #include "log.h"
 #include "error.h"
 
-#include "geo_buf.h"
+#include "gfx/geo_buf.h"
 
 #include "pvr2_tex_cache.h"
 
@@ -71,12 +71,12 @@ static unsigned mipmap_byte_offset_norm[11] = {
     0x6, 0x8, 0x10, 0x30, 0xb0, 0x2b0, 0xab0, 0x2ab0, 0xaab0, 0x2aab0, 0xaaab0
 };
 
-static bool pvr2_tex_valid(enum pvr2_tex_state state) {
-    return state == PVR2_TEX_READY || state == PVR2_TEX_DIRTY;
+static bool pvr2_tex_valid(enum geo_buf_tex_state state) {
+    return state == GEO_BUF_TEX_READY || state == GEO_BUF_TEX_DIRTY;
 }
 
-__attribute__((unused)) static bool pvr2_tex_dirty(enum pvr2_tex_state state) {
-    return state == PVR2_TEX_DIRTY;
+__attribute__((unused)) static bool pvr2_tex_dirty(enum geo_buf_tex_state state) {
+    return state == GEO_BUF_TEX_DIRTY;
 }
 
 static unsigned tex_twiddle(unsigned x, unsigned y,
@@ -273,7 +273,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
         }
     }
 
-    tex->state = PVR2_TEX_DIRTY;
+    tex->state = GEO_BUF_TEX_DIRTY;
     /*
      * We defer reading the actual data from texture memory until we're ready
      * to transmit this to the rendering thread.
@@ -301,11 +301,11 @@ void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex = tex_cache + idx;
-        if (tex->state == PVR2_TEX_READY &&
+        if (tex->state == GEO_BUF_TEX_READY &&
             check_overlap(addr_first, addr_last,
                           tex->meta.addr_first + ADDR_TEX64_FIRST,
                           tex->meta.addr_last + ADDR_TEX64_FIRST)) {
-            tex->state = PVR2_TEX_DIRTY;
+            tex->state = GEO_BUF_TEX_DIRTY;
         }
     }
 }
@@ -325,10 +325,10 @@ void pvr2_tex_cache_notify_palette_tp_change(void) {
     unsigned idx;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex = tex_cache + idx;
-        if (tex->state == PVR2_TEX_READY &&
+        if (tex->state == GEO_BUF_TEX_READY &&
             (tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
              tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL))
-            tex->state = PVR2_TEX_DIRTY;
+            tex->state = GEO_BUF_TEX_DIRTY;
     }
 }
 
@@ -673,29 +673,36 @@ void pvr2_tex_cache_xmit(struct geo_buf *out) {
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex_in = tex_cache + idx;
-        struct pvr2_tex *tex_out = out->tex_cache + idx;
+        struct geo_buf_tex *tex_out = out->tex_cache + idx;
 
         tex_out->state = tex_in->state;
 
-        if (tex_in->state == PVR2_TEX_DIRTY) {
+        if (tex_in->state == GEO_BUF_TEX_DIRTY) {
             /*
              * If the texture has been written to this frame but it is not
              * actively in use then tell the gfx system to evict it from the
              * cache by marking the valid bit as false.
              */
             if (tex_in->frame_stamp_last_used != cur_frame_stamp) {
-                tex_out->state = PVR2_TEX_INVALID;
-                tex_in->state = PVR2_TEX_INVALID;
+                tex_out->state = GEO_BUF_TEX_INVALID;
+                tex_in->state = GEO_BUF_TEX_INVALID;
                 continue;
             }
 
-            memcpy(&tex_out->meta, &tex_in->meta, sizeof(tex_out->meta));
-            if (tex_out->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
-                tex_out->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL)
-                tex_out->meta.pix_fmt = get_palette_tp();
-            pvr2_tex_cache_read(&tex_out->dat, &tex_out->meta);
+            tex_out->pix_fmt = tex_in->meta.pix_fmt;
+            tex_out->w_shift = tex_in->meta.w_shift;
+            tex_out->h_shift = tex_in->meta.h_shift;
 
-            tex_in->state = PVR2_TEX_READY;
+            struct pvr2_tex_meta tmp = tex_in->meta;
+
+            if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+                tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+                tex_out->pix_fmt = get_palette_tp();
+                tmp.pix_fmt = tex_out->pix_fmt;
+            }
+            pvr2_tex_cache_read(&tex_out->dat, &tmp);
+
+            tex_in->state = GEO_BUF_TEX_READY;
         }
     }
 }
