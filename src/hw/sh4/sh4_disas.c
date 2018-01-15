@@ -337,7 +337,7 @@ bool sh4_disas_mova_a_disp_pc_r0(struct jit_code_block *block, unsigned pc,
     unsigned disp = inst & 0xff;
     addr32_t addr = disp * 4 + (pc & ~3) + 4;
 
-    jit_set_reg(&jit_inst, 0, addr);
+    jit_set_reg(&jit_inst, SH4_REG_R0, addr);
     jit_code_block_push_inst(block, &jit_inst);
 
     return true;
