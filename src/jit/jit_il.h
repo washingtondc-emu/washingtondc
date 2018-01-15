@@ -48,12 +48,6 @@ enum jit_opcode {
     // This jumps to the jump destination address previously stored
     JIT_OP_JUMP,
 
-    // this copies one register into another
-    JIT_OP_MOV_REG,
-
-    // this adds a constant value into a register
-    JIT_ADD_CONST_REG,
-
     /*
      * This can be configured to set the conditional jump flag if t is set, or
      * it can be configured to set the conditional jump flag if t is not set.
@@ -96,15 +90,6 @@ struct prepare_alt_jump_immed {
     unsigned new_pc;
 };
 
-struct mov_reg_immed {
-    unsigned reg_src, reg_dst;
-};
-
-struct add_const_reg_immed {
-    unsigned const_val;
-    unsigned reg_dst;
-};
-
 struct set_cond_jump_based_on_t_immed {
     unsigned t_flag;
 };
@@ -133,8 +118,6 @@ union jit_immed {
     struct prepare_jump_immed prepare_jump;
     struct prepare_jump_const_immed prepare_jump_const;
     struct prepare_alt_jump_immed prepare_alt_jump;
-    struct mov_reg_immed mov_reg;
-    struct add_const_reg_immed add_const_reg;
     struct set_cond_jump_based_on_t_immed set_cond_jump_based_on_t;
     struct set_reg_immed set_reg;
     struct read_16_reg_immed read_16_reg;
@@ -153,9 +136,6 @@ void jit_prepare_jump(struct jit_inst *op, unsigned sh4_reg_idx, unsigned offs);
 void jit_prepare_jump_const(struct jit_inst *op, unsigned new_pc);
 void jit_prepare_alt_jump(struct jit_inst *op, unsigned new_pc);
 void jit_jump(struct jit_inst *op);
-void jit_mov_reg(struct jit_inst *op, unsigned reg_src, unsigned reg_dst);
-void jit_add_const_reg(struct jit_inst *op, unsigned const_val,
-                       unsigned reg_dst);
 void jit_set_cond_jump_based_on_t(struct jit_inst *op, unsigned t_val);
 void jit_jump_cond(struct jit_inst *op);
 void jit_set_reg(struct jit_inst *op, unsigned reg_idx, uint32_t new_val);

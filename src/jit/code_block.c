@@ -81,16 +81,6 @@ void jit_code_block_exec(struct jit_code_block const *block) {
         case JIT_OP_JUMP:
             cpu->reg[SH4_REG_PC] = jump_addr;
             return;
-        case JIT_OP_MOV_REG:
-            cpu->reg[inst->immed.mov_reg.reg_dst] =
-                cpu->reg[inst->immed.mov_reg.reg_src];
-            inst++;
-            break;
-        case JIT_ADD_CONST_REG:
-            cpu->reg[inst->immed.add_const_reg.reg_dst] +=
-                inst->immed.add_const_reg.const_val;
-            inst++;
-            break;
         case JIT_SET_COND_JUMP_BASED_ON_T:
             /*
              * set conditional jump flag if t_flag == the sh4's t flag.

@@ -50,19 +50,6 @@ void jit_jump(struct jit_inst *op) {
     op->op = JIT_OP_JUMP;
 }
 
-void jit_mov_reg(struct jit_inst *op, unsigned reg_src, unsigned reg_dst) {
-    op->op = JIT_OP_MOV_REG;
-    op->immed.mov_reg.reg_src = reg_src;
-    op->immed.mov_reg.reg_dst = reg_dst;
-}
-
-void jit_add_const_reg(struct jit_inst *op, unsigned const_val,
-                       unsigned reg_dst) {
-    op->op = JIT_ADD_CONST_REG;
-    op->immed.add_const_reg.const_val = const_val;
-    op->immed.add_const_reg.reg_dst = reg_dst;
-}
-
 void jit_set_cond_jump_based_on_t(struct jit_inst *op, unsigned t_val) {
     op->op = JIT_SET_COND_JUMP_BASED_ON_T;
     op->immed.set_cond_jump_based_on_t.t_flag = t_val;
