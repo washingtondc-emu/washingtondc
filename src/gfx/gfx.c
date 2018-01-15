@@ -39,6 +39,7 @@
 #include "gfx/gfx_tex_cache.h"
 #include "log.h"
 #include "config.h"
+#include "geo_buf_serial.h"
 
 // for the palette_tp stuff
 #include "hw/pvr2/pvr2_core_reg.h"
@@ -48,6 +49,8 @@
 static unsigned win_width, win_height;
 
 static unsigned frame_counter;
+
+static FILE *geo_buf_log;
 
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
 static void gfx_do_init(void);
@@ -62,8 +65,32 @@ void gfx_init(unsigned width, unsigned height) {
     gfx_do_init();
 }
 
+void gfx_cleanup(void) {
+    gfx_close_geo_buf_log();
+}
+
+int gfx_open_geo_buf_log(char const *path) {
+    gfx_close_geo_buf_log();
+    LOG_INFO("Opening geo_buf log at \"%s\"\n", path);
+    if ((geo_buf_log = fopen(path, "wb")) != NULL)
+        return 0;
+
+    LOG_ERROR("Failed to open geo_buf log at \"%s\"\n", path);
+    return -1;
+}
+
+void gfx_close_geo_buf_log(void) {
+    if (geo_buf_log) {
+        LOG_INFO("Closing geo_buf log\n");
+        fclose(geo_buf_log);
+    }
+}
+
 void gfx_render_geo_buf(struct geo_buf *geo) {
     rend_draw_geo_buf(geo);
+
+    if (geo_buf_log)
+        save_geo_buf(geo, geo_buf_log);
 }
 
 void gfx_expose(void) {

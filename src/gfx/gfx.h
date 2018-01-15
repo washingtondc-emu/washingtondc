@@ -29,6 +29,7 @@
 // The purpose of the GFX layer is to handle all the OpenGL-related things.
 
 void gfx_init(unsigned width, unsigned height);
+void gfx_cleanup(void);
 
 // consume a geo_buf (by drawing it)
 void gfx_render_geo_buf(struct geo_buf *geo_buf);
@@ -50,5 +51,8 @@ void gfx_grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
                      unsigned *fb_height_out);
 
 int gfx_save_screenshot(char const *path);
+
+int gfx_open_geo_buf_log(char const *path);
+void gfx_close_geo_buf_log(void);
 
 #endif

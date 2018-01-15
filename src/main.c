@@ -208,6 +208,8 @@ int main(int argc, char **argv) {
 
     dreamcast_run();
 
+    gfx_cleanup();
+
     LOG_INFO("killing the window...\n");
     win_cleanup();
 
