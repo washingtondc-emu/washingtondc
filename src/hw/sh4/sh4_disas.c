@@ -92,7 +92,7 @@ bool sh4_disas_rte(struct jit_code_block *block, unsigned pc,
     jit_prepare_jump(&jit_inst, SH4_REG_SPC, 0);
     jit_code_block_push_inst(block, &jit_inst);
 
-    jit_mov_reg(&jit_inst, SH4_REG_SSR, SH4_REG_SR);
+    jit_restore_sr(&jit_inst);
     jit_code_block_push_inst(block, &jit_inst);
 
     sh4_disas_delay_slot(block, pc + 2);

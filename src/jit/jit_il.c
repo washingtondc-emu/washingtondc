@@ -77,3 +77,7 @@ void jit_set_reg(struct jit_inst *op, unsigned reg_idx, uint32_t new_val) {
     op->immed.set_reg.new_val = new_val;
     op->immed.set_reg.reg_idx = reg_idx;
 }
+
+void jit_restore_sr(struct jit_inst *op) {
+    op->op = JIT_OP_RESTORE_SR;
+}

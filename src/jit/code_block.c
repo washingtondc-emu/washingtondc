@@ -57,6 +57,7 @@ void jit_code_block_exec(struct jit_code_block const *block) {
     addr32_t jump_addr = 0;
     addr32_t alt_jump_addr = 0; // where a cond jump goes to if the jump fails
     bool cond_jump_flag = false;
+    reg32_t old_sr;
 
     while (inst_count--) {
         switch (inst->op) {
@@ -114,6 +115,12 @@ void jit_code_block_exec(struct jit_code_block const *block) {
             return;
         case JIT_SET_REG:
             cpu->reg[inst->immed.set_reg.reg_idx] = inst->immed.set_reg.new_val;
+            inst++;
+            break;
+        case JIT_OP_RESTORE_SR:
+            old_sr = cpu->reg[SH4_REG_SR];
+            cpu->reg[SH4_REG_SR] = cpu->reg[SH4_REG_SSR];
+            sh4_on_sr_change(cpu, old_sr);
             inst++;
             break;
         }

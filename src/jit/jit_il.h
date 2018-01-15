@@ -64,7 +64,10 @@ enum jit_opcode {
     JIT_JUMP_COND,
 
     // this will set a register to the given constant value
-    JIT_SET_REG
+    JIT_SET_REG,
+
+    // this will copy SSR into SR and handle any state changes
+    JIT_OP_RESTORE_SR
 };
 
 struct jit_fallback_immed {
@@ -131,5 +134,6 @@ void jit_add_const_reg(struct jit_inst *op, unsigned const_val,
 void jit_set_cond_jump_based_on_t(struct jit_inst *op, unsigned t_val);
 void jit_jump_cond(struct jit_inst *op);
 void jit_set_reg(struct jit_inst *op, unsigned reg_idx, uint32_t new_val);
+void jit_restore_sr(struct jit_inst *op);
 
 #endif
