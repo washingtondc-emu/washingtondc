@@ -126,18 +126,10 @@ bool sh4_disas_bsrf_rn(struct jit_code_block *block, unsigned pc,
     unsigned reg_no = (inst >> 8) & 0xf;
     unsigned jump_offs = pc + 4;
 
-    /*
-     * TODO: this opcode has some unnecessary duplication of effort because it
-     * adds 4 to the PC twice: once when it emits the prepare_jump instruction,
-     * and again when it adds 4 to the PR after copying over the PC.
-     */
     jit_prepare_jump(&jit_inst, SH4_REG_R0 + reg_no, jump_offs);
     jit_code_block_push_inst(block, &jit_inst);
 
-    jit_set_reg(&jit_inst, SH4_REG_PR, pc);
-    jit_code_block_push_inst(block, &jit_inst);
-
-    jit_add_const_reg(&jit_inst, 4, SH4_REG_PR);
+    jit_set_reg(&jit_inst, SH4_REG_PR, pc + 4);
     jit_code_block_push_inst(block, &jit_inst);
 
     sh4_disas_delay_slot(block, pc + 2);
@@ -259,19 +251,10 @@ bool sh4_disas_bsr(struct jit_code_block *block, unsigned pc,
         disp |= 0xfffff000;
     disp = disp * 2 + 4;
 
-    /*
-     * TODO: this opcode has some unnecessary duplication of effort because it
-     * adds 4 to the PC twice: once when it emits the prepare_jump instruction,
-     * and again when it adds 4 to the PR after copying over the PC.
-     */
-
     jit_prepare_jump_const(&jit_inst, pc + disp);
     jit_code_block_push_inst(block, &jit_inst);
 
-    jit_set_reg(&jit_inst, SH4_REG_PR, pc);
-    jit_code_block_push_inst(block, &jit_inst);
-
-    jit_add_const_reg(&jit_inst, 4, SH4_REG_PR);
+    jit_set_reg(&jit_inst, SH4_REG_PR, pc + 4);
     jit_code_block_push_inst(block, &jit_inst);
 
     sh4_disas_delay_slot(block, pc + 2);
@@ -306,10 +289,7 @@ bool sh4_disas_jsr_arn(struct jit_code_block *block, unsigned pc,
     jit_prepare_jump(&jit_inst, SH4_REG_R0 + reg_no, 0);
     jit_code_block_push_inst(block, &jit_inst);
 
-    jit_set_reg(&jit_inst, SH4_REG_PR, pc);
-    jit_code_block_push_inst(block, &jit_inst);
-
-    jit_add_const_reg(&jit_inst, 4, SH4_REG_PR);
+    jit_set_reg(&jit_inst, SH4_REG_PR, pc + 4);
     jit_code_block_push_inst(block, &jit_inst);
 
     sh4_disas_delay_slot(block, pc + 2);
