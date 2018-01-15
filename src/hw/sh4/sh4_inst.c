@@ -440,11 +440,11 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_EX, 1, 0xf000, 0x7000 },
 
     // MOV.W @(disp, PC), Rn
-    { &sh4_inst_binary_movw_binind_disp_pc_gen, sh4_disas_fallback,
+    { &sh4_inst_binary_movw_binind_disp_pc_gen, sh4_disas_movw_a_disp_pc_rn,
       true, SH4_GROUP_LS, 1, 0xf000, 0x9000 },
 
     // MOV.L @(disp, PC), Rn
-    { &sh4_inst_binary_movl_binind_disp_pc_gen, sh4_disas_fallback,
+    { &sh4_inst_binary_movl_binind_disp_pc_gen, sh4_disas_movl_a_disp_pc_rn,
       true, SH4_GROUP_LS, 1, 0xf000, 0xd000 },
 
     // MOV Rm, Rn
@@ -788,7 +788,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_LS, 1, 0xff00, 0xc600 },
 
     // MOVA @(disp, PC), R0
-    { &sh4_inst_binary_mova_binind_disp_pc_r0, sh4_disas_fallback,
+    { &sh4_inst_binary_mova_binind_disp_pc_r0, sh4_disas_mova_a_disp_pc_r0,
       true, SH4_GROUP_EX, 1, 0xff00, 0xc700 },
 
     // MOVCA.L R0, @Rn

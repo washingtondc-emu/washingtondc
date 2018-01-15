@@ -123,6 +123,21 @@ void jit_code_block_exec(struct jit_code_block const *block) {
             sh4_on_sr_change(cpu, old_sr);
             inst++;
             break;
+        case JIT_OP_READ_16_REG:
+            cpu->reg[inst->immed.read_16_reg.reg_no] =
+                sh4_read_mem_16(cpu, inst->immed.read_16_reg.addr);
+            inst++;
+            break;
+        case JIT_OP_SIGN_EXTEND_16:
+            cpu->reg[inst->immed.sign_extend_16.reg_no] =
+                (int32_t)(int16_t)cpu->reg[inst->immed.sign_extend_16.reg_no];
+            inst++;
+            break;
+        case JIT_OP_READ_32_REG:
+            cpu->reg[inst->immed.read_32_reg.reg_no] =
+                sh4_read_mem_32(cpu, inst->immed.read_32_reg.addr);
+            inst++;
+            break;
         }
     }
 

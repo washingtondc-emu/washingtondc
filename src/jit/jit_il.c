@@ -81,3 +81,20 @@ void jit_set_reg(struct jit_inst *op, unsigned reg_idx, uint32_t new_val) {
 void jit_restore_sr(struct jit_inst *op) {
     op->op = JIT_OP_RESTORE_SR;
 }
+
+void jit_read_16_reg(struct jit_inst *op, addr32_t addr, unsigned reg_no) {
+    op->op = JIT_OP_READ_16_REG;
+    op->immed.read_16_reg.addr = addr;
+    op->immed.read_16_reg.reg_no = reg_no;
+}
+
+void jit_sign_extend_16(struct jit_inst *op, unsigned reg_no) {
+    op->op = JIT_OP_SIGN_EXTEND_16;
+    op->immed.sign_extend_16.reg_no = reg_no;
+}
+
+void jit_read_32_reg(struct jit_inst *op, addr32_t addr, unsigned reg_no) {
+    op->op = JIT_OP_READ_32_REG;
+    op->immed.read_32_reg.addr = addr;
+    op->immed.read_32_reg.reg_no = reg_no;
+}

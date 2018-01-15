@@ -299,3 +299,46 @@ bool sh4_disas_jsr_arn(struct jit_code_block *block, unsigned pc,
 
     return false;
 }
+
+// disassembles the "mov.w @(disp, pc), rn" instruction
+bool sh4_disas_movw_a_disp_pc_rn(struct jit_code_block *block, unsigned pc,
+                                 struct InstOpcode const *op, inst_t inst) {
+    struct jit_inst jit_inst;
+    unsigned reg_no = (inst >> 8) & 0xf;
+    unsigned disp = inst & 0xff;
+    addr32_t addr = disp * 2 + pc + 4;
+
+    jit_read_16_reg(&jit_inst, addr, SH4_REG_R0 + reg_no);
+    jit_code_block_push_inst(block, &jit_inst);
+
+    jit_sign_extend_16(&jit_inst, SH4_REG_R0 + reg_no);
+    jit_code_block_push_inst(block, &jit_inst);
+
+    return true;
+}
+
+// disassembles the "mov.l @(disp, pc), rn" instruction
+bool sh4_disas_movl_a_disp_pc_rn(struct jit_code_block *block, unsigned pc,
+                                 struct InstOpcode const *op, inst_t inst) {
+    struct jit_inst jit_inst;
+    unsigned reg_no = (inst >> 8) & 0xf;
+    unsigned disp = inst & 0xff;
+    addr32_t addr = disp * 4 + (pc & ~3) + 4;
+
+    jit_read_32_reg(&jit_inst, addr, SH4_REG_R0 + reg_no);
+    jit_code_block_push_inst(block, &jit_inst);
+
+    return true;
+}
+
+bool sh4_disas_mova_a_disp_pc_r0(struct jit_code_block *block, unsigned pc,
+                                 struct InstOpcode const *op, inst_t inst) {
+    struct jit_inst jit_inst;
+    unsigned disp = inst & 0xff;
+    addr32_t addr = disp * 4 + (pc & ~3) + 4;
+
+    jit_set_reg(&jit_inst, 0, addr);
+    jit_code_block_push_inst(block, &jit_inst);
+
+    return true;
+}

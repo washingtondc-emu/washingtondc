@@ -94,4 +94,13 @@ bool sh4_disas_jmp_arn(struct jit_code_block *block, unsigned pc,
 bool sh4_disas_jsr_arn(struct jit_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
+// disassembles the "mov.w @(disp, pc), rn" instruction
+bool sh4_disas_movw_a_disp_pc_rn(struct jit_code_block *block, unsigned pc,
+                                 struct InstOpcode const *op, inst_t inst);
+
+// disassembles the "mov.l @(disp, pc), rn" instruction
+bool sh4_disas_movl_a_disp_pc_rn(struct jit_code_block *block, unsigned pc,
+                                 struct InstOpcode const *op, inst_t inst);
+bool sh4_disas_mova_a_disp_pc_r0(struct jit_code_block *block, unsigned pc,
+                                 struct InstOpcode const *op, inst_t inst);
 #endif
