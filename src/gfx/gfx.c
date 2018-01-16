@@ -87,10 +87,9 @@ void gfx_close_geo_buf_log(void) {
 }
 
 void gfx_render_geo_buf(struct geo_buf *geo) {
-    rend_draw_geo_buf(geo);
-
     if (geo_buf_log)
         save_geo_buf(geo, geo_buf_log);
+    rend_draw_geo_buf(geo);
 }
 
 void gfx_expose(void) {
