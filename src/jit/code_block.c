@@ -31,7 +31,7 @@
 #define DEFAULT_BLOCK_LEN 32
 #define BLOCK_GROW_LEN 1
 
-void jit_code_block_init(struct jit_code_block *block) {
+void il_code_block_init(struct il_code_block *block) {
     memset(block, 0, sizeof(*block));
     block->inst_count = 0;
     block->inst_alloc = DEFAULT_BLOCK_LEN;
@@ -40,17 +40,17 @@ void jit_code_block_init(struct jit_code_block *block) {
     block->last_inst_type = SH4_GROUP_NONE;
 }
 
-void jit_code_block_cleanup(struct jit_code_block *block) {
+void il_code_block_cleanup(struct il_code_block *block) {
     free(block->inst_list);
     memset(block, 0, sizeof(*block));
 }
 
-void clode_block_clear(struct jit_code_block *block) {
+void clode_block_clear(struct il_code_block *block) {
     free(block->inst_list);
-    jit_code_block_init(block);
+    il_code_block_init(block);
 }
 
-void jit_code_block_exec(struct jit_code_block const *block) {
+void il_code_block_exec(struct il_code_block const *block) {
     unsigned inst_count = block->inst_count;
     struct jit_inst const* inst = block->inst_list;
     Sh4 *cpu = dreamcast_get_cpu();
@@ -136,7 +136,7 @@ void jit_code_block_exec(struct jit_code_block const *block) {
     RAISE_ERROR(ERROR_INTEGRITY);
 }
 
-void jit_code_block_push_inst(struct jit_code_block *block,
+void il_code_block_push_inst(struct il_code_block *block,
                               struct jit_inst const *inst) {
     if (block->inst_count >= block->inst_alloc) {
         unsigned new_alloc = block->inst_alloc + BLOCK_GROW_LEN;
@@ -153,7 +153,7 @@ void jit_code_block_push_inst(struct jit_code_block *block,
     block->inst_list[block->inst_count++] = *inst;
 }
 
-void jit_code_block_compile(struct jit_code_block *block, addr32_t addr) {
+void il_code_block_compile(struct il_code_block *block, addr32_t addr) {
     bool do_continue;
     do {
         do_continue = sh4_disas_inst(block, addr);

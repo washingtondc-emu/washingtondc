@@ -401,13 +401,13 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
         addr32_t blk_addr = sh4->reg[SH4_REG_PC];
         struct cache_entry *ent = code_cache_find(blk_addr);
-        struct jit_code_block *blk = &ent->blk;
+        struct il_code_block *blk = &ent->blk;
         if (!ent->valid) {
-            jit_code_block_compile(blk, blk_addr);
+            il_code_block_compile(blk, blk_addr);
             ent->valid = true;
         }
 
-        jit_code_block_exec(blk);
+        il_code_block_exec(blk);
 
         dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
             blk->cycle_count * SH4_CLOCK_SCALE;

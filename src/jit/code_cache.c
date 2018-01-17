@@ -145,7 +145,7 @@ static void clear_cache(struct cache_entry *node) {
             clear_cache(node->left);
         if (node->right)
             clear_cache(node->right);
-        jit_code_block_cleanup(&node->blk);
+        il_code_block_cleanup(&node->blk);
         free(node);
     }
 }
@@ -283,7 +283,7 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
         RAISE_ERROR(ERROR_INTEGRITY);
     new_node->parent = parent;
     new_node->addr = addr;
-    jit_code_block_init(&new_node->blk);
+    il_code_block_init(&new_node->blk);
 
     n_entries++;
     if (n_entries >= MAX_ENTRIES)

@@ -25,7 +25,7 @@
 
 #include "jit_il.h"
 
-struct jit_code_block {
+struct il_code_block {
     struct jit_inst *inst_list;
     unsigned inst_count;
     unsigned inst_alloc;
@@ -33,17 +33,17 @@ struct jit_code_block {
     unsigned last_inst_type;
 };
 
-void jit_code_block_init(struct jit_code_block *block);
-void jit_code_block_cleanup(struct jit_code_block *block);
+void il_code_block_init(struct il_code_block *block);
+void il_code_block_cleanup(struct il_code_block *block);
 
-// restore a previously-init'd jit_code_block to its initial (post-init) state.
-void clode_block_clear(struct jit_code_block *block);
+// restore a previously-init'd il_code_block to its initial (post-init) state.
+void clode_block_clear(struct il_code_block *block);
 
-void jit_code_block_exec(struct jit_code_block const *block);
+void il_code_block_exec(struct il_code_block const *block);
 
-void jit_code_block_push_inst(struct jit_code_block *block,
+void il_code_block_push_inst(struct il_code_block *block,
                               struct jit_inst const *inst);
 
-void jit_code_block_compile(struct jit_code_block *block, addr32_t addr);
+void il_code_block_compile(struct il_code_block *block, addr32_t addr);
 
 #endif
