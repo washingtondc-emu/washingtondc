@@ -29,6 +29,7 @@
 #include "hw/sh4/types.h"
 #include "code_block.h"
 #include "log.h"
+#include "config.h"
 
 #include "code_cache.h"
 
@@ -69,6 +70,8 @@ static unsigned depth, max_depth;
 static unsigned cache_sz;
 static unsigned max_cache_sz;
 #endif
+
+static bool native_mode = true;
 
 static void perf_stats_reset(void) {
 #ifdef PERF_STATS
@@ -116,6 +119,7 @@ void code_cache_init(void) {
     nuke = false;
     root = NULL;
     perf_stats_reset();
+    native_mode = config_get_native_jit();
 }
 
 void code_cache_cleanup(void) {
@@ -145,7 +149,10 @@ static void clear_cache(struct cache_entry *node) {
             clear_cache(node->left);
         if (node->right)
             clear_cache(node->right);
-        il_code_block_cleanup(&node->blk);
+        if (native_mode)
+            code_block_x86_64_cleanup(&node->blk.x86_64);
+        else
+            il_code_block_cleanup(&node->blk.il);
         free(node);
     }
 }
@@ -283,7 +290,10 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
         RAISE_ERROR(ERROR_INTEGRITY);
     new_node->parent = parent;
     new_node->addr = addr;
-    il_code_block_init(&new_node->blk);
+    if (native_mode)
+        code_block_x86_64_init(&new_node->blk.x86_64);
+    else
+        il_code_block_init(&new_node->blk.il);
 
     n_entries++;
     if (n_entries >= MAX_ENTRIES)

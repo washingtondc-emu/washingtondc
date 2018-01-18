@@ -93,3 +93,4 @@ CONFIG_DEF_BOOL(enable_auto_screenshot, false);
 CONFIG_DEF_STRING(auto_screenshot_dir);
 
 CONFIG_DEF_BOOL(jit, false);
+CONFIG_DEF_BOOL(native_jit, false);

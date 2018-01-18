@@ -20,36 +20,22 @@
  *
  ******************************************************************************/
 
-#ifndef CODE_BLOCK_H_
-#define CODE_BLOCK_H_
+#ifndef CODE_BLOCK_X86_64_H_
+#define CODE_BLOCK_X86_64_H_
 
-#include "jit_il.h"
-#include "x86_64/code_block_x86_64.h"
+struct il_code_block;
 
-struct il_code_block {
-    struct jit_inst *inst_list;
-    unsigned inst_count;
-    unsigned inst_alloc;
+struct code_block_x86_64 {
+    /* void(*native)(void); */
+    void *native;
     unsigned cycle_count;
-    unsigned last_inst_type;
+    unsigned bytes_used;
 };
 
-union jit_code_block {
-    struct il_code_block il;
-    struct code_block_x86_64 x86_64;
-};
+void code_block_x86_64_init(struct code_block_x86_64 *blk);
+void code_block_x86_64_cleanup(struct code_block_x86_64 *blk);
 
-void il_code_block_init(struct il_code_block *block);
-void il_code_block_cleanup(struct il_code_block *block);
-
-// restore a previously-init'd il_code_block to its initial (post-init) state.
-void clode_block_clear(struct il_code_block *block);
-
-void il_code_block_exec(struct il_code_block const *block);
-
-void il_code_block_push_inst(struct il_code_block *block,
-                              struct jit_inst const *inst);
-
-void il_code_block_compile(struct il_code_block *block, addr32_t addr);
+void code_block_x86_64_compile(struct code_block_x86_64 *out,
+                               struct il_code_block const *il_blk);
 
 #endif

@@ -288,7 +288,7 @@ void dreamcast_run() {
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
 #ifndef ENABLE_DEBUGGER
-    bool const jit = config_get_jit();
+    bool const jit = config_get_jit() || config_get_native_jit();
 #endif
 
     while (is_running) {
@@ -398,23 +398,49 @@ static void dc_run_to_next_event(Sh4 *sh4) {
 }
 
 static void dc_run_to_next_event_jit(Sh4 *sh4) {
+    bool native_mode = config_get_native_jit();
+
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
         addr32_t blk_addr = sh4->reg[SH4_REG_PC];
         struct cache_entry *ent = code_cache_find(blk_addr);
-        struct il_code_block *blk = &ent->blk;
-        if (!ent->valid) {
-            il_code_block_compile(blk, blk_addr);
-            ent->valid = true;
+
+        if (native_mode) {
+            struct code_block_x86_64 *blk = &ent->blk.x86_64;
+            if (!ent->valid) {
+                struct il_code_block il_blk;
+                il_code_block_init(&il_blk);
+                il_code_block_compile(&il_blk, blk_addr);
+                code_block_x86_64_compile(blk, &il_blk);
+                il_code_block_cleanup(&il_blk);
+
+                ent->valid = true;
+            }
+
+            ((void(*)(void))blk->native)();
+
+            dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+                blk->cycle_count * SH4_CLOCK_SCALE;
+            if (cycles_after > dc_sched_target_stamp)
+                cycles_after = dc_sched_target_stamp;
+
+            dc_cycle_advance(cycles_after - dc_cycle_stamp());
+        } else {
+            struct il_code_block *blk = &ent->blk.il;
+            if (!ent->valid) {
+                il_code_block_compile(blk, blk_addr);
+                ent->valid = true;
+            }
+
+            il_code_block_exec(blk);
+
+
+            dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+                blk->cycle_count * SH4_CLOCK_SCALE;
+            if (cycles_after > dc_sched_target_stamp)
+                cycles_after = dc_sched_target_stamp;
+
+            dc_cycle_advance(cycles_after - dc_cycle_stamp());
         }
-
-        il_code_block_exec(blk);
-
-        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
-            blk->cycle_count * SH4_CLOCK_SCALE;
-        if (cycles_after > dc_sched_target_stamp)
-            cycles_after = dc_sched_target_stamp;
-
-        dc_cycle_advance(cycles_after - dc_cycle_stamp());
     }
 }
 

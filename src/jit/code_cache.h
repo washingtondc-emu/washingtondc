@@ -24,6 +24,7 @@
 #define CODE_CACHE_H_
 
 #include "code_block.h"
+#include "x86_64/code_block_x86_64.h"
 #include "hw/sh4/types.h"
 
 /*
@@ -34,7 +35,8 @@
 struct cache_entry {
     addr32_t addr;
     bool valid;
-    struct il_code_block blk;
+    union jit_code_block blk;
+    /* struct il_code_block blk; */
 
     struct cache_entry *left, *right, *parent;
 

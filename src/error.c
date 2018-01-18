@@ -135,6 +135,8 @@ static char const *error_type_string(enum error_type tp) {
         return "some parameter was provided two or more times";
     case ERROR_MISSING_DATA:
         return "some mandatory parameter was not provided";
+    case ERROR_OVERFLOW:
+        return "out of buffer space";
     default:
         return "Unknown error (this shouldn\'t happen)";
     }

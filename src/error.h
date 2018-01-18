@@ -65,6 +65,9 @@ enum error_type {
     /* some mandatory parameter was not provided */
     ERROR_MISSING_DATA,
 
+    /* more data than we can handle */
+    ERROR_OVERFLOW,
+
     ERROR_INVALID_FILE_LEN
 };
 
