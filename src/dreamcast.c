@@ -254,6 +254,44 @@ void dreamcast_cleanup() {
  */
 static struct timespec start_time;
 
+static void main_loop_jit(void) {
+    while (is_running) {
+#ifdef ENABLE_DEBUGGER
+        dreamcast_check_debugger();
+
+        /*
+         * TODO: don't single-step if there's no
+         * chance of us hitting a breakpoint
+         */
+        dc_single_step(&cpu);
+#else
+        dc_run_to_next_event_jit(&cpu);
+        struct SchedEvent *next_event = pop_event();
+        if (next_event)
+            next_event->handler(next_event);
+#endif
+    }
+}
+
+static void main_loop_interpreter(void) {
+    while (is_running) {
+#ifdef ENABLE_DEBUGGER
+        dreamcast_check_debugger();
+
+        /*
+         * TODO: don't single-step if there's no
+         * chance of us hitting a breakpoint
+         */
+        dc_single_step(&cpu);
+#else
+        dc_run_to_next_event(&cpu);
+        struct SchedEvent *next_event = pop_event();
+        if (next_event)
+            next_event->handler(next_event);
+#endif
+    }
+}
+
 void dreamcast_run() {
     signal(SIGINT, dc_sigint_handler);
 
@@ -291,26 +329,10 @@ void dreamcast_run() {
     bool const jit = config_get_jit() || config_get_native_jit();
 #endif
 
-    while (is_running) {
-#ifdef ENABLE_DEBUGGER
-        dreamcast_check_debugger();
-
-        /*
-         * TODO: don't single-step if there's no
-         * chance of us hitting a breakpoint
-         */
-        dc_single_step(&cpu);
-#else
-
-        if (jit)
-            dc_run_to_next_event_jit(&cpu);
-        else
-            dc_run_to_next_event(&cpu);
-        struct SchedEvent *next_event = pop_event();
-        if (next_event)
-            next_event->handler(next_event);
-#endif
-    }
+    if (jit)
+        main_loop_jit();
+    else
+        main_loop_interpreter();
 
     dc_print_perf_stats();
 
