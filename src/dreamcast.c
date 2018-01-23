@@ -111,6 +111,9 @@ static void dreamcast_enable_serial_server(void);
 
 static void dreamcast_enable_cmd_tcp(void);
 
+static void dc_run_to_next_event_jit(Sh4 *sh4);
+static void dc_run_to_next_event_jit_native(Sh4 *sh4);
+
 /*
  * XXX this used to be (SCHED_FREQUENCY / 10).  Now it's (SCHED_FREQUENCY / 100)
  * because programs that use the serial port (like KallistiOS) can timeout if
@@ -273,6 +276,25 @@ static void main_loop_jit(void) {
     }
 }
 
+static void main_loop_jit_native(void) {
+    while (is_running) {
+#ifdef ENABLE_DEBUGGER
+        dreamcast_check_debugger();
+
+        /*
+         * TODO: don't single-step if there's no
+         * chance of us hitting a breakpoint
+         */
+        dc_single_step(&cpu);
+#else
+        dc_run_to_next_event_jit_native(&cpu);
+        struct SchedEvent *next_event = pop_event();
+        if (next_event)
+            next_event->handler(next_event);
+#endif
+    }
+}
+
 static void main_loop_interpreter(void) {
     while (is_running) {
 #ifdef ENABLE_DEBUGGER
@@ -328,11 +350,15 @@ void dreamcast_run() {
 #ifndef ENABLE_DEBUGGER
     bool const jit = config_get_jit() || config_get_native_jit();
 #endif
-
-    if (jit)
-        main_loop_jit();
-    else
+    bool const native_mode = config_get_native_jit();
+    if (jit) {
+        if (native_mode)
+            main_loop_jit_native();
+        else
+            main_loop_jit();
+    } else {
         main_loop_interpreter();
+    }
 
     dc_print_perf_stats();
 
@@ -419,50 +445,53 @@ static void dc_run_to_next_event(Sh4 *sh4) {
     }
 }
 
-static void dc_run_to_next_event_jit(Sh4 *sh4) {
-    bool native_mode = config_get_native_jit();
-
+static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
         addr32_t blk_addr = sh4->reg[SH4_REG_PC];
         struct cache_entry *ent = code_cache_find(blk_addr);
 
-        if (native_mode) {
-            struct code_block_x86_64 *blk = &ent->blk.x86_64;
-            if (!ent->valid) {
-                struct il_code_block il_blk;
-                il_code_block_init(&il_blk);
-                il_code_block_compile(&il_blk, blk_addr);
-                code_block_x86_64_compile(blk, &il_blk);
-                il_code_block_cleanup(&il_blk);
+        struct code_block_x86_64 *blk = &ent->blk.x86_64;
+        if (!ent->valid) {
+            struct il_code_block il_blk;
+            il_code_block_init(&il_blk);
+            il_code_block_compile(&il_blk, blk_addr);
+            code_block_x86_64_compile(blk, &il_blk);
+            il_code_block_cleanup(&il_blk);
 
-                ent->valid = true;
-            }
-
-            ((void(*)(void))blk->native)();
-
-            dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
-                blk->cycle_count * SH4_CLOCK_SCALE;
-            if (cycles_after > dc_sched_target_stamp)
-                cycles_after = dc_sched_target_stamp;
-
-            dc_cycle_advance(cycles_after - dc_cycle_stamp());
-        } else {
-            struct il_code_block *blk = &ent->blk.il;
-            if (!ent->valid) {
-                il_code_block_compile(blk, blk_addr);
-                ent->valid = true;
-            }
-
-            il_code_block_exec(blk);
-
-
-            dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
-                blk->cycle_count * SH4_CLOCK_SCALE;
-            if (cycles_after > dc_sched_target_stamp)
-                cycles_after = dc_sched_target_stamp;
-
-            dc_cycle_advance(cycles_after - dc_cycle_stamp());
+            ent->valid = true;
         }
+
+        ((void(*)(void))blk->native)();
+
+        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+            blk->cycle_count * SH4_CLOCK_SCALE;
+        if (cycles_after > dc_sched_target_stamp)
+            cycles_after = dc_sched_target_stamp;
+
+        dc_cycle_advance(cycles_after - dc_cycle_stamp());
+    }
+}
+
+static void dc_run_to_next_event_jit(Sh4 *sh4) {
+    while (dc_sched_target_stamp > dc_cycle_stamp()) {
+        addr32_t blk_addr = sh4->reg[SH4_REG_PC];
+        struct cache_entry *ent = code_cache_find(blk_addr);
+
+        struct il_code_block *blk = &ent->blk.il;
+        if (!ent->valid) {
+            il_code_block_compile(blk, blk_addr);
+            ent->valid = true;
+        }
+
+        il_code_block_exec(blk);
+
+
+        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+            blk->cycle_count * SH4_CLOCK_SCALE;
+        if (cycles_after > dc_sched_target_stamp)
+            cycles_after = dc_sched_target_stamp;
+
+        dc_cycle_advance(cycles_after - dc_cycle_stamp());
     }
 }
 
