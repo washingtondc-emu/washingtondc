@@ -33,6 +33,14 @@
 
 #include "code_cache.h"
 
+/*
+ * This is a two-level cache.  The lower level is a binary search tree balanced
+ * using the AVL algorithm.  The upper level is a hash-table.  Everything that
+ * exists in the hash also exists in the tree, but not everything in the tree
+ * exists in the hash.  When there is a collision in the hash, we discard
+ * outdated values instead of trying to implement probing or chaining.
+ */
+
 // uncomment for basic performance stats
 // #define PERF_STATS
 
@@ -45,6 +53,12 @@ static void clear_cache(struct cache_entry *node);
 
 static struct cache_entry *root;
 static bool nuke;
+
+// this is a prime number
+#define HASH_TBL_LEN 65563
+
+static struct cache_entry* tbl[HASH_TBL_LEN];
+static unsigned hashfn(addr32_t addr);
 
 /*
  * the maximum number of code-cache entries that can be created before the
@@ -444,11 +458,25 @@ struct cache_entry *code_cache_find(addr32_t addr) {
         nuke = false;
         clear_cache(root);
         root = NULL;
+        memset(tbl, 0, sizeof(tbl));
     }
 
-    if (root)
-        return do_code_cache_find(root, addr);
+    unsigned hash_idx = hashfn(addr) % HASH_TBL_LEN;
+    struct cache_entry *maybe = tbl[hash_idx];
+    if (maybe && maybe->addr == addr)
+        return maybe;
+
+    if (root) {
+        struct cache_entry *node = do_code_cache_find(root, addr);
+        tbl[hash_idx] = node;
+        return node;
+    }
 
     basic_insert(&root, NULL, addr);
+    tbl[hash_idx] = root;
     return root;
+}
+
+static unsigned hashfn(addr32_t addr) {
+    return addr;
 }
