@@ -30,6 +30,7 @@
 #include "code_block.h"
 #include "log.h"
 #include "config.h"
+#include "x86_64/exec_mem.h"
 
 #include "code_cache.h"
 
@@ -459,6 +460,7 @@ struct cache_entry *code_cache_find(addr32_t addr) {
         clear_cache(root);
         root = NULL;
         memset(tbl, 0, sizeof(tbl));
+        exec_mem_print_stats();
     }
 
     unsigned hash_idx = hashfn(addr) % HASH_TBL_LEN;

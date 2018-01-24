@@ -20,17 +20,17 @@
  *
  ******************************************************************************/
 
-#include "code_cache.h"
-#include "x86_64/exec_mem.h"
+#ifndef EXEC_MEM_H_
+#define EXEC_MEM_H_
 
-#include "jit.h"
+#include <stddef.h>
 
-void jit_init(void) {
-    exec_mem_init();
-    code_cache_init();
-}
+void exec_mem_init(void);
+void exec_mem_cleanup(void);
 
-void jit_cleanup(void) {
-    code_cache_cleanup();
-    exec_mem_cleanup();
-}
+void *exec_mem_alloc(size_t len_req);
+void exec_mem_free(void *ptr);
+
+void exec_mem_print_stats(void);
+
+#endif

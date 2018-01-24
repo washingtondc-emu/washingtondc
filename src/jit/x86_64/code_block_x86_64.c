@@ -22,14 +22,15 @@
 
 #include <errno.h>
 #include <stddef.h>
-#include <sys/mman.h>
 
 #include "hw/sh4/sh4.h"
 #include "error.h"
 #include "jit/code_block.h"
-#include "code_block_x86_64.h"
+#include "exec_mem.h"
 #include "emit_x86_64.h"
 #include "dreamcast.h"
+
+#include "code_block_x86_64.h"
 
 /*
  * TODO: pick a smaller default allocation size and dynamically expand blocks
@@ -42,12 +43,11 @@
 #define X86_64_ALLOC_SIZE (32*1024)
 
 void code_block_x86_64_init(struct code_block_x86_64 *blk) {
-    void *native = mmap(NULL, X86_64_ALLOC_SIZE, PROT_WRITE | PROT_EXEC,
-                        MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    void *native = exec_mem_alloc(X86_64_ALLOC_SIZE);
     blk->cycle_count = 0;
     blk->bytes_used = 0;
 
-    if (!native || native == MAP_FAILED) {
+    if (!native) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FAILED_ALLOC);
     }
@@ -56,7 +56,7 @@ void code_block_x86_64_init(struct code_block_x86_64 *blk) {
 }
 
 void code_block_x86_64_cleanup(struct code_block_x86_64 *blk) {
-    munmap(blk->native, X86_64_ALLOC_SIZE);
+    exec_mem_free(blk->native);
 }
 
 /*
