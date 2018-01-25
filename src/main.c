@@ -55,8 +55,10 @@ static void print_usage(char const *cmd) {
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
             "\t-m\t\tmount the given image in the GD-ROM drive\n"
+            "\t-p\t\tdisable the dynarec and enable the interpreter instead\n"
             "\t-j\t\tenable dynamic recompiler (as opposed to interpreter)\n"
-            "\t-x\t\tenable native x86_64 dynamic recompiler backend\n");
+            "\t-x\t\tenable native x86_64 dynamic recompiler backend "
+            "(default)\n");
 }
 
 int main(int argc, char **argv) {
@@ -72,9 +74,9 @@ int main(int argc, char **argv) {
     bool enable_cmd_tcp = false;
     char const *title_content = NULL;
     struct mount_meta content_meta; // only valid if path_gdi is non-null
-    bool enable_jit = false, enable_native_jit = false;
+    bool enable_jit = false, enable_native_jit = false, enable_interpreter = false;
 
-    while ((opt = getopt(argc, argv, "cb:f:s:m:gduhtjx")) != -1) {
+    while ((opt = getopt(argc, argv, "cb:f:s:m:gduhtjxp")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -112,6 +114,9 @@ int main(int argc, char **argv) {
         case 'x':
             enable_native_jit = true;
             break;
+        case 'p':
+            enable_interpreter = true;
+            break;
         }
     }
 
@@ -125,6 +130,7 @@ int main(int argc, char **argv) {
             enable_jit = false;
             enable_native_jit = false;
         }
+        enable_interpreter = true;
 
 #ifdef ENABLE_DEBUGGER
         config_set_dbg_enable(true);
@@ -138,6 +144,16 @@ int main(int argc, char **argv) {
         config_set_dbg_enable(false);
 #endif
     }
+
+    if (enable_interpreter && (enable_jit || enable_native_jit)) {
+        LOG_ERROR("ERROR: You can\'t use the interpreter and the JIT at the "
+                  "same time, silly!\n");
+        exit(1);
+    }
+
+    // enable the jit (with x86_64 backend) by default
+    if (!(enable_jit || enable_native_jit || enable_interpreter))
+        enable_native_jit = true;
 
     config_set_jit(enable_jit);
     config_set_native_jit(enable_native_jit);
