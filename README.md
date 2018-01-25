@@ -41,6 +41,9 @@ OPTIONS:
 -s path to dreamcast system call image (only needed for direct boot)
 -t establish serial server over TCP port 1998
 -h display this message and exit
+-p disable the dynamic recompiler and enable the interpreter instead
+-j disable the x86_64 backend and use the JIT IL interpreter instead
+-x enable the x86_64 dynamic recompiler backend (this is enabled by default)
 
 ```
 The emulator currently only supports one controller, and the controls cannot be
