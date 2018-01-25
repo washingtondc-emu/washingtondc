@@ -37,6 +37,8 @@ static void *native;
 #define FREE_CHUNK_MAGIC  0xca55e77e
 #define ALLOC_CHUNK_MAGIC 0xfeedface
 
+#define MIN_FREE_CHUNK_SIZE sizeof(struct free_chunk)
+
 // this list should always be sorted from small addrs to large addrs
 static struct free_chunk {
 #ifdef INVARIANTS
@@ -51,11 +53,17 @@ struct alloc_chunk {
 #ifdef INVARIANTS
     unsigned magic;
 #endif
-    size_t len;
+    size_t len, len_req;
 };
 
 static size_t n_allocations;
 unsigned largest_alloc, smallest_alloc;
+
+/*
+ * This returns a pointer to the true start of the allocation, which is its
+ * struct alloc_chunk.
+ */
+static void *get_alloc_start(void *alloc_ptr);
 
 void exec_mem_init(void) {
     native = mmap(NULL, X86_64_ALLOC_SIZE, PROT_WRITE | PROT_EXEC | PROT_READ,
@@ -129,7 +137,7 @@ void* exec_mem_alloc(size_t len_req) {
         if (candidate->next)
             candidate->next->pprev = candidate->pprev;
         *candidate->pprev = candidate->next;
-    } else if (candidate->len - len < sizeof(struct free_chunk)) {
+    } else if (candidate->len - len < MIN_FREE_CHUNK_SIZE) {
         /*
          * remove the candidate from the pool and increase length because we
          * can't possibly store another chunk after this.
@@ -155,6 +163,7 @@ void* exec_mem_alloc(size_t len_req) {
 
     struct alloc_chunk *chunk = (struct alloc_chunk*)(void*)candidate;
     chunk->len = len;
+    chunk->len_req = len_req;
 
 #ifdef INVARIANTS
     chunk->magic = ALLOC_CHUNK_MAGIC;
@@ -173,7 +182,11 @@ void* exec_mem_alloc(size_t len_req) {
 }
 
 void exec_mem_free(void *ptr) {
-    uintptr_t as_int = (uintptr_t)ptr;
+    void *alloc_start = get_alloc_start(ptr);
+    struct alloc_chunk *alloc = (struct alloc_chunk*)alloc_start;
+    struct free_chunk *free_chunk = (struct free_chunk*)alloc_start;
+
+    uintptr_t as_int = (uintptr_t)alloc_start;
 
 #ifdef INVARIANTS
     if (as_int % 8) {
@@ -181,18 +194,6 @@ void exec_mem_free(void *ptr) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 #endif
-
-    /*
-     * as_int will be aligned to eight bytes.
-     * the alloc_chunk will begin before that at the first 8-byte boundary
-     * which has enough space between it and as_int to hold alloc_chunk.
-     */
-    size_t disp = sizeof(struct alloc_chunk);
-    while (disp % 8)
-        disp++;
-    as_int -= disp;
-    struct alloc_chunk *alloc = (struct alloc_chunk*)(void*)as_int;
-    struct free_chunk *free_chunk = (struct free_chunk*)(void*)as_int;
 
 #ifdef INVARIANTS
     if (alloc->magic != ALLOC_CHUNK_MAGIC) {
@@ -358,6 +359,119 @@ void exec_mem_free(void *ptr) {
 
 successful_free:
     n_allocations--;
+}
+
+int exec_mem_grow(void *ptr, size_t len_req) {
+    struct alloc_chunk *alloc = (struct alloc_chunk*)get_alloc_start(ptr);
+    uintptr_t alloc_first = (uintptr_t)alloc;
+    uintptr_t alloc_last = alloc_first + (alloc->len - 1);
+
+    size_t grow_amt = len_req - alloc->len_req;
+    size_t len_req_aligned = alloc->len + grow_amt;
+    while (len_req_aligned % 8)
+        len_req_aligned++;
+    uintptr_t alloc_goal = alloc_first + len_req_aligned - 1;
+
+#ifdef INVARIANTS
+    if (alloc->magic != ALLOC_CHUNK_MAGIC)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+    if (alloc->len_req >= len_req)
+        return 0; // nothing to do here, i suppose
+
+    struct free_chunk *curs;
+    for (curs = free_mem; curs; curs = curs->next) {
+        uintptr_t curs_first = (uintptr_t)curs;
+        uintptr_t curs_last = curs_first + (curs->len - 1);
+
+#ifdef INVARIANTS
+        if (alloc_first >= curs_first || alloc_last >= curs_first)
+            RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+#ifdef INVARIANTS
+        if (curs->magic != FREE_CHUNK_MAGIC)
+            RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+        if ((curs_first - 1) == alloc_last) {
+            if (alloc_goal <= curs_last) {
+#ifdef INVARIANTS
+                if (*curs->pprev != curs)
+                    RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+                // we can do it!
+                if (alloc->len - len_req_aligned + curs->len <
+                    MIN_FREE_CHUNK_SIZE) {
+                    // take the entire chunk
+                    curs->next->pprev = curs->pprev;
+                    *curs->pprev = curs->next;
+                    alloc->len += curs->len;
+                    memset(curs, 0, sizeof(*curs));
+                    alloc->len_req = len_req;
+#ifdef INVARIANTS
+                    if (curs == free_mem)
+                        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+                    return 0;
+                } else {
+                    // split curs
+                    struct free_chunk *new_chunk =
+                        (struct free_chunk*)(void*)(alloc_goal + 1);
+                    memset(new_chunk, 0xaa, sizeof(*new_chunk));
+#ifdef INVARIANTS
+                    new_chunk->magic = FREE_CHUNK_MAGIC;
+#endif
+                    new_chunk->pprev = curs->pprev;
+                    *new_chunk->pprev = new_chunk;
+                    new_chunk->next = curs->next;
+                    if (new_chunk->next)
+                        new_chunk->next->pprev = &new_chunk->next;
+                    new_chunk->len = curs_last - (alloc_goal + 1) + 1;
+                    alloc->len_req = len_req;
+                    alloc->len = alloc_goal - alloc_first + 1;
+#ifdef INVARIANTS
+                    if (curs == free_mem)
+                        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+                    return 0;
+                }
+            } else {
+                /*
+                 * exec_mem_free always merges adjacent regions when it is
+                 * possible to do so.  This means that if curs isn't big enough
+                 * to grow the allocation, then it cannot be done.
+                 */
+                return -1;
+            }
+        } else if (curs_first > alloc_last) {
+            /*
+             * memory is too fragmented, the byte immediately following the
+             * allocation is already taken.
+             */
+            return -1;
+        }
+    }
+
+    return -1;
+}
+
+static void *get_alloc_start(void *alloc_ptr) {
+    uintptr_t as_int = (uintptr_t)alloc_ptr;
+
+    /*
+     * as_int will be aligned to eight bytes.
+     * the alloc_chunk will begin before that at the first 8-byte boundary
+     * which has enough space between it and as_int to hold alloc_chunk.
+     */
+    size_t disp = sizeof(struct alloc_chunk);
+    while (disp % 8)
+        disp++;
+    as_int -= disp;
+
+    return (void*)as_int;
 }
 
 void exec_mem_get_stats(struct exec_mem_stats *stats) {

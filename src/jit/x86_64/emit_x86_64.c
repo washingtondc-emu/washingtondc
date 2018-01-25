@@ -27,11 +27,33 @@
 #include <stdbool.h>
 
 #include "error.h"
+#include "exec_mem.h"
 
 #include "emit_x86_64.h"
 
+#define X86_64_GROW_SIZE 32
+
+static void *alloc_start;
+static unsigned alloc_len;
+
 static uint8_t *outp;
-unsigned outp_len;
+static unsigned outp_len;
+
+static void try_grow(void) {
+    if (!alloc_start)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    if (exec_mem_grow(alloc_start, alloc_len + X86_64_GROW_SIZE) != 0) {
+        LOG_ERROR("Unable to grow allocation to %u bytes\n",
+                  alloc_len + X86_64_GROW_SIZE);
+        struct exec_mem_stats stats;
+        exec_mem_get_stats(&stats);
+        exec_mem_print_stats(&stats);
+        RAISE_ERROR(ERROR_OVERFLOW);
+    }
+
+    alloc_len += X86_64_GROW_SIZE;
+    outp_len += X86_64_GROW_SIZE;
+}
 
 __attribute__((unused))
 static void put8(uint8_t val) {
@@ -39,8 +61,8 @@ static void put8(uint8_t val) {
         *outp++ = val;
         outp_len--;
     } else {
-        /* RAISE_ERROR(ERROR_OVERFLOW); */
-        abort();
+        try_grow();
+        put8(val);
     }
 }
 
@@ -51,8 +73,8 @@ static void put16(uint16_t val) {
         outp += 2;
         outp_len -= 2;
     } else {
-        /* RAISE_ERROR(ERROR_OVERFLOW); */
-        abort();
+        try_grow();
+        put16(val);
     }
 }
 
@@ -63,8 +85,8 @@ static void put32(uint32_t val) {
         outp += 4;
         outp_len -= 4;
     } else {
-        /* RAISE_ERROR(ERROR_OVERFLOW); */
-        abort();
+        try_grow();
+        put32(val);
     }
 }
 
@@ -75,8 +97,8 @@ static void put64(uint64_t val) {
         outp += 8;
         outp_len -= 8;
     } else {
-        /* RAISE_ERROR(ERROR_OVERFLOW); */
-        abort();
+        try_grow();
+        put64(val);
     }
 }
 
@@ -112,6 +134,8 @@ static void emit_mod_reg_rm(unsigned rex, unsigned opcode, unsigned mod,
 }
 
 void x86asm_set_dst(void *out_ptr, unsigned n_bytes) {
+    alloc_start = out_ptr;
+    alloc_len = n_bytes;
     outp = (uint8_t*)out_ptr;
     outp_len = n_bytes;
 }

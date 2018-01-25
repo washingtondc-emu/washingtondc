@@ -40,7 +40,7 @@
  * situations it might not be large enough.  A "one-size-fits-all" allocation is
  * suboptimal in this case.
  */
-#define X86_64_ALLOC_SIZE (32*1024)
+#define X86_64_ALLOC_SIZE 32
 
 void code_block_x86_64_init(struct code_block_x86_64 *blk) {
     void *native = exec_mem_alloc(X86_64_ALLOC_SIZE);
