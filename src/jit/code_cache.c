@@ -460,7 +460,27 @@ struct cache_entry *code_cache_find(addr32_t addr) {
         clear_cache(root);
         root = NULL;
         memset(tbl, 0, sizeof(tbl));
-        exec_mem_print_stats();
+#ifdef INVARIANTS
+        struct exec_mem_stats stats;
+        exec_mem_get_stats(&stats);
+        exec_mem_print_stats(&stats);
+        if (stats.n_allocations != 0) {
+            LOG_ERROR("%s - executable memory leak (there should be "
+                      "0 allocations)\n", __func__);
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+        if (stats.free_bytes != stats.total_bytes) {
+            LOG_ERROR("%s - executable memory leak (all bytes "
+                      "should be free)\n", __func__);
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+        if (stats.n_free_chunks != 1) {
+            LOG_ERROR("%s - unnecessary executable memory fragmentation "
+                      "(since all chunks are free, they should have been "
+                      "merged into a signle chunk\n", __func__);
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+#endif
     }
 
     unsigned hash_idx = hashfn(addr) % HASH_TBL_LEN;

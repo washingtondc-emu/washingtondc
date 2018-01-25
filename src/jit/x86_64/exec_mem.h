@@ -31,6 +31,14 @@ void exec_mem_cleanup(void);
 void *exec_mem_alloc(size_t len_req);
 void exec_mem_free(void *ptr);
 
-void exec_mem_print_stats(void);
+struct exec_mem_stats {
+    size_t free_bytes;
+    size_t total_bytes;
+    unsigned n_allocations;
+    unsigned n_free_chunks;
+};
+
+void exec_mem_get_stats(struct exec_mem_stats *stats);
+void exec_mem_print_stats(struct exec_mem_stats const *stats);
 
 #endif

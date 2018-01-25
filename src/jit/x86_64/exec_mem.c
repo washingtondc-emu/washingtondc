@@ -54,17 +54,8 @@ struct alloc_chunk {
     size_t len;
 };
 
-struct stats {
-    size_t free_bytes;
-    size_t total_bytes;
-    unsigned n_allocations;
-    unsigned n_free_chunks;
-};
-
 static size_t n_allocations;
 unsigned largest_alloc, smallest_alloc;
-
-static void get_stats(struct stats *stats);
 
 void exec_mem_init(void) {
     native = mmap(NULL, X86_64_ALLOC_SIZE, PROT_WRITE | PROT_EXEC | PROT_READ,
@@ -124,8 +115,12 @@ void* exec_mem_alloc(size_t len_req) {
     }
 
     if (!candidate) {
+        struct exec_mem_stats stats;
         LOG_ERROR("%s - failed alloc of size %llu\n",
                   __func__, (unsigned long long)len);
+        LOG_ERROR("exec_mem stats dump follows\n");
+        exec_mem_get_stats(&stats);
+        exec_mem_print_stats(&stats);
         return NULL;
     }
 
@@ -208,9 +203,10 @@ void exec_mem_free(void *ptr) {
 
     size_t len = alloc->len;
 
+    memset(free_chunk, 0, sizeof(*free_chunk));
+
     if (!free_mem) {
         // Oh wow, this is the only chunk.
-        memset(free_chunk, 0, sizeof(*free_chunk));
 #ifdef INVARIANTS
         free_chunk->magic = FREE_CHUNK_MAGIC;
 #endif
@@ -235,90 +231,127 @@ void exec_mem_free(void *ptr) {
         free_chunk->next->pprev = &free_chunk->next;
         free_mem = free_chunk;
         goto successful_free;
+    } else if ((free_mem_first - 1) == last_addr) {
+        // absorb free_mem into this chunk and make it the new free_mem
+#ifdef INVARIANTS
+        free_chunk->magic = FREE_CHUNK_MAGIC;
+#endif
+        free_chunk->len = len + free_mem->len;
+        free_chunk->next = free_mem->next;
+        if (free_chunk->next)
+            free_chunk->next->pprev = &free_chunk->next;
+        free_chunk->pprev = &free_mem;
+        free_mem = free_chunk;
+        goto successful_free;
     }
 
-    struct free_chunk *curs, *curs_prev;
-    for (curs = free_mem, curs_prev = NULL; curs;
-         curs_prev = curs, curs = curs->next) {
-        uintptr_t curs_first = (uintptr_t)(void*)curs;
-        uintptr_t curs_last = curs_first + (curs->len - 1);
+    struct free_chunk *curs, *pre = NULL, *post = NULL;
+    for (curs = free_mem; curs; curs = curs->next) {
 
 #ifdef INVARIANTS
-        if (curs->magic != FREE_CHUNK_MAGIC) {
-            LOG_ERROR("bad free chunk magic\n");
+        if (curs->magic != FREE_CHUNK_MAGIC)
             RAISE_ERROR(ERROR_INTEGRITY);
-        }
-
-        if ((first_addr >= curs_first && first_addr <= curs_last) ||
-            (last_addr >= curs_first && last_addr <= curs_last) ||
-            (curs_first >= first_addr && curs_first <= last_addr) ||
-            (curs_last >= first_addr && curs_last <= last_addr)) {
-            LOG_ERROR("Corrupted free memory chunks\n");
-            RAISE_ERROR(ERROR_INTEGRITY);
-        }
 #endif
 
-        if ((first_addr - 1) == curs_last) {
-            // easy - tack the new free_chunk on to the end of the old one
-            curs->len += len;
-            goto successful_free;
-        }
-
-        if ((curs_first - 1) == last_addr) {
-            /*
-             * slightly more difficult: add the existing free_chunk to the
-             * new one
-             */
-            struct free_chunk *new_chunk =
-                (struct free_chunk*)(void*)first_addr;
-#ifdef INVARIANTS
-            new_chunk->magic = FREE_CHUNK_MAGIC;
-#endif
-            new_chunk->len = len + curs->len;
-            new_chunk->next = curs->next;
-            if (new_chunk->next)
-                new_chunk->next->pprev = &new_chunk->next;
-            new_chunk->pprev = curs->pprev;
-            *new_chunk->pprev = new_chunk;
-            memset(curs, 0, sizeof(*curs));
-
-            goto successful_free;
-        }
-
-        if (curs->next && curs_last < first_addr) {
-            uintptr_t curs_next_first = (uintptr_t)(void*)curs->next;
-            if ((curs_next_first - 1) > last_addr) {
-                // add the new free_chunk between curs and curs->next
-                struct free_chunk *new_chunk =
-                    (struct free_chunk*)(void*)first_addr;
-#ifdef INVARIANTS
-                new_chunk->magic = FREE_CHUNK_MAGIC;
-#endif
-                new_chunk->len = len;
-                new_chunk->pprev = &curs->next;
-                new_chunk->next = curs->next;
-                new_chunk->next->pprev = &new_chunk->next;
-                curs->next = new_chunk;
-
-                goto successful_free;
+        struct free_chunk *next = curs->next;
+        if (next) {
+            uintptr_t next_first = (uintptr_t)(void*)next;
+            if (next_first > last_addr) {
+                pre = curs;
+                post = next;
+                break;
             }
+        } else {
+            pre = curs;
+            post = NULL;
+            break;
         }
     }
 
-    if (curs_prev) {
-        uintptr_t curs_prev_last = (uintptr_t)(void*)curs_prev;
-        if (curs_prev_last < first_addr) {
-            struct free_chunk *new_chunk =
-                (struct free_chunk*)(void*)first_addr;
+    if (!pre) {
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
 #ifdef INVARIANTS
-            new_chunk->magic = FREE_CHUNK_MAGIC;
+    if (pre->magic != FREE_CHUNK_MAGIC)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    if (post && post->magic != FREE_CHUNK_MAGIC)
+        RAISE_ERROR(ERROR_INTEGRITY);
 #endif
-            new_chunk->len = len;
-            curs_prev->next = new_chunk;
-            new_chunk->pprev = &curs_prev->next;
-            new_chunk->next = NULL;
-            goto successful_free;
+
+    uintptr_t pre_first = (uintptr_t)(void*)pre;
+    uintptr_t pre_last = pre_first + (pre->len - 1);
+
+    if (post) {
+#ifdef INVARIANTS
+        if (post->pprev != &pre->next)
+            RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+        // add the new free chunk inbetween pre and post
+        uintptr_t post_first = (uintptr_t)(void*)post;
+        uintptr_t post_last = post_first + (post->len - 1);
+
+#ifdef INVARIANTS
+        if (post_first <= last_addr) {
+            LOG_ERROR("pre range: 0x%08llx through 0x%08llx\n",
+                      (unsigned long long)pre_first,
+                      (unsigned long long)pre_last);
+            LOG_ERROR("new chunk: 0x%08llx through 0x%08llx\n",
+                      (unsigned long long)first_addr,
+                      (unsigned long long)last_addr);
+            LOG_ERROR("post range: 0x%08llx through 0x%08llx\n",
+                      (unsigned long long)post_first,
+                      (unsigned long long)post_last);
+            RAISE_ERROR(ERROR_INTEGRITY);
         }
+#endif
+
+#ifdef INVARIANTS
+        free_chunk->magic = FREE_CHUNK_MAGIC;
+#endif
+        free_chunk->len = len;
+
+        if ((first_addr - 1) == pre_last) {
+            // absorb free_chunk into pre
+            pre->len += len;
+            free_chunk = pre;
+        } else {
+            // build a link from pre to free_chunk
+            pre->next = free_chunk;
+            free_chunk->pprev = &pre->next;
+        }
+
+        if ((post_first - 1) == last_addr) {
+            // absorb post into free_chunk
+            free_chunk->next = post->next;
+            if (free_chunk->next)
+                free_chunk->next->pprev = &free_chunk->next;
+            free_chunk->len += post->len;
+            /* free_chunk->pprev = post->pprev; */
+            /* *free_chunk->pprev = free_chunk; */
+        } else {
+            // build a link from free_chunk to post
+            free_chunk->next = post;
+            post->pprev = &free_chunk->next;
+        }
+
+        goto successful_free;
+    } else if ((first_addr - 1) == pre_last) {
+        // this is easy, abosrb free_chunk into pre
+        // pre is the last chunk, and it will continue to be the last chunk
+        pre->len += len;
+        goto successful_free;
+    } else {
+        // free_chunk is the new last chunk
+#ifdef INVARIANTS
+        free_chunk->magic = FREE_CHUNK_MAGIC;
+#endif
+        free_chunk->len = len;
+        free_chunk->next = NULL;
+        free_chunk->pprev = &pre->next;
+        pre->next = free_chunk;
+        goto successful_free;
     }
 
     RAISE_ERROR(ERROR_INTEGRITY);
@@ -327,7 +360,7 @@ successful_free:
     n_allocations--;
 }
 
-static void get_stats(struct stats *stats) {
+void exec_mem_get_stats(struct exec_mem_stats *stats) {
     size_t n_bytes = 0;
     unsigned n_free_chunks = 0;
     struct free_chunk *curs;
@@ -342,18 +375,15 @@ static void get_stats(struct stats *stats) {
     stats->n_free_chunks = n_free_chunks;
 }
 
-void exec_mem_print_stats(void) {
-    struct stats stats;
-    get_stats(&stats);
-
+void exec_mem_print_stats(struct exec_mem_stats const *stats) {
     double percent =
-        100.0 * (double)stats.free_bytes / (double)stats.total_bytes;
+        100.0 * (double)stats->free_bytes / (double)stats->total_bytes;
 
     LOG_INFO("exec_mem: %llu free bytes out of %llu total (%f%%)\n",
-             (unsigned long long)stats.free_bytes,
-             (unsigned long long)stats.total_bytes,
+             (unsigned long long)stats->free_bytes,
+             (unsigned long long)stats->total_bytes,
              percent);
     LOG_INFO("exec_mem: There are %u active allocations\n",
-             stats.n_allocations);
-    LOG_INFO("exec_mem: There are %u total free chunks\n", stats.n_free_chunks);
+             stats->n_allocations);
+    LOG_INFO("exec_mem: There are %u total free chunks\n", stats->n_free_chunks);
 }
