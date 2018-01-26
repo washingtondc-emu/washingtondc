@@ -169,7 +169,10 @@ void* exec_mem_alloc(size_t len_req) {
     chunk->magic = ALLOC_CHUNK_MAGIC;
 #endif
 
-    // align the output
+    /*
+     * align the output.  This is safe to do because we reserved an extra
+     * 8 bytes earlier when we were determing the allocation length.
+     */
     uintptr_t ret_ptr = (uintptr_t)(void*)candidate + sizeof(*chunk);
     while (ret_ptr % 8)
         ret_ptr++;
@@ -291,9 +294,9 @@ void exec_mem_free(void *ptr) {
 
         // add the new free chunk inbetween pre and post
         uintptr_t post_first = (uintptr_t)(void*)post;
+#ifdef INVARIANTS
         uintptr_t post_last = post_first + (post->len - 1);
 
-#ifdef INVARIANTS
         if (post_first <= last_addr) {
             LOG_ERROR("pre range: 0x%08llx through 0x%08llx\n",
                       (unsigned long long)pre_first,
@@ -329,8 +332,6 @@ void exec_mem_free(void *ptr) {
             if (free_chunk->next)
                 free_chunk->next->pprev = &free_chunk->next;
             free_chunk->len += post->len;
-            /* free_chunk->pprev = post->pprev; */
-            /* *free_chunk->pprev = free_chunk; */
         } else {
             // build a link from free_chunk to post
             free_chunk->next = post;
@@ -366,6 +367,10 @@ int exec_mem_grow(void *ptr, size_t len_req) {
     uintptr_t alloc_first = (uintptr_t)alloc;
     uintptr_t alloc_last = alloc_first + (alloc->len - 1);
 
+    /*
+     * len_req_aligned represents the size of the allocation post-growth
+     * including the size of the struct alloc_chunk and any necessary padding.
+     */
     size_t grow_amt = len_req - alloc->len_req;
     size_t len_req_aligned = alloc->len + grow_amt;
     while (len_req_aligned % 8)
@@ -406,7 +411,8 @@ int exec_mem_grow(void *ptr, size_t len_req) {
                 if (alloc->len - len_req_aligned + curs->len <
                     MIN_FREE_CHUNK_SIZE) {
                     // take the entire chunk
-                    curs->next->pprev = curs->pprev;
+                    if (curs->next)
+                        curs->next->pprev = curs->pprev;
                     *curs->pprev = curs->next;
                     alloc->len += curs->len;
                     memset(curs, 0, sizeof(*curs));
