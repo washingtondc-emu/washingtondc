@@ -141,6 +141,7 @@ sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
         deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
 #endif
         op_func(sh4, oa);
+        sh4->reg[SH4_REG_PC] += 2;
 
 #ifdef ENABLE_DEBUGGER
         if (!sh4->aborted_operation) {

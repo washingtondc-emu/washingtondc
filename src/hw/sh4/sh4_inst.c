@@ -1089,8 +1089,6 @@ void sh4_inst_rts(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->delayed_branch = true;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PR];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000000000101000 0xffff
@@ -1103,8 +1101,6 @@ void sh4_inst_clrmac(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000000000101000, INST_CONS_0000000000101000);
 
     sh4->reg[SH4_REG_MACL] = sh4->reg[SH4_REG_MACH] = 0;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000000001001000 0xffff
@@ -1117,8 +1113,6 @@ void sh4_inst_clrs(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000000001001000, INST_CONS_0000000001001000);
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_S_MASK;
-
-    sh4_next_inst(sh4);
 }
 
 
@@ -1132,8 +1126,6 @@ void sh4_inst_clrt(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000000000001000, INST_CONS_0000000000001000);
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000000000111000 0xffff
@@ -1161,8 +1153,6 @@ void sh4_inst_nop(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000000000001001, INST_CONS_0000000000001001);
 
     // do nothing
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000000000101011 0xffff
@@ -1211,8 +1201,6 @@ void sh4_inst_rte(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t old_sr_val = sh4->reg[SH4_REG_SR];
     sh4->reg[SH4_REG_SR] = sh4->reg[SH4_REG_SSR];
     sh4_on_sr_change(sh4, old_sr_val);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000000001011000 0xffff
@@ -1225,8 +1213,6 @@ void sh4_inst_sets(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000000001011000, INST_CONS_0000000001011000);
 
     sh4->reg[SH4_REG_SR] |= SH4_SR_FLAG_S_MASK;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000000000011000 0xffff
@@ -1239,8 +1225,6 @@ void sh4_inst_sett(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000000000011000, INST_CONS_0000000000011000);
 
     sh4->reg[SH4_REG_SR] |= SH4_SR_FLAG_T_MASK;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000000000011011 0xffff
@@ -1288,8 +1272,6 @@ void sh4_inst_frchg(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->reg[SH4_REG_FPSCR] ^= SH4_FPSCR_FR_MASK;
     sh4_fpu_bank_switch(sh4);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111001111111101 0xffff
@@ -1309,7 +1291,6 @@ void sh4_inst_fschg(Sh4 *sh4, Sh4OpArgs inst) {
      */
 
     sh4->reg[SH4_REG_FPSCR] ^= SH4_FPSCR_SZ_MASK;
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00101001 0xf0ff
@@ -1323,8 +1304,6 @@ void sh4_inst_unary_movt_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     *sh4_gen_reg(sh4, inst.gen_reg) =
         (reg32_t)((sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) >> SH4_SR_FLAG_T_SHIFT);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00010001 0xf0ff
@@ -1340,8 +1319,6 @@ void sh4_inst_unary_cmppz_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t flag = ((int32_t)*sh4_gen_reg(sh4, inst.gen_reg)) >= 0;
 
     sh4->reg[SH4_REG_SR] |= flag << SH4_SR_FLAG_T_SHIFT;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00010101 0xf0ff
@@ -1357,8 +1334,6 @@ void sh4_inst_unary_cmppl_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t flag = ((int32_t)*sh4_gen_reg(sh4, inst.gen_reg)) > 0;
 
     sh4->reg[SH4_REG_SR] |= flag << SH4_SR_FLAG_T_SHIFT;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00010000 0xf0ff
@@ -1374,8 +1349,6 @@ void sh4_inst_unary_dt_gen(Sh4 *sh4, Sh4OpArgs inst) {
     (*valp)--;
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     sh4->reg[SH4_REG_SR] |= (!*valp) << SH4_SR_FLAG_T_SHIFT;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00000100 0xf0ff
@@ -1395,8 +1368,6 @@ void sh4_inst_unary_rotl_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) | (shift_out << SH4_SR_FLAG_T_SHIFT);
 
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00000101 0xf0ff
@@ -1416,8 +1387,6 @@ void sh4_inst_unary_rotr_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) | (shift_out << SH4_SR_FLAG_T_SHIFT);
 
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00100100 0xf0ff
@@ -1438,8 +1407,6 @@ void sh4_inst_unary_rotcl_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) | (shift_out << SH4_SR_FLAG_T_SHIFT);
 
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00100101 0xf0ff
@@ -1460,8 +1427,6 @@ void sh4_inst_unary_rotcr_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) | (shift_out << SH4_SR_FLAG_T_SHIFT);
 
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00100000 0xf0ff
@@ -1481,8 +1446,6 @@ void sh4_inst_unary_shal_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) | (shift_out << SH4_SR_FLAG_T_SHIFT);
 
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00100001 0xf0ff
@@ -1502,8 +1465,6 @@ void sh4_inst_unary_shar_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) | (shift_out << SH4_SR_FLAG_T_SHIFT);
 
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00000000 0xf0ff
@@ -1523,8 +1484,6 @@ void sh4_inst_unary_shll_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) | (shift_out << SH4_SR_FLAG_T_SHIFT);
 
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00000001 0xf0ff
@@ -1544,8 +1503,6 @@ void sh4_inst_unary_shlr_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) | (shift_out << SH4_SR_FLAG_T_SHIFT);
 
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00001000 0xf0ff
@@ -1562,8 +1519,6 @@ void sh4_inst_unary_shll2_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     val <<= 2;
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00001001 0xf0ff
@@ -1580,8 +1535,6 @@ void sh4_inst_unary_shlr2_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     val >>= 2;
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00011000 0xf0ff
@@ -1598,8 +1551,6 @@ void sh4_inst_unary_shll8_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     val <<= 8;
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00011001 0xf0ff
@@ -1616,8 +1567,6 @@ void sh4_inst_unary_shlr8_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     val >>= 8;
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00101000 0xf0ff
@@ -1634,8 +1583,6 @@ void sh4_inst_unary_shll16_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     val <<= 16;
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00101001 0xf0ff
@@ -1652,8 +1599,6 @@ void sh4_inst_unary_shlr16_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     val >>= 16;
     *regp = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00100011 0xf0ff
@@ -1667,8 +1612,6 @@ void sh4_inst_unary_braf_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->delayed_branch = true;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, inst.gen_reg) + 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00000011 0xf0ff
@@ -1683,8 +1626,6 @@ void sh4_inst_unary_bsrf_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->delayed_branch = true;
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, inst.gen_reg) + 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_10001000iiiiiiii 0xff00
@@ -1699,8 +1640,6 @@ void sh4_inst_binary_cmpeq_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t imm_val = (int32_t)((int8_t)inst.imm8);
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     sh4->reg[SH4_REG_SR] |= ((*sh4_gen_reg(sh4, 0) == imm_val) << SH4_SR_FLAG_T_SHIFT);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11001101iiiiiiii 0xff00
@@ -1718,8 +1657,6 @@ void sh4_inst_binary_andb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     val &= inst.imm8;
 
     sh4_write_mem_8(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11001001iiiiiiii 0xff00
@@ -1732,8 +1669,6 @@ void sh4_inst_binary_and_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_11001001iiiiiiii, INST_CONS_11001001iiiiiiii);
 
     *sh4_gen_reg(sh4, 0) &= inst.imm8;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11001111iiiiiiii 0xff00
@@ -1751,8 +1686,6 @@ void sh4_inst_binary_orb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     val |= inst.imm8;
 
     sh4_write_mem_8(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11001011iiiiiiii 0xff00
@@ -1765,8 +1698,6 @@ void sh4_inst_binary_or_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_11001011iiiiiiii, INST_CONS_11001011iiiiiiii);
 
     *sh4_gen_reg(sh4, 0) |= inst.imm8;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11001000iiiiiiii 0xff00
@@ -1782,8 +1713,6 @@ void sh4_inst_binary_tst_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t flag = !(inst.imm8 & *sh4_gen_reg(sh4, 0)) <<
         SH4_SR_FLAG_T_SHIFT;
     sh4->reg[SH4_REG_SR] |= flag;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11001100iiiiiiii 0xff00
@@ -1802,8 +1731,6 @@ void sh4_inst_binary_tstb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t flag = !(inst.imm8 & val) <<
         SH4_SR_FLAG_T_SHIFT;
     sh4->reg[SH4_REG_SR] |= flag;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11001010iiiiiiii 0xff00
@@ -1816,8 +1743,6 @@ void sh4_inst_binary_xor_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_11001010iiiiiiii, INST_CONS_11001010iiiiiiii);
 
     *sh4_gen_reg(sh4, 0) ^= inst.imm8;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11001110iiiiiiii 0xff00
@@ -1835,8 +1760,6 @@ void sh4_inst_binary_xorb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     val ^= inst.imm8;
 
     sh4_write_mem_8(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_10001011dddddddd 0xff00
@@ -1849,12 +1772,10 @@ void sh4_inst_unary_bf_disp(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_10001011dddddddd, INST_CONS_10001011dddddddd);
 
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK)) {
-        sh4->reg[SH4_REG_PC] += (((int32_t)inst.simm8) << 1) + 4;
+        sh4->reg[SH4_REG_PC] += (((int32_t)inst.simm8) << 1) + (4 - 2);
 #ifdef DEEP_SYSCALL_TRACE
         deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
 #endif
-    } else {
-        sh4_next_inst(sh4);
     }
 }
 
@@ -1871,8 +1792,6 @@ void sh4_inst_unary_bfs_disp(Sh4 *sh4, Sh4OpArgs inst) {
         sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm8) << 1) + 4;
         sh4->delayed_branch = true;
     }
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_10001001dddddddd 0xff00
@@ -1885,12 +1804,10 @@ void sh4_inst_unary_bt_disp(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_10001001dddddddd, INST_CONS_10001001dddddddd);
 
     if (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) {
-        sh4->reg[SH4_REG_PC] += (((int32_t)inst.simm8) << 1) + 4;
+        sh4->reg[SH4_REG_PC] += (((int32_t)inst.simm8) << 1) + (4 - 2);
 #ifdef DEEP_SYSCALL_TRACE
         deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
 #endif
-    } else {
-        sh4_next_inst(sh4);
     }
 }
 
@@ -1907,8 +1824,6 @@ void sh4_inst_unary_bts_disp(Sh4 *sh4, Sh4OpArgs inst) {
         sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm8) << 1) + 4;
         sh4->delayed_branch = true;
     }
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1010dddddddddddd 0xf000
@@ -1922,8 +1837,6 @@ void sh4_inst_unary_bra_disp(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->delayed_branch = true;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm12) << 1) + 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1011dddddddddddd 0xf000
@@ -1938,8 +1851,6 @@ void sh4_inst_unary_bsr_disp(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst.simm12) << 1) + 4;
     sh4->delayed_branch = true;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11000011iiiiiiii 0xff00
@@ -1989,8 +1900,6 @@ void sh4_inst_unary_tasb_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     mask = (!val_old) << SH4_SR_FLAG_T_SHIFT;
     sh4->reg[SH4_REG_SR] |= mask;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn10010011 0xf0ff
@@ -2003,8 +1912,6 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn10010011, INST_CONS_0000nnnn10010011);
 
     /* TODO: if mmu is enabled, this inst can generate exceptions */
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn10100011 0xf0ff
@@ -2017,8 +1924,6 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn10100011, INST_CONS_0000nnnn10100011);
 
     /* TODO: if mmu is enabled, this inst can generate exceptions */
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn10110011 0xf0ff
@@ -2031,8 +1936,6 @@ void sh4_inst_unary_ocbwb_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn10110011, INST_CONS_0000nnnn10110011);
 
     /* TODO: if mmu is enabled, this inst can generate exceptions */
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn10000011 0xf0ff
@@ -2049,8 +1952,6 @@ void sh4_inst_unary_pref_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL)
         sh4_sq_pref(sh4, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00101011 0xf0ff
@@ -2064,8 +1965,6 @@ void sh4_inst_unary_jmp_indgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->delayed_branch_addr = *sh4_gen_reg(sh4, inst.gen_reg);
     sh4->delayed_branch = true;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00001011 0xf0ff
@@ -2080,8 +1979,6 @@ void sh4_inst_unary_jsr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
     sh4->delayed_branch_addr = *sh4_gen_reg(sh4, inst.gen_reg);
     sh4->delayed_branch = true;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00001110 0xf0ff
@@ -2105,8 +2002,6 @@ void sh4_inst_binary_ldc_gen_sr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t old_sr = sh4->reg[SH4_REG_SR];
     sh4->reg[SH4_REG_SR] = *sh4_gen_reg(sh4, inst.gen_reg);
     sh4_on_sr_change(sh4, old_sr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00011110 0xf0ff
@@ -2119,8 +2014,6 @@ void sh4_inst_binary_ldc_gen_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0100mmmm00011110, INST_CONS_0100mmmm00011110);
 
     sh4->reg[SH4_REG_GBR] = *sh4_gen_reg(sh4, inst.gen_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00101110 0xf0ff
@@ -2142,8 +2035,6 @@ void sh4_inst_binary_ldc_gen_vbr(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     sh4->reg[SH4_REG_VBR] = *sh4_gen_reg(sh4, inst.gen_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00111110 0xf0ff
@@ -2165,8 +2056,6 @@ void sh4_inst_binary_ldc_gen_ssr(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     sh4->reg[SH4_REG_SSR] = *sh4_gen_reg(sh4, inst.gen_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm01001110 0xf0ff
@@ -2188,8 +2077,6 @@ void sh4_inst_binary_ldc_gen_spc(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     sh4->reg[SH4_REG_SPC] = *sh4_gen_reg(sh4, inst.gen_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm11111010 0xf0ff
@@ -2211,8 +2098,6 @@ void sh4_inst_binary_ldc_gen_dbr(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     sh4->reg[SH4_REG_DBR] = *sh4_gen_reg(sh4, inst.gen_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00000010 0xf0ff
@@ -2234,8 +2119,6 @@ void sh4_inst_binary_stc_sr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_SR];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00010010 0xf0ff
@@ -2248,8 +2131,6 @@ void sh4_inst_binary_stc_gbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn00010010, INST_CONS_0000nnnn00010010);
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_GBR];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00100010 0xf0ff
@@ -2271,8 +2152,6 @@ void sh4_inst_binary_stc_vbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_VBR];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00110010 0xf0ff
@@ -2294,8 +2173,6 @@ void sh4_inst_binary_stc_ssr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_SSR];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn01000010 0xf0ff
@@ -2317,8 +2194,6 @@ void sh4_inst_binary_stc_spc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_SPC];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00111010 0xf0ff
@@ -2340,8 +2215,6 @@ void sh4_inst_binary_stc_sgr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_SGR];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn11111010 0xf0ff
@@ -2363,8 +2236,6 @@ void sh4_inst_binary_stc_dbr_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_DBR];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00000111 0xf0ff
@@ -2395,8 +2266,6 @@ void sh4_inst_binary_ldcl_indgeninc_sr(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t old_sr_val = sh4->reg[SH4_REG_SR];
     sh4->reg[SH4_REG_SR] = val;
     sh4_on_sr_change(sh4, old_sr_val);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00010111 0xf0ff
@@ -2416,8 +2285,6 @@ void sh4_inst_binary_ldcl_indgeninc_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_GBR] = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00100111 0xf0ff
@@ -2446,8 +2313,6 @@ void sh4_inst_binary_ldcl_indgeninc_vbr(Sh4 *sh4, Sh4OpArgs inst) {
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_VBR] = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00110111 0xf0ff
@@ -2476,8 +2341,6 @@ void sh4_inst_binary_ldcl_indgenic_ssr(Sh4 *sh4, Sh4OpArgs inst) {
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_SSR] = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm01000111 0xf0ff
@@ -2506,8 +2369,6 @@ void sh4_inst_binary_ldcl_indgeninc_spc(Sh4 *sh4, Sh4OpArgs inst) {
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_SPC] = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm11110110 0xf0ff
@@ -2536,8 +2397,6 @@ void sh4_inst_binary_ldcl_indgeninc_dbr(Sh4 *sh4, Sh4OpArgs inst) {
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_DBR] = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00000011 0xf0ff
@@ -2563,8 +2422,6 @@ void sh4_inst_binary_stcl_sr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_SR], addr);
 
     *regp = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00010011 0xf0ff
@@ -2581,8 +2438,6 @@ void sh4_inst_binary_stcl_gbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_GBR], addr);
 
     *regp = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00100011 0xf0ff
@@ -2608,8 +2463,6 @@ void sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_VBR], addr);
 
     *regp = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00110011 0xf0ff
@@ -2635,8 +2488,6 @@ void sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_SSR], addr);
 
     *regp = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn01000011 0xf0ff
@@ -2662,8 +2513,6 @@ void sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_SPC], addr);
 
     *regp = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00110010 0xf0ff
@@ -2689,8 +2538,6 @@ void sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_SGR], addr);
 
     *regp = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn11110010 0xf0ff
@@ -2716,8 +2563,6 @@ void sh4_inst_binary_stcl_dbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_DBR], addr);
 
     *regp = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1110nnnniiiiiiii 0xf000
@@ -2730,8 +2575,6 @@ void sh4_inst_binary_mov_imm_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1110nnnniiiiiiii, INST_CONS_1110nnnniiiiiiii);
 
     *sh4_gen_reg(sh4, inst.gen_reg) = (int32_t)((int8_t)inst.imm8);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0111nnnniiiiiiii 0xf000
@@ -2744,8 +2587,6 @@ void sh4_inst_binary_add_imm_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0111nnnniiiiiiii, INST_CONS_0111nnnniiiiiiii);
 
     *sh4_gen_reg(sh4, inst.gen_reg) += (int32_t)((int8_t)(inst.imm8));
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1001nnnndddddddd 0xf000
@@ -2763,8 +2604,6 @@ void sh4_inst_binary_movw_binind_disp_pc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     mem_in = sh4_read_mem_16(sh4, addr);
     *sh4_gen_reg(sh4, reg_no) = (int32_t)mem_in;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1101nnnndddddddd 0xf000
@@ -2782,8 +2621,6 @@ void sh4_inst_binary_movl_binind_disp_pc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     mem_in = sh4_read_mem_32(sh4, addr);
     *sh4_gen_reg(sh4, reg_no) = mem_in;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm0011 0xf00f
@@ -2796,8 +2633,6 @@ void sh4_inst_binary_movw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0011, INST_CONS_0110nnnnmmmm0011);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = *sh4_gen_reg(sh4, inst.src_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm1000 0xf00f
@@ -2819,8 +2654,6 @@ void sh4_inst_binary_swapb_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     val_src &= ~0xffff;
     val_src |= byte1 | (byte0 << 8);
     *sh4_gen_reg(sh4, inst.dst_reg) = val_src;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm1001 0xf00f
@@ -2841,8 +2674,6 @@ void sh4_inst_binary_swapw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     val_src = word1 | (word0 << 16);
     *sh4_gen_reg(sh4, inst.dst_reg) = val_src;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm1101 0xf00f
@@ -2859,8 +2690,6 @@ void sh4_inst_binary_xtrct_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     *reg_dst = (((*reg_dst) & 0xffff0000) >> 16) |
         (((*reg_src) & 0x0000ffff) << 16);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm1100 0xf00f
@@ -2873,8 +2702,6 @@ void sh4_inst_binary_add_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1100, INST_CONS_0011nnnnmmmm1100);
 
     *sh4_gen_reg(sh4, inst.dst_reg) += *sh4_gen_reg(sh4, inst.src_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm1110 0xf00f
@@ -2906,8 +2733,6 @@ void sh4_inst_binary_addc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] |= carry_bit;
 
     *dst_reg = in_dst;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm1111 0xf00f
@@ -2946,8 +2771,6 @@ void sh4_inst_binary_addv_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
      */
     in_dst += in_src;
     *dst_reg = in_dst;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm0000 0xf00f
@@ -2962,8 +2785,6 @@ void sh4_inst_binary_cmpeq_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     sh4->reg[SH4_REG_SR] |= ((*sh4_gen_reg(sh4, inst.src_reg) == *sh4_gen_reg(sh4, inst.dst_reg)) <<
                SH4_SR_FLAG_T_SHIFT);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm0010 0xf00f
@@ -2979,8 +2800,6 @@ void sh4_inst_binary_cmphs_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t lhs = *sh4_gen_reg(sh4, inst.dst_reg);
     uint32_t rhs = *sh4_gen_reg(sh4, inst.src_reg);
     sh4->reg[SH4_REG_SR] |= ((lhs >= rhs) << SH4_SR_FLAG_T_SHIFT);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm0011 0xf00f
@@ -2996,8 +2815,6 @@ void sh4_inst_binary_cmpge_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int32_t lhs = *sh4_gen_reg(sh4, inst.dst_reg);
     int32_t rhs = *sh4_gen_reg(sh4, inst.src_reg);
     sh4->reg[SH4_REG_SR] |= ((lhs >= rhs) << SH4_SR_FLAG_T_SHIFT);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm0110 0xf00f
@@ -3013,8 +2830,6 @@ void sh4_inst_binary_cmphi_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t lhs = *sh4_gen_reg(sh4, inst.dst_reg);
     uint32_t rhs = *sh4_gen_reg(sh4, inst.src_reg);
     sh4->reg[SH4_REG_SR] |= ((lhs > rhs) << SH4_SR_FLAG_T_SHIFT);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm0111 0xf00f
@@ -3030,8 +2845,6 @@ void sh4_inst_binary_cmpgt_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int32_t lhs = *sh4_gen_reg(sh4, inst.dst_reg);
     int32_t rhs = *sh4_gen_reg(sh4, inst.src_reg);
     sh4->reg[SH4_REG_SR] |= ((lhs > rhs) << SH4_SR_FLAG_T_SHIFT);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm1100 0xf00f
@@ -3054,8 +2867,6 @@ void sh4_inst_binary_cmpstr_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     sh4->reg[SH4_REG_SR] |= flag << SH4_SR_FLAG_T_SHIFT;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm0100 0xf00f
@@ -3151,8 +2962,6 @@ void sh4_inst_binary_div1_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
                              (q_flag << SH4_SR_Q_SHIFT));
 
     *dividend_p = dividend;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm0111 0xf00f
@@ -3177,8 +2986,6 @@ void sh4_inst_binary_div0s_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
         (new_m << SH4_SR_M_SHIFT);
     sh4->reg[SH4_REG_SR] = (sh4->reg[SH4_REG_SR] & ~SH4_SR_FLAG_T_MASK) |
         (new_t << SH4_SR_FLAG_T_SHIFT);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000000000011001 0xffff
@@ -3192,8 +2999,6 @@ void sh4_inst_noarg_div0u(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->reg[SH4_REG_SR] &=
         ~(SH4_SR_M_MASK | SH4_SR_Q_MASK | SH4_SR_FLAG_T_MASK);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm1101 0xf00f
@@ -3211,8 +3016,6 @@ void sh4_inst_binary_dmulsl_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->reg[SH4_REG_MACH] = ((uint64_t)res) >> 32;
     sh4->reg[SH4_REG_MACL] = ((uint64_t)res) & 0xffffffff;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm0101 0xf00f
@@ -3230,8 +3033,6 @@ void sh4_inst_binary_dmulul_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->reg[SH4_REG_MACH] = res >> 32;
     sh4->reg[SH4_REG_MACL] = res & 0xffffffff;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm1110 0xf00f
@@ -3245,8 +3046,6 @@ void sh4_inst_binary_extsb_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t src_val = *sh4_gen_reg(sh4, inst.src_reg);
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)((int8_t)(src_val & 0xff));
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm1111 0xf00f
@@ -3260,8 +3059,6 @@ void sh4_inst_binary_extsw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t src_val = *sh4_gen_reg(sh4, inst.src_reg);
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)((int16_t)(src_val & 0xffff));
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm1100 0xf00f
@@ -3275,8 +3072,6 @@ void sh4_inst_binary_extub_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t src_val = *sh4_gen_reg(sh4, inst.src_reg);
     *sh4_gen_reg(sh4, inst.dst_reg) = src_val & 0xff;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm1101 0xf00f
@@ -3290,8 +3085,6 @@ void sh4_inst_binary_extuw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t src_val = *sh4_gen_reg(sh4, inst.src_reg);
     *sh4_gen_reg(sh4, inst.dst_reg) = src_val & 0xffff;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnnmmmm0111 0xf00f
@@ -3304,8 +3097,6 @@ void sh4_inst_binary_mull_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000nnnnmmmm0111, INST_CONS_0000nnnnmmmm0111);
 
     sh4->reg[SH4_REG_MACL] = *sh4_gen_reg(sh4, inst.dst_reg) * *sh4_gen_reg(sh4, inst.src_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm1111 0xf00f
@@ -3321,8 +3112,6 @@ void sh4_inst_binary_mulsw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int16_t rhs = *sh4_gen_reg(sh4, inst.src_reg);
 
     sh4->reg[SH4_REG_MACL] = (int32_t)lhs * (int32_t)rhs;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm1110 0xf00f
@@ -3338,8 +3127,6 @@ void sh4_inst_binary_muluw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint16_t rhs = *sh4_gen_reg(sh4, inst.src_reg);
 
     sh4->reg[SH4_REG_MACL] = (uint32_t)lhs * (uint32_t)rhs;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm1011 0xf00f
@@ -3352,8 +3139,6 @@ void sh4_inst_binary_neg_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1011, INST_CONS_0110nnnnmmmm1011);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = -*sh4_gen_reg(sh4, inst.src_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm1010 0xf00f
@@ -3375,8 +3160,6 @@ void sh4_inst_binary_negc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4->reg[SH4_REG_SR] |= (flag_t_out << SH4_SR_FLAG_T_SHIFT);
     *sh4_gen_reg(sh4, inst.dst_reg) = dst;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm1000 0xf00f
@@ -3389,8 +3172,6 @@ void sh4_inst_binary_sub_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1000, INST_CONS_0011nnnnmmmm1000);
 
     *sh4_gen_reg(sh4, inst.dst_reg) -= *sh4_gen_reg(sh4, inst.src_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm1010 0xf00f
@@ -3422,8 +3203,6 @@ void sh4_inst_binary_subc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] |= carry_bit;
 
     *dst_reg = in_dst;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0011nnnnmmmm1011 0xf00f
@@ -3454,8 +3233,6 @@ void sh4_inst_binary_subv_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_SR] |= overflow_bit;
 
     *dst_reg = in_dst;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm1001 0xf00f
@@ -3468,8 +3245,6 @@ void sh4_inst_binary_and_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1001, INST_CONS_0010nnnnmmmm1001);
 
     *sh4_gen_reg(sh4, inst.dst_reg) &= *sh4_gen_reg(sh4, inst.src_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm0111 0xf00f
@@ -3482,8 +3257,6 @@ void sh4_inst_binary_not_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0111, INST_CONS_0110nnnnmmmm0111);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = ~(*sh4_gen_reg(sh4, inst.src_reg));
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm1011 0xf00f
@@ -3496,8 +3269,6 @@ void sh4_inst_binary_or_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1011, INST_CONS_0010nnnnmmmm1011);
 
     *sh4_gen_reg(sh4, inst.dst_reg) |= *sh4_gen_reg(sh4, inst.src_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm1000 0xf00f
@@ -3513,8 +3284,6 @@ void sh4_inst_binary_tst_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t flag = !(*sh4_gen_reg(sh4, inst.src_reg) & *sh4_gen_reg(sh4, inst.dst_reg)) <<
         SH4_SR_FLAG_T_SHIFT;
     sh4->reg[SH4_REG_SR] |= flag;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm1010 0xf00f
@@ -3527,8 +3296,6 @@ void sh4_inst_binary_xor_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1010, INST_CONS_0010nnnnmmmm1010);
 
     *sh4_gen_reg(sh4, inst.dst_reg) ^= *sh4_gen_reg(sh4, inst.src_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnnmmmm1100 0xf00f
@@ -3552,8 +3319,6 @@ void sh4_inst_binary_shad_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     }
 
     *dstp = dst;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnnmmmm1101 0xf00f
@@ -3577,8 +3342,6 @@ void sh4_inst_binary_shld_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     }
 
     *dstp = dst;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm1nnn1110 0xf08f
@@ -3600,8 +3363,6 @@ void sh4_inst_binary_ldc_gen_bank(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     *sh4_bank_reg(sh4, inst.bank_reg) = *sh4_gen_reg(sh4, inst.gen_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm1nnn0111 0xf08f
@@ -3630,8 +3391,6 @@ void sh4_inst_binary_ldcl_indgeninc_bank(Sh4 *sh4, Sh4OpArgs inst) {
 
     (*src_reg) += 4;
     *sh4_bank_reg(sh4, inst.bank_reg) = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn1mmm0010 0xf08f
@@ -3653,8 +3412,6 @@ void sh4_inst_binary_stc_bank_gen(Sh4 *sh4, Sh4OpArgs inst) {
 #endif
 
     *sh4_gen_reg(sh4, inst.gen_reg) = *sh4_bank_reg(sh4, inst.bank_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn1mmm0011 0xf08f
@@ -3682,8 +3439,6 @@ void sh4_inst_binary_stcl_bank_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, src_val, addr);
 
     *addr_reg = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00001010 0xf0ff
@@ -3696,8 +3451,6 @@ void sh4_inst_binary_lds_gen_mach(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0100mmmm00001010, INST_CONS_0100mmmm00001010);
 
     sh4->reg[SH4_REG_MACH] = *sh4_gen_reg(sh4, inst.gen_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00011010 0xf0ff
@@ -3710,8 +3463,6 @@ void sh4_inst_binary_lds_gen_macl(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0100mmmm00011010, INST_CONS_0100mmmm00011010);
 
     sh4->reg[SH4_REG_MACL] = *sh4_gen_reg(sh4, inst.gen_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00001010 0xf0ff
@@ -3724,8 +3475,6 @@ void sh4_inst_binary_sts_mach_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn00001010, INST_CONS_0000nnnn00001010);
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_MACH];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00011010 0xf0ff
@@ -3738,8 +3487,6 @@ void sh4_inst_binary_sts_macl_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn00011010, INST_CONS_0000nnnn00011010);
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_MACL];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00101010 0xf0ff
@@ -3752,8 +3499,6 @@ void sh4_inst_binary_lds_gen_pr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0100mmmm00101010, INST_CONS_0100mmmm00101010);
 
     sh4->reg[SH4_REG_PR] = *sh4_gen_reg(sh4, inst.gen_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn00101010 0xf0ff
@@ -3766,8 +3511,6 @@ void sh4_inst_binary_sts_pr_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn00101010, INST_CONS_0000nnnn00101010);
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_PR];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00000110 0xf0ff
@@ -3787,8 +3530,6 @@ void sh4_inst_binary_ldsl_indgeninc_mach(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_MACH] = val;
 
     *addr_reg += 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00010110 0xf0ff
@@ -3808,8 +3549,6 @@ void sh4_inst_binary_ldsl_indgeninc_macl(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_MACL] = val;
 
     *addr_reg += 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00000010 0xf0ff
@@ -3827,8 +3566,6 @@ void sh4_inst_binary_stsl_mach_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_MACH], addr);
 
     *addr_reg = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00010010 0xf0ff
@@ -3846,8 +3583,6 @@ void sh4_inst_binary_stsl_macl_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_MACL], addr);
 
     *addr_reg = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm00100110 0xf0ff
@@ -3867,8 +3602,6 @@ void sh4_inst_binary_ldsl_indgeninc_pr(Sh4 *sh4, Sh4OpArgs inst) {
     sh4->reg[SH4_REG_PR] = val;
 
     *addr_reg += 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn00100010 0xf0ff
@@ -3886,8 +3619,6 @@ void sh4_inst_binary_stsl_pr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_PR], addr);
 
     *addr_reg = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm0000 0xf00f
@@ -3903,8 +3634,6 @@ void sh4_inst_binary_movb_gen_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     uint8_t mem_val = *sh4_gen_reg(sh4, inst.src_reg);
 
     sh4_write_mem_8(sh4, mem_val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm0001 0xf00f
@@ -3920,8 +3649,6 @@ void sh4_inst_binary_movw_gen_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     uint16_t mem_val = *sh4_gen_reg(sh4, inst.src_reg);
 
     sh4_write_mem_16(sh4, mem_val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm0010 0xf00f
@@ -3937,8 +3664,6 @@ void sh4_inst_binary_movl_gen_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t mem_val = *sh4_gen_reg(sh4, inst.src_reg);
 
     sh4_write_mem_32(sh4, mem_val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm0000 0xf00f
@@ -3956,8 +3681,6 @@ void sh4_inst_binary_movb_indgen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     mem_val = sh4_read_mem_8(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)mem_val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm0001 0xf00f
@@ -3974,8 +3697,6 @@ void sh4_inst_binary_movw_indgen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     mem_val = sh4_read_mem_16(sh4, addr);
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)mem_val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm0010 0xf00f
@@ -3993,8 +3714,6 @@ void sh4_inst_binary_movl_indgen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     mem_val = sh4_read_mem_32(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = mem_val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm0100 0xf00f
@@ -4016,8 +3735,6 @@ void sh4_inst_binary_movb_gen_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_8(sh4, val, dst_reg_val);
 
     (*dst_reg) = dst_reg_val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm0101 0xf00f
@@ -4040,8 +3757,6 @@ void sh4_inst_binary_movw_gen_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_16(sh4, val, dst_reg_val);
 
     *dst_reg = dst_reg_val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0010nnnnmmmm0110 0xf00f
@@ -4064,8 +3779,6 @@ void sh4_inst_binary_movl_gen_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, val, dst_reg_val);
 
     *dst_reg = dst_reg_val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm0100 0xf00f
@@ -4086,8 +3799,6 @@ void sh4_inst_binary_movb_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     *dst_reg = (int32_t)val;
 
     (*src_reg)++;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm0101 0xf00f
@@ -4108,8 +3819,6 @@ void sh4_inst_binary_movw_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     *dst_reg = (int32_t)val;
 
     (*src_reg) += 2;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0110nnnnmmmm0110 0xf00f
@@ -4130,8 +3839,6 @@ void sh4_inst_binary_movl_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     *dst_reg = (int32_t)val;
 
     (*src_reg) += 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnnmmmm1111 0xf00f
@@ -4184,8 +3891,6 @@ void sh4_inst_binary_macl_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
 
     (*dst_addrp) += 4;
     (*src_addrp) += 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnnmmmm1111 0xf00f
@@ -4250,8 +3955,6 @@ void sh4_inst_binary_macw_indgeninc_indgeninc(Sh4 *sh4, Sh4OpArgs inst) {
 
     (*dst_addrp) += 2;
     (*src_addrp) += 2;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_10000000nnnndddd 0xff00
@@ -4267,8 +3970,6 @@ void sh4_inst_binary_movb_r0_binind_disp_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int8_t val = *sh4_gen_reg(sh4, 0);
 
     sh4_write_mem_8(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_10000001nnnndddd 0xff00
@@ -4284,8 +3985,6 @@ void sh4_inst_binary_movw_r0_binind_disp_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int16_t val = *sh4_gen_reg(sh4, 0);
 
     sh4_write_mem_16(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0001nnnnmmmmdddd 0xf000
@@ -4301,8 +4000,6 @@ void sh4_inst_binary_movl_gen_binind_disp_gen(Sh4 *sh4, Sh4OpArgs inst) {
     int32_t val = *sh4_gen_reg(sh4, inst.base_reg_src);
 
     sh4_write_mem_32(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_10000100mmmmdddd 0xff00
@@ -4320,8 +4017,6 @@ void sh4_inst_binary_movb_binind_disp_gen_r0(Sh4 *sh4, Sh4OpArgs inst) {
     val = sh4_read_mem_8(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_10000101mmmmdddd 0xff00
@@ -4339,8 +4034,6 @@ void sh4_inst_binary_movw_binind_disp_gen_r0(Sh4 *sh4, Sh4OpArgs inst) {
     val = sh4_read_mem_16(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0101nnnnmmmmdddd 0xf000
@@ -4358,8 +4051,6 @@ void sh4_inst_binary_movl_binind_disp_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     val = sh4_read_mem_32(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.base_reg_dst) = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnnmmmm0100 0xf00f
@@ -4375,8 +4066,6 @@ void sh4_inst_binary_movb_gen_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint8_t val = *sh4_gen_reg(sh4, inst.src_reg);
 
     sh4_write_mem_8(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnnmmmm0101 0xf00f
@@ -4392,8 +4081,6 @@ void sh4_inst_binary_movw_gen_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint16_t val = *sh4_gen_reg(sh4, inst.src_reg);
 
     sh4_write_mem_16(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnnmmmm0110 0xf00f
@@ -4409,8 +4096,6 @@ void sh4_inst_binary_movl_gen_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t val = *sh4_gen_reg(sh4, inst.src_reg);
 
     sh4_write_mem_32(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnnmmmm1100 0xf00f
@@ -4428,8 +4113,6 @@ void sh4_inst_binary_movb_binind_r0_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     val = sh4_read_mem_8(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnnmmmm1101 0xf00f
@@ -4447,8 +4130,6 @@ void sh4_inst_binary_movw_binind_r0_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     val = sh4_read_mem_16(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = (int32_t)val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnnmmmm1110 0xf00f
@@ -4466,8 +4147,6 @@ void sh4_inst_binary_movl_binind_r0_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     val = sh4_read_mem_32(sh4, addr);
 
     *sh4_gen_reg(sh4, inst.dst_reg) = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11000000dddddddd 0xff00
@@ -4483,8 +4162,6 @@ void sh4_inst_binary_movb_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     int8_t val = *sh4_gen_reg(sh4, 0);
 
     sh4_write_mem_8(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11000001dddddddd 0xff00
@@ -4500,8 +4177,6 @@ void sh4_inst_binary_movw_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     int16_t val = *sh4_gen_reg(sh4, 0);
 
     sh4_write_mem_16(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11000010dddddddd 0xff00
@@ -4517,8 +4192,6 @@ void sh4_inst_binary_movl_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     int32_t val = *sh4_gen_reg(sh4, 0);
 
     sh4_write_mem_32(sh4, val, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11000100dddddddd 0xff00
@@ -4536,8 +4209,6 @@ void sh4_inst_binary_movb_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
     val = sh4_read_mem_8(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11000101dddddddd 0xff00
@@ -4555,8 +4226,6 @@ void sh4_inst_binary_movw_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
     val = sh4_read_mem_16(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11000110dddddddd 0xff00
@@ -4574,8 +4243,6 @@ void sh4_inst_binary_movl_binind_disp_gbr_r0(Sh4 *sh4, Sh4OpArgs inst) {
     val = sh4_read_mem_32(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = val;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_11000111dddddddd 0xff00
@@ -4595,8 +4262,6 @@ void sh4_inst_binary_mova_binind_disp_pc_r0(Sh4 *sh4, Sh4OpArgs inst) {
      * opcodes.
      */
     *sh4_gen_reg(sh4, 0) = (inst.imm8 << 2) + (sh4->reg[SH4_REG_PC] & ~3) + 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn11000011 0xf0ff
@@ -4620,8 +4285,6 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t vaddr = *sh4_gen_reg(sh4, inst.dst_reg);
 
     sh4_write_mem_32(sh4, src_val, vaddr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnn10001101 0xf0ff
@@ -4635,8 +4298,6 @@ void sh4_inst_unary_fldi0_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     *sh4_fpu_fr(sh4, inst.fr_reg) = 0.0f;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnn10011101 0xf0ff
@@ -4650,8 +4311,6 @@ void sh4_inst_unary_fldi1_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     *sh4_fpu_fr(sh4, inst.fr_reg) = 1.0f;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm1100 0xf00f
@@ -4665,8 +4324,6 @@ void sh4_inst_binary_fmov_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     *sh4_fpu_fr(sh4, inst.dst_reg) = *sh4_fpu_fr(sh4, inst.src_reg);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm1000 0xf00f
@@ -4683,8 +4340,6 @@ void sh4_inst_binary_fmovs_indgen_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float *dst_ptr = sh4_fpu_fr(sh4, inst.dst_reg);
 
     *dst_ptr = sh4_read_mem_float(sh4, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm0110 0xf00f
@@ -4701,8 +4356,6 @@ void sh4_inst_binary_fmovs_binind_r0_gen_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float *dst_ptr = sh4_fpu_fr(sh4, inst.dst_reg);
 
     *dst_ptr = sh4_read_mem_float(sh4, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm1001 0xf00f
@@ -4721,7 +4374,6 @@ void sh4_inst_binary_fmovs_indgeninc_fr(Sh4 *sh4, Sh4OpArgs inst) {
     *dst_ptr = sh4_read_mem_float(sh4, *addr_p);
 
     *addr_p += 4;
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm1010 0xf00f
@@ -4738,8 +4390,6 @@ void sh4_inst_binary_fmovs_fr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
 
     sh4_write_mem_float(sh4, *src_p, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm1011 0xf00f
@@ -4759,7 +4409,6 @@ void sh4_inst_binary_fmovs_fr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_float(sh4, *src_p, addr);
 
     *addr_p = addr;
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm0111 0xf00f
@@ -4776,7 +4425,6 @@ void sh4_inst_binary_fmovs_fr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
 
     sh4_write_mem_float(sh4, *src_p, addr);
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn0mmm01100 0xf11f
@@ -4790,8 +4438,6 @@ void sh4_inst_binary_fmov_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     *sh4_fpu_dr(sh4, inst.dr_dst) = *sh4_fpu_dr(sh4, inst.dr_src);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn0mmmm1000 0xf10f
@@ -4808,8 +4454,6 @@ void sh4_inst_binary_fmov_indgen_dr(Sh4 *sh4, Sh4OpArgs inst) {
     double *dst_ptr = sh4_fpu_dr(sh4, inst.dr_dst);
 
     *dst_ptr = sh4_read_mem_double(sh4, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn0mmmm0110 0xf10f
@@ -4826,8 +4470,6 @@ void sh4_inst_binary_fmov_binind_r0_gen_dr(Sh4 *sh4, Sh4OpArgs inst) {
     double *dst_ptr = sh4_fpu_dr(sh4, inst.dr_dst);
 
     *dst_ptr = sh4_read_mem_double(sh4, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn0mmmm1001 0xf10f
@@ -4846,7 +4488,6 @@ void sh4_inst_binary_fmov_indgeninc_dr(Sh4 *sh4, Sh4OpArgs inst) {
     *dst_ptr = sh4_read_mem_double(sh4, *addr_p);
 
     *addr_p += 8;
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmm01010 0xf01f
@@ -4863,8 +4504,6 @@ void sh4_inst_binary_fmov_dr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
 
     sh4_write_mem_double(sh4, *src_p, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmm01011 0xf01f
@@ -4884,7 +4523,6 @@ void sh4_inst_binary_fmov_dr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_double(sh4, *src_p, addr);
 
     *addr_p = addr;
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmm00111 0xf01f
@@ -4901,8 +4539,6 @@ void sh4_inst_binary_fmov_dr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
 
     sh4_write_mem_double(sh4, *src_p, addr);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111mmmm00011101 0xf0ff
@@ -4917,8 +4553,6 @@ void sh4_inst_binary_flds_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     float *src_reg = sh4_fpu_fr(sh4, inst.gen_reg);
 
     memcpy(sh4->reg + SH4_REG_FPUL, src_reg, sizeof(sh4->reg[SH4_REG_FPUL]));
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnn00001101 0xf0ff
@@ -4933,8 +4567,6 @@ void sh4_inst_binary_fsts_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float *dst_reg = sh4_fpu_fr(sh4, inst.gen_reg);
 
     memcpy(dst_reg, sh4->reg + SH4_REG_FPUL, sizeof(*dst_reg));
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnn01011101 0xf0ff
@@ -4949,8 +4581,6 @@ void sh4_inst_unary_fabs_fr(Sh4 *sh4, Sh4OpArgs inst) {
 
     float *regp = sh4_fpu_fr(sh4, inst.fr_reg);
     *regp = fabs(*regp);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm0000 0xf00f
@@ -4964,7 +4594,6 @@ void sh4_inst_binary_fadd_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
     float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
     float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
@@ -5008,7 +4637,6 @@ void sh4_inst_binary_fcmpeq_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
     float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
     float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
@@ -5042,7 +4670,6 @@ void sh4_inst_binary_fcmpgt_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
     float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
     float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
@@ -5076,7 +4703,6 @@ void sh4_inst_binary_fdiv_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
     float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
     float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
@@ -5129,8 +4755,6 @@ void sh4_inst_binary_float_fpul_fr(Sh4 *sh4, Sh4OpArgs inst) {
     float *dst_reg = sh4_fpu_fr(sh4, inst.gen_reg);
 
     *dst_reg = (float)((int32_t)sh4->reg[SH4_REG_FPUL]);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmmm1110 0xf00f
@@ -5144,7 +4768,6 @@ void sh4_inst_trinary_fmac_fr0_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
     float in0, in1, in2;
 
@@ -5168,7 +4791,6 @@ void sh4_inst_binary_fmul_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
     float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
     float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
@@ -5211,7 +4833,6 @@ void sh4_inst_unary_fneg_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     *sh4_fpu_fr(sh4, inst.fr_reg) = -*sh4_fpu_fr(sh4, inst.fr_reg);
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnn01101101 0xf0ff
@@ -5225,7 +4846,6 @@ void sh4_inst_unary_fsqrt_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
     // TODO: check for negative input and raise an FPU exception when it happens
 
@@ -5248,7 +4868,6 @@ void sh4_inst_binary_fsub_fr_fr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
     float *srcp = sh4_fpu_fr(sh4, inst.fr_src);
     float *dstp = sh4_fpu_fr(sh4, inst.fr_dst);
@@ -5300,7 +4919,6 @@ void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     float val = *val_in_p;
     int32_t val_int;
 
-    sh4_next_inst(sh4);
     sh4_fpu_clear_cause(sh4);
 
     int round_mode = fegetround();
@@ -5407,7 +5025,6 @@ void sh4_inst_binary_fcnvds_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
      * should be done here.  I'm just going to implement this the naive way
      * instead
      */
-    sh4_next_inst(sh4);
     sh4_fpu_clear_cause(sh4);
 
     double in_val = *sh4_fpu_dr(sh4, inst.dr_reg);
@@ -5431,7 +5048,6 @@ void sh4_inst_binary_fcnvsd_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
      * should be done here.  I'm just going to implement this the naive way
      * instead
      */
-    sh4_next_inst(sh4);
     sh4_fpu_clear_cause(sh4);
 
     float in_val;
@@ -5454,8 +5070,6 @@ void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
     double *dst_reg = sh4_fpu_dr(sh4, inst.dr_reg);
 
     *dst_reg = (double)((int64_t)sh4->reg[SH4_REG_FPUL]);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn0mmm00010 0xf11f
@@ -5540,7 +5154,6 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     double val_in = *sh4_fpu_dr(sh4, inst.dr_reg);
     int32_t val_int;
 
-    sh4_next_inst(sh4);
     sh4_fpu_clear_cause(sh4);
 
     int round_mode = fegetround();
@@ -5564,7 +5177,6 @@ void sh4_inst_binary_fsca_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     // TODO: should I really be calling sh4_fpu_clear_cause here ?
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
 #ifdef SH4_FPU_PEDANTIC
     sh4->reg[SH4_REG_FPSCR] |= (SH4_FPSCR_CAUSE_I_MASK | SH4_FPSCR_FLAG_I_MASK);
@@ -5590,8 +5202,6 @@ void sh4_inst_binary_lds_gen_fpscr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0100mmmm01101010, INST_CONS_0100mmmm01101010);
 
     sh4_set_fpscr(sh4, *sh4_gen_reg(sh4, inst.gen_reg));
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm01011010 0xf0ff
@@ -5605,8 +5215,6 @@ void sh4_inst_binary_gen_fpul(Sh4 *sh4, Sh4OpArgs inst) {
 
     memcpy(sh4->reg + SH4_REG_FPUL, sh4_gen_reg(sh4, inst.gen_reg),
            sizeof(sh4->reg[SH4_REG_FPUL]));
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm01100110 0xf0ff
@@ -5626,8 +5234,6 @@ void sh4_inst_binary_ldsl_indgeninc_fpscr(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_set_fpscr(sh4, val);
 
     *addr_reg += 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100mmmm01010110 0xf0ff
@@ -5647,8 +5253,6 @@ void sh4_inst_binary_ldsl_indgeninc_fpul(Sh4 *sh4, Sh4OpArgs inst) {
     memcpy(sh4->reg + SH4_REG_FPUL, &val, sizeof(sh4->reg[SH4_REG_FPUL]));
 
     *addr_reg += 4;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn01101010 0xf0ff
@@ -5661,8 +5265,6 @@ void sh4_inst_binary_sts_fpscr_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn01101010, INST_CONS_0000nnnn01101010);
 
     *sh4_gen_reg(sh4, inst.gen_reg) = sh4->reg[SH4_REG_FPSCR];
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0000nnnn01011010 0xf0ff
@@ -5676,8 +5278,6 @@ void sh4_inst_binary_sts_fpul_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     memcpy(sh4_gen_reg(sh4, inst.gen_reg), sh4->reg + SH4_REG_FPUL,
            sizeof(sh4->reg[SH4_REG_FPUL]));
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn01100010 0xf0ff
@@ -5695,8 +5295,6 @@ void sh4_inst_binary_stsl_fpscr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_FPSCR], addr);
 
     *addr_reg = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_0100nnnn01010010 0xf0ff
@@ -5714,8 +5312,6 @@ void sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_32(sh4, sh4->reg[SH4_REG_FPUL], addr);
 
     *addr_reg = addr;
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn1mmm01100 0xf11f
@@ -5729,8 +5325,6 @@ void sh4_inst_binary_fmov_dr_xd(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     *sh4_fpu_xd(sh4, inst.dr_dst) = *sh4_fpu_dr(sh4, inst.dr_src);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn0mmm11100 0xf11f
@@ -5744,8 +5338,6 @@ void sh4_inst_binary_fmov_xd_dr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     *sh4_fpu_dr(sh4, inst.dr_dst) = *sh4_fpu_xd(sh4, inst.dr_src);
-
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn1mmm11100 0xf11f
@@ -5796,7 +5388,6 @@ void sh4_inst_binary_fmov_indgeninc_xd(Sh4 *sh4, Sh4OpArgs inst) {
     *dst_ptr = sh4_read_mem_double(sh4, *addr_p);
 
     *addr_p += 8;
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnn1mmmm0110 0xf10f
@@ -5848,7 +5439,6 @@ void sh4_inst_binary_fmov_xd_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     sh4_write_mem_double(sh4, *src_p, addr);
 
     *addr_p = addr;
-    sh4_next_inst(sh4);
 }
 
 #define INST_MASK_1111nnnnmmm10111 0xf01f
@@ -5877,7 +5467,6 @@ void sh4_inst_binary_fipr_fv_fv(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1111nnmm11101101, INST_CONS_1111nnmm11101101);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
 #ifdef SH4_FPU_PEDANTIC
     if (sh4->reg[SH4_REG_FPSCR] & (SH4_FPSCR_ENABLE_V_MASK |
@@ -5919,7 +5508,6 @@ void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1111nn0111111101, INST_CONS_1111nn0111111101);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
 #ifdef SH4_FPU_PEDANTIC
     if (sh4->reg[SH4_REG_FPSCR] & (SH4_FPSCR_ENABLE_V_MASK |
@@ -6000,7 +5588,6 @@ void sh4_inst_unary_fsrra_frn(Sh4  *sh4, Sh4OpArgs inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
-    sh4_next_inst(sh4);
 
     float *srcp = sh4_fpu_fr(sh4, inst.fr_reg);
     float src = *srcp;
