@@ -132,7 +132,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 1, 0xffff, 0x0038 },
 
     // NOP
-    { &sh4_inst_nop, sh4_disas_fallback, false,
+    { &sh4_inst_nop, sh4_disas_nop, false,
       SH4_GROUP_MT, 1, 0xffff, 0x0009 },
 
     // RTE
@@ -305,15 +305,15 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 5, 0xf0ff, 0x401b },
 
     // OCBI @Rn
-    { &sh4_inst_unary_ocbi_indgen, sh4_disas_fallback, false,
+    { &sh4_inst_unary_ocbi_indgen, sh4_disas_ocbi_arn, false,
       SH4_GROUP_LS, 1, 0xf0ff, 0x0093 },
 
     // OCBP @Rn
-    { &sh4_inst_unary_ocbp_indgen, sh4_disas_fallback, false,
+    { &sh4_inst_unary_ocbp_indgen, sh4_disas_ocbp_arn, false,
       SH4_GROUP_LS, 1, 0xf0ff, 0x00a3 },
 
     // OCBWB @Rn
-    { &sh4_inst_unary_ocbwb_indgen, sh4_disas_fallback, false,
+    { &sh4_inst_unary_ocbwb_indgen, sh4_disas_ocbwb_arn, false,
       SH4_GROUP_LS, 1, 0xf0ff, 0x00b3 },
 
     // PREF @Rn

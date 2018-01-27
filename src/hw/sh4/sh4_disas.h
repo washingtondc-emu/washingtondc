@@ -103,4 +103,14 @@ bool sh4_disas_movl_a_disp_pc_rn(struct il_code_block *block, unsigned pc,
                                  struct InstOpcode const *op, inst_t inst);
 bool sh4_disas_mova_a_disp_pc_r0(struct il_code_block *block, unsigned pc,
                                  struct InstOpcode const *op, inst_t inst);
+
+bool sh4_disas_nop(struct il_code_block *block, unsigned pc,
+                   struct InstOpcode const *op, inst_t inst);
+bool sh4_disas_ocbi_arn(struct il_code_block *block, unsigned pc,
+                        struct InstOpcode const *op, inst_t inst);
+bool sh4_disas_ocbp_arn(struct il_code_block *block, unsigned pc,
+                        struct InstOpcode const *op, inst_t inst);
+bool sh4_disas_ocbwb_arn(struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, inst_t inst);
+
 #endif
