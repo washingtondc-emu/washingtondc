@@ -237,7 +237,7 @@ static void clear_cache(struct cache_entry *node) {
             code_block_x86_64_cleanup(&node->blk.x86_64);
         else
 #endif
-            il_code_block_cleanup(&node->blk.il);
+            code_block_intp_cleanup(&node->blk.intp);
         free(node);
     }
 }
@@ -381,7 +381,7 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
         code_block_x86_64_init(&new_node->blk.x86_64);
     else
 #endif
-        il_code_block_init(&new_node->blk.il);
+        code_block_intp_init(&new_node->blk.intp);
 
     n_entries++;
     if (n_entries >= MAX_ENTRIES)

@@ -20,42 +20,26 @@
  *
  ******************************************************************************/
 
-#ifndef CODE_BLOCK_H_
-#define CODE_BLOCK_H_
+#ifndef CODE_BLOCK_INTP_H_
+#define CODE_BLOCK_INTP_H_
 
-#include "jit_il.h"
-
-#ifdef ENABLE_JIT_X86_64
-#include "x86_64/code_block_x86_64.h"
-#endif
-
-#include "jit_intp/code_block_intp.h"
-
-struct il_code_block {
-    struct jit_inst *inst_list;
-    unsigned inst_count;
-    unsigned inst_alloc;
-    unsigned cycle_count;
-    unsigned last_inst_type;
-};
-
-union jit_code_block {
-#ifdef ENABLE_JIT_X86_64
-    struct code_block_x86_64 x86_64;
-#endif
-    struct code_block_intp intp;
-};
-
-void il_code_block_init(struct il_code_block *block);
-void il_code_block_cleanup(struct il_code_block *block);
-
-void il_code_block_push_inst(struct il_code_block *block,
-                              struct jit_inst const *inst);
+struct il_code_block;
 
 /*
- * fill out block based on the SH4 basic-block which begins at guest-address
- * "addr".
+ * this is mostly identical to the il_code_block, but it's been prepared for
+ * the interpreter
  */
-void il_code_block_compile(struct il_code_block *block, addr32_t addr);
+struct code_block_intp {
+    struct jit_inst *inst_list;
+    unsigned cycle_count, inst_count;
+};
+
+void code_block_intp_init(struct code_block_intp *block);
+void code_block_intp_cleanup(struct code_block_intp *block);
+
+void code_block_intp_compile(struct code_block_intp *out,
+                             struct il_code_block const *il_blk);
+
+void code_block_intp_exec(struct code_block_intp const *block);
 
 #endif

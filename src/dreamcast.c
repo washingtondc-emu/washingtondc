@@ -56,6 +56,7 @@
 #include "hw/g1/g1.h"
 #include "hw/g2/g2.h"
 #include "jit/code_block.h"
+#include "jit/jit_intp/code_block_intp.h"
 #include "jit/code_cache.h"
 #include "jit/jit.h"
 
@@ -500,14 +501,18 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
         addr32_t blk_addr = sh4->reg[SH4_REG_PC];
         struct cache_entry *ent = code_cache_find(blk_addr);
 
-        struct il_code_block *blk = &ent->blk.il;
+        struct code_block_intp *blk = &ent->blk.intp;
         if (!ent->valid) {
-            il_code_block_compile(blk, blk_addr);
+            struct il_code_block il_blk;
+            il_code_block_init(&il_blk);
+            il_code_block_compile(&il_blk, blk_addr);
+            code_block_intp_compile(blk, &il_blk);
+            il_code_block_cleanup(&il_blk);
+
             ent->valid = true;
         }
 
-        il_code_block_exec(blk);
-
+        code_block_intp_exec(blk);
 
         dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
             blk->cycle_count * SH4_CLOCK_SCALE;
