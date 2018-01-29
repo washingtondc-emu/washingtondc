@@ -30,7 +30,10 @@
 #include "code_block.h"
 #include "log.h"
 #include "config.h"
+
+#ifdef ENABLE_JIT_X86_64
 #include "x86_64/exec_mem.h"
+#endif
 
 #include "code_cache.h"
 
@@ -86,7 +89,9 @@ static unsigned cache_sz;
 static unsigned max_cache_sz;
 #endif
 
+#ifdef ENABLE_JIT_X86_64
 static bool native_mode = true;
+#endif
 
 static void perf_stats_reset(void) {
 #ifdef PERF_STATS
@@ -134,7 +139,10 @@ void code_cache_init(void) {
     nuke = false;
     root = NULL;
     perf_stats_reset();
+
+#ifdef ENABLE_JIT_X86_64
     native_mode = config_get_native_jit();
+#endif
 }
 
 void code_cache_cleanup(void) {
@@ -164,9 +172,11 @@ static void clear_cache(struct cache_entry *node) {
             clear_cache(node->left);
         if (node->right)
             clear_cache(node->right);
+#ifdef ENABLE_JIT_X86_64
         if (native_mode)
             code_block_x86_64_cleanup(&node->blk.x86_64);
         else
+#endif
             il_code_block_cleanup(&node->blk.il);
         free(node);
     }
@@ -305,9 +315,12 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
         RAISE_ERROR(ERROR_INTEGRITY);
     new_node->parent = parent;
     new_node->addr = addr;
+
+#ifdef ENABLE_JIT_X86_64
     if (native_mode)
         code_block_x86_64_init(&new_node->blk.x86_64);
     else
+#endif
         il_code_block_init(&new_node->blk.il);
 
     n_entries++;
@@ -460,6 +473,7 @@ struct cache_entry *code_cache_find(addr32_t addr) {
         clear_cache(root);
         root = NULL;
         memset(tbl, 0, sizeof(tbl));
+#ifdef ENABLE_JIT_X86_64
 #ifdef INVARIANTS
         struct exec_mem_stats stats;
         exec_mem_get_stats(&stats);
@@ -480,6 +494,7 @@ struct cache_entry *code_cache_find(addr32_t addr) {
                       "merged into a signle chunk\n", __func__);
             RAISE_ERROR(ERROR_INTEGRITY);
         }
+#endif
 #endif
     }
 

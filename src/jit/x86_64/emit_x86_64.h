@@ -23,6 +23,10 @@
 #ifndef EMIT_X86_64_H_
 #define EMIT_X86_64_H_
 
+#ifndef ENABLE_JIT_X86_64
+#error this file should not be built when the x86_64 JIT backend is disabled
+#endif
+
 #define RAX 0
 #define RCX 1
 #define RDX 2

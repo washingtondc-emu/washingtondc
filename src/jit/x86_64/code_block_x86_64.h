@@ -23,6 +23,10 @@
 #ifndef CODE_BLOCK_X86_64_H_
 #define CODE_BLOCK_X86_64_H_
 
+#ifndef ENABLE_JIT_X86_64
+#error this file should not be built when the x86_64 JIT backend is disabled
+#endif
+
 struct il_code_block;
 
 struct code_block_x86_64 {

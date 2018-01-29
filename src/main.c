@@ -151,12 +151,29 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+#ifdef ENABLE_JIT_X86_64
     // enable the jit (with x86_64 backend) by default
     if (!(enable_jit || enable_native_jit || enable_interpreter))
         enable_native_jit = true;
+#else
+    // enable the jit (with jit-interpreter) by default
+    if (!(enable_jit || enable_interpreter))
+        enable_jit = true;
+#endif
 
     config_set_jit(enable_jit);
+
+#ifdef ENABLE_JIT_X86_64
     config_set_native_jit(enable_native_jit);
+#else
+    if (enable_native_jit) {
+        LOG_ERROR("ERROR: the native x86_64 jit backend was not enabled for "
+                  "this build configuration.\n"
+                  "Rebuild WashingtonDC with -DENABLE_JIT_X86_64=On to enable "
+                  "the native x86_64 jit backend.\n");
+        exit(1);
+    }
+#endif
 
     if (path_gdi) {
         mount_gdi(path_gdi);

@@ -24,7 +24,10 @@
 #define CODE_BLOCK_H_
 
 #include "jit_il.h"
+
+#ifdef ENABLE_JIT_X86_64
 #include "x86_64/code_block_x86_64.h"
+#endif
 
 struct il_code_block {
     struct jit_inst *inst_list;
@@ -36,7 +39,10 @@ struct il_code_block {
 
 union jit_code_block {
     struct il_code_block il;
+
+#ifdef ENABLE_JIT_X86_64
     struct code_block_x86_64 x86_64;
+#endif
 };
 
 void il_code_block_init(struct il_code_block *block);

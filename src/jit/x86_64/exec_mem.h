@@ -23,6 +23,10 @@
 #ifndef EXEC_MEM_H_
 #define EXEC_MEM_H_
 
+#ifndef ENABLE_JIT_X86_64
+#error this file should not be built when the x86_64 JIT backend is disabled
+#endif
+
 #include <stddef.h>
 
 void exec_mem_init(void);

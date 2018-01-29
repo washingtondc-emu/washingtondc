@@ -88,6 +88,7 @@ CONFIG_DECL_STRING(auto_screenshot_dir);
 // enable the dynamic recompiler, or disable it to use the interpreter
 CONFIG_DECL_BOOL(jit);
 
+#ifdef ENABLE_JIT_X86_64
 /*
  * enable the x86_64 backend to the dynamic recompiler.
  * if this is enabled and the jit option is not enabled, then this option will
@@ -97,5 +98,6 @@ CONFIG_DECL_BOOL(jit);
  * platform-independent interpreter backend will be used.
  */
 CONFIG_DECL_BOOL(native_jit);
+#endif
 
 #endif

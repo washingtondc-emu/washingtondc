@@ -51,6 +51,7 @@ option(SH4_FPU_PEDANTIC "enable FPU error-checking which most games *probably* d
 option(PVR2_LOG_VERBOSE "enable this to make the pvr2 code log mundane events" OFF)
 option(DEEP_SYSCALL_TRACE "enable logging to observe the behavior of system calls" OFF)
 option(ENABLE_LOG_DEBUG "enable extra debug logs" OFF)
+option(ENABLE_JIT_X86_64 "enable native x86_64 JIT backend" ON)
 
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)
    add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
@@ -229,17 +230,21 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/jit/code_cache.c"
                 "${PROJECT_SOURCE_DIR}/src/jit/code_cache.h"
                 "${PROJECT_SOURCE_DIR}/src/jit/jit.h"
-                "${PROJECT_SOURCE_DIR}/src/jit/jit.c"
-                "${PROJECT_SOURCE_DIR}/src/jit/x86_64/code_block_x86_64.h"
-                "${PROJECT_SOURCE_DIR}/src/jit/x86_64/code_block_x86_64.c"
-                "${PROJECT_SOURCE_DIR}/src/jit/x86_64/emit_x86_64.h"
-                "${PROJECT_SOURCE_DIR}/src/jit/x86_64/emit_x86_64.c"
-                "${PROJECT_SOURCE_DIR}/src/jit/x86_64/exec_mem.h"
-                "${PROJECT_SOURCE_DIR}/src/jit/x86_64/exec_mem.c")
+                "${PROJECT_SOURCE_DIR}/src/jit/jit.c")
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
                          "${PROJECT_SOURCE_DIR}/src/BiosFile.c"
                          "${PROJECT_SOURCE_DIR}/src/main.c")
+
+if (ENABLE_JIT_X86_64)
+   add_definitions(-DENABLE_JIT_X86_64)
+   set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/jit/x86_64/code_block_x86_64.h"
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/code_block_x86_64.c"
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/emit_x86_64.h"
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/emit_x86_64.c"
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/exec_mem.h"
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/exec_mem.c")
+endif()
 
 if (ENABLE_DEBUGGER)
     add_definitions(-DENABLE_DEBUGGER)

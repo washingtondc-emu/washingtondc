@@ -112,7 +112,10 @@ static void dreamcast_enable_serial_server(void);
 static void dreamcast_enable_cmd_tcp(void);
 
 static void dc_run_to_next_event_jit(Sh4 *sh4);
+
+#ifdef ENABLE_JIT_X86_64
 static void dc_run_to_next_event_jit_native(Sh4 *sh4);
+#endif
 
 /*
  * XXX this used to be (SCHED_FREQUENCY / 10).  Now it's (SCHED_FREQUENCY / 100)
@@ -276,6 +279,7 @@ static void main_loop_jit(void) {
     }
 }
 
+#ifdef ENABLE_JIT_X86_64
 static void main_loop_jit_native(void) {
     while (is_running) {
 #ifdef ENABLE_DEBUGGER
@@ -294,6 +298,7 @@ static void main_loop_jit_native(void) {
 #endif
     }
 }
+#endif
 
 static void main_loop_interpreter(void) {
     while (is_running) {
@@ -348,13 +353,25 @@ void dreamcast_run() {
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
 #ifndef ENABLE_DEBUGGER
+
+#ifdef ENABLE_JIT_X86_64
     bool const jit = config_get_jit() || config_get_native_jit();
+#else
+    bool const jit = config_get_jit();
 #endif
+
+#endif
+
+#ifdef ENABLE_JIT_X86_64
     bool const native_mode = config_get_native_jit();
+#endif
+
     if (jit) {
+#ifdef ENABLE_JIT_X86_64
         if (native_mode)
             main_loop_jit_native();
         else
+#endif
             main_loop_jit();
     } else {
         main_loop_interpreter();
@@ -445,6 +462,7 @@ static void dc_run_to_next_event(Sh4 *sh4) {
     }
 }
 
+#ifdef ENABLE_JIT_X86_64
 static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
         addr32_t blk_addr = sh4->reg[SH4_REG_PC];
@@ -471,6 +489,7 @@ static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
         dc_cycle_advance(cycles_after - dc_cycle_stamp());
     }
 }
+#endif
 
 static void dc_run_to_next_event_jit(Sh4 *sh4) {
     while (dc_sched_target_stamp > dc_cycle_stamp()) {

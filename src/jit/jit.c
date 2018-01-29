@@ -21,16 +21,23 @@
  ******************************************************************************/
 
 #include "code_cache.h"
+
+#ifdef ENABLE_JIT_X86_64
 #include "x86_64/exec_mem.h"
+#endif
 
 #include "jit.h"
 
 void jit_init(void) {
+#ifdef ENABLE_JIT_X86_64
     exec_mem_init();
+#endif
     code_cache_init();
 }
 
 void jit_cleanup(void) {
     code_cache_cleanup();
+#ifdef ENABLE_JIT_X86_64
     exec_mem_cleanup();
+#endif
 }

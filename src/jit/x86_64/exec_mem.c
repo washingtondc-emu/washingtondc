@@ -20,6 +20,10 @@
  *
  ******************************************************************************/
 
+#ifndef ENABLE_JIT_X86_64
+#error this file should not be built when the x86_64 JIT backend is disabled
+#endif
+
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
