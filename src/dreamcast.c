@@ -469,8 +469,9 @@ static void dc_run_to_next_event(Sh4 *sh4) {
 
 #ifdef ENABLE_JIT_X86_64
 static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
+    reg32_t newpc = sh4->reg[SH4_REG_PC];
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
-        addr32_t blk_addr = sh4->reg[SH4_REG_PC];
+        addr32_t blk_addr = newpc;
         struct cache_entry *ent = code_cache_find(blk_addr);
 
         struct code_block_x86_64 *blk = &ent->blk.x86_64;
@@ -484,7 +485,7 @@ static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
             ent->valid = true;
         }
 
-        ((void(*)(void))blk->native)();
+        newpc = ((reg32_t(*)(void))blk->native)();
 
         dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
             blk->cycle_count * SH4_CLOCK_SCALE;
@@ -493,12 +494,14 @@ static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
 
         dc_cycle_advance(cycles_after - dc_cycle_stamp());
     }
+    sh4->reg[SH4_REG_PC] = newpc;
 }
 #endif
 
 static void dc_run_to_next_event_jit(Sh4 *sh4) {
+    reg32_t newpc = sh4->reg[SH4_REG_PC];
     while (dc_sched_target_stamp > dc_cycle_stamp()) {
-        addr32_t blk_addr = sh4->reg[SH4_REG_PC];
+        addr32_t blk_addr = newpc;
         struct cache_entry *ent = code_cache_find(blk_addr);
 
         struct code_block_intp *blk = &ent->blk.intp;
@@ -512,7 +515,7 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
             ent->valid = true;
         }
 
-        code_block_intp_exec(blk);
+        newpc = code_block_intp_exec(blk);
 
         dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
             blk->cycle_count * SH4_CLOCK_SCALE;
@@ -521,6 +524,7 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
 
         dc_cycle_advance(cycles_after - dc_cycle_stamp());
     }
+    sh4->reg[SH4_REG_PC] = newpc;
 }
 
 #else

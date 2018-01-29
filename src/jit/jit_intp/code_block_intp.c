@@ -36,6 +36,8 @@ void code_block_intp_init(struct code_block_intp *block) {
 void code_block_intp_cleanup(struct code_block_intp *block) {
     if (block->inst_list)
         free(block->inst_list);
+    if (block->slots)
+        free(block->slots);
 }
 
 void code_block_intp_compile(struct code_block_intp *out,
@@ -52,9 +54,11 @@ void code_block_intp_compile(struct code_block_intp *out,
     memcpy(out->inst_list, il_blk->inst_list, n_bytes);
     out->cycle_count = il_blk->cycle_count;
     out->inst_count = inst_count;
+    out->n_slots = il_blk->n_slots;
+    out->slots = (uint32_t*)malloc(out->n_slots * sizeof(uint32_t));
 }
 
-void code_block_intp_exec(struct code_block_intp const *block) {
+reg32_t code_block_intp_exec(struct code_block_intp const *block) {
     unsigned inst_count = block->inst_count;
     struct jit_inst const* inst = block->inst_list;
     Sh4 *cpu = dreamcast_get_cpu();
@@ -70,8 +74,7 @@ void code_block_intp_exec(struct code_block_intp const *block) {
             inst++;
             break;
         case JIT_OP_PREPARE_JUMP:
-            jump_addr = cpu->reg[inst->immed.prepare_jump.reg_idx] +
-                inst->immed.prepare_jump.offs;
+            jump_addr = block->slots[inst->immed.prepare_jump.slot_idx];
             inst++;
             break;
         case JIT_OP_PREPARE_JUMP_CONST:
@@ -83,8 +86,7 @@ void code_block_intp_exec(struct code_block_intp const *block) {
             inst++;
             break;
         case JIT_OP_JUMP:
-            cpu->reg[SH4_REG_PC] = jump_addr;
-            return;
+            return jump_addr;
         case JIT_SET_COND_JUMP_BASED_ON_T:
             /*
              * set conditional jump flag if t_flag == the sh4's t flag.
@@ -103,33 +105,57 @@ void code_block_intp_exec(struct code_block_intp const *block) {
              * complete in the same number of cycles every time.
              */
             if (cond_jump_flag)
-                cpu->reg[SH4_REG_PC] = jump_addr;
+                return jump_addr;
             else
-                cpu->reg[SH4_REG_PC] = alt_jump_addr;
-            return;
-        case JIT_SET_REG:
-            cpu->reg[inst->immed.set_reg.reg_idx] = inst->immed.set_reg.new_val;
+                return alt_jump_addr;
+        case JIT_SET_SLOT:
+            block->slots[inst->immed.set_slot.slot_idx] =
+                inst->immed.set_slot.new_val;
             inst++;
             break;
         case JIT_OP_RESTORE_SR:
             old_sr = cpu->reg[SH4_REG_SR];
-            cpu->reg[SH4_REG_SR] = cpu->reg[SH4_REG_SSR];
+            cpu->reg[SH4_REG_SR] = block->slots[inst->immed.restore_sr.slot_no];
             sh4_on_sr_change(cpu, old_sr);
             inst++;
             break;
-        case JIT_OP_READ_16_REG:
-            cpu->reg[inst->immed.read_16_reg.reg_no] =
-                sh4_read_mem_16(cpu, inst->immed.read_16_reg.addr);
+        case JIT_OP_READ_16_SLOT:
+            block->slots[inst->immed.read_16_slot.slot_no] =
+                sh4_read_mem_16(cpu, inst->immed.read_16_slot.addr);
             inst++;
             break;
         case JIT_OP_SIGN_EXTEND_16:
-            cpu->reg[inst->immed.sign_extend_16.reg_no] =
-                (int32_t)(int16_t)cpu->reg[inst->immed.sign_extend_16.reg_no];
+            block->slots[inst->immed.sign_extend_16.slot_no] =
+                (int32_t)(int16_t)block->slots[inst->immed.sign_extend_16.slot_no];
             inst++;
             break;
-        case JIT_OP_READ_32_REG:
-            cpu->reg[inst->immed.read_32_reg.reg_no] =
-                sh4_read_mem_32(cpu, inst->immed.read_32_reg.addr);
+        case JIT_OP_READ_32_SLOT:
+            block->slots[inst->immed.read_32_slot.slot_no] =
+                sh4_read_mem_32(cpu, inst->immed.read_32_slot.addr);
+            inst++;
+            break;
+        case JIT_OP_LOAD_SLOT:
+            block->slots[inst->immed.load_slot.slot_no] =
+                *inst->immed.load_slot.src;
+            inst++;
+            break;
+        case JIT_OP_STORE_SLOT:
+            *inst->immed.store_slot.dst =
+                block->slots[inst->immed.store_slot.slot_no];
+            inst++;
+            break;
+        case JIT_OP_ADD:
+            block->slots[inst->immed.add.slot_dst] +=
+                block->slots[inst->immed.add.slot_src];
+            inst++;
+            break;
+        case JIT_OP_ADD_CONST32:
+            block->slots[inst->immed.add_const32.slot_dst] +=
+                inst->immed.add_const32.const32;
+            inst++;
+            break;
+        case JIT_OP_DISCARD_SLOT:
+            // nothing to do here
             inst++;
             break;
         }

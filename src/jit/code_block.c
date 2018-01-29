@@ -27,6 +27,8 @@
 #include "sh4_inst.h"
 #include "code_block.h"
 #include "dreamcast.h"
+#include "hw/sh4/sh4_reg.h"
+#include "hw/sh4/sh4_disas.h"
 
 #define DEFAULT_BLOCK_LEN 32
 #define BLOCK_GROW_LEN 1
@@ -64,6 +66,9 @@ void il_code_block_push_inst(struct il_code_block *block,
 
 void il_code_block_compile(struct il_code_block *block, addr32_t addr) {
     bool do_continue;
+
+    sh4_disas_new_block();
+
     do {
         do_continue = sh4_disas_inst(block, addr);
         addr += 2;

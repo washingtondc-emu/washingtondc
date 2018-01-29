@@ -37,6 +37,9 @@ struct il_code_block {
     unsigned inst_alloc;
     unsigned cycle_count;
     unsigned last_inst_type;
+
+    // this is a counter of how many slots the code block uses
+    unsigned n_slots;
 };
 
 union jit_code_block {

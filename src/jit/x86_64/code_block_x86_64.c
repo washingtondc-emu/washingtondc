@@ -36,14 +36,344 @@
 
 #include "code_block_x86_64.h"
 
+#define N_REGS 16
+
 /*
- * TODO: pick a smaller default allocation size and dynamically expand blocks
- * as needed during compilation.
+ * x86_64 System V ABI (for Unix systems).
+ * Source:
+ *     https://en.wikipedia.org/wiki/X86_calling_conventions#System_V_AMD64_ABI
  *
- * 32 kilobytes is probably larger than most blocks need to be, and in certain
- * situations it might not be large enough.  A "one-size-fits-all" allocation is
- * suboptimal in this case.
+ * non-float args go into RDI, RSI, RDX, RCX, R8, R9
+ * Subsequent args get pushed on to the stack, just like in x86 stdcall.
+ * If calling a variadic function, number of floats in SSE/AvX regs needs to be
+ * passed in RAX
+ * non-float return values go into RAX
+ * If returning a 128-bit value, RDX is used too (I am not sure which register
+ * is high and which register is low).
+ * values in RBX, RBP, R12-R15 will be saved by the callee (and also I think
+ * RSP, but the wiki page doesn't say that).
+ * All other values should be considered clobberred by the function call.
  */
+
+/*
+ * XXX if you change these, don't forget to set the locked attribute for the
+ * new reg (and also clear the locked attributes on the old regs).
+ */
+#define JMP_ADDR_REG RBX
+#define ALT_JMP_ADDR_REG R12
+#define COND_JMP_FLAG_REG R13
+
+__attribute__((unused))
+static struct reg_stat {
+    // if true this reg can never ever be allocated under any circumstance.
+    
+    bool const locked;
+
+    // if this is false, nothing is in this register and it is free at any time
+    bool in_use;
+
+    /*
+     * if this is true, the register is currently in use right now, and no
+     * other slots should be allowed in here.  native il implementations should
+     * grab any registers they are using, then use those registers then ungrab
+     * them.
+     *
+     * When a register is not grabbed, the value contained within it is still
+     * valid.  Being grabbed only prevents the register from going away.
+     */
+    bool grabbed;
+
+    unsigned slot_no;
+} regs[N_REGS] = {
+    [RAX] = {
+        .locked = false
+    },
+    [RCX] = {
+        .locked = false
+    },
+    [RDX] = {
+        .locked = false
+    },
+    [RBX] = {
+        // JMP_ADDR_REG
+        .locked = true
+    },
+    [RSP] = {
+        // stack pointer
+        .locked = true
+    },
+    [RBP] = {
+        // base pointer
+        .locked = true
+    },
+    [RSI] = {
+        .locked = false
+    },
+    [RDI] = {
+        .locked = false
+    },
+    [R8] = {
+        .locked = false
+    },
+    [R9] = {
+        .locked = false
+    },
+    [R10] = {
+        .locked = false
+    },
+    [R11] = {
+        .locked = false
+    },
+    [R12] = {
+        // ALT_JMP_ADDR_REG
+        .locked = true
+    },
+    [R13] = {
+        // COND_JMP_FLAG_REG
+        .locked = true
+    },
+    [R14] = {
+        .locked = false
+    },
+    [R15] = {
+        .locked = false
+    }
+};
+
+#define MAX_SLOTS 128
+
+struct slot {
+    union {
+        // offset from rbp (if this slot resides on the stack)
+        int rbp_offs;
+
+        // x86 register index (if this slot resides in a native host register)
+        unsigned reg_no;
+    };
+
+    // if false, the slot is not in use and all other fields are invalid
+    bool in_use;
+
+    // if true, reg_no is valid and the slot resides in an x86 register
+    // if false, rbp_offs is valid and the slot resides on the call-stack
+    bool in_reg;
+} slots[MAX_SLOTS];
+
+/*
+ * offset of the next push onto the stack.
+ *
+ * This value is always negative (or zero) because the stack grows downwards.
+ *
+ * This value only ever increases towards zero when a discarded or popped slot
+ * has an rbp_offs of (base_ptr_offs_next + 8).  Otherwise, the space formerly 
+ *occupied by that slot ends up getting wasted until the end of the frame.
+ */
+static int rsp_offs; // offset from base pointer to stack pointer
+
+static void grab_register(unsigned reg_no);
+static void ungrab_register(unsigned reg_no);
+
+static void reset_slots(void) {
+    memset(slots, 0, sizeof(slots));
+    unsigned reg_no;
+    for (reg_no = 0; reg_no < N_REGS; reg_no++) {
+        regs[reg_no].in_use = false;
+        regs[reg_no].grabbed = false;
+        regs[reg_no].slot_no = 0xdeadbeef;
+    }
+
+    rsp_offs = 0;
+}
+
+#if 0
+/*
+ * mark a given slot (as well as the register it resides in, if any) as no
+ * longer being in use.
+ */
+static void discard_slot(unsigned slot_no) {
+    struct slot *slot = slots + slot_no;
+    if (!slot->in_use)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    slot->in_use = false;
+    if (slot->in_reg) {
+        regs[slot->reg_no].in_use = false;
+    } else {
+        if (rsp_offs == slot->rbp_offs) {
+            // TODO: add 8 to RSP and base_ptr_offs_next
+        }
+    }
+}
+#endif
+
+/*
+ * move the given slot from a register to the stack.  As a precondition, the
+ * slot must be in a register and the register it is in must not be grabbed.
+ */
+static void move_slot_to_stack(unsigned slot_no) {
+    struct slot *slot = slots + slot_no;
+    if (!slot->in_use || !slot->in_reg)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    struct reg_stat *reg = regs + slot->reg_no;
+    if (!reg->in_use || reg->slot_no != slot_no ||
+        reg->locked /* || reg->grabbed */)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    x86asm_pushq_reg64(slot->reg_no);
+
+    slot->in_reg = false;
+    rsp_offs -= 8;
+    slot->rbp_offs = rsp_offs;
+    reg->in_use = false;
+}
+
+/*
+ * move the given slot into the given register.
+ *
+ * this function assumes that the register has already been allocated.
+ * it will safely move any slots already in the register to the stack.
+ */
+static void move_slot_to_reg(unsigned slot_no, unsigned reg_no) {
+    struct slot *slot = slots + slot_no;
+    if (!slot->in_use)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    if (slot->in_reg) {
+        /*
+         * moving a slot from one register to another is a legitimate thing to
+         * do on x86 because there are certain instructions that will only work
+         * with certain registers.  It isn't implemented yet because I don't
+         * need it yet.
+         */
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    struct reg_stat *reg_dst = regs + reg_no;
+    if (reg_dst->grabbed)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    if (reg_dst->in_use)
+        move_slot_to_stack(reg_dst->slot_no);
+
+    /* if (slot->rbp_offs == rsp_offs) { */
+    /*     rsp_offs += 8; */
+    /*     x86asm_popq_reg64(reg_no); */
+    /* } else  */{
+        // move the slot from the stack to the reg based on offset from rbp.
+        if (slot->rbp_offs > 127 || slot->rbp_offs < -128)
+            x86asm_movq_disp32_reg_reg(slot->rbp_offs, RBP, reg_no);
+        else
+            x86asm_movq_disp8_reg_reg(slot->rbp_offs, RBP, reg_no);
+    }
+
+    reg_dst->in_use = true;
+    reg_dst->slot_no = slot_no;
+    slot->reg_no = reg_no;
+    slot->in_reg = true;
+}
+
+/*
+ * The allocator calls this to find a register it can use.  This doesn't change
+ * the state of the register or do anything to save the value in that register.
+ * All it does is find a register which is not locked and not grabbed.
+ */
+static unsigned pick_reg(void) {
+    unsigned reg_no;
+
+    // first pass: try to find one that's not in use
+    for (reg_no = 0; reg_no < N_REGS; reg_no++) {
+        struct reg_stat const *reg = regs + reg_no;
+        if (!reg->locked && !reg->grabbed && !reg->in_use)
+            return reg_no;
+    }
+
+    /*
+     * second pass: they're all in use so just pick one that is not locked or
+     * grabbed.
+     */
+    for (reg_no = 0; reg_no < N_REGS; reg_no++) {
+        struct reg_stat const *reg = regs + reg_no;
+        if (!reg->locked && !reg->grabbed)
+            return reg_no;
+    }
+
+    LOG_ERROR("x86_64: no more registers!\n");
+    RAISE_ERROR(ERROR_INTEGRITY);
+}
+
+/*
+ * call this function to send the given register's contents (if any) to the
+ * stack.  You should first grab the register to prevent it from being
+ * allocated, and subsequently ungrab it when finished.  The register's contents
+ * are unchanged by this function.
+ */
+static void evict_register(unsigned reg_no) {
+    struct reg_stat *reg = regs + reg_no;
+    if (reg->in_use)
+        move_slot_to_stack(reg->slot_no);
+    reg->in_use = false;
+}
+
+/*
+ * If the slot is in a register, then mark that register as grabbed.
+ *
+ * If the slot is not in use, then find a register, move that register's slot
+ * to the stack (if there's something already in it), and mark that register as
+ * grabbed.  The value in the register is undefined.
+ *
+ * If the slot is on the stack, then find a register, move that register's slot
+ * to the stack (if there's something already in it), move this slot to that
+ * register, and mark that register as grabbed.
+ */
+static void grab_slot(unsigned slot_no) {
+    struct slot *slot = slots + slot_no;
+
+    if (slot->in_use) {
+        if (slot->in_reg)
+            goto mark_grabbed;
+
+        unsigned reg_no = pick_reg();
+        move_slot_to_reg(slot_no, reg_no);
+        goto mark_grabbed;
+    } else {
+        unsigned reg_no = pick_reg();
+        struct reg_stat *reg = regs + reg_no;
+        if (reg->in_use)
+            move_slot_to_stack(reg->slot_no);
+        reg->in_use = true;
+        reg->slot_no = slot_no;
+        slot->in_use = true;
+        slot->reg_no = reg_no;
+        slot->in_reg = true;
+        goto mark_grabbed;
+    }
+
+mark_grabbed:
+    grab_register(slot->reg_no);
+}
+
+static void ungrab_slot(unsigned slot_no) {
+    struct slot *slot = slots + slot_no;
+    if (slot->in_reg)
+        ungrab_register(slot->reg_no);
+    else
+        RAISE_ERROR(ERROR_INTEGRITY);
+}
+
+/*
+ * unlike grab_slot, this does not preserve the slot that is currently in the
+ * register.  To do that, call evict_register first.
+ */
+static void grab_register(unsigned reg_no) {
+    if (regs[reg_no].grabbed)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    regs[reg_no].grabbed = true;
+}
+
+static void ungrab_register(unsigned reg_no) {
+    if (!regs[reg_no].grabbed)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    regs[reg_no].grabbed = false;
+}
+
 #define X86_64_ALLOC_SIZE 32
 
 void code_block_x86_64_init(struct code_block_x86_64 *blk) {
@@ -65,46 +395,28 @@ void code_block_x86_64_cleanup(struct code_block_x86_64 *blk) {
 }
 
 /*
- * x86_64 System V ABI (for Unix systems).
- * Source:
- *     https://en.wikipedia.org/wiki/X86_calling_conventions#System_V_AMD64_ABI
- *
- * non-float args go into RDI, RSI, RDX, RCX, R8, R9
- * Subsequent args get pushed on to the stack, just like in x86 stdcall.
- * If calling a variadic function, number of floats in SSE/AvX regs needs to be
- * passed in RAX
- * non-float return values go into RAX
- * If returning a 128-bit value, RDX is used too (I am not sure which register
- * is high and which register is low).
- * values in RBX, RBP, R12-R15 will be saved by the callee (and also I think
- * RSP, but the wiki page doesn't say that).
- * All other values should be considered clobberred by the function call.
- */
-
-#define JMP_ADDR_REG RBX
-#define ALT_JMP_ADDR_REG R12
-#define COND_JMP_FLAG_REG R13
-
-/*
  * after emitting this:
  * original %rsp is in %rbp
  * (%rbp) is original %rbp
- * original value of JMP_ADDR_REG is at (%rbp)
- * original value of ALT_JMP_ADDR_REG is at (%rbp-8)
- * original value of COND_JMP_FLAG_REG is at (%rbp-16)
  */
 static void emit_stack_frame_open(void) {
     x86asm_pushq_reg64(RBP);
     x86asm_mov_reg64_reg64(RSP, RBP);
-    x86asm_pushq_reg64(JMP_ADDR_REG);
-    x86asm_pushq_reg64(ALT_JMP_ADDR_REG);
-    x86asm_pushq_reg64(COND_JMP_FLAG_REG);
+    x86asm_pushq_reg64(RBX);
+    x86asm_pushq_reg64(R12);
+    x86asm_pushq_reg64(R13);
+    x86asm_pushq_reg64(R14);
+    x86asm_pushq_reg64(R15);
+
+    rsp_offs = -40;
 }
 
 static void emit_stack_frame_close(void) {
-    x86asm_popq_reg64(COND_JMP_FLAG_REG);
-    x86asm_popq_reg64(ALT_JMP_ADDR_REG);
-    x86asm_popq_reg64(JMP_ADDR_REG);
+    x86asm_movq_disp8_reg_reg(-8, RBP, RBX);
+    x86asm_movq_disp8_reg_reg(-16, RBP, R12);
+    x86asm_movq_disp8_reg_reg(-24, RBP, R13);
+    x86asm_movq_disp8_reg_reg(-32, RBP, R14);
+    x86asm_movq_disp8_reg_reg(-40, RBP, R15);
     x86asm_mov_reg64_reg64(RBP, RSP);
     x86asm_popq_reg64(RBP);
 }
@@ -113,20 +425,48 @@ static void emit_stack_frame_close(void) {
 void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
     uint16_t inst_bin = inst->immed.fallback.inst.inst;
 
+    grab_register(RAX);
+    grab_register(RCX);
+    grab_register(RDX);
+    grab_register(RSI);
+    grab_register(RDI);
+    grab_register(R8);
+    grab_register(R9);
+    grab_register(R10);
+    grab_register(R11);
+
+    evict_register(RAX);
+    evict_register(RCX);
+    evict_register(RDX);
+    evict_register(RSI);
+    evict_register(RDI);
+    evict_register(R8);
+    evict_register(R9);
+    evict_register(R10);
+    evict_register(R11);
+
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm16_reg(inst_bin, RSI);
     x86asm_call_ptr(inst->immed.fallback.fallback_fn);
+
+    ungrab_register(R11);
+    ungrab_register(R10);
+    ungrab_register(R9);
+    ungrab_register(R8);
+    ungrab_register(RDI);
+    ungrab_register(RSI);
+    ungrab_register(RDX);
+    ungrab_register(RCX);
+    ungrab_register(RAX);
 }
 
 // JIT_OP_PREPARE_JUMP implementation
 void emit_prepare_jump(Sh4 *sh4, struct jit_inst const *inst) {
-    unsigned reg_idx = inst->immed.prepare_jump.reg_idx;
-    unsigned offs = inst->immed.prepare_jump.offs;
+    unsigned slot_idx = inst->immed.prepare_jump.slot_idx;
 
-    x86asm_mov_imm64_reg64((uintptr_t)(sh4->reg + reg_idx), R9);
-    x86asm_mov_indreg32_reg32(R9, EAX);
-    x86asm_add_imm32_eax(offs);
-    x86asm_mov_reg32_reg32(EAX, JMP_ADDR_REG);
+    grab_slot(slot_idx);
+    x86asm_mov_reg32_reg32(slots[slot_idx].reg_no, JMP_ADDR_REG);
+    ungrab_slot(slot_idx);
 }
 
 // JIT_OP_PREPARE_JUMP_CONST implementation
@@ -142,10 +482,9 @@ void emit_prepare_alt_jump(Sh4 *sh4, struct jit_inst const *inst) {
 
 // JIT_OP_JUMP implementation
 void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
-    void *ptr = sh4->reg + SH4_REG_PC;
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)ptr, RCX);
-    x86asm_mov_reg32_indreg32(JMP_ADDR_REG, RCX);
-
+    grab_register(RAX);
+    evict_register(RAX);
+    x86asm_mov_reg32_reg32(JMP_ADDR_REG, EAX);
     emit_stack_frame_close();
     x86asm_ret();
 }
@@ -154,6 +493,9 @@ void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
 void emit_set_cond_jump_based_on_t(Sh4 *sh4, struct jit_inst const *inst) {
     // this il instruction will configure a jump if t_flag == the sh4's t flag
     unsigned t_flag = inst->immed.set_cond_jump_based_on_t.t_flag ? 1 : 0;
+
+    grab_register(RAX);
+    evict_register(RAX);
 
     // read the SR into RAX
     void *sr_ptr = sh4->reg + SH4_REG_SR;
@@ -170,6 +512,8 @@ void emit_set_cond_jump_based_on_t(Sh4 *sh4, struct jit_inst const *inst) {
 
     // now store the final result
     x86asm_mov_reg64_reg64(RAX, COND_JMP_FLAG_REG);
+
+    ungrab_register(RAX);
 }
 
 /*
@@ -199,29 +543,46 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_jz_disp8(3);    // JUMP IF EQUAL
     x86asm_mov_reg64_reg64(JMP_ADDR_REG, RAX);
 
-    // the chosen address is now in %eax.  Move it to sh4->reg[SH4_REG_PC].
-    void *pc_ptr = sh4->reg + SH4_REG_PC;
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)pc_ptr, RDI);
-    x86asm_mov_reg32_indreg32(EAX, RDI);
+    // the chosen address is now in %eax, so we're ready to return
 
     emit_stack_frame_close();
     x86asm_ret();
 }
 
 // JIT_SET_REG implementation
-void emit_set_reg(Sh4 *sh4, struct jit_inst const *inst) {
-    void *reg_ptr = sh4->reg + inst->immed.set_reg.reg_idx;
-    uint32_t new_val = inst->immed.set_reg.new_val;
+void emit_set_slot(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_idx = inst->immed.set_slot.slot_idx;
+    uint32_t new_val = inst->immed.set_slot.new_val;
 
-    x86asm_mov_imm32_reg32(new_val, EAX);
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)reg_ptr, RCX);
-    x86asm_mov_reg32_indreg32(EAX, RCX);
+    grab_slot(slot_idx);
+    x86asm_mov_imm32_reg32(new_val, slots[slot_idx].reg_no);
+    ungrab_slot(slot_idx);
 }
 
 // JIT_OP_RESTORE_SR implementation
 void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
     void *sr_ptr = sh4->reg + SH4_REG_SR;
     void *ssr_ptr = sh4->reg + SH4_REG_SSR;
+
+    grab_register(RAX);
+    grab_register(RCX);
+    grab_register(RDX);
+    grab_register(RSI);
+    grab_register(RDI);
+    grab_register(R8);
+    grab_register(R9);
+    grab_register(R10);
+    grab_register(R11);
+
+    evict_register(RAX);
+    evict_register(RCX);
+    evict_register(RDX);
+    evict_register(RSI);
+    evict_register(RDI);
+    evict_register(R8);
+    evict_register(R9);
+    evict_register(R10);
+    evict_register(R11);
 
     // move old_sr into ESI for the function call
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sr_ptr, RCX);
@@ -235,48 +596,187 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
     // now call sh4_on_sr_change(cpu, old_sr)
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_call_ptr(sh4_on_sr_change);
+
+    ungrab_register(R11);
+    ungrab_register(R10);
+    ungrab_register(R9);
+    ungrab_register(R8);
+    ungrab_register(RDI);
+    ungrab_register(RSI);
+    ungrab_register(RDX);
+    ungrab_register(RCX);
+    ungrab_register(RAX);
 }
 
-// JIT_OP_READ_16_REG implementation
-void emit_read_16_reg(Sh4 *sh4, struct jit_inst const *inst) {
-    uint32_t vaddr = inst->immed.read_16_reg.addr;
-    void *reg_ptr = sh4->reg + inst->immed.read_16_reg.reg_no;
+// JIT_OP_READ_16_SLOT implementation
+void emit_read_16_slot(Sh4 *sh4, struct jit_inst const *inst) {
+    addr32_t vaddr = inst->immed.read_16_slot.addr;
+    unsigned slot_no = inst->immed.read_16_slot.slot_no;
 
     // call sh4_read_mem_16(sh4, vaddr)
+    grab_register(RAX);
+    grab_register(RCX);
+    grab_register(RDX);
+    grab_register(RSI);
+    grab_register(RDI);
+    grab_register(R8);
+    grab_register(R9);
+    grab_register(R10);
+    grab_register(R11);
+
+    evict_register(RAX);
+    evict_register(RCX);
+    evict_register(RDX);
+    evict_register(RSI);
+    evict_register(RDI);
+    evict_register(R8);
+    evict_register(R9);
+    evict_register(R10);
+    evict_register(R11);
+
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm32_reg32(vaddr, ESI);
     x86asm_call_ptr(sh4_read_mem_16);
-
-    // zero-extend the 16-bit value (maybe this isn't necessary?  IDK...)
     x86asm_and_imm32_rax(0x0000ffff);
 
-    // move the return value into *reg_ptr
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)reg_ptr, RDI);
-    x86asm_mov_reg32_indreg32(EAX, RDI);
+    ungrab_register(R11);
+    ungrab_register(R10);
+    ungrab_register(R9);
+    ungrab_register(R8);
+    ungrab_register(RDI);
+    ungrab_register(RSI);
+    ungrab_register(RDX);
+    ungrab_register(RCX);
+
+    grab_slot(slot_no);
+    x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
+
+    ungrab_slot(slot_no);
+    ungrab_register(RAX);
 }
 
 // JIT_OP_SIGN_EXTEND_16 implementation
 void emit_sign_extend_16(Sh4 *sh4, struct jit_inst const *inst) {
-    // void x86asm_movsx_indreg16_reg32(unsigned reg_src, unsigned reg_dst);
-    void *reg_ptr = sh4->reg + inst->immed.sign_extend_16.reg_no;
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)reg_ptr, RAX);
-    x86asm_movsx_indreg16_reg32(RAX, ECX);
-    x86asm_mov_reg32_indreg32(ECX, RAX);
+    unsigned slot_no = inst->immed.sign_extend_16.slot_no;
+
+    grab_slot(slot_no);
+
+    unsigned reg_no = slots[slot_no].reg_no;
+    x86asm_movsx_reg16_reg32(reg_no, reg_no);
+
+    ungrab_slot(slot_no);
 }
 
-// JIT_OP_READ_32_REG implementation
-void emit_read_32_reg(Sh4 *sh4, struct jit_inst const *inst) {
-    uint32_t vaddr = inst->immed.read_32_reg.addr;
-    void *reg_ptr = sh4->reg + inst->immed.read_32_reg.reg_no;
+// JIT_OP_READ_32_SLOT implementation
+void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
+    addr32_t vaddr = inst->immed.read_32_slot.addr;
+    unsigned slot_no = inst->immed.read_32_slot.slot_no;
 
     // call sh4_read_mem_32(sh4, vaddr)
+    grab_register(RAX);
+    grab_register(RCX);
+    grab_register(RDX);
+    grab_register(RSI);
+    grab_register(RDI);
+    grab_register(R8);
+    grab_register(R9);
+    grab_register(R10);
+    grab_register(R11);
+
+    evict_register(RAX);
+    evict_register(RCX);
+    evict_register(RDX);
+    evict_register(RSI);
+    evict_register(RDI);
+    evict_register(R8);
+    evict_register(R9);
+    evict_register(R10);
+    evict_register(R11);
+
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm32_reg32(vaddr, ESI);
     x86asm_call_ptr(sh4_read_mem_32);
 
-    // move the return value into *reg_ptr
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)reg_ptr, RDI);
-    x86asm_mov_reg32_indreg32(EAX, RDI);
+    ungrab_register(R11);
+    ungrab_register(R10);
+    ungrab_register(R9);
+    ungrab_register(R8);
+    ungrab_register(RDI);
+    ungrab_register(RSI);
+    ungrab_register(RDX);
+    ungrab_register(RCX);
+
+    grab_slot(slot_no);
+    x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
+
+    ungrab_slot(slot_no);
+    ungrab_register(RAX);
+}
+
+static void
+emit_load_slot(Sh4 *sh4, struct jit_inst const* inst) {
+    unsigned slot_no = inst->immed.load_slot.slot_no;
+    void const *src_ptr = inst->immed.load_slot.src;
+
+    grab_slot(slot_no);
+
+    unsigned reg_no = slots[slot_no].reg_no;
+
+    x86asm_mov_imm64_reg64((uintptr_t)src_ptr, reg_no);
+    x86asm_mov_indreg32_reg32(reg_no, reg_no);
+
+    ungrab_slot(slot_no);
+}
+
+static void
+emit_store_slot(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.store_slot.slot_no;
+    void const *dst_ptr = inst->immed.store_slot.dst;
+
+    grab_register(RAX);
+    evict_register(RAX);
+    grab_slot(slot_no);
+
+    unsigned reg_no = slots[slot_no].reg_no;
+    x86asm_mov_imm64_reg64((uintptr_t)dst_ptr, RAX);
+    x86asm_mov_reg32_indreg32(reg_no, RAX);
+
+    ungrab_slot(slot_no);
+    ungrab_register(RAX);
+}
+
+static void
+emit_add(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_src = inst->immed.add.slot_src;
+    unsigned slot_dst = inst->immed.add.slot_dst;
+
+    grab_slot(slot_src);
+    grab_slot(slot_dst);
+
+    x86asm_addl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
+
+    ungrab_slot(slot_dst);
+    ungrab_slot(slot_src);
+}
+
+static void
+emit_add_const32(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.add_const32.slot_dst;
+    uint32_t const_val = inst->immed.add_const32.const32;
+
+    grab_register(RAX);
+    evict_register(RAX);
+
+    grab_slot(slot_no);
+
+    unsigned reg_no = slots[slot_no].reg_no;
+
+    x86asm_mov_reg32_reg32(reg_no, EAX);
+    x86asm_add_imm32_eax(const_val);
+    x86asm_mov_reg32_reg32(EAX, reg_no);
+
+    ungrab_slot(slot_no);
+    ungrab_register(RAX);
 }
 
 void code_block_x86_64_compile(struct code_block_x86_64 *out,
@@ -287,6 +787,8 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
     out->cycle_count = il_blk->cycle_count;
 
     x86asm_set_dst(out->native, X86_64_ALLOC_SIZE);
+
+    reset_slots();
 
     emit_stack_frame_open();
 
@@ -313,20 +815,36 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
         case JIT_JUMP_COND:
             emit_jump_cond(sh4, inst);
             return;
-        case JIT_SET_REG:
-            emit_set_reg(sh4, inst);
+        case JIT_SET_SLOT:
+            emit_set_slot(sh4, inst);
             break;
         case JIT_OP_RESTORE_SR:
             emit_restore_sr(sh4, inst);
             break;
-        case JIT_OP_READ_16_REG:
-            emit_read_16_reg(sh4, inst);
+        case JIT_OP_READ_16_SLOT:
+            emit_read_16_slot(sh4, inst);
             break;
         case JIT_OP_SIGN_EXTEND_16:
             emit_sign_extend_16(sh4, inst);
             break;
-        case JIT_OP_READ_32_REG:
-            emit_read_32_reg(sh4, inst);
+        case JIT_OP_READ_32_SLOT:
+            emit_read_32_slot(sh4, inst);
+            break;
+        case JIT_OP_LOAD_SLOT:
+            emit_load_slot(sh4, inst);
+            break;
+        case JIT_OP_STORE_SLOT:
+            emit_store_slot(sh4, inst);
+            break;
+        case JIT_OP_ADD:
+            emit_add(sh4, inst);
+            break;
+        case JIT_OP_ADD_CONST32:
+            emit_add_const32(sh4, inst);
+            break;
+        case JIT_OP_DISCARD_SLOT:
+            // TODO: this only causes trouble
+            /* discard_slot(inst->immed.discard_slot.slot_no); */
             break;
         }
         inst++;

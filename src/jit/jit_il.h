@@ -58,18 +58,36 @@ enum jit_opcode {
     JIT_JUMP_COND,
 
     // this will set a register to the given constant value
-    JIT_SET_REG,
+    JIT_SET_SLOT,
 
-    // this will copy SSR into SR and handle any state changes
+    // this will copy a slot into SR and handle any state changes
     JIT_OP_RESTORE_SR,
 
-    // read 16 bits from a constant address and store them in a given sh4 register
-    JIT_OP_READ_16_REG,
+    // read 16 bits from a constant address and store them in a given slot
+    JIT_OP_READ_16_SLOT,
 
     // sign-extend a 16-bit int in a register into a 32-bit int
     JIT_OP_SIGN_EXTEND_16,
 
-    JIT_OP_READ_32_REG
+    JIT_OP_READ_32_SLOT,
+
+    // load 32-bits from a host memory address into a jit register
+    JIT_OP_LOAD_SLOT,
+
+    // store 32-bits from a jit register address into a host memory address
+    JIT_OP_STORE_SLOT,
+
+    // add one slot into another
+    JIT_OP_ADD,
+
+    // add a 32-bit constant value into a slot
+    JIT_OP_ADD_CONST32,
+
+    /*
+     * This tells the backend that a given slot is no longer needed and its
+     * value does not need to be preserved.
+     */
+    JIT_OP_DISCARD_SLOT
 };
 
 struct jit_fallback_immed {
@@ -78,39 +96,65 @@ struct jit_fallback_immed {
 };
 
 struct prepare_jump_immed {
-    unsigned reg_idx;
-    unsigned offs; // constant offset added to the register
+    unsigned slot_idx; // index to the slot where the jump address is stored
 };
 
 struct prepare_jump_const_immed {
-    unsigned new_pc;
+    unsigned new_pc; // constant jump address
 };
 
 struct prepare_alt_jump_immed {
-    unsigned new_pc;
+    unsigned new_pc; // constant jump address
 };
 
 struct set_cond_jump_based_on_t_immed {
     unsigned t_flag;
 };
 
-struct set_reg_immed {
-    unsigned reg_idx;
+struct set_slot_immed {
+    unsigned slot_idx;
     uint32_t new_val;
 };
 
-struct read_16_reg_immed {
+struct restore_sr_immed {
+    unsigned slot_no;
+};
+
+struct read_16_slot_immed {
     addr32_t addr;
-    unsigned reg_no;
+    unsigned slot_no;
 };
 
 struct sign_extend_16_immed {
-    unsigned reg_no;
+    unsigned slot_no;
 };
 
-struct read_32_reg_immed {
+struct read_32_slot_immed {
     addr32_t addr;
-    unsigned reg_no;
+    unsigned slot_no;
+};
+
+struct load_slot_immed {
+    uint32_t const *src;
+    unsigned slot_no;
+};
+
+struct store_slot_immed {
+    uint32_t *dst;
+    unsigned slot_no;
+};
+
+struct add_immed {
+    unsigned slot_src, slot_dst;
+};
+
+struct add_const32_immed {
+    unsigned slot_dst;
+    uint32_t const32;
+};
+
+struct discard_slot_immed {
+    unsigned slot_no;
 };
 
 union jit_immed {
@@ -119,10 +163,16 @@ union jit_immed {
     struct prepare_jump_const_immed prepare_jump_const;
     struct prepare_alt_jump_immed prepare_alt_jump;
     struct set_cond_jump_based_on_t_immed set_cond_jump_based_on_t;
-    struct set_reg_immed set_reg;
-    struct read_16_reg_immed read_16_reg;
+    struct set_slot_immed set_slot;
+    struct restore_sr_immed restore_sr;
+    struct read_16_slot_immed read_16_slot;
     struct sign_extend_16_immed sign_extend_16;
-    struct read_32_reg_immed read_32_reg;
+    struct read_32_slot_immed read_32_slot;
+    struct load_slot_immed load_slot;
+    struct store_slot_immed store_slot;
+    struct add_immed add;
+    struct add_const32_immed add_const32;
+    struct discard_slot_immed discard_slot;
 };
 
 struct jit_inst {
@@ -130,18 +180,32 @@ struct jit_inst {
     union jit_immed immed;
 };
 
-void jit_fallback(struct jit_inst *op,
+struct il_code_block;
+
+void jit_fallback(struct il_code_block *block,
                   void(*fallback_fn)(Sh4*,Sh4OpArgs), inst_t inst);
-void jit_prepare_jump(struct jit_inst *op, unsigned sh4_reg_idx, unsigned offs);
-void jit_prepare_jump_const(struct jit_inst *op, unsigned new_pc);
-void jit_prepare_alt_jump(struct jit_inst *op, unsigned new_pc);
-void jit_jump(struct jit_inst *op);
-void jit_set_cond_jump_based_on_t(struct jit_inst *op, unsigned t_val);
-void jit_jump_cond(struct jit_inst *op);
-void jit_set_reg(struct jit_inst *op, unsigned reg_idx, uint32_t new_val);
-void jit_restore_sr(struct jit_inst *op);
-void jit_read_16_reg(struct jit_inst *op, addr32_t addr, unsigned reg_no);
-void jit_sign_extend_16(struct jit_inst *op, unsigned reg_no);
-void jit_read_32_reg(struct jit_inst *op, addr32_t addr, unsigned reg_no);
+void jit_prepare_jump(struct il_code_block *block, unsigned slot_idx);
+void jit_prepare_jump_const(struct il_code_block *block, unsigned new_pc);
+void jit_prepare_alt_jump(struct il_code_block *block, unsigned new_pc);
+void jit_jump(struct il_code_block *block);
+void jit_set_cond_jump_based_on_t(struct il_code_block *block, unsigned t_val);
+void jit_jump_cond(struct il_code_block *block);
+void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
+                  uint32_t new_val);
+void jit_restore_sr(struct il_code_block *block, unsigned slot_no);
+void jit_read_16_slot(struct il_code_block *block, addr32_t addr,
+                      unsigned slot_no);
+void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no);
+void jit_read_32_slot(struct il_code_block *block, addr32_t addr,
+                      unsigned slot_no);
+void jit_load_slot(struct il_code_block *block, unsigned slot_no,
+                   uint32_t const *src);
+void jit_store_slot(struct il_code_block *block, unsigned slot_no,
+                    uint32_t *dst);
+void jit_add(struct il_code_block *block, unsigned slot_src,
+             unsigned slot_dst);
+void jit_add_const32(struct il_code_block *block, unsigned slot_dst,
+                     uint32_t const32);
+void jit_discard_slot(struct il_code_block *block, unsigned slot_no);
 
 #endif

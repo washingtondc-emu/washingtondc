@@ -350,9 +350,38 @@ void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x8b, 0, reg_dst, reg_src);
 }
 
+// movl <disp8>(<reg_src>), <reg_dst>
+void x86asm_movl_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x8b, 1, reg_dst, reg_src);
+    put8(disp8);
+}
+
+// movl <disp32>(<reg_src>), <reg_dst>
+void x86asm_movl_disp32_reg_reg(int disp32, unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x8b, 2, reg_dst, reg_src);
+    put32(disp32);
+}
+
+// movq <disp8>(<reg_src>), <reg_dst>
+void x86asm_movq_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(REX_W, 0x8b, 1, reg_dst, reg_src);
+    put8(disp8);
+}
+
+// movq <disp32>(<reg_src>), <reg_dst>
+void x86asm_movq_disp32_reg_reg(int disp32, unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(REX_W, 0x8b, 2, reg_dst, reg_src);
+    put32(disp32);
+}
+
 void x86asm_add_imm32_eax(unsigned imm32) {
     put8(0x05);
     put32(imm32);
+}
+
+// addl %<reg_src>, %<reg_dst>
+void x86asm_addl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 3, 3, reg_dst, reg_src);
 }
 
 // movl %<reg_src>, %<reg_dst>
@@ -440,4 +469,9 @@ void x86asm_cmpl_reg32_imm8(unsigned reg_no, unsigned imm8) {
 void x86asm_jz_disp8(unsigned disp8) {
     put8(0x74);
     put8(disp8);
+}
+
+// movsx <%reg16>, %<reg32>
+void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm_2(0, 0x0f, 0xbf, 3, reg_dst, reg_src);
 }

@@ -30,6 +30,12 @@
 struct InstOpcode;
 struct il_code_block;
 
+/*
+ * call this at the beginning of every new block to reset the disassembler's
+ * state to its default configuration.
+ */
+void sh4_disas_new_block(void);
+
 bool sh4_disas_inst(struct il_code_block *block, unsigned pc);
 
 /*

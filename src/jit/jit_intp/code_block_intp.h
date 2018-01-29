@@ -32,6 +32,14 @@ struct il_code_block;
 struct code_block_intp {
     struct jit_inst *inst_list;
     unsigned cycle_count, inst_count;
+
+    /*
+     * number of JIT (NOT SH-4) registers.
+     * The JIT_OP_LOAD_REG and JIT_OP_STORE_REG il instructions will handle
+     * moving values between the sh4 registers and these il registers.
+     */
+    unsigned n_slots;
+    uint32_t *slots;
 };
 
 void code_block_intp_init(struct code_block_intp *block);
@@ -40,6 +48,6 @@ void code_block_intp_cleanup(struct code_block_intp *block);
 void code_block_intp_compile(struct code_block_intp *out,
                              struct il_code_block const *il_blk);
 
-void code_block_intp_exec(struct code_block_intp const *block);
+reg32_t code_block_intp_exec(struct code_block_intp const *block);
 
 #endif

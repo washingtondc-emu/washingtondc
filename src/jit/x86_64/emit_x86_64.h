@@ -123,11 +123,26 @@ void x86asm_mov_reg32_indreg32(unsigned reg_src, unsigned reg_dst);
 // movq <reg_src>, <reg_dst>
 void x86asm_mov_reg64_reg64(unsigned reg_src, unsigned reg_dst);
 
-// movl (<reg_src>, <reg_dst>)
+// movl (<reg_src>), <reg_dst>
 void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst);
+
+// movl <disp8>(<reg_src>), <reg_dst>
+void x86asm_movl_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst);
+
+// movl <disp32>(<reg_src>), <reg_dst>
+void x86asm_movl_disp32_reg_reg(int disp32, unsigned reg_src, unsigned reg_dst);
+
+// movq <disp8>(<reg_src>), <reg_dst>
+void x86asm_movq_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst);
+
+// movq <disp32>(<reg_src>), <reg_dst>
+void x86asm_movq_disp32_reg_reg(int disp32, unsigned reg_src, unsigned reg_dst);
 
 // add $imm32, %eax
 void x86asm_add_imm32_eax(unsigned imm32);
+
+// addl %<reg_src>, %<reg_dst>
+void x86asm_addl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 
 // movl %<reg_src>, %<reg_dst>
 void x86asm_mov_reg32_reg32(unsigned reg_src, unsigned reg_dst);
@@ -169,5 +184,8 @@ void x86asm_cmpl_reg32_imm8(unsigned reg_no, unsigned imm8);
  * jump if the zero-flag is set (meaning a cmp was equal)
  */
 void x86asm_jz_disp8(unsigned disp8);
+
+// movsx <%reg16>, %<reg32>
+void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst);
 
 #endif
