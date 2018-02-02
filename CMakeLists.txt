@@ -34,6 +34,7 @@ ExternalProject_Add(
         libevent
         PREFIX washingtondc-libevent
         URL https://github.com/libevent/libevent/releases/download/release-2.1.8-stable/libevent-2.1.8-stable.tar.gz
+        URL_MD5 f3eeaed018542963b7d2416ef1135ecc
         CONFIGURE_COMMAND ./configure
         BUILD_COMMAND make
         INSTALL_DIR ${LIBEVENT_LIB_PATH}
