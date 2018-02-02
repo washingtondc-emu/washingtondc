@@ -97,6 +97,11 @@ static void *load_file(char const *path, long *len);
 // Run until the next scheduled event (in dc_sched) should occur
 static void dc_run_to_next_event(Sh4 *sh4);
 static void dc_run_to_next_event_jit(Sh4 *sh4);
+
+#ifdef ENABLE_JIT_X86_64
+static void dc_run_to_next_event_jit_native(Sh4 *sh4);
+#endif
+
 #endif
 
 #ifdef ENABLE_DEBUGGER
@@ -110,12 +115,6 @@ static void dreamcast_check_debugger(void);
 static void dreamcast_enable_serial_server(void);
 
 static void dreamcast_enable_cmd_tcp(void);
-
-static void dc_run_to_next_event_jit(Sh4 *sh4);
-
-#ifdef ENABLE_JIT_X86_64
-static void dc_run_to_next_event_jit_native(Sh4 *sh4);
-#endif
 
 /*
  * XXX this used to be (SCHED_FREQUENCY / 10).  Now it's (SCHED_FREQUENCY / 100)
@@ -360,6 +359,9 @@ void dreamcast_run() {
     bool const jit = config_get_jit();
 #endif
 
+#else
+    bool const jit = !config_get_dbg_enable() &&
+        (config_get_jit() || config_get_native_jit());
 #endif
 
 #ifdef ENABLE_JIT_X86_64
