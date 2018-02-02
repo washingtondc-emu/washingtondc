@@ -21,10 +21,24 @@
 ################################################################################
 
 cmake_minimum_required(VERSION 2.6)
+include(ExternalProject)
+
 project(WashingtonDC)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
+
+set (LIBEVENT_LIB_PATH ${CMAKE_CURRENT_BINARY_DIR})
+
+ExternalProject_Add(
+        libevent
+        PREFIX washingtondc-libevent
+        URL https://github.com/libevent/libevent/releases/download/release-2.1.8-stable/libevent-2.1.8-stable.tar.gz
+        CONFIGURE_COMMAND ./configure
+        BUILD_COMMAND make
+        INSTALL_DIR ${LIBEVENT_LIB_PATH}
+        INSTALL_COMMAND make prefix=${LIBEVENT_LIB_PATH} install
+        BUILD_IN_SOURCE 1)
 
 # i need this for strdup and clock_gettime on Debian for some unknown reason
 add_definitions(-D_POSIX_C_SOURCE=200809L)
@@ -263,7 +277,8 @@ endif()
 include_directories("${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
                     "${PROJECT_SOURCE_DIR}/common"
-                    "${PROJECT_SOURCE_DIR}/external")
+                    "${PROJECT_SOURCE_DIR}/external"
+                    "${CMAKE_BINARY_DIR}/washingtondc-libevent/src/libevent/include")
 
 add_library(sh4 ${sh4_sources})
 
@@ -281,4 +296,4 @@ add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-target_link_libraries(washingtondc m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread event event_pthreads ${PNG_STATIC_LIBRARIES})
+target_link_libraries(washingtondc m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a ${LIBEVENT_LIB_PATH}/lib/libevent_pthreads.a ${PNG_STATIC_LIBRARIES})
