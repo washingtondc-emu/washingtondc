@@ -88,17 +88,20 @@ void code_block_x86_64_cleanup(struct code_block_x86_64 *blk) {
  * after emitting this:
  * original %rsp is in %rbp
  * (%rbp) is original %rbp
- * original value of JMP_ADDR_REG is at (%rbp-4)
+ * original value of JMP_ADDR_REG is at (%rbp)
  * original value of ALT_JMP_ADDR_REG is at (%rbp-8)
+ * original value of COND_JMP_FLAG_REG is at (%rbp-16)
  */
 static void emit_stack_frame_open(void) {
     x86asm_pushq_reg64(RBP);
     x86asm_mov_reg64_reg64(RSP, RBP);
     x86asm_pushq_reg64(JMP_ADDR_REG);
     x86asm_pushq_reg64(ALT_JMP_ADDR_REG);
+    x86asm_pushq_reg64(COND_JMP_FLAG_REG);
 }
 
 static void emit_stack_frame_close(void) {
+    x86asm_popq_reg64(COND_JMP_FLAG_REG);
     x86asm_popq_reg64(ALT_JMP_ADDR_REG);
     x86asm_popq_reg64(JMP_ADDR_REG);
     x86asm_mov_reg64_reg64(RBP, RSP);
