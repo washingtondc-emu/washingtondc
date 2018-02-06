@@ -173,6 +173,13 @@ static int rsp_offs; // offset from base pointer to stack pointer
 static void grab_register(unsigned reg_no);
 static void ungrab_register(unsigned reg_no);
 
+/*
+ * if the stack is not 16-byte aligned, make it 16-byte aligned.
+ * This way, when the CALL instruction is issued the stack will be off from
+ * 16-byte alignment by 8 bytes; this is what GCC's calling convention requires.
+ */
+static void align_stack(void);
+
 static void reset_slots(void) {
     memset(slots, 0, sizeof(slots));
     unsigned reg_no;
@@ -252,6 +259,13 @@ static void move_slot_to_reg(unsigned slot_no, unsigned reg_no) {
         RAISE_ERROR(ERROR_INTEGRITY);
     if (reg_dst->in_use)
         move_slot_to_stack(reg_dst->slot_no);
+
+    /*
+     * Don't allow writes to anywhere >= %rbp-40 because that is where the
+     * saved variables are stored on the stack (see emit_frame_open).
+     */
+    if (slot->rbp_offs >= -40)
+        RAISE_ERROR(ERROR_INTEGRITY);
 
     /* if (slot->rbp_offs == rsp_offs) { */
     /*     rsp_offs += 8; */
@@ -447,6 +461,7 @@ void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
 
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm16_reg(inst_bin, RSI);
+    align_stack();
     x86asm_call_ptr(inst->immed.fallback.fallback_fn);
 
     ungrab_register(R11);
@@ -595,6 +610,7 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
 
     // now call sh4_on_sr_change(cpu, old_sr)
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
+    align_stack();
     x86asm_call_ptr(sh4_on_sr_change);
 
     ungrab_register(R11);
@@ -636,6 +652,7 @@ void emit_read_16_slot(Sh4 *sh4, struct jit_inst const *inst) {
 
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm32_reg32(vaddr, ESI);
+    align_stack();
     x86asm_call_ptr(sh4_read_mem_16);
     x86asm_and_imm32_rax(0x0000ffff);
 
@@ -695,6 +712,7 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm32_reg32(vaddr, ESI);
+    align_stack();
     x86asm_call_ptr(sh4_read_mem_32);
 
     ungrab_register(R11);
@@ -777,6 +795,30 @@ emit_add_const32(Sh4 *sh4, struct jit_inst const *inst) {
 
     ungrab_slot(slot_no);
     ungrab_register(RAX);
+}
+
+/*
+ * pad the stack so that it is properly aligned for a function call.
+ * At the beginning of the stack frame, the stack was aligned by
+ * 16 modulo 8.  emit_stack_frame_open pushed 6*8 bytes onto the stack; this
+ * means that the stack alignment was still 16 modulo 8 after the stack frame
+ * open.  The rsp_offs at that point was -40, which is 16 modulo 8.  Ergo, when
+ * rsp_offs is 16-modulo-8, then the stack is 16-modulo-8.  Likewise, when
+ * rsp_offs is divisible by 16 then so is the actual stack pointer.
+ *
+ * Prior to issuing a call instruction, the stack-pointer needs to be aligned
+ * on a 16-byte boundary so that the alignment is 16-modulo-8 after the CALL
+ * instruction pushes the return address.  This function pads the stack so that
+ * it is aligned on a 16-byte boundary and the CALL instruction can be safely
+ * issued.
+ */
+static void align_stack(void) {
+    unsigned mod = rsp_offs % 16;
+
+    if (mod) {
+        x86asm_addq_imm8_reg(-(16 - mod), RSP);
+        rsp_offs -= (16 - mod);
+    }
 }
 
 void code_block_x86_64_compile(struct code_block_x86_64 *out,

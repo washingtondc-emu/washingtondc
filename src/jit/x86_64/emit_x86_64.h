@@ -141,6 +141,9 @@ void x86asm_movq_disp32_reg_reg(int disp32, unsigned reg_src, unsigned reg_dst);
 // add $imm32, %eax
 void x86asm_add_imm32_eax(unsigned imm32);
 
+// addq $imm8, %<reg>
+void x86asm_addq_imm8_reg(uint8_t imm8, unsigned reg);
+
 // addl %<reg_src>, %<reg_dst>
 void x86asm_addl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 

@@ -471,7 +471,13 @@ void x86asm_jz_disp8(unsigned disp8) {
     put8(disp8);
 }
 
-// movsx <%reg16>, %<reg32>
+// movsx %<reg16>, %<reg32>
 void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm_2(0, 0x0f, 0xbf, 3, reg_dst, reg_src);
+}
+
+// addq $imm8, %<reg>
+void x86asm_addq_imm8_reg(uint8_t imm8, unsigned reg) {
+    emit_mod_reg_rm(REX_W, 0x83, 3, 0, reg);
+    put8(imm8);
 }
