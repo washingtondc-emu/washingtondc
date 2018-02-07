@@ -448,7 +448,7 @@ static struct InstOpcode opcode_list[] = {
       true, SH4_GROUP_LS, 1, 0xf000, 0xd000 },
 
     // MOV Rm, Rn
-    { &sh4_inst_binary_movw_gen_gen, sh4_disas_fallback, false,
+    { &sh4_inst_binary_mov_gen_gen, sh4_disas_fallback, false,
       SH4_GROUP_MT, 1, 0xf00f, 0x6003 },
 
     // SWAP.B Rm, Rn
@@ -2628,7 +2628,7 @@ void sh4_inst_binary_movl_binind_disp_pc_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
 // MOV Rm, Rn
 // 0110nnnnmmmm0011
-void sh4_inst_binary_movw_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
+void sh4_inst_binary_mov_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0011, INST_CONS_0110nnnnmmmm0011);
 

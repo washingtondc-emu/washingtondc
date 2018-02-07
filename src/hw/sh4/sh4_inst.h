@@ -592,7 +592,7 @@ void sh4_inst_binary_movl_binind_disp_pc_gen(Sh4 *sh4, Sh4OpArgs inst);
 
 // MOV Rm, Rn
 // 0110nnnnmmmm0011
-void sh4_inst_binary_movw_gen_gen(Sh4 *sh4, Sh4OpArgs inst);
+void sh4_inst_binary_mov_gen_gen(Sh4 *sh4, Sh4OpArgs inst);
 
 // SWAP.B Rm, Rn
 // 0110nnnnmmmm1000
