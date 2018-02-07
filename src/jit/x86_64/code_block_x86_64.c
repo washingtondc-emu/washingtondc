@@ -178,18 +178,25 @@ void emit_set_cond_jump_based_on_t(Sh4 *sh4, struct jit_inst const *inst) {
  * this il instruction in x86 by having it call a C-function to make the
  * decision.
  */
-static uint32_t pick_cond_jump(unsigned cond_flag,
-                               uint32_t jump_addr_true,
-                               uint32_t jump_addr_false) {
-    return cond_flag ? jump_addr_true : jump_addr_false;
-}
-
 void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
-    x86asm_mov_reg64_reg64(COND_JMP_FLAG_REG, RDI);
-    x86asm_mov_reg64_reg64(JMP_ADDR_REG, RSI);
-    x86asm_mov_reg64_reg64(ALT_JMP_ADDR_REG, RDX);
-
-    x86asm_call_ptr(pick_cond_jump);
+    /*
+     * move the alt-jmp addr into the return register, then replace that with
+     * the normal jmp addr if the flag is set.
+     *
+     * TODO: the gcc output for the (now defunct) pick_cond_jump function is as
+     * follows:
+     * testl %edi, %edi
+     * movl %edx, %eax
+     * cmovne %esi, %eax
+     *
+     * Based on this, it would seem that gcc thinks a conditional-move is
+     * faster than a conditional jump-forward.  I should experiment and
+     * benchmark...
+     */
+    x86asm_mov_reg64_reg64(ALT_JMP_ADDR_REG, RAX);
+    x86asm_cmpl_reg32_imm8(COND_JMP_FLAG_REG, 0);
+    x86asm_jz_disp8(3);    // JUMP IF EQUAL
+    x86asm_mov_reg64_reg64(JMP_ADDR_REG, RAX);
 
     // the chosen address is now in %eax.  Move it to sh4->reg[SH4_REG_PC].
     void *pc_ptr = sh4->reg + SH4_REG_PC;

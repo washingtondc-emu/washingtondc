@@ -157,4 +157,17 @@ void x86asm_not_reg64(unsigned reg);
 // reg16 is a 64-bit pointer to a 16-bit integer
 void x86asm_movsx_indreg16_reg32(unsigned reg_src, unsigned reg_dst);
 
+/*
+ * cmpl #imm8, %<reg_no>
+ * compare the given register with the (sign-extended) imm8
+ */
+void x86asm_cmpl_reg32_imm8(unsigned reg_no, unsigned imm8);
+
+/*
+ * jz (pc+disp8)
+ *
+ * jump if the zero-flag is set (meaning a cmp was equal)
+ */
+void x86asm_jz_disp8(unsigned disp8);
+
 #endif
