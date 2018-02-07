@@ -522,6 +522,22 @@ bool sh4_disas_add_rm_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// ADD #imm, Rn
+// 0111nnnniiiiiiii
+bool sh4_disas_add_imm_rn(struct il_code_block *block, unsigned pc,
+                          struct InstOpcode const *op, inst_t inst) {
+    int32_t imm_val = (int32_t)(int8_t)(inst & 0xff);
+    unsigned reg_dst = (inst & 0x0f00) >> 8;
+
+    unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
+
+    jit_add_const32(block, slot_dst, imm_val);
+
+    reg_map[reg_dst].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

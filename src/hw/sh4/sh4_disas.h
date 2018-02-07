@@ -124,4 +124,9 @@ bool sh4_disas_ocbwb_arn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_add_rm_rn(struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
+// ADD #imm, Rn
+// 0111nnnniiiiiiii
+bool sh4_disas_add_imm_rn(struct il_code_block *block, unsigned pc,
+                          struct InstOpcode const *op, inst_t inst);
+
 #endif

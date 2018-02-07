@@ -436,7 +436,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_EX, 1, 0xf000, 0xe000 },
 
     // ADD #imm, Rn
-    { &sh4_inst_binary_add_imm_gen, sh4_disas_fallback, false,
+    { &sh4_inst_binary_add_imm_gen, sh4_disas_add_imm_rn, false,
       SH4_GROUP_EX, 1, 0xf000, 0x7000 },
 
     // MOV.W @(disp, PC), Rn
