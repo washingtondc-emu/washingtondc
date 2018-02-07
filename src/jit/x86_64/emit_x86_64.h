@@ -94,6 +94,8 @@ void x86asm_mov_imm32_reg32(unsigned imm32, unsigned reg_no);
 
 void x86asm_xor_reg64_reg64(unsigned reg_src, unsigned reg_dst);
 
+void x86asm_xorl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
 void x86asm_sal_imm8_reg64(unsigned imm8, unsigned reg_no);
 
 void x86asm_or_reg64_reg64(unsigned reg_src, unsigned reg_dst);

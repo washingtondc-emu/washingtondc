@@ -798,6 +798,22 @@ emit_add_const32(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_register(RAX);
 }
 
+static void
+emit_xor(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_src = inst->immed.xor.slot_src;
+    unsigned slot_dst = inst->immed.xor.slot_dst;
+
+    grab_slot(slot_src);
+    if (slot_src != slot_dst)
+        grab_slot(slot_dst);
+
+    x86asm_xorl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
+
+    if (slot_src != slot_dst)
+        ungrab_slot(slot_dst);
+    ungrab_slot(slot_src);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned by
@@ -884,6 +900,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_ADD_CONST32:
             emit_add_const32(sh4, inst);
+            break;
+        case JIT_OP_XOR:
+            emit_xor(sh4, inst);
             break;
         case JIT_OP_DISCARD_SLOT:
             // TODO: this only causes trouble

@@ -83,6 +83,9 @@ enum jit_opcode {
     // add a 32-bit constant value into a slot
     JIT_OP_ADD_CONST32,
 
+    // xor one slot into another
+    JIT_OP_XOR,
+
     /*
      * This tells the backend that a given slot is no longer needed and its
      * value does not need to be preserved.
@@ -157,6 +160,10 @@ struct discard_slot_immed {
     unsigned slot_no;
 };
 
+struct xor_immed {
+    unsigned slot_src, slot_dst;
+};
+
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct prepare_jump_immed prepare_jump;
@@ -173,6 +180,7 @@ union jit_immed {
     struct add_immed add;
     struct add_const32_immed add_const32;
     struct discard_slot_immed discard_slot;
+    struct xor_immed xor;
 };
 
 struct jit_inst {
@@ -207,5 +215,7 @@ void jit_add(struct il_code_block *block, unsigned slot_src,
 void jit_add_const32(struct il_code_block *block, unsigned slot_dst,
                      uint32_t const32);
 void jit_discard_slot(struct il_code_block *block, unsigned slot_no);
+void jit_xor(struct il_code_block *block, unsigned slot_src,
+             unsigned slot_dst);
 
 #endif

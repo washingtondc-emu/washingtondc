@@ -267,6 +267,10 @@ void x86asm_xor_reg64_reg64(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(REX_W, 0x33, 3, reg_dst, reg_src);
 }
 
+void x86asm_xorl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x33, 3, reg_dst, reg_src);
+}
+
 void x86asm_or_reg64_reg64(unsigned reg_src, unsigned reg_dst) {
     /*
      * PREFIX: 0x48 (64-bit operand REX)

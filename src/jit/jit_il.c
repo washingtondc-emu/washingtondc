@@ -191,3 +191,14 @@ void jit_discard_slot(struct il_code_block *block, unsigned slot_no) {
 
     il_code_block_push_inst(block, &op);
 }
+
+void jit_xor(struct il_code_block *block, unsigned slot_src,
+             unsigned slot_dst) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_XOR;
+    op.immed.xor.slot_src = slot_src;
+    op.immed.xor.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+}
