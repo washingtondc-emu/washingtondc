@@ -92,6 +92,9 @@ enum jit_opcode {
     // AND one slot with another
     JIT_OP_AND,
 
+    // OR one slot with another
+    JIT_OP_OR,
+
     /*
      * This tells the backend that a given slot is no longer needed and its
      * value does not need to be preserved.
@@ -178,6 +181,10 @@ struct and_immed {
     unsigned slot_src, slot_dst;
 };
 
+struct or_immed {
+    unsigned slot_src, slot_dst;
+};
+
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct prepare_jump_immed prepare_jump;
@@ -197,6 +204,7 @@ union jit_immed {
     struct xor_immed xor;
     struct mov_immed mov;
     struct and_immed and;
+    struct or_immed or;
 };
 
 struct jit_inst {
@@ -237,5 +245,7 @@ void jit_mov(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst);
 void jit_and(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst);
+void jit_or(struct il_code_block *block, unsigned slot_src,
+            unsigned slot_dst);
 
 #endif

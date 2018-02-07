@@ -279,7 +279,12 @@ void x86asm_or_reg64_reg64(unsigned reg_src, unsigned reg_dst) {
      * REG: destination register
      * R/M: source register
      */
-    emit_mod_reg_rm(REX_W, 0x09, 3, reg_dst, reg_src);
+    emit_mod_reg_rm(REX_W, 0x09, 3, reg_src, reg_dst);
+}
+
+// orl %<reg32>, %<reg32>
+void x86asm_orl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x09, 3, reg_src, reg_dst);
 }
 
 void x86asm_ret(void) {

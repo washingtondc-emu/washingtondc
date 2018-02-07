@@ -100,6 +100,9 @@ void x86asm_sal_imm8_reg64(unsigned imm8, unsigned reg_no);
 
 void x86asm_or_reg64_reg64(unsigned reg_src, unsigned reg_dst);
 
+// orl %<reg32>, %<reg32>
+void x86asm_orl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
 void x86asm_ret(void);
 
 // movl $<imm32>, <reg32>
