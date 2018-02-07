@@ -139,4 +139,9 @@ bool sh4_disas_xor_rm_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_mov_rm_rn(struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
+// AND Rm, Rn
+// 0010nnnnmmmm1001
+bool sh4_disas_and_rm_rn(struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, inst_t inst);
+
 #endif

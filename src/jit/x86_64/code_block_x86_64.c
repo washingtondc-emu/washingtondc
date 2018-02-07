@@ -830,6 +830,22 @@ emit_mov(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_slot(slot_src);
 }
 
+static void
+emit_and(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_src = inst->immed.and.slot_src;
+    unsigned slot_dst = inst->immed.and.slot_dst;
+
+    grab_slot(slot_src);
+    if (slot_src != slot_dst)
+        grab_slot(slot_dst);
+
+    x86asm_andl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
+
+    if (slot_src != slot_dst)
+        ungrab_slot(slot_dst);
+    ungrab_slot(slot_src);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned by
@@ -922,6 +938,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_MOV:
             emit_mov(sh4, inst);
+            break;
+        case JIT_OP_AND:
+            emit_and(sh4, inst);
             break;
         case JIT_OP_DISCARD_SLOT:
             // TODO: this only causes trouble

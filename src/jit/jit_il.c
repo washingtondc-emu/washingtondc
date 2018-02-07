@@ -213,3 +213,14 @@ void jit_mov(struct il_code_block *block, unsigned slot_src,
 
     il_code_block_push_inst(block, &op);
 }
+
+void jit_and(struct il_code_block *block, unsigned slot_src,
+             unsigned slot_dst) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_AND;
+    op.immed.and.slot_src = slot_src;
+    op.immed.and.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+}

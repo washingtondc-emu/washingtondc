@@ -427,6 +427,11 @@ void x86asm_and_imm32_rax(unsigned imm32) {
     put32(imm32);
 }
 
+// andl %<reg32>, %<reg32>
+void x86asm_andl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x21, 3, reg_src, reg_dst);
+}
+
 // cmp $<imm32>, %<reg64>
 // the imm32 is sign-extended
 void x86asm_cmp_imm32_reg64(unsigned imm32, unsigned reg64) {

@@ -162,6 +162,9 @@ void x86asm_popq_reg64(unsigned reg);
 // the imm32 is sign-extended
 void x86asm_and_imm32_rax(unsigned imm32);
 
+// andl %<reg32>, %<reg32>
+void x86asm_andl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
 // cmp $<imm32>, %<reg64>
 // the imm32 is sign-extended
 void x86asm_cmp_imm32_reg64(unsigned imm32, unsigned reg64);
