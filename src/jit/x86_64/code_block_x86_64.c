@@ -63,7 +63,6 @@
 #define ALT_JMP_ADDR_REG R12
 #define COND_JMP_FLAG_REG R13
 
-__attribute__((unused))
 static struct reg_stat {
     // if true this reg can never ever be allocated under any circumstance.
     
@@ -769,11 +768,13 @@ emit_add(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_dst = inst->immed.add.slot_dst;
 
     grab_slot(slot_src);
-    grab_slot(slot_dst);
+    if (slot_src != slot_dst)
+        grab_slot(slot_dst);
 
     x86asm_addl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
-    ungrab_slot(slot_dst);
+    if (slot_src != slot_dst)
+        ungrab_slot(slot_dst);
     ungrab_slot(slot_src);
 }
 

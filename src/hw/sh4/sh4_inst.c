@@ -464,7 +464,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_EX, 1, 0xf00f, 0x200d },
 
     // ADD Rm, Rn
-    { &sh4_inst_binary_add_gen_gen, sh4_disas_fallback, false,
+    { &sh4_inst_binary_add_gen_gen, sh4_disas_add_rm_rn, false,
       SH4_GROUP_EX, 1, 0xf00f, 0x300c },
 
     // ADDC Rm, Rn
