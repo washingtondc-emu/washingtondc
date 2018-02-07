@@ -134,4 +134,9 @@ bool sh4_disas_add_imm_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_xor_rm_rn(struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
+// MOV Rm, Rn
+// 0110nnnnmmmm0011
+bool sh4_disas_mov_rm_rn(struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, inst_t inst);
+
 #endif
