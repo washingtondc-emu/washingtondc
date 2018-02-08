@@ -137,6 +137,34 @@ static void emit_mod_reg_rm(unsigned rex, unsigned opcode, unsigned mod,
     }
 }
 
+static void emit_mod_reg_rm_2(unsigned rex, unsigned opcode1,
+                              unsigned opcode2, unsigned mod,
+                              unsigned reg, unsigned rm) {
+    bool need_sib = (rm == RSP) && (mod != 3);
+
+    if (reg >= R8) {
+        rex |= REX_R;
+        reg -= R8;
+    }
+    if (rm >= R8) {
+        rex |= REX_B;
+        rm -= R8;
+    }
+    if (rex)
+        put8(rex | 0x40);
+    put8(opcode1);
+    put8(opcode2);
+    unsigned mod_reg_rm = (mod << 6) | (reg << 3) | rm;
+    put8(mod_reg_rm);
+    if (need_sib) {
+        /*
+         * Special case - using RSP for the R/M puts the x86 in SIB mode, so we
+         * need to craft a SIB byte for (%RSP)
+         */
+        put8((RSP << 3) | RSP); // using RSP as an index counts as 0
+    }
+}
+
 void x86asm_set_dst(void *out_ptr, unsigned n_bytes) {
     alloc_start = out_ptr;
     alloc_len = n_bytes;
@@ -360,8 +388,7 @@ void x86asm_not_reg64(unsigned reg) {
 // movsx (<%reg16>), %<reg32>
 // reg16 is a 64-bit pointer to a 16-bit integer
 void x86asm_movsx_indreg16_reg32(unsigned reg_src, unsigned reg_dst) {
-    put8(0x0f);
-    emit_mod_reg_rm(0, 0xbf, 0, reg_dst, reg_src);
+    emit_mod_reg_rm_2(0, 0x0f, 0xbf, 0, reg_dst, reg_src);
 }
 
 /*
