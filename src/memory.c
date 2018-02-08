@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -37,4 +37,3 @@ void memory_cleanup(struct Memory *mem) {
 void memory_clear(struct Memory *mem) {
     memset(mem->mem, 0, sizeof(mem->mem[0]) * MEMORY_SIZE);
 }
-
