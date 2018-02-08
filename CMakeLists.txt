@@ -246,6 +246,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/jit/code_cache.h"
                 "${PROJECT_SOURCE_DIR}/src/jit/jit.h"
                 "${PROJECT_SOURCE_DIR}/src/jit/jit.c"
+                "${PROJECT_SOURCE_DIR}/src/jit/jit_mem.h"
+                "${PROJECT_SOURCE_DIR}/src/jit/jit_mem.c"
                 "${PROJECT_SOURCE_DIR}/src/jit/jit_intp/code_block_intp.h"
                 "${PROJECT_SOURCE_DIR}/src/jit/jit_intp/code_block_intp.c")
 

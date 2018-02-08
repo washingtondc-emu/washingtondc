@@ -22,6 +22,7 @@
 
 #include "jit/jit_il.h"
 #include "jit/code_block.h"
+#include "jit/jit_mem.h"
 
 #include "sh4.h"
 #include "sh4_read_inst.h"
@@ -453,7 +454,7 @@ bool sh4_disas_movw_a_disp_pc_rn(struct il_code_block *block, unsigned pc,
 
     unsigned slot_no = reg_slot_noload(cpu, block, reg_no);
 
-    jit_read_16_slot(block, addr, slot_no);
+    jit_sh4_mem_read_constaddr_16(block, addr, slot_no);
 
     jit_sign_extend_16(block, slot_no);
 
@@ -469,7 +470,7 @@ bool sh4_disas_movl_a_disp_pc_rn(struct il_code_block *block, unsigned pc,
     Sh4 *cpu = dreamcast_get_cpu();
 
     unsigned slot_no = reg_slot_noload(cpu, block, reg_no);
-    jit_read_32_slot(block, addr, slot_no);
+    jit_sh4_mem_read_constaddr_32(block, addr, slot_no);
 
     return true;
 }

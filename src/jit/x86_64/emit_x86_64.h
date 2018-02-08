@@ -131,6 +131,9 @@ void x86asm_mov_reg64_reg64(unsigned reg_src, unsigned reg_dst);
 // movl (<reg_src>), <reg_dst>
 void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst);
 
+// movw (<reg_src>), <reg_dst>
+void x86asm_mov_indreg16_reg16(unsigned reg_src, unsigned reg_dst);
+
 // movl <disp8>(<reg_src>), <reg_dst>
 void x86asm_movl_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst);
 
@@ -201,5 +204,8 @@ void x86asm_jz_disp8(unsigned disp8);
 
 // movsx <%reg16>, %<reg32>
 void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst);
+
+// movzxw (%<reg_src>), %<reg_dst>
+void x86asm_movzxw_indreg_reg(unsigned reg_src, unsigned reg_dst);
 
 #endif

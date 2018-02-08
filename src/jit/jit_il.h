@@ -71,6 +71,12 @@ enum jit_opcode {
 
     JIT_OP_READ_32_SLOT,
 
+    /*
+     * load 16-bits from a host memory address into a jit register
+     * upper 16-bits should be zero-extended.
+     */
+    JIT_OP_LOAD_SLOT16,
+
     // load 32-bits from a host memory address into a jit register
     JIT_OP_LOAD_SLOT,
 
@@ -149,6 +155,11 @@ struct read_32_slot_immed {
     unsigned slot_no;
 };
 
+struct load_slot16_immed {
+    uint16_t const *src;
+    unsigned slot_no;
+};
+
 struct load_slot_immed {
     uint32_t const *src;
     unsigned slot_no;
@@ -203,6 +214,7 @@ union jit_immed {
     struct read_16_slot_immed read_16_slot;
     struct sign_extend_16_immed sign_extend_16;
     struct read_32_slot_immed read_32_slot;
+    struct load_slot16_immed load_slot16;
     struct load_slot_immed load_slot;
     struct store_slot_immed store_slot;
     struct add_immed add;
@@ -240,6 +252,8 @@ void jit_read_32_slot(struct il_code_block *block, addr32_t addr,
                       unsigned slot_no);
 void jit_load_slot(struct il_code_block *block, unsigned slot_no,
                    uint32_t const *src);
+void jit_load_slot16(struct il_code_block *block, unsigned slot_no,
+                     uint16_t const *src);
 void jit_store_slot(struct il_code_block *block, unsigned slot_no,
                     uint32_t *dst);
 void jit_add(struct il_code_block *block, unsigned slot_src,

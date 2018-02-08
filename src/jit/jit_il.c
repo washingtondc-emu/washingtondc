@@ -139,6 +139,17 @@ void jit_read_32_slot(struct il_code_block *block, addr32_t addr,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_load_slot16(struct il_code_block *block, unsigned slot_no,
+                     uint16_t const *src) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_LOAD_SLOT16;
+    op.immed.load_slot16.src = src;
+    op.immed.load_slot16.slot_no = slot_no;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_load_slot(struct il_code_block *block, unsigned slot_no,
                    uint32_t const *src) {
     struct jit_inst op;

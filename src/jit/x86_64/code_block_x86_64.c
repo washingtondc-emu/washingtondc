@@ -731,6 +731,21 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
+emit_load_slot16(Sh4 *sh4, struct jit_inst const* inst) {
+    unsigned slot_no = inst->immed.load_slot16.slot_no;
+    void const *src_ptr = inst->immed.load_slot16.src;
+
+    grab_slot(slot_no);
+
+    unsigned reg_no = slots[slot_no].reg_no;
+
+    x86asm_mov_imm64_reg64((uintptr_t)src_ptr, reg_no);
+    x86asm_movzxw_indreg_reg(reg_no, reg_no);
+
+    ungrab_slot(slot_no);
+}
+
+static void
 emit_load_slot(Sh4 *sh4, struct jit_inst const* inst) {
     unsigned slot_no = inst->immed.load_slot.slot_no;
     void const *src_ptr = inst->immed.load_slot.src;
@@ -952,6 +967,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_READ_32_SLOT:
             emit_read_32_slot(sh4, inst);
+            break;
+        case JIT_OP_LOAD_SLOT16:
+            emit_load_slot16(sh4, inst);
             break;
         case JIT_OP_LOAD_SLOT:
             emit_load_slot(sh4, inst);

@@ -359,6 +359,12 @@ void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x8b, 0, reg_dst, reg_src);
 }
 
+// movw (<reg_src>), <reg_dst>
+void x86asm_mov_indreg16_reg16(unsigned reg_src, unsigned reg_dst) {
+    put8(0x66);
+    emit_mod_reg_rm(0, 0x8b, 0, reg_dst, reg_src);
+}
+
 // movl <disp8>(<reg_src>), <reg_dst>
 void x86asm_movl_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x8b, 1, reg_dst, reg_src);
@@ -499,4 +505,9 @@ void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst) {
 void x86asm_addq_imm8_reg(uint8_t imm8, unsigned reg) {
     emit_mod_reg_rm(REX_W, 0x83, 3, 0, reg);
     put8(imm8);
+}
+
+// movzxw (%<reg_src>), %<reg_dst>
+void x86asm_movzxw_indreg_reg(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm_2(0, 0x0f, 0xb7, 0, reg_dst, reg_src);
 }
