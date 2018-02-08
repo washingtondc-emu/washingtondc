@@ -556,7 +556,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_EX, 1, 0xf00f, 0x600a },
 
     // SUB Rm, Rn
-    { &sh4_inst_binary_sub_gen_gen, sh4_disas_fallback, false,
+    { &sh4_inst_binary_sub_gen_gen, sh4_disas_sub_rm_rn, false,
       SH4_GROUP_EX, 1, 0xf00f, 0x3008 },
 
     // SUBC Rm, Rn

@@ -393,6 +393,11 @@ void x86asm_addl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 3, 3, reg_dst, reg_src);
 }
 
+// subl %<reg_src>, %<reg_dst>
+void x86asm_subl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x29, 3, reg_src, reg_dst);
+}
+
 // movl %<reg_src>, %<reg_dst>
 void x86asm_mov_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x89, 3, reg_src, reg_dst);

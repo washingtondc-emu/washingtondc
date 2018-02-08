@@ -149,4 +149,10 @@ bool sh4_disas_and_rm_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_or_rm_rn(struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
+// SUB Rm, Rn
+// 0011nnnnmmmm1000
+bool sh4_disas_sub_rm_rn(struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, inst_t inst);
+
+
 #endif

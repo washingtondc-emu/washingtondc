@@ -779,6 +779,22 @@ emit_add(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
+emit_sub(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_src = inst->immed.add.slot_src;
+    unsigned slot_dst = inst->immed.add.slot_dst;
+
+    grab_slot(slot_src);
+    if (slot_src != slot_dst)
+        grab_slot(slot_dst);
+
+    x86asm_subl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
+
+    if (slot_src != slot_dst)
+        ungrab_slot(slot_dst);
+    ungrab_slot(slot_src);
+}
+
+static void
 emit_add_const32(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.add_const32.slot_dst;
     uint32_t const_val = inst->immed.add_const32.const32;
@@ -945,6 +961,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_ADD:
             emit_add(sh4, inst);
+            break;
+        case JIT_OP_SUB:
+            emit_sub(sh4, inst);
             break;
         case JIT_OP_ADD_CONST32:
             emit_add_const32(sh4, inst);

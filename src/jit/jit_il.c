@@ -172,6 +172,17 @@ void jit_add(struct il_code_block *block, unsigned slot_src,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_sub(struct il_code_block *block, unsigned slot_src,
+             unsigned slot_dst) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_SUB;
+    op.immed.sub.slot_src = slot_src;
+    op.immed.sub.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_add_const32(struct il_code_block *block, unsigned slot_dst,
                      uint32_t const32) {
     struct jit_inst op;

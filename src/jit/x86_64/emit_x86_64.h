@@ -152,6 +152,9 @@ void x86asm_addq_imm8_reg(uint8_t imm8, unsigned reg);
 // addl %<reg_src>, %<reg_dst>
 void x86asm_addl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 
+// subl %<reg_src>, %<reg_dst>
+void x86asm_subl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
 // movl %<reg_src>, %<reg_dst>
 void x86asm_mov_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 

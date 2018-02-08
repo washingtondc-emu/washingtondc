@@ -80,6 +80,9 @@ enum jit_opcode {
     // add one slot into another
     JIT_OP_ADD,
 
+    // subtract one slot from another
+    JIT_OP_SUB,
+
     // add a 32-bit constant value into a slot
     JIT_OP_ADD_CONST32,
 
@@ -160,6 +163,10 @@ struct add_immed {
     unsigned slot_src, slot_dst;
 };
 
+struct sub_immed {
+    unsigned slot_src, slot_dst;
+};
+
 struct add_const32_immed {
     unsigned slot_dst;
     uint32_t const32;
@@ -199,6 +206,7 @@ union jit_immed {
     struct load_slot_immed load_slot;
     struct store_slot_immed store_slot;
     struct add_immed add;
+    struct sub_immed sub;
     struct add_const32_immed add_const32;
     struct discard_slot_immed discard_slot;
     struct xor_immed xor;
@@ -235,6 +243,8 @@ void jit_load_slot(struct il_code_block *block, unsigned slot_no,
 void jit_store_slot(struct il_code_block *block, unsigned slot_no,
                     uint32_t *dst);
 void jit_add(struct il_code_block *block, unsigned slot_src,
+             unsigned slot_dst);
+void jit_sub(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst);
 void jit_add_const32(struct il_code_block *block, unsigned slot_dst,
                      uint32_t const32);
