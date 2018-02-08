@@ -68,6 +68,12 @@ static struct reg_stat {
     
     bool const locked;
 
+    /*
+     * Decide how likely the allocator is to pick this register.
+     * higher numbers are higher priority.
+     */
+    int const prio;
+
     // if this is false, nothing is in this register and it is free at any time
     bool in_use;
 
@@ -85,13 +91,16 @@ static struct reg_stat {
     unsigned slot_no;
 } regs[N_REGS] = {
     [RAX] = {
-        .locked = false
+        .locked = false,
+        .prio = 0
     },
     [RCX] = {
-        .locked = false
+        .locked = false,
+        .prio = 1
     },
     [RDX] = {
-        .locked = false
+        .locked = false,
+        .prio = 1
     },
     [RBX] = {
         // JMP_ADDR_REG
@@ -106,36 +115,44 @@ static struct reg_stat {
         .locked = true
     },
     [RSI] = {
-        .locked = false
+        .locked = false,
+        .prio = 0
     },
     [RDI] = {
-        .locked = false
+        .locked = false,
+        .prio = 0
     },
     [R8] = {
-        .locked = false
+        .locked = false,
+        .prio = 2
     },
     [R9] = {
-        .locked = false
+        .locked = false,
+        .prio = 2
     },
     [R10] = {
-        .locked = false
+        .locked = false,
+        .prio = 3
     },
     [R11] = {
-        .locked = false
+        .locked = false,
+        .prio = 3
     },
     [R12] = {
         // ALT_JMP_ADDR_REG
-        .locked = true
+        .locked = true,
     },
     [R13] = {
         // COND_JMP_FLAG_REG
         .locked = true
     },
     [R14] = {
-        .locked = false
+        .locked = false,
+        .prio = 4
     },
     [R15] = {
-        .locked = false
+        .locked = false,
+        .prio = 4
     }
 };
 
@@ -290,13 +307,24 @@ static void move_slot_to_reg(unsigned slot_no, unsigned reg_no) {
  */
 static unsigned pick_reg(void) {
     unsigned reg_no;
+    unsigned best_reg = 0;
+    int best_prio;
+    bool found_one = false;
 
     // first pass: try to find one that's not in use
     for (reg_no = 0; reg_no < N_REGS; reg_no++) {
         struct reg_stat const *reg = regs + reg_no;
-        if (!reg->locked && !reg->grabbed && !reg->in_use)
-            return reg_no;
+        if (!reg->locked && !reg->grabbed && !reg->in_use) {
+            if (!found_one || reg->prio > best_prio) {
+                found_one = true;
+                best_prio = reg->prio;
+                best_reg = reg_no;
+            }
+        }
     }
+
+    if (found_one)
+        return best_reg;
 
     /*
      * second pass: they're all in use so just pick one that is not locked or
@@ -304,9 +332,17 @@ static unsigned pick_reg(void) {
      */
     for (reg_no = 0; reg_no < N_REGS; reg_no++) {
         struct reg_stat const *reg = regs + reg_no;
-        if (!reg->locked && !reg->grabbed)
-            return reg_no;
+        if (!reg->locked && !reg->grabbed) {
+            if (!found_one || reg->prio > best_prio) {
+                found_one = true;
+                best_prio = reg->prio;
+                best_reg = reg_no;
+            }
+        }
     }
+
+    if (found_one)
+        return best_reg;
 
     LOG_ERROR("x86_64: no more registers!\n");
     RAISE_ERROR(ERROR_INTEGRITY);
