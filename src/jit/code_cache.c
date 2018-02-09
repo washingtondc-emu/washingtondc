@@ -87,6 +87,18 @@ static unsigned n_entries;
 static unsigned depth, max_depth;
 static unsigned cache_sz;
 static unsigned max_cache_sz;
+
+// how many times something got kicked out of the second-level cache
+static unsigned n_tbl_evictions;
+
+/*
+ * number of times we had to look in the tree for something because it wasn't
+ * in the second-level cache.
+ */
+static unsigned n_tree_searches;
+
+// total number of cache-reads
+static unsigned total_access_count;
 #endif
 
 #ifdef ENABLE_JIT_X86_64
@@ -127,6 +139,9 @@ static void perf_stats_inc_depth_count(void) {
 static void perf_stats_print(void) {
 #ifdef PERF_STATS
     LOG_INFO("==== Code Cache perf stats ====\n");
+    LOG_INFO("JIT: %u total accesses\n", total_access_count);
+    LOG_INFO("JIT: %u total tree searches\n", n_tree_searches);
+    LOG_INFO("JIT: %u table evictions\n", n_tbl_evictions);
     LOG_INFO("JIT: max depth was %u\n", max_depth);
     LOG_INFO("JIT: max cache size was %u\n", cache_sz);
     LOG_INFO("JIT: height of root at shutdown is %d\n", node_height(root));
@@ -468,6 +483,10 @@ static struct cache_entry *do_code_cache_find(struct cache_entry *node,
 }
 
 struct cache_entry *code_cache_find(addr32_t addr) {
+#ifdef PERF_STATS
+    total_access_count++;
+#endif
+
     if (nuke) {
         nuke = false;
         clear_cache(root);
@@ -505,6 +524,13 @@ struct cache_entry *code_cache_find(addr32_t addr) {
 
     if (root) {
         struct cache_entry *node = do_code_cache_find(root, addr);
+
+#ifdef PERF_STATS
+        n_tree_searches++;
+        if (tbl[hash_idx])
+            n_tbl_evictions++;
+#endif
+
         tbl[hash_idx] = node;
         return node;
     }
