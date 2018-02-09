@@ -24,6 +24,15 @@
 
 #include "jit_il.h"
 
+// Mark every bit of every slot as being unkown.
+static void invalidate_slots(struct il_code_block *block) {
+    unsigned slot_no;
+    for (slot_no = 0; slot_no < block->n_slots; slot_no++) {
+        block->slots[slot_no].known_bits = 0;
+        block->slots[slot_no].known_val = 0;
+    }
+}
+
 void jit_fallback(struct il_code_block *block,
                   void(*fallback_fn)(Sh4*,Sh4OpArgs), inst_t inst) {
     struct jit_inst op;
@@ -33,6 +42,8 @@ void jit_fallback(struct il_code_block *block,
     op.immed.fallback.inst.inst = inst;
 
     il_code_block_push_inst(block, &op);
+
+    invalidate_slots(block);
 }
 
 void jit_prepare_jump(struct il_code_block *block, unsigned slot_idx) {
@@ -97,6 +108,10 @@ void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
     op.immed.set_slot.slot_idx = slot_idx;
 
     il_code_block_push_inst(block, &op);
+
+    struct il_slot *slotp = block->slots + slot_idx;
+    slotp->known_bits = 0xffffffff;
+    slotp->known_val = new_val;
 }
 
 void jit_restore_sr(struct il_code_block *block, unsigned slot_no) {
@@ -106,6 +121,12 @@ void jit_restore_sr(struct il_code_block *block, unsigned slot_no) {
     op.immed.restore_sr.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
+
+    /*
+     * invalidating *every* slot might be overkill, but in general fucking with
+     * the SR can do a lot of things so I play it safe here.
+     */
+    invalidate_slots(block);
 }
 
 void jit_read_16_slot(struct il_code_block *block, addr32_t addr,
@@ -117,6 +138,10 @@ void jit_read_16_slot(struct il_code_block *block, addr32_t addr,
     op.immed.read_16_slot.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
+
+    struct il_slot *slotp = block->slots + slot_no;
+    slotp->known_bits = 0xffff0000;
+    slotp->known_val = 0;
 }
 
 void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no) {
@@ -126,6 +151,18 @@ void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no) {
     op.immed.sign_extend_16.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
+
+    struct il_slot *slotp = block->slots + slot_no;
+    if (slotp->known_bits & (1 << 16)) {
+        slotp->known_bits |= 0xffff0000;
+        if (slotp->known_val & (1 << 16))
+            slotp->known_val |= 0xffff0000;
+        else
+            slotp->known_val &= 0xffff;
+    } else {
+        slotp->known_val &= 0xffff;
+        slotp->known_bits &= 0xffff;
+    }
 }
 
 void jit_read_32_slot(struct il_code_block *block, addr32_t addr,
@@ -137,6 +174,10 @@ void jit_read_32_slot(struct il_code_block *block, addr32_t addr,
     op.immed.read_32_slot.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
+
+    struct il_slot *slotp = block->slots + slot_no;
+    slotp->known_val = 0;
+    slotp->known_bits = 0;
 }
 
 void jit_load_slot16(struct il_code_block *block, unsigned slot_no,
@@ -148,6 +189,11 @@ void jit_load_slot16(struct il_code_block *block, unsigned slot_no,
     op.immed.load_slot16.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
+
+    // the IL will zero-extend
+    struct il_slot *slotp = block->slots + slot_no;
+    slotp->known_val = 0;
+    slotp->known_bits = 0xffff0000;
 }
 
 void jit_load_slot(struct il_code_block *block, unsigned slot_no,
@@ -159,6 +205,10 @@ void jit_load_slot(struct il_code_block *block, unsigned slot_no,
     op.immed.load_slot.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
+
+    struct il_slot *slotp = block->slots + slot_no;
+    slotp->known_val = 0;
+    slotp->known_bits = 0;
 }
 
 void jit_store_slot(struct il_code_block *block, unsigned slot_no,
@@ -181,6 +231,30 @@ void jit_add(struct il_code_block *block, unsigned slot_src,
     op.immed.add.slot_dst = slot_dst;
 
     il_code_block_push_inst(block, &op);
+
+    // cache known values.
+    struct il_slot const *srcp = block->slots + slot_src;
+    struct il_slot *dstp = block->slots + slot_dst;
+    if (srcp->known_bits == 0xffffffff && dstp->known_bits == 0xffffffff) {
+        dstp->known_val = dstp->known_val + srcp->known_val;
+        dstp->known_bits = 0xffffffff;
+    } else if (slot_src == slot_dst) {
+        /*
+         * adding a slot into itself.
+         *
+         * The new value will be double the slot.
+         * The new least-significant-bit will be 0.
+         */
+        dstp->known_val <<= 1;
+        dstp->known_bits = (dstp->known_bits << 1) | 1;
+    } else {
+        /*
+         * TODO: it should be possible to know the lower-order bits in dstp if
+         * the original lower-order bits of srcp and dstp are known.
+         */
+        dstp->known_val = 0;
+        dstp->known_bits = 0;
+    }
 }
 
 void jit_sub(struct il_code_block *block, unsigned slot_src,
@@ -192,6 +266,32 @@ void jit_sub(struct il_code_block *block, unsigned slot_src,
     op.immed.sub.slot_dst = slot_dst;
 
     il_code_block_push_inst(block, &op);
+
+    // cache known values.
+    struct il_slot const *srcp = block->slots + slot_src;
+    struct il_slot *dstp = block->slots + slot_dst;
+    if (srcp->known_bits == 0xffffffff && dstp->known_bits == 0xffffffff) {
+        dstp->known_val = dstp->known_val - srcp->known_val;
+        dstp->known_bits = 0xffffffff;
+    } else if (slot_src == slot_dst) {
+        dstp->known_bits = 0xffffffff;
+        dstp->known_val = 0;
+        /*
+         * TODO: really there's no reason to emit a subtract in this case,
+         * might as well XOR reg_dst with itself instead.
+         */
+    } else {
+        /*
+         * TODO: it should be possible to know the lower-order bits in dstp if
+         * the original lower-order bits of srcp and dstp are known.
+         */
+        dstp->known_bits = 0;
+        dstp->known_val = 0;
+    }
+    /*
+     * TODO: there are a couple other "idiot-cases" we could cover here, such
+     * as dst-0, 0-src, etc.
+     */
 }
 
 void jit_add_const32(struct il_code_block *block, unsigned slot_dst,
@@ -203,6 +303,18 @@ void jit_add_const32(struct il_code_block *block, unsigned slot_dst,
     op.immed.add_const32.const32 = const32;
 
     il_code_block_push_inst(block, &op);
+
+    struct il_slot *dstp = block->slots + slot_dst;
+    if (dstp->known_bits == 0xffffffff) {
+        dstp->known_val += const32;
+    } else {
+        /*
+         * TODO: it should be possible to know the lower-order bits in dstp if
+         * the original lower-order bits of srcp and dstp are known.
+         */
+        dstp->known_bits = 0;
+        dstp->known_val = 0;
+    }
 }
 
 void jit_discard_slot(struct il_code_block *block, unsigned slot_no) {
@@ -212,6 +324,10 @@ void jit_discard_slot(struct il_code_block *block, unsigned slot_no) {
     op.immed.discard_slot.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
+
+    struct il_slot *dstp = block->slots + slot_no;
+    dstp->known_bits = 0;
+    dstp->known_val = 0;
 }
 
 void jit_xor(struct il_code_block *block, unsigned slot_src,
@@ -223,6 +339,17 @@ void jit_xor(struct il_code_block *block, unsigned slot_src,
     op.immed.xor.slot_dst = slot_dst;
 
     il_code_block_push_inst(block, &op);
+
+    // cache known values.
+    struct il_slot const *srcp = block->slots + slot_src;
+    struct il_slot *dstp = block->slots + slot_dst;
+    if (slot_src == slot_dst) {
+        dstp->known_bits = 0xffffffff;
+        dstp->known_val = 0;
+    } else {
+        dstp->known_bits &= srcp->known_bits;
+        dstp->known_val ^= srcp->known_val;
+    }
 }
 
 void jit_mov(struct il_code_block *block, unsigned slot_src,
@@ -234,6 +361,12 @@ void jit_mov(struct il_code_block *block, unsigned slot_src,
     op.immed.mov.slot_dst = slot_dst;
 
     il_code_block_push_inst(block, &op);
+
+    // cache known values.
+    struct il_slot const *srcp = block->slots + slot_src;
+    struct il_slot *dstp = block->slots + slot_dst;
+    dstp->known_bits = srcp->known_bits;
+    dstp->known_val = dstp->known_val;
 }
 
 void jit_and(struct il_code_block *block, unsigned slot_src,
@@ -245,6 +378,24 @@ void jit_and(struct il_code_block *block, unsigned slot_src,
     op.immed.and.slot_dst = slot_dst;
 
     il_code_block_push_inst(block, &op);
+
+    // cache known values.
+    struct il_slot const *srcp = block->slots + slot_src;
+    struct il_slot *dstp = block->slots + slot_dst;
+
+    /*
+     * we know the value of all dst-bits in which one of the two src-bits is 0
+     * (in which case the dst-bit is 0) or both of the two src-bits is 1 (in
+     * which the dst-bit is 1).  We do not know the value of a dst-bit if only
+     * one of the input bits is known to be 1.
+     */
+    uint32_t zero_bits = ((~srcp->known_val) & srcp->known_bits) |
+        ((~srcp->known_val) & srcp->known_bits);
+    uint32_t one_bits = (srcp->known_val & srcp->known_bits) &
+        (srcp->known_val & srcp->known_bits);
+
+    dstp->known_bits = zero_bits | one_bits;
+    dstp->known_val = ((~zero_bits) | one_bits) & dstp->known_bits;
 }
 
 void jit_or(struct il_code_block *block, unsigned slot_src,
@@ -256,4 +407,22 @@ void jit_or(struct il_code_block *block, unsigned slot_src,
     op.immed.or.slot_dst = slot_dst;
 
     il_code_block_push_inst(block, &op);
+
+    // cache known values.
+    struct il_slot const *srcp = block->slots + slot_src;
+    struct il_slot *dstp = block->slots + slot_dst;
+
+    /*
+     * we know the value of all dst-bits in which one of the two src-bits is 1
+     * (in which case the dst-bit is 1) or both of the two src-bits is 0 (in
+     * which case the dst-bit is 0).  We do not know the value of a dst-bit if
+     * only one of the two input-bits is known to be 0.
+     */
+    uint32_t zero_bits = ((~srcp->known_val) & srcp->known_bits) &
+        ((~dstp->known_val) & dstp->known_bits);
+    uint32_t one_bits = (srcp->known_val & srcp->known_bits) |
+        (dstp->known_val & dstp->known_bits);
+
+    dstp->known_bits = zero_bits | one_bits;
+    dstp->known_val = ((~zero_bits) | one_bits) & dstp->known_bits;
 }

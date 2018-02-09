@@ -31,6 +31,35 @@
 
 #include "jit_intp/code_block_intp.h"
 
+struct il_slot {
+    /*
+     * known_bits is a bitmask which tracks the bits whose values are known at
+     * compile-time.  known_val contains the values of those bits.
+     *
+     * For example, consider the following:
+     *     A = B & C;
+     * If the value of B is not known but the value of C is known, then I know
+     * that any bit in A which corresponds to a 0-bit in C will itself be zero.
+     * Ergo, A's known_bits would be ~C, and A's known_val would be 0.
+     *
+     * In a more general case, I might know some bits of B but not all of them,
+     * and I might know some bits of C but not all of them.  In that case, this
+     * expression would yield A's known bits for the above AND expression:
+     *    A.known_bits = (~B) | (~C)
+     *    A.known_val = 0
+     *
+     * The upshot of all this is that if the JIT knows what specific bits in a
+     * slot are at compile-time, it can use that information to make
+     * optimizations.  For example, if a bits 27:24 in a slot are 0xc, 0xd, 0xe
+     * or 0xf and bit 28 in that slot is 0, then I know that slot contains a
+     * valid pointer to system memory.  If that slot is used as an address for a
+     * memory read or write, then I can bypass the memory map and read/write
+     * directly to system memory.
+     */
+    uint32_t known_bits;
+    uint32_t known_val;
+};
+
 struct il_code_block {
     struct jit_inst *inst_list;
     unsigned inst_count;
@@ -40,6 +69,8 @@ struct il_code_block {
 
     // this is a counter of how many slots the code block uses
     unsigned n_slots;
+
+    struct il_slot *slots;
 };
 
 union jit_code_block {
@@ -60,5 +91,7 @@ void il_code_block_push_inst(struct il_code_block *block,
  * "addr".
  */
 void il_code_block_compile(struct il_code_block *block, addr32_t addr);
+
+void il_code_block_add_slot(struct il_code_block *block);
 
 #endif

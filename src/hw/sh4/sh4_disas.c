@@ -68,8 +68,11 @@ static struct residency reg_map[SH4_REGISTER_COUNT];
  * this tells whether a given slot is in use.
  * It is safe to make MAX_SLOTS bigger if necessary
  */
-#define MAX_SLOTS SH4_REGISTER_COUNT
+#define MAX_SLOTS 512
 static bool slot_status[MAX_SLOTS];
+
+// this counts the number of slots that have been allocated
+static unsigned n_slots;
 
 // this counts how many slots are currently in use
 static unsigned n_slots_in_use;
@@ -162,6 +165,7 @@ void sh4_disas_new_block(void) {
         slot_status[slot_no] = false;
 
     n_slots_in_use = 0;
+    n_slots = 0;
     max_slots = 0;
 }
 
@@ -662,17 +666,12 @@ static unsigned reg_slot_noload(Sh4 *sh4,
 }
 
 static unsigned res_alloc_slot(struct il_code_block *block) {
-    unsigned slot_no;
+    if (n_slots >= MAX_SLOTS)
+        RAISE_ERROR(ERROR_INTEGRITY);
 
-    for (slot_no = 0; slot_no < MAX_SLOTS; slot_no++)
-        if (!slot_status[slot_no])
-            break;
-    if (slot_no == MAX_SLOTS)
-        RAISE_ERROR(ERROR_INTEGRITY); // out of slots
+    unsigned slot_no = n_slots++;
     slot_status[slot_no] = true;
-    if (slot_no + 1 > block->n_slots) {
-        block->n_slots = slot_no + 1;
-    }
+    il_code_block_add_slot(block);
 
     return slot_no;
 }
