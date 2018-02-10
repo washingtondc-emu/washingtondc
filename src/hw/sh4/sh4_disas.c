@@ -307,11 +307,13 @@ bool sh4_disas_bf(struct il_code_block *block, unsigned pc,
     jit_prepare_alt_jump(block, pc + 2);
 
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
-    jit_set_cond_jump_based_on_t(block, slot_no, 0);
+    res_disassociate_reg(block, SH4_REG_SR);
 
     res_drain_all_regs(block);
 
-    jit_jump_cond(block);
+    jit_jump_cond(block, slot_no, 0);
+
+    res_free_slot(block, slot_no);
 
     return false;
 }
@@ -325,11 +327,13 @@ bool sh4_disas_bt(struct il_code_block *block, unsigned pc,
     jit_prepare_alt_jump(block, pc + 2);
 
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
-    jit_set_cond_jump_based_on_t(block, slot_no, 1);
+    res_disassociate_reg(block, SH4_REG_SR);
 
     res_drain_all_regs(block);
 
-    jit_jump_cond(block);
+    jit_jump_cond(block, slot_no, 1);
+
+    res_free_slot(block, slot_no);
 
     return false;
 }
@@ -343,13 +347,15 @@ bool sh4_disas_bfs(struct il_code_block *block, unsigned pc,
     jit_prepare_alt_jump(block, pc + 4);
 
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
-    jit_set_cond_jump_based_on_t(block, slot_no, 0);
+    res_disassociate_reg(block, SH4_REG_SR);
 
     sh4_disas_delay_slot(block, pc + 2);
 
     res_drain_all_regs(block);
 
-    jit_jump_cond(block);
+    jit_jump_cond(block, slot_no, 0);
+
+    res_free_slot(block, slot_no);
 
     return false;
 }
@@ -363,13 +369,15 @@ bool sh4_disas_bts(struct il_code_block *block, unsigned pc,
     jit_prepare_alt_jump(block, pc + 4);
 
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
-    jit_set_cond_jump_based_on_t(block, slot_no, 1);
+    res_disassociate_reg(block, SH4_REG_SR);
 
     sh4_disas_delay_slot(block, pc + 2);
 
     res_drain_all_regs(block);
 
-    jit_jump_cond(block);
+    jit_jump_cond(block, slot_no, 1);
+
+    res_free_slot(block, slot_no);
 
     return false;
 }

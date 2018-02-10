@@ -61,7 +61,6 @@
  */
 #define JMP_ADDR_REG RBX
 #define ALT_JMP_ADDR_REG R12
-#define COND_JMP_FLAG_REG R13
 
 static struct reg_stat {
     // if true this reg can never ever be allocated under any circumstance.
@@ -143,16 +142,16 @@ static struct reg_stat {
         .locked = true,
     },
     [R13] = {
-        // COND_JMP_FLAG_REG
-        .locked = true
+        .locked = false,
+        .prio = 4
     },
     [R14] = {
         .locked = false,
-        .prio = 4
+        .prio = 5
     },
     [R15] = {
         .locked = false,
-        .prio = 4
+        .prio = 5
     }
 };
 
@@ -539,43 +538,22 @@ void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_ret();
 }
 
-// JIT_SET_COND_JUMP_BASED_ON_T implementation
-void emit_set_cond_jump_based_on_t(Sh4 *sh4, struct jit_inst const *inst) {
-    // this il instruction will configure a jump if t_flag == the sh4's t flag
-    unsigned t_flag = inst->immed.set_cond_jump_based_on_t.t_flag ? 1 : 0;
-    unsigned slot_no = inst->immed.set_cond_jump_based_on_t.slot_no;
+// JIT_JUMP_COND implementation
+void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned t_flag = inst->immed.jump_cond.t_flag ? 1 : 0;
+    unsigned flag_slot = inst->immed.jump_cond.slot_no;
 
     grab_register(RAX);
     evict_register(RAX);
+    grab_register(RCX);
+    evict_register(RCX);
 
-    grab_slot(slot_no);
-
-    // read the SR into EAX
-    x86asm_mov_reg32_reg32(slots[slot_no].reg_no, EAX);
-
-    /*
-     * now compare that to t_flag.  We want to set COND_JMP_FLAG_REG if
-     * %eax == t_flag, else clear it.
-     */
-    x86asm_xorl_imm32_eax(t_flag);
-    x86asm_notl_reg32(EAX);
+    grab_slot(flag_slot);
+    x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, EAX);
     x86asm_and_imm32_rax(1);
+    x86asm_mov_reg32_reg32(EAX, ECX);
+    ungrab_slot(flag_slot);
 
-    // now store the final result
-    x86asm_mov_reg32_reg32(EAX, COND_JMP_FLAG_REG);
-
-    ungrab_slot(slot_no);
-    ungrab_register(RAX);
-}
-
-/*
- * JIT_JUMP_COND implementation
- *
- * I don't have labels implemented in my emitter yet, so I actually implement
- * this il instruction in x86 by having it call a C-function to make the
- * decision.
- */
-void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     /*
      * move the alt-jmp addr into the return register, then replace that with
      * the normal jmp addr if the flag is set.
@@ -591,14 +569,17 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
      * benchmark...
      */
     x86asm_mov_reg64_reg64(ALT_JMP_ADDR_REG, RAX);
-    x86asm_cmpl_reg32_imm8(COND_JMP_FLAG_REG, 0);
+    x86asm_cmpl_reg32_imm8(ECX, !t_flag);
     x86asm_jz_disp8(3);    // JUMP IF EQUAL
     x86asm_mov_reg64_reg64(JMP_ADDR_REG, RAX);
 
-    // the chosen address is now in %eax, so we're ready to return
+    // the chosen address is now in %rax, so we're ready to return
 
     emit_stack_frame_close();
     x86asm_ret();
+
+    ungrab_register(RCX);
+    ungrab_register(RAX); // not that it matters at this point...
 }
 
 // JIT_SET_REG implementation
@@ -985,9 +966,6 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
         case JIT_OP_JUMP:
             emit_jump(sh4, inst);
             return;
-        case JIT_SET_COND_JUMP_BASED_ON_T:
-            emit_set_cond_jump_based_on_t(sh4, inst);
-            break;
         case JIT_JUMP_COND:
             emit_jump_cond(sh4, inst);
             return;

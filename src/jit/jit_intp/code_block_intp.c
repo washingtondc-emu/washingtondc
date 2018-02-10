@@ -64,7 +64,7 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
     Sh4 *cpu = dreamcast_get_cpu();
     addr32_t jump_addr = 0;
     addr32_t alt_jump_addr = 0; // where a cond jump goes to if the jump fails
-    bool cond_jump_flag = false;
+    /* bool cond_jump_flag = false; */
     reg32_t old_sr;
 
     while (inst_count--) {
@@ -87,17 +87,6 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
             break;
         case JIT_OP_JUMP:
             return jump_addr;
-        case JIT_SET_COND_JUMP_BASED_ON_T:
-            /*
-             * set conditional jump flag if t_flag == the sh4's t flag.
-             */
-            cond_jump_flag =
-                ((bool)
-                 (block->slots[inst->immed.set_cond_jump_based_on_t.slot_no] &
-                  SH4_SR_FLAG_T_MASK)) ==
-                inst->immed.set_cond_jump_based_on_t.t_flag;
-            inst++;
-            break;
         case JIT_JUMP_COND:
             /*
              * This ends the current block even if the jump was not executed.
@@ -106,10 +95,11 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
              * mess with the cycle-counting since a given block would not
              * complete in the same number of cycles every time.
              */
-            if (cond_jump_flag)
+            if ((block->slots[inst->immed.jump_cond.slot_no] & 1) ==
+                inst->immed.jump_cond.t_flag) {
                 return jump_addr;
-            else
-                return alt_jump_addr;
+            }
+            return alt_jump_addr;
         case JIT_SET_SLOT:
             block->slots[inst->immed.set_slot.slot_idx] =
                 inst->immed.set_slot.new_val;

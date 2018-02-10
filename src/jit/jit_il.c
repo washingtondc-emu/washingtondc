@@ -81,21 +81,13 @@ void jit_jump(struct il_code_block *block) {
     il_code_block_push_inst(block, &op);
 }
 
-void jit_set_cond_jump_based_on_t(struct il_code_block *block,
-                                  unsigned slot_no, unsigned t_val) {
-    struct jit_inst op;
-
-    op.op = JIT_SET_COND_JUMP_BASED_ON_T;
-    op.immed.set_cond_jump_based_on_t.t_flag = t_val;
-    op.immed.set_cond_jump_based_on_t.slot_no = slot_no;
-
-    il_code_block_push_inst(block, &op);
-}
-
-void jit_jump_cond(struct il_code_block *block) {
+void jit_jump_cond(struct il_code_block *block,
+                   unsigned slot_no, unsigned t_val) {
     struct jit_inst op;
 
     op.op = JIT_JUMP_COND;
+    op.immed.jump_cond.slot_no = slot_no;
+    op.immed.jump_cond.t_flag = t_val;
 
     il_code_block_push_inst(block, &op);
 }

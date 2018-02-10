@@ -48,12 +48,6 @@ enum jit_opcode {
     // This jumps to the jump destination address previously stored
     JIT_OP_JUMP,
 
-    /*
-     * This can be configured to set the conditional jump flag if t is set, or
-     * it can be configured to set the conditional jump flag if t is not set.
-     */
-    JIT_SET_COND_JUMP_BASED_ON_T,
-
     // this will jump iff the conditional jump flag is set
     JIT_JUMP_COND,
 
@@ -128,7 +122,7 @@ struct prepare_alt_jump_immed {
     unsigned new_pc; // constant jump address
 };
 
-struct set_cond_jump_based_on_t_immed {
+struct jump_cond_immed {
     /*
      * this should point to SR, but really it can point to any register.
      *
@@ -220,7 +214,7 @@ union jit_immed {
     struct prepare_jump_immed prepare_jump;
     struct prepare_jump_const_immed prepare_jump_const;
     struct prepare_alt_jump_immed prepare_alt_jump;
-    struct set_cond_jump_based_on_t_immed set_cond_jump_based_on_t;
+    struct jump_cond_immed jump_cond;
     struct set_slot_immed set_slot;
     struct restore_sr_immed restore_sr;
     struct read_16_slot_immed read_16_slot;
@@ -252,9 +246,8 @@ void jit_prepare_jump(struct il_code_block *block, unsigned slot_idx);
 void jit_prepare_jump_const(struct il_code_block *block, unsigned new_pc);
 void jit_prepare_alt_jump(struct il_code_block *block, unsigned new_pc);
 void jit_jump(struct il_code_block *block);
-void jit_set_cond_jump_based_on_t(struct il_code_block *block,
-                                  unsigned slot_no, unsigned t_val);
-void jit_jump_cond(struct il_code_block *block);
+void jit_jump_cond(struct il_code_block *block,
+                   unsigned slot_no, unsigned t_val);
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
 void jit_restore_sr(struct il_code_block *block, unsigned slot_no);
