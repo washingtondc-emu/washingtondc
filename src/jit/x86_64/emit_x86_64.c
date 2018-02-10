@@ -455,12 +455,23 @@ void x86asm_cmp_imm32_reg64(unsigned imm32, unsigned reg64) {
     put32(imm32);
 }
 
+// xorl $<imm32>, %eax
+void x86asm_xorl_imm32_eax(unsigned imm32) {
+    put8(0x35);
+    put32(imm32);
+}
+
 // xor $<imm32>, %rax
 // the imm32 is sign-extended
 void x86asm_xor_imm32_rax(unsigned imm32) {
     put8(0x40 | REX_W);
     put8(0x35);
     put32(imm32);
+}
+
+// notl %(reg)
+void x86asm_notl_reg32(unsigned reg) {
+    emit_mod_reg_rm(0, 0xf7, 3, 0x02, reg);
 }
 
 // notq %(reg)

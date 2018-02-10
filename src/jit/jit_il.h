@@ -129,6 +129,18 @@ struct prepare_alt_jump_immed {
 };
 
 struct set_cond_jump_based_on_t_immed {
+    /*
+     * this should point to SR, but really it can point to any register.
+     *
+     * But it should point to SR.
+     */
+    unsigned slot_no;
+
+    /*
+     * expected value of the t_flag (either 0 or 1).  the conditional jump will
+     * go to the jump address if bit 0 in the given slot matches this expected
+     * value.  Otherwise, it will go to the alt jump address.
+     */
     unsigned t_flag;
 };
 
@@ -240,7 +252,8 @@ void jit_prepare_jump(struct il_code_block *block, unsigned slot_idx);
 void jit_prepare_jump_const(struct il_code_block *block, unsigned new_pc);
 void jit_prepare_alt_jump(struct il_code_block *block, unsigned new_pc);
 void jit_jump(struct il_code_block *block);
-void jit_set_cond_jump_based_on_t(struct il_code_block *block, unsigned t_val);
+void jit_set_cond_jump_based_on_t(struct il_code_block *block,
+                                  unsigned slot_no, unsigned t_val);
 void jit_jump_cond(struct il_code_block *block);
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);

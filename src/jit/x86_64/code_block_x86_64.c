@@ -543,26 +543,28 @@ void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
 void emit_set_cond_jump_based_on_t(Sh4 *sh4, struct jit_inst const *inst) {
     // this il instruction will configure a jump if t_flag == the sh4's t flag
     unsigned t_flag = inst->immed.set_cond_jump_based_on_t.t_flag ? 1 : 0;
+    unsigned slot_no = inst->immed.set_cond_jump_based_on_t.slot_no;
 
     grab_register(RAX);
     evict_register(RAX);
 
-    // read the SR into RAX
-    void *sr_ptr = sh4->reg + SH4_REG_SR;
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sr_ptr, RAX);
-    x86asm_mov_indreg32_reg32(RAX, EAX);
+    grab_slot(slot_no);
+
+    // read the SR into EAX
+    x86asm_mov_reg32_reg32(slots[slot_no].reg_no, EAX);
 
     /*
      * now compare that to t_flag.  We want to set COND_JMP_FLAG_REG if
      * %eax == t_flag, else clear it.
      */
-    x86asm_xor_imm32_rax(t_flag);
-    x86asm_not_reg64(RAX);
+    x86asm_xorl_imm32_eax(t_flag);
+    x86asm_notl_reg32(EAX);
     x86asm_and_imm32_rax(1);
 
     // now store the final result
-    x86asm_mov_reg64_reg64(RAX, COND_JMP_FLAG_REG);
+    x86asm_mov_reg32_reg32(EAX, COND_JMP_FLAG_REG);
 
+    ungrab_slot(slot_no);
     ungrab_register(RAX);
 }
 

@@ -92,7 +92,9 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
              * set conditional jump flag if t_flag == the sh4's t flag.
              */
             cond_jump_flag =
-                ((bool)(cpu->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK)) ==
+                ((bool)
+                 (block->slots[inst->immed.set_cond_jump_based_on_t.slot_no] &
+                  SH4_SR_FLAG_T_MASK)) ==
                 inst->immed.set_cond_jump_based_on_t.t_flag;
             inst++;
             break;

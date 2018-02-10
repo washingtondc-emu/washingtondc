@@ -182,6 +182,12 @@ void x86asm_cmp_imm32_reg64(unsigned imm32, unsigned reg64);
 // the imm32 is sign-extended
 void x86asm_xor_imm32_rax(unsigned imm32);
 
+// xorl $<imm32>, %eax
+void x86asm_xorl_imm32_eax(unsigned imm32);
+
+// notl %(reg)
+void x86asm_notl_reg32(unsigned reg);
+
 // notq %(reg)
 void x86asm_not_reg64(unsigned reg);
 
