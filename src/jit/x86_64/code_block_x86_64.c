@@ -188,6 +188,8 @@ static int rsp_offs; // offset from base pointer to stack pointer
 static void grab_register(unsigned reg_no);
 static void ungrab_register(unsigned reg_no);
 
+static void evict_register(unsigned reg_no);
+
 /*
  * if the stack is not 16-byte aligned, make it 16-byte aligned.
  * This way, when the CALL instruction is issued the stack will be off from
@@ -226,6 +228,49 @@ static void discard_slot(unsigned slot_no) {
     }
 }
 #endif
+
+/*
+ * whenever you emit a function call, call this function first.
+ * This function will grab all volatile registers and emit code to make sure
+ * they all get saved.
+ */
+static void prefunc(void) {
+    grab_register(RAX);
+    grab_register(RCX);
+    grab_register(RDX);
+    grab_register(RSI);
+    grab_register(RDI);
+    grab_register(R8);
+    grab_register(R9);
+    grab_register(R10);
+    grab_register(R11);
+
+    evict_register(RAX);
+    evict_register(RCX);
+    evict_register(RDX);
+    evict_register(RSI);
+    evict_register(RDI);
+    evict_register(R8);
+    evict_register(R9);
+    evict_register(R10);
+    evict_register(R11);
+}
+
+/*
+ * whenever you emit a function call, call this function after
+ * really all it does is ungrab all the registers earlier grabbed by prefunc.
+ */
+static void postfunc(void) {
+    ungrab_register(R11);
+    ungrab_register(R10);
+    ungrab_register(R9);
+    ungrab_register(R8);
+    ungrab_register(RDI);
+    ungrab_register(RSI);
+    ungrab_register(RDX);
+    ungrab_register(RCX);
+    ungrab_register(RAX);
+}
 
 /*
  * move the given slot from a register to the stack.  As a precondition, the
@@ -473,40 +518,14 @@ static void emit_stack_frame_close(void) {
 void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
     uint16_t inst_bin = inst->immed.fallback.inst.inst;
 
-    grab_register(RAX);
-    grab_register(RCX);
-    grab_register(RDX);
-    grab_register(RSI);
-    grab_register(RDI);
-    grab_register(R8);
-    grab_register(R9);
-    grab_register(R10);
-    grab_register(R11);
-
-    evict_register(RAX);
-    evict_register(RCX);
-    evict_register(RDX);
-    evict_register(RSI);
-    evict_register(RDI);
-    evict_register(R8);
-    evict_register(R9);
-    evict_register(R10);
-    evict_register(R11);
+    prefunc();
 
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm16_reg(inst_bin, RSI);
     align_stack();
     x86asm_call_ptr(inst->immed.fallback.fallback_fn);
 
-    ungrab_register(R11);
-    ungrab_register(R10);
-    ungrab_register(R9);
-    ungrab_register(R8);
-    ungrab_register(RDI);
-    ungrab_register(RSI);
-    ungrab_register(RDX);
-    ungrab_register(RCX);
-    ungrab_register(RAX);
+    postfunc();
 }
 
 // JIT_OP_PREPARE_JUMP implementation
@@ -597,25 +616,7 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
     void *sr_ptr = sh4->reg + SH4_REG_SR;
     void *ssr_ptr = sh4->reg + SH4_REG_SSR;
 
-    grab_register(RAX);
-    grab_register(RCX);
-    grab_register(RDX);
-    grab_register(RSI);
-    grab_register(RDI);
-    grab_register(R8);
-    grab_register(R9);
-    grab_register(R10);
-    grab_register(R11);
-
-    evict_register(RAX);
-    evict_register(RCX);
-    evict_register(RDX);
-    evict_register(RSI);
-    evict_register(RDI);
-    evict_register(R8);
-    evict_register(R9);
-    evict_register(R10);
-    evict_register(R11);
+    prefunc();
 
     // move old_sr into ESI for the function call
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sr_ptr, RCX);
@@ -631,15 +632,7 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
     align_stack();
     x86asm_call_ptr(sh4_on_sr_change);
 
-    ungrab_register(R11);
-    ungrab_register(R10);
-    ungrab_register(R9);
-    ungrab_register(R8);
-    ungrab_register(RDI);
-    ungrab_register(RSI);
-    ungrab_register(RDX);
-    ungrab_register(RCX);
-    ungrab_register(RAX);
+    postfunc();
 }
 
 // JIT_OP_READ_16_SLOT implementation
@@ -648,25 +641,7 @@ void emit_read_16_slot(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.read_16_slot.slot_no;
 
     // call sh4_read_mem_16(sh4, vaddr)
-    grab_register(RAX);
-    grab_register(RCX);
-    grab_register(RDX);
-    grab_register(RSI);
-    grab_register(RDI);
-    grab_register(R8);
-    grab_register(R9);
-    grab_register(R10);
-    grab_register(R11);
-
-    evict_register(RAX);
-    evict_register(RCX);
-    evict_register(RDX);
-    evict_register(RSI);
-    evict_register(RDI);
-    evict_register(R8);
-    evict_register(R9);
-    evict_register(R10);
-    evict_register(R11);
+    prefunc();
 
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm32_reg32(vaddr, ESI);
@@ -674,14 +649,7 @@ void emit_read_16_slot(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_call_ptr(sh4_read_mem_16);
     x86asm_and_imm32_rax(0x0000ffff);
 
-    ungrab_register(R11);
-    ungrab_register(R10);
-    ungrab_register(R9);
-    ungrab_register(R8);
-    ungrab_register(RDI);
-    ungrab_register(RSI);
-    ungrab_register(RDX);
-    ungrab_register(RCX);
+    postfunc();
 
     grab_slot(slot_no);
     x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
@@ -708,39 +676,15 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.read_32_slot.slot_no;
 
     // call sh4_read_mem_32(sh4, vaddr)
-    grab_register(RAX);
-    grab_register(RCX);
-    grab_register(RDX);
-    grab_register(RSI);
-    grab_register(RDI);
-    grab_register(R8);
-    grab_register(R9);
-    grab_register(R10);
-    grab_register(R11);
 
-    evict_register(RAX);
-    evict_register(RCX);
-    evict_register(RDX);
-    evict_register(RSI);
-    evict_register(RDI);
-    evict_register(R8);
-    evict_register(R9);
-    evict_register(R10);
-    evict_register(R11);
+    prefunc();
 
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm32_reg32(vaddr, ESI);
     align_stack();
     x86asm_call_ptr(sh4_read_mem_32);
 
-    ungrab_register(R11);
-    ungrab_register(R10);
-    ungrab_register(R9);
-    ungrab_register(R8);
-    ungrab_register(RDI);
-    ungrab_register(RSI);
-    ungrab_register(RDX);
-    ungrab_register(RCX);
+    postfunc();
 
     grab_slot(slot_no);
     x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
