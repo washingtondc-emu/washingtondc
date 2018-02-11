@@ -209,7 +209,6 @@ static void reset_slots(void) {
     rsp_offs = 0;
 }
 
-#if 0
 /*
  * mark a given slot (as well as the register it resides in, if any) as no
  * longer being in use.
@@ -227,7 +226,6 @@ static void discard_slot(unsigned slot_no) {
         }
     }
 }
-#endif
 
 /*
  * whenever you emit a function call, call this function first.
@@ -959,8 +957,7 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             emit_or(sh4, inst);
             break;
         case JIT_OP_DISCARD_SLOT:
-            // TODO: this only causes trouble
-            /* discard_slot(inst->immed.discard_slot.slot_no); */
+            discard_slot(inst->immed.discard_slot.slot_no);
             break;
         }
         inst++;
