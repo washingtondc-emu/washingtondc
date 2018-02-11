@@ -218,13 +218,15 @@ bool sh4_disas_fallback(struct il_code_block *block, unsigned pc,
 bool sh4_disas_rts(struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst) {
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_PR);
-    jit_prepare_jump(block, slot_no);
+    res_disassociate_reg(block, SH4_REG_PR);
 
     sh4_disas_delay_slot(block, pc + 2);
 
     res_drain_all_regs(block);
 
-    jit_jump(block);
+    jit_jump(block, slot_no);
+
+    res_free_slot(block, slot_no);
 
     return false;
 }
@@ -232,7 +234,7 @@ bool sh4_disas_rts(struct il_code_block *block, unsigned pc,
 bool sh4_disas_rte(struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst) {
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SPC);
-    jit_prepare_jump(block, slot_no);
+    res_disassociate_reg(block, SH4_REG_SPC);
 
     /*
      * there are a few different ways editing the SR can cause side-effects (for
@@ -249,7 +251,9 @@ bool sh4_disas_rte(struct il_code_block *block, unsigned pc,
 
     res_drain_all_regs(block);
 
-    jit_jump(block);
+    jit_jump(block, slot_no);
+
+    res_free_slot(block, slot_no);
 
     return false;
 }
@@ -262,14 +266,14 @@ bool sh4_disas_braf_rn(struct il_code_block *block, unsigned pc,
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_R0 + reg_no);
     res_disassociate_reg(block, SH4_REG_R0 + reg_no);
     jit_add_const32(block, slot_no, jump_offs);
-    jit_prepare_jump(block, slot_no);
-    res_free_slot(block, slot_no);
 
     sh4_disas_delay_slot(block, pc + 2);
 
     res_drain_all_regs(block);
 
-    jit_jump(block);
+    jit_jump(block, slot_no);
+
+    res_free_slot(block, slot_no);
 
     return false;
 }
@@ -279,21 +283,23 @@ bool sh4_disas_bsrf_rn(struct il_code_block *block, unsigned pc,
     unsigned reg_no = (inst >> 8) & 0xf;
     unsigned jump_offs = pc + 4;
 
-    unsigned slot_no = reg_slot(dreamcast_get_cpu(),
-                                block, SH4_REG_R0 + reg_no);
+    unsigned addr_slot_no = reg_slot(dreamcast_get_cpu(),
+                                     block, SH4_REG_R0 + reg_no);
     res_disassociate_reg(block, SH4_REG_R0 + reg_no);
-    jit_add_const32(block, slot_no, jump_offs);
-    jit_prepare_jump(block, slot_no);
-    res_free_slot(block, slot_no);
+    jit_add_const32(block, addr_slot_no, jump_offs);
 
-    slot_no = reg_slot_noload(dreamcast_get_cpu(), block, SH4_REG_PR);
-    jit_set_slot(block, slot_no, pc + 4);
+
+    unsigned pr_slot_no = reg_slot_noload(dreamcast_get_cpu(), block,
+                                          SH4_REG_PR);
+    jit_set_slot(block, pr_slot_no, pc + 4);
 
     sh4_disas_delay_slot(block, pc + 2);
 
     res_drain_all_regs(block);
 
-    jit_jump(block);
+    jit_jump(block, addr_slot_no);
+
+    res_free_slot(block, addr_slot_no);
 
     return false;
 }
@@ -302,16 +308,21 @@ bool sh4_disas_bf(struct il_code_block *block, unsigned pc,
                   struct InstOpcode const *op, inst_t inst) {
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
-    jit_prepare_jump_const(block, pc + jump_offs);
-
-    jit_prepare_alt_jump(block, pc + 2);
-
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
     res_disassociate_reg(block, SH4_REG_SR);
 
     res_drain_all_regs(block);
 
-    jit_jump_cond(block, slot_no, 0);
+    unsigned jmp_addr_slot = res_alloc_slot(block);
+    unsigned alt_jmp_addr_slot = res_alloc_slot(block);
+
+    jit_set_slot(block, jmp_addr_slot, pc + jump_offs);
+    jit_set_slot(block, alt_jmp_addr_slot, pc + 2);
+
+    jit_jump_cond(block, slot_no, jmp_addr_slot, alt_jmp_addr_slot, 0);
+
+    res_free_slot(block, alt_jmp_addr_slot);
+    res_free_slot(block, jmp_addr_slot);
 
     res_free_slot(block, slot_no);
 
@@ -322,16 +333,21 @@ bool sh4_disas_bt(struct il_code_block *block, unsigned pc,
                   struct InstOpcode const *op, inst_t inst) {
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
-    jit_prepare_jump_const(block, pc + jump_offs);
-
-    jit_prepare_alt_jump(block, pc + 2);
-
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
     res_disassociate_reg(block, SH4_REG_SR);
 
     res_drain_all_regs(block);
 
-    jit_jump_cond(block, slot_no, 1);
+    unsigned jmp_addr_slot = res_alloc_slot(block);
+    unsigned alt_jmp_addr_slot = res_alloc_slot(block);
+
+    jit_set_slot(block, jmp_addr_slot, pc + jump_offs);
+    jit_set_slot(block, alt_jmp_addr_slot, pc + 2);
+
+    jit_jump_cond(block, slot_no, jmp_addr_slot, alt_jmp_addr_slot, 1);
+
+    res_free_slot(block, alt_jmp_addr_slot);
+    res_free_slot(block, jmp_addr_slot);
 
     res_free_slot(block, slot_no);
 
@@ -342,10 +358,6 @@ bool sh4_disas_bfs(struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst) {
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
-    jit_prepare_jump_const(block, pc + jump_offs);
-
-    jit_prepare_alt_jump(block, pc + 4);
-
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
     res_disassociate_reg(block, SH4_REG_SR);
 
@@ -353,7 +365,16 @@ bool sh4_disas_bfs(struct il_code_block *block, unsigned pc,
 
     res_drain_all_regs(block);
 
-    jit_jump_cond(block, slot_no, 0);
+    unsigned jmp_addr_slot = res_alloc_slot(block);
+    unsigned alt_jmp_addr_slot = res_alloc_slot(block);
+
+    jit_set_slot(block, jmp_addr_slot, pc + jump_offs);
+    jit_set_slot(block, alt_jmp_addr_slot, pc + 4);
+
+    jit_jump_cond(block, slot_no, jmp_addr_slot, alt_jmp_addr_slot, 0);
+
+    res_free_slot(block, alt_jmp_addr_slot);
+    res_free_slot(block, jmp_addr_slot);
 
     res_free_slot(block, slot_no);
 
@@ -364,10 +385,6 @@ bool sh4_disas_bts(struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst) {
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
-    jit_prepare_jump_const(block, pc + jump_offs);
-
-    jit_prepare_alt_jump(block, pc + 4);
-
     unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
     res_disassociate_reg(block, SH4_REG_SR);
 
@@ -375,7 +392,16 @@ bool sh4_disas_bts(struct il_code_block *block, unsigned pc,
 
     res_drain_all_regs(block);
 
-    jit_jump_cond(block, slot_no, 1);
+    unsigned jmp_addr_slot = res_alloc_slot(block);
+    unsigned alt_jmp_addr_slot = res_alloc_slot(block);
+
+    jit_set_slot(block, jmp_addr_slot, pc + jump_offs);
+    jit_set_slot(block, alt_jmp_addr_slot, pc + 4);
+
+    jit_jump_cond(block, slot_no, jmp_addr_slot, alt_jmp_addr_slot, 1);
+
+    res_free_slot(block, alt_jmp_addr_slot);
+    res_free_slot(block, jmp_addr_slot);
 
     res_free_slot(block, slot_no);
 
@@ -389,13 +415,16 @@ bool sh4_disas_bra(struct il_code_block *block, unsigned pc,
         disp |= 0xfffff000;
     disp = disp * 2 + 4;
 
-    jit_prepare_jump_const(block, pc + disp);
-
     sh4_disas_delay_slot(block, pc + 2);
 
     res_drain_all_regs(block);
 
-    jit_jump(block);
+    unsigned addr_slot = res_alloc_slot(block);
+    jit_set_slot(block, addr_slot, pc + disp);
+
+    jit_jump(block, addr_slot);
+
+    res_free_slot(block, addr_slot);
 
     return false;
 }
@@ -407,8 +436,6 @@ bool sh4_disas_bsr(struct il_code_block *block, unsigned pc,
         disp |= 0xfffff000;
     disp = disp * 2 + 4;
 
-    jit_prepare_jump_const(block, pc + disp);
-
     unsigned slot_no = reg_slot_noload(dreamcast_get_cpu(), block, SH4_REG_PR);
     jit_set_slot(block, slot_no, pc + 4);
 
@@ -416,7 +443,12 @@ bool sh4_disas_bsr(struct il_code_block *block, unsigned pc,
 
     res_drain_all_regs(block);
 
-    jit_jump(block);
+    unsigned addr_slot = res_alloc_slot(block);
+    jit_set_slot(block, addr_slot, pc + disp);
+
+    jit_jump(block, addr_slot);
+
+    res_free_slot(block, addr_slot);
 
     return false;
 }
@@ -425,14 +457,17 @@ bool sh4_disas_jmp_arn(struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst) {
     unsigned reg_no = (inst >> 8) & 0xf;
 
-    unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_R0 + reg_no);
-    jit_prepare_jump(block, slot_no);
+    unsigned slot_no = reg_slot(dreamcast_get_cpu(), block,
+                                SH4_REG_R0 + reg_no);
+    res_disassociate_reg(block, SH4_REG_R0 + reg_no);
 
     sh4_disas_delay_slot(block, pc + 2);
 
     res_drain_all_regs(block);
 
-    jit_jump(block);
+    jit_jump(block, slot_no);
+
+    res_free_slot(block, slot_no);
 
     return false;
 }
@@ -441,17 +476,21 @@ bool sh4_disas_jsr_arn(struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst) {
     unsigned reg_no = (inst >> 8) & 0xf;
 
-    unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_R0 + reg_no);
-    jit_prepare_jump(block, slot_no);
+    unsigned addr_slot_no = reg_slot(dreamcast_get_cpu(), block,
+                                     SH4_REG_R0 + reg_no);
+    res_disassociate_reg(block, SH4_REG_R0 + reg_no);
 
-    slot_no = reg_slot_noload(dreamcast_get_cpu(), block, SH4_REG_PR);
-    jit_set_slot(block, slot_no, pc + 4);
+    unsigned pr_slot_no = reg_slot_noload(dreamcast_get_cpu(), block,
+                                          SH4_REG_PR);
+    jit_set_slot(block, pr_slot_no, pc + 4);
 
     sh4_disas_delay_slot(block, pc + 2);
 
     res_drain_all_regs(block);
 
-    jit_jump(block);
+    jit_jump(block, addr_slot_no);
+
+    res_free_slot(block, addr_slot_no);
 
     return false;
 }

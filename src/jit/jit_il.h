@@ -30,21 +30,6 @@ enum jit_opcode {
     // this opcode calls an interpreter function
     JIT_OP_FALLBACK,
 
-    /*
-     * this stores a given register plus a constant
-     * offset as the branch destination
-     */
-    JIT_OP_PREPARE_JUMP,
-
-    // this sets a given constant as the branch destination
-    JIT_OP_PREPARE_JUMP_CONST,
-
-    /*
-     * This stores a given register plus a constant offset as a jump
-     * destination for a failed conditional jump.
-     */
-    JIT_OP_PREPARE_ALT_JUMP,
-
     // This jumps to the jump destination address previously stored
     JIT_OP_JUMP,
 
@@ -110,16 +95,9 @@ struct jit_fallback_immed {
     Sh4OpArgs inst;
 };
 
-struct prepare_jump_immed {
-    unsigned slot_idx; // index to the slot where the jump address is stored
-};
-
-struct prepare_jump_const_immed {
-    unsigned new_pc; // constant jump address
-};
-
-struct prepare_alt_jump_immed {
-    unsigned new_pc; // constant jump address
+struct jump_immed {
+    // this should point to the slot where the jump address is stored
+    unsigned slot_no;
 };
 
 struct jump_cond_immed {
@@ -129,6 +107,8 @@ struct jump_cond_immed {
      * But it should point to SR.
      */
     unsigned slot_no;
+
+    unsigned jmp_addr_slot, alt_jmp_addr_slot;
 
     /*
      * expected value of the t_flag (either 0 or 1).  the conditional jump will
@@ -211,9 +191,7 @@ struct or_immed {
 
 union jit_immed {
     struct jit_fallback_immed fallback;
-    struct prepare_jump_immed prepare_jump;
-    struct prepare_jump_const_immed prepare_jump_const;
-    struct prepare_alt_jump_immed prepare_alt_jump;
+    struct jump_immed jump;
     struct jump_cond_immed jump_cond;
     struct set_slot_immed set_slot;
     struct restore_sr_immed restore_sr;
@@ -242,12 +220,10 @@ struct il_code_block;
 
 void jit_fallback(struct il_code_block *block,
                   void(*fallback_fn)(Sh4*,Sh4OpArgs), inst_t inst);
-void jit_prepare_jump(struct il_code_block *block, unsigned slot_idx);
-void jit_prepare_jump_const(struct il_code_block *block, unsigned new_pc);
-void jit_prepare_alt_jump(struct il_code_block *block, unsigned new_pc);
-void jit_jump(struct il_code_block *block);
+void jit_jump(struct il_code_block *block, unsigned slot_no);
 void jit_jump_cond(struct il_code_block *block,
-                   unsigned slot_no, unsigned t_val);
+                   unsigned slot_no, unsigned jmp_addr_slot,
+                   unsigned alt_jmp_addr_slot, unsigned t_val);
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
 void jit_restore_sr(struct il_code_block *block, unsigned slot_no);

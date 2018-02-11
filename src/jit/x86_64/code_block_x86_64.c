@@ -55,13 +55,6 @@
  * All other values should be considered clobberred by the function call.
  */
 
-/*
- * XXX if you change these, don't forget to set the locked attribute for the
- * new reg (and also clear the locked attributes on the old regs).
- */
-#define JMP_ADDR_REG RBX
-#define ALT_JMP_ADDR_REG R12
-
 static struct reg_stat {
     // if true this reg can never ever be allocated under any circumstance.
     
@@ -102,8 +95,8 @@ static struct reg_stat {
         .prio = 3
     },
     [RBX] = {
-        // JMP_ADDR_REG
-        .locked = true
+        .locked = false,
+        .prio = 6
     },
     [RSP] = {
         // stack pointer
@@ -137,9 +130,14 @@ static struct reg_stat {
         .locked = false,
         .prio = 2
     },
+    /*
+     * R12 and R13 have a lower priority than R14 and R15 because they require
+     * extra displacement or SIB bytes to go after the mod/reg/rm due to the
+     * way that they overlap with RSP and RBP.
+     */
     [R12] = {
-        // ALT_JMP_ADDR_REG
-        .locked = true,
+        .locked = false,
+        .prio = 4
     },
     [R13] = {
         .locked = false,
@@ -526,39 +524,28 @@ void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
     postfunc();
 }
 
-// JIT_OP_PREPARE_JUMP implementation
-void emit_prepare_jump(Sh4 *sh4, struct jit_inst const *inst) {
-    unsigned slot_idx = inst->immed.prepare_jump.slot_idx;
-
-    grab_slot(slot_idx);
-    x86asm_mov_reg32_reg32(slots[slot_idx].reg_no, JMP_ADDR_REG);
-    ungrab_slot(slot_idx);
-}
-
-// JIT_OP_PREPARE_JUMP_CONST implementation
-void emit_prepare_jump_const(Sh4 *sh4, struct jit_inst const *inst) {
-    x86asm_mov_imm32_reg32(inst->immed.prepare_jump_const.new_pc, JMP_ADDR_REG);
-}
-
-// JIT_OP_PREPARE_ALT_JUMP implementation
-void emit_prepare_alt_jump(Sh4 *sh4, struct jit_inst const *inst) {
-    x86asm_mov_imm32_reg32(inst->immed.prepare_alt_jump.new_pc,
-                           ALT_JMP_ADDR_REG);
-}
-
 // JIT_OP_JUMP implementation
 void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.jump.slot_no;
+
     grab_register(RAX);
     evict_register(RAX);
-    x86asm_mov_reg32_reg32(JMP_ADDR_REG, EAX);
+
+    grab_slot(slot_no);
+
+    x86asm_mov_reg32_reg32(slots[slot_no].reg_no, EAX);
     emit_stack_frame_close();
     x86asm_ret();
+
+    ungrab_slot(slot_no);
 }
 
 // JIT_JUMP_COND implementation
 void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned t_flag = inst->immed.jump_cond.t_flag ? 1 : 0;
     unsigned flag_slot = inst->immed.jump_cond.slot_no;
+    unsigned jmp_addr_slot = inst->immed.jump_cond.jmp_addr_slot;
+    unsigned alt_jmp_addr_slot = inst->immed.jump_cond.alt_jmp_addr_slot;
 
     grab_register(RAX);
     evict_register(RAX);
@@ -570,6 +557,9 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_and_imm32_rax(1);
     x86asm_mov_reg32_reg32(EAX, ECX);
     ungrab_slot(flag_slot);
+
+    grab_slot(jmp_addr_slot);
+    grab_slot(alt_jmp_addr_slot);
 
     /*
      * move the alt-jmp addr into the return register, then replace that with
@@ -585,15 +575,18 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
      * faster than a conditional jump-forward.  I should experiment and
      * benchmark...
      */
-    x86asm_mov_reg64_reg64(ALT_JMP_ADDR_REG, RAX);
+    x86asm_mov_reg64_reg64(slots[alt_jmp_addr_slot].reg_no, RAX);
     x86asm_cmpl_reg32_imm8(ECX, !t_flag);
     x86asm_jz_disp8(3);    // JUMP IF EQUAL
-    x86asm_mov_reg64_reg64(JMP_ADDR_REG, RAX);
+    x86asm_mov_reg64_reg64(slots[jmp_addr_slot].reg_no, RAX);
 
     // the chosen address is now in %rax, so we're ready to return
 
     emit_stack_frame_close();
     x86asm_ret();
+
+    ungrab_slot(alt_jmp_addr_slot);
+    ungrab_slot(jmp_addr_slot);
 
     ungrab_register(RCX);
     ungrab_register(RAX); // not that it matters at this point...
@@ -895,15 +888,6 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
         switch (inst->op) {
         case JIT_OP_FALLBACK:
             emit_fallback(sh4, inst);
-            break;
-        case JIT_OP_PREPARE_JUMP:
-            emit_prepare_jump(sh4, inst);
-            break;
-        case JIT_OP_PREPARE_JUMP_CONST:
-            emit_prepare_jump_const(sh4, inst);
-            break;
-        case JIT_OP_PREPARE_ALT_JUMP:
-            emit_prepare_alt_jump(sh4, inst);
             break;
         case JIT_OP_JUMP:
             emit_jump(sh4, inst);

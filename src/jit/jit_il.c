@@ -46,47 +46,24 @@ void jit_fallback(struct il_code_block *block,
     invalidate_slots(block);
 }
 
-void jit_prepare_jump(struct il_code_block *block, unsigned slot_idx) {
-    struct jit_inst op;
-
-    op.op = JIT_OP_PREPARE_JUMP;
-    op.immed.prepare_jump.slot_idx = slot_idx;
-
-    il_code_block_push_inst(block, &op);
-}
-
-void jit_prepare_jump_const(struct il_code_block *block, unsigned new_pc) {
-    struct jit_inst op;
-
-    op.op = JIT_OP_PREPARE_JUMP_CONST;
-    op.immed.prepare_jump_const.new_pc = new_pc;
-
-    il_code_block_push_inst(block, &op);
-}
-
-void jit_prepare_alt_jump(struct il_code_block *block, unsigned new_pc) {
-    struct jit_inst op;
-
-    op.op = JIT_OP_PREPARE_ALT_JUMP;
-    op.immed.prepare_alt_jump.new_pc = new_pc;
-
-    il_code_block_push_inst(block, &op);
-}
-
-void jit_jump(struct il_code_block *block) {
+void jit_jump(struct il_code_block *block, unsigned slot_no) {
     struct jit_inst op;
 
     op.op = JIT_OP_JUMP;
+    op.immed.jump.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
 }
 
 void jit_jump_cond(struct il_code_block *block,
-                   unsigned slot_no, unsigned t_val) {
+                   unsigned slot_no, unsigned jmp_addr_slot,
+                   unsigned alt_jmp_addr_slot, unsigned t_val) {
     struct jit_inst op;
 
     op.op = JIT_JUMP_COND;
     op.immed.jump_cond.slot_no = slot_no;
+    op.immed.jump_cond.jmp_addr_slot = jmp_addr_slot;
+    op.immed.jump_cond.alt_jmp_addr_slot = alt_jmp_addr_slot;
     op.immed.jump_cond.t_flag = t_val;
 
     il_code_block_push_inst(block, &op);
