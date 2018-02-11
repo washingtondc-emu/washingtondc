@@ -95,11 +95,11 @@ static struct reg_stat {
     },
     [RCX] = {
         .locked = false,
-        .prio = 1
+        .prio = 3
     },
     [RDX] = {
         .locked = false,
-        .prio = 1
+        .prio = 3
     },
     [RBX] = {
         // JMP_ADDR_REG
@@ -115,11 +115,11 @@ static struct reg_stat {
     },
     [RSI] = {
         .locked = false,
-        .prio = 0
+        .prio = 3
     },
     [RDI] = {
         .locked = false,
-        .prio = 0
+        .prio = 3
     },
     [R8] = {
         .locked = false,
@@ -131,11 +131,11 @@ static struct reg_stat {
     },
     [R10] = {
         .locked = false,
-        .prio = 3
+        .prio = 2
     },
     [R11] = {
         .locked = false,
-        .prio = 3
+        .prio = 2
     },
     [R12] = {
         // ALT_JMP_ADDR_REG
