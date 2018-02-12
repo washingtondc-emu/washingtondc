@@ -156,6 +156,11 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
                 block->slots[inst->immed.and.slot_src];
             inst++;
             break;
+        case JIT_OP_AND_CONST32:
+            block->slots[inst->immed.and_const32.slot_no] &=
+                inst->immed.and_const32.const32;
+            inst++;
+            break;
         case JIT_OP_OR:
             block->slots[inst->immed.or.slot_dst] |=
                 block->slots[inst->immed.or.slot_src];

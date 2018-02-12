@@ -443,6 +443,12 @@ void x86asm_and_imm32_rax(unsigned imm32) {
     put32(imm32);
 }
 
+// andl $<imm32>, %<reg32>
+void x86asm_andl_imm32_reg32(uint32_t imm32, unsigned reg_no) {
+    emit_mod_reg_rm(0, 0x81, 3, 4, reg_no);
+    put32(imm32);
+}
+
 // andl %<reg32>, %<reg32>
 void x86asm_andl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x21, 3, reg_src, reg_dst);

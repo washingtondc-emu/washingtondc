@@ -832,6 +832,18 @@ emit_and(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
+emit_and_const32(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.and_const32.slot_no;
+    unsigned const32 = inst->immed.and_const32.const32;
+
+    grab_slot(slot_no);
+
+    x86asm_andl_imm32_reg32(const32, slots[slot_no].reg_no);
+
+    ungrab_slot(slot_no);
+}
+
+static void
 emit_or(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.or.slot_src;
     unsigned slot_dst = inst->immed.or.slot_dst;
@@ -936,6 +948,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_AND:
             emit_and(sh4, inst);
+            break;
+        case JIT_OP_AND_CONST32:
+            emit_and_const32(sh4, inst);
             break;
         case JIT_OP_OR:
             emit_or(sh4, inst);

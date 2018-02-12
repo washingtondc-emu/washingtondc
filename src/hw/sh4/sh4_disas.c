@@ -675,6 +675,19 @@ bool sh4_disas_sub_rm_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// AND #imm, R0
+// 11001001iiiiiiii
+bool sh4_inst_binary_andb_imm_r0(struct il_code_block *block, unsigned pc,
+                                 struct InstOpcode const *op, inst_t inst) {
+    unsigned imm_val = inst & 0xff;
+    unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, SH4_REG_R0);
+
+    jit_and_const32(block, slot_no, imm_val);
+    reg_map[SH4_REG_R0].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

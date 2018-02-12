@@ -245,7 +245,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 4, 0xff00, 0xcd00 },
 
     // AND #imm, R0
-    { &sh4_inst_binary_and_imm_r0, sh4_disas_fallback, false,
+    { &sh4_inst_binary_and_imm_r0, sh4_inst_binary_andb_imm_r0, false,
       SH4_GROUP_EX, 1, 0xff00, 0xc900 },
 
     // OR.B #imm, @(R0, GBR)

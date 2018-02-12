@@ -368,6 +368,27 @@ void jit_and(struct il_code_block *block, unsigned slot_src,
     dstp->known_val = ((~zero_bits) | one_bits) & dstp->known_bits;
 }
 
+void jit_and_const32(struct il_code_block *block, unsigned slot_no,
+                     unsigned const32) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_AND_CONST32;
+
+    op.immed.and_const32.slot_no = slot_no;
+    op.immed.and_const32.const32 = const32;
+
+    il_code_block_push_inst(block, &op);
+
+    // cache known values.
+    struct il_slot *slotp = block->slots + slot_no;
+
+    uint32_t zero_bits = (~const32) | ((~slotp->known_val) & slotp->known_bits);
+    uint32_t one_bits = const32 & slotp->known_val & slotp->known_bits;
+
+    slotp->known_bits = zero_bits | one_bits;
+    slotp->known_val = ((~zero_bits) | one_bits) & slotp->known_bits;
+}
+
 void jit_or(struct il_code_block *block, unsigned slot_src,
             unsigned slot_dst) {
     struct jit_inst op;
