@@ -540,3 +540,8 @@ void x86asm_xorl_imm32_reg32(unsigned imm32, unsigned reg_no) {
     emit_mod_reg_rm(0, 0x81, 3, 6, reg_no);
     put32(imm32);
 }
+
+// incl %<reg_no>
+void x86asm_incl_reg32(unsigned reg_no) {
+    emit_mod_reg_rm(0, 0xff, 3, 0, reg_no);
+}

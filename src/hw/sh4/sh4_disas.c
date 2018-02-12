@@ -715,6 +715,34 @@ bool sh4_disas_xor_imm8_r0(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// TST Rm, Rn
+// 0010nnnnmmmm1000
+bool sh4_disas_tst_rm_rn(struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, inst_t inst) {
+    unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+    unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
+
+    unsigned slot_src = reg_slot(dreamcast_get_cpu(), block, reg_src);
+    unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
+    unsigned slot_sr = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
+
+    res_disassociate_reg(block, reg_dst);
+    jit_and(block, slot_src, slot_dst);
+
+    jit_slot_to_bool(block, slot_dst);
+    jit_not(block, slot_dst);
+    jit_and_const32(block, slot_dst, 1);
+
+    jit_and_const32(block, slot_sr, ~1);
+    jit_or(block, slot_dst, slot_sr);
+
+    reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
+
+    res_free_slot(block, slot_dst);
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

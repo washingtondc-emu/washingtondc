@@ -883,6 +883,37 @@ emit_xor_const32(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_slot(slot_no);
 }
 
+static void
+emit_slot_to_bool(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.slot_to_bool.slot_no;
+
+    grab_register(RAX);
+    evict_register(RAX);
+    grab_slot(slot_no);
+
+    x86asm_mov_reg32_reg32(slots[slot_no].reg_no, EAX);
+    x86asm_xorl_reg32_reg32(EAX, EAX);
+    x86asm_cmpl_reg32_imm8(slots[slot_no].reg_no, 0);
+    x86asm_jz_disp8(2);
+    x86asm_incl_reg32(EAX);
+    // the jz from two lines above jumps to this position
+    x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
+
+    ungrab_slot(slot_no);
+    ungrab_register(RAX);
+}
+
+static void
+emit_not(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.not.slot_no;
+
+    grab_slot(slot_no);
+
+    x86asm_notl_reg32(slots[slot_no].reg_no);
+
+    ungrab_slot(slot_no);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned by
@@ -987,6 +1018,12 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_DISCARD_SLOT:
             discard_slot(inst->immed.discard_slot.slot_no);
+            break;
+        case JIT_OP_SLOT_TO_BOOL:
+            emit_slot_to_bool(sh4, inst);
+            break;
+        case JIT_OP_NOT:
+            emit_not(sh4, inst);
             break;
         }
         inst++;

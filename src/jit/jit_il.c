@@ -463,3 +463,32 @@ void jit_or_const32(struct il_code_block *block, unsigned slot_no,
     slotp->known_bits = zero_bits | one_bits;
     slotp->known_val = ((~zero_bits) | one_bits) & slotp->known_bits;
 }
+
+void jit_slot_to_bool(struct il_code_block *block, unsigned slot_no) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_SLOT_TO_BOOL;
+    op.immed.slot_to_bool.slot_no = slot_no;
+
+    il_code_block_push_inst(block, &op);
+
+    // cache known values
+    struct il_slot *slotp = block->slots + slot_no;
+    if (slotp->known_bits == 0xffffffff)
+        slotp->known_val = slotp->known_val ? 1 : 0;
+    else
+        slotp->known_bits = 0;
+}
+
+void jit_not(struct il_code_block *block, unsigned slot_no) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_NOT;
+    op.immed.not.slot_no = slot_no;
+
+    il_code_block_push_inst(block, &op);
+
+    // cache known values
+    struct il_slot *slotp = block->slots + slot_no;
+    slotp->known_val = ~slotp->known_val;
+}

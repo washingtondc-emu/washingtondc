@@ -180,6 +180,16 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
             // nothing to do here
             inst++;
             break;
+        case JIT_OP_SLOT_TO_BOOL:
+            block->slots[inst->immed.slot_to_bool.slot_no] =
+                (block->slots[inst->immed.slot_to_bool.slot_no] ? 1 : 0);
+            inst++;
+            break;
+        case JIT_OP_NOT:
+            block->slots[inst->immed.not.slot_no] =
+                ~block->slots[inst->immed.not.slot_no];
+            inst++;
+            break;
         }
     }
 

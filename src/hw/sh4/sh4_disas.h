@@ -169,4 +169,9 @@ bool sh4_disas_or_imm8_r0(struct il_code_block *block, unsigned pc,
 bool sh4_disas_xor_imm8_r0(struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
+// TST Rm, Rn
+// 0010nnnnmmmm1000
+bool sh4_disas_tst_rm_rn(struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, inst_t inst);
+
 #endif
