@@ -158,4 +158,8 @@ bool sh4_disas_sub_rm_rn(struct il_code_block *block, unsigned pc,
 // 11001001iiiiiiii
 bool sh4_inst_binary_andb_imm_r0(struct il_code_block *block, unsigned pc,
                                  struct InstOpcode const *op, inst_t inst);
+
+bool sh4_disas_or_imm8_r0(struct il_code_block *block, unsigned pc,
+                          struct InstOpcode const *op, inst_t inst);
+
 #endif

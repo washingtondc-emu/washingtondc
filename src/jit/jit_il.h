@@ -86,6 +86,9 @@ enum jit_opcode {
     // OR one slot with another
     JIT_OP_OR,
 
+    // OR one slot with a 32-bit constant
+    JIT_OP_OR_CONST32,
+
     /*
      * This tells the backend that a given slot is no longer needed and its
      * value does not need to be preserved.
@@ -197,6 +200,11 @@ struct or_immed {
     unsigned slot_src, slot_dst;
 };
 
+struct or_const32_immed {
+    unsigned slot_no;
+    unsigned const32;
+};
+
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct jump_immed jump;
@@ -218,6 +226,7 @@ union jit_immed {
     struct and_immed and;
     struct and_const32_immed and_const32;
     struct or_immed or;
+    struct or_const32_immed or_const32;
 };
 
 struct jit_inst {
@@ -264,5 +273,7 @@ void jit_and_const32(struct il_code_block *block, unsigned slot_src,
                      unsigned const32);
 void jit_or(struct il_code_block *block, unsigned slot_src,
             unsigned slot_dst);
+void jit_or_const32(struct il_code_block *block, unsigned slot_no,
+                    unsigned const32);
 
 #endif

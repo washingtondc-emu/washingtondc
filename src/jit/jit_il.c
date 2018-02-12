@@ -417,3 +417,28 @@ void jit_or(struct il_code_block *block, unsigned slot_src,
     dstp->known_bits = zero_bits | one_bits;
     dstp->known_val = ((~zero_bits) | one_bits) & dstp->known_bits;
 }
+
+void jit_or_const32(struct il_code_block *block, unsigned slot_no,
+                    unsigned const32) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_OR_CONST32;
+    op.immed.or_const32.slot_no = slot_no;
+    op.immed.or_const32.const32 = const32;
+
+    il_code_block_push_inst(block, &op);
+
+    // cache known values
+    struct il_slot *slotp = block->slots + slot_no;
+
+    /*
+     * we know the value of all dst-bits in which one of the two src-bits is 1
+     * (in which case the dst-bit is 1) or both of the two src-bits is 0 (in
+     * which case the dst-bit is 0).  We do not know the value of a dst-bit if
+     * only one of the two input-bits is known to be 0.
+     */
+    uint32_t zero_bits = (~const32) & ((~slotp->known_val) & slotp->known_bits);
+    uint32_t one_bits = const32 | (slotp->known_val & slotp->known_bits);
+    slotp->known_bits = zero_bits | one_bits;
+    slotp->known_val = ((~zero_bits) | one_bits) & slotp->known_bits;
+}

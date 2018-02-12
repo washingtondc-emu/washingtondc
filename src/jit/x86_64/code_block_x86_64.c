@@ -859,6 +859,18 @@ emit_or(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_slot(slot_src);
 }
 
+static void
+emit_or_const32(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.or_const32.slot_no;
+    unsigned const32 = inst->immed.or_const32.const32;
+
+    grab_slot(slot_no);
+
+    x86asm_orl_imm32_reg32(const32, slots[slot_no].reg_no);
+
+    ungrab_slot(slot_no);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned by
@@ -954,6 +966,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_OR:
             emit_or(sh4, inst);
+            break;
+        case JIT_OP_OR_CONST32:
+            emit_or_const32(sh4, inst);
             break;
         case JIT_OP_DISCARD_SLOT:
             discard_slot(inst->immed.discard_slot.slot_no);

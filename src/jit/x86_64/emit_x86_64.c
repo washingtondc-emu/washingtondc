@@ -528,3 +528,9 @@ void x86asm_addq_imm8_reg(uint8_t imm8, unsigned reg) {
 void x86asm_movzxw_indreg_reg(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm_2(0, 0x0f, 0xb7, 0, reg_dst, reg_src);
 }
+
+// orl $<imm32>, %eax
+void x86asm_orl_imm32_reg32(unsigned imm32, unsigned reg_no) {
+    emit_mod_reg_rm(0, 0x81, 3, 1, reg_no);
+    put32(imm32);
+}
