@@ -322,6 +322,27 @@ void jit_xor(struct il_code_block *block, unsigned slot_src,
     }
 }
 
+void jit_xor_const32(struct il_code_block *block, unsigned slot_no,
+                     uint32_t const32) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_XOR_CONST32;
+
+    op.immed.xor_const32.slot_no = slot_no;
+    op.immed.xor_const32.const32 = const32;
+
+    il_code_block_push_inst(block, &op);
+
+    // cache known values
+    struct il_slot *slotp = block->slots + slot_no;
+    slotp->known_val ^= const32;
+    /*
+     * slotp->known_bits is unchanged because for XOR operations, we can only
+     * know the correct value of an output bit if we know both of its input
+     * bits.
+     */
+}
+
 void jit_mov(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst) {
     struct jit_inst op;

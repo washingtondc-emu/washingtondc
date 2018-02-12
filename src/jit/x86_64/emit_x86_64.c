@@ -534,3 +534,9 @@ void x86asm_orl_imm32_reg32(unsigned imm32, unsigned reg_no) {
     emit_mod_reg_rm(0, 0x81, 3, 1, reg_no);
     put32(imm32);
 }
+
+// xorl $<imm32>, %<reg_no>
+void x86asm_xorl_imm32_reg32(unsigned imm32, unsigned reg_no) {
+    emit_mod_reg_rm(0, 0x81, 3, 6, reg_no);
+    put32(imm32);
+}

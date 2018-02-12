@@ -217,7 +217,10 @@ void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst);
 // movzxw (%<reg_src>), %<reg_dst>
 void x86asm_movzxw_indreg_reg(unsigned reg_src, unsigned reg_dst);
 
-// orl $<imm32>, %eax
+// orl $<imm32>, %<reg_no>
 void x86asm_orl_imm32_reg32(unsigned imm32, unsigned reg_no);
+
+// xorl $<imm32>, %<reg_no>
+void x86asm_xorl_imm32_reg32(unsigned imm32, unsigned reg_no);
 
 #endif

@@ -74,6 +74,9 @@ enum jit_opcode {
     // xor one slot into another
     JIT_OP_XOR,
 
+    // XOR one slot with a 32-bit constant
+    JIT_OP_XOR_CONST32,
+
     // move one slot into another
     JIT_OP_MOV,
 
@@ -183,6 +186,11 @@ struct xor_immed {
     unsigned slot_src, slot_dst;
 };
 
+struct xor_const32_immed {
+    unsigned slot_no;
+    unsigned const32;
+};
+
 struct mov_immed {
     unsigned slot_src, slot_dst;
 };
@@ -222,6 +230,7 @@ union jit_immed {
     struct add_const32_immed add_const32;
     struct discard_slot_immed discard_slot;
     struct xor_immed xor;
+    struct xor_const32_immed xor_const32;
     struct mov_immed mov;
     struct and_immed and;
     struct and_const32_immed and_const32;
@@ -265,6 +274,8 @@ void jit_add_const32(struct il_code_block *block, unsigned slot_no,
 void jit_discard_slot(struct il_code_block *block, unsigned slot_no);
 void jit_xor(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst);
+void jit_xor_const32(struct il_code_block *block, unsigned slot_no,
+                     uint32_t const32);
 void jit_mov(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst);
 void jit_and(struct il_code_block *block, unsigned slot_src,
