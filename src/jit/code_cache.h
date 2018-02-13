@@ -61,4 +61,10 @@ void code_cache_invalidate_all(void);
 void code_cache_init(void);
 void code_cache_cleanup(void);
 
+/*
+ * call this periodically from outside of CPU context to clear
+ * out old cache entries.
+ */
+void code_cache_gc(void);
+
 #endif

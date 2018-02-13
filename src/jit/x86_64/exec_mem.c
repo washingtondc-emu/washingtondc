@@ -513,3 +513,45 @@ void exec_mem_print_stats(struct exec_mem_stats const *stats) {
              stats->n_allocations);
     LOG_INFO("exec_mem: There are %u total free chunks\n", stats->n_free_chunks);
 }
+
+#ifdef INVARIANTS
+void exec_mem_check_integrity(void) {
+    struct free_chunk *curs;
+    for (curs = free_mem; curs->next; curs = curs->next) {
+        struct free_chunk *next = curs->next;
+        uintptr_t curs_first = (uintptr_t)curs;
+        uintptr_t curs_last = curs_first + (curs->len - 1);
+        uintptr_t next_first = (uintptr_t)next;
+
+        if (next_first - 1 == curs_last) {
+            LOG_ERROR("exec_mem: needless memory fragmentation\n");
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+
+        struct free_chunk *curs2;
+        for (curs2 = next; curs2; curs2 = curs2->next) {
+            uintptr_t curs2_first = (uintptr_t)curs2;
+            uintptr_t curs2_last = curs2_first + (curs2->len - 1);
+
+            if (curs2_first <= curs_last || curs2_last <= curs_last) {
+                LOG_ERROR("exec_mem: out-of-order memory chunks\n");
+                LOG_ERROR("[0x%08llx-0x%08llx] should not come after "
+                          "[0x%08llx-0x%08llx]\n",
+                          (long long)curs_first, (long long)curs_last,
+                          (long long)curs2_first, (long long)curs2_last);
+                RAISE_ERROR(ERROR_INTEGRITY);
+            }
+
+            if ((curs_first >= curs2_first && curs_first <= curs2_last) ||
+                (curs_last >= curs2_first && curs_last <= curs2_first)) {
+                LOG_ERROR("exec_mem: memory overlap\n");
+                LOG_ERROR("[0x%08llx-0x%08llx] overlaps with "
+                          "[0x%08llx-0x%08llx]\n",
+                          (long long)curs_first, (long long)curs_last,
+                          (long long)curs2_first, (long long)curs2_last);
+                RAISE_ERROR(ERROR_INTEGRITY);
+            }
+        }
+    }
+}
+#endif

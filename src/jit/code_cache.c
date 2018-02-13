@@ -55,8 +55,23 @@ static int node_balance(struct cache_entry *node);
 
 static void clear_cache(struct cache_entry *node);
 
+/*
+ * oldroot points to a list of trees invalid nodes.
+ *
+ * When code_cache_invalidate_all gets called from within CPU context
+ * (typically due to a write to the SH4 CCR), all nodes need to be deleted.
+ * This is not possible to due within CPU context because that would delete the
+ * node which is currently executed.  As a workaround, the entire tree is
+ * relocated to the oldroot pointer so that its nodes can be freed later when
+ * the emulator exits CPU context.
+ */
+struct oldroot_node {
+    struct cache_entry *root;
+    struct oldroot_node *next;
+};
+static struct oldroot_node *oldroot;
+
 static struct cache_entry *root;
-static bool nuke;
 
 // this is a prime number
 #define HASH_TBL_LEN 65563
@@ -151,7 +166,6 @@ static void perf_stats_print(void) {
 }
 
 void code_cache_init(void) {
-    nuke = false;
     root = NULL;
     perf_stats_reset();
 
@@ -163,7 +177,8 @@ void code_cache_init(void) {
 void code_cache_cleanup(void) {
     perf_stats_print();
 
-    clear_cache(root);
+    code_cache_invalidate_all();
+    code_cache_gc();
 }
 
 void code_cache_invalidate_all(void) {
@@ -172,8 +187,38 @@ void code_cache_invalidate_all(void) {
      * Since we don't want to trash the block currently executing, we instead
      * set a flag to be set next time code_cache_find is called.
      */
-    nuke = true;
     LOG_DBG("%s called - nuking cache\n", __func__);
+
+    /*
+     * Throw root onto the oldroot list to be cleared later.  It's not safe to
+     * clear out oldroot now because the current code block might be part of it.
+     * Also keep in mind that the current code block might be part of a
+     * pre-existing oldroot if this function got called more than once by the
+     * current code block.
+     */
+    struct oldroot_node *list_node =
+        (struct oldroot_node*)malloc(sizeof(struct oldroot_node));
+    if (!list_node)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    list_node->next = oldroot;
+    list_node->root = root;
+    oldroot = list_node;
+
+    root = NULL;
+    memset(tbl, 0, sizeof(tbl));
+}
+
+void code_cache_gc(void) {
+    while (oldroot) {
+        struct oldroot_node *next = oldroot->next;
+        clear_cache(oldroot->root);
+        free(oldroot);
+        oldroot = next;
+    }
+
+#ifdef INVARIANTS
+    exec_mem_check_integrity();
+#endif
 }
 
 static void clear_cache(struct cache_entry *node) {
@@ -486,36 +531,6 @@ struct cache_entry *code_cache_find(addr32_t addr) {
 #ifdef PERF_STATS
     total_access_count++;
 #endif
-
-    if (nuke) {
-        nuke = false;
-        clear_cache(root);
-        root = NULL;
-        memset(tbl, 0, sizeof(tbl));
-#ifdef ENABLE_JIT_X86_64
-#ifdef INVARIANTS
-        struct exec_mem_stats stats;
-        exec_mem_get_stats(&stats);
-        exec_mem_print_stats(&stats);
-        if (stats.n_allocations != 0) {
-            LOG_ERROR("%s - executable memory leak (there should be "
-                      "0 allocations)\n", __func__);
-            RAISE_ERROR(ERROR_INTEGRITY);
-        }
-        if (stats.free_bytes != stats.total_bytes) {
-            LOG_ERROR("%s - executable memory leak (all bytes "
-                      "should be free)\n", __func__);
-            RAISE_ERROR(ERROR_INTEGRITY);
-        }
-        if (stats.n_free_chunks != 1) {
-            LOG_ERROR("%s - unnecessary executable memory fragmentation "
-                      "(since all chunks are free, they should have been "
-                      "merged into a signle chunk\n", __func__);
-            RAISE_ERROR(ERROR_INTEGRITY);
-        }
-#endif
-#endif
-    }
 
     unsigned hash_idx = hashfn(addr) % HASH_TBL_LEN;
     struct cache_entry *maybe = tbl[hash_idx];

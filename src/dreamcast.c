@@ -271,6 +271,7 @@ static void main_loop_jit(void) {
         dc_single_step(&cpu);
 #else
         dc_run_to_next_event_jit(&cpu);
+        code_cache_gc();
         struct SchedEvent *next_event = pop_event();
         if (next_event)
             next_event->handler(next_event);
@@ -291,6 +292,7 @@ static void main_loop_jit_native(void) {
         dc_single_step(&cpu);
 #else
         dc_run_to_next_event_jit_native(&cpu);
+        code_cache_gc();
         struct SchedEvent *next_event = pop_event();
         if (next_event)
             next_event->handler(next_event);

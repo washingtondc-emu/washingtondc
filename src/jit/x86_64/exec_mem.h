@@ -62,4 +62,14 @@ struct exec_mem_stats {
 void exec_mem_get_stats(struct exec_mem_stats *stats);
 void exec_mem_print_stats(struct exec_mem_stats const *stats);
 
+#ifdef INVARIANTS
+/*
+ * This checks to make sure no blocks overlap each other, and there is no
+ * needless fragmentation.  It cannot check for "dangling pointer" situations
+ * where some memory allocation that another component thinks is not free
+ * actually is.  It also cannot prove there are no memory leaks.
+ */
+void exec_mem_check_integrity(void);
+#endif
+
 #endif
