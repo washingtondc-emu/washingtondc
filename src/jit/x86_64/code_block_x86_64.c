@@ -61,6 +61,7 @@ void code_block_x86_64_init(struct code_block_x86_64 *blk) {
 
 void code_block_x86_64_cleanup(struct code_block_x86_64 *blk) {
     exec_mem_free(blk->native);
+    memset(blk, 0, sizeof(*blk));
 }
 
 /*
