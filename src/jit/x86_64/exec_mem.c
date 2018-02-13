@@ -395,7 +395,9 @@ int exec_mem_grow(void *ptr, size_t len_req) {
         uintptr_t curs_last = curs_first + (curs->len - 1);
 
 #ifdef INVARIANTS
-        if (alloc_first >= curs_first || alloc_last >= curs_first)
+        // make sure the allocation doesn't overlap with the free chunk
+        if ((alloc_first >= curs_first && alloc_first <= curs_last) ||
+            (alloc_last >= curs_first && alloc_last <= curs_last))
             RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
