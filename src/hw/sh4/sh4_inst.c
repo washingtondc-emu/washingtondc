@@ -652,7 +652,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 1, 0xf0ff, 0x4012 },
 
     // LDS.L @Rm+, PR
-    { &sh4_inst_binary_ldsl_indgeninc_pr, sh4_disas_fallback, false,
+    { &sh4_inst_binary_ldsl_indgeninc_pr, sh4_disas_ldsl_armp_pr, false,
       SH4_GROUP_CO, 2, 0xf0ff, 0x4026 },
 
     // STS.L PR, @-Rn

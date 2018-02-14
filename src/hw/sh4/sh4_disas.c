@@ -760,6 +760,24 @@ bool sh4_disas_movl_arm_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// LDS.L @Rm+, PR
+// 0100mmmm00100110
+bool sh4_disas_ldsl_armp_pr(struct il_code_block *block, unsigned pc,
+                            struct InstOpcode const *op, inst_t inst) {
+    unsigned addr_reg = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+
+    unsigned addr_slot = reg_slot(dreamcast_get_cpu(), block, addr_reg);
+    unsigned pr_slot = reg_slot(dreamcast_get_cpu(), block, SH4_REG_PR);
+
+    jit_read_32_slot(block, addr_slot, pr_slot);
+    jit_add_const32(block, addr_slot, 4);
+
+    reg_map[SH4_REG_PR].stat = REG_STATUS_SLOT;
+    reg_map[addr_reg].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 
