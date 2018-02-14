@@ -301,18 +301,27 @@ static void move_slot_to_reg(unsigned slot_no, unsigned reg_no) {
         RAISE_ERROR(ERROR_INTEGRITY);
 
     if (slot->in_reg) {
-        /*
-         * moving a slot from one register to another is a legitimate thing to
-         * do on x86 because there are certain instructions that will only work
-         * with certain registers.  It isn't implemented yet because I don't
-         * need it yet.
-         */
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        unsigned src_reg = slot->reg_no;
+
+        if (src_reg == reg_no)
+            return; // nothing to do here
+
+        struct reg_stat *reg_dst = regs + reg_no;
+        if (reg_dst->in_use)
+            move_slot_to_stack(reg_dst->slot_no);
+
+        struct reg_stat *reg_src = regs + src_reg;
+
+        x86asm_mov_reg32_reg32(src_reg, reg_no);
+
+        reg_src->in_use = false;
+        reg_dst->in_use = true;
+        reg_dst->slot_no = slot_no;
+        slots[slot_no].reg_no = reg_no;
+        return;
     }
 
     struct reg_stat *reg_dst = regs + reg_no;
-    if (reg_dst->grabbed)
-        RAISE_ERROR(ERROR_INTEGRITY);
     if (reg_dst->in_use)
         move_slot_to_stack(reg_dst->slot_no);
 
@@ -626,10 +635,10 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
     postfunc();
 }
 
-// JIT_OP_READ_16_SLOT implementation
-void emit_read_16_slot(Sh4 *sh4, struct jit_inst const *inst) {
-    addr32_t vaddr = inst->immed.read_16_slot.addr;
-    unsigned slot_no = inst->immed.read_16_slot.slot_no;
+// JIT_OP_READ_16_CONSTADDR implementation
+void emit_read_16_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
+    addr32_t vaddr = inst->immed.read_16_constaddr.addr;
+    unsigned slot_no = inst->immed.read_16_constaddr.slot_no;
 
     // call sh4_read_mem_16(sh4, vaddr)
     prefunc();
@@ -661,10 +670,10 @@ void emit_sign_extend_16(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_slot(slot_no);
 }
 
-// JIT_OP_READ_32_SLOT implementation
-void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
-    addr32_t vaddr = inst->immed.read_32_slot.addr;
-    unsigned slot_no = inst->immed.read_32_slot.slot_no;
+// JIT_OP_READ_32_CONSTADDR implementation
+void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
+    addr32_t vaddr = inst->immed.read_32_constaddr.addr;
+    unsigned slot_no = inst->immed.read_32_constaddr.slot_no;
 
     // call sh4_read_mem_32(sh4, vaddr)
 
@@ -681,6 +690,59 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
+    ungrab_register(RAX);
+}
+
+// JIT_OP_READ_32_SLOT implementation
+void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned dst_slot = inst->immed.read_32_slot.dst_slot;
+    unsigned addr_slot = inst->immed.read_32_slot.addr_slot;
+
+    // call sh4_read_mem_32(sh4, *addr_slot)
+    /* prefunc(); */
+
+    grab_register(RAX);
+    grab_register(RCX);
+    grab_register(RDX);
+    grab_register(RSI);
+    grab_register(RDI);
+    grab_register(R8);
+    grab_register(R9);
+    grab_register(R10);
+    grab_register(R11);
+
+    evict_register(RAX);
+    evict_register(RCX);
+    evict_register(RDX);
+    evict_register(RSI);
+    evict_register(RDI);
+    evict_register(R8);
+    evict_register(R9);
+    evict_register(R10);
+    evict_register(R11);
+
+    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
+    move_slot_to_reg(addr_slot, ESI);
+    evict_register(ESI);
+
+    align_stack();
+    x86asm_call_ptr(sh4_read_mem_32);
+
+    /* postfunc(); */
+    ungrab_register(R11);
+    ungrab_register(R10);
+    ungrab_register(R9);
+    ungrab_register(R8);
+    ungrab_register(RDI);
+    ungrab_register(RSI);
+    ungrab_register(RDX);
+    ungrab_register(RCX);
+    /* ungrab_register(RAX); */
+
+    grab_slot(dst_slot);
+    x86asm_mov_reg32_reg32(EAX, slots[dst_slot].reg_no);
+    ungrab_slot(dst_slot);
+
     ungrab_register(RAX);
 }
 
@@ -968,11 +1030,14 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
         case JIT_OP_RESTORE_SR:
             emit_restore_sr(sh4, inst);
             break;
-        case JIT_OP_READ_16_SLOT:
-            emit_read_16_slot(sh4, inst);
+        case JIT_OP_READ_16_CONSTADDR:
+            emit_read_16_constaddr(sh4, inst);
             break;
         case JIT_OP_SIGN_EXTEND_16:
             emit_sign_extend_16(sh4, inst);
+            break;
+        case JIT_OP_READ_32_CONSTADDR:
+            emit_read_32_constaddr(sh4, inst);
             break;
         case JIT_OP_READ_32_SLOT:
             emit_read_32_slot(sh4, inst);

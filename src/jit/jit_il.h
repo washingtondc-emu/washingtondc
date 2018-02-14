@@ -43,11 +43,15 @@ enum jit_opcode {
     JIT_OP_RESTORE_SR,
 
     // read 16 bits from a constant address and store them in a given slot
-    JIT_OP_READ_16_SLOT,
+    JIT_OP_READ_16_CONSTADDR,
 
-    // sign-extend a 16-bit int in a register into a 32-bit int
+    // sign-extend a 16-bit int in a slot into a 32-bit int
     JIT_OP_SIGN_EXTEND_16,
 
+    // read a 32-bit int at a constant address into a slot
+    JIT_OP_READ_32_CONSTADDR,
+
+    // read a 32-bit int at an address contained in a slot into another slot
     JIT_OP_READ_32_SLOT,
 
     /*
@@ -142,7 +146,7 @@ struct restore_sr_immed {
     unsigned slot_no;
 };
 
-struct read_16_slot_immed {
+struct read_16_constaddr_immed {
     addr32_t addr;
     unsigned slot_no;
 };
@@ -151,9 +155,14 @@ struct sign_extend_16_immed {
     unsigned slot_no;
 };
 
-struct read_32_slot_immed {
+struct read_32_constaddr_immed {
     addr32_t addr;
     unsigned slot_no;
+};
+
+struct read_32_slot_immed {
+    unsigned addr_slot;
+    unsigned dst_slot;
 };
 
 struct load_slot16_immed {
@@ -233,8 +242,9 @@ union jit_immed {
     struct jump_cond_immed jump_cond;
     struct set_slot_immed set_slot;
     struct restore_sr_immed restore_sr;
-    struct read_16_slot_immed read_16_slot;
+    struct read_16_constaddr_immed read_16_constaddr;
     struct sign_extend_16_immed sign_extend_16;
+    struct read_32_constaddr_immed read_32_constaddr;
     struct read_32_slot_immed read_32_slot;
     struct load_slot16_immed load_slot16;
     struct load_slot_immed load_slot;
@@ -270,11 +280,13 @@ void jit_jump_cond(struct il_code_block *block,
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
 void jit_restore_sr(struct il_code_block *block, unsigned slot_no);
-void jit_read_16_slot(struct il_code_block *block, addr32_t addr,
+void jit_read_16_constaddr(struct il_code_block *block, addr32_t addr,
                       unsigned slot_no);
 void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no);
-void jit_read_32_slot(struct il_code_block *block, addr32_t addr,
-                      unsigned slot_no);
+void jit_read_32_constaddr(struct il_code_block *block, addr32_t addr,
+                           unsigned slot_no);
+void jit_read_32_slot(struct il_code_block *block, unsigned addr_slot,
+                      unsigned dst_slot);
 void jit_load_slot(struct il_code_block *block, unsigned slot_no,
                    uint32_t const *src);
 void jit_load_slot16(struct il_code_block *block, unsigned slot_no,

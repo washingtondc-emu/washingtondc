@@ -99,13 +99,13 @@ void jit_restore_sr(struct il_code_block *block, unsigned slot_no) {
     invalidate_slots(block);
 }
 
-void jit_read_16_slot(struct il_code_block *block, addr32_t addr,
+void jit_read_16_constaddr(struct il_code_block *block, addr32_t addr,
                       unsigned slot_no) {
     struct jit_inst op;
 
-    op.op = JIT_OP_READ_16_SLOT;
-    op.immed.read_16_slot.addr = addr;
-    op.immed.read_16_slot.slot_no = slot_no;
+    op.op = JIT_OP_READ_16_CONSTADDR;
+    op.immed.read_16_constaddr.addr = addr;
+    op.immed.read_16_constaddr.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
 
@@ -135,19 +135,34 @@ void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no) {
     }
 }
 
-void jit_read_32_slot(struct il_code_block *block, addr32_t addr,
+void jit_read_32_constaddr(struct il_code_block *block, addr32_t addr,
                       unsigned slot_no) {
     struct jit_inst op;
 
-    op.op = JIT_OP_READ_32_SLOT;
-    op.immed.read_32_slot.addr = addr;
-    op.immed.read_32_slot.slot_no = slot_no;
+    op.op = JIT_OP_READ_32_CONSTADDR;
+    op.immed.read_32_constaddr.addr = addr;
+    op.immed.read_32_constaddr.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
 
     struct il_slot *slotp = block->slots + slot_no;
     slotp->known_val = 0;
     slotp->known_bits = 0;
+}
+
+void jit_read_32_slot(struct il_code_block *block, unsigned addr_slot,
+                      unsigned dst_slot) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_READ_32_SLOT;
+    op.immed.read_32_slot.addr_slot = addr_slot;
+    op.immed.read_32_slot.dst_slot = dst_slot;
+
+    il_code_block_push_inst(block, &op);
+
+    struct il_slot *dstp = block->slots + dst_slot;
+    dstp->known_val = 0;
+    dstp->known_bits = 0;
 }
 
 void jit_load_slot16(struct il_code_block *block, unsigned slot_no,
