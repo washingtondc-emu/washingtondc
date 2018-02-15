@@ -551,3 +551,9 @@ void x86asm_shll_imm8_reg32(unsigned imm8, unsigned reg_no) {
     emit_mod_reg_rm(0, 0xc1, 3, 4, reg_no);
     put8(imm8);
 }
+
+// sarl $<imm8>, %reg_no
+void x86asm_sarl_imm8_reg32(unsigned imm8, unsigned reg_no) {
+    emit_mod_reg_rm(0, 0xc1, 3, 7, reg_no);
+    put8(imm8);
+}

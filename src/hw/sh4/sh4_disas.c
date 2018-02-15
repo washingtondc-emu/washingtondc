@@ -855,6 +855,31 @@ bool sh4_disas_shll8_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// SHAR Rn
+// 0100nnnn00100001
+bool sh4_disas_shar_rn(struct il_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, inst_t inst) {
+    unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+    unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, reg_no);
+    unsigned tmp_cpy = res_alloc_slot(block);
+    unsigned sr_slot = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
+
+    // set the T-bit in SR from the shift-out.a
+    jit_mov(block, slot_no, tmp_cpy);
+    jit_and_const32(block, tmp_cpy, 1);
+    jit_and_const32(block, sr_slot, ~1);
+    jit_or(block, tmp_cpy, sr_slot);
+    reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
+
+    res_free_slot(block, tmp_cpy);
+
+    jit_shar(block, slot_no, 1);
+
+    reg_map[reg_no].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

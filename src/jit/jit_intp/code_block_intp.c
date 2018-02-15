@@ -202,6 +202,12 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
                 inst->immed.shll.shift_amt;
             inst++;
             break;
+        case JIT_OP_SHAR:
+            block->slots[inst->immed.shar.slot_no] =
+                ((int32_t)block->slots[inst->immed.shar.slot_no]) >>
+                inst->immed.shar.shift_amt;
+            inst++;
+            break;
         }
     }
 
