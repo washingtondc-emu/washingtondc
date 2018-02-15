@@ -212,6 +212,8 @@ static void reset_slots(void) {
  * longer being in use.
  */
 static void discard_slot(unsigned slot_no) {
+    if (slot_no >= MAX_SLOTS)
+        RAISE_ERROR(ERROR_TOO_BIG);
     struct slot *slot = slots + slot_no;
     if (!slot->in_use)
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -278,6 +280,8 @@ static void postfunc(void) {
  * slot must be in a register and the register it is in must not be grabbed.
  */
 static void move_slot_to_stack(unsigned slot_no) {
+    if (slot_no >= MAX_SLOTS)
+        RAISE_ERROR(ERROR_TOO_BIG);
     struct slot *slot = slots + slot_no;
     if (!slot->in_use || !slot->in_reg)
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -301,6 +305,8 @@ static void move_slot_to_stack(unsigned slot_no) {
  * it will safely move any slots already in the register to the stack.
  */
 static void move_slot_to_reg(unsigned slot_no, unsigned reg_no) {
+    if (slot_no >= MAX_SLOTS)
+        RAISE_ERROR(ERROR_TOO_BIG);
     struct slot *slot = slots + slot_no;
     if (!slot->in_use)
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -450,6 +456,8 @@ static void evict_register(unsigned reg_no) {
  * register, and mark that register as grabbed.
  */
 static void grab_slot(unsigned slot_no) {
+    if (slot_no >= MAX_SLOTS)
+        RAISE_ERROR(ERROR_TOO_BIG);
     struct slot *slot = slots + slot_no;
 
     if (slot->in_use) {
@@ -477,6 +485,8 @@ mark_grabbed:
 }
 
 static void ungrab_slot(unsigned slot_no) {
+    if (slot_no >= MAX_SLOTS)
+        RAISE_ERROR(ERROR_TOO_BIG);
     struct slot *slot = slots + slot_no;
     if (slot->in_reg)
         ungrab_register(slot->reg_no);
