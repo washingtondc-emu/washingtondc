@@ -182,5 +182,8 @@ bool sh4_disas_movl_arm_rn(struct il_code_block *block, unsigned pc,
 // 0100mmmm00100110
 bool sh4_disas_ldsl_armp_pr(struct il_code_block *block, unsigned pc,
                             struct InstOpcode const *op, inst_t inst);
-
+// MOV.L @(disp, Rm), Rn
+// 0101nnnnmmmmdddd
+bool sh4_disas_movl_a_disp4_rm_rn(struct il_code_block *block, unsigned pc,
+                                  struct InstOpcode const *op, inst_t inst);
 #endif
