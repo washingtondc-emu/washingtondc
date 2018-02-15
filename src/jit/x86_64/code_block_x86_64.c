@@ -355,17 +355,16 @@ static void move_slot_to_reg(unsigned slot_no, unsigned reg_no) {
 }
 
 /*
- * The allocator calls this to find a register it can use.  This doesn't change
- * the state of the register or do anything to save the value in that register.
- * All it does is find a register which is not locked and not grabbed.
+ * This function will pick an unused register to use.  This doesn't change the
+ * state of the register.  If there are no unused registers available, this
+ * function will return -1.
  */
-static unsigned pick_reg(void) {
+static int pick_unused_reg(void) {
     unsigned reg_no;
     unsigned best_reg = 0;
     int best_prio;
     bool found_one = false;
 
-    // first pass: try to find one that's not in use
     for (reg_no = 0; reg_no < N_REGS; reg_no++) {
         struct reg_stat const *reg = regs + reg_no;
         if (!reg->locked && !reg->grabbed && !reg->in_use) {
@@ -379,6 +378,24 @@ static unsigned pick_reg(void) {
 
     if (found_one)
         return best_reg;
+    return -1;
+}
+
+/*
+ * The allocator calls this to find a register it can use.  This doesn't change
+ * the state of the register or do anything to save the value in that register.
+ * All it does is find a register which is not locked and not grabbed.
+ */
+static unsigned pick_reg(void) {
+    unsigned reg_no;
+    unsigned best_reg = 0;
+    int best_prio;
+    bool found_one = false;
+
+    // first pass: try to find one that's not in use
+    int unused_reg = pick_unused_reg();
+    if (unused_reg >= 0)
+        return (unsigned)unused_reg;
 
     /*
      * second pass: they're all in use so just pick one that is not locked or
@@ -410,8 +427,14 @@ static unsigned pick_reg(void) {
  */
 static void evict_register(unsigned reg_no) {
     struct reg_stat *reg = regs + reg_no;
-    if (reg->in_use)
-        move_slot_to_stack(reg->slot_no);
+    if (reg->in_use) {
+        int reg_dst = pick_unused_reg();
+
+        if (reg_dst >= 0)
+            move_slot_to_reg(reg->slot_no, reg_dst);
+        else
+            move_slot_to_stack(reg->slot_no);
+    }
     reg->in_use = false;
 }
 
