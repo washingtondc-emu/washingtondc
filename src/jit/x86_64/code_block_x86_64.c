@@ -987,6 +987,19 @@ emit_not(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_slot(slot_no);
 }
 
+static void
+emit_shll(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.shll.slot_no;
+    unsigned shift_amt = inst->immed.shll.shift_amt;
+
+    if (shift_amt >= 32)
+        shift_amt = 32;
+
+    grab_slot(slot_no);
+    x86asm_shll_imm8_reg32(shift_amt, slots[slot_no].reg_no);
+    ungrab_slot(slot_no);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned by
@@ -1100,6 +1113,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_NOT:
             emit_not(sh4, inst);
+            break;
+        case JIT_OP_SHLL:
+            emit_shll(sh4, inst);
             break;
         }
         inst++;

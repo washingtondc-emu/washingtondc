@@ -102,6 +102,9 @@ enum jit_opcode {
     // place one's-compliment of given slot into another slot
     JIT_OP_NOT,
 
+    // left-shift the given slot by the given amount
+    JIT_OP_SHLL,
+
     /*
      * This tells the backend that a given slot is no longer needed and its
      * value does not need to be preserved.
@@ -236,6 +239,11 @@ struct not_immed {
     unsigned slot_no;
 };
 
+struct shll_immed {
+    unsigned slot_no;
+    unsigned shift_amt;
+};
+
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct jump_immed jump;
@@ -262,6 +270,7 @@ union jit_immed {
     struct or_const32_immed or_const32;
     struct slot_to_bool_immed slot_to_bool;
     struct not_immed not;
+    struct shll_immed shll;
 };
 
 struct jit_inst {
@@ -316,5 +325,7 @@ void jit_or_const32(struct il_code_block *block, unsigned slot_no,
                     unsigned const32);
 void jit_slot_to_bool(struct il_code_block *block, unsigned slot_no);
 void jit_not(struct il_code_block *block, unsigned slot_no);
+void jit_shll(struct il_code_block *block, unsigned slot_no,
+              unsigned shift_amt);
 
 #endif

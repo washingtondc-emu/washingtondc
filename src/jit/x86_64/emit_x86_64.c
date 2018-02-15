@@ -545,3 +545,9 @@ void x86asm_xorl_imm32_reg32(unsigned imm32, unsigned reg_no) {
 void x86asm_incl_reg32(unsigned reg_no) {
     emit_mod_reg_rm(0, 0xff, 3, 0, reg_no);
 }
+
+// shll $<imm8>, %reg_no
+void x86asm_shll_imm8_reg32(unsigned imm8, unsigned reg_no) {
+    emit_mod_reg_rm(0, 0xc1, 3, 4, reg_no);
+    put8(imm8);
+}

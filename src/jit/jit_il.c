@@ -507,3 +507,22 @@ void jit_not(struct il_code_block *block, unsigned slot_no) {
     struct il_slot *slotp = block->slots + slot_no;
     slotp->known_val = ~slotp->known_val;
 }
+
+void jit_shll(struct il_code_block *block, unsigned slot_no,
+              unsigned shift_amt) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_SHLL;
+    op.immed.shll.slot_no = slot_no;
+    op.immed.shll.shift_amt = shift_amt;
+
+    il_code_block_push_inst(block, &op);
+
+    // cache known values
+    struct il_slot *slotp = block->slots + slot_no;
+    slotp->known_val <<= shift_amt;
+    if (shift_amt >= 32)
+        slotp->known_bits = 0xffffffff; // all are zero
+    else
+        slotp->known_bits |= (1 << shift_amt) - 1;
+}

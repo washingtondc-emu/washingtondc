@@ -192,4 +192,9 @@ bool sh4_disas_movl_a_disp4_rm_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_mov_imm8_rn(struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
+// SHLL16 Rn
+// 0100nnnn00101000
+bool sh4_disas_shll16_rn(struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, inst_t inst);
+
 #endif

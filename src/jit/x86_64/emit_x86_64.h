@@ -226,4 +226,7 @@ void x86asm_xorl_imm32_reg32(unsigned imm32, unsigned reg_no);
 // incl %<reg_no>
 void x86asm_incl_reg32(unsigned reg_no);
 
+// shll $<imm8>, %reg_no
+void x86asm_shll_imm8_reg32(unsigned imm8, unsigned reg_no);
+
 #endif
