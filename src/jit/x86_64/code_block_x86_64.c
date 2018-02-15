@@ -153,7 +153,7 @@ static struct reg_stat {
     }
 };
 
-#define MAX_SLOTS 128
+#define MAX_SLOTS 512
 
 struct slot {
     union {
