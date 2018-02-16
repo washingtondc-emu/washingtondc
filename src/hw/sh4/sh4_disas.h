@@ -242,4 +242,8 @@ bool sh4_disas_shll_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_shal_rn(struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
+// SWAP.W Rm, Rn
+// 0110nnnnmmmm1001
+bool sh4_disas_swapw_rm_rn(struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, inst_t inst);
 #endif

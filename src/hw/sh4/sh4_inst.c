@@ -456,7 +456,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_EX, 1, 0xf00f, 0x6008 },
 
     // SWAP.W Rm, Rn
-    { &sh4_inst_binary_swapw_gen_gen, sh4_disas_fallback, false,
+    { &sh4_inst_binary_swapw_gen_gen, sh4_disas_swapw_rm_rn, false,
       SH4_GROUP_EX, 1, 0xf00f, 0x6009 },
 
     // XTRCT Rm, Rn

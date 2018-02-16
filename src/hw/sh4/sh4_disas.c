@@ -978,6 +978,34 @@ bool sh4_disas_shlr16_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// SWAP.W Rm, Rn
+// 0110nnnnmmmm1001
+bool sh4_disas_swapw_rm_rn(struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, inst_t inst) {
+    unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
+    unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+
+    unsigned slot_src = reg_slot(dreamcast_get_cpu(), block, reg_src);
+    unsigned slot_dst = reg_slot_noload(dreamcast_get_cpu(), block, reg_dst);
+
+    unsigned slot_tmp = res_alloc_slot(block);
+
+    jit_mov(block, slot_src, slot_tmp);
+    jit_shlr(block, slot_tmp, 16);
+
+    jit_mov(block, slot_src, slot_dst);
+    jit_and_const32(block, slot_dst, 0xffff);
+    jit_shll(block, slot_dst, 16);
+
+    jit_or(block, slot_tmp, slot_dst);
+
+    reg_map[reg_dst].stat = REG_STATUS_SLOT;
+
+    res_free_slot(block, slot_tmp);
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 
