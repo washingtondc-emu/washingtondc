@@ -108,6 +108,9 @@ enum jit_opcode {
     // arithmetic right-shift the given slot by the given amount
     JIT_OP_SHAR,
 
+    // logical right-shift the given slot by the given amount
+    JIT_OP_SHLR,
+
     /*
      * This tells the backend that a given slot is no longer needed and its
      * value does not need to be preserved.
@@ -252,6 +255,11 @@ struct shar_immed {
     unsigned shift_amt;
 };
 
+struct shlr_immed {
+    unsigned slot_no;
+    unsigned shift_amt;
+};
+
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct jump_immed jump;
@@ -280,6 +288,7 @@ union jit_immed {
     struct not_immed not;
     struct shll_immed shll;
     struct shar_immed shar;
+    struct shlr_immed shlr;
 };
 
 struct jit_inst {
@@ -337,6 +346,8 @@ void jit_not(struct il_code_block *block, unsigned slot_no);
 void jit_shll(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
 void jit_shar(struct il_code_block *block, unsigned slot_no,
+              unsigned shift_amt);
+void jit_shlr(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
 
 #endif

@@ -545,3 +545,22 @@ void jit_shar(struct il_code_block *block, unsigned slot_no,
     else
         slotp->known_bits |= ~((1 << (31 - shift_amt)) - 1);
 }
+
+void jit_shlr(struct il_code_block *block, unsigned slot_no,
+              unsigned shift_amt) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_SHLR;
+    op.immed.shlr.slot_no = slot_no;
+    op.immed.shlr.shift_amt = shift_amt;
+
+    il_code_block_push_inst(block, &op);
+
+    // cache known values
+    struct il_slot *slotp = block->slots + slot_no;
+    slotp->known_val >>= shift_amt;
+    if (shift_amt >= 32)
+        slotp->known_bits = 0xffffffff; // all are zero
+    else
+        slotp->known_bits |= ~((1 << (31 - shift_amt)) - 1);
+}
