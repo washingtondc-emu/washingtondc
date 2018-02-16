@@ -905,6 +905,40 @@ bool sh4_disas_shlr_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// SHLL Rn
+// 0100nnnn00000000
+bool sh4_disas_shll_rn(struct il_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, inst_t inst) {
+    unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+    unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, reg_no);
+    unsigned tmp_cpy = res_alloc_slot(block);
+    unsigned sr_slot = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
+
+    // set the T-bit in SR from the shift-out.
+    jit_mov(block, slot_no, tmp_cpy);
+    jit_and_const32(block, tmp_cpy, 1<<31);
+    jit_shlr(block, tmp_cpy, 31);
+    jit_and_const32(block, sr_slot, ~1);
+    jit_or(block, tmp_cpy, sr_slot);
+    reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
+
+    res_free_slot(block, tmp_cpy);
+
+    jit_shll(block, slot_no, 1);
+
+    reg_map[reg_no].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
+// SHAL Rn
+// 0100nnnn00100000
+bool sh4_disas_shal_rn(struct il_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, inst_t inst) {
+    // As far as I know, SHLL and SHAL do the exact same thing.
+    return sh4_disas_shll_rn(block, pc, op, inst);
+}
+
 // SHLR2 Rn
 // 0100nnnn00001001
 bool sh4_disas_shlr2_rn(struct il_code_block *block, unsigned pc,
