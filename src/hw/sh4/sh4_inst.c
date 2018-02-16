@@ -227,7 +227,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_EX, 1, 0xf0ff, 0x4028 },
 
     // SHLR16 Rn
-    { &sh4_inst_unary_shlr16_gen, sh4_disas_fallback, false,
+    { &sh4_inst_unary_shlr16_gen, sh4_disas_shlr16_rn, false,
       SH4_GROUP_EX, 1, 0xf0ff, 0x4029 },
 
     // BRAF Rn

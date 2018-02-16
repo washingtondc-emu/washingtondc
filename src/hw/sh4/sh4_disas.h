@@ -227,4 +227,8 @@ bool sh4_disas_shlr2_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_shlr8_rn(struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
+// SHLR16 Rn
+// 0100nnnn00101001
+bool sh4_disas_shlr16_rn(struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, inst_t inst);
 #endif
