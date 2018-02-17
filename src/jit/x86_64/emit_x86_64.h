@@ -78,6 +78,41 @@
 #define R14W R14
 #define R15W R15
 
+/*
+ * This is the maximum number of jump-points that can jump to a given label.
+ * This value is entirely arbitrary and may be increased as needed.
+ */
+#define MAX_LABEL_JUMPS 32
+
+struct lbl_jmp_pt {
+    int8_t *offs;
+    uint8_t *rel_pos;
+};
+
+// label for 8-bit offset jumps
+struct x86asm_lbl8 {
+    // This is the pointer that the label points at
+    uint8_t *ptr;
+
+    /*
+     * Labels are often referenced before they are defined (forward-jumps).
+     * When this happens, the label-offsets will need to be redefined
+     * retroactively after the label is defined.  jump_points points to every
+     * jump that needs to be updated.
+     */
+    struct lbl_jmp_pt jump_points[MAX_LABEL_JUMPS];
+    unsigned n_jump_points;
+};
+
+void x86asm_lbl8_init(struct x86asm_lbl8 *lbl);
+void x86asm_lbl8_cleanup(struct x86asm_lbl8 *lbl);
+
+// This will define the label to point to outp.
+void x86asm_lbl8_define(struct x86asm_lbl8 *lbl);
+
+void x86asm_lbl8_push_jmp_pt(struct x86asm_lbl8 *lbl,
+                             struct lbl_jmp_pt const *jmp_pt);
+
 void x86asm_set_dst(void *out_ptr, unsigned n_bytes);
 
 // call a function pointer contained in a general-purpose register
@@ -205,11 +240,39 @@ void x86asm_movsx_indreg16_reg32(unsigned reg_src, unsigned reg_dst);
 void x86asm_cmpl_reg32_imm8(unsigned reg_no, unsigned imm8);
 
 /*
+ * cmpl %<reg_rhs>, %<reg_lhs>
+ *
+ * compare the two given registers by subtracting.  Keep in mind that the lhs
+ * goes on the right and the rhs goes on the left for this function call
+ * because I'm trying to vaguely mimic the syntax of GNU as.
+ */
+void x86asm_cmpl_reg32_reg32(unsigned reg_rhs, unsigned reg_lhs);
+
+/*
  * jz (pc+disp8)
  *
  * jump if the zero-flag is set (meaning a cmp was equal)
  */
-void x86asm_jz_disp8(unsigned disp8);
+void x86asm_jz_disp8(int disp8);
+
+void x86asm_jz_lbl8(struct x86asm_lbl8 *lbl);
+
+/*
+ * ja (pc+disp8)
+ *
+ * jump if the carry flag and zero flag are both not set (meaning a cmp was
+ * greater-than).
+ */
+void x86asm_ja_disp8(int disp8);
+
+/*
+ * jbe (pc+disp8)
+ *
+ * jump if below or equal
+ */
+void x86asm_jbe_disp8(int disp8);
+
+void x86asm_jbe_lbl8(struct x86asm_lbl8 *lbl);
 
 // movsx <%reg16>, %<reg32>
 void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst);
@@ -234,5 +297,7 @@ void x86asm_shrl_imm8_reg32(unsigned imm8, unsigned reg_no);
 
 // sarl $<imm8>, %reg_no
 void x86asm_sarl_imm8_reg32(unsigned imm8, unsigned reg_no);
+
+void* x86asm_get_outp(void);
 
 #endif

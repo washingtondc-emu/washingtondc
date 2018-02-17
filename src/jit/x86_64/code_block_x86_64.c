@@ -595,6 +595,9 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned jmp_addr_slot = inst->immed.jump_cond.jmp_addr_slot;
     unsigned alt_jmp_addr_slot = inst->immed.jump_cond.alt_jmp_addr_slot;
 
+    struct x86asm_lbl8 lbl;
+    x86asm_lbl8_init(&lbl);
+
     grab_register(RAX);
     evict_register(RAX);
     grab_register(RCX);
@@ -625,8 +628,9 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
      */
     x86asm_mov_reg64_reg64(slots[alt_jmp_addr_slot].reg_no, RAX);
     x86asm_cmpl_reg32_imm8(ECX, !t_flag);
-    x86asm_jz_disp8(3);    // JUMP IF EQUAL
+    x86asm_jz_lbl8(&lbl);    // JUMP IF EQUAL
     x86asm_mov_reg64_reg64(slots[jmp_addr_slot].reg_no, RAX);
+    x86asm_lbl8_define(&lbl);
 
     // the chosen address is now in %rax, so we're ready to return
 
@@ -638,6 +642,8 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
 
     ungrab_register(RCX);
     ungrab_register(RAX); // not that it matters at this point...
+
+    x86asm_lbl8_cleanup(&lbl);
 }
 
 // JIT_SET_REG implementation
@@ -960,6 +966,9 @@ static void
 emit_slot_to_bool(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.slot_to_bool.slot_no;
 
+    struct x86asm_lbl8 lbl;
+    x86asm_lbl8_init(&lbl);
+
     grab_register(RAX);
     evict_register(RAX);
     grab_slot(slot_no);
@@ -967,13 +976,16 @@ emit_slot_to_bool(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_mov_reg32_reg32(slots[slot_no].reg_no, EAX);
     x86asm_xorl_reg32_reg32(EAX, EAX);
     x86asm_cmpl_reg32_imm8(slots[slot_no].reg_no, 0);
-    x86asm_jz_disp8(2);
+    x86asm_jz_lbl8(&lbl);
     x86asm_incl_reg32(EAX);
-    // the jz from two lines above jumps to this position
+
+    x86asm_lbl8_define(&lbl);
     x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
     ungrab_register(RAX);
+
+    x86asm_lbl8_cleanup(&lbl);
 }
 
 static void
@@ -1024,6 +1036,30 @@ emit_shlr(Sh4 *sh4, struct jit_inst const *inst) {
     grab_slot(slot_no);
     x86asm_shrl_imm8_reg32(shift_amt, slots[slot_no].reg_no);
     ungrab_slot(slot_no);
+}
+
+static void emit_set_gt(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_lhs = inst->immed.set_gt.slot_lhs;
+    unsigned slot_rhs = inst->immed.set_gt.slot_rhs;
+    unsigned slot_dst = inst->immed.set_gt.slot_dst;
+
+    struct x86asm_lbl8 lbl;
+    x86asm_lbl8_init(&lbl);
+
+    grab_slot(slot_lhs);
+    grab_slot(slot_rhs);
+    grab_slot(slot_dst);
+
+    x86asm_cmpl_reg32_reg32(slots[slot_lhs].reg_no, slots[slot_rhs].reg_no);
+    x86asm_jbe_lbl8(&lbl);
+    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
+    x86asm_lbl8_define(&lbl);
+
+    ungrab_slot(slot_dst);
+    ungrab_slot(slot_rhs);
+    ungrab_slot(slot_lhs);
+
+    x86asm_lbl8_cleanup(&lbl);
 }
 
 /*
@@ -1148,6 +1184,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_SHLR:
             emit_shlr(sh4, inst);
+            break;
+        case JIT_OP_SET_GT:
+            emit_set_gt(sh4, inst);
             break;
         }
         inst++;

@@ -213,6 +213,12 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
                 inst->immed.shlr.shift_amt;
             inst++;
             break;
+        case JIT_OP_SET_GT:
+            if (block->slots[inst->immed.set_gt.slot_lhs] >
+                block->slots[inst->immed.set_gt.slot_rhs])
+                block->slots[inst->immed.set_gt.slot_dst] |= 1;
+            inst++;
+            break;
         }
     }
 

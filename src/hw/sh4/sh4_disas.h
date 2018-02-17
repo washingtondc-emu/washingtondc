@@ -246,4 +246,10 @@ bool sh4_disas_shal_rn(struct il_code_block *block, unsigned pc,
 // 0110nnnnmmmm1001
 bool sh4_disas_swapw_rm_rn(struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
+
+// CMP/HI Rm, Rn
+// 0011nnnnmmmm0110
+bool sh4_disas_cmphi_rm_rn(struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, inst_t inst);
+
 #endif

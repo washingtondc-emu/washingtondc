@@ -106,6 +106,10 @@ static void put64(uint64_t val) {
     }
 }
 
+void* x86asm_get_outp(void) {
+    return outp;
+}
+
 #define REX_W (1 << 3) // 64-bit operand size
 #define REX_R (1 << 2) // register extension
 #define REX_X (1 << 1) // sib index extension
@@ -501,6 +505,17 @@ void x86asm_cmpl_reg32_imm8(unsigned reg_no, unsigned imm8) {
 }
 
 /*
+ * cmpl %<reg_rhs>, %<reg_lhs>
+ *
+ * compare the two given registers by subtracting.  Keep in mind that the lhs
+ * goes on the right and the rhs goes on the left for this function call
+ * because I'm trying to vaguely mimic the syntax of GNU as.
+ */
+void x86asm_cmpl_reg32_reg32(unsigned reg_rhs, unsigned reg_lhs) {
+    emit_mod_reg_rm(0, 0x39, 3, reg_lhs, reg_rhs);
+}
+
+/*
  * jz (pc+disp8)
  *
  * jump if the zero-flag is set (meaning a cmp was equal).
@@ -508,9 +523,49 @@ void x86asm_cmpl_reg32_imm8(unsigned reg_no, unsigned imm8) {
  * The disp8 is a signed value relative to what the PC would otherwise be
  * *after* this instruction (which is always two bytes long) has executed.
  */
-void x86asm_jz_disp8(unsigned disp8) {
+void x86asm_jz_disp8(int disp8) {
     put8(0x74);
     put8(disp8);
+}
+
+void x86asm_jz_lbl8(struct x86asm_lbl8 *lbl) {
+    struct lbl_jmp_pt pt;
+    put8(0x74);
+
+    pt.offs = (int8_t*)outp;
+    pt.rel_pos = outp + 1;
+
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
+
+    put8(0); // temporary placeholder for the offset value
+}
+
+/*
+ * ja (pc+disp8)
+ *
+ * jump if the carry flag and zero flag are both not set (meaning a cmp was
+ * greater-than).
+ */
+void x86asm_ja_disp8(int disp8) {
+    put8(0x77);
+    put8(disp8);
+}
+
+void x86asm_jbe_disp8(int disp8) {
+    put8(0x76);
+    put8(disp8);
+}
+
+void x86asm_jbe_lbl8(struct x86asm_lbl8 *lbl) {
+    struct lbl_jmp_pt pt;
+    put8(0x76);
+
+    pt.offs = (int8_t*)outp;
+    pt.rel_pos = outp + 1;
+
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
+
+    put8(0); // temporary placeholder for the offset value
 }
 
 // movsx %<reg16>, %<reg32>
@@ -562,4 +617,30 @@ void x86asm_sarl_imm8_reg32(unsigned imm8, unsigned reg_no) {
 void x86asm_shrl_imm8_reg32(unsigned imm8, unsigned reg_no) {
     emit_mod_reg_rm(0, 0xc1, 3, 5, reg_no);
     put8(imm8);
+}
+
+void x86asm_lbl8_init(struct x86asm_lbl8 *lbl) {
+    memset(lbl, 0, sizeof(*lbl));
+}
+
+void x86asm_lbl8_cleanup(struct x86asm_lbl8 *lbl) {
+    memset(lbl, 0, sizeof(*lbl));
+}
+
+// This will define the label to point to outp.
+void x86asm_lbl8_define(struct x86asm_lbl8 *lbl) {
+    lbl->ptr = outp;
+
+    unsigned jmp_pt_idx;
+    for (jmp_pt_idx = 0; jmp_pt_idx < lbl->n_jump_points; jmp_pt_idx++) {
+        struct lbl_jmp_pt *pt = lbl->jump_points + jmp_pt_idx;
+        *pt->offs = lbl->ptr - pt->rel_pos;
+    }
+}
+
+void x86asm_lbl8_push_jmp_pt(struct x86asm_lbl8 *lbl,
+                             struct lbl_jmp_pt const *jmp_pt) {
+    if (lbl->n_jump_points >= MAX_LABEL_JUMPS)
+        RAISE_ERROR(ERROR_OVERFLOW);
+    lbl->jump_points[lbl->n_jump_points++] = *jmp_pt;
 }

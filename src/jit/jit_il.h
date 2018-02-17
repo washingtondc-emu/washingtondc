@@ -112,6 +112,13 @@ enum jit_opcode {
     JIT_OP_SHLR,
 
     /*
+     * takes three regs as input.  If the second reg is greater than the first
+     * reg, then the third reg will be ORed with 1.  Else, the third reg
+     * remains unchanged.
+     */
+    JIT_OP_SET_GT,
+
+    /*
      * This tells the backend that a given slot is no longer needed and its
      * value does not need to be preserved.
      */
@@ -260,6 +267,12 @@ struct shlr_immed {
     unsigned shift_amt;
 };
 
+struct set_gt_immed {
+    // dst |= 1 if lhs > rhs
+    unsigned slot_lhs, slot_rhs;
+    unsigned slot_dst;
+};
+
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct jump_immed jump;
@@ -289,6 +302,7 @@ union jit_immed {
     struct shll_immed shll;
     struct shar_immed shar;
     struct shlr_immed shlr;
+    struct set_gt_immed set_gt;
 };
 
 struct jit_inst {
@@ -349,5 +363,7 @@ void jit_shar(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
 void jit_shlr(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
+void jit_set_gt(struct il_code_block *block, unsigned slot_lhs,
+                unsigned slot_rhs, unsigned slot_dst);
 
 #endif
