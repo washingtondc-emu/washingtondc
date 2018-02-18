@@ -32,7 +32,6 @@
 #include "hw/pvr2/pvr2_tex_mem.h"
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "gfx/gfx.h"
-#include "gfx/geo_buf.h"
 #include "log.h"
 
 #include "framebuffer.h"
