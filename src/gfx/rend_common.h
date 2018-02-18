@@ -29,7 +29,7 @@
 #ifndef REND_COMMON_H_
 #define REND_COMMON_H_
 
-#include "gfx/geo_buf.h"
+#include "gfx/gfx_il.h"
 
 struct rend_if {
     void (*init)(void);
@@ -48,13 +48,14 @@ struct rend_if {
      */
     void (*release_tex)(unsigned tex_obj);
 
-    /*
-     * render the contents of the given geo_buf
-     *
-     * TODO: split this up into multiple functions (apply config, apply
-     * graphics state, render list, etc).
-     */
-    void (*do_draw_geo_buf)(struct geo_buf *geo);
+    // enable/disable blending
+    void (*set_blend_enable)(bool do_enable);
+
+    void (*set_rend_param)(struct gfx_rend_param const *param);
+
+    void (*draw_array)(float const *verts, unsigned n_verts);
+
+    void (*clear)(float const bgcolor[4]);
 };
 
 // initialize and clean up the graphics renderer
@@ -66,11 +67,5 @@ void rend_update_tex(unsigned tex_no, void const *tex_dat);
 
 // tell the renderer to release the given texture from the cache
 void rend_release_tex(unsigned tex_no);
-
-// draw the given geo_buf
-void rend_do_draw_geo_buf(struct geo_buf *geo);
-
-// this should only be called from the gfx_thread
-void rend_draw_geo_buf(struct geo_buf *geo);
 
 #endif

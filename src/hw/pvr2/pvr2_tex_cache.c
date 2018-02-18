@@ -32,7 +32,7 @@
 #include "log.h"
 #include "error.h"
 
-#include "gfx/geo_buf.h"
+#include "hw/pvr2/geo_buf.h"
 
 #include "pvr2_tex_cache.h"
 

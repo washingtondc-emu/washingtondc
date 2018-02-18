@@ -26,13 +26,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "hw/pvr2/pvr2_tex_cache.h"
+/* #include "hw/pvr2/pvr2_tex_cache.h" */
 
 /*
  * This is the gfx_thread's copy of the texture cache.  It mirrors the one
  * in the geo_buf code, and is updated every time a new geo_buf is submitted by
  * the PVR2 STARTRENDER command.
  */
+
+#define GFX_TEX_CACHE_SIZE 512
+#define GFX_TEX_CACHE_MASK (GFX_TEX_CACHE_SIZE - 1)
 
 struct gfx_tex {
     int pix_fmt;

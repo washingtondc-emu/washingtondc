@@ -27,7 +27,7 @@
 #include <stdbool.h>
 
 #include "error.h"
-#include "gfx/geo_buf.h"
+#include "hw/pvr2/geo_buf.h"
 #include "gfx/gfx.h"
 #include "hw/sys/holly_intc.h"
 #include "pvr2_core_reg.h"
@@ -38,6 +38,7 @@
 #include "log.h"
 #include "dc_sched.h"
 #include "dreamcast.h"
+#include "gfx/gfx_il.h"
 
 #include "pvr2_ta.h"
 
@@ -287,6 +288,8 @@ static const unsigned vert_lengths[N_VERT_TYPES] = {
 
 bool list_submitted[DISPLAY_LIST_COUNT];
 
+static void xmit_geo_buf(struct geo_buf *geo);
+
 static void input_poly_fifo(uint8_t byte);
 
 // this function gets called every time a full packet is received by the TA
@@ -311,26 +314,9 @@ static enum vert_type classify_vert(void);
 
 static void unpack_uv16(float *u_coord, float *v_coord, void const *input);
 
-/*
- * simple buffer of two geo_bufs.  One of these is being written to from here,
- * the other is being rendered by the gfx_thread (and therefore should not be
- * touched by the pvr2 code).  geo_buf_prod_idx indicates the one we are
- * writing to.
- *
- * The gfx_thread's mutex provides synchronization for this because
- * gfx_thread_render_geo_buf will block trying to grab the mutex if the gfx
- * thread is already running; thus the PVR2 code's only responsibility is not
- * to write to the last geo_buf it submitted.
- */
-static unsigned geo_buf_prod_idx;
-
-/*
- * TODO: we should call geo_buf_init when WashingtonDC starts instead of
- * hardcoding a couple of fresh geo_bufs here.
- */
-static struct geo_buf geo_buf_array[2] = {
-    { .clip_min = -1.0f, .clip_max = 1.0f },
-    { .clip_min = -1.0f, .clip_max = 1.0f }
+static struct geo_buf geo_buf_array[1] = {
+    { .clip_min = -1.0f, .clip_max = 1.0f }/* , */
+    /* { .clip_min = -1.0f, .clip_max = 1.0f } */
 };
 
 /*
@@ -756,7 +742,7 @@ static void on_polyhdr_received(void) {
      * and that will reference the poly_state.  Ergo, next_poly_group must be
      * called BEFORE any poly_state changes are made.
      */
-    struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
+    struct geo_buf *geo = geo_buf_array;
 
     if (poly_state.current_list != DISPLAY_LIST_NONE &&
         poly_state.current_list != list) {
@@ -894,7 +880,7 @@ static void unpack_uv16(float *u_coord, float *v_coord, void const *input) {
 }
 
 static void on_sprite_received(void) {
-    struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
+    struct geo_buf *geo = geo_buf_array;
 
     /*
      * if the vertex is not long enough, return and make input_poly_fifo call
@@ -1141,7 +1127,7 @@ static void on_vertex_received(void) {
 #ifdef PVR2_LOG_VERBOSE
     LOG_DBG("vertex received!\n");
 #endif
-    struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
+    struct geo_buf *geo = geo_buf_array;
 
     if (poly_state.current_list < 0) {
         LOG_WARN("WARNING: unable to render vertex because no display lists "
@@ -1348,7 +1334,7 @@ pvr2_pt_complete_int_event_handler(struct SchedEvent *event) {
 static void on_end_of_list_received(void) {
     LOG_DBG("END-OF-LIST PACKET!\n");
 
-    finish_poly_group(geo_buf_array + geo_buf_prod_idx, poly_state.current_list);
+    finish_poly_group(geo_buf_array, poly_state.current_list);
 
     if (poly_state.current_list != DISPLAY_LIST_NONE) {
         LOG_DBG("Display list \"%s\" closed\n",
@@ -1426,7 +1412,7 @@ static void pvr2_render_complete_int_event_handler(struct SchedEvent *event) {
 void pvr2_ta_startrender(void) {
     LOG_DBG("STARTRENDER requested!\n");
 
-    struct geo_buf *geo = geo_buf_array + geo_buf_prod_idx;
+    struct geo_buf *geo = geo_buf_array;
 
     unsigned tile_w = get_glob_tile_clip_x() << 5;
     unsigned tile_h = get_glob_tile_clip_y() << 5;
@@ -1481,8 +1467,8 @@ void pvr2_ta_startrender(void) {
     geo->bgcolor[2] = bg_color_b;
     geo->bgcolor[3] = bg_color_a;
 
-    uint32_t backgnd_depth_as_int = get_isp_backgnd_d();
-    memcpy(&geo->bgdepth, &backgnd_depth_as_int, sizeof(float));
+    /* uint32_t backgnd_depth_as_int = get_isp_backgnd_d(); */
+    /* memcpy(&geo->bgdepth, &backgnd_depth_as_int, sizeof(float)); */
 
     geo->screen_width = width;
     geo->screen_height = height;
@@ -1500,9 +1486,8 @@ void pvr2_ta_startrender(void) {
 
     framebuffer_set_current_host(geo->frame_stamp);
 
-    gfx_render_geo_buf(geo_buf_array + geo_buf_prod_idx);
-    geo_buf_prod_idx = !geo_buf_prod_idx;
-    geo_buf_init(geo_buf_array + geo_buf_prod_idx);
+    xmit_geo_buf(geo_buf_array);
+    geo_buf_init(geo_buf_array);
 
     memset(list_submitted, 0, sizeof(list_submitted));
     poly_state.current_list = DISPLAY_LIST_NONE;
@@ -1659,4 +1644,104 @@ static enum vert_type classify_vert(void) {
 
 static void ta_fifo_finish_packet(void) {
     ta_fifo_byte_count = 0;
+}
+
+static void xmit_geo_buf(struct geo_buf *geo) {
+    struct gfx_il_inst cmd;
+
+    // update texture cache
+    unsigned tex_no;
+    for (tex_no = 0; tex_no < GEO_BUF_TEX_CACHE_SIZE; tex_no++) {
+        struct geo_buf_tex *tex = geo->tex_cache + tex_no;
+        if (tex->state == GEO_BUF_TEX_DIRTY) {
+            cmd.op = GFX_IL_SET_TEX;
+            /*
+             * pvr2_tex_cache_read previously allocated tex_dat.  It will be
+             * freed from the gfx-side of things when this data is received by
+             * the gfx system.
+             */
+            cmd.arg.set_tex.tex_dat = tex->dat;
+            cmd.arg.set_tex.tex_no = tex_no;
+            cmd.arg.set_tex.pix_fmt = tex->pix_fmt;
+            cmd.arg.set_tex.w_shift = tex->w_shift;
+            cmd.arg.set_tex.h_shift = tex->h_shift;
+            rend_exec_il(&cmd, 1);
+            tex->dat = NULL;
+            tex->state = GEO_BUF_TEX_READY;
+        } else if (tex->state == GEO_BUF_TEX_INVALID) {
+            cmd.op = GFX_IL_FREE_TEX;
+            cmd.arg.free_tex.tex_no = tex_no;
+            rend_exec_il(&cmd, 1);
+        }
+    }
+
+    cmd.op = GFX_IL_BEGIN_REND;
+    cmd.arg.begin_rend.screen_width = geo->screen_width;
+    cmd.arg.begin_rend.screen_height = geo->screen_height;
+    rend_exec_il(&cmd, 1);
+
+    cmd.op = GFX_IL_CLEAR;
+    cmd.arg.clear.bgcolor[0] = geo->bgcolor[0];
+    cmd.arg.clear.bgcolor[1] = geo->bgcolor[1];
+    cmd.arg.clear.bgcolor[2] = geo->bgcolor[2];
+    cmd.arg.clear.bgcolor[3] = geo->bgcolor[3];
+    rend_exec_il(&cmd, 1);
+
+    enum display_list_type disp_list;
+    for (disp_list = DISPLAY_LIST_FIRST; disp_list <= DISPLAY_LIST_LAST;
+         disp_list++) {
+        if (disp_list == DISPLAY_LIST_OPAQUE_MOD ||
+            disp_list == DISPLAY_LIST_TRANS_MOD)
+            continue;
+        struct display_list *list = geo->lists + disp_list;
+
+        cmd.op = GFX_IL_SET_BLEND_ENABLE;
+        cmd.arg.set_blend_enable.do_enable = list->blend_enable;
+        rend_exec_il(&cmd, 1);
+
+        unsigned group_no;
+        for (group_no = 0; group_no < list->n_groups; group_no++) {
+            struct poly_group *group = list->groups + group_no;
+
+            cmd.op = GFX_IL_SET_REND_PARAM;
+            cmd.arg.set_rend_param.param.tex_enable = group->tex_enable;
+            cmd.arg.set_rend_param.param.tex_idx = group->tex_idx;
+            cmd.arg.set_rend_param.param.tex_inst = group->tex_inst;
+            cmd.arg.set_rend_param.param.tex_filter = group->tex_filter;
+            cmd.arg.set_rend_param.param.tex_wrap_mode[0] = group->tex_wrap_mode[0];
+            cmd.arg.set_rend_param.param.tex_wrap_mode[1] = group->tex_wrap_mode[1];
+            cmd.arg.set_rend_param.param.src_blend_factor = group->src_blend_factor;
+            cmd.arg.set_rend_param.param.dst_blend_factor = group->dst_blend_factor;
+            cmd.arg.set_rend_param.param.enable_depth_writes = group->enable_depth_writes;
+            cmd.arg.set_rend_param.param.depth_func = group->depth_func;
+            cmd.arg.set_rend_param.param.clip_min = geo->clip_min;
+            cmd.arg.set_rend_param.param.clip_max = geo->clip_max;
+            cmd.arg.set_rend_param.param.screen_width = geo->screen_width;
+            cmd.arg.set_rend_param.param.screen_height = geo->screen_height;
+            rend_exec_il(&cmd, 1);
+
+            cmd.op = GFX_IL_DRAW_ARRAY;
+            cmd.arg.draw_array.n_verts = group->n_verts;
+            cmd.arg.draw_array.verts = group->verts;
+            rend_exec_il(&cmd, 1);
+        }
+    }
+
+    cmd.op = GFX_IL_END_REND;
+    rend_exec_il(&cmd, 1);
+
+    /* enum display_list_type disp_list; */
+    for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
+         disp_list++) {
+        struct display_list *list = geo->lists + disp_list;
+        if (list->n_groups) {
+            /*
+             * current protocol is that list->groups is only valid if
+             * list->n_groups is non-valid; ergo it's safe to leave a
+             * hangning pointer here.
+             */
+            free(list->groups);
+            list->n_groups = 0;
+        }
+    }
 }

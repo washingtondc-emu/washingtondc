@@ -23,16 +23,93 @@
 #ifndef GFX_THREAD_H_
 #define GFX_THREAD_H_
 
+#include <assert.h>
+
 #include "gfx/gfx_tex_cache.h"
-#include "gfx/geo_buf.h"
+
+/*
+ * offsets to vertex components within the vert array.
+ * these are in terms of sizeof(float)
+ */
+#define GFX_VERT_POS_OFFSET 0
+#define GFX_VERT_BASE_COLOR_OFFSET 3
+#define GFX_VERT_OFFS_COLOR_OFFSET 7
+#define GFX_VERT_TEX_COORD_OFFSET 11
+
+/*
+ * the number of elements per vertex.  Currently this means 3 floats for the
+ * coordinates, 4 floats for the base color, 4 floats for the offset color and
+ * two floats for the texture coordinates
+ */
+#define GFX_VERT_LEN 13
+
+/*
+ * how to combine a polygon's vertex color with a texture
+ */
+enum tex_inst {
+    TEX_INST_DECAL,
+    TEX_INST_MOD,
+    TEXT_INST_DECAL_ALPHA,
+    TEX_INST_MOD_ALPHA
+};
+
+enum tex_filter {
+    TEX_FILTER_NEAREST,
+    TEX_FILTER_BILINEAR,
+    TEX_FILTER_TRILINEAR_A,
+    TEX_FILTER_TRILINEAR_B
+};
+
+enum tex_wrap_mode {
+    // repeat the texture when coordinates are greater than 1.0 (tiling effect)
+    TEX_WRAP_REPEAT,
+
+    /*
+     * this is similar to TEXT_WRAP_REPEAT, except the tiles alternate between
+     * not-flipped tiles and flipped tiles
+     */
+    TEX_WRAP_FLIP,
+
+    // all coordinates greater than 1.0 are clamped to 1.0
+    TEX_WRAP_CLAMP
+};
+
+enum Pvr2BlendFactor {
+    PVR2_BLEND_ZERO,
+    PVR2_BLEND_ONE,
+    PVR2_BLEND_OTHER,
+    PVR2_BLEND_ONE_MINUS_OTHER,
+    PVR2_BLEND_SRC_ALPHA,
+    PVR2_BLEND_ONE_MINUS_SRC_ALPHA,
+    PVR2_BLEND_DST_ALPHA,
+    PVR2_BLEND_ONE_MINUS_DST_ALPHA,
+
+    PVR2_BLEND_FACTOR_COUNT
+};
+
+static_assert(PVR2_BLEND_FACTOR_COUNT == 8,
+              "incorrect number of blending functions");
+
+enum Pvr2DepthFunc {
+    PVR2_DEPTH_NEVER,
+    PVR2_DEPTH_LESS,
+    PVR2_DEPTH_EQUAL,
+    PVR2_DEPTH_LEQUAL,
+    PVR2_DEPTH_GREATER,
+    PVR2_DEPTH_NOTEQUAL,
+    PVR2_DEPTH_GEQUAL,
+    PVR2_DEPTH_ALWAYS,
+
+    PVR2_DEPTH_FUNC_COUNT
+};
+
+static_assert(PVR2_DEPTH_FUNC_COUNT == 8,
+              "incorrect number of depth functions");
 
 // The purpose of the GFX layer is to handle all the OpenGL-related things.
 
 void gfx_init(unsigned width, unsigned height);
 void gfx_cleanup(void);
-
-// consume a geo_buf (by drawing it)
-void gfx_render_geo_buf(struct geo_buf *geo_buf);
 
 // refresh the window
 void gfx_expose(void);
@@ -51,8 +128,5 @@ void gfx_grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
                      unsigned *fb_height_out);
 
 int gfx_save_screenshot(char const *path);
-
-int gfx_open_geo_buf_log(char const *path);
-void gfx_close_geo_buf_log(void);
 
 #endif

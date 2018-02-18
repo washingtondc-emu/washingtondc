@@ -27,13 +27,13 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "gfx/geo_buf.h"
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "shader.h"
 #include "opengl_target.h"
 #include "dreamcast.h"
 #include "gfx/gfx_config.h"
 #include "gfx/gfx_tex_cache.h"
+#include "gfx/gfx.h"
 #include "log.h"
 
 #include "opengl_renderer.h"
@@ -130,14 +130,20 @@ static void opengl_render_init(void);
 static void opengl_render_cleanup(void);
 static void opengl_renderer_update_tex(unsigned tex_obj, void const* tex_dat);
 static void opengl_renderer_release_tex(unsigned tex_obj);
-static void opengl_renderer_do_draw_geo_buf(struct geo_buf *geo);
+static void opengl_renderer_set_blend_enable(bool enable);
+static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param);
+static void opengl_renderer_draw_array(float const *verts, unsigned n_verts);
+static void opengl_renderer_clear(float const bgcolor[4]);
 
 struct rend_if const opengl_rend_if = {
     .init = opengl_render_init,
     .cleanup = opengl_render_cleanup,
     .update_tex = opengl_renderer_update_tex,
     .release_tex = opengl_renderer_release_tex,
-    .do_draw_geo_buf = opengl_renderer_do_draw_geo_buf
+    .set_blend_enable = opengl_renderer_set_blend_enable,
+    .set_rend_param = opengl_renderer_set_rend_param,
+    .draw_array = opengl_renderer_draw_array,
+    .clear = opengl_renderer_clear
 };
 
 static void opengl_render_init(void) {
@@ -200,181 +206,6 @@ static void opengl_render_cleanup(void) {
     memset(tex_cache, 0, sizeof(tex_cache));
 }
 
-static void render_do_draw_group(struct geo_buf *geo,
-                                 enum display_list_type disp_list,
-                                 unsigned group_no) {
-    struct poly_group *group = geo->lists[disp_list].groups + group_no;
-
-    /*
-     * TODO: currently disable color also disables textures; ideally these
-     * would be two independent settings.
-     */
-    if (group->tex_enable && rend_cfg.tex_enable && rend_cfg.color_enable) {
-        glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
-
-        if (gfx_tex_cache_get(group->tex_idx)->valid) {
-            glBindTexture(GL_TEXTURE_2D, tex_cache[group->tex_idx]);
-        } else {
-            LOG_WARN("WARNING: attempt to bind invalid texture %u\n",
-                     (unsigned)group->tex_idx);
-            glBindTexture(GL_TEXTURE_2D, 0);
-        }
-
-        switch (group->tex_filter) {
-        case TEX_FILTER_TRILINEAR_A:
-        case TEX_FILTER_TRILINEAR_B:
-            LOG_WARN("WARNING: trilinear filtering is not yet supported\n");
-            // intentional fall-through
-        case TEX_FILTER_NEAREST:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            break;
-        case TEX_FILTER_BILINEAR:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            break;
-        }
-
-        GLenum tex_wrap_mode_gl[2];
-        switch (group->tex_wrap_mode[0]) {
-        case TEX_WRAP_REPEAT:
-            tex_wrap_mode_gl[0] = GL_REPEAT;
-            break;
-        case TEX_WRAP_FLIP:
-            tex_wrap_mode_gl[0] = GL_MIRRORED_REPEAT;
-            break;
-        case TEX_WRAP_CLAMP:
-            tex_wrap_mode_gl[0] = GL_CLAMP_TO_EDGE;
-            break;
-        default:
-            RAISE_ERROR(ERROR_INTEGRITY);
-        }
-        switch (group->tex_wrap_mode[1]) {
-        case TEX_WRAP_REPEAT:
-            tex_wrap_mode_gl[1] = GL_REPEAT;
-            break;
-        case TEX_WRAP_FLIP:
-            tex_wrap_mode_gl[1] = GL_MIRRORED_REPEAT;
-            break;
-        case TEX_WRAP_CLAMP:
-            tex_wrap_mode_gl[1] = GL_CLAMP_TO_EDGE;
-            break;
-        default:
-            RAISE_ERROR(ERROR_INTEGRITY);
-        }
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex_wrap_mode_gl[0]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex_wrap_mode_gl[1]);
-
-        glUniform1i(bound_tex_slot, 0);
-        glUniform1i(tex_inst_slot, group->tex_inst);
-        glActiveTexture(GL_TEXTURE0);
-    } else if (rend_cfg.color_enable) {
-        glUseProgram(pvr_ta_shader.shader_prog_obj);
-    } else {
-        glUseProgram(pvr_ta_no_color_shader.shader_prog_obj);
-    }
-
-#ifdef INVARIANTS
-    /*
-     * this check is a little silly, but I get segfaults sometimes when
-     * indexing into src_blend_factors and dst_blend_factors and I don't know
-     * why.
-     *
-     * TODO: this was (hopefully) fixed in commit
-     * 92059fe4f1714b914cec75fd2f91e676127d3097 but I am keeping the INVARIANTS
-     * test here just in case.  It should be safe to delete after a couple of
-     * months have gone by without this INVARIANTS test ever failing.
-     */
-    if (((unsigned)group->src_blend_factor >= PVR2_BLEND_FACTOR_COUNT) ||
-        ((unsigned)group->dst_blend_factor >= PVR2_BLEND_FACTOR_COUNT)) {
-        error_set_src_blend_factor(group->src_blend_factor);
-        error_set_dst_blend_factor(group->dst_blend_factor);
-        error_set_display_list_index((unsigned)disp_list);
-        error_set_geo_buf_group_index(group_no);
-        RAISE_ERROR(ERROR_INTEGRITY);
-    }
-#endif
-
-    glBlendFunc(src_blend_factors[(unsigned)group->src_blend_factor],
-                dst_blend_factors[(unsigned)group->dst_blend_factor]);
-
-
-    glDepthMask(group->enable_depth_writes ? GL_TRUE : GL_FALSE);
-    glDepthFunc(depth_funcs[group->depth_func]);
-
-    /*
-     * Orthographic projection.  Map all coordinates into the (-1, -1, -1) to
-     * (1, 1, 1).  Anything less than -half_screen_dims or greater than
-     * half_screen_dims on the x/y axes or anything not between
-     * clip_min_max[0]/clip_min_max[1] on the z-axis will be clipped.  Ideally
-     * nothing should be clipped on the z-axis because clip_min_max is derived
-     * from the minimum and maximum depths.
-     */
-    GLfloat half_screen_dims[2] = {
-        (GLfloat)(geo->screen_width * 0.5),
-        (GLfloat)(geo->screen_height * 0.5)
-    };
-
-    /*
-     * The trans_mat matrix will map z=clip_min to -1 and z=clip_max to +1.
-     *
-     * depending on the depth function used, this can cause fragments at the
-     * extremes to not be rendered even with depth clamping enabled.  For
-     * example, GL_LESS will fail anything at z=clip_min because that will get
-     * mapped to -1 by this matrix, and then to +1 later in the OpenGL pipeline;
-     * +1 is the furthest away value in the depth buffer, +1 will fail the depth
-     * test.
-     *
-     * expanding clip_min and clip_max will mitigate this problem.  Obviously we
-     * don't want to expand the depth range by much because that will lead to
-     * precision problems, but we still want to expand it enough to make sure
-     * that the minimum and maximum depth values don't get culled.
-     */
-    float clip_min = geo->clip_min * 1.01f;
-    float clip_max = geo->clip_max * 1.01f;
-
-    GLfloat clip_delta = clip_max - clip_min;
-    GLfloat trans_mat[16] = {
-        1.0 / half_screen_dims[0], 0, 0, -1,
-        0, -1.0 / half_screen_dims[1], 0, 1,
-        0, 0, 2.0 / clip_delta, -2.0 * clip_min / clip_delta - 1,
-        0, 0, 0, 1
-    };
-
-    glUniformMatrix4fv(TRANS_MAT_SLOT, 1, GL_TRUE, trans_mat);
-
-    // now draw the geometry itself
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(float) * group->n_verts * GEO_BUF_VERT_LEN,
-                 group->verts, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(POSITION_SLOT);
-    glEnableVertexAttribArray(BASE_COLOR_SLOT);
-    glEnableVertexAttribArray(OFFS_COLOR_SLOT);
-    glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
-                          GEO_BUF_VERT_LEN * sizeof(float),
-                          (GLvoid*)(GEO_BUF_POS_OFFSET * sizeof(float)));
-    glVertexAttribPointer(BASE_COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
-                          GEO_BUF_VERT_LEN * sizeof(float),
-                          (GLvoid*)(GEO_BUF_BASE_COLOR_OFFSET * sizeof(float)));
-    glVertexAttribPointer(OFFS_COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
-                          GEO_BUF_VERT_LEN * sizeof(float),
-                          (GLvoid*)(GEO_BUF_OFFS_COLOR_OFFSET * sizeof(float)));
-    if (group->tex_enable) {
-        glEnableVertexAttribArray(TEX_COORD_SLOT);
-        glVertexAttribPointer(TEX_COORD_SLOT, 2, GL_FLOAT, GL_FALSE,
-                              GEO_BUF_VERT_LEN * sizeof(float),
-                              (GLvoid*)(GEO_BUF_TEX_COORD_OFFSET * sizeof(float)));
-    }
-    glDrawArrays(GL_TRIANGLES, 0, group->n_verts);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
-
 static void opengl_renderer_update_tex(unsigned tex_obj, void const *tex_dat) {
     struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
     GLenum format = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
@@ -427,73 +258,6 @@ static void opengl_renderer_release_tex(unsigned tex_obj) {
     // do nothing
 }
 
-static void opengl_renderer_do_draw_geo_buf(struct geo_buf *geo) {
-    gfx_config_read(&rend_cfg);
-
-    if (!rend_cfg.wireframe) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    } else {
-        glLineWidth(1);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    }
-
-    if (rend_cfg.tex_enable)
-        glEnable(GL_TEXTURE_2D);
-    else
-        glDisable(GL_TEXTURE_2D);
-
-    /*
-     * first draw the background plane
-     * TODO: I should actually draw a background plane instead
-     * of just calling glClear
-     */
-    if (rend_cfg.bgcolor_enable) {
-        glClearColor(geo->bgcolor[0], geo->bgcolor[1],
-                     geo->bgcolor[2], geo->bgcolor[3]);
-    } else {
-        glClearColor(0.0, 0.0, 0.0, 1.0);
-    }
-    glDepthMask(GL_TRUE);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    if (rend_cfg.depth_enable)
-        glEnable(GL_DEPTH_TEST);
-    else
-        glDisable(GL_DEPTH_TEST);
-
-    /*
-     * Strictly speaking, this isn't needed since we transform the
-     * depth-component such that geo->clip_max maps to +1 and geo->clip_min
-     * maps to -1, but we enable it just in case there are any floating-point
-     * precision errors that push something to be greater than +1 or less
-     * than -1.
-     */
-    glEnable(GL_DEPTH_CLAMP);
-
-    unsigned group_no;
-    enum display_list_type disp_list;
-    for (disp_list = DISPLAY_LIST_FIRST; disp_list <= DISPLAY_LIST_LAST;
-         disp_list++) {
-        if (disp_list == DISPLAY_LIST_OPAQUE_MOD ||
-            disp_list == DISPLAY_LIST_TRANS_MOD)
-            continue;
-
-        struct display_list *list = geo->lists + disp_list;
-
-        if (rend_cfg.blend_enable) {
-            if (list->blend_enable)
-                glEnable(GL_BLEND);
-            else
-                glDisable(GL_BLEND);
-        } else {
-            glDisable(GL_BLEND);
-        }
-
-        for (group_no = 0; group_no < list->n_groups; group_no++)
-            render_do_draw_group(geo, disp_list, group_no);
-    }
-}
-
 static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels) {
     for (size_t pix_no = 0; pix_no < n_pixels; pix_no++, pixels++) {
         uint16_t pix_current = *pixels;
@@ -516,4 +280,196 @@ static void render_conv_argb_1555(uint16_t *pixels, size_t n_pixels) {
 
         *pixels = (a << 15) | (b << 10) | (g << 5) | (r << 0);
     }
+}
+
+static void opengl_renderer_set_blend_enable(bool enable) {
+    gfx_config_read(&rend_cfg);
+
+    if (rend_cfg.blend_enable && enable)
+        glEnable(GL_BLEND);
+    else
+        glDisable(GL_BLEND);
+}
+
+static float clip_min, clip_max;
+static bool tex_enable;
+static unsigned screen_width, screen_height;
+
+static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
+    gfx_config_read(&rend_cfg);
+
+    /*
+     * TODO: currently disable color also disables textures; ideally these
+     * would be two independent settings.
+     */
+    if (param->tex_enable && rend_cfg.tex_enable && rend_cfg.color_enable) {
+        glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
+
+        if (gfx_tex_cache_get(param->tex_idx)->valid) {
+            glBindTexture(GL_TEXTURE_2D, tex_cache[param->tex_idx]);
+        } else {
+            LOG_WARN("WARNING: attempt to bind invalid texture %u\n",
+                     (unsigned)param->tex_idx);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+
+        switch (param->tex_filter) {
+        case TEX_FILTER_TRILINEAR_A:
+        case TEX_FILTER_TRILINEAR_B:
+            LOG_WARN("WARNING: trilinear filtering is not yet supported\n");
+            // intentional fall-through
+        case TEX_FILTER_NEAREST:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            break;
+        case TEX_FILTER_BILINEAR:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            break;
+        }
+        GLenum tex_wrap_mode_gl[2];
+        switch (param->tex_wrap_mode[0]) {
+        case TEX_WRAP_REPEAT:
+            tex_wrap_mode_gl[0] = GL_REPEAT;
+            break;
+        case TEX_WRAP_FLIP:
+            tex_wrap_mode_gl[0] = GL_MIRRORED_REPEAT;
+            break;
+        case TEX_WRAP_CLAMP:
+            tex_wrap_mode_gl[0] = GL_CLAMP_TO_EDGE;
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+        switch (param->tex_wrap_mode[1]) {
+        case TEX_WRAP_REPEAT:
+            tex_wrap_mode_gl[1] = GL_REPEAT;
+            break;
+        case TEX_WRAP_FLIP:
+            tex_wrap_mode_gl[1] = GL_MIRRORED_REPEAT;
+            break;
+        case TEX_WRAP_CLAMP:
+            tex_wrap_mode_gl[1] = GL_CLAMP_TO_EDGE;
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex_wrap_mode_gl[0]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex_wrap_mode_gl[1]);
+
+        glUniform1i(bound_tex_slot, 0);
+        glUniform1i(tex_inst_slot, param->tex_inst);
+        glActiveTexture(GL_TEXTURE0);
+    } else if (rend_cfg.color_enable) {
+        glUseProgram(pvr_ta_shader.shader_prog_obj);
+    } else {
+        glUseProgram(pvr_ta_no_color_shader.shader_prog_obj);
+    }
+
+    glBlendFunc(src_blend_factors[(unsigned)param->src_blend_factor],
+                dst_blend_factors[(unsigned)param->dst_blend_factor]);
+
+    glDepthMask(param->enable_depth_writes ? GL_TRUE : GL_FALSE);
+    glDepthFunc(depth_funcs[param->depth_func]);
+
+    clip_min = param->clip_min;
+    clip_max = param->clip_max;
+    tex_enable = param->tex_enable;
+    screen_width = param->screen_width;
+    screen_height = param->screen_height;
+}
+
+static void opengl_renderer_draw_array(float const *verts, unsigned n_verts) {
+    float clip_min_actual = clip_min * 1.01f;
+    float clip_max_actual = clip_max * 1.01f;
+
+    GLfloat half_screen_dims[2] = {
+        (GLfloat)(screen_width * 0.5),
+        (GLfloat)(screen_height * 0.5)
+    };
+
+    GLfloat clip_delta = clip_max_actual - clip_min_actual;
+    GLfloat trans_mat[16] = {
+        1.0 / half_screen_dims[0], 0, 0, -1,
+        0, -1.0 / half_screen_dims[1], 0, 1,
+        0, 0, 2.0 / clip_delta, -2.0 * clip_min_actual / clip_delta - 1,
+        0, 0, 0, 1
+    };
+
+    glUniformMatrix4fv(TRANS_MAT_SLOT, 1, GL_TRUE, trans_mat);
+
+    // now draw the geometry itself
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER,
+                 sizeof(float) * n_verts * GFX_VERT_LEN,
+                 verts, GL_DYNAMIC_DRAW);
+    glEnableVertexAttribArray(POSITION_SLOT);
+    glEnableVertexAttribArray(BASE_COLOR_SLOT);
+    glEnableVertexAttribArray(OFFS_COLOR_SLOT);
+    glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
+                          GFX_VERT_LEN * sizeof(float),
+                          (GLvoid*)(GFX_VERT_POS_OFFSET * sizeof(float)));
+    glVertexAttribPointer(BASE_COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
+                          GFX_VERT_LEN * sizeof(float),
+                          (GLvoid*)(GFX_VERT_BASE_COLOR_OFFSET * sizeof(float)));
+    glVertexAttribPointer(OFFS_COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
+                          GFX_VERT_LEN * sizeof(float),
+                          (GLvoid*)(GFX_VERT_OFFS_COLOR_OFFSET * sizeof(float)));
+    if (tex_enable) {
+        glEnableVertexAttribArray(TEX_COORD_SLOT);
+        glVertexAttribPointer(TEX_COORD_SLOT, 2, GL_FLOAT, GL_FALSE,
+                              GFX_VERT_LEN * sizeof(float),
+                              (GLvoid*)(GFX_VERT_TEX_COORD_OFFSET * sizeof(float)));
+    }
+    glDrawArrays(GL_TRIANGLES, 0, n_verts);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+static void opengl_renderer_clear(float const bgcolor[4]) {
+    gfx_config_read(&rend_cfg);
+
+    if (!rend_cfg.wireframe) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    } else {
+        glLineWidth(1);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
+
+    if (rend_cfg.tex_enable)
+        glEnable(GL_TEXTURE_2D);
+    else
+        glDisable(GL_TEXTURE_2D);
+
+    /*
+     * first draw the background plane
+     * TODO: I should actually draw a background plane instead
+     * of just calling glClear
+     */
+    if (rend_cfg.bgcolor_enable) {
+        glClearColor(bgcolor[0], bgcolor[1],
+                     bgcolor[2], bgcolor[3]);
+    } else {
+        glClearColor(0.0, 0.0, 0.0, 1.0);
+    }
+    glDepthMask(GL_TRUE);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    if (rend_cfg.depth_enable)
+        glEnable(GL_DEPTH_TEST);
+    else
+        glDisable(GL_DEPTH_TEST);
+
+    /*
+     * Strictly speaking, this isn't needed since we transform the
+     * depth-component such that geo->clip_max maps to +1 and geo->clip_min
+     * maps to -1, but we enable it just in case there are any floating-point
+     * precision errors that push something to be greater than +1 or less
+     * than -1.
+     */
+    glEnable(GL_DEPTH_CLAMP);
 }

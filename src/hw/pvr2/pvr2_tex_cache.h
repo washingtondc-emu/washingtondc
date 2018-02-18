@@ -28,14 +28,14 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "gfx/geo_buf.h"
-
+#include "hw/pvr2/geo_buf.h"
+#include "gfx/gfx_tex_cache.h"
 #include "pvr2_ta.h"
 
 struct geo_buf;
 
-#define PVR2_TEX_CACHE_SIZE GEO_BUF_TEX_CACHE_SIZE
-#define PVR2_TEX_CACHE_MASK GEO_BUF_TEX_CACHE_MASK
+#define PVR2_TEX_CACHE_SIZE GFX_TEX_CACHE_SIZE
+#define PVR2_TEX_CACHE_MASK GFX_TEX_CACHE_MASK
 
 struct pvr2_tex_meta {
     uint32_t addr_first, addr_last;

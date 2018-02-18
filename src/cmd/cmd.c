@@ -62,8 +62,6 @@ static int cmd_tex_enum(int argc, char **argv);
 static int cmd_tex_dump_all(int argc, char **argv);
 static int cmd_tex_dump(int argc, char **argv);
 static int cmd_power_stone_hack(int argc, char **argv);
-static int cmd_log_geo_buf(int argc, char **argv);
-static int cmd_log_geo_buf_stop(int argc, char **argv);
 
 static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
                     void const *dat);
@@ -157,26 +155,6 @@ struct cmd {
         "When invoked with the name of a command, help will display the \n"
         "documentation for that command.\n",
         .cmd_handler = cmd_help
-    },
-    {
-        .cmd_name = "log-geo_buf",
-        .summary = "log geo_buf data to a file for debugging",
-        .help_str =
-        "log-geo_buf path\n"
-        "\n"
-        "log geo_buf data to a file for debugging\n"
-        "run log-geo_buf-stop to stop logging\n",
-        .cmd_handler = cmd_log_geo_buf
-    },
-    {
-        .cmd_name = "log-geo_buf-stop",
-        .summary = "stop logging geo_buf_data to a file",
-        .help_str =
-        "log-geo_buf-stop\n"
-        "\n"
-        "stop logging geo_buf data to a file (after previously starting it\n"
-        "with log-geo_buf\n",
-        .cmd_handler = cmd_log_geo_buf_stop
     },
     {
         .cmd_name = "render-set-mode",
@@ -909,27 +887,4 @@ cleanup_png:
 finish:
     fclose(stream);
     return err_val;
-}
-
-static int cmd_log_geo_buf(int argc, char **argv) {
-    if (argc != 2) {
-        cons_printf("Usage: %s path\n", argv[0]);
-        return -1;
-    }
-
-    if (gfx_open_geo_buf_log(argv[1]) != 0) {
-        cons_printf("Failed to open geo_buf_log a \"%s\"\n", argv[1]);
-        return -1;
-    }
-    return 0;
-}
-
-static int cmd_log_geo_buf_stop(int argc, char **argv) {
-    if (argc != 1) {
-        cons_printf("Usage: %s\n", argv[0]);
-        return -1;
-    }
-
-    gfx_close_geo_buf_log();
-    return 0;
 }

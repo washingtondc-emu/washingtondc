@@ -26,6 +26,8 @@
 #include <assert.h>
 
 #include "error.h"
+#include "gfx/gfx.h"
+#include "gfx/gfx_tex_cache.h"
 
 /*
  * a geo_buf is a pre-allocated buffer used to pass data from the emulation
@@ -57,69 +59,6 @@
  * two floats for the texture coordinates
  */
 #define GEO_BUF_VERT_LEN 13
-
-enum Pvr2BlendFactor {
-    PVR2_BLEND_ZERO,
-    PVR2_BLEND_ONE,
-    PVR2_BLEND_OTHER,
-    PVR2_BLEND_ONE_MINUS_OTHER,
-    PVR2_BLEND_SRC_ALPHA,
-    PVR2_BLEND_ONE_MINUS_SRC_ALPHA,
-    PVR2_BLEND_DST_ALPHA,
-    PVR2_BLEND_ONE_MINUS_DST_ALPHA,
-
-    PVR2_BLEND_FACTOR_COUNT
-};
-
-static_assert(PVR2_BLEND_FACTOR_COUNT == 8,
-              "incorrect number of blending functions");
-
-enum Pvr2DepthFunc {
-    PVR2_DEPTH_NEVER,
-    PVR2_DEPTH_LESS,
-    PVR2_DEPTH_EQUAL,
-    PVR2_DEPTH_LEQUAL,
-    PVR2_DEPTH_GREATER,
-    PVR2_DEPTH_NOTEQUAL,
-    PVR2_DEPTH_GEQUAL,
-    PVR2_DEPTH_ALWAYS,
-
-    PVR2_DEPTH_FUNC_COUNT
-};
-
-static_assert(PVR2_DEPTH_FUNC_COUNT == 8,
-              "incorrect number of depth functions");
-
-/*
- * how to combine a polygon's vertex color with a texture
- */
-enum tex_inst {
-    TEX_INST_DECAL,
-    TEX_INST_MOD,
-    TEXT_INST_DECAL_ALPHA,
-    TEX_INST_MOD_ALPHA
-};
-
-enum tex_filter {
-    TEX_FILTER_NEAREST,
-    TEX_FILTER_BILINEAR,
-    TEX_FILTER_TRILINEAR_A,
-    TEX_FILTER_TRILINEAR_B
-};
-
-enum tex_wrap_mode {
-    // repeat the texture when coordinates are greater than 1.0 (tiling effect)
-    TEX_WRAP_REPEAT,
-
-    /*
-     * this is similar to TEXT_WRAP_REPEAT, except the tiles alternate between
-     * not-flipped tiles and flipped tiles
-     */
-    TEX_WRAP_FLIP,
-
-    // all coordinates greater than 1.0 are clamped to 1.0
-    TEX_WRAP_CLAMP
-};
 
 /*
  * There is one poly_group for each polygon header sent to the pvr2.
@@ -210,8 +149,8 @@ struct geo_buf_tex {
     void *dat;
 };
 
-#define GEO_BUF_TEX_CACHE_SIZE 512
-#define GEO_BUF_TEX_CACHE_MASK (GEO_BUF_TEX_CACHE_SIZE - 1)
+#define GEO_BUF_TEX_CACHE_SIZE GFX_TEX_CACHE_SIZE
+#define GEO_BUF_TEX_CACHE_MASK GFX_TEX_CACHE_MASK
 
 struct geo_buf {
     struct geo_buf_tex tex_cache[GEO_BUF_TEX_CACHE_SIZE];
@@ -225,7 +164,7 @@ struct geo_buf {
     unsigned screen_width, screen_height;
 
     float bgcolor[4];
-    float bgdepth;
+    /* float bgdepth; */
 
     // near and far clipping plane Z-coordinates
     float clip_min, clip_max;

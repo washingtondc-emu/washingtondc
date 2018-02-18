@@ -27,7 +27,7 @@
 
 #include "gfx_tex_cache.h"
 
-static struct gfx_tex tex_cache[PVR2_TEX_CACHE_SIZE];
+static struct gfx_tex tex_cache[GFX_TEX_CACHE_SIZE];
 
 void gfx_tex_cache_init(void) {
     memset(tex_cache, 0, sizeof(tex_cache));
@@ -35,7 +35,7 @@ void gfx_tex_cache_init(void) {
 
 void gfx_tex_cache_cleanup(void) {
     unsigned idx;
-    for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++)
+    for (idx = 0; idx < GFX_TEX_CACHE_SIZE; idx++)
         if (gfx_tex_cache_get(idx)->valid)
             gfx_tex_cache_evict(idx);
 }
@@ -63,7 +63,7 @@ void gfx_tex_cache_evict(unsigned idx) {
 }
 
 struct gfx_tex const* gfx_tex_cache_get(unsigned idx) {
-    if (idx < PVR2_TEX_CACHE_SIZE)
+    if (idx < GFX_TEX_CACHE_SIZE)
         return tex_cache + idx;
     return NULL;
 }
