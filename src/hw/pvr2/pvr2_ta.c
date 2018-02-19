@@ -212,8 +212,8 @@ static struct poly_state {
     enum global_param global_param;
 
     // used to store the previous two verts when we're rendering a triangle strip
-    float strip_vert1[GEO_BUF_VERT_LEN];
-    float strip_vert2[GEO_BUF_VERT_LEN];
+    float strip_vert1[GFX_VERT_LEN];
+    float strip_vert2[GFX_VERT_LEN];
     unsigned strip_len; // number of verts in the current triangle strip
 
     unsigned ta_color_fmt;
@@ -1011,82 +1011,82 @@ static void on_sprite_received(void) {
 
     p4[2] = -1.0f * (dist + norm[0] * p4[0] + norm[1] * p4[1]) / norm[2];
 
-    float *vert_ptr = group->verts + GEO_BUF_VERT_LEN * group->n_verts;
-    memset(vert_ptr, 0, GEO_BUF_VERT_LEN * sizeof(float));
-    vert_ptr[GEO_BUF_POS_OFFSET + 0] = p1[0];
-    vert_ptr[GEO_BUF_POS_OFFSET + 1] = p1[1];
-    vert_ptr[GEO_BUF_POS_OFFSET + 2] = p1[2];
-    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+    float *vert_ptr = group->verts + GFX_VERT_LEN * group->n_verts;
+    memset(vert_ptr, 0, GFX_VERT_LEN * sizeof(float));
+    vert_ptr[GFX_VERT_POS_OFFSET + 0] = p1[0];
+    vert_ptr[GFX_VERT_POS_OFFSET + 1] = p1[1];
+    vert_ptr[GFX_VERT_POS_OFFSET + 2] = p1[2];
+    memcpy(vert_ptr + GFX_VERT_BASE_COLOR_OFFSET,
            poly_state.sprite_base_color_rgba, sizeof(float) * 4);
-    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+    memcpy(vert_ptr + GFX_VERT_OFFS_COLOR_OFFSET,
            poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[0][0];
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[0][1];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 0] = uv[0][0];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 1] = uv[0][1];
     group->n_verts++;
 
-    vert_ptr = group->verts + GEO_BUF_VERT_LEN * group->n_verts;
-    memset(vert_ptr, 0, GEO_BUF_VERT_LEN * sizeof(float));
-    vert_ptr[GEO_BUF_POS_OFFSET + 0] = p2[0];
-    vert_ptr[GEO_BUF_POS_OFFSET + 1] = p2[1];
-    vert_ptr[GEO_BUF_POS_OFFSET + 2] = p2[2];
-    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+    vert_ptr = group->verts + GFX_VERT_LEN * group->n_verts;
+    memset(vert_ptr, 0, GFX_VERT_LEN * sizeof(float));
+    vert_ptr[GFX_VERT_POS_OFFSET + 0] = p2[0];
+    vert_ptr[GFX_VERT_POS_OFFSET + 1] = p2[1];
+    vert_ptr[GFX_VERT_POS_OFFSET + 2] = p2[2];
+    memcpy(vert_ptr + GFX_VERT_BASE_COLOR_OFFSET,
            poly_state.sprite_base_color_rgba, sizeof(float) * 4);
-    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+    memcpy(vert_ptr + GFX_VERT_OFFS_COLOR_OFFSET,
            poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[1][0];
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[1][1];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 0] = uv[1][0];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 1] = uv[1][1];
     group->n_verts++;
 
-    vert_ptr = group->verts + GEO_BUF_VERT_LEN * group->n_verts;
-    memset(vert_ptr, 0, GEO_BUF_VERT_LEN * sizeof(float));
-    vert_ptr[GEO_BUF_POS_OFFSET + 0] = p3[0];
-    vert_ptr[GEO_BUF_POS_OFFSET + 1] = p3[1];
-    vert_ptr[GEO_BUF_POS_OFFSET + 2] = p3[2];
-    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+    vert_ptr = group->verts + GFX_VERT_LEN * group->n_verts;
+    memset(vert_ptr, 0, GFX_VERT_LEN * sizeof(float));
+    vert_ptr[GFX_VERT_POS_OFFSET + 0] = p3[0];
+    vert_ptr[GFX_VERT_POS_OFFSET + 1] = p3[1];
+    vert_ptr[GFX_VERT_POS_OFFSET + 2] = p3[2];
+    memcpy(vert_ptr + GFX_VERT_BASE_COLOR_OFFSET,
            poly_state.sprite_base_color_rgba, sizeof(float) * 4);
-    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+    memcpy(vert_ptr + GFX_VERT_OFFS_COLOR_OFFSET,
            poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[2][0];
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[2][1];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 0] = uv[2][0];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 1] = uv[2][1];
     group->n_verts++;
 
-    vert_ptr = group->verts + GEO_BUF_VERT_LEN * group->n_verts;
-    memset(vert_ptr, 0, GEO_BUF_VERT_LEN * sizeof(float));
-    vert_ptr[GEO_BUF_POS_OFFSET + 0] = p1[0];
-    vert_ptr[GEO_BUF_POS_OFFSET + 1] = p1[1];
-    vert_ptr[GEO_BUF_POS_OFFSET + 2] = p1[2];
-    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+    vert_ptr = group->verts + GFX_VERT_LEN * group->n_verts;
+    memset(vert_ptr, 0, GFX_VERT_LEN * sizeof(float));
+    vert_ptr[GFX_VERT_POS_OFFSET + 0] = p1[0];
+    vert_ptr[GFX_VERT_POS_OFFSET + 1] = p1[1];
+    vert_ptr[GFX_VERT_POS_OFFSET + 2] = p1[2];
+    memcpy(vert_ptr + GFX_VERT_BASE_COLOR_OFFSET,
            poly_state.sprite_base_color_rgba, sizeof(float) * 4);
-    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+    memcpy(vert_ptr + GFX_VERT_OFFS_COLOR_OFFSET,
            poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[0][0];
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[0][1];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 0] = uv[0][0];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 1] = uv[0][1];
     group->n_verts++;
 
-    vert_ptr = group->verts + GEO_BUF_VERT_LEN * group->n_verts;
-    memset(vert_ptr, 0, GEO_BUF_VERT_LEN * sizeof(float));
-    vert_ptr[GEO_BUF_POS_OFFSET + 0] = p3[0];
-    vert_ptr[GEO_BUF_POS_OFFSET + 1] = p3[1];
-    vert_ptr[GEO_BUF_POS_OFFSET + 2] = p3[2];
-    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+    vert_ptr = group->verts + GFX_VERT_LEN * group->n_verts;
+    memset(vert_ptr, 0, GFX_VERT_LEN * sizeof(float));
+    vert_ptr[GFX_VERT_POS_OFFSET + 0] = p3[0];
+    vert_ptr[GFX_VERT_POS_OFFSET + 1] = p3[1];
+    vert_ptr[GFX_VERT_POS_OFFSET + 2] = p3[2];
+    memcpy(vert_ptr + GFX_VERT_BASE_COLOR_OFFSET,
            poly_state.sprite_base_color_rgba, sizeof(float) * 4);
-    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+    memcpy(vert_ptr + GFX_VERT_OFFS_COLOR_OFFSET,
            poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[2][0];
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[2][1];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 0] = uv[2][0];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 1] = uv[2][1];
     group->n_verts++;
 
-    vert_ptr = group->verts + GEO_BUF_VERT_LEN * group->n_verts;
-    memset(vert_ptr, 0, GEO_BUF_VERT_LEN * sizeof(float));
-    vert_ptr[GEO_BUF_POS_OFFSET + 0] = p4[0];
-    vert_ptr[GEO_BUF_POS_OFFSET + 1] = p4[1];
-    vert_ptr[GEO_BUF_POS_OFFSET + 2] = p4[2];
-    memcpy(vert_ptr + GEO_BUF_BASE_COLOR_OFFSET,
+    vert_ptr = group->verts + GFX_VERT_LEN * group->n_verts;
+    memset(vert_ptr, 0, GFX_VERT_LEN * sizeof(float));
+    vert_ptr[GFX_VERT_POS_OFFSET + 0] = p4[0];
+    vert_ptr[GFX_VERT_POS_OFFSET + 1] = p4[1];
+    vert_ptr[GFX_VERT_POS_OFFSET + 2] = p4[2];
+    memcpy(vert_ptr + GFX_VERT_BASE_COLOR_OFFSET,
            poly_state.sprite_base_color_rgba, sizeof(float) * 4);
-    memcpy(vert_ptr + GEO_BUF_OFFS_COLOR_OFFSET,
+    memcpy(vert_ptr + GFX_VERT_OFFS_COLOR_OFFSET,
            poly_state.sprite_offs_color_rgba, sizeof(float) * 4);
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 0] = uv[3][0];
-    vert_ptr[GEO_BUF_TEX_COORD_OFFSET + 1] = uv[3][1];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 0] = uv[3][0];
+    vert_ptr[GFX_VERT_TEX_COORD_OFFSET + 1] = uv[3][1];
     group->n_verts++;
 
     if (p1[2] < geo->clip_min)
@@ -1158,13 +1158,13 @@ static void on_vertex_received(void) {
      */
     if (poly_state.strip_len >= 3) {
         if (group->n_verts < GEO_BUF_VERT_COUNT) {
-            memcpy(group->verts + GEO_BUF_VERT_LEN * group->n_verts,
+            memcpy(group->verts + GFX_VERT_LEN * group->n_verts,
                    poly_state.strip_vert1, sizeof(poly_state.strip_vert1));
             group->n_verts++;
         }
 
         if (group->n_verts < GEO_BUF_VERT_COUNT) {
-            memcpy(group->verts + GEO_BUF_VERT_LEN * group->n_verts,
+            memcpy(group->verts + GFX_VERT_LEN * group->n_verts,
                    poly_state.strip_vert2, sizeof(poly_state.strip_vert2));
             group->n_verts++;
         }
@@ -1182,16 +1182,16 @@ static void on_vertex_received(void) {
         if (z_recip > geo->clip_max)
             geo->clip_max = z_recip;
 
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 0] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_POS_OFFSET + 0] =
             ta_fifo_float[1];
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 1] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_POS_OFFSET + 1] =
             ta_fifo_float[2];
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_POS_OFFSET + 2] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_POS_OFFSET + 2] =
             z_recip;
 
         if (poly_state.tex_enable) {
             unsigned dst_uv_offset =
-                GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_TEX_COORD_OFFSET;
+                GFX_VERT_LEN * group->n_verts + GFX_VERT_TEX_COORD_OFFSET;
 
             float uv[2];
 
@@ -1252,22 +1252,22 @@ static void on_vertex_received(void) {
                      poly_state.ta_color_fmt);
         }
 
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_BASE_COLOR_OFFSET + 0] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_BASE_COLOR_OFFSET + 0] =
             base_color_r;
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_BASE_COLOR_OFFSET + 1] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_BASE_COLOR_OFFSET + 1] =
             base_color_g;
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_BASE_COLOR_OFFSET + 2] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_BASE_COLOR_OFFSET + 2] =
             base_color_b;
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_BASE_COLOR_OFFSET + 3] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_BASE_COLOR_OFFSET + 3] =
             base_color_a;
 
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_OFFS_COLOR_OFFSET + 0] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_OFFS_COLOR_OFFSET + 0] =
             offs_color_r;
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_OFFS_COLOR_OFFSET + 1] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_OFFS_COLOR_OFFSET + 1] =
             offs_color_g;
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_OFFS_COLOR_OFFSET + 2] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_OFFS_COLOR_OFFSET + 2] =
             offs_color_b;
-        group->verts[GEO_BUF_VERT_LEN * group->n_verts + GEO_BUF_OFFS_COLOR_OFFSET + 3] =
+        group->verts[GFX_VERT_LEN * group->n_verts + GFX_VERT_OFFS_COLOR_OFFSET + 3] =
             offs_color_a;
 
         if (ta_fifo32[0] & TA_CMD_END_OF_STRIP_MASK) {
@@ -1284,7 +1284,7 @@ static void on_vertex_received(void) {
             memcpy(poly_state.strip_vert1, poly_state.strip_vert2,
                    sizeof(poly_state.strip_vert1));
             memcpy(poly_state.strip_vert2,
-                   group->verts + GEO_BUF_VERT_LEN * group->n_verts,
+                   group->verts + GFX_VERT_LEN * group->n_verts,
                    sizeof(poly_state.strip_vert2));
             poly_state.strip_len++;
         }

@@ -45,28 +45,12 @@
 #define GEO_BUF_VERT_COUNT (GEO_BUF_TRIANGLE_COUNT * 3)
 
 /*
- * offsets to vertex components within the geo_buf's vert array
- * these are in terms of sizeof(float)
- */
-#define GEO_BUF_POS_OFFSET 0
-#define GEO_BUF_BASE_COLOR_OFFSET 3
-#define GEO_BUF_OFFS_COLOR_OFFSET 7
-#define GEO_BUF_TEX_COORD_OFFSET 11
-
-/*
- * the number of elements per vertex.  Currently this means 3 floats for the
- * coordinates, 4 floats for the base color, 4 floats for the offset color and
- * two floats for the texture coordinates
- */
-#define GEO_BUF_VERT_LEN 13
-
-/*
  * There is one poly_group for each polygon header sent to the pvr2.
  * The poly-group contains per-header settings such as textures.
  */
 struct poly_group {
     unsigned n_verts;
-    float verts[GEO_BUF_VERT_COUNT * GEO_BUF_VERT_LEN];
+    float verts[GEO_BUF_VERT_COUNT * GFX_VERT_LEN];
 
     bool tex_enable;
     unsigned tex_idx; // only valid if tex_enable=true
