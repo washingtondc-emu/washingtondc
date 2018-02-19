@@ -55,7 +55,7 @@ void rend_release_tex(unsigned tex_no) {
 
 static void rend_set_tex(struct gfx_il_inst *cmd) {
     unsigned tex_no = cmd->arg.set_tex.tex_no;
-    void *tex_dat = cmd->arg.set_tex.tex_dat;
+    void const *tex_dat = cmd->arg.set_tex.tex_dat;
     struct gfx_tex new_tex_entry = {
         .valid = true,
         .pix_fmt = cmd->arg.set_tex.pix_fmt,
@@ -63,7 +63,6 @@ static void rend_set_tex(struct gfx_il_inst *cmd) {
         .h_shift = cmd->arg.set_tex.h_shift,
     };
     gfx_tex_cache_add(tex_no, &new_tex_entry, tex_dat);
-    free(tex_dat);
 }
 
 static void rend_free_tex(struct gfx_il_inst *cmd) {

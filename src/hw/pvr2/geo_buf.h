@@ -120,41 +120,7 @@ enum display_list_type {
     DISPLAY_LIST_NONE = -1
 };
 
-enum geo_buf_tex_state {
-    // the texture in this slot is invalid
-    GEO_BUF_TEX_INVALID,
-
-    /*
-     * if this is the state, it means that this entry in the texture cache has
-     * changed since the last update.  This is the only state for which the
-     * data in dat is not valid (although the data in the corresponding entry
-     * in OpenGL's tex cache is).
-     */
-    GEO_BUF_TEX_DIRTY,
-
-    // texture is valid and has already been submitted to the renderer
-    GEO_BUF_TEX_READY
-};
-
-struct geo_buf_tex {
-    int pix_fmt;
-    unsigned w_shift, h_shift;
-
-    // the frame stamp from the last time this texture was referenced
-    unsigned frame_stamp_last_used;
-
-    enum geo_buf_tex_state state;
-
-    // texture data (if the state is dirty)
-    void *dat;
-};
-
-#define GEO_BUF_TEX_CACHE_SIZE GFX_TEX_CACHE_SIZE
-#define GEO_BUF_TEX_CACHE_MASK GFX_TEX_CACHE_MASK
-
 struct geo_buf {
-    struct geo_buf_tex tex_cache[GEO_BUF_TEX_CACHE_SIZE];
-
     // each group of polygons has a distinct texture, shader, depth-sorting etc.
     struct display_list lists[DISPLAY_LIST_COUNT];
 

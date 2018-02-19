@@ -1480,7 +1480,7 @@ void pvr2_ta_startrender(void) {
     geo->lists[DISPLAY_LIST_TRANS_MOD].blend_enable = false;
     geo->lists[DISPLAY_LIST_PUNCH_THROUGH].blend_enable = false;
 
-    pvr2_tex_cache_xmit(geo);
+    pvr2_tex_cache_xmit();
 
     finish_poly_group(geo, poly_state.current_list);
 
@@ -1648,32 +1648,6 @@ static void ta_fifo_finish_packet(void) {
 
 static void xmit_geo_buf(struct geo_buf *geo) {
     struct gfx_il_inst cmd;
-
-    // update texture cache
-    unsigned tex_no;
-    for (tex_no = 0; tex_no < GEO_BUF_TEX_CACHE_SIZE; tex_no++) {
-        struct geo_buf_tex *tex = geo->tex_cache + tex_no;
-        if (tex->state == GEO_BUF_TEX_DIRTY) {
-            cmd.op = GFX_IL_SET_TEX;
-            /*
-             * pvr2_tex_cache_read previously allocated tex_dat.  It will be
-             * freed from the gfx-side of things when this data is received by
-             * the gfx system.
-             */
-            cmd.arg.set_tex.tex_dat = tex->dat;
-            cmd.arg.set_tex.tex_no = tex_no;
-            cmd.arg.set_tex.pix_fmt = tex->pix_fmt;
-            cmd.arg.set_tex.w_shift = tex->w_shift;
-            cmd.arg.set_tex.h_shift = tex->h_shift;
-            rend_exec_il(&cmd, 1);
-            tex->dat = NULL;
-            tex->state = GEO_BUF_TEX_READY;
-        } else if (tex->state == GEO_BUF_TEX_INVALID) {
-            cmd.op = GFX_IL_FREE_TEX;
-            cmd.arg.free_tex.tex_no = tex_no;
-            rend_exec_il(&cmd, 1);
-        }
-    }
 
     cmd.op = GFX_IL_BEGIN_REND;
     cmd.arg.begin_rend.screen_width = geo->screen_width;

@@ -89,7 +89,7 @@ struct gfx_rend_param {
 
 union gfx_il_arg {
     struct {
-        void *tex_dat;
+        void const *tex_dat;
         unsigned tex_no;
         int pix_fmt;
         int w_shift, h_shift;

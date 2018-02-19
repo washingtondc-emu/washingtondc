@@ -28,11 +28,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "hw/pvr2/geo_buf.h"
 #include "gfx/gfx_tex_cache.h"
 #include "pvr2_ta.h"
-
-struct geo_buf;
 
 #define PVR2_TEX_CACHE_SIZE GFX_TEX_CACHE_SIZE
 #define PVR2_TEX_CACHE_MASK GFX_TEX_CACHE_MASK
@@ -74,13 +71,29 @@ struct pvr2_tex_meta {
     bool mipmap;
 };
 
+enum pvr2_tex_state {
+    // the texture in this slot is invalid
+    PVR2_TEX_INVALID,
+
+    /*
+     * if this is the state, it means that this entry in the texture cache has
+     * changed since the last update.  This is the only state for which the
+     * data in dat is not valid (although the data in the corresponding entry
+     * in OpenGL's tex cache is).
+     */
+    PVR2_TEX_DIRTY,
+
+    // texture is valid and has already been submitted to the renderer
+    PVR2_TEX_READY
+};
+
 struct pvr2_tex {
     struct pvr2_tex_meta meta;
 
     // the frame stamp from the last time this texture was referenced
     unsigned frame_stamp_last_used;
 
-    enum geo_buf_tex_state state;
+    enum pvr2_tex_state state;
 
     // texture data (if the state is dirty)
     void *dat;
@@ -113,11 +126,8 @@ void pvr2_tex_cache_notify_palette_tp_change(void);
 
 int pvr2_tex_cache_get_idx(struct pvr2_tex const *tex);
 
-/*
- * this function sends the texture cache over to the rendering thread
- * by copying it to the given geo_buf
- */
-void pvr2_tex_cache_xmit(struct geo_buf *out);
+// this function sends the texture cache over to gfx by way of the gfx_il
+void pvr2_tex_cache_xmit(void);
 
 /*
  * Read the meta-information of the given texture.  This function will return
