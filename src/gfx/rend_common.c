@@ -90,7 +90,7 @@ static void rend_set_rend_param(struct gfx_il_inst *cmd) {
 
 static void rend_draw_array(struct gfx_il_inst *cmd) {
     unsigned n_verts = cmd->arg.draw_array.n_verts;
-    float *verts = cmd->arg.draw_array.verts;
+    float const *verts = cmd->arg.draw_array.verts;
     rend_ifp->draw_array(verts, n_verts);
 }
 

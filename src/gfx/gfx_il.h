@@ -121,7 +121,7 @@ union gfx_il_arg {
          * verts (in terms of sizeof float) is n_verts * GFX_IL_VERT_LEN.
          */
         unsigned n_verts;
-        float *verts;
+        float const *verts;
     } draw_array;
 };
 
