@@ -301,4 +301,5 @@ add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
 
 add_executable(washingtondc ${washingtondc_sources})
 
+add_dependencies(washingtondc libevent)
 target_link_libraries(washingtondc m sh4 rt GL ${GLFW3_STATIC_LIBRARIES} GLEW pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a ${LIBEVENT_LIB_PATH}/lib/libevent_pthreads.a ${PNG_STATIC_LIBRARIES})
