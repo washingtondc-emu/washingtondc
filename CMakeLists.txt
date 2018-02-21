@@ -56,9 +56,8 @@ add_definitions(-D_GNU_SOURCE)
 
 enable_testing()
 
-find_package(PkgConfig REQUIRED)
 find_package(OpenGL REQUIRED)
-pkg_search_module(PNG REQUIRED libpng)
+find_package(PNG REQUIRED)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
@@ -286,6 +285,7 @@ if (DEEP_SYSCALL_TRACE)
 endif()
 
 include_directories("${OPENGL_INCLUDE_DIR}"
+                    "${PNG_INCLUDE_DIR}"
                     "${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
                     "${PROJECT_SOURCE_DIR}/common"
@@ -310,4 +310,4 @@ add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
 add_executable(washingtondc ${washingtondc_sources})
 
 add_dependencies(washingtondc libevent)
-target_link_libraries(washingtondc m sh4 rt ${OPENGL_gl_LIBRARY} glfw GLEW pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a ${LIBEVENT_LIB_PATH}/lib/libevent_pthreads.a ${PNG_STATIC_LIBRARIES})
+target_link_libraries(washingtondc m sh4 rt ${OPENGL_gl_LIBRARY} glfw GLEW pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a ${LIBEVENT_LIB_PATH}/lib/libevent_pthreads.a ${PNG_LIBRARY})
