@@ -49,8 +49,8 @@
  * The poly-group contains per-header settings such as textures.
  */
 struct poly_group {
+    unsigned first_vert_idx;
     unsigned n_verts;
-    float verts[GEO_BUF_VERT_COUNT * GFX_VERT_LEN];
 
     bool tex_enable;
     unsigned tex_idx; // only valid if tex_enable=true

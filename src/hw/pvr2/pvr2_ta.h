@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -107,6 +107,13 @@ void pvr2_ta_fifo_poly_write_8(addr32_t addr, uint8_t val);
 
 void pvr2_ta_startrender(void);
 
+/*
+ * This gets called when the TA gets reset by a register write.  It is not
+ * related to pvr2_ta_init/pvr2_ta_cleanup.
+ */
 void pvr2_ta_reinit(void);
+
+void pvr2_ta_init(void);
+void pvr2_ta_cleanup(void);
 
 #endif

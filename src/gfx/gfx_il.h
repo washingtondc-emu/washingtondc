@@ -27,13 +27,6 @@
 
 #include "gfx/gfx.h"
 
-/*
- * the number of elements per vertex.  Currently this means 3 floats for the
- * coordinates, 4 floats for the base color, 4 floats for the offset color and
- * two floats for the texture coordinates
- */
-#define GEO_BUF_VERT_LEN 13
-
 enum gfx_il {
     // load a texture into the cache
     GFX_IL_SET_TEX,
