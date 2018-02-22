@@ -58,6 +58,9 @@ enum gfx_il {
     // call this to configure rendering parameters
     GFX_IL_SET_REND_PARAM,
 
+    // call this to set clip_min, clip_max
+    GFX_IL_SET_CLIP_RANGE,
+
     // use this to render a group of polygons
     GFX_IL_DRAW_ARRAY
 };
@@ -75,9 +78,6 @@ struct gfx_rend_param {
 
     bool enable_depth_writes;
     enum Pvr2DepthFunc depth_func;
-
-    float clip_min, clip_max;
-    unsigned screen_width, screen_height;
 };
 
 union gfx_il_arg {
@@ -107,6 +107,10 @@ union gfx_il_arg {
     struct {
         struct gfx_rend_param param;
     } set_rend_param;
+
+    struct {
+        float clip_min, clip_max;
+    } set_clip_range;
 
     struct {
         /*

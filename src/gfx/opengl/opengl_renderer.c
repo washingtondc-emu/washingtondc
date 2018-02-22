@@ -134,6 +134,9 @@ static void opengl_renderer_set_blend_enable(bool enable);
 static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param);
 static void opengl_renderer_draw_array(float const *verts, unsigned n_verts);
 static void opengl_renderer_clear(float const bgcolor[4]);
+static void opengl_renderer_set_screen_dim(unsigned width, unsigned height);
+static void opengl_renderer_set_clip_range(float new_clip_min,
+                                           float new_clip_max);
 
 struct rend_if const opengl_rend_if = {
     .init = opengl_render_init,
@@ -143,7 +146,9 @@ struct rend_if const opengl_rend_if = {
     .set_blend_enable = opengl_renderer_set_blend_enable,
     .set_rend_param = opengl_renderer_set_rend_param,
     .draw_array = opengl_renderer_draw_array,
-    .clear = opengl_renderer_clear
+    .clear = opengl_renderer_clear,
+    .set_screen_dim = opengl_renderer_set_screen_dim,
+    .set_clip_range = opengl_renderer_set_clip_range
 };
 
 static void opengl_render_init(void) {
@@ -373,11 +378,7 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
     glDepthMask(param->enable_depth_writes ? GL_TRUE : GL_FALSE);
     glDepthFunc(depth_funcs[param->depth_func]);
 
-    clip_min = param->clip_min;
-    clip_max = param->clip_max;
     tex_enable = param->tex_enable;
-    screen_width = param->screen_width;
-    screen_height = param->screen_height;
 }
 
 static void opengl_renderer_draw_array(float const *verts, unsigned n_verts) {
@@ -472,4 +473,15 @@ static void opengl_renderer_clear(float const bgcolor[4]) {
      * than -1.
      */
     glEnable(GL_DEPTH_CLAMP);
+}
+
+static void opengl_renderer_set_screen_dim(unsigned width, unsigned height) {
+    screen_width = width;
+    screen_height = height;
+}
+
+static void opengl_renderer_set_clip_range(float new_clip_min,
+                                           float new_clip_max) {
+    clip_min = new_clip_min;
+    clip_max = new_clip_max;
 }

@@ -130,6 +130,7 @@ opengl_video_update_framebuffer(uint32_t const *fb_read,
 void opengl_video_present() {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
 
     glViewport(0, 0, 640, 480); // TODO: don't hardcode
     glUseProgram(fb_shader.shader_prog_obj);

@@ -53,6 +53,10 @@ struct rend_if {
 
     void (*set_rend_param)(struct gfx_rend_param const *param);
 
+    void (*set_screen_dim)(unsigned width, unsigned height);
+
+    void (*set_clip_range)(float clip_min, float clip_max);
+
     void (*draw_array)(float const *verts, unsigned n_verts);
 
     void (*clear)(float const bgcolor[4]);

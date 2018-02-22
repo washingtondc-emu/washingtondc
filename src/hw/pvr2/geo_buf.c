@@ -37,9 +37,6 @@ DEF_ERROR_INT_ATTR(geo_buf_group_index);
 void geo_buf_init(struct geo_buf *buf) {
     buf->frame_stamp = ++next_frame_stamp;
 
-    buf->clip_min = -1.0f;
-    buf->clip_max = 1.0f;
-
 #ifdef INVARIANTS
     enum display_list_type disp_list;
     for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;

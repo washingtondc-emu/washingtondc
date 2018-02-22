@@ -72,6 +72,8 @@ static void rend_free_tex(struct gfx_il_inst *cmd) {
 static void rend_begin_rend(struct gfx_il_inst *cmd) {
     opengl_target_begin(cmd->arg.begin_rend.screen_width,
                         cmd->arg.begin_rend.screen_height);
+    rend_ifp->set_screen_dim(cmd->arg.begin_rend.screen_width,
+                             cmd->arg.begin_rend.screen_height);
 }
 
 static void rend_end_rend(struct gfx_il_inst *cmd) {
@@ -86,6 +88,12 @@ static void rend_set_blend_enable(struct gfx_il_inst *cmd) {
 static void rend_set_rend_param(struct gfx_il_inst *cmd) {
     struct gfx_rend_param const *param = &cmd->arg.set_rend_param.param;
     rend_ifp->set_rend_param(param);
+}
+
+static void rend_set_clip_range(struct gfx_il_inst *cmd) {
+    float clip_min = cmd->arg.set_clip_range.clip_min;
+    float clip_max = cmd->arg.set_clip_range.clip_max;
+    rend_ifp->set_clip_range(clip_min, clip_max);
 }
 
 static void rend_draw_array(struct gfx_il_inst *cmd) {
@@ -125,6 +133,9 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_SET_REND_PARAM:
             rend_set_rend_param(cmd);
+            break;
+        case GFX_IL_SET_CLIP_RANGE:
+            rend_set_clip_range(cmd);
             break;
         case GFX_IL_DRAW_ARRAY:
             rend_draw_array(cmd);
