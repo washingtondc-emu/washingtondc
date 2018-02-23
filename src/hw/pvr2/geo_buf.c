@@ -23,28 +23,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "dreamcast.h"
-
 #include "geo_buf.h"
 
 static unsigned next_frame_stamp;
 
-DEF_ERROR_INT_ATTR(src_blend_factor);
-DEF_ERROR_INT_ATTR(dst_blend_factor);
-DEF_ERROR_INT_ATTR(display_list_index);
-DEF_ERROR_INT_ATTR(geo_buf_group_index);
-
 void geo_buf_init(struct geo_buf *buf) {
     buf->frame_stamp = ++next_frame_stamp;
-
-#ifdef INVARIANTS
-    enum display_list_type disp_list;
-    for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
-         disp_list++) {
-        if (buf->lists[disp_list].n_groups != 0)
-            RAISE_ERROR(ERROR_INTEGRITY);
-    }
-#endif
 }
 
 unsigned get_cur_frame_stamp(void) {

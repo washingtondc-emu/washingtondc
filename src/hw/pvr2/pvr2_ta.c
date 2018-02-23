@@ -119,6 +119,37 @@ static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 
 static unsigned ta_fifo_byte_count = 0;
 
+
+/*
+ * There are five display lists:
+ *
+ * Opaque
+ * Punch-through polygon
+ * Opaque/punch-through modifier volume
+ * Translucent
+ * Translucent modifier volume
+ *
+ * They are rendered by the opengl backend in that order.
+ */
+enum display_list_type {
+    DISPLAY_LIST_FIRST,
+    DISPLAY_LIST_OPAQUE = DISPLAY_LIST_FIRST,
+    DISPLAY_LIST_OPAQUE_MOD,
+    DISPLAY_LIST_TRANS,
+    DISPLAY_LIST_TRANS_MOD,
+    DISPLAY_LIST_PUNCH_THROUGH,
+    DISPLAY_LIST_LAST = DISPLAY_LIST_PUNCH_THROUGH,
+
+    // These three list types are invalid, but I do see DISPLAY_LIST_7 sometimes
+    DISPLAY_LIST_5,
+    DISPLAY_LIST_6,
+    DISPLAY_LIST_7,
+
+    DISPLAY_LIST_COUNT,
+
+    DISPLAY_LIST_NONE = -1
+};
+
 enum vert_type {
     VERT_NO_TEX_PACKED_COLOR,
     VERT_NO_TEX_FLOAT_COLOR,
@@ -139,6 +170,10 @@ enum vert_type {
     N_VERT_TYPES
 };
 
+static DEF_ERROR_INT_ATTR(src_blend_factor);
+static DEF_ERROR_INT_ATTR(dst_blend_factor);
+static DEF_ERROR_INT_ATTR(display_list_index);
+static DEF_ERROR_INT_ATTR(geo_buf_group_index);
 static DEF_ERROR_INT_ATTR(ta_fifo_cmd)
 static DEF_ERROR_INT_ATTR(pvr2_global_param)
 static DEF_ERROR_INT_ATTR(ta_fifo_byte_count)
@@ -295,8 +330,6 @@ static const unsigned vert_lengths[N_VERT_TYPES] = {
 
 bool list_submitted[DISPLAY_LIST_COUNT];
 
-static void xmit_geo_buf(struct geo_buf *geo);
-
 static void input_poly_fifo(uint8_t byte);
 
 // this function gets called every time a full packet is received by the TA
@@ -402,6 +435,8 @@ static unsigned gfx_il_inst_buf_count;
 static float pvr2_bgcolor[4];
 
 static float clip_min, clip_max;
+
+static bool open_group;
 
 void pvr2_ta_init(void) {
     pvr2_ta_vert_buf = (float*)malloc(PVR2_TA_VERT_BUF_LEN *
@@ -844,7 +879,7 @@ static void on_polyhdr_received(void) {
         }
 #endif
 
-        if (geo->lists[poly_state.current_list].n_groups >= 1)
+        if (open_group)
             finish_poly_group(geo, poly_state.current_list);
     }
 
@@ -968,8 +1003,6 @@ static void unpack_uv16(float *u_coord, float *v_coord, void const *input) {
 }
 
 static void on_sprite_received(void) {
-    struct geo_buf *geo = geo_buf_array;
-
     /*
      * if the vertex is not long enough, return and make input_poly_fifo call
      * us again later when there is more data.  Practically, this means that we
@@ -985,9 +1018,7 @@ static void on_sprite_received(void) {
         return;
     }
 
-    struct display_list *list = geo->lists + poly_state.current_list;
-
-    if (list->n_groups <= 0) {
+    if (!open_group) {
         LOG_WARN("WARNING: unable to render sprite because I'm still waiting "
                  "to see a polygon header\n");
         ta_fifo_finish_packet();
@@ -1178,8 +1209,6 @@ static void on_vertex_received(void) {
 #ifdef PVR2_LOG_VERBOSE
     LOG_DBG("vertex received!\n");
 #endif
-    struct geo_buf *geo = geo_buf_array;
-
     if (poly_state.current_list < 0) {
         LOG_WARN("WARNING: unable to render vertex because no display lists "
                  "are open\n");
@@ -1187,9 +1216,7 @@ static void on_vertex_received(void) {
         return;
     }
 
-    struct display_list *list = geo->lists + poly_state.current_list;
-
-    if (list->n_groups <= 0) {
+    if (!open_group) {
         LOG_WARN("ERROR: unable to render vertex because I'm still waiting to "
                  "see a polygon header\n");
         ta_fifo_finish_packet();
@@ -1513,8 +1540,6 @@ void pvr2_ta_startrender(void) {
     cmd.arg.clear.bgcolor[3] = pvr2_bgcolor[3];
     rend_exec_il(&cmd, 1);
 
-    xmit_geo_buf(geo_buf_array);
-
     // execute queued gfx_il commands
     enum display_list_type list;
     for (list = DISPLAY_LIST_FIRST; list <= DISPLAY_LIST_LAST; list++) {
@@ -1554,15 +1579,11 @@ static void finish_poly_group(struct geo_buf *geo,
         return;
     }
 
-    struct display_list *list = geo->lists + disp_list;
-
-    if (list->n_groups <= 0) {
+    if (!open_group) {
         LOG_WARN("%s - still waiting for a polygon header to be opened!\n",
                __func__);
         return;
     }
-
-    /* struct poly_group *group = list->groups + (list->n_groups - 1); */
 
     // filter out modifier volumes from being rendered
     if (disp_list == DISPLAY_LIST_OPAQUE_MOD ||
@@ -1624,20 +1645,20 @@ static void finish_poly_group(struct geo_buf *geo,
     pvr2_ta_push_gfx_il(cmd);
 
     pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count;
+
+    open_group = false;
 }
 
 static void next_poly_group(struct geo_buf *geo,
                             enum display_list_type disp_list) {
-    struct display_list *list = geo->lists + disp_list;
-
     if (disp_list < 0) {
         LOG_WARN("%s - no lists are open\n", __func__);
         return;
     }
 
-    if (list->n_groups >= 1)
+    if (open_group)
         finish_poly_group(geo, disp_list);
-    list->n_groups++;
+    open_group = true;
 
     pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count;
 }
@@ -1702,19 +1723,12 @@ static void ta_fifo_finish_packet(void) {
     ta_fifo_byte_count = 0;
 }
 
-static void xmit_geo_buf(struct geo_buf *geo) {
-    enum display_list_type disp_list;
-    for (disp_list = DISPLAY_LIST_FIRST; disp_list < DISPLAY_LIST_COUNT;
-         disp_list++) {
-        struct display_list *list = geo->lists + disp_list;
-            list->n_groups = 0;
-    }
-}
-
 static void render_frame_init(void) {
     // free vertex arrays
     pvr2_ta_vert_buf_count = 0;
     pvr2_ta_vert_cur_group = 0;
+
+    open_group = false;
 
     // free up gfx_il commands
     gfx_il_inst_buf_count = 0;
