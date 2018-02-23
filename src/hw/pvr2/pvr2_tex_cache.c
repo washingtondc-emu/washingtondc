@@ -33,8 +33,6 @@
 #include "error.h"
 #include "gfx/gfx_il.h"
 
-#include "hw/pvr2/geo_buf.h"
-
 #include "pvr2_tex_cache.h"
 
 static DEF_ERROR_INT_ATTR(tex_fmt);

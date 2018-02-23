@@ -27,7 +27,6 @@
 #include <stdbool.h>
 
 #include "error.h"
-#include "hw/pvr2/geo_buf.h"
 #include "gfx/gfx.h"
 #include "hw/sys/holly_intc.h"
 #include "pvr2_core_reg.h"
@@ -342,10 +341,8 @@ static void on_user_clip_received(void);
 
 static void render_frame_init(void);
 
-static void finish_poly_group(struct geo_buf *geo,
-                              enum display_list_type disp_list);
-static void next_poly_group(struct geo_buf *geo,
-                            enum display_list_type disp_list);
+static void finish_poly_group(enum display_list_type disp_list);
+static void next_poly_group(enum display_list_type disp_list);
 
 static void decode_poly_hdr(struct poly_hdr *hdr);
 
@@ -355,8 +352,6 @@ static void ta_fifo_finish_packet(void);
 static enum vert_type classify_vert(void);
 
 static void unpack_uv16(float *u_coord, float *v_coord, void const *input);
-
-static struct geo_buf geo_buf_array[1];
 
 /*
  * the delay between when the STARTRENDER command is received and when the
@@ -437,6 +432,8 @@ static float pvr2_bgcolor[4];
 static float clip_min, clip_max;
 
 static bool open_group;
+
+static unsigned next_frame_stamp;
 
 void pvr2_ta_init(void) {
     pvr2_ta_vert_buf = (float*)malloc(PVR2_TA_VERT_BUF_LEN *
@@ -865,8 +862,6 @@ static void on_polyhdr_received(void) {
      * and that will reference the poly_state.  Ergo, next_poly_group must be
      * called BEFORE any poly_state changes are made.
      */
-    struct geo_buf *geo = geo_buf_array;
-
     if (poly_state.current_list != DISPLAY_LIST_NONE &&
         poly_state.current_list != list) {
         // finish the last poly group of the current list
@@ -880,7 +875,7 @@ static void on_polyhdr_received(void) {
 #endif
 
         if (open_group)
-            finish_poly_group(geo, poly_state.current_list);
+            finish_poly_group(poly_state.current_list);
     }
 
     if ((poly_state.current_list != list) &&
@@ -891,7 +886,7 @@ static void on_polyhdr_received(void) {
         list_submitted[list] = true;
     }
 
-    next_poly_group(geo, poly_state.current_list);
+    next_poly_group(poly_state.current_list);
 
     // reset triangle strips
     poly_state.strip_len = 0;
@@ -1237,7 +1232,7 @@ static void on_vertex_received(void) {
         pvr2_ta_push_vert(poly_state.strip_vert_2);
     }
 
-    // first update the clipping planes in the geo_buf
+    // first update the clipping planes
     /*
      * TODO: there are FPU instructions on x86 that can do this without
      * branching
@@ -1378,7 +1373,7 @@ pvr2_pt_complete_int_event_handler(struct SchedEvent *event) {
 static void on_end_of_list_received(void) {
     LOG_DBG("END-OF-LIST PACKET!\n");
 
-    finish_poly_group(geo_buf_array, poly_state.current_list);
+    finish_poly_group(poly_state.current_list);
 
     if (poly_state.current_list != DISPLAY_LIST_NONE) {
         LOG_DBG("Display list \"%s\" closed\n",
@@ -1456,7 +1451,6 @@ static void pvr2_render_complete_int_event_handler(struct SchedEvent *event) {
 void pvr2_ta_startrender(void) {
     LOG_DBG("STARTRENDER requested!\n");
 
-    struct geo_buf *geo = geo_buf_array;
     struct gfx_il_inst cmd;
 
     unsigned tile_w = get_glob_tile_clip_x() << 5;
@@ -1517,9 +1511,9 @@ void pvr2_ta_startrender(void) {
 
     pvr2_tex_cache_xmit();
 
-    finish_poly_group(geo, poly_state.current_list);
+    finish_poly_group(poly_state.current_list);
 
-    framebuffer_set_current_host(geo->frame_stamp);
+    framebuffer_set_current_host(get_cur_frame_stamp());
 
     // set up rendering context
     cmd.op = GFX_IL_BEGIN_REND;
@@ -1554,7 +1548,7 @@ void pvr2_ta_startrender(void) {
     cmd.op = GFX_IL_END_REND;
     rend_exec_il(&cmd, 1);
 
-    geo_buf_init(geo_buf_array);
+    next_frame_stamp++;
     render_frame_init();
 
     // TODO: This irq definitely should not be triggered immediately
@@ -1570,8 +1564,7 @@ void pvr2_ta_reinit(void) {
     memset(list_submitted, 0, sizeof(list_submitted));
 }
 
-static void finish_poly_group(struct geo_buf *geo,
-                              enum display_list_type disp_list) {
+static void finish_poly_group(enum display_list_type disp_list) {
     struct gfx_il_inst cmd;
 
     if (disp_list < 0) {
@@ -1649,15 +1642,14 @@ static void finish_poly_group(struct geo_buf *geo,
     open_group = false;
 }
 
-static void next_poly_group(struct geo_buf *geo,
-                            enum display_list_type disp_list) {
+static void next_poly_group(enum display_list_type disp_list) {
     if (disp_list < 0) {
         LOG_WARN("%s - no lists are open\n", __func__);
         return;
     }
 
     if (open_group)
-        finish_poly_group(geo, disp_list);
+        finish_poly_group(disp_list);
     open_group = true;
 
     pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count;
@@ -1743,4 +1735,8 @@ static void render_frame_init(void) {
 
     memset(list_submitted, 0, sizeof(list_submitted));
     poly_state.current_list = DISPLAY_LIST_NONE;
+}
+
+unsigned get_cur_frame_stamp(void) {
+    return next_frame_stamp;
 }
