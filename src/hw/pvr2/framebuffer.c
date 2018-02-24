@@ -44,7 +44,6 @@ static uint8_t *fb_tex_mem;
 static unsigned fb_width, fb_height;
 
 static int current_fb = FRAMEBUFFER_CURRENT_VIRT;
-static unsigned current_fb_stamp;
 
 #define OGL_FB_W_MAX (0x3ff + 1)
 #define OGL_FB_H_MAX (0x3ff + 1)
@@ -564,9 +563,8 @@ void framebuffer_sync_from_host_maybe(void) {
         framebuffer_sync_from_host();
 }
 
-void framebuffer_set_current_host(unsigned stamp) {
+void framebuffer_set_current_host(void) {
     current_fb = FRAMEBUFFER_CURRENT_HOST;
-    current_fb_stamp = stamp;
 }
 
 /*

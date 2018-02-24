@@ -99,7 +99,7 @@ int framebuffer_get_current(void);
  * stamp should be the geo_buf frame_stamp that is the last one submitted
  * (ie the one that's "current").
  */
-void framebuffer_set_current_host(unsigned stamp);
+void framebuffer_set_current_host(void);
 
 /*
  * Copy the framebuffer from OpenGL memory into the Dreamcast's texture memory,

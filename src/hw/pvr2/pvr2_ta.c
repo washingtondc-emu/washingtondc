@@ -1513,7 +1513,7 @@ void pvr2_ta_startrender(void) {
 
     finish_poly_group(poly_state.current_list);
 
-    framebuffer_set_current_host(get_cur_frame_stamp());
+    framebuffer_set_current_host();
 
     // set up rendering context
     cmd.op = GFX_IL_BEGIN_REND;
