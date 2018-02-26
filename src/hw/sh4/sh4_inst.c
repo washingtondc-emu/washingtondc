@@ -544,7 +544,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 2, 0xf00f, 0x200f },
 
     // MULU.W Rm, Rn
-    { &sh4_inst_binary_muluw_gen_gen, sh4_disas_fallback, false,
+    { &sh4_inst_binary_muluw_gen_gen, sh4_disas_muluw_rm_rn, false,
       SH4_GROUP_CO, 2, 0xf00f, 0x200e },
 
     // NEG Rm, Rn

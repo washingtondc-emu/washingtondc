@@ -252,4 +252,9 @@ bool sh4_disas_swapw_rm_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_cmphi_rm_rn(struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
+// MULU.W Rm, Rn
+// 0010nnnnmmmm1110
+bool sh4_disas_muluw_rm_rn(struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, inst_t inst);
+
 #endif

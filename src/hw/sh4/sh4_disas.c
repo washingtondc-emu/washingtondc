@@ -1025,6 +1025,24 @@ bool sh4_disas_cmphi_rm_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// MULU.W Rm, Rn
+// 0010nnnnmmmm1110
+bool sh4_disas_muluw_rm_rn(struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, inst_t inst) {
+    unsigned reg_lhs = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
+    unsigned reg_rhs = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+
+    unsigned slot_lhs = reg_slot(dreamcast_get_cpu(), block, reg_lhs);
+    unsigned slot_rhs = reg_slot(dreamcast_get_cpu(), block, reg_rhs);
+    unsigned slot_macl = reg_slot(dreamcast_get_cpu(), block, SH4_REG_MACL);
+
+    jit_mul_u32(block, slot_lhs, slot_rhs, slot_macl);
+
+    reg_map[SH4_REG_MACL].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

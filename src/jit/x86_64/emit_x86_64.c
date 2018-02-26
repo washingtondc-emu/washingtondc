@@ -644,3 +644,7 @@ void x86asm_lbl8_push_jmp_pt(struct x86asm_lbl8 *lbl,
         RAISE_ERROR(ERROR_OVERFLOW);
     lbl->jump_points[lbl->n_jump_points++] = *jmp_pt;
 }
+
+void x86asm_mull_reg32(unsigned reg_no) {
+    emit_mod_reg_rm(0, 0xf7, 3, 4, reg_no);
+}

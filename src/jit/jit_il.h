@@ -119,6 +119,12 @@ enum jit_opcode {
     JIT_OP_SET_GT,
 
     /*
+     * multiply two unsigned 32-bit slots together and place the result in a
+     * third slot.
+     */
+    JIT_OP_MUL_U32,
+
+    /*
      * This tells the backend that a given slot is no longer needed and its
      * value does not need to be preserved.
      */
@@ -273,6 +279,11 @@ struct set_gt_immed {
     unsigned slot_dst;
 };
 
+struct mul_u32_immed {
+    unsigned slot_lhs, slot_rhs;
+    unsigned slot_dst;
+};
+
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct jump_immed jump;
@@ -303,6 +314,7 @@ union jit_immed {
     struct shar_immed shar;
     struct shlr_immed shlr;
     struct set_gt_immed set_gt;
+    struct mul_u32_immed mul_u32;
 };
 
 struct jit_inst {
@@ -365,5 +377,7 @@ void jit_shlr(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
 void jit_set_gt(struct il_code_block *block, unsigned slot_lhs,
                 unsigned slot_rhs, unsigned slot_dst);
+void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
+                 unsigned slot_rhs, unsigned slot_dst);
 
 #endif

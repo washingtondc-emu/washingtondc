@@ -91,8 +91,9 @@ static struct reg_stat {
         .prio = 3
     },
     [RDX] = {
+        // RDX is a lower priority because mul will clobber it
         .locked = false,
-        .prio = 3
+        .prio = 1
     },
     [RBX] = {
         .locked = false,
@@ -1062,6 +1063,31 @@ static void emit_set_gt(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
+static void emit_mul_u32(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_lhs = inst->immed.mul_u32.slot_lhs;
+    unsigned slot_rhs = inst->immed.mul_u32.slot_rhs;
+    unsigned slot_dst = inst->immed.mul_u32.slot_dst;
+
+    evict_register(EAX);
+    evict_register(EDX);
+    grab_register(EAX);
+    grab_register(EDX);
+
+    grab_slot(slot_lhs);
+    grab_slot(slot_rhs);
+    grab_slot(slot_dst);
+
+    x86asm_mov_reg32_reg32(slots[slot_lhs].reg_no, EAX);
+    x86asm_mull_reg32(slots[slot_rhs].reg_no);
+    x86asm_mov_reg32_reg32(EAX, slots[slot_dst].reg_no);
+
+    ungrab_slot(slot_dst);
+    ungrab_slot(slot_rhs);
+    ungrab_slot(slot_lhs);
+    ungrab_register(EDX);
+    ungrab_register(EAX);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned by
@@ -1187,6 +1213,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_SET_GT:
             emit_set_gt(sh4, inst);
+            break;
+        case JIT_OP_MUL_U32:
+            emit_mul_u32(sh4, inst);
             break;
         }
         inst++;

@@ -592,3 +592,24 @@ void jit_set_gt(struct il_code_block *block, unsigned slot_lhs,
         dstp->known_val |= 1;
     }
 }
+
+void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
+                 unsigned slot_rhs, unsigned slot_dst) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_MUL_U32;
+    op.immed.mul_u32.slot_lhs = slot_lhs;
+    op.immed.mul_u32.slot_rhs = slot_rhs;
+    op.immed.mul_u32.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+
+    /*
+     * TODO: cache known values
+     * this should be possible if the lower N bits of both src and dst are
+     * known, but it seems complicated...
+     */
+    struct il_slot *dstp = block->slots + slot_dst;
+    dstp->known_bits = 0;
+    dstp->known_val = 0;
+}

@@ -300,4 +300,14 @@ void x86asm_sarl_imm8_reg32(unsigned imm8, unsigned reg_no);
 
 void* x86asm_get_outp(void);
 
+/*
+ * mull %reg_no
+ * Performs an unsigned 32-bit multiplication of the given register and %eax.
+ *
+ * The result of this multiplication is a 64-bit integer left in %eax and %edx
+ * (with %eax being the lower four bytes).  Obviously this means both of those
+ * registers will be clobbered.
+ */
+void x86asm_mull_reg32(unsigned reg_no);
+
 #endif
