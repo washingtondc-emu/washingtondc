@@ -624,7 +624,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 1, 0xf0ff, 0x000a },
 
     // STS MACL, Rn
-    { &sh4_inst_binary_sts_macl_gen, sh4_disas_fallback, false,
+    { &sh4_inst_binary_sts_macl_gen, sh4_disas_sts_macl_rn, false,
       SH4_GROUP_CO, 1, 0xf0ff, 0x001a },
 
     // LDS Rm, PR
