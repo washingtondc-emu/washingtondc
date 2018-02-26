@@ -73,8 +73,7 @@ static struct oldroot_node *oldroot;
 
 static struct cache_entry *root;
 
-// this is a prime number
-#define HASH_TBL_LEN 65563
+#define HASH_TBL_LEN 0x10000
 
 static struct cache_entry* tbl[HASH_TBL_LEN];
 static unsigned hashfn(addr32_t addr);
