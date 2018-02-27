@@ -52,7 +52,7 @@ void code_block_intp_compile(struct code_block_intp *out,
     size_t n_bytes = sizeof(struct jit_inst) * inst_count;
     out->inst_list = (struct jit_inst*)malloc(n_bytes);
     memcpy(out->inst_list, il_blk->inst_list, n_bytes);
-    out->cycle_count = il_blk->cycle_count;
+    out->cycle_count = il_blk->cycle_count * SH4_CLOCK_SCALE;
     out->inst_count = inst_count;
     out->n_slots = il_blk->n_slots;
     out->slots = (uint32_t*)malloc(out->n_slots * sizeof(uint32_t));

@@ -496,12 +496,14 @@ static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
         newpc = ((reg32_t(*)(void))blk->native)();
 
         dc_cycle_stamp_t cycles_after = dc_cycle_stamp_priv_ +
-            blk->cycle_count * SH4_CLOCK_SCALE;
-        if (cycles_after > dc_sched_target_stamp)
-            cycles_after = dc_sched_target_stamp;
+            blk->cycle_count;
 
         dc_cycle_stamp_priv_ = cycles_after;
     }
+
+    if (dc_cycle_stamp_priv_ > dc_sched_target_stamp)
+        dc_cycle_stamp_priv_ = dc_sched_target_stamp;
+
     sh4->reg[SH4_REG_PC] = newpc;
 }
 #endif
@@ -526,12 +528,12 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
         newpc = code_block_intp_exec(blk);
 
         dc_cycle_stamp_t cycles_after = dc_cycle_stamp_priv_ +
-            blk->cycle_count * SH4_CLOCK_SCALE;
-        if (cycles_after > dc_sched_target_stamp)
-            cycles_after = dc_sched_target_stamp;
-
+            blk->cycle_count;
         dc_cycle_stamp_priv_ = cycles_after;
     }
+    if (dc_cycle_stamp_priv_ > dc_sched_target_stamp)
+        dc_cycle_stamp_priv_ = dc_sched_target_stamp;
+
     sh4->reg[SH4_REG_PC] = newpc;
 }
 

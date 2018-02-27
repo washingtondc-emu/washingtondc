@@ -1117,7 +1117,7 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
     struct jit_inst const* inst = il_blk->inst_list;
     unsigned inst_count = il_blk->inst_count;
     Sh4 *sh4 = dreamcast_get_cpu();
-    out->cycle_count = il_blk->cycle_count;
+    out->cycle_count = il_blk->cycle_count * SH4_CLOCK_SCALE;
 
     x86asm_set_dst(out->native, X86_64_ALLOC_SIZE);
 
