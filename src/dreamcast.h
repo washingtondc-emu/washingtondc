@@ -62,16 +62,9 @@ Sh4 *dreamcast_get_cpu();
  * This variable should not be read from or written to from outside of
  * Dreamcast.cpp.
  */
-extern dc_cycle_stamp_t dc_cycle_stamp_priv_;
+/* extern dc_cycle_stamp_t dc_cycle_stamp_priv_; */
 
-static inline dc_cycle_stamp_t dc_cycle_stamp() {
-    return dc_cycle_stamp_priv_;
-}
-
-// advance the cycle stmap by n_cycles.  This will not run any scheduled events.
-static inline void dc_cycle_advance(dc_cycle_stamp_t n_cycles) {
-    dc_cycle_stamp_priv_ += n_cycles;
-}
+dc_cycle_stamp_t dc_cycle_stamp();
 
 void dc_print_perf_stats(void);
 
