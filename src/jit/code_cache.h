@@ -44,6 +44,10 @@ struct cache_entry {
     struct cache_entry *left, *right, *parent;
 
     int bal;
+
+#ifdef PERF_STATS
+    unsigned n_access;
+#endif
 };
 
 /*

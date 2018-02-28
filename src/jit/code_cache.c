@@ -99,6 +99,58 @@ static unsigned depth, max_depth;
 static unsigned cache_sz;
 static unsigned max_cache_sz;
 
+/*
+ * track the top ten most "popular" code blocks.
+ * this array must always be sorted based on n_access in descending order
+ *
+ * One caveat to keep in mind is that this system only uses the guest-address
+ * to uniquely identify code blocks.  If a code block is overwritten by another
+ * code block that just happens to start at the exact same address, then
+ * perf_stats_update_max_access will mistakenly assume that they are both the
+ * same code_block.  I do not expect that this corner case will happen often
+ * enough to matter, especially since PERF_STATS is only meant to be used on
+ * development builds.
+ */
+#define MAX_ACCESS_LEN 10
+static struct access_ent {
+    unsigned n_access;
+    addr32_t addr;
+} max_access[MAX_ACCESS_LEN];
+
+static void perf_stats_update_max_access(struct cache_entry *ent) {
+    unsigned n_access = ent->n_access;
+    addr32_t access_addr = ent->addr;
+    int idx, idx_inner;
+
+    // make sure this address isn't already in the list
+    for (idx = 0; idx < MAX_ACCESS_LEN; idx++)
+        if (max_access[idx].addr == access_addr) {
+            max_access[idx].n_access = n_access;
+            goto sort;
+        }
+
+    /*
+     * We only need to check the end of the list because that's the element
+     * that will get kicked out.
+     */
+    if (max_access[MAX_ACCESS_LEN - 1].n_access < n_access) {
+        max_access[MAX_ACCESS_LEN - 1].n_access = n_access;
+        max_access[MAX_ACCESS_LEN - 1].addr = access_addr;
+    } else {
+        return;
+    }
+
+sort:
+    for (idx = 0; idx < MAX_ACCESS_LEN - 1; idx++)
+        for (idx_inner = idx + 1; idx_inner < MAX_ACCESS_LEN; idx_inner++) {
+            if (max_access[idx_inner].n_access > max_access[idx].n_access) {
+                struct access_ent tmp = max_access[idx_inner];
+                max_access[idx_inner] = max_access[idx];
+                max_access[idx] = tmp;
+            }
+        }
+}
+
 // how many times something got kicked out of the second-level cache
 static unsigned n_tbl_evictions;
 
@@ -157,6 +209,12 @@ static void perf_stats_print(void) {
     LOG_INFO("JIT: max cache size was %u\n", cache_sz);
     LOG_INFO("JIT: height of root at shutdown is %d\n", node_height(root));
     LOG_INFO("JIT: balance of root at shutdown is %d\n", node_balance(root));
+    LOG_INFO("JIT: The top %u most popular code blocks were accessed:\n",
+             MAX_ACCESS_LEN);
+    unsigned idx;
+    for (idx = 0; idx < MAX_ACCESS_LEN; idx++)
+        LOG_INFO("JIT: \t0x%08x - %u times\n",
+                 max_access[idx].addr, max_access[idx].n_access);
     LOG_INFO("================================\n");
 #endif
 }
@@ -540,6 +598,9 @@ struct cache_entry *code_cache_find(addr32_t addr) {
         n_tree_searches++;
         if (tbl[hash_idx])
             n_tbl_evictions++;
+
+        node->n_access++;
+        perf_stats_update_max_access(node);
 #endif
 
         tbl[hash_idx] = node;
@@ -548,6 +609,12 @@ struct cache_entry *code_cache_find(addr32_t addr) {
 
     basic_insert(&root, NULL, addr);
     tbl[hash_idx] = root;
+
+#ifdef PERF_STATS
+    root->n_access = 1;
+    perf_stats_update_max_access(root);
+#endif
+
     return root;
 }
 
