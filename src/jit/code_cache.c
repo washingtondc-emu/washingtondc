@@ -45,9 +45,6 @@
  * outdated values instead of trying to implement probing or chaining.
  */
 
-// uncomment for basic performance stats
-// #define PERF_STATS
-
 #if defined(INVARIANTS) || defined(PERF_STATS)
 static int node_height(struct cache_entry *node);
 static int node_balance(struct cache_entry *node);
