@@ -118,6 +118,11 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
                                     ]);
             inst++;
             break;
+        case JIT_OP_WRITE_32_SLOT:
+            sh4_write_mem_32(cpu, block->slots[inst->immed.write_32_slot.src_slot],
+                             block->slots[inst->immed.write_32_slot.addr_slot]);
+            inst++;
+            break;
         case JIT_OP_LOAD_SLOT16:
             block->slots[inst->immed.load_slot16.slot_no] =
                 *inst->immed.load_slot16.src;

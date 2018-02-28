@@ -165,6 +165,17 @@ void jit_read_32_slot(struct il_code_block *block, unsigned addr_slot,
     dstp->known_bits = 0;
 }
 
+void jit_write_32_slot(struct il_code_block *block, unsigned src_slot,
+                       unsigned addr_slot) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_WRITE_32_SLOT;
+    op.immed.write_32_slot.addr_slot = addr_slot;
+    op.immed.write_32_slot.src_slot = src_slot;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_load_slot16(struct il_code_block *block, unsigned slot_no,
                      uint16_t const *src) {
     struct jit_inst op;

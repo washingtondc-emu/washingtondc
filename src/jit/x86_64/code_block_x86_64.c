@@ -764,6 +764,28 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_register(RAX);
 }
 
+// JIT_OP_WRITE_32_SLOT implementation
+void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned src_slot = inst->immed.write_32_slot.src_slot;
+    unsigned addr_slot = inst->immed.write_32_slot.addr_slot;
+
+    prefunc();
+
+    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
+    move_slot_to_reg(src_slot, ESI);
+    move_slot_to_reg(addr_slot, EDX);
+
+    evict_register(ESI);
+    evict_register(EDX);
+
+    align_stack();
+    x86asm_call_ptr(sh4_write_mem_32);
+
+    postfunc();
+
+    ungrab_register(RAX);
+}
+
 static void
 emit_load_slot16(Sh4 *sh4, struct jit_inst const* inst) {
     unsigned slot_no = inst->immed.load_slot16.slot_no;
@@ -1153,6 +1175,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_READ_32_SLOT:
             emit_read_32_slot(sh4, inst);
+            break;
+        case JIT_OP_WRITE_32_SLOT:
+            emit_write_32_slot(sh4, inst);
             break;
         case JIT_OP_LOAD_SLOT16:
             emit_load_slot16(sh4, inst);
