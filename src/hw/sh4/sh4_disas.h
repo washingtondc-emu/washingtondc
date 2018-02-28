@@ -277,4 +277,10 @@ bool sh4_disas_sts_macl_rn(struct il_code_block *block, unsigned pc,
 // 0010nnnnmmmm0110
 bool sh4_disas_movl_rm_amrn(struct il_code_block *block, unsigned pc,
                             struct InstOpcode const *op, inst_t inst);
+
+// MOV.L Rm, @Rn
+// 0010nnnnmmmm0010
+bool sh4_disas_movl_rm_arn(struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, inst_t inst);
+
 #endif
