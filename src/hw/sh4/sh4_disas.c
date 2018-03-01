@@ -1080,6 +1080,25 @@ bool sh4_disas_cmphi_rm_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// CMP/GT Rm, Rn
+// 0011nnnnmmmm0111
+bool sh4_disas_cmpgt_rm_rn(struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, inst_t inst) {
+    unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
+    unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+
+    unsigned slot_src = reg_slot(dreamcast_get_cpu(), block, reg_src);
+    unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
+    unsigned slot_sr = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
+
+    jit_and_const32(block, slot_sr, ~1);
+    jit_set_gt_signed(block, slot_dst, slot_src, slot_sr);
+
+    reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 // CMP/EQ Rm, Rn
 // 0011nnnnmmmm0000
 bool sh4_disas_cmpeq_rm_rn(struct il_code_block *block, unsigned pc,

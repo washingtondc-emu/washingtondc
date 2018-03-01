@@ -284,6 +284,20 @@ void x86asm_jbe_lbl8(struct x86asm_lbl8 *lbl);
 void x86asm_jb_disp8(int disp8);
 void x86asm_jb_lbl8(struct x86asm_lbl8 *lbl);
 
+/*
+ * jl (pc + disp8
+ * jump if less (signed)
+ */
+void x86asm_jl_disp8(int disp8);
+void x86asm_jl_lbl8(struct x86asm_lbl8 *lbl);
+
+/*
+ * jle (pc + disp8
+ * jump if less (signed)
+ */
+void x86asm_jle_disp8(int disp8);
+void x86asm_jle_lbl8(struct x86asm_lbl8 *lbl);
+
 // movsx <%reg16>, %<reg32>
 void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst);
 

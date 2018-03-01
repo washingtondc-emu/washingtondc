@@ -293,4 +293,9 @@ bool sh4_disas_cmpeq_rm_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_cmphs_rm_rn(struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
+// CMP/GT Rm, Rn
+// 0011nnnnmmmm0111
+bool sh4_disas_cmpgt_rm_rn(struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, inst_t inst);
+
 #endif

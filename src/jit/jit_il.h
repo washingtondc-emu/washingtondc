@@ -123,6 +123,7 @@ enum jit_opcode {
      * remains unchanged.
      */
     JIT_OP_SET_GT_UNSIGNED,
+    JIT_OP_SET_GT_SIGNED,
 
     JIT_OP_SET_EQ,
 
@@ -294,6 +295,12 @@ struct set_gt_unsigned_immed {
     unsigned slot_dst;
 };
 
+struct set_gt_signed_immed {
+    // dst |= 1 if lhs > rhs
+    unsigned slot_lhs, slot_rhs;
+    unsigned slot_dst;
+};
+
 struct set_eq_immed {
     // dst |= 1 if lhs == rhs
     unsigned slot_lhs, slot_rhs;
@@ -342,6 +349,7 @@ union jit_immed {
     struct shar_immed shar;
     struct shlr_immed shlr;
     struct set_gt_unsigned_immed set_gt_unsigned;
+    struct set_gt_signed_immed set_gt_signed;
     struct set_eq_immed set_eq;
     struct set_ge_unsigned_immed set_ge_unsigned;
     struct mul_u32_immed mul_u32;
@@ -409,6 +417,8 @@ void jit_shlr(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
 void jit_set_gt_unsigned(struct il_code_block *block, unsigned slot_lhs,
                          unsigned slot_rhs, unsigned slot_dst);
+void jit_set_gt_signed(struct il_code_block *block, unsigned slot_lhs,
+                       unsigned slot_rhs, unsigned slot_dst);
 void jit_set_eq(struct il_code_block *block, unsigned slot_lhs,
                 unsigned slot_rhs, unsigned slot_dst);
 void jit_set_ge_unsigned(struct il_code_block *block, unsigned slot_lhs,

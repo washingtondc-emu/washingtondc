@@ -224,6 +224,12 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
                 block->slots[inst->immed.set_gt_unsigned.slot_dst] |= 1;
             inst++;
             break;
+        case JIT_OP_SET_GT_SIGNED:
+            if ((int32_t)block->slots[inst->immed.set_gt_signed.slot_lhs] >
+                (int32_t)block->slots[inst->immed.set_gt_signed.slot_rhs])
+                block->slots[inst->immed.set_gt_unsigned.slot_dst] |= 1;
+            inst++;
+            break;
         case JIT_OP_SET_EQ:
             if (block->slots[inst->immed.set_eq.slot_lhs] ==
                 block->slots[inst->immed.set_eq.slot_rhs])
