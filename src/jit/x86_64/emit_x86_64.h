@@ -246,7 +246,7 @@ void x86asm_cmpl_reg32_imm8(unsigned reg_no, unsigned imm8);
  * goes on the right and the rhs goes on the left for this function call
  * because I'm trying to vaguely mimic the syntax of GNU as.
  */
-void x86asm_cmpl_reg32_reg32(unsigned reg_rhs, unsigned reg_lhs);
+void x86asm_cmpl_reg32_reg32(unsigned reg_lhs, unsigned reg_rhs);
 
 /*
  * jz (pc+disp8)

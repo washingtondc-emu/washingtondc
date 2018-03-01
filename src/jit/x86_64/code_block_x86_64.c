@@ -1073,7 +1073,7 @@ static void emit_set_gt(Sh4 *sh4, struct jit_inst const *inst) {
     grab_slot(slot_rhs);
     grab_slot(slot_dst);
 
-    x86asm_cmpl_reg32_reg32(slots[slot_lhs].reg_no, slots[slot_rhs].reg_no);
+    x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jbe_lbl8(&lbl);
     x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
     x86asm_lbl8_define(&lbl);
@@ -1097,7 +1097,7 @@ static void emit_set_eq(Sh4 *sh4, struct jit_inst const *inst) {
     grab_slot(slot_rhs);
     grab_slot(slot_dst);
 
-    x86asm_cmpl_reg32_reg32(slots[slot_lhs].reg_no, slots[slot_rhs].reg_no);
+    x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jnz_lbl8(&lbl);
 
     x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
@@ -1122,7 +1122,7 @@ static void emit_set_ge(Sh4 *sh4, struct jit_inst const *inst) {
     grab_slot(slot_rhs);
     grab_slot(slot_dst);
 
-    x86asm_cmpl_reg32_reg32(slots[slot_lhs].reg_no, slots[slot_rhs].reg_no);
+    x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jnge_lbl8(&lbl);
     x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
     x86asm_lbl8_define(&lbl);
