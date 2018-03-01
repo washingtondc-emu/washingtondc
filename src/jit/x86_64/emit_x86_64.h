@@ -257,6 +257,10 @@ void x86asm_jz_disp8(int disp8);
 
 void x86asm_jz_lbl8(struct x86asm_lbl8 *lbl);
 
+// jnz (pc + disp8)
+void x86asm_jnz_disp8(int disp8);
+void x86asm_jnz_lbl8(struct x86asm_lbl8 *lbl);
+
 /*
  * ja (pc+disp8)
  *

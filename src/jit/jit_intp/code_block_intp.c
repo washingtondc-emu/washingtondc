@@ -224,6 +224,12 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
                 block->slots[inst->immed.set_gt.slot_dst] |= 1;
             inst++;
             break;
+        case JIT_OP_SET_EQ:
+            if (block->slots[inst->immed.set_eq.slot_lhs] ==
+                block->slots[inst->immed.set_eq.slot_rhs])
+                block->slots[inst->immed.set_eq.slot_dst] |= 1;
+            inst++;
+            break;
         case JIT_OP_MUL_U32:
             block->slots[inst->immed.mul_u32.slot_dst] =
                 block->slots[inst->immed.mul_u32.slot_lhs] *

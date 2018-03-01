@@ -124,6 +124,8 @@ enum jit_opcode {
      */
     JIT_OP_SET_GT,
 
+    JIT_OP_SET_EQ,
+
     /*
      * multiply two unsigned 32-bit slots together and place the result in a
      * third slot.
@@ -290,6 +292,12 @@ struct set_gt_immed {
     unsigned slot_dst;
 };
 
+struct set_eq_immed {
+    // dst |= 1 if lhs == rhs
+    unsigned slot_lhs, slot_rhs;
+    unsigned slot_dst;
+};
+
 struct mul_u32_immed {
     unsigned slot_lhs, slot_rhs;
     unsigned slot_dst;
@@ -326,6 +334,7 @@ union jit_immed {
     struct shar_immed shar;
     struct shlr_immed shlr;
     struct set_gt_immed set_gt;
+    struct set_eq_immed set_eq;
     struct mul_u32_immed mul_u32;
 };
 
@@ -390,6 +399,8 @@ void jit_shar(struct il_code_block *block, unsigned slot_no,
 void jit_shlr(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
 void jit_set_gt(struct il_code_block *block, unsigned slot_lhs,
+                unsigned slot_rhs, unsigned slot_dst);
+void jit_set_eq(struct il_code_block *block, unsigned slot_lhs,
                 unsigned slot_rhs, unsigned slot_dst);
 void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
                  unsigned slot_rhs, unsigned slot_dst);
