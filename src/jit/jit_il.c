@@ -576,14 +576,14 @@ void jit_shlr(struct il_code_block *block, unsigned slot_no,
         slotp->known_bits |= ~((1 << (31 - shift_amt)) - 1);
 }
 
-void jit_set_gt(struct il_code_block *block, unsigned slot_lhs,
-                unsigned slot_rhs, unsigned slot_dst) {
+void jit_set_gt_unsigned(struct il_code_block *block, unsigned slot_lhs,
+                         unsigned slot_rhs, unsigned slot_dst) {
     struct jit_inst op;
 
-    op.op = JIT_OP_SET_GT;
-    op.immed.set_gt.slot_lhs = slot_lhs;
-    op.immed.set_gt.slot_rhs = slot_rhs;
-    op.immed.set_gt.slot_dst = slot_dst;
+    op.op = JIT_OP_SET_GT_UNSIGNED;
+    op.immed.set_gt_unsigned.slot_lhs = slot_lhs;
+    op.immed.set_gt_unsigned.slot_rhs = slot_rhs;
+    op.immed.set_gt_unsigned.slot_dst = slot_dst;
 
     il_code_block_push_inst(block, &op);
 
@@ -636,14 +636,14 @@ void jit_set_eq(struct il_code_block *block, unsigned slot_lhs,
     }
 }
 
-void jit_set_ge(struct il_code_block *block, unsigned slot_lhs,
-                unsigned slot_rhs, unsigned slot_dst) {
+void jit_set_ge_unsigned(struct il_code_block *block, unsigned slot_lhs,
+                         unsigned slot_rhs, unsigned slot_dst) {
     struct jit_inst op;
 
-    op.op = JIT_OP_SET_GE;
-    op.immed.set_ge.slot_lhs = slot_lhs;
-    op.immed.set_ge.slot_rhs = slot_rhs;
-    op.immed.set_ge.slot_dst = slot_dst;
+    op.op = JIT_OP_SET_GE_UNSIGNED;
+    op.immed.set_ge_unsigned.slot_lhs = slot_lhs;
+    op.immed.set_ge_unsigned.slot_rhs = slot_rhs;
+    op.immed.set_ge_unsigned.slot_dst = slot_dst;
 
     il_code_block_push_inst(block, &op);
 

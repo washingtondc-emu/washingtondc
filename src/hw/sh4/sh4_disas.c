@@ -1073,7 +1073,7 @@ bool sh4_disas_cmphi_rm_rn(struct il_code_block *block, unsigned pc,
     unsigned slot_sr = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
 
     jit_and_const32(block, slot_sr, ~1);
-    jit_set_gt(block, slot_dst, slot_src, slot_sr);
+    jit_set_gt_unsigned(block, slot_dst, slot_src, slot_sr);
 
     reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
 
@@ -1111,7 +1111,7 @@ bool sh4_disas_cmphs_rm_rn(struct il_code_block *block, unsigned pc,
     unsigned slot_sr = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
 
     jit_and_const32(block, slot_sr, ~1);
-    jit_set_ge(block, slot_dst, slot_src, slot_sr);
+    jit_set_ge_unsigned(block, slot_dst, slot_src, slot_sr);
 
     reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
 

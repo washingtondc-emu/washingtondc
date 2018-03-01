@@ -122,11 +122,11 @@ enum jit_opcode {
      * reg, then the third reg will be ORed with 1.  Else, the third reg
      * remains unchanged.
      */
-    JIT_OP_SET_GT,
+    JIT_OP_SET_GT_UNSIGNED,
 
     JIT_OP_SET_EQ,
 
-    JIT_OP_SET_GE,
+    JIT_OP_SET_GE_UNSIGNED,
 
     /*
      * multiply two unsigned 32-bit slots together and place the result in a
@@ -288,7 +288,7 @@ struct shlr_immed {
     unsigned shift_amt;
 };
 
-struct set_gt_immed {
+struct set_gt_unsigned_immed {
     // dst |= 1 if lhs > rhs
     unsigned slot_lhs, slot_rhs;
     unsigned slot_dst;
@@ -300,7 +300,7 @@ struct set_eq_immed {
     unsigned slot_dst;
 };
 
-struct set_ge_immed {
+struct set_ge_unsigned_immed {
     // dst |= 1 if lhs >= rhs
     unsigned slot_lhs, slot_rhs;
     unsigned slot_dst;
@@ -341,9 +341,9 @@ union jit_immed {
     struct shll_immed shll;
     struct shar_immed shar;
     struct shlr_immed shlr;
-    struct set_gt_immed set_gt;
+    struct set_gt_unsigned_immed set_gt_unsigned;
     struct set_eq_immed set_eq;
-    struct set_ge_immed set_ge;
+    struct set_ge_unsigned_immed set_ge_unsigned;
     struct mul_u32_immed mul_u32;
 };
 
@@ -407,12 +407,12 @@ void jit_shar(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
 void jit_shlr(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
-void jit_set_gt(struct il_code_block *block, unsigned slot_lhs,
-                unsigned slot_rhs, unsigned slot_dst);
+void jit_set_gt_unsigned(struct il_code_block *block, unsigned slot_lhs,
+                         unsigned slot_rhs, unsigned slot_dst);
 void jit_set_eq(struct il_code_block *block, unsigned slot_lhs,
                 unsigned slot_rhs, unsigned slot_dst);
-void jit_set_ge(struct il_code_block *block, unsigned slot_lhs,
-                unsigned slot_rhs, unsigned slot_dst);
+void jit_set_ge_unsigned(struct il_code_block *block, unsigned slot_lhs,
+                         unsigned slot_rhs, unsigned slot_dst);
 void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
                  unsigned slot_rhs, unsigned slot_dst);
 

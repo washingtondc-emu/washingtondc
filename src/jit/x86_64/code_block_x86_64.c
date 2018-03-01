@@ -1061,10 +1061,10 @@ emit_shlr(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_slot(slot_no);
 }
 
-static void emit_set_gt(Sh4 *sh4, struct jit_inst const *inst) {
-    unsigned slot_lhs = inst->immed.set_gt.slot_lhs;
-    unsigned slot_rhs = inst->immed.set_gt.slot_rhs;
-    unsigned slot_dst = inst->immed.set_gt.slot_dst;
+static void emit_set_gt_unsigned(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_lhs = inst->immed.set_gt_unsigned.slot_lhs;
+    unsigned slot_rhs = inst->immed.set_gt_unsigned.slot_rhs;
+    unsigned slot_dst = inst->immed.set_gt_unsigned.slot_dst;
 
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
@@ -1110,10 +1110,10 @@ static void emit_set_eq(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_ge(Sh4 *sh4, struct jit_inst const *inst) {
-    unsigned slot_lhs = inst->immed.set_ge.slot_lhs;
-    unsigned slot_rhs = inst->immed.set_ge.slot_rhs;
-    unsigned slot_dst = inst->immed.set_ge.slot_dst;
+static void emit_set_ge_unsigned(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_lhs = inst->immed.set_ge_unsigned.slot_lhs;
+    unsigned slot_rhs = inst->immed.set_ge_unsigned.slot_rhs;
+    unsigned slot_dst = inst->immed.set_ge_unsigned.slot_dst;
 
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
@@ -1285,14 +1285,14 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
         case JIT_OP_SHLR:
             emit_shlr(sh4, inst);
             break;
-        case JIT_OP_SET_GT:
-            emit_set_gt(sh4, inst);
+        case JIT_OP_SET_GT_UNSIGNED:
+            emit_set_gt_unsigned(sh4, inst);
             break;
         case JIT_OP_SET_EQ:
             emit_set_eq(sh4, inst);
             break;
-        case JIT_OP_SET_GE:
-            emit_set_ge(sh4, inst);
+        case JIT_OP_SET_GE_UNSIGNED:
+            emit_set_ge_unsigned(sh4, inst);
             break;
         case JIT_OP_MUL_U32:
             emit_mul_u32(sh4, inst);

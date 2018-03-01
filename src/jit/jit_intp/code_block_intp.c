@@ -218,10 +218,10 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
                 inst->immed.shlr.shift_amt;
             inst++;
             break;
-        case JIT_OP_SET_GT:
-            if (block->slots[inst->immed.set_gt.slot_lhs] >
-                block->slots[inst->immed.set_gt.slot_rhs])
-                block->slots[inst->immed.set_gt.slot_dst] |= 1;
+        case JIT_OP_SET_GT_UNSIGNED:
+            if (block->slots[inst->immed.set_gt_unsigned.slot_lhs] >
+                block->slots[inst->immed.set_gt_unsigned.slot_rhs])
+                block->slots[inst->immed.set_gt_unsigned.slot_dst] |= 1;
             inst++;
             break;
         case JIT_OP_SET_EQ:
@@ -230,10 +230,10 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
                 block->slots[inst->immed.set_eq.slot_dst] |= 1;
             inst++;
             break;
-        case JIT_OP_SET_GE:
-            if (block->slots[inst->immed.set_ge.slot_lhs] >=
-                block->slots[inst->immed.set_ge.slot_rhs])
-                block->slots[inst->immed.set_ge.slot_dst] |= 1;
+        case JIT_OP_SET_GE_UNSIGNED:
+            if (block->slots[inst->immed.set_ge_unsigned.slot_lhs] >=
+                block->slots[inst->immed.set_ge_unsigned.slot_rhs])
+                block->slots[inst->immed.set_ge_unsigned.slot_dst] |= 1;
             inst++;
             break;
         case JIT_OP_MUL_U32:
