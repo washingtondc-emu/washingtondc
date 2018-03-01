@@ -636,6 +636,36 @@ void jit_set_eq(struct il_code_block *block, unsigned slot_lhs,
     }
 }
 
+void jit_set_ge(struct il_code_block *block, unsigned slot_lhs,
+                unsigned slot_rhs, unsigned slot_dst) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_SET_GE;
+    op.immed.set_ge.slot_lhs = slot_lhs;
+    op.immed.set_ge.slot_rhs = slot_rhs;
+    op.immed.set_ge.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+
+    // cache known values
+    struct il_slot *lhsp = block->slots + slot_lhs;
+    struct il_slot *rhsp = block->slots + slot_rhs;
+    struct il_slot *dstp = block->slots + slot_dst;
+
+    /*
+     * TODO: if the upper N bits of both lhs and rhs are known and those upper
+     * N bits differ then it doesn't matter that you don't know the lower
+     * (32-N) bits.
+     */
+    if (lhsp->known_bits == 0xffffffff && rhsp->known_bits == 0xffffffff &&
+        lhsp->known_val >= rhsp->known_val) {
+        dstp->known_bits |= 1;
+        dstp->known_val |= 1;
+    } else {
+        dstp->known_bits &= ~1;
+    }
+}
+
 void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
                  unsigned slot_rhs, unsigned slot_dst) {
     struct jit_inst op;
