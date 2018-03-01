@@ -585,6 +585,23 @@ void x86asm_jbe_lbl8(struct x86asm_lbl8 *lbl) {
     put8(0); // temporary placeholder for the offset value
 }
 
+void x86asm_jb_disp8(int disp8) {
+    put8(0x72);
+    put8(disp8);
+}
+
+void x86asm_jb_lbl8(struct x86asm_lbl8 *lbl) {
+    struct lbl_jmp_pt pt;
+    put8(0x72);
+
+    pt.offs = (int8_t*)outp;
+    pt.rel_pos = outp + 1;
+
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
+
+    put8(0); // temporary placeholder for the offset value
+}
+
 void x86asm_jnge_disp8(int disp8) {
     put8(0x7c);
     put8(disp8);
