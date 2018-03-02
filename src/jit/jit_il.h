@@ -130,6 +130,7 @@ enum jit_opcode {
 
     JIT_OP_SET_GE_UNSIGNED,
     JIT_OP_SET_GE_SIGNED,
+    JIT_OP_SET_GE_SIGNED_CONST,
 
     /*
      * multiply two unsigned 32-bit slots together and place the result in a
@@ -328,6 +329,13 @@ struct set_ge_signed_immed {
     unsigned slot_dst;
 };
 
+struct set_ge_signed_const_immed {
+    // dst |= 1 if lhs >= rhs
+    unsigned slot_lhs;
+    unsigned slot_dst;
+    int32_t imm_rhs;
+};
+
 struct mul_u32_immed {
     unsigned slot_lhs, slot_rhs;
     unsigned slot_dst;
@@ -369,6 +377,7 @@ union jit_immed {
     struct set_eq_immed set_eq;
     struct set_ge_unsigned_immed set_ge_unsigned;
     struct set_ge_signed_immed set_ge_signed;
+    struct set_ge_signed_const_immed set_ge_signed_const;
     struct mul_u32_immed mul_u32;
 };
 
@@ -444,6 +453,8 @@ void jit_set_ge_unsigned(struct il_code_block *block, unsigned slot_lhs,
                          unsigned slot_rhs, unsigned slot_dst);
 void jit_set_ge_signed(struct il_code_block *block, unsigned slot_lhs,
                        unsigned slot_rhs, unsigned slot_dst);
+void jit_set_ge_signed_const(struct il_code_block *block, unsigned slot_lhs,
+                             unsigned imm_rhs, unsigned slot_dst);
 void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
                  unsigned slot_rhs, unsigned slot_dst);
 
