@@ -499,7 +499,7 @@ void x86asm_movsx_indreg16_reg32(unsigned reg_src, unsigned reg_dst) {
  * cmpl #imm8, %<reg_no>
  * compare the given register with the (sign-extended) imm8
  */
-void x86asm_cmpl_reg32_imm8(unsigned reg_no, unsigned imm8) {
+void x86asm_cmpl_imm8_reg32(unsigned imm8, unsigned reg_no) {
     emit_mod_reg_rm(0, 0x83, 3, 7, reg_no);
     put8(imm8);
 }

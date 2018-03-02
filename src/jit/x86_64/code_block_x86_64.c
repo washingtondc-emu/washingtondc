@@ -628,7 +628,7 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
      * benchmark...
      */
     x86asm_mov_reg64_reg64(slots[alt_jmp_addr_slot].reg_no, RAX);
-    x86asm_cmpl_reg32_imm8(ECX, !t_flag);
+    x86asm_cmpl_imm8_reg32(!t_flag, ECX);
     x86asm_jz_lbl8(&lbl);    // JUMP IF EQUAL
     x86asm_mov_reg64_reg64(slots[jmp_addr_slot].reg_no, RAX);
     x86asm_lbl8_define(&lbl);
@@ -998,7 +998,7 @@ emit_slot_to_bool(Sh4 *sh4, struct jit_inst const *inst) {
 
     x86asm_mov_reg32_reg32(slots[slot_no].reg_no, EAX);
     x86asm_xorl_reg32_reg32(EAX, EAX);
-    x86asm_cmpl_reg32_imm8(slots[slot_no].reg_no, 0);
+    x86asm_cmpl_imm8_reg32(0, slots[slot_no].reg_no);
     x86asm_jz_lbl8(&lbl);
     x86asm_incl_reg32(EAX);
 
