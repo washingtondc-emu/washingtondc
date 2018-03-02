@@ -484,7 +484,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_MT, 1, 0xf00f, 0x3002 },
 
     // CMP/GE Rm, Rn
-    { &sh4_inst_binary_cmpge_gen_gen, sh4_disas_fallback, false,
+    { &sh4_inst_binary_cmpge_gen_gen, sh4_disas_cmpge_rm_rn, false,
       SH4_GROUP_MT, 1, 0xf00f, 0x3003 },
 
     // CMP/HI Rm, Rn
