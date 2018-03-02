@@ -1109,6 +1109,28 @@ static void emit_set_gt_signed(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
+static void emit_set_gt_signed_const(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_lhs = inst->immed.set_gt_signed_const.slot_lhs;
+    unsigned imm_rhs = inst->immed.set_gt_signed_const.imm_rhs;
+    unsigned slot_dst = inst->immed.set_gt_signed_const.slot_dst;
+
+    struct x86asm_lbl8 lbl;
+    x86asm_lbl8_init(&lbl);
+
+    grab_slot(slot_lhs);
+    grab_slot(slot_dst);
+
+    x86asm_cmpl_imm8_reg32(imm_rhs, slots[slot_lhs].reg_no);
+    x86asm_jle_lbl8(&lbl);
+    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
+    x86asm_lbl8_define(&lbl);
+
+    ungrab_slot(slot_dst);
+    ungrab_slot(slot_lhs);
+
+    x86asm_lbl8_cleanup(&lbl);
+}
+
 static void emit_set_eq(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_eq.slot_lhs;
     unsigned slot_rhs = inst->immed.set_eq.slot_rhs;
@@ -1338,6 +1360,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_SET_GT_SIGNED:
             emit_set_gt_signed(sh4, inst);
+            break;
+        case JIT_OP_SET_GT_SIGNED_CONST:
+            emit_set_gt_signed_const(sh4, inst);
             break;
         case JIT_OP_SET_EQ:
             emit_set_eq(sh4, inst);

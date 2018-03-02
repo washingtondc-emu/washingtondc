@@ -1190,6 +1190,23 @@ bool sh4_disas_cmpge_rm_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// CMP/PL Rn
+// 0100nnnn00010101
+bool sh4_disas_cmppl_rn(struct il_code_block *block, unsigned pc,
+                        struct InstOpcode const *op, inst_t inst) {
+    unsigned reg_lhs = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+
+    unsigned slot_lhs = reg_slot(dreamcast_get_cpu(), block, reg_lhs);
+    unsigned slot_sr = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
+
+    jit_and_const32(block, slot_sr, ~1);
+    jit_set_gt_signed_const(block, slot_lhs, 0, slot_sr);
+
+    reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

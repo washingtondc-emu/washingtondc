@@ -636,6 +636,29 @@ void jit_set_gt_signed(struct il_code_block *block, unsigned slot_lhs,
     }
 }
 
+void jit_set_gt_signed_const(struct il_code_block *block, unsigned slot_lhs,
+                             unsigned imm_rhs, unsigned slot_dst) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_SET_GT_SIGNED_CONST;
+    op.immed.set_gt_signed_const.slot_lhs = slot_lhs;
+    op.immed.set_gt_signed_const.imm_rhs = imm_rhs;
+    op.immed.set_gt_signed_const.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+
+    // cache known values
+    struct il_slot *lhsp = block->slots + slot_lhs;
+    struct il_slot *dstp = block->slots + slot_dst;
+    if (lhsp->known_bits == 0xffffffff &&
+        (int32_t)lhsp->known_val > (int32_t)imm_rhs) {
+        dstp->known_bits |= 1;
+        dstp->known_val |= 1;
+    } else {
+        dstp->known_bits &= ~1;
+    }
+}
+
 void jit_set_eq(struct il_code_block *block, unsigned slot_lhs,
                 unsigned slot_rhs, unsigned slot_dst) {
     struct jit_inst op;

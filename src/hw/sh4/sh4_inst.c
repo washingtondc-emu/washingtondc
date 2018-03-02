@@ -167,7 +167,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_MT, 1, 0xf0ff, 0x4011 },
 
     // CMP/PL
-    { &sh4_inst_unary_cmppl_gen, sh4_disas_fallback, false,
+    { &sh4_inst_unary_cmppl_gen, sh4_disas_cmppl_rn, false,
       SH4_GROUP_MT, 1, 0xf0ff, 0x4015 },
 
     // DT

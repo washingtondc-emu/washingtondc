@@ -227,7 +227,13 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
         case JIT_OP_SET_GT_SIGNED:
             if ((int32_t)block->slots[inst->immed.set_gt_signed.slot_lhs] >
                 (int32_t)block->slots[inst->immed.set_gt_signed.slot_rhs])
-                block->slots[inst->immed.set_gt_unsigned.slot_dst] |= 1;
+                block->slots[inst->immed.set_gt_signed.slot_dst] |= 1;
+            inst++;
+            break;
+        case JIT_OP_SET_GT_SIGNED_CONST:
+            if ((int32_t)block->slots[inst->immed.set_gt_signed_const.slot_lhs] >
+                inst->immed.set_gt_signed_const.imm_rhs)
+                block->slots[inst->immed.set_gt_signed_const.slot_dst] |= 1;
             inst++;
             break;
         case JIT_OP_SET_EQ:
