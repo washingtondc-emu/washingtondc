@@ -601,13 +601,9 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
 
     grab_register(RAX);
     evict_register(RAX);
-    grab_register(RCX);
-    evict_register(RCX);
 
     grab_slot(flag_slot);
     x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, EAX);
-    x86asm_and_imm32_rax(1);
-    x86asm_mov_reg32_reg32(EAX, ECX);
     ungrab_slot(flag_slot);
 
     grab_slot(jmp_addr_slot);
@@ -627,8 +623,9 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
      * faster than a conditional jump-forward.  I should experiment and
      * benchmark...
      */
+
+    x86asm_and_imm32_rax(1);
     x86asm_mov_reg32_reg32(slots[alt_jmp_addr_slot].reg_no, EAX);
-    x86asm_testl_reg32_reg32(ECX, ECX);
     if (t_flag)
         x86asm_jz_lbl8(&lbl);
     else
@@ -644,7 +641,6 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_slot(alt_jmp_addr_slot);
     ungrab_slot(jmp_addr_slot);
 
-    ungrab_register(RCX);
     ungrab_register(RAX); // not that it matters at this point...
 
     x86asm_lbl8_cleanup(&lbl);
