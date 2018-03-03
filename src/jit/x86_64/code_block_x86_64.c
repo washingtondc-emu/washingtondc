@@ -995,9 +995,8 @@ emit_slot_to_bool(Sh4 *sh4, struct jit_inst const *inst) {
     evict_register(RAX);
     grab_slot(slot_no);
 
-    x86asm_mov_reg32_reg32(slots[slot_no].reg_no, EAX);
     x86asm_xorl_reg32_reg32(EAX, EAX);
-    x86asm_cmpl_imm8_reg32(0, slots[slot_no].reg_no);
+    x86asm_testl_reg32_reg32(slots[slot_no].reg_no, slots[slot_no].reg_no);
     x86asm_jz_lbl8(&lbl);
     x86asm_incl_reg32(EAX);
 
