@@ -628,8 +628,11 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
      * benchmark...
      */
     x86asm_mov_reg32_reg32(slots[alt_jmp_addr_slot].reg_no, EAX);
-    x86asm_cmpl_imm8_reg32(!t_flag, ECX);
-    x86asm_jz_lbl8(&lbl);    // JUMP IF EQUAL
+    x86asm_testl_reg32_reg32(ECX, ECX);
+    if (t_flag)
+        x86asm_jz_lbl8(&lbl);
+    else
+        x86asm_jnz_lbl8(&lbl);
     x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, EAX);
     x86asm_lbl8_define(&lbl);
 

@@ -733,3 +733,7 @@ void x86asm_lbl8_push_jmp_pt(struct x86asm_lbl8 *lbl,
 void x86asm_mull_reg32(unsigned reg_no) {
     emit_mod_reg_rm(0, 0xf7, 3, 4, reg_no);
 }
+
+void x86asm_testl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x85, 3, reg_src, reg_dst);
+}

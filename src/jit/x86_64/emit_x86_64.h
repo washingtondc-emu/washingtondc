@@ -334,4 +334,6 @@ void* x86asm_get_outp(void);
  */
 void x86asm_mull_reg32(unsigned reg_no);
 
+void x86asm_testl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
 #endif
