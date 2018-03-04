@@ -336,4 +336,24 @@ void x86asm_mull_reg32(unsigned reg_no);
 
 void x86asm_testl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 
+// conditional-move if not-equal (ZF=0)
+void x86asm_cmovnel_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
+// conditional-move if equal (ZF=1)
+void x86asm_cmovel_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
+// conditional-move if greater (unsigned) (CF=0, ZF=0)
+void x86asm_cmoval_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
+// conditional-move if greater (signed)
+void x86asm_cmovgl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
+// conditional-move if greater-or-equal (signed)
+void x86asm_cmovgel_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
+// conditional-move if greater-or-equal (unsigned)
+void x86asm_cmovael_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+
+void x86asm_setnzl_reg32(unsigned reg_no);
+
 #endif
