@@ -57,7 +57,6 @@ add_definitions(-D_GNU_SOURCE)
 enable_testing()
 
 find_package(OpenGL REQUIRED)
-find_package(PNG REQUIRED)
 find_package(GLEW REQUIRED)
 
 # turn on strict warnings - i have no idea how to do this in windows
@@ -296,17 +295,72 @@ if (DEEP_SYSCALL_TRACE)
                    "${PROJECT_SOURCE_DIR}/src/deep_syscall_trace.c")
 endif()
 
+add_library(sh4 ${sh4_sources})
+
+# libpng version 1.6.34
+set(libpng_path "${PROJECT_SOURCE_DIR}/external/libpng")
+add_library(png "${libpng_path}/png.h"
+                "${libpng_path}/pngconf.h"
+                "${libpng_path}/pngdebug.h"
+                "${libpng_path}/pnginfo.h"
+                "${libpng_path}/pnglibconf.h"
+                "${libpng_path}/pngpriv.h"
+                "${libpng_path}/pngstruct.h"
+                "${libpng_path}/png.c"
+                "${libpng_path}/pngerror.c"
+                "${libpng_path}/pngget.c"
+                "${libpng_path}/pngmem.c"
+                "${libpng_path}/pngpread.c"
+                "${libpng_path}/pngread.c"
+                "${libpng_path}/pngrio.c"
+                "${libpng_path}/pngrtran.c"
+                "${libpng_path}/pngrutil.c"
+                "${libpng_path}/pngset.c"
+                "${libpng_path}/pngtrans.c"
+                "${libpng_path}/pngwio.c"
+                "${libpng_path}/pngwrite.c"
+                "${libpng_path}/pngwtran.c"
+                "${libpng_path}/pngwutil.c")
+
+# zlib version 1.2.11
+set(zlib_path "${PROJECT_SOURCE_DIR}/external/zlib")
+add_library(zlib "${zlib_path}/zlib.h"
+                 "${zlib_path}/crc32.h"
+                 "${zlib_path}/deflate.h"
+                 "${zlib_path}/gzguts.h"
+                 "${zlib_path}/inffast.h"
+                 "${zlib_path}/inffixed.h"
+                 "${zlib_path}/inflate.h"
+                 "${zlib_path}/inftrees.h"
+                 "${zlib_path}/trees.h"
+                 "${zlib_path}/zutil.h"
+                 "${zlib_path}/adler32.c"
+                 "${zlib_path}/compress.c"
+                 "${zlib_path}/crc32.c"
+                 "${zlib_path}/deflate.c"
+                 "${zlib_path}/gzclose.c"
+                 "${zlib_path}/gzlib.c"
+                 "${zlib_path}/gzlib.c"
+                 "${zlib_path}/gzread.c"
+                 "${zlib_path}/gzwrite.c"
+                 "${zlib_path}/inflate.c"
+                 "${zlib_path}/infback.c"
+                 "${zlib_path}/inftrees.c"
+                 "${zlib_path}/inffast.c"
+                 "${zlib_path}/trees.c"
+                 "${zlib_path}/uncompr.c"
+                 "${zlib_path}/zutil.c")
+
 include_directories("${OPENGL_INCLUDE_DIR}"
-                    "${PNG_INCLUDE_DIR}"
                     "${GLEW_INCLUDE_DIR}"
                     "${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
                     "${PROJECT_SOURCE_DIR}/common"
                     "${PROJECT_SOURCE_DIR}/external"
                     "${PROJECT_SOURCE_DIR}/external/glfw/include"
+                    "${libpng_path}"
+                    "${zlib_path}"
                     "${CMAKE_BINARY_DIR}/washingtondc-libevent/src/libevent/include")
-
-add_library(sh4 ${sh4_sources})
 
 # TODO: I wish there was an easy way to do this as a dependency like in make...
 configure_file("src/gfx/opengl/final_frag.glsl" "final_frag.glsl" COPYONLY)
@@ -323,4 +377,4 @@ add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
 add_executable(washingtondc ${washingtondc_sources})
 
 add_dependencies(washingtondc libevent)
-target_link_libraries(washingtondc m sh4 rt ${OPENGL_gl_LIBRARY} glfw ${GLEW_LIBRARIES} pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a ${LIBEVENT_LIB_PATH}/lib/libevent_pthreads.a ${PNG_LIBRARY})
+target_link_libraries(washingtondc m sh4 rt png zlib ${OPENGL_gl_LIBRARY} glfw ${GLEW_LIBRARIES} pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a ${LIBEVENT_LIB_PATH}/lib/libevent_pthreads.a)

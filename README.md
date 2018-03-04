@@ -91,6 +91,30 @@ direct-boot a homebrew program (requires a system call table dump):
 ```
 ./washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -du IP.BIN 1st_read.bin
 ```
+## LICENSE
+WashingtonDC is licensed under the terms of the GNU GPLv3.  The terms of this
+license can be found in COPYING.
+
+WashingtonDC also makes use of several third-party libraries available under
+various different licenses.
+
+A copy of libpng version 1.6.34 is included in this source distribution with
+some unnecessary components removed.  The license for this software can be
+found at external/libpng/LICENSE.
+
+A copy of zlib is included in this source distribution with some unnecessary
+components removed.  The license for this software can be found at
+external/zlib/README.
+
+WashingtonDC also makes use of the glfw library.  This is not included in this
+source distribution, and is instead distributed using a git submodule.  The
+license for this software can be found in external/glfw/LICENSE.md.
+
+WashingtonDC also makes use of the libevent library.  This is not included in
+this source distribution, and is instead automatically downloaded by the build
+system as a tarball.  The license for this software can be found in the tarball
+at libevent-2.1.8-stable/LICENSE.
+
 ## CONTACT
 You can reach me at my public-facing e-mail address, chimerasaurusrex@gmail.com.
 
