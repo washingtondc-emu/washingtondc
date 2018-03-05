@@ -74,6 +74,7 @@ option(DEEP_SYSCALL_TRACE "enable logging to observe the behavior of system call
 option(ENABLE_LOG_DEBUG "enable extra debug logs" OFF)
 option(ENABLE_JIT_X86_64 "enable native x86_64 JIT backend" ON)
 option(PERF_STATS "enable performance monitoring" OFF)
+option(JIT_OPTIMIZE "enable optimization passes on the JIT that dont actually work" OFF)
 
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)
    add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
@@ -263,6 +264,13 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
                          "${PROJECT_SOURCE_DIR}/src/BiosFile.c"
                          "${PROJECT_SOURCE_DIR}/src/main.c")
+
+if (JIT_OPTIMIZE)
+   add_definitions(-DJIT_OPTIMIZE)
+   set (sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/jit/jit_determ.h"
+                                   "${PROJECT_SOURCE_DIR}/src/jit/jit_determ.c")
+
+endif()
 
 if (ENABLE_JIT_X86_64)
    add_definitions(-DENABLE_JIT_X86_64)

@@ -23,7 +23,33 @@
 #ifndef JIT_H_
 #define JIT_H_
 
+#include <stdint.h>
+
 void jit_init(void);
 void jit_cleanup(void);
+
+static inline void
+jit_compile_native(struct code_block_x86_64 *blk, uint32_t pc) {
+    struct il_code_block il_blk;
+    il_code_block_init(&il_blk);
+    il_code_block_compile(&il_blk, pc);
+#ifdef JIT_OPTIMIZE
+    jit_determ_pass(&il_blk);
+#endif
+    code_block_x86_64_compile(blk, &il_blk);
+    il_code_block_cleanup(&il_blk);
+}
+
+static inline void
+jit_compile_intp(struct code_block_intp *blk, uint32_t pc) {
+    struct il_code_block il_blk;
+    il_code_block_init(&il_blk);
+    il_code_block_compile(&il_blk, pc);
+#ifdef JIT_OPTIMIZE
+    jit_determ_pass(&il_blk);
+#endif
+    code_block_intp_compile(blk, &il_blk);
+    il_code_block_cleanup(&il_blk);
+}
 
 #endif

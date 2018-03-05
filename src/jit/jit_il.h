@@ -26,6 +26,13 @@
 // for union Sh4OpArgs
 #include "hw/sh4/sh4_inst.h"
 
+/*
+ * Defines the number of slots available to IL programs.
+ *
+ * this limit is arbitrary; it is safe to make MAX_SLOTS bigger if necessary
+ */
+#define MAX_SLOTS 512
+
 enum jit_opcode {
     // this opcode calls an interpreter function
     JIT_OP_FALLBACK,

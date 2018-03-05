@@ -25,14 +25,15 @@
 
 #include "jit_il.h"
 
+#ifdef JIT_OPTIMIZE
+#include "jit_determ.h"
+#endif
+
 #ifdef ENABLE_JIT_X86_64
 #include "x86_64/code_block_x86_64.h"
 #endif
 
 #include "jit_intp/code_block_intp.h"
-
-// this limit is arbitrary; it is safe to make MAX_SLOTS bigger if necessary
-#define MAX_SLOTS 512
 
 // this tells whether a given slot is in use
 bool slot_status(struct il_code_block *block, unsigned slot_no);
@@ -41,33 +42,6 @@ unsigned alloc_slot(struct il_code_block *block);
 void free_slot(struct il_code_block *block, unsigned slot_no);
 
 struct il_slot {
-    /*
-     * known_bits is a bitmask which tracks the bits whose values are known at
-     * compile-time.  known_val contains the values of those bits.
-     *
-     * For example, consider the following:
-     *     A = B & C;
-     * If the value of B is not known but the value of C is known, then I know
-     * that any bit in A which corresponds to a 0-bit in C will itself be zero.
-     * Ergo, A's known_bits would be ~C, and A's known_val would be 0.
-     *
-     * In a more general case, I might know some bits of B but not all of them,
-     * and I might know some bits of C but not all of them.  In that case, this
-     * expression would yield A's known bits for the above AND expression:
-     *    A.known_bits = (~B) | (~C)
-     *    A.known_val = 0
-     *
-     * The upshot of all this is that if the JIT knows what specific bits in a
-     * slot are at compile-time, it can use that information to make
-     * optimizations.  For example, if a bits 27:24 in a slot are 0xc, 0xd, 0xe
-     * or 0xf and bit 28 in that slot is 0, then I know that slot contains a
-     * valid pointer to system memory.  If that slot is used as an address for a
-     * memory read or write, then I can bypass the memory map and read/write
-     * directly to system memory.
-     */
-    uint32_t known_bits;
-    uint32_t known_val;
-
     bool in_use;
 };
 
@@ -82,6 +56,11 @@ struct il_code_block {
     unsigned n_slots;
 
     struct il_slot slots[MAX_SLOTS];
+
+#ifdef JIT_OPTIMIZE
+    // The length of this array is inst_count, but only if it is non-NULL
+    struct jit_determ_state *determ;
+#endif
 };
 
 union jit_code_block {

@@ -484,12 +484,7 @@ static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
 
         struct code_block_x86_64 *blk = &ent->blk.x86_64;
         if (!ent->valid) {
-            struct il_code_block il_blk;
-            il_code_block_init(&il_blk);
-            il_code_block_compile(&il_blk, blk_addr);
-            code_block_x86_64_compile(blk, &il_blk);
-            il_code_block_cleanup(&il_blk);
-
+            jit_compile_native(blk, blk_addr);
             ent->valid = true;
         }
 
@@ -516,12 +511,7 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
 
         struct code_block_intp *blk = &ent->blk.intp;
         if (!ent->valid) {
-            struct il_code_block il_blk;
-            il_code_block_init(&il_blk);
-            il_code_block_compile(&il_blk, blk_addr);
-            code_block_intp_compile(blk, &il_blk);
-            il_code_block_cleanup(&il_blk);
-
+            jit_compile_intp(blk, blk_addr);
             ent->valid = true;
         }
 
