@@ -31,6 +31,15 @@
 
 #include "jit_intp/code_block_intp.h"
 
+// this limit is arbitrary; it is safe to make MAX_SLOTS bigger if necessary
+#define MAX_SLOTS 512
+
+// this tells whether a given slot is in use
+bool slot_status(struct il_code_block *block, unsigned slot_no);
+
+unsigned alloc_slot(struct il_code_block *block);
+void free_slot(struct il_code_block *block, unsigned slot_no);
+
 struct il_slot {
     /*
      * known_bits is a bitmask which tracks the bits whose values are known at
@@ -58,6 +67,8 @@ struct il_slot {
      */
     uint32_t known_bits;
     uint32_t known_val;
+
+    bool in_use;
 };
 
 struct il_code_block {
@@ -70,7 +81,7 @@ struct il_code_block {
     // this is a counter of how many slots the code block uses
     unsigned n_slots;
 
-    struct il_slot *slots;
+    struct il_slot slots[MAX_SLOTS];
 };
 
 union jit_code_block {
@@ -91,7 +102,5 @@ void il_code_block_push_inst(struct il_code_block *block,
  * "addr".
  */
 void il_code_block_compile(struct il_code_block *block, addr32_t addr);
-
-void il_code_block_add_slot(struct il_code_block *block);
 
 #endif

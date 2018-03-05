@@ -44,7 +44,6 @@ void il_code_block_init(struct il_code_block *block) {
 
 void il_code_block_cleanup(struct il_code_block *block) {
     free(block->inst_list);
-    free(block->slots);
     memset(block, 0, sizeof(*block));
 }
 
@@ -76,13 +75,31 @@ void il_code_block_compile(struct il_code_block *block, addr32_t addr) {
     } while (do_continue);
 }
 
-void il_code_block_add_slot(struct il_code_block *block) {
-    unsigned n_slots = block->n_slots + 1;
-    void *new_slot_ptr = realloc(block->slots, n_slots * sizeof(struct il_slot));
-    if (!new_slot_ptr)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-    block->n_slots = n_slots;
-    block->slots = new_slot_ptr;
-    struct il_slot *new_slot = block->slots + (n_slots - 1);
+static void il_code_block_add_slot(struct il_code_block *block) {
+    block->n_slots++;
+    struct il_slot *new_slot = block->slots + (block->n_slots - 1);
     memset(new_slot, 0, sizeof(*new_slot));
+}
+
+// this tells whether a given slot is in use
+bool slot_status(struct il_code_block *block, unsigned slot_no) {
+    if (slot_no >= MAX_SLOTS)
+        RAISE_ERROR(ERROR_OVERFLOW);
+
+    return block->slots[slot_no].in_use;
+}
+
+unsigned alloc_slot(struct il_code_block *block) {
+    if (block->n_slots >= MAX_SLOTS)
+        RAISE_ERROR(ERROR_OVERFLOW);
+
+    unsigned slot_no = block->n_slots++;
+    block->slots[slot_no].in_use = true;
+    il_code_block_add_slot(block);
+
+    return slot_no;
+}
+
+void free_slot(struct il_code_block *block, unsigned slot_no) {
+    block->slots[slot_no].in_use = false;
 }
