@@ -356,16 +356,18 @@ add_library(glew "${glew_path}/src/glew.c"
                  "${glew_path}/include/GL/wglew.h"
                  "${glew_path}/include/GL/glxew.h")
 
-include_directories("${OPENGL_INCLUDE_DIR}"
-                    "${PROJECT_SOURCE_DIR}/external/glew/include"
-                    "${PROJECT_SOURCE_DIR}/src/"
-                    "${PROJECT_SOURCE_DIR}/src/hw/sh4"
-                    "${PROJECT_SOURCE_DIR}/common"
-                    "${PROJECT_SOURCE_DIR}/external"
-                    "${PROJECT_SOURCE_DIR}/external/glfw/include"
-                    "${libpng_path}"
-                    "${zlib_path}"
-                    "${CMAKE_BINARY_DIR}/washingtondc-libevent/src/libevent/include")
+set(include_dirs "${OPENGL_INCLUDE_DIR}"
+                 "${PROJECT_SOURCE_DIR}/external/glew/include"
+                 "${PROJECT_SOURCE_DIR}/src/"
+                 "${PROJECT_SOURCE_DIR}/src/hw/sh4"
+                 "${PROJECT_SOURCE_DIR}/common"
+                 "${PROJECT_SOURCE_DIR}/external"
+                 "${PROJECT_SOURCE_DIR}/external/glfw/include"
+                 "${libpng_path}"
+                 "${zlib_path}"
+                 "${CMAKE_BINARY_DIR}/washingtondc-libevent/src/libevent/include")
+
+include_directories("${include_dirs}")
 
 # TODO: I wish there was an easy way to do this as a dependency like in make...
 configure_file("src/gfx/opengl/final_frag.glsl" "final_frag.glsl" COPYONLY)
