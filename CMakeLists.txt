@@ -33,12 +33,11 @@ set (LIBEVENT_LIB_PATH ${CMAKE_CURRENT_BINARY_DIR})
 ExternalProject_Add(
         libevent
         PREFIX washingtondc-libevent
-        URL https://github.com/libevent/libevent/releases/download/release-2.1.8-stable/libevent-2.1.8-stable.tar.gz
-        URL_MD5 f3eeaed018542963b7d2416ef1135ecc
-        CONFIGURE_COMMAND ./configure
-        BUILD_COMMAND make
+        GIT_REPOSITORY https://github.com/libevent/libevent
+        GIT_TAG release-2.1.8-stable
         INSTALL_DIR ${LIBEVENT_LIB_PATH}
-        INSTALL_COMMAND make prefix=${LIBEVENT_LIB_PATH} install
+        CONFIGURE_COMMAND cmake -DCMAKE_INSTALL_PREFIX=${LIBEVENT_LIB_PATH}
+        INSTALL_COMMAND make install
         BUILD_IN_SOURCE 1)
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -376,5 +375,7 @@ add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-add_dependencies(washingtondc libevent)
-target_link_libraries(washingtondc m sh4 rt png zlib ${OPENGL_gl_LIBRARY} glfw ${GLEW_LIBRARIES} pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a ${LIBEVENT_LIB_PATH}/lib/libevent_pthreads.a)
+
+add_dependencies(washingtondc libevent sh4)
+add_dependencies(sh4 libevent)
+target_link_libraries(washingtondc m sh4 rt png zlib ${OPENGL_gl_LIBRARY} glfw ${GLEW_LIBRARIES} pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a)
