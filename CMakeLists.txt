@@ -56,7 +56,6 @@ add_definitions(-D_GNU_SOURCE)
 enable_testing()
 
 find_package(OpenGL REQUIRED)
-find_package(GLEW REQUIRED)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
@@ -350,8 +349,15 @@ add_library(zlib "${zlib_path}/zlib.h"
                  "${zlib_path}/uncompr.c"
                  "${zlib_path}/zutil.c")
 
+# glew version 2.1.0
+set(glew_path "${PROJECT_SOURCE_DIR}/external/glew")
+add_library(glew "${glew_path}/src/glew.c"
+                 "${glew_path}/include/GL/glew.h"
+                 "${glew_path}/include/GL/wglew.h"
+                 "${glew_path}/include/GL/glxew.h")
+
 include_directories("${OPENGL_INCLUDE_DIR}"
-                    "${GLEW_INCLUDE_DIR}"
+                    "${PROJECT_SOURCE_DIR}/external/glew/include"
                     "${PROJECT_SOURCE_DIR}/src/"
                     "${PROJECT_SOURCE_DIR}/src/hw/sh4"
                     "${PROJECT_SOURCE_DIR}/common"
@@ -375,7 +381,6 @@ add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-
 add_dependencies(washingtondc libevent sh4)
 add_dependencies(sh4 libevent)
-target_link_libraries(washingtondc m sh4 rt png zlib ${OPENGL_gl_LIBRARY} glfw ${GLEW_LIBRARIES} pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a)
+target_link_libraries(washingtondc m sh4 rt png zlib ${OPENGL_gl_LIBRARY} glfw glew pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a)
