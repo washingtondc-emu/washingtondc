@@ -63,7 +63,7 @@ endif()
 
 option(ENABLE_DEBUGGER "Enable the debugger" OFF)
 option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
-option(INVARIANTS "runtime sanity checks that should never fail" ON)
+option(INVARIANTS "runtime sanity checks that should never fail" OFF)
 option(SH4_FPU_PEDANTIC "enable FPU error-checking which most games *probably* don't use" OFF)
 option(PVR2_LOG_VERBOSE "enable this to make the pvr2 code log mundane events" OFF)
 option(DEEP_SYSCALL_TRACE "enable logging to observe the behavior of system calls" OFF)
