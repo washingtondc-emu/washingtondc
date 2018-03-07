@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -353,6 +353,19 @@ int string_get_col(struct string *dst, struct string const *src,
     unsigned cur_col = 0;
     char const *strp = string_get(src);
 
+#ifdef INVARIANTS
+    /*
+     * make sure the caller didn't accidentally make quotes a delimiter - this
+     * would not work out because we use the quotes character as a way to
+     * enclose columns which might contain delimiters that should not separate
+     * them.
+     */
+    char const *delim_curs = delim;
+    while (*delim_curs)
+        if (*delim_curs++ == '"')
+            RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
     for (;;) {
         // advance to the beginning of the column
         while (check_char_class(*strp, delim) && *strp)
@@ -363,19 +376,63 @@ int string_get_col(struct string *dst, struct string const *src,
         if (cur_col == col_no)
             break;
 
-        // advance to the end of the column
-        while (!check_char_class(*strp, delim) && *strp)
-            strp++;
-        if (!*strp)
-            return -1;
+        if (*strp == '"') {
+            /*
+             * columns that have quotes around them are delimited by the second
+             * quote character rather than one of the delimters.  Reicast's gdi
+             * code considers any filename enclosed in quotes to be a single
+             * entity regardless of whatever whitespace is inside of it, and
+             * WashingtonDC needs to follow the same conventions that other
+             * emulators follow.
+             *
+             * Currently the gdi code is the only user of this function.  If
+             * anything else needs this function in the future, then it might
+             * be best to make this feature optional or alternatively allow the
+             * caller to replace the quotes with a diffferent "grouping"
+             * character.
+             */
+            do {
+                strp++;
+            } while (*strp && *strp != '"');
+            if (!*strp)
+                return -1;
+            strp++; // make it point to the first char *after* the quote
+        } else {
+            // advance to the end of the column
+            while (!check_char_class(*strp, delim) && *strp)
+                strp++;
+            if (!*strp)
+                return -1;
+        }
 
         cur_col++;
     }
 
     // at this point, strp points to the beginning of the column
     string_set(dst, "");
-    while (*strp && !check_char_class(*strp, delim))
-        string_append_char(dst, *strp++);
+
+    if (*strp == '"') {
+        // handle quotes
+        if (strp[1] == '"' || !strp[1])
+            return -1; // no empty quotes or unbound allowed
+
+        // Check to make sure the quotes end *before* making any changes to dst
+        char const *last;
+        char const *first = strp + 1;
+        do {
+            last = strp;
+            strp++;
+        } while (*strp && *strp != '"');
+
+        if (!*strp)
+            return -1; // unbound quotes
+
+        while (first <= last)
+            string_append_char(dst, *first++);
+    } else {
+        while (*strp && !check_char_class(*strp, delim))
+            string_append_char(dst, *strp++);
+    }
 
     return 0;
 }

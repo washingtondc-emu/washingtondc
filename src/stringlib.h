@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -165,6 +165,9 @@ void string_substr(struct string *dst, struct string const *src,
  * delimiter characters as if they aren't there; the first column begins with
  * the first non-delim character and the last column ends with the last non
  * delim character.
+ *
+ * Additionally, this function will not split a token which is bound by
+ * double-quotes (") characters.
  *
  * the return value of this function is 0 on success and non-zero on failure.
  * a failure means that the number of columns in the source string is less than
