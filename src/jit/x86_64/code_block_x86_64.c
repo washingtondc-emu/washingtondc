@@ -1238,6 +1238,45 @@ static void emit_mul_u32(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_register(EAX);
 }
 
+static void emit_shad(Sh4 *sh4, struct jit_inst const *inst) {
+    unsigned slot_val = inst->immed.shad.slot_val;
+    unsigned slot_shift_amt = inst->immed.shad.slot_shift_amt;
+
+    // shift_amt register must be CL
+    evict_register(RCX);
+    grab_register(RCX);
+
+    int reg_tmp = pick_reg();
+    evict_register(reg_tmp);
+    grab_register(reg_tmp);
+
+    grab_slot(slot_shift_amt);
+    x86asm_mov_reg32_reg32(slots[slot_shift_amt].reg_no, RCX);
+    ungrab_slot(slot_shift_amt);
+
+    grab_slot(slot_val);
+
+    x86asm_mov_reg32_reg32(slots[slot_val].reg_no, reg_tmp);
+    x86asm_shll_cl_reg32(slots[slot_val].reg_no);
+
+    struct x86asm_lbl8 lbl;
+    x86asm_lbl8_init(&lbl);
+
+    x86asm_testl_imm32_reg32(1 << 31, slots[slot_shift_amt].reg_no);
+    x86asm_jz_lbl8(&lbl);
+
+    x86asm_negl_reg32(ECX);
+    x86asm_shrl_cl_reg32(reg_tmp);
+    x86asm_mov_reg32_reg32(reg_tmp, slots[slot_val].reg_no);
+
+    x86asm_lbl8_define(&lbl);
+    x86asm_lbl8_cleanup(&lbl);
+
+    ungrab_slot(slot_val);
+    ungrab_register(reg_tmp);
+    ungrab_register(RCX);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned by
@@ -1387,6 +1426,9 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_MUL_U32:
             emit_mul_u32(sh4, inst);
+            break;
+        case JIT_OP_SHAD:
+            emit_shad(sh4, inst);
             break;
         }
         inst++;

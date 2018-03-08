@@ -588,7 +588,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_EX, 1, 0xf00f, 0x200a },
 
     // SHAD Rm, Rn
-    { &sh4_inst_binary_shad_gen_gen, sh4_disas_fallback, false,
+    { &sh4_inst_binary_shad_gen_gen, sh4_disas_shad_rm_rn, false,
       SH4_GROUP_EX, 1, 0xf00f, 0x400c },
 
     // SHLD Rm, Rn

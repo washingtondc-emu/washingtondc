@@ -266,6 +266,17 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
                 block->slots[inst->immed.mul_u32.slot_rhs];
             inst++;
             break;
+        case JIT_OP_SHAD:
+            if ((int32_t)block->slots[inst->immed.shad.slot_shift_amt] >= 0) {
+                block->slots[inst->immed.shad.slot_val] <<=
+                    block->slots[inst->immed.shad.slot_shift_amt];
+            } else {
+                block->slots[inst->immed.shad.slot_val] =
+                    ((int32_t)block->slots[inst->immed.shad.slot_val]) >>
+                    -(int32_t)block->slots[inst->immed.shad.slot_shift_amt];
+            }
+            inst++;
+            break;
         }
     }
 

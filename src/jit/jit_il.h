@@ -125,6 +125,12 @@ enum jit_opcode {
     JIT_OP_SHLR,
 
     /*
+     * left-shift a slot (if the argument is positive) or right-shift the slot
+     * (if the argument is negative) by the absolute value of the argument.
+     */
+    JIT_OP_SHAD,
+
+    /*
      * takes three regs as input.  If the second reg is greater than the first
      * reg, then the third reg will be ORed with 1.  Else, the third reg
      * remains unchanged.
@@ -299,6 +305,11 @@ struct shlr_immed {
     unsigned shift_amt;
 };
 
+struct shad_immed {
+    unsigned slot_val;
+    unsigned slot_shift_amt;
+};
+
 struct set_gt_unsigned_immed {
     // dst |= 1 if lhs > rhs
     unsigned slot_lhs, slot_rhs;
@@ -378,6 +389,7 @@ union jit_immed {
     struct shll_immed shll;
     struct shar_immed shar;
     struct shlr_immed shlr;
+    struct shad_immed shad;
     struct set_gt_unsigned_immed set_gt_unsigned;
     struct set_gt_signed_immed set_gt_signed;
     struct set_gt_signed_const_immed set_gt_signed_const;
@@ -448,6 +460,8 @@ void jit_shar(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
 void jit_shlr(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);
+void jit_shad(struct il_code_block *block, unsigned slot_val,
+              unsigned slot_shift_amt);
 void jit_set_gt_unsigned(struct il_code_block *block, unsigned slot_lhs,
                          unsigned slot_rhs, unsigned slot_dst);
 void jit_set_gt_signed(struct il_code_block *block, unsigned slot_lhs,

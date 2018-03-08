@@ -431,3 +431,14 @@ void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
 
     il_code_block_push_inst(block, &op);
 }
+
+void jit_shad(struct il_code_block *block, unsigned slot_val,
+              unsigned slot_shift_amt) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_SHAD;
+    op.immed.shad.slot_val = slot_val;
+    op.immed.shad.slot_shift_amt = slot_shift_amt;
+
+    il_code_block_push_inst(block, &op);
+}

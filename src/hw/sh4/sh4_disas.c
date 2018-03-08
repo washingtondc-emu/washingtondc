@@ -993,6 +993,24 @@ bool sh4_disas_shal_rn(struct il_code_block *block, unsigned pc,
     return sh4_disas_shll_rn(block, pc, op, inst);
 }
 
+
+// SHAD Rm, Rn
+// 0100nnnnmmmm1100
+bool sh4_disas_shad_rm_rn(struct il_code_block *block, unsigned pc,
+                          struct InstOpcode const *op, inst_t inst) {
+    unsigned reg_src = (inst & 0x00f0) >> 4;
+    unsigned reg_dst = (inst & 0x0f00) >> 8;
+
+    unsigned slot_src = reg_slot(dreamcast_get_cpu(), block, reg_src);
+    unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
+
+    jit_shad(block, slot_dst, slot_src);
+
+    reg_map[reg_dst].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 // SHLR2 Rn
 // 0100nnnn00001001
 bool sh4_disas_shlr2_rn(struct il_code_block *block, unsigned pc,

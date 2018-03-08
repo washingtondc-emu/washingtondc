@@ -704,6 +704,16 @@ void x86asm_shrl_imm8_reg32(unsigned imm8, unsigned reg_no) {
     put8(imm8);
 }
 
+// shrl %cl, reg_no
+void x86asm_shrl_cl_reg32(unsigned reg_no) {
+    emit_mod_reg_rm(0, 0xd3, 3, 5, reg_no);
+}
+
+// shll %cl, reg_no
+void x86asm_shll_cl_reg32(unsigned reg_no) {
+    emit_mod_reg_rm(0, 0xd3, 3, 4, reg_no);
+}
+
 void x86asm_lbl8_init(struct x86asm_lbl8 *lbl) {
     memset(lbl, 0, sizeof(*lbl));
 }
@@ -738,6 +748,11 @@ void x86asm_testl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x85, 3, reg_src, reg_dst);
 }
 
+void x86asm_testl_imm32_reg32(uint32_t imm32, unsigned reg_no) {
+    emit_mod_reg_rm(0, 0xf7, 3, 0, reg_no);
+    put32(imm32);
+}
+
 // conditional-move if not-equal (ZF=0)
 void x86asm_cmovnel_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm_2(0, 0x0f, 0x45, 3, reg_dst, reg_src);
@@ -770,4 +785,8 @@ void x86asm_cmovgel_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
 
 void x86asm_setnzl_reg32(unsigned reg_no) {
     emit_mod_reg_rm_2(0, 0x0f, 0x95, 3, 0, reg_no);
+}
+
+void x86asm_negl_reg32(unsigned reg_no) {
+    emit_mod_reg_rm(0, 0xf7, 3, 3, reg_no);
 }
