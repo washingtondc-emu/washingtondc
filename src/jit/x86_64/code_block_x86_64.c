@@ -33,6 +33,7 @@
 #include "exec_mem.h"
 #include "emit_x86_64.h"
 #include "dreamcast.h"
+#include "native_dispatch.h"
 
 #include "code_block_x86_64.h"
 
@@ -338,10 +339,10 @@ static void move_slot_to_reg(unsigned slot_no, unsigned reg_no) {
         move_slot_to_stack(reg_dst->slot_no);
 
     /*
-     * Don't allow writes to anywhere >= %rbp-40 because that is where the
+     * Don't allow writes to anywhere >= %rbp-0 because that is where the
      * saved variables are stored on the stack (see emit_frame_open).
      */
-    if (slot->rbp_offs >= -40)
+    if (slot->rbp_offs >= 0)
         RAISE_ERROR(ERROR_INTEGRITY);
 
     /* if (slot->rbp_offs == rsp_offs) { */
@@ -539,21 +540,11 @@ void code_block_x86_64_cleanup(struct code_block_x86_64 *blk) {
 static void emit_stack_frame_open(void) {
     x86asm_pushq_reg64(RBP);
     x86asm_mov_reg64_reg64(RSP, RBP);
-    x86asm_pushq_reg64(RBX);
-    x86asm_pushq_reg64(R12);
-    x86asm_pushq_reg64(R13);
-    x86asm_pushq_reg64(R14);
-    x86asm_pushq_reg64(R15);
 
-    rsp_offs = -40;
+    rsp_offs = 0;
 }
 
 static void emit_stack_frame_close(void) {
-    x86asm_movq_disp8_reg_reg(-8, RBP, RBX);
-    x86asm_movq_disp8_reg_reg(-16, RBP, R12);
-    x86asm_movq_disp8_reg_reg(-24, RBP, R13);
-    x86asm_movq_disp8_reg_reg(-32, RBP, R14);
-    x86asm_movq_disp8_reg_reg(-40, RBP, R15);
     x86asm_mov_reg64_reg64(RBP, RSP);
     x86asm_popq_reg64(RBP);
 }
@@ -583,8 +574,6 @@ void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
     grab_slot(slot_no);
 
     x86asm_mov_reg32_reg32(slots[slot_no].reg_no, EAX);
-    emit_stack_frame_close();
-    x86asm_ret();
 
     ungrab_slot(slot_no);
 }
@@ -623,9 +612,6 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_define(&lbl);
 
     // the chosen address is now in %rax, so we're ready to return
-
-    emit_stack_frame_close();
-    x86asm_ret();
 
     ungrab_slot(alt_jmp_addr_slot);
     ungrab_slot(jmp_addr_slot);
@@ -1321,10 +1307,10 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
             break;
         case JIT_OP_JUMP:
             emit_jump(sh4, inst);
-            return;
+            break;
         case JIT_JUMP_COND:
             emit_jump_cond(sh4, inst);
-            return;
+            break;
         case JIT_SET_SLOT:
             emit_set_slot(sh4, inst);
             break;
@@ -1434,7 +1420,13 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
         inst++;
     }
 
+    x86asm_mov_imm32_reg32(out->cycle_count, EDI);
+    x86asm_mov_imm64_reg64((uintptr_t)native_check_cycles, RCX);
+    x86asm_mov_reg32_reg32(EAX, ESI);
+    emit_stack_frame_close();
+    x86asm_jmpq_reg64(RCX);
+
     // all blocks should end by jumping out
-    LOG_ERROR("ERROR: %u-len block does not jump out\n", il_blk->inst_count);
-    RAISE_ERROR(ERROR_INTEGRITY);
+    /* LOG_ERROR("ERROR: %u-len block does not jump out\n", il_blk->inst_count); */
+    /* RAISE_ERROR(ERROR_INTEGRITY); */
 }

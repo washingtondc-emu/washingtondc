@@ -368,4 +368,6 @@ void x86asm_setnzl_reg32(unsigned reg_no);
 
 void x86asm_negl_reg32(unsigned reg_no);
 
+void x86asm_jmpq_reg64(unsigned reg_no);
+
 #endif

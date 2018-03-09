@@ -280,7 +280,9 @@ if (ENABLE_JIT_X86_64)
                                   "${PROJECT_SOURCE_DIR}/src/jit/x86_64/emit_x86_64.h"
                                   "${PROJECT_SOURCE_DIR}/src/jit/x86_64/emit_x86_64.c"
                                   "${PROJECT_SOURCE_DIR}/src/jit/x86_64/exec_mem.h"
-                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/exec_mem.c")
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/exec_mem.c"
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/native_dispatch.h"
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/native_dispatch.c")
 endif()
 
 if (ENABLE_DEBUGGER)

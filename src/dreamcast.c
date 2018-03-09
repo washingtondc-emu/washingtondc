@@ -64,6 +64,10 @@
 #include "io/gdb_stub.h"
 #endif
 
+#ifdef ENABLE_JIT_X86_64
+#include "jit/x86_64/native_dispatch.h"
+#endif
+
 #include "dreamcast.h"
 
 static Sh4 cpu;
@@ -137,6 +141,10 @@ static dc_cycle_stamp_t dc_cycle_stamp_priv_;
 
 dc_cycle_stamp_t dc_cycle_stamp() {
     return dc_cycle_stamp_priv_;
+}
+
+void dc_cycle_stamp_set(dc_cycle_stamp_t new_val) {
+    dc_cycle_stamp_priv_ = new_val;
 }
 
 void dreamcast_init(bool cmd_session) {
@@ -442,8 +450,9 @@ static void dc_run_to_next_event(Sh4 *sh4) {
     inst_t inst;
     InstOpcode const *op;
     unsigned inst_cycles;
+    dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
 
-    while (dc_sched_target_stamp > dc_cycle_stamp_priv_) {
+    while (tgt_stamp > dc_cycle_stamp_priv_) {
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
@@ -460,8 +469,10 @@ static void dc_run_to_next_event(Sh4 *sh4) {
          */
         dc_cycle_stamp_t cycles_after = dc_cycle_stamp_priv_ +
             inst_cycles * SH4_CLOCK_SCALE;
-        if (cycles_after > dc_sched_target_stamp)
-            cycles_after = dc_sched_target_stamp;
+
+        tgt_stamp = sched_target_stamp();
+        if (cycles_after > tgt_stamp)
+            cycles_after = tgt_stamp;
 
         sh4_do_exec_inst(sh4, inst, op);
 
@@ -469,8 +480,9 @@ static void dc_run_to_next_event(Sh4 *sh4) {
          * advance the cycles, being careful not to skip over any new events
          * which may have been added
          */
-        if (cycles_after > dc_sched_target_stamp)
-            cycles_after = dc_sched_target_stamp;
+        tgt_stamp = sched_target_stamp();
+        if (cycles_after > tgt_stamp)
+            cycles_after = tgt_stamp;
         dc_cycle_stamp_priv_ = cycles_after;
     }
 }
@@ -478,26 +490,8 @@ static void dc_run_to_next_event(Sh4 *sh4) {
 #ifdef ENABLE_JIT_X86_64
 static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
     reg32_t newpc = sh4->reg[SH4_REG_PC];
-    while (dc_sched_target_stamp > dc_cycle_stamp_priv_) {
-        addr32_t blk_addr = newpc;
-        struct cache_entry *ent = code_cache_find(blk_addr);
 
-        struct code_block_x86_64 *blk = &ent->blk.x86_64;
-        if (!ent->valid) {
-            jit_compile_native(blk, blk_addr);
-            ent->valid = true;
-        }
-
-        newpc = ((reg32_t(*)(void))blk->native)();
-
-        dc_cycle_stamp_t cycles_after = dc_cycle_stamp_priv_ +
-            blk->cycle_count;
-
-        dc_cycle_stamp_priv_ = cycles_after;
-    }
-
-    if (dc_cycle_stamp_priv_ > dc_sched_target_stamp)
-        dc_cycle_stamp_priv_ = dc_sched_target_stamp;
+    newpc = native_dispatch_entry(newpc);
 
     sh4->reg[SH4_REG_PC] = newpc;
 }
@@ -505,7 +499,9 @@ static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
 
 static void dc_run_to_next_event_jit(Sh4 *sh4) {
     reg32_t newpc = sh4->reg[SH4_REG_PC];
-    while (dc_sched_target_stamp > dc_cycle_stamp_priv_) {
+    dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
+
+    while (tgt_stamp > dc_cycle_stamp_priv_) {
         addr32_t blk_addr = newpc;
         struct cache_entry *ent = code_cache_find(blk_addr);
 
@@ -520,9 +516,10 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
         dc_cycle_stamp_t cycles_after = dc_cycle_stamp_priv_ +
             blk->cycle_count;
         dc_cycle_stamp_priv_ = cycles_after;
+        tgt_stamp = sched_target_stamp();
     }
-    if (dc_cycle_stamp_priv_ > dc_sched_target_stamp)
-        dc_cycle_stamp_priv_ = dc_sched_target_stamp;
+    if (dc_cycle_stamp_priv_ > tgt_stamp)
+        dc_cycle_stamp_priv_ = tgt_stamp;
 
     sh4->reg[SH4_REG_PC] = newpc;
 }
@@ -547,8 +544,9 @@ void dc_single_step(Sh4 *sh4) {
      */
     dc_cycle_stamp_t cycles_after = dc_cycle_stamp_priv_ +
         n_cycles * SH4_CLOCK_SCALE;
-    if (cycles_after > dc_sched_target_stamp)
-        cycles_after = dc_sched_target_stamp;
+    dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
+    if (cycles_after > tgt_stamp)
+        cycles_after = tgt_stamp;
 
     sh4_do_exec_inst(sh4, inst, op);
 

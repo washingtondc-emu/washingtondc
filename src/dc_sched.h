@@ -35,14 +35,6 @@
 
 typedef uint64_t dc_cycle_stamp_t;
 
-/*
- * This represents the timestamp of the next event.
- * outside of dc_sched.c, this should be treated as a read-only variable.
- *
- * It can change whenever an event is scheduled, canceled, or popped.
- */
-extern dc_cycle_stamp_t dc_sched_target_stamp;
-
 struct SchedEvent;
 typedef void(*dc_event_handler_t)(struct SchedEvent *event);
 
@@ -69,5 +61,21 @@ void sched_event(struct SchedEvent *event);
 void cancel_event(struct SchedEvent *event);
 struct SchedEvent *pop_event();
 struct SchedEvent *peek_event();
+
+/*
+ * This represents the timestamp of the next event.
+ * It can change whenever an event is scheduled, canceled, or popped.
+ */
+dc_cycle_stamp_t sched_target_stamp(void);
+
+/*
+ * tell the sched system to use an arbitrary pointer to store the target_stamp.
+ *
+ * This is only intended to be used from JIT code.  The old pointer must still
+ * be valid when you call this function because it will be read from.  If the
+ * pointer is NULL, then sched will disassociate whatever pointer is currently
+ * bound, and replace it with sched's own default pointer.
+ */
+void sched_set_target_pointer(dc_cycle_stamp_t *ptr);
 
 #endif

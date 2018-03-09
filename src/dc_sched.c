@@ -28,7 +28,8 @@
 
 #include "dc_sched.h"
 
-dc_cycle_stamp_t dc_sched_target_stamp;
+static dc_cycle_stamp_t dc_sched_target_stamp;
+static dc_cycle_stamp_t *tgtp = &dc_sched_target_stamp;
 
 static struct SchedEvent *ev_next;
 
@@ -37,7 +38,7 @@ static DEF_ERROR_U64_ATTR(event_sched_dc_cycle_stamp)
 
 static void update_target_stamp(void) {
     if (ev_next) {
-        dc_sched_target_stamp = ev_next->when;
+        *tgtp = ev_next->when;
     } else {
         /*
          * Somehow there are no events scheduled.
@@ -53,7 +54,7 @@ static void update_target_stamp(void) {
          * TBH, I'm not even 100% sure this problem can even happen since
          * there's no way to turn off SPG, TMU, etc.
          */
-        dc_sched_target_stamp = dc_cycle_stamp() + 16 * SH4_CLOCK_SCALE;
+        *tgtp = dc_cycle_stamp() + 16 * SH4_CLOCK_SCALE;
     }
 }
 
@@ -146,4 +147,15 @@ struct SchedEvent *pop_event() {
 
 struct SchedEvent *peek_event() {
     return ev_next;
+}
+
+dc_cycle_stamp_t sched_target_stamp(void) {
+    return *tgtp;
+}
+
+void sched_set_target_pointer(dc_cycle_stamp_t *ptr) {
+    if (!ptr)
+        ptr = &dc_sched_target_stamp;
+    *ptr = *tgtp;
+    tgtp = ptr;
 }

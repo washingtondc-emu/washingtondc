@@ -65,6 +65,7 @@ Sh4 *dreamcast_get_cpu();
 /* extern dc_cycle_stamp_t dc_cycle_stamp_priv_; */
 
 dc_cycle_stamp_t dc_cycle_stamp();
+void dc_cycle_stamp_set(dc_cycle_stamp_t new_val);
 
 void dc_print_perf_stats(void);
 
