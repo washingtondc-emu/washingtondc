@@ -212,11 +212,6 @@ void x86asm_call_reg(unsigned reg_no) {
      * REG: 2
      * R/M: <reg_no>
      */
-    if (reg_no >= R8) {
-        put8(0x40 | REX_B);
-        reg_no -= R8;
-    }
-
     emit_mod_reg_rm(0, 0xff, 3, 2, reg_no);
     /* put8(0xff); */
     /* put8(0xd0 | reg_no); */
