@@ -162,11 +162,17 @@ void x86asm_mov_imm32_indreg32(unsigned imm32, unsigned reg_no);
 // mov $<reg_src>, (<reg_dst>)
 void x86asm_mov_reg32_indreg32(unsigned reg_src, unsigned reg_dst);
 
+// movq %<reg_src>, (%<reg_dst>)
+void x86asm_movq_reg64_indreg64(unsigned reg_src, unsigned reg_dst);
+
 // movq <reg_src>, <reg_dst>
 void x86asm_mov_reg64_reg64(unsigned reg_src, unsigned reg_dst);
 
 // movl (<reg_src>), <reg_dst>
 void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst);
+
+// movq (%<reg_src>), %<reg_dst>
+void x86asm_movq_indreg_reg(unsigned reg_src, unsigned reg_dst);
 
 // movw (<reg_src>), <reg_dst>
 void x86asm_mov_indreg16_reg16(unsigned reg_src, unsigned reg_dst);
@@ -188,6 +194,8 @@ void x86asm_add_imm32_eax(unsigned imm32);
 
 // addq $imm8, %<reg>
 void x86asm_addq_imm8_reg(uint8_t imm8, unsigned reg);
+
+void x86asm_addq_reg64_reg64(unsigned reg_src, unsigned reg_dst);
 
 // addl %<reg_src>, %<reg_dst>
 void x86asm_addl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
@@ -249,6 +257,15 @@ void x86asm_cmpl_imm8_reg32(unsigned imm8, unsigned reg_no);
  * because I'm trying to vaguely mimic the syntax of GNU as.
  */
 void x86asm_cmpl_reg32_reg32(unsigned reg_lhs, unsigned reg_rhs);
+
+/*
+ * cmpq %<reg_rhs>, %<reg_lhs>
+ *
+ * compare the two given registers by subtracting.  Keep in mind that the lhs
+ * goes on the right and the rhs goes on the left for this function call
+ * because I'm trying to vaguely mimic the syntax of GNU as.
+ */
+void x86asm_cmpq_reg64_reg64(unsigned reg_lhs, unsigned reg_rhs);
 
 /*
  * jz (pc+disp8)

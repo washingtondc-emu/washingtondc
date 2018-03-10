@@ -345,6 +345,11 @@ void x86asm_mov_reg32_indreg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x89, 0, reg_src, reg_dst);
 }
 
+// movq %<reg_src>, (%<reg_dst>)
+void x86asm_movq_reg64_indreg64(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(REX_W, 0x89, 0, reg_src, reg_dst);
+}
+
 // movq <reg_src>, <reg_dst>
 void x86asm_mov_reg64_reg64(unsigned reg_src, unsigned reg_dst) {
     /*
@@ -355,6 +360,11 @@ void x86asm_mov_reg64_reg64(unsigned reg_src, unsigned reg_dst) {
      * R/M: <reg_dst>
      */
     emit_mod_reg_rm(REX_W, 0x89, 3, reg_src, reg_dst);
+}
+
+// movq (%<reg_src>), %<reg_dst>
+void x86asm_movq_indreg_reg(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(REX_W, 0x8b, 0, reg_dst, reg_src);
 }
 
 // movl (<reg_src>), <reg_dst>
@@ -400,6 +410,10 @@ void x86asm_add_imm32_eax(unsigned imm32) {
 // addl %<reg_src>, %<reg_dst>
 void x86asm_addl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 3, 3, reg_dst, reg_src);
+}
+
+void x86asm_addq_reg64_reg64(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(REX_W, 3, 3, reg_dst, reg_src);
 }
 
 // subl %<reg_src>, %<reg_dst>
@@ -512,6 +526,10 @@ void x86asm_cmpl_imm8_reg32(unsigned imm8, unsigned reg_no) {
  */
 void x86asm_cmpl_reg32_reg32(unsigned reg_lhs, unsigned reg_rhs) {
     emit_mod_reg_rm(0, 0x39, 3, reg_lhs, reg_rhs);
+}
+
+void x86asm_cmpq_reg64_reg64(unsigned reg_lhs, unsigned reg_rhs) {
+    emit_mod_reg_rm(REX_W, 0x39, 3, reg_lhs, reg_rhs);
 }
 
 /*

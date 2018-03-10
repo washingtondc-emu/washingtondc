@@ -138,13 +138,22 @@ static struct SchedEvent periodic_event;
  * (see dc_sched.h)
  */
 static dc_cycle_stamp_t dc_cycle_stamp_priv_;
+static dc_cycle_stamp_t *cycle_stamp_ptr = &dc_cycle_stamp_priv_;
 
 dc_cycle_stamp_t dc_cycle_stamp() {
-    return dc_cycle_stamp_priv_;
+    return *cycle_stamp_ptr;
 }
 
 void dc_cycle_stamp_set(dc_cycle_stamp_t new_val) {
-    dc_cycle_stamp_priv_ = new_val;
+    *cycle_stamp_ptr = new_val;
+}
+
+void dc_set_cycle_stamp_pointer(dc_cycle_stamp_t *ptr) {
+    if (!ptr)
+        ptr = &dc_cycle_stamp_priv_;
+
+    *ptr = *cycle_stamp_ptr;
+    cycle_stamp_ptr = ptr;
 }
 
 void dreamcast_init(bool cmd_session) {
@@ -355,7 +364,7 @@ void dreamcast_run() {
     cmd_print_banner();
     cmd_run_once();
 
-    periodic_event.when = dc_cycle_stamp_priv_ + DC_PERIODIC_EVENT_PERIOD;
+    periodic_event.when = dc_cycle_stamp() + DC_PERIODIC_EVENT_PERIOD;
     periodic_event.handler = periodic_event_handler;
     sched_event(&periodic_event);
 
@@ -452,7 +461,7 @@ static void dc_run_to_next_event(Sh4 *sh4) {
     unsigned inst_cycles;
     dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
 
-    while (tgt_stamp > dc_cycle_stamp_priv_) {
+    while (tgt_stamp > dc_cycle_stamp()) {
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
@@ -467,7 +476,7 @@ static void dc_run_to_next_event(Sh4 *sh4) {
          * a guest program's perspective, but the passage of time will still be
          * consistent.
          */
-        dc_cycle_stamp_t cycles_after = dc_cycle_stamp_priv_ +
+        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
             inst_cycles * SH4_CLOCK_SCALE;
 
         tgt_stamp = sched_target_stamp();
@@ -483,7 +492,7 @@ static void dc_run_to_next_event(Sh4 *sh4) {
         tgt_stamp = sched_target_stamp();
         if (cycles_after > tgt_stamp)
             cycles_after = tgt_stamp;
-        dc_cycle_stamp_priv_ = cycles_after;
+        dc_cycle_stamp_set(cycles_after);
     }
 }
 
@@ -501,7 +510,7 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
     reg32_t newpc = sh4->reg[SH4_REG_PC];
     dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
 
-    while (tgt_stamp > dc_cycle_stamp_priv_) {
+    while (tgt_stamp > dc_cycle_stamp()) {
         addr32_t blk_addr = newpc;
         struct cache_entry *ent = code_cache_find(blk_addr);
 
@@ -513,13 +522,13 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
 
         newpc = code_block_intp_exec(blk);
 
-        dc_cycle_stamp_t cycles_after = dc_cycle_stamp_priv_ +
+        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
             blk->cycle_count;
-        dc_cycle_stamp_priv_ = cycles_after;
+        dc_cycle_stamp_set(cycles_after);
         tgt_stamp = sched_target_stamp();
     }
-    if (dc_cycle_stamp_priv_ > tgt_stamp)
-        dc_cycle_stamp_priv_ = tgt_stamp;
+    if (dc_cycle_stamp() > tgt_stamp)
+        dc_cycle_stamp_set(tgt_stamp);
 
     sh4->reg[SH4_REG_PC] = newpc;
 }
@@ -542,7 +551,7 @@ void dc_single_step(Sh4 *sh4) {
      * a guest program's perspective, but the passage of time will still be
      * consistent.
      */
-    dc_cycle_stamp_t cycles_after = dc_cycle_stamp_priv_ +
+    dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
         n_cycles * SH4_CLOCK_SCALE;
     dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
     if (cycles_after > tgt_stamp)
@@ -555,11 +564,11 @@ void dc_single_step(Sh4 *sh4) {
     while ((next_event = peek_event()) &&
            (next_event->when <= cycles_after)) {
         pop_event();
-        dc_cycle_stamp_priv_ = next_event->when;
+        dc_cycle_stamp_set(next_event->when);
         next_event->handler(next_event);
     }
 
-    dc_cycle_stamp_priv_ = cycles_after;
+    dc_cycle_stamp_set(cycles_after);
 }
 
 #endif
@@ -714,7 +723,7 @@ static void periodic_event_handler(struct SchedEvent *event) {
 
     sh4_periodic(&cpu);
 
-    periodic_event.when = dc_cycle_stamp_priv_ + DC_PERIODIC_EVENT_PERIOD;
+    periodic_event.when = dc_cycle_stamp() + DC_PERIODIC_EVENT_PERIOD;
     sched_event(&periodic_event);
 }
 

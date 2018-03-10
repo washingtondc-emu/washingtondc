@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -36,6 +37,7 @@
 #define BASIC_ALLOC 32
 
 static dc_cycle_stamp_t *sched_tgt;
+static dc_cycle_stamp_t *cycle_stamp;
 
 uint32_t (*native_dispatch_entry)(uint32_t pc);
 void *native_dispatch;
@@ -45,9 +47,14 @@ static void native_dispatch_entry_create(void);
 static void native_dispatch_create(void);
 static void native_check_cycles_create(void);
 
+static void load_quad_into_reg(void *qptr, unsigned reg_no);
+
 void native_dispatch_init(void) {
-    sched_tgt = exec_mem_alloc(sizeof(sched_tgt));
+    sched_tgt = exec_mem_alloc(sizeof(*sched_tgt));
     sched_set_target_pointer(sched_tgt);
+
+    cycle_stamp = exec_mem_alloc(sizeof(*cycle_stamp));
+    dc_set_cycle_stamp_pointer(cycle_stamp);
 
     native_dispatch_create();
     native_dispatch_entry_create();
@@ -56,9 +63,11 @@ void native_dispatch_init(void) {
 
 void native_dispatch_cleanup(void) {
     sched_set_target_pointer(NULL);
+    dc_set_cycle_stamp_pointer(NULL);
 
     // TODO: free all executable memory pointers
     exec_mem_free(sched_tgt);
+    exec_mem_free(cycle_stamp);
 }
 
 static void native_dispatch_entry_create(void) {
@@ -122,18 +131,6 @@ static void native_dispatch_create(void) {
     x86asm_jmpq_reg64(RDX); // tail-call elimination
 }
 
-// returns 1 if the jit should return
-static int check_cycles(uint32_t n_cycles) {
-    dc_cycle_stamp_t new_stamp = dc_cycle_stamp() + n_cycles;
-    if (new_stamp >= *sched_tgt) {
-        dc_cycle_stamp_set(*sched_tgt);
-        return 1;
-    } else {
-        dc_cycle_stamp_set(new_stamp);
-        return 0;
-    }
-}
-
 static void native_check_cycles_create(void) {
     native_check_cycles = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_check_cycles, BASIC_ALLOC);
@@ -141,17 +138,25 @@ static void native_check_cycles_create(void) {
     struct x86asm_lbl8 dont_return;
     x86asm_lbl8_init(&dont_return);
 
-    // save argument
-    x86asm_mov_reg32_reg32(ESI, EBX);
+    static_assert(sizeof(dc_cycle_stamp_t) == 8,
+                  "dc_cycle_stamp_t is not a quadword!");
 
-    // the cycle-count should still be in EDI.
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)check_cycles, RAX);
-    x86asm_call_reg(RAX);
 
-    x86asm_testl_reg32_reg32(EAX, EAX);
-    x86asm_jz_lbl8(&dont_return);
-    x86asm_mov_reg32_reg32(EBX, EAX);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)cycle_stamp, RDX);
 
+    load_quad_into_reg(sched_tgt, RCX);
+    x86asm_movq_indreg_reg(RDX, RAX);
+    x86asm_addq_reg64_reg64(RAX, RDI);
+    x86asm_cmpq_reg64_reg64(RCX, RDI);
+    x86asm_jb_lbl8(&dont_return);
+
+    // return PC
+    x86asm_mov_reg32_reg32(ESI, EAX);
+
+    // store sched_tgt into cycle_stamp
+    x86asm_movq_reg64_indreg64(RCX, RDX);
+
+    // close the stack frame
     x86asm_movq_disp8_reg_reg(-8, RBP, RBX);
     x86asm_movq_disp8_reg_reg(-16, RBP, R12);
     x86asm_movq_disp8_reg_reg(-24, RBP, R13);
@@ -161,12 +166,23 @@ static void native_check_cycles_create(void) {
     x86asm_popq_reg64(RBP);
     x86asm_ret();
 
+    // continue
     x86asm_lbl8_define(&dont_return);
 
+    x86asm_movq_reg64_indreg64(RDI, RDX);
+
     // call native_dispatch
-    x86asm_mov_reg32_reg32(EBX, EDI);
+    x86asm_mov_reg32_reg32(ESI, EDI);
     x86asm_mov_imm64_reg64((uintptr_t)native_dispatch, RAX);
     x86asm_jmpq_reg64(RAX);
 
     x86asm_lbl8_cleanup(&dont_return);
+}
+
+static void load_quad_into_reg(void *qptr, unsigned reg_no) {
+    uintptr_t qaddr = (uintptr_t)qptr;
+
+    // TODO: look into using PC-relative addressing
+    x86asm_mov_imm64_reg64(qaddr, reg_no);
+    x86asm_movq_indreg_reg(reg_no, reg_no);
 }
