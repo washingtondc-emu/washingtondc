@@ -189,6 +189,10 @@ void* exec_mem_alloc(size_t len_req) {
 }
 
 void exec_mem_free(void *ptr) {
+    // match behavior of the libc free function by ignoring NULL
+    if (!ptr)
+        return;
+
     void *alloc_start = get_alloc_start(ptr);
     struct alloc_chunk *alloc = (struct alloc_chunk*)alloc_start;
     struct free_chunk *free_chunk = (struct free_chunk*)alloc_start;
