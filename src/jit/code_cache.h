@@ -38,7 +38,7 @@
  */
 struct cache_entry {
     addr32_t addr;
-    bool valid;
+    uint8_t valid;
     union jit_code_block blk;
 
     struct cache_entry *left, *right, *parent;
@@ -60,6 +60,12 @@ struct cache_entry {
  */
 struct cache_entry *code_cache_find(addr32_t addr);
 
+/*
+ * This is like code_cache_find, but it skips the second-level hash table.
+ * This function is intended for JIT code which handles that itself
+ */
+struct cache_entry *code_cache_find_slow(addr32_t addr);
+
 void code_cache_invalidate_all(void);
 
 void code_cache_init(void);
@@ -70,5 +76,10 @@ void code_cache_cleanup(void);
  * out old cache entries.
  */
 void code_cache_gc(void);
+
+#define CODE_CACHE_HASH_TBL_SHIFT 16
+#define CODE_CACHE_HASH_TBL_LEN (1 << CODE_CACHE_HASH_TBL_SHIFT)
+#define CODE_CACHE_HASH_TBL_MASK (CODE_CACHE_HASH_TBL_LEN - 1)
+extern struct cache_entry* code_cache_tbl[CODE_CACHE_HASH_TBL_LEN];
 
 #endif

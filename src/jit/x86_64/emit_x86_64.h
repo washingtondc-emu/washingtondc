@@ -80,6 +80,8 @@
 #define R14W R14
 #define R15W R15
 
+#define SIB 4
+
 /*
  * This is the maximum number of jump-points that can jump to a given label.
  * This value is entirely arbitrary and may be increased as needed.
@@ -173,6 +175,14 @@ void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst);
 
 // movq (%<reg_src>), %<reg_dst>
 void x86asm_movq_indreg_reg(unsigned reg_src, unsigned reg_dst);
+
+// movq (%<reg_base>, <scale>, %<reg_index>), %<reg_dst>
+void x86asm_movq_sib_reg(unsigned reg_base, unsigned scale,
+                         unsigned reg_index, unsigned reg_dst);
+
+// movq %<reg_src>, (%<reg_base>, <scale>, %<reg_index>)
+void x86asm_movq_reg_sib(unsigned reg_src, unsigned reg_base,
+                         unsigned scale, unsigned reg_index);
 
 // movw (<reg_src>), <reg_dst>
 void x86asm_mov_indreg16_reg16(unsigned reg_src, unsigned reg_dst);
@@ -317,6 +327,9 @@ void x86asm_jl_lbl8(struct x86asm_lbl8 *lbl);
 void x86asm_jle_disp8(int disp8);
 void x86asm_jle_lbl8(struct x86asm_lbl8 *lbl);
 
+void x86asm_jmp_disp8(int disp8);
+void x86asm_jmp_lbl8(struct x86asm_lbl8 *lbl);
+
 // movsx <%reg16>, %<reg32>
 void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst);
 
@@ -360,6 +373,7 @@ void* x86asm_get_outp(void);
 void x86asm_mull_reg32(unsigned reg_no);
 
 void x86asm_testl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
+void x86asm_testq_reg64_reg64(unsigned reg_src, unsigned reg_dst);
 
 void x86asm_testl_imm32_reg32(uint32_t imm32, unsigned reg_no);
 
@@ -386,5 +400,14 @@ void x86asm_setnzl_reg32(unsigned reg_no);
 void x86asm_negl_reg32(unsigned reg_no);
 
 void x86asm_jmpq_reg64(unsigned reg_no);
+
+// movb <disp8>(%<reg_src>), <reg_dst>
+void x86asm_movb_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst);
+
+// movb %<reg_src>, <disp8>(%<reg_dst>)
+void x86asm_movb_reg_disp8_reg(unsigned reg_src, int disp8, unsigned reg_dst);
+
+void x86asm_jmp_disp8(int disp8);
+void x86asm_jmp_lbl8(struct x86asm_lbl8 *lbl);
 
 #endif

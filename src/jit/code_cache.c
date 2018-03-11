@@ -37,6 +37,10 @@
 
 #include "code_cache.h"
 
+#define CODE_CACHE_HASH_TBL_SHIFT 16
+#define CODE_CACHE_HASH_TBL_LEN (1 << CODE_CACHE_HASH_TBL_SHIFT)
+#define CODE_CACHE_HASH_TBL_MASK (CODE_CACHE_HASH_TBL_LEN - 1)
+
 /*
  * This is a two-level cache.  The lower level is a binary search tree balanced
  * using the AVL algorithm.  The upper level is a hash-table.  Everything that
@@ -70,10 +74,7 @@ static struct oldroot_node *oldroot;
 
 static struct cache_entry *root;
 
-#define HASH_TBL_LEN 0x10000
-
-static struct cache_entry* tbl[HASH_TBL_LEN];
-static unsigned hashfn(addr32_t addr);
+struct cache_entry* code_cache_tbl[CODE_CACHE_HASH_TBL_LEN];
 
 /*
  * the maximum number of code-cache entries that can be created before the
@@ -259,7 +260,7 @@ void code_cache_invalidate_all(void) {
     oldroot = list_node;
 
     root = NULL;
-    memset(tbl, 0, sizeof(tbl));
+    memset(code_cache_tbl, 0, sizeof(code_cache_tbl));
 }
 
 void code_cache_gc(void) {
@@ -582,42 +583,22 @@ static struct cache_entry *do_code_cache_find(struct cache_entry *node,
 }
 
 struct cache_entry *code_cache_find(addr32_t addr) {
-#ifdef PERF_STATS
-    total_access_count++;
-#endif
-
-    unsigned hash_idx = hashfn(addr) % HASH_TBL_LEN;
-    struct cache_entry *maybe = tbl[hash_idx];
+    unsigned hash_idx = addr & CODE_CACHE_HASH_TBL_MASK;
+    struct cache_entry *maybe = code_cache_tbl[hash_idx];
     if (maybe && maybe->addr == addr)
         return maybe;
 
-    if (root) {
-        struct cache_entry *node = do_code_cache_find(root, addr);
-
-#ifdef PERF_STATS
-        n_tree_searches++;
-        if (tbl[hash_idx])
-            n_tbl_evictions++;
-
-        node->n_access++;
-        perf_stats_update_max_access(node);
-#endif
-
-        tbl[hash_idx] = node;
-        return node;
-    }
-
-    basic_insert(&root, NULL, addr);
-    tbl[hash_idx] = root;
-
-#ifdef PERF_STATS
-    root->n_access = 1;
-    perf_stats_update_max_access(root);
-#endif
-
-    return root;
+    struct cache_entry *ret = code_cache_find_slow(addr);
+    code_cache_tbl[hash_idx] = ret;
+    return ret;
 }
 
-static unsigned hashfn(addr32_t addr) {
-    return addr;
+struct cache_entry *code_cache_find_slow(addr32_t addr) {
+    if (root) {
+        struct cache_entry *node = do_code_cache_find(root, addr);
+        return node;
+    } else {
+        basic_insert(&root, NULL, addr);
+        return root;
+    }
 }

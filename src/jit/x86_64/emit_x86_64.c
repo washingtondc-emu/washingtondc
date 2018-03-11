@@ -156,6 +156,29 @@ static void emit_mod_reg_rm(unsigned rex, unsigned opcode, unsigned mod,
     }
 }
 
+/*
+ * Special version of emit_mod_reg_rm which assumes the next byte will be a
+ * SIB.  You have to emit the SIB in yourself after calling this function.
+ */
+static void emit_mod_reg_rm_sib(unsigned rex, unsigned opcode, unsigned mod,
+                                unsigned reg, unsigned rm) {
+    if (reg >= R8) {
+        rex |= REX_R;
+        reg -= R8;
+    }
+    if (rm >= R8) {
+        rex |= REX_B;
+        rm -= R8;
+    }
+
+    if (rex)
+        put8(rex | 0x40);
+    put8(opcode);
+
+    unsigned mod_reg_rm = (mod << 6) | (reg << 3) | rm;
+    put8(mod_reg_rm);
+}
+
 static void emit_mod_reg_rm_2(unsigned rex, unsigned opcode1,
                               unsigned opcode2, unsigned mod,
                               unsigned reg, unsigned rm) {
@@ -367,6 +390,80 @@ void x86asm_movq_indreg_reg(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(REX_W, 0x8b, 0, reg_dst, reg_src);
 }
 
+// movq (%<reg_base>, <scale>, %<reg_index>), %<reg_dst>
+void x86asm_movq_sib_reg(unsigned reg_base, unsigned scale,
+                         unsigned reg_index, unsigned reg_dst) {
+    unsigned log2;
+    switch (scale) {
+    case 1:
+        log2 = 0;
+        break;
+    case 2:
+        log2 = 1;
+        break;
+    case 4:
+        log2 = 2;
+        break;
+    case 8:
+        log2 = 3;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    unsigned rex = REX_W;
+    if (reg_base >= R8) {
+        rex |= REX_B;
+        reg_base -= R8;
+    }
+    if (reg_index >= R8) {
+        rex |= REX_X;
+        reg_index -= R8;
+    }
+
+    emit_mod_reg_rm_sib(rex, 0x8b, 0, reg_dst, SIB);
+
+    unsigned sib = reg_base | (reg_index << 3) | (log2 << 6);
+    put8(sib);
+}
+
+// movq %<reg_src>, (%<reg_base>, <scale>, %<reg_index>)
+void x86asm_movq_reg_sib(unsigned reg_src, unsigned reg_base,
+                         unsigned scale, unsigned reg_index) {
+    unsigned log2;
+    switch (scale) {
+    case 1:
+        log2 = 0;
+        break;
+    case 2:
+        log2 = 1;
+        break;
+    case 4:
+        log2 = 2;
+        break;
+    case 8:
+        log2 = 3;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    unsigned rex = REX_W;
+    if (reg_base >= R8) {
+        rex |= REX_B;
+        reg_base -= R8;
+    }
+    if (reg_index >= R8) {
+        rex |= REX_X;
+        reg_index -= R8;
+    }
+
+    emit_mod_reg_rm_sib(rex, 0x89, 0, reg_src, SIB);
+
+    unsigned sib = reg_base | (reg_index << 3) | (log2 << 6);
+    put8(sib);
+}
+
 // movl (<reg_src>), <reg_dst>
 void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x8b, 0, reg_dst, reg_src);
@@ -376,6 +473,18 @@ void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst) {
 void x86asm_mov_indreg16_reg16(unsigned reg_src, unsigned reg_dst) {
     put8(0x66);
     emit_mod_reg_rm(0, 0x8b, 0, reg_dst, reg_src);
+}
+
+// movb <disp8>(%<reg_src>), <reg_dst>
+void x86asm_movb_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x8a, 1, reg_dst, reg_src);
+    put8(disp8);
+}
+
+// movb %<reg_src>, <disp8>(%<reg_dst>)
+void x86asm_movb_reg_disp8_reg(unsigned reg_src, int disp8, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x88, 1, reg_src, reg_dst);
+    put8(disp8);
 }
 
 // movl <disp8>(<reg_src>), <reg_dst>
@@ -532,6 +641,22 @@ void x86asm_cmpq_reg64_reg64(unsigned reg_lhs, unsigned reg_rhs) {
     emit_mod_reg_rm(REX_W, 0x39, 3, reg_lhs, reg_rhs);
 }
 
+void x86asm_jmp_disp8(int disp8) {
+    put8(0xeb);
+    put8(disp8);
+}
+
+void x86asm_jmp_lbl8(struct x86asm_lbl8 *lbl) {
+    struct lbl_jmp_pt pt;
+    put8(0xeb);
+
+    pt.offs = (int8_t*)outp;
+    pt.rel_pos = outp + 1;
+
+    put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
+}
+
 /*
  * jz (pc+disp8)
  *
@@ -552,9 +677,8 @@ void x86asm_jz_lbl8(struct x86asm_lbl8 *lbl) {
     pt.offs = (int8_t*)outp;
     pt.rel_pos = outp + 1;
 
-    x86asm_lbl8_push_jmp_pt(lbl, &pt);
-
     put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
 }
 
 void x86asm_jnz_disp8(int disp8) {
@@ -569,9 +693,8 @@ void x86asm_jnz_lbl8(struct x86asm_lbl8 *lbl) {
     pt.offs = (int8_t*)outp;
     pt.rel_pos = outp + 1;
 
-    x86asm_lbl8_push_jmp_pt(lbl, &pt);
-
     put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
 }
 
 /*
@@ -597,9 +720,8 @@ void x86asm_jbe_lbl8(struct x86asm_lbl8 *lbl) {
     pt.offs = (int8_t*)outp;
     pt.rel_pos = outp + 1;
 
-    x86asm_lbl8_push_jmp_pt(lbl, &pt);
-
     put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
 }
 
 void x86asm_jb_disp8(int disp8) {
@@ -614,9 +736,8 @@ void x86asm_jb_lbl8(struct x86asm_lbl8 *lbl) {
     pt.offs = (int8_t*)outp;
     pt.rel_pos = outp + 1;
 
-    x86asm_lbl8_push_jmp_pt(lbl, &pt);
-
     put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
 }
 
 void x86asm_jl_disp8(int disp8) {
@@ -631,9 +752,8 @@ void x86asm_jl_lbl8(struct x86asm_lbl8 *lbl) {
     pt.offs = (int8_t*)outp;
     pt.rel_pos = outp + 1;
 
-    x86asm_lbl8_push_jmp_pt(lbl, &pt);
-
     put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
 }
 
 void x86asm_jle_disp8(int disp8) {
@@ -648,9 +768,8 @@ void x86asm_jle_lbl8(struct x86asm_lbl8 *lbl) {
     pt.offs = (int8_t*)outp;
     pt.rel_pos = outp + 1;
 
-    x86asm_lbl8_push_jmp_pt(lbl, &pt);
-
     put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
 }
 
 void x86asm_jnge_disp8(int disp8) {
@@ -665,9 +784,8 @@ void x86asm_jnge_lbl8(struct x86asm_lbl8 *lbl) {
     pt.offs = (int8_t*)outp;
     pt.rel_pos = outp + 1;
 
-    x86asm_lbl8_push_jmp_pt(lbl, &pt);
-
     put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
 }
 
 // movsx %<reg16>, %<reg32>
@@ -752,9 +870,15 @@ void x86asm_lbl8_define(struct x86asm_lbl8 *lbl) {
 
 void x86asm_lbl8_push_jmp_pt(struct x86asm_lbl8 *lbl,
                              struct lbl_jmp_pt const *jmp_pt) {
-    if (lbl->n_jump_points >= MAX_LABEL_JUMPS)
-        RAISE_ERROR(ERROR_OVERFLOW);
-    lbl->jump_points[lbl->n_jump_points++] = *jmp_pt;
+    if (lbl->ptr) {
+        // label has already been defined
+        *jmp_pt->offs = lbl->ptr - jmp_pt->rel_pos;
+    } else {
+        // save this jump point for when the label gets defined later
+        if (lbl->n_jump_points >= MAX_LABEL_JUMPS)
+            RAISE_ERROR(ERROR_OVERFLOW);
+        lbl->jump_points[lbl->n_jump_points++] = *jmp_pt;
+    }
 }
 
 void x86asm_mull_reg32(unsigned reg_no) {
@@ -763,6 +887,10 @@ void x86asm_mull_reg32(unsigned reg_no) {
 
 void x86asm_testl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x85, 3, reg_src, reg_dst);
+}
+
+void x86asm_testq_reg64_reg64(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(REX_W, 0x85, 3, reg_src, reg_dst);
 }
 
 void x86asm_testl_imm32_reg32(uint32_t imm32, unsigned reg_no) {

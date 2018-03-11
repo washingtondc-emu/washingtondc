@@ -104,31 +104,106 @@ static void native_dispatch_entry_create(void) {
     x86asm_jmpq_reg64(RAX);
 }
 
-static struct code_block_x86_64 *get_block(uint32_t pc) {
-    struct cache_entry *ent = code_cache_find(pc);
-    if (!ent->valid) {
-        jit_compile_native(&ent->blk.x86_64, pc);
-        ent->valid = true;
-    }
-    return &ent->blk.x86_64;
-}
-
 static void native_dispatch_create(void) {
+    struct x86asm_lbl8 check_valid_bit, code_cache_slow_path, have_valid_ent,
+        compile;
+
+    /*
+     * REGISTER ALLOCATION:
+     *    RBX points to the struct cache_entry
+     *    EDI holds the 32-bit SH4 PC address
+     *    ECX holds the index into the code_cache_tbl
+     *
+     *    All other registers are considered to be "temporary" registers whose
+     *    values change often.
+     */
+
+    x86asm_lbl8_init(&check_valid_bit);
+    x86asm_lbl8_init(&code_cache_slow_path);
+    x86asm_lbl8_init(&have_valid_ent);
+    x86asm_lbl8_init(&compile);
+
     native_dispatch = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_dispatch, BASIC_ALLOC);
 
-    // the PC should still be in EDI.
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)get_block, RAX);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl, RAX);
+
+    x86asm_mov_reg32_reg32(EDI, ECX);
+    x86asm_andl_imm32_reg32(CODE_CACHE_HASH_TBL_MASK, ECX);
+
+    x86asm_movq_sib_reg(RAX, 8, RCX, RBX);
+
+    // make sure the pointer isn't null; if so, jump to the slow-path
+    x86asm_testq_reg64_reg64(RBX, RBX);
+    x86asm_jz_lbl8(&code_cache_slow_path);
+
+    // now check the address against the one that's still in EDI
+    size_t const addr_offs = offsetof(struct cache_entry, addr);
+    if (addr_offs >= 256)
+        RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
+    x86asm_movl_disp8_reg_reg(addr_offs, RBX, RSI);
+    x86asm_cmpl_reg32_reg32(ESI, EDI);
+    x86asm_jnz_lbl8(&code_cache_slow_path);// not equal
+
+    x86asm_lbl8_define(&check_valid_bit);
+    // RBX now points to the struct cache_entry
+    size_t const valid_offs = offsetof(struct cache_entry, valid);
+    x86asm_movb_disp8_reg_reg(valid_offs, RBX, EAX);// EMITTING WRONG INST
+    x86asm_testl_imm32_reg32(1, EAX);
+    x86asm_jnz_lbl8(&have_valid_ent);
+
+    x86asm_lbl8_define(&compile);
+
+    /*
+     * the PC should still be in EDI.
+     * this is the last time we'll need it so there's no need to store it
+     * anywhere
+     */
+    x86asm_mov_reg32_reg32(EDI, ESI);
+    x86asm_mov_reg64_reg64(RBX, RDI);
+    x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), RDI);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)jit_compile_native, RAX);
     x86asm_call_reg(RAX);
 
-    // TODO: maybe always assume native_offs is 0 ?
-    size_t native_offs = offsetof(struct code_block_x86_64, native);
+    // now set the valid bit
+    x86asm_xorl_reg32_reg32(EAX, EAX);
+    x86asm_incl_reg32(EAX);
+    x86asm_movb_reg_disp8_reg(EAX, valid_offs, RBX);
+
+    x86asm_lbl8_define(&have_valid_ent);
+    // RBX points to a valid struct cache_entry which we want to jump to.
+
+    size_t const native_offs = offsetof(struct cache_entry, blk.x86_64.native);
     if (native_offs >= 256)
         RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
-    x86asm_movq_disp8_reg_reg(native_offs, RAX, RDX);
+    x86asm_movq_disp8_reg_reg(native_offs, RBX, RDX);
 
     // the native pointer now resides in RDX
     x86asm_jmpq_reg64(RDX); // tail-call elimination
+    // after this point no code is executed
+
+    x86asm_lbl8_define(&code_cache_slow_path);
+
+    // call code_cache_find_slow
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)&code_cache_find_slow, RAX);
+    x86asm_mov_reg32_reg32(EDI, RBX);
+    x86asm_mov_reg64_reg64(RCX, R12);
+    x86asm_call_reg(RAX);
+    x86asm_mov_reg32_reg32(RBX, EDI);
+    x86asm_mov_reg64_reg64(R12, RCX);
+    x86asm_mov_reg64_reg64(RAX, RBX);
+
+    // now write the pointer into the table
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl, RSI);
+    x86asm_movq_reg_sib(RAX, RSI, 8, RCX);
+
+    // now jump up to the compile-point
+    x86asm_jmp_lbl8(&check_valid_bit);
+
+    x86asm_lbl8_cleanup(&compile);
+    x86asm_lbl8_cleanup(&have_valid_ent);
+    x86asm_lbl8_cleanup(&code_cache_slow_path);
+    x86asm_lbl8_cleanup(&check_valid_bit);
 }
 
 static void native_check_cycles_create(void) {
