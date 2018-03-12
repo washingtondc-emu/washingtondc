@@ -35,17 +35,6 @@ void native_dispatch_cleanup(void);
 extern uint32_t (*native_dispatch_entry)(uint32_t pc);
 
 /*
- * native_dispatch is a function which looks up a code block in the cache based
- * on virtual-address and calls that function.
- *
- * Its sole argument is a 32-bit integer representing the virtual address of
- * the SH4's PC (in EDI).
- *
- * This function should not be called from C code.
- */
-extern void *native_dispatch;
-
-/*
  * native_dispatch_check_cycles is a function which updates the cycle counter
  * and returns if it's time to execute an event handler.  Since all the JIT
  * code-blocks tail-call each other, this means that the function it returns to

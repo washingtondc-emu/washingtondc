@@ -40,12 +40,11 @@ static dc_cycle_stamp_t *sched_tgt;
 static dc_cycle_stamp_t *cycle_stamp;
 
 uint32_t (*native_dispatch_entry)(uint32_t pc);
-void *native_dispatch;
 void *native_check_cycles;
 
 static void native_dispatch_entry_create(void);
-static void native_dispatch_create(void);
 static void native_check_cycles_create(void);
+static void native_dispatch_emit(void);
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no);
 
@@ -56,7 +55,6 @@ void native_dispatch_init(void) {
     cycle_stamp = exec_mem_alloc(sizeof(*cycle_stamp));
     dc_set_cycle_stamp_pointer(cycle_stamp);
 
-    native_dispatch_create();
     native_dispatch_entry_create();
     native_check_cycles_create();
 }
@@ -100,15 +98,18 @@ static void native_dispatch_entry_create(void) {
      * JIT code is only expected to preserve the base pointer, and to leave the
      * new value of the PC in RAX.  Other than that, it may do as it pleases.
      */
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)native_dispatch, RAX);
-    x86asm_jmpq_reg64(RAX);
+    native_dispatch_emit();
 }
 
-static void native_dispatch_create(void) {
+static void native_dispatch_emit(void) {
     struct x86asm_lbl8 check_valid_bit, code_cache_slow_path, have_valid_ent,
         compile;
 
     /*
+     * BEFORE CALLING THIS FUNCTION, EDI MUST HOLD THE 32-BIT SH4 PC ADDRESS
+     * THIS IS THE ONLY PARAMETER EXPECTED BY THIS FUNCTION.
+     * THE CODE EMITTED BY THIS FUNCTION WILL NOT RETURN.
+     *
      * REGISTER ALLOCATION:
      *    RBX points to the struct cache_entry
      *    EDI holds the 32-bit SH4 PC address
@@ -122,9 +123,6 @@ static void native_dispatch_create(void) {
     x86asm_lbl8_init(&code_cache_slow_path);
     x86asm_lbl8_init(&have_valid_ent);
     x86asm_lbl8_init(&compile);
-
-    native_dispatch = exec_mem_alloc(BASIC_ALLOC);
-    x86asm_set_dst(native_dispatch, BASIC_ALLOC);
 
     x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl, RAX);
 
@@ -232,12 +230,11 @@ static void native_check_cycles_create(void) {
     x86asm_movq_reg64_indreg64(RCX, RDX);
 
     // close the stack frame
-    x86asm_movq_disp8_reg_reg(-8, RBP, RBX);
-    x86asm_movq_disp8_reg_reg(-16, RBP, R12);
-    x86asm_movq_disp8_reg_reg(-24, RBP, R13);
-    x86asm_movq_disp8_reg_reg(-32, RBP, R14);
-    x86asm_movq_disp8_reg_reg(-40, RBP, R15);
-    x86asm_mov_reg64_reg64(RBP, RSP);
+    x86asm_popq_reg64(R15);
+    x86asm_popq_reg64(R14);
+    x86asm_popq_reg64(R13);
+    x86asm_popq_reg64(R12);
+    x86asm_popq_reg64(RBX);
     x86asm_popq_reg64(RBP);
     x86asm_ret();
 
@@ -248,8 +245,7 @@ static void native_check_cycles_create(void) {
 
     // call native_dispatch
     x86asm_mov_reg32_reg32(ESI, EDI);
-    x86asm_mov_imm64_reg64((uintptr_t)native_dispatch, RAX);
-    x86asm_jmpq_reg64(RAX);
+    native_dispatch_emit();
 
     x86asm_lbl8_cleanup(&dont_return);
 }
