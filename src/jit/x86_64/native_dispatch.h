@@ -47,6 +47,6 @@ extern uint32_t (*native_dispatch_entry)(uint32_t pc);
  *
  * This function should not be called from C code.
  */
-extern void *native_check_cycles;
+void native_check_cycles_emit(void);
 
 #endif

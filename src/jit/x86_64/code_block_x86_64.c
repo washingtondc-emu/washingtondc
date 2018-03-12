@@ -1421,12 +1421,7 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
     }
 
     x86asm_mov_imm32_reg32(out->cycle_count, EDI);
-    x86asm_mov_imm64_reg64((uintptr_t)native_check_cycles, RCX);
     x86asm_mov_reg32_reg32(EAX, ESI);
     emit_stack_frame_close();
-    x86asm_jmpq_reg64(RCX);
-
-    // all blocks should end by jumping out
-    /* LOG_ERROR("ERROR: %u-len block does not jump out\n", il_blk->inst_count); */
-    /* RAISE_ERROR(ERROR_INTEGRITY); */
+    native_check_cycles_emit();
 }

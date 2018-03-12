@@ -40,10 +40,8 @@ static dc_cycle_stamp_t *sched_tgt;
 static dc_cycle_stamp_t *cycle_stamp;
 
 uint32_t (*native_dispatch_entry)(uint32_t pc);
-void *native_check_cycles;
 
 static void native_dispatch_entry_create(void);
-static void native_check_cycles_create(void);
 static void native_dispatch_emit(void);
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no);
@@ -56,7 +54,6 @@ void native_dispatch_init(void) {
     dc_set_cycle_stamp_pointer(cycle_stamp);
 
     native_dispatch_entry_create();
-    native_check_cycles_create();
 }
 
 void native_dispatch_cleanup(void) {
@@ -204,10 +201,7 @@ static void native_dispatch_emit(void) {
     x86asm_lbl8_cleanup(&check_valid_bit);
 }
 
-static void native_check_cycles_create(void) {
-    native_check_cycles = exec_mem_alloc(BASIC_ALLOC);
-    x86asm_set_dst(native_check_cycles, BASIC_ALLOC);
-
+void native_check_cycles_emit(void) {
     struct x86asm_lbl8 dont_return;
     x86asm_lbl8_init(&dont_return);
 
