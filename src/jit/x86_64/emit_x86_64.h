@@ -81,6 +81,7 @@
 #define R15W R15
 
 #define SIB 4
+#define RIPREL 5
 
 /*
  * This is the maximum number of jump-points that can jump to a given label.
@@ -169,6 +170,24 @@ void x86asm_movq_reg64_indreg64(unsigned reg_src, unsigned reg_dst);
 
 // movq <reg_src>, <reg_dst>
 void x86asm_mov_reg64_reg64(unsigned reg_src, unsigned reg_dst);
+
+/*
+ * movq (%rip+disp32), %<reg_dst>
+ *
+ * relptr is relative to the address *after* this instruction.  This
+ * instruction will always be 7 bytes long, so that's the position that relptr
+ * is relative to.
+ */
+void x86asm_movq_riprel_reg(uint32_t relptr, unsigned reg_dst);
+
+/*
+ * movq %<reg_src>, (%rip+disp32)
+ *
+ * relptr is relative to the address *after* this instruction.  This
+ * instruction will always be 7 bytes long, so that's the position that relptr
+ * is relative to.
+ */
+void x86asm_movq_reg_riprel(unsigned reg_dst, uint32_t relptr);
 
 // movl (<reg_src>), <reg_dst>
 void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst);

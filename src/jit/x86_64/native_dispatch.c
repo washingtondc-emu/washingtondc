@@ -45,6 +45,8 @@ static void native_dispatch_entry_create(void);
 static void native_dispatch_emit(void);
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no);
+static void store_quad_from_reg(void *qptr, unsigned reg_no,
+                                unsigned clobber_reg);
 
 void native_dispatch_init(void) {
     sched_tgt = exec_mem_alloc(sizeof(*sched_tgt));
@@ -208,11 +210,8 @@ void native_check_cycles_emit(void) {
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
 
-
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)cycle_stamp, RDX);
-
     load_quad_into_reg(sched_tgt, RCX);
-    x86asm_movq_indreg_reg(RDX, RAX);
+    load_quad_into_reg(cycle_stamp, RAX);
     x86asm_addq_reg64_reg64(RAX, RDI);
     x86asm_cmpq_reg64_reg64(RCX, RDI);
     x86asm_jb_lbl8(&dont_return);
@@ -221,7 +220,7 @@ void native_check_cycles_emit(void) {
     x86asm_mov_reg32_reg32(ESI, EAX);
 
     // store sched_tgt into cycle_stamp
-    x86asm_movq_reg64_indreg64(RCX, RDX);
+    store_quad_from_reg(cycle_stamp, RCX, RDX);
 
     // close the stack frame
     x86asm_popq_reg64(R15);
@@ -235,7 +234,7 @@ void native_check_cycles_emit(void) {
     // continue
     x86asm_lbl8_define(&dont_return);
 
-    x86asm_movq_reg64_indreg64(RDI, RDX);
+    store_quad_from_reg(cycle_stamp, RDI, RDX);
 
     // call native_dispatch
     x86asm_mov_reg32_reg32(ESI, EDI);
@@ -245,9 +244,28 @@ void native_check_cycles_emit(void) {
 }
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no) {
-    uintptr_t qaddr = (uintptr_t)qptr;
+    intptr_t qaddr = (uintptr_t)qptr;
+    intptr_t rip = (uintptr_t)x86asm_get_outp() + 7;
 
-    // TODO: look into using PC-relative addressing
-    x86asm_mov_imm64_reg64(qaddr, reg_no);
-    x86asm_movq_indreg_reg(reg_no, reg_no);
+    intptr_t disp = qaddr - rip;
+    if (disp >= INT32_MIN && disp <= INT32_MAX) {
+        x86asm_movq_riprel_reg(disp, reg_no);
+    } else {
+        x86asm_mov_imm64_reg64(qaddr, reg_no);
+        x86asm_movq_indreg_reg(reg_no, reg_no);
+    }
+}
+
+static void store_quad_from_reg(void *qptr, unsigned reg_no,
+                                unsigned clobber_reg) {
+    intptr_t qaddr = (uintptr_t)qptr;
+    intptr_t rip = (uintptr_t)x86asm_get_outp() + 7;
+
+    intptr_t disp = qaddr - rip;
+    if (disp >= INT32_MIN && disp <= INT32_MAX) {
+        x86asm_movq_reg_riprel(reg_no, disp);
+    } else {
+        x86asm_mov_imm64_reg64(qaddr, clobber_reg);
+        x86asm_movq_reg64_indreg64(reg_no, clobber_reg);
+    }
 }

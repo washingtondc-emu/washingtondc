@@ -179,6 +179,28 @@ static void emit_mod_reg_rm_sib(unsigned rex, unsigned opcode, unsigned mod,
     put8(mod_reg_rm);
 }
 
+/*
+ * This doesn't actually output the riprel value, you have to do that yourself
+ * with put32 after calling this.
+ *
+ * What this does do is emit the rex prefix, opcode and mod/reg/rm byte for a
+ * riprel instruction.
+ */
+static void emit_mod_reg_rm_riprel(unsigned rex, unsigned opcode, unsigned mod,
+                                   unsigned reg) {
+    if (reg >= R8) {
+        rex |= REX_R;
+        reg -= R8;
+    }
+
+    if (rex)
+        put8(rex | 0x40);
+    put8(opcode);
+
+    unsigned mod_reg_rm = (mod << 6) | (reg << 3) | RIPREL;
+    put8(mod_reg_rm);
+}
+
 static void emit_mod_reg_rm_2(unsigned rex, unsigned opcode1,
                               unsigned opcode2, unsigned mod,
                               unsigned reg, unsigned rm) {
@@ -388,6 +410,26 @@ void x86asm_mov_reg64_reg64(unsigned reg_src, unsigned reg_dst) {
 // movq (%<reg_src>), %<reg_dst>
 void x86asm_movq_indreg_reg(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(REX_W, 0x8b, 0, reg_dst, reg_src);
+}
+
+/*
+ * movq (%rip+disp32), %<reg_dst>
+ */
+void x86asm_movq_riprel_reg(uint32_t relptr, unsigned reg_dst) {
+    emit_mod_reg_rm_riprel(REX_W, 0x8b, 0, reg_dst);
+    put32(relptr);
+}
+
+/*
+ * movq %<reg_src>, (%rip+disp32)
+ *
+ * relptr is relative to the address *after* this instruction.  This
+ * instruction will always be 7 bytes long, so that's the position that relptr
+ * is relative to.
+ */
+void x86asm_movq_reg_riprel(unsigned reg_dst, uint32_t relptr) {
+    emit_mod_reg_rm_riprel(REX_W, 0x89, 0, reg_dst);
+    put32(relptr);
 }
 
 // movq (%<reg_base>, <scale>, %<reg_index>), %<reg_dst>
