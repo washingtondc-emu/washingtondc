@@ -1311,6 +1311,23 @@ bool sh4_disas_sett(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// MOVT Rn
+// 0000nnnn00101001
+bool sh4_disas_movt(struct il_code_block *block, unsigned pc,
+                    struct InstOpcode const *op, inst_t inst) {
+    unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+
+    unsigned slot_no = reg_slot(dreamcast_get_cpu(), block, reg_no);
+    unsigned sr_slot = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
+
+    jit_mov(block, sr_slot, slot_no);
+    jit_and_const32(block, slot_no, 1);
+
+    reg_map[reg_no].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

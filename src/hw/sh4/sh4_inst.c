@@ -159,7 +159,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_FE, 1, 0xffff, 0xf3fd },
 
     // MOVT Rn
-    { &sh4_inst_unary_movt_gen, sh4_disas_fallback, false,
+    { &sh4_inst_unary_movt_gen, sh4_disas_movt, false,
       SH4_GROUP_EX, 1, 0xf0ff, 0x0029 },
 
     // CMP/PZ
