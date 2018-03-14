@@ -71,20 +71,6 @@ static void native_dispatch_entry_create(void) {
     native_dispatch_entry = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_dispatch_entry, BASIC_ALLOC);
 
-    /*
-     * When native_dispatch_entry is called, the stack is 8 bytes after a
-     * 16-byte boundary; this is mandated by the calling convention on x86_64
-     * GCC/Linux.  Here we open a stack frame by pushing 40 bytes onto the
-     * stack.  This puts the stack on a 16-byte boundary.  The code emitted by
-     * code_block_x86_64.c expects to be perfectly aligned on a 16-byte
-     * boundary, and it will restore RSP and RBP to their initial values
-     * whenever it calls native_check_cycles.  This means that as long as
-     * native_dispatch_entry, native_dispatch and native_check_cycles don't
-     * push anything onto the stack that they don't pop off of the stack before
-     * jumping to a code_block (other than this stack-frame opener) then it
-     * will always be safe to jump into a code_block withing checking the stack
-     * alignment.
-     */
     x86asm_pushq_reg64(RBP);
     x86asm_mov_reg64_reg64(RSP, RBP);
     x86asm_pushq_reg64(RBX);
@@ -92,6 +78,21 @@ static void native_dispatch_entry_create(void) {
     x86asm_pushq_reg64(R13);
     x86asm_pushq_reg64(R14);
     x86asm_pushq_reg64(R15);
+
+    /*
+     * When native_dispatch_entry is called, the stack is 8 bytes after a
+     * 16-byte boundary; this is mandated by the calling convention on x86_64
+     * GCC/Linux.  After pushing 48 bytes above, the stack remains 8 bytes off
+     * from a 16-byte boundary.  The code emitted by code_block_x86_64.c
+     * expects to be perfectly aligned on a 16-byte boundary, and it will
+     * restore RSP and RBP to their initial values whenever it calls
+     * native_check_cycles.  This means that as long as native_dispatch_entry,
+     * native_dispatch and native_check_cycles don't push anything else onto the
+     * stack that they don't pop off of the stack before jumping to a code_block
+     * then it will always be safe to jump into a code_block withing checking
+     * the stack alignment.
+     */
+    x86asm_addq_imm8_reg(-8, RSP);
 
     /*
      * JIT code is only expected to preserve the base pointer, and to leave the
@@ -223,6 +224,7 @@ void native_check_cycles_emit(void) {
     store_quad_from_reg(cycle_stamp, RCX, RDX);
 
     // close the stack frame
+    x86asm_addq_imm8_reg(8, RSP);
     x86asm_popq_reg64(R15);
     x86asm_popq_reg64(R14);
     x86asm_popq_reg64(R13);
