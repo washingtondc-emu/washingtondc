@@ -143,7 +143,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 1, 0xffff, 0x0058 },
 
     // SETT
-    { &sh4_inst_sett, sh4_disas_fallback, false,
+    { &sh4_inst_sett, sh4_disas_sett, false,
       SH4_GROUP_MT, 1, 0xffff, 0x0018 },
 
     // SLEEP

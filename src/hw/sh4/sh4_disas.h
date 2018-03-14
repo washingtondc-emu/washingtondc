@@ -333,4 +333,9 @@ bool sh4_disas_dt_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_clrt(struct il_code_block *block, unsigned pc,
                     struct InstOpcode const *op, inst_t inst);
 
+// SETT
+// 0000000000011000
+bool sh4_disas_sett(struct il_code_block *block, unsigned pc,
+                    struct InstOpcode const *op, inst_t inst);
+
 #endif
