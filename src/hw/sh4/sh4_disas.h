@@ -318,4 +318,9 @@ bool sh4_disas_cmppl_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_cmppz_rn(struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
+// NOT Rm, Rn
+// 0110nnnnmmmm0111
+bool sh4_disas_not_rm_rn(struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, inst_t inst);
+
 #endif
