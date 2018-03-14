@@ -171,7 +171,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_MT, 1, 0xf0ff, 0x4015 },
 
     // DT
-    { &sh4_inst_unary_dt_gen, sh4_disas_fallback, false,
+    { &sh4_inst_unary_dt_gen, sh4_disas_dt_rn, false,
       SH4_GROUP_EX, 1, 0xf0ff, 0x4010 },
 
     // ROTL Rn
