@@ -1285,6 +1285,19 @@ bool sh4_disas_dt_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// CLRT
+// 0000000000001000
+bool sh4_disas_clrt(struct il_code_block *block, unsigned pc,
+                    struct InstOpcode const *op, inst_t inst) {
+    unsigned sr_slot = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
+
+    jit_and_const32(block, sr_slot, ~1);
+
+    reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

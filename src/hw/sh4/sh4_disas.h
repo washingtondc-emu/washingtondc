@@ -328,4 +328,9 @@ bool sh4_disas_not_rm_rn(struct il_code_block *block, unsigned pc,
 bool sh4_disas_dt_rn(struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, inst_t inst);
 
+// CLRT
+// 0000000000001000
+bool sh4_disas_clrt(struct il_code_block *block, unsigned pc,
+                    struct InstOpcode const *op, inst_t inst);
+
 #endif

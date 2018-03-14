@@ -124,7 +124,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 1, 0xffff, 0x0048 },
 
     // CLRT
-    { &sh4_inst_clrt, sh4_disas_fallback, false,
+    { &sh4_inst_clrt, sh4_disas_clrt, false,
       SH4_GROUP_MT, 1, 0xffff, 0x0008 },
 
     // LDTLB
