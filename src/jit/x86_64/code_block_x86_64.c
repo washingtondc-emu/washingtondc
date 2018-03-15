@@ -1265,12 +1265,12 @@ static void emit_shad(Sh4 *sh4, struct jit_inst const *inst) {
 
 /*
  * pad the stack so that it is properly aligned for a function call.
- * At the beginning of the stack frame, the stack was aligned by
- * 16 modulo 8.  emit_stack_frame_open pushed 6*8 bytes onto the stack; this
- * means that the stack alignment was still 16 modulo 8 after the stack frame
- * open.  The rsp_offs at that point was -40, which is 16 modulo 8.  Ergo, when
- * rsp_offs is 16-modulo-8, then the stack is 16-modulo-8.  Likewise, when
- * rsp_offs is divisible by 16 then so is the actual stack pointer.
+ * At the beginning of the stack frame, the stack was aligned to a 16-byte
+ * boundary.  emit_stack_frame_open pushed 8 bytes onto the stack; this
+ * means that the stack alignment was 16 modulo 8 after the stack frame open.
+ * The rsp_offs at that point was 0, which is not 16 modulo 8.  Ergo, when
+ * rsp_offs is 16-modulo-8, then the stack is 16-byte aligned.  Likewise, when
+ * rsp_offs is aligned to 16-bytes then so the actual stack pointer is not.
  *
  * Prior to issuing a call instruction, the stack-pointer needs to be aligned
  * on a 16-byte boundary so that the alignment is 16-modulo-8 after the CALL
@@ -1279,7 +1279,7 @@ static void emit_shad(Sh4 *sh4, struct jit_inst const *inst) {
  * issued.
  */
 static void align_stack(void) {
-    unsigned mod = rsp_offs % 16;
+    unsigned mod = (rsp_offs - 8) % 16;
 
     if (mod) {
         x86asm_addq_imm8_reg(-(16 - mod), RSP);
