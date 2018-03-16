@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,16 +20,21 @@
  *
  ******************************************************************************/
 
-#extension GL_ARB_explicit_uniform_location : enable
+#ifndef OVERLAY_H_
+#define OVERLAY_H_
 
-layout (location = 0) in vec3 vert_pos;
-layout (location = 1) in vec2 tex_coord;
-layout (location = 2) uniform mat4 trans_mat;
-layout (location = 3) uniform mat3 tex_mat;
+#include <stdbool.h>
 
-out vec2 st;
+// This is a simple UI that can optionally be drawn on top of the screen.
 
-void main() {
-    gl_Position = trans_mat * vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);
-    st = (tex_mat * vec3(tex_coord.x, tex_coord.y, 1.0)).xy;
-}
+/*
+ * this gets called by opengl_video_present to draw the overlay on top of the
+ * screen.
+ */
+void overlay_draw(unsigned screen_width, unsigned screen_height);
+
+void overlay_set_fps(float fps);
+
+void overlay_show(bool do_show);
+
+#endif

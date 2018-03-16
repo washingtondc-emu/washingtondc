@@ -33,6 +33,8 @@
 
 #include "window.h"
 
+#define TOGGLE_OVERLAY_KEY GLFW_KEY_F2
+
 static unsigned res_x, res_y;
 static GLFWwindow *win;
 
@@ -228,6 +230,13 @@ static void scan_input(void) {
     maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY1_Y, stick_vert);
     maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY2_X, 0);
     maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY2_Y, 0);
+
+    // Allow the user to toggle the overlay by pressing F2
+    static bool overlay_key_prev = false;
+    bool overlay_key = glfwGetKey(win, TOGGLE_OVERLAY_KEY);
+    if (overlay_key && !overlay_key_prev)
+        dc_toggle_overlay();
+    overlay_key_prev = overlay_key;
 }
 
 void win_make_context_current(void) {

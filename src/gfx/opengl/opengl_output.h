@@ -81,4 +81,14 @@ void opengl_video_present();
 void opengl_video_output_init();
 void opengl_video_output_cleanup();
 
+// vertex position (x, y, z)
+#define OUTPUT_SLOT_VERT_POS 0
+
+// vertex texture coordinates (s, t)
+#define OUTPUT_SLOT_VERT_ST 1
+
+#define OUTPUT_SLOT_TRANS_MAT 2
+
+#define OUTPUT_SLOT_TEX_MAT 3
+
 #endif

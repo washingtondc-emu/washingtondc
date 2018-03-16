@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,16 +20,15 @@
  *
  ******************************************************************************/
 
-#extension GL_ARB_explicit_uniform_location : enable
+#ifndef DIGIT_0_XBM_
+#define DIGIT_0_XBM_
 
-layout (location = 0) in vec3 vert_pos;
-layout (location = 1) in vec2 tex_coord;
-layout (location = 2) uniform mat4 trans_mat;
-layout (location = 3) uniform mat3 tex_mat;
+#define DIGIT_0_WIDTH 8
+#define DIGIT_0_HEIGHT 16
 
-out vec2 st;
+static unsigned char digit_0_bits[] = {
+    0x00, 0x18, 0x3c, 0x62, 0x62, 0x52, 0x52, 0x52, 0x4a, 0x4a, 0x4a, 0x46,
+    0x46, 0x3c, 0x18, 0x00
+};
 
-void main() {
-    gl_Position = trans_mat * vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);
-    st = (tex_mat * vec3(tex_coord.x, tex_coord.y, 1.0)).xy;
-}
+#endif

@@ -59,6 +59,7 @@
 #include "jit/jit_intp/code_block_intp.h"
 #include "jit/code_cache.h"
 #include "jit/jit.h"
+#include "gfx/opengl/overlay.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -80,6 +81,9 @@ static volatile bool signal_exit_threads;
 static bool using_debugger;
 
 bool serial_server_in_use;
+
+static clock_t last_frame;
+static bool show_overlay;
 
 enum TermReason {
     TERM_REASON_NORM,   // normal program exit
@@ -395,6 +399,9 @@ void dreamcast_run() {
 #ifdef ENABLE_JIT_X86_64
     bool const native_mode = config_get_native_jit();
 #endif
+
+    last_frame = clock();
+    overlay_show(show_overlay);
 
     if (jit) {
 #ifdef ENABLE_JIT_X86_64
@@ -728,7 +735,18 @@ static void periodic_event_handler(struct SchedEvent *event) {
 }
 
 void dc_end_frame(void) {
+    clock_t timestamp = clock();
+    double framerate = (double)CLOCKS_PER_SEC / (double)(timestamp - last_frame);
+    last_frame = timestamp;
+
+    overlay_set_fps((float)framerate);
+
     framebuffer_render();
     win_check_events();
     cmd_run_once();
+}
+
+void dc_toggle_overlay(void) {
+    show_overlay = !show_overlay;
+    overlay_show(show_overlay);
 }

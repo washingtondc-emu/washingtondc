@@ -133,4 +133,6 @@ enum dc_boot_mode {
     DC_BOOT_DIRECT
 };
 
+void dc_toggle_overlay(void);
+
 #endif

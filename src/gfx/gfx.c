@@ -35,6 +35,7 @@
 #include "dreamcast.h"
 #include "gfx/opengl/opengl_output.h"
 #include "gfx/opengl/opengl_target.h"
+#include "gfx/opengl/font/font.h"
 #include "gfx/rend_common.h"
 #include "gfx/gfx_tex_cache.h"
 #include "log.h"
@@ -63,6 +64,7 @@ void gfx_init(unsigned width, unsigned height) {
 }
 
 void gfx_cleanup(void) {
+    font_cleanup();
 }
 
 void gfx_expose(void) {
@@ -81,6 +83,8 @@ static void gfx_do_init(void) {
     opengl_video_output_init();
     gfx_tex_cache_init();
     rend_init();
+
+    font_init();
 
     glClear(GL_COLOR_BUFFER_BIT);
 }

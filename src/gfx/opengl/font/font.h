@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,16 +20,19 @@
  *
  ******************************************************************************/
 
-#extension GL_ARB_explicit_uniform_location : enable
+#ifndef FONT_H_
+#define FONT_H_
 
-layout (location = 0) in vec3 vert_pos;
-layout (location = 1) in vec2 tex_coord;
-layout (location = 2) uniform mat4 trans_mat;
-layout (location = 3) uniform mat3 tex_mat;
+// Very simple bitmap font that I intend to not keep around very long
 
-out vec2 st;
+void font_init(void);
+void font_cleanup(void);
 
-void main() {
-    gl_Position = trans_mat * vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);
-    st = (tex_mat * vec3(tex_coord.x, tex_coord.y, 1.0)).xy;
-}
+/* void font_render(char const *txt, float pos_x, float pos_y, float width); */
+void font_render(char const *txt, unsigned col, unsigned row,
+                 float screen_w, float screen_h);
+void font_render_char(char ch, unsigned col, unsigned row,
+                      float screen_w, float screen_h);
+void font_get_height(float width);
+
+#endif

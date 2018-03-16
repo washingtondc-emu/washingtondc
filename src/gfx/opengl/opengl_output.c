@@ -35,15 +35,11 @@
 #include "opengl_output.h"
 #include "shader.h"
 #include "gfx/gfx.h"
+#include "gfx/opengl/font/font.h"
+#include "overlay.h"
 #include "log.h"
 
 static void init_poly();
-
-// vertex position (x, y, z)
-#define SLOT_VERT_POS 0
-
-// vertex texture coordinates (s, t)
-#define SLOT_VERT_ST 1
 
 /*
  * this shader represents the final stage of output, where a single textured
@@ -89,6 +85,19 @@ struct fb_poly {
     GLuint tex_obj; // texture object
 } fb_poly;
 
+static GLfloat const trans_mat[16] = {
+    1.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f ,0.0f, 0.0f, 1.0f
+};
+
+static GLfloat const tex_mat[9] = {
+    1.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 1.0f
+};
+
 static void
 opengl_video_update_framebuffer(uint32_t const *fb_read,
                                 unsigned fb_read_width,
@@ -131,11 +140,14 @@ void opengl_video_present() {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
+    glEnable(GL_TEXTURE_2D);
 
     glViewport(0, 0, 640, 480); // TODO: don't hardcode
     glUseProgram(fb_shader.shader_prog_obj);
     glBindTexture(GL_TEXTURE_2D, fb_poly.tex_obj);
     glUniform1i(glGetUniformLocation(fb_shader.shader_prog_obj, "fb_tex"), 0);
+    glUniformMatrix4fv(OUTPUT_SLOT_TRANS_MAT, 1, GL_TRUE, trans_mat);
+    glUniformMatrix3fv(OUTPUT_SLOT_TEX_MAT, 1, GL_TRUE, tex_mat);
 
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(fb_poly.vao);
@@ -143,6 +155,8 @@ void opengl_video_present() {
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    overlay_draw(640, 480);
 }
 
 static void init_poly() {
@@ -156,14 +170,14 @@ static void init_poly() {
     glBufferData(GL_ARRAY_BUFFER,
                  FB_VERT_LEN * FB_VERT_COUNT * sizeof(GLfloat),
                  fb_quad_verts, GL_STATIC_DRAW);
-    glVertexAttribPointer(SLOT_VERT_POS, 3, GL_FLOAT, GL_FALSE,
+    glVertexAttribPointer(OUTPUT_SLOT_VERT_POS, 3, GL_FLOAT, GL_FALSE,
                           FB_VERT_LEN * sizeof(GLfloat),
                           (GLvoid*)0);
-    glEnableVertexAttribArray(SLOT_VERT_POS);
-    glVertexAttribPointer(SLOT_VERT_ST, 2, GL_FLOAT, GL_FALSE,
+    glEnableVertexAttribArray(OUTPUT_SLOT_VERT_POS);
+    glVertexAttribPointer(OUTPUT_SLOT_VERT_ST, 2, GL_FLOAT, GL_FALSE,
                           FB_VERT_LEN * sizeof(GLfloat),
                           (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(SLOT_VERT_ST);
+    glEnableVertexAttribArray(OUTPUT_SLOT_VERT_ST);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, FB_QUAD_IDX_COUNT * sizeof(GLuint),
