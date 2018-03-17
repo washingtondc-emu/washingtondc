@@ -20,34 +20,15 @@
  *
  ******************************************************************************/
 
-#include <string.h>
-#include <stdio.h>
+#ifndef SPACE_H_
+#define SPACE_H_
 
-#include "gfx/opengl/font/font.h"
+#define SPACE_WIDTH 8
+#define SPACE_HEIGHT 16
 
-#include "overlay.h"
+static unsigned char space_bits[] = {
+   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   0x00, 0x00, 0x00, 0x00
+};
 
-static double framerate, virt_framerate;
-static bool not_hidden = true;
-
-void overlay_show(bool do_show) {
-    not_hidden = do_show;
-}
-
-void overlay_draw(unsigned screen_width, unsigned screen_height) {
-    if (not_hidden) {
-        char tmp[64];
-        snprintf(tmp, sizeof(tmp), "%.2f / %.2f", framerate, virt_framerate);
-        tmp[63] = '\0';
-
-        font_render(tmp, 0, 0, screen_width, screen_height);
-    }
-}
-
-void overlay_set_fps(double fps) {
-    framerate = fps;
-}
-
-void overlay_set_virt_fps(double fps) {
-    virt_framerate = fps;
-}
+#endif

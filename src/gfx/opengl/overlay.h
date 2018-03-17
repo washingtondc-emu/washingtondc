@@ -33,7 +33,8 @@
  */
 void overlay_draw(unsigned screen_width, unsigned screen_height);
 
-void overlay_set_fps(float fps);
+void overlay_set_fps(double fps);
+void overlay_set_virt_fps(double fps);
 
 void overlay_show(bool do_show);
 

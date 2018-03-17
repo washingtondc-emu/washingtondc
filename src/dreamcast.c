@@ -82,7 +82,8 @@ static bool using_debugger;
 
 bool serial_server_in_use;
 
-static clock_t last_frame;
+static clock_t last_frame_realtime;
+static dc_cycle_stamp_t last_frame_virttime;
 static bool show_overlay;
 
 enum TermReason {
@@ -400,7 +401,7 @@ void dreamcast_run() {
     bool const native_mode = config_get_native_jit();
 #endif
 
-    last_frame = clock();
+    last_frame_realtime = clock();
     overlay_show(show_overlay);
 
     if (jit) {
@@ -736,10 +737,15 @@ static void periodic_event_handler(struct SchedEvent *event) {
 
 void dc_end_frame(void) {
     clock_t timestamp = clock();
-    double framerate = (double)CLOCKS_PER_SEC / (double)(timestamp - last_frame);
-    last_frame = timestamp;
-
-    overlay_set_fps((float)framerate);
+    dc_cycle_stamp_t virt_timestamp = dc_cycle_stamp();
+    double framerate = (double)CLOCKS_PER_SEC /
+        (double)(timestamp - last_frame_realtime);
+    double virt_framerate = (double)SCHED_FREQUENCY /
+        (double)(virt_timestamp - last_frame_virttime);
+    last_frame_realtime = timestamp;
+    last_frame_virttime = virt_timestamp;
+    overlay_set_fps(framerate);
+    overlay_set_virt_fps(virt_framerate);
 
     framebuffer_render();
     win_check_events();
