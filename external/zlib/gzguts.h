@@ -39,7 +39,14 @@
 #  include <io.h>
 #endif
 
-#if defined(_WIN32) || defined(__CYGWIN__)
+/*
+ * WashingtonDC local modification:
+ * IDK what WIDECHAR is, but it forces zlib to use a Windows function (_wopen)
+ * which is not available to cygwin programs.  Ergo, we disable it for cygwin
+ * builds.
+ */
+/* #if defined(_WIN32) || defined(__CYGWIN__) */
+#if defined(_WIN32)
 #  define WIDECHAR
 #endif
 

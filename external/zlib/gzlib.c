@@ -12,6 +12,17 @@
 #  define LSEEK lseek64
 #else
 #  define LSEEK lseek
+
+/*
+ * WashingtonDC local modification
+ *
+ * These headers are needed for lseek on cygwin builds.  I'm not sure why this
+ * compiles fine without them on other platforms, but on cygwin it fails without
+ * these headers.  The manpage for lseek does say these headers are needed.
+ */
+#include <sys/types.h>
+#include <unistd.h>
+
 #endif
 #endif
 

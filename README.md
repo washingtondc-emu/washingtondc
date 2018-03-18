@@ -105,7 +105,8 @@ some unnecessary components removed.  The license for this software can be
 found at external/libpng/LICENSE.
 
 A copy of zlib is included in this source distribution with some unnecessary
-components removed.  The license for this software can be found at
+components removed and some minor modifications made to facilitate building on
+certain platforms.  The license for this software can be found at
 external/zlib/README.
 
 WashingtonDC also makes use of the glfw library.  This is not included in this
