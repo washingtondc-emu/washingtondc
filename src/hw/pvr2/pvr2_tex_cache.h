@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -90,6 +90,9 @@ enum pvr2_tex_state {
 struct pvr2_tex {
     struct pvr2_tex_meta meta;
 
+    // this refers to the gfx_obj bound to the texture
+    int obj_no;
+
     // the frame stamp from the last time this texture was referenced
     unsigned frame_stamp_last_used;
 
@@ -133,6 +136,7 @@ void pvr2_tex_cache_xmit(void);
  */
 int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx);
 
-void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta);
+void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
+                         struct pvr2_tex_meta const *meta);
 
 #endif

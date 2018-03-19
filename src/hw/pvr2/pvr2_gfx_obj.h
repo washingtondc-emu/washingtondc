@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,41 +20,20 @@
  *
  ******************************************************************************/
 
-#ifndef GFX_TEX_CACHE_H_
-#define GFX_TEX_CACHE_H_
-
-#include <stdbool.h>
-#include <stdint.h>
+#ifndef PVR2_GFX_OBJ_H_
+#define PVR2_GFX_OBJ_H_
 
 /*
- * This is the gfx_thread's copy of the texture cache.  It mirrors the one
- * in the geo_buf code, and is updated every time a new geo_buf is submitted by
- * the PVR2 STARTRENDER command.
+ * this is a simple infra for tracking which gfx_objs are in use and which are
+ * available.  gfx statically allocates a set number of objects, and leaves the
+ * actual management of those objects to the emulation code.e
  */
-
-#define GFX_TEX_CACHE_SIZE 512
-#define GFX_TEX_CACHE_MASK (GFX_TEX_CACHE_SIZE - 1)
-
-struct gfx_tex {
-    int obj_handle;
-    int pix_fmt;
-    unsigned width, height;
-    bool valid;
-};
 
 /*
- * Bind the given gfx_obj to the given texture-unit.
+ * All these functions do is mark the given object as being in-use/not in-use
+ * from PVR's perspective.  They don't actually modify the obj's state.
  */
-void gfx_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
-                        unsigned height, int pix_fmt);
-
-void gfx_tex_cache_unbind(unsigned tex_no);
-
-void gfx_tex_cache_evict(unsigned idx);
-
-struct gfx_tex const* gfx_tex_cache_get(unsigned idx);
-
-void gfx_tex_cache_init(void);
-void gfx_tex_cache_cleanup(void);
+int pvr2_alloc_gfx_obj(void);
+void pvr2_free_gfx_obj(int obj);
 
 #endif

@@ -26,13 +26,13 @@
 #include <stdbool.h>
 
 #include "gfx/gfx.h"
+#include "gfx/gfx_obj.h"
 
 enum gfx_il {
     // load a texture into the cache
-    GFX_IL_SET_TEX,
+    GFX_IL_BIND_TEX,
 
-    // get rid of a texture in the cache
-    GFX_IL_FREE_TEX,
+    GFX_IL_UNBIND_TEX,
 
     /*
      * call this before sending any rendering commands (not incluiding texcache
@@ -62,7 +62,15 @@ enum gfx_il {
     GFX_IL_SET_CLIP_RANGE,
 
     // use this to render a group of polygons
-    GFX_IL_DRAW_ARRAY
+    GFX_IL_DRAW_ARRAY,
+
+    GFX_IL_INIT_OBJ,
+
+    GFX_IL_WRITE_OBJ,
+
+    GFX_IL_READ_OBJ,
+
+    GFX_IL_FREE_OBJ
 };
 
 struct gfx_rend_param {
@@ -82,15 +90,15 @@ struct gfx_rend_param {
 
 union gfx_il_arg {
     struct {
-        void const *tex_dat;
+        int gfx_obj_handle;
         unsigned tex_no;
         int pix_fmt;
-        int w_shift, h_shift;
-    } set_tex;
+        int width, height;
+    } bind_tex;
 
     struct {
         unsigned tex_no;
-    } free_tex;
+    } unbind_tex;
 
     struct {
         unsigned screen_width, screen_height;
@@ -120,6 +128,27 @@ union gfx_il_arg {
         unsigned n_verts;
         float const *verts;
     } draw_array;
+
+    struct {
+        int obj_no;
+        size_t n_bytes;
+    } init_obj;
+
+    struct {
+        void const *dat;
+        int obj_no;
+        size_t n_bytes;
+    } write_obj;
+
+    struct {
+        void *dat;
+        int obj_no;
+        size_t n_bytes;
+    } read_obj;
+
+    struct {
+        int obj_no;
+    } free_obj;
 };
 
 struct gfx_il_inst {

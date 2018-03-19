@@ -44,8 +44,8 @@ void rend_cleanup(void) {
 }
 
 // tell the renderer to update the given texture from the cache
-void rend_update_tex(unsigned tex_no, void const *tex_dat) {
-    rend_ifp->update_tex(tex_no, tex_dat);
+void rend_update_tex(unsigned tex_no) {
+    rend_ifp->update_tex(tex_no);
 }
 
 // tell the renderer to release the given texture from the cache
@@ -53,20 +53,18 @@ void rend_release_tex(unsigned tex_no) {
     rend_ifp->release_tex(tex_no);
 }
 
-static void rend_set_tex(struct gfx_il_inst *cmd) {
-    unsigned tex_no = cmd->arg.set_tex.tex_no;
-    void const *tex_dat = cmd->arg.set_tex.tex_dat;
-    struct gfx_tex new_tex_entry = {
-        .valid = true,
-        .pix_fmt = cmd->arg.set_tex.pix_fmt,
-        .w_shift = cmd->arg.set_tex.w_shift,
-        .h_shift = cmd->arg.set_tex.h_shift,
-    };
-    gfx_tex_cache_add(tex_no, &new_tex_entry, tex_dat);
+static void rend_bind_tex(struct gfx_il_inst *cmd) {
+    unsigned tex_no = cmd->arg.bind_tex.tex_no;
+    int obj_handle = cmd->arg.bind_tex.gfx_obj_handle;
+    int pix_fmt = cmd->arg.bind_tex.pix_fmt;
+    int width = cmd->arg.bind_tex.width;
+    int height = cmd->arg.bind_tex.height;
+
+    gfx_tex_cache_bind(tex_no, obj_handle, width, height, pix_fmt);
 }
 
-static void rend_free_tex(struct gfx_il_inst *cmd) {
-    gfx_tex_cache_evict(cmd->arg.free_tex.tex_no);
+static void rend_unbind_tex(struct gfx_il_inst *cmd) {
+    gfx_tex_cache_unbind(cmd->arg.unbind_tex.tex_no);
 }
 
 static void rend_begin_rend(struct gfx_il_inst *cmd) {
@@ -106,16 +104,41 @@ static void rend_clear(struct gfx_il_inst *cmd) {
     rend_ifp->clear(cmd->arg.clear.bgcolor);
 }
 
+static void rend_obj_init(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.init_obj.obj_no;
+    size_t n_bytes = cmd->arg.init_obj.n_bytes;
+    gfx_obj_alloc(obj_no, n_bytes);
+}
+
+static void rend_obj_write(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.write_obj.obj_no;
+    size_t n_bytes = cmd->arg.write_obj.n_bytes;
+    void const *dat = cmd->arg.write_obj.dat;
+    gfx_obj_write(obj_no, dat, n_bytes);
+}
+
+static void rend_obj_read(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.read_obj.obj_no;
+    size_t n_bytes = cmd->arg.read_obj.n_bytes;
+    void *dat = cmd->arg.read_obj.dat;
+    gfx_obj_read(obj_no, dat, n_bytes);
+}
+
+static void rend_obj_free(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.free_obj.obj_no;
+    gfx_obj_free(obj_no);
+}
+
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     /* bool rendering = false; */
 
     while (n_cmd--) {
         switch (cmd->op) {
-        case GFX_IL_SET_TEX:
-            rend_set_tex(cmd);
+        case GFX_IL_BIND_TEX:
+            rend_bind_tex(cmd);
             break;
-        case GFX_IL_FREE_TEX:
-            rend_free_tex(cmd);
+        case GFX_IL_UNBIND_TEX:
+            rend_unbind_tex(cmd);
             break;
         case GFX_IL_BEGIN_REND:
             rend_begin_rend(cmd);
@@ -139,6 +162,18 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_DRAW_ARRAY:
             rend_draw_array(cmd);
+            break;
+        case GFX_IL_INIT_OBJ:
+            rend_obj_init(cmd);
+            break;
+        case GFX_IL_WRITE_OBJ:
+            rend_obj_write(cmd);
+            break;
+        case GFX_IL_READ_OBJ:
+            rend_obj_read(cmd);
+            break;
+        case GFX_IL_FREE_OBJ:
+            rend_obj_free(cmd);
             break;
         }
         cmd++;

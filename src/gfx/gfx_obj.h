@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,41 +20,36 @@
  *
  ******************************************************************************/
 
-#ifndef GFX_TEX_CACHE_H_
-#define GFX_TEX_CACHE_H_
+#ifndef GFX_OBJ_H_
+#define GFX_OBJ_H_
 
-#include <stdbool.h>
-#include <stdint.h>
+#include <stddef.h>
 
 /*
- * This is the gfx_thread's copy of the texture cache.  It mirrors the one
- * in the geo_buf code, and is updated every time a new geo_buf is submitted by
- * the PVR2 STARTRENDER command.
+ * An obj represents a blob of data sent to the gfx system.  It will be the
+ * underlying storage class for textures and render targets.
  */
 
-#define GFX_TEX_CACHE_SIZE 512
-#define GFX_TEX_CACHE_MASK (GFX_TEX_CACHE_SIZE - 1)
+#define GFX_OBJ_COUNT 1024
 
-struct gfx_tex {
-    int obj_handle;
-    int pix_fmt;
-    unsigned width, height;
-    bool valid;
+void gfx_obj_alloc(int handle, size_t n_bytes);
+void gfx_obj_free(int handle);
+void gfx_obj_write(int handle, void const *dat, size_t n_bytes);
+void gfx_obj_read(int handle, void *dat, size_t n_bytes);
+
+struct gfx_obj {
+    void *dat;
+    void *arg;
+    void (*on_update)(struct gfx_obj*);
+    size_t dat_len;
 };
 
 /*
- * Bind the given gfx_obj to the given texture-unit.
+ * This function should only ever be called from within the gfx code.
+ * Code outside of the gfx code should absolutely never handle a gfx_obj
+ * directly because that will cause problems in the future when I eventually
+ * create a multithreaded software renderer.
  */
-void gfx_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
-                        unsigned height, int pix_fmt);
-
-void gfx_tex_cache_unbind(unsigned tex_no);
-
-void gfx_tex_cache_evict(unsigned idx);
-
-struct gfx_tex const* gfx_tex_cache_get(unsigned idx);
-
-void gfx_tex_cache_init(void);
-void gfx_tex_cache_cleanup(void);
+struct gfx_obj *gfx_obj_get(int handle);
 
 #endif

@@ -679,7 +679,8 @@ static int cmd_tex_dump(int argc, char **argv) {
 
     if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
         void *tex_dat;
-        pvr2_tex_cache_read(&tex_dat, &meta);
+        size_t n_bytes;
+        pvr2_tex_cache_read(&tex_dat, &n_bytes, &meta);
         if (tex_dat) {
             save_tex(file, &meta, tex_dat);
 
@@ -714,7 +715,8 @@ static int cmd_tex_dump_all(int argc, char **argv) {
         struct pvr2_tex_meta meta;
         if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
             void *tex_dat;
-            pvr2_tex_cache_read(&tex_dat, &meta);
+            size_t n_bytes;
+            pvr2_tex_cache_read(&tex_dat, &n_bytes, &meta);
             if (*path_last_char == '/') {
                 snprintf(total_path, TEX_DUMP_ALL_PATH_LEN, "%stex_%03u.png",
                          dir_path, tex_no);

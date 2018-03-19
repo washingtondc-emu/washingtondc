@@ -128,7 +128,7 @@ static void render_conv_argb_1555(uint16_t *pixels, size_t n_pizels);
 
 static void opengl_render_init(void);
 static void opengl_render_cleanup(void);
-static void opengl_renderer_update_tex(unsigned tex_obj, void const* tex_dat);
+static void opengl_renderer_update_tex(unsigned tex_obj);
 static void opengl_renderer_release_tex(unsigned tex_obj);
 static void opengl_renderer_set_blend_enable(bool enable);
 static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param);
@@ -211,13 +211,17 @@ static void opengl_render_cleanup(void) {
     memset(tex_cache, 0, sizeof(tex_cache));
 }
 
-static void opengl_renderer_update_tex(unsigned tex_obj, void const *tex_dat) {
+static DEF_ERROR_INT_ATTR(max_length);
+
+static void opengl_renderer_update_tex(unsigned tex_obj) {
     struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
+    struct gfx_obj const *obj = gfx_obj_get(tex->obj_handle);
+    void const *tex_dat = obj->dat;
     GLenum format = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
         GL_RGB : GL_RGBA;
 
-    unsigned tex_w = 1 << tex->w_shift;
-    unsigned tex_h = 1 << tex->h_shift;
+    unsigned tex_w = tex->width;
+    unsigned tex_h = tex->height;
 
     glBindTexture(GL_TEXTURE_2D, tex_cache[tex_obj]);
     // TODO: maybe don't always set this to 1
@@ -231,22 +235,34 @@ static void opengl_renderer_update_tex(unsigned tex_obj, void const *tex_dat) {
      * change things to remove this mostly-unnecessary buffering...
      */
     if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444) {
-        size_t n_bytes =
-            sizeof(uint16_t) << (tex->w_shift + tex->h_shift);
+        size_t n_bytes = tex->width * tex->height * sizeof(uint16_t);
+#ifdef INVARIANTS
+        if (n_bytes > obj->dat_len) {
+            error_set_length(n_bytes);
+            error_set_max_length(obj->dat_len);
+            RAISE_ERROR(ERROR_OVERFLOW);
+        }
+#endif
         uint16_t *tex_dat_conv = (uint16_t*)malloc(n_bytes);
         if (!tex_dat_conv)
-            abort();
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
         memcpy(tex_dat_conv, tex_dat, n_bytes);
         render_conv_argb_4444(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
                      format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_4444], tex_dat_conv);
         free(tex_dat_conv);
     } else if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_1555) {
-        size_t n_bytes =
-            sizeof(uint16_t) << (tex->w_shift + tex->h_shift);
+        size_t n_bytes = tex->width * tex->height * sizeof(uint16_t);
+#ifdef INVARIANTS
+        if (n_bytes > obj->dat_len) {
+            error_set_length(n_bytes);
+            error_set_max_length(obj->dat_len);
+            RAISE_ERROR(ERROR_OVERFLOW);
+        }
+#endif
         uint16_t *tex_dat_conv = (uint16_t*)malloc(n_bytes);
         if (!tex_dat_conv)
-            abort();
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
         memcpy(tex_dat_conv, tex_dat, n_bytes);
         render_conv_argb_1555(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,

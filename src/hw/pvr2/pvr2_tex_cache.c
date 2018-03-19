@@ -28,6 +28,7 @@
 
 #include "pvr2_tex_mem.h"
 #include "pvr2_core_reg.h"
+#include "pvr2_gfx_obj.h"
 #include "mem_areas.h"
 #include "log.h"
 #include "error.h"
@@ -222,6 +223,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
     tex->meta.stride_sel = stride_sel;
     tex->meta.tex_palette_start = pal_addr;
     tex->frame_stamp_last_used = cur_frame_stamp;
+    tex->obj_no = -1;
 
     if (tex_fmt != TEX_CTRL_PIX_FMT_4_BPP_PAL &&
         tex_fmt != TEX_CTRL_PIX_FMT_8_BPP_PAL) {
@@ -442,7 +444,8 @@ static void pvr2_tex_vq_decompress(void *dst, void const *code_book,
     }
 }
 
-void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
+void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
+                         struct pvr2_tex_meta const *meta) {
     unsigned tex_w = 1 << meta->w_shift, tex_h = 1 << meta->h_shift;
 
     // TODO: better error-handling
@@ -586,8 +589,9 @@ void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
         default:
             RAISE_ERROR(ERROR_INTEGRITY);
         }
+        n_bytes = tex_size_actual * tex_w * tex_h;
         uint8_t *tex_dat_no_palette =
-            (uint8_t*)malloc(tex_size_actual * tex_w * tex_h);
+            (uint8_t*)malloc(n_bytes);
         if (!tex_dat_no_palette)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
@@ -630,8 +634,9 @@ void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
         default:
             RAISE_ERROR(ERROR_INTEGRITY);
         }
+        n_bytes = tex_size_actual * tex_w * tex_h;
         uint8_t *tex_dat_no_palette =
-            (uint8_t*)malloc(tex_size_actual * tex_w * tex_h);
+            (uint8_t*)malloc(n_bytes);
         if (!tex_dat_no_palette)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
@@ -664,6 +669,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, struct pvr2_tex_meta const *meta) {
     }
 
     *tex_dat_out = tex_dat;
+    *n_bytes_out = n_bytes;
 }
 
 void pvr2_tex_cache_xmit(void) {
@@ -678,38 +684,83 @@ void pvr2_tex_cache_xmit(void) {
             /*
              * If the texture has been written to this frame but it is not
              * actively in use then tell the gfx system to evict it from the
-             * cache by marking the valid bit as false.
+             * cache.
              */
             if (tex_in->frame_stamp_last_used != cur_frame_stamp) {
                 tex_in->state = PVR2_TEX_INVALID;
-                cmd.op = GFX_IL_FREE_TEX;
-                cmd.arg.free_tex.tex_no = idx;
+
+                cmd.op = GFX_IL_UNBIND_TEX;
+                cmd.arg.unbind_tex.tex_no = idx;
                 rend_exec_il(&cmd, 1);
+
+                cmd.op = GFX_IL_FREE_OBJ;
+                cmd.arg.free_obj.obj_no = tex_in->obj_no;
+                rend_exec_il(&cmd, 1);
+
+                pvr2_free_gfx_obj(tex_in->obj_no);
+                tex_in->obj_no = -1;
+
                 continue;
             }
 
-            cmd.op = GFX_IL_SET_TEX;
-            cmd.arg.set_tex.tex_no = idx;
-            cmd.arg.set_tex.w_shift = tex_in->meta.w_shift;
-            cmd.arg.set_tex.h_shift = tex_in->meta.h_shift;
+            if (tex_in->obj_no < 0) {
+                /*
+                 * This is a new texture; we need to create a data store,
+                 * upload the texture and bind the store to the texture object.
+                 */
+                tex_in->obj_no = pvr2_alloc_gfx_obj();
 
-            struct pvr2_tex_meta tmp = tex_in->meta;
+                void *tex_dat;
+                size_t n_bytes;
+                struct pvr2_tex_meta tmp = tex_in->meta;
+                if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+                    tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+                    tmp.pix_fmt = get_palette_tp();
+                }
+                pvr2_tex_cache_read(&tex_dat, &n_bytes, &tmp);
 
-            if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
-                tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-                tmp.pix_fmt = cmd.arg.set_tex.pix_fmt = get_palette_tp();
+                cmd.op = GFX_IL_INIT_OBJ;
+                cmd.arg.init_obj.obj_no = tex_in->obj_no;
+                cmd.arg.init_obj.n_bytes = n_bytes;
+                rend_exec_il(&cmd, 1);
+
+                cmd.op = GFX_IL_WRITE_OBJ;
+                cmd.arg.write_obj.dat = tex_dat;
+                cmd.arg.write_obj.obj_no = tex_in->obj_no;
+                cmd.arg.write_obj.n_bytes = n_bytes;
+                rend_exec_il(&cmd, 1);
+                free(tex_dat);
+
+                cmd.op = GFX_IL_BIND_TEX;
+                cmd.arg.bind_tex.gfx_obj_handle = tex_in->obj_no;
+                cmd.arg.bind_tex.tex_no = idx;
+                cmd.arg.bind_tex.pix_fmt = tmp.pix_fmt;
+                cmd.arg.bind_tex.width = 1 << tex_in->meta.w_shift;
+                cmd.arg.bind_tex.height = 1 << tex_in->meta.h_shift;
+                rend_exec_il(&cmd, 1);
             } else {
-                cmd.arg.set_tex.pix_fmt = tex_in->meta.pix_fmt;
+                /*
+                 * This is a pre-existing texture; since the data-store has
+                 * already been created and bound, all we have to do is write
+                 * to it.
+                 */
+                struct pvr2_tex_meta tmp = tex_in->meta;
+                if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+                    tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+                    tmp.pix_fmt = get_palette_tp();
+                }
+                void *tex_dat;
+                size_t n_bytes;
+                pvr2_tex_cache_read(&tex_dat, &n_bytes, &tmp);
+                cmd.op = GFX_IL_WRITE_OBJ;
+                cmd.arg.write_obj.dat = tex_dat;
+                cmd.arg.write_obj.obj_no = tex_in->obj_no;
+                cmd.arg.write_obj.n_bytes = n_bytes;
+                rend_exec_il(&cmd, 1);
+                free(tex_dat);
             }
 
-            void *tex_dat;
-            pvr2_tex_cache_read(&tex_dat, &tmp);
-            cmd.arg.set_tex.tex_dat = tex_dat;
-
-            rend_exec_il(&cmd, 1);
-
             tex_in->state = PVR2_TEX_READY;
-            free(tex_dat);
         }
     }
 }
