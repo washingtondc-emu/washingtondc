@@ -40,7 +40,17 @@ void gfx_obj_read(int handle, void *dat, size_t n_bytes);
 struct gfx_obj {
     void *dat;
     void *arg;
+
+    // called after the emulation code writes data to the object
     void (*on_update)(struct gfx_obj*);
+
+    /*
+     * called to read data out to the emulation code.
+     * implementations should output the data to out.  They may also edit the
+     * obj's data store but this is optional.
+     */
+    void (*on_read)(struct gfx_obj*, void *out, size_t n_bytes);
+
     size_t dat_len;
 };
 

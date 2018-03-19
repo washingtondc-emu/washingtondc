@@ -129,6 +129,14 @@ static void rend_obj_free(struct gfx_il_inst *cmd) {
     gfx_obj_free(obj_no);
 }
 
+static void rend_bind_render_target(struct gfx_il_inst *cmd) {
+    opengl_target_bind_obj(cmd->arg.bind_render_target.gfx_obj_handle);
+}
+
+static void rend_unbind_render_target(struct gfx_il_inst *cmd) {
+    opengl_target_unbind_obj();
+}
+
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     /* bool rendering = false; */
 
@@ -139,6 +147,12 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_UNBIND_TEX:
             rend_unbind_tex(cmd);
+            break;
+        case GFX_IL_BIND_RENDER_TARGET:
+            rend_bind_render_target(cmd);
+            break;
+        case GFX_IL_UNBIND_RENDER_TARGET:
+            rend_unbind_render_target(cmd);
             break;
         case GFX_IL_BEGIN_REND:
             rend_begin_rend(cmd);

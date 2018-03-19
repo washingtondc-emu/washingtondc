@@ -35,6 +35,18 @@ enum gfx_il {
     GFX_IL_UNBIND_TEX,
 
     /*
+     * Set a gfx_obj as the current render target.  This needs to be done
+     * *before* senidng GFX_IL_BEGIN_REND.
+     */
+    GFX_IL_BIND_RENDER_TARGET,
+
+    /*
+     * Unbind a given render target.  This cannot be done between
+     * GFX_IL_BEGIN_REND and GFX_IL_END_REND
+     */
+    GFX_IL_UNBIND_RENDER_TARGET,
+
+    /*
      * call this before sending any rendering commands (not incluiding texcache
      * updates).
      */
@@ -99,6 +111,16 @@ union gfx_il_arg {
     struct {
         unsigned tex_no;
     } unbind_tex;
+
+    // The chosen render-target must be large enough to hold the framebuffer
+    struct {
+        int gfx_obj_handle;
+    } bind_render_target;
+
+    /*
+     * GFX_IL_UNBIND_RENDER_TARGET doesn't take any arguments because only one
+     * gfx_obj can be bound as the render target at a time.
+     */
 
     struct {
         unsigned screen_width, screen_height;

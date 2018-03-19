@@ -31,6 +31,9 @@
 
 void opengl_target_init(void);
 
+void opengl_target_bind_obj(int obj_handle);
+void opengl_target_unbind_obj(void);
+
 // call this before rendering to the target
 void opengl_target_begin(unsigned width, unsigned height);
 

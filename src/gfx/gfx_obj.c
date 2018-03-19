@@ -49,7 +49,7 @@ void gfx_obj_free(int handle) {
 
 void gfx_obj_write(int handle, void const *dat, size_t n_bytes) {
     struct gfx_obj *obj = obj_array + handle;
-    if (n_bytes > obj->dat_len)
+    if (n_bytes != obj->dat_len)
         RAISE_ERROR(ERROR_OVERFLOW);
     memcpy(obj->dat, dat, n_bytes);
 
@@ -59,9 +59,12 @@ void gfx_obj_write(int handle, void const *dat, size_t n_bytes) {
 
 void gfx_obj_read(int handle, void *dat, size_t n_bytes) {
     struct gfx_obj *obj = obj_array + handle;
-    if (n_bytes > obj->dat_len)
+    if (n_bytes != obj->dat_len)
         RAISE_ERROR(ERROR_OVERFLOW);
-    memcpy(dat, obj->dat, n_bytes);
+    if (obj->on_read)
+        obj->on_read(obj, dat, n_bytes);
+    else
+        memcpy(dat, obj->dat, n_bytes);
 }
 
 struct gfx_obj *gfx_obj_get(int handle) {

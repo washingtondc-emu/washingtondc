@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 
 #include "error.h"
 #include "log.h"
+#include "gfx/gfx_obj.h"
 
 #include "opengl_target.h"
 
@@ -36,6 +37,11 @@ static GLuint fbo;
 static GLuint color_buf_tex, depth_buf_tex;
 static GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
 static unsigned fbo_width, fbo_height;
+
+static int tgt_handle = -1;
+
+static void opengl_target_obj_read(struct gfx_obj  *obj, void *out,
+                                   size_t n_bytes);
 
 void opengl_target_init(void) {
     fbo_width = fbo_height = 0;
@@ -101,6 +107,8 @@ void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
     size_t length_expect = fbo_width * fbo_height * 4 * sizeof(uint8_t);
 
     if (buf_size < length_expect) {
+        LOG_ERROR("need at least 0x%08x bytes (have 0x%08x)\n",
+                  (unsigned)length_expect, (unsigned)buf_size);
         error_set_length(buf_size);
         error_set_expected_length(length_expect);
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
@@ -113,4 +121,35 @@ void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
 
 GLuint opengl_target_get_tex(void) {
     return color_buf_tex;
+}
+
+void opengl_target_bind_obj(int obj_handle) {
+#ifdef INVARIANTS
+    if (tgt_handle >= 0)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    if (obj->on_update)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+    tgt_handle = obj_handle;
+    gfx_obj_get(tgt_handle)->on_read = opengl_target_obj_read;
+}
+
+void opengl_target_unbind_obj(void) {
+#ifdef INVARIANTS
+    if (tgt_handle < 0)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+    struct gfx_obj *obj = gfx_obj_get(tgt_handle);
+
+    opengl_target_grab_pixels(obj->dat, obj->dat_len);
+
+    obj->on_read = NULL;
+
+    tgt_handle = -1;
+}
+
+static void opengl_target_obj_read(struct gfx_obj *obj, void *out,
+                                   size_t n_bytes) {
+    opengl_target_grab_pixels(out, n_bytes);
 }

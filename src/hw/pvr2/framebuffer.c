@@ -31,17 +31,18 @@
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
 #include "hw/pvr2/pvr2_tex_cache.h"
+#include "hw/pvr2/pvr2_gfx_obj.h"
 #include "gfx/gfx.h"
+#include "gfx/gfx_il.h"
+#include "gfx/gfx_obj.h"
 #include "log.h"
 
 #include "framebuffer.h"
 
-/*
- * this is where we store the client-side version
- * of what becomes the opengl texture
- */
-static uint8_t *fb_tex_mem;
-static unsigned fb_width, fb_height;
+static DEF_ERROR_INT_ATTR(width)
+static DEF_ERROR_INT_ATTR(height)
+
+static int fb_obj_handle;
 
 static int current_fb = FRAMEBUFFER_CURRENT_VIRT;
 
@@ -49,6 +50,13 @@ static int current_fb = FRAMEBUFFER_CURRENT_VIRT;
 #define OGL_FB_H_MAX (0x3ff + 1)
 #define OGL_FB_BYTES (OGL_FB_W_MAX * OGL_FB_H_MAX * 4)
 static uint8_t ogl_fb[OGL_FB_BYTES];
+
+/*
+ * this is where we store the client-side version
+ * of what becomes the opengl texture
+ */
+static uint8_t fb_tex_mem[OGL_FB_BYTES];
+static unsigned fb_width, fb_height;
 
 /*
  * this is a simple "dumb" memcpy function that doesn't handle the framebuffer
@@ -329,10 +337,22 @@ void read_framebuffer_rgb555(uint32_t *pixels_out, uint16_t const *pixels_in,
 }
 
 void framebuffer_init(unsigned width, unsigned height) {
+    struct gfx_il_inst cmd[2];
+
+    fb_obj_handle = pvr2_alloc_gfx_obj();
+
+    cmd[0].op = GFX_IL_INIT_OBJ;
+    cmd[0].arg.init_obj.obj_no = fb_obj_handle;
+    cmd[0].arg.init_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX *
+        4 * sizeof(uint8_t);
+
+    cmd[1].op = GFX_IL_BIND_RENDER_TARGET;
+    cmd[1].arg.bind_render_target.gfx_obj_handle = fb_obj_handle;
+
+    rend_exec_il(cmd, 2);
+
     fb_width = width;
     fb_height = height;
-
-    fb_tex_mem = (uint8_t*)malloc(sizeof(uint8_t) * fb_width * fb_height * 4);
 }
 
 void framebuffer_render() {
@@ -371,11 +391,15 @@ void framebuffer_render() {
     framebuffer_sync_from_host_maybe();
 
     if (fb_width != width || fb_height != height) {
-        free(fb_tex_mem);
+        if (width > OGL_FB_W_MAX || height > OGL_FB_H_MAX) {
+            LOG_ERROR("need to increase max framebuffer dims\n");
+            error_set_width(width);
+            error_set_height(height);
+            RAISE_ERROR(ERROR_OVERFLOW);
+        }
+
         fb_width = width;
         fb_height = height;
-        fb_tex_mem =
-            (uint8_t*)malloc(sizeof(uint8_t) * fb_width * fb_height * 4);
     }
 
     switch ((fb_r_ctrl & 0xc) >> 2) {
@@ -514,7 +538,16 @@ void framebuffer_sync_from_host(void) {
     // update the framebuffer from the opengl target
 
     uint32_t fb_w_ctrl = get_fb_w_ctrl();
-    gfx_read_framebuffer(ogl_fb, sizeof(ogl_fb));
+
+    struct gfx_il_inst cmd = {
+        .op = GFX_IL_READ_OBJ,
+        .arg = { .read_obj = {
+            .dat = ogl_fb,
+            .obj_no = fb_obj_handle,
+            .n_bytes = /* sizeof(ogl_fb) */OGL_FB_W_MAX * OGL_FB_H_MAX * 4
+            } }
+    };
+    rend_exec_il(&cmd, 1);
 
     switch (fb_w_ctrl & 0x7) {
     case 0:
