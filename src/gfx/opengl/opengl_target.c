@@ -127,7 +127,7 @@ void opengl_target_bind_obj(int obj_handle) {
 #ifdef INVARIANTS
     if (tgt_handle >= 0)
         RAISE_ERROR(ERROR_INTEGRITY);
-    if (obj->on_update)
+    if (obj->on_write)
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
     tgt_handle = obj_handle;

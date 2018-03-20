@@ -215,7 +215,10 @@ static DEF_ERROR_INT_ATTR(max_length);
 
 static void opengl_renderer_update_tex(unsigned tex_obj) {
     struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
-    struct gfx_obj const *obj = gfx_obj_get(tex->obj_handle);
+    struct gfx_obj *obj = gfx_obj_get(tex->obj_handle);
+
+    gfx_obj_alloc(obj);
+
     void const *tex_dat = obj->dat;
     GLenum format = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
         GL_RGB : GL_RGBA;

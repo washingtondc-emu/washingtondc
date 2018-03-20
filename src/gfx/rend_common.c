@@ -107,7 +107,7 @@ static void rend_clear(struct gfx_il_inst *cmd) {
 static void rend_obj_init(struct gfx_il_inst *cmd) {
     int obj_no = cmd->arg.init_obj.obj_no;
     size_t n_bytes = cmd->arg.init_obj.n_bytes;
-    gfx_obj_alloc(obj_no, n_bytes);
+    gfx_obj_init(obj_no, n_bytes);
 }
 
 static void rend_obj_write(struct gfx_il_inst *cmd) {

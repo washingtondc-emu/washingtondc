@@ -24,6 +24,9 @@
 #define GFX_OBJ_H_
 
 #include <stddef.h>
+#include <stdlib.h>
+
+#include "error.h"
 
 /*
  * An obj represents a blob of data sent to the gfx system.  It will be the
@@ -32,7 +35,7 @@
 
 #define GFX_OBJ_COUNT 1024
 
-void gfx_obj_alloc(int handle, size_t n_bytes);
+void gfx_obj_init(int handle, size_t n_bytes);
 void gfx_obj_free(int handle);
 void gfx_obj_write(int handle, void const *dat, size_t n_bytes);
 void gfx_obj_read(int handle, void *dat, size_t n_bytes);
@@ -42,7 +45,7 @@ struct gfx_obj {
     void *arg;
 
     // called after the emulation code writes data to the object
-    void (*on_update)(struct gfx_obj*);
+    void (*on_write)(struct gfx_obj*, void const *in, size_t n_bytes);
 
     /*
      * called to read data out to the emulation code.
@@ -61,5 +64,14 @@ struct gfx_obj {
  * create a multithreaded software renderer.
  */
 struct gfx_obj *gfx_obj_get(int handle);
+
+// Only call this from the gfx code
+static inline void gfx_obj_alloc(struct gfx_obj *obj) {
+    if (!obj->dat) {
+        obj->dat = malloc(obj->dat_len);
+        if (!obj->dat)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+    }
+}
 
 #endif

@@ -30,13 +30,11 @@
 
 static struct gfx_obj obj_array[GFX_OBJ_COUNT];
 
-void gfx_obj_alloc(int handle, size_t n_bytes) {
+void gfx_obj_init(int handle, size_t n_bytes) {
     struct gfx_obj *obj = obj_array + handle;
     if (obj->dat_len)
         RAISE_ERROR(ERROR_INTEGRITY);
-    obj->dat = malloc(n_bytes);
-    if (!obj->dat)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    obj->dat = NULL;
     obj->dat_len = n_bytes;
 }
 
@@ -51,20 +49,26 @@ void gfx_obj_write(int handle, void const *dat, size_t n_bytes) {
     struct gfx_obj *obj = obj_array + handle;
     if (n_bytes != obj->dat_len)
         RAISE_ERROR(ERROR_OVERFLOW);
-    memcpy(obj->dat, dat, n_bytes);
 
-    if (obj->on_update)
-        obj->on_update(obj);
+    if (obj->on_write) {
+        obj->on_write(obj, dat, n_bytes);
+    } else {
+        gfx_obj_alloc(obj);
+        memcpy(obj->dat, dat, n_bytes);
+    }
 }
 
 void gfx_obj_read(int handle, void *dat, size_t n_bytes) {
     struct gfx_obj *obj = obj_array + handle;
     if (n_bytes != obj->dat_len)
         RAISE_ERROR(ERROR_OVERFLOW);
-    if (obj->on_read)
+
+    if (obj->on_read) {
         obj->on_read(obj, dat, n_bytes);
-    else
+    } else {
+        gfx_obj_alloc(obj);
         memcpy(dat, obj->dat, n_bytes);
+    }
 }
 
 struct gfx_obj *gfx_obj_get(int handle) {
