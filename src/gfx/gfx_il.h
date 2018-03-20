@@ -82,7 +82,10 @@ enum gfx_il {
 
     GFX_IL_READ_OBJ,
 
-    GFX_IL_FREE_OBJ
+    GFX_IL_FREE_OBJ,
+
+    // render data in a gfx_obj to the framebuffer
+    GFX_IL_POST_FRAMEBUFFER
 };
 
 struct gfx_rend_param {
@@ -171,6 +174,11 @@ union gfx_il_arg {
     struct {
         int obj_no;
     } free_obj;
+
+    struct {
+        int obj_handle;
+        unsigned width, height;
+    } post_framebuffer;
 };
 
 struct gfx_il_inst {

@@ -50,12 +50,6 @@ static int current_fb = FRAMEBUFFER_CURRENT_VIRT;
 #define OGL_FB_H_MAX (0x3ff + 1)
 #define OGL_FB_BYTES (OGL_FB_W_MAX * OGL_FB_H_MAX * 4)
 static uint8_t ogl_fb[OGL_FB_BYTES];
-
-/*
- * this is where we store the client-side version
- * of what becomes the opengl texture
- */
-static uint8_t fb_tex_mem[OGL_FB_BYTES];
 static unsigned fb_width, fb_height;
 
 /*
@@ -413,12 +407,12 @@ void framebuffer_render() {
         if (interlace) {
             unsigned modulus = (fb_r_size >> 20) & 0x3ff;
             uint16_t concat = (fb_r_ctrl >> 4) & 7;
-            read_framebuffer_rgb565_intl((uint32_t*)fb_tex_mem,
+            read_framebuffer_rgb565_intl((uint32_t*)ogl_fb,
                                          fb_width, fb_height >> 1,
                                          fb_r_sof1, fb_r_sof2,
                                          modulus, concat);
         } else {
-            read_framebuffer_rgb565_prog((uint32_t*)fb_tex_mem,
+            read_framebuffer_rgb565_prog((uint32_t*)ogl_fb,
                                          fb_r_sof1,
                                          fb_width, fb_height, fb_width,
                                          (fb_r_ctrl >> 4) & 7);
@@ -433,11 +427,11 @@ void framebuffer_render() {
         // 32-bit 08888 RGB
         if (interlace) {
             unsigned modulus = (fb_r_size >> 20) & 0x3ff;
-            read_framebuffer_rgb0888_intl((uint32_t*)fb_tex_mem,
+            read_framebuffer_rgb0888_intl((uint32_t*)ogl_fb,
                                           fb_width, fb_height >> 1,
                                           fb_r_sof1, fb_r_sof2, modulus);
         } else {
-            read_framebuffer_rgb0888_prog((uint32_t*)fb_tex_mem, fb_r_sof1,
+            read_framebuffer_rgb0888_prog((uint32_t*)ogl_fb, fb_r_sof1,
                                           fb_width, fb_height);
         }
         break;
@@ -446,7 +440,19 @@ void framebuffer_render() {
     LOG_DBG("passing framebuffer dimensions=(%u, %u)\n", fb_width, fb_height);
     LOG_DBG("interlacing is %s\n", interlace ? "enabled" : "disabled");
 
-    gfx_post_framebuffer((uint32_t*)fb_tex_mem, fb_width, fb_height);
+    struct gfx_il_inst cmd[2];
+
+    cmd[0].op = GFX_IL_WRITE_OBJ;
+    cmd[0].arg.write_obj.dat = ogl_fb;
+    cmd[0].arg.write_obj.obj_no = fb_obj_handle;
+    cmd[0].arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
+
+    cmd[1].op = GFX_IL_POST_FRAMEBUFFER;
+    cmd[1].arg.post_framebuffer.obj_handle = fb_obj_handle;
+    cmd[1].arg.post_framebuffer.width = fb_width;
+    cmd[1].arg.post_framebuffer.height = fb_height;
+
+    rend_exec_il(cmd, 2);
 }
 
 int framebuffer_get_current(void) {

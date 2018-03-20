@@ -137,6 +137,17 @@ static void rend_unbind_render_target(struct gfx_il_inst *cmd) {
     opengl_target_unbind_obj();
 }
 
+static void rend_post_framebuffer(struct gfx_il_inst *cmd) {
+    unsigned width = cmd->arg.post_framebuffer.width;
+    unsigned height = cmd->arg.post_framebuffer.height;
+    int obj_handle = cmd->arg.post_framebuffer.obj_handle;
+
+    struct gfx_obj *obj = gfx_obj_get(obj_handle);
+    if (obj->dat_len < width * height * sizeof(uint32_t))
+        RAISE_ERROR(ERROR_INTEGRITY);
+    gfx_post_framebuffer(obj->dat, width, height);
+}
+
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     /* bool rendering = false; */
 
@@ -188,6 +199,9 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_FREE_OBJ:
             rend_obj_free(cmd);
+            break;
+        case GFX_IL_POST_FRAMEBUFFER:
+            rend_post_framebuffer(cmd);
             break;
         }
         cmd++;
