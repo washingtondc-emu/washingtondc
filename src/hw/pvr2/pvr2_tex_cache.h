@@ -94,9 +94,6 @@ struct pvr2_tex {
     unsigned frame_stamp_last_used;
 
     enum pvr2_tex_state state;
-
-    // texture data (if the state is dirty)
-    void *dat;
 };
 
 /*
