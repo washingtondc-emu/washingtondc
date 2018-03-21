@@ -191,7 +191,7 @@ static void opengl_render_init(void) {
          * texture coordinates.  In the future I will need to determine if this
          * functionality exists in PVR2.
          */
-        glBindTexture(GL_TEXTURE_2D, tex_no);
+        glBindTexture(GL_TEXTURE_2D, tex_cache[tex_no]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glBindTexture(GL_TEXTURE_2D, 0);
