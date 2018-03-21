@@ -87,6 +87,8 @@ static void update_tex_from_obj(struct gfx_obj *obj,
     gfx_obj_alloc(obj);
     memcpy(obj->dat, in, n_bytes);
 
+    obj->state = GFX_OBJ_STATE_DAT;
+
     struct gfx_tex *tex = (struct gfx_tex*)obj->arg;
     rend_update_tex(tex - tex_cache);
 }

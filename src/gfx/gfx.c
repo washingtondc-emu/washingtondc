@@ -89,10 +89,6 @@ static void gfx_do_init(void) {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void gfx_read_framebuffer(void *dat, unsigned n_bytes) {
-    opengl_target_grab_pixels(dat, n_bytes);
-}
-
 static uint32_t *fb_screengrab;
 static size_t fb_screengrab_w, fb_screengrab_h;
 

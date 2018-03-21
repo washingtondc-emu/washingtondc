@@ -60,7 +60,14 @@ static struct shader pvr_ta_no_color_shader;
 
 static GLuint vbo, vao;
 
-static GLuint tex_cache[PVR2_TEX_CACHE_SIZE];
+struct obj_tex_meta {
+    unsigned width, height;
+};
+
+// one texture object for each gfx_obj
+static GLuint obj_tex_array[GFX_OBJ_COUNT];
+
+static struct obj_tex_meta obj_tex_meta_array[GFX_OBJ_COUNT];
 
 static struct gfx_cfg rend_cfg;
 
@@ -179,10 +186,12 @@ static void opengl_render_init(void) {
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
-    glGenTextures(PVR2_TEX_CACHE_SIZE, tex_cache);
+    glGenTextures(GFX_OBJ_COUNT, obj_tex_array);
+
+    memset(obj_tex_meta_array, 0, sizeof(obj_tex_meta_array));
 
     unsigned tex_no;
-    for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
+    for (tex_no = 0; tex_no < GFX_OBJ_COUNT; tex_no++) {
         /*
          * unconditionally set the texture wrapping mode to repeat.
          *
@@ -191,7 +200,7 @@ static void opengl_render_init(void) {
          * texture coordinates.  In the future I will need to determine if this
          * functionality exists in PVR2.
          */
-        glBindTexture(GL_TEXTURE_2D, tex_cache[tex_no]);
+        glBindTexture(GL_TEXTURE_2D, obj_tex_array[tex_no]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -199,7 +208,7 @@ static void opengl_render_init(void) {
 }
 
 static void opengl_render_cleanup(void) {
-    glDeleteTextures(PVR2_TEX_CACHE_SIZE, tex_cache);
+    glDeleteTextures(GFX_OBJ_COUNT, obj_tex_array);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
     shader_cleanup(&pvr_ta_no_color_shader);
@@ -208,7 +217,7 @@ static void opengl_render_cleanup(void) {
 
     vao = 0;
     vbo = 0;
-    memset(tex_cache, 0, sizeof(tex_cache));
+    memset(obj_tex_array, 0, sizeof(obj_tex_array));
 }
 
 static DEF_ERROR_INT_ATTR(max_length);
@@ -216,6 +225,10 @@ static DEF_ERROR_INT_ATTR(max_length);
 static void opengl_renderer_update_tex(unsigned tex_obj) {
     struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
     struct gfx_obj *obj = gfx_obj_get(tex->obj_handle);
+
+    // nothing to do here
+    if (obj->state & GFX_OBJ_STATE_TEX)
+        return;
 
     gfx_obj_alloc(obj);
 
@@ -226,7 +239,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
     unsigned tex_w = tex->width;
     unsigned tex_h = tex->height;
 
-    glBindTexture(GL_TEXTURE_2D, tex_cache[tex_obj]);
+    glBindTexture(GL_TEXTURE_2D, obj_tex_array[tex->obj_handle]);
     // TODO: maybe don't always set this to 1
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -253,6 +266,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
         render_conv_argb_4444(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
                      format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_4444], tex_dat_conv);
+        opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         free(tex_dat_conv);
     } else if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_1555) {
         size_t n_bytes = tex->width * tex->height * sizeof(uint16_t);
@@ -270,11 +284,14 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
         render_conv_argb_1555(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
                      format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_1555], tex_dat_conv);
+        opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         free(tex_dat_conv);
     } else {
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
                      format, tex_formats[tex->pix_fmt], tex_dat);
+        opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
     }
+    obj->state |= GFX_OBJ_STATE_TEX;
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -330,7 +347,8 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
         glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
 
         if (gfx_tex_cache_get(param->tex_idx)->valid) {
-            glBindTexture(GL_TEXTURE_2D, tex_cache[param->tex_idx]);
+            int obj_handle = gfx_tex_cache_get(param->tex_idx)->obj_handle;
+            glBindTexture(GL_TEXTURE_2D, obj_tex_array[obj_handle]);
         } else {
             LOG_WARN("WARNING: attempt to bind invalid texture %u\n",
                      (unsigned)param->tex_idx);
@@ -503,4 +521,22 @@ static void opengl_renderer_set_clip_range(float new_clip_min,
                                            float new_clip_max) {
     clip_min = new_clip_min;
     clip_max = new_clip_max;
+}
+
+GLuint opengl_renderer_tex(unsigned obj_no) {
+    return obj_tex_array[obj_no];
+}
+
+unsigned opengl_renderer_tex_get_width(unsigned obj_no) {
+    return obj_tex_meta_array[obj_no].width;
+}
+
+unsigned opengl_renderer_tex_get_height(unsigned obj_no) {
+    return obj_tex_meta_array[obj_no].height;
+}
+
+void opengl_renderer_tex_set_dims(unsigned obj_no,
+                                  unsigned width, unsigned height) {
+    obj_tex_meta_array[obj_no].width = width;
+    obj_tex_meta_array[obj_no].height = height;
 }

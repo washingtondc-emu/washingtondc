@@ -40,6 +40,13 @@ void gfx_obj_free(int handle);
 void gfx_obj_write(int handle, void const *dat, size_t n_bytes);
 void gfx_obj_read(int handle, void *dat, size_t n_bytes);
 
+enum gfx_obj_state {
+    GFX_OBJ_STATE_INVALID = 0,
+    GFX_OBJ_STATE_DAT = 1,
+    GFX_OBJ_STATE_TEX = 2,
+    GFX_OBJ_STATE_TEX_AND_DAT = 3
+};
+
 struct gfx_obj {
     void *dat;
     void *arg;
@@ -55,6 +62,8 @@ struct gfx_obj {
     void (*on_read)(struct gfx_obj*, void *out, size_t n_bytes);
 
     size_t dat_len;
+
+    enum gfx_obj_state state;
 };
 
 /*

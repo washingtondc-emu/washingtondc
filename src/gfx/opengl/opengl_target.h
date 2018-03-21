@@ -40,14 +40,6 @@ void opengl_target_begin(unsigned width, unsigned height);
 // call this when done rendering to the target
 void opengl_target_end(void);
 
-/*
- * read pixels from OpenGL's framebuffer.
- * out must be at least (width*height*4) bytes
- */
-void opengl_target_grab_pixels(void *out, GLsizei buf_size);
-
-GLuint opengl_target_get_tex(void);
-
 void opengl_target_render_triangles(float *verts, unsigned n_verts);
 
 #endif

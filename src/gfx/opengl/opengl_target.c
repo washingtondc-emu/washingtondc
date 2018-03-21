@@ -22,6 +22,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -30,11 +31,12 @@
 #include "error.h"
 #include "log.h"
 #include "gfx/gfx_obj.h"
+#include "gfx/opengl/opengl_renderer.h"
 
 #include "opengl_target.h"
 
 static GLuint fbo;
-static GLuint color_buf_tex, depth_buf_tex;
+static GLuint depth_buf_tex;
 static GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
 static unsigned fbo_width, fbo_height;
 
@@ -42,15 +44,35 @@ static int tgt_handle = -1;
 
 static void opengl_target_obj_read(struct gfx_obj  *obj, void *out,
                                    size_t n_bytes);
+static void opengl_target_grab_pixels(void *out, GLsizei buf_size);
 
 void opengl_target_init(void) {
     fbo_width = fbo_height = 0;
+    tgt_handle = -1;
     glGenFramebuffers(1, &fbo);
-    glGenTextures(1, &color_buf_tex);
     glGenTextures(1, &depth_buf_tex);
 }
 
 void opengl_target_begin(unsigned width, unsigned height) {
+    if (tgt_handle < 0) {
+        LOG_ERROR("%s - no rendering target is bound\n", __func__);
+        return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    GLuint color_buf_tex = opengl_renderer_tex(tgt_handle);
+
+    if (opengl_renderer_tex_get_width(tgt_handle) != width ||
+        opengl_renderer_tex_get_height(tgt_handle) != height) {
+        glBindTexture(GL_TEXTURE_2D, color_buf_tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+                     GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        opengl_renderer_tex_set_dims(tgt_handle, width, height);
+    }
+
     if (width != fbo_width || height != fbo_height) {
         // change texture dimensions
         // TODO: is all of this necessary, or just the glTexImage2D stuff?
@@ -58,31 +80,19 @@ void opengl_target_begin(unsigned width, unsigned height) {
         fbo_width = width;
         fbo_height = height;
 
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-        glBindTexture(GL_TEXTURE_2D, color_buf_tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
-                     GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
         glBindTexture(GL_TEXTURE_2D, depth_buf_tex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0,
                      GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-        glBindTexture(GL_TEXTURE_2D, 0);
-
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                GL_TEXTURE_2D, color_buf_tex, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                                GL_TEXTURE_2D, depth_buf_tex, 0);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, fbo_width, fbo_height);
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glBindTexture(GL_TEXTURE_2D, color_buf_tex);
     glDrawBuffers(1, &draw_buffer);
 
@@ -90,20 +100,24 @@ void opengl_target_begin(unsigned width, unsigned height) {
         LOG_ERROR("%s ERROR: framebuffer status is not complete\n", __func__);
         abort();
     }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glViewport(0, 0, fbo_width, fbo_height);
 }
 
 void opengl_target_end(void) {
+    if (tgt_handle < 0) {
+        LOG_ERROR("%s ERROR: no target bound\n", __func__);
+        return;
+    }
+
     static GLenum back_buffer = GL_BACK;
     glDrawBuffers(1, &back_buffer);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // or should i do this in opengl_target_end ?
+    gfx_obj_get(tgt_handle)->state = GFX_OBJ_STATE_TEX;
 }
 
-void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
+static void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
     size_t length_expect = fbo_width * fbo_height * 4 * sizeof(uint8_t);
 
     if (buf_size < length_expect) {
@@ -114,24 +128,24 @@ void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
+    GLuint color_buf_tex = opengl_renderer_tex(tgt_handle);
     glBindTexture(GL_TEXTURE_2D, color_buf_tex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, out);
     glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-GLuint opengl_target_get_tex(void) {
-    return color_buf_tex;
 }
 
 void opengl_target_bind_obj(int obj_handle) {
 #ifdef INVARIANTS
     if (tgt_handle >= 0)
         RAISE_ERROR(ERROR_INTEGRITY);
+    struct gfx_obj *obj = gfx_obj_get(obj_handle);
     if (obj->on_write)
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
     tgt_handle = obj_handle;
     gfx_obj_get(tgt_handle)->on_read = opengl_target_obj_read;
+
+    // TODO: should I set TEXTURE_MIN_FILTER and TEXTURE_MAG_FILTER here?
 }
 
 void opengl_target_unbind_obj(void) {
@@ -142,7 +156,9 @@ void opengl_target_unbind_obj(void) {
 
     struct gfx_obj *obj = gfx_obj_get(tgt_handle);
 
-    opengl_target_grab_pixels(obj->dat, obj->dat_len);
+    gfx_obj_alloc(obj);
+    if (gfx_obj_get(tgt_handle)->state == GFX_OBJ_STATE_TEX)
+        opengl_target_grab_pixels(obj->dat, obj->dat_len);
 
     obj->on_read = NULL;
 
@@ -151,5 +167,10 @@ void opengl_target_unbind_obj(void) {
 
 static void opengl_target_obj_read(struct gfx_obj *obj, void *out,
                                    size_t n_bytes) {
-    opengl_target_grab_pixels(out, n_bytes);
+    if (gfx_obj_get(tgt_handle)->state == GFX_OBJ_STATE_TEX) {
+        opengl_target_grab_pixels(out, n_bytes);
+    } else {
+        gfx_obj_alloc(obj);
+        memcpy(out, obj->dat, n_bytes);
+    }
 }

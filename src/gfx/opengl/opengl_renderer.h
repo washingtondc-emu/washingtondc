@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,8 +23,18 @@
 #ifndef OPENGL_RENDERER_H_
 #define OPENGL_RENDERER_H_
 
+#include <GL/gl.h>
+
 #include "gfx/rend_common.h"
 
 extern struct rend_if const opengl_rend_if;
+
+GLuint opengl_renderer_tex(unsigned obj_no);
+
+unsigned opengl_renderer_tex_get_width(unsigned obj_no);
+unsigned opengl_renderer_tex_get_height(unsigned obj_no);
+
+void opengl_renderer_tex_set_dims(unsigned obj_no,
+                                  unsigned width, unsigned height);
 
 #endif

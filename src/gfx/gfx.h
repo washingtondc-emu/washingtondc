@@ -114,12 +114,6 @@ void gfx_cleanup(void);
 // refresh the window
 void gfx_expose(void);
 
-/*
- * read OpenGL's view of the framebuffer into dat.  dat must be at least
- * (width*height*4) bytes.
- */
-void gfx_read_framebuffer(void *dat, unsigned n_bytes);
-
 void gfx_post_framebuffer(uint32_t const *fb_new,
                           unsigned fb_new_width,
                           unsigned fb_new_height);

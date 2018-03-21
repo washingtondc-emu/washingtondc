@@ -36,6 +36,7 @@ void gfx_obj_init(int handle, size_t n_bytes) {
         RAISE_ERROR(ERROR_INTEGRITY);
     obj->dat = NULL;
     obj->dat_len = n_bytes;
+    obj->state = GFX_OBJ_STATE_DAT;
 }
 
 void gfx_obj_free(int handle) {
@@ -55,6 +56,7 @@ void gfx_obj_write(int handle, void const *dat, size_t n_bytes) {
     } else {
         gfx_obj_alloc(obj);
         memcpy(obj->dat, dat, n_bytes);
+        obj->state = GFX_OBJ_STATE_DAT;
     }
 }
 
