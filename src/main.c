@@ -250,9 +250,9 @@ int main(int argc, char **argv) {
 
     dreamcast_init(enable_cmd_tcp);
 
-    framebuffer_init(640, 480);
     win_init(640, 480, title_content);
     gfx_init(640, 480);
+    framebuffer_init(640, 480);
     io_thread_launch();
 
     config_set_enable_cmd_tcp(enable_cmd_tcp);
