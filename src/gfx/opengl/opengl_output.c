@@ -33,8 +33,10 @@
 
 #include "glfw/window.h"
 #include "opengl_output.h"
+#include "opengl_renderer.h"
 #include "shader.h"
 #include "gfx/gfx.h"
+#include "gfx/gfx_obj.h"
 #include "gfx/opengl/font/font.h"
 #include "overlay.h"
 #include "log.h"
@@ -77,13 +79,13 @@ GLuint fb_quad_idx[FB_QUAD_IDX_COUNT] = {
  * The tex_obj, on the other hand, is modified frequently, as it is OpenGL's
  * view of our framebuffer.
  */
-struct fb_poly {
+static struct fb_poly {
     GLuint vbo; // vertex buffer object
     GLuint vao; // vertex array object
     GLuint ebo; // element buffer object
-
-    GLuint tex_obj; // texture object
 } fb_poly;
+
+static int bound_obj_handle;
 
 static GLfloat const trans_mat[16] = {
     1.0f, 0.0f, 0.0f, 0.0f,
@@ -99,7 +101,7 @@ static GLfloat const tex_mat[9] = {
 };
 
 static void
-opengl_video_update_framebuffer(uint32_t const *fb_read,
+opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_width,
                                 unsigned fb_read_height);
 
@@ -115,25 +117,35 @@ void opengl_video_output_cleanup() {
     // TODO cleanup OpenGL stuff
 }
 
-void opengl_video_new_framebuffer(uint32_t const *fb_new,
+void opengl_video_new_framebuffer(int obj_handle,
                                   unsigned fb_new_width,
                                   unsigned fb_new_height) {
-    opengl_video_update_framebuffer(fb_new, fb_new_width, fb_new_height);
+    opengl_video_update_framebuffer(obj_handle, fb_new_width, fb_new_height);
     opengl_video_present();
     win_update();
 }
 
 static void
-opengl_video_update_framebuffer(uint32_t const *fb_read,
+opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_width,
                                 unsigned fb_read_height) {
-    if (!fb_read)
+    if (obj_handle < 0)
         return;
 
-    glBindTexture(GL_TEXTURE_2D, fb_poly.tex_obj);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_read_width, fb_read_height, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, fb_read);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    struct gfx_obj *obj = gfx_obj_get(obj_handle);
+
+    if (!(obj->state & GFX_OBJ_STATE_TEX)) {
+        GLuint tex_obj = opengl_renderer_tex(obj_handle);
+        if (obj->dat_len < fb_read_width * fb_read_height * sizeof(uint32_t))
+            RAISE_ERROR(ERROR_INTEGRITY);
+
+        glBindTexture(GL_TEXTURE_2D, tex_obj);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_read_width, fb_read_height, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, obj->dat);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    bound_obj_handle = obj_handle;
 }
 
 void opengl_video_present() {
@@ -144,7 +156,7 @@ void opengl_video_present() {
 
     glViewport(0, 0, 640, 480); // TODO: don't hardcode
     glUseProgram(fb_shader.shader_prog_obj);
-    glBindTexture(GL_TEXTURE_2D, fb_poly.tex_obj);
+    glBindTexture(GL_TEXTURE_2D, opengl_renderer_tex(bound_obj_handle));
     glUniform1i(glGetUniformLocation(fb_shader.shader_prog_obj, "fb_tex"), 0);
     glUniformMatrix4fv(OUTPUT_SLOT_TRANS_MAT, 1, GL_TRUE, trans_mat);
     glUniformMatrix3fv(OUTPUT_SLOT_TEX_MAT, 1, GL_TRUE, tex_mat);
@@ -160,7 +172,7 @@ void opengl_video_present() {
 }
 
 static void init_poly() {
-    GLuint vbo, vao, ebo, tex_obj;
+    GLuint vbo, vao, ebo;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ebo);
@@ -185,17 +197,7 @@ static void init_poly() {
 
     glBindVertexArray(0);
 
-    // create texture object
-    glGenTextures(1, &tex_obj);
-    glBindTexture(GL_TEXTURE_2D, tex_obj);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
     fb_poly.vbo = vbo;
     fb_poly.vao = vao;
     fb_poly.ebo = ebo;
-    fb_poly.tex_obj = tex_obj;
 }

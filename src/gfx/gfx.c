@@ -53,7 +53,9 @@ static unsigned frame_counter;
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
 static void gfx_do_init(void);
 
+#if 0
 static void gfx_auto_screenshot(void);
+#endif
 
 void gfx_init(unsigned width, unsigned height) {
     win_width = width;
@@ -92,11 +94,13 @@ static void gfx_do_init(void) {
 static uint32_t *fb_screengrab;
 static size_t fb_screengrab_w, fb_screengrab_h;
 
-void gfx_post_framebuffer(uint32_t const *fb_new,
+void gfx_post_framebuffer(int obj_handle,
                           unsigned fb_new_width,
                           unsigned fb_new_height) {
-    opengl_video_new_framebuffer(fb_new, fb_new_width, fb_new_height);
+    opengl_video_new_framebuffer(obj_handle, fb_new_width, fb_new_height);
 
+    // TODO: restore this functionality
+#if 0
     // save a copy of fb_new for screengrabs
     if ((fb_new_width * fb_new_height) != (fb_screengrab_w * fb_screengrab_h)) {
         fb_screengrab_w = fb_new_width;
@@ -118,6 +122,7 @@ void gfx_post_framebuffer(uint32_t const *fb_new,
     memcpy(fb_screengrab, fb_new, fb_screengrab_w * fb_screengrab_h * 4);
     if (config_get_enable_auto_screenshot())
         gfx_auto_screenshot();
+#endif
     frame_counter++;
 }
 
@@ -235,6 +240,7 @@ int gfx_save_screenshot(char const *path) {
     return err_val;
 }
 
+#if 0
 #define AUTO_SCREEN_PATH_MAX 128
 static void gfx_auto_screenshot(void) {
     static char path[AUTO_SCREEN_PATH_MAX];
@@ -249,3 +255,4 @@ static void gfx_auto_screenshot(void) {
     LOG_INFO("saving a screenshot to \"%s\"\n", path);
     gfx_save_screenshot(path);
 }
+#endif

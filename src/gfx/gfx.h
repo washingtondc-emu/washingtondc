@@ -114,7 +114,7 @@ void gfx_cleanup(void);
 // refresh the window
 void gfx_expose(void);
 
-void gfx_post_framebuffer(uint32_t const *fb_new,
+void gfx_post_framebuffer(int obj_handle,
                           unsigned fb_new_width,
                           unsigned fb_new_height);
 

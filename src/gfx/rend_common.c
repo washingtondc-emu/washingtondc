@@ -142,10 +142,7 @@ static void rend_post_framebuffer(struct gfx_il_inst *cmd) {
     unsigned height = cmd->arg.post_framebuffer.height;
     int obj_handle = cmd->arg.post_framebuffer.obj_handle;
 
-    struct gfx_obj *obj = gfx_obj_get(obj_handle);
-    if (obj->dat_len < width * height * sizeof(uint32_t))
-        RAISE_ERROR(ERROR_INTEGRITY);
-    gfx_post_framebuffer(obj->dat, width, height);
+    gfx_post_framebuffer(obj_handle, width, height);
 }
 
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
