@@ -141,6 +141,21 @@ static unsigned tex_twiddle(unsigned x, unsigned y, unsigned w_shift, unsigned h
     return twid_idx;
 }
 
+void pvr2_tex_cache_init(void) {
+    unsigned idx;
+    for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
+        memset(tex_cache + idx, 0, sizeof(tex_cache[idx]));
+        tex_cache[idx].obj_no = -1;
+    }
+}
+
+void pvr2_tex_cache_cleanup(void) {
+    unsigned idx;
+    for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++)
+        if (tex_cache[idx].obj_no >= 0)
+            pvr2_free_gfx_obj(tex_cache[idx].obj_no);
+}
+
 struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, uint32_t pal_addr,
                                      unsigned w_shift, unsigned h_shift,
                                      int tex_fmt, bool twiddled,
@@ -210,6 +225,14 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
         } else {
             LOG_ERROR("ERROR: TEXTURE CACHE OVERFLOW\n");
             return NULL;
+        }
+
+        if (tex->obj_no >= 0) {
+            struct gfx_il_inst cmd;
+            cmd.op = GFX_IL_FREE_OBJ;
+            cmd.arg.free_obj.obj_no = tex->obj_no;
+            rend_exec_il(&cmd, 1);
+            pvr2_free_gfx_obj(tex->obj_no);
         }
     }
 

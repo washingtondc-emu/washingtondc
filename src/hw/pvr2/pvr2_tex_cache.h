@@ -139,4 +139,7 @@ int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx);
 void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
                          struct pvr2_tex_meta const *meta);
 
+void pvr2_tex_cache_init(void);
+void pvr2_tex_cache_cleanup(void);
+
 #endif
