@@ -42,15 +42,45 @@
 static DEF_ERROR_INT_ATTR(width)
 static DEF_ERROR_INT_ATTR(height)
 
-static int fb_obj_handle;
+/* static int fb_obj_handle; */
 
-static int current_fb = FRAMEBUFFER_CURRENT_VIRT;
+enum {
+    // the current framebuffer is the one in PVR2 texture memory
+    FRAMEBUFFER_CURRENT_VIRT,
+
+    // the current framebuffer is the one on the GPU
+    FRAMEBUFFER_CURRENT_HOST
+};
+
+/* static int current_fb = FRAMEBUFFER_CURRENT_VIRT; */
 
 #define OGL_FB_W_MAX (0x3ff + 1)
 #define OGL_FB_H_MAX (0x3ff + 1)
 #define OGL_FB_BYTES (OGL_FB_W_MAX * OGL_FB_H_MAX * 4)
 static uint8_t ogl_fb[OGL_FB_BYTES];
 static unsigned fb_width, fb_height;
+static unsigned stamp;
+
+enum fb_pix_fmt {
+    FB_PIX_FMT_RGB_555,
+    FB_PIX_FMT_RGB_565,
+    FB_PIX_FMT_RGB_888,
+    FB_PIX_FMT_0RGB_0888
+};
+
+#define FB_HEAP_SIZE 8
+struct framebuffer {
+    int obj_handle;
+    unsigned fb_width, fb_height;
+    /* enum fb_pix_fmt fmt; */
+    uint32_t addr_first/* , addr_last */;
+    /* bool interlaced; */
+    unsigned stamp;
+    bool valid;
+    bool vert_flip;
+};
+
+static struct framebuffer fb_heap[FB_HEAP_SIZE];
 
 /*
  * this is a simple "dumb" memcpy function that doesn't handle the framebuffer
@@ -143,6 +173,8 @@ conv_rgb0888_to_rgba8888(uint32_t *pixels_out,
         pixels_out[idx] = (255 << 24) | (b << 16) | (g << 8) | r;
     }
 }
+
+static int pick_fb(unsigned width, unsigned height, uint32_t addr);
 
 void read_framebuffer_rgb565_prog(uint32_t *pixels_out, addr32_t start_addr,
                                   unsigned width, unsigned height, unsigned stride,
@@ -333,20 +365,31 @@ void read_framebuffer_rgb555(uint32_t *pixels_out, uint16_t const *pixels_in,
 void framebuffer_init(unsigned width, unsigned height) {
     struct gfx_il_inst cmd[2];
 
-    fb_obj_handle = pvr2_alloc_gfx_obj();
+    /* fb_obj_handle = pvr2_alloc_gfx_obj(); */
 
-    cmd[0].op = GFX_IL_INIT_OBJ;
-    cmd[0].arg.init_obj.obj_no = fb_obj_handle;
-    cmd[0].arg.init_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX *
-        4 * sizeof(uint8_t);
+    int fb_no;
+    for (fb_no = 0; fb_no < FB_HEAP_SIZE; fb_no++) {
+        fb_heap[fb_no].obj_handle = pvr2_alloc_gfx_obj();
 
-    cmd[1].op = GFX_IL_BIND_RENDER_TARGET;
-    cmd[1].arg.bind_render_target.gfx_obj_handle = fb_obj_handle;
+        cmd[0].op = GFX_IL_INIT_OBJ;
+        cmd[0].arg.init_obj.obj_no = fb_heap[fb_no].obj_handle;
+        cmd[0].arg.init_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX *
+            4 * sizeof(uint8_t);
 
-    rend_exec_il(cmd, 2);
+        rend_exec_il(cmd, 1);
+    }
+    /* cmd[0].op = GFX_IL_INIT_OBJ; */
+    /* cmd[0].arg.init_obj.obj_no = fb_obj_handle; */
+    /* cmd[0].arg.init_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * */
+    /*     4 * sizeof(uint8_t); */
 
-    fb_width = width;
-    fb_height = height;
+    /* cmd[1].op = GFX_IL_BIND_RENDER_TARGET; */
+    /* cmd[1].arg.bind_render_target.gfx_obj_handle = fb_obj_handle; */
+
+    /* rend_exec_il(cmd, 2); */
+
+    /* fb_width = width; */
+    /* fb_height = height; */
 }
 
 void framebuffer_render() {
@@ -367,6 +410,19 @@ void framebuffer_render() {
         // the screen look corrupted?
         return;
     }
+
+    struct gfx_il_inst cmd;
+
+    int fb_idx;
+    for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
+        struct framebuffer *fb = fb_heap + fb_idx;
+        if (fb->fb_width == width &&
+            fb->fb_height == height &&
+            fb->addr_first == fb_r_sof1) {
+            goto submit_the_fb;
+        }
+    }
+    fb_idx = pick_fb(width, height, fb_r_sof1);
 
     switch ((fb_r_ctrl & 0xc) >> 2) {
     case 0:
@@ -440,25 +496,31 @@ void framebuffer_render() {
     LOG_DBG("passing framebuffer dimensions=(%u, %u)\n", fb_width, fb_height);
     LOG_DBG("interlacing is %s\n", interlace ? "enabled" : "disabled");
 
-    struct gfx_il_inst cmd[2];
+    fb_heap[fb_idx].valid = true;
+    fb_heap[fb_idx].vert_flip = true;
+    fb_heap[fb_idx].fb_width = width;
+    fb_heap[fb_idx].fb_height = height;
+    fb_heap[fb_idx].addr_first = fb_r_sof1;
+    fb_heap[fb_idx].stamp = stamp++;
 
-    cmd[0].op = GFX_IL_WRITE_OBJ;
-    cmd[0].arg.write_obj.dat = ogl_fb;
-    cmd[0].arg.write_obj.obj_no = fb_obj_handle;
-    cmd[0].arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
+    cmd.op = GFX_IL_WRITE_OBJ;
+    cmd.arg.write_obj.dat = ogl_fb;
+    cmd.arg.write_obj.obj_no = fb_heap[fb_idx].obj_handle;
+    cmd.arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
 
-    cmd[1].op = GFX_IL_POST_FRAMEBUFFER;
-    cmd[1].arg.post_framebuffer.obj_handle = fb_obj_handle;
-    cmd[1].arg.post_framebuffer.width = fb_width;
-    cmd[1].arg.post_framebuffer.height = fb_height;
+    rend_exec_il(&cmd, 1);
 
-    rend_exec_il(cmd, 2);
+submit_the_fb:
+    cmd.op = GFX_IL_POST_FRAMEBUFFER;
+    cmd.arg.post_framebuffer.obj_handle = fb_heap[fb_idx].obj_handle;
+    cmd.arg.post_framebuffer.width = fb_heap[fb_idx].fb_width;
+    cmd.arg.post_framebuffer.height = fb_heap[fb_idx].fb_height;
+    cmd.arg.post_framebuffer.vert_flip = fb_heap[fb_idx].vert_flip;
+
+    rend_exec_il(&cmd, 1);
 }
 
-int framebuffer_get_current(void) {
-    return current_fb;
-}
-
+__attribute__((unused))
 static void framebuffer_sync_from_host_0555_krgb(void) {
     // TODO: this is almost certainly not the correct way to get the screen
     // dimensions as they are seen by PVR
@@ -497,6 +559,7 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
     }
 }
 
+__attribute__((unused))
 static void framebuffer_sync_from_host_0565_krgb(void) {
     unsigned tile_w = get_glob_tile_clip_x() << 5;
     unsigned tile_h = get_glob_tile_clip_y() << 5;
@@ -541,6 +604,9 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
 }
 
 void framebuffer_sync_from_host(void) {
+
+
+#if 0
     // update the framebuffer from the opengl target
 
     uint32_t fb_w_ctrl = get_fb_w_ctrl();
@@ -595,15 +661,16 @@ void framebuffer_sync_from_host(void) {
     }
 
     current_fb = FRAMEBUFFER_CURRENT_VIRT;
+#endif
 }
 
 void framebuffer_sync_from_host_maybe(void) {
-    if (current_fb == FRAMEBUFFER_CURRENT_HOST)
-        framebuffer_sync_from_host();
+    /* if (current_fb == FRAMEBUFFER_CURRENT_HOST) */
+    /*     framebuffer_sync_from_host(); */
 }
 
 void framebuffer_set_current_host(void) {
-    current_fb = FRAMEBUFFER_CURRENT_HOST;
+    /* current_fb = FRAMEBUFFER_CURRENT_HOST; */
 }
 
 /*
@@ -658,4 +725,64 @@ static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len) {
      */
     if (tex_mem_ptr == pvr2_tex64_mem)
         pvr2_tex_cache_notify_write(offs + ADDR_TEX64_FIRST, len);
+}
+
+static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
+    int first_invalid = -1;
+    int idx;
+    int oldest_stamp = stamp;
+    int oldest_stamp_idx = -1;
+    for (idx = 0; idx < FB_HEAP_SIZE; idx++) {
+        if (fb_heap[idx].valid) {
+            if (fb_heap[idx].fb_width == width &&
+                fb_heap[idx].fb_height == height &&
+                fb_heap[idx].addr_first == addr) {
+                break;
+            }
+            if (fb_heap[idx].stamp <= oldest_stamp) {
+                oldest_stamp = fb_heap[idx].stamp;
+                oldest_stamp_idx = idx;
+            }
+        } else if (first_invalid < 0) {
+            first_invalid = idx;
+        }
+    }
+
+    // If there are no unused framebuffers
+    if (idx == FB_HEAP_SIZE) {
+        if (first_invalid >= 0) {
+            idx = first_invalid;
+        } else {
+            idx = oldest_stamp_idx;
+        }
+
+        /*
+         * TODO: sync the framebuffer to memory here (since it's about to get
+         * overwritten)
+         */
+    }
+
+    return idx;
+}
+
+void framebuffer_set_render_target(void) {
+    // TODO: this is almost certainly not the correct way to get the screen
+    // dimensions as they are seen by PVR
+    unsigned width = (get_fb_r_size() & 0x3ff) + 1;
+    unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
+    uint32_t addr = get_fb_w_sof1();
+
+    int idx = pick_fb(width, height, addr);
+
+    fb_heap[idx].valid = true;
+    fb_heap[idx].vert_flip = false;
+    fb_heap[idx].fb_width = width;
+    fb_heap[idx].fb_height = height;
+    fb_heap[idx].addr_first = addr;
+    fb_heap[idx].stamp = stamp++;
+
+    struct gfx_il_inst cmd;
+    cmd.op = GFX_IL_BIND_RENDER_TARGET;
+    cmd.arg.bind_render_target.gfx_obj_handle = fb_heap[idx].obj_handle;
+    rend_exec_il(&cmd, 1);
 }

@@ -141,8 +141,9 @@ static void rend_post_framebuffer(struct gfx_il_inst *cmd) {
     unsigned width = cmd->arg.post_framebuffer.width;
     unsigned height = cmd->arg.post_framebuffer.height;
     int obj_handle = cmd->arg.post_framebuffer.obj_handle;
+    bool do_flip = cmd->arg.post_framebuffer.vert_flip;
 
-    gfx_post_framebuffer(obj_handle, width, height);
+    gfx_post_framebuffer(obj_handle, width, height, do_flip);
 }
 
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {

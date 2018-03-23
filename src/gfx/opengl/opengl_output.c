@@ -54,17 +54,11 @@ static struct shader fb_shader;
 #define FB_VERT_LEN 5
 #define FB_VERT_COUNT 4
 static GLfloat fb_quad_verts[FB_VERT_LEN * FB_VERT_COUNT] = {
-    /*
-     * it is not a mistake that the texture-coordinates are upside-down
-     * this is because dreamcast puts the origin at upper-left corner,
-     * but opengl textures put the origin at the lower-left corner
-     */
-
     // position            // texture coordinates
-    -1.0f, -1.0f, 0.0f,    0.0f, 1.0f,
-    -1.0f,  1.0f, 0.0f,    0.0f, 0.0f,
-     1.0f,  1.0f, 0.0f,    1.0f, 0.0f,
-     1.0f, -1.0f, 0.0f,    1.0f, 1.0f
+    -1.0f,  1.0f, 0.0f,    0.0f, 1.0f,
+    -1.0f, -1.0f, 0.0f,    0.0f, 0.0f,
+     1.0f, -1.0f, 0.0f,    1.0f, 0.0f,
+     1.0f,  1.0f, 0.0f,    1.0f, 1.0f
 };
 
 #define FB_QUAD_IDX_COUNT 4
@@ -87,7 +81,7 @@ static struct fb_poly {
 
 static int bound_obj_handle;
 
-static GLfloat const trans_mat[16] = {
+static GLfloat trans_mat[16] = {
     1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 1.0f, 0.0f,
@@ -99,6 +93,8 @@ static GLfloat const tex_mat[9] = {
     0.0f, 1.0f, 0.0f,
     0.0f, 0.0f, 1.0f
 };
+
+static void set_flip(bool flip);
 
 static void
 opengl_video_update_framebuffer(int obj_handle,
@@ -119,10 +115,18 @@ void opengl_video_output_cleanup() {
 
 void opengl_video_new_framebuffer(int obj_handle,
                                   unsigned fb_new_width,
-                                  unsigned fb_new_height) {
+                                  unsigned fb_new_height, bool do_flip) {
+    set_flip(do_flip);
     opengl_video_update_framebuffer(obj_handle, fb_new_width, fb_new_height);
     opengl_video_present();
     win_update();
+}
+
+static void set_flip(bool flip) {
+    if (flip)
+        trans_mat[5] = -1.0f;
+    else
+        trans_mat[5] = 1.0f;
 }
 
 static void

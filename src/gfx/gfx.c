@@ -96,8 +96,9 @@ static size_t fb_screengrab_w, fb_screengrab_h;
 
 void gfx_post_framebuffer(int obj_handle,
                           unsigned fb_new_width,
-                          unsigned fb_new_height) {
-    opengl_video_new_framebuffer(obj_handle, fb_new_width, fb_new_height);
+                          unsigned fb_new_height, bool do_flip) {
+    opengl_video_new_framebuffer(obj_handle, fb_new_width, fb_new_height,
+                                 do_flip);
 
     // TODO: restore this functionality
 #if 0

@@ -30,6 +30,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * this gets called every time the framebuffer has a new frame to render.
@@ -42,7 +43,7 @@
  */
 void opengl_video_new_framebuffer(int obj_handle,
                                   unsigned fb_new_width,
-                                  unsigned fb_new_height);
+                                  unsigned fb_new_height, bool do_flip);
 
 void opengl_video_present();
 

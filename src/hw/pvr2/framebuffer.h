@@ -84,16 +84,6 @@ void framebuffer_init(unsigned width, unsigned height);
 
 void framebuffer_render();
 
-enum {
-    // the current framebuffer is the one in PVR2 texture memory
-    FRAMEBUFFER_CURRENT_VIRT,
-
-    // the current framebuffer is the one on the GPU
-    FRAMEBUFFER_CURRENT_HOST
-};
-
-int framebuffer_get_current(void);
-
 /*
  * set the current framebuffer state to FRAMEBUFFER_CURRENT_HOST.
  * stamp should be the geo_buf frame_stamp that is the last one submitted
@@ -116,3 +106,5 @@ void framebuffer_sync_from_host(void);
  * FRAMEBUFFER_CURRENT_HOST
  */
 void framebuffer_sync_from_host_maybe(void);
+
+void framebuffer_set_render_target(void);

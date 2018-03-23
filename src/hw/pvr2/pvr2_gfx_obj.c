@@ -27,17 +27,26 @@
 
 static bool states[GFX_OBJ_COUNT];
 
+static unsigned alloc_count, free_count;
+
+static DEF_ERROR_U32_ATTR(alloc_count)
+static DEF_ERROR_U32_ATTR(free_count)
+
 int pvr2_alloc_gfx_obj(void) {
     int idx;
     for (idx = 0; idx < GFX_OBJ_COUNT; idx++)
         if (!states[idx]) {
             states[idx] = true;
+            alloc_count++;
             return idx;
         }
 
+    error_set_alloc_count(alloc_count);
+    error_set_free_count(free_count);
     RAISE_ERROR(ERROR_OVERFLOW);
 }
 
 void pvr2_free_gfx_obj(int obj) {
+    free_count++;
     states[obj] = false;
 }

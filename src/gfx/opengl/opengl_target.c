@@ -47,8 +47,10 @@ static void opengl_target_obj_read(struct gfx_obj  *obj, void *out,
 static void opengl_target_grab_pixels(void *out, GLsizei buf_size);
 
 void opengl_target_init(void) {
-    fbo_width = fbo_height = 0;
+    fbo_width = 0;
+    fbo_height = 0;
     tgt_handle = -1;
+
     glGenFramebuffers(1, &fbo);
     glGenTextures(1, &depth_buf_tex);
 }
@@ -86,18 +88,35 @@ void opengl_target_begin(unsigned width, unsigned height) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                               GL_TEXTURE_2D, color_buf_tex, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                               GL_TEXTURE_2D, depth_buf_tex, 0);
         glViewport(0, 0, fbo_width, fbo_height);
     }
 
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_2D, color_buf_tex, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                           GL_TEXTURE_2D, depth_buf_tex, 0);
     glBindTexture(GL_TEXTURE_2D, color_buf_tex);
     glDrawBuffers(1, &draw_buffer);
 
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        LOG_ERROR("%s ERROR: framebuffer status is not complete\n", __func__);
+    GLenum stat;
+    if((stat = glCheckFramebufferStatus(GL_FRAMEBUFFER)) != GL_FRAMEBUFFER_COMPLETE) {
+        LOG_ERROR("%s ERROR: framebuffer status is not complete: %d\n", __func__, stat);
+        switch (stat) {
+        case GL_FRAMEBUFFER_UNDEFINED:
+            LOG_ERROR("GL_FRAMEBUFFER_UNDEFINED\n");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+            LOG_ERROR("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+            LOG_ERROR("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+            LOG_ERROR("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
+            break;
+        default:
+            LOG_ERROR("unknown\n");
+        }
         abort();
     }
 }
@@ -136,8 +155,9 @@ static void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
 
 void opengl_target_bind_obj(int obj_handle) {
 #ifdef INVARIANTS
-    if (tgt_handle >= 0)
-        RAISE_ERROR(ERROR_INTEGRITY);
+    // TODO: reconsider this
+    /* if (tgt_handle >= 0) */
+    /*     RAISE_ERROR(ERROR_INTEGRITY); */
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
     if (obj->on_write)
         RAISE_ERROR(ERROR_INTEGRITY);

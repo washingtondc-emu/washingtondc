@@ -116,7 +116,7 @@ void gfx_expose(void);
 
 void gfx_post_framebuffer(int obj_handle,
                           unsigned fb_new_width,
-                          unsigned fb_new_height);
+                          unsigned fb_new_height, bool do_flip);
 
 void gfx_grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
                      unsigned *fb_height_out);

@@ -178,6 +178,7 @@ union gfx_il_arg {
     struct {
         int obj_handle;
         unsigned width, height;
+        bool vert_flip;
     } post_framebuffer;
 };
 

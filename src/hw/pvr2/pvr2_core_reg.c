@@ -386,7 +386,7 @@ static uint32_t fb_w_ctrl_mmio_read(struct mmio_region_pvr2_core_reg *region, un
 
 static void fb_w_ctrl_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
-    framebuffer_sync_from_host_maybe();
+    /* framebuffer_sync_from_host_maybe(); */
     fb_w_ctrl = val;
 }
 
@@ -397,7 +397,7 @@ static uint32_t fb_w_linestride_mmio_read(struct mmio_region_pvr2_core_reg *regi
 
 static void fb_w_linestride_mmio_write(struct mmio_region_pvr2_core_reg *region,
                                        unsigned idx, uint32_t val) {
-    framebuffer_sync_from_host_maybe();
+    /* framebuffer_sync_from_host_maybe(); */
     fb_w_linestride = val;
 }
 
@@ -434,7 +434,7 @@ static uint32_t fb_w_sof1_mmio_read(struct mmio_region_pvr2_core_reg *region, un
 
 static void fb_w_sof1_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
-    framebuffer_sync_from_host_maybe();
+    /* framebuffer_sync_from_host_maybe(); */
     fb_w_sof1 = val;
 }
 
@@ -444,7 +444,7 @@ static uint32_t fb_w_sof2_mmio_read(struct mmio_region_pvr2_core_reg *region, un
 
 static void fb_w_sof2_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                                  uint32_t val) {
-    framebuffer_sync_from_host_maybe();
+    /* framebuffer_sync_from_host_maybe(); */
     fb_w_sof2 = val;
 }
 

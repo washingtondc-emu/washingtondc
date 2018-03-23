@@ -24,6 +24,7 @@
 #include "pvr2_reg.h"
 #include "pvr2_core_reg.h"
 #include "pvr2_ta.h"
+#include "pvr2_tex_cache.h"
 
 #include "pvr2.h"
 
@@ -31,11 +32,13 @@ void pvr2_init(void) {
     pvr2_reg_init();
     pvr2_core_reg_init();
     spg_init();
+    pvr2_tex_cache_init();
     pvr2_ta_init();
 }
 
 void pvr2_cleanup(void) {
     pvr2_ta_cleanup();
+    pvr2_tex_cache_cleanup();
     spg_cleanup();
     pvr2_core_reg_cleanup();
     pvr2_reg_cleanup();
