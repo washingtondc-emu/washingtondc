@@ -43,6 +43,8 @@ void gfx_obj_free(int handle) {
     struct gfx_obj *obj = obj_array + handle;
     free(obj->dat);
     obj->dat = NULL;
+    obj->on_read = NULL;
+    obj->on_write = NULL;
     obj->dat_len = 0;
 }
 
