@@ -46,7 +46,6 @@ static DEF_ERROR_INT_ATTR(height)
 #define OGL_FB_H_MAX (0x3ff + 1)
 #define OGL_FB_BYTES (OGL_FB_W_MAX * OGL_FB_H_MAX * 4)
 static uint8_t ogl_fb[OGL_FB_BYTES];
-static unsigned fb_width, fb_height;
 static unsigned stamp;
 
 enum fb_pix_fmt {
@@ -66,17 +65,8 @@ struct framebuffer {
     unsigned stamp;
     bool valid;
     bool vert_flip;
+    bool interlace;
 };
-
-static struct framebuffer fb_heap[FB_HEAP_SIZE];
-
-/*
- * this is a simple "dumb" memcpy function that doesn't handle the framebuffer
- * state (this is what makes it different from pvr2_tex_mem_area32_write).  It
- * does, however, perform bounds-checking and raise an error for out-of-bounds
- * memory access.
- */
-static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len);
 
 /*
  * The concat parameter in these functions corresponds to the fb_concat value
@@ -91,10 +81,6 @@ static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len);
  * uint8_t with every *three* elements representing one pixel.
  */
 static void
-conv_rgb555_to_argb8888(uint32_t *pixels_out,
-                        uint16_t const *pixels_in,
-                        unsigned n_pixels, uint8_t concat);
-static void
 conv_rgb565_to_rgba8888(uint32_t *pixels_out,
                         uint16_t const *pixels_in,
                         unsigned n_pixels, uint8_t concat);
@@ -108,19 +94,297 @@ conv_rgb0888_to_rgba8888(uint32_t *pixels_out,
                          uint32_t const *pixels_in,
                          unsigned n_pixels);
 
-static void conv_rgb555_to_argb8888(uint32_t *pixels_out,
-                                    uint16_t const *pixels_in,
-                                    unsigned n_pixels,
-                                    uint8_t concat) {
-    for (unsigned idx = 0; idx < n_pixels; idx++) {
-        uint16_t pix = pixels_in[idx];
-        uint32_t r = ((pix & (0x1f << 10)) << 3) | concat;
-        uint32_t g = ((pix & (0x1f << 5)) << 3) | concat;
-        uint32_t b = ((pix & 0x1f) << 3) | concat;
-        pixels_out[idx] = (255 // << 24
-            ) | (r << 24) | (g << 16) | (b << 8);
+static void
+sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
+                                 unsigned fb_width, unsigned fb_height,
+                                 uint32_t sof1, uint32_t sof2,
+                                 unsigned modulus, unsigned concat) {
+    printf("%s\n", __func__);
+    printf("dims are %ux%u\n", fb_width, fb_height);
+    /*
+     * field_adv represents the distand between the start of one row and the
+     * start of the next row in the same field in terms of bytes.
+     */
+    unsigned field_adv = (fb_width << 1) + (modulus << 2) - 4;
+
+    unsigned rows_per_field = fb_height / 2;
+
+    // bounds checking.
+    addr32_t first_addr_field1 = ADDR_TEX32_FIRST + sof1;
+    addr32_t last_addr_field1 = ADDR_TEX32_FIRST + sof1 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+    addr32_t first_addr_field2 = ADDR_TEX32_FIRST + sof2;
+    addr32_t last_addr_field2 = ADDR_TEX32_FIRST + sof2 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+    if (first_addr_field1 < ADDR_TEX32_FIRST ||
+        first_addr_field1 > ADDR_TEX32_LAST ||
+        last_addr_field1 < ADDR_TEX32_FIRST ||
+        last_addr_field1 > ADDR_TEX32_LAST ||
+        first_addr_field2 < ADDR_TEX32_FIRST ||
+        first_addr_field2 > ADDR_TEX32_LAST ||
+        last_addr_field2 < ADDR_TEX32_FIRST ||
+        last_addr_field2 > ADDR_TEX32_LAST) {
+        error_set_feature("whatever happens when a framebuffer is configured "
+                          "to read outside of texture memory");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+
+    unsigned row;
+    for (row = 0; row < rows_per_field; row++) {
+        uint16_t const *ptr_row1 =
+            (uint16_t const*)(pvr2_tex32_mem + sof1 + row * field_adv);
+        uint16_t const *ptr_row2 =
+            (uint16_t const*)(pvr2_tex32_mem + sof2 + row * field_adv);
+
+        conv_rgb565_to_rgba8888(dst_fb + row * 2 * fb_width,
+                                ptr_row1, fb_width, concat);
+        conv_rgb565_to_rgba8888(dst_fb + (row * 2 + 1) * fb_width,
+                                ptr_row2, fb_width, concat);
+    }
+
+    fb->fb_width = fb_width;
+    fb->fb_height = fb_height;
+    fb->addr_first = sof1 < sof2 ? sof1 : sof2;
+    fb->valid = true;
+    fb->vert_flip = true;
+    fb->interlace = true;
+    fb->stamp = stamp;
+
+    struct gfx_il_inst cmd;
+
+    cmd.op = GFX_IL_WRITE_OBJ;
+    cmd.arg.write_obj.dat = dst_fb;
+    cmd.arg.write_obj.obj_no = fb->obj_handle;
+    cmd.arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
+
+    rend_exec_il(&cmd, 1);
+}
+
+static void
+sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
+                                 unsigned fb_width, unsigned fb_height,
+                                 uint32_t sof1, unsigned concat) {
+    unsigned field_adv = fb_width;
+    uint16_t const *pixels_in = (uint16_t*)(pvr2_tex32_mem + sof1);
+    /*
+     * bounds checking
+     *
+     * TODO: is it really necessary to test for
+     * (last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) ?
+     */
+    addr32_t last_byte = sof1 + ADDR_TEX32_FIRST + fb_width * fb_height * 2;
+    addr32_t first_byte = sof1 + ADDR_TEX32_FIRST;
+    if (last_byte > ADDR_TEX32_LAST || first_byte < ADDR_TEX32_FIRST ||
+        last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) {
+        error_set_feature("whatever happens when START_ADDR is configured to "
+                          "read outside of texture memory");
+        error_set_address(sof1);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+
+    unsigned row;
+    for (row = 0; row < fb_height; row++) {
+        uint16_t const *in_col_start = pixels_in + field_adv * row;
+        uint32_t *out_col_start = dst_fb + row * fb_width;
+
+        conv_rgb565_to_rgba8888(out_col_start, in_col_start, fb_width, concat);
+    }
+
+    fb->fb_width = fb_width;
+    fb->fb_height = fb_height;
+    fb->addr_first = sof1;
+    fb->valid = true;
+    fb->vert_flip = true;
+    fb->interlace = false;
+    fb->stamp = stamp;
+
+    struct gfx_il_inst cmd;
+
+    cmd.op = GFX_IL_WRITE_OBJ;
+    cmd.arg.write_obj.dat = dst_fb;
+    cmd.arg.write_obj.obj_no = fb->obj_handle;
+    cmd.arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
+
+    rend_exec_il(&cmd, 1);
+}
+
+static void
+sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
+                                  unsigned fb_width, unsigned fb_height,
+                                  uint32_t sof1, uint32_t sof2,
+                                  unsigned modulus) {
+    printf("%s\n", __func__);
+    printf("dims are %ux%u\n", fb_width, fb_height);
+    /*
+     * field_adv represents the distand between the start of one row and the
+     * start of the next row in the same field in terms of bytes.
+     */
+    unsigned field_adv = (fb_width * 4) + (modulus * 4) - 4;
+    unsigned rows_per_field = fb_height /* / 2 */;
+
+    // bounds checking.
+    addr32_t first_addr_field1 = ADDR_TEX32_FIRST + sof1;
+    addr32_t last_addr_field1 = ADDR_TEX32_FIRST + sof1 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+    addr32_t first_addr_field2 = ADDR_TEX32_FIRST + sof2;
+    addr32_t last_addr_field2 = ADDR_TEX32_FIRST + sof2 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+    if (first_addr_field1 < ADDR_TEX32_FIRST ||
+        first_addr_field1 > ADDR_TEX32_LAST ||
+        last_addr_field1 < ADDR_TEX32_FIRST ||
+        last_addr_field1 > ADDR_TEX32_LAST ||
+        first_addr_field2 < ADDR_TEX32_FIRST ||
+        first_addr_field2 > ADDR_TEX32_LAST ||
+        last_addr_field2 < ADDR_TEX32_FIRST ||
+        last_addr_field2 > ADDR_TEX32_LAST) {
+        error_set_feature("whatever happens when a framebuffer is configured "
+                          "to read outside of texture memory");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+
+    unsigned row;
+    for (row = 0; row < rows_per_field; row++) {
+        uint32_t const *ptr_row1 =
+            (uint32_t const*)(pvr2_tex32_mem + sof1 + row * field_adv);
+        uint32_t const *ptr_row2 =
+            (uint32_t const*)(pvr2_tex32_mem + sof2 + row * field_adv);
+
+        conv_rgb0888_to_rgba8888(dst_fb + (row << 1) * fb_width,
+                                 ptr_row1, fb_width);
+        conv_rgb0888_to_rgba8888(dst_fb + ((row << 1) + 1) * fb_width,
+                                 ptr_row2, fb_width);
+    }
+
+    fb->fb_width = fb_width;
+    fb->fb_height = fb_height;
+    fb->addr_first = sof1 < sof2 ? sof1 : sof2;
+    fb->valid = true;
+    fb->vert_flip = true;
+    fb->interlace = true;
+    fb->stamp = stamp;
+
+    struct gfx_il_inst cmd;
+
+    cmd.op = GFX_IL_WRITE_OBJ;
+    cmd.arg.write_obj.dat = dst_fb;
+    cmd.arg.write_obj.obj_no = fb->obj_handle;
+    cmd.arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
+
+    rend_exec_il(&cmd, 1);
+}
+
+static void
+sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
+                                  unsigned fb_width, unsigned fb_height,
+                                  uint32_t sof1) {
+    uint32_t const *pixels_in = (uint32_t const*)(pvr2_tex32_mem + sof1);
+    /*
+     * bounds checking
+     *
+     * TODO: is it really necessary to test for
+     * (last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) ?
+     */
+    addr32_t last_byte = sof1 + ADDR_TEX32_FIRST + fb_width * fb_height * 4;
+    addr32_t first_byte = sof1 + ADDR_TEX32_FIRST;
+    if (last_byte > ADDR_TEX32_LAST || first_byte < ADDR_TEX32_FIRST ||
+        last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) {
+        error_set_feature("whatever happens when START_ADDR is configured to "
+                          "read outside of texture memory");
+        error_set_address(sof1);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+
+    unsigned row;
+    for (row = 0; row < fb_height; row++) {
+        uint32_t const *in_col_start = pixels_in + fb_width * row;
+        uint32_t *out_col_start = dst_fb + row * fb_width;
+
+        conv_rgb0888_to_rgba8888(out_col_start, in_col_start, fb_width);
+    }
+
+    fb->fb_width = fb_width;
+    fb->fb_height = fb_height;
+    fb->addr_first = sof1;
+    fb->valid = true;
+    fb->vert_flip = true;
+    fb->interlace = false;
+    fb->stamp = stamp;
+
+    struct gfx_il_inst cmd;
+
+    cmd.op = GFX_IL_WRITE_OBJ;
+    cmd.arg.write_obj.dat = dst_fb;
+    cmd.arg.write_obj.obj_no = fb->obj_handle;
+    cmd.arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
+
+    rend_exec_il(&cmd, 1);
+}
+
+static void
+sync_fb_from_tex_mem(struct framebuffer *fb) {
+    bool interlace = get_spg_control() & (1 << 4);
+
+    uint32_t fb_r_size = get_fb_r_size();
+    uint32_t fb_r_sof1 = get_fb_r_sof1() & ~3;
+    uint32_t fb_r_sof2 = get_fb_r_sof2() & ~3;
+    uint32_t fb_r_ctrl = get_fb_r_ctrl();
+
+    unsigned width = (fb_r_size & 0x3ff) + 1;
+    unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
+    unsigned modulus = (fb_r_size >> 20) & 0x3ff;
+    unsigned concat = (fb_r_ctrl >> 4) & 7;
+
+    unsigned px_tp = (fb_r_ctrl & 0xc) >> 2;
+    switch (px_tp) {
+    case 0:
+        // 16-bit 555 RGB
+        error_set_feature("video mode RGB555");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        break;
+    case 1:
+        // 16-bit 565 RGB
+        if (interlace) {
+            sync_fb_from_tex_mem_rgb565_intl(fb, width, height, fb_r_sof1,
+                                             fb_r_sof2, modulus, concat);
+        } else {
+            sync_fb_from_tex_mem_rgb565_prog(fb, width, height,
+                                             fb_r_sof1, concat);
+        }
+        break;
+    case 2:
+        // 24-bit 888 RGB
+        error_set_feature("video mode RGB888");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        break;
+    case 3:
+        // 32-bit 08888 RGB
+        if (interlace) {
+            sync_fb_from_tex_mem_rgb0888_intl(fb, width, height, fb_r_sof1,
+                                              fb_r_sof2, modulus);
+        } else {
+            sync_fb_from_tex_mem_rgb0888_prog(fb, width, height,
+                                              fb_r_sof1);
+        }
     }
 }
+
+static struct framebuffer fb_heap[FB_HEAP_SIZE];
+
+/*
+ * this is a simple "dumb" memcpy function that doesn't handle the framebuffer
+ * state (this is what makes it different from pvr2_tex_mem_area32_write).  It
+ * does, however, perform bounds-checking and raise an error for out-of-bounds
+ * memory access.
+ */
+static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len);
 
 static void conv_rgb565_to_rgba8888(uint32_t *pixels_out,
                                     uint16_t const *pixels_in,
@@ -164,229 +428,27 @@ conv_rgb0888_to_rgba8888(uint32_t *pixels_out,
 
 static int pick_fb(unsigned width, unsigned height, uint32_t addr);
 
-void read_framebuffer_rgb565_prog(uint32_t *pixels_out, addr32_t start_addr,
-                                  unsigned width, unsigned height, unsigned stride,
-                                  uint16_t concat) {
-    uint16_t const *pixels_in = (uint16_t*)(pvr2_tex32_mem + start_addr);
-    /*
-     * bounds checking
-     *
-     * TODO: is it really necessary to test for
-     * (last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) ?
-     */
-    addr32_t last_byte = start_addr + ADDR_TEX32_FIRST + width * height * 2;
-    addr32_t first_byte = start_addr + ADDR_TEX32_FIRST;
-    if (last_byte > ADDR_TEX32_LAST || first_byte < ADDR_TEX32_FIRST ||
-        last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) {
-        error_set_feature("whatever happens when START_ADDR is configured to "
-                          "read outside of texture memory");
-        error_set_address(start_addr);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    unsigned row;
-    for (row = 0; row < height; row++) {
-        uint16_t const *in_col_start = pixels_in + stride * row;
-        uint32_t *out_col_start = pixels_out + row * width;
-
-        conv_rgb565_to_rgba8888(out_col_start, in_col_start, width, concat);
-    }
-}
-
-/*
- * The way I handle interlace-scan here isn't terribly accurate.
- * instead of alternating between the two different fields on every frame
- * like a real TV would do, this function will read both fields every frame
- * and construct a full image.
- *
- * fb_width is expected to be the width of the framebuffer image *and* the
- * width of the texture in terms of pixels.
- * fb_height is expected to be the height of a single field in terms of pixels;
- * the full height of the framebuffer and also the height of the texture must
- * therefore be equal to fb_height*2.
- */
-void read_framebuffer_rgb565_intl(uint32_t *pixels_out,
-                                  unsigned fb_width, unsigned fb_height,
-                                  uint32_t row_start_field1, uint32_t row_start_field2,
-                                  unsigned modulus, unsigned concat) {
-    /*
-     * field_adv represents the distand between the start of one row and the
-     * start of the next row in the same field in terms of bytes.
-     */
-    unsigned field_adv = (fb_width << 1) + (modulus << 2) - 4;
-
-    /*
-     * bounds checking.
-     *
-     * TODO: it is not impossible that the algebra for last_addr_field1 and
-     * last_addr_field2 are a little off here, I'm *kinda* drunk.
-     */
-    addr32_t first_addr_field1 = ADDR_TEX32_FIRST + row_start_field1;
-    addr32_t last_addr_field1 = ADDR_TEX32_FIRST + row_start_field1 +
-        field_adv * (fb_height - 1) + 2 * (fb_width - 1);
-    addr32_t first_addr_field2 = ADDR_TEX32_FIRST + row_start_field2;
-    addr32_t last_addr_field2 = ADDR_TEX32_FIRST + row_start_field2 +
-        field_adv * (fb_height - 1) + 2 * (fb_width - 1);
-    if (first_addr_field1 < ADDR_TEX32_FIRST ||
-        first_addr_field1 > ADDR_TEX32_LAST ||
-        last_addr_field1 < ADDR_TEX32_FIRST ||
-        last_addr_field1 > ADDR_TEX32_LAST ||
-        first_addr_field2 < ADDR_TEX32_FIRST ||
-        first_addr_field2 > ADDR_TEX32_LAST ||
-        last_addr_field2 < ADDR_TEX32_FIRST ||
-        last_addr_field2 > ADDR_TEX32_LAST) {
-        error_set_feature("whatever happens when a framebuffer is configured "
-                          "to read outside of texture memory");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    unsigned row;
-    for (row = 0; row < fb_height; row++) {
-        uint16_t const *ptr_row1 =
-            (uint16_t const*)(pvr2_tex32_mem + row_start_field1);
-        uint16_t const *ptr_row2 =
-            (uint16_t const*)(pvr2_tex32_mem + row_start_field2);
-
-        conv_rgb565_to_rgba8888(pixels_out + (row << 1) * fb_width,
-                                ptr_row1, fb_width, concat);
-        conv_rgb565_to_rgba8888(pixels_out + ((row << 1) + 1) * fb_width,
-                                ptr_row2, fb_width, concat);
-
-        row_start_field1 += field_adv;
-        row_start_field2 += field_adv;
-    }
-}
-
-void read_framebuffer_rgb0888_prog(uint32_t *pixels_out, addr32_t start_addr,
-                                   unsigned width, unsigned height) {
-    uint32_t const *pixels_in = (uint32_t const*)(pvr2_tex32_mem + start_addr);
-    /*
-     * bounds checking
-     *
-     * TODO: is it really necessary to test for
-     * (last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) ?
-     */
-    addr32_t last_byte = start_addr + ADDR_TEX32_FIRST + width * height * 4;
-    addr32_t first_byte = start_addr + ADDR_TEX32_FIRST;
-    if (last_byte > ADDR_TEX32_LAST || first_byte < ADDR_TEX32_FIRST ||
-        last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) {
-        error_set_feature("whatever happens when START_ADDR is configured to "
-                          "read outside of texture memory");
-        error_set_address(start_addr);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    unsigned row;
-    for (row = 0; row < height; row++) {
-        uint32_t const *in_col_start = pixels_in + width * row;
-        uint32_t *out_col_start = pixels_out + row * width;
-
-        conv_rgb0888_to_rgba8888(out_col_start, in_col_start, width);
-    }
-}
-
-void read_framebuffer_rgb0888_intl(uint32_t *pixels_out,
-                                   unsigned fb_width, unsigned fb_height,
-                                   uint32_t row_start_field1,
-                                   uint32_t row_start_field2,
-                                   unsigned modulus) {
-    /*
-     * field_adv represents the distand between the start of one row and the
-     * start of the next row in the same field in terms of bytes.
-     */
-    unsigned field_adv = (fb_width << 2) + (modulus << 2) - 4;
-
-    /*
-     * bounds checking.
-     *
-     * TODO: it is not impossible that the algebra for last_addr_field1 and
-     * last_addr_field2 are a little off here, I'm *kinda* drunk.
-     */
-    addr32_t first_addr_field1 = ADDR_TEX32_FIRST + row_start_field1;
-    addr32_t last_addr_field1 = ADDR_TEX32_FIRST + row_start_field1 +
-        field_adv * (fb_height - 1) + 4 * (fb_width - 1);
-    addr32_t first_addr_field2 = ADDR_TEX32_FIRST + row_start_field2;
-    addr32_t last_addr_field2 = ADDR_TEX32_FIRST + row_start_field2 +
-        field_adv * (fb_height - 1) + 4 * (fb_width - 1);
-    if (first_addr_field1 < ADDR_TEX32_FIRST ||
-        first_addr_field1 > ADDR_TEX32_LAST ||
-        last_addr_field1 < ADDR_TEX32_FIRST ||
-        last_addr_field1 > ADDR_TEX32_LAST ||
-        first_addr_field2 < ADDR_TEX32_FIRST ||
-        first_addr_field2 > ADDR_TEX32_LAST ||
-        last_addr_field2 < ADDR_TEX32_FIRST ||
-        last_addr_field2 > ADDR_TEX32_LAST) {
-        error_set_feature("whatever happens when a framebuffer is configured "
-                          "to read outside of texture");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    unsigned row;
-    for (row = 0; row < fb_height; row++) {
-        uint32_t const *ptr_row1 =
-            (uint32_t const*)(pvr2_tex32_mem + row_start_field1);
-        uint32_t const *ptr_row2 =
-            (uint32_t const*)(pvr2_tex32_mem + row_start_field2);
-
-        conv_rgb0888_to_rgba8888(pixels_out + (row << 1) * fb_width,
-                                 ptr_row1, fb_width);
-        conv_rgb0888_to_rgba8888(pixels_out + ((row << 1) + 1) * fb_width,
-                                 ptr_row2, fb_width);
-
-        row_start_field1 += field_adv;
-        row_start_field2 += field_adv;
-    }
-}
-
-void read_framebuffer_rgb555(uint32_t *pixels_out, uint16_t const *pixels_in,
-                             unsigned width, unsigned height, unsigned stride,
-                             uint16_t concat) {
-    unsigned row;
-    for (row = 0; row < height; row++) {
-        uint16_t const *in_col_start = pixels_in + stride * row;
-        uint32_t *out_col_start = pixels_out + row * width;
-
-        conv_rgb555_to_argb8888(out_col_start, in_col_start, width, concat);
-    }
-}
-
 void framebuffer_init(unsigned width, unsigned height) {
-    struct gfx_il_inst cmd[2];
-
-    /* fb_obj_handle = pvr2_alloc_gfx_obj(); */
+    struct gfx_il_inst cmd;
 
     int fb_no;
     for (fb_no = 0; fb_no < FB_HEAP_SIZE; fb_no++) {
         fb_heap[fb_no].obj_handle = pvr2_alloc_gfx_obj();
 
-        cmd[0].op = GFX_IL_INIT_OBJ;
-        cmd[0].arg.init_obj.obj_no = fb_heap[fb_no].obj_handle;
-        cmd[0].arg.init_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX *
+        cmd.op = GFX_IL_INIT_OBJ;
+        cmd.arg.init_obj.obj_no = fb_heap[fb_no].obj_handle;
+        cmd.arg.init_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX *
             4 * sizeof(uint8_t);
 
-        rend_exec_il(cmd, 1);
+        rend_exec_il(&cmd, 1);
     }
-    /* cmd[0].op = GFX_IL_INIT_OBJ; */
-    /* cmd[0].arg.init_obj.obj_no = fb_obj_handle; */
-    /* cmd[0].arg.init_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * */
-    /*     4 * sizeof(uint8_t); */
-
-    /* cmd[1].op = GFX_IL_BIND_RENDER_TARGET; */
-    /* cmd[1].arg.bind_render_target.gfx_obj_handle = fb_obj_handle; */
-
-    /* rend_exec_il(cmd, 2); */
-
-    /* fb_width = width; */
-    /* fb_height = height; */
 }
 
 void framebuffer_render() {
     // update the texture
-    bool interlace = get_spg_control() & (1 << 4);
     uint32_t fb_r_ctrl = get_fb_r_ctrl();
     uint32_t fb_r_size = get_fb_r_size();
     uint32_t fb_r_sof1 = get_fb_r_sof1() & ~3;
-    uint32_t fb_r_sof2 = get_fb_r_sof2() & ~3;
 
     unsigned width = (fb_r_size & 0x3ff) + 1;
     unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
@@ -404,104 +466,41 @@ void framebuffer_render() {
     int fb_idx;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
         struct framebuffer *fb = fb_heap + fb_idx;
-        if (fb->fb_width == width &&
-            fb->fb_height == height &&
-            fb->addr_first == fb_r_sof1) {
-            goto submit_the_fb;
+        if (fb->interlace) {
+            if (fb->fb_width == width &&
+                fb->fb_height == height &&
+                fb->addr_first == fb_r_sof1 &&
+                fb->valid) {
+                goto submit_the_fb;
+            }
+        } else {
+            if (fb->fb_width == width * 2 &&
+                fb->fb_height == height &&
+                fb->addr_first == fb_r_sof1 &&
+                fb->valid) {
+                goto submit_the_fb;
+            }
         }
     }
+
+    // TODO: DO NOT MERGE TO MASTER
+    for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++)
+        fb_heap[fb_idx].valid = false;
+
+    printf("new framebuffer will be %ux%u\n", width, height);
     fb_idx = pick_fb(width, height, fb_r_sof1);
-
-    switch ((fb_r_ctrl & 0xc) >> 2) {
-    case 0:
-    case 1:
-        // we double width because width is in terms of 32-bits,
-        // and this format uses 16-bit pixels
-        width <<= 1;
-        break;
-    default:
-        break;
-    }
-
-    if (interlace)
-        height <<= 1;
-
-    if (fb_width != width || fb_height != height) {
-        if (width > OGL_FB_W_MAX || height > OGL_FB_H_MAX) {
-            LOG_ERROR("need to increase max framebuffer dims\n");
-            error_set_width(width);
-            error_set_height(height);
-            RAISE_ERROR(ERROR_OVERFLOW);
-        }
-
-        fb_width = width;
-        fb_height = height;
-    }
-
-    switch ((fb_r_ctrl & 0xc) >> 2) {
-    case 0:
-        // 16-bit 555 RGB
-        error_set_feature("video mode RGB555");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        break;
-    case 1:
-        // 16-bit 565 RGB
-        if (interlace) {
-            unsigned modulus = (fb_r_size >> 20) & 0x3ff;
-            uint16_t concat = (fb_r_ctrl >> 4) & 7;
-            read_framebuffer_rgb565_intl((uint32_t*)ogl_fb,
-                                         fb_width, fb_height >> 1,
-                                         fb_r_sof1, fb_r_sof2,
-                                         modulus, concat);
-        } else {
-            read_framebuffer_rgb565_prog((uint32_t*)ogl_fb,
-                                         fb_r_sof1,
-                                         fb_width, fb_height, fb_width,
-                                         (fb_r_ctrl >> 4) & 7);
-        }
-        break;
-    case 2:
-        // 24-bit 888 RGB
-        error_set_feature("video mode RGB888");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        break;
-    case 3:
-        // 32-bit 08888 RGB
-        if (interlace) {
-            unsigned modulus = (fb_r_size >> 20) & 0x3ff;
-            read_framebuffer_rgb0888_intl((uint32_t*)ogl_fb,
-                                          fb_width, fb_height >> 1,
-                                          fb_r_sof1, fb_r_sof2, modulus);
-        } else {
-            read_framebuffer_rgb0888_prog((uint32_t*)ogl_fb, fb_r_sof1,
-                                          fb_width, fb_height);
-        }
-        break;
-    }
-
-    LOG_DBG("passing framebuffer dimensions=(%u, %u)\n", fb_width, fb_height);
-    LOG_DBG("interlacing is %s\n", interlace ? "enabled" : "disabled");
-
-    fb_heap[fb_idx].valid = true;
-    fb_heap[fb_idx].vert_flip = true;
-    fb_heap[fb_idx].fb_width = width;
-    fb_heap[fb_idx].fb_height = height;
-    fb_heap[fb_idx].addr_first = fb_r_sof1;
-    fb_heap[fb_idx].stamp = stamp++;
-
-    cmd.op = GFX_IL_WRITE_OBJ;
-    cmd.arg.write_obj.dat = ogl_fb;
-    cmd.arg.write_obj.obj_no = fb_heap[fb_idx].obj_handle;
-    cmd.arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
-
-    rend_exec_il(&cmd, 1);
+    sync_fb_from_tex_mem(fb_heap + fb_idx);
 
 submit_the_fb:
+    stamp++;
+
     cmd.op = GFX_IL_POST_FRAMEBUFFER;
     cmd.arg.post_framebuffer.obj_handle = fb_heap[fb_idx].obj_handle;
     cmd.arg.post_framebuffer.width = fb_heap[fb_idx].fb_width;
     cmd.arg.post_framebuffer.height = fb_heap[fb_idx].fb_height;
     cmd.arg.post_framebuffer.vert_flip = fb_heap[fb_idx].vert_flip;
+    if (fb_heap[fb_idx].interlace)
+        cmd.arg.post_framebuffer.height *= 2;
 
     rend_exec_il(&cmd, 1);
 }
@@ -752,7 +751,8 @@ void framebuffer_set_render_target(void) {
     fb_heap[idx].fb_width = width;
     fb_heap[idx].fb_height = height;
     fb_heap[idx].addr_first = addr;
-    fb_heap[idx].stamp = stamp++;
+    fb_heap[idx].stamp = stamp;
+    fb_heap[idx].interlace = get_spg_control() & (1 << 4);
 
     struct gfx_il_inst cmd;
     cmd.op = GFX_IL_BIND_RENDER_TARGET;
