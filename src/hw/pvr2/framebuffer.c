@@ -42,18 +42,6 @@
 static DEF_ERROR_INT_ATTR(width)
 static DEF_ERROR_INT_ATTR(height)
 
-/* static int fb_obj_handle; */
-
-enum {
-    // the current framebuffer is the one in PVR2 texture memory
-    FRAMEBUFFER_CURRENT_VIRT,
-
-    // the current framebuffer is the one on the GPU
-    FRAMEBUFFER_CURRENT_HOST
-};
-
-/* static int current_fb = FRAMEBUFFER_CURRENT_VIRT; */
-
 #define OGL_FB_W_MAX (0x3ff + 1)
 #define OGL_FB_H_MAX (0x3ff + 1)
 #define OGL_FB_BYTES (OGL_FB_W_MAX * OGL_FB_H_MAX * 4)
@@ -438,8 +426,6 @@ void framebuffer_render() {
     if (interlace)
         height <<= 1;
 
-    framebuffer_sync_from_host_maybe();
-
     if (fb_width != width || fb_height != height) {
         if (width > OGL_FB_W_MAX || height > OGL_FB_H_MAX) {
             LOG_ERROR("need to increase max framebuffer dims\n");
@@ -603,75 +589,62 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
     }
 }
 
-void framebuffer_sync_from_host(void) {
+/* static void framebuffer_sync_from_host(void) { */
+/*     // update the framebuffer from the opengl target */
 
+/*     uint32_t fb_w_ctrl = get_fb_w_ctrl(); */
 
-#if 0
-    // update the framebuffer from the opengl target
+/*     struct gfx_il_inst cmd = { */
+/*         .op = GFX_IL_READ_OBJ, */
+/*         .arg = { .read_obj = { */
+/*             .dat = ogl_fb, */
+/*             .obj_no = fb_obj_handle, */
+/*             .n_bytes = /\* sizeof(ogl_fb) *\/OGL_FB_W_MAX * OGL_FB_H_MAX * 4 */
+/*             } } */
+/*     }; */
+/*     rend_exec_il(&cmd, 1); */
 
-    uint32_t fb_w_ctrl = get_fb_w_ctrl();
+/*     switch (fb_w_ctrl & 0x7) { */
+/*     case 0: */
+/*         // 0555 KRGB 16-bit */
+/*         framebuffer_sync_from_host_0555_krgb(); */
+/*         break; */
+/*     case 1: */
+/*         // 565 RGB 16-bit */
+/*         framebuffer_sync_from_host_0565_krgb(); */
+/*         break; */
+/*     case 2: */
+/*         // 4444 ARGB 16-bit */
+/*         error_set_feature("framebuffer packmode 2"); */
+/*         RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+/*         break; */
+/*     case 3: */
+/*         // 1555 ARGB 16-bit */
+/*         error_set_feature("framebuffer packmode 3"); */
+/*         RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+/*         break; */
+/*     case 4: */
+/*         // 888 RGB 24-bit */
+/*         error_set_feature("framebuffer packmode 4"); */
+/*         RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+/*         break; */
+/*     case  5: */
+/*         // 0888 KRGB 32-bit */
+/*         error_set_feature("framebuffer packmode 5"); */
+/*         RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+/*         break; */
+/*     case 6: */
+/*         // 8888 ARGB 32-bit */
+/*         error_set_feature("framebuffer packmode 6"); */
+/*         RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+/*         break; */
+/*     default: */
+/*         error_set_feature("unknown framebuffer packmode"); */
+/*         RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+/*     } */
 
-    struct gfx_il_inst cmd = {
-        .op = GFX_IL_READ_OBJ,
-        .arg = { .read_obj = {
-            .dat = ogl_fb,
-            .obj_no = fb_obj_handle,
-            .n_bytes = /* sizeof(ogl_fb) */OGL_FB_W_MAX * OGL_FB_H_MAX * 4
-            } }
-    };
-    rend_exec_il(&cmd, 1);
-
-    switch (fb_w_ctrl & 0x7) {
-    case 0:
-        // 0555 KRGB 16-bit
-        framebuffer_sync_from_host_0555_krgb();
-        break;
-    case 1:
-        // 565 RGB 16-bit
-        framebuffer_sync_from_host_0565_krgb();
-        break;
-    case 2:
-        // 4444 ARGB 16-bit
-        error_set_feature("framebuffer packmode 2");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        break;
-    case 3:
-        // 1555 ARGB 16-bit
-        error_set_feature("framebuffer packmode 3");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        break;
-    case 4:
-        // 888 RGB 24-bit
-        error_set_feature("framebuffer packmode 4");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        break;
-    case  5:
-        // 0888 KRGB 32-bit
-        error_set_feature("framebuffer packmode 5");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        break;
-    case 6:
-        // 8888 ARGB 32-bit
-        error_set_feature("framebuffer packmode 6");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        break;
-    default:
-        error_set_feature("unknown framebuffer packmode");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    current_fb = FRAMEBUFFER_CURRENT_VIRT;
-#endif
-}
-
-void framebuffer_sync_from_host_maybe(void) {
-    /* if (current_fb == FRAMEBUFFER_CURRENT_HOST) */
-    /*     framebuffer_sync_from_host(); */
-}
-
-void framebuffer_set_current_host(void) {
-    /* current_fb = FRAMEBUFFER_CURRENT_HOST; */
-}
+/*     current_fb = FRAMEBUFFER_CURRENT_VIRT; */
+/* } */
 
 /*
  * returns a pointer to the area that addr belongs in.

@@ -20,6 +20,9 @@
  *
  ******************************************************************************/
 
+#ifndef PVR2_FRAMEBUFFER_H_
+#define PVR2_FRAMEBUFFER_H_
+
 #include <stdint.h>
 
 /*
@@ -84,27 +87,10 @@ void framebuffer_init(unsigned width, unsigned height);
 
 void framebuffer_render();
 
-/*
- * set the current framebuffer state to FRAMEBUFFER_CURRENT_HOST.
- * stamp should be the geo_buf frame_stamp that is the last one submitted
- * (ie the one that's "current").
- */
-void framebuffer_set_current_host(void);
-
-/*
- * Copy the framebuffer from OpenGL memory into the Dreamcast's texture memory,
- * in the location and format specified by the pertinent registers.  Then set
- * the current framebuffer to FRAMEBUFFER_CURRENT_VIRT.
- *
- * this function does not check if the current framebuffer is the
- * FRAMEBUFFER_CURRENT_HOST, you have to do that yourself before you call it.
- */
-void framebuffer_sync_from_host(void);
-
-/*
- * sync the frame buffer from OpenGL iff the current framebuffer is
- * FRAMEBUFFER_CURRENT_HOST
- */
-void framebuffer_sync_from_host_maybe(void);
+// old deprecated function that should not be called anymore
+static inline void framebuffer_sync_from_host_maybe(void) {
+}
 
 void framebuffer_set_render_target(void);
+
+#endif

@@ -1513,7 +1513,6 @@ void pvr2_ta_startrender(void) {
 
     finish_poly_group(poly_state.current_list);
 
-    /* framebuffer_set_current_host(); */
     framebuffer_set_render_target();
 
     // set up rendering context
