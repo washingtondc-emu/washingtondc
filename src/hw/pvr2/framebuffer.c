@@ -787,11 +787,21 @@ void framebuffer_set_render_target(void) {
         first_addr_field2, last_addr_field2;
     unsigned field_adv;
     unsigned modulus = (get_fb_r_size() >> 20) & 0x3ff;
-    switch ((get_fb_r_ctrl() & 0xc) >> 2) {
+
+    // TODO: the k-bit
+    switch (get_fb_w_ctrl() & 0x7) {
     case 0:
-        // 16-bit 555 RGB
+        // 16-bit 555 KRGB
     case 2:
-        // 24-bit 888 RGB
+        // 16-bit 4444 RGB
+    case 3:
+        // 16-bit 1555 ARGB
+    case 4:
+        // 888 RGB 24-bit
+    case 6:
+        // 8888 ARGB
+    case 7:
+        // absolutely haram
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     case 1:
         // 16-bit 565 RGB
@@ -814,8 +824,8 @@ void framebuffer_set_render_target(void) {
                 width * height * 2;
         }
         break;
-    case 3:
-        // 32-bit 08888 RGB
+    case 5:
+        // 32-bit 0888 KRGB
         if (interlace) {
             field_adv = (width * 4) + (modulus * 4) - 4;
             rows_per_field = height;
