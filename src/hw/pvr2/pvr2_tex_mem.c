@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -55,13 +55,7 @@ void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + sizeof(uint8_t)) >= get_fb_w_sof1() ||
-        (addr + sizeof(uint8_t)) >= get_fb_w_sof2())
-        framebuffer_sync_from_host_maybe();
+    pvr2_framebuffer_notify_write(addr, sizeof(val));
 
     pvr2_tex32_mem[addr - ADDR_TEX32_FIRST] = val;
 }
@@ -93,13 +87,7 @@ void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + sizeof(uint16_t)) >= get_fb_w_sof1() ||
-        (addr + sizeof(uint16_t)) >= get_fb_w_sof2())
-        framebuffer_sync_from_host_maybe();
+    pvr2_framebuffer_notify_write(addr, sizeof(val));
 
     ((uint16_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 2] = val;
 }
@@ -131,13 +119,7 @@ void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + sizeof(uint32_t)) >= get_fb_w_sof1() ||
-        (addr + sizeof(uint32_t)) >= get_fb_w_sof2())
-        framebuffer_sync_from_host_maybe();
+    pvr2_framebuffer_notify_write(addr, sizeof(val));
 
     ((uint32_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 4] = val;
 }
@@ -192,16 +174,10 @@ void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + sizeof(uint8_t)) >= get_fb_w_sof1() ||
-        (addr + sizeof(uint8_t)) >= get_fb_w_sof2())
-        framebuffer_sync_from_host_maybe();
+    pvr2_framebuffer_notify_write(addr, sizeof(val));
+    pvr2_tex_cache_notify_write(addr, sizeof(val));
 
     ((uint8_t*)pvr2_tex64_mem)[addr - ADDR_TEX64_FIRST] = val;
-    pvr2_tex_cache_notify_write(addr, sizeof(val));
 }
 
 uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr) {
@@ -231,16 +207,10 @@ void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + sizeof(uint16_t)) >= get_fb_w_sof1() ||
-        (addr + sizeof(uint16_t)) >= get_fb_w_sof2())
-        framebuffer_sync_from_host_maybe();
+    pvr2_framebuffer_notify_write(addr, sizeof(val));
+    pvr2_tex_cache_notify_write(addr, sizeof(val));
 
     ((uint16_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 2] = val;
-    pvr2_tex_cache_notify_write(addr, sizeof(val));
 }
 
 uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr) {
@@ -270,16 +240,10 @@ void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + sizeof(uint32_t)) >= get_fb_w_sof1() ||
-        (addr + sizeof(uint32_t)) >= get_fb_w_sof2())
-        framebuffer_sync_from_host_maybe();
+    pvr2_framebuffer_notify_write(addr, sizeof(val));
+    pvr2_tex_cache_notify_write(addr, sizeof(val));
 
     ((uint32_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 4] = val;
-    pvr2_tex_cache_notify_write(addr, sizeof(val));
 }
 
 float pvr2_tex_mem_area64_read_float(addr32_t addr) {

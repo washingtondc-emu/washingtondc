@@ -144,6 +144,10 @@ opengl_video_update_framebuffer(int obj_handle,
             RAISE_ERROR(ERROR_INTEGRITY);
 
         glBindTexture(GL_TEXTURE_2D, tex_obj);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_read_width, fb_read_height, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, obj->dat);
         glBindTexture(GL_TEXTURE_2D, 0);
