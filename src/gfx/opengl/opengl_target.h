@@ -32,13 +32,13 @@
 void opengl_target_init(void);
 
 void opengl_target_bind_obj(int obj_handle);
-void opengl_target_unbind_obj(void);
+void opengl_target_unbind_obj(int obj_handle);
 
 // call this before rendering to the target
-void opengl_target_begin(unsigned width, unsigned height);
+void opengl_target_begin(unsigned width, unsigned height, int tgt_handle);
 
 // call this when done rendering to the target
-void opengl_target_end(void);
+void opengl_target_end(int tgt_handle);
 
 void opengl_target_render_triangles(float *verts, unsigned n_verts);
 

@@ -1513,12 +1513,13 @@ void pvr2_ta_startrender(void) {
 
     finish_poly_group(poly_state.current_list);
 
-    framebuffer_set_render_target();
+    int tgt = framebuffer_set_render_target();
 
     // set up rendering context
     cmd.op = GFX_IL_BEGIN_REND;
     cmd.arg.begin_rend.screen_width = width;
     cmd.arg.begin_rend.screen_height = height;
+    cmd.arg.begin_rend.rend_tgt_obj = tgt;
     rend_exec_il(&cmd, 1);
 
     cmd.op = GFX_IL_SET_CLIP_RANGE;
@@ -1546,6 +1547,7 @@ void pvr2_ta_startrender(void) {
 
     // tear down rendering context
     cmd.op = GFX_IL_END_REND;
+    cmd.arg.end_rend.rend_tgt_obj = tgt;
     rend_exec_il(&cmd, 1);
 
     next_frame_stamp++;

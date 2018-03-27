@@ -78,3 +78,7 @@ void gfx_obj_read(int handle, void *dat, size_t n_bytes) {
 struct gfx_obj *gfx_obj_get(int handle) {
     return obj_array + handle;
 }
+
+int gfx_obj_handle(struct gfx_obj *obj) {
+    return obj - obj_array;
+}

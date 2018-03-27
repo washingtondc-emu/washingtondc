@@ -753,7 +753,7 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
     return idx;
 }
 
-void framebuffer_set_render_target(void) {
+int framebuffer_set_render_target(void) {
     /*
      * TODO: this is almost certainly not the correct way to get the screen
      * dimensions as they are seen by PVR
@@ -846,10 +846,16 @@ void framebuffer_set_render_target(void) {
         }
     }
 
+    /*
+     * It's safe to re-bind an object that is already bound as a render target
+     * without first unbinding it.
+     */
     struct gfx_il_inst cmd;
     cmd.op = GFX_IL_BIND_RENDER_TARGET;
     cmd.arg.bind_render_target.gfx_obj_handle = fb_heap[idx].obj_handle;
     rend_exec_il(&cmd, 1);
+
+    return fb_heap[idx].obj_handle;
 }
 
 static inline bool check_overlap(uint32_t range1_start, uint32_t range1_end,

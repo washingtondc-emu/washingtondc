@@ -40,22 +40,19 @@ static GLuint depth_buf_tex;
 static GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
 static unsigned fbo_width, fbo_height;
 
-static int tgt_handle = -1;
-
 static void opengl_target_obj_read(struct gfx_obj  *obj, void *out,
                                    size_t n_bytes);
-static void opengl_target_grab_pixels(void *out, GLsizei buf_size);
+static void opengl_target_grab_pixels(int handle, void *out, GLsizei buf_size);
 
 void opengl_target_init(void) {
     fbo_width = 0;
     fbo_height = 0;
-    tgt_handle = -1;
 
     glGenFramebuffers(1, &fbo);
     glGenTextures(1, &depth_buf_tex);
 }
 
-void opengl_target_begin(unsigned width, unsigned height) {
+void opengl_target_begin(unsigned width, unsigned height, int tgt_handle) {
     if (tgt_handle < 0) {
         LOG_ERROR("%s - no rendering target is bound\n", __func__);
         return;
@@ -121,7 +118,7 @@ void opengl_target_begin(unsigned width, unsigned height) {
     }
 }
 
-void opengl_target_end(void) {
+void opengl_target_end(int tgt_handle) {
     if (tgt_handle < 0) {
         LOG_ERROR("%s ERROR: no target bound\n", __func__);
         return;
@@ -136,7 +133,8 @@ void opengl_target_end(void) {
     gfx_obj_get(tgt_handle)->state = GFX_OBJ_STATE_TEX;
 }
 
-static void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
+static void opengl_target_grab_pixels(int obj_handle, void *out,
+                                      GLsizei buf_size) {
     size_t length_expect = fbo_width * fbo_height * 4 * sizeof(uint8_t);
 
     if (buf_size < length_expect) {
@@ -147,7 +145,7 @@ static void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
-    GLuint color_buf_tex = opengl_renderer_tex(tgt_handle);
+    GLuint color_buf_tex = opengl_renderer_tex(obj_handle);
     glBindTexture(GL_TEXTURE_2D, color_buf_tex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, out);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -155,40 +153,31 @@ static void opengl_target_grab_pixels(void *out, GLsizei buf_size) {
 
 void opengl_target_bind_obj(int obj_handle) {
 #ifdef INVARIANTS
-    // TODO: reconsider this
-    /* if (tgt_handle >= 0) */
-    /*     RAISE_ERROR(ERROR_INTEGRITY); */
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
-    if (obj->on_write)
+    if (obj->on_write ||
+        (obj->on_read && obj->on_read != opengl_target_obj_read))
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
-    tgt_handle = obj_handle;
-    gfx_obj_get(tgt_handle)->on_read = opengl_target_obj_read;
+    /* tgt_handle = obj_handle; */
+    gfx_obj_get(obj_handle)->on_read = opengl_target_obj_read;
 
     // TODO: should I set TEXTURE_MIN_FILTER and TEXTURE_MAG_FILTER here?
 }
 
-void opengl_target_unbind_obj(void) {
-#ifdef INVARIANTS
-    if (tgt_handle < 0)
-        RAISE_ERROR(ERROR_INTEGRITY);
-#endif
-
-    struct gfx_obj *obj = gfx_obj_get(tgt_handle);
+void opengl_target_unbind_obj(int obj_handle) {
+    struct gfx_obj *obj = gfx_obj_get(obj_handle);
 
     gfx_obj_alloc(obj);
-    if (gfx_obj_get(tgt_handle)->state == GFX_OBJ_STATE_TEX)
-        opengl_target_grab_pixels(obj->dat, obj->dat_len);
+    if (gfx_obj_get(obj_handle)->state == GFX_OBJ_STATE_TEX)
+        opengl_target_grab_pixels(gfx_obj_handle(obj), obj->dat, obj->dat_len);
 
     obj->on_read = NULL;
-
-    tgt_handle = -1;
 }
 
 static void opengl_target_obj_read(struct gfx_obj *obj, void *out,
                                    size_t n_bytes) {
-    if (gfx_obj_get(tgt_handle)->state == GFX_OBJ_STATE_TEX) {
-        opengl_target_grab_pixels(out, n_bytes);
+    if (obj->state == GFX_OBJ_STATE_TEX) {
+        opengl_target_grab_pixels(gfx_obj_handle(obj), out, n_bytes);
     } else {
         gfx_obj_alloc(obj);
         memcpy(out, obj->dat, n_bytes);

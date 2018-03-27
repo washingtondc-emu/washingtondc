@@ -120,6 +120,10 @@ union gfx_il_arg {
         int gfx_obj_handle;
     } bind_render_target;
 
+    struct {
+        int gfx_obj_handle;
+    } unbind_render_target;
+
     /*
      * GFX_IL_UNBIND_RENDER_TARGET doesn't take any arguments because only one
      * gfx_obj can be bound as the render target at a time.
@@ -127,7 +131,12 @@ union gfx_il_arg {
 
     struct {
         unsigned screen_width, screen_height;
+        int rend_tgt_obj;
     } begin_rend;
+
+    struct {
+        int rend_tgt_obj;
+    } end_rend;
 
     struct {
         float bgcolor[4];

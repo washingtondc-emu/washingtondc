@@ -91,7 +91,7 @@ void framebuffer_render();
 static inline void framebuffer_sync_from_host_maybe(void) {
 }
 
-void framebuffer_set_render_target(void);
+int framebuffer_set_render_target(void);
 
 void pvr2_framebuffer_notify_write(uint32_t addr, unsigned n_bytes);
 

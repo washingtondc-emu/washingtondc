@@ -83,4 +83,6 @@ static inline void gfx_obj_alloc(struct gfx_obj *obj) {
     }
 }
 
+int gfx_obj_handle(struct gfx_obj *obj);
+
 #endif
