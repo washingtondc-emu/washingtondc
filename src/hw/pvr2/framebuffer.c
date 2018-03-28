@@ -65,7 +65,7 @@ struct framebuffer {
      * fields are actually interlaced in texture memory (and they usually are
      * but they don't have to be).
      */
-    uint32_t addr_first, addr_last;
+    uint32_t addr_first[2], addr_last[2];
 
     unsigned stamp;
     bool valid;
@@ -157,12 +157,20 @@ sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
                                 ptr_row2, fb_width, concat);
     }
 
+    if (first_addr_field1 < first_addr_field2) {
+        fb->addr_first[0] = first_addr_field1;
+        fb->addr_first[1] = first_addr_field2;
+        fb->addr_last[0] = last_addr_field1;
+        fb->addr_last[1] = last_addr_field2;
+    } else {
+        fb->addr_first[0] = first_addr_field2;
+        fb->addr_first[1] = first_addr_field1;
+        fb->addr_last[0] = last_addr_field2;
+        fb->addr_last[1] = last_addr_field1;
+    }
+
     fb->fb_width = fb_width;
     fb->fb_height = fb_height;
-    fb->addr_first = first_addr_field1 < first_addr_field2 ?
-        first_addr_field1 : first_addr_field2;
-    fb->addr_last = last_addr_field1 > last_addr_field2 ?
-        last_addr_field1 : last_addr_field2;
     fb->valid = true;
     fb->vert_flip = true;
     fb->interlace = true;
@@ -213,8 +221,10 @@ sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
 
     fb->fb_width = fb_width;
     fb->fb_height = fb_height;
-    fb->addr_first = first_byte;
-    fb->addr_last = last_byte;
+    fb->addr_first[0] = first_byte;
+    fb->addr_first[1] = first_byte;
+    fb->addr_last[0] = last_byte;
+    fb->addr_last[1] = last_byte;
     fb->valid = true;
     fb->vert_flip = true;
     fb->interlace = false;
@@ -279,10 +289,17 @@ sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
 
     fb->fb_width = fb_width;
     fb->fb_height = fb_height;
-    fb->addr_first = first_addr_field1 < first_addr_field2 ?
-        first_addr_field1 : first_addr_field2;
-    fb->addr_last = last_addr_field1 > last_addr_field2 ?
-        last_addr_field1 : last_addr_field2;
+    if (first_addr_field1 < first_addr_field2) {
+        fb->addr_first[0] = first_addr_field1;
+        fb->addr_first[1] = first_addr_field2;
+        fb->addr_last[0] = last_addr_field1;
+        fb->addr_last[1] = last_addr_field2;
+    } else {
+        fb->addr_first[0] = first_addr_field2;
+        fb->addr_first[1] = first_addr_field1;
+        fb->addr_last[0] = last_addr_field2;
+        fb->addr_last[1] = last_addr_field1;
+    }
     fb->valid = true;
     fb->vert_flip = true;
     fb->interlace = true;
@@ -331,8 +348,10 @@ sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
 
     fb->fb_width = fb_width;
     fb->fb_height = fb_height;
-    fb->addr_first = first_byte;
-    fb->addr_last = last_byte;
+    fb->addr_first[0] = first_byte;
+    fb->addr_first[1] = first_byte;
+    fb->addr_last[0] = last_byte;
+    fb->addr_last[1] = last_byte;
     fb->valid = true;
     fb->vert_flip = true;
     fb->interlace = false;
@@ -492,14 +511,14 @@ void framebuffer_render() {
         if (fb->interlace) {
             if (fb->fb_width == width &&
                 fb->fb_height == height &&
-                fb->addr_first == addr_first &&
+                fb->addr_first[0] == addr_first &&
                 fb->valid) {
                 goto submit_the_fb;
             }
         } else {
             if (fb->fb_width == width &&
                 fb->fb_height == height &&
-                fb->addr_first == addr_first &&
+                fb->addr_first[0] == addr_first &&
                 fb->valid) {
                 goto submit_the_fb;
             }
@@ -724,7 +743,7 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
         if (fb_heap[idx].valid) {
             if (fb_heap[idx].fb_width == width &&
                 fb_heap[idx].fb_height == height &&
-                fb_heap[idx].addr_first == addr) {
+                fb_heap[idx].addr_first[0] == addr) {
                 break;
             }
             if (fb_heap[idx].stamp <= oldest_stamp) {
@@ -772,16 +791,17 @@ int framebuffer_set_render_target(void) {
         height *= 2;
     int idx = pick_fb(width, height, addr + ADDR_TEX32_FIRST);
 
-    fb_heap[idx].valid = true;
-    fb_heap[idx].vert_flip = false;
-    fb_heap[idx].fb_width = width;
-    fb_heap[idx].fb_height = height;
-    fb_heap[idx].stamp = stamp;
-    fb_heap[idx].interlace = interlace;
+    struct framebuffer *fb = fb_heap + idx;
+    fb->valid = true;
+    fb->vert_flip = false;
+    fb->fb_width = width;
+    fb->fb_height = height;
+    fb->stamp = stamp;
+    fb->interlace = interlace;
 
     // set addr_first and addr_last
-    uint32_t sof1 = get_fb_r_sof1() & ~3;
-    uint32_t sof2 = get_fb_r_sof2() & ~3;
+    uint32_t sof1 = get_fb_w_sof1() & ~3;
+    uint32_t sof2 = get_fb_w_sof2() & ~3;
     uint32_t rows_per_field;
     uint32_t first_addr_field1, last_addr_field1,
         first_addr_field2, last_addr_field2;
@@ -814,14 +834,25 @@ int framebuffer_set_render_target(void) {
             first_addr_field2 = ADDR_TEX32_FIRST + sof2;
             last_addr_field2 = ADDR_TEX32_FIRST + sof2 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
-            fb_heap[idx].addr_first = first_addr_field1 < first_addr_field2 ?
-                first_addr_field1 : first_addr_field2;
-            fb_heap[idx].addr_last = last_addr_field1 > last_addr_field2 ?
-                last_addr_field1 : last_addr_field2;
+
+            if (first_addr_field1 < first_addr_field2) {
+                fb->addr_first[0] = first_addr_field1;
+                fb->addr_first[1] = first_addr_field2;
+                fb->addr_last[0] = last_addr_field1;
+                fb->addr_last[1] = last_addr_field2;
+            } else {
+                fb->addr_first[0] = first_addr_field2;
+                fb->addr_first[1] = first_addr_field1;
+                fb->addr_last[0] = last_addr_field2;
+                fb->addr_last[1] = last_addr_field1;
+            }
         } else {
-            fb_heap[idx].addr_first = sof1 + ADDR_TEX32_FIRST;
-            fb_heap[idx].addr_last = sof1 + ADDR_TEX32_FIRST +
-                width * height * 2;
+            uint32_t first_byte = sof1 + ADDR_TEX32_FIRST;
+            uint32_t last_byte = sof1 + ADDR_TEX32_FIRST + width * height * 2;
+            fb->addr_first[0] = first_byte;
+            fb->addr_first[1] = first_byte;
+            fb->addr_last[0] = last_byte;
+            fb->addr_last[1] = last_byte;
         }
         break;
     case 5:
@@ -835,14 +866,24 @@ int framebuffer_set_render_target(void) {
             first_addr_field2 = ADDR_TEX32_FIRST + sof2;
             last_addr_field2 = ADDR_TEX32_FIRST + sof2 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
-            fb_heap[idx].addr_first = first_addr_field1 < first_addr_field2 ?
-                first_addr_field1 : first_addr_field2;
-            fb_heap[idx].addr_last = last_addr_field1 > last_addr_field2 ?
-                last_addr_field1 : last_addr_field2;
+            if (first_addr_field1 < first_addr_field2) {
+                fb->addr_first[0] = first_addr_field1;
+                fb->addr_first[1] = first_addr_field2;
+                fb->addr_last[0] = last_addr_field1;
+                fb->addr_last[1] = last_addr_field2;
+            } else {
+                fb->addr_first[0] = first_addr_field2;
+                fb->addr_first[1] = first_addr_field1;
+                fb->addr_last[0] = last_addr_field2;
+                fb->addr_last[1] = last_addr_field1;
+            }
         } else {
-            fb_heap[idx].addr_first = sof1 + ADDR_TEX32_FIRST;
-            fb_heap[idx].addr_last = sof1 + ADDR_TEX32_FIRST +
-                width * height * 4;
+            uint32_t first_byte = sof1 + ADDR_TEX32_FIRST;
+            uint32_t last_byte = sof1 + ADDR_TEX32_FIRST + width * height * 4;
+            fb->addr_first[0] = first_byte;
+            fb->addr_first[1] = first_byte;
+            fb->addr_last[0] = last_byte;
+            fb->addr_last[1] = last_byte;
         }
     }
 
@@ -877,9 +918,20 @@ void pvr2_framebuffer_notify_write(uint32_t addr, unsigned n_bytes) {
 
     unsigned fb_idx;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++)
+        /*
+         * TODO: this overlap check is naive because it will issue a
+         * false-postive in situations where the bytes written to fall between
+         * the beginning and end of a field but aren't supposed to be part of
+         * the field because the linestride would skip over them.  So far this
+         * doesn't seem to be causing any troubles, but it is something to keep
+         * in mind.
+         */
         if (check_overlap(first_byte, last_byte,
-                          fb_heap[fb_idx].addr_first,
-                          fb_heap[fb_idx].addr_last)) {
+                          fb_heap[fb_idx].addr_first[0],
+                          fb_heap[fb_idx].addr_last[0]) ||
+            check_overlap(first_byte, last_byte,
+                          fb_heap[fb_idx].addr_first[1],
+                          fb_heap[fb_idx].addr_last[1])) {
             fb_heap[fb_idx].valid = false;
         }
 }
