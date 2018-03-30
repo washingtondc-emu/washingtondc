@@ -41,6 +41,7 @@
 
 static DEF_ERROR_INT_ATTR(width)
 static DEF_ERROR_INT_ATTR(height)
+static DEF_ERROR_INT_ATTR(fb_pix_fmt)
 
 #define OGL_FB_W_MAX (0x3ff + 1)
 #define OGL_FB_H_MAX (0x3ff + 1)
@@ -822,6 +823,7 @@ int framebuffer_set_render_target(void) {
         // 8888 ARGB
     case 7:
         // absolutely haram
+        error_set_fb_pix_fmt(get_fb_w_ctrl() & 0x7);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     case 1:
         // 16-bit 565 RGB
