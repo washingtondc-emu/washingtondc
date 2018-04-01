@@ -95,4 +95,7 @@ int framebuffer_set_render_target(void);
 
 void pvr2_framebuffer_notify_write(uint32_t addr, unsigned n_bytes);
 
+void pvr2_framebuffer_notify_texture(uint32_t first_tex_addr,
+                                     uint32_t last_tex_addr);
+
 #endif

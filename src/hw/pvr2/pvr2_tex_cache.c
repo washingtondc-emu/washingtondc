@@ -29,6 +29,7 @@
 #include "pvr2_tex_mem.h"
 #include "pvr2_core_reg.h"
 #include "pvr2_gfx_obj.h"
+#include "framebuffer.h"
 #include "mem_areas.h"
 #include "log.h"
 #include "error.h"
@@ -702,6 +703,11 @@ void pvr2_tex_cache_xmit(void) {
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex_in = tex_cache + idx;
+
+        if (tex_in->state != PVR2_TEX_INVALID) {
+            pvr2_framebuffer_notify_texture(tex_in->meta.addr_first + ADDR_TEX64_FIRST,
+                                            tex_in->meta.addr_last + ADDR_TEX64_FIRST);
+        }
 
         if (tex_in->state == PVR2_TEX_DIRTY) {
             /*
