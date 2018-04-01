@@ -123,21 +123,30 @@ sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
     unsigned field_adv = fb_width * 2 + modulus * 4 - 4;
     unsigned rows_per_field = fb_height / 2;
 
+    addr32_t first_addr_field1 = sof1;
+    addr32_t last_addr_field1 = sof1 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+    addr32_t first_addr_field2 = sof2;
+    addr32_t last_addr_field2 = sof2 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+
     // bounds checking.
-    addr32_t first_addr_field1 = ADDR_TEX32_FIRST + sof1;
-    addr32_t last_addr_field1 = ADDR_TEX32_FIRST + sof1 +
-        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
-    addr32_t first_addr_field2 = ADDR_TEX32_FIRST + sof2;
-    addr32_t last_addr_field2 = ADDR_TEX32_FIRST + sof2 +
-        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
-    if (first_addr_field1 < ADDR_TEX32_FIRST ||
-        first_addr_field1 > ADDR_TEX32_LAST ||
-        last_addr_field1 < ADDR_TEX32_FIRST ||
-        last_addr_field1 > ADDR_TEX32_LAST ||
-        first_addr_field2 < ADDR_TEX32_FIRST ||
-        first_addr_field2 > ADDR_TEX32_LAST ||
-        last_addr_field2 < ADDR_TEX32_FIRST ||
-        last_addr_field2 > ADDR_TEX32_LAST) {
+    addr32_t bounds_field1[2] = {
+        first_addr_field1 + ADDR_TEX32_FIRST,
+        last_addr_field1 + ADDR_TEX32_FIRST
+    };
+    addr32_t bounds_field2[2] = {
+        first_addr_field2 + ADDR_TEX32_FIRST,
+        last_addr_field2 + ADDR_TEX32_FIRST
+    };
+    if (bounds_field1[0] < ADDR_TEX32_FIRST ||
+        bounds_field1[0] > ADDR_TEX32_LAST ||
+        bounds_field1[1] < ADDR_TEX32_FIRST ||
+        bounds_field1[1] > ADDR_TEX32_LAST ||
+        bounds_field2[0] < ADDR_TEX32_FIRST ||
+        bounds_field2[0] > ADDR_TEX32_LAST ||
+        bounds_field2[1] < ADDR_TEX32_FIRST ||
+        bounds_field2[1] > ADDR_TEX32_LAST) {
         error_set_feature("whatever happens when a framebuffer is configured "
                           "to read outside of texture memory");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -199,13 +208,20 @@ sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
      * TODO: is it really necessary to test for
      * (last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) ?
      */
-    addr32_t last_byte = sof1 + ADDR_TEX32_FIRST + fb_width * fb_height * 2;
-    addr32_t first_byte = sof1 + ADDR_TEX32_FIRST;
-    if (last_byte > ADDR_TEX32_LAST || first_byte < ADDR_TEX32_FIRST ||
-        last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) {
-        error_set_feature("whatever happens when START_ADDR is configured to "
-                          "read outside of texture memory");
-        error_set_address(sof1);
+    addr32_t last_byte = sof1 + fb_width * fb_height * 2;
+    addr32_t first_byte = sof1;
+
+    // bounds checking.
+    addr32_t bounds_field1[2] = {
+        first_byte + ADDR_TEX32_FIRST,
+        last_byte + ADDR_TEX32_FIRST
+    };
+    if (bounds_field1[0] < ADDR_TEX32_FIRST ||
+        bounds_field1[0] > ADDR_TEX32_LAST ||
+        bounds_field1[1] < ADDR_TEX32_FIRST ||
+        bounds_field1[1] > ADDR_TEX32_LAST) {
+        error_set_feature("whatever happens when a framebuffer is configured "
+                          "to read outside of texture memory");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -253,21 +269,30 @@ sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
     unsigned field_adv = (fb_width * 4) + (modulus * 4) - 4;
     unsigned rows_per_field = fb_height /* / 2 */;
 
+    addr32_t first_addr_field1 = sof1;
+    addr32_t last_addr_field1 = sof1 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+    addr32_t first_addr_field2 = sof2;
+    addr32_t last_addr_field2 = sof2 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+
     // bounds checking.
-    addr32_t first_addr_field1 = ADDR_TEX32_FIRST + sof1;
-    addr32_t last_addr_field1 = ADDR_TEX32_FIRST + sof1 +
-        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
-    addr32_t first_addr_field2 = ADDR_TEX32_FIRST + sof2;
-    addr32_t last_addr_field2 = ADDR_TEX32_FIRST + sof2 +
-        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
-    if (first_addr_field1 < ADDR_TEX32_FIRST ||
-        first_addr_field1 > ADDR_TEX32_LAST ||
-        last_addr_field1 < ADDR_TEX32_FIRST ||
-        last_addr_field1 > ADDR_TEX32_LAST ||
-        first_addr_field2 < ADDR_TEX32_FIRST ||
-        first_addr_field2 > ADDR_TEX32_LAST ||
-        last_addr_field2 < ADDR_TEX32_FIRST ||
-        last_addr_field2 > ADDR_TEX32_LAST) {
+    addr32_t bounds_field1[2] = {
+        first_addr_field1 + ADDR_TEX32_FIRST,
+        last_addr_field1 + ADDR_TEX32_FIRST
+    };
+    addr32_t bounds_field2[2] = {
+        first_addr_field2 + ADDR_TEX32_FIRST,
+        last_addr_field2 + ADDR_TEX32_FIRST
+    };
+    if (bounds_field1[0] < ADDR_TEX32_FIRST ||
+        bounds_field1[0] > ADDR_TEX32_LAST ||
+        bounds_field1[1] < ADDR_TEX32_FIRST ||
+        bounds_field1[1] > ADDR_TEX32_LAST ||
+        bounds_field2[0] < ADDR_TEX32_FIRST ||
+        bounds_field2[0] > ADDR_TEX32_LAST ||
+        bounds_field2[1] < ADDR_TEX32_FIRST ||
+        bounds_field2[1] > ADDR_TEX32_LAST) {
         error_set_feature("whatever happens when a framebuffer is configured "
                           "to read outside of texture memory");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -321,19 +346,25 @@ sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
                                   unsigned fb_width, unsigned fb_height,
                                   uint32_t sof1) {
     uint32_t const *pixels_in = (uint32_t const*)(pvr2_tex32_mem + sof1);
+    addr32_t last_byte = sof1 + fb_width * fb_height * 4;
+    addr32_t first_byte = sof1;
+
     /*
      * bounds checking
      *
      * TODO: is it really necessary to test for
      * (last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) ?
      */
-    addr32_t last_byte = sof1 + ADDR_TEX32_FIRST + fb_width * fb_height * 4;
-    addr32_t first_byte = sof1 + ADDR_TEX32_FIRST;
-    if (last_byte > ADDR_TEX32_LAST || first_byte < ADDR_TEX32_FIRST ||
-        last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) {
-        error_set_feature("whatever happens when START_ADDR is configured to "
-                          "read outside of texture memory");
-        error_set_address(sof1);
+    addr32_t bounds_field1[2] = {
+        first_byte + ADDR_TEX32_FIRST,
+        last_byte + ADDR_TEX32_FIRST
+    };
+    if (bounds_field1[0] < ADDR_TEX32_FIRST ||
+        bounds_field1[0] > ADDR_TEX32_LAST ||
+        bounds_field1[1] < ADDR_TEX32_FIRST ||
+        bounds_field1[1] > ADDR_TEX32_LAST) {
+        error_set_feature("whatever happens when a framebuffer is configured "
+                          "to read outside of texture memory");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -419,7 +450,7 @@ static struct framebuffer fb_heap[FB_HEAP_SIZE];
  * does, however, perform bounds-checking and raise an error for out-of-bounds
  * memory access.
  */
-static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len);
+static void copy_to_tex_mem(void const *in, addr32_t offs, size_t len);
 
 static void conv_rgb565_to_rgba8888(uint32_t *pixels_out,
                                     uint16_t const *pixels_in,
@@ -504,7 +535,7 @@ void framebuffer_render() {
 
     struct gfx_il_inst cmd;
 
-    uint32_t addr_first = fb_r_sof1 + ADDR_TEX32_FIRST;
+    uint32_t addr_first = fb_r_sof1;
 
     int fb_idx;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
@@ -526,7 +557,7 @@ void framebuffer_render() {
         }
     }
 
-    fb_idx = pick_fb(width, height, fb_r_sof1 + ADDR_TEX32_FIRST);
+    fb_idx = pick_fb(width, height, fb_r_sof1);
     sync_fb_from_tex_mem(fb_heap + fb_idx, width, height, modulus, concat);
 
 submit_the_fb:
@@ -575,7 +606,7 @@ static void framebuffer_sync_from_host_0555_krgb(void) {
              * XXX this is suboptimal because it does the bounds-checking once
              * per pixel.
              */
-            copy_to_tex_mem32(&pix_out, line_offs + 2 * col, sizeof(pix_out));
+            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
         }
     }
 }
@@ -619,7 +650,7 @@ static void framebuffer_sync_from_host_0565_krgb(void) {
              * XXX this is suboptimal because it does the bounds-checking once
              * per pixel.
              */
-            copy_to_tex_mem32(&pix_out, line_offs + 2 * col, sizeof(pix_out));
+            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
         }
     }
 }
@@ -699,7 +730,7 @@ static uint8_t *get_tex_mem_area(addr32_t addr) {
     }
 }
 
-static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len) {
+static void copy_to_tex_mem(void const *in, addr32_t offs, size_t len) {
     addr32_t last_byte = offs - 1 + len;
 
     if ((last_byte & 0xff000000) != (offs & 0xff000000)) {
@@ -709,7 +740,7 @@ static void copy_to_tex_mem32(void const *in, addr32_t offs, size_t len) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint8_t *tex_mem_ptr = get_tex_mem_area(offs + ADDR_TEX32_FIRST);
+    uint8_t *tex_mem_ptr = get_tex_mem_area(offs);
     if (!tex_mem_ptr) {
         error_set_length(len);
         error_set_address(offs + ADDR_TEX32_FIRST);
@@ -790,7 +821,7 @@ int framebuffer_set_render_target(void) {
 
     if (interlace)
         height *= 2;
-    int idx = pick_fb(width, height, addr + ADDR_TEX32_FIRST);
+    int idx = pick_fb(width, height, addr);
 
     struct framebuffer *fb = fb_heap + idx;
     fb->valid = true;
@@ -830,11 +861,11 @@ int framebuffer_set_render_target(void) {
         if (interlace) {
             field_adv = width * 2 + modulus * 4 - 4;
             rows_per_field = height / 2;
-            first_addr_field1 = ADDR_TEX32_FIRST + sof1;
-            last_addr_field1 = ADDR_TEX32_FIRST + sof1 +
+            first_addr_field1 = sof1;
+            last_addr_field1 = sof1 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
-            first_addr_field2 = ADDR_TEX32_FIRST + sof2;
-            last_addr_field2 = ADDR_TEX32_FIRST + sof2 +
+            first_addr_field2 = sof2;
+            last_addr_field2 = sof2 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
 
             if (first_addr_field1 < first_addr_field2) {
@@ -849,8 +880,8 @@ int framebuffer_set_render_target(void) {
                 fb->addr_last[1] = last_addr_field1;
             }
         } else {
-            uint32_t first_byte = sof1 + ADDR_TEX32_FIRST;
-            uint32_t last_byte = sof1 + ADDR_TEX32_FIRST + width * height * 2;
+            uint32_t first_byte = sof1;
+            uint32_t last_byte = sof1 + width * height * 2;
             fb->addr_first[0] = first_byte;
             fb->addr_first[1] = first_byte;
             fb->addr_last[0] = last_byte;
@@ -862,11 +893,11 @@ int framebuffer_set_render_target(void) {
         if (interlace) {
             field_adv = (width * 4) + (modulus * 4) - 4;
             rows_per_field = height;
-            first_addr_field1 = ADDR_TEX32_FIRST + sof1;
-            last_addr_field1 = ADDR_TEX32_FIRST + sof1 +
+            first_addr_field1 = sof1;
+            last_addr_field1 = sof1 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
-            first_addr_field2 = ADDR_TEX32_FIRST + sof2;
-            last_addr_field2 = ADDR_TEX32_FIRST + sof2 +
+            first_addr_field2 = sof2;
+            last_addr_field2 = sof2 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
             if (first_addr_field1 < first_addr_field2) {
                 fb->addr_first[0] = first_addr_field1;
@@ -880,8 +911,8 @@ int framebuffer_set_render_target(void) {
                 fb->addr_last[1] = last_addr_field1;
             }
         } else {
-            uint32_t first_byte = sof1 + ADDR_TEX32_FIRST;
-            uint32_t last_byte = sof1 + ADDR_TEX32_FIRST + width * height * 4;
+            uint32_t first_byte = sof1;
+            uint32_t last_byte = sof1 + width * height * 4;
             fb->addr_first[0] = first_byte;
             fb->addr_first[1] = first_byte;
             fb->addr_last[0] = last_byte;
@@ -915,7 +946,7 @@ static inline bool check_overlap(uint32_t range1_start, uint32_t range1_end,
 }
 
 void pvr2_framebuffer_notify_write(uint32_t addr, unsigned n_bytes) {
-    uint32_t first_byte = addr;
+    uint32_t first_byte = addr - ADDR_TEX32_FIRST;
     uint32_t last_byte = n_bytes - 1 + first_byte;
 
     unsigned fb_idx;
