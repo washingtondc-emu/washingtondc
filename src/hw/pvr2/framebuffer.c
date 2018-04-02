@@ -63,6 +63,13 @@ enum fb_pix_fmt {
     FB_PIX_FMT_0RGB_0888
 };
 
+struct fb_flags {
+    uint8_t state : 2;
+    uint8_t fmt : 2;
+    uint8_t vert_flip : 1;
+    uint8_t intl : 1;
+};
+
 #define FB_HEAP_SIZE 8
 struct framebuffer {
     int obj_handle;
@@ -71,19 +78,15 @@ struct framebuffer {
     // only used for writing back to texture memory
     unsigned linestride;
 
-    enum fb_pix_fmt fmt;
-
     uint32_t addr_first[2], addr_last[2];
     uint32_t addr_key; // min of addr_first[0], addr_first[1]
 
     unsigned stamp;
-    enum fb_state state;
-
-    bool vert_flip;
-    bool interlace;
 
     unsigned tile_w, tile_h;
     unsigned x_clip_min, x_clip_max, y_clip_min, y_clip_max;
+
+    struct fb_flags flags;
 };
 
 static unsigned bytes_per_pix(uint32_t fb_r_ctrl) {
@@ -192,12 +195,12 @@ sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
     fb->fb_width = fb_width;
     fb->fb_height = fb_height;
 
-    fb->state = FB_STATE_VIRT_AND_GFX;
+    fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
-    fb->vert_flip = true;
-    fb->interlace = true;
+    fb->flags.vert_flip = true;
+    fb->flags.intl = true;
     fb->stamp = stamp;
-    fb->fmt = FB_PIX_FMT_RGB_565;
+    fb->flags.fmt = FB_PIX_FMT_RGB_565;
 
     struct gfx_il_inst cmd;
 
@@ -257,12 +260,12 @@ sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
     fb->addr_last[0] = last_byte;
     fb->addr_last[1] = last_byte;
 
-    fb->state = FB_STATE_VIRT_AND_GFX;
+    fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
-    fb->vert_flip = true;
-    fb->interlace = false;
+    fb->flags.vert_flip = true;
+    fb->flags.intl = false;
     fb->stamp = stamp;
-    fb->fmt = FB_PIX_FMT_RGB_565;
+    fb->flags.fmt = FB_PIX_FMT_RGB_565;
 
     struct gfx_il_inst cmd;
 
@@ -341,12 +344,12 @@ sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
     fb->addr_last[0] = last_addr_field1;
     fb->addr_last[1] = last_addr_field2;
 
-    fb->state = FB_STATE_VIRT_AND_GFX;
+    fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
-    fb->vert_flip = true;
-    fb->interlace = true;
+    fb->flags.vert_flip = true;
+    fb->flags.intl = true;
     fb->stamp = stamp;
-    fb->fmt = FB_PIX_FMT_0RGB_0888;
+    fb->flags.fmt = FB_PIX_FMT_0RGB_0888;
 
     struct gfx_il_inst cmd;
 
@@ -403,12 +406,12 @@ sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
     fb->addr_last[0] = last_byte;
     fb->addr_last[1] = last_byte;
 
-    fb->state = FB_STATE_VIRT_AND_GFX;
+    fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
-    fb->vert_flip = true;
-    fb->interlace = false;
+    fb->flags.vert_flip = true;
+    fb->flags.intl = false;
     fb->stamp = stamp;
-    fb->fmt = FB_PIX_FMT_0RGB_0888;
+    fb->flags.fmt = FB_PIX_FMT_0RGB_0888;
 
     struct gfx_il_inst cmd;
 
@@ -561,13 +564,13 @@ void framebuffer_render() {
     int fb_idx;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
         struct framebuffer *fb = fb_heap + fb_idx;
-        if (fb->interlace) {
+        if (fb->flags.intl) {
             if (fb->fb_width == width &&
                 fb->fb_height == height &&
                 fb->addr_key == addr_first &&
-                fb->state != FB_STATE_INVALID) {
+                fb->flags.state != FB_STATE_INVALID) {
 
-                if (!(fb_heap[fb_idx].state & FB_STATE_GFX))
+                if (!(fb_heap[fb_idx].flags.state & FB_STATE_GFX))
                     sync_fb_from_tex_mem(fb_heap + fb_idx, width, height, modulus, concat);
 
                 goto submit_the_fb;
@@ -585,7 +588,7 @@ submit_the_fb:
     cmd.arg.post_framebuffer.obj_handle = fb_heap[fb_idx].obj_handle;
     cmd.arg.post_framebuffer.width = fb_heap[fb_idx].fb_width;
     cmd.arg.post_framebuffer.height = fb_heap[fb_idx].fb_height;
-    cmd.arg.post_framebuffer.vert_flip = fb_heap[fb_idx].vert_flip;
+    cmd.arg.post_framebuffer.vert_flip = fb_heap[fb_idx].flags.vert_flip;
 
     rend_exec_il(&cmd, 1);
 }
@@ -769,10 +772,10 @@ static void fb_sync_from_host_rgb0888_intl(struct framebuffer *fb) {
 
 static void
 sync_fb_to_tex_mem(struct framebuffer *fb) {
-    if (!(fb->state & FB_STATE_GFX) || (fb->state & FB_STATE_VIRT))
+    if (!(fb->flags.state & FB_STATE_GFX) || (fb->flags.state & FB_STATE_VIRT))
         return;
 
-    fb->state |= ~FB_STATE_VIRT;
+    fb->flags.state |= ~FB_STATE_VIRT;
 
     struct gfx_il_inst cmd = {
         .op = GFX_IL_READ_OBJ,
@@ -783,23 +786,23 @@ sync_fb_to_tex_mem(struct framebuffer *fb) {
             } }
     };
     rend_exec_il(&cmd, 1);
-    switch (fb->fmt) {
+    switch (fb->flags.fmt) {
     case FB_PIX_FMT_RGB_565:
-        if (!fb->interlace) {
+        if (!fb->flags.intl) {
             fb_sync_from_host_0565_krgb_prog(fb);
         } else {
             fb_sync_from_host_0565_krgb_intl(fb);
         }
         break;
     case FB_PIX_FMT_0RGB_0888:
-        if (!fb->interlace) {
+        if (!fb->flags.intl) {
             fb_sync_from_host_rgb0888_prog(fb);
         } else {
             fb_sync_from_host_rgb0888_intl(fb);
         }
         break;
     default:
-        printf("fb->fmt is %d\n", fb->fmt);
+        printf("fb->flags.fmt is %d\n", fb->flags.fmt);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 }
@@ -881,7 +884,7 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
     int oldest_stamp = stamp;
     int oldest_stamp_idx = -1;
     for (idx = 0; idx < FB_HEAP_SIZE; idx++) {
-        if (fb_heap[idx].state != FB_STATE_INVALID) {
+        if (fb_heap[idx].flags.state != FB_STATE_INVALID) {
             if (fb_heap[idx].fb_width == width &&
                 fb_heap[idx].fb_height == height &&
                 fb_heap[idx].addr_key == addr) {
@@ -932,12 +935,12 @@ int framebuffer_set_render_target(void) {
 
     struct framebuffer *fb = fb_heap + idx;
 
-    fb->state = FB_STATE_GFX;
-    fb->vert_flip = false;
+    fb->flags.state = FB_STATE_GFX;
+    fb->flags.vert_flip = false;
     fb->fb_width = width;
     fb->fb_height = height;
     fb->stamp = stamp;
-    fb->interlace = interlace;
+    fb->flags.intl = interlace;
     fb->linestride = get_fb_w_linestride() * 8;
 
     // set addr_first and addr_last
@@ -993,7 +996,7 @@ int framebuffer_set_render_target(void) {
             fb->addr_last[0] = last_byte;
             fb->addr_last[1] = last_byte;
         }
-        fb_heap[idx].fmt = FB_PIX_FMT_RGB_565;
+        fb_heap[idx].flags.fmt = FB_PIX_FMT_RGB_565;
         break;
     case 5:
         // 32-bit 0888 KRGB
@@ -1023,7 +1026,7 @@ int framebuffer_set_render_target(void) {
             fb->addr_last[0] = last_byte;
             fb->addr_last[1] = last_byte;
         }
-        fb_heap[idx].fmt = FB_PIX_FMT_0RGB_0888;
+        fb_heap[idx].flags.fmt = FB_PIX_FMT_0RGB_0888;
         break;
     }
 
@@ -1076,14 +1079,14 @@ void pvr2_framebuffer_notify_write(uint32_t addr, unsigned n_bytes) {
          * in mind.
          */
         struct framebuffer *fb = fb_heap + fb_idx;
-        if ((fb->state & FB_STATE_GFX) &&
+        if ((fb->flags.state & FB_STATE_GFX) &&
             (check_overlap(first_byte, last_byte,
                           fb->addr_first[0],
                           fb->addr_last[0]) ||
             check_overlap(first_byte, last_byte,
                           fb->addr_first[1],
                           fb->addr_last[1]))) {
-            fb->state = FB_STATE_VIRT;
+            fb->flags.state = FB_STATE_VIRT;
         }
     }
 }
@@ -1096,7 +1099,7 @@ void pvr2_framebuffer_notify_texture(uint32_t first_tex_addr,
     int sync_count = 0;
     unsigned fb_idx;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
-        if (fb_heap[fb_idx].state != FB_STATE_GFX)
+        if (fb_heap[fb_idx].flags.state != FB_STATE_GFX)
             continue;
 
         uint32_t const *addr_first = fb_heap[fb_idx].addr_first;
@@ -1129,7 +1132,7 @@ void pvr2_framebuffer_notify_texture(uint32_t first_tex_addr,
             check_overlap(first_tex_addr, last_tex_addr,
                           addr_first[1] & TEX_MIRROR_MASK, addr_last[1] & TEX_MIRROR_MASK)) {
             sync_fb_to_tex_mem(fb_heap + fb_idx);
-            fb_heap[fb_idx].state = FB_STATE_VIRT_AND_GFX;
+            fb_heap[fb_idx].flags.state = FB_STATE_VIRT_AND_GFX;
             sync_count++;
         }
     }
