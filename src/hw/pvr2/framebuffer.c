@@ -564,7 +564,7 @@ void framebuffer_render() {
     int fb_idx;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
         struct framebuffer *fb = fb_heap + fb_idx;
-        if (fb->flags.intl) {
+        if (fb->flags.intl == interlace) {
             if (fb->fb_width == width &&
                 fb->fb_height == height &&
                 fb->addr_key == addr_first &&
