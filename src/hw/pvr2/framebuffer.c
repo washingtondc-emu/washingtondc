@@ -73,7 +73,7 @@ struct fb_flags {
 #define FB_HEAP_SIZE 8
 struct framebuffer {
     int obj_handle;
-    unsigned fb_width, fb_height;
+    unsigned fb_read_width, fb_read_height;
 
     // only used for writing back to texture memory
     unsigned linestride;
@@ -83,8 +83,9 @@ struct framebuffer {
 
     unsigned stamp;
 
-    unsigned tile_w, tile_h;
-    unsigned x_clip_min, x_clip_max, y_clip_min, y_clip_max;
+    // These variables are only valid if flags.state == FB_STATE_GFX
+    unsigned tile_w, tile_h, x_clip_min, x_clip_max,
+        y_clip_min, y_clip_max;
 
     struct fb_flags flags;
 };
@@ -192,8 +193,8 @@ sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
     fb->addr_last[0] = last_addr_field1;
     fb->addr_last[1] = last_addr_field2;
 
-    fb->fb_width = fb_width;
-    fb->fb_height = fb_height;
+    fb->fb_read_width = fb_width;
+    fb->fb_read_height = fb_height;
 
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
@@ -252,8 +253,8 @@ sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
         conv_rgb565_to_rgba8888(out_col_start, in_col_start, fb_width, concat);
     }
 
-    fb->fb_width = fb_width;
-    fb->fb_height = fb_height;
+    fb->fb_read_width = fb_width;
+    fb->fb_read_height = fb_height;
     fb->addr_key = first_byte;
     fb->addr_first[0] = first_byte;
     fb->addr_first[1] = first_byte;
@@ -333,8 +334,8 @@ sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
                                  ptr_row2, fb_width);
     }
 
-    fb->fb_width = fb_width;
-    fb->fb_height = fb_height;
+    fb->fb_read_width = fb_width;
+    fb->fb_read_height = fb_height;
 
     fb->addr_key = first_addr_field1 < first_addr_field2 ?
         first_addr_field1 : first_addr_field2;
@@ -398,8 +399,8 @@ sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
         conv_rgb0888_to_rgba8888(out_col_start, in_col_start, fb_width);
     }
 
-    fb->fb_width = fb_width;
-    fb->fb_height = fb_height;
+    fb->fb_read_width = fb_width;
+    fb->fb_read_height = fb_height;
     fb->addr_key = first_byte;
     fb->addr_first[0] = first_byte;
     fb->addr_first[1] = first_byte;
@@ -565,8 +566,8 @@ void framebuffer_render() {
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
         struct framebuffer *fb = fb_heap + fb_idx;
         if (fb->flags.intl == interlace) {
-            if (fb->fb_width == width &&
-                fb->fb_height == height &&
+            if (fb->fb_read_width == width &&
+                fb->fb_read_height == height &&
                 fb->addr_key == addr_first &&
                 fb->flags.state != FB_STATE_INVALID) {
 
@@ -586,8 +587,8 @@ submit_the_fb:
 
     cmd.op = GFX_IL_POST_FRAMEBUFFER;
     cmd.arg.post_framebuffer.obj_handle = fb_heap[fb_idx].obj_handle;
-    cmd.arg.post_framebuffer.width = fb_heap[fb_idx].fb_width;
-    cmd.arg.post_framebuffer.height = fb_heap[fb_idx].fb_height;
+    cmd.arg.post_framebuffer.width = fb_heap[fb_idx].fb_read_width;
+    cmd.arg.post_framebuffer.height = fb_heap[fb_idx].fb_read_height;
     cmd.arg.post_framebuffer.vert_flip = fb_heap[fb_idx].flags.vert_flip;
 
     rend_exec_il(&cmd, 1);
@@ -595,9 +596,14 @@ submit_the_fb:
 
 static void
 fb_sync_from_host_0565_krgb_prog(struct framebuffer *fb) {
+    /*
+     * TODO: don't get width, height from fb_read_width and fb_read_height
+     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
+     * work).
+     */
     uint32_t addr = fb->addr_first[0];
-    unsigned width = fb->fb_width;
-    unsigned height = fb->fb_height;
+    unsigned width = fb->fb_read_width;
+    unsigned height = fb->fb_read_height;
     unsigned stride = fb->linestride;
 
     uint16_t const k_val = 0;
@@ -641,10 +647,6 @@ fb_sync_from_host_0565_krgb_intl(struct framebuffer *fb) {
     assert((width * height * 4) < OGL_FB_BYTES);
 
     unsigned row, col;
-    __attribute__((unused)) unsigned rows_per_field = height / 2;
-    printf("Sync to texture memory sof1=0x%08x, sof2=0x%08x\n",
-           (unsigned)addr[0], (unsigned)addr[1]);
-    printf("%ux%u, linestride = %u\n", width, height, stride);
     for (row = y_min; row <= y_max; row++) {
         /*
          * TODO: figure out how this is supposed to work with interlacing.
@@ -658,6 +660,7 @@ fb_sync_from_host_0565_krgb_intl(struct framebuffer *fb) {
          * that out right.
          */
 #if 0
+        unsigned rows_per_field = height / 2;
         unsigned row_actual[2] = { 2 * row, 2 * row + 1 };
         unsigned line_offs[2] = {
             addr[0] + (rows_per_field - (row + 1)) * stride,
@@ -698,10 +701,13 @@ fb_sync_from_host_0565_krgb_intl(struct framebuffer *fb) {
 }
 
 static void fb_sync_from_host_rgb0888_prog(struct framebuffer *fb) {
-    /* printf("FRAMEBUFFER SYNC %s\n", __func__); */
-
-    unsigned width = fb->fb_width;
-    unsigned height = fb->fb_height;
+    /*
+     * TODO: don't get width, height from fb_read_width and fb_read_height
+     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
+     * work).
+     */
+    unsigned width = fb->fb_read_width;
+    unsigned height = fb->fb_read_height;
     unsigned stride = fb->linestride;
     uint32_t const *fb_in = (uint32_t*)ogl_fb;
 
@@ -723,18 +729,18 @@ static void fb_sync_from_host_rgb0888_prog(struct framebuffer *fb) {
 }
 
 static void fb_sync_from_host_rgb0888_intl(struct framebuffer *fb) {
-    /* printf("FRAMEBUFFER SYNC %s\n", __func__); */
-
-    unsigned width = fb->fb_width;
-    unsigned height = fb->fb_height;
+    /*
+     * TODO: don't get width, height from fb_read_width and fb_read_height
+     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
+     * work).
+     */
+    unsigned width = fb->fb_read_width;
+    unsigned height = fb->fb_read_height;
     unsigned stride = fb->linestride;
     uint32_t const *fb_in = (uint32_t*)ogl_fb;
     unsigned rows_per_field = height / 2;
     unsigned const *addr = fb->addr_first;
 
-    /* printf("Sync to texture memory sof1=0x%08x, sof2=0x%08x\n", */
-    /*        (unsigned)addr[0], (unsigned)addr[1]); */
-    /* printf("%ux%u, linestride = %u\n", width, height, stride); */
     assert((width * height * 4) < OGL_FB_BYTES);
 
     unsigned row, col;
@@ -743,10 +749,7 @@ static void fb_sync_from_host_rgb0888_intl(struct framebuffer *fb) {
         unsigned line_offs[2] = {
             addr[0] + (rows_per_field - (row + 1)) * stride,
             addr[1] + (rows_per_field - (row + 1)) * stride
-            /* addr[0] + row * stride, */
-            /* addr[1] + row * stride */
         };
-        /* printf("line_offs[0] is 0x%08x\n", line_offs[0]); */
 
         for (col = 0; col < width; col++) {
             unsigned ogl_fb_idx[2] = {
@@ -772,7 +775,7 @@ static void fb_sync_from_host_rgb0888_intl(struct framebuffer *fb) {
 
 static void
 sync_fb_to_tex_mem(struct framebuffer *fb) {
-    if (!(fb->flags.state & FB_STATE_GFX) || (fb->flags.state & FB_STATE_VIRT))
+    if (fb->flags.state != FB_STATE_GFX)
         return;
 
     fb->flags.state |= ~FB_STATE_VIRT;
@@ -802,7 +805,7 @@ sync_fb_to_tex_mem(struct framebuffer *fb) {
         }
         break;
     default:
-        printf("fb->flags.fmt is %d\n", fb->flags.fmt);
+        LOG_ERROR("fb->flags.fmt is %d\n", fb->flags.fmt);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 }
@@ -885,8 +888,8 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
     int oldest_stamp_idx = -1;
     for (idx = 0; idx < FB_HEAP_SIZE; idx++) {
         if (fb_heap[idx].flags.state != FB_STATE_INVALID) {
-            if (fb_heap[idx].fb_width == width &&
-                fb_heap[idx].fb_height == height &&
+            if (fb_heap[idx].fb_read_width == width &&
+                fb_heap[idx].fb_read_height == height &&
                 fb_heap[idx].addr_key == addr) {
                 break;
             }
@@ -915,19 +918,29 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
 }
 
 int framebuffer_set_render_target(void) {
+
     /*
-     * TODO: this is almost certainly not the correct way to get the screen
-     * dimensions as they are seen by PVR
-     * TODO: also, use fb_w_linestride
-     * TODO: seriously though, the _r_ registers are supposed to be for
-     * reading, not writing.  This is bound to cause problems eventually if I
-     * don't fix it.
+     * XXX
+     *
+     * Games will often configure PVR2 to render a couple extra rows of pixels
+     * that the video hardware is not ocnfigured to send to the display
+     * (read-height is less than write-height).  This presents a problem for
+     * WashingtonDC because it needs the read-dimensions and the
+     * write-dimensions to match up when it's searching the fb_heap for a
+     * framebuffer.  My solution to this problem is to store the read-width and
+     * read-height in the struct framebuffer, and calculate the write-width and
+     * write-height when the framebuffer actually gets synced to tex memory.
+     *
+     * This could potentially cause problems if the fb_r_size register changes
+     * between the point where the framebuffer gets rendered and the vblank
+     * interrupt, but I don't know any better way to solve this problem.  This is
+     * something to keep in mind for the future.
      */
-    bool interlace = get_spg_control() & (1 << 4);
     unsigned width = ((get_fb_r_size() & 0x3ff) + 1) *
         (4 / bytes_per_pix(get_fb_r_ctrl()));
     unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
     uint32_t addr = get_fb_w_sof1();
+    bool interlace = get_spg_control() & (1 << 4);
 
     if (interlace)
         height *= 2;
@@ -937,8 +950,8 @@ int framebuffer_set_render_target(void) {
 
     fb->flags.state = FB_STATE_GFX;
     fb->flags.vert_flip = false;
-    fb->fb_width = width;
-    fb->fb_height = height;
+    fb->fb_read_width = width;
+    fb->fb_read_height = height;
     fb->stamp = stamp;
     fb->flags.intl = interlace;
     fb->linestride = get_fb_w_linestride() * 8;
@@ -1136,6 +1149,4 @@ void pvr2_framebuffer_notify_texture(uint32_t first_tex_addr,
             sync_count++;
         }
     }
-    if (sync_count)
-        printf("%d overlapping framebuffers synced\n", sync_count);
 }
