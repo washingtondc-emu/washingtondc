@@ -82,7 +82,7 @@ static bool using_debugger;
 
 bool serial_server_in_use;
 
-static clock_t last_frame_realtime;
+static struct timespec last_frame_realtime;
 static dc_cycle_stamp_t last_frame_virttime;
 static bool show_overlay;
 
@@ -401,7 +401,7 @@ void dreamcast_run() {
     bool const native_mode = config_get_native_jit();
 #endif
 
-    last_frame_realtime = clock();
+    clock_gettime(CLOCK_MONOTONIC, &last_frame_realtime);
     overlay_show(show_overlay);
 
     if (jit) {
@@ -581,18 +581,24 @@ void dc_single_step(Sh4 *sh4) {
 
 #endif
 
+static void time_diff(struct timespec *delta,
+                      struct timespec const *end,
+                      struct timespec const *start) {
+    /* subtract delta_time = end_time - start_time */
+    if (end->tv_nsec < start->tv_nsec) {
+        delta->tv_nsec = 1000000000 - start->tv_nsec + end->tv_nsec;
+        delta->tv_sec = end->tv_sec - 1 - start->tv_sec;
+    } else {
+        delta->tv_nsec = end->tv_nsec - start->tv_nsec;
+        delta->tv_sec = end->tv_sec - start->tv_sec;
+    }
+}
+
 void dc_print_perf_stats(void) {
     struct timespec end_time, delta_time;
     clock_gettime(CLOCK_MONOTONIC, &end_time);
 
-    /* subtract delta_time = end_time - start_time */
-    if (end_time.tv_nsec < start_time.tv_nsec) {
-        delta_time.tv_nsec = 1000000000 - start_time.tv_nsec + end_time.tv_nsec;
-        delta_time.tv_sec = end_time.tv_sec - 1 - start_time.tv_sec;
-    } else {
-        delta_time.tv_nsec = end_time.tv_nsec - start_time.tv_nsec;
-        delta_time.tv_sec = end_time.tv_sec - start_time.tv_sec;
-    }
+    time_diff(&delta_time, &end_time, &start_time);
 
     LOG_INFO("Total elapsed time: %u seconds and %u nanoseconds\n",
              (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
@@ -736,10 +742,13 @@ static void periodic_event_handler(struct SchedEvent *event) {
 }
 
 void dc_end_frame(void) {
-    clock_t timestamp = clock();
+    struct timespec timestamp, delta;
+    clock_gettime(CLOCK_MONOTONIC, &timestamp);
     dc_cycle_stamp_t virt_timestamp = dc_cycle_stamp();
-    double framerate = (double)CLOCKS_PER_SEC /
-        (double)(timestamp - last_frame_realtime);
+
+    time_diff(&delta, &timestamp, &last_frame_realtime);
+
+    double framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
     double virt_framerate = (double)SCHED_FREQUENCY /
         (double)(virt_timestamp - last_frame_virttime);
     last_frame_realtime = timestamp;
