@@ -1166,9 +1166,28 @@ bool sh4_disas_muluw_rm_rn(struct il_code_block *block, unsigned pc,
     unsigned slot_rhs = reg_slot(dreamcast_get_cpu(), block, reg_rhs);
     unsigned slot_macl = reg_slot(dreamcast_get_cpu(), block, SH4_REG_MACL);
 
-    jit_mul_u32(block, slot_lhs, slot_rhs, slot_macl);
+    unsigned slot_lhs_16 = alloc_slot(block);
+    unsigned slot_rhs_16 = alloc_slot(block);
+
+    /*
+     * TODO: x86 has instructions that can move and zero-extend at the same
+     * time, and that would probably be faster than moving plus AND'ing.  I'd
+     * have to add new IL op for that, which is why I'm doing it the naive way
+     * for now.
+     */
+    jit_mov(block, slot_lhs, slot_lhs_16);
+    jit_mov(block, slot_rhs, slot_rhs_16);
+    jit_and_const32(block, slot_lhs_16, 0xffff);
+    jit_and_const32(block, slot_rhs_16, 0xffff);
+
+    jit_mul_u32(block, slot_lhs_16, slot_rhs_16, slot_macl);
 
     reg_map[SH4_REG_MACL].stat = REG_STATUS_SLOT;
+
+    jit_discard_slot(block, slot_rhs_16);
+    free_slot(block, slot_rhs_16);
+    jit_discard_slot(block, slot_lhs_16);
+    free_slot(block, slot_lhs_16);
 
     return true;
 }
