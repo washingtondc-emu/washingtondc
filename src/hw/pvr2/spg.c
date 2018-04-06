@@ -63,17 +63,39 @@ static DEF_ERROR_INT_ATTR(hblank_int_mode)
  * However, the actuall interrupts happen based on the SPG_HBLANK_INT and SPG_VBLANK_INT registers?
  */
 
-// SPG vclk frequency is 27MHz, with an optional divide to turn it into 13.5 MHz
-#define SPG_VCLK_DIV (SCHED_FREQUENCY / (27 * 1000 * 1000))
+/*
+ * SPG vclk frequency is 27MHz, with an optional divide to turn it into 13.5 MHz
+ *
+ * My way of implementing interlace-scan is to double the vclk.  I don't know if
+ * this is how it works on a real Dreamcast, but I have confirmed that the
+ * vcount does not skip over every other line when interlace scan is enabled,
+ * so this is one possible way that might be implemented.  I suppose the other
+ * possibility is that maybe the SPG triggers a vblank at vcount / 2 and again
+ * at vcount, but I just don't know.  That wouldn't get me a consistent, perfect
+ * 59.97005997 Hz in situations where vcount is odd (and it does seem like it's
+ * always odd based on my experiences) but doubling the clock speed does get me
+ * a perfect unwavering 59.97005997 Hz clock so that's the implementation I've
+ * chosen to go with.
+ *
+ * So, in general my vclk implementation is 54MHz.  Guest-programs may
+ * optionally divide this clock by two to get a 27MHz clock (generally speaking,
+ * they'll divide if the video cable is composite NTSC, and they won't divide
+ * if the video cable is a VGA). if progressive-scan is enabled, then we divide
+ * by two again.
+ */
+#define SPG_VCLK_DIV (SCHED_FREQUENCY / (54 * 1000 * 1000))
 
-static_assert(SCHED_FREQUENCY % (27 * 1000 * 1000) == 0,
+static_assert(SCHED_FREQUENCY % (54 * 1000 * 1000) == 0,
               "scheduler frequency does not cleanly divide by SPG frequency");
 
 /*
  * this should be either 1 (for 27 MHz pixel clock) or
  * 2 (for 13.5 MHz pixel clock).
  *
- * It corresponds to bit 23 of FB_R_CTRL (pclk_div)
+ * It corresponds to bit 23 of FB_R_CTRL (pclk_div).
+ *
+ * Only access this through the get_pclk_div method so that you get the proper
+ * value including the interlace/progressive divide.
  */
 static unsigned pclk_div = 2;
 
@@ -133,6 +155,9 @@ static void spg_handle_vblank_out(SchedEvent *event);
 
 static void spg_unsched_all();
 
+static inline bool get_interlace(void);
+static inline unsigned get_pclk_div(void);
+
 void spg_init() {
     hblank_event.handler = spg_handle_hblank;
     vblank_in_event.handler = spg_handle_vblank_in;
@@ -167,13 +192,13 @@ static void spg_sync() {
     unsigned hcount = get_hcount();
     unsigned vcount = get_vcount();
     dc_cycle_stamp_t cur_time = dc_cycle_stamp();
-    dc_cycle_stamp_t last_sync_rounded = (pclk_div * SPG_VCLK_DIV) *
-        (last_sync / (pclk_div * SPG_VCLK_DIV));
+    dc_cycle_stamp_t last_sync_rounded = (get_pclk_div() * SPG_VCLK_DIV) *
+        (last_sync / (get_pclk_div() * SPG_VCLK_DIV));
 
     dc_cycle_stamp_t delta_cycles = cur_time - last_sync_rounded;
 
     // only update the last_sync timestamp if the values have changed
-    unsigned raster_x_inc = delta_cycles / (pclk_div * SPG_VCLK_DIV);
+    unsigned raster_x_inc = delta_cycles / (get_pclk_div() * SPG_VCLK_DIV);
     if (raster_x_inc > 0) {
         last_sync = cur_time;
 
@@ -296,8 +321,8 @@ static void sched_next_hblank_event() {
     /* printf("when the time comes, the raster pos will be (%u, %u)\n", */
     /*        raster_x_next, raster_y_next); */
 
-    hblank_event.when = (SPG_VCLK_DIV * pclk_div) *
-        (next_hblank_pclk + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
+    hblank_event.when = (SPG_VCLK_DIV * get_pclk_div()) *
+        (next_hblank_pclk + dc_cycle_stamp() / (SPG_VCLK_DIV * get_pclk_div()));
 
     sched_event(&hblank_event);
     hblank_event_scheduled = true;
@@ -320,8 +345,9 @@ static void sched_next_vblank_in_event() {
 
     unsigned pixels_until_vblank_in =
         lines_until_vblank_in * hcount - raster_x;
-    vblank_in_event.when = (SPG_VCLK_DIV * pclk_div) *
-        (pixels_until_vblank_in + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
+    vblank_in_event.when = (SPG_VCLK_DIV * get_pclk_div()) *
+        (pixels_until_vblank_in + dc_cycle_stamp() /
+         (SPG_VCLK_DIV * get_pclk_div()));
 
 #ifdef INVARIANTS
     if (vblank_in_event.when - dc_cycle_stamp() >= SCHED_FREQUENCY)
@@ -349,8 +375,9 @@ static void sched_next_vblank_out_event() {
 
     unsigned pixels_until_vblank_out =
         lines_until_vblank_out * hcount - raster_x;
-    vblank_out_event.when = (SPG_VCLK_DIV * pclk_div) *
-        (pixels_until_vblank_out + dc_cycle_stamp() / (SPG_VCLK_DIV * pclk_div));
+    vblank_out_event.when = (SPG_VCLK_DIV * get_pclk_div()) *
+        (pixels_until_vblank_out + dc_cycle_stamp() /
+         (SPG_VCLK_DIV * get_pclk_div()));
 
 #ifdef INVARIANTS
     if (vblank_out_event.when - dc_cycle_stamp() >= SCHED_FREQUENCY)
@@ -685,4 +712,12 @@ write_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
     memcpy(spg_reg + SPG_VBLANK, buf, len);
     // TODO: should I do spg_sync + unsched_all + resched here?
     return 0;
+}
+
+static inline bool get_interlace(void) {
+    return (bool)(spg_reg[SPG_CONTROL] & (1 << 4));
+}
+
+static inline unsigned get_pclk_div(void) {
+    return get_interlace() ? pclk_div : pclk_div * 2;
 }
