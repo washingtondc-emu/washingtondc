@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -497,54 +497,6 @@ void spg_vblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigne
     sched_next_vblank_out_event();
 }
 
-int
-read_spg_hblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
-                    void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_HBLANK_INT, len);
-    return 0;
-}
-
-int
-write_spg_hblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
-                     void const *buf, addr32_t addr, unsigned len) {
-    spg_sync();
-    spg_unsched_all();
-
-    memcpy(spg_reg + SPG_HBLANK_INT, buf, sizeof(reg32_t));
-
-    spg_sync();
-
-    sched_next_hblank_event();
-    sched_next_vblank_in_event();
-    sched_next_vblank_out_event();
-
-    return 0;
-}
-
-int
-read_spg_vblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
-                    void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_VBLANK_INT, len);
-    return 0;
-}
-
-int
-write_spg_vblank_int(struct pvr2_core_mem_mapped_reg const *reg_info,
-                     void const *buf, addr32_t addr, unsigned len) {
-    spg_sync();
-    spg_unsched_all();
-
-    memcpy(spg_reg + SPG_VBLANK_INT, buf, sizeof(reg32_t));
-
-    spg_sync();
-
-    sched_next_hblank_event();
-    sched_next_vblank_in_event();
-    sched_next_vblank_out_event();
-
-    return 0;
-}
-
 uint32_t spg_load_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return spg_reg[SPG_LOAD];
 }
@@ -563,30 +515,6 @@ void spg_load_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
     sched_next_vblank_out_event();
 }
 
-int
-read_spg_load(struct pvr2_core_mem_mapped_reg const *reg_info,
-              void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_LOAD, len);
-    return 0;
-}
-
-int
-write_spg_load(struct pvr2_core_mem_mapped_reg const *reg_info,
-               void const *buf, addr32_t addr, unsigned len) {
-    spg_sync();
-    spg_unsched_all();
-
-    memcpy(spg_reg + SPG_LOAD, buf, sizeof(reg32_t));
-
-    spg_sync();
-
-    sched_next_hblank_event();
-    sched_next_vblank_in_event();
-    sched_next_vblank_out_event();
-
-    return 0;
-}
-
 uint32_t spg_control_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return spg_reg[SPG_CONTROL];
 }
@@ -594,20 +522,6 @@ uint32_t spg_control_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigne
 void spg_control_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
                             uint32_t val) {
     spg_reg[SPG_CONTROL] = val;
-}
-
-int
-read_spg_control(struct pvr2_core_mem_mapped_reg const *reg_info,
-                 void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_CONTROL, len);
-    return 0;
-}
-
-int
-write_spg_control(struct pvr2_core_mem_mapped_reg const *reg_info,
-                  void const *buf, addr32_t addr, unsigned len) {
-    memcpy(spg_reg + SPG_CONTROL, buf, len);
-    return 0;
 }
 
 uint32_t spg_status_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
@@ -633,33 +547,6 @@ uint32_t spg_status_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned
     return spg_stat;
 }
 
-int
-read_spg_status(struct pvr2_core_mem_mapped_reg const *reg_info,
-                void *buf, addr32_t addr, unsigned len) {
-    uint32_t spg_stat;
-
-    spg_sync();
-
-    spg_stat = 0x3ff & raster_y;
-
-    /*
-     * TODO: set the fieldnum bit (bit 10).  this is related to which group of
-     * scanlines are currently being updated when interlacing is enabled, IIRC
-     */
-
-    // TODO: set the blank bit (bit 11).  I don't know what this is for yet
-
-    if (raster_y < get_vbend() || raster_y >= get_vbstart())
-        spg_stat |= (1 << 13);
-
-    if (raster_x < get_hbend() || raster_x >= get_hbstart())
-        spg_stat |= (1 << 12);
-
-    memcpy(buf, &spg_stat, len);
-
-    return 0;
-}
-
 uint32_t spg_hblank_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return spg_reg[SPG_HBLANK];
 }
@@ -671,22 +558,6 @@ void spg_hblank_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned id
     // TODO: should I do spg_sync + unsched_all + resched here?
 }
 
-int
-read_spg_hblank(struct pvr2_core_mem_mapped_reg const *reg_info,
-                void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_HBLANK, len);
-    return 0;
-}
-
-int
-write_spg_hblank(struct pvr2_core_mem_mapped_reg const *reg_info,
-                 void const *buf, addr32_t addr, unsigned len) {
-    // TODO: should I do spg_sync here?
-    memcpy(spg_reg + SPG_HBLANK, buf, len);
-    // TODO: should I do spg_sync + unsched_all + resched here?
-    return 0;
-}
-
 uint32_t spg_vblank_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
     return spg_reg[SPG_VBLANK];
 }
@@ -696,22 +567,6 @@ void spg_vblank_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned id
     // TODO: should I do spg_sync here?
     spg_reg[SPG_VBLANK] = val;
     // TODO: should I do spg_sync + unsched_all + resched here?
-}
-
-int
-read_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
-                void *buf, addr32_t addr, unsigned len) {
-    memcpy(buf, spg_reg + SPG_VBLANK, len);
-    return 0;
-}
-
-int
-write_spg_vblank(struct pvr2_core_mem_mapped_reg const *reg_info,
-                 void const *buf, addr32_t addr, unsigned len) {
-    // TODO: should I do spg_sync here?
-    memcpy(spg_reg + SPG_VBLANK, buf, len);
-    // TODO: should I do spg_sync + unsched_all + resched here?
-    return 0;
 }
 
 static inline bool get_interlace(void) {
