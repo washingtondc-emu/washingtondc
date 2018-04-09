@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -36,6 +36,18 @@
 
 static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
 
+static float sh4_do_read_p4_float(Sh4 *sh4, addr32_t addr);
+static double sh4_do_read_p4_double(Sh4 *sh4, addr32_t addr);
+static uint32_t sh4_do_read_p4_32(Sh4 *sh4, addr32_t addr);
+static uint16_t sh4_do_read_p4_16(Sh4 *sh4, addr32_t addr);
+static uint8_t sh4_do_read_p4_8(Sh4 *sh4, addr32_t addr);
+
+static void sh4_do_write_p4_float(Sh4 *sh4, addr32_t addr, float val);
+static void sh4_do_write_p4_double(Sh4 *sh4, addr32_t addr, double val);
+static void sh4_do_write_p4_32(Sh4 *sh4, addr32_t addr, uint32_t val);
+static void sh4_do_write_p4_16(Sh4 *sh4, addr32_t addr, uint16_t val);
+static void sh4_do_write_p4_8(Sh4 *sh4, addr32_t addr, uint8_t val);
+
 /*
  * TODO: need to adequately return control to the debugger when there's a memory
  * error and the debugger has its error-handler set up.  longjmp is the obvious
@@ -62,7 +74,7 @@ static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
             if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&           \
                 (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&           \
                 sh4_ocache_in_ram_area(addr)) {                         \
-                sh4_ocache_do_write_ora(sh4, &val, addr, sizeof(val));  \
+                sh4_ocache_do_write_ora_##postfix(sh4, addr, val);      \
                 return;                                                 \
             }                                                           \
                                                                         \
@@ -73,11 +85,8 @@ static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
             memory_map_write_##postfix(val, addr & 0x1fffffff);         \
             return;                                                     \
         case SH4_AREA_P4:                                               \
-            if (sh4_do_write_p4(sh4, &val, addr, sizeof(val)) ==        \
-                MEM_ACCESS_SUCCESS)                                     \
-                return;                                                 \
-            else                                                        \
-                RAISE_ERROR(get_error_pending());                       \
+            sh4_do_write_p4_##postfix(sh4, addr, val);                  \
+            return;                                                     \
         default:                                                        \
             break;                                                      \
         }                                                               \
@@ -114,9 +123,7 @@ SH4_WRITE_MEM_TMPL(double, double)
             if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&           \
                 (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&           \
                 sh4_ocache_in_ram_area(addr)) {                         \
-                sh4_ocache_do_read_ora(sh4, &tmp_val,                   \
-                                       addr, sizeof(tmp_val));          \
-                return tmp_val;                                         \
+                return sh4_ocache_do_read_ora_##postfix(sh4, addr);     \
             }                                                           \
                                                                         \
             /* don't use the cache */                                   \
@@ -125,9 +132,7 @@ SH4_WRITE_MEM_TMPL(double, double)
         case SH4_AREA_P2:                                               \
             return memory_map_read_##postfix(addr & 0x1fffffff);        \
         case SH4_AREA_P4:                                               \
-            if (sh4_do_read_p4(sh4, &tmp_val, addr, sizeof(tmp_val)) == MEM_ACCESS_SUCCESS) \
-                return tmp_val;                                         \
-            RAISE_ERROR(get_error_pending());                           \
+            return sh4_do_read_p4_##postfix(sh4, addr);                 \
         default:                                                        \
             break;                                                      \
         }                                                               \
@@ -142,44 +147,55 @@ SH4_READ_MEM_TMPL(uint32_t, 32);
 SH4_READ_MEM_TMPL(float, float);
 SH4_READ_MEM_TMPL(double, double);
 
-int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len) {
-    if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL)
-        return sh4_sq_read(sh4, dat, addr, len);
-
-    if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {
-        return sh4_read_mem_mapped_reg(sh4, dat, addr, len);
+#define SH4_DO_WRITE_P4_TMPL(type, postfix)                             \
+    static void sh4_do_write_p4_##postfix(Sh4 *sh4, addr32_t addr, type val) { \
+        if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
+            sh4_sq_write_##postfix(sh4, addr, val);                     \
+        } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
+            sh4_write_mem_mapped_reg(sh4, &val, addr, sizeof(val));     \
+        } else if (addr >= SH4_OC_ADDR_ARRAY_FIRST &&                   \
+                   addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
+            sh4_ocache_write_addr_array(sh4, &val, addr, sizeof(val));  \
+        } else {                                                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(val));                              \
+            error_set_feature("writing to part of the P4 memory region"); \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
     }
 
-    if (addr >= SH4_OC_ADDR_ARRAY_FIRST && addr <= SH4_OC_ADDR_ARRAY_LAST) {
-        sh4_ocache_read_addr_array(sh4, dat, addr, len);
-        return MEM_ACCESS_SUCCESS;
+SH4_DO_WRITE_P4_TMPL(uint8_t, 8)
+SH4_DO_WRITE_P4_TMPL(uint16_t, 16)
+SH4_DO_WRITE_P4_TMPL(uint32_t, 32)
+SH4_DO_WRITE_P4_TMPL(float, float)
+SH4_DO_WRITE_P4_TMPL(double, double)
+
+#define SH4_DO_READ_P4_TMPL(type, postfix)                              \
+    static type sh4_do_read_p4_##postfix(Sh4 *sh4, addr32_t addr) {     \
+        type tmp_val;                                                   \
+                                                                        \
+        if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
+            return sh4_sq_read_##postfix(sh4, addr);                    \
+        } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
+            sh4_read_mem_mapped_reg(sh4, &tmp_val, addr, sizeof(tmp_val)); \
+        } else if (addr >= SH4_OC_ADDR_ARRAY_FIRST &&                   \
+                   addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
+            sh4_ocache_read_addr_array(sh4, &tmp_val, addr, sizeof(tmp_val)); \
+        } else {                                                        \
+            error_set_length(sizeof(type));                             \
+            error_set_address(addr);                                    \
+            error_set_feature("reading from part of the P4 memory region"); \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
+                                                                        \
+        return tmp_val;                                                 \
     }
 
-    error_set_address(addr);
-    error_set_feature("reading from part of the P4 memory region");
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-}
-
-int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len) {
-    if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL)
-        return sh4_sq_write(sh4, dat, addr, len);
-
-    if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {
-        return sh4_write_mem_mapped_reg(sh4, dat, addr, len);
-    }
-
-    if (addr >= SH4_OC_ADDR_ARRAY_FIRST && addr <= SH4_OC_ADDR_ARRAY_LAST) {
-        sh4_ocache_write_addr_array(sh4, dat, addr, len);
-        return MEM_ACCESS_SUCCESS;
-    }
-
-    error_set_address(addr);
-    error_set_feature("writing to part of the P4 memory region");
-    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-    return MEM_ACCESS_FAILURE;
-}
-
+SH4_DO_READ_P4_TMPL(uint8_t, 8)
+SH4_DO_READ_P4_TMPL(uint16_t, 16)
+SH4_DO_READ_P4_TMPL(uint32_t, 32)
+SH4_DO_READ_P4_TMPL(float, float)
+SH4_DO_READ_P4_TMPL(double, double)
 
 static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr) {
     /*

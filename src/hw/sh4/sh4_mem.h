@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -90,12 +90,5 @@ uint16_t sh4_read_mem_16(Sh4 *sh4, addr32_t addr);
 uint32_t sh4_read_mem_32(Sh4 *sh4, addr32_t addr);
 float sh4_read_mem_float(Sh4 *sh4, addr32_t addr);
 double sh4_read_mem_double(Sh4 *sh4, addr32_t addr);
-
-/*
- * generally you'll call these functions through sh4_read_mem/sh4_write_mem
- * instead of calling these functions directly
- */
-int sh4_do_read_p4(Sh4 *sh4, void *dat, addr32_t addr, unsigned len);
-int sh4_do_write_p4(Sh4 *sh4, void const *dat, addr32_t addr, unsigned len);
 
 #endif

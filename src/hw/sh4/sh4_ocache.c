@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -51,6 +51,8 @@
 #define SH4_OCACHE_KEY_TAG_SHIFT 2
 #define SH4_OCACHE_KEY_TAG_MASK  (0x7ffff << SH4_OCACHE_KEY_TAG_SHIFT)
 
+static void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr);
+
 void sh4_ocache_init(struct sh4_ocache *ocache) {
     ocache->oc_ram_area = (uint8_t*)malloc(sizeof(uint8_t) * SH4_OC_RAM_AREA_SIZE);
 
@@ -65,18 +67,32 @@ void sh4_ocache_clear(struct sh4_ocache *ocache) {
     memset(ocache->oc_ram_area, 0, sizeof(uint8_t) * SH4_OC_RAM_AREA_SIZE);
 }
 
-void sh4_ocache_do_write_ora(Sh4 *sh4, void const *dat,
-                             addr32_t paddr, unsigned len) {
-    void *addr = sh4_ocache_get_ora_ram_addr(sh4, paddr);
-    memcpy(addr, dat, len);
-}
+#define SH4_OCACHE_DO_WRITE_ORA_TMPL(type, postfix)                     \
+    void sh4_ocache_do_write_ora_##postfix(Sh4 *sh4,                    \
+                                           addr32_t paddr, type val) {  \
+        type *addr = (type*)sh4_ocache_get_ora_ram_addr(sh4, paddr);    \
+        *addr = val;                                                    \
+    }
 
-void sh4_ocache_do_read_ora(Sh4 *sh4, void *dat, addr32_t paddr, unsigned len) {
-    void *addr = sh4_ocache_get_ora_ram_addr(sh4, paddr);
-    memcpy(dat, addr, len);
-}
+SH4_OCACHE_DO_WRITE_ORA_TMPL(double, double)
+SH4_OCACHE_DO_WRITE_ORA_TMPL(float, float)
+SH4_OCACHE_DO_WRITE_ORA_TMPL(uint32_t, 32)
+SH4_OCACHE_DO_WRITE_ORA_TMPL(uint16_t, 16)
+SH4_OCACHE_DO_WRITE_ORA_TMPL(uint8_t, 8)
 
-void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr) {
+#define SH4_OCACHE_DO_READ_ORA_TMPL(type, postfix)                      \
+    type sh4_ocache_do_read_ora_##postfix(Sh4 *sh4, addr32_t paddr) {   \
+        type *ptr = (type*)sh4_ocache_get_ora_ram_addr(sh4, paddr);     \
+        return *ptr;                                                    \
+    }
+
+SH4_OCACHE_DO_READ_ORA_TMPL(double, double)
+SH4_OCACHE_DO_READ_ORA_TMPL(float, float)
+SH4_OCACHE_DO_READ_ORA_TMPL(uint32_t, 32)
+SH4_OCACHE_DO_READ_ORA_TMPL(uint16_t, 16)
+SH4_OCACHE_DO_READ_ORA_TMPL(uint8_t, 8)
+
+static void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr) {
     addr32_t area_offset = paddr & 0xfff;
     addr32_t area_start;
     addr32_t mask;
@@ -91,86 +107,56 @@ void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr) {
     return sh4->ocache.oc_ram_area + area_start + area_offset;
 }
 
-int sh4_sq_write(Sh4 *sh4, void const *buf,
-                 addr32_t addr, unsigned len) {
-    /*
-     * TODO: implement MMU functionality
-     *
-     * Also get the timing right, I'm not confident store-queues are supposed
-     * to be as instantaneous as I'm making them...
-     */
-#ifdef ENABLE_SH4_MMU
-    if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
-        error_set_feature("MMU support for store queues");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
-    if ((sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK) &&
-        !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
-        LOG_DBG("%s: Address error raised\n", __func__);
-        sh4_set_exception(sh4, SH4_EXCP_INST_ADDR_ERR);
-        return 1;
-    }
-
-    unsigned n_words = len >> 2;
-    unsigned sq_idx = (addr >> 2) & 0x7;
-    unsigned sq_sel = ((addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT) << 3;
-    if ((n_words + sq_idx > 8) || (len & 3)) {
-        // the spec doesn't say what kind of error to raise here
+#ifdef INVARIANTS
+static inline void sq_invariants_check(size_t len, unsigned sq_idx) {
+    if (len / 4 + sq_idx > 8) {
+        /* the spec doesn't say what kind of error to raise here */
         error_set_length(len);
         error_set_feature("whatever happens when you provide an inappropriate "
-                          "length during a store-queue write");
+                          "length during a store-queue operation");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
-
-    assert(len + sq_idx * sizeof(sh4->ocache.sq[0]) +
-           sq_sel * sizeof(sh4->ocache.sq[0]) <= sizeof(sh4->ocache.sq));
-
-    memcpy(sh4->ocache.sq + sq_idx + sq_sel, buf, len);
-
-    return 0;
 }
-
-int sh4_sq_read(Sh4 *sh4, void *buf, addr32_t addr, unsigned len) {
-    /*
-     * TODO: implement MMU functionality
-     *
-     * Also get the timing right, I'm not confident store-queues are supposed
-     * to be as instantaneous as I'm making them...
-     */
-#ifdef ENABLE_SH4_MMU
-    if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK) {
-        error_set_feature("MMU support for store queues");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
+#else
+static inline void sq_invariants_check(size_t len, unsigned sq_idx) {
+}
 #endif
 
-    if ((sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK) &&
-        !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
-        LOG_DBG("%s: Address error raised\n", __func__);
-        sh4_set_exception(sh4, SH4_EXCP_INST_ADDR_ERR);
-        return 1;
+/* TODO: implement MMU functionality and also privileged mode */
+#define SH4_SQ_WRITE_TMPL(type, postfix)        \
+    void sh4_sq_write_##postfix(Sh4 *sh4, addr32_t addr, type val) {    \
+                                                                        \
+        unsigned sq_idx = (addr >> 2) & 0x7;                            \
+        unsigned sq_sel = ((addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT) \
+            << 3;                                                       \
+        sq_invariants_check(sizeof(type), sq_idx);                      \
+                                                                        \
+        *(type*)(sh4->ocache.sq + sq_idx + sq_sel) = val;               \
     }
 
-    unsigned n_words = len >> 2;
-    unsigned sq_idx = (addr >> 2) & 0x7;
-    unsigned sq_sel = ((addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT) << 3;
-    if ((n_words + sq_idx > 8) || (len & 3)) {
-        // the spec doesn't say what kind of error to raise here
-        error_set_length(len);
-        error_set_feature("whatever happens when you provide an inappropriate "
-                          "length during a store-queue write");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
+SH4_SQ_WRITE_TMPL(double, double)
+SH4_SQ_WRITE_TMPL(float, float)
+SH4_SQ_WRITE_TMPL(uint32_t, 32)
+SH4_SQ_WRITE_TMPL(uint16_t, 16)
+SH4_SQ_WRITE_TMPL(uint8_t, 8)
 
-    assert(len + sq_idx * sizeof(sh4->ocache.sq[0]) +
-           sq_sel * sizeof(sh4->ocache.sq[0]) <= sizeof(sh4->ocache.sq));
-
-    memcpy(buf, sh4->ocache.sq + sq_idx + sq_sel, len);
-
-    return 0;
+/* TODO: implement MMU functionality and also privileged mode */
+#define SH4_SQ_READ_TMPL(type, postfix)                                 \
+    type sh4_sq_read_##postfix(Sh4 *sh4, addr32_t addr) {               \
+                                                                        \
+    unsigned sq_idx = (addr >> 2) & 0x7;                                \
+    unsigned sq_sel = ((addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT) \
+        << 3;                                                           \
+    sq_invariants_check(sizeof(type), sq_idx);                          \
+                                                                        \
+    return *(type*)(sh4->ocache.sq + sq_idx + sq_sel);                  \
 }
+
+SH4_SQ_READ_TMPL(double, double)
+SH4_SQ_READ_TMPL(float, float)
+SH4_SQ_READ_TMPL(uint32_t, 32)
+SH4_SQ_READ_TMPL(uint16_t, 16)
+SH4_SQ_READ_TMPL(uint8_t, 8)
 
 int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
     unsigned sq_sel = (addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT;

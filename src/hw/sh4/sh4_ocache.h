@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -58,8 +58,6 @@ void sh4_ocache_cleanup(struct sh4_ocache *ocache);
 
 void sh4_ocache_clear(struct sh4_ocache *ocache);
 
-void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr);
-
 /*
  * read to/write from the operand cache's RAM-space in situations where we
  * don't actually have a real operand cache available.  It is up to the
@@ -68,9 +66,17 @@ void *sh4_ocache_get_ora_ram_addr(Sh4 *sh4, addr32_t paddr);
  * paddr lies within the Operand Cache RAM mapping (in_oc_ram_area returns
  * true).
  */
-void sh4_ocache_do_write_ora(Sh4 *sh4, void const *dat,
-                             addr32_t paddr, unsigned len);
-void sh4_ocache_do_read_ora(Sh4 *sh4, void *dat, addr32_t paddr, unsigned len);
+double sh4_ocache_do_read_ora_double(Sh4 *sh4, addr32_t addr);
+float sh4_ocache_do_read_ora_float(Sh4 *sh4, addr32_t addr);
+uint32_t sh4_ocache_do_read_ora_32(Sh4 *sh4, addr32_t addr);
+uint16_t sh4_ocache_do_read_ora_16(Sh4 *sh4, addr32_t addr);
+uint8_t sh4_ocache_do_read_ora_8(Sh4 *sh4, addr32_t addr);
+
+void sh4_ocache_do_write_ora_double(Sh4 *sh4, addr32_t addr, double val);
+void sh4_ocache_do_write_ora_float(Sh4 *sh4, addr32_t addr, float val);
+void sh4_ocache_do_write_ora_32(Sh4 *sh4, addr32_t addr, uint32_t val);
+void sh4_ocache_do_write_ora_16(Sh4 *sh4, addr32_t addr, uint16_t val);
+void sh4_ocache_do_write_ora_8(Sh4 *sh4, addr32_t addr, uint8_t val);
 
 /*
  * if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL), then the address is a
@@ -86,11 +92,22 @@ void sh4_ocache_do_read_ora(Sh4 *sh4, void *dat, addr32_t paddr, unsigned len);
 #define SH4_SQ_SELECT_SHIFT 5
 #define SH4_SQ_SELECT_MASK (1 << SH4_SQ_SELECT_SHIFT)
 
-// write to a store-queue.  len should be in terms of bytes.
-int sh4_sq_write(Sh4 *sh4, void const *buf, addr32_t addr, unsigned len);
 
-// read from a store-queue.  len should be in terms of bytes.
-int sh4_sq_read(Sh4 *sh4, void *buf, addr32_t addr, unsigned len);
+void sh4_sq_write(Sh4 *sh4, void const *buf, addr32_t addr, unsigned len);
+
+// read from a store-queue
+double sh4_sq_read_double(Sh4 *sh4, addr32_t addr);
+float sh4_sq_read_float(Sh4 *sh4, addr32_t addr);
+uint32_t sh4_sq_read_32(Sh4 *sh4, addr32_t addr);
+uint16_t sh4_sq_read_16(Sh4 *sh4, addr32_t addr);
+uint8_t sh4_sq_read_8(Sh4 *sh4, addr32_t addr);
+
+// write to a store-queue
+void sh4_sq_write_double(Sh4 *sh4, addr32_t addr, double val);
+void sh4_sq_write_float(Sh4 *sh4, addr32_t addr, float val);
+void sh4_sq_write_32(Sh4 *sh4, addr32_t addr, uint32_t val);
+void sh4_sq_write_16(Sh4 *sh4, addr32_t addr, uint16_t val);
+void sh4_sq_write_8(Sh4 *sh4, addr32_t addr, uint8_t val);
 
 // implement the store queues' version of the pref instruction
 int sh4_sq_pref(Sh4 *sh4, addr32_t addr);
