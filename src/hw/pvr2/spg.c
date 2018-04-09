@@ -135,6 +135,7 @@ static void spg_sync();
 
 static inline unsigned get_hcount();
 static inline unsigned get_vcount();
+__attribute__((unused))
 static inline unsigned get_hblank_int_pix();
 static inline unsigned get_hblank_int_mode();
 static inline unsigned get_hblank_int_comp_val();

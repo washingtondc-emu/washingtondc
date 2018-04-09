@@ -104,7 +104,6 @@ SH4_WRITE_MEM_TMPL(double, double)
 
 #define SH4_READ_MEM_TMPL(type, postfix)                                \
     type sh4_read_mem_##postfix(Sh4 *sh4, addr32_t addr) {              \
-        type tmp_val;                                                   \
         enum VirtMemArea virt_area = sh4_get_mem_area(addr);            \
         switch (virt_area) {                                            \
         case SH4_AREA_P0:                                               \

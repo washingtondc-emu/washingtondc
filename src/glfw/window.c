@@ -255,7 +255,7 @@ static char const *pick_title(char const *content) {
     title[WINDOW_TITLE_LEN - 1] = '\0';
 
     // trim trailing whitespace
-    size_t idx;
+    int idx;
     for (idx = strlen(title) - 1; (idx >= 0) && isspace(title[idx]); idx--)
         title[idx] = '\0';
 
