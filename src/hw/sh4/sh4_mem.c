@@ -151,7 +151,7 @@ SH4_READ_MEM_TMPL(double, double);
         if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
             sh4_sq_write_##postfix(sh4, addr, val);                     \
         } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
-            sh4_write_mem_mapped_reg(sh4, &val, addr, sizeof(val));     \
+            sh4_write_mem_mapped_reg_##postfix(sh4, addr, val);         \
         } else if (addr >= SH4_OC_ADDR_ARRAY_FIRST &&                   \
                    addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
             sh4_ocache_write_addr_array(sh4, &val, addr, sizeof(val));  \
@@ -176,7 +176,7 @@ SH4_DO_WRITE_P4_TMPL(double, double)
         if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
             return sh4_sq_read_##postfix(sh4, addr);                    \
         } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
-            sh4_read_mem_mapped_reg(sh4, &tmp_val, addr, sizeof(tmp_val)); \
+            return sh4_read_mem_mapped_reg_##postfix(sh4, addr);        \
         } else if (addr >= SH4_OC_ADDR_ARRAY_FIRST &&                   \
                    addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
             sh4_ocache_read_addr_array(sh4, &tmp_val, addr, sizeof(tmp_val)); \

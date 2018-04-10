@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -423,12 +423,23 @@ int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
                            struct Sh4MemMappedReg const *reg_info);
 
 /*
- * called for P4 area read/write ops that
+ * called for P4 area write ops that
  * fall in the memory-mapped register range
  */
-int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
-                            addr32_t addr, unsigned len);
-int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
-                             addr32_t addr, unsigned len);
+void sh4_write_mem_mapped_reg_float(Sh4 *sh4, addr32_t addr, float val);
+void sh4_write_mem_mapped_reg_double(Sh4 *sh4, addr32_t addr, double val);
+void sh4_write_mem_mapped_reg_32(Sh4 *sh4, addr32_t addr, uint32_t val);
+void sh4_write_mem_mapped_reg_16(Sh4 *sh4, addr32_t addr, uint16_t val);
+void sh4_write_mem_mapped_reg_8(Sh4 *sh4, addr32_t addr, uint8_t val);
+
+/*
+ * called for P4 area read ops that
+ * fall in the memory-mapped register range
+ */
+float sh4_read_mem_mapped_reg_float(Sh4 *sh4, addr32_t addr);
+double sh4_read_mem_mapped_reg_double(Sh4 *sh4, addr32_t addr);
+uint32_t sh4_read_mem_mapped_reg_32(Sh4 *sh4, addr32_t addr);
+uint16_t sh4_read_mem_mapped_reg_16(Sh4 *sh4, addr32_t addr);
+uint8_t sh4_read_mem_mapped_reg_8(Sh4 *sh4, addr32_t addr);
 
 #endif

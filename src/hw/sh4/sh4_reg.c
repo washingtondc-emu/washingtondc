@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -471,34 +471,61 @@ static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr) {
     return NULL; // never happens
 }
 
-int sh4_read_mem_mapped_reg(Sh4 *sh4, void *buf,
-                                       addr32_t addr, unsigned len) {
-    struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);
-    Sh4RegReadHandler handler = mm_reg->on_p4_read;
-
-    if (len != mm_reg->len) {
-        error_set_length(len);
-        error_set_expected_length(mm_reg->len);
-        error_set_address(addr);
-        RAISE_ERROR(ERROR_INVALID_PARAM);
-    }
-
-    return handler(sh4, buf, mm_reg);
+float sh4_read_mem_mapped_reg_float(Sh4 *sh4, addr32_t addr) {
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-int sh4_write_mem_mapped_reg(Sh4 *sh4, void const *buf,
-                                        addr32_t addr, unsigned len) {
-    struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);
-    Sh4RegWriteHandler handler = mm_reg->on_p4_write;
+double sh4_read_mem_mapped_reg_double(Sh4 *sh4, addr32_t addr) {
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
 
-    if (len != mm_reg->len) {
-        error_set_length(len);
-        error_set_expected_length(mm_reg->len);
-        error_set_address(addr);
-        RAISE_ERROR(ERROR_INVALID_PARAM);
+#define SH4_READ_MEM_MAPPED_REG_TMPL(type, postfix)                     \
+    type sh4_read_mem_mapped_reg_##postfix(Sh4 *sh4, addr32_t addr) {   \
+        struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);        \
+        Sh4RegReadHandler handler = mm_reg->on_p4_read;                 \
+                                                                        \
+        if (sizeof(type) != mm_reg->len) {                              \
+            error_set_length(sizeof(type));                             \
+            error_set_expected_length(mm_reg->len);                     \
+            error_set_address(addr);                                    \
+            RAISE_ERROR(ERROR_INVALID_PARAM);                           \
+        }                                                               \
+                                                                        \
+        type tmp_val;                                                   \
+        handler(sh4, &tmp_val, mm_reg);                                 \
+        return tmp_val;                                                 \
     }
 
-    return handler(sh4, buf, mm_reg);
+SH4_READ_MEM_MAPPED_REG_TMPL(uint32_t, 32)
+SH4_READ_MEM_MAPPED_REG_TMPL(uint16_t, 16)
+SH4_READ_MEM_MAPPED_REG_TMPL(uint8_t, 8)
+
+#define SH4_WRITE_MEM_MAPPED_REG_TMPL(type, postfix)                    \
+    void sh4_write_mem_mapped_reg_##postfix(Sh4 *sh4, addr32_t addr,    \
+                                            type val) {                 \
+        struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);        \
+        Sh4RegWriteHandler handler = mm_reg->on_p4_write;               \
+                                                                        \
+        if (sizeof(type) != mm_reg->len) {                              \
+            error_set_length(sizeof(type));                             \
+            error_set_expected_length(mm_reg->len);                     \
+            error_set_address(addr);                                    \
+            RAISE_ERROR(ERROR_INVALID_PARAM);                           \
+        }                                                               \
+                                                                        \
+        handler(sh4, &val, mm_reg);                                     \
+    }
+
+SH4_WRITE_MEM_MAPPED_REG_TMPL(uint32_t, 32)
+SH4_WRITE_MEM_MAPPED_REG_TMPL(uint16_t, 16)
+SH4_WRITE_MEM_MAPPED_REG_TMPL(uint8_t, 8)
+
+void sh4_write_mem_mapped_reg_float(Sh4 *sh4, addr32_t addr, float val) {
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+void sh4_write_mem_mapped_reg_double(Sh4 *sh4, addr32_t addr, double val) {
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 int Sh4DefaultRegReadHandler(Sh4 *sh4, void *buf,
