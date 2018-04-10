@@ -173,16 +173,30 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
     return MEM_ACCESS_SUCCESS;
 }
 
-void sh4_ocache_write_addr_array(Sh4 *sh4, void const *dat,
-                                 addr32_t paddr, unsigned len) {
-    // do nothing
-}
+/*
+ * TODO: I'm really not sure what to do here, so return all 0.
+ * namco museum uses this, but I'm not sure why.
+ */
+#define SH4_OCACHE_READ_ADDR_ARRAY_TMPL(type, postfix)                  \
+    type sh4_ocache_read_addr_array_##postfix(Sh4 *sh4, addr32_t paddr) { \
+        return (type)0;                                                 \
+    }
 
-void sh4_ocache_read_addr_array(Sh4 *sh4, void *dat,
-                                addr32_t paddr, unsigned len) {
-    /*
-     * I'm really not sure what to do here, so return all 0.
-     * namco museum uses this, but I'm not sure why.
-    */
-    memset(dat, 0, len);
-}
+SH4_OCACHE_READ_ADDR_ARRAY_TMPL(float, float)
+SH4_OCACHE_READ_ADDR_ARRAY_TMPL(double, double)
+SH4_OCACHE_READ_ADDR_ARRAY_TMPL(uint32_t, 32)
+SH4_OCACHE_READ_ADDR_ARRAY_TMPL(uint16_t, 16)
+SH4_OCACHE_READ_ADDR_ARRAY_TMPL(uint8_t, 8)
+
+#define SH4_OCACHE_WRITE_ADDR_ARRAY_TMPL(type, postfix)                 \
+    void sh4_ocache_write_addr_array_##postfix(Sh4 *sh4,                \
+                                               addr32_t paddr,          \
+                                               type val) {              \
+        /* do nothing */                                                \
+    }
+
+SH4_OCACHE_WRITE_ADDR_ARRAY_TMPL(float, float)
+SH4_OCACHE_WRITE_ADDR_ARRAY_TMPL(double, double)
+SH4_OCACHE_WRITE_ADDR_ARRAY_TMPL(uint32_t, 32)
+SH4_OCACHE_WRITE_ADDR_ARRAY_TMPL(uint16_t, 16)
+SH4_OCACHE_WRITE_ADDR_ARRAY_TMPL(uint8_t, 8)

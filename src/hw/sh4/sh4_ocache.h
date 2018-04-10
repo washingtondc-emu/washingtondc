@@ -125,9 +125,16 @@ static inline bool sh4_ocache_in_ram_area(addr32_t addr) {
 #define SH4_OC_ADDR_ARRAY_FIRST 0xf4000000
 #define SH4_OC_ADDR_ARRAY_LAST  0xf4ffffff
 
-void sh4_ocache_write_addr_array(Sh4 *sh4, void const *dat,
-                                 addr32_t paddr, unsigned len);
-void sh4_ocache_read_addr_array(Sh4 *sh4, void *dat,
-                                addr32_t paddr, unsigned len);
+void sh4_ocache_write_addr_array_float(Sh4 *sh4, addr32_t paddr, float val);
+void sh4_ocache_write_addr_array_double(Sh4 *sh4, addr32_t paddr, double val);
+void sh4_ocache_write_addr_array_32(Sh4 *sh4, addr32_t paddr, uint32_t val);
+void sh4_ocache_write_addr_array_16(Sh4 *sh4, addr32_t paddr, uint16_t val);
+void sh4_ocache_write_addr_array_8(Sh4 *sh4, addr32_t paddr, uint8_t val);
+
+float sh4_ocache_read_addr_array_float(Sh4 *sh4, addr32_t paddr);
+double sh4_ocache_read_addr_array_double(Sh4 *sh4, addr32_t paddr);
+uint32_t sh4_ocache_read_addr_array_32(Sh4 *sh4, addr32_t paddr);
+uint16_t sh4_ocache_read_addr_array_16(Sh4 *sh4, addr32_t paddr);
+uint8_t sh4_ocache_read_addr_array_8(Sh4 *sh4, addr32_t paddr);
 
 #endif

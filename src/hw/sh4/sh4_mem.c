@@ -154,7 +154,7 @@ SH4_READ_MEM_TMPL(double, double);
             sh4_write_mem_mapped_reg_##postfix(sh4, addr, val);         \
         } else if (addr >= SH4_OC_ADDR_ARRAY_FIRST &&                   \
                    addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
-            sh4_ocache_write_addr_array(sh4, &val, addr, sizeof(val));  \
+            sh4_ocache_write_addr_array_##postfix(sh4, addr, val);  \
         } else {                                                        \
             error_set_address(addr);                                    \
             error_set_length(sizeof(val));                              \
@@ -179,7 +179,7 @@ SH4_DO_WRITE_P4_TMPL(double, double)
             return sh4_read_mem_mapped_reg_##postfix(sh4, addr);        \
         } else if (addr >= SH4_OC_ADDR_ARRAY_FIRST &&                   \
                    addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
-            sh4_ocache_read_addr_array(sh4, &tmp_val, addr, sizeof(tmp_val)); \
+            return sh4_ocache_read_addr_array_##postfix(sh4, addr);     \
         } else {                                                        \
             error_set_length(sizeof(type));                             \
             error_set_address(addr);                                    \
