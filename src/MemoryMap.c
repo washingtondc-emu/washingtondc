@@ -47,7 +47,7 @@
 static struct BiosFile *bios;
 static struct Memory *mem;
 
-#define N_REGIONS 6
+#define N_REGIONS 7
 
 static uint32_t read_area3_32(uint32_t addr);
 static uint16_t read_area3_16(uint32_t addr);
@@ -72,6 +72,18 @@ static void write_ocache_ram_double(uint32_t addr, double val);
 static void write_ocache_ram_32(uint32_t addr, uint32_t val);
 static void write_ocache_ram_16(uint32_t addr, uint16_t val);
 static void write_ocache_ram_8(uint32_t addr, uint8_t val);
+
+static float read_sh4_p4_float(uint32_t addr);
+static double read_sh4_p4_double(uint32_t addr);
+static uint32_t read_sh4_p4_32(uint32_t addr);
+static uint16_t read_sh4_p4_16(uint32_t addr);
+static uint8_t read_sh4_p4_8(uint32_t addr);
+
+static void write_sh4_p4_float(uint32_t addr, float val);
+static void write_sh4_p4_double(uint32_t addr, double val);
+static void write_sh4_p4_32(uint32_t addr, uint32_t val);
+static void write_sh4_p4_16(uint32_t addr, uint16_t val);
+static void write_sh4_p4_8(uint32_t addr, uint8_t val);
 
 #define WRITE_AREA0_TMPL(type, type_postfix)                            \
     static inline void                                                  \
@@ -208,6 +220,35 @@ READ_AREA0_TMPL(uint8_t, 8)
  * the most heavily-trafficked memory region.
  */
 static struct memory_map_region regions[N_REGIONS] = {
+    /*
+     * I don't like the idea of putting SH4_AREA_P4 ahead of AREA3 (memory),
+     * but this absolutely needs to be at the front of the list because the
+     * only distinction between this and the other memory regions is that the
+     * upper three bits of the address are all 1, and for the other regions the
+     * upper three bits can be anything as long as they are not all 1.
+     *
+     * SH4_OC_RAM_AREA is also an SH4 on-chip component but as far as I know
+     * nothing else in the dreamcast's memory map overlaps with it; this is why
+     * have not also put it at the begging of the regions array.
+     */
+    {
+        .first_addr = SH4_AREA_P4_FIRST,
+        .last_addr = SH4_AREA_P4_LAST,
+        .mask = 0xffffffff,
+        .range_mask = 0xffffffff,
+
+        .read32 = read_sh4_p4_32,
+        .read16 = read_sh4_p4_16,
+        .read8  = read_sh4_p4_8,
+        .readdouble = read_sh4_p4_double,
+        .readfloat = read_sh4_p4_float,
+
+        .write32 = write_sh4_p4_32,
+        .write16 = write_sh4_p4_16,
+        .write8  = write_sh4_p4_8,
+        .writedouble = write_sh4_p4_double,
+        .writefloat = write_sh4_p4_float
+    },
     {
         .first_addr = ADDR_AREA3_FIRST,
         .last_addr = ADDR_AREA3_LAST,
@@ -437,6 +478,12 @@ static void write_area3_8(uint32_t addr, uint8_t val) {
         return sh4_ocache_do_read_ora_##postfix(sh4, addr);     \
     }
 
+READ_OCACHE_RAM_TMPL(double, double)
+READ_OCACHE_RAM_TMPL(float, float)
+READ_OCACHE_RAM_TMPL(uint32_t, 32)
+READ_OCACHE_RAM_TMPL(uint16_t, 16)
+READ_OCACHE_RAM_TMPL(uint8_t, 8)
+
 #define WRITE_OCACHE_RAM_TMPL(type, postfix)                            \
     static void write_ocache_ram_##postfix(uint32_t addr, type val) {   \
         Sh4 *sh4 = dreamcast_get_cpu();                                 \
@@ -449,14 +496,32 @@ static void write_area3_8(uint32_t addr, uint8_t val) {
         sh4_ocache_do_write_ora_##postfix(sh4, addr, val);              \
     }
 
-READ_OCACHE_RAM_TMPL(double, double)
-READ_OCACHE_RAM_TMPL(float, float)
-READ_OCACHE_RAM_TMPL(uint32_t, 32)
-READ_OCACHE_RAM_TMPL(uint16_t, 16)
-READ_OCACHE_RAM_TMPL(uint8_t, 8)
-
 WRITE_OCACHE_RAM_TMPL(double, double)
 WRITE_OCACHE_RAM_TMPL(float, float)
 WRITE_OCACHE_RAM_TMPL(uint32_t, 32)
 WRITE_OCACHE_RAM_TMPL(uint16_t, 16)
 WRITE_OCACHE_RAM_TMPL(uint8_t, 8)
+
+#define READ_SH4_P4_TMPL(type, postfix)                 \
+    static type read_sh4_p4_##postfix(uint32_t addr) {  \
+        Sh4 *sh4 = dreamcast_get_cpu();                 \
+        return sh4_do_read_p4_##postfix(sh4, addr);     \
+    }
+
+READ_SH4_P4_TMPL(double, double)
+READ_SH4_P4_TMPL(float, float)
+READ_SH4_P4_TMPL(uint32_t, 32)
+READ_SH4_P4_TMPL(uint16_t, 16)
+READ_SH4_P4_TMPL(uint8_t, 8)
+
+#define WRITE_SH4_P4_TMPL(type, postfix)                                \
+    static void write_sh4_p4_##postfix(uint32_t addr, type val) {       \
+        Sh4 *sh4 = dreamcast_get_cpu();                                 \
+        sh4_do_write_p4_##postfix(sh4, addr, val);                      \
+    }
+
+WRITE_SH4_P4_TMPL(double, double)
+WRITE_SH4_P4_TMPL(float, float)
+WRITE_SH4_P4_TMPL(uint32_t, 32)
+WRITE_SH4_P4_TMPL(uint16_t, 16)
+WRITE_SH4_P4_TMPL(uint8_t, 8)

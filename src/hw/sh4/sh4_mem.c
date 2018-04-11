@@ -36,95 +36,14 @@
 
 static inline enum VirtMemArea sh4_get_mem_area(addr32_t addr);
 
-static float sh4_do_read_p4_float(Sh4 *sh4, addr32_t addr);
-static double sh4_do_read_p4_double(Sh4 *sh4, addr32_t addr);
-static uint32_t sh4_do_read_p4_32(Sh4 *sh4, addr32_t addr);
-static uint16_t sh4_do_read_p4_16(Sh4 *sh4, addr32_t addr);
-static uint8_t sh4_do_read_p4_8(Sh4 *sh4, addr32_t addr);
-
-static void sh4_do_write_p4_float(Sh4 *sh4, addr32_t addr, float val);
-static void sh4_do_write_p4_double(Sh4 *sh4, addr32_t addr, double val);
-static void sh4_do_write_p4_32(Sh4 *sh4, addr32_t addr, uint32_t val);
-static void sh4_do_write_p4_16(Sh4 *sh4, addr32_t addr, uint16_t val);
-static void sh4_do_write_p4_8(Sh4 *sh4, addr32_t addr, uint8_t val);
-
 /*
  * TODO: need to adequately return control to the debugger when there's a memory
  * error and the debugger has its error-handler set up.  longjmp is the obvious
  * solution, but until all the codebase is out of C++ I don't want to risk that.
  */
 
-#define SH4_WRITE_MEM_TMPL(type, postfix)                               \
-    void sh4_write_mem_##postfix(Sh4 *sh4, type val, addr32_t addr) {   \
-        enum VirtMemArea virt_area = sh4_get_mem_area(addr);            \
-        switch (virt_area) {                                            \
-        case SH4_AREA_P0:                                               \
-            /*                                                          \
-             * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise \
-             * an error or do TLB lookups accordingly.                  \
-             *                                                          \
-             * currently it is impossible for this to be set because of the \
-             * ERROR_UNIMPLEMENTED that gets raised if you set this bit in \
-             * sh4_reg.c                                                \
-             */                                                         \
-        case SH4_AREA_P1:                                               \
-        case SH4_AREA_P2:                                               \
-        case SH4_AREA_P3:                                               \
-            memory_map_write_##postfix(val, addr);                      \
-            return;                                                     \
-        case SH4_AREA_P4:                                               \
-            sh4_do_write_p4_##postfix(sh4, addr, val);                  \
-            return;                                                     \
-        default:                                                        \
-            break;                                                      \
-        }                                                               \
-                                                                        \
-        error_set_wtf("this should not be possible");                   \
-        RAISE_ERROR(ERROR_INTEGRITY);                                   \
-        exit(1); /* never happens */                                    \
-    }                                                                   \
-
-SH4_WRITE_MEM_TMPL(uint8_t, 8)
-SH4_WRITE_MEM_TMPL(uint16_t, 16)
-SH4_WRITE_MEM_TMPL(uint32_t, 32)
-SH4_WRITE_MEM_TMPL(float, float)
-SH4_WRITE_MEM_TMPL(double, double)
-
-#define SH4_READ_MEM_TMPL(type, postfix)                                \
-    type sh4_read_mem_##postfix(Sh4 *sh4, addr32_t addr) {              \
-        enum VirtMemArea virt_area = sh4_get_mem_area(addr);            \
-        switch (virt_area) {                                            \
-        case SH4_AREA_P0:                                               \
-            /*                                                          \
-             * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise \
-             * an error or do TLB lookups accordingly.                  \
-             *                                                          \
-             * currently it is impossible for this to be set because of the \
-             * ERROR_UNIMPLEMENTED that gets raised if you set this bit in \
-             * sh4_reg.c                                                \
-             */                                                         \
-        case SH4_AREA_P1:                                               \
-        case SH4_AREA_P2:                                               \
-        case SH4_AREA_P3:                                               \
-            return memory_map_read_##postfix(addr);                     \
-        case SH4_AREA_P4:                                               \
-            return sh4_do_read_p4_##postfix(sh4, addr);                 \
-        default:                                                        \
-            break;                                                      \
-        }                                                               \
-                                                                        \
-        /* TODO: memory access exception ? */                           \
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
-    }
-
-SH4_READ_MEM_TMPL(uint8_t, 8);
-SH4_READ_MEM_TMPL(uint16_t, 16);
-SH4_READ_MEM_TMPL(uint32_t, 32);
-SH4_READ_MEM_TMPL(float, float);
-SH4_READ_MEM_TMPL(double, double);
-
 #define SH4_DO_WRITE_P4_TMPL(type, postfix)                             \
-    static void sh4_do_write_p4_##postfix(Sh4 *sh4, addr32_t addr, type val) { \
+    void sh4_do_write_p4_##postfix(Sh4 *sh4, addr32_t addr, type val) { \
         if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
             sh4_sq_write_##postfix(sh4, addr, val);                     \
         } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
@@ -147,7 +66,7 @@ SH4_DO_WRITE_P4_TMPL(float, float)
 SH4_DO_WRITE_P4_TMPL(double, double)
 
 #define SH4_DO_READ_P4_TMPL(type, postfix)                              \
-    static type sh4_do_read_p4_##postfix(Sh4 *sh4, addr32_t addr) {     \
+    type sh4_do_read_p4_##postfix(Sh4 *sh4, addr32_t addr) {            \
         type tmp_val;                                                   \
                                                                         \
         if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \

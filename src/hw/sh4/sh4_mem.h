@@ -28,6 +28,7 @@
 #include "sh4_excp.h"
 #include "mem_code.h"
 #include "error.h"
+#include "MemoryMap.h"
 
 struct Sh4;
 
@@ -80,15 +81,40 @@ static_assert((SH4_P4_REGEND - SH4_P4_REGSTART) ==
  * If they detect an error, they will call RAISE_ERROR, which panics
  * WashingtonDC
  */
-void sh4_write_mem_8(Sh4 *sh4, uint8_t val, addr32_t addr);
-void sh4_write_mem_16(Sh4 *sh4, uint16_t val, addr32_t addr);
-void sh4_write_mem_32(Sh4 *sh4, uint32_t val, addr32_t addr);
-void sh4_write_mem_float(Sh4 *sh4, float val, addr32_t addr);
-void sh4_write_mem_double(Sh4 *sh4, double val, addr32_t addr);
-uint8_t sh4_read_mem_8(Sh4 *sh4, addr32_t addr);
-uint16_t sh4_read_mem_16(Sh4 *sh4, addr32_t addr);
-uint32_t sh4_read_mem_32(Sh4 *sh4, addr32_t addr);
-float sh4_read_mem_float(Sh4 *sh4, addr32_t addr);
-double sh4_read_mem_double(Sh4 *sh4, addr32_t addr);
+#define SH4_WRITE_MEM_TMPL(type, postfix)                               \
+    static inline void                                                  \
+    sh4_write_mem_##postfix(Sh4 *sh4, type val, addr32_t addr) {        \
+        memory_map_write_##postfix(val, addr);                          \
+    }
+
+SH4_WRITE_MEM_TMPL(uint8_t, 8)
+SH4_WRITE_MEM_TMPL(uint16_t, 16)
+SH4_WRITE_MEM_TMPL(uint32_t, 32)
+SH4_WRITE_MEM_TMPL(float, float)
+SH4_WRITE_MEM_TMPL(double, double)
+
+#define SH4_READ_MEM_TMPL(type, postfix)                                \
+    static inline type                                                  \
+    sh4_read_mem_##postfix(Sh4 *sh4, addr32_t addr) {                   \
+        return memory_map_read_##postfix(addr);                         \
+    }
+
+SH4_READ_MEM_TMPL(uint8_t, 8);
+SH4_READ_MEM_TMPL(uint16_t, 16);
+SH4_READ_MEM_TMPL(uint32_t, 32);
+SH4_READ_MEM_TMPL(float, float);
+SH4_READ_MEM_TMPL(double, double);
+
+void sh4_do_write_p4_double(Sh4 *sh4, addr32_t addr, double val);
+void sh4_do_write_p4_float(Sh4 *sh4, addr32_t addr, float val);
+void sh4_do_write_p4_32(Sh4 *sh4, addr32_t addr, uint32_t val);
+void sh4_do_write_p4_16(Sh4 *sh4, addr32_t addr, uint16_t val);
+void sh4_do_write_p4_8(Sh4 *sh4, addr32_t addr, uint8_t val);
+
+double sh4_do_read_p4_double(Sh4 *sh4, addr32_t addr);
+float sh4_do_read_p4_float(Sh4 *sh4, addr32_t addr);
+uint32_t sh4_do_read_p4_32(Sh4 *sh4, addr32_t addr);
+uint16_t sh4_do_read_p4_16(Sh4 *sh4, addr32_t addr);
+uint8_t sh4_do_read_p4_8(Sh4 *sh4, addr32_t addr);
 
 #endif
