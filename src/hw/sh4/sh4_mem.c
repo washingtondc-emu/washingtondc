@@ -59,7 +59,6 @@ static void sh4_do_write_p4_8(Sh4 *sh4, addr32_t addr, uint8_t val);
         enum VirtMemArea virt_area = sh4_get_mem_area(addr);            \
         switch (virt_area) {                                            \
         case SH4_AREA_P0:                                               \
-        case SH4_AREA_P3:                                               \
             /*                                                          \
              * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise \
              * an error or do TLB lookups accordingly.                  \
@@ -82,6 +81,7 @@ static void sh4_do_write_p4_8(Sh4 *sh4, addr32_t addr, uint8_t val);
             /* INTENTIONAL FALLTHROUGH */                               \
         case SH4_AREA_P1:                                               \
         case SH4_AREA_P2:                                               \
+        case SH4_AREA_P3:                                               \
             memory_map_write_##postfix(val, addr & 0x1fffffff);         \
             return;                                                     \
         case SH4_AREA_P4:                                               \
@@ -107,7 +107,6 @@ SH4_WRITE_MEM_TMPL(double, double)
         enum VirtMemArea virt_area = sh4_get_mem_area(addr);            \
         switch (virt_area) {                                            \
         case SH4_AREA_P0:                                               \
-        case SH4_AREA_P3:                                               \
             /*                                                          \
              * TODO: Check for MMUCR_AT_MASK in the MMUCR register and raise \
              * an error or do TLB lookups accordingly.                  \
@@ -129,6 +128,7 @@ SH4_WRITE_MEM_TMPL(double, double)
             /* INTENTIONAL FALLTHROUGH */                               \
         case SH4_AREA_P1:                                               \
         case SH4_AREA_P2:                                               \
+        case SH4_AREA_P3:                                               \
             return memory_map_read_##postfix(addr & 0x1fffffff);        \
         case SH4_AREA_P4:                                               \
             return sh4_do_read_p4_##postfix(sh4, addr);                 \
