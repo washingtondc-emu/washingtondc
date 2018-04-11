@@ -67,22 +67,10 @@ static void sh4_do_write_p4_8(Sh4 *sh4, addr32_t addr, uint8_t val);
              * ERROR_UNIMPLEMENTED that gets raised if you set this bit in \
              * sh4_reg.c                                                \
              */                                                         \
-                                                                        \
-            /* handle the case where OCE is enabled and ORA is */       \
-            /* enabled but we don't have Ocache available */            \
-            if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&           \
-                (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&           \
-                sh4_ocache_in_ram_area(addr)) {                         \
-                sh4_ocache_do_write_ora_##postfix(sh4, addr, val);      \
-                return;                                                 \
-            }                                                           \
-                                                                        \
-            /* don't use the cache */                                   \
-            /* INTENTIONAL FALLTHROUGH */                               \
         case SH4_AREA_P1:                                               \
         case SH4_AREA_P2:                                               \
         case SH4_AREA_P3:                                               \
-            memory_map_write_##postfix(val, addr & 0x1fffffff);         \
+            memory_map_write_##postfix(val, addr);                      \
             return;                                                     \
         case SH4_AREA_P4:                                               \
             sh4_do_write_p4_##postfix(sh4, addr, val);                  \
@@ -115,21 +103,10 @@ SH4_WRITE_MEM_TMPL(double, double)
              * ERROR_UNIMPLEMENTED that gets raised if you set this bit in \
              * sh4_reg.c                                                \
              */                                                         \
-                                                                        \
-            /* handle the case where OCE is enabled and ORA is */       \
-            /* enabled but we don't have Ocache available */            \
-            if ((sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) &&           \
-                (sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) &&           \
-                sh4_ocache_in_ram_area(addr)) {                         \
-                return sh4_ocache_do_read_ora_##postfix(sh4, addr);     \
-            }                                                           \
-                                                                        \
-            /* don't use the cache */                                   \
-            /* INTENTIONAL FALLTHROUGH */                               \
         case SH4_AREA_P1:                                               \
         case SH4_AREA_P2:                                               \
         case SH4_AREA_P3:                                               \
-            return memory_map_read_##postfix(addr & 0x1fffffff);        \
+            return memory_map_read_##postfix(addr);                     \
         case SH4_AREA_P4:                                               \
             return sh4_do_read_p4_##postfix(sh4, addr);                 \
         default:                                                        \

@@ -116,8 +116,12 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr);
  * if ((addr & OC_RAM_AREA_MASK) == OC_RAM_AREA_VAL) and the ORA bit is set
  * in CCR, then addr is part of the Operand Cache's RAM area
  */
-#define SH4_OC_RAM_AREA_MASK 0xfc000000
-#define SH4_OC_RAM_AREA_VAL 0x7c000000
+#define SH4_OC_RAM_AREA_MASK  0xfc000000
+#define SH4_OC_RAM_AREA_VAL   0x7c000000
+
+#define SH4_OC_RAM_AREA_FIRST 0x7c000000
+#define SH4_OC_RAM_AREA_LAST  0x7fffffff
+
 static inline bool sh4_ocache_in_ram_area(addr32_t addr) {
     return (addr & SH4_OC_RAM_AREA_MASK) == SH4_OC_RAM_AREA_VAL;
 }

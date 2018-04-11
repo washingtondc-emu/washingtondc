@@ -35,6 +35,9 @@
 #include "hw/aica/aica_rtc.h"
 #include "hw/aica/aica_wave_mem.h"
 #include "hw/gdrom/gdrom_reg.h"
+#include "hw/sh4/sh4.h"
+#include "hw/sh4/sh4_ocache.h"
+#include "dreamcast.h"
 #include "flash_memory.h"
 #include "error.h"
 #include "mem_code.h"
@@ -44,7 +47,7 @@
 static struct BiosFile *bios;
 static struct Memory *mem;
 
-#define N_REGIONS 5
+#define N_REGIONS 6
 
 static uint32_t read_area3_32(uint32_t addr);
 static uint16_t read_area3_16(uint32_t addr);
@@ -57,6 +60,18 @@ static void write_area3_double(uint32_t addr, double val);
 static void write_area3_32(uint32_t addr, uint32_t val);
 static void write_area3_16(uint32_t addr, uint16_t val);
 static void write_area3_8(uint32_t addr, uint8_t val);
+
+static float read_ocache_ram_float(uint32_t addr);
+static double read_ocache_ram_double(uint32_t addr);
+static uint32_t read_ocache_ram_32(uint32_t addr);
+static uint16_t read_ocache_ram_16(uint32_t addr);
+static uint8_t read_ocache_ram_8(uint32_t addr);
+
+static void write_ocache_ram_float(uint32_t addr, float val);
+static void write_ocache_ram_double(uint32_t addr, double val);
+static void write_ocache_ram_32(uint32_t addr, uint32_t val);
+static void write_ocache_ram_16(uint32_t addr, uint16_t val);
+static void write_ocache_ram_8(uint32_t addr, uint8_t val);
 
 #define WRITE_AREA0_TMPL(type, type_postfix)                            \
     static inline void                                                  \
@@ -197,6 +212,7 @@ static struct memory_map_region regions[N_REGIONS] = {
         .first_addr = ADDR_AREA3_FIRST,
         .last_addr = ADDR_AREA3_LAST,
         .mask = ADDR_AREA3_MASK,
+        .range_mask = 0x1fffffff,
 
         .read32 = read_area3_32,
         .read16 = read_area3_16,
@@ -213,7 +229,8 @@ static struct memory_map_region regions[N_REGIONS] = {
     {
         .first_addr = ADDR_TEX32_FIRST,
         .last_addr = ADDR_TEX32_LAST,
-        .mask = 0xffffffff,
+        .mask = 0x1fffffff,
+        .range_mask = 0x1fffffff,
 
         .read32 = pvr2_tex_mem_area32_read_32,
         .read16 = pvr2_tex_mem_area32_read_16,
@@ -230,7 +247,8 @@ static struct memory_map_region regions[N_REGIONS] = {
     {
         .first_addr = ADDR_TEX64_FIRST,
         .last_addr = ADDR_TEX64_LAST,
-        .mask = 0xffffffff,
+        .mask = 0x1fffffff,
+        .range_mask = 0x1fffffff,
 
         .read32 = pvr2_tex_mem_area64_read_32,
         .read16 = pvr2_tex_mem_area64_read_16,
@@ -247,7 +265,8 @@ static struct memory_map_region regions[N_REGIONS] = {
     {
         .first_addr = ADDR_AREA0_FIRST,
         .last_addr = ADDR_AREA0_LAST,
-        .mask = 0xffffffff,
+        .mask = 0x1fffffff,
+        .range_mask = 0x1fffffff,
 
         .read32 = read_area0_32,
         .read16 = read_area0_16,
@@ -264,7 +283,8 @@ static struct memory_map_region regions[N_REGIONS] = {
     {
         .first_addr = ADDR_TA_FIFO_POLY_FIRST,
         .last_addr = ADDR_TA_FIFO_POLY_LAST,
-        .mask = 0xffffffff,
+        .mask = 0x1fffffff,
+        .range_mask = 0x1fffffff,
 
         .read32 = pvr2_ta_fifo_poly_read_32,
         .read16 = pvr2_ta_fifo_poly_read_16,
@@ -277,6 +297,24 @@ static struct memory_map_region regions[N_REGIONS] = {
         .write8 = pvr2_ta_fifo_poly_write_8,
         .writefloat = pvr2_ta_fifo_poly_write_float,
         .writedouble = pvr2_ta_fifo_poly_write_double
+    },
+    {
+        .first_addr = SH4_OC_RAM_AREA_FIRST,
+        .last_addr = SH4_OC_RAM_AREA_LAST,
+        .mask = 0xffffffff,
+        .range_mask = 0xffffffff,
+
+        .read32 = read_ocache_ram_32,
+        .read16 = read_ocache_ram_16,
+        .read8 = read_ocache_ram_8,
+        .readdouble = read_ocache_ram_double,
+        .readfloat = read_ocache_ram_float,
+
+        .write32 = write_ocache_ram_32,
+        .write16 = write_ocache_ram_16,
+        .write8 = write_ocache_ram_8,
+        .writedouble = write_ocache_ram_double,
+        .writefloat = write_ocache_ram_float,
     }
 };
 
@@ -300,8 +338,9 @@ void memory_map_set_mem(struct Memory *mem_new) {
                                                                         \
         unsigned region_no;                                             \
         for (region_no = 0; region_no < N_REGIONS; region_no++) {       \
-            if (first_addr >= regions[region_no].first_addr &&          \
-                last_addr <= regions[region_no].last_addr) {            \
+            uint32_t range_mask = regions[region_no].range_mask;        \
+            if ((first_addr & range_mask) >= regions[region_no].first_addr && \
+                (last_addr & range_mask) <= regions[region_no].last_addr) { \
                 uint32_t mask = regions[region_no].mask;                \
                 return regions[region_no].read##type_postfix(addr & mask); \
             }                                                           \
@@ -326,8 +365,9 @@ MEMORY_MAP_READ_TMPL(double, double)
                                                                         \
         unsigned region_no;                                             \
         for (region_no = 0; region_no < N_REGIONS; region_no++) {       \
-            if (first_addr >= regions[region_no].first_addr &&          \
-                last_addr <= regions[region_no].last_addr) {            \
+            uint32_t range_mask = regions[region_no].range_mask;        \
+            if ((first_addr & range_mask) >= regions[region_no].first_addr && \
+                (last_addr & range_mask) <= regions[region_no].last_addr) { \
                 uint32_t mask = regions[region_no].mask;                \
                 regions[region_no].write##type_postfix(addr & mask, val); \
                 return;                                                 \
@@ -384,3 +424,39 @@ static void write_area3_16(uint32_t addr, uint16_t val) {
 static void write_area3_8(uint32_t addr, uint8_t val) {
     memory_write_8(mem, addr, val);
 }
+
+#define READ_OCACHE_RAM_TMPL(type, postfix)                     \
+    static type read_ocache_ram_##postfix(uint32_t addr) {      \
+        Sh4 *sh4 = dreamcast_get_cpu();                         \
+        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||      \
+            !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||      \
+            !sh4_ocache_in_ram_area(addr)) {                    \
+            error_set_address(addr);                            \
+            RAISE_ERROR(ERROR_INTEGRITY);                       \
+        }                                                       \
+        return sh4_ocache_do_read_ora_##postfix(sh4, addr);     \
+    }
+
+#define WRITE_OCACHE_RAM_TMPL(type, postfix)                            \
+    static void write_ocache_ram_##postfix(uint32_t addr, type val) {   \
+        Sh4 *sh4 = dreamcast_get_cpu();                                 \
+        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||              \
+            !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||              \
+            !sh4_ocache_in_ram_area(addr)) {                            \
+            error_set_address(addr);                                    \
+            RAISE_ERROR(ERROR_INTEGRITY);                               \
+        }                                                               \
+        sh4_ocache_do_write_ora_##postfix(sh4, addr, val);              \
+    }
+
+READ_OCACHE_RAM_TMPL(double, double)
+READ_OCACHE_RAM_TMPL(float, float)
+READ_OCACHE_RAM_TMPL(uint32_t, 32)
+READ_OCACHE_RAM_TMPL(uint16_t, 16)
+READ_OCACHE_RAM_TMPL(uint8_t, 8)
+
+WRITE_OCACHE_RAM_TMPL(double, double)
+WRITE_OCACHE_RAM_TMPL(float, float)
+WRITE_OCACHE_RAM_TMPL(uint32_t, 32)
+WRITE_OCACHE_RAM_TMPL(uint16_t, 16)
+WRITE_OCACHE_RAM_TMPL(uint8_t, 8)
