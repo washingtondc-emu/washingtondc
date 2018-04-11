@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -142,90 +142,6 @@ static struct aica_mem_hack const *check_hack(addr32_t addr) {
         cursor++;
     }
     return NULL;
-}
-
-int aica_wave_mem_read(void *buf, size_t addr, size_t len) {
-    void const *start_addr = aica_wave_mem + (addr - ADDR_AICA_WAVE_FIRST);
-
-    // If enabled, trick games into thinking we have a working AICA CPU.
-    if (config_get_hack_power_stone_no_aica()) {
-        struct aica_mem_hack const *cursor = &no_aica_hack[0];
-        while (!cursor->end) {
-            if (addr == cursor->addr) {
-                if (len > sizeof(cursor->val)) {
-                    error_set_feature("reads of greater than 4 bytes when "
-                                      "using the Power Stone no-AICA hack");
-                    PENDING_ERROR(ERROR_UNIMPLEMENTED);
-                    return MEM_ACCESS_FAILURE;
-                }
-
-                memcpy(buf, &cursor->val, len);
-                if (aica_log_verbose_val) {
-                    LOG_DBG("AICA: reading %u from 0x%08x due to the no-AICA "
-                            "Power Stone hack\n",
-                            (unsigned)cursor->val, (unsigned)cursor->addr);
-                }
-                return MEM_ACCESS_SUCCESS;
-            }
-
-            cursor++;
-        }
-    }
-
-    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
-        ((addr - 1 + len) > ADDR_AICA_WAVE_LAST) ||
-        ((addr - 1 + len) < ADDR_AICA_WAVE_FIRST)) {
-        error_set_feature("aw fuck it");
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
-    }
-
-    memcpy(buf, start_addr, len);
-
-    if (aica_log_verbose_val) {
-        __attribute__((unused)) unsigned pc =
-            dreamcast_get_cpu()->reg[SH4_REG_PC];
-        if (len == 4) {
-            uint32_t frak;
-            memcpy(&frak, buf, sizeof(frak));
-            LOG_DBG("AICA: reading 0x%08x from 0x%08x (PC is 0x%08x)\n",
-                    (unsigned)frak, (unsigned)addr, pc);
-        } else {
-            LOG_DBG("AICA: reading %u bytes from 0x%08x (PC is 0x%08x)\n",
-                    (unsigned)len, (unsigned)addr, pc);
-        }
-    }
-
-    return MEM_ACCESS_SUCCESS;
-}
-
-int aica_wave_mem_write(void const *buf, size_t addr, size_t len) {
-    void *start_addr = aica_wave_mem + (addr - ADDR_AICA_WAVE_FIRST);
-
-    if (aica_log_verbose_val) {
-        __attribute__((unused)) unsigned pc =
-            dreamcast_get_cpu()->reg[SH4_REG_PC];
-        if (len == 4) {
-            uint32_t frak;
-            memcpy(&frak, buf, sizeof(frak));
-            LOG_DBG("AICA: writing 0x%08x to 0x%08x (PC is 0x%08x)\n",
-                    (unsigned)frak, (unsigned)addr, pc);
-        } else {
-            LOG_DBG("AICA: writing %u bytes to 0x%08x (PC is 0x%08x)\n",
-                    (unsigned)len, (unsigned)addr, pc);
-        }
-    }
-
-    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
-        ((addr - 1 + len) > ADDR_AICA_WAVE_LAST) ||
-        ((addr - 1 + len) < ADDR_AICA_WAVE_FIRST)) {
-        error_set_feature("aw fuck it");
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
-    }
-
-    memcpy(start_addr, buf, len);
-    return MEM_ACCESS_SUCCESS;
 }
 
 void aica_log_verbose(bool verbose) {
