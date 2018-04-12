@@ -314,6 +314,14 @@ void x86asm_jnge_disp8(int disp8);
 void x86asm_jnge_lbl8(struct x86asm_lbl8 *lbl);
 
 /*
+ * jns (pc+disp8)
+ *
+ * Jump if Not Signed
+ */
+void x86asm_jns_disp8(int disp8);
+void x86asm_jns_lbl8(struct x86asm_lbl8 *lbl);
+
+/*
  * ja (pc+disp8)
  *
  * jump if the carry flag and zero flag are both not set (meaning a cmp was
@@ -375,6 +383,9 @@ void x86asm_shrl_imm8_reg32(unsigned imm8, unsigned reg_no);
 
 // shrl %cl, reg_no
 void x86asm_shrl_cl_reg32(unsigned reg_no);
+
+// sarl %cl, reg_no
+void x86asm_sarl_cl_reg32(unsigned reg_no);
 
 // sarl $<imm8>, %reg_no
 void x86asm_sarl_imm8_reg32(unsigned imm8, unsigned reg_no);

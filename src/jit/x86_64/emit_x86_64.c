@@ -830,6 +830,22 @@ void x86asm_jnge_lbl8(struct x86asm_lbl8 *lbl) {
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
 }
 
+void x86asm_jns_disp8(int disp8) {
+    put8(0x79);
+    put8(disp8);
+}
+
+void x86asm_jns_lbl8(struct x86asm_lbl8 *lbl) {
+    struct lbl_jmp_pt pt;
+    put8(0x79);
+
+    pt.offs = (int8_t*)outp;
+    pt.rel_pos = outp + 1;
+
+    put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
+}
+
 // movsx %<reg16>, %<reg32>
 void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm_2(0, 0x0f, 0xbf, 3, reg_dst, reg_src);
@@ -884,6 +900,11 @@ void x86asm_shrl_imm8_reg32(unsigned imm8, unsigned reg_no) {
 // shrl %cl, reg_no
 void x86asm_shrl_cl_reg32(unsigned reg_no) {
     emit_mod_reg_rm(0, 0xd3, 3, 5, reg_no);
+}
+
+// sarl %cl, reg_no
+void x86asm_sarl_cl_reg32(unsigned reg_no) {
+    emit_mod_reg_rm(0, 0xd3, 3, 7, reg_no);
 }
 
 // shll %cl, reg_no

@@ -1248,11 +1248,12 @@ static void emit_shad(Sh4 *sh4, struct jit_inst const *inst) {
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    x86asm_testl_imm32_reg32(1 << 31, slots[slot_shift_amt].reg_no);
-    x86asm_jz_lbl8(&lbl);
+    x86asm_testl_reg32_reg32(slots[slot_shift_amt].reg_no,
+                             slots[slot_shift_amt].reg_no);
+    x86asm_jns_lbl8(&lbl);
 
     x86asm_negl_reg32(ECX);
-    x86asm_shrl_cl_reg32(reg_tmp);
+    x86asm_sarl_cl_reg32(reg_tmp);
     x86asm_mov_reg32_reg32(reg_tmp, slots[slot_val].reg_no);
 
     x86asm_lbl8_define(&lbl);
