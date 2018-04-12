@@ -75,36 +75,6 @@ static_assert((SH4_P4_REGEND - SH4_P4_REGSTART) ==
 #define SH4_OP_CACHE_LINE_SIZE (SH4_LONGS_PER_OP_CACHE_LINE * 4)
 #define SH4_OC_RAM_AREA_SIZE (8 * 1024)
 
-/*
- * TODO:
- * These functions do not signal errors in any way at all
- * If they detect an error, they will call RAISE_ERROR, which panics
- * WashingtonDC
- */
-#define SH4_WRITE_MEM_TMPL(type, postfix)                               \
-    static inline void                                                  \
-    sh4_write_mem_##postfix(Sh4 *sh4, type val, addr32_t addr) {        \
-        memory_map_write_##postfix(val, addr);                          \
-    }
-
-SH4_WRITE_MEM_TMPL(uint8_t, 8)
-SH4_WRITE_MEM_TMPL(uint16_t, 16)
-SH4_WRITE_MEM_TMPL(uint32_t, 32)
-SH4_WRITE_MEM_TMPL(float, float)
-SH4_WRITE_MEM_TMPL(double, double)
-
-#define SH4_READ_MEM_TMPL(type, postfix)                                \
-    static inline type                                                  \
-    sh4_read_mem_##postfix(Sh4 *sh4, addr32_t addr) {                   \
-        return memory_map_read_##postfix(addr);                         \
-    }
-
-SH4_READ_MEM_TMPL(uint8_t, 8);
-SH4_READ_MEM_TMPL(uint16_t, 16);
-SH4_READ_MEM_TMPL(uint32_t, 32);
-SH4_READ_MEM_TMPL(float, float);
-SH4_READ_MEM_TMPL(double, double);
-
 void sh4_do_write_p4_double(Sh4 *sh4, addr32_t addr, double val);
 void sh4_do_write_p4_float(Sh4 *sh4, addr32_t addr, float val);
 void sh4_do_write_p4_32(Sh4 *sh4, addr32_t addr, uint32_t val);

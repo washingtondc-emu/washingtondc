@@ -661,13 +661,12 @@ void emit_read_16_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
     addr32_t vaddr = inst->immed.read_16_constaddr.addr;
     unsigned slot_no = inst->immed.read_16_constaddr.slot_no;
 
-    // call sh4_read_mem_16(sh4, vaddr)
+    // call memory_map_read_16(vaddr)
     prefunc();
 
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
-    x86asm_mov_imm32_reg32(vaddr, ESI);
+    x86asm_mov_imm32_reg32(vaddr, EDI);
     align_stack();
-    x86asm_call_ptr(sh4_read_mem_16);
+    x86asm_call_ptr(memory_map_read_16);
     x86asm_and_imm32_rax(0x0000ffff);
 
     postfunc();
@@ -696,14 +695,13 @@ void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
     addr32_t vaddr = inst->immed.read_32_constaddr.addr;
     unsigned slot_no = inst->immed.read_32_constaddr.slot_no;
 
-    // call sh4_read_mem_32(sh4, vaddr)
+    // call memory_map_read_32(vaddr)
 
     prefunc();
 
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
-    x86asm_mov_imm32_reg32(vaddr, ESI);
+    x86asm_mov_imm32_reg32(vaddr, EDI);
     align_stack();
-    x86asm_call_ptr(sh4_read_mem_32);
+    x86asm_call_ptr(memory_map_read_32);
 
     postfunc();
 
@@ -719,15 +717,14 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned dst_slot = inst->immed.read_32_slot.dst_slot;
     unsigned addr_slot = inst->immed.read_32_slot.addr_slot;
 
-    // call sh4_read_mem_32(sh4, *addr_slot)
+    // call memory_map_read_32(*addr_slot)
     prefunc();
 
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
-    move_slot_to_reg(addr_slot, ESI);
-    evict_register(ESI);
+    move_slot_to_reg(addr_slot, EDI);
+    evict_register(EDI);
 
     align_stack();
-    x86asm_call_ptr(sh4_read_mem_32);
+    x86asm_call_ptr(memory_map_read_32);
 
     postfunc();
 
@@ -745,15 +742,14 @@ void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 
     prefunc();
 
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
-    move_slot_to_reg(src_slot, ESI);
-    move_slot_to_reg(addr_slot, EDX);
+    move_slot_to_reg(src_slot, EDI);
+    move_slot_to_reg(addr_slot, ESI);
 
+    evict_register(EDI);
     evict_register(ESI);
-    evict_register(EDX);
 
     align_stack();
-    x86asm_call_ptr(sh4_write_mem_32);
+    x86asm_call_ptr(memory_map_write_32);
 
     postfunc();
 
