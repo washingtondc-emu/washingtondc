@@ -20,35 +20,18 @@
  *
  ******************************************************************************/
 
-#ifndef CODE_BLOCK_X86_64_H_
-#define CODE_BLOCK_X86_64_H_
+#ifndef NATIVE_MEM_H_
+#define NATIVE_MEM_H_
 
-#include <stdint.h>
-
-#ifndef ENABLE_JIT_X86_64
-#error this file should not be built when the x86_64 JIT backend is disabled
-#endif
-
-struct il_code_block;
-
-struct code_block_x86_64 {
-    /* void(*native)(void); */
-    void *native;
-    uint32_t cycle_count;
-    unsigned bytes_used;
-};
-
-void code_block_x86_64_init(struct code_block_x86_64 *blk);
-void code_block_x86_64_cleanup(struct code_block_x86_64 *blk);
-
-void code_block_x86_64_compile(struct code_block_x86_64 *out,
-                               struct il_code_block const *il_blk);
+void native_mem_init(void);
+void native_mem_cleanup(void);
 
 /*
- * if the stack is not 16-byte aligned, make it 16-byte aligned.
- * This way, when the CALL instruction is issued the stack will be off from
- * 16-byte alignment by 8 bytes; this is what GCC's calling convention requires.
+ * Normal calling convention rules about which registers are and are not saved
+ * apply here.  Obviously dst_reg will not get preserved no matter what.
  */
-void x86_64_align_stack(void);
+void native_mem_read_16(void);
+void native_mem_read_32(void);
+void native_mem_write_32(void);
 
 #endif

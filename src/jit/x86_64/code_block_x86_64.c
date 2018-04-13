@@ -34,6 +34,7 @@
 #include "emit_x86_64.h"
 #include "dreamcast.h"
 #include "native_dispatch.h"
+#include "native_mem.h"
 
 #include "code_block_x86_64.h"
 
@@ -189,13 +190,6 @@ static void grab_register(unsigned reg_no);
 static void ungrab_register(unsigned reg_no);
 
 static void evict_register(unsigned reg_no);
-
-/*
- * if the stack is not 16-byte aligned, make it 16-byte aligned.
- * This way, when the CALL instruction is issued the stack will be off from
- * 16-byte alignment by 8 bytes; this is what GCC's calling convention requires.
- */
-static void align_stack(void);
 
 static void reset_slots(void) {
     memset(slots, 0, sizeof(slots));
@@ -557,7 +551,7 @@ void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
 
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
     x86asm_mov_imm16_reg(inst_bin, RSI);
-    align_stack();
+    x86_64_align_stack();
     x86asm_call_ptr(inst->immed.fallback.fallback_fn);
 
     postfunc();
@@ -649,7 +643,7 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
 
     // now call sh4_on_sr_change(cpu, old_sr)
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
-    align_stack();
+    x86_64_align_stack();
     x86asm_call_ptr(sh4_on_sr_change);
 
     postfunc();
@@ -663,12 +657,8 @@ void emit_read_16_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
 
     // call memory_map_read_16(vaddr)
     prefunc();
-
     x86asm_mov_imm32_reg32(vaddr, EDI);
-    align_stack();
-    x86asm_call_ptr(memory_map_read_16);
-    x86asm_and_imm32_rax(0x0000ffff);
-
+    native_mem_read_16();
     postfunc();
 
     grab_slot(slot_no);
@@ -700,8 +690,7 @@ void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
     prefunc();
 
     x86asm_mov_imm32_reg32(vaddr, EDI);
-    align_stack();
-    x86asm_call_ptr(memory_map_read_32);
+    native_mem_read_32();
 
     postfunc();
 
@@ -723,8 +712,7 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     move_slot_to_reg(addr_slot, EDI);
     evict_register(EDI);
 
-    align_stack();
-    x86asm_call_ptr(memory_map_read_32);
+    native_mem_read_32();
 
     postfunc();
 
@@ -748,8 +736,7 @@ void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     evict_register(EDI);
     evict_register(ESI);
 
-    align_stack();
-    x86asm_call_ptr(memory_map_write_32);
+    native_mem_write_32();
 
     postfunc();
 
@@ -1275,7 +1262,7 @@ static void emit_shad(Sh4 *sh4, struct jit_inst const *inst) {
  * it is aligned on a 16-byte boundary and the CALL instruction can be safely
  * issued.
  */
-static void align_stack(void) {
+void x86_64_align_stack(void) {
     unsigned mod = (rsp_offs - 8) % 16;
 
     if (mod) {
