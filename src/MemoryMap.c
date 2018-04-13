@@ -47,8 +47,6 @@
 static struct BiosFile *bios;
 static struct Memory *mem;
 
-#define N_REGIONS 7
-
 static uint32_t read_area3_32(uint32_t addr);
 static uint16_t read_area3_16(uint32_t addr);
 static uint8_t read_area3_8(uint32_t addr);
@@ -219,7 +217,7 @@ READ_AREA0_TMPL(uint8_t, 8)
  * node even if that results in an imbalanced tree because Area3 will always be
  * the most heavily-trafficked memory region.
  */
-static struct memory_map_region regions[N_REGIONS] = {
+struct memory_map_region mm_regions[MEM_MAP_N_REGIONS] = {
     /*
      * I don't like the idea of putting SH4_AREA_P4 ahead of AREA3 (memory),
      * but this absolutely needs to be at the front of the list because the
@@ -378,12 +376,12 @@ void memory_map_set_mem(struct Memory *mem_new) {
         uint32_t last_addr = sizeof(type) - 1 + first_addr;             \
                                                                         \
         unsigned region_no;                                             \
-        for (region_no = 0; region_no < N_REGIONS; region_no++) {       \
-            uint32_t range_mask = regions[region_no].range_mask;        \
-            if ((first_addr & range_mask) >= regions[region_no].first_addr && \
-                (last_addr & range_mask) <= regions[region_no].last_addr) { \
-                uint32_t mask = regions[region_no].mask;                \
-                return regions[region_no].read##type_postfix(addr & mask); \
+        for (region_no = 0; region_no < MEM_MAP_N_REGIONS; region_no++) { \
+            uint32_t range_mask = mm_regions[region_no].range_mask;     \
+            if ((first_addr & range_mask) >= mm_regions[region_no].first_addr && \
+                (last_addr & range_mask) <= mm_regions[region_no].last_addr) { \
+                uint32_t mask = mm_regions[region_no].mask;             \
+                return mm_regions[region_no].read##type_postfix(addr & mask); \
             }                                                           \
         }                                                               \
                                                                         \
@@ -405,12 +403,12 @@ MEMORY_MAP_READ_TMPL(double, double)
         uint32_t last_addr = sizeof(type) - 1 + first_addr;             \
                                                                         \
         unsigned region_no;                                             \
-        for (region_no = 0; region_no < N_REGIONS; region_no++) {       \
-            uint32_t range_mask = regions[region_no].range_mask;        \
-            if ((first_addr & range_mask) >= regions[region_no].first_addr && \
-                (last_addr & range_mask) <= regions[region_no].last_addr) { \
-                uint32_t mask = regions[region_no].mask;                \
-                regions[region_no].write##type_postfix(addr & mask, val); \
+        for (region_no = 0; region_no < MEM_MAP_N_REGIONS; region_no++) { \
+            uint32_t range_mask = mm_regions[region_no].range_mask;     \
+            if ((first_addr & range_mask) >= mm_regions[region_no].first_addr && \
+                (last_addr & range_mask) <= mm_regions[region_no].last_addr) { \
+                uint32_t mask = mm_regions[region_no].mask;             \
+                mm_regions[region_no].write##type_postfix(addr & mask, val); \
                 return;                                                 \
             }                                                           \
         }                                                               \

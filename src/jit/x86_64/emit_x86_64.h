@@ -279,6 +279,12 @@ void x86asm_movsx_indreg16_reg32(unsigned reg_src, unsigned reg_dst);
 void x86asm_cmpl_imm8_reg32(unsigned imm8, unsigned reg_no);
 
 /*
+ * cmpl #imm8, %<reg_no>
+ * compare the given register with imm32
+ */
+void x86asm_cmpl_imm32_reg32(unsigned imm32, unsigned reg_no);
+
+/*
  * cmpl %<reg_rhs>, %<reg_lhs>
  *
  * compare the two given registers by subtracting.  Keep in mind that the lhs
@@ -328,6 +334,7 @@ void x86asm_jns_lbl8(struct x86asm_lbl8 *lbl);
  * greater-than).
  */
 void x86asm_ja_disp8(int disp8);
+void x86asm_ja_lbl8(struct x86asm_lbl8 *lbl);
 
 /*
  * jbe (pc+disp8)

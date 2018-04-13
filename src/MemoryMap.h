@@ -77,4 +77,8 @@ void memory_map_write_32(uint32_t val, uint32_t addr);
 void memory_map_write_float(float val, uint32_t addr);
 void memory_map_write_double(double val, uint32_t addr);
 
+#define MEM_MAP_N_REGIONS 7
+
+extern struct memory_map_region mm_regions[MEM_MAP_N_REGIONS];
+
 #endif

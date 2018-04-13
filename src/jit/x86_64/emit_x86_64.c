@@ -669,6 +669,15 @@ void x86asm_cmpl_imm8_reg32(unsigned imm8, unsigned reg_no) {
 }
 
 /*
+ * cmpl #imm8, %<reg_no>
+ * compare the given register with imm32
+ */
+void x86asm_cmpl_imm32_reg32(unsigned imm32, unsigned reg_no) {
+    emit_mod_reg_rm(0, 0x81, 3, 7, reg_no);
+    put32(imm32);
+}
+
+/*
  * cmpl %<reg_rhs>, %<reg_lhs>
  *
  * compare the two given registers by subtracting.  Keep in mind that the lhs
@@ -748,6 +757,17 @@ void x86asm_jnz_lbl8(struct x86asm_lbl8 *lbl) {
 void x86asm_ja_disp8(int disp8) {
     put8(0x77);
     put8(disp8);
+}
+
+void x86asm_ja_lbl8(struct x86asm_lbl8 *lbl) {
+    struct lbl_jmp_pt pt;
+    put8(0x77);
+
+    pt.offs = (int8_t*)outp;
+    pt.rel_pos = outp + 1;
+
+    put8(0); // temporary placeholder for the offset value
+    x86asm_lbl8_push_jmp_pt(lbl, &pt);
 }
 
 void x86asm_jbe_disp8(int disp8) {
