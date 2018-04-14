@@ -167,8 +167,8 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
 
     int idx;
     for (idx = 0; idx < 8; idx++) {
-        memory_map_write_32((sh4->ocache.sq + sq_idx)[idx],
-                         addr_actual + idx * sizeof(uint32_t));
+        memory_map_write_32(addr_actual + idx * sizeof(uint32_t),
+                            (sh4->ocache.sq + sq_idx)[idx]);
     }
     return MEM_ACCESS_SUCCESS;
 }

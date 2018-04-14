@@ -730,8 +730,8 @@ void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 
     prefunc();
 
-    move_slot_to_reg(src_slot, EDI);
-    move_slot_to_reg(addr_slot, ESI);
+    move_slot_to_reg(addr_slot, EDI);
+    move_slot_to_reg(src_slot, ESI);
 
     evict_register(EDI);
     evict_register(ESI);

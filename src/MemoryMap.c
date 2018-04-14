@@ -397,8 +397,8 @@ MEMORY_MAP_READ_TMPL(uint32_t, 32)
 MEMORY_MAP_READ_TMPL(float, float)
 MEMORY_MAP_READ_TMPL(double, double)
 
-#define MEM_MAP_WRITE_TMPL(type, type_postfix)                      \
-    void memory_map_write_##type_postfix(type val, uint32_t addr) {     \
+#define MEM_MAP_WRITE_TMPL(type, type_postfix)                          \
+    void memory_map_write_##type_postfix(uint32_t addr, type val) {     \
         uint32_t first_addr = addr;                                     \
         uint32_t last_addr = sizeof(type) - 1 + first_addr;             \
                                                                         \

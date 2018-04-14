@@ -119,8 +119,8 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
             inst++;
             break;
         case JIT_OP_WRITE_32_SLOT:
-            memory_map_write_32(block->slots[inst->immed.write_32_slot.src_slot],
-                                block->slots[inst->immed.write_32_slot.addr_slot]);
+            memory_map_write_32(block->slots[inst->immed.write_32_slot.addr_slot],
+                                block->slots[inst->immed.write_32_slot.src_slot]);
             inst++;
             break;
         case JIT_OP_LOAD_SLOT16:

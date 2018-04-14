@@ -312,7 +312,7 @@ void sh4_dmac_transfer_to_mem(addr32_t transfer_dst, size_t unit_sz,
         total_len /= 4;
         uint32_t const *dat32 = (uint32_t const*)dat;
         while (total_len) {
-            memory_map_write_32(*dat32, transfer_dst & ~0xe0000000);
+            memory_map_write_32(transfer_dst & ~0xe0000000, *dat32);
             transfer_dst += 4;
             dat32++;
             total_len--;
@@ -321,7 +321,7 @@ void sh4_dmac_transfer_to_mem(addr32_t transfer_dst, size_t unit_sz,
         total_len /= 2;
         uint16_t const *dat16 = (uint16_t const*)dat;
         while (total_len) {
-            memory_map_write_16(*dat16, transfer_dst & ~0xe0000000);
+            memory_map_write_16(transfer_dst & ~0xe0000000, *dat16);
             transfer_dst += 2;
             dat16++;
             total_len--;
@@ -329,7 +329,7 @@ void sh4_dmac_transfer_to_mem(addr32_t transfer_dst, size_t unit_sz,
     } else {
         uint8_t const *dat8 = (uint8_t const*)dat;
         while (total_len) {
-            memory_map_write_8(*dat8, transfer_dst & ~0xe0000000);
+            memory_map_write_8(transfer_dst & ~0xe0000000, *dat8);
             transfer_dst++;
             dat8++;
             total_len--;

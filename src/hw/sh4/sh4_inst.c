@@ -1656,7 +1656,7 @@ void sh4_inst_binary_andb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 
     val &= inst.imm8;
 
-    memory_map_write_8(val, addr);
+    memory_map_write_8(addr, val);
 }
 
 #define INST_MASK_11001001iiiiiiii 0xff00
@@ -1685,7 +1685,7 @@ void sh4_inst_binary_orb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 
     val |= inst.imm8;
 
-    memory_map_write_8(val, addr);
+    memory_map_write_8(addr, val);
 }
 
 #define INST_MASK_11001011iiiiiiii 0xff00
@@ -1759,7 +1759,7 @@ void sh4_inst_binary_xorb_imm_r0_gbr(Sh4 *sh4, Sh4OpArgs inst) {
 
     val ^= inst.imm8;
 
-    memory_map_write_8(val, addr);
+    memory_map_write_8(addr, val);
 }
 
 #define INST_MASK_10001011dddddddd 0xff00
@@ -1895,7 +1895,7 @@ void sh4_inst_unary_tasb_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     val_old = memory_map_read_8(addr);
     val_new = val_old | 0x80;
-    memory_map_write_8(val_new, addr);
+    memory_map_write_8(addr, val_new);
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     mask = (!val_old) << SH4_SR_FLAG_T_SHIFT;
@@ -2419,7 +2419,7 @@ void sh4_inst_binary_stcl_sr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->reg[SH4_REG_SR], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_SR]);
 
     *regp = addr;
 }
@@ -2435,7 +2435,7 @@ void sh4_inst_binary_stcl_gbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->reg[SH4_REG_GBR], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_GBR]);
 
     *regp = addr;
 }
@@ -2460,7 +2460,7 @@ void sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->reg[SH4_REG_VBR], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_VBR]);
 
     *regp = addr;
 }
@@ -2485,7 +2485,7 @@ void sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->reg[SH4_REG_SSR], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_SSR]);
 
     *regp = addr;
 }
@@ -2510,7 +2510,7 @@ void sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->reg[SH4_REG_SPC], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_SPC]);
 
     *regp = addr;
 }
@@ -2535,7 +2535,7 @@ void sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->reg[SH4_REG_SGR], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_SGR]);
 
     *regp = addr;
 }
@@ -2560,7 +2560,7 @@ void sh4_inst_binary_stcl_dbr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->reg[SH4_REG_DBR], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_DBR]);
 
     *regp = addr;
 }
@@ -3436,7 +3436,7 @@ void sh4_inst_binary_stcl_bank_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t src_val = *sh4_bank_reg(sh4, inst.bank_reg);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(src_val, addr);
+    memory_map_write_32(addr, src_val);
 
     *addr_reg = addr;
 }
@@ -3563,7 +3563,7 @@ void sh4_inst_binary_stsl_mach_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->reg[SH4_REG_MACH], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_MACH]);
 
     *addr_reg = addr;
 }
@@ -3580,7 +3580,7 @@ void sh4_inst_binary_stsl_macl_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->reg[SH4_REG_MACL], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_MACL]);
 
     *addr_reg = addr;
 }
@@ -3616,7 +3616,7 @@ void sh4_inst_binary_stsl_pr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->reg[SH4_REG_PR], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_PR]);
 
     *addr_reg = addr;
 }
@@ -3633,7 +3633,7 @@ void sh4_inst_binary_movb_gen_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     uint8_t mem_val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    memory_map_write_8(mem_val, addr);
+    memory_map_write_8(addr, mem_val);
 }
 
 #define INST_MASK_0010nnnnmmmm0001 0xf00f
@@ -3648,7 +3648,7 @@ void sh4_inst_binary_movw_gen_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     uint16_t mem_val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    memory_map_write_16(mem_val, addr);
+    memory_map_write_16(addr, mem_val);
 }
 
 #define INST_MASK_0010nnnnmmmm0010 0xf00f
@@ -3663,7 +3663,7 @@ void sh4_inst_binary_movl_gen_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     uint32_t mem_val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    memory_map_write_32(mem_val, addr);
+    memory_map_write_32(addr, mem_val);
 }
 
 #define INST_MASK_0110nnnnmmmm0000 0xf00f
@@ -3732,7 +3732,7 @@ void sh4_inst_binary_movb_gen_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t dst_reg_val = (*dst_reg) - 1;
     val = *src_reg;
 
-    memory_map_write_8(val, dst_reg_val);
+    memory_map_write_8(dst_reg_val, val);
 
     (*dst_reg) = dst_reg_val;
 }
@@ -3754,7 +3754,7 @@ void sh4_inst_binary_movw_gen_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     dst_reg_val -= 2;
     val = *src_reg;
 
-    memory_map_write_16(val, dst_reg_val);
+    memory_map_write_16(dst_reg_val, val);
 
     *dst_reg = dst_reg_val;
 }
@@ -3776,7 +3776,7 @@ void sh4_inst_binary_movl_gen_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     dst_reg_val -= 4;
     val = *src_reg;
 
-    memory_map_write_32(val, dst_reg_val);
+    memory_map_write_32(dst_reg_val, val);
 
     *dst_reg = dst_reg_val;
 }
@@ -3969,7 +3969,7 @@ void sh4_inst_binary_movb_r0_binind_disp_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = inst.imm4 + *sh4_gen_reg(sh4, inst.base_reg_src);
     int8_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_8(val, addr);
+    memory_map_write_8(addr, val);
 }
 
 #define INST_MASK_10000001nnnndddd 0xff00
@@ -3984,7 +3984,7 @@ void sh4_inst_binary_movw_r0_binind_disp_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm4 << 1) + *sh4_gen_reg(sh4, inst.base_reg_src);
     int16_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_16(val, addr);
+    memory_map_write_16(addr, val);
 }
 
 #define INST_MASK_0001nnnnmmmmdddd 0xf000
@@ -3999,7 +3999,7 @@ void sh4_inst_binary_movl_gen_binind_disp_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm4 << 2) + *sh4_gen_reg(sh4, inst.base_reg_dst);
     int32_t val = *sh4_gen_reg(sh4, inst.base_reg_src);
 
-    memory_map_write_32(val, addr);
+    memory_map_write_32(addr, val);
 }
 
 #define INST_MASK_10000100mmmmdddd 0xff00
@@ -4065,7 +4065,7 @@ void sh4_inst_binary_movb_gen_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     uint8_t val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    memory_map_write_8(val, addr);
+    memory_map_write_8(addr, val);
 }
 
 #define INST_MASK_0000nnnnmmmm0101 0xf00f
@@ -4080,7 +4080,7 @@ void sh4_inst_binary_movw_gen_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     uint16_t val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    memory_map_write_16(val, addr);
+    memory_map_write_16(addr, val);
 }
 
 #define INST_MASK_0000nnnnmmmm0110 0xf00f
@@ -4095,7 +4095,7 @@ void sh4_inst_binary_movl_gen_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     uint32_t val = *sh4_gen_reg(sh4, inst.src_reg);
 
-    memory_map_write_32(val, addr);
+    memory_map_write_32(addr, val);
 }
 
 #define INST_MASK_0000nnnnmmmm1100 0xf00f
@@ -4161,7 +4161,7 @@ void sh4_inst_binary_movb_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = inst.imm8 + sh4->reg[SH4_REG_GBR];
     int8_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_8(val, addr);
+    memory_map_write_8(addr, val);
 }
 
 #define INST_MASK_11000001dddddddd 0xff00
@@ -4176,7 +4176,7 @@ void sh4_inst_binary_movw_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm8 << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_16(val, addr);
+    memory_map_write_16(addr, val);
 }
 
 #define INST_MASK_11000010dddddddd 0xff00
@@ -4191,7 +4191,7 @@ void sh4_inst_binary_movl_r0_binind_disp_gbr(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = (inst.imm8 << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_32(val, addr);
+    memory_map_write_32(addr, val);
 }
 
 #define INST_MASK_11000100dddddddd 0xff00
@@ -4284,7 +4284,7 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     uint32_t src_val = *sh4_gen_reg(sh4, 0);
     addr32_t vaddr = *sh4_gen_reg(sh4, inst.dst_reg);
 
-    memory_map_write_32(src_val, vaddr);
+    memory_map_write_32(vaddr, src_val);
 }
 
 #define INST_MASK_1111nnnn10001101 0xf0ff
@@ -4389,7 +4389,7 @@ void sh4_inst_binary_fmovs_fr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
 
-    memory_map_write_float(*src_p, addr);
+    memory_map_write_float(addr, *src_p);
 }
 
 #define INST_MASK_1111nnnnmmmm1011 0xf00f
@@ -4406,7 +4406,7 @@ void sh4_inst_binary_fmovs_fr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *addr_p - 4;
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
 
-    memory_map_write_float(*src_p, addr);
+    memory_map_write_float(addr, *src_p);
 
     *addr_p = addr;
 }
@@ -4424,7 +4424,7 @@ void sh4_inst_binary_fmovs_fr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     float *src_p = sh4_fpu_fr(sh4, inst.src_reg);
 
-    memory_map_write_float(*src_p, addr);
+    memory_map_write_float(addr, *src_p);
 }
 
 #define INST_MASK_1111nnn0mmm01100 0xf11f
@@ -4503,7 +4503,7 @@ void sh4_inst_binary_fmov_dr_indgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *sh4_gen_reg(sh4, inst.dst_reg);
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
 
-    memory_map_write_double(*src_p, addr);
+    memory_map_write_double(addr, *src_p);
 }
 
 #define INST_MASK_1111nnnnmmm01011 0xf01f
@@ -4520,7 +4520,7 @@ void sh4_inst_binary_fmov_dr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *addr_p - 8;
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
 
-    memory_map_write_double(*src_p, addr);
+    memory_map_write_double(addr, *src_p);
 
     *addr_p = addr;
 }
@@ -4538,7 +4538,7 @@ void sh4_inst_binary_fmov_dr_binind_r0_gen(Sh4 *sh4, Sh4OpArgs inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, inst.dst_reg);
     double *src_p = sh4_fpu_dr(sh4, inst.dr_src);
 
-    memory_map_write_double(*src_p, addr);
+    memory_map_write_double(addr, *src_p);
 }
 
 #define INST_MASK_1111mmmm00011101 0xf0ff
@@ -5292,7 +5292,7 @@ void sh4_inst_binary_stsl_fpscr_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->reg[SH4_REG_FPSCR], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_FPSCR]);
 
     *addr_reg = addr;
 }
@@ -5309,7 +5309,7 @@ void sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, inst.gen_reg);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->reg[SH4_REG_FPUL], addr);
+    memory_map_write_32(addr, sh4->reg[SH4_REG_FPUL]);
 
     *addr_reg = addr;
 }
@@ -5436,7 +5436,7 @@ void sh4_inst_binary_fmov_xd_inddecgen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t addr = *addr_p - 8;
     double *src_p = sh4_fpu_xd(sh4, inst.dr_src);
 
-    memory_map_write_double(*src_p, addr);
+    memory_map_write_double(addr, *src_p);
 
     *addr_p = addr;
 }

@@ -71,11 +71,11 @@ uint32_t memory_map_read_32(uint32_t addr);
 float memory_map_read_float(uint32_t addr);
 double memory_map_read_double(uint32_t addr);
 
-void memory_map_write_8(uint8_t val, uint32_t addr);
-void memory_map_write_16(uint16_t val, uint32_t addr);
-void memory_map_write_32(uint32_t val, uint32_t addr);
-void memory_map_write_float(float val, uint32_t addr);
-void memory_map_write_double(double val, uint32_t addr);
+void memory_map_write_8(uint32_t addr, uint8_t val);
+void memory_map_write_16(uint32_t addr, uint16_t val);
+void memory_map_write_32(uint32_t addr, uint32_t val);
+void memory_map_write_float(uint32_t addr, float val);
+void memory_map_write_double(uint32_t addr, double val);
 
 #define MEM_MAP_N_REGIONS 7
 
