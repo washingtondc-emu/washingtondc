@@ -252,6 +252,7 @@ struct memory_map_region mm_regions[MEM_MAP_N_REGIONS] = {
         .last_addr = ADDR_AREA3_LAST,
         .mask = ADDR_AREA3_MASK,
         .range_mask = 0x1fffffff,
+        .id = MEMORY_MAP_REGION_RAM,
 
         .read32 = read_area3_32,
         .read16 = read_area3_16,

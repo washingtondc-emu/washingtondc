@@ -41,12 +41,19 @@ typedef void(*memory_map_write32_func)(uint32_t addr, uint32_t val);
 typedef void(*memory_map_write16_func)(uint32_t addr, uint16_t val);
 typedef void(*memory_map_write8_func)(uint32_t addr, uint8_t val);
 
+enum memory_map_region_id {
+    MEMORY_MAP_REGION_UNKNOWN,
+    MEMORY_MAP_REGION_RAM
+};
+
 struct memory_map_region {
     uint32_t first_addr, last_addr;
 
     uint32_t range_mask;
 
     uint32_t mask;
+
+    enum memory_map_region_id id;
 
     memory_map_readdouble_func readdouble;
     memory_map_readfloat_func readfloat;

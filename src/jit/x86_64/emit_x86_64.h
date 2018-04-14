@@ -199,6 +199,10 @@ void x86asm_movq_indreg_reg(unsigned reg_src, unsigned reg_dst);
 void x86asm_movq_sib_reg(unsigned reg_base, unsigned scale,
                          unsigned reg_index, unsigned reg_dst);
 
+// movl (%<reg_base>, <scale>, %<reg_index>), %<reg_dst>
+void x86asm_movl_sib_reg(unsigned reg_base, unsigned scale,
+                         unsigned reg_index, unsigned reg_dst);
+
 // movq %<reg_src>, (%<reg_base>, <scale>, %<reg_index>)
 void x86asm_movq_reg_sib(unsigned reg_src, unsigned reg_base,
                          unsigned scale, unsigned reg_index);
