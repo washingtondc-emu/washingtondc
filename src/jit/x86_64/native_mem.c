@@ -47,6 +47,7 @@ static void emit_native_mem_write_32(void);
 
 static void emit_ram_read_32(struct memory_map_region *region);
 static void emit_ram_read_16(struct memory_map_region *region);
+static void emit_ram_write_32(struct memory_map_region *region);
 
 void native_mem_init(void) {
     emit_native_mem_read_16();
@@ -192,10 +193,17 @@ static void emit_native_mem_write_32(void) {
         x86asm_cmpl_imm32_reg32(region_end, EAX);
         x86asm_ja_lbl8(&check_next);
 
-        // tail-call (the value to write is still in ESI)
-        x86asm_andl_imm32_reg32(region->mask, EDI);
-        x86asm_mov_imm64_reg64((uintptr_t)region->write32, RCX);
-        x86asm_jmpq_reg64(RCX);
+        switch (region->id) {
+        case MEMORY_MAP_REGION_RAM:
+            emit_ram_write_32(region);
+            x86asm_ret();
+            break;
+        default:
+            // tail-call (the value to write is still in ESI)
+            x86asm_andl_imm32_reg32(region->mask, EDI);
+            x86asm_mov_imm64_reg64((uintptr_t)region->write32, RCX);
+            x86asm_jmpq_reg64(RCX);
+        }
 
         // check next region
         x86asm_lbl8_define(&check_next);
@@ -221,4 +229,14 @@ static void emit_ram_read_16(struct memory_map_region *region) {
     x86asm_andl_imm32_reg32(region->mask, EDI);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, RSI);
     x86asm_movw_sib_reg(RSI, 1, EDI, EAX);
+}
+
+static void emit_ram_write_32(struct memory_map_region *region) {
+    // value to write should be in ESI
+    // address should be in EDI
+    struct Memory *mem = &dc_mem;
+
+    x86asm_andl_imm32_reg32(region->mask, EDI);
+    x86asm_mov_imm64_reg64((uintptr_t)mem->mem, RAX);
+    x86asm_movl_reg_sib(ESI, RAX, 1, EDI);
 }
