@@ -23,7 +23,7 @@
 cmake_minimum_required(VERSION 2.6)
 include(ExternalProject)
 
-project(WashingtonDC)
+project(WashingtonDC C)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
