@@ -411,7 +411,8 @@ int sh4_tmu_tcr_write_handler(Sh4 *sh4, void const *buf,
 int sh4_tmu_tcnt_read_handler(Sh4 *sh4, void *buf,
                               struct Sh4MemMappedReg const *reg_info) {
     unsigned chan;
-    switch (reg_info->reg_idx) {
+    unsigned reg_idx = reg_info->reg_idx;
+    switch (reg_idx) {
     case SH4_REG_TCNT0:
         chan = 0;
         break;
@@ -426,12 +427,15 @@ int sh4_tmu_tcnt_read_handler(Sh4 *sh4, void *buf,
     }
 
     tmu_chan_sync(sh4, chan);
-    return Sh4DefaultRegReadHandler(sh4, buf, reg_info);
+
+    *(uint32_t*)buf = sh4->reg[reg_idx];
+    return MEM_ACCESS_SUCCESS;
 }
 
 int sh4_tmu_tcnt_write_handler(Sh4 *sh4, void const *buf,
                                struct Sh4MemMappedReg const *reg_info) {
     unsigned chan;
+    unsigned reg_idx = reg_info->reg_idx;
     switch(reg_info->reg_idx) {
     case SH4_REG_TCNT0:
         chan = 0;
@@ -447,10 +451,10 @@ int sh4_tmu_tcnt_write_handler(Sh4 *sh4, void const *buf,
     }
 
     tmu_chan_sync(sh4, chan);
-    int ret = Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
+    sh4->reg[reg_idx] = *(uint32_t const*)buf;
     tmu_chan_sync(sh4, chan);
     if (chan_event_scheduled[chan])
         chan_event_unsched(chan);
     chan_event_sched_next(sh4, chan);
-    return ret;
+    return MEM_ACCESS_SUCCESS;
 }
