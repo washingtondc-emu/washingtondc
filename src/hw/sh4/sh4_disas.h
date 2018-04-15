@@ -343,4 +343,9 @@ bool sh4_disas_sett(struct il_code_block *block, unsigned pc,
 bool sh4_disas_movt(struct il_code_block *block, unsigned pc,
                     struct InstOpcode const *op, inst_t inst);
 
+// MOV.L @(disp, GBR), R0
+// 11000110dddddddd
+bool sh4_disas_movl_a_disp8_gbr_r0(struct il_code_block *block, unsigned pc,
+                                   struct InstOpcode const *op, inst_t inst);
+
 #endif

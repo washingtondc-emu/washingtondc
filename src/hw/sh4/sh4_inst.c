@@ -784,8 +784,8 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_LS, 1, 0xff00, 0xc500 },
 
     // MOV.L @(disp, GBR), R0
-    { &sh4_inst_binary_movl_binind_disp_gbr_r0, sh4_disas_fallback, false,
-      SH4_GROUP_LS, 1, 0xff00, 0xc600 },
+    { &sh4_inst_binary_movl_binind_disp_gbr_r0, sh4_disas_movl_a_disp8_gbr_r0,
+      false, SH4_GROUP_LS, 1, 0xff00, 0xc600 },
 
     // MOVA @(disp, PC), R0
     { &sh4_inst_binary_mova_binind_disp_pc_r0, sh4_disas_mova_a_disp_pc_r0,
