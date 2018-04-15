@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -190,9 +190,9 @@ static void tmu_chan_sync(Sh4 *sh4, unsigned chan) {
      */
     unsigned div = chan_clock_div(sh4, chan);
     chan_accum[chan] += elapsed;
-    tmu_cycle_t chan_cycles = chan_accum[chan] / div;
 
-    if (chan_cycles >= 1) {
+    if (chan_accum[chan] >= div) {
+        tmu_cycle_t chan_cycles = chan_accum[chan] / div;
         if (chan_cycles > chan_get_tcnt(sh4, chan)) {
             chan_unf[chan] = true;
             chan_set_tcnt(sh4, chan, sh4->reg[chan_tcor[chan]]);
