@@ -322,15 +322,21 @@ static_assert(SH4_REG_FR15 - SH4_REG_FR0 + 1 == 16,
 static_assert(SH4_REG_XF15 - SH4_REG_XF0 + 1 == 16,
               "incorrect number of banked FPU registers");
 
+typedef unsigned sh4_reg_val;
+
 /*
  * for the purpose of these handlers, you may assume that the caller has
  * already checked the permissions.
  */
 struct Sh4MemMappedReg;
-typedef int(*Sh4RegReadHandler)(Sh4 *sh4, void *buf,
-                                struct Sh4MemMappedReg const *reg_info);
-typedef int(*Sh4RegWriteHandler)(Sh4 *sh4, void const *buf,
-                                 struct Sh4MemMappedReg const *reg_info);
+
+typedef
+sh4_reg_val(*sh4_reg_read_handler)(Sh4 *sh4,
+				   struct Sh4MemMappedReg const *reg_info);
+typedef
+void(*sh4_reg_write_handler)(Sh4 *sh4,
+			     struct Sh4MemMappedReg const *reg_info,
+			     sh4_reg_val val);
 
 /*
  * TODO: turn this into a radix tree of some sort.
@@ -363,8 +369,8 @@ struct Sh4MemMappedReg {
      */
     bool hold_on_reset;
 
-    Sh4RegReadHandler on_p4_read;
-    Sh4RegWriteHandler on_p4_write;
+    sh4_reg_read_handler on_p4_read;
+    sh4_reg_write_handler on_p4_write;
 
     /*
      * if len < 4, then only the lower "len" bytes of
@@ -383,44 +389,6 @@ void sh4_init_regs(Sh4 *sh4);
 
 // set up the memory-mapped registers for a reset;
 void sh4_poweron_reset_regs(Sh4 *sh4);
-
-/* read/write handler callbacks for when you don't give a fuck */
-int Sh4IgnoreRegReadHandler(Sh4 *sh4, void *buf,
-                            struct Sh4MemMappedReg const *reg_info);
-int Sh4IgnoreRegWriteHandler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info);
-
-/* default reg reg/write handler callbacks */
-int Sh4DefaultRegReadHandler(Sh4 *sh4, void *buf,
-                             struct Sh4MemMappedReg const *reg_info);
-int Sh4DefaultRegWriteHandler(Sh4 *sh4, void const *buf,
-                              struct Sh4MemMappedReg const *reg_info);
-
-/*
- * read handle callback that always fails (although currently it throws an
- * UnimplementedError because I don't know what the proper response is when
- * the software tries to read from an unreadable register).
- *
- * This is used for certain registers which are write-only.
- */
-int Sh4WriteOnlyRegReadHandler(Sh4 *sh4, void *buf,
-                               struct Sh4MemMappedReg const *reg_info);
-
-/*
- * likewise, this is a write handler for read-only registers.
- * It will also raise an exception whenever it is invokled.
- */
-int Sh4ReadOnlyRegWriteHandler(Sh4 *sh4, void const *buf,
-                               struct Sh4MemMappedReg const *reg_info);
-
-/*
- * These handlers are functionally equivalent to the default read/write
- * handlers, except they log a warning to std::cerr every time they are called.
- */
-int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
-                          struct Sh4MemMappedReg const *reg_info);
-int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
-                           struct Sh4MemMappedReg const *reg_info);
 
 /*
  * called for P4 area write ops that

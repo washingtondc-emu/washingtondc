@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -128,8 +128,8 @@ void sh4_scif_connect_server(Sh4 *sh4) {
     sh4->scif.ser_srv_connected = true;
 }
 
-int
-sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scfdr2_reg_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info) {
     struct sh4_scif *scif = &sh4->scif;
 
@@ -143,14 +143,13 @@ sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,
         tx_sz = 16;
 
     uint16_t val = rx_sz | (tx_sz << 8);
-    memcpy(buf, &val, sizeof(val));
 
-    return 0;
+    return val;
 }
 
 // this is called when the software wants to read from the SCIF's rx fifo
-int
-sh4_scfrdr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scfrdr2_reg_read_handler(Sh4 *sh4,
                              struct Sh4MemMappedReg const *reg_info) {
    struct sh4_scif *scif = &sh4->scif;
    uint8_t val;
@@ -162,29 +161,23 @@ sh4_scfrdr2_reg_read_handler(Sh4 *sh4, void *buf,
            sh4->scif.dr_read = false;
        }
 
-       memcpy(buf, &val, sizeof(val));
-
-       return 0;
+       return val;
    }
 
     // sh4 spec says the value is undefined in this case
-    memset(buf, 0, sizeof(uint8_t));
     return 0;
 }
 
 // this is called when the software wants to write to the SCIF's tx fifo
-int
-sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
-                              struct Sh4MemMappedReg const *reg_info) {
+void
+sh4_scftdr2_reg_write_handler(Sh4 *sh4,
+                              struct Sh4MemMappedReg const *reg_info,
+                              sh4_reg_val val) {
     if (sh4->scif.ser_srv_connected) {
-        uint8_t dat;
-
-        memcpy(&dat, buf, sizeof(dat));
+        uint8_t dat = val;
         text_ring_produce(&sh4->scif.txq, (char)dat);
         serial_server_notify_tx_ready();
     }
-
-    return 0;
 }
 
 void sh4_scif_cts(Sh4 *sh4) {
@@ -274,51 +267,46 @@ sh4_scsmr2_reg_write_handler(Sh4 *sh4, void const *buf,
     return 0;
 }
 
-int
-sh4_scfcr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scfcr2_reg_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info) {
-    memcpy(buf, &sh4->reg[SH4_REG_SCFCR2], reg_info->len);
-
-    return 0;
+    return sh4->reg[SH4_REG_SCFCR2];
 }
 
-int
-sh4_scfcr2_reg_write_handler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info) {
-    memcpy(&sh4->reg[SH4_REG_SCFCR2], buf, reg_info->len);
+void
+sh4_scfcr2_reg_write_handler(Sh4 *sh4,
+                             struct Sh4MemMappedReg const *reg_info,
+                             sh4_reg_val val) {
+    sh4->reg[SH4_REG_SCFCR2] = val;
 
     // need to check these here due to potential flag changes
     check_rx_trig(sh4);
     check_tx_trig(sh4);
     check_rx_reset(sh4);
     check_tx_reset(sh4);
-
-    return 0;
 }
 
-int
-sh4_scscr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scscr2_reg_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info) {
-    memcpy(buf, &sh4->reg[SH4_REG_SCSCR2], reg_info->len);
-    return 0;
+    return sh4->reg[SH4_REG_SCSCR2];
 }
 
-int
-sh4_scscr2_reg_write_handler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info) {
-    memcpy(&sh4->reg[SH4_REG_SCSCR2], buf, reg_info->len);
+void
+sh4_scscr2_reg_write_handler(Sh4 *sh4,
+                             struct Sh4MemMappedReg const *reg_info,
+                             sh4_reg_val val) {
+    sh4->reg[SH4_REG_SCSCR2] = val;
 
     // need to check these because the interrupts might have been enabled
     check_rx_trig(sh4);
     check_tx_trig(sh4);
-
-    return 0;
 }
 
-int
-sh4_scfsr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scfsr2_reg_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info) {
-    uint16_t tmp = sh4->reg[SH4_REG_SCFSR2];
+    sh4_reg_val tmp = sh4->reg[SH4_REG_SCFSR2];
 
     if (tmp & SH4_SCFSR2_TEND_MASK)
         sh4->scif.tend_read = true;
@@ -329,17 +317,16 @@ sh4_scfsr2_reg_read_handler(Sh4 *sh4, void *buf,
     if (tmp & SH4_SCFSR2_RDF_MASK)
         sh4->scif.rdf_read = true;
 
-    memcpy(buf, &tmp, reg_info->len);
-
-    return 0;
+    return tmp;
 }
 
-int
-sh4_scfsr2_reg_write_handler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info) {
+void
+sh4_scfsr2_reg_write_handler(Sh4 *sh4,
+                             struct Sh4MemMappedReg const *reg_info,
+                             sh4_reg_val val) {
     uint16_t new_val, orig_val;
 
-    memcpy(&new_val, buf, reg_info->len);
+    new_val = val;
 
     orig_val = sh4->reg[SH4_REG_SCFSR2];
 
@@ -375,8 +362,6 @@ sh4_scfsr2_reg_write_handler(Sh4 *sh4, void const *buf,
     }
 
     sh4->reg[SH4_REG_SCFSR2] = new_val;
-
-    return 0;
 }
 
 /*

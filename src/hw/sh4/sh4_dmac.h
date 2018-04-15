@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -41,26 +41,35 @@ struct sh4_dmac {
     reg32_t dmaor;
 };
 
-int sh4_dmac_sar_reg_read_handler(Sh4 *sh4, void *buf,
-                                  struct Sh4MemMappedReg const *reg_info);
-int sh4_dmac_sar_reg_write_handler(Sh4 *sh4, void const *buf,
-                                   struct Sh4MemMappedReg const *reg_info);
-int sh4_dmac_dar_reg_read_handler(Sh4 *sh4, void *buf,
-                                  struct Sh4MemMappedReg const *reg_info);
-int sh4_dmac_dar_reg_write_handler(Sh4 *sh4, void const *buf,
-                                   struct Sh4MemMappedReg const *reg_info);
-int sh4_dmac_dmatcr_reg_read_handler(Sh4 *sh4, void *buf,
-                                     struct Sh4MemMappedReg const *reg_info);
-int sh4_dmac_dmatcr_reg_write_handler(Sh4 *sh4, void const *buf,
-                                      struct Sh4MemMappedReg const *reg_info);
-int sh4_dmac_chcr_reg_read_handler(Sh4 *sh4, void *buf,
-                                   struct Sh4MemMappedReg const *reg_info);
-int sh4_dmac_chcr_reg_write_handler(Sh4 *sh4, void const *buf,
-                                    struct Sh4MemMappedReg const *reg_info);
-int sh4_dmac_dmaor_reg_read_handler(Sh4 *sh4, void *buf,
-                                    struct Sh4MemMappedReg const *reg_info);
-int sh4_dmac_dmaor_reg_write_handler(Sh4 *sh4, void const *buf,
-                                     struct Sh4MemMappedReg const *reg_info);
+sh4_reg_val
+sh4_dmac_sar_reg_read_handler(Sh4 *sh4,
+                              struct Sh4MemMappedReg const *reg_info);
+void sh4_dmac_sar_reg_write_handler(Sh4 *sh4,
+                                    struct Sh4MemMappedReg const *reg_info,
+                                    sh4_reg_val val);
+sh4_reg_val
+sh4_dmac_dar_reg_read_handler(Sh4 *sh4,
+                              struct Sh4MemMappedReg const *reg_info);
+void sh4_dmac_dar_reg_write_handler(Sh4 *sh4,
+                                    struct Sh4MemMappedReg const *reg_info,
+                                    sh4_reg_val val);
+sh4_reg_val sh4_dmac_dmatcr_reg_read_handler(Sh4 *sh4,
+                                             struct Sh4MemMappedReg const *reg_info);
+void sh4_dmac_dmatcr_reg_write_handler(Sh4 *sh4,
+                                       struct Sh4MemMappedReg const *reg_info,
+                                       sh4_reg_val val);
+sh4_reg_val
+sh4_dmac_chcr_reg_read_handler(Sh4 *sh4,
+                               struct Sh4MemMappedReg const *reg_info);
+void sh4_dmac_chcr_reg_write_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info,
+                                     sh4_reg_val val);
+sh4_reg_val
+sh4_dmac_dmaor_reg_read_handler(Sh4 *sh4,
+                                struct Sh4MemMappedReg const *reg_info);
+void sh4_dmac_dmaor_reg_write_handler(Sh4 *sh4,
+                                      struct Sh4MemMappedReg const *reg_info,
+                                      sh4_reg_val val);
 
 /*
  * perform a DMA transfer from some external device to memory.

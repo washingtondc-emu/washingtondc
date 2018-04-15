@@ -35,25 +35,29 @@ struct sh4_tmu {
 void sh4_tmu_init(Sh4 *sh4);
 void sh4_tmu_cleanup(Sh4 *sh4);
 
-int sh4_tmu_tocr_read_handler(Sh4 *sh4, void *buf,
-                              struct Sh4MemMappedReg const *reg_info);
-int sh4_tmu_tocr_write_handler(Sh4 *sh4, void const *buf,
-                               struct Sh4MemMappedReg const *reg_info);
+sh4_reg_val
+sh4_tmu_tocr_read_handler(Sh4 *sh4,
+                          struct Sh4MemMappedReg const *reg_info);
+void sh4_tmu_tocr_write_handler(Sh4 *sh4,
+                                struct Sh4MemMappedReg const *reg_info,
+                                sh4_reg_val val);
+sh4_reg_val sh4_tmu_tstr_read_handler(Sh4 *sh4,
+                                      struct Sh4MemMappedReg const *reg_info);
+void sh4_tmu_tstr_write_handler(Sh4 *sh4,
+				struct Sh4MemMappedReg const *reg_info,
+				sh4_reg_val val);
 
-int sh4_tmu_tstr_read_handler(Sh4 *sh4, void *buf,
-                              struct Sh4MemMappedReg const *reg_info);
-int sh4_tmu_tstr_write_handler(Sh4 *sh4, void const *buf,
-                               struct Sh4MemMappedReg const *reg_info);
+sh4_reg_val sh4_tmu_tcr_read_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info);
+void sh4_tmu_tcr_write_handler(Sh4 *sh4,
+                               struct Sh4MemMappedReg const *reg_info,
+                               sh4_reg_val val);
 
-int sh4_tmu_tcr_read_handler(Sh4 *sh4, void *buf,
-                             struct Sh4MemMappedReg const *reg_info);
-int sh4_tmu_tcr_write_handler(Sh4 *sh4, void const *buf,
-                              struct Sh4MemMappedReg const *reg_info);
-
-int sh4_tmu_tcnt_read_handler(Sh4 *sh4, void *buf,
-                              struct Sh4MemMappedReg const *reg_info);
-int sh4_tmu_tcnt_write_handler(Sh4 *sh4, void const *buf,
-                               struct Sh4MemMappedReg const *reg_info);
+sh4_reg_val sh4_tmu_tcnt_read_handler(Sh4 *sh4,
+                                      struct Sh4MemMappedReg const *reg_info);
+void sh4_tmu_tcnt_write_handler(Sh4 *sh4,
+                                struct Sh4MemMappedReg const *reg_info,
+                                sh4_reg_val val);
 
 void sh4_tmu_tick(SchedEvent *event);
 

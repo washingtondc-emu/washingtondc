@@ -32,26 +32,58 @@
 #include "log.h"
 #include "jit/code_cache.h"
 
+
+static sh4_reg_val
+sh4_default_read_handler(Sh4 *sh4, struct Sh4MemMappedReg const *reg_info);
+static void
+sh4_default_write_handler(Sh4 *sh4, struct Sh4MemMappedReg const *reg_info,
+                          sh4_reg_val val);
+static sh4_reg_val
+sh4_warn_read_handler(Sh4 *sh4,
+                      struct Sh4MemMappedReg const *reg_info);
+static void
+sh4_warn_write_handler(Sh4 *sh4, struct Sh4MemMappedReg const *reg_info,
+                       sh4_reg_val val);
+
+static void sh4_mmucr_write_handler(Sh4 *sh4,
+                                    struct Sh4MemMappedReg const *reg_info,
+                                    sh4_reg_val val);
+static void
+sh4_ccr_write_handler(Sh4 *sh4,
+                      struct Sh4MemMappedReg const *reg_info,
+                      sh4_reg_val val);
+static void
+sh4_read_only_write_handler(Sh4 *sh4,
+                            struct Sh4MemMappedReg const *reg_info,
+                            sh4_reg_val val);
+static sh4_reg_val
+sh4_write_only_read_handler(Sh4 *sh4,
+                            struct Sh4MemMappedReg const *reg_info);
+static sh4_reg_val
+sh4_id_read_handler(Sh4 *sh4,
+                    struct Sh4MemMappedReg const *reg_info);
+
+static sh4_reg_val
+sh4_ignore_read_handler(Sh4 *sh4,
+                        struct Sh4MemMappedReg const *reg_info);
+static void
+sh4_ignore_write_handler(Sh4 *sh4,
+                         struct Sh4MemMappedReg const *reg_info,
+                         sh4_reg_val val);
+
+static sh4_reg_val
+sh4_pdtra_read_handler(Sh4 *sh4,
+                       struct Sh4MemMappedReg const *reg_info);
+static void sh4_pdtra_write_handler(Sh4 *sh4,
+                                    struct Sh4MemMappedReg const *reg_info,
+                                    sh4_reg_val val);
+
+static void
+sh4_zero_only_reg_write_handler(Sh4 *sh4,
+                                struct Sh4MemMappedReg const *reg_info,
+                                sh4_reg_val val);
+
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);
-
-static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
-                                      struct Sh4MemMappedReg const *reg_info);
-static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
-                                       struct Sh4MemMappedReg const *reg_info);
-
-static int sh4_id_reg_read_handler(Sh4 *sh4, void *buf,
-                                   struct Sh4MemMappedReg const *reg_info);
-
-static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
-                                       struct Sh4MemMappedReg const *reg_info);
-
-static int
-sh4_zero_only_reg_write_handler(Sh4 *sh4, void const *buf,
-                                struct Sh4MemMappedReg const *reg_info);
-
-static int
-sh4_ccr_reg_write_handler(Sh4 *sh4, void const *buf,
-                          struct Sh4MemMappedReg const *reg_info);
 
 /*
  * SDMR2 and SDMR3 are  weird.  When you write to them, the value
@@ -82,36 +114,38 @@ sh4_ccr_reg_write_handler(Sh4 *sh4, void const *buf,
 
 static struct Sh4MemMappedReg sh4_sdmr2_reg = {
     "SDMR2", 0xff900000, 1, (sh4_reg_idx_t)-1, true,
-    Sh4WriteOnlyRegReadHandler, Sh4IgnoreRegWriteHandler };
+    sh4_write_only_read_handler, sh4_ignore_write_handler
+};
 static struct Sh4MemMappedReg sh4_sdmr3_reg = {
     "SDMR3", 0xff940000, 1, (sh4_reg_idx_t)-1, true,
-    Sh4WriteOnlyRegReadHandler, Sh4IgnoreRegWriteHandler };
+    sh4_write_only_read_handler, sh4_ignore_write_handler
+};
 
 static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "EXPEVT", 0xff000024, 4, SH4_REG_EXPEVT, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0x20 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0x20 },
     { "INTEVT", 0xff000028, 4, SH4_REG_INTEVT, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0x20 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0x20 },
     { "MMUCR", 0xff000010, 4, SH4_REG_MMUCR, false,
-      Sh4WarnRegReadHandler, sh4_mmucr_reg_write_handler, 0, 0 },
+      sh4_warn_read_handler, sh4_mmucr_write_handler, 0, 0 },
     { "CCR", 0xff00001c, 4, SH4_REG_CCR, false,
-      Sh4DefaultRegReadHandler, sh4_ccr_reg_write_handler, 0, 0 },
+      sh4_default_read_handler, sh4_ccr_write_handler, 0, 0 },
     { "QACR0", 0xff000038, 4, SH4_REG_QACR0, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "QACR1", 0xff00003c, 4, SH4_REG_QACR1, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "PTEH", 0xff000000, 4, SH4_REG_PTEH, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "PTEL", 0xff000004, 4, SH4_REG_PTEL, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "TTB", 0xff000008, 4, SH4_REG_TTB, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "TEA", 0xff00000c, 4, SH4_REG_TEA, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "PTEA", 0xff000034, 4, SH4_REG_PTEA, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "TRA", 0xff000020, 4, SH4_REG_TRA, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
 
     /*
      * this is an odd one.  This register doesn't appear in any documentation
@@ -125,7 +159,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
      * framebuffer.
      */
     { "SUPERH-ID", 0xff000030, 4, (sh4_reg_idx_t)-1, false,
-      sh4_id_reg_read_handler, Sh4ReadOnlyRegWriteHandler, 0, 0 },
+      sh4_id_read_handler, sh4_read_only_write_handler, 0, 0 },
 
     /*
      * Bus-state registers.
@@ -139,47 +173,47 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
      * handle it at this point.
      */
     { "BCR1", 0xff800000, 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "BCR2", 0xff800004, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0x3ffc },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0x3ffc },
     { "WCR1", 0xff800008, 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0x77777777 },
     { "WCR2", 0xff80000c, 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0xfffeefff },
     { "WCR3", 0xff800010, 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0x07777777 },
     { "MCR", 0xff800014, 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0 },
     { "PCR", 0xff800018, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0 },
     { "PCTRA", 0xff80002c, 4, SH4_REG_PCTRA, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler,
+      sh4_warn_read_handler, sh4_warn_write_handler,
       0, 0 },
     { "PDTRA", 0xff800030, 2, SH4_REG_PDTRA, true,
-      sh4_pdtra_reg_read_handler, sh4_pdtra_reg_write_handler,
+      sh4_pdtra_read_handler, sh4_pdtra_write_handler,
       0, 0 },
     { "PCTRB", 0xff800040, 4, SH4_REG_PCTRB, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler,
+      sh4_warn_read_handler, sh4_warn_write_handler,
       0, 0 },
     { "PDTRB", 0xff800044, 2, SH4_REG_PDTRB, true,
-      Sh4IgnoreRegReadHandler, Sh4WarnRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0 },
     { "GPIOIC", 0xff800048, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0 },
     { "RFCR", 0xff800028, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0 },
     { "RTCOR", 0xff800024, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0 },
     { "RTCSR", 0xff80001c, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler,
+      sh4_ignore_read_handler, sh4_ignore_write_handler,
       0, 0 },
 
     /*
@@ -189,37 +223,37 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
      * battery-powered RTC.
      */
     { "R64CNT", 0xffc80000, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4ReadOnlyRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_read_only_write_handler, 0, 0 },
     { "RSECCNT", 0xffc80004, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RMINCNT", 0xffc80008, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RHRCNT", 0xffc8000c, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RWKCNT", 0xffc80010, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RDAYCNT", 0xffc80014, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RMONCNT", 0xffc80018, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RYRCNT", 0xffc8001c, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RSECAR", 0xffc80020, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RMINAR", 0xffc80024, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RHRAR", 0xffc80028, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RWKAR", 0xffc8002c, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RDAYAR", 0xffc80030, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RMONAR", 0xffc80034, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RCR1", 0xffc80038, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "RCR2", 0xffc8003c, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
 
     /*
      * I'm not sure what this does - something to do with standby mode (which is
@@ -228,9 +262,9 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
      * the RTC and the SCI.
      */
     { "STBCR", 0xffc00004, 1, SH4_REG_STBCR, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "STBCR2", 0xffc00010, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
 
     /*
      * watchdog timer - IDK if this is needed.
@@ -242,9 +276,9 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
      * but hopefully inconsequential.
      */
     { "WTCNT", 0xffc00008, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "WTCSR", 0xffc0000c, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
 
     //The Timer Unit
     { "TOCR", 0xffd80000, 1, SH4_REG_TOCR, true,
@@ -252,15 +286,16 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "TSTR", 0xffd80004, 1, SH4_REG_TSTR, true,
       sh4_tmu_tstr_read_handler, sh4_tmu_tstr_write_handler, 0, 0 },
     { "TCOR0", 0xffd80008, 4, SH4_REG_TCOR0, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
+      sh4_default_read_handler, sh4_default_write_handler,
       ~((reg32_t)0), ~((reg32_t)0) },
+
     { "TCNT0", 0xffd8000c, 4, SH4_REG_TCNT0, true,
       sh4_tmu_tcnt_read_handler, sh4_tmu_tcnt_write_handler,
       ~((reg32_t)0), ~((reg32_t)0) },
     { "TCR0", 0xffd80010, 2, SH4_REG_TCR0, true,
       sh4_tmu_tcr_read_handler, sh4_tmu_tcr_write_handler, 0, 0 },
     { "TCOR1", 0xffd80014, 4, SH4_REG_TCOR1, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
+      sh4_default_read_handler, sh4_default_write_handler,
       ~((reg32_t)0), ~((reg32_t)0) },
     { "TCNT1", 0xffd80018, 4, SH4_REG_TCNT1, true,
       sh4_tmu_tcnt_read_handler, sh4_tmu_tcnt_write_handler,
@@ -268,7 +303,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "TCR1", 0xffd8001c, 2, SH4_REG_TCR1, true,
       sh4_tmu_tcr_read_handler, sh4_tmu_tcr_write_handler, 0, 0 },
     { "TCOR2", 0xffd80020, 4, SH4_REG_TCOR2, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler,
+      sh4_default_read_handler, sh4_default_write_handler,
       ~((reg32_t)0), ~((reg32_t)0) },
     { "TCNT2", 0xffd80024, 4, SH4_REG_TCNT2, true,
       sh4_tmu_tcnt_read_handler, sh4_tmu_tcnt_write_handler,
@@ -276,7 +311,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "TCR2", 0xffd80028, 2, SH4_REG_TCR2, true,
       sh4_tmu_tcr_read_handler, sh4_tmu_tcr_write_handler, 0, 0 },
     { "TCPR2", 0xffd8002c, 4, SH4_REG_TCPR2, true,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
 
     /*
      * DMA channel 0
@@ -287,14 +322,13 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
      * of this would be on real hardware, or if it even has an effect.
      */
     { "SAR0", 0xffa00000, 4, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+      sh4_write_only_read_handler, sh4_zero_only_reg_write_handler },
     { "DAR0", 0xffa00004, 4, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+      sh4_write_only_read_handler, sh4_zero_only_reg_write_handler },
     { "DMATCR0", 0xffa00008, 4, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+      sh4_write_only_read_handler, sh4_zero_only_reg_write_handler },
     { "CHCR0", 0xffa0000c, 4, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
-
+      sh4_write_only_read_handler, sh4_zero_only_reg_write_handler },
 
     /* DMA Controller (DMAC) */
     { "SAR1", 0xffa00010, 4, SH4_REG_SAR1, true,
@@ -322,41 +356,41 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "CHCR3", 0xffa0003c, 4, SH4_REG_CHCR3, true,
       sh4_dmac_chcr_reg_read_handler, sh4_dmac_chcr_reg_write_handler, 0, 0 },
     { "DMAOR", 0xffa00040, 4, SH4_REG_DMAOR, true,
-      Sh4WarnRegReadHandler, Sh4WarnRegWriteHandler, 0, 0 },
+      sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
 
     /* Serial port */
     { "SCSMR2", 0xffe80000, 2, SH4_REG_SCSMR2, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "SCBRR2", 0xffe80004, 1, SH4_REG_SCBRR2, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0xff, 0xff },
+      sh4_default_read_handler, sh4_default_write_handler, 0xff, 0xff },
     { "SCSCR2", 0xffe80008, 2, SH4_REG_SCSCR2, false,
       sh4_scscr2_reg_read_handler, sh4_scscr2_reg_write_handler, 0, 0 },
     { "SCFTDR2", 0xffe8000c, 1, (sh4_reg_idx_t)-1, false,
-      Sh4WriteOnlyRegReadHandler, sh4_scftdr2_reg_write_handler, 0xff, 0xff },
+      sh4_write_only_read_handler, sh4_scftdr2_reg_write_handler, 0xff, 0xff },
     { "SCFSR2", 0xffe80010, 2, SH4_REG_SCFSR2, false,
       sh4_scfsr2_reg_read_handler, sh4_scfsr2_reg_write_handler, 0x0060, 0x0060 },
     { "SCFRDR2", 0xffe80014, 1, (sh4_reg_idx_t)-1, false,
-      sh4_scfrdr2_reg_read_handler, Sh4ReadOnlyRegWriteHandler, 0, 0 },
+      sh4_scfrdr2_reg_read_handler, sh4_read_only_write_handler, 0, 0 },
     { "SCFCR2", 0xffe80018, 2, SH4_REG_SCFCR2, false,
       sh4_scfcr2_reg_read_handler, sh4_scfcr2_reg_write_handler, 0, 0 },
     { "SCFDR2", 0xffe8001c, 2, (sh4_reg_idx_t)-1, false,
-      sh4_scfdr2_reg_read_handler, Sh4ReadOnlyRegWriteHandler, 0, 0 },
+      sh4_scfdr2_reg_read_handler, sh4_read_only_write_handler, 0, 0 },
     { "SCSPTR2", 0xffe80020, 2, SH4_REG_SCSPTR2, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "SCLSR2", 0xffe80024, 2, SH4_REG_SCLSR2, false,
-      Sh4DefaultRegReadHandler, Sh4DefaultRegWriteHandler, 0, 0 },
+      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
 
     /* interrupt controller */
     { "ICR", 0xffd00000, 2, SH4_REG_ICR, true,
-      Sh4DefaultRegReadHandler, sh4_excp_icr_reg_write_handler, 0, 0 },
+      sh4_default_read_handler, sh4_excp_icr_reg_write_handler, 0, 0 },
     { "IPRA", 0xffd00004, 2, SH4_REG_IPRA, true,
-      Sh4DefaultRegReadHandler, sh4_excp_ipra_reg_write_handler, 0, 0 },
+      sh4_default_read_handler, sh4_excp_ipra_reg_write_handler, 0, 0 },
     { "IPRB", 0xffd00008, 2, SH4_REG_IPRB, true,
-      Sh4DefaultRegReadHandler, sh4_excp_iprb_reg_write_handler, 0, 0 },
+      sh4_default_read_handler, sh4_excp_iprb_reg_write_handler, 0, 0 },
     { "IPRC", 0xffd0000c, 2, SH4_REG_IPRC, true,
-      Sh4DefaultRegReadHandler, sh4_excp_iprc_reg_write_handler, 0, 0 },
+      sh4_default_read_handler, sh4_excp_iprc_reg_write_handler, 0, 0 },
     { "IPRD", 0xffd0000d, 2, SH4_REG_IPRD, true,
-      Sh4DefaultRegReadHandler, sh4_excp_iprd_reg_write_handler, 0xda74, 0xda74 },
+      sh4_default_read_handler, sh4_excp_iprd_reg_write_handler, 0xda74, 0xda74 },
 
     /*
      * strange "padding" that exists adjacent to the IPR registers.
@@ -365,33 +399,33 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
      * similar padding between IPRA/IPRB.
      */
     { "IPR_MYSTERY_ffd00002", 0xffd00002, 2, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+      sh4_write_only_read_handler, sh4_zero_only_reg_write_handler },
     { "IPR_MYSTERY_ffd00006", 0xffd00006, 2, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+      sh4_write_only_read_handler, sh4_zero_only_reg_write_handler },
     { "IPR_MYSTERY_ffd0000a", 0xffd0000a, 2, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+      sh4_write_only_read_handler, sh4_zero_only_reg_write_handler },
     { "IPR_MYSTERY_ffd0000e", 0xffd0000e, 2, (sh4_reg_idx_t)-1, true,
-      Sh4WriteOnlyRegReadHandler, sh4_zero_only_reg_write_handler },
+      sh4_write_only_read_handler, sh4_zero_only_reg_write_handler },
 
     /* User Break Controller - I don't need this, I got my own debugger */
     { "BARA", 0xff200000, 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "BAMRA", 0xff200004, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "BBRA", 0xff200008, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "BARB", 0xff20000c, 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "BAMRB", 0xff200010, 1, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "BBRB", 0xff200014, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "BDRB", 0xff200018, 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "BDMRB", 0xff20001c, 4, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
     { "BRCR", 0xff200020, 2, (sh4_reg_idx_t)-1, true,
-      Sh4IgnoreRegReadHandler, Sh4IgnoreRegWriteHandler, 0, 0 },
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
 
     { NULL }
 };
@@ -426,7 +460,7 @@ void sh4_poweron_reset_regs(Sh4 *sh4) {
         if (curs->reg_idx != (sh4_reg_idx_t)-1)
             sh4->reg[curs->reg_idx] = curs->poweron_reset_val;
         else
-            Sh4IgnoreRegWriteHandler(sh4, &curs->poweron_reset_val, curs);
+            sh4_ignore_write_handler(sh4, curs, curs->poweron_reset_val);
 
         curs++;
     }
@@ -482,8 +516,15 @@ double sh4_read_mem_mapped_reg_double(Sh4 *sh4, addr32_t addr) {
 #define SH4_READ_MEM_MAPPED_REG_TMPL(type, postfix)                     \
     type sh4_read_mem_mapped_reg_##postfix(Sh4 *sh4, addr32_t addr) {   \
         struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);        \
-        Sh4RegReadHandler handler = mm_reg->on_p4_read;                 \
+        sh4_reg_read_handler handler = mm_reg->on_p4_read;              \
                                                                         \
+        /* checking length is important to prevent casting artifacts */ \
+        /* For example, an 8-bit write to a 32-bit register would    */ \
+        /* overwrite all 32 bits instead of just the lower 8 bits.   */ \
+        /* I have never seen a game try to use an unexpected length  */ \
+        /* for sh4 on-chip register access.  Should that ever        */ \
+        /* happen, I'll need to come up with some way to mask the    */ \
+        /* correct value in. */                                         \
         if (sizeof(type) != mm_reg->len) {                              \
             error_set_length(sizeof(type));                             \
             error_set_expected_length(mm_reg->len);                     \
@@ -491,9 +532,7 @@ double sh4_read_mem_mapped_reg_double(Sh4 *sh4, addr32_t addr) {
             RAISE_ERROR(ERROR_INVALID_PARAM);                           \
         }                                                               \
                                                                         \
-        type tmp_val;                                                   \
-        handler(sh4, &tmp_val, mm_reg);                                 \
-        return tmp_val;                                                 \
+        return (type)handler(sh4, mm_reg);                              \
     }
 
 SH4_READ_MEM_MAPPED_REG_TMPL(uint32_t, 32)
@@ -504,8 +543,15 @@ SH4_READ_MEM_MAPPED_REG_TMPL(uint8_t, 8)
     void sh4_write_mem_mapped_reg_##postfix(Sh4 *sh4, addr32_t addr,    \
                                             type val) {                 \
         struct Sh4MemMappedReg *mm_reg = find_reg_by_addr(addr);        \
-        Sh4RegWriteHandler handler = mm_reg->on_p4_write;               \
+        sh4_reg_write_handler handler = mm_reg->on_p4_write;            \
                                                                         \
+        /* checking length is important to prevent casting artifacts */ \
+        /* For example, an 8-bit write to a 32-bit register would    */ \
+        /* overwrite all 32 bits instead of just the lower 8 bits.   */ \
+        /* I have never seen a game try to use an unexpected length  */ \
+        /* for sh4 on-chip register access.  Should that ever        */ \
+        /* happen, I'll need to come up with some way to mask the    */ \
+        /* correct value in. */                                         \
         if (sizeof(type) != mm_reg->len) {                              \
             error_set_length(sizeof(type));                             \
             error_set_expected_length(mm_reg->len);                     \
@@ -513,7 +559,7 @@ SH4_READ_MEM_MAPPED_REG_TMPL(uint8_t, 8)
             RAISE_ERROR(ERROR_INVALID_PARAM);                           \
         }                                                               \
                                                                         \
-        handler(sh4, &val, mm_reg);                                     \
+        handler(sh4, mm_reg, val);                                      \
     }
 
 SH4_WRITE_MEM_MAPPED_REG_TMPL(uint32_t, 32)
@@ -528,125 +574,64 @@ void sh4_write_mem_mapped_reg_double(Sh4 *sh4, addr32_t addr, double val) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-int Sh4DefaultRegReadHandler(Sh4 *sh4, void *buf,
-                             struct Sh4MemMappedReg const *reg_info) {
-    assert(reg_info->len <= sizeof(reg32_t));
-
-    memcpy(buf, sh4->reg + reg_info->reg_idx, reg_info->len);
-
-    return 0;
+static sh4_reg_val
+sh4_id_read_handler(Sh4 *sh4,
+                    struct Sh4MemMappedReg const *reg_info) {
+    // this value was obtained empircally on a real dreamcast
+    return 0x040205c1;
 }
 
-int Sh4DefaultRegWriteHandler(Sh4 *sh4, void const *buf,
-                              struct Sh4MemMappedReg const *reg_info) {
-    assert(reg_info->len <= sizeof(reg32_t));
-
-    memcpy(sh4->reg + reg_info->reg_idx, buf, reg_info->len);
-
-    return 0;
+static void
+sh4_read_only_write_handler(Sh4 *sh4,
+                            struct Sh4MemMappedReg const *reg_info,
+                            sh4_reg_val val) {
+    error_set_feature("sh4 CPU exception for trying to write to a read-only "
+                      "CPU register");
+    error_set_address(reg_info->addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-int Sh4IgnoreRegReadHandler(Sh4 *sh4, void *buf,
+static sh4_reg_val
+sh4_write_only_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info) {
-    memcpy(buf, reg_info->addr - SH4_P4_REGSTART + sh4->reg_area,
-           reg_info->len);
-
-    return 0;
-}
-
-int Sh4IgnoreRegWriteHandler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info) {
-    memcpy(reg_info->addr - SH4_P4_REGSTART + sh4->reg_area,
-           buf, reg_info->len);
-
-    return 0;
-}
-
-int Sh4WriteOnlyRegReadHandler(Sh4 *sh4, void *buf,
-                               struct Sh4MemMappedReg const *reg_info) {
     error_set_feature("sh4 CPU exception for trying to read from a write-only "
                       "CPU register");
     error_set_address(reg_info->addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    return 1; // never happens
 }
 
-int Sh4ReadOnlyRegWriteHandler(Sh4 *sh4, void const *buf,
-                               struct Sh4MemMappedReg const *reg_info) {
-    error_set_feature("sh4 CPU exception for trying to write to a write-only "
-                      "CPU register");
-    error_set_address(reg_info->addr);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    return 1; // never happens
-}
-
-int Sh4WarnRegReadHandler(Sh4 *sh4, void *buf,
-                          struct Sh4MemMappedReg const *reg_info) {
-    uint8_t val8;
-    uint16_t val16;
-    uint32_t val32;
-
-    int ret_code = Sh4DefaultRegReadHandler(sh4, buf, reg_info);
-
-    if (ret_code) {
-        LOG_DBG("read from register %s\n", reg_info->reg_name);
-    } else {
-        switch (reg_info->len) {
-        case 1:
-            memcpy(&val8, buf, sizeof(val8));
-            LOG_DBG("read 0x%02x from register %s\n",
-                    (unsigned)val8, reg_info->reg_name);
-            break;
-        case 2:
-            memcpy(&val16, buf, sizeof(val16));
-            LOG_DBG("read 0x%04x from register %s\n",
-                    (unsigned)val16, reg_info->reg_name);
-            break;
-        case 4:
-            memcpy(&val32, buf, sizeof(val32));
-            LOG_DBG("read 0x%08x from register %s\n",
-                    (unsigned)val32, reg_info->reg_name);
-            break;
-        default:
-            LOG_DBG("read from register %s\n", reg_info->reg_name);
-        }
+static void
+sh4_zero_only_reg_write_handler(Sh4 *sh4,
+                                struct Sh4MemMappedReg const *reg_info,
+                                sh4_reg_val val) {
+    if (val) {
+        error_set_feature("writing non-zero to a zero-only register");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
-    LOG_DBG("(PC is %x)\n", (unsigned)sh4->reg[SH4_REG_PC]);
-
-    return ret_code;
 }
 
-int Sh4WarnRegWriteHandler(Sh4 *sh4, void const *buf,
-                           struct Sh4MemMappedReg const *reg_info) {
-    uint8_t val8;
-    uint16_t val16;
-    uint32_t val32;
+static void sh4_mmucr_write_handler(Sh4 *sh4,
+                                    struct Sh4MemMappedReg const *reg_info,
+                                    sh4_reg_val val) {
+    sh4->reg[SH4_REG_MMUCR] = val;
 
-    switch (reg_info->len) {
-    case 1:
-        memcpy(&val8, buf, sizeof(val8));
-        LOG_DBG("write 0x%02x to register %s\n",
-                (unsigned)val8, reg_info->reg_name);
-        break;
-    case 2:
-        memcpy(&val16, buf, sizeof(val16));
-        LOG_DBG("write 0x%04x to register %s\n",
-                (unsigned)val16, reg_info->reg_name);
-        break;
-    case 4:
-        memcpy(&val32, buf, sizeof(val32));
-        LOG_DBG("write 0x%08x to register %s\n",
-                (unsigned)val32, reg_info->reg_name);
-        break;
-    default:
-        LOG_DBG("write to register %s\n", reg_info->reg_name);
+    if (val & SH4_MMUCR_AT_MASK) {
+        error_set_feature("SH4 MMU support");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
-
-    return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
 }
 
-static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
-                                      struct Sh4MemMappedReg const *reg_info) {
+static void
+sh4_ccr_write_handler(Sh4 *sh4,
+                      struct Sh4MemMappedReg const *reg_info,
+                      sh4_reg_val val) {
+    code_cache_invalidate_all();
+    sh4->reg[SH4_REG_CCR] = val;
+}
+
+static sh4_reg_val
+sh4_pdtra_read_handler(Sh4 *sh4,
+                       struct Sh4MemMappedReg const *reg_info) {
     /*
      * HACK - prevent infinite loop during bios boot at pc=0x8c00b94e
      * I'm not 100% sure what I'm doing here, I *think* PDTRA has something to
@@ -720,20 +705,17 @@ static int sh4_pdtra_reg_read_handler(Sh4 *sh4, void *buf,
     out_val = (out_val & ~n_input_mask) |
         (sh4->reg[SH4_REG_PDTRA] & n_input_mask);
 
-    memcpy(buf, &out_val, sizeof(out_val));
-
     /* I got my eye on you...*/
     LOG_DBG("reading 0x%04x from register %s\n",
             (unsigned)out_val, reg_info->reg_name);
 
-    return 0;
+    return out_val;
 }
 
-static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
-                                       struct Sh4MemMappedReg const *reg_info) {
-    uint16_t val;
-    memcpy(&val, buf, sizeof(val));
-    uint16_t val_orig __attribute__((unused)) = val;
+static void sh4_pdtra_write_handler(Sh4 *sh4,
+                                    struct Sh4MemMappedReg const *reg_info,
+                                    sh4_reg_val val) {
+    sh4_reg_val val_orig __attribute__((unused)) = val;
 
     /*
      * n_pup = "not pullup"
@@ -758,51 +740,52 @@ static int sh4_pdtra_reg_write_handler(Sh4 *sh4, void const *buf,
             (unsigned)val, reg_info->reg_name, (unsigned)val_orig);
 
     sh4->reg[SH4_REG_PDTRA] = val;
-
-    return 0;
 }
 
-static int sh4_id_reg_read_handler(Sh4 *sh4, void *buf,
-                                   struct Sh4MemMappedReg const *reg_info) {
-    // this value was obtained empircally on a real dreamcast
-    uint32_t id_val = 0x040205c1;
-    memcpy(buf, &id_val, sizeof(id_val));
-    return 0;
+static sh4_reg_val
+sh4_default_read_handler(Sh4 *sh4, struct Sh4MemMappedReg const *reg_info) {
+    return sh4->reg[reg_info->reg_idx];
 }
 
-static int sh4_mmucr_reg_write_handler(Sh4 *sh4, void const *buf,
-                                       struct Sh4MemMappedReg const *reg_info) {
-    uint32_t new_val;
-    memcpy(&new_val, buf, sizeof(new_val));
-
-    sh4->reg[SH4_REG_MMUCR] = new_val;
-
-    if (new_val & SH4_MMUCR_AT_MASK) {
-        error_set_feature("SH4 MMU support");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    return 0;
+static void
+sh4_default_write_handler(Sh4 *sh4, struct Sh4MemMappedReg const *reg_info,
+                          sh4_reg_val val) {
+    sh4->reg[reg_info->reg_idx] = val;
 }
 
-static int
-sh4_zero_only_reg_write_handler(Sh4 *sh4, void const *buf,
-                                  struct Sh4MemMappedReg const *reg_info) {
-    uint8_t const *bufp = (uint8_t const*)buf;
-    unsigned n_bytes = reg_info->len;
+static sh4_reg_val
+sh4_warn_read_handler(Sh4 *sh4,
+                      struct Sh4MemMappedReg const *reg_info) {
+    sh4_reg_val val = sh4->reg[reg_info->reg_idx];
 
-    while (n_bytes--)
-        if (*bufp++) {
-            error_set_feature("writing non-zero to a zero-only register");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
+    LOG_DBG("Read 0x%08x (%u bytes) from register %s\n",
+            (unsigned)val, reg_info->len, reg_info->reg_name);
 
-    return 0;
+    return val;
 }
 
-static int
-sh4_ccr_reg_write_handler(Sh4 *sh4, void const *buf,
-                          struct Sh4MemMappedReg const *reg_info) {
-    code_cache_invalidate_all();
-    return Sh4DefaultRegWriteHandler(sh4, buf, reg_info);
+static void
+sh4_warn_write_handler(Sh4 *sh4, struct Sh4MemMappedReg const *reg_info,
+                       sh4_reg_val val) {
+    LOG_DBG("Write 0x%08x (%u bytes) to register %s\n",
+            (unsigned)val, reg_info->len, reg_info->reg_name);
+    sh4->reg[reg_info->reg_idx] = val;
 }
+
+static sh4_reg_val
+sh4_ignore_read_handler(Sh4 *sh4,
+                        struct Sh4MemMappedReg const *reg_info) {
+    sh4_reg_val ret;
+    unsigned len = reg_info->len;
+    memcpy(&ret, reg_info->addr - SH4_P4_REGSTART + sh4->reg_area, len);
+    return ret;
+}
+
+static void
+sh4_ignore_write_handler(Sh4 *sh4,
+                         struct Sh4MemMappedReg const *reg_info,
+                         sh4_reg_val val) {
+    memcpy(reg_info->addr - SH4_P4_REGSTART + sh4->reg_area,
+           &val, reg_info->len);
+}
+

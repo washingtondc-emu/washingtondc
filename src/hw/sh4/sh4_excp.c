@@ -374,47 +374,37 @@ static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) 
     return -1;
 }
 
-int sh4_excp_icr_reg_write_handler(Sh4 *sh4, void const *buf,
-                                   struct Sh4MemMappedReg const *reg_info) {
-    memcpy(sh4->reg + SH4_REG_ICR, buf, sizeof(sh4->reg[SH4_REG_ICR]));
-
+void sh4_excp_icr_reg_write_handler(Sh4 *sh4,
+                                    struct Sh4MemMappedReg const *reg_info,
+                                    sh4_reg_val val) {
+    sh4->reg[SH4_REG_ICR] = val;
     sh4_refresh_intc_deferred(sh4);
-
-    return MEM_ACCESS_SUCCESS;
 }
 
-int sh4_excp_ipra_reg_write_handler(Sh4 *sh4, void const *buf,
-                                    struct Sh4MemMappedReg const *reg_info) {
-    memcpy(sh4->reg + SH4_REG_IPRA, buf, sizeof(sh4->reg[SH4_REG_IPRA]));
-
+void sh4_excp_ipra_reg_write_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info,
+                                     sh4_reg_val val) {
+    sh4->reg[SH4_REG_IPRA] = val;
     sh4_refresh_intc_deferred(sh4);
-
-    return MEM_ACCESS_SUCCESS;
 }
 
-int sh4_excp_iprb_reg_write_handler(Sh4 *sh4, void const *buf,
-                                    struct Sh4MemMappedReg const *reg_info) {
-    memcpy(sh4->reg + SH4_REG_IPRB, buf, sizeof(sh4->reg[SH4_REG_IPRB]));
-
+void sh4_excp_iprb_reg_write_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info,
+                                     sh4_reg_val val) {
+    sh4->reg[SH4_REG_IPRB] = val;
     sh4_refresh_intc_deferred(sh4);
-
-    return MEM_ACCESS_SUCCESS;
 }
 
-int sh4_excp_iprc_reg_write_handler(Sh4 *sh4, void const *buf,
-                                    struct Sh4MemMappedReg const *reg_info) {
-    memcpy(sh4->reg + SH4_REG_IPRC, buf, sizeof(sh4->reg[SH4_REG_IPRC]));
-
+void sh4_excp_iprc_reg_write_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info,
+                                     sh4_reg_val val) {
+    sh4->reg[SH4_REG_IPRC] = val;
     sh4_refresh_intc_deferred(sh4);
-
-    return MEM_ACCESS_SUCCESS;
 }
 
-int sh4_excp_iprd_reg_write_handler(Sh4 *sh4, void const *buf,
-                                    struct Sh4MemMappedReg const *reg_info) {
-    memcpy(sh4->reg + SH4_REG_IPRD, buf, sizeof(sh4->reg[SH4_REG_IPRD]));
-
+void sh4_excp_iprd_reg_write_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info,
+                                     sh4_reg_val val) {
+    sh4->reg[SH4_REG_IPRD] = val;
     sh4_refresh_intc_deferred(sh4);
-
-    return MEM_ACCESS_SUCCESS;
 }

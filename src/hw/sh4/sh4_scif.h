@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -86,17 +86,18 @@ void sh4_scif_cleanup(sh4_scif *scif);
 
 void sh4_scif_connect_server(Sh4 *sh4);
 
-int
-sh4_scfdr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scfdr2_reg_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info);
 
-int
-sh4_scfrdr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scfrdr2_reg_read_handler(Sh4 *sh4,
                              struct Sh4MemMappedReg const *reg_info);
 
-int
-sh4_scftdr2_reg_write_handler(Sh4 *sh4, void const *buf,
-                              struct Sh4MemMappedReg const *reg_info);
+void
+sh4_scftdr2_reg_write_handler(Sh4 *sh4,
+                              struct Sh4MemMappedReg const *reg_info,
+                              sh4_reg_val val);
 
 /* the SH4 Serial Mode Register */
 int
@@ -107,28 +108,31 @@ sh4_scsmr2_reg_write_handler(Sh4 *sh4, void const *buf,
                              struct Sh4MemMappedReg const *reg_info);
 
 /* the SH4 FIFO Control Register */
-int
-sh4_scfcr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scfcr2_reg_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info);
-int
-sh4_scfcr2_reg_write_handler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info);
+void
+sh4_scfcr2_reg_write_handler(Sh4 *sh4,
+                             struct Sh4MemMappedReg const *reg_info,
+                             sh4_reg_val val);
 
 /* Serial Control Register */
-int
-sh4_scscr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scscr2_reg_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info);
-int
-sh4_scscr2_reg_write_handler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info);
+void
+sh4_scscr2_reg_write_handler(Sh4 *sh4,
+                             struct Sh4MemMappedReg const *reg_info,
+                             sh4_reg_val val);
 
 /* Serial Status Register */
-int
-sh4_scfsr2_reg_read_handler(Sh4 *sh4, void *buf,
+sh4_reg_val
+sh4_scfsr2_reg_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info);
-int
-sh4_scfsr2_reg_write_handler(Sh4 *sh4, void const *buf,
-                             struct Sh4MemMappedReg const *reg_info);
+void
+sh4_scfsr2_reg_write_handler(Sh4 *sh4,
+                             struct Sh4MemMappedReg const *reg_info,
+                             sh4_reg_val val);
 
 /*
  * Called by the serial server when it's hungry for more data.

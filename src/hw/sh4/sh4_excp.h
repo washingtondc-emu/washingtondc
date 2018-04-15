@@ -198,16 +198,21 @@ void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line, Sh4ExceptionCode intp_code);
  * next pending interrupt needs to be reccomputed every time one of these
  * registers changes (in addtion to the aforementioned bits in SR)
  */
-int sh4_excp_icr_reg_write_handler(Sh4 *sh4, void const *buf,
-                                   struct Sh4MemMappedReg const *reg_info);
-int sh4_excp_ipra_reg_write_handler(Sh4 *sh4, void const *buf,
-                                    struct Sh4MemMappedReg const *reg_info);
-int sh4_excp_iprb_reg_write_handler(Sh4 *sh4, void const *buf,
-                                    struct Sh4MemMappedReg const *reg_info);
-int sh4_excp_iprc_reg_write_handler(Sh4 *sh4, void const *buf,
-                                    struct Sh4MemMappedReg const *reg_info);
-int sh4_excp_iprd_reg_write_handler(Sh4 *sh4, void const *buf,
-                                    struct Sh4MemMappedReg const *reg_info);
+void sh4_excp_icr_reg_write_handler(Sh4 *sh4,
+                                    struct Sh4MemMappedReg const *reg_info,
+                                    sh4_reg_val val);
+void sh4_excp_ipra_reg_write_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info,
+                                     sh4_reg_val val);
+void sh4_excp_iprb_reg_write_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info,
+                                     sh4_reg_val val);
+void sh4_excp_iprc_reg_write_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info,
+                                     sh4_reg_val val);
+void sh4_excp_iprd_reg_write_handler(Sh4 *sh4,
+                                     struct Sh4MemMappedReg const *reg_info,
+                                     sh4_reg_val val);
 
 // bits in the SR register which (when changed) can effect the intc
 #define SH4_INTC_SR_BITS (SH4_SR_IMASK_MASK | SH4_SR_BL_MASK)
