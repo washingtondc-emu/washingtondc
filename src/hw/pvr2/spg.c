@@ -99,7 +99,7 @@ static_assert(SCHED_FREQUENCY % (54 * 1000 * 1000) == 0,
  */
 static unsigned pclk_div = 2;
 
-static dc_cycle_stamp_t last_sync;
+static dc_cycle_stamp_t last_sync_rounded;
 
 // whether to double pixels horizontally/vertically
 static bool pix_double_x, pix_double_y;
@@ -193,16 +193,13 @@ static void spg_sync() {
     unsigned hcount = get_hcount();
     unsigned vcount = get_vcount();
     dc_cycle_stamp_t cur_time = dc_cycle_stamp();
-    dc_cycle_stamp_t last_sync_rounded = (get_pclk_div() * SPG_VCLK_DIV) *
-        (last_sync / (get_pclk_div() * SPG_VCLK_DIV));
-
     dc_cycle_stamp_t delta_cycles = cur_time - last_sync_rounded;
 
     // only update the last_sync timestamp if the values have changed
-    unsigned raster_x_inc = delta_cycles / (get_pclk_div() * SPG_VCLK_DIV);
-    if (raster_x_inc > 0) {
-        last_sync = cur_time;
-
+    unsigned div = get_pclk_div() * SPG_VCLK_DIV;
+    if (delta_cycles >= div) {
+        unsigned raster_x_inc = delta_cycles / div;
+        last_sync_rounded = div * (cur_time / div);
         raster_x += raster_x_inc;
         raster_y += raster_x / hcount;
         raster_x %= hcount;
