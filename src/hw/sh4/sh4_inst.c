@@ -257,7 +257,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_EX, 1, 0xff00, 0xcb00 },
 
     // TST #imm, R0
-    { &sh4_inst_binary_tst_imm_r0, sh4_disas_fallback, false,
+    { &sh4_inst_binary_tst_imm_r0, sh4_disas_tst_imm8_r0, false,
       SH4_GROUP_MT, 1, 0xff00, 0xc800 },
 
     // TST.B #imm, @(R0, GBR)
@@ -1706,7 +1706,6 @@ void sh4_inst_binary_or_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
 // TST #imm, R0
 // 11001000iiiiiiii
 void sh4_inst_binary_tst_imm_r0(Sh4 *sh4, Sh4OpArgs inst) {
-
     CHECK_INST(inst, INST_MASK_11001000iiiiiiii, INST_CONS_11001000iiiiiiii);
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;

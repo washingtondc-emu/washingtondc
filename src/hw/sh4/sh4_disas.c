@@ -738,6 +738,31 @@ bool sh4_disas_tst_rm_rn(struct il_code_block *block, unsigned pc,
     return true;
 }
 
+// TST #imm, R0
+// 11001000iiiiiiii
+bool sh4_disas_tst_imm8_r0(struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, inst_t inst) {
+    unsigned slot_r0 = reg_slot(dreamcast_get_cpu(), block, SH4_REG_R0);
+    unsigned slot_sr = reg_slot(dreamcast_get_cpu(), block, SH4_REG_SR);
+
+    res_disassociate_reg(block, SH4_REG_R0);
+    jit_and_const32(block, slot_r0, inst & 0xff);
+
+    jit_slot_to_bool(block, slot_r0);
+    jit_not(block, slot_r0);
+    jit_and_const32(block, slot_r0, 1);
+
+    jit_and_const32(block, slot_sr, ~1);
+    jit_or(block, slot_r0, slot_sr);
+
+    reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
+
+    free_slot(block, slot_r0);
+    jit_discard_slot(block, slot_r0);
+
+    return true;
+}
+
 // MOV.L @Rm, Rn
 // 0110nnnnmmmm0010
 bool sh4_disas_movl_arm_rn(struct il_code_block *block, unsigned pc,
