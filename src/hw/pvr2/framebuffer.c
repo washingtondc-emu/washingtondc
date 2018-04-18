@@ -119,6 +119,10 @@ static void
 conv_rgb565_to_rgba8888(uint32_t *pixels_out,
                         uint16_t const *pixels_in,
                         unsigned n_pixels, uint8_t concat);
+static void
+conv_rgb555_to_rgba8888(uint32_t *pixels_out,
+                        uint16_t const *pixels_in,
+                        unsigned n_pixels, uint8_t concat);
 __attribute__((unused))
 static void
 conv_rgb888_to_argb8888(uint32_t *pixels_out,
@@ -267,6 +271,155 @@ sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
     fb->flags.intl = false;
     fb->stamp = stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_565;
+
+    struct gfx_il_inst cmd;
+
+    cmd.op = GFX_IL_WRITE_OBJ;
+    cmd.arg.write_obj.dat = dst_fb;
+    cmd.arg.write_obj.obj_no = fb->obj_handle;
+    cmd.arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
+
+    rend_exec_il(&cmd, 1);
+}
+
+static void
+sync_fb_from_tex_mem_rgb555_intl(struct framebuffer *fb,
+                                 unsigned fb_width, unsigned fb_height,
+                                 uint32_t sof1, uint32_t sof2,
+                                 unsigned modulus, unsigned concat) {
+    /*
+     * field_adv represents the distand between the start of one row and the
+     * start of the next row in the same field in terms of bytes.
+     */
+    unsigned field_adv = fb_width * 2 + modulus * 4 - 4;
+    unsigned rows_per_field = fb_height / 2;
+
+    addr32_t first_addr_field1 = sof1;
+    addr32_t last_addr_field1 = sof1 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+    addr32_t first_addr_field2 = sof2;
+    addr32_t last_addr_field2 = sof2 +
+        field_adv * (rows_per_field - 1) + 2 * (fb_width - 1);
+
+    // bounds checking.
+    addr32_t bounds_field1[2] = {
+        first_addr_field1 + ADDR_TEX32_FIRST,
+        last_addr_field1 + ADDR_TEX32_FIRST
+    };
+    addr32_t bounds_field2[2] = {
+        first_addr_field2 + ADDR_TEX32_FIRST,
+        last_addr_field2 + ADDR_TEX32_FIRST
+    };
+    if (bounds_field1[0] < ADDR_TEX32_FIRST ||
+        bounds_field1[0] > ADDR_TEX32_LAST ||
+        bounds_field1[1] < ADDR_TEX32_FIRST ||
+        bounds_field1[1] > ADDR_TEX32_LAST ||
+        bounds_field2[0] < ADDR_TEX32_FIRST ||
+        bounds_field2[0] > ADDR_TEX32_LAST ||
+        bounds_field2[1] < ADDR_TEX32_FIRST ||
+        bounds_field2[1] > ADDR_TEX32_LAST) {
+        error_set_feature("whatever happens when a framebuffer is configured "
+                          "to read outside of texture memory");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+
+    unsigned row;
+    for (row = 0; row < rows_per_field; row++) {
+        uint16_t const *ptr_row1 =
+            (uint16_t const*)(pvr2_tex32_mem + sof1 + row * field_adv);
+        uint16_t const *ptr_row2 =
+            (uint16_t const*)(pvr2_tex32_mem + sof2 + row * field_adv);
+
+        conv_rgb555_to_rgba8888(dst_fb + row * 2 * fb_width,
+                                ptr_row1, fb_width, concat);
+        conv_rgb555_to_rgba8888(dst_fb + (row * 2 + 1) * fb_width,
+                                ptr_row2, fb_width, concat);
+    }
+
+    fb->addr_key = first_addr_field1  < first_addr_field2 ?
+        first_addr_field1 : first_addr_field2;
+
+    fb->addr_first[0] = first_addr_field1;
+    fb->addr_first[1] = first_addr_field2;
+    fb->addr_last[0] = last_addr_field1;
+    fb->addr_last[1] = last_addr_field2;
+
+    fb->fb_read_width = fb_width;
+    fb->fb_read_height = fb_height;
+
+    fb->flags.state = FB_STATE_VIRT_AND_GFX;
+
+    fb->flags.vert_flip = true;
+    fb->flags.intl = true;
+    fb->stamp = stamp;
+    fb->flags.fmt = FB_PIX_FMT_RGB_555;
+
+    struct gfx_il_inst cmd;
+
+    cmd.op = GFX_IL_WRITE_OBJ;
+    cmd.arg.write_obj.dat = dst_fb;
+    cmd.arg.write_obj.obj_no = fb->obj_handle;
+    cmd.arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
+
+    rend_exec_il(&cmd, 1);
+}
+
+static void
+sync_fb_from_tex_mem_rgb555_prog(struct framebuffer *fb,
+                                 unsigned fb_width, unsigned fb_height,
+                                 uint32_t sof1, unsigned concat) {
+    unsigned field_adv = fb_width;
+    uint16_t const *pixels_in = (uint16_t*)(pvr2_tex32_mem + sof1);
+    /*
+     * bounds checking
+     *
+     * TODO: is it really necessary to test for
+     * (last_byte < ADDR_TEX32_FIRST || first_byte > ADDR_TEX32_LAST) ?
+     */
+    addr32_t last_byte = sof1 + fb_width * fb_height * 2;
+    addr32_t first_byte = sof1;
+
+    // bounds checking.
+    addr32_t bounds_field1[2] = {
+        first_byte + ADDR_TEX32_FIRST,
+        last_byte + ADDR_TEX32_FIRST
+    };
+    if (bounds_field1[0] < ADDR_TEX32_FIRST ||
+        bounds_field1[0] > ADDR_TEX32_LAST ||
+        bounds_field1[1] < ADDR_TEX32_FIRST ||
+        bounds_field1[1] > ADDR_TEX32_LAST) {
+        error_set_feature("whatever happens when a framebuffer is configured "
+                          "to read outside of texture memory");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+    memset(ogl_fb, 0xff, sizeof(ogl_fb));
+
+    unsigned row;
+    for (row = 0; row < fb_height; row++) {
+        uint16_t const *in_col_start = pixels_in + field_adv * row;
+        uint32_t *out_col_start = dst_fb + row * fb_width;
+
+        conv_rgb555_to_rgba8888(out_col_start, in_col_start, fb_width, concat);
+    }
+
+    fb->fb_read_width = fb_width;
+    fb->fb_read_height = fb_height;
+    fb->addr_key = first_byte;
+    fb->addr_first[0] = first_byte;
+    fb->addr_first[1] = first_byte;
+    fb->addr_last[0] = last_byte;
+    fb->addr_last[1] = last_byte;
+
+    fb->flags.state = FB_STATE_VIRT_AND_GFX;
+
+    fb->flags.vert_flip = true;
+    fb->flags.intl = false;
+    fb->stamp = stamp;
+    fb->flags.fmt = FB_PIX_FMT_RGB_555;
 
     struct gfx_il_inst cmd;
 
@@ -437,8 +590,13 @@ sync_fb_from_tex_mem(struct framebuffer *fb, unsigned width, unsigned height,
     switch (px_tp) {
     case 0:
         // 16-bit 555 RGB
-        error_set_feature("video mode RGB555");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (interlace) {
+            sync_fb_from_tex_mem_rgb555_intl(fb, width, height, fb_r_sof1,
+                                             fb_r_sof2, modulus, concat);
+        } else {
+            sync_fb_from_tex_mem_rgb555_prog(fb, width, height,
+                                             fb_r_sof1, concat);
+        }
         break;
     case 1:
         // 16-bit 565 RGB
@@ -485,6 +643,21 @@ static void conv_rgb565_to_rgba8888(uint32_t *pixels_out,
         uint32_t r = (((pix & 0xf800) >> 11) << 3) | concat;
         uint32_t g = (((pix & 0x07e0) >> 5) << 2) | (concat & 0x3);
         uint32_t b = ((pix & 0x001f) << 3) | concat;
+
+        pixels_out[idx] = (255 << 24) | (b << 16) | (g << 8) | r;
+    }
+}
+
+static void
+conv_rgb555_to_rgba8888(uint32_t *pixels_out,
+                        uint16_t const *pixels_in,
+                        unsigned n_pixels, uint8_t concat) {
+    for (unsigned idx = 0; idx < n_pixels; idx++) {
+        uint16_t pix = pixels_in[idx];
+
+        uint32_t b = ((pix & 0x001f) << 3) | concat;
+        uint32_t g = (((pix & 0x03e0) >> 5) << 2) | (concat & 3);
+        uint32_t r = (((pix & 0xec00) >> 10) << 2) | concat;
 
         pixels_out[idx] = (255 << 24) | (b << 16) | (g << 8) | r;
     }
@@ -700,6 +873,112 @@ fb_sync_from_host_0565_krgb_intl(struct framebuffer *fb) {
     }
 }
 
+static void
+fb_sync_from_host_0555_krgb_prog(struct framebuffer *fb) {
+    /*
+     * TODO: don't get width, height from fb_read_width and fb_read_height
+     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
+     * work).
+     */
+    uint32_t addr = fb->addr_first[0];
+    unsigned width = fb->fb_read_width;
+    unsigned height = fb->fb_read_height;
+    unsigned stride = fb->linestride;
+
+    uint16_t const k_val = 0;
+
+    assert((width * height * 4) < OGL_FB_BYTES);
+
+    unsigned row, col;
+    for (row = 0; row < height; row++) {
+        unsigned line_offs = addr + (height - (row + 1)) * stride;
+
+        for (col = 0; col < width; col++) {
+            unsigned ogl_fb_idx = row * width + col;
+
+            uint16_t pix_out = ((ogl_fb[4 * ogl_fb_idx + 2] & 0xf8) >> 3) |
+                ((ogl_fb[4 * ogl_fb_idx + 1] & 0xf8) << 2) |
+                ((ogl_fb[4 * ogl_fb_idx] & 0xf8) << 7) | k_val;
+
+            /*
+             * XXX this is suboptimal because it does the bounds-checking once
+             * per pixel.
+             */
+            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
+        }
+    }
+}
+
+static void
+fb_sync_from_host_0555_krgb_intl(struct framebuffer *fb) {
+    unsigned x_min = fb->x_clip_min;
+    unsigned y_min = fb->y_clip_min;
+    unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
+    unsigned y_max = fb->tile_h < fb->y_clip_max ? fb->tile_h : fb->y_clip_max;
+    unsigned width = x_max - x_min + 1;
+    unsigned height = y_max - y_min + 1;
+
+    unsigned stride = fb->linestride;
+    uint32_t const *addr = fb->addr_first;
+
+    uint16_t const k_val = 0;
+
+    assert((width * height * 4) < OGL_FB_BYTES);
+
+    unsigned row, col;
+    for (row = y_min; row <= y_max; row++) {
+        /*
+         * TODO: figure out how this is supposed to work with interlacing.
+         *
+         * The below commented-out code implements this for interlacing, but
+         * it doesn't work right.  The other code block (the one that actually
+         * gets compiled) implements this as if it was progressive-scan, and
+         * that works perfectly.  Obviously this means that either my
+         * understanding of interlace-scan is incorrect, or it's actually
+         * supposed to be progressive-scan and WashingtonDC is not figuring
+         * that out right.
+         */
+#if 0
+        unsigned rows_per_field = height / 2;
+        unsigned row_actual[2] = { 2 * row, 2 * row + 1 };
+        unsigned line_offs[2] = {
+            addr[0] + (rows_per_field - (row + 1)) * stride,
+            addr[1] + (rows_per_field - (row + 1)) * stride
+        };
+
+        for (col = x_min; col <= x_max; col++) {
+            unsigned ogl_fb_idx[2] = {
+                row_actual[0] * width + col,
+                row_actual[1] * width + col
+            };
+
+            uint16_t pix_out[2] = {
+                ((ogl_fb[4 * ogl_fb_idx[0] + 2] & 0xf8) >> 3) |
+                ((ogl_fb[4 * ogl_fb_idx[0] + 1] & 0xfc) << 2) |
+                ((ogl_fb[4 * ogl_fb_idx[0]] & 0xf8) << 7) | k_val,
+
+                ((ogl_fb[4 * ogl_fb_idx[1] + 2] & 0xf8) >> 3) |
+                ((ogl_fb[4 * ogl_fb_idx[1] + 1] & 0xf8) << 2) |
+                ((ogl_fb[4 * ogl_fb_idx[1]] & 0xf8) << 7) | k_val
+            };
+
+            copy_to_tex_mem(pix_out + 0, line_offs[0] + 2 * col, sizeof(pix_out));
+            copy_to_tex_mem(pix_out + 1, line_offs[1] + 2 * col, sizeof(pix_out));
+        }
+#else
+        // TODO: account for interlacing
+        unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
+        for (col = x_min; col <= x_max; col++) {
+            unsigned fb_idx = row * width + col;
+            uint16_t pix_out = ((ogl_fb[4 * fb_idx + 2] & 0xf8) >> 3) |
+                ((ogl_fb[4 * fb_idx + 1] & 0xf8) << 3) |
+                ((ogl_fb[4 * fb_idx] & 0xf8) << 7) | k_val;
+            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
+        }
+#endif
+    }
+}
+
 static void fb_sync_from_host_rgb0888_prog(struct framebuffer *fb) {
     /*
      * TODO: don't get width, height from fb_read_width and fb_read_height
@@ -790,6 +1069,13 @@ sync_fb_to_tex_mem(struct framebuffer *fb) {
     };
     rend_exec_il(&cmd, 1);
     switch (fb->flags.fmt) {
+    case FB_PIX_FMT_RGB_555:
+        if (!fb->flags.intl) {
+            fb_sync_from_host_0555_krgb_prog(fb);
+        } else {
+            fb_sync_from_host_0555_krgb_intl(fb);
+        }
+        break;
     case FB_PIX_FMT_RGB_565:
         if (!fb->flags.intl) {
             fb_sync_from_host_0565_krgb_prog(fb);
@@ -967,8 +1253,6 @@ int framebuffer_set_render_target(void) {
 
     // TODO: the k-bit
     switch (get_fb_w_ctrl() & 0x7) {
-    case 0:
-        // 16-bit 555 KRGB
     case 2:
         // 16-bit 4444 RGB
     case 3:
@@ -981,6 +1265,36 @@ int framebuffer_set_render_target(void) {
         // absolutely haram
         error_set_fb_pix_fmt(get_fb_w_ctrl() & 0x7);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    case 0:
+        // 16-bit 555 KRGB
+        if (interlace) {
+            field_adv = width * 2 + modulus * 4 - 4;
+            rows_per_field = height / 2;
+            first_addr_field1 = sof1;
+            last_addr_field1 = sof1 +
+                field_adv * (rows_per_field - 1) + 2 * (width - 1);
+            first_addr_field2 = sof2;
+            last_addr_field2 = sof2 +
+                field_adv * (rows_per_field - 1) + 2 * (width - 1);
+
+            fb->addr_key = first_addr_field1 < first_addr_field2 ?
+                first_addr_field1 : first_addr_field2;
+
+            fb->addr_first[0] = first_addr_field1;
+            fb->addr_first[1] = first_addr_field2;
+            fb->addr_last[0] = last_addr_field1;
+            fb->addr_last[1] = last_addr_field2;
+        } else {
+            uint32_t first_byte = sof1;
+            uint32_t last_byte = sof1 + width * height * 2;
+            fb->addr_key = first_byte;
+            fb->addr_first[0] = first_byte;
+            fb->addr_first[1] = first_byte;
+            fb->addr_last[0] = last_byte;
+            fb->addr_last[1] = last_byte;
+        }
+        fb_heap[idx].flags.fmt = FB_PIX_FMT_RGB_555;
+        break;
     case 1:
         // 16-bit 565 RGB
         if (interlace) {
