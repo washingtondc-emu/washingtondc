@@ -60,12 +60,13 @@ enum fb_pix_fmt {
     FB_PIX_FMT_RGB_555,
     FB_PIX_FMT_RGB_565,
     FB_PIX_FMT_RGB_888,
-    FB_PIX_FMT_0RGB_0888
+    FB_PIX_FMT_0RGB_0888,
+    FB_PIX_FMT_ARGB_1555
 };
 
 struct fb_flags {
     uint8_t state : 2;
-    uint8_t fmt : 2;
+    uint8_t fmt : 3;
     uint8_t vert_flip : 1;
     uint8_t intl : 1;
 };
@@ -979,6 +980,89 @@ fb_sync_from_host_0555_krgb_intl(struct framebuffer *fb) {
     }
 }
 
+
+static void
+fb_sync_from_host_1555_argb_prog(struct framebuffer *fb) {
+    /*
+     * TODO: don't get width, height from fb_read_width and fb_read_height
+     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
+     * work).
+     */
+    uint32_t addr = fb->addr_first[0];
+    unsigned width = fb->fb_read_width;
+    unsigned height = fb->fb_read_height;
+    unsigned stride = fb->linestride;
+
+    assert((width * height * 4) < OGL_FB_BYTES);
+
+    unsigned row, col;
+    for (row = 0; row < height; row++) {
+        unsigned line_offs = addr + (height - (row + 1)) * stride;
+
+        for (col = 0; col < width; col++) {
+            unsigned ogl_fb_idx = row * width + col;
+
+            uint8_t const *pix_in = ogl_fb + 4 * ogl_fb_idx;
+            uint16_t red = (pix_in[0] & 0xf8) >> 3;
+            uint16_t green = (pix_in[1] & 0xf8) >> 3;
+            uint16_t blue = (pix_in[2] * 0xf8) >> 3;
+            uint16_t alpha = pix_in[3] ? 1 : 0;
+
+            uint16_t pix_out =
+                (alpha << 15) | (red << 10) | (green << 5) | blue;
+
+            /*
+             * XXX this is suboptimal because it does the bounds-checking once
+             * per pixel.
+             */
+            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
+        }
+    }
+}
+
+static void
+fb_sync_from_host_1555_argb_intl(struct framebuffer *fb) {
+    unsigned x_min = fb->x_clip_min;
+    unsigned y_min = fb->y_clip_min;
+    unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
+    unsigned y_max = fb->tile_h < fb->y_clip_max ? fb->tile_h : fb->y_clip_max;
+    unsigned width = x_max - x_min + 1;
+    unsigned height = y_max - y_min + 1;
+
+    unsigned stride = fb->linestride;
+    uint32_t const *addr = fb->addr_first;
+
+    assert((width * height * 4) < OGL_FB_BYTES);
+
+    unsigned row, col;
+    for (row = y_min; row <= y_max; row++) {
+        /*
+         * TODO: figure out how this is supposed to work with interlacing.
+         *
+         * The below code implements this as if it was progressive-scan, and
+         * it works perfectly.  Obviously this means that either my
+         * understanding of interlace-scan is incorrect, or it's actually
+         * supposed to be progressive-scan and WashingtonDC is not figuring
+         * that out right.
+         */
+        unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
+        for (col = x_min; col <= x_max; col++) {
+            unsigned fb_idx = row * width + col;
+
+            uint8_t const *pix_in = ogl_fb + 4 * fb_idx;
+            uint16_t red = (pix_in[0] & 0xf8) >> 3;
+            uint16_t green = (pix_in[1] & 0xf8) >> 3;
+            uint16_t blue = (pix_in[2] * 0xf8) >> 3;
+            uint16_t alpha = pix_in[3] ? 1 : 0;
+
+            uint16_t pix_out =
+                (alpha << 15) | (red << 10) | (green << 5) | blue;
+
+            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
+        }
+    }
+}
+
 static void fb_sync_from_host_rgb0888_prog(struct framebuffer *fb) {
     /*
      * TODO: don't get width, height from fb_read_width and fb_read_height
@@ -1090,6 +1174,12 @@ sync_fb_to_tex_mem(struct framebuffer *fb) {
             fb_sync_from_host_rgb0888_intl(fb);
         }
         break;
+    case FB_PIX_FMT_ARGB_1555:
+        if (!fb->flags.intl) {
+            fb_sync_from_host_1555_argb_prog(fb);
+        } else {
+            fb_sync_from_host_1555_argb_intl(fb);
+        }
     default:
         LOG_ERROR("fb->flags.fmt is %d\n", fb->flags.fmt);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -1255,8 +1345,6 @@ int framebuffer_set_render_target(void) {
     switch (get_fb_w_ctrl() & 0x7) {
     case 2:
         // 16-bit 4444 RGB
-    case 3:
-        // 16-bit 1555 ARGB
     case 4:
         // 888 RGB 24-bit
     case 6:
@@ -1324,6 +1412,36 @@ int framebuffer_set_render_target(void) {
             fb->addr_last[1] = last_byte;
         }
         fb_heap[idx].flags.fmt = FB_PIX_FMT_RGB_565;
+        break;
+    case 3:
+        // 16-bit 1555 ARGB
+        if (interlace) {
+            field_adv = width * 2 + modulus * 4 - 4;
+            rows_per_field = height / 2;
+            first_addr_field1 = sof1;
+            last_addr_field1 = sof1 +
+                field_adv * (rows_per_field - 1) + 2 * (width - 1);
+            first_addr_field2 = sof2;
+            last_addr_field2 = sof2 +
+                field_adv * (rows_per_field - 1) + 2 * (width - 1);
+
+            fb->addr_key = first_addr_field1 < first_addr_field2 ?
+                first_addr_field1 : first_addr_field2;
+
+            fb->addr_first[0] = first_addr_field1;
+            fb->addr_first[1] = first_addr_field2;
+            fb->addr_last[0] = last_addr_field1;
+            fb->addr_last[1] = last_addr_field2;
+        } else {
+            uint32_t first_byte = sof1;
+            uint32_t last_byte = sof1 + width * height * 2;
+            fb->addr_key = first_byte;
+            fb->addr_first[0] = first_byte;
+            fb->addr_first[1] = first_byte;
+            fb->addr_last[0] = last_byte;
+            fb->addr_last[1] = last_byte;
+        }
+        fb_heap[idx].flags.fmt = FB_PIX_FMT_ARGB_1555;
         break;
     case 5:
         // 32-bit 0888 KRGB
