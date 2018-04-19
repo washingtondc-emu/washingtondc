@@ -34,8 +34,25 @@
 #include "log.h"
 #include "error.h"
 #include "gfx/gfx_il.h"
+#include "dreamcast.h"
 
 #include "pvr2_tex_cache.h"
+
+/*
+ * For the purposes of texture cache invalidation, we divide texture memory
+ * into a number of distinct pages.  When a texture is updated, we remember the
+ * time-stamp at which that update happened.  When texture-memory is written to,
+ * we set the timestamp of that page to the current timestamp.  When a texture
+ * is used for rendering, we update it if its timestamp is behind the timestamps
+ * of any of the pages it references.
+ *
+ * This macro defines the page size in bytes.  It must be a power of two.
+ */
+#define PVR2_TEX_PAGE_SIZE 512
+#define PVR2_TEX_MEM_LEN (ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1)
+#define PVR2_TEX_N_PAGES (PVR2_TEX_MEM_LEN / PVR2_TEX_PAGE_SIZE)
+
+static dc_cycle_stamp_t page_stamps[PVR2_TEX_N_PAGES];
 
 static DEF_ERROR_INT_ATTR(tex_fmt);
 
@@ -74,10 +91,6 @@ static unsigned mipmap_byte_offset_norm[11] = {
 
 static bool pvr2_tex_valid(enum pvr2_tex_state state) {
     return state == PVR2_TEX_READY || state == PVR2_TEX_DIRTY;
-}
-
-__attribute__((unused)) static bool pvr2_tex_dirty(enum pvr2_tex_state state) {
-    return state == PVR2_TEX_DIRTY;
 }
 
 static unsigned tex_twiddle(unsigned x, unsigned y,
@@ -148,6 +161,8 @@ void pvr2_tex_cache_init(void) {
         memset(tex_cache + idx, 0, sizeof(tex_cache[idx]));
         tex_cache[idx].obj_no = -1;
     }
+
+    memset(page_stamps, 0, sizeof(page_stamps));
 }
 
 void pvr2_tex_cache_cleanup(void) {
@@ -299,6 +314,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
     }
 
     tex->state = PVR2_TEX_DIRTY;
+    tex->last_update = 0;
     /*
      * We defer reading the actual data from texture memory until we're ready
      * to transmit this to the rendering thread.
@@ -321,18 +337,24 @@ static inline bool check_overlap(uint32_t range1_start, uint32_t range1_end,
 }
 
 void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
-    unsigned idx;
-    uint32_t addr_last = addr_first + (len - 1);
-
-    for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
-        struct pvr2_tex *tex = tex_cache + idx;
-        if (tex->state == PVR2_TEX_READY &&
-            check_overlap(addr_first, addr_last,
-                          tex->meta.addr_first + ADDR_TEX64_FIRST,
-                          tex->meta.addr_last + ADDR_TEX64_FIRST)) {
-            tex->state = PVR2_TEX_DIRTY;
-        }
+#ifdef INVARIANTS
+    uint32_t addr_last_abs = addr_first + (len - 1);
+    if (addr_first < ADDR_TEX64_FIRST || addr_first > ADDR_TEX64_LAST ||
+        addr_last_abs < ADDR_TEX64_FIRST || addr_last_abs > ADDR_TEX64_LAST) {
+        error_set_address(addr_first);
+        error_set_length(len);
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
+#endif
+    addr_first -= ADDR_TEX64_FIRST;
+    uint32_t addr_last = addr_first + (len - 1);
+    unsigned page_first = addr_first / PVR2_TEX_PAGE_SIZE;
+    unsigned page_last = addr_last / PVR2_TEX_PAGE_SIZE;
+    dc_cycle_stamp_t time = dc_cycle_stamp();
+
+    unsigned page_no;
+    for (page_no = page_first; page_no <= page_last; page_no++)
+        page_stamps[page_no] = time;
 }
 
 void pvr2_tex_cache_notify_palette_write(uint32_t addr_first, uint32_t len) {
@@ -709,7 +731,21 @@ void pvr2_tex_cache_xmit(void) {
                                             tex_in->meta.addr_last + ADDR_TEX64_FIRST);
         }
 
-        if (tex_in->state == PVR2_TEX_DIRTY) {
+        bool need_update = false;
+        if (tex_in->state == PVR2_TEX_DIRTY)
+            need_update = true;
+        else if (tex_in->state == PVR2_TEX_READY) {
+            unsigned page = tex_in->meta.addr_first / PVR2_TEX_PAGE_SIZE;
+            unsigned last_page = tex_in->meta.addr_last / PVR2_TEX_PAGE_SIZE;
+            while (page <= last_page) {
+                if (page_stamps[page++] > tex_in->last_update) {
+                    need_update = true;
+                    break;
+                }
+            }
+        }
+
+        if (need_update) {
             /*
              * If the texture has been written to this frame but it is not
              * actively in use then tell the gfx system to evict it from the
@@ -790,6 +826,7 @@ void pvr2_tex_cache_xmit(void) {
             }
 
             tex_in->state = PVR2_TEX_READY;
+            tex_in->last_update = dc_cycle_stamp();
         }
     }
 }

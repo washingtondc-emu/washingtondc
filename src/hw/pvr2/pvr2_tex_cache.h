@@ -30,6 +30,7 @@
 
 #include "gfx/gfx_tex_cache.h"
 #include "pvr2_ta.h"
+#include "dc_sched.h"
 
 #define PVR2_TEX_CACHE_SIZE GFX_TEX_CACHE_SIZE
 #define PVR2_TEX_CACHE_MASK GFX_TEX_CACHE_MASK
@@ -88,6 +89,7 @@ enum pvr2_tex_state {
 };
 
 struct pvr2_tex {
+    dc_cycle_stamp_t last_update;
     struct pvr2_tex_meta meta;
 
     // this refers to the gfx_obj bound to the texture
