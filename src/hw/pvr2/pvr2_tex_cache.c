@@ -323,19 +323,6 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
     return tex;
 }
 
-static inline bool check_overlap(uint32_t range1_start, uint32_t range1_end,
-                                 uint32_t range2_start, uint32_t range2_end) {
-    if ((range1_start >= range2_start) && (range1_start <= range2_end))
-        return true;
-    if ((range1_end >= range2_start) && (range1_end <= range2_end))
-        return true;
-    if ((range2_start >= range1_start) && (range2_start <= range1_end))
-        return true;
-    if ((range2_end >= range1_start) && (range2_end <= range1_end))
-        return true;
-    return false;
-}
-
 void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
 #ifdef INVARIANTS
     uint32_t addr_last_abs = addr_first + (len - 1);
