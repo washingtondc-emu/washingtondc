@@ -634,7 +634,7 @@ pal_ram_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx, uint3
     uint32_t *pal32 = (uint32_t*)pvr2_palette_ram;
     if (idx >= PAL_RAM_FIRST_IDX && idx <= PAL_RAM_LAST_IDX) {
         pal32[idx - PAL_RAM_FIRST_IDX] = val;
-        pvr2_tex_cache_notify_write(idx * 4 + ADDR_PVR2_CORE_FIRST, 4);
+        pvr2_tex_cache_notify_palette_write(idx * 4 + ADDR_PVR2_CORE_FIRST, 4);
     } else {
         error_set_address(idx * 4 + ADDR_PVR2_CORE_FIRST);
         error_set_length(4);
