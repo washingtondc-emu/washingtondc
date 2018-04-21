@@ -49,7 +49,7 @@
  * outdated values instead of trying to implement probing or chaining.
  */
 
-#if defined(INVARIANTS) || defined(PERF_STATS)
+#if defined(INVARIANTS)
 static int node_height(struct cache_entry *node);
 static int node_balance(struct cache_entry *node);
 #endif
@@ -95,134 +95,12 @@ struct cache_entry* code_cache_tbl[CODE_CACHE_HASH_TBL_LEN];
 #define MAX_ENTRIES (1024*1024)
 static unsigned n_entries;
 
-#ifdef PERF_STATS
-static unsigned depth, max_depth;
-static unsigned cache_sz;
-static unsigned max_cache_sz;
-
-/*
- * track the top ten most "popular" code blocks.
- * this array must always be sorted based on n_access in descending order
- *
- * One caveat to keep in mind is that this system only uses the guest-address
- * to uniquely identify code blocks.  If a code block is overwritten by another
- * code block that just happens to start at the exact same address, then
- * perf_stats_update_max_access will mistakenly assume that they are both the
- * same code_block.  I do not expect that this corner case will happen often
- * enough to matter, especially since PERF_STATS is only meant to be used on
- * development builds.
- */
-#define MAX_ACCESS_LEN 10
-static struct access_ent {
-    unsigned n_access;
-    addr32_t addr;
-} max_access[MAX_ACCESS_LEN];
-
-static void perf_stats_update_max_access(struct cache_entry *ent) {
-    unsigned n_access = ent->n_access;
-    addr32_t access_addr = ent->addr;
-    int idx, idx_inner;
-
-    // make sure this address isn't already in the list
-    for (idx = 0; idx < MAX_ACCESS_LEN; idx++)
-        if (max_access[idx].addr == access_addr) {
-            max_access[idx].n_access = n_access;
-            goto sort;
-        }
-
-    /*
-     * We only need to check the end of the list because that's the element
-     * that will get kicked out.
-     */
-    if (max_access[MAX_ACCESS_LEN - 1].n_access < n_access) {
-        max_access[MAX_ACCESS_LEN - 1].n_access = n_access;
-        max_access[MAX_ACCESS_LEN - 1].addr = access_addr;
-    } else {
-        return;
-    }
-
-sort:
-    for (idx = 0; idx < MAX_ACCESS_LEN - 1; idx++)
-        for (idx_inner = idx + 1; idx_inner < MAX_ACCESS_LEN; idx_inner++) {
-            if (max_access[idx_inner].n_access > max_access[idx].n_access) {
-                struct access_ent tmp = max_access[idx_inner];
-                max_access[idx_inner] = max_access[idx];
-                max_access[idx] = tmp;
-            }
-        }
-}
-
-// how many times something got kicked out of the second-level cache
-static unsigned n_tbl_evictions;
-
-/*
- * number of times we had to look in the tree for something because it wasn't
- * in the second-level cache.
- */
-static unsigned n_tree_searches;
-
-// total number of cache-reads
-static unsigned total_access_count;
-#endif
-
 #ifdef ENABLE_JIT_X86_64
 static bool native_mode = true;
 #endif
 
-static void perf_stats_reset(void) {
-#ifdef PERF_STATS
-    cache_sz = 0;
-    max_cache_sz = 0;
-    max_depth = 0;
-#endif
-}
-
-static void perf_stats_add_node(void) {
-#ifdef PERF_STATS
-    cache_sz++;
-    if (cache_sz > max_cache_sz)
-        max_cache_sz = cache_sz;
-#endif
-}
-
-static void perf_stats_reset_depth_count(void) {
-#ifdef PERF_STATS
-    depth = 0;
-#endif
-}
-
-static void perf_stats_inc_depth_count(void) {
-#ifdef PERF_STATS
-    depth++;
-
-    if (depth > max_depth)
-        max_depth = depth;
-#endif
-}
-
-static void perf_stats_print(void) {
-#ifdef PERF_STATS
-    LOG_INFO("==== Code Cache perf stats ====\n");
-    LOG_INFO("JIT: %u total accesses\n", total_access_count);
-    LOG_INFO("JIT: %u total tree searches\n", n_tree_searches);
-    LOG_INFO("JIT: %u table evictions\n", n_tbl_evictions);
-    LOG_INFO("JIT: max depth was %u\n", max_depth);
-    LOG_INFO("JIT: max cache size was %u\n", cache_sz);
-    LOG_INFO("JIT: height of root at shutdown is %d\n", node_height(root));
-    LOG_INFO("JIT: balance of root at shutdown is %d\n", node_balance(root));
-    LOG_INFO("JIT: The top %u most popular code blocks were accessed:\n",
-             MAX_ACCESS_LEN);
-    unsigned idx;
-    for (idx = 0; idx < MAX_ACCESS_LEN; idx++)
-        LOG_INFO("JIT: \t0x%08x - %u times\n",
-                 max_access[idx].addr, max_access[idx].n_access);
-    LOG_INFO("================================\n");
-#endif
-}
-
 void code_cache_init(void) {
     root = NULL;
-    perf_stats_reset();
 
 #ifdef ENABLE_JIT_X86_64
     native_mode = config_get_native_jit();
@@ -230,8 +108,6 @@ void code_cache_init(void) {
 }
 
 void code_cache_cleanup(void) {
-    perf_stats_print();
-
     code_cache_invalidate_all();
     code_cache_gc();
 }
@@ -278,9 +154,6 @@ void code_cache_gc(void) {
 
 static void clear_cache(struct cache_entry *node) {
     n_entries = 0;
-#ifdef PERF_STATS
-    cache_sz = 0;
-#endif
 
     if (node) {
         if (node->left)
@@ -297,7 +170,7 @@ static void clear_cache(struct cache_entry *node) {
     }
 }
 
-#if defined(INVARIANTS) || defined(PERF_STATS)
+#if defined(INVARIANTS)
 static int node_height(struct cache_entry *node) {
     int max_height = 0;
     if (node->left) {
@@ -545,8 +418,6 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
     cache_invariant(root);
 #endif
 
-    perf_stats_add_node();
-
     return new_node;
 }
 
@@ -557,12 +428,9 @@ basic_insert(struct cache_entry **node_p, struct cache_entry *parent,
  */
 static struct cache_entry *do_code_cache_find(struct cache_entry *node,
                                               addr32_t addr) {
-    perf_stats_reset_depth_count();
-
     for (;;) {
         if (addr < node->addr) {
             if (node->left) {
-                perf_stats_inc_depth_count();
                 node = node->left;
                 continue;
             }
@@ -571,7 +439,6 @@ static struct cache_entry *do_code_cache_find(struct cache_entry *node,
 
         if (addr > node->addr) {
             if (node->right) {
-                perf_stats_inc_depth_count();
                 node = node->right;
                 continue;
             }

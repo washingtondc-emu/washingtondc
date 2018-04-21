@@ -74,7 +74,6 @@ option(PVR2_LOG_VERBOSE "enable this to make the pvr2 code log mundane events" O
 option(DEEP_SYSCALL_TRACE "enable logging to observe the behavior of system calls" OFF)
 option(ENABLE_LOG_DEBUG "enable extra debug logs" OFF)
 option(ENABLE_JIT_X86_64 "enable native x86_64 JIT backend" ON)
-option(PERF_STATS "enable performance monitoring" OFF)
 option(JIT_OPTIMIZE "enable optimization passes on the JIT that dont actually work" OFF)
 
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)
@@ -99,10 +98,6 @@ endif()
 
 if (ENABLE_LOG_DEBUG)
    add_definitions(-DENABLE_LOG_DEBUG)
-endif()
-
-if (PERF_STATS)
-   add_definitions(-DPERF_STATS)
 endif()
 
 # TODO: this was originally supposed to be just the sh4-related code,
