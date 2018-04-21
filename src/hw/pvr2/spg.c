@@ -190,14 +190,14 @@ static void spg_unsched_all() {
 }
 
 static void spg_sync() {
-    unsigned hcount = get_hcount();
-    unsigned vcount = get_vcount();
     dc_cycle_stamp_t cur_time = dc_cycle_stamp();
     dc_cycle_stamp_t delta_cycles = cur_time - last_sync_rounded;
 
     // only update the last_sync timestamp if the values have changed
     unsigned div = get_pclk_div() * SPG_VCLK_DIV;
     if (delta_cycles >= div) {
+        unsigned hcount = get_hcount();
+        unsigned vcount = get_vcount();
         unsigned raster_x_inc = delta_cycles / div;
         last_sync_rounded = div * (cur_time / div);
         raster_x += raster_x_inc;
