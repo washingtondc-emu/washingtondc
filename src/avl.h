@@ -351,4 +351,37 @@ avl_find(struct avl_tree *tree, avl_key_type key) {
     }
 }
 
+/*
+ * This is like avl_find except if it fails it will return NULL instead of
+ * creating a new node.
+ */
+static inline struct avl_node*
+avl_find_noinsert(struct avl_tree *tree, avl_key_type key) {
+    struct avl_node *node = tree->root;
+    if (node) {
+        for (;;) {
+            if (key < node->key) {
+                if (node->left) {
+                    node = node->left;
+                    continue;
+                }
+                return NULL;
+            }
+
+            if (key > node->key) {
+                if (node->right) {
+                    node = node->right;
+                    continue;
+                }
+                return NULL;
+            }
+
+            return node;
+        }
+    } else {
+        // empty tree
+        return NULL;
+    }
+}
+
 #endif

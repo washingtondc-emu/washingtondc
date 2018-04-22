@@ -332,11 +332,11 @@ struct Sh4MemMappedReg;
 
 typedef
 sh4_reg_val(*sh4_reg_read_handler)(Sh4 *sh4,
-				   struct Sh4MemMappedReg const *reg_info);
+                                   struct Sh4MemMappedReg const *reg_info);
 typedef
 void(*sh4_reg_write_handler)(Sh4 *sh4,
-			     struct Sh4MemMappedReg const *reg_info,
-			     sh4_reg_val val);
+                             struct Sh4MemMappedReg const *reg_info,
+                             sh4_reg_val val);
 
 /*
  * TODO: turn this into a radix tree of some sort.

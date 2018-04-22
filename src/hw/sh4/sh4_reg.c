@@ -32,6 +32,14 @@
 #include "log.h"
 #include "jit/code_cache.h"
 
+static struct avl_tree sh4_reg_tree;
+
+struct sh4_avl_node {
+    struct avl_node node;
+
+    // TODO: remove pointer indirection
+    struct Sh4MemMappedReg *reg_info;
+};
 
 static sh4_reg_val
 sh4_default_read_handler(Sh4 *sh4, struct Sh4MemMappedReg const *reg_info);
@@ -430,8 +438,34 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { NULL }
 };
 
+static struct avl_node *sh4_reg_avl_ctor(void) {
+    struct sh4_avl_node *node =
+        (struct sh4_avl_node*)calloc(1, sizeof(struct sh4_avl_node));
+
+    if (!node)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    return &node->node;
+}
+
+static void sh4_reg_avl_dtor(struct avl_node *node) {
+    struct sh4_avl_node *avl_node = &AVL_DEREF(node, struct sh4_avl_node, node);
+    free(avl_node);
+}
+
 void sh4_init_regs(Sh4 *sh4) {
     sh4_poweron_reset_regs(sh4);
+
+    avl_init(&sh4_reg_tree, sh4_reg_avl_ctor, sh4_reg_avl_dtor);
+
+    Sh4MemMappedReg *curs = mem_mapped_regs;
+    while (curs->reg_name) {
+        struct avl_node *avl_node = avl_find(&sh4_reg_tree, curs->addr);
+        struct sh4_avl_node *sh4_reg_node = &AVL_DEREF(avl_node,
+                                                       struct sh4_avl_node,
+                                                       node);
+        sh4_reg_node->reg_info = curs;
+        curs++;
+    }
 }
 
 /*
@@ -486,13 +520,9 @@ void sh4_poweron_reset_regs(Sh4 *sh4) {
 }
 
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr) {
-    struct Sh4MemMappedReg *curs = mem_mapped_regs;
-
-    while (curs->reg_name) {
-        if (curs->addr == addr)
-            return curs;
-        curs++;
-    }
+    struct avl_node *node = avl_find_noinsert(&sh4_reg_tree, addr);
+    if (node)
+        return AVL_DEREF(node, struct sh4_avl_node, node).reg_info;
 
     if ((addr & SH4_REG_SDMR2_MASK) == SH4_REG_SDMR2_ADDR)
         return &sh4_sdmr2_reg;
