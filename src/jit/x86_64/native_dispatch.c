@@ -136,7 +136,7 @@ static void native_dispatch_emit(void) {
     x86asm_jz_lbl8(&code_cache_slow_path);
 
     // now check the address against the one that's still in EDI
-    size_t const addr_offs = offsetof(struct cache_entry, addr);
+    size_t const addr_offs = offsetof(struct cache_entry, node.key);
     if (addr_offs >= 256)
         RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
     x86asm_movl_disp8_reg_reg(addr_offs, RBX, RSI);

@@ -23,6 +23,7 @@
 #ifndef CODE_CACHE_H_
 #define CODE_CACHE_H_
 
+#include "avl.h"
 #include "code_block.h"
 
 #ifdef ENABLE_JIT_X86_64
@@ -37,13 +38,10 @@
  * between single-precision and double-precision floating-point.
  */
 struct cache_entry {
-    addr32_t addr;
+    struct avl_node node;
+
     uint8_t valid;
     union jit_code_block blk;
-
-    struct cache_entry *left, *right, *parent;
-
-    int bal;
 };
 
 /*

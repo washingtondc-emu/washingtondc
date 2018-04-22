@@ -276,7 +276,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/gfx/opengl/font/font.h"
                 "${PROJECT_SOURCE_DIR}/src/gfx/opengl/font/font.c"
                 "${PROJECT_SOURCE_DIR}/src/gfx/opengl/overlay.h"
-                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/overlay.c")
+                "${PROJECT_SOURCE_DIR}/src/gfx/opengl/overlay.c"
+                "${PROJECT_SOURCE_DIR}/src/avl.h")
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
                          "${PROJECT_SOURCE_DIR}/src/BiosFile.c"
