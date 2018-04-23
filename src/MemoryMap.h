@@ -55,6 +55,12 @@ struct memory_map_region {
 
     enum memory_map_region_id id;
 
+    /*
+     * TODO: there should also be separate try_read/try_write handlers so we
+     * don t crash when the debugger tries to access an invalid address that
+     * resolves to a valid memory_map_region.
+     */
+
     memory_map_readdouble_func readdouble;
     memory_map_readfloat_func readfloat;
     memory_map_read32_func read32;
@@ -83,6 +89,32 @@ void memory_map_write_16(uint32_t addr, uint16_t val);
 void memory_map_write_32(uint32_t addr, uint32_t val);
 void memory_map_write_float(uint32_t addr, float val);
 void memory_map_write_double(uint32_t addr, double val);
+
+/*
+ * These functions will return zero if the write was successful and nonzero if
+ * it wasn't.  memory_map_write_* would just panic the emulator if something had
+ * gone wrong.  This is primarily intended for the benefit of the debugger so
+ * that an invalid read coming from the remote GDB frontend doesn't needlessly
+ * crash the system.
+ */
+int memory_map_try_write_8(uint32_t addr, uint8_t val);
+int memory_map_try_write_16(uint32_t addr, uint16_t val);
+int memory_map_try_write_32(uint32_t addr, uint32_t val);
+int memory_map_try_write_float(uint32_t addr, float val);
+int memory_map_try_write_double(uint32_t addr, double val);
+
+/*
+ * These functions will return zero if the read was successful and nonzero if
+ * it wasn't.  memory_map_read_* would just panic the emulator if something had
+ * gone wrong.  This is primarily intended for the benefit of the debugger so
+ * that an invalid read coming from the remote GDB frontend doesn't needlessly
+ * crash the system.
+ */
+int memory_map_try_read_8(uint32_t addr, uint8_t *val);
+int memory_map_try_read_16(uint32_t addr, uint16_t *val);
+int memory_map_try_read_32(uint32_t addr, uint32_t *val);
+int memory_map_try_read_float(uint32_t addr, float *val);
+int memory_map_try_read_double(uint32_t addr, double *val);
 
 #define MEM_MAP_N_REGIONS 7
 

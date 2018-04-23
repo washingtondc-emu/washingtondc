@@ -398,6 +398,31 @@ MEMORY_MAP_READ_TMPL(uint32_t, 32)
 MEMORY_MAP_READ_TMPL(float, float)
 MEMORY_MAP_READ_TMPL(double, double)
 
+#define MEMORY_MAP_TRY_READ_TMPL(type, type_postfix)                    \
+    int memory_map_try_read_##type_postfix(uint32_t addr, type *val) {  \
+        uint32_t first_addr = addr;                                     \
+        uint32_t last_addr = sizeof(type) - 1 + first_addr;             \
+                                                                        \
+        unsigned region_no;                                             \
+        for (region_no = 0; region_no < MEM_MAP_N_REGIONS; region_no++) { \
+            uint32_t range_mask = mm_regions[region_no].range_mask;     \
+            if ((first_addr & range_mask) >= mm_regions[region_no].first_addr && \
+                (last_addr & range_mask) <= mm_regions[region_no].last_addr) { \
+                uint32_t mask = mm_regions[region_no].mask;             \
+                *val = mm_regions[region_no].read##type_postfix(addr & mask); \
+                return 0;                                               \
+            }                                                           \
+        }                                                               \
+                                                                        \
+        return 1;                                                       \
+    }
+
+MEMORY_MAP_TRY_READ_TMPL(uint8_t, 8)
+MEMORY_MAP_TRY_READ_TMPL(uint16_t, 16)
+MEMORY_MAP_TRY_READ_TMPL(uint32_t, 32)
+MEMORY_MAP_TRY_READ_TMPL(float, float)
+MEMORY_MAP_TRY_READ_TMPL(double, double)
+
 #define MEM_MAP_WRITE_TMPL(type, type_postfix)                          \
     void memory_map_write_##type_postfix(uint32_t addr, type val) {     \
         uint32_t first_addr = addr;                                     \
@@ -424,6 +449,30 @@ MEM_MAP_WRITE_TMPL(uint16_t, 16)
 MEM_MAP_WRITE_TMPL(uint32_t, 32)
 MEM_MAP_WRITE_TMPL(float, float)
 MEM_MAP_WRITE_TMPL(double, double)
+
+#define MEM_MAP_TRY_WRITE_TMPL(type, type_postfix)                      \
+    int memory_map_try_write_##type_postfix(uint32_t addr, type val) {  \
+        uint32_t first_addr = addr;                                     \
+        uint32_t last_addr = sizeof(type) - 1 + first_addr;             \
+                                                                        \
+        unsigned region_no;                                             \
+        for (region_no = 0; region_no < MEM_MAP_N_REGIONS; region_no++) { \
+            uint32_t range_mask = mm_regions[region_no].range_mask;     \
+            if ((first_addr & range_mask) >= mm_regions[region_no].first_addr && \
+                (last_addr & range_mask) <= mm_regions[region_no].last_addr) { \
+                uint32_t mask = mm_regions[region_no].mask;             \
+                mm_regions[region_no].write##type_postfix(addr & mask, val); \
+                return 0;                                               \
+            }                                                           \
+        }                                                               \
+        return 1;                                                       \
+    }                                                                   \
+
+MEM_MAP_TRY_WRITE_TMPL(uint8_t, 8)
+MEM_MAP_TRY_WRITE_TMPL(uint16_t, 16)
+MEM_MAP_TRY_WRITE_TMPL(uint32_t, 32)
+MEM_MAP_TRY_WRITE_TMPL(float, float)
+MEM_MAP_TRY_WRITE_TMPL(double, double)
 
 static float read_area3_float(uint32_t addr) {
     return memory_read_float(mem, addr);

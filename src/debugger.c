@@ -569,17 +569,25 @@ int debug_read_mem(void *out, addr32_t addr, unsigned len) {
 
     uint8_t *out_byte_ptr = out;
 
+    int err;
     while (n_units) {
         switch (unit_len) {
         case 4:
-            memory_map_read_32(addr);
+            err = memory_map_try_read_32(addr, (uint32_t*)out_byte_ptr);
             break;
         case 2:
-            memory_map_read_16(addr);
+            err = memory_map_try_read_16(addr, (uint16_t*)out_byte_ptr);
             break;
         case 1:
-            memory_map_read_8(addr);
+            err = memory_map_try_read_8(addr, (uint8_t*)out_byte_ptr);
             break;
+        }
+
+        if (err != 0) {
+            LOG_ERROR("Failed %u-byte read at 0x%08x\n", unit_len, addr);
+            if (len != unit_len)
+                LOG_ERROR("Past reads may not have failed.\n");
+            return -1;
         }
 
         out_byte_ptr += unit_len;
@@ -597,14 +605,21 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
               (unsigned)len, (unsigned)addr);
 
     /*
-     * TODO: need to find a way to detect failures and signal them to the
-     * debugger without interrupting the emulator
+     * Ideally none of the writes would go through if there's a
+     * failure at any point down the line, but that's not the way I've
+     * implemented this.
      */
     if (len % 4 == 0) {
         n_units = len / 4;
         uint32_t const *input_byte_ptr = input;
         while (n_units) {
-            memory_map_write_32(addr, *input_byte_ptr);
+            int err = memory_map_try_write_32(addr, *input_byte_ptr);
+            if (err != 0) {
+                LOG_ERROR("Failed %u-byte write at 0x%08x\n", len, addr);
+                if (len != 4)
+                    LOG_ERROR("Past writes may not have failed.\n");
+                return -1;
+            }
             input_byte_ptr++;
             addr += 4;
             n_units--;
@@ -613,7 +628,13 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len / 2;
         uint16_t const *input_byte_ptr = input;
         while (n_units) {
-            memory_map_write_16(addr, *input_byte_ptr);
+            int err = memory_map_try_write_16(addr, *input_byte_ptr);
+            if (err != 0) {
+                LOG_ERROR("Failed %u-byte write at 0x%08x\n", len, addr);
+                if (len != 2)
+                    LOG_ERROR("Past writes may not have failed.\n");
+                return -1;
+            }
             input_byte_ptr++;
             addr += 2;
             n_units--;
@@ -622,38 +643,18 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len;
         uint8_t const *input_byte_ptr = input;
         while (n_units) {
-            memory_map_write_8(addr, *input_byte_ptr);
+            int err = memory_map_try_write_8(addr, *input_byte_ptr);
+            if (err != 0) {
+                LOG_ERROR("Failed %u-byte write at 0x%08x\n", len, addr);
+                if (len != 1)
+                    LOG_ERROR("Past writes may not have failed.\n");
+                return -1;
+            }
             input_byte_ptr++;
             addr++;
             n_units--;
         }
     }
-
-#if 0
-    uint8_t const *input_byte_ptr = input;
-
-    while (n_units) {
-        int err = sh4_do_write_mem(dreamcast_get_cpu(), input_byte_ptr,
-                                   addr, unit_len);
-
-        if (err != MEM_ACCESS_SUCCESS) {
-            /*
-             * Ideally none of the writes would go through if there's a
-             * failure at any point down the line, but that's not the way I've
-             * implemented this.
-             */
-            DBG_TRACE("WARNING: failed %u-byte write to address "
-                      "0x%08x\n.  Past writes may not have failed!\n",
-                      len, addr);
-            error_clear();
-            return -1;
-        }
-
-        input_byte_ptr += unit_len;
-        addr += unit_len;
-        n_units--;
-    }
-#endif
 
     return 0;
 }
