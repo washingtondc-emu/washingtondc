@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 
 #include "dreamcast.h"
 #include "fifo.h"
+#include "MemoryMap.h"
 
 #include "debugger.h"
 
@@ -571,13 +572,13 @@ int debug_read_mem(void *out, addr32_t addr, unsigned len) {
     while (n_units) {
         switch (unit_len) {
         case 4:
-            sh4_read_mem_32(dreamcast_get_cpu(), addr);
+            memory_map_read_32(addr);
             break;
         case 2:
-            sh4_read_mem_16(dreamcast_get_cpu(), addr);
+            memory_map_read_16(addr);
             break;
         case 1:
-            sh4_read_mem_8(dreamcast_get_cpu(), addr);
+            memory_map_read_8(addr);
             break;
         }
 
@@ -603,7 +604,7 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len / 4;
         uint32_t const *input_byte_ptr = input;
         while (n_units) {
-            sh4_write_mem_32(dreamcast_get_cpu(), *input_byte_ptr, addr);
+            memory_map_write_32(addr, *input_byte_ptr);
             input_byte_ptr++;
             addr += 4;
             n_units--;
@@ -612,7 +613,7 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len / 2;
         uint16_t const *input_byte_ptr = input;
         while (n_units) {
-            sh4_write_mem_16(dreamcast_get_cpu(), *input_byte_ptr, addr);
+            memory_map_write_16(addr, *input_byte_ptr);
             input_byte_ptr++;
             addr += 2;
             n_units--;
@@ -621,7 +622,7 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len;
         uint8_t const *input_byte_ptr = input;
         while (n_units) {
-            sh4_write_mem_8(dreamcast_get_cpu(), *input_byte_ptr, addr);
+            memory_map_write_8(addr, *input_byte_ptr);
             input_byte_ptr++;
             addr++;
             n_units--;
