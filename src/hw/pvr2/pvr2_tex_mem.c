@@ -35,7 +35,7 @@ uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr) {
         ((addr - 1 + sizeof(uint8_t)) < ADDR_TEX32_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
         error_set_address(addr);
-        error_set_length(sizeof(val));
+        error_set_length(sizeof(uint8_t));
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -70,7 +70,7 @@ uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr) {
         ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX32_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
         error_set_address(addr);
-        error_set_length(sizeof(val));
+        error_set_length(sizeof(uint16_t));
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -106,7 +106,7 @@ uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr) {
         ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX32_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
         error_set_address(addr);
-        error_set_length(sizeof(val));
+        error_set_length(sizeof(uint32_t));
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -174,7 +174,7 @@ uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr) {
         (addr > ADDR_TEX64_LAST) || (addr < ADDR_TEX64_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
         error_set_address(addr);
-        error_set_length(sizeof(val));
+        error_set_length(sizeof(uint8_t));
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -210,7 +210,7 @@ uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr) {
         ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX64_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
         error_set_address(addr);
-        error_set_length(sizeof(val));
+        error_set_length(sizeof(uint16_t));
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -246,7 +246,7 @@ uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr) {
         ((addr - 1 + sizeof(uint32_t)) > ADDR_TEX64_LAST) ||
         ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX64_FIRST)) {
         error_set_address(addr);
-        error_set_length(sizeof(val));
+        error_set_length(sizeof(uint32_t));
         error_set_feature("out-of-bounds PVR2 texture memory read");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
