@@ -254,6 +254,9 @@ void pvr2_core_reg_init(void) {
                    ta_palette_tp_mmio_read, ta_palette_tp_mmio_write);
     mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "SPG_STATUS", 0x5f810c,
                    spg_status_mmio_read, mmio_region_pvr2_core_reg_readonly_write_error);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "PT_ALPHA_REF", 0x5f811c,
+                                        mmio_region_pvr2_core_reg_silent_read_handler,
+                                        mmio_region_pvr2_core_reg_silent_write_handler);
     mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "TA_OL_BASE", 0x5f8124,
                    mmio_region_pvr2_core_reg_warn_read_handler, mmio_region_pvr2_core_reg_warn_write_handler);
     mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg, "PT_ALPHA_CMP", 0x5f8124,
