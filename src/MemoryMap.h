@@ -41,6 +41,29 @@ typedef void(*memory_map_write32_func)(uint32_t addr, uint32_t val);
 typedef void(*memory_map_write16_func)(uint32_t addr, uint16_t val);
 typedef void(*memory_map_write8_func)(uint32_t addr, uint8_t val);
 
+/*
+ * read/write functions which will return an error instead of crashing if the
+ * requested address has not been implemented.
+ *
+ * These functions don't need to be fast because they're primarily intended for
+ * the debugger's benefit; this is why they take variable lengths instead of
+ * having a special case for each variable type like the real read/write
+ * handlers do.
+ *
+ * return 0 on success, nonzero on error
+ */
+typedef float(*memory_map_readfloat_func)(uint32_t addr);
+typedef double(*memory_map_readdouble_func)(uint32_t addr);
+typedef uint32_t(*memory_map_read32_func)(uint32_t addr);
+typedef uint16_t(*memory_map_read16_func)(uint32_t addr);
+typedef uint8_t(*memory_map_read8_func)(uint32_t addr);
+
+typedef void(*memory_map_writefloat_func)(uint32_t addr, float val);
+typedef void(*memory_map_writedouble_func)(uint32_t addr, double val);
+typedef void(*memory_map_write32_func)(uint32_t addr, uint32_t val);
+typedef void(*memory_map_write16_func)(uint32_t addr, uint16_t val);
+typedef void(*memory_map_write8_func)(uint32_t addr, uint8_t val);
+
 enum memory_map_region_id {
     MEMORY_MAP_REGION_UNKNOWN,
     MEMORY_MAP_REGION_RAM
@@ -74,21 +97,38 @@ struct memory_map_region {
     memory_map_write8_func write8;
 };
 
+#define MAX_MEM_MAP_REGIONS 32
+
+struct memory_map {
+    struct memory_map_region regions[MAX_MEM_MAP_REGIONS];
+    unsigned n_regions;
+};
+
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new);
 void memory_map_set_bios(BiosFile *bios_new);
 void memory_map_set_mem(struct Memory *mem_new);
 
-uint8_t memory_map_read_8(uint32_t addr);
-uint16_t memory_map_read_16(uint32_t addr);
-uint32_t memory_map_read_32(uint32_t addr);
-float memory_map_read_float(uint32_t addr);
-double memory_map_read_double(uint32_t addr);
+uint8_t
+memory_map_read_8(struct memory_map *map, uint32_t addr);
+uint16_t
+memory_map_read_16(struct memory_map *map, uint32_t addr);
+uint32_t
+memory_map_read_32(struct memory_map *map, uint32_t addr);
+float
+memory_map_read_float(struct memory_map *map, uint32_t addr);
+double
+memory_map_read_double(struct memory_map *map, uint32_t addr);
 
-void memory_map_write_8(uint32_t addr, uint8_t val);
-void memory_map_write_16(uint32_t addr, uint16_t val);
-void memory_map_write_32(uint32_t addr, uint32_t val);
-void memory_map_write_float(uint32_t addr, float val);
-void memory_map_write_double(uint32_t addr, double val);
+void
+memory_map_write_8(struct memory_map *map, uint32_t addr, uint8_t val);
+void
+memory_map_write_16(struct memory_map *map, uint32_t addr, uint16_t val);
+void
+memory_map_write_32(struct memory_map *map, uint32_t addr, uint32_t val);
+void
+memory_map_write_float(struct memory_map *map, uint32_t addr, float val);
+void
+memory_map_write_double(struct memory_map *map, uint32_t addr, double val);
 
 /*
  * These functions will return zero if the write was successful and nonzero if
@@ -97,11 +137,16 @@ void memory_map_write_double(uint32_t addr, double val);
  * that an invalid read coming from the remote GDB frontend doesn't needlessly
  * crash the system.
  */
-int memory_map_try_write_8(uint32_t addr, uint8_t val);
-int memory_map_try_write_16(uint32_t addr, uint16_t val);
-int memory_map_try_write_32(uint32_t addr, uint32_t val);
-int memory_map_try_write_float(uint32_t addr, float val);
-int memory_map_try_write_double(uint32_t addr, double val);
+int
+memory_map_try_write_8(struct memory_map *map, uint32_t addr, uint8_t val);
+int
+memory_map_try_write_16(struct memory_map *map, uint32_t addr, uint16_t val);
+int
+memory_map_try_write_32(struct memory_map *map, uint32_t addr, uint32_t val);
+int
+memory_map_try_write_float(struct memory_map *map, uint32_t addr, float val);
+int
+memory_map_try_write_double(struct memory_map *map, uint32_t addr, double val);
 
 /*
  * These functions will return zero if the read was successful and nonzero if
@@ -110,14 +155,17 @@ int memory_map_try_write_double(uint32_t addr, double val);
  * that an invalid read coming from the remote GDB frontend doesn't needlessly
  * crash the system.
  */
-int memory_map_try_read_8(uint32_t addr, uint8_t *val);
-int memory_map_try_read_16(uint32_t addr, uint16_t *val);
-int memory_map_try_read_32(uint32_t addr, uint32_t *val);
-int memory_map_try_read_float(uint32_t addr, float *val);
-int memory_map_try_read_double(uint32_t addr, double *val);
+int
+memory_map_try_read_8(struct memory_map *map, uint32_t addr, uint8_t *val);
+int
+memory_map_try_read_16(struct memory_map *map, uint32_t addr, uint16_t *val);
+int
+memory_map_try_read_32(struct memory_map *map, uint32_t addr, uint32_t *val);
+int
+memory_map_try_read_float(struct memory_map *map, uint32_t addr, float *val);
+int
+memory_map_try_read_double(struct memory_map *map, uint32_t addr, double *val);
 
-#define MEM_MAP_N_REGIONS 7
-
-extern struct memory_map_region mm_regions[MEM_MAP_N_REGIONS];
+extern struct memory_map sh4_mem_map;
 
 #endif

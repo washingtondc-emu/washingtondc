@@ -212,150 +212,150 @@ READ_AREA0_TMPL(uint32_t, 32)
 READ_AREA0_TMPL(uint16_t, 16)
 READ_AREA0_TMPL(uint8_t, 8)
 
-/*
- * TODO: Ideally this would be a binary search tree.  Area3 should be the root
- * node even if that results in an imbalanced tree because Area3 will always be
- * the most heavily-trafficked memory region.
- */
-struct memory_map_region mm_regions[MEM_MAP_N_REGIONS] = {
-    /*
-     * I don't like the idea of putting SH4_AREA_P4 ahead of AREA3 (memory),
-     * but this absolutely needs to be at the front of the list because the
-     * only distinction between this and the other memory regions is that the
-     * upper three bits of the address are all 1, and for the other regions the
-     * upper three bits can be anything as long as they are not all 1.
-     *
-     * SH4_OC_RAM_AREA is also an SH4 on-chip component but as far as I know
-     * nothing else in the dreamcast's memory map overlaps with it; this is why
-     * have not also put it at the begging of the regions array.
-     */
-    {
-        .first_addr = SH4_AREA_P4_FIRST,
-        .last_addr = SH4_AREA_P4_LAST,
-        .mask = 0xffffffff,
-        .range_mask = 0xffffffff,
+#define MEM_MAP_N_REGIONS 7
 
-        .read32 = read_sh4_p4_32,
-        .read16 = read_sh4_p4_16,
-        .read8  = read_sh4_p4_8,
-        .readdouble = read_sh4_p4_double,
-        .readfloat = read_sh4_p4_float,
+struct memory_map sh4_mem_map = {
+    .regions = {
+        /*
+         * I don't like the idea of putting SH4_AREA_P4 ahead of AREA3 (memory),
+         * but this absolutely needs to be at the front of the list because the
+         * only distinction between this and the other memory regions is that the
+         * upper three bits of the address are all 1, and for the other regions the
+         * upper three bits can be anything as long as they are not all 1.
+         *
+         * SH4_OC_RAM_AREA is also an SH4 on-chip component but as far as I know
+         * nothing else in the dreamcast's memory map overlaps with it; this is why
+         * have not also put it at the begging of the regions array.
+         */
+        {
+            .first_addr = SH4_AREA_P4_FIRST,
+            .last_addr = SH4_AREA_P4_LAST,
+            .mask = 0xffffffff,
+            .range_mask = 0xffffffff,
 
-        .write32 = write_sh4_p4_32,
-        .write16 = write_sh4_p4_16,
-        .write8  = write_sh4_p4_8,
-        .writedouble = write_sh4_p4_double,
-        .writefloat = write_sh4_p4_float
+            .read32 = read_sh4_p4_32,
+            .read16 = read_sh4_p4_16,
+            .read8  = read_sh4_p4_8,
+            .readdouble = read_sh4_p4_double,
+            .readfloat = read_sh4_p4_float,
+
+            .write32 = write_sh4_p4_32,
+            .write16 = write_sh4_p4_16,
+            .write8  = write_sh4_p4_8,
+            .writedouble = write_sh4_p4_double,
+            .writefloat = write_sh4_p4_float
+        },
+        {
+            .first_addr = ADDR_AREA3_FIRST,
+            .last_addr = ADDR_AREA3_LAST,
+            .mask = ADDR_AREA3_MASK,
+            .range_mask = 0x1fffffff,
+            .id = MEMORY_MAP_REGION_RAM,
+
+            .read32 = read_area3_32,
+            .read16 = read_area3_16,
+            .read8 = read_area3_8,
+            .readfloat = read_area3_float,
+            .readdouble = read_area3_double,
+
+            .write32 = write_area3_32,
+            .write16 = write_area3_16,
+            .write8 = write_area3_8,
+            .writefloat = write_area3_float,
+            .writedouble = write_area3_double
+        },
+        {
+            .first_addr = ADDR_TEX32_FIRST,
+            .last_addr = ADDR_TEX32_LAST,
+            .mask = 0x1fffffff,
+            .range_mask = 0x1fffffff,
+
+            .read32 = pvr2_tex_mem_area32_read_32,
+            .read16 = pvr2_tex_mem_area32_read_16,
+            .read8 = pvr2_tex_mem_area32_read_8,
+            .readfloat = pvr2_tex_mem_area32_read_float,
+            .readdouble = pvr2_tex_mem_area32_read_double,
+
+            .write32 = pvr2_tex_mem_area32_write_32,
+            .write16 = pvr2_tex_mem_area32_write_16,
+            .write8 = pvr2_tex_mem_area32_write_8,
+            .writefloat = pvr2_tex_mem_area32_write_float,
+            .writedouble = pvr2_tex_mem_area32_write_double,
+        },
+        {
+            .first_addr = ADDR_TEX64_FIRST,
+            .last_addr = ADDR_TEX64_LAST,
+            .mask = 0x1fffffff,
+            .range_mask = 0x1fffffff,
+
+            .read32 = pvr2_tex_mem_area64_read_32,
+            .read16 = pvr2_tex_mem_area64_read_16,
+            .read8 = pvr2_tex_mem_area64_read_8,
+            .readfloat = pvr2_tex_mem_area64_read_float,
+            .readdouble = pvr2_tex_mem_area64_read_double,
+
+            .write32 = pvr2_tex_mem_area64_write_32,
+            .write16 = pvr2_tex_mem_area64_write_16,
+            .write8 = pvr2_tex_mem_area64_write_8,
+            .writefloat = pvr2_tex_mem_area64_write_float,
+            .writedouble = pvr2_tex_mem_area64_write_double
+        },
+        {
+            .first_addr = ADDR_AREA0_FIRST,
+            .last_addr = ADDR_AREA0_LAST,
+            .mask = 0x1fffffff,
+            .range_mask = 0x1fffffff,
+
+            .read32 = read_area0_32,
+            .read16 = read_area0_16,
+            .read8 = read_area0_8,
+            .readfloat = read_area0_float,
+            .readdouble = read_area0_double,
+
+            .write32 = write_area0_32,
+            .write16 = write_area0_16,
+            .write8 = write_area0_8,
+            .writefloat = write_area0_float,
+            .writedouble = write_area0_double
+        },
+        {
+            .first_addr = ADDR_TA_FIFO_POLY_FIRST,
+            .last_addr = ADDR_TA_FIFO_POLY_LAST,
+            .mask = 0x1fffffff,
+            .range_mask = 0x1fffffff,
+
+            .read32 = pvr2_ta_fifo_poly_read_32,
+            .read16 = pvr2_ta_fifo_poly_read_16,
+            .read8 = pvr2_ta_fifo_poly_read_8,
+            .readfloat = pvr2_ta_fifo_poly_read_float,
+            .readdouble = pvr2_ta_fifo_poly_read_double,
+
+            .write32 = pvr2_ta_fifo_poly_write_32,
+            .write16 = pvr2_ta_fifo_poly_write_16,
+            .write8 = pvr2_ta_fifo_poly_write_8,
+            .writefloat = pvr2_ta_fifo_poly_write_float,
+            .writedouble = pvr2_ta_fifo_poly_write_double
+        },
+        {
+            .first_addr = SH4_OC_RAM_AREA_FIRST,
+            .last_addr = SH4_OC_RAM_AREA_LAST,
+            .mask = 0xffffffff,
+            .range_mask = 0xffffffff,
+
+            .read32 = read_ocache_ram_32,
+            .read16 = read_ocache_ram_16,
+            .read8 = read_ocache_ram_8,
+            .readdouble = read_ocache_ram_double,
+            .readfloat = read_ocache_ram_float,
+
+            .write32 = write_ocache_ram_32,
+            .write16 = write_ocache_ram_16,
+            .write8 = write_ocache_ram_8,
+            .writedouble = write_ocache_ram_double,
+            .writefloat = write_ocache_ram_float,
+        }
     },
-    {
-        .first_addr = ADDR_AREA3_FIRST,
-        .last_addr = ADDR_AREA3_LAST,
-        .mask = ADDR_AREA3_MASK,
-        .range_mask = 0x1fffffff,
-        .id = MEMORY_MAP_REGION_RAM,
-
-        .read32 = read_area3_32,
-        .read16 = read_area3_16,
-        .read8 = read_area3_8,
-        .readfloat = read_area3_float,
-        .readdouble = read_area3_double,
-
-        .write32 = write_area3_32,
-        .write16 = write_area3_16,
-        .write8 = write_area3_8,
-        .writefloat = write_area3_float,
-        .writedouble = write_area3_double
-    },
-    {
-        .first_addr = ADDR_TEX32_FIRST,
-        .last_addr = ADDR_TEX32_LAST,
-        .mask = 0x1fffffff,
-        .range_mask = 0x1fffffff,
-
-        .read32 = pvr2_tex_mem_area32_read_32,
-        .read16 = pvr2_tex_mem_area32_read_16,
-        .read8 = pvr2_tex_mem_area32_read_8,
-        .readfloat = pvr2_tex_mem_area32_read_float,
-        .readdouble = pvr2_tex_mem_area32_read_double,
-
-        .write32 = pvr2_tex_mem_area32_write_32,
-        .write16 = pvr2_tex_mem_area32_write_16,
-        .write8 = pvr2_tex_mem_area32_write_8,
-        .writefloat = pvr2_tex_mem_area32_write_float,
-        .writedouble = pvr2_tex_mem_area32_write_double,
-    },
-    {
-        .first_addr = ADDR_TEX64_FIRST,
-        .last_addr = ADDR_TEX64_LAST,
-        .mask = 0x1fffffff,
-        .range_mask = 0x1fffffff,
-
-        .read32 = pvr2_tex_mem_area64_read_32,
-        .read16 = pvr2_tex_mem_area64_read_16,
-        .read8 = pvr2_tex_mem_area64_read_8,
-        .readfloat = pvr2_tex_mem_area64_read_float,
-        .readdouble = pvr2_tex_mem_area64_read_double,
-
-        .write32 = pvr2_tex_mem_area64_write_32,
-        .write16 = pvr2_tex_mem_area64_write_16,
-        .write8 = pvr2_tex_mem_area64_write_8,
-        .writefloat = pvr2_tex_mem_area64_write_float,
-        .writedouble = pvr2_tex_mem_area64_write_double
-    },
-    {
-        .first_addr = ADDR_AREA0_FIRST,
-        .last_addr = ADDR_AREA0_LAST,
-        .mask = 0x1fffffff,
-        .range_mask = 0x1fffffff,
-
-        .read32 = read_area0_32,
-        .read16 = read_area0_16,
-        .read8 = read_area0_8,
-        .readfloat = read_area0_float,
-        .readdouble = read_area0_double,
-
-        .write32 = write_area0_32,
-        .write16 = write_area0_16,
-        .write8 = write_area0_8,
-        .writefloat = write_area0_float,
-        .writedouble = write_area0_double
-    },
-    {
-        .first_addr = ADDR_TA_FIFO_POLY_FIRST,
-        .last_addr = ADDR_TA_FIFO_POLY_LAST,
-        .mask = 0x1fffffff,
-        .range_mask = 0x1fffffff,
-
-        .read32 = pvr2_ta_fifo_poly_read_32,
-        .read16 = pvr2_ta_fifo_poly_read_16,
-        .read8 = pvr2_ta_fifo_poly_read_8,
-        .readfloat = pvr2_ta_fifo_poly_read_float,
-        .readdouble = pvr2_ta_fifo_poly_read_double,
-
-        .write32 = pvr2_ta_fifo_poly_write_32,
-        .write16 = pvr2_ta_fifo_poly_write_16,
-        .write8 = pvr2_ta_fifo_poly_write_8,
-        .writefloat = pvr2_ta_fifo_poly_write_float,
-        .writedouble = pvr2_ta_fifo_poly_write_double
-    },
-    {
-        .first_addr = SH4_OC_RAM_AREA_FIRST,
-        .last_addr = SH4_OC_RAM_AREA_LAST,
-        .mask = 0xffffffff,
-        .range_mask = 0xffffffff,
-
-        .read32 = read_ocache_ram_32,
-        .read16 = read_ocache_ram_16,
-        .read8 = read_ocache_ram_8,
-        .readdouble = read_ocache_ram_double,
-        .readfloat = read_ocache_ram_float,
-
-        .write32 = write_ocache_ram_32,
-        .write16 = write_ocache_ram_16,
-        .write8 = write_ocache_ram_8,
-        .writedouble = write_ocache_ram_double,
-        .writefloat = write_ocache_ram_float,
-    }
+    .n_regions = MEM_MAP_N_REGIONS
 };
 
 void memory_map_init(BiosFile *bios_new, struct Memory *mem_new) {
@@ -372,17 +372,18 @@ void memory_map_set_mem(struct Memory *mem_new) {
 }
 
 #define MEMORY_MAP_READ_TMPL(type, type_postfix)                        \
-    type memory_map_read_##type_postfix(uint32_t addr) {                \
+    type memory_map_read_##type_postfix(struct memory_map *map,         \
+                                        uint32_t addr) {                \
         uint32_t first_addr = addr;                                     \
         uint32_t last_addr = sizeof(type) - 1 + first_addr;             \
                                                                         \
         unsigned region_no;                                             \
-        for (region_no = 0; region_no < MEM_MAP_N_REGIONS; region_no++) { \
-            uint32_t range_mask = mm_regions[region_no].range_mask;     \
-            if ((first_addr & range_mask) >= mm_regions[region_no].first_addr && \
-                (last_addr & range_mask) <= mm_regions[region_no].last_addr) { \
-                uint32_t mask = mm_regions[region_no].mask;             \
-                return mm_regions[region_no].read##type_postfix(addr & mask); \
+        for (region_no = 0; region_no < map->n_regions; region_no++) {  \
+            uint32_t range_mask = map->regions[region_no].range_mask;   \
+            if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
+                (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
+                uint32_t mask = map->regions[region_no].mask;           \
+                return map->regions[region_no].read##type_postfix(addr & mask); \
             }                                                           \
         }                                                               \
                                                                         \
@@ -399,17 +400,18 @@ MEMORY_MAP_READ_TMPL(float, float)
 MEMORY_MAP_READ_TMPL(double, double)
 
 #define MEMORY_MAP_TRY_READ_TMPL(type, type_postfix)                    \
-    int memory_map_try_read_##type_postfix(uint32_t addr, type *val) {  \
+    int memory_map_try_read_##type_postfix(struct memory_map *map,      \
+                                           uint32_t addr, type *val) {  \
         uint32_t first_addr = addr;                                     \
         uint32_t last_addr = sizeof(type) - 1 + first_addr;             \
                                                                         \
         unsigned region_no;                                             \
-        for (region_no = 0; region_no < MEM_MAP_N_REGIONS; region_no++) { \
-            uint32_t range_mask = mm_regions[region_no].range_mask;     \
-            if ((first_addr & range_mask) >= mm_regions[region_no].first_addr && \
-                (last_addr & range_mask) <= mm_regions[region_no].last_addr) { \
-                uint32_t mask = mm_regions[region_no].mask;             \
-                *val = mm_regions[region_no].read##type_postfix(addr & mask); \
+        for (region_no = 0; region_no < map->n_regions; region_no++) {  \
+            uint32_t range_mask = map->regions[region_no].range_mask;   \
+            if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
+                (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
+                uint32_t mask = map->regions[region_no].mask;           \
+                *val = map->regions[region_no].read##type_postfix(addr & mask); \
                 return 0;                                               \
             }                                                           \
         }                                                               \
@@ -424,17 +426,18 @@ MEMORY_MAP_TRY_READ_TMPL(float, float)
 MEMORY_MAP_TRY_READ_TMPL(double, double)
 
 #define MEM_MAP_WRITE_TMPL(type, type_postfix)                          \
-    void memory_map_write_##type_postfix(uint32_t addr, type val) {     \
+    void memory_map_write_##type_postfix(struct memory_map *map,        \
+                                         uint32_t addr, type val) {     \
         uint32_t first_addr = addr;                                     \
         uint32_t last_addr = sizeof(type) - 1 + first_addr;             \
                                                                         \
         unsigned region_no;                                             \
-        for (region_no = 0; region_no < MEM_MAP_N_REGIONS; region_no++) { \
-            uint32_t range_mask = mm_regions[region_no].range_mask;     \
-            if ((first_addr & range_mask) >= mm_regions[region_no].first_addr && \
-                (last_addr & range_mask) <= mm_regions[region_no].last_addr) { \
-                uint32_t mask = mm_regions[region_no].mask;             \
-                mm_regions[region_no].write##type_postfix(addr & mask, val); \
+        for (region_no = 0; region_no < map->n_regions; region_no++) {  \
+            uint32_t range_mask = map->regions[region_no].range_mask;   \
+            if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
+                (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
+                uint32_t mask = map->regions[region_no].mask;           \
+                map->regions[region_no].write##type_postfix(addr & mask, val); \
                 return;                                                 \
             }                                                           \
         }                                                               \
@@ -451,17 +454,18 @@ MEM_MAP_WRITE_TMPL(float, float)
 MEM_MAP_WRITE_TMPL(double, double)
 
 #define MEM_MAP_TRY_WRITE_TMPL(type, type_postfix)                      \
-    int memory_map_try_write_##type_postfix(uint32_t addr, type val) {  \
+    int memory_map_try_write_##type_postfix(struct memory_map *map,     \
+                                            uint32_t addr, type val) {  \
         uint32_t first_addr = addr;                                     \
         uint32_t last_addr = sizeof(type) - 1 + first_addr;             \
                                                                         \
         unsigned region_no;                                             \
-        for (region_no = 0; region_no < MEM_MAP_N_REGIONS; region_no++) { \
-            uint32_t range_mask = mm_regions[region_no].range_mask;     \
-            if ((first_addr & range_mask) >= mm_regions[region_no].first_addr && \
-                (last_addr & range_mask) <= mm_regions[region_no].last_addr) { \
-                uint32_t mask = mm_regions[region_no].mask;             \
-                mm_regions[region_no].write##type_postfix(addr & mask, val); \
+        for (region_no = 0; region_no < map->n_regions; region_no++) {  \
+            uint32_t range_mask = map->regions[region_no].range_mask;   \
+            if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
+                (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
+                uint32_t mask = map->regions[region_no].mask;           \
+                map->regions[region_no].write##type_postfix(addr & mask, val); \
                 return 0;                                               \
             }                                                           \
         }                                                               \

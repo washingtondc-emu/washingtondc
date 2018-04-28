@@ -26,6 +26,8 @@
 // for union Sh4OpArgs
 #include "hw/sh4/sh4_inst.h"
 
+#include "MemoryMap.h"
+
 /*
  * Defines the number of slots available to IL programs.
  *
@@ -196,6 +198,7 @@ struct restore_sr_immed {
 };
 
 struct read_16_constaddr_immed {
+    struct memory_map *map;
     addr32_t addr;
     unsigned slot_no;
 };
@@ -205,16 +208,19 @@ struct sign_extend_16_immed {
 };
 
 struct read_32_constaddr_immed {
+    struct memory_map *map;
     addr32_t addr;
     unsigned slot_no;
 };
 
 struct read_32_slot_immed {
+    struct memory_map *map;
     unsigned addr_slot;
     unsigned dst_slot;
 };
 
 struct write_32_slot_immed {
+    struct memory_map *map;
     unsigned src_slot;
     unsigned addr_slot;
 };
@@ -416,15 +422,15 @@ void jit_jump_cond(struct il_code_block *block,
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
 void jit_restore_sr(struct il_code_block *block, unsigned slot_no);
-void jit_read_16_constaddr(struct il_code_block *block, addr32_t addr,
-                      unsigned slot_no);
+void jit_read_16_constaddr(struct il_code_block *block, struct memory_map *map,
+                           addr32_t addr, unsigned slot_no);
 void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no);
-void jit_read_32_constaddr(struct il_code_block *block, addr32_t addr,
-                           unsigned slot_no);
-void jit_read_32_slot(struct il_code_block *block, unsigned addr_slot,
-                      unsigned dst_slot);
-void jit_write_32_slot(struct il_code_block *block, unsigned src_slot,
-                       unsigned addr_slot);
+void jit_read_32_constaddr(struct il_code_block *block, struct memory_map *map,
+                           addr32_t addr, unsigned slot_no);
+void jit_read_32_slot(struct il_code_block *block, struct memory_map *map,
+                      unsigned addr_slot, unsigned dst_slot);
+void jit_write_32_slot(struct il_code_block *block, struct memory_map *map,
+                       unsigned src_slot, unsigned addr_slot);
 void jit_load_slot(struct il_code_block *block, unsigned slot_no,
                    uint32_t const *src);
 void jit_load_slot16(struct il_code_block *block, unsigned slot_no,

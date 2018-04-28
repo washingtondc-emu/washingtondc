@@ -98,7 +98,8 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
             break;
         case JIT_OP_READ_16_CONSTADDR:
             block->slots[inst->immed.read_16_constaddr.slot_no] =
-                memory_map_read_16(inst->immed.read_16_constaddr.addr);
+                memory_map_read_16(inst->immed.read_16_constaddr.map,
+                                   inst->immed.read_16_constaddr.addr);
             inst++;
             break;
         case JIT_OP_SIGN_EXTEND_16:
@@ -108,18 +109,21 @@ reg32_t code_block_intp_exec(struct code_block_intp const *block) {
             break;
         case JIT_OP_READ_32_CONSTADDR:
             block->slots[inst->immed.read_32_constaddr.slot_no] =
-                memory_map_read_32(inst->immed.read_32_constaddr.addr);
+                memory_map_read_32(inst->immed.read_32_constaddr.map,
+                                   inst->immed.read_32_constaddr.addr);
             inst++;
             break;
         case JIT_OP_READ_32_SLOT:
             block->slots[inst->immed.read_32_slot.dst_slot] =
-                memory_map_read_32(block->slots[
+                memory_map_read_32(inst->immed.read_32_slot.map,
+                                   block->slots[
                                        inst->immed.read_32_slot.addr_slot
                                        ]);
             inst++;
             break;
         case JIT_OP_WRITE_32_SLOT:
-            memory_map_write_32(block->slots[inst->immed.write_32_slot.addr_slot],
+            memory_map_write_32(inst->immed.write_32_slot.map,
+                                block->slots[inst->immed.write_32_slot.addr_slot],
                                 block->slots[inst->immed.write_32_slot.src_slot]);
             inst++;
             break;

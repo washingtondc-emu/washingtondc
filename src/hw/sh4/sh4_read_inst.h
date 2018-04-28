@@ -97,7 +97,7 @@ static inline inst_t sh4_do_read_inst(addr32_t addr) {
     if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
         return memory_read_16(&dc_mem, addr & ADDR_AREA3_MASK);
     } else {
-        return memory_map_read_16(addr);
+        return memory_map_read_16(&sh4_mem_map, addr);
     }
 }
 

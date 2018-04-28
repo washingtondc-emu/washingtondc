@@ -78,11 +78,12 @@ void jit_restore_sr(struct il_code_block *block, unsigned slot_no) {
     il_code_block_push_inst(block, &op);
 }
 
-void jit_read_16_constaddr(struct il_code_block *block, addr32_t addr,
-                      unsigned slot_no) {
+void jit_read_16_constaddr(struct il_code_block *block, struct memory_map *map,
+                           addr32_t addr, unsigned slot_no) {
     struct jit_inst op;
 
     op.op = JIT_OP_READ_16_CONSTADDR;
+    op.immed.read_16_constaddr.map = map;
     op.immed.read_16_constaddr.addr = addr;
     op.immed.read_16_constaddr.slot_no = slot_no;
 
@@ -98,33 +99,36 @@ void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no) {
     il_code_block_push_inst(block, &op);
 }
 
-void jit_read_32_constaddr(struct il_code_block *block, addr32_t addr,
-                      unsigned slot_no) {
+void jit_read_32_constaddr(struct il_code_block *block, struct memory_map *map,
+                           addr32_t addr, unsigned slot_no) {
     struct jit_inst op;
 
     op.op = JIT_OP_READ_32_CONSTADDR;
+    op.immed.read_32_constaddr.map = map;
     op.immed.read_32_constaddr.addr = addr;
     op.immed.read_32_constaddr.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
 }
 
-void jit_read_32_slot(struct il_code_block *block, unsigned addr_slot,
-                      unsigned dst_slot) {
+void jit_read_32_slot(struct il_code_block *block, struct memory_map *map,
+                      unsigned addr_slot, unsigned dst_slot) {
     struct jit_inst op;
 
     op.op = JIT_OP_READ_32_SLOT;
+    op.immed.read_32_slot.map = map;
     op.immed.read_32_slot.addr_slot = addr_slot;
     op.immed.read_32_slot.dst_slot = dst_slot;
 
     il_code_block_push_inst(block, &op);
 }
 
-void jit_write_32_slot(struct il_code_block *block, unsigned src_slot,
-                       unsigned addr_slot) {
+void jit_write_32_slot(struct il_code_block *block, struct memory_map *map,
+                       unsigned src_slot, unsigned addr_slot) {
     struct jit_inst op;
 
     op.op = JIT_OP_WRITE_32_SLOT;
+    op.immed.write_32_slot.map = map;
     op.immed.write_32_slot.addr_slot = addr_slot;
     op.immed.write_32_slot.src_slot = src_slot;
 
