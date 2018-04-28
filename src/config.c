@@ -87,7 +87,7 @@ CONFIG_DEF_STRING(exec_bin_path);
 
 CONFIG_DEF_BOOL(enable_cmd_tcp, false);
 
-CONFIG_DEF_BOOL(hack_power_stone_no_aica, true);
+CONFIG_DEF_BOOL(hack_power_stone_no_aica, false);
 
 CONFIG_DEF_BOOL(enable_auto_screenshot, false);
 CONFIG_DEF_STRING(auto_screenshot_dir);
