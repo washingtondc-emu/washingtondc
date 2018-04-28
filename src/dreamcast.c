@@ -72,6 +72,7 @@
 #include "jit/jit.h"
 #include "gfx/opengl/overlay.h"
 #include "hw/boot_rom.h"
+#include "hw/arm7/arm7.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -84,12 +85,14 @@
 
 #include "dreamcast.h"
 
-static Sh4 cpu;
+static struct Sh4 cpu;
 static struct Memory dc_mem;
 static struct memory_map mem_map;
 static struct boot_rom firmware;
 static struct flash_mem flash_mem;
 static struct aica_rtc rtc;
+static struct arm7 arm7;
+static struct memory_map arm7_mem_map;
 static struct aica aica;
 static struct gdrom_ctxt gdrom;
 
@@ -116,20 +119,23 @@ enum TermReason term_reason = TERM_REASON_NORM;
 
 static enum dc_state dc_state = DC_STATE_NOT_RUNNING;
 
-static struct dc_clock sh4_clock;
+static struct dc_clock sh4_clock, arm7_clock;
 
 static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
 
 static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map);
+static void construct_arm7_mem_map(struct memory_map *map);
 
 // Run until the next scheduled event (in dc_sched) should occur
-static void dc_run_to_next_event(void *ctxt);
-static void dc_run_to_next_event_jit(void *ctxt);
+static void run_to_next_sh4_event(void *ctxt);
+static void run_to_next_sh4_event_jit(void *ctxt);
+
+static void run_to_next_arm7_event(void *ctxt);
 
 #ifdef ENABLE_JIT_X86_64
-static void dc_run_to_next_event_jit_native(void *ctxt);
+static void run_to_next_sh4_event_jit_native(void *ctxt);
 #endif
 
 #ifdef ENABLE_DEBUGGER
@@ -138,7 +144,7 @@ static void dreamcast_enable_debugger(void);
 
 static void dreamcast_check_debugger(void);
 
-static void dc_run_to_next_event_debugger(void *ctxt);
+static void run_to_next_sh4_event_debugger(void *ctxt);
 
 #endif
 
@@ -221,7 +227,9 @@ void dreamcast_init(bool cmd_session) {
     }
 
     dc_clock_init(&sh4_clock);
+    dc_clock_init(&arm7_clock);
     sh4_init(&cpu, &sh4_clock);
+    arm7_init(&arm7, &arm7_clock);
     jit_init(&sh4_clock);
     sys_block_init();
     g1_init();
@@ -234,6 +242,10 @@ void dreamcast_init(bool cmd_session) {
     memory_map_init(&mem_map);
     construct_sh4_mem_map(&cpu, &mem_map);
     sh4_set_mem_map(&cpu, &mem_map);
+
+    memory_map_init(&arm7_mem_map);
+    construct_arm7_mem_map(&arm7_mem_map);
+    arm7_set_mem_map(&arm7, &arm7_mem_map);
 
 #ifdef ENABLE_JIT_X86_64
     native_mem_register(cpu.mem.map);
@@ -301,7 +313,9 @@ void dreamcast_cleanup() {
 #endif
 
     jit_cleanup();
+    arm7_cleanup(&arm7);
     sh4_cleanup(&cpu);
+    dc_clock_cleanup(&arm7_clock);
     dc_clock_cleanup(&sh4_clock);
     boot_rom_cleanup(&firmware);
     flash_mem_cleanup(&flash_mem);
@@ -317,6 +331,7 @@ static struct timespec start_time;
 static void main_loop_sched(void) {
     while (is_running) {
         dc_clock_run_timeslice(&sh4_clock);
+        dc_clock_run_timeslice(&arm7_clock);
         code_cache_gc();
     }
 }
@@ -327,7 +342,7 @@ static sh4_backend_func select_sh4_backend(void) {
 #ifdef ENABLE_DEBUGGER
     bool use_gdb_stub = config_get_dbg_enable();
     if (use_gdb_stub)
-        return dc_run_to_next_event_debugger;
+        return run_to_next_sh4_event_debugger;
 #endif
 
 #ifdef ENABLE_JIT_X86_64
@@ -336,18 +351,18 @@ static sh4_backend_func select_sh4_backend(void) {
 
     if (jit) {
         if (native_mode)
-            return dc_run_to_next_event_jit_native;
+            return run_to_next_sh4_event_jit_native;
         else
-            return dc_run_to_next_event_jit;
+            return run_to_next_sh4_event_jit;
     } else {
-        return dc_run_to_next_event;
+        return run_to_next_sh4_event;
     }
 #else
     bool const jit = config_get_jit();
     if (jit)
-        return dc_run_to_next_event_jit;
+        return run_to_next_sh4_event_jit;
     else
-        return dc_run_to_next_event;
+        return run_to_next_sh4_event;
 #endif
 }
 
@@ -389,6 +404,10 @@ void dreamcast_run() {
 
     sh4_clock.dispatch = select_sh4_backend();
     sh4_clock.dispatch_ctxt = &cpu;
+
+    arm7_clock.dispatch = run_to_next_arm7_event;
+    arm7_clock.dispatch_ctxt = &arm7;
+
     main_loop_sched();
 
     dc_print_perf_stats();
@@ -417,6 +436,12 @@ void dreamcast_run() {
     dreamcast_cleanup();
 }
 
+static void run_to_next_arm7_event(void *ctxt) {
+    // TODO: this is an empty placeholder for actually running the arm7 cpu
+    dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&arm7_clock);
+    clock_set_cycle_stamp(&arm7_clock, tgt_stamp);
+}
+
 #ifdef ENABLE_DEBUGGER
 static void dreamcast_check_debugger(void) {
     /*
@@ -438,7 +463,7 @@ static void dreamcast_check_debugger(void) {
     }
 }
 
-static void dc_run_to_next_event_debugger(void *ctxt) {
+static void run_to_next_sh4_event_debugger(void *ctxt) {
     Sh4 *sh4 = (void*)ctxt;
     inst_t inst;
     InstOpcode const *op;
@@ -485,7 +510,7 @@ static void dc_run_to_next_event_debugger(void *ctxt) {
 
 #endif
 
-static void dc_run_to_next_event(void *ctxt) {
+static void run_to_next_sh4_event(void *ctxt) {
     inst_t inst;
     InstOpcode const *op;
     unsigned inst_cycles;
@@ -525,7 +550,7 @@ static void dc_run_to_next_event(void *ctxt) {
 }
 
 #ifdef ENABLE_JIT_X86_64
-static void dc_run_to_next_event_jit_native(void *ctxt) {
+static void run_to_next_sh4_event_jit_native(void *ctxt) {
     Sh4 *sh4 = (Sh4*)ctxt;
 
     reg32_t newpc = sh4->reg[SH4_REG_PC];
@@ -536,7 +561,7 @@ static void dc_run_to_next_event_jit_native(void *ctxt) {
 }
 #endif
 
-static void dc_run_to_next_event_jit(void *ctxt) {
+static void run_to_next_sh4_event_jit(void *ctxt) {
     Sh4 *sh4 = (Sh4*)ctxt;
 
     reg32_t newpc = sh4->reg[SH4_REG_PC];
@@ -754,6 +779,21 @@ void dc_end_frame(void) {
 void dc_toggle_overlay(void) {
     show_overlay = !show_overlay;
     overlay_show(show_overlay);
+}
+
+static void construct_arm7_mem_map(struct memory_map *map) {
+    memory_map_add(map, 0x00000000, 0x001fffff,
+                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &aica_wave_mem_intf, &aica.mem);
+    memory_map_add(map, 0x00800000, 0x008027ff,
+                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &aica_channel_intf, &aica.channel);
+    memory_map_add(map, 0x00802800, 0x00802fff,
+                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &aica_common_intf, &aica.common);
+    memory_map_add(map, 0x00803000, 0x00807fff,
+                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &aica_dsp_intf, &aica.dsp);
 }
 
 static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
