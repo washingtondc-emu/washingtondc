@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -32,17 +32,15 @@
 
 #include "BiosFile.h"
 
-void bios_file_init_empty(struct BiosFile *bios_file) {
-    bios_file->dat_len = BIOS_SZ_EXPECT;
-    bios_file->dat = (uint8_t*)malloc(sizeof(uint8_t) * bios_file->dat_len);
+struct BiosFile {
+    size_t dat_len;
+    uint8_t *dat;
+};
+typedef struct BiosFile BiosFile;
 
-    if (!bios_file->dat) {
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-        return;
-    }
-}
+static struct BiosFile bios_file;
 
-void bios_file_init(struct BiosFile *bios_file, char const *path) {
+void bios_file_init(char const *path) {
     FILE *fp = fopen(path, "rb");
 
     if (!fp) {
@@ -74,23 +72,23 @@ void bios_file_init(struct BiosFile *bios_file, char const *path) {
         return;
     }
 
-    bios_file->dat = (uint8_t*)malloc(file_len * sizeof(uint8_t));
-    if (!bios_file->dat) {
+    bios_file.dat = (uint8_t*)malloc(file_len * sizeof(uint8_t));
+    if (!bios_file.dat) {
         RAISE_ERROR(ERROR_FAILED_ALLOC);
         return;
     }
 
-    if (fread(bios_file->dat, sizeof(uint8_t), file_len, fp) != file_len) {
+    if (fread(bios_file.dat, sizeof(uint8_t), file_len, fp) != file_len) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
-        free(bios_file->dat);
+        free(bios_file.dat);
         fclose(fp);
         return;
     }
 
     fclose(fp);
 
-    bios_file->dat_len = file_len;
+    bios_file.dat_len = file_len;
 
     if (file_len != BIOS_SZ_EXPECT) {
         LOG_WARN("WARNING - unexpected bios size (expected %d, got %d).  This "
@@ -99,53 +97,40 @@ void bios_file_init(struct BiosFile *bios_file, char const *path) {
     }
 }
 
-void bios_file_cleanup(struct BiosFile *bios_file) {
-    if (bios_file->dat)
-        free(bios_file->dat);
+void bios_file_cleanup(void) {
+    if (bios_file.dat)
+        free(bios_file.dat);
 
-    memset(bios_file, 0, sizeof(*bios_file));
+    memset(&bios_file, 0, sizeof(bios_file));
 }
 
-void bios_file_clear(struct BiosFile *bios_file) {
-    memset(bios_file->dat, 0, bios_file->dat_len);
-}
-
-uint8_t *bios_file_begin(struct BiosFile *bios_file) {
-    return bios_file->dat;
-}
-
-uint8_t *bios_file_end(struct BiosFile *bios_file) {
-    return bios_file->dat + bios_file->dat_len;
-}
-
-int bios_file_read(struct BiosFile *bios_file, void *buf,
-                   size_t addr, size_t len) {
-    memcpy(buf, bios_file->dat + addr, len);
+int bios_file_read(void *buf, size_t addr, size_t len) {
+    memcpy(buf, bios_file.dat + addr, len);
     return MEM_ACCESS_SUCCESS;
 }
 
-uint8_t bios_file_read_8(struct BiosFile *bios_file, addr32_t addr) {
-    return bios_file->dat[addr];
+uint8_t bios_file_read_8(addr32_t addr) {
+    return bios_file.dat[addr];
 }
 
-uint16_t bios_file_read_16(struct BiosFile *bios_file, addr32_t addr) {
-    uint16_t const *bios16 = (uint16_t const*)bios_file->dat;
+uint16_t bios_file_read_16(addr32_t addr) {
+    uint16_t const *bios16 = (uint16_t const*)bios_file.dat;
     return bios16[addr / 2];
 }
 
-uint32_t bios_file_read_32(struct BiosFile *bios_file, addr32_t addr) {
-    uint32_t const *bios32 = (uint32_t const*)bios_file->dat;
+uint32_t bios_file_read_32(addr32_t addr) {
+    uint32_t const *bios32 = (uint32_t const*)bios_file.dat;
     return bios32[addr / 4];
 }
 
-float bios_file_read_float(struct BiosFile *bios_file, addr32_t addr) {
-    uint32_t tmp = bios_file_read_32(bios_file, addr);
+float bios_file_read_float(addr32_t addr) {
+    uint32_t tmp = bios_file_read_32(addr);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-double bios_file_read_double(struct BiosFile *bios_file, addr32_t addr) {
+double bios_file_read_double(addr32_t addr) {
     error_set_address(addr);
     error_set_length(8);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);

@@ -60,6 +60,7 @@
 #include "jit/code_cache.h"
 #include "jit/jit.h"
 #include "gfx/opengl/overlay.h"
+#include "BiosFile.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -72,7 +73,6 @@
 #include "dreamcast.h"
 
 static Sh4 cpu;
-static BiosFile bios;
 struct Memory dc_mem;
 
 static volatile bool is_running;
@@ -166,8 +166,8 @@ void dreamcast_init(bool cmd_session) {
 
     memory_init(&dc_mem);
     flash_mem_load(config_get_dc_flash_path());
-    bios_file_init(&bios, config_get_dc_bios_path());
-    memory_map_init(&bios, &dc_mem);
+    bios_file_init(config_get_dc_bios_path());
+    memory_map_init(&dc_mem);
 
     int boot_mode = config_get_boot_mode();
     if (boot_mode == (int)DC_BOOT_IP_BIN || boot_mode == (int)DC_BOOT_DIRECT) {
@@ -280,7 +280,7 @@ void dreamcast_cleanup() {
 
     sh4_cleanup(&cpu);
     jit_cleanup();
-    bios_file_cleanup(&bios);
+    bios_file_cleanup();
     memory_cleanup(&dc_mem);
 }
 

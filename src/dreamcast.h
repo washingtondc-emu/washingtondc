@@ -25,7 +25,6 @@
 
 #include <stdbool.h>
 
-#include "BiosFile.h"
 #include "memory.h"
 #include "hw/sh4/sh4.h"
 

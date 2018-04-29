@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,26 +31,14 @@
 
 #define BIOS_SZ_EXPECT (0x1fffff + 1)
 
-struct BiosFile {
-    size_t dat_len;
-    uint8_t *dat;
-};
-typedef struct BiosFile BiosFile;
-
-void bios_file_init_empty(struct BiosFile *bios_file);
-void bios_file_init(struct BiosFile *bios_file, char const *path);
-void bios_file_cleanup(struct BiosFile *bios_file);
-
-void bios_file_clear(struct BiosFile *bios_file);
-
-uint8_t *bios_file_begin(struct BiosFile *bios_file);
-uint8_t *bios_file_end(struct BiosFile *bios_file);
+void bios_file_init(char const *path);
+void bios_file_cleanup(void);
 
 // consider yourself warned: these functions don't do bounds-checking
-uint8_t bios_file_read_8(struct BiosFile *bios_file, addr32_t addr);
-uint16_t bios_file_read_16(struct BiosFile *bios_file, addr32_t addr);
-uint32_t bios_file_read_32(struct BiosFile *bios_file, addr32_t addr);
-float bios_file_read_float(struct BiosFile *bios_file, addr32_t addr);
-double bios_file_read_double(struct BiosFile *bios_file, addr32_t addr);
+uint8_t bios_file_read_8(addr32_t addr);
+uint16_t bios_file_read_16(addr32_t addr);
+uint32_t bios_file_read_32(addr32_t addr);
+float bios_file_read_float(addr32_t addr);
+double bios_file_read_double(addr32_t addr);
 
 #endif

@@ -41,10 +41,10 @@
 #include "flash_memory.h"
 #include "error.h"
 #include "mem_code.h"
+#include "BiosFile.h"
 
 #include "MemoryMap.h"
 
-static struct BiosFile *bios;
 static struct Memory *mem;
 
 static uint32_t read_area3_32(uint32_t addr);
@@ -158,8 +158,7 @@ WRITE_AREA0_TMPL(uint8_t, 8)
                                                                         \
         type tmp;                                                       \
         if (last_addr <= ADDR_BIOS_LAST) {                              \
-            return bios_file_read_##type_postfix(bios,                  \
-                                                 addr - ADDR_BIOS_FIRST); \
+            return bios_file_read_##type_postfix(addr - ADDR_BIOS_FIRST); \
         } else if (first_addr >= ADDR_FLASH_FIRST &&                    \
                    last_addr <= ADDR_FLASH_LAST) {                      \
             return flash_mem_read_##type_postfix(addr);                 \
@@ -358,13 +357,8 @@ struct memory_map sh4_mem_map = {
     .n_regions = MEM_MAP_N_REGIONS
 };
 
-void memory_map_init(BiosFile *bios_new, struct Memory *mem_new) {
-    memory_map_set_bios(bios_new);
+void memory_map_init(struct Memory *mem_new) {
     memory_map_set_mem(mem_new);
-}
-
-void memory_map_set_bios(BiosFile *bios_new) {
-    bios = bios_new;
 }
 
 void memory_map_set_mem(struct Memory *mem_new) {

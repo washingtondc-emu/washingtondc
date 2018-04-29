@@ -25,7 +25,6 @@
 
 #include <stdint.h>
 
-#include "BiosFile.h"
 #include "memory.h"
 #include "mem_areas.h"
 
@@ -104,8 +103,7 @@ struct memory_map {
     unsigned n_regions;
 };
 
-void memory_map_init(BiosFile *bios_new, struct Memory *mem_new);
-void memory_map_set_bios(BiosFile *bios_new);
+void memory_map_init(struct Memory *mem_new);
 void memory_map_set_mem(struct Memory *mem_new);
 
 uint8_t
