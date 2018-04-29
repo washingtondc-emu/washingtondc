@@ -83,131 +83,7 @@ static void write_sh4_p4_32(uint32_t addr, uint32_t val);
 static void write_sh4_p4_16(uint32_t addr, uint16_t val);
 static void write_sh4_p4_8(uint32_t addr, uint8_t val);
 
-#define WRITE_AREA0_TMPL(type, type_postfix)                            \
-    static inline void                                                  \
-    write_area0_##type_postfix(uint32_t addr, type val) {               \
-        addr32_t addr_orig = addr;                                      \
-        addr &= ADDR_AREA0_MASK;                                        \
-        size_t first_addr = addr;                                       \
-        size_t last_addr = addr + (sizeof(type) - 1);                   \
-                                                                        \
-        if (last_addr <= ADDR_BIOS_LAST) {                              \
-            bios_file_write_##type_postfix(addr, val);                  \
-        } else if (first_addr >= ADDR_FLASH_FIRST &&                    \
-                   last_addr <= ADDR_FLASH_LAST) {                      \
-            flash_mem_write_##type_postfix(addr, val);                  \
-        } else if (first_addr >= ADDR_G1_FIRST &&                       \
-                   last_addr <= ADDR_G1_LAST) {                         \
-            g1_reg_write_##type_postfix(addr, val);                     \
-        } else if (first_addr >= ADDR_SYS_FIRST &&                      \
-                   last_addr <= ADDR_SYS_LAST) {                        \
-            sys_block_write_##type_postfix(addr, val);                  \
-        } else if (first_addr >= ADDR_MAPLE_FIRST &&                    \
-                   last_addr <= ADDR_MAPLE_LAST) {                      \
-            maple_reg_write_##type_postfix(addr, val);                  \
-        } else if (first_addr >= ADDR_G2_FIRST &&                       \
-                   last_addr <= ADDR_G2_LAST) {                         \
-            g2_reg_write_##type_postfix(addr, val);                     \
-        } else if (first_addr >= ADDR_PVR2_FIRST &&                     \
-                   last_addr <= ADDR_PVR2_LAST) {                       \
-            pvr2_reg_write_##type_postfix(addr, val);                   \
-        } else if (first_addr >= ADDR_MODEM_FIRST &&                    \
-                   last_addr <= ADDR_MODEM_LAST) {                      \
-            modem_write_##type_postfix(addr, val);                      \
-        } else if (first_addr >= ADDR_PVR2_CORE_FIRST &&                \
-                last_addr <= ADDR_PVR2_CORE_LAST) {                     \
-            pvr2_core_reg_write_##type_postfix(addr, val);              \
-        } else if(first_addr >= ADDR_AICA_FIRST &&                      \
-                  last_addr <= ADDR_AICA_LAST) {                        \
-            aica_reg_write_##type_postfix(addr, val);                   \
-        } else if (first_addr >= ADDR_AICA_WAVE_FIRST &&                \
-                   last_addr <= ADDR_AICA_WAVE_LAST) {                  \
-            aica_wave_mem_write_##type_postfix(addr, val);              \
-        } else if (first_addr >= ADDR_AICA_RTC_FIRST &&                 \
-                   last_addr <= ADDR_AICA_RTC_LAST) {                   \
-            aica_rtc_write_##type_postfix(addr, val);                   \
-        } else if (first_addr >= ADDR_GDROM_FIRST &&                    \
-                   last_addr <= ADDR_GDROM_LAST) {                      \
-            gdrom_reg_write_##type_postfix(addr, val);                  \
-        } else {                                                        \
-            error_set_feature("proper response for when the guest "     \
-                              "writes past a memory map's end");        \
-            error_set_length(sizeof(type));                             \
-            error_set_address(addr_orig);                               \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
-        }                                                               \
-    }
-
-WRITE_AREA0_TMPL(double, double)
-WRITE_AREA0_TMPL(float, float)
-WRITE_AREA0_TMPL(uint32_t, 32)
-WRITE_AREA0_TMPL(uint16_t, 16)
-WRITE_AREA0_TMPL(uint8_t, 8)
-
-#define READ_AREA0_TMPL(type, type_postfix)                             \
-    static inline type                                                  \
-    read_area0_##type_postfix(uint32_t addr) {                          \
-        addr32_t addr_orig = addr;                                      \
-        addr &= ADDR_AREA0_MASK;                                        \
-        size_t first_addr = addr;                                       \
-        size_t last_addr = addr + (sizeof(type) - 1);                   \
-                                                                        \
-        type tmp;                                                       \
-        if (last_addr <= ADDR_BIOS_LAST) {                              \
-            return bios_file_read_##type_postfix(addr - ADDR_BIOS_FIRST); \
-        } else if (first_addr >= ADDR_FLASH_FIRST &&                    \
-                   last_addr <= ADDR_FLASH_LAST) {                      \
-            return flash_mem_read_##type_postfix(addr);                 \
-        } else if (first_addr >= ADDR_G1_FIRST &&                       \
-                   last_addr <= ADDR_G1_LAST) {                         \
-            return g1_reg_read_##type_postfix(addr);                    \
-        } else if (first_addr >= ADDR_SYS_FIRST &&                      \
-                   last_addr <= ADDR_SYS_LAST) {                        \
-            return sys_block_read_##type_postfix(addr);                 \
-        } else if (first_addr >= ADDR_MAPLE_FIRST &&                    \
-                   last_addr <= ADDR_MAPLE_LAST) {                      \
-            return maple_reg_read_##type_postfix(addr);                 \
-        } else if (first_addr >= ADDR_G2_FIRST &&                       \
-                   last_addr <= ADDR_G2_LAST) {                         \
-            return g2_reg_read_##type_postfix(addr);                    \
-        } else if (first_addr >= ADDR_PVR2_FIRST &&                     \
-                   last_addr <= ADDR_PVR2_LAST) {                       \
-            return pvr2_reg_read_##type_postfix(addr);                  \
-        } else if (first_addr >= ADDR_MODEM_FIRST &&                    \
-                   last_addr <= ADDR_MODEM_LAST) {                      \
-            return modem_read_##type_postfix(addr);                     \
-        } else if (first_addr >= ADDR_PVR2_CORE_FIRST &&                \
-                   last_addr <= ADDR_PVR2_CORE_LAST) {                  \
-            return pvr2_core_reg_read_##type_postfix(addr);             \
-        } else if(first_addr >= ADDR_AICA_FIRST &&                      \
-                  last_addr <= ADDR_AICA_LAST) {                        \
-            return aica_reg_read_##type_postfix(addr);                  \
-        } else if (first_addr >= ADDR_AICA_WAVE_FIRST &&                \
-                   last_addr <= ADDR_AICA_WAVE_LAST) {                  \
-            return aica_wave_mem_read_##type_postfix(addr);             \
-        } else if (first_addr >= ADDR_AICA_RTC_FIRST &&                 \
-                   last_addr <= ADDR_AICA_RTC_LAST) {                   \
-                   return aica_rtc_read_##type_postfix(addr);           \
-        } else if (first_addr >= ADDR_GDROM_FIRST &&                    \
-                   last_addr <= ADDR_GDROM_LAST) {                      \
-            return gdrom_reg_read_##type_postfix(addr);                 \
-        } else {                                                        \
-            /* when the write is not entirely within one mapping */     \
-            error_set_feature("proper response for when the guest "     \
-                              "writes past a memory map's end");        \
-            error_set_length(sizeof(tmp));                              \
-            error_set_address(addr_orig);                               \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
-        }                                                               \
-    }
-
-READ_AREA0_TMPL(double, double)
-READ_AREA0_TMPL(float, float)
-READ_AREA0_TMPL(uint32_t, 32)
-READ_AREA0_TMPL(uint16_t, 16)
-READ_AREA0_TMPL(uint8_t, 8)
-
-#define MEM_MAP_N_REGIONS 7
+#define MEM_MAP_N_REGIONS 19
 
 struct memory_map sh4_mem_map = {
     .regions = {
@@ -329,25 +205,247 @@ struct memory_map sh4_mem_map = {
             .write16 = write_ocache_ram_16,
             .write8 = write_ocache_ram_8,
             .writedouble = write_ocache_ram_double,
-            .writefloat = write_ocache_ram_float,
+            .writefloat = write_ocache_ram_float
+        },
+        /*
+         * TODO: everything below here needs to stay at the end so that the
+         * masking/mirroring doesn't make it pick up addresses that should
+         * belong to other parts of the map.  I need to come up with a better
+         * way to implement mirroring.
+         */
+        {
+            .first_addr = ADDR_BIOS_FIRST,
+            .last_addr = ADDR_BIOS_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = bios_file_read_32,
+            .read16 = bios_file_read_16,
+            .read8 = bios_file_read_8,
+            .readfloat = bios_file_read_float,
+            .readdouble = bios_file_read_double,
+
+            .write32 = bios_file_write_32,
+            .write16 = bios_file_write_16,
+            .write8 = bios_file_write_8,
+            .writefloat = bios_file_write_float,
+            .writedouble = bios_file_write_double
         },
         {
-            .first_addr = ADDR_AREA0_FIRST,
-            .last_addr = ADDR_AREA0_LAST,
-            .mask = 0x1fffffff,
-            .range_mask = 0x1fffffff,
+            .first_addr = ADDR_FLASH_FIRST,
+            .last_addr = ADDR_FLASH_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = read_area0_32,
-            .read16 = read_area0_16,
-            .read8 = read_area0_8,
-            .readfloat = read_area0_float,
-            .readdouble = read_area0_double,
+            .read32 = flash_mem_read_32,
+            .read16 = flash_mem_read_16,
+            .read8 = flash_mem_read_8,
+            .readfloat = flash_mem_read_float,
+            .readdouble = flash_mem_read_double,
 
-            .write32 = write_area0_32,
-            .write16 = write_area0_16,
-            .write8 = write_area0_8,
-            .writefloat = write_area0_float,
-            .writedouble = write_area0_double
+            .write32 = flash_mem_write_32,
+            .write16 = flash_mem_write_16,
+            .write8 = flash_mem_write_8,
+            .writefloat = flash_mem_write_float,
+            .writedouble = flash_mem_write_double
+        },
+        {
+            .first_addr = ADDR_G1_FIRST,
+            .last_addr = ADDR_G1_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = g1_reg_read_32,
+            .read16 = g1_reg_read_16,
+            .read8 = g1_reg_read_8,
+            .readfloat = g1_reg_read_float,
+            .readdouble = g1_reg_read_double,
+
+            .write32 = g1_reg_write_32,
+            .write16 = g1_reg_write_16,
+            .write8 = g1_reg_write_8,
+            .writefloat = g1_reg_write_float,
+            .writedouble = g1_reg_write_double
+        },
+        {
+            .first_addr = ADDR_SYS_FIRST,
+            .last_addr = ADDR_SYS_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = sys_block_read_32,
+            .read16 = sys_block_read_16,
+            .read8 = sys_block_read_8,
+            .readfloat = sys_block_read_float,
+            .readdouble = sys_block_read_double,
+
+            .write32 = sys_block_write_32,
+            .write16 = sys_block_write_16,
+            .write8 = sys_block_write_8,
+            .writefloat = sys_block_write_float,
+            .writedouble = sys_block_write_double
+        },
+        {
+            .first_addr = ADDR_MAPLE_FIRST,
+            .last_addr = ADDR_MAPLE_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = maple_reg_read_32,
+            .read16 = maple_reg_read_16,
+            .read8 = maple_reg_read_8,
+            .readfloat = maple_reg_read_float,
+            .readdouble = maple_reg_read_double,
+
+            .write32 = maple_reg_write_32,
+            .write16 = maple_reg_write_16,
+            .write8 = maple_reg_write_8,
+            .writefloat = maple_reg_write_float,
+            .writedouble = maple_reg_write_double
+        },
+        {
+            .first_addr = ADDR_G2_FIRST,
+            .last_addr = ADDR_G2_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = g2_reg_read_32,
+            .read16 = g2_reg_read_16,
+            .read8 = g2_reg_read_8,
+            .readfloat = g2_reg_read_float,
+            .readdouble = g2_reg_read_double,
+
+            .write32 = g2_reg_write_32,
+            .write16 = g2_reg_write_16,
+            .write8 = g2_reg_write_8,
+            .writefloat = g2_reg_write_float,
+            .writedouble = g2_reg_write_double
+        },
+        {
+            .first_addr = ADDR_PVR2_FIRST,
+            .last_addr = ADDR_PVR2_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = pvr2_reg_read_32,
+            .read16 = pvr2_reg_read_16,
+            .read8 = pvr2_reg_read_8,
+            .readfloat = pvr2_reg_read_float,
+            .readdouble = pvr2_reg_read_double,
+
+            .write32 = pvr2_reg_write_32,
+            .write16 = pvr2_reg_write_16,
+            .write8 = pvr2_reg_write_8,
+            .writefloat = pvr2_reg_write_float,
+            .writedouble = pvr2_reg_write_double
+        },
+        {
+            .first_addr = ADDR_MODEM_FIRST,
+            .last_addr = ADDR_MODEM_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = modem_read_32,
+            .read16 = modem_read_16,
+            .read8 = modem_read_8,
+            .readfloat = modem_read_float,
+            .readdouble = modem_read_double,
+
+            .write32 = modem_write_32,
+            .write16 = modem_write_16,
+            .write8 = modem_write_8,
+            .writefloat = modem_write_float,
+            .writedouble = modem_write_double
+        },
+        {
+            .first_addr = ADDR_PVR2_CORE_FIRST,
+            .last_addr = ADDR_PVR2_CORE_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = pvr2_core_reg_read_32,
+            .read16 = pvr2_core_reg_read_16,
+            .read8 = pvr2_core_reg_read_8,
+            .readfloat = pvr2_core_reg_read_float,
+            .readdouble = pvr2_core_reg_read_double,
+
+            .write32 = pvr2_core_reg_write_32,
+            .write16 = pvr2_core_reg_write_16,
+            .write8 = pvr2_core_reg_write_8,
+            .writefloat = pvr2_core_reg_write_float,
+            .writedouble = pvr2_core_reg_write_double
+        },
+        {
+            .first_addr = ADDR_AICA_FIRST,
+            .last_addr = ADDR_AICA_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = aica_reg_read_32,
+            .read16 = aica_reg_read_16,
+            .read8 = aica_reg_read_8,
+            .readfloat = aica_reg_read_float,
+            .readdouble = aica_reg_read_double,
+
+            .write32 = aica_reg_write_32,
+            .write16 = aica_reg_write_16,
+            .write8 = aica_reg_write_8,
+            .writefloat = aica_reg_write_float,
+            .writedouble = aica_reg_write_double
+        },
+        {
+            .first_addr = ADDR_AICA_WAVE_FIRST,
+            .last_addr = ADDR_AICA_WAVE_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = aica_wave_mem_read_32,
+            .read16 = aica_wave_mem_read_16,
+            .read8 = aica_wave_mem_read_8,
+            .readfloat = aica_wave_mem_read_float,
+            .readdouble = aica_wave_mem_read_double,
+
+            .write32 = aica_wave_mem_write_32,
+            .write16 = aica_wave_mem_write_16,
+            .write8 = aica_wave_mem_write_8,
+            .writefloat = aica_wave_mem_write_float,
+            .writedouble = aica_wave_mem_write_double
+        },
+        {
+            .first_addr = ADDR_AICA_RTC_FIRST,
+            .last_addr = ADDR_AICA_RTC_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = aica_rtc_read_32,
+            .read16 = aica_rtc_read_16,
+            .read8 = aica_rtc_read_8,
+            .readfloat = aica_rtc_read_float,
+            .readdouble = aica_rtc_read_double,
+
+            .write32 = aica_rtc_write_32,
+            .write16 = aica_rtc_write_16,
+            .write8 = aica_rtc_write_8,
+            .writefloat = aica_rtc_write_float,
+            .writedouble = aica_rtc_write_double
+        },
+        {
+            .first_addr = ADDR_GDROM_FIRST,
+            .last_addr = ADDR_GDROM_LAST,
+            .mask = ADDR_AREA0_MASK,
+            .range_mask = ADDR_AREA0_MASK,
+
+            .read32 = gdrom_reg_read_32,
+            .read16 = gdrom_reg_read_16,
+            .read8 = gdrom_reg_read_8,
+            .readfloat = gdrom_reg_read_float,
+            .readdouble = gdrom_reg_read_double,
+
+            .write32 = gdrom_reg_write_32,
+            .write16 = gdrom_reg_write_16,
+            .write8 = gdrom_reg_write_8,
+            .writefloat = gdrom_reg_write_float,
+            .writedouble = gdrom_reg_write_double
         }
     },
     .n_regions = MEM_MAP_N_REGIONS
