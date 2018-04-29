@@ -301,24 +301,6 @@ struct memory_map sh4_mem_map = {
             .writedouble = pvr2_tex_mem_area64_write_double
         },
         {
-            .first_addr = ADDR_AREA0_FIRST,
-            .last_addr = ADDR_AREA0_LAST,
-            .mask = 0x1fffffff,
-            .range_mask = 0x1fffffff,
-
-            .read32 = read_area0_32,
-            .read16 = read_area0_16,
-            .read8 = read_area0_8,
-            .readfloat = read_area0_float,
-            .readdouble = read_area0_double,
-
-            .write32 = write_area0_32,
-            .write16 = write_area0_16,
-            .write8 = write_area0_8,
-            .writefloat = write_area0_float,
-            .writedouble = write_area0_double
-        },
-        {
             .first_addr = ADDR_TA_FIFO_POLY_FIRST,
             .last_addr = ADDR_TA_FIFO_POLY_LAST,
             .mask = 0x1fffffff,
@@ -353,6 +335,24 @@ struct memory_map sh4_mem_map = {
             .write8 = write_ocache_ram_8,
             .writedouble = write_ocache_ram_double,
             .writefloat = write_ocache_ram_float,
+        },
+        {
+            .first_addr = ADDR_AREA0_FIRST,
+            .last_addr = ADDR_AREA0_LAST,
+            .mask = 0x1fffffff,
+            .range_mask = 0x1fffffff,
+
+            .read32 = read_area0_32,
+            .read16 = read_area0_16,
+            .read8 = read_area0_8,
+            .readfloat = read_area0_float,
+            .readdouble = read_area0_double,
+
+            .write32 = write_area0_32,
+            .write16 = write_area0_16,
+            .write8 = write_area0_8,
+            .writefloat = write_area0_float,
+            .writedouble = write_area0_double
         }
     },
     .n_regions = MEM_MAP_N_REGIONS
