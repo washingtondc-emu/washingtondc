@@ -1060,7 +1060,12 @@ void x86asm_lbl8_define(struct x86asm_lbl8 *lbl) {
     unsigned jmp_pt_idx;
     for (jmp_pt_idx = 0; jmp_pt_idx < lbl->n_jump_points; jmp_pt_idx++) {
         struct lbl_jmp_pt *pt = lbl->jump_points + jmp_pt_idx;
-        *pt->offs = lbl->ptr - pt->rel_pos;
+        ptrdiff_t offs = lbl->ptr - pt->rel_pos;
+        if (offs > INT8_MAX)
+            RAISE_ERROR(ERROR_TOO_BIG);
+        if (offs < INT8_MIN)
+            RAISE_ERROR(ERROR_TOO_SMALL);
+        *pt->offs = offs;
     }
 }
 
@@ -1068,7 +1073,12 @@ void x86asm_lbl8_push_jmp_pt(struct x86asm_lbl8 *lbl,
                              struct lbl_jmp_pt const *jmp_pt) {
     if (lbl->ptr) {
         // label has already been defined
-        *jmp_pt->offs = lbl->ptr - jmp_pt->rel_pos;
+        ptrdiff_t offs = lbl->ptr - jmp_pt->rel_pos;
+        if (offs > INT8_MAX)
+            RAISE_ERROR(ERROR_TOO_BIG);
+        if (offs < INT8_MIN)
+            RAISE_ERROR(ERROR_TOO_SMALL);
+        *jmp_pt->offs = offs;
     } else {
         // save this jump point for when the label gets defined later
         if (lbl->n_jump_points >= MAX_LABEL_JUMPS)
