@@ -41,4 +41,10 @@ uint32_t bios_file_read_32(addr32_t addr);
 float bios_file_read_float(addr32_t addr);
 double bios_file_read_double(addr32_t addr);
 
+void bios_file_write_8(addr32_t addr, uint8_t val);
+void bios_file_write_16(addr32_t addr, uint16_t val);
+void bios_file_write_32(addr32_t addr, uint32_t val);
+void bios_file_write_float(addr32_t addr, float val);
+void bios_file_write_double(addr32_t addr, double val);
+
 #endif

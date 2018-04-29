@@ -92,11 +92,7 @@ static void write_sh4_p4_8(uint32_t addr, uint8_t val);
         size_t last_addr = addr + (sizeof(type) - 1);                   \
                                                                         \
         if (last_addr <= ADDR_BIOS_LAST) {                              \
-            error_set_feature("proper response for when the guest "     \
-                              "tries to write to the bios");            \
-            error_set_length(sizeof(type));                             \
-            error_set_address(addr_orig);                               \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+            bios_file_write_##type_postfix(addr, val);                  \
         } else if (first_addr >= ADDR_FLASH_FIRST &&                    \
                    last_addr <= ADDR_FLASH_LAST) {                      \
             flash_mem_write_##type_postfix(addr, val);                  \
