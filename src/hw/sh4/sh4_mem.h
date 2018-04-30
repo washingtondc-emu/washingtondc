@@ -87,4 +87,11 @@ uint32_t sh4_do_read_p4_32(Sh4 *sh4, addr32_t addr);
 uint16_t sh4_do_read_p4_16(Sh4 *sh4, addr32_t addr);
 uint8_t sh4_do_read_p4_8(Sh4 *sh4, addr32_t addr);
 
+void sh4_mem_init(Sh4 *sh4);
+void sh4_mem_cleanup(Sh4 *sh4);
+
+struct sh4_mem {
+    struct memory_map map;
+};
+
 #endif

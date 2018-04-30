@@ -85,8 +85,8 @@ static void emit_native_mem_read_16(void) {
     x86asm_set_dst(native_mem_read_16_impl, BASIC_ALLOC);
 
     unsigned region_no;
-    for (region_no = 0; region_no < sh4_mem_map.n_regions; region_no++) {
-        struct memory_map_region *region = sh4_mem_map.regions + region_no;
+    for (region_no = 0; region_no < dreamcast_get_cpu()->mem.map.n_regions; region_no++) {
+        struct memory_map_region *region = dreamcast_get_cpu()->mem.map.regions + region_no;
 
         struct x86asm_lbl8 check_next;
         x86asm_lbl8_init(&check_next);
@@ -130,8 +130,8 @@ static void emit_native_mem_read_32(void) {
     x86asm_set_dst(native_mem_read_32_impl, BASIC_ALLOC);
 
     unsigned region_no;
-    for (region_no = 0; region_no < sh4_mem_map.n_regions; region_no++) {
-        struct memory_map_region *region = sh4_mem_map.regions + region_no;
+    for (region_no = 0; region_no < dreamcast_get_cpu()->mem.map.n_regions; region_no++) {
+        struct memory_map_region *region = dreamcast_get_cpu()->mem.map.regions + region_no;
 
         struct x86asm_lbl8 check_next;
         x86asm_lbl8_init(&check_next);
@@ -175,8 +175,8 @@ static void emit_native_mem_write_32(void) {
     x86asm_set_dst(native_mem_write_32_impl, BASIC_ALLOC);
 
     unsigned region_no;
-    for (region_no = 0; region_no < sh4_mem_map.n_regions; region_no++) {
-        struct memory_map_region *region = sh4_mem_map.regions + region_no;
+    for (region_no = 0; region_no < dreamcast_get_cpu()->mem.map.n_regions; region_no++) {
+        struct memory_map_region *region = dreamcast_get_cpu()->mem.map.regions + region_no;
 
         struct x86asm_lbl8 check_next;
         x86asm_lbl8_init(&check_next);

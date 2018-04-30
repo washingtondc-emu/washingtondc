@@ -92,17 +92,17 @@ static inline void sh4_check_interrupts(Sh4 *sh4) {
         sh4_check_interrupts_no_delay_branch_check(sh4);
 }
 
-static inline inst_t sh4_do_read_inst(addr32_t addr) {
+static inline inst_t sh4_do_read_inst(Sh4 *sh4, addr32_t addr) {
     addr &= 0x1fffffff;
     if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
         return memory_read_16(&dc_mem, addr & ADDR_AREA3_MASK);
     } else {
-        return memory_map_read_16(&sh4_mem_map, addr);
+        return memory_map_read_16(&sh4->mem.map, addr);
     }
 }
 
 static inline inst_t sh4_read_inst(Sh4 *sh4) {
-    return sh4_do_read_inst(sh4->reg[SH4_REG_PC]);
+    return sh4_do_read_inst(sh4, sh4->reg[SH4_REG_PC]);
 #if 0
     /*
      * this is commented out because you can't leave privileged mode without

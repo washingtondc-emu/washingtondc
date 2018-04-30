@@ -144,7 +144,7 @@ void sh4_disas_new_block(void) {
 }
 
 static void sh4_disas_delay_slot(struct il_code_block *block, unsigned pc) {
-    inst_t inst = sh4_do_read_inst(pc);
+    inst_t inst = sh4_do_read_inst(dreamcast_get_cpu(), pc);
     struct InstOpcode const *inst_op = sh4_decode_inst(inst);
     if (inst_op->pc_relative) {
         error_set_feature("illegal slot exceptions in the jit");
@@ -166,7 +166,7 @@ static void sh4_disas_delay_slot(struct il_code_block *block, unsigned pc) {
 }
 
 bool sh4_disas_inst(struct il_code_block *block, unsigned pc) {
-    inst_t inst = sh4_do_read_inst(pc);
+    inst_t inst = sh4_do_read_inst(dreamcast_get_cpu(), pc);
     struct InstOpcode const *inst_op = sh4_decode_inst(inst);
     block->cycle_count += sh4_count_inst_cycles(inst_op,
                                                 &block->last_inst_type);
@@ -499,7 +499,7 @@ bool sh4_disas_movw_a_disp_pc_rn(struct il_code_block *block, unsigned pc,
 
     unsigned slot_no = reg_slot_noload(cpu, block, reg_no);
 
-    jit_sh4_mem_read_constaddr_16(block, addr, slot_no);
+    jit_sh4_mem_read_constaddr_16(cpu, block, addr, slot_no);
 
     jit_sign_extend_16(block, slot_no);
 
@@ -515,7 +515,7 @@ bool sh4_disas_movl_a_disp_pc_rn(struct il_code_block *block, unsigned pc,
     Sh4 *cpu = dreamcast_get_cpu();
 
     unsigned slot_no = reg_slot_noload(cpu, block, reg_no);
-    jit_sh4_mem_read_constaddr_32(block, addr, slot_no);
+    jit_sh4_mem_read_constaddr_32(cpu, block, addr, slot_no);
 
     return true;
 }
@@ -773,7 +773,7 @@ bool sh4_disas_movl_arm_rn(struct il_code_block *block, unsigned pc,
     unsigned slot_src = reg_slot(dreamcast_get_cpu(), block, reg_src);
     unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
 
-    jit_read_32_slot(block, &sh4_mem_map, slot_src, slot_dst);
+    jit_read_32_slot(block, &dreamcast_get_cpu()->mem.map, slot_src, slot_dst);
 
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
 
@@ -790,7 +790,7 @@ bool sh4_disas_movl_rm_arn(struct il_code_block *block, unsigned pc,
     unsigned slot_src = reg_slot(dreamcast_get_cpu(), block, reg_src);
     unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
 
-    jit_write_32_slot(block, &sh4_mem_map, slot_src, slot_dst);
+    jit_write_32_slot(block, &dreamcast_get_cpu()->mem.map, slot_src, slot_dst);
 
     reg_map[reg_src].stat = REG_STATUS_SLOT;
 
@@ -811,7 +811,7 @@ bool sh4_disas_movl_a_disp4_rm_rn(struct il_code_block *block, unsigned pc,
 
     unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
 
-    jit_read_32_slot(block, &sh4_mem_map, slot_src, slot_dst);
+    jit_read_32_slot(block, &dreamcast_get_cpu()->mem.map, slot_src, slot_dst);
 
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
 
@@ -835,7 +835,7 @@ bool sh4_disas_movl_a_disp8_gbr_r0(struct il_code_block *block, unsigned pc,
 
     unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
 
-    jit_read_32_slot(block, &sh4_mem_map, slot_src, slot_dst);
+    jit_read_32_slot(block, &dreamcast_get_cpu()->mem.map, slot_src, slot_dst);
 
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
 
@@ -855,7 +855,7 @@ bool sh4_disas_movl_armp_rn(struct il_code_block *block, unsigned pc,
     unsigned slot_src = reg_slot(dreamcast_get_cpu(), block, reg_src);
     unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
 
-    jit_read_32_slot(block, &sh4_mem_map, slot_src, slot_dst);
+    jit_read_32_slot(block, &dreamcast_get_cpu()->mem.map, slot_src, slot_dst);
     jit_add_const32(block, slot_src, 4);
 
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
@@ -875,7 +875,7 @@ bool sh4_disas_movl_rm_amrn(struct il_code_block *block, unsigned pc,
     unsigned slot_dst = reg_slot(dreamcast_get_cpu(), block, reg_dst);
 
     jit_add_const32(block, slot_dst, -4);
-    jit_write_32_slot(block, &sh4_mem_map, slot_src, slot_dst);
+    jit_write_32_slot(block, &dreamcast_get_cpu()->mem.map, slot_src, slot_dst);
 
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
     reg_map[reg_src].stat = REG_STATUS_SLOT;
@@ -892,7 +892,7 @@ bool sh4_disas_ldsl_armp_pr(struct il_code_block *block, unsigned pc,
     unsigned addr_slot = reg_slot(dreamcast_get_cpu(), block, addr_reg);
     unsigned pr_slot = reg_slot(dreamcast_get_cpu(), block, SH4_REG_PR);
 
-    jit_read_32_slot(block, &sh4_mem_map, addr_slot, pr_slot);
+    jit_read_32_slot(block, &dreamcast_get_cpu()->mem.map, addr_slot, pr_slot);
     jit_add_const32(block, addr_slot, 4);
 
     reg_map[SH4_REG_PR].stat = REG_STATUS_SLOT;

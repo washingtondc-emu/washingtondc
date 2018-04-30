@@ -96,6 +96,8 @@ struct Sh4 {
 
     struct sh4_dmac dmac;
 
+    struct sh4_mem mem;
+
     /*
      * pointer to place where memory-mapped registers are stored.
      * RegReadHandlers and RegWriteHandlers do not need to use this as long as

@@ -29,7 +29,7 @@
 
 #include "jit_mem.h"
 
-void jit_sh4_mem_read_constaddr_32(struct il_code_block *block,
+void jit_sh4_mem_read_constaddr_32(struct Sh4 *sh4, struct il_code_block *block,
                                    addr32_t addr, unsigned slot_no) {
     addr32_t addr_first = addr & 0x1fffffff;
     addr32_t addr_last = (addr + 3) & 0x1fffffff;
@@ -37,11 +37,11 @@ void jit_sh4_mem_read_constaddr_32(struct il_code_block *block,
         void *ptr = dc_mem.mem + (addr & ADDR_AREA3_MASK);
         jit_load_slot(block, slot_no, ptr);
     } else {
-        jit_read_32_constaddr(block, &sh4_mem_map, addr, slot_no);
+        jit_read_32_constaddr(block, &sh4->mem.map, addr, slot_no);
     }
 }
 
-void jit_sh4_mem_read_constaddr_16(struct il_code_block *block,
+void jit_sh4_mem_read_constaddr_16(struct Sh4 *sh4, struct il_code_block *block,
                                    addr32_t addr, unsigned slot_no) {
     addr32_t addr_first = addr & 0x1fffffff;
     addr32_t addr_last = (addr + 1) & 0x1fffffff;
@@ -49,6 +49,6 @@ void jit_sh4_mem_read_constaddr_16(struct il_code_block *block,
         void *ptr = dc_mem.mem + (addr & ADDR_AREA3_MASK);
         jit_load_slot16(block, slot_no, ptr);
     } else {
-        jit_read_16_constaddr(block, &sh4_mem_map, addr, slot_no);
+        jit_read_16_constaddr(block, &sh4->mem.map, addr, slot_no);
     }
 }

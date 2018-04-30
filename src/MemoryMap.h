@@ -106,8 +106,17 @@ struct memory_map {
     unsigned n_regions;
 };
 
-void memory_map_init(struct Memory *mem_new);
-void memory_map_set_mem(struct Memory *mem_new);
+void memory_map_init(struct memory_map *map);
+void memory_map_cleanup(struct memory_map *map);
+
+void
+memory_map_add(struct memory_map *map,
+               uint32_t addr_first,
+               uint32_t addr_last,
+               uint32_t range_mask,
+               uint32_t mask,
+               enum memory_map_region_id id,
+               struct memory_interface const *intf);
 
 uint8_t
 memory_map_read_8(struct memory_map *map, uint32_t addr);
@@ -166,7 +175,5 @@ int
 memory_map_try_read_float(struct memory_map *map, uint32_t addr, float *val);
 int
 memory_map_try_read_double(struct memory_map *map, uint32_t addr, double *val);
-
-extern struct memory_map sh4_mem_map;
 
 #endif

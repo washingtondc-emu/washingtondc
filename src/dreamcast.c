@@ -167,7 +167,6 @@ void dreamcast_init(bool cmd_session) {
     memory_init(&dc_mem);
     flash_mem_load(config_get_dc_flash_path());
     bios_file_init(config_get_dc_bios_path());
-    memory_map_init(&dc_mem);
 
     int boot_mode = config_get_boot_mode();
     if (boot_mode == (int)DC_BOOT_IP_BIN || boot_mode == (int)DC_BOOT_DIRECT) {
@@ -217,8 +216,8 @@ void dreamcast_init(bool cmd_session) {
         free(dat_syscall);
     }
 
-    jit_init();
     sh4_init(&cpu);
+    jit_init();
     sys_block_init();
     g1_init();
     g2_init();
@@ -278,8 +277,8 @@ void dreamcast_cleanup() {
     debug_cleanup();
 #endif
 
-    sh4_cleanup(&cpu);
     jit_cleanup();
+    sh4_cleanup(&cpu);
     bios_file_cleanup();
     memory_cleanup(&dc_mem);
 }

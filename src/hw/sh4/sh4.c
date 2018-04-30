@@ -27,6 +27,7 @@
 #include "sh4_excp.h"
 #include "sh4_reg.h"
 #include "sh4_inst.h"
+#include "sh4_mem.h"
 #include "error.h"
 #include "dreamcast.h"
 
@@ -41,6 +42,8 @@ void sh4_init(Sh4 *sh4) {
     sh4->reg_area = (uint8_t*)malloc(sizeof(uint8_t) * (SH4_P4_REGEND - SH4_P4_REGSTART));
 
     memset(sh4->reg, 0, sizeof(sh4->reg));
+
+    sh4_mem_init(sh4);
 
     sh4_ocache_init(&sh4->ocache);
 
@@ -69,6 +72,8 @@ void sh4_cleanup(Sh4 *sh4) {
     sh4_tmu_cleanup(sh4);
 
     sh4_ocache_cleanup(&sh4->ocache);
+
+    sh4_mem_cleanup(sh4);
 
     free(sh4->reg_area);
 }

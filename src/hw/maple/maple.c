@@ -158,9 +158,10 @@ void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code) {
         ((frame->maple_addr << MAPLE_ADDR_SHIFT) & MAPLE_ADDR_MASK) |
         ((len << MAPLE_PACK_LEN_SHIFT) & MAPLE_PACK_LEN_MASK);
 
-    sh4_dmac_transfer_to_mem(frame->recv_addr, sizeof(pkt_hdr), 1, &pkt_hdr);
+    sh4_dmac_transfer_to_mem(dreamcast_get_cpu(), frame->recv_addr,
+                             sizeof(pkt_hdr), 1, &pkt_hdr);
     if (len) {
-        sh4_dmac_transfer_to_mem(frame->recv_addr + 4, 1,
+        sh4_dmac_transfer_to_mem(dreamcast_get_cpu(), frame->recv_addr + 4, 1,
                                  frame->output_len, frame->output_data);
     }
 }
@@ -200,13 +201,15 @@ static void maple_decode_frame(struct maple_frame *frame_out,
 uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr) {
     uint32_t frame_hdr[3];
 
-    sh4_dmac_transfer_from_mem(addr, sizeof(frame_hdr[0]), 3, frame_hdr);
+    sh4_dmac_transfer_from_mem(dreamcast_get_cpu(), addr,
+                               sizeof(frame_hdr[0]), 3, frame_hdr);
     maple_decode_frame(frame_out, frame_hdr);
 
     addr += 12;
 
     if (frame_out->input_len) {
-        sh4_dmac_transfer_from_mem(addr, 4, frame_out->input_len / 4,
+        sh4_dmac_transfer_from_mem(dreamcast_get_cpu(), addr, 4,
+                                   frame_out->input_len / 4,
                                    frame_out->input_data);
     }
 

@@ -296,7 +296,8 @@ static void gdrom_complete_dma(void) {
             chunk_sz = gdrom_dma_prot_bot() - addr + 1;
         }
 
-        sh4_dmac_transfer_to_mem(addr, chunk_sz, 1, bufq_node->dat);
+        sh4_dmac_transfer_to_mem(dreamcast_get_cpu(), addr, chunk_sz,
+                                 1, bufq_node->dat);
 
     chunk_finished:
         addr += chunk_sz;
