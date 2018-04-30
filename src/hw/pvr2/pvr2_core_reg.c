@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -724,3 +724,17 @@ unsigned get_glob_tile_clip_y(void) {
 enum palette_tp get_palette_tp(void) {
     return palette_tp;
 }
+
+struct memory_interface pvr2_core_reg_intf = {
+    .read32 = pvr2_core_reg_read_32,
+    .read16 = pvr2_core_reg_read_16,
+    .read8 = pvr2_core_reg_read_8,
+    .readfloat = pvr2_core_reg_read_float,
+    .readdouble = pvr2_core_reg_read_double,
+
+    .write32 = pvr2_core_reg_write_32,
+    .write16 = pvr2_core_reg_write_16,
+    .write8 = pvr2_core_reg_write_8,
+    .writefloat = pvr2_core_reg_write_float,
+    .writedouble = pvr2_core_reg_write_double
+};

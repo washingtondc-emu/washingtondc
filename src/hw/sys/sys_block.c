@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -296,3 +296,17 @@ void sys_block_init(void) {
 void sys_block_cleanup(void) {
     cleanup_mmio_region_sys_block(&mmio_region_sys_block);
 }
+
+struct memory_interface sys_block_intf = {
+    .read32 = sys_block_read_32,
+    .read16 = sys_block_read_16,
+    .read8 = sys_block_read_8,
+    .readfloat = sys_block_read_float,
+    .readdouble = sys_block_read_double,
+
+    .write32 = sys_block_write_32,
+    .write16 = sys_block_write_16,
+    .write8 = sys_block_write_8,
+    .writefloat = sys_block_write_float,
+    .writedouble = sys_block_write_double
+};

@@ -310,3 +310,17 @@ void aica_wave_mem_write_32(addr32_t addr, uint32_t val) {
 
     *outp = val;
 }
+
+struct memory_interface aica_wave_mem_intf = {
+    .read32 = aica_wave_mem_read_32,
+    .read16 = aica_wave_mem_read_16,
+    .read8 = aica_wave_mem_read_8,
+    .readfloat = aica_wave_mem_read_float,
+    .readdouble = aica_wave_mem_read_double,
+
+    .write32 = aica_wave_mem_write_32,
+    .write16 = aica_wave_mem_write_16,
+    .write8 = aica_wave_mem_write_8,
+    .writefloat = aica_wave_mem_write_float,
+    .writedouble = aica_wave_mem_write_double
+};

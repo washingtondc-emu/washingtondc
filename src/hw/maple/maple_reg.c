@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -221,3 +221,17 @@ void maple_reg_init(void) {
 void maple_reg_cleanup(void) {
     cleanup_mmio_region_maple_reg(&mmio_region_maple_reg);
 }
+
+struct memory_interface maple_intf = {
+    .read32 = maple_reg_read_32,
+    .read16 = maple_reg_read_16,
+    .read8 = maple_reg_read_8,
+    .readfloat = maple_reg_read_float,
+    .readdouble = maple_reg_read_double,
+
+    .write32 = maple_reg_write_32,
+    .write16 = maple_reg_write_16,
+    .write8 = maple_reg_write_8,
+    .writefloat = maple_reg_write_float,
+    .writedouble = maple_reg_write_double
+};

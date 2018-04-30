@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -70,3 +70,17 @@ void modem_write_32(addr32_t addr, uint32_t val) {
     error_set_feature("sending data to the modem unit");
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
+
+struct memory_interface modem_intf = {
+    .read32 = modem_read_32,
+    .read16 = modem_read_16,
+    .read8 = modem_read_8,
+    .readfloat = modem_read_float,
+    .readdouble = modem_read_double,
+
+    .write32 = modem_write_32,
+    .write16 = modem_write_16,
+    .write8 = modem_write_8,
+    .writefloat = modem_write_float,
+    .writedouble = modem_write_double
+};

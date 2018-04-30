@@ -40,6 +40,20 @@ typedef struct BiosFile BiosFile;
 
 static struct BiosFile bios_file;
 
+struct memory_interface bios_file_intf = {
+    .readdouble = bios_file_read_double,
+    .readfloat = bios_file_read_float,
+    .read32 = bios_file_read_32,
+    .read16 = bios_file_read_16,
+    .read8 = bios_file_read_8,
+
+    .writedouble = bios_file_write_double,
+    .writefloat = bios_file_write_float,
+    .write32 = bios_file_write_32,
+    .write16 = bios_file_write_16,
+    .write8 = bios_file_write_8
+};
+
 void bios_file_init(char const *path) {
     FILE *fp = fopen(path, "rb");
 

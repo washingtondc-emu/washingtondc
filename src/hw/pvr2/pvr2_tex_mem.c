@@ -312,3 +312,31 @@ void pvr2_tex_mem_area64_write_double(addr32_t addr, double val) {
 
     ((double*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / sizeof(val)] = val;
 }
+
+struct memory_interface pvr2_tex_mem_area32_intf = {
+    .readdouble = pvr2_tex_mem_area32_read_double,
+    .readfloat = pvr2_tex_mem_area32_read_float,
+    .read32 = pvr2_tex_mem_area32_read_32,
+    .read16 = pvr2_tex_mem_area32_read_16,
+    .read8 = pvr2_tex_mem_area32_read_8,
+
+    .writedouble = pvr2_tex_mem_area32_write_double,
+    .writefloat = pvr2_tex_mem_area32_write_float,
+    .write32 = pvr2_tex_mem_area32_write_32,
+    .write16 = pvr2_tex_mem_area32_write_16,
+    .write8 = pvr2_tex_mem_area32_write_8
+};
+
+struct memory_interface pvr2_tex_mem_area64_intf = {
+    .readdouble = pvr2_tex_mem_area64_read_double,
+    .readfloat = pvr2_tex_mem_area64_read_float,
+    .read32 = pvr2_tex_mem_area64_read_32,
+    .read16 = pvr2_tex_mem_area64_read_16,
+    .read8 = pvr2_tex_mem_area64_read_8,
+
+    .writedouble = pvr2_tex_mem_area64_write_double,
+    .writefloat = pvr2_tex_mem_area64_write_float,
+    .write32 = pvr2_tex_mem_area64_write_32,
+    .write16 = pvr2_tex_mem_area64_write_16,
+    .write8 = pvr2_tex_mem_area64_write_8
+};

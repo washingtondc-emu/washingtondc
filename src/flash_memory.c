@@ -378,3 +378,17 @@ static void flash_mem_do_write_cmd(addr32_t addr, uint8_t val) {
 
     state = FLASH_STATE_AA;
 }
+
+struct memory_interface flash_mem_intf = {
+    .readdouble = flash_mem_read_double,
+    .readfloat = flash_mem_read_float,
+    .read32 = flash_mem_read_32,
+    .read16 = flash_mem_read_16,
+    .read8 = flash_mem_read_8,
+
+    .writedouble = flash_mem_write_double,
+    .writefloat = flash_mem_write_float,
+    .write32 = flash_mem_write_32,
+    .write16 = flash_mem_write_16,
+    .write8 = flash_mem_write_8
+};

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 
 #include "mmio.h"
 #include "mem_areas.h"
+#include "MemoryMap.h"
 
 #define N_SYS_REGS (ADDR_SYS_LAST - ADDR_SYS_FIRST + 1)
 
@@ -50,5 +51,7 @@ uint16_t sys_block_read_16(addr32_t addr);
 void sys_block_write_16(addr32_t addr, uint16_t val);
 uint32_t sys_block_read_32(addr32_t addr);
 void sys_block_write_32(addr32_t addr, uint32_t val);
+
+extern struct memory_interface sys_block_intf;
 
 #endif

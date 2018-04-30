@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #define MODEM_H_
 
 #include "types.h"
+#include "MemoryMap.h"
 
 float modem_read_float(addr32_t addr);
 void modem_write_float(addr32_t addr, float val);
@@ -35,5 +36,7 @@ uint16_t modem_read_16(addr32_t addr);
 void modem_write_16(addr32_t addr, uint16_t val);
 uint32_t modem_read_32(addr32_t addr);
 void modem_write_32(addr32_t addr, uint32_t val);
+
+extern struct memory_interface modem_intf;
 
 #endif

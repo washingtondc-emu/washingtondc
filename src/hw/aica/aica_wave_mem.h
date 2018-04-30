@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include "types.h"
+#include "MemoryMap.h"
 
 float aica_wave_mem_read_float(addr32_t addr);
 void aica_wave_mem_write_float(addr32_t addr, float val);
@@ -40,5 +41,7 @@ uint32_t aica_wave_mem_read_32(addr32_t addr);
 void aica_wave_mem_write_32(addr32_t addr, uint32_t val);
 
 void aica_log_verbose(bool verbose);
+
+extern struct memory_interface aica_wave_mem_intf;
 
 #endif

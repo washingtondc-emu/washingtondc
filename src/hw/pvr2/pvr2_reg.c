@@ -137,3 +137,17 @@ void pvr2_reg_write_8(addr32_t addr, uint8_t val) {
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
+
+struct memory_interface pvr2_reg_intf = {
+    .read32 = pvr2_reg_read_32,
+    .read16 = pvr2_reg_read_16,
+    .read8 = pvr2_reg_read_8,
+    .readfloat = pvr2_reg_read_float,
+    .readdouble = pvr2_reg_read_double,
+
+    .write32 = pvr2_reg_write_32,
+    .write16 = pvr2_reg_write_16,
+    .write8 = pvr2_reg_write_8,
+    .writefloat = pvr2_reg_write_float,
+    .writedouble = pvr2_reg_write_double
+};

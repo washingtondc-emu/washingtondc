@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include "types.h"
+#include "MemoryMap.h"
 
 void aica_rtc_init(void);
 
@@ -40,5 +41,7 @@ uint16_t aica_rtc_read_16(addr32_t addr);
 void aica_rtc_write_16(addr32_t addr, uint16_t val);
 uint8_t aica_rtc_read_8(addr32_t addr);
 void aica_rtc_write_8(addr32_t addr, uint8_t val);
+
+extern struct memory_interface aica_rtc_intf;
 
 #endif

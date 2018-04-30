@@ -28,6 +28,7 @@
 
 #include "types.h"
 #include "mem_areas.h"
+#include "MemoryMap.h"
 
 /*
  * I don't yet understand the 32-bit/64-bit access area dichotomy, so I'm
@@ -59,5 +60,8 @@ float pvr2_tex_mem_area64_read_float(addr32_t addr);
 void pvr2_tex_mem_area64_write_float(addr32_t addr, float val);
 double pvr2_tex_mem_area64_read_double(addr32_t addr);
 void pvr2_tex_mem_area64_write_double(addr32_t addr, double val);
+
+extern struct memory_interface pvr2_tex_mem_area32_intf,
+    pvr2_tex_mem_area64_intf;
 
 #endif

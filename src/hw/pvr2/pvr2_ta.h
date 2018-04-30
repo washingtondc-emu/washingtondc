@@ -27,6 +27,7 @@
 #include <stdint.h>
 
 #include "types.h"
+#include "MemoryMap.h"
 
 // texture control word
 #define TEX_CTRL_MIP_MAPPED_SHIFT 31
@@ -104,6 +105,8 @@ uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr);
 void pvr2_ta_fifo_poly_write_16(addr32_t addr, uint16_t val);
 uint8_t pvr2_ta_fifo_poly_read_8(addr32_t addr);
 void pvr2_ta_fifo_poly_write_8(addr32_t addr, uint8_t val);
+
+extern struct memory_interface pvr2_ta_fifo_intf;
 
 void pvr2_ta_startrender(void);
 

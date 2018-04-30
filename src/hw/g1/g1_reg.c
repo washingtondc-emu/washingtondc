@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -192,3 +192,17 @@ void g1_reg_cleanup(void) {
     cleanup_mmio_region_g1_reg_32(&mmio_region_g1_reg_32);
     cleanup_mmio_region_g1_reg_16(&mmio_region_g1_reg_16);
 }
+
+struct memory_interface g1_intf = {
+    .read32 = g1_reg_read_32,
+    .read16 = g1_reg_read_16,
+    .read8 = g1_reg_read_8,
+    .readfloat = g1_reg_read_float,
+    .readdouble = g1_reg_read_double,
+
+    .write32 = g1_reg_write_32,
+    .write16 = g1_reg_write_16,
+    .write8 = g1_reg_write_8,
+    .writefloat = g1_reg_write_float,
+    .writedouble = g1_reg_write_double
+};

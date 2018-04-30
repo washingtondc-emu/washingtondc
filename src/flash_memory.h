@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 
 #include "types.h"
 #include "mem_areas.h"
+#include "MemoryMap.h"
 
 #define FLASH_MEM_SZ (ADDR_FLASH_LAST - ADDR_FLASH_FIRST + 1)
 
@@ -40,5 +41,7 @@ uint16_t flash_mem_read_16(addr32_t addr);
 void flash_mem_write_16(addr32_t addr, uint16_t val);
 uint8_t flash_mem_read_8(addr32_t addr);
 void flash_mem_write_8(addr32_t addr, uint8_t val);
+
+extern struct memory_interface flash_mem_intf;
 
 #endif

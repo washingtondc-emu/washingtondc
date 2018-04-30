@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "MemoryMap.h"
 #include "hw/sh4/types.h"
 
 void pvr2_reg_init(void);
@@ -41,5 +42,7 @@ uint16_t pvr2_reg_read_16(addr32_t addr);
 void pvr2_reg_write_16(addr32_t addr, uint16_t val);
 uint8_t pvr2_reg_read_8(addr32_t addr);
 void pvr2_reg_write_8(addr32_t addr, uint8_t val);
+
+extern struct memory_interface pvr2_reg_intf;
 
 #endif

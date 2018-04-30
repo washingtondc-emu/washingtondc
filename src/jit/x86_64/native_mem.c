@@ -111,7 +111,7 @@ static void emit_native_mem_read_16(void) {
         default:
             // tail-call
             x86asm_andl_imm32_reg32(region->mask, EDI);
-            x86asm_mov_imm64_reg64((uintptr_t)region->read16, RCX);
+            x86asm_mov_imm64_reg64((uintptr_t)region->intf->read16, RCX);
             x86asm_jmpq_reg64(RCX);
         }
 
@@ -156,7 +156,7 @@ static void emit_native_mem_read_32(void) {
         default:
             // tail-call
             x86asm_andl_imm32_reg32(region->mask, EDI);
-            x86asm_mov_imm64_reg64((uintptr_t)region->read32, RCX);
+            x86asm_mov_imm64_reg64((uintptr_t)region->intf->read32, RCX);
             x86asm_jmpq_reg64(RCX);
         }
 
@@ -201,7 +201,7 @@ static void emit_native_mem_write_32(void) {
         default:
             // tail-call (the value to write is still in ESI)
             x86asm_andl_imm32_reg32(region->mask, EDI);
-            x86asm_mov_imm64_reg64((uintptr_t)region->write32, RCX);
+            x86asm_mov_imm64_reg64((uintptr_t)region->intf->write32, RCX);
             x86asm_jmpq_reg64(RCX);
         }
 

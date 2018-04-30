@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -43,5 +43,7 @@ addr32_t maple_get_dma_prot_top(void);
 
 void maple_reg_init(void);
 void maple_reg_cleanup(void);
+
+extern struct memory_interface maple_intf;
 
 #endif

@@ -68,21 +68,12 @@ enum memory_map_region_id {
     MEMORY_MAP_REGION_RAM
 };
 
-struct memory_map_region {
-    uint32_t first_addr, last_addr;
-
-    uint32_t range_mask;
-
-    uint32_t mask;
-
-    enum memory_map_region_id id;
-
+struct memory_interface {
     /*
      * TODO: there should also be separate try_read/try_write handlers so we
      * don t crash when the debugger tries to access an invalid address that
      * resolves to a valid memory_map_region.
      */
-
     memory_map_readdouble_func readdouble;
     memory_map_readfloat_func readfloat;
     memory_map_read32_func read32;
@@ -94,6 +85,18 @@ struct memory_map_region {
     memory_map_write32_func write32;
     memory_map_write16_func write16;
     memory_map_write8_func write8;
+};
+
+struct memory_map_region {
+    uint32_t first_addr, last_addr;
+
+    uint32_t range_mask;
+
+    uint32_t mask;
+
+    enum memory_map_region_id id;
+
+    struct memory_interface const *intf;
 };
 
 #define MAX_MEM_MAP_REGIONS 32

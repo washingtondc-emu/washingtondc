@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -207,3 +207,17 @@ static void sched_aica_rtc_event(void) {
 static void cancel_aica_rtc_event(void) {
     cancel_event(&aica_rtc_event);
 }
+
+struct memory_interface aica_rtc_intf = {
+    .read32 = aica_rtc_read_32,
+    .read16 = aica_rtc_read_16,
+    .read8 = aica_rtc_read_8,
+    .readfloat = aica_rtc_read_float,
+    .readdouble = aica_rtc_read_double,
+
+    .write32 = aica_rtc_write_32,
+    .write16 = aica_rtc_write_16,
+    .write8 = aica_rtc_write_8,
+    .writefloat = aica_rtc_write_float,
+    .writedouble = aica_rtc_write_double
+};

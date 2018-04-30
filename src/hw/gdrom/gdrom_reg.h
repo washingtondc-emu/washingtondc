@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 
 #include "types.h"
 #include "hw/g1/g1_reg.h"
+#include "MemoryMap.h"
 
 void gdrom_reg_init(void);
 void gdrom_reg_cleanup(void);
@@ -82,5 +83,7 @@ gdrom_gdst_reg_write_handler(struct mmio_region_g1_reg_32 *region,
                              unsigned idx, uint32_t val);
 uint32_t
 gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region, unsigned idx);
+
+extern struct memory_interface gdrom_reg_intf;
 
 #endif

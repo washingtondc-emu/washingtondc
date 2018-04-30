@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -281,3 +281,17 @@ void aica_reg_write_8(addr32_t addr, uint8_t val) {
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
+
+struct memory_interface aica_reg_intf = {
+    .read32 = aica_reg_read_32,
+    .read16 = aica_reg_read_16,
+    .read8 = aica_reg_read_8,
+    .readfloat = aica_reg_read_float,
+    .readdouble = aica_reg_read_double,
+
+    .write32 = aica_reg_write_32,
+    .write16 = aica_reg_write_16,
+    .write8 = aica_reg_write_8,
+    .writefloat = aica_reg_write_float,
+    .writedouble = aica_reg_write_double
+};

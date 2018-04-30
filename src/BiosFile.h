@@ -28,6 +28,7 @@
 
 #include "types.h"
 #include "error.h"
+#include "MemoryMap.h"
 
 #define BIOS_SZ_EXPECT (0x1fffff + 1)
 
@@ -46,5 +47,7 @@ void bios_file_write_16(addr32_t addr, uint16_t val);
 void bios_file_write_32(addr32_t addr, uint32_t val);
 void bios_file_write_float(addr32_t addr, float val);
 void bios_file_write_double(addr32_t addr, double val);
+
+extern struct memory_interface bios_file_intf;
 
 #endif

@@ -85,6 +85,48 @@ static void write_sh4_p4_8(uint32_t addr, uint8_t val);
 
 #define MEM_MAP_N_REGIONS 19
 
+static struct memory_interface sh4_p4_intf = {
+    .readdouble = read_sh4_p4_double,
+    .readfloat = read_sh4_p4_float,
+    .read32 = read_sh4_p4_32,
+    .read16 = read_sh4_p4_16,
+    .read8 = read_sh4_p4_8,
+
+    .writedouble = write_sh4_p4_double,
+    .writefloat = write_sh4_p4_float,
+    .write32 = write_sh4_p4_32,
+    .write16 = write_sh4_p4_16,
+    .write8 = write_sh4_p4_8
+};
+
+static struct memory_interface mem_intf = {
+    .readdouble = read_area3_double,
+    .readfloat = read_area3_float,
+    .read32 = read_area3_32,
+    .read16 = read_area3_16,
+    .read8 = read_area3_8,
+
+    .writedouble = write_area3_double,
+    .writefloat = write_area3_float,
+    .write32 = write_area3_32,
+    .write16 = write_area3_16,
+    .write8 = write_area3_8
+};
+
+static struct memory_interface sh4_ora_intf = {
+    .readdouble = read_ocache_ram_double,
+    .readfloat = read_ocache_ram_float,
+    .read32 = read_ocache_ram_32,
+    .read16 = read_ocache_ram_16,
+    .read8 = read_ocache_ram_8,
+
+    .writedouble = write_ocache_ram_double,
+    .writefloat = write_ocache_ram_float,
+    .write32 = write_ocache_ram_32,
+    .write16 = write_ocache_ram_16,
+    .write8 = write_ocache_ram_8
+};
+
 struct memory_map sh4_mem_map = {
     .regions = {
         /*
@@ -104,17 +146,7 @@ struct memory_map sh4_mem_map = {
             .mask = 0xffffffff,
             .range_mask = 0xffffffff,
 
-            .read32 = read_sh4_p4_32,
-            .read16 = read_sh4_p4_16,
-            .read8  = read_sh4_p4_8,
-            .readdouble = read_sh4_p4_double,
-            .readfloat = read_sh4_p4_float,
-
-            .write32 = write_sh4_p4_32,
-            .write16 = write_sh4_p4_16,
-            .write8  = write_sh4_p4_8,
-            .writedouble = write_sh4_p4_double,
-            .writefloat = write_sh4_p4_float
+            .intf = &sh4_p4_intf
         },
         {
             .first_addr = ADDR_AREA3_FIRST,
@@ -123,17 +155,7 @@ struct memory_map sh4_mem_map = {
             .range_mask = 0x1fffffff,
             .id = MEMORY_MAP_REGION_RAM,
 
-            .read32 = read_area3_32,
-            .read16 = read_area3_16,
-            .read8 = read_area3_8,
-            .readfloat = read_area3_float,
-            .readdouble = read_area3_double,
-
-            .write32 = write_area3_32,
-            .write16 = write_area3_16,
-            .write8 = write_area3_8,
-            .writefloat = write_area3_float,
-            .writedouble = write_area3_double
+            .intf = &mem_intf
         },
         {
             .first_addr = ADDR_TEX32_FIRST,
@@ -141,17 +163,7 @@ struct memory_map sh4_mem_map = {
             .mask = 0x1fffffff,
             .range_mask = 0x1fffffff,
 
-            .read32 = pvr2_tex_mem_area32_read_32,
-            .read16 = pvr2_tex_mem_area32_read_16,
-            .read8 = pvr2_tex_mem_area32_read_8,
-            .readfloat = pvr2_tex_mem_area32_read_float,
-            .readdouble = pvr2_tex_mem_area32_read_double,
-
-            .write32 = pvr2_tex_mem_area32_write_32,
-            .write16 = pvr2_tex_mem_area32_write_16,
-            .write8 = pvr2_tex_mem_area32_write_8,
-            .writefloat = pvr2_tex_mem_area32_write_float,
-            .writedouble = pvr2_tex_mem_area32_write_double,
+            .intf = &pvr2_tex_mem_area32_intf
         },
         {
             .first_addr = ADDR_TEX64_FIRST,
@@ -159,17 +171,7 @@ struct memory_map sh4_mem_map = {
             .mask = 0x1fffffff,
             .range_mask = 0x1fffffff,
 
-            .read32 = pvr2_tex_mem_area64_read_32,
-            .read16 = pvr2_tex_mem_area64_read_16,
-            .read8 = pvr2_tex_mem_area64_read_8,
-            .readfloat = pvr2_tex_mem_area64_read_float,
-            .readdouble = pvr2_tex_mem_area64_read_double,
-
-            .write32 = pvr2_tex_mem_area64_write_32,
-            .write16 = pvr2_tex_mem_area64_write_16,
-            .write8 = pvr2_tex_mem_area64_write_8,
-            .writefloat = pvr2_tex_mem_area64_write_float,
-            .writedouble = pvr2_tex_mem_area64_write_double
+            .intf = &pvr2_tex_mem_area64_intf
         },
         {
             .first_addr = ADDR_TA_FIFO_POLY_FIRST,
@@ -177,17 +179,7 @@ struct memory_map sh4_mem_map = {
             .mask = 0x1fffffff,
             .range_mask = 0x1fffffff,
 
-            .read32 = pvr2_ta_fifo_poly_read_32,
-            .read16 = pvr2_ta_fifo_poly_read_16,
-            .read8 = pvr2_ta_fifo_poly_read_8,
-            .readfloat = pvr2_ta_fifo_poly_read_float,
-            .readdouble = pvr2_ta_fifo_poly_read_double,
-
-            .write32 = pvr2_ta_fifo_poly_write_32,
-            .write16 = pvr2_ta_fifo_poly_write_16,
-            .write8 = pvr2_ta_fifo_poly_write_8,
-            .writefloat = pvr2_ta_fifo_poly_write_float,
-            .writedouble = pvr2_ta_fifo_poly_write_double
+            .intf = &pvr2_ta_fifo_intf
         },
         {
             .first_addr = SH4_OC_RAM_AREA_FIRST,
@@ -195,17 +187,7 @@ struct memory_map sh4_mem_map = {
             .mask = 0xffffffff,
             .range_mask = 0xffffffff,
 
-            .read32 = read_ocache_ram_32,
-            .read16 = read_ocache_ram_16,
-            .read8 = read_ocache_ram_8,
-            .readdouble = read_ocache_ram_double,
-            .readfloat = read_ocache_ram_float,
-
-            .write32 = write_ocache_ram_32,
-            .write16 = write_ocache_ram_16,
-            .write8 = write_ocache_ram_8,
-            .writedouble = write_ocache_ram_double,
-            .writefloat = write_ocache_ram_float
+            .intf = &sh4_ora_intf
         },
         /*
          * TODO: everything below here needs to stay at the end so that the
@@ -219,17 +201,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = bios_file_read_32,
-            .read16 = bios_file_read_16,
-            .read8 = bios_file_read_8,
-            .readfloat = bios_file_read_float,
-            .readdouble = bios_file_read_double,
-
-            .write32 = bios_file_write_32,
-            .write16 = bios_file_write_16,
-            .write8 = bios_file_write_8,
-            .writefloat = bios_file_write_float,
-            .writedouble = bios_file_write_double
+            .intf = &bios_file_intf
         },
         {
             .first_addr = ADDR_FLASH_FIRST,
@@ -237,17 +209,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = flash_mem_read_32,
-            .read16 = flash_mem_read_16,
-            .read8 = flash_mem_read_8,
-            .readfloat = flash_mem_read_float,
-            .readdouble = flash_mem_read_double,
-
-            .write32 = flash_mem_write_32,
-            .write16 = flash_mem_write_16,
-            .write8 = flash_mem_write_8,
-            .writefloat = flash_mem_write_float,
-            .writedouble = flash_mem_write_double
+            .intf = &flash_mem_intf
         },
         {
             .first_addr = ADDR_G1_FIRST,
@@ -255,17 +217,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = g1_reg_read_32,
-            .read16 = g1_reg_read_16,
-            .read8 = g1_reg_read_8,
-            .readfloat = g1_reg_read_float,
-            .readdouble = g1_reg_read_double,
-
-            .write32 = g1_reg_write_32,
-            .write16 = g1_reg_write_16,
-            .write8 = g1_reg_write_8,
-            .writefloat = g1_reg_write_float,
-            .writedouble = g1_reg_write_double
+            .intf = &g1_intf
         },
         {
             .first_addr = ADDR_SYS_FIRST,
@@ -273,17 +225,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = sys_block_read_32,
-            .read16 = sys_block_read_16,
-            .read8 = sys_block_read_8,
-            .readfloat = sys_block_read_float,
-            .readdouble = sys_block_read_double,
-
-            .write32 = sys_block_write_32,
-            .write16 = sys_block_write_16,
-            .write8 = sys_block_write_8,
-            .writefloat = sys_block_write_float,
-            .writedouble = sys_block_write_double
+            .intf = &sys_block_intf
         },
         {
             .first_addr = ADDR_MAPLE_FIRST,
@@ -291,17 +233,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = maple_reg_read_32,
-            .read16 = maple_reg_read_16,
-            .read8 = maple_reg_read_8,
-            .readfloat = maple_reg_read_float,
-            .readdouble = maple_reg_read_double,
-
-            .write32 = maple_reg_write_32,
-            .write16 = maple_reg_write_16,
-            .write8 = maple_reg_write_8,
-            .writefloat = maple_reg_write_float,
-            .writedouble = maple_reg_write_double
+            .intf = &maple_intf
         },
         {
             .first_addr = ADDR_G2_FIRST,
@@ -309,17 +241,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = g2_reg_read_32,
-            .read16 = g2_reg_read_16,
-            .read8 = g2_reg_read_8,
-            .readfloat = g2_reg_read_float,
-            .readdouble = g2_reg_read_double,
-
-            .write32 = g2_reg_write_32,
-            .write16 = g2_reg_write_16,
-            .write8 = g2_reg_write_8,
-            .writefloat = g2_reg_write_float,
-            .writedouble = g2_reg_write_double
+            .intf = &g2_intf
         },
         {
             .first_addr = ADDR_PVR2_FIRST,
@@ -327,17 +249,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = pvr2_reg_read_32,
-            .read16 = pvr2_reg_read_16,
-            .read8 = pvr2_reg_read_8,
-            .readfloat = pvr2_reg_read_float,
-            .readdouble = pvr2_reg_read_double,
-
-            .write32 = pvr2_reg_write_32,
-            .write16 = pvr2_reg_write_16,
-            .write8 = pvr2_reg_write_8,
-            .writefloat = pvr2_reg_write_float,
-            .writedouble = pvr2_reg_write_double
+            .intf = &pvr2_reg_intf
         },
         {
             .first_addr = ADDR_MODEM_FIRST,
@@ -345,17 +257,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = modem_read_32,
-            .read16 = modem_read_16,
-            .read8 = modem_read_8,
-            .readfloat = modem_read_float,
-            .readdouble = modem_read_double,
-
-            .write32 = modem_write_32,
-            .write16 = modem_write_16,
-            .write8 = modem_write_8,
-            .writefloat = modem_write_float,
-            .writedouble = modem_write_double
+            .intf = &modem_intf
         },
         {
             .first_addr = ADDR_PVR2_CORE_FIRST,
@@ -363,17 +265,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = pvr2_core_reg_read_32,
-            .read16 = pvr2_core_reg_read_16,
-            .read8 = pvr2_core_reg_read_8,
-            .readfloat = pvr2_core_reg_read_float,
-            .readdouble = pvr2_core_reg_read_double,
-
-            .write32 = pvr2_core_reg_write_32,
-            .write16 = pvr2_core_reg_write_16,
-            .write8 = pvr2_core_reg_write_8,
-            .writefloat = pvr2_core_reg_write_float,
-            .writedouble = pvr2_core_reg_write_double
+            .intf = &pvr2_core_reg_intf
         },
         {
             .first_addr = ADDR_AICA_FIRST,
@@ -381,17 +273,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = aica_reg_read_32,
-            .read16 = aica_reg_read_16,
-            .read8 = aica_reg_read_8,
-            .readfloat = aica_reg_read_float,
-            .readdouble = aica_reg_read_double,
-
-            .write32 = aica_reg_write_32,
-            .write16 = aica_reg_write_16,
-            .write8 = aica_reg_write_8,
-            .writefloat = aica_reg_write_float,
-            .writedouble = aica_reg_write_double
+            .intf = &aica_reg_intf
         },
         {
             .first_addr = ADDR_AICA_WAVE_FIRST,
@@ -399,17 +281,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = aica_wave_mem_read_32,
-            .read16 = aica_wave_mem_read_16,
-            .read8 = aica_wave_mem_read_8,
-            .readfloat = aica_wave_mem_read_float,
-            .readdouble = aica_wave_mem_read_double,
-
-            .write32 = aica_wave_mem_write_32,
-            .write16 = aica_wave_mem_write_16,
-            .write8 = aica_wave_mem_write_8,
-            .writefloat = aica_wave_mem_write_float,
-            .writedouble = aica_wave_mem_write_double
+            .intf = &aica_wave_mem_intf
         },
         {
             .first_addr = ADDR_AICA_RTC_FIRST,
@@ -417,17 +289,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = aica_rtc_read_32,
-            .read16 = aica_rtc_read_16,
-            .read8 = aica_rtc_read_8,
-            .readfloat = aica_rtc_read_float,
-            .readdouble = aica_rtc_read_double,
-
-            .write32 = aica_rtc_write_32,
-            .write16 = aica_rtc_write_16,
-            .write8 = aica_rtc_write_8,
-            .writefloat = aica_rtc_write_float,
-            .writedouble = aica_rtc_write_double
+            .intf = &aica_rtc_intf
         },
         {
             .first_addr = ADDR_GDROM_FIRST,
@@ -435,17 +297,7 @@ struct memory_map sh4_mem_map = {
             .mask = ADDR_AREA0_MASK,
             .range_mask = ADDR_AREA0_MASK,
 
-            .read32 = gdrom_reg_read_32,
-            .read16 = gdrom_reg_read_16,
-            .read8 = gdrom_reg_read_8,
-            .readfloat = gdrom_reg_read_float,
-            .readdouble = gdrom_reg_read_double,
-
-            .write32 = gdrom_reg_write_32,
-            .write16 = gdrom_reg_write_16,
-            .write8 = gdrom_reg_write_8,
-            .writefloat = gdrom_reg_write_float,
-            .writedouble = gdrom_reg_write_double
+            .intf = &gdrom_reg_intf
         }
     },
     .n_regions = MEM_MAP_N_REGIONS
@@ -471,7 +323,7 @@ void memory_map_set_mem(struct Memory *mem_new) {
             if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
                 (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
                 uint32_t mask = map->regions[region_no].mask;           \
-                return map->regions[region_no].read##type_postfix(addr & mask); \
+                return map->regions[region_no].intf->read##type_postfix(addr & mask); \
             }                                                           \
         }                                                               \
                                                                         \
@@ -499,7 +351,7 @@ MEMORY_MAP_READ_TMPL(double, double)
             if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
                 (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
                 uint32_t mask = map->regions[region_no].mask;           \
-                *val = map->regions[region_no].read##type_postfix(addr & mask); \
+                *val = map->regions[region_no].intf->read##type_postfix(addr & mask); \
                 return 0;                                               \
             }                                                           \
         }                                                               \
@@ -525,7 +377,7 @@ MEMORY_MAP_TRY_READ_TMPL(double, double)
             if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
                 (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
                 uint32_t mask = map->regions[region_no].mask;           \
-                map->regions[region_no].write##type_postfix(addr & mask, val); \
+                map->regions[region_no].intf->write##type_postfix(addr & mask, val); \
                 return;                                                 \
             }                                                           \
         }                                                               \
@@ -553,7 +405,7 @@ MEM_MAP_WRITE_TMPL(double, double)
             if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
                 (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
                 uint32_t mask = map->regions[region_no].mask;           \
-                map->regions[region_no].write##type_postfix(addr & mask, val); \
+                map->regions[region_no].intf->write##type_postfix(addr & mask, val); \
                 return 0;                                               \
             }                                                           \
         }                                                               \

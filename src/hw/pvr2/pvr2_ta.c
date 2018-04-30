@@ -1742,3 +1742,17 @@ static void render_frame_init(void) {
 unsigned get_cur_frame_stamp(void) {
     return next_frame_stamp;
 }
+
+struct memory_interface pvr2_ta_fifo_intf = {
+    .readdouble = pvr2_ta_fifo_poly_read_double,
+    .readfloat = pvr2_ta_fifo_poly_read_float,
+    .read32 = pvr2_ta_fifo_poly_read_32,
+    .read16 = pvr2_ta_fifo_poly_read_16,
+    .read8 = pvr2_ta_fifo_poly_read_8,
+
+    .writedouble = pvr2_ta_fifo_poly_write_double,
+    .writefloat = pvr2_ta_fifo_poly_write_float,
+    .write32 = pvr2_ta_fifo_poly_write_32,
+    .write16 = pvr2_ta_fifo_poly_write_16,
+    .write8 = pvr2_ta_fifo_poly_write_8
+};
