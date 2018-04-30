@@ -654,11 +654,12 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
 void emit_read_16_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
     addr32_t vaddr = inst->immed.read_16_constaddr.addr;
     unsigned slot_no = inst->immed.read_16_constaddr.slot_no;
+    struct memory_map const *map = inst->immed.read_16_constaddr.map;
 
     // call memory_map_read_16(vaddr)
     prefunc();
     x86asm_mov_imm32_reg32(vaddr, EDI);
-    native_mem_read_16();
+    native_mem_read_16(map);
     postfunc();
 
     grab_slot(slot_no);
@@ -684,13 +685,14 @@ void emit_sign_extend_16(Sh4 *sh4, struct jit_inst const *inst) {
 void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
     addr32_t vaddr = inst->immed.read_32_constaddr.addr;
     unsigned slot_no = inst->immed.read_32_constaddr.slot_no;
+    struct memory_map const *map = inst->immed.read_32_constaddr.map;
 
     // call memory_map_read_32(vaddr)
 
     prefunc();
 
     x86asm_mov_imm32_reg32(vaddr, EDI);
-    native_mem_read_32();
+    native_mem_read_32(map);
 
     postfunc();
 
@@ -705,6 +707,7 @@ void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
 void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned dst_slot = inst->immed.read_32_slot.dst_slot;
     unsigned addr_slot = inst->immed.read_32_slot.addr_slot;
+    struct memory_map const *map = inst->immed.read_32_slot.map;
 
     // call memory_map_read_32(*addr_slot)
     prefunc();
@@ -712,7 +715,7 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     move_slot_to_reg(addr_slot, EDI);
     evict_register(EDI);
 
-    native_mem_read_32();
+    native_mem_read_32(map);
 
     postfunc();
 
@@ -727,6 +730,7 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned src_slot = inst->immed.write_32_slot.src_slot;
     unsigned addr_slot = inst->immed.write_32_slot.addr_slot;
+    struct memory_map const *map = inst->immed.write_32_slot.map;
 
     prefunc();
 
@@ -736,7 +740,7 @@ void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     evict_register(EDI);
     evict_register(ESI);
 
-    native_mem_write_32();
+    native_mem_write_32(map);
 
     postfunc();
 

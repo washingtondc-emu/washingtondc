@@ -23,15 +23,19 @@
 #ifndef NATIVE_MEM_H_
 #define NATIVE_MEM_H_
 
+#include "MemoryMap.h"
+
 void native_mem_init(void);
 void native_mem_cleanup(void);
+
+void native_mem_register(struct memory_map const *map);
 
 /*
  * Normal calling convention rules about which registers are and are not saved
  * apply here.  Obviously dst_reg will not get preserved no matter what.
  */
-void native_mem_read_16(void);
-void native_mem_read_32(void);
-void native_mem_write_32(void);
+void native_mem_read_16(struct memory_map const *map);
+void native_mem_read_32(struct memory_map const *map);
+void native_mem_write_32(struct memory_map const *map);
 
 #endif

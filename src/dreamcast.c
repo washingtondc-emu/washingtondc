@@ -68,6 +68,7 @@
 
 #ifdef ENABLE_JIT_X86_64
 #include "jit/x86_64/native_dispatch.h"
+#include "jit/x86_64/native_mem.h"
 #endif
 
 #include "dreamcast.h"
@@ -225,6 +226,10 @@ void dreamcast_init(bool cmd_session) {
     pvr2_init();
     gdrom_init();
     maple_init();
+
+#ifdef ENABLE_JIT_X86_64
+    native_mem_register(&cpu.mem.map);
+#endif
 
     /* set the PC to the booststrap code within IP.BIN */
     if (boot_mode == (int)DC_BOOT_DIRECT)
