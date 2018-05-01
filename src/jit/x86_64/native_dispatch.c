@@ -157,9 +157,10 @@ static void native_dispatch_emit(void) {
      * this is the last time we'll need it so there's no need to store it
      * anywhere
      */
-    x86asm_mov_reg32_reg32(EDI, ESI);
-    x86asm_mov_reg64_reg64(RBX, RDI);
-    x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), RDI);
+    x86asm_mov_reg32_reg32(EDI, EDX);
+    x86asm_mov_reg64_reg64(RBX, RSI);
+    x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), RSI);
+    x86asm_mov_imm64_reg64((uintptr_t)dreamcast_get_cpu(), RDI);
     x86asm_mov_imm64_reg64((uintptr_t)(void*)jit_compile_native, RAX);
     x86asm_call_reg(RAX);
 

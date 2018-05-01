@@ -24,6 +24,7 @@
 #define CODE_BLOCK_H_
 
 #include "jit_il.h"
+#include "hw/sh4/sh4.h"
 
 #ifdef JIT_OPTIMIZE
 #include "jit_determ.h"
@@ -80,6 +81,8 @@ void il_code_block_push_inst(struct il_code_block *block,
  * fill out block based on the SH4 basic-block which begins at guest-address
  * "addr".
  */
-void il_code_block_compile(struct il_code_block *block, addr32_t addr);
+void
+il_code_block_compile(struct Sh4 *sh4,
+                      struct il_code_block *block, addr32_t addr);
 
 #endif

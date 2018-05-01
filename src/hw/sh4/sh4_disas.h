@@ -29,6 +29,7 @@
 
 struct InstOpcode;
 struct il_code_block;
+struct Sh4;
 
 /*
  * call this at the beginning of every new block to reset the disassembler's
@@ -36,321 +37,328 @@ struct il_code_block;
  */
 void sh4_disas_new_block(void);
 
-bool sh4_disas_inst(struct il_code_block *block, unsigned pc);
+bool sh4_disas_inst(struct Sh4 *sh4, struct il_code_block *block, unsigned pc);
 
 /*
  * these functions return true if the disassembler should keep going, or false
  * if the dissassembler should end the current block.
  */
-typedef bool(*sh4_disas_fn)(struct il_code_block*,unsigned,
+typedef bool(*sh4_disas_fn)(struct Sh4 *sh4, struct il_code_block*,unsigned,
                             struct InstOpcode const*,inst_t);
 
 /*
  * disassembly function that emits a function call to the instruction's
  * interpreter implementation.
  */
-bool sh4_disas_fallback(struct il_code_block *block, unsigned pc,
+bool sh4_disas_fallback(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
 // disassemble the rts instruction
-bool sh4_disas_rts(struct il_code_block *block, unsigned pc,
+bool sh4_disas_rts(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst);
 
 // disassemble the rte instruction
-bool sh4_disas_rte(struct il_code_block *block, unsigned pc,
+bool sh4_disas_rte(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst);
 
 // disassemble the "braf rn" instruction.
-bool sh4_disas_braf_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_braf_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "bsrf rn" instruction"
-bool sh4_disas_bsrf_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_bsrf_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "bf" instruction
-bool sh4_disas_bf(struct il_code_block *block, unsigned pc,
+bool sh4_disas_bf(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                   struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "bt" instruction
-bool sh4_disas_bt(struct il_code_block *block, unsigned pc,
+bool sh4_disas_bt(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                   struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "bf/s" instruction
-bool sh4_disas_bfs(struct il_code_block *block, unsigned pc,
+bool sh4_disas_bfs(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "bt/s" instruction
-bool sh4_disas_bts(struct il_code_block *block, unsigned pc,
+bool sh4_disas_bts(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "bra" instruction
-bool sh4_disas_bra(struct il_code_block *block, unsigned pc,
+bool sh4_disas_bra(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "bsr" instruction
-bool sh4_disas_bsr(struct il_code_block *block, unsigned pc,
+bool sh4_disas_bsr(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "jmp @rn" instruction
-bool sh4_disas_jmp_arn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_jmp_arn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "jsr @rn" instruction
-bool sh4_disas_jsr_arn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_jsr_arn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "mov.w @(disp, pc), rn" instruction
-bool sh4_disas_movw_a_disp_pc_rn(struct il_code_block *block, unsigned pc,
-                                 struct InstOpcode const *op, inst_t inst);
+bool
+sh4_disas_movw_a_disp_pc_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
+                            struct InstOpcode const *op, inst_t inst);
 
 // disassembles the "mov.l @(disp, pc), rn" instruction
-bool sh4_disas_movl_a_disp_pc_rn(struct il_code_block *block, unsigned pc,
+bool
+sh4_disas_movl_a_disp_pc_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                                  struct InstOpcode const *op, inst_t inst);
-bool sh4_disas_mova_a_disp_pc_r0(struct il_code_block *block, unsigned pc,
-                                 struct InstOpcode const *op, inst_t inst);
+bool
+sh4_disas_mova_a_disp_pc_r0(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
+                            struct InstOpcode const *op, inst_t inst);
 
-bool sh4_disas_nop(struct il_code_block *block, unsigned pc,
+bool sh4_disas_nop(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, inst_t inst);
-bool sh4_disas_ocbi_arn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_ocbi_arn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
-bool sh4_disas_ocbp_arn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_ocbp_arn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
-bool sh4_disas_ocbwb_arn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_ocbwb_arn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // ADD Rm, Rn
 // 0011nnnnmmmm1100
-bool sh4_disas_add_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_add_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // ADD #imm, Rn
 // 0111nnnniiiiiiii
-bool sh4_disas_add_imm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_add_imm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, inst_t inst);
 
 // XOR Rm, Rn
 // 0010nnnnmmmm1010
-bool sh4_disas_xor_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_xor_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // MOV Rm, Rn
 // 0110nnnnmmmm0011
-bool sh4_disas_mov_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_mov_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // AND Rm, Rn
 // 0010nnnnmmmm1001
-bool sh4_disas_and_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_and_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // OR Rm, Rn
 // 0010nnnnmmmm1011
-bool sh4_disas_or_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_or_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
 // SUB Rm, Rn
 // 0011nnnnmmmm1000
-bool sh4_disas_sub_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_sub_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // AND #imm, R0
 // 11001001iiiiiiii
-bool sh4_inst_binary_andb_imm_r0(struct il_code_block *block, unsigned pc,
-                                 struct InstOpcode const *op, inst_t inst);
+bool
+sh4_inst_binary_andb_imm_r0(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
+                            struct InstOpcode const *op, inst_t inst);
 
 // OR #imm, R0
 // 11001011iiiiiiii
-bool sh4_disas_or_imm8_r0(struct il_code_block *block, unsigned pc,
+bool sh4_disas_or_imm8_r0(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, inst_t inst);
 
 // XOR #imm, R0
 // 11001010iiiiiiii
-bool sh4_disas_xor_imm8_r0(struct il_code_block *block, unsigned pc,
+bool sh4_disas_xor_imm8_r0(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // TST Rm, Rn
 // 0010nnnnmmmm1000
-bool sh4_disas_tst_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_tst_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // TST #imm, R0
 // 11001000iiiiiiii
-bool sh4_disas_tst_imm8_r0(struct il_code_block *block, unsigned pc,
+bool sh4_disas_tst_imm8_r0(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // MOV.L @Rm, Rn
 // 0110nnnnmmmm0010
-bool sh4_disas_movl_arm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_movl_arm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // MOV.L @Rm+, Rn
 // 0110nnnnmmmm0110
-bool sh4_disas_movl_armp_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_movl_armp_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                             struct InstOpcode const *op, inst_t inst);
 
 // LDS.L @Rm+, PR
 // 0100mmmm00100110
-bool sh4_disas_ldsl_armp_pr(struct il_code_block *block, unsigned pc,
+bool sh4_disas_ldsl_armp_pr(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                             struct InstOpcode const *op, inst_t inst);
 // MOV.L @(disp, Rm), Rn
 // 0101nnnnmmmmdddd
-bool sh4_disas_movl_a_disp4_rm_rn(struct il_code_block *block, unsigned pc,
-                                  struct InstOpcode const *op, inst_t inst);
+bool
+sh4_disas_movl_a_disp4_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
+                             struct InstOpcode const *op, inst_t inst);
 
 // MOV #imm, Rn
 // 1110nnnniiiiiiii
-bool sh4_disas_mov_imm8_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_mov_imm8_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // SHLL16 Rn
 // 0100nnnn00101000
-bool sh4_disas_shll16_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shll16_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // SHLL2 Rn
 // 0100nnnn00001000
-bool sh4_disas_shll2_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shll2_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
 // SHLL8 Rn
 // 0100nnnn00011000
-bool sh4_disas_shll8_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shll8_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
 // SHAR Rn
 // 0100nnnn00100001
-bool sh4_disas_shar_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shar_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
 // SHLR Rn
 // 0100nnnn00000001
-bool sh4_disas_shlr_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shlr_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
 // SHAD Rm, Rn
 // 0100nnnnmmmm1100
-bool sh4_disas_shad_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shad_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, inst_t inst);
 
 // SHLR2 Rn
 // 0100nnnn00001001
-bool sh4_disas_shlr2_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shlr2_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
 // SHLR8 Rn
 // 0100nnnn00011001
-bool sh4_disas_shlr8_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shlr8_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
 // SHLR16 Rn
 // 0100nnnn00101001
-bool sh4_disas_shlr16_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shlr16_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // SHLL Rn
 // 0100nnnn00000000
-bool sh4_disas_shll_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shll_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
 // SHAL Rn
 // 0100nnnn00100000
-bool sh4_disas_shal_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_shal_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, inst_t inst);
 
 // SWAP.W Rm, Rn
 // 0110nnnnmmmm1001
-bool sh4_disas_swapw_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_swapw_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // CMP/HI Rm, Rn
 // 0011nnnnmmmm0110
-bool sh4_disas_cmphi_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_cmphi_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // MULU.W Rm, Rn
 // 0010nnnnmmmm1110
-bool sh4_disas_muluw_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_muluw_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // STS MACL, Rn
 // 0000nnnn00011010
-bool sh4_disas_sts_macl_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_sts_macl_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // STS MACL, Rn
 // 0000nnnn00011010
-bool sh4_disas_sts_macl_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_sts_macl_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // MOV.L Rm, @-Rn
 // 0010nnnnmmmm0110
-bool sh4_disas_movl_rm_amrn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_movl_rm_amrn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                             struct InstOpcode const *op, inst_t inst);
 
 // MOV.L Rm, @Rn
 // 0010nnnnmmmm0010
-bool sh4_disas_movl_rm_arn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_movl_rm_arn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // CMP/EQ Rm, Rn
 // 0011nnnnmmmm0000
-bool sh4_disas_cmpeq_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_cmpeq_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // CMP/HS Rm, Rn
 // 0011nnnnmmmm0010
-bool sh4_disas_cmphs_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_cmphs_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // CMP/GT Rm, Rn
 // 0011nnnnmmmm0111
-bool sh4_disas_cmpgt_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_cmpgt_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // CMP/GE Rm, Rn
 // 0011nnnnmmmm0011
-bool sh4_disas_cmpge_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_cmpge_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, inst_t inst);
 
 // CMP/PL Rn
 // 0100nnnn00010101
-bool sh4_disas_cmppl_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_cmppl_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
 // CMP/PZ Rn
 // 0100nnnn00010001
-bool sh4_disas_cmppz_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_cmppz_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, inst_t inst);
 
 // NOT Rm, Rn
 // 0110nnnnmmmm0111
-bool sh4_disas_not_rm_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_not_rm_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, inst_t inst);
 
 // DT Rn
 // 0100nnnn00010000
-bool sh4_disas_dt_rn(struct il_code_block *block, unsigned pc,
+bool sh4_disas_dt_rn(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, inst_t inst);
 
 // CLRT
 // 0000000000001000
-bool sh4_disas_clrt(struct il_code_block *block, unsigned pc,
+bool sh4_disas_clrt(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                     struct InstOpcode const *op, inst_t inst);
 
 // SETT
 // 0000000000011000
-bool sh4_disas_sett(struct il_code_block *block, unsigned pc,
+bool sh4_disas_sett(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                     struct InstOpcode const *op, inst_t inst);
 
 // MOVT Rn
 // 0000nnnn00101001
-bool sh4_disas_movt(struct il_code_block *block, unsigned pc,
+bool sh4_disas_movt(struct Sh4 *sh4, struct il_code_block *block, unsigned pc,
                     struct InstOpcode const *op, inst_t inst);
 
 // MOV.L @(disp, GBR), R0
 // 11000110dddddddd
-bool sh4_disas_movl_a_disp8_gbr_r0(struct il_code_block *block, unsigned pc,
-                                   struct InstOpcode const *op, inst_t inst);
+bool
+sh4_disas_movl_a_disp8_gbr_r0(struct Sh4 *sh4, struct il_code_block *block,
+                              unsigned pc, struct InstOpcode const *op,
+                              inst_t inst);
 
 #endif

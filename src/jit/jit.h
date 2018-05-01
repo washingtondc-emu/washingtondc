@@ -25,14 +25,16 @@
 
 #include <stdint.h>
 
+#include "hw/sh4/sh4.h"
+
 void jit_init(void);
 void jit_cleanup(void);
 
 static inline void
-jit_compile_native(struct code_block_x86_64 *blk, uint32_t pc) {
+jit_compile_native(Sh4 *sh4, struct code_block_x86_64 *blk, uint32_t pc) {
     struct il_code_block il_blk;
     il_code_block_init(&il_blk);
-    il_code_block_compile(&il_blk, pc);
+    il_code_block_compile(sh4, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
@@ -41,10 +43,10 @@ jit_compile_native(struct code_block_x86_64 *blk, uint32_t pc) {
 }
 
 static inline void
-jit_compile_intp(struct code_block_intp *blk, uint32_t pc) {
+jit_compile_intp(Sh4 *sh4, struct code_block_intp *blk, uint32_t pc) {
     struct il_code_block il_blk;
     il_code_block_init(&il_blk);
-    il_code_block_compile(&il_blk, pc);
+    il_code_block_compile(sh4, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif

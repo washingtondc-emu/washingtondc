@@ -67,13 +67,15 @@ void il_code_block_push_inst(struct il_code_block *block,
     block->inst_list[block->inst_count++] = *inst;
 }
 
-void il_code_block_compile(struct il_code_block *block, addr32_t addr) {
+void
+il_code_block_compile(struct Sh4 *sh4,
+                      struct il_code_block *block, addr32_t addr) {
     bool do_continue;
 
     sh4_disas_new_block();
 
     do {
-        do_continue = sh4_disas_inst(block, addr);
+        do_continue = sh4_disas_inst(sh4, block, addr);
         addr += 2;
     } while (do_continue);
 }

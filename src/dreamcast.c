@@ -528,7 +528,7 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
 
         struct code_block_intp *blk = &ent->blk.intp;
         if (!ent->valid) {
-            jit_compile_intp(blk, blk_addr);
+            jit_compile_intp(sh4, blk, blk_addr);
             ent->valid = true;
         }
 
