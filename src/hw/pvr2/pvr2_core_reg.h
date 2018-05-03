@@ -46,16 +46,16 @@
     (PVR2_PALETTE_RAM_LAST - PVR2_PALETTE_RAM_FIRST + 1)
 extern uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
 
-double pvr2_core_reg_read_double(addr32_t addr);
-void pvr2_core_reg_write_double(addr32_t addr, double val);
-float pvr2_core_reg_read_float(addr32_t addr);
-void pvr2_core_reg_write_float(addr32_t addr, float val);
-uint32_t pvr2_core_reg_read_32(addr32_t addr);
-void pvr2_core_reg_write_32(addr32_t addr, uint32_t val);
-uint16_t pvr2_core_reg_read_16(addr32_t addr);
-void pvr2_core_reg_write_16(addr32_t addr, uint16_t val);
-uint8_t pvr2_core_reg_read_8(addr32_t addr);
-void pvr2_core_reg_write_8(addr32_t addr, uint8_t val);
+double pvr2_core_reg_read_double(addr32_t addr, void *ctxt);
+void pvr2_core_reg_write_double(addr32_t addr, double val, void *ctxt);
+float pvr2_core_reg_read_float(addr32_t addr, void *ctxt);
+void pvr2_core_reg_write_float(addr32_t addr, float val, void *ctxt);
+uint32_t pvr2_core_reg_read_32(addr32_t addr, void *ctxt);
+void pvr2_core_reg_write_32(addr32_t addr, uint32_t val, void *ctxt);
+uint16_t pvr2_core_reg_read_16(addr32_t addr, void *ctxt);
+void pvr2_core_reg_write_16(addr32_t addr, uint16_t val, void *ctxt);
+uint8_t pvr2_core_reg_read_8(addr32_t addr, void *ctxt);
+void pvr2_core_reg_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
 uint32_t get_fb_r_sof1();
 uint32_t get_fb_r_sof2();

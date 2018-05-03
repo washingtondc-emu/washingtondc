@@ -29,7 +29,7 @@
 uint8_t pvr2_tex32_mem[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
 uint8_t pvr2_tex64_mem[ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1];
 
-uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr) {
+uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
     if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
         ((addr - 1 + sizeof(uint8_t)) > ADDR_TEX32_LAST) ||
         ((addr - 1 + sizeof(uint8_t)) < ADDR_TEX32_FIRST)) {
@@ -50,7 +50,7 @@ uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr) {
     return pvr2_tex32_mem[addr - ADDR_TEX32_FIRST];
 }
 
-void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val) {
+void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     if ((addr < ADDR_TEX32_FIRST) || (addr > ADDR_TEX32_LAST) ||
         (addr > ADDR_TEX32_LAST) || (addr < ADDR_TEX32_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory write");
@@ -64,7 +64,7 @@ void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val) {
     pvr2_tex32_mem[addr - ADDR_TEX32_FIRST] = val;
 }
 
-uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr) {
+uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt) {
     if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
         ((addr - 1 + sizeof(uint16_t)) > ADDR_TEX32_LAST) ||
         ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX32_FIRST)) {
@@ -85,7 +85,7 @@ uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr) {
     return ((uint16_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 2];
 }
 
-void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val) {
+void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
         ((addr - 1 + sizeof(uint16_t)) > ADDR_TEX32_LAST) ||
         ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX32_FIRST)) {
@@ -100,7 +100,7 @@ void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val) {
     ((uint16_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 2] = val;
 }
 
-uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr) {
+uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt) {
     if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
         ((addr - 1 + sizeof(uint32_t)) > ADDR_TEX32_LAST) ||
         ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX32_FIRST)) {
@@ -121,7 +121,7 @@ uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr) {
     return ((uint32_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 4];
 }
 
-void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val) {
+void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
         ((addr - 1 + sizeof(uint32_t)) > ADDR_TEX32_LAST) ||
         ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX32_FIRST)) {
@@ -136,26 +136,26 @@ void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val) {
     ((uint32_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 4] = val;
 }
 
-float pvr2_tex_mem_area32_read_float(addr32_t addr) {
-    uint32_t tmp = pvr2_tex_mem_area32_read_32(addr);
+float pvr2_tex_mem_area32_read_float(addr32_t addr, void *ctxt) {
+    uint32_t tmp = pvr2_tex_mem_area32_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-void pvr2_tex_mem_area32_write_float(addr32_t addr, float val) {
+void pvr2_tex_mem_area32_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
-    pvr2_tex_mem_area32_write_32(addr, tmp);
+    pvr2_tex_mem_area32_write_32(addr, tmp, ctxt);
 }
 
-double pvr2_tex_mem_area32_read_double(addr32_t addr) {
+double pvr2_tex_mem_area32_read_double(addr32_t addr, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void pvr2_tex_mem_area32_write_double(addr32_t addr, double val) {
+void pvr2_tex_mem_area32_write_double(addr32_t addr, double val, void *ctxt) {
     if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
         ((addr - 1 + sizeof(val)) > ADDR_TEX32_LAST) ||
         ((addr - 1 + sizeof(val)) < ADDR_TEX32_FIRST)) {
@@ -169,7 +169,7 @@ void pvr2_tex_mem_area32_write_double(addr32_t addr, double val) {
     ((double*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / sizeof(val)] = val;
 }
 
-uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr) {
+uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt) {
     if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
         (addr > ADDR_TEX64_LAST) || (addr < ADDR_TEX64_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
@@ -189,7 +189,7 @@ uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr) {
     return pvr2_tex64_mem[addr - ADDR_TEX64_FIRST];
 }
 
-void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val) {
+void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
         (addr > ADDR_TEX64_LAST) || (addr < ADDR_TEX64_FIRST)) {
         error_set_feature("out-of-bounds PVR2 texture memory write");
@@ -204,7 +204,7 @@ void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val) {
     ((uint8_t*)pvr2_tex64_mem)[addr - ADDR_TEX64_FIRST] = val;
 }
 
-uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr) {
+uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt) {
     if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
         ((addr - 1 + sizeof(uint16_t)) > ADDR_TEX64_LAST) ||
         ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX64_FIRST)) {
@@ -225,7 +225,7 @@ uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr) {
     return ((uint16_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 2];
 }
 
-void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val) {
+void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
         ((addr - 1 + sizeof(uint16_t)) > ADDR_TEX64_LAST) ||
         ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX64_FIRST)) {
@@ -241,7 +241,7 @@ void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val) {
     ((uint16_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 2] = val;
 }
 
-uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr) {
+uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt) {
     if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
         ((addr - 1 + sizeof(uint32_t)) > ADDR_TEX64_LAST) ||
         ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX64_FIRST)) {
@@ -262,7 +262,7 @@ uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr) {
     return ((uint32_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 4];
 }
 
-void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val) {
+void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
         ((addr - 1 + sizeof(uint32_t)) > ADDR_TEX64_LAST) ||
         ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX64_FIRST)) {
@@ -278,26 +278,26 @@ void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val) {
     ((uint32_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 4] = val;
 }
 
-float pvr2_tex_mem_area64_read_float(addr32_t addr) {
-    uint32_t tmp = pvr2_tex_mem_area64_read_32(addr);
+float pvr2_tex_mem_area64_read_float(addr32_t addr, void *ctxt) {
+    uint32_t tmp = pvr2_tex_mem_area64_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-void pvr2_tex_mem_area64_write_float(addr32_t addr, float val) {
+void pvr2_tex_mem_area64_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
-    pvr2_tex_mem_area64_write_32(addr, tmp);
+    pvr2_tex_mem_area64_write_32(addr, tmp, ctxt);
 }
 
-double pvr2_tex_mem_area64_read_double(addr32_t addr) {
+double pvr2_tex_mem_area64_read_double(addr32_t addr, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void pvr2_tex_mem_area64_write_double(addr32_t addr, double val) {
+void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt) {
     if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
         ((addr - 1 + sizeof(val)) > ADDR_TEX64_LAST) ||
         ((addr - 1 + sizeof(val)) < ADDR_TEX64_FIRST)) {

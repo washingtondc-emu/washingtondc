@@ -53,32 +53,32 @@ void aica_rtc_init(void) {
     sched_aica_rtc_event();
 }
 
-float aica_rtc_read_float(addr32_t addr) {
-    uint32_t tmp = aica_rtc_read_32(addr);
+float aica_rtc_read_float(addr32_t addr, void *ctxt) {
+    uint32_t tmp = aica_rtc_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-void aica_rtc_write_float(addr32_t addr, float val) {
+void aica_rtc_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
-    aica_rtc_write_32(addr, tmp);
+    aica_rtc_write_32(addr, tmp, ctxt);
 }
 
-double aica_rtc_read_double(addr32_t addr) {
+double aica_rtc_read_double(addr32_t addr, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void aica_rtc_write_double(addr32_t addr, double val) {
+void aica_rtc_write_double(addr32_t addr, double val, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint32_t aica_rtc_read_32(addr32_t addr) {
+uint32_t aica_rtc_read_32(addr32_t addr, void *ctxt) {
     AICA_RTC_TRACE("Reading 4 bytes from AICA RTC address 0x%08x\n",
                    (unsigned)addr);
 
@@ -108,7 +108,7 @@ uint32_t aica_rtc_read_32(addr32_t addr) {
     return tmp;
 }
 
-void aica_rtc_write_32(addr32_t addr, uint32_t val) {
+void aica_rtc_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     AICA_RTC_TRACE("Writing 4 bytes to address 0x%08x\n",
                    (unsigned)addr);
 
@@ -157,7 +157,7 @@ void aica_rtc_write_32(addr32_t addr, uint32_t val) {
     }
 }
 
-uint16_t aica_rtc_read_16(addr32_t addr) {
+uint16_t aica_rtc_read_16(addr32_t addr, void *ctxt) {
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
     error_set_address(addr);
@@ -165,7 +165,7 @@ uint16_t aica_rtc_read_16(addr32_t addr) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void aica_rtc_write_16(addr32_t addr, uint16_t val) {
+void aica_rtc_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
     error_set_address(addr);
@@ -173,7 +173,7 @@ void aica_rtc_write_16(addr32_t addr, uint16_t val) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint8_t aica_rtc_read_8(addr32_t addr) {
+uint8_t aica_rtc_read_8(addr32_t addr, void *ctxt) {
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
     error_set_address(addr);
@@ -181,7 +181,7 @@ uint8_t aica_rtc_read_8(addr32_t addr) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void aica_rtc_write_8(addr32_t addr, uint8_t val) {
+void aica_rtc_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
     error_set_address(addr);

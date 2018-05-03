@@ -42,60 +42,60 @@ static uint8_t reg_backing[N_SYS_REGS];
 
 static uint32_t reg_sb_c2dstat, reg_sb_c2dlen;
 
-float sys_block_read_float(addr32_t addr) {
+float sys_block_read_float(addr32_t addr, void *ctxt) {
     uint32_t tmp = mmio_region_sys_block_read(&mmio_region_sys_block, addr);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-void sys_block_write_float(addr32_t addr, float val) {
+void sys_block_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     mmio_region_sys_block_write(&mmio_region_sys_block, addr, tmp);
 }
 
-double sys_block_read_double(addr32_t addr) {
+double sys_block_read_double(addr32_t addr, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void sys_block_write_double(addr32_t addr, double val) {
+void sys_block_write_double(addr32_t addr, double val, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint8_t sys_block_read_8(addr32_t addr) {
+uint8_t sys_block_read_8(addr32_t addr, void *ctxt) {
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void sys_block_write_8(addr32_t addr, uint8_t val) {
+void sys_block_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint16_t sys_block_read_16(addr32_t addr) {
+uint16_t sys_block_read_16(addr32_t addr, void *ctxt) {
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void sys_block_write_16(addr32_t addr, uint16_t val) {
+void sys_block_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint32_t sys_block_read_32(addr32_t addr) {
+uint32_t sys_block_read_32(addr32_t addr, void *ctxt) {
     return mmio_region_sys_block_read(&mmio_region_sys_block, addr);
 }
 
-void sys_block_write_32(addr32_t addr, uint32_t val) {
+void sys_block_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     mmio_region_sys_block_write(&mmio_region_sys_block, addr, val);
 }
 

@@ -36,17 +36,17 @@ void bios_file_init(char const *path);
 void bios_file_cleanup(void);
 
 // consider yourself warned: these functions don't do bounds-checking
-uint8_t bios_file_read_8(addr32_t addr);
-uint16_t bios_file_read_16(addr32_t addr);
-uint32_t bios_file_read_32(addr32_t addr);
-float bios_file_read_float(addr32_t addr);
-double bios_file_read_double(addr32_t addr);
+uint8_t bios_file_read_8(addr32_t addr, void *ctxt);
+uint16_t bios_file_read_16(addr32_t addr, void *ctxt);
+uint32_t bios_file_read_32(addr32_t addr, void *ctxt);
+float bios_file_read_float(addr32_t addr, void *ctxt);
+double bios_file_read_double(addr32_t addr, void *ctxt);
 
-void bios_file_write_8(addr32_t addr, uint8_t val);
-void bios_file_write_16(addr32_t addr, uint16_t val);
-void bios_file_write_32(addr32_t addr, uint32_t val);
-void bios_file_write_float(addr32_t addr, float val);
-void bios_file_write_double(addr32_t addr, double val);
+void bios_file_write_8(addr32_t addr, uint8_t val, void *ctxt);
+void bios_file_write_16(addr32_t addr, uint16_t val, void *ctxt);
+void bios_file_write_32(addr32_t addr, uint32_t val, void *ctxt);
+void bios_file_write_float(addr32_t addr, float val, void *ctxt);
+void bios_file_write_double(addr32_t addr, double val, void *ctxt);
 
 extern struct memory_interface bios_file_intf;
 

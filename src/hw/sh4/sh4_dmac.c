@@ -393,7 +393,7 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
         (transfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
         while (n_words--) {
             uint32_t buf = memory_map_read_32(&sh4->mem.map, transfer_src);
-            pvr2_ta_fifo_poly_write_32(transfer_dst, buf);
+            pvr2_ta_fifo_poly_write_32(transfer_dst, buf, NULL);
             transfer_dst += sizeof(buf);
             transfer_src += sizeof(buf);
         }
@@ -404,7 +404,7 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
 
         while (n_words--) {
             uint32_t buf = memory_map_read_32(&sh4->mem.map, transfer_src);
-            pvr2_tex_mem_area64_write_32(transfer_dst, buf);
+            pvr2_tex_mem_area64_write_32(transfer_dst, buf, NULL);
             transfer_dst += sizeof(buf);
             transfer_src += sizeof(buf);
         }
@@ -415,7 +415,7 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
 
         while (n_words--) {
             uint32_t buf = memory_map_read_32(&sh4->mem.map, transfer_src);
-            pvr2_tex_mem_area32_write_32(transfer_dst, buf);
+            pvr2_tex_mem_area32_write_32(transfer_dst, buf, NULL);
             transfer_dst += sizeof(buf);
             transfer_src += sizeof(buf);
         }

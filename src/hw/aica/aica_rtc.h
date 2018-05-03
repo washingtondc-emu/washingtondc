@@ -31,16 +31,16 @@
 
 void aica_rtc_init(void);
 
-float aica_rtc_read_float(addr32_t addr);
-void aica_rtc_write_float(addr32_t addr, float val);
-double aica_rtc_read_double(addr32_t addr);
-void aica_rtc_write_double(addr32_t addr, double val);
-uint32_t aica_rtc_read_32(addr32_t addr);
-void aica_rtc_write_32(addr32_t addr, uint32_t val);
-uint16_t aica_rtc_read_16(addr32_t addr);
-void aica_rtc_write_16(addr32_t addr, uint16_t val);
-uint8_t aica_rtc_read_8(addr32_t addr);
-void aica_rtc_write_8(addr32_t addr, uint8_t val);
+float aica_rtc_read_float(addr32_t addr, void *ctxt);
+void aica_rtc_write_float(addr32_t addr, float val, void *ctxt);
+double aica_rtc_read_double(addr32_t addr, void *ctxt);
+void aica_rtc_write_double(addr32_t addr, double val, void *ctxt);
+uint32_t aica_rtc_read_32(addr32_t addr, void *ctxt);
+void aica_rtc_write_32(addr32_t addr, uint32_t val, void *ctxt);
+uint16_t aica_rtc_read_16(addr32_t addr, void *ctxt);
+void aica_rtc_write_16(addr32_t addr, uint16_t val, void *ctxt);
+uint8_t aica_rtc_read_8(addr32_t addr, void *ctxt);
+void aica_rtc_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
 extern struct memory_interface aica_rtc_intf;
 

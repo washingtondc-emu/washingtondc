@@ -225,58 +225,58 @@ void aica_reg_cleanup(void) {
     cleanup_mmio_region_aica_reg(&mmio_region_aica_reg);
 }
 
-float aica_reg_read_float(addr32_t addr) {
+float aica_reg_read_float(addr32_t addr, void *ctxt) {
     uint32_t tmp = mmio_region_aica_reg_read(&mmio_region_aica_reg, addr);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-void aica_reg_write_float(addr32_t addr, float val) {
+void aica_reg_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     mmio_region_aica_reg_write(&mmio_region_aica_reg, addr, tmp);
 }
 
-double aica_reg_read_double(addr32_t addr) {
+double aica_reg_read_double(addr32_t addr, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void aica_reg_write_double(addr32_t addr, double val) {
+void aica_reg_write_double(addr32_t addr, double val, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint32_t aica_reg_read_32(addr32_t addr) {
+uint32_t aica_reg_read_32(addr32_t addr, void *ctxt) {
     return mmio_region_aica_reg_read(&mmio_region_aica_reg, addr);
 }
 
-void aica_reg_write_32(addr32_t addr, uint32_t val) {
+void aica_reg_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     mmio_region_aica_reg_write(&mmio_region_aica_reg, addr, val);
 }
 
-uint16_t aica_reg_read_16(addr32_t addr) {
+uint16_t aica_reg_read_16(addr32_t addr, void *ctxt) {
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void aica_reg_write_16(addr32_t addr, uint16_t val) {
+void aica_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint8_t aica_reg_read_8(addr32_t addr) {
+uint8_t aica_reg_read_8(addr32_t addr, void *ctxt) {
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void aica_reg_write_8(addr32_t addr, uint8_t val) {
+void aica_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);

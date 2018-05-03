@@ -27,16 +27,16 @@
 
 #include "types.h"
 
-float maple_reg_read_float(addr32_t addr);
-void maple_reg_write_float(addr32_t addr, float val);
-double maple_reg_read_double(addr32_t addr);
-void maple_reg_write_double(addr32_t addr, double val);
-uint32_t maple_reg_read_32(addr32_t addr);
-void maple_reg_write_32(addr32_t addr, uint32_t val);
-uint16_t maple_reg_read_16(addr32_t addr);
-void maple_reg_write_16(addr32_t addr, uint16_t val);
-uint8_t maple_reg_read_8(addr32_t addr);
-void maple_reg_write_8(addr32_t addr, uint8_t val);
+float maple_reg_read_float(addr32_t addr, void *ctxt);
+void maple_reg_write_float(addr32_t addr, float val, void *ctxt);
+double maple_reg_read_double(addr32_t addr, void *ctxt);
+void maple_reg_write_double(addr32_t addr, double val, void *ctxt);
+uint32_t maple_reg_read_32(addr32_t addr, void *ctxt);
+void maple_reg_write_32(addr32_t addr, uint32_t val, void *ctxt);
+uint16_t maple_reg_read_16(addr32_t addr, void *ctxt);
+void maple_reg_write_16(addr32_t addr, uint16_t val, void *ctxt);
+uint8_t maple_reg_read_8(addr32_t addr, void *ctxt);
+void maple_reg_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
 addr32_t maple_get_dma_prot_bot(void);
 addr32_t maple_get_dma_prot_top(void);

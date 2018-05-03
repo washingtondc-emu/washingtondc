@@ -123,34 +123,34 @@ int bios_file_read(void *buf, size_t addr, size_t len) {
     return MEM_ACCESS_SUCCESS;
 }
 
-uint8_t bios_file_read_8(addr32_t addr) {
+uint8_t bios_file_read_8(addr32_t addr, void *ctxt) {
     return bios_file.dat[addr];
 }
 
-uint16_t bios_file_read_16(addr32_t addr) {
+uint16_t bios_file_read_16(addr32_t addr, void *ctxt) {
     uint16_t const *bios16 = (uint16_t const*)bios_file.dat;
     return bios16[addr / 2];
 }
 
-uint32_t bios_file_read_32(addr32_t addr) {
+uint32_t bios_file_read_32(addr32_t addr, void *ctxt) {
     uint32_t const *bios32 = (uint32_t const*)bios_file.dat;
     return bios32[addr / 4];
 }
 
-float bios_file_read_float(addr32_t addr) {
-    uint32_t tmp = bios_file_read_32(addr);
+float bios_file_read_float(addr32_t addr, void *ctxt) {
+    uint32_t tmp = bios_file_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-double bios_file_read_double(addr32_t addr) {
+double bios_file_read_double(addr32_t addr, void *ctxt) {
     error_set_address(addr);
     error_set_length(8);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_8(addr32_t addr, uint8_t val) {
+void bios_file_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -162,7 +162,7 @@ void bios_file_write_8(addr32_t addr, uint8_t val) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_16(addr32_t addr, uint16_t val) {
+void bios_file_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -174,7 +174,7 @@ void bios_file_write_16(addr32_t addr, uint16_t val) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_32(addr32_t addr, uint32_t val) {
+void bios_file_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -186,7 +186,7 @@ void bios_file_write_32(addr32_t addr, uint32_t val) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_float(addr32_t addr, float val) {
+void bios_file_write_float(addr32_t addr, float val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -198,7 +198,7 @@ void bios_file_write_float(addr32_t addr, float val) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_double(addr32_t addr, double val) {
+void bios_file_write_double(addr32_t addr, double val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...

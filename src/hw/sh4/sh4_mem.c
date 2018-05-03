@@ -50,41 +50,41 @@
 #include "debugger.h"
 #endif
 
-static uint32_t read_area3_32(uint32_t addr);
-static uint16_t read_area3_16(uint32_t addr);
-static uint8_t read_area3_8(uint32_t addr);
-static float read_area3_float(uint32_t addr);
-static double read_area3_double(uint32_t addr);
+static uint32_t read_area3_32(uint32_t addr, void *ctxt);
+static uint16_t read_area3_16(uint32_t addr, void *ctxt);
+static uint8_t read_area3_8(uint32_t addr, void *ctxt);
+static float read_area3_float(uint32_t addr, void *ctxt);
+static double read_area3_double(uint32_t addr, void *ctxt);
 
-static void write_area3_float(uint32_t addr, float val);
-static void write_area3_double(uint32_t addr, double val);
-static void write_area3_32(uint32_t addr, uint32_t val);
-static void write_area3_16(uint32_t addr, uint16_t val);
-static void write_area3_8(uint32_t addr, uint8_t val);
+static void write_area3_float(uint32_t addr, float val, void *ctxt);
+static void write_area3_double(uint32_t addr, double val, void *ctxt);
+static void write_area3_32(uint32_t addr, uint32_t val, void *ctxt);
+static void write_area3_16(uint32_t addr, uint16_t val, void *ctxt);
+static void write_area3_8(uint32_t addr, uint8_t val, void *ctxt);
 
-static float read_ocache_ram_float(uint32_t addr);
-static double read_ocache_ram_double(uint32_t addr);
-static uint32_t read_ocache_ram_32(uint32_t addr);
-static uint16_t read_ocache_ram_16(uint32_t addr);
-static uint8_t read_ocache_ram_8(uint32_t addr);
+static float read_ocache_ram_float(uint32_t addr, void *ctxt);
+static double read_ocache_ram_double(uint32_t addr, void *ctxt);
+static uint32_t read_ocache_ram_32(uint32_t addr, void *ctxt);
+static uint16_t read_ocache_ram_16(uint32_t addr, void *ctxt);
+static uint8_t read_ocache_ram_8(uint32_t addr, void *ctxt);
 
-static void write_ocache_ram_float(uint32_t addr, float val);
-static void write_ocache_ram_double(uint32_t addr, double val);
-static void write_ocache_ram_32(uint32_t addr, uint32_t val);
-static void write_ocache_ram_16(uint32_t addr, uint16_t val);
-static void write_ocache_ram_8(uint32_t addr, uint8_t val);
+static void write_ocache_ram_float(uint32_t addr, float val, void *ctxt);
+static void write_ocache_ram_double(uint32_t addr, double val, void *ctxt);
+static void write_ocache_ram_32(uint32_t addr, uint32_t val, void *ctxt);
+static void write_ocache_ram_16(uint32_t addr, uint16_t val, void *ctxt);
+static void write_ocache_ram_8(uint32_t addr, uint8_t val, void *ctxt);
 
-static float read_sh4_p4_float(uint32_t addr);
-static double read_sh4_p4_double(uint32_t addr);
-static uint32_t read_sh4_p4_32(uint32_t addr);
-static uint16_t read_sh4_p4_16(uint32_t addr);
-static uint8_t read_sh4_p4_8(uint32_t addr);
+static float read_sh4_p4_float(uint32_t addr, void *ctxt);
+static double read_sh4_p4_double(uint32_t addr, void *ctxt);
+static uint32_t read_sh4_p4_32(uint32_t addr, void *ctxt);
+static uint16_t read_sh4_p4_16(uint32_t addr, void *ctxt);
+static uint8_t read_sh4_p4_8(uint32_t addr, void *ctxt);
 
-static void write_sh4_p4_float(uint32_t addr, float val);
-static void write_sh4_p4_double(uint32_t addr, double val);
-static void write_sh4_p4_32(uint32_t addr, uint32_t val);
-static void write_sh4_p4_16(uint32_t addr, uint16_t val);
-static void write_sh4_p4_8(uint32_t addr, uint8_t val);
+static void write_sh4_p4_float(uint32_t addr, float val, void *ctxt);
+static void write_sh4_p4_double(uint32_t addr, double val, void *ctxt);
+static void write_sh4_p4_32(uint32_t addr, uint32_t val, void *ctxt);
+static void write_sh4_p4_16(uint32_t addr, uint16_t val, void *ctxt);
+static void write_sh4_p4_8(uint32_t addr, uint8_t val, void *ctxt);
 
 static struct memory_interface sh4_p4_intf = {
     .readdouble = read_sh4_p4_double,
@@ -272,48 +272,48 @@ void construct_sh4_mem_map(struct memory_map *map) {
                    &gdrom_reg_intf);
 }
 
-static float read_area3_float(uint32_t addr) {
+static float read_area3_float(uint32_t addr, void *ctxt) {
     return memory_read_float(&dc_mem, addr);
 }
 
-static double read_area3_double(uint32_t addr) {
+static double read_area3_double(uint32_t addr, void *ctxt) {
     return memory_read_double(&dc_mem, addr);
 }
 
-static uint32_t read_area3_32(uint32_t addr) {
+static uint32_t read_area3_32(uint32_t addr, void *ctxt) {
     return memory_read_32(&dc_mem, addr);
 }
 
-static uint16_t read_area3_16(uint32_t addr) {
+static uint16_t read_area3_16(uint32_t addr, void *ctxt) {
     return memory_read_16(&dc_mem, addr);
 }
 
-static uint8_t read_area3_8(uint32_t addr) {
+static uint8_t read_area3_8(uint32_t addr, void *ctxt) {
     return memory_read_8(&dc_mem, addr);
 }
 
-static void write_area3_float(uint32_t addr, float val) {
+static void write_area3_float(uint32_t addr, float val, void *ctxt) {
     memory_write_float(&dc_mem, addr, val);
 }
 
-static void write_area3_double(uint32_t addr, double val) {
+static void write_area3_double(uint32_t addr, double val, void *ctxt) {
     memory_write_double(&dc_mem, addr, val);
 }
 
-static void write_area3_32(uint32_t addr, uint32_t val) {
+static void write_area3_32(uint32_t addr, uint32_t val, void *ctxt) {
     memory_write_32(&dc_mem, addr, val);
 }
 
-static void write_area3_16(uint32_t addr, uint16_t val) {
+static void write_area3_16(uint32_t addr, uint16_t val, void *ctxt) {
     memory_write_16(&dc_mem, addr, val);
 }
 
-static void write_area3_8(uint32_t addr, uint8_t val) {
+static void write_area3_8(uint32_t addr, uint8_t val, void *ctxt) {
     memory_write_8(&dc_mem, addr, val);
 }
 
 #define READ_OCACHE_RAM_TMPL(type, postfix)                     \
-    static type read_ocache_ram_##postfix(uint32_t addr) {      \
+    static type read_ocache_ram_##postfix(uint32_t addr, void *ctxt) {  \
         Sh4 *sh4 = dreamcast_get_cpu();                         \
         if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||      \
             !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||      \
@@ -331,7 +331,8 @@ READ_OCACHE_RAM_TMPL(uint16_t, 16)
 READ_OCACHE_RAM_TMPL(uint8_t, 8)
 
 #define WRITE_OCACHE_RAM_TMPL(type, postfix)                            \
-    static void write_ocache_ram_##postfix(uint32_t addr, type val) {   \
+    static void write_ocache_ram_##postfix(uint32_t addr, type val,     \
+                                           void *ctxt) {                \
         Sh4 *sh4 = dreamcast_get_cpu();                                 \
         if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||              \
             !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||              \
@@ -348,10 +349,10 @@ WRITE_OCACHE_RAM_TMPL(uint32_t, 32)
 WRITE_OCACHE_RAM_TMPL(uint16_t, 16)
 WRITE_OCACHE_RAM_TMPL(uint8_t, 8)
 
-#define READ_SH4_P4_TMPL(type, postfix)                 \
-    static type read_sh4_p4_##postfix(uint32_t addr) {  \
-        Sh4 *sh4 = dreamcast_get_cpu();                 \
-        return sh4_do_read_p4_##postfix(sh4, addr);     \
+#define READ_SH4_P4_TMPL(type, postfix)                                 \
+    static type read_sh4_p4_##postfix(uint32_t addr, void *ctxt) {      \
+        Sh4 *sh4 = dreamcast_get_cpu();                                 \
+        return sh4_do_read_p4_##postfix(sh4, addr);                     \
     }
 
 READ_SH4_P4_TMPL(double, double)
@@ -361,7 +362,7 @@ READ_SH4_P4_TMPL(uint16_t, 16)
 READ_SH4_P4_TMPL(uint8_t, 8)
 
 #define WRITE_SH4_P4_TMPL(type, postfix)                                \
-    static void write_sh4_p4_##postfix(uint32_t addr, type val) {       \
+    static void write_sh4_p4_##postfix(uint32_t addr, type val, void *ctxt) { \
         Sh4 *sh4 = dreamcast_get_cpu();                                 \
         sh4_do_write_p4_##postfix(sh4, addr, val);                      \
     }

@@ -35,16 +35,16 @@
 DECL_MMIO_REGION(g1_reg_32, N_G1_REGS, ADDR_G1_FIRST, uint32_t)
 DECL_MMIO_REGION(g1_reg_16, N_G1_REGS, ADDR_G1_FIRST, uint16_t)
 
-uint8_t g1_reg_read_8(addr32_t addr);
-void g1_reg_write_8(addr32_t addr, uint8_t val);
-uint16_t g1_reg_read_16(addr32_t addr);
-void g1_reg_write_16(addr32_t addr, uint16_t val);
-uint32_t g1_reg_read_32(addr32_t addr);
-void g1_reg_write_32(addr32_t addr, uint32_t val);
-float g1_reg_read_float(addr32_t addr);
-void g1_reg_write_float(addr32_t addr, float val);
-double g1_reg_read_double(addr32_t addr);
-void g1_reg_write_double(addr32_t addr, double val);
+uint8_t g1_reg_read_8(addr32_t addr, void *ctxt);
+void g1_reg_write_8(addr32_t addr, uint8_t val, void *ctxt);
+uint16_t g1_reg_read_16(addr32_t addr, void *ctxt);
+void g1_reg_write_16(addr32_t addr, uint16_t val, void *ctxt);
+uint32_t g1_reg_read_32(addr32_t addr, void *ctxt);
+void g1_reg_write_32(addr32_t addr, uint32_t val, void *ctxt);
+float g1_reg_read_float(addr32_t addr, void *ctxt);
+void g1_reg_write_float(addr32_t addr, float val, void *ctxt);
+double g1_reg_read_double(addr32_t addr, void *ctxt);
+void g1_reg_write_double(addr32_t addr, double val, void *ctxt);
 
 void g1_reg_init(void);
 void g1_reg_cleanup(void);

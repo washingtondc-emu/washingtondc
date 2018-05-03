@@ -28,16 +28,16 @@
 #include "types.h"
 #include "MemoryMap.h"
 
-uint8_t g2_reg_read_8(addr32_t addr);
-void g2_reg_write_8(addr32_t addr, uint8_t val);
-uint16_t g2_reg_read_16(addr32_t addr);
-void g2_reg_write_16(addr32_t addr, uint16_t val);
-uint32_t g2_reg_read_32(addr32_t addr);
-void g2_reg_write_32(addr32_t addr, uint32_t val);
-float g2_reg_read_float(addr32_t addr);
-void g2_reg_write_float(addr32_t addr, float val);
-double g2_reg_read_double(addr32_t addr);
-void g2_reg_write_double(addr32_t addr, double val);
+uint8_t g2_reg_read_8(addr32_t addr, void *ctxt);
+void g2_reg_write_8(addr32_t addr, uint8_t val, void *ctxt);
+uint16_t g2_reg_read_16(addr32_t addr, void *ctxt);
+void g2_reg_write_16(addr32_t addr, uint16_t val, void *ctxt);
+uint32_t g2_reg_read_32(addr32_t addr, void *ctxt);
+void g2_reg_write_32(addr32_t addr, uint32_t val, void *ctxt);
+float g2_reg_read_float(addr32_t addr, void *ctxt);
+void g2_reg_write_float(addr32_t addr, float val, void *ctxt);
+double g2_reg_read_double(addr32_t addr, void *ctxt);
+void g2_reg_write_double(addr32_t addr, double val, void *ctxt);
 
 void g2_reg_init(void);
 void g2_reg_cleanup(void);

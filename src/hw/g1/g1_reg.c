@@ -39,54 +39,54 @@ DEF_MMIO_REGION(g1_reg_16, N_G1_REGS, ADDR_G1_FIRST, uint16_t)
 
 static uint8_t reg_backing[N_G1_REGS];
 
-uint8_t g1_reg_read_8(addr32_t addr) {
+uint8_t g1_reg_read_8(addr32_t addr, void *ctxt) {
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void g1_reg_write_8(addr32_t addr, uint8_t val) {
+void g1_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint16_t g1_reg_read_16(addr32_t addr) {
+uint16_t g1_reg_read_16(addr32_t addr, void *ctxt) {
     return mmio_region_g1_reg_16_read(&mmio_region_g1_reg_16, addr);
 }
 
-void g1_reg_write_16(addr32_t addr, uint16_t val) {
+void g1_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     mmio_region_g1_reg_16_write(&mmio_region_g1_reg_16, addr, val);
 }
 
-uint32_t g1_reg_read_32(addr32_t addr) {
+uint32_t g1_reg_read_32(addr32_t addr, void *ctxt) {
     return mmio_region_g1_reg_32_read(&mmio_region_g1_reg_32, addr);
 }
 
-void g1_reg_write_32(addr32_t addr, uint32_t val) {
+void g1_reg_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     mmio_region_g1_reg_32_write(&mmio_region_g1_reg_32, addr, val);
 }
 
-float g1_reg_read_float(addr32_t addr) {
+float g1_reg_read_float(addr32_t addr, void *ctxt) {
     uint32_t tmp = mmio_region_g1_reg_32_read(&mmio_region_g1_reg_32, addr);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-void g1_reg_write_float(addr32_t addr, float val) {
+void g1_reg_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     mmio_region_g1_reg_32_write(&mmio_region_g1_reg_32, addr, tmp);
 }
 
-double g1_reg_read_double(addr32_t addr) {
+double g1_reg_read_double(addr32_t addr, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void g1_reg_write_double(addr32_t addr, double val) {
+void g1_reg_write_double(addr32_t addr, double val, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);

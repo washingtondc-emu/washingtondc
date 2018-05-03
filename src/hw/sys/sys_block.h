@@ -41,16 +41,16 @@ DECL_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST, uint32_t)
 void sys_block_init(void);
 void sys_block_cleanup(void);
 
-float sys_block_read_float(addr32_t addr);
-void sys_block_write_float(addr32_t addr, float val);
-double sys_block_read_double(addr32_t addr);
-void sys_block_write_double(addr32_t addr, double val);
-uint8_t sys_block_read_8(addr32_t addr);
-void sys_block_write_8(addr32_t addr, uint8_t val);
-uint16_t sys_block_read_16(addr32_t addr);
-void sys_block_write_16(addr32_t addr, uint16_t val);
-uint32_t sys_block_read_32(addr32_t addr);
-void sys_block_write_32(addr32_t addr, uint32_t val);
+float sys_block_read_float(addr32_t addr, void *ctxt);
+void sys_block_write_float(addr32_t addr, float val, void *ctxt);
+double sys_block_read_double(addr32_t addr, void *ctxt);
+void sys_block_write_double(addr32_t addr, double val, void *ctxt);
+uint8_t sys_block_read_8(addr32_t addr, void *ctxt);
+void sys_block_write_8(addr32_t addr, uint8_t val, void *ctxt);
+uint16_t sys_block_read_16(addr32_t addr, void *ctxt);
+void sys_block_write_16(addr32_t addr, uint16_t val, void *ctxt);
+uint32_t sys_block_read_32(addr32_t addr, void *ctxt);
+void sys_block_write_32(addr32_t addr, uint32_t val, void *ctxt);
 
 extern struct memory_interface sys_block_intf;
 

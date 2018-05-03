@@ -31,17 +31,6 @@
 
 void flash_mem_load(char const *path);
 
-float flash_mem_read_float(addr32_t addr);
-void flash_mem_write_float(addr32_t addr, float val);
-double flash_mem_read_double(addr32_t addr);
-void flash_mem_write_double(addr32_t addr, double val);
-uint32_t flash_mem_read_32(addr32_t addr);
-void flash_mem_write_32(addr32_t addr, uint32_t val);
-uint16_t flash_mem_read_16(addr32_t addr);
-void flash_mem_write_16(addr32_t addr, uint16_t val);
-uint8_t flash_mem_read_8(addr32_t addr);
-void flash_mem_write_8(addr32_t addr, uint8_t val);
-
 extern struct memory_interface flash_mem_intf;
 
 #endif

@@ -26,47 +26,47 @@
 #include "modem.h"
 #include "mem_code.h"
 
-float modem_read_float(addr32_t addr) {
+float modem_read_float(addr32_t addr, void *ctxt) {
     return 0.0f;
 }
 
-void modem_write_float(addr32_t addr, float val) {
+void modem_write_float(addr32_t addr, float val, void *ctxt) {
     error_set_feature("sending data to the modem unit");
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-double modem_read_double(addr32_t addr) {
+double modem_read_double(addr32_t addr, void *ctxt) {
     return 0.0;
 }
 
-void modem_write_double(addr32_t addr, double val) {
+void modem_write_double(addr32_t addr, double val, void *ctxt) {
     error_set_feature("sending data to the modem unit");
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint8_t modem_read_8(addr32_t addr) {
+uint8_t modem_read_8(addr32_t addr, void *ctxt) {
     return 0;
 }
 
-void modem_write_8(addr32_t addr, uint8_t val) {
+void modem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     error_set_feature("sending data to the modem unit");
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint16_t modem_read_16(addr32_t addr) {
+uint16_t modem_read_16(addr32_t addr, void *ctxt) {
     return 0;
 }
 
-void modem_write_16(addr32_t addr, uint16_t val) {
+void modem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     error_set_feature("sending data to the modem unit");
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint32_t modem_read_32(addr32_t addr) {
+uint32_t modem_read_32(addr32_t addr, void *ctxt) {
     return 0;
 }
 
-void modem_write_32(addr32_t addr, uint32_t val) {
+void modem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     error_set_feature("sending data to the modem unit");
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }

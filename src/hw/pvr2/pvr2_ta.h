@@ -95,16 +95,16 @@ enum TexCtrlPixFmt {
 #define PVR2_TEX_MAX_H 1024
 #define PVR2_TEX_MAX_BYTES (PVR2_TEX_MAX_W * PVR2_TEX_MAX_H * 4)
 
-float pvr2_ta_fifo_poly_read_float(addr32_t addr);
-void pvr2_ta_fifo_poly_write_float(addr32_t addr, float val);
-double pvr2_ta_fifo_poly_read_double(addr32_t addr);
-void pvr2_ta_fifo_poly_write_double(addr32_t addr, double val);
-uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr);
-void pvr2_ta_fifo_poly_write_32(addr32_t addr, uint32_t val);
-uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr);
-void pvr2_ta_fifo_poly_write_16(addr32_t addr, uint16_t val);
-uint8_t pvr2_ta_fifo_poly_read_8(addr32_t addr);
-void pvr2_ta_fifo_poly_write_8(addr32_t addr, uint8_t val);
+float pvr2_ta_fifo_poly_read_float(addr32_t addr, void *ctxt);
+void pvr2_ta_fifo_poly_write_float(addr32_t addr, float val, void *ctxt);
+double pvr2_ta_fifo_poly_read_double(addr32_t addr, void *ctxt);
+void pvr2_ta_fifo_poly_write_double(addr32_t addr, double val, void *ctxt);
+uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt);
+void pvr2_ta_fifo_poly_write_32(addr32_t addr, uint32_t val, void *ctxt);
+uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr, void *ctxt);
+void pvr2_ta_fifo_poly_write_16(addr32_t addr, uint16_t val, void *ctxt);
+uint8_t pvr2_ta_fifo_poly_read_8(addr32_t addr, void *ctxt);
+void pvr2_ta_fifo_poly_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
 extern struct memory_interface pvr2_ta_fifo_intf;
 

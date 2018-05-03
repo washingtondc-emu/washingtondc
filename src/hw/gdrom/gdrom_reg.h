@@ -30,16 +30,16 @@
 void gdrom_reg_init(void);
 void gdrom_reg_cleanup(void);
 
-float gdrom_reg_read_float(addr32_t addr);
-void gdrom_reg_write_float(addr32_t addr, float val);
-double gdrom_reg_read_double(addr32_t addr);
-void gdrom_reg_write_double(addr32_t addr, double val);
-uint8_t gdrom_reg_read_8(addr32_t addr);
-void gdrom_reg_write_8(addr32_t addr, uint8_t val);
-uint16_t gdrom_reg_read_16(addr32_t addr);
-void gdrom_reg_write_16(addr32_t addr, uint16_t val);
-uint32_t gdrom_reg_read_32(addr32_t addr);
-void gdrom_reg_write_32(addr32_t addr, uint32_t val);
+float gdrom_reg_read_float(addr32_t addr, void *ctxt);
+void gdrom_reg_write_float(addr32_t addr, float val, void *ctxt);
+double gdrom_reg_read_double(addr32_t addr, void *ctxt);
+void gdrom_reg_write_double(addr32_t addr, double val, void *ctxt);
+uint8_t gdrom_reg_read_8(addr32_t addr, void *ctxt);
+void gdrom_reg_write_8(addr32_t addr, uint8_t val, void *ctxt);
+uint16_t gdrom_reg_read_16(addr32_t addr, void *ctxt);
+void gdrom_reg_write_16(addr32_t addr, uint16_t val, void *ctxt);
+uint32_t gdrom_reg_read_32(addr32_t addr, void *ctxt);
+void gdrom_reg_write_32(addr32_t addr, uint32_t val, void *ctxt);
 
 // these are GD-ROM DMA registers that lie with in the G1 bus' memory range
 struct g1_mem_mapped_reg;

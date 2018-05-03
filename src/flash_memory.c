@@ -102,6 +102,17 @@ static void flash_mem_do_erase(addr32_t addr);
 
 static void flash_mem_do_write_cmd(addr32_t addr, uint8_t val);
 
+static float flash_mem_read_float(addr32_t addr, void *ctxt);
+static void flash_mem_write_float(addr32_t addr, float val, void *ctxt);
+static double flash_mem_read_double(addr32_t addr, void *ctxt);
+static void flash_mem_write_double(addr32_t addr, double val, void *ctxt);
+static uint32_t flash_mem_read_32(addr32_t addr, void *ctxt);
+static void flash_mem_write_32(addr32_t addr, uint32_t val, void *ctxt);
+static uint16_t flash_mem_read_16(addr32_t addr, void *ctxt);
+static void flash_mem_write_16(addr32_t addr, uint16_t val, void *ctxt);
+static uint8_t flash_mem_read_8(addr32_t addr, void *ctxt);
+static void flash_mem_write_8(addr32_t addr, uint8_t val, void *ctxt);
+
 static uint8_t flash_mem[FLASH_MEM_SZ];
 
 void flash_mem_load(char const *path) {
@@ -154,34 +165,34 @@ void flash_mem_load(char const *path) {
     fclose(fp);
 }
 
-float flash_mem_read_float(addr32_t addr) {
-    uint32_t tmp = flash_mem_read_32(addr);
+float flash_mem_read_float(addr32_t addr, void *ctxt) {
+    uint32_t tmp = flash_mem_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-void flash_mem_write_float(addr32_t addr, float val) {
+void flash_mem_write_float(addr32_t addr, float val, void *ctxt) {
     error_set_feature("flash memory write-lengths other than 1-byte");
     error_set_length(4);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-double flash_mem_read_double(addr32_t addr) {
+double flash_mem_read_double(addr32_t addr, void *ctxt) {
     error_set_address(addr);
     error_set_length(sizeof(double));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void flash_mem_write_double(addr32_t addr, double val) {
+void flash_mem_write_double(addr32_t addr, double val, void *ctxt) {
     error_set_feature("flash memory write-lengths other than 1-byte");
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint32_t flash_mem_read_32(addr32_t addr) {
+uint32_t flash_mem_read_32(addr32_t addr, void *ctxt) {
     if ((addr + sizeof(uint32_t) - 1 > ADDR_FLASH_LAST) ||
         (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
@@ -198,14 +209,14 @@ uint32_t flash_mem_read_32(addr32_t addr) {
     return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint32_t)];
 }
 
-void flash_mem_write_32(addr32_t addr, uint32_t val) {
+void flash_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     error_set_feature("flash memory write-lengths other than 1-byte");
     error_set_length(4);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint16_t flash_mem_read_16(addr32_t addr) {
+uint16_t flash_mem_read_16(addr32_t addr, void *ctxt) {
     if ((addr + sizeof(uint16_t) - 1 > ADDR_FLASH_LAST) ||
         (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
@@ -222,14 +233,14 @@ uint16_t flash_mem_read_16(addr32_t addr) {
     return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint16_t)];
 }
 
-void flash_mem_write_16(addr32_t addr, uint16_t val) {
+void flash_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     error_set_feature("flash memory write-lengths other than 1-byte");
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint8_t flash_mem_read_8(addr32_t addr) {
+uint8_t flash_mem_read_8(addr32_t addr, void *ctxt) {
     if ((addr + sizeof(uint8_t) - 1 > ADDR_FLASH_LAST) ||
         (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
@@ -246,7 +257,7 @@ uint8_t flash_mem_read_8(addr32_t addr) {
     return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint8_t)];
 }
 
-void flash_mem_write_8(addr32_t addr, uint8_t val) {
+void flash_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     if ((addr > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
         error_set_length(1);

@@ -292,19 +292,19 @@ void pvr2_core_reg_init(void) {
                        pal_ram_mmio_read, pal_ram_mmio_write);
 }
 
-double pvr2_core_reg_read_double(addr32_t addr) {
+double pvr2_core_reg_read_double(addr32_t addr, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void pvr2_core_reg_write_double(addr32_t addr, double val) {
+void pvr2_core_reg_write_double(addr32_t addr, double val, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-float pvr2_core_reg_read_float(addr32_t addr) {
+float pvr2_core_reg_read_float(addr32_t addr, void *ctxt) {
     uint32_t tmp = mmio_region_pvr2_core_reg_read(&mmio_region_pvr2_core_reg,
                                                   addr);
     float ret;
@@ -312,39 +312,39 @@ float pvr2_core_reg_read_float(addr32_t addr) {
     return ret;
 }
 
-void pvr2_core_reg_write_float(addr32_t addr, float val) {
+void pvr2_core_reg_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     mmio_region_pvr2_core_reg_write(&mmio_region_pvr2_core_reg, addr, val);
 }
 
-uint32_t pvr2_core_reg_read_32(addr32_t addr) {
+uint32_t pvr2_core_reg_read_32(addr32_t addr, void *ctxt) {
     return mmio_region_pvr2_core_reg_read(&mmio_region_pvr2_core_reg, addr);
 }
 
-void pvr2_core_reg_write_32(addr32_t addr, uint32_t val) {
+void pvr2_core_reg_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     mmio_region_pvr2_core_reg_write(&mmio_region_pvr2_core_reg, addr, val);
 }
 
-uint16_t pvr2_core_reg_read_16(addr32_t addr) {
+uint16_t pvr2_core_reg_read_16(addr32_t addr, void *ctxt) {
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void pvr2_core_reg_write_16(addr32_t addr, uint16_t val) {
+void pvr2_core_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint8_t pvr2_core_reg_read_8(addr32_t addr) {
+uint8_t pvr2_core_reg_read_8(addr32_t addr, void *ctxt) {
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void pvr2_core_reg_write_8(addr32_t addr, uint8_t val) {
+void pvr2_core_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);

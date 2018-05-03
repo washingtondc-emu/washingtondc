@@ -28,17 +28,27 @@
 #include "memory.h"
 #include "mem_areas.h"
 
-typedef float(*memory_map_readfloat_func)(uint32_t addr);
-typedef double(*memory_map_readdouble_func)(uint32_t addr);
-typedef uint32_t(*memory_map_read32_func)(uint32_t addr);
-typedef uint16_t(*memory_map_read16_func)(uint32_t addr);
-typedef uint8_t(*memory_map_read8_func)(uint32_t addr);
+typedef
+float(*memory_map_readfloat_func)(uint32_t addr, void *ctxt);
+typedef
+double(*memory_map_readdouble_func)(uint32_t addr, void *ctxt);
+typedef
+uint32_t(*memory_map_read32_func)(uint32_t addr, void *ctxt);
+typedef
+uint16_t(*memory_map_read16_func)(uint32_t addr, void *ctxt);
+typedef
+uint8_t(*memory_map_read8_func)(uint32_t addr, void *ctxt);
 
-typedef void(*memory_map_writefloat_func)(uint32_t addr, float val);
-typedef void(*memory_map_writedouble_func)(uint32_t addr, double val);
-typedef void(*memory_map_write32_func)(uint32_t addr, uint32_t val);
-typedef void(*memory_map_write16_func)(uint32_t addr, uint16_t val);
-typedef void(*memory_map_write8_func)(uint32_t addr, uint8_t val);
+typedef
+void(*memory_map_writefloat_func)(uint32_t addr, float val, void *ctxt);
+typedef
+void(*memory_map_writedouble_func)(uint32_t addr, double val, void *ctxt);
+typedef
+void(*memory_map_write32_func)(uint32_t addr, uint32_t val, void *ctxt);
+typedef
+void(*memory_map_write16_func)(uint32_t addr, uint16_t val, void *ctxt);
+typedef
+void(*memory_map_write8_func)(uint32_t addr, uint8_t val, void *ctxt);
 
 /*
  * read/write functions which will return an error instead of crashing if the
@@ -51,17 +61,27 @@ typedef void(*memory_map_write8_func)(uint32_t addr, uint8_t val);
  *
  * return 0 on success, nonzero on error
  */
-typedef float(*memory_map_readfloat_func)(uint32_t addr);
-typedef double(*memory_map_readdouble_func)(uint32_t addr);
-typedef uint32_t(*memory_map_read32_func)(uint32_t addr);
-typedef uint16_t(*memory_map_read16_func)(uint32_t addr);
-typedef uint8_t(*memory_map_read8_func)(uint32_t addr);
+typedef
+float(*memory_map_readfloat_func)(uint32_t addr, void *ctxt);
+typedef
+double(*memory_map_readdouble_func)(uint32_t addr, void *ctxt);
+typedef
+uint32_t(*memory_map_read32_func)(uint32_t addr, void *ctxt);
+typedef
+uint16_t(*memory_map_read16_func)(uint32_t addr, void *ctxt);
+typedef
+uint8_t(*memory_map_read8_func)(uint32_t addr, void *ctxt);
 
-typedef void(*memory_map_writefloat_func)(uint32_t addr, float val);
-typedef void(*memory_map_writedouble_func)(uint32_t addr, double val);
-typedef void(*memory_map_write32_func)(uint32_t addr, uint32_t val);
-typedef void(*memory_map_write16_func)(uint32_t addr, uint16_t val);
-typedef void(*memory_map_write8_func)(uint32_t addr, uint8_t val);
+typedef
+void(*memory_map_writefloat_func)(uint32_t addr, float val, void *ctxt);
+typedef
+void(*memory_map_writedouble_func)(uint32_t addr, double val, void *ctxt);
+typedef
+void(*memory_map_write32_func)(uint32_t addr, uint32_t val, void *ctxt);
+typedef
+void(*memory_map_write16_func)(uint32_t addr, uint16_t val, void *ctxt);
+typedef
+void(*memory_map_write8_func)(uint32_t addr, uint8_t val, void *ctxt);
 
 enum memory_map_region_id {
     MEMORY_MAP_REGION_UNKNOWN,
@@ -89,10 +109,11 @@ struct memory_interface {
 
 struct memory_map_region {
     uint32_t first_addr, last_addr;
-
     uint32_t range_mask;
-
     uint32_t mask;
+
+    // Pointer where regions can store whatever context they may need.
+    void *ctxt;
 
     enum memory_map_region_id id;
 

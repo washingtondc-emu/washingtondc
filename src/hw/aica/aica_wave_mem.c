@@ -148,32 +148,32 @@ void aica_log_verbose(bool verbose) {
     aica_log_verbose_val = verbose;
 }
 
-float aica_wave_mem_read_float(addr32_t addr) {
-    uint32_t val = aica_wave_mem_read_32(addr);
+float aica_wave_mem_read_float(addr32_t addr, void *ctxt) {
+    uint32_t val = aica_wave_mem_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &val, sizeof(ret));
     return ret;
 }
 
-void aica_wave_mem_write_float(addr32_t addr, float val) {
+void aica_wave_mem_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
-    aica_wave_mem_write_32(addr, tmp);
+    aica_wave_mem_write_32(addr, tmp, ctxt);
 }
 
-double aica_wave_mem_read_double(addr32_t addr) {
+double aica_wave_mem_read_double(addr32_t addr, void *ctxt) {
     error_set_length(sizeof(double));
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void aica_wave_mem_write_double(addr32_t addr, double val) {
+void aica_wave_mem_write_double(addr32_t addr, double val, void *ctxt) {
     error_set_length(sizeof(double));
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint8_t aica_wave_mem_read_8(addr32_t addr) {
+uint8_t aica_wave_mem_read_8(addr32_t addr, void *ctxt) {
     if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
         ((addr - 1 + sizeof(uint8_t)) > ADDR_AICA_WAVE_LAST) ||
         ((addr - 1 + sizeof(uint8_t)) < ADDR_AICA_WAVE_FIRST)) {
@@ -194,7 +194,7 @@ uint8_t aica_wave_mem_read_8(addr32_t addr) {
     return *valp;
 }
 
-void aica_wave_mem_write_8(addr32_t addr, uint8_t val) {
+void aica_wave_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     uint8_t *outp = ((uint8_t*)aica_wave_mem) +
         (addr - ADDR_AICA_WAVE_FIRST);
 
@@ -215,7 +215,7 @@ void aica_wave_mem_write_8(addr32_t addr, uint8_t val) {
     *outp = val;
 }
 
-uint16_t aica_wave_mem_read_16(addr32_t addr) {
+uint16_t aica_wave_mem_read_16(addr32_t addr, void *ctxt) {
     if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
         ((addr - 1 + sizeof(uint16_t)) > ADDR_AICA_WAVE_LAST) ||
         ((addr - 1 + sizeof(uint16_t)) < ADDR_AICA_WAVE_FIRST)) {
@@ -236,7 +236,7 @@ uint16_t aica_wave_mem_read_16(addr32_t addr) {
     return *valp;
 }
 
-void aica_wave_mem_write_16(addr32_t addr, uint16_t val) {
+void aica_wave_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     uint16_t *outp = ((uint16_t*)aica_wave_mem) +
         (addr - ADDR_AICA_WAVE_FIRST) / 2;
 
@@ -257,7 +257,7 @@ void aica_wave_mem_write_16(addr32_t addr, uint16_t val) {
     *outp = val;
 }
 
-uint32_t aica_wave_mem_read_32(addr32_t addr) {
+uint32_t aica_wave_mem_read_32(addr32_t addr, void *ctxt) {
     if (config_get_hack_power_stone_no_aica()) {
         struct aica_mem_hack const *hack = check_hack(addr);
         if (hack) {
@@ -290,7 +290,7 @@ uint32_t aica_wave_mem_read_32(addr32_t addr) {
     return *valp;
 }
 
-void aica_wave_mem_write_32(addr32_t addr, uint32_t val) {
+void aica_wave_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     uint32_t *outp = ((uint32_t*)aica_wave_mem) +
         (addr - ADDR_AICA_WAVE_FIRST) / 4;
 

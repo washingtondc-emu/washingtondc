@@ -85,7 +85,7 @@ DEF_MMIO_REGION(gdrom_reg_8, N_GDROM_REGS, ADDR_GDROM_FIRST, uint8_t)
 
 static uint8_t reg_backing[N_GDROM_REGS];
 
-float gdrom_reg_read_float(addr32_t addr) {
+float gdrom_reg_read_float(addr32_t addr, void *ctxt) {
     uint32_t tmp = mmio_region_gdrom_reg_32_read(&mmio_region_gdrom_reg_32,
                                                  addr);
     float val;
@@ -93,45 +93,45 @@ float gdrom_reg_read_float(addr32_t addr) {
     return val;
 }
 
-void gdrom_reg_write_float(addr32_t addr, float val) {
+void gdrom_reg_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     mmio_region_gdrom_reg_32_write(&mmio_region_gdrom_reg_32, addr, tmp);
 }
 
-double gdrom_reg_read_double(addr32_t addr) {
+double gdrom_reg_read_double(addr32_t addr, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void gdrom_reg_write_double(addr32_t addr, double val) {
+void gdrom_reg_write_double(addr32_t addr, double val, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-uint8_t gdrom_reg_read_8(addr32_t addr) {
+uint8_t gdrom_reg_read_8(addr32_t addr, void *ctxt) {
     return mmio_region_gdrom_reg_8_read(&mmio_region_gdrom_reg_8, addr);
 }
 
-void gdrom_reg_write_8(addr32_t addr, uint8_t val) {
+void gdrom_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     mmio_region_gdrom_reg_8_write(&mmio_region_gdrom_reg_8, addr, val);
 }
 
-uint16_t gdrom_reg_read_16(addr32_t addr) {
+uint16_t gdrom_reg_read_16(addr32_t addr, void *ctxt) {
     return mmio_region_gdrom_reg_16_read(&mmio_region_gdrom_reg_16, addr);
 }
 
-void gdrom_reg_write_16(addr32_t addr, uint16_t val) {
+void gdrom_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     mmio_region_gdrom_reg_16_write(&mmio_region_gdrom_reg_16, addr, val);
 }
 
-uint32_t gdrom_reg_read_32(addr32_t addr) {
+uint32_t gdrom_reg_read_32(addr32_t addr, void *ctxt) {
     return mmio_region_gdrom_reg_32_read(&mmio_region_gdrom_reg_32, addr);
 }
 
-void gdrom_reg_write_32(addr32_t addr, uint32_t val) {
+void gdrom_reg_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     mmio_region_gdrom_reg_32_write(&mmio_region_gdrom_reg_32, addr, val);
 }
 
