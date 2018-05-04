@@ -59,26 +59,6 @@ void sh4_ocache_cleanup(struct sh4_ocache *ocache);
 void sh4_ocache_clear(struct sh4_ocache *ocache);
 
 /*
- * read to/write from the operand cache's RAM-space in situations where we
- * don't actually have a real operand cache available.  It is up to the
- * caller to make sure that the operand cache is enabled (OCE in the CCR),
- * that the Operand Cache's RAM switch is enabled (ORA in the CCR) and that
- * paddr lies within the Operand Cache RAM mapping (in_oc_ram_area returns
- * true).
- */
-double sh4_ocache_do_read_ora_double(Sh4 *sh4, addr32_t addr);
-float sh4_ocache_do_read_ora_float(Sh4 *sh4, addr32_t addr);
-uint32_t sh4_ocache_do_read_ora_32(Sh4 *sh4, addr32_t addr);
-uint16_t sh4_ocache_do_read_ora_16(Sh4 *sh4, addr32_t addr);
-uint8_t sh4_ocache_do_read_ora_8(Sh4 *sh4, addr32_t addr);
-
-void sh4_ocache_do_write_ora_double(Sh4 *sh4, addr32_t addr, double val);
-void sh4_ocache_do_write_ora_float(Sh4 *sh4, addr32_t addr, float val);
-void sh4_ocache_do_write_ora_32(Sh4 *sh4, addr32_t addr, uint32_t val);
-void sh4_ocache_do_write_ora_16(Sh4 *sh4, addr32_t addr, uint16_t val);
-void sh4_ocache_do_write_ora_8(Sh4 *sh4, addr32_t addr, uint8_t val);
-
-/*
  * if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL), then the address is a
  * store queue address.
  */
@@ -140,5 +120,8 @@ double sh4_ocache_read_addr_array_double(Sh4 *sh4, addr32_t paddr);
 uint32_t sh4_ocache_read_addr_array_32(Sh4 *sh4, addr32_t paddr);
 uint16_t sh4_ocache_read_addr_array_16(Sh4 *sh4, addr32_t paddr);
 uint8_t sh4_ocache_read_addr_array_8(Sh4 *sh4, addr32_t paddr);
+
+struct memory_interface;
+extern struct memory_interface sh4_ora_intf;
 
 #endif

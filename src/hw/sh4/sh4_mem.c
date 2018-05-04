@@ -50,18 +50,6 @@
 #include "debugger.h"
 #endif
 
-static float read_ocache_ram_float(uint32_t addr, void *ctxt);
-static double read_ocache_ram_double(uint32_t addr, void *ctxt);
-static uint32_t read_ocache_ram_32(uint32_t addr, void *ctxt);
-static uint16_t read_ocache_ram_16(uint32_t addr, void *ctxt);
-static uint8_t read_ocache_ram_8(uint32_t addr, void *ctxt);
-
-static void write_ocache_ram_float(uint32_t addr, float val, void *ctxt);
-static void write_ocache_ram_double(uint32_t addr, double val, void *ctxt);
-static void write_ocache_ram_32(uint32_t addr, uint32_t val, void *ctxt);
-static void write_ocache_ram_16(uint32_t addr, uint16_t val, void *ctxt);
-static void write_ocache_ram_8(uint32_t addr, uint8_t val, void *ctxt);
-
 static float read_sh4_p4_float(uint32_t addr, void *ctxt);
 static double read_sh4_p4_double(uint32_t addr, void *ctxt);
 static uint32_t read_sh4_p4_32(uint32_t addr, void *ctxt);
@@ -86,20 +74,6 @@ static struct memory_interface sh4_p4_intf = {
     .write32 = write_sh4_p4_32,
     .write16 = write_sh4_p4_16,
     .write8 = write_sh4_p4_8
-};
-
-static struct memory_interface sh4_ora_intf = {
-    .readdouble = read_ocache_ram_double,
-    .readfloat = read_ocache_ram_float,
-    .read32 = read_ocache_ram_32,
-    .read16 = read_ocache_ram_16,
-    .read8 = read_ocache_ram_8,
-
-    .writedouble = write_ocache_ram_double,
-    .writefloat = write_ocache_ram_float,
-    .write32 = write_ocache_ram_32,
-    .write16 = write_ocache_ram_16,
-    .write8 = write_ocache_ram_8
 };
 
 static void construct_sh4_mem_map(struct memory_map *map);
@@ -203,7 +177,7 @@ void construct_sh4_mem_map(struct memory_map *map) {
                    &pvr2_ta_fifo_intf, NULL);
     memory_map_add(map, SH4_OC_RAM_AREA_FIRST, SH4_OC_RAM_AREA_LAST,
                    0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &sh4_ora_intf, NULL);
+                   &sh4_ora_intf, sh4);
 
     /*
      * TODO: everything below here needs to stay at the end so that the
@@ -251,43 +225,6 @@ void construct_sh4_mem_map(struct memory_map *map) {
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &gdrom_reg_intf, NULL);
 }
-
-#define READ_OCACHE_RAM_TMPL(type, postfix)                     \
-    static type read_ocache_ram_##postfix(uint32_t addr, void *ctxt) {  \
-        Sh4 *sh4 = dreamcast_get_cpu();                         \
-        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||      \
-            !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||      \
-            !sh4_ocache_in_ram_area(addr)) {                    \
-            error_set_address(addr);                            \
-            RAISE_ERROR(ERROR_INTEGRITY);                       \
-        }                                                       \
-        return sh4_ocache_do_read_ora_##postfix(sh4, addr);     \
-    }
-
-READ_OCACHE_RAM_TMPL(double, double)
-READ_OCACHE_RAM_TMPL(float, float)
-READ_OCACHE_RAM_TMPL(uint32_t, 32)
-READ_OCACHE_RAM_TMPL(uint16_t, 16)
-READ_OCACHE_RAM_TMPL(uint8_t, 8)
-
-#define WRITE_OCACHE_RAM_TMPL(type, postfix)                            \
-    static void write_ocache_ram_##postfix(uint32_t addr, type val,     \
-                                           void *ctxt) {                \
-        Sh4 *sh4 = dreamcast_get_cpu();                                 \
-        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||              \
-            !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||              \
-            !sh4_ocache_in_ram_area(addr)) {                            \
-            error_set_address(addr);                                    \
-            RAISE_ERROR(ERROR_INTEGRITY);                               \
-        }                                                               \
-        sh4_ocache_do_write_ora_##postfix(sh4, addr, val);              \
-    }
-
-WRITE_OCACHE_RAM_TMPL(double, double)
-WRITE_OCACHE_RAM_TMPL(float, float)
-WRITE_OCACHE_RAM_TMPL(uint32_t, 32)
-WRITE_OCACHE_RAM_TMPL(uint16_t, 16)
-WRITE_OCACHE_RAM_TMPL(uint8_t, 8)
 
 #define READ_SH4_P4_TMPL(type, postfix)                                 \
     static type read_sh4_p4_##postfix(uint32_t addr, void *ctxt) {      \

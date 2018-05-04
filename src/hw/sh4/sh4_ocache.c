@@ -30,8 +30,43 @@
 #include "sh4_excp.h"
 #include "error.h"
 #include "log.h"
+#include "MemoryMap.h"
 
 #include "sh4_ocache.h"
+
+/*
+ * read to/write from the operand cache's RAM-space in situations where we
+ * don't actually have a real operand cache available.  It is up to the
+ * caller to make sure that the operand cache is enabled (OCE in the CCR),
+ * that the Operand Cache's RAM switch is enabled (ORA in the CCR) and that
+ * paddr lies within the Operand Cache RAM mapping (in_oc_ram_area returns
+ * true).
+ */
+double sh4_ocache_do_read_ora_double(addr32_t addr, void *ctxt);
+float sh4_ocache_do_read_ora_float(addr32_t addr, void *ctxt);
+uint32_t sh4_ocache_do_read_ora_32(addr32_t addr, void *ctxt);
+uint16_t sh4_ocache_do_read_ora_16(addr32_t addr, void *ctxt);
+uint8_t sh4_ocache_do_read_ora_8(addr32_t addr, void *ctxt);
+
+void sh4_ocache_do_write_ora_double(addr32_t addr, double val, void *ctxt);
+void sh4_ocache_do_write_ora_float(addr32_t addr, float val, void *ctxt);
+void sh4_ocache_do_write_ora_32(addr32_t addr, uint32_t val, void *ctxt);
+void sh4_ocache_do_write_ora_16(addr32_t addr, uint16_t val, void *ctxt);
+void sh4_ocache_do_write_ora_8(addr32_t addr, uint8_t val, void *ctxt);
+
+struct memory_interface sh4_ora_intf = {
+    .readdouble = sh4_ocache_do_read_ora_double,
+    .readfloat = sh4_ocache_do_read_ora_float,
+    .read32 = sh4_ocache_do_read_ora_32,
+    .read16 = sh4_ocache_do_read_ora_16,
+    .read8 = sh4_ocache_do_read_ora_8,
+
+    .writedouble = sh4_ocache_do_write_ora_double,
+    .writefloat = sh4_ocache_do_write_ora_float,
+    .write32 = sh4_ocache_do_write_ora_32,
+    .write16 = sh4_ocache_do_write_ora_16,
+    .write8 = sh4_ocache_do_write_ora_8
+};
 
 #define SH4_OCACHE_LONGS_PER_CACHE_LINE  8
 #define SH4_OCACHE_ENTRY_COUNT           512
@@ -68,8 +103,15 @@ void sh4_ocache_clear(struct sh4_ocache *ocache) {
 }
 
 #define SH4_OCACHE_DO_WRITE_ORA_TMPL(type, postfix)                     \
-    void sh4_ocache_do_write_ora_##postfix(Sh4 *sh4,                    \
-                                           addr32_t paddr, type val) {  \
+    void sh4_ocache_do_write_ora_##postfix(uint32_t paddr, type val,    \
+                                           void *ctxt) {                \
+        struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
+        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||              \
+            !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||              \
+            !sh4_ocache_in_ram_area(paddr)) {                           \
+            error_set_address(paddr);                                   \
+            RAISE_ERROR(ERROR_INTEGRITY);                               \
+        }                                                               \
         type *addr = (type*)sh4_ocache_get_ora_ram_addr(sh4, paddr);    \
         *addr = val;                                                    \
     }
@@ -81,7 +123,14 @@ SH4_OCACHE_DO_WRITE_ORA_TMPL(uint16_t, 16)
 SH4_OCACHE_DO_WRITE_ORA_TMPL(uint8_t, 8)
 
 #define SH4_OCACHE_DO_READ_ORA_TMPL(type, postfix)                      \
-    type sh4_ocache_do_read_ora_##postfix(Sh4 *sh4, addr32_t paddr) {   \
+    type sh4_ocache_do_read_ora_##postfix(uint32_t paddr, void *ctxt) { \
+        struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
+        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||              \
+            !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||              \
+            !sh4_ocache_in_ram_area(paddr)) {                           \
+            error_set_address(paddr);                                   \
+            RAISE_ERROR(ERROR_INTEGRITY);                               \
+        }                                                               \
         type *ptr = (type*)sh4_ocache_get_ora_ram_addr(sh4, paddr);     \
         return *ptr;                                                    \
     }
