@@ -29,6 +29,10 @@
 #include "types.h"
 #include "MemoryMap.h"
 
+struct aica_wave_mem {
+    uint8_t mem[ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1];
+};
+
 float aica_wave_mem_read_float(addr32_t addr, void *ctxt);
 void aica_wave_mem_write_float(addr32_t addr, float val, void *ctxt);
 double aica_wave_mem_read_double(addr32_t addr, void *ctxt);
@@ -43,5 +47,8 @@ void aica_wave_mem_write_32(addr32_t addr, uint32_t val, void *ctxt);
 void aica_log_verbose(bool verbose);
 
 extern struct memory_interface aica_wave_mem_intf;
+
+void aica_wave_mem_init(struct aica_wave_mem *wm);
+void aica_wave_mem_cleanup(struct aica_wave_mem *wm);
 
 #endif

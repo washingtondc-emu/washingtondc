@@ -104,13 +104,18 @@ static struct memory_interface sh4_ora_intf = {
 
 static void construct_sh4_mem_map(struct memory_map *map);
 
+static struct aica_wave_mem aica_wave_mem;
+
 void sh4_mem_init(Sh4 *sh4) {
     memory_map_init(&sh4->mem.map);
+
+    aica_wave_mem_init(&aica_wave_mem);
     construct_sh4_mem_map(&sh4->mem.map);
 }
 
 void sh4_mem_cleanup(Sh4 *sh4) {
     memory_map_cleanup(&sh4->mem.map);
+    aica_wave_mem_cleanup(&aica_wave_mem);
 }
 
 /*
@@ -238,7 +243,7 @@ void construct_sh4_mem_map(struct memory_map *map) {
                    &aica_reg_intf, NULL);
     memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_wave_mem_intf, NULL);
+                   &aica_wave_mem_intf, &aica_wave_mem);
     memory_map_add(map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_rtc_intf, NULL);
