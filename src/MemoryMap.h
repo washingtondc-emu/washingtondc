@@ -25,7 +25,6 @@
 
 #include <stdint.h>
 
-#include "memory.h"
 #include "mem_areas.h"
 
 typedef
@@ -137,7 +136,7 @@ memory_map_add(struct memory_map *map,
                uint32_t range_mask,
                uint32_t mask,
                enum memory_map_region_id id,
-               struct memory_interface const *intf);
+               struct memory_interface const *intf, void *ctxt);
 
 uint8_t
 memory_map_read_8(struct memory_map *map, uint32_t addr);

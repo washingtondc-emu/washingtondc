@@ -158,7 +158,8 @@ memory_map_add(struct memory_map *map,
                uint32_t range_mask,
                uint32_t mask,
                enum memory_map_region_id id,
-               struct memory_interface const *intf) {
+               struct memory_interface const *intf,
+               void *ctxt) {
     if (map->n_regions >= MAX_MEM_MAP_REGIONS)
         RAISE_ERROR(ERROR_OVERFLOW);
 
@@ -170,5 +171,5 @@ memory_map_add(struct memory_map *map,
     reg->mask = mask;
     reg->id = id;
     reg->intf = intf;
-    reg->ctxt = NULL;
+    reg->ctxt = ctxt;
 }

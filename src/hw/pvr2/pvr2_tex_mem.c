@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include <string.h>
+
 #include "mem_code.h"
 #include "MemoryMap.h"
 #include "pvr2_core_reg.h"

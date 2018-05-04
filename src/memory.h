@@ -30,6 +30,7 @@
 #include "types.h"
 #include "mem_code.h"
 #include "host_branch_pred.h"
+#include "MemoryMap.h"
 
 #define MEMORY_SIZE_SHIFT 24
 #define MEMORY_SIZE (1 << MEMORY_SIZE_SHIFT)
@@ -76,53 +77,65 @@ memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len) {
 }
 
 static inline void
-memory_write_8(struct Memory *mem, addr32_t addr, uint8_t val) {
+memory_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     ((uint8_t*)mem->mem)[addr] = val;
 }
 
 static inline void
-memory_write_16(struct Memory *mem, addr32_t addr, uint16_t val) {
+memory_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     ((uint16_t*)mem->mem)[addr >> 1] = val;
 }
 
 static inline void
-memory_write_32(struct Memory *mem, addr32_t addr, uint32_t val) {
+memory_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     ((uint32_t*)mem->mem)[addr >> 2] = val;
 }
 
 static inline void
-memory_write_float(struct Memory *mem, addr32_t addr, float val) {
+memory_write_float(addr32_t addr, float val, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     ((float*)mem->mem)[addr >> 2] = val;
 }
 
 static inline void
-memory_write_double(struct Memory *mem, addr32_t addr, double val) {
+memory_write_double(addr32_t addr, double val, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     ((double*)mem->mem)[addr >> 3] = val;
 }
 
 static inline uint8_t
-memory_read_8(struct Memory *mem, addr32_t addr) {
+memory_read_8(addr32_t addr, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     return ((uint8_t*)mem->mem)[addr];
 }
 
 static inline uint16_t
-memory_read_16(struct Memory *mem, addr32_t addr) {
+memory_read_16(addr32_t addr, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     return ((uint16_t*)mem->mem)[addr >> 1];
 }
 
 static inline uint32_t
-memory_read_32(struct Memory *mem, addr32_t addr) {
+memory_read_32(addr32_t addr, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     return ((uint32_t*)mem->mem)[addr >> 2];
 }
 
 static inline float
-memory_read_float(struct Memory *mem, addr32_t addr) {
+memory_read_float(addr32_t addr, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     return ((float*)mem->mem)[addr >> 2];
 }
 
 static inline double
-memory_read_double(struct Memory *mem, addr32_t addr) {
+memory_read_double(addr32_t addr, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
     return ((double*)mem->mem)[addr >> 3];
 }
+
+extern struct memory_interface ram_intf;
 
 #endif

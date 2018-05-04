@@ -50,18 +50,6 @@
 #include "debugger.h"
 #endif
 
-static uint32_t read_area3_32(uint32_t addr, void *ctxt);
-static uint16_t read_area3_16(uint32_t addr, void *ctxt);
-static uint8_t read_area3_8(uint32_t addr, void *ctxt);
-static float read_area3_float(uint32_t addr, void *ctxt);
-static double read_area3_double(uint32_t addr, void *ctxt);
-
-static void write_area3_float(uint32_t addr, float val, void *ctxt);
-static void write_area3_double(uint32_t addr, double val, void *ctxt);
-static void write_area3_32(uint32_t addr, uint32_t val, void *ctxt);
-static void write_area3_16(uint32_t addr, uint16_t val, void *ctxt);
-static void write_area3_8(uint32_t addr, uint8_t val, void *ctxt);
-
 static float read_ocache_ram_float(uint32_t addr, void *ctxt);
 static double read_ocache_ram_double(uint32_t addr, void *ctxt);
 static uint32_t read_ocache_ram_32(uint32_t addr, void *ctxt);
@@ -98,20 +86,6 @@ static struct memory_interface sh4_p4_intf = {
     .write32 = write_sh4_p4_32,
     .write16 = write_sh4_p4_16,
     .write8 = write_sh4_p4_8
-};
-
-static struct memory_interface mem_intf = {
-    .readdouble = read_area3_double,
-    .readfloat = read_area3_float,
-    .read32 = read_area3_32,
-    .read16 = read_area3_16,
-    .read8 = read_area3_8,
-
-    .writedouble = write_area3_double,
-    .writefloat = write_area3_float,
-    .write32 = write_area3_32,
-    .write16 = write_area3_16,
-    .write8 = write_area3_8
 };
 
 static struct memory_interface sh4_ora_intf = {
@@ -209,21 +183,22 @@ void construct_sh4_mem_map(struct memory_map *map) {
      */
     memory_map_add(map, SH4_AREA_P4_FIRST, SH4_AREA_P4_LAST,
                    0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &sh4_p4_intf);
+                   &sh4_p4_intf, NULL);
     memory_map_add(map, ADDR_AREA3_FIRST, ADDR_AREA3_LAST,
-                   0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM, &mem_intf);
+                   0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
+                   &ram_intf, &dc_mem);
     memory_map_add(map, ADDR_TEX32_FIRST, ADDR_TEX32_LAST,
                    0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area32_intf);
+                   &pvr2_tex_mem_area32_intf, NULL);
     memory_map_add(map, ADDR_TEX64_FIRST, ADDR_TEX64_LAST,
                    0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area64_intf);
+                   &pvr2_tex_mem_area64_intf, NULL);
     memory_map_add(map, ADDR_TA_FIFO_POLY_FIRST, ADDR_TA_FIFO_POLY_LAST,
                    0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_ta_fifo_intf);
+                   &pvr2_ta_fifo_intf, NULL);
     memory_map_add(map, SH4_OC_RAM_AREA_FIRST, SH4_OC_RAM_AREA_LAST,
                    0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &sh4_ora_intf);
+                   &sh4_ora_intf, NULL);
 
     /*
      * TODO: everything below here needs to stay at the end so that the
@@ -233,83 +208,43 @@ void construct_sh4_mem_map(struct memory_map *map) {
      */
     memory_map_add(map, ADDR_BIOS_FIRST, ADDR_BIOS_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &bios_file_intf);
+                   &bios_file_intf, NULL);
     memory_map_add(map, ADDR_FLASH_FIRST, ADDR_FLASH_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &flash_mem_intf);
+                   &flash_mem_intf, NULL);
     memory_map_add(map, ADDR_G1_FIRST, ADDR_G1_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &g1_intf);
+                   &g1_intf, NULL);
     memory_map_add(map, ADDR_SYS_FIRST, ADDR_SYS_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &sys_block_intf);
+                   &sys_block_intf, NULL);
     memory_map_add(map, ADDR_MAPLE_FIRST, ADDR_MAPLE_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &maple_intf);
+                   &maple_intf, NULL);
     memory_map_add(map, ADDR_G2_FIRST, ADDR_G2_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &g2_intf);
+                   &g2_intf, NULL);
     memory_map_add(map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_reg_intf);
+                   &pvr2_reg_intf, NULL);
     memory_map_add(map, ADDR_MODEM_FIRST, ADDR_MODEM_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &modem_intf);
+                   &modem_intf, NULL);
     memory_map_add(map, ADDR_PVR2_CORE_FIRST, ADDR_PVR2_CORE_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_core_reg_intf);
+                   &pvr2_core_reg_intf, NULL);
     memory_map_add(map, ADDR_AICA_FIRST, ADDR_AICA_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_reg_intf);
+                   &aica_reg_intf, NULL);
     memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_wave_mem_intf);
+                   &aica_wave_mem_intf, NULL);
     memory_map_add(map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_rtc_intf);
+                   &aica_rtc_intf, NULL);
     memory_map_add(map, ADDR_GDROM_FIRST, ADDR_GDROM_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &gdrom_reg_intf);
-}
-
-static float read_area3_float(uint32_t addr, void *ctxt) {
-    return memory_read_float(&dc_mem, addr);
-}
-
-static double read_area3_double(uint32_t addr, void *ctxt) {
-    return memory_read_double(&dc_mem, addr);
-}
-
-static uint32_t read_area3_32(uint32_t addr, void *ctxt) {
-    return memory_read_32(&dc_mem, addr);
-}
-
-static uint16_t read_area3_16(uint32_t addr, void *ctxt) {
-    return memory_read_16(&dc_mem, addr);
-}
-
-static uint8_t read_area3_8(uint32_t addr, void *ctxt) {
-    return memory_read_8(&dc_mem, addr);
-}
-
-static void write_area3_float(uint32_t addr, float val, void *ctxt) {
-    memory_write_float(&dc_mem, addr, val);
-}
-
-static void write_area3_double(uint32_t addr, double val, void *ctxt) {
-    memory_write_double(&dc_mem, addr, val);
-}
-
-static void write_area3_32(uint32_t addr, uint32_t val, void *ctxt) {
-    memory_write_32(&dc_mem, addr, val);
-}
-
-static void write_area3_16(uint32_t addr, uint16_t val, void *ctxt) {
-    memory_write_16(&dc_mem, addr, val);
-}
-
-static void write_area3_8(uint32_t addr, uint8_t val, void *ctxt) {
-    memory_write_8(&dc_mem, addr, val);
+                   &gdrom_reg_intf, NULL);
 }
 
 #define READ_OCACHE_RAM_TMPL(type, postfix)                     \

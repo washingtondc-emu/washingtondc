@@ -37,3 +37,17 @@ void memory_cleanup(struct Memory *mem) {
 void memory_clear(struct Memory *mem) {
     memset(mem->mem, 0, sizeof(mem->mem[0]) * MEMORY_SIZE);
 }
+
+struct memory_interface ram_intf = {
+    .readdouble = memory_read_double,
+    .readfloat = memory_read_float,
+    .read32 = memory_read_32,
+    .read16 = memory_read_16,
+    .read8 = memory_read_8,
+
+    .writedouble = memory_write_double,
+    .writefloat = memory_write_float,
+    .write32 = memory_write_32,
+    .write16 = memory_write_16,
+    .write8 = memory_write_8
+};

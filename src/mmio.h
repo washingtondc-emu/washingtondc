@@ -25,8 +25,10 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "types.h"
+#include "error.h"
 
 #define DECL_MMIO_REGION(name, len_bytes, beg_bytes, type)              \
     struct mmio_region_##name;                                          \

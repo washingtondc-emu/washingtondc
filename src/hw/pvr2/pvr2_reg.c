@@ -30,6 +30,7 @@
 #include "MemoryMap.h"
 #include "log.h"
 #include "mmio.h"
+#include "error.h"
 
 #include "pvr2_reg.h"
 
