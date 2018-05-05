@@ -76,7 +76,7 @@ static struct memory_interface sh4_p4_intf = {
     .write8 = write_sh4_p4_8
 };
 
-static void construct_sh4_mem_map(struct memory_map *map);
+static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map);
 
 static struct aica_wave_mem aica_wave_mem;
 
@@ -84,7 +84,7 @@ void sh4_mem_init(Sh4 *sh4) {
     memory_map_init(&sh4->mem.map);
 
     aica_wave_mem_init(&aica_wave_mem);
-    construct_sh4_mem_map(&sh4->mem.map);
+    construct_sh4_mem_map(sh4, &sh4->mem.map);
 }
 
 void sh4_mem_cleanup(Sh4 *sh4) {
@@ -148,7 +148,7 @@ SH4_DO_READ_P4_TMPL(uint32_t, 32)
 SH4_DO_READ_P4_TMPL(float, float)
 SH4_DO_READ_P4_TMPL(double, double)
 
-void construct_sh4_mem_map(struct memory_map *map) {
+static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
     /*
      * I don't like the idea of putting SH4_AREA_P4 ahead of AREA3 (memory),
      * but this absolutely needs to be at the front of the list because the
