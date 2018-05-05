@@ -50,30 +50,30 @@
 #include "debugger.h"
 #endif
 
-static float read_sh4_p4_float(uint32_t addr, void *ctxt);
-static double read_sh4_p4_double(uint32_t addr, void *ctxt);
-static uint32_t read_sh4_p4_32(uint32_t addr, void *ctxt);
-static uint16_t read_sh4_p4_16(uint32_t addr, void *ctxt);
-static uint8_t read_sh4_p4_8(uint32_t addr, void *ctxt);
+static void sh4_do_write_p4_double(addr32_t addr, double val, void *ctxt);
+static void sh4_do_write_p4_float(addr32_t addr, float val, void *ctxt);
+static void sh4_do_write_p4_32(addr32_t addr, uint32_t val, void *ctxt);
+static void sh4_do_write_p4_16(addr32_t addr, uint16_t val, void *ctxt);
+static void sh4_do_write_p4_8(addr32_t addr, uint8_t val, void *ctxt);
 
-static void write_sh4_p4_float(uint32_t addr, float val, void *ctxt);
-static void write_sh4_p4_double(uint32_t addr, double val, void *ctxt);
-static void write_sh4_p4_32(uint32_t addr, uint32_t val, void *ctxt);
-static void write_sh4_p4_16(uint32_t addr, uint16_t val, void *ctxt);
-static void write_sh4_p4_8(uint32_t addr, uint8_t val, void *ctxt);
+static double sh4_do_read_p4_double(addr32_t addr, void *ctxt);
+static float sh4_do_read_p4_float(addr32_t addr, void *ctxt);
+static uint32_t sh4_do_read_p4_32(addr32_t addr, void *ctxt);
+static uint16_t sh4_do_read_p4_16(addr32_t addr, void *ctxt);
+static uint8_t sh4_do_read_p4_8(addr32_t addr, void *ctxt);
 
-static struct memory_interface sh4_p4_intf = {
-    .readdouble = read_sh4_p4_double,
-    .readfloat = read_sh4_p4_float,
-    .read32 = read_sh4_p4_32,
-    .read16 = read_sh4_p4_16,
-    .read8 = read_sh4_p4_8,
+struct memory_interface sh4_p4_intf = {
+    .readdouble = sh4_do_read_p4_double,
+    .readfloat = sh4_do_read_p4_float,
+    .read32 = sh4_do_read_p4_32,
+    .read16 = sh4_do_read_p4_16,
+    .read8 = sh4_do_read_p4_8,
 
-    .writedouble = write_sh4_p4_double,
-    .writefloat = write_sh4_p4_float,
-    .write32 = write_sh4_p4_32,
-    .write16 = write_sh4_p4_16,
-    .write8 = write_sh4_p4_8
+    .writedouble = sh4_do_write_p4_double,
+    .writefloat = sh4_do_write_p4_float,
+    .write32 = sh4_do_write_p4_32,
+    .write16 = sh4_do_write_p4_16,
+    .write8 = sh4_do_write_p4_8
 };
 
 static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map);
@@ -99,7 +99,9 @@ void sh4_mem_cleanup(Sh4 *sh4) {
  */
 
 #define SH4_DO_WRITE_P4_TMPL(type, postfix)                             \
-    void sh4_do_write_p4_##postfix(Sh4 *sh4, addr32_t addr, type val) { \
+    static void                                                         \
+    sh4_do_write_p4_##postfix(addr32_t addr, type val, void *ctxt) {    \
+        struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
         if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
             sh4_sq_write_##postfix(sh4, addr, val);                     \
         } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
@@ -122,8 +124,9 @@ SH4_DO_WRITE_P4_TMPL(float, float)
 SH4_DO_WRITE_P4_TMPL(double, double)
 
 #define SH4_DO_READ_P4_TMPL(type, postfix)                              \
-    type sh4_do_read_p4_##postfix(Sh4 *sh4, addr32_t addr) {            \
+    static type sh4_do_read_p4_##postfix(addr32_t addr, void *ctxt) {   \
         type tmp_val;                                                   \
+        struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
                                                                         \
         if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
             return sh4_sq_read_##postfix(sh4, addr);                    \
@@ -162,7 +165,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
      */
     memory_map_add(map, SH4_AREA_P4_FIRST, SH4_AREA_P4_LAST,
                    0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &sh4_p4_intf, NULL);
+                   &sh4_p4_intf, sh4);
     memory_map_add(map, ADDR_AREA3_FIRST, ADDR_AREA3_LAST,
                    0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
                    &ram_intf, &dc_mem);
@@ -225,27 +228,3 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &gdrom_reg_intf, NULL);
 }
-
-#define READ_SH4_P4_TMPL(type, postfix)                                 \
-    static type read_sh4_p4_##postfix(uint32_t addr, void *ctxt) {      \
-        Sh4 *sh4 = dreamcast_get_cpu();                                 \
-        return sh4_do_read_p4_##postfix(sh4, addr);                     \
-    }
-
-READ_SH4_P4_TMPL(double, double)
-READ_SH4_P4_TMPL(float, float)
-READ_SH4_P4_TMPL(uint32_t, 32)
-READ_SH4_P4_TMPL(uint16_t, 16)
-READ_SH4_P4_TMPL(uint8_t, 8)
-
-#define WRITE_SH4_P4_TMPL(type, postfix)                                \
-    static void write_sh4_p4_##postfix(uint32_t addr, type val, void *ctxt) { \
-        Sh4 *sh4 = dreamcast_get_cpu();                                 \
-        sh4_do_write_p4_##postfix(sh4, addr, val);                      \
-    }
-
-WRITE_SH4_P4_TMPL(double, double)
-WRITE_SH4_P4_TMPL(float, float)
-WRITE_SH4_P4_TMPL(uint32_t, 32)
-WRITE_SH4_P4_TMPL(uint16_t, 16)
-WRITE_SH4_P4_TMPL(uint8_t, 8)

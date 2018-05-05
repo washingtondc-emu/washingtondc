@@ -75,23 +75,13 @@ static_assert((SH4_P4_REGEND - SH4_P4_REGSTART) ==
 #define SH4_OP_CACHE_LINE_SIZE (SH4_LONGS_PER_OP_CACHE_LINE * 4)
 #define SH4_OC_RAM_AREA_SIZE (8 * 1024)
 
-void sh4_do_write_p4_double(Sh4 *sh4, addr32_t addr, double val);
-void sh4_do_write_p4_float(Sh4 *sh4, addr32_t addr, float val);
-void sh4_do_write_p4_32(Sh4 *sh4, addr32_t addr, uint32_t val);
-void sh4_do_write_p4_16(Sh4 *sh4, addr32_t addr, uint16_t val);
-void sh4_do_write_p4_8(Sh4 *sh4, addr32_t addr, uint8_t val);
-
-double sh4_do_read_p4_double(Sh4 *sh4, addr32_t addr);
-float sh4_do_read_p4_float(Sh4 *sh4, addr32_t addr);
-uint32_t sh4_do_read_p4_32(Sh4 *sh4, addr32_t addr);
-uint16_t sh4_do_read_p4_16(Sh4 *sh4, addr32_t addr);
-uint8_t sh4_do_read_p4_8(Sh4 *sh4, addr32_t addr);
-
 void sh4_mem_init(Sh4 *sh4);
 void sh4_mem_cleanup(Sh4 *sh4);
 
 struct sh4_mem {
     struct memory_map map;
 };
+
+extern struct memory_interface sh4_p4_intf;
 
 #endif
