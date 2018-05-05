@@ -22,29 +22,9 @@
 
 #include <stdlib.h>
 
-#include "sh4_excp.h"
-#include "sh4_mem.h"
-#include "sh4_ocache.h"
 #include "sh4.h"
-#include "dreamcast.h"
 #include "MemoryMap.h"
-#include "mem_code.h"
-#include "hw/sys/sys_block.h"
-#include "hw/maple/maple_reg.h"
-#include "hw/g1/g1_reg.h"
-#include "hw/g2/g2_reg.h"
-#include "hw/g2/modem.h"
-#include "hw/pvr2/pvr2_reg.h"
-#include "hw/pvr2/pvr2_core_reg.h"
-#include "hw/pvr2/pvr2_tex_mem.h"
-#include "hw/pvr2/pvr2_ta.h"
-#include "hw/aica/aica_reg.h"
-#include "hw/aica/aica_rtc.h"
-#include "hw/aica/aica_wave_mem.h"
-#include "hw/gdrom/gdrom_reg.h"
 #include "hw/sh4/sh4_ocache.h"
-#include "BiosFile.h"
-#include "flash_memory.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debugger.h"
@@ -76,20 +56,11 @@ struct memory_interface sh4_p4_intf = {
     .write8 = sh4_do_write_p4_8
 };
 
-static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map);
-
-static struct aica_wave_mem aica_wave_mem;
-
 void sh4_mem_init(Sh4 *sh4) {
-    memory_map_init(&sh4->mem.map);
-
-    aica_wave_mem_init(&aica_wave_mem);
-    construct_sh4_mem_map(sh4, &sh4->mem.map);
+    sh4->mem.map = NULL;
 }
 
 void sh4_mem_cleanup(Sh4 *sh4) {
-    memory_map_cleanup(&sh4->mem.map);
-    aica_wave_mem_cleanup(&aica_wave_mem);
 }
 
 /*
@@ -151,80 +122,6 @@ SH4_DO_READ_P4_TMPL(uint32_t, 32)
 SH4_DO_READ_P4_TMPL(float, float)
 SH4_DO_READ_P4_TMPL(double, double)
 
-static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
-    /*
-     * I don't like the idea of putting SH4_AREA_P4 ahead of AREA3 (memory),
-     * but this absolutely needs to be at the front of the list because the
-     * only distinction between this and the other memory regions is that the
-     * upper three bits of the address are all 1, and for the other regions the
-     * upper three bits can be anything as long as they are not all 1.
-     *
-     * SH4_OC_RAM_AREA is also an SH4 on-chip component but as far as I know
-     * nothing else in the dreamcast's memory map overlaps with it; this is why
-     * have not also put it at the begging of the regions array.
-     */
-    memory_map_add(map, SH4_AREA_P4_FIRST, SH4_AREA_P4_LAST,
-                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &sh4_p4_intf, sh4);
-    memory_map_add(map, ADDR_AREA3_FIRST, ADDR_AREA3_LAST,
-                   0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
-                   &ram_intf, &dc_mem);
-    memory_map_add(map, ADDR_TEX32_FIRST, ADDR_TEX32_LAST,
-                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area32_intf, NULL);
-    memory_map_add(map, ADDR_TEX64_FIRST, ADDR_TEX64_LAST,
-                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area64_intf, NULL);
-    memory_map_add(map, ADDR_TA_FIFO_POLY_FIRST, ADDR_TA_FIFO_POLY_LAST,
-                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_ta_fifo_intf, NULL);
-    memory_map_add(map, SH4_OC_RAM_AREA_FIRST, SH4_OC_RAM_AREA_LAST,
-                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &sh4_ora_intf, sh4);
-
-    /*
-     * TODO: everything below here needs to stay at the end so that the
-     * masking/mirroring doesn't make it pick up addresses that should
-     * belong to other parts of the map.  I need to come up with a better
-     * way to implement mirroring.
-     */
-    memory_map_add(map, ADDR_BIOS_FIRST, ADDR_BIOS_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &bios_file_intf, NULL);
-    memory_map_add(map, ADDR_FLASH_FIRST, ADDR_FLASH_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &flash_mem_intf, NULL);
-    memory_map_add(map, ADDR_G1_FIRST, ADDR_G1_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &g1_intf, NULL);
-    memory_map_add(map, ADDR_SYS_FIRST, ADDR_SYS_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &sys_block_intf, NULL);
-    memory_map_add(map, ADDR_MAPLE_FIRST, ADDR_MAPLE_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &maple_intf, NULL);
-    memory_map_add(map, ADDR_G2_FIRST, ADDR_G2_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &g2_intf, NULL);
-    memory_map_add(map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_reg_intf, NULL);
-    memory_map_add(map, ADDR_MODEM_FIRST, ADDR_MODEM_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &modem_intf, NULL);
-    memory_map_add(map, ADDR_PVR2_CORE_FIRST, ADDR_PVR2_CORE_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_core_reg_intf, NULL);
-    memory_map_add(map, ADDR_AICA_FIRST, ADDR_AICA_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_reg_intf, NULL);
-    memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_wave_mem_intf, &aica_wave_mem);
-    memory_map_add(map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_rtc_intf, NULL);
-    memory_map_add(map, ADDR_GDROM_FIRST, ADDR_GDROM_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &gdrom_reg_intf, NULL);
+void sh4_set_mem_map(struct Sh4 *sh4, struct memory_map *map) {
+    sh4->mem.map = map;
 }

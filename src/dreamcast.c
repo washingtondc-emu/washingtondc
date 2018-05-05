@@ -37,6 +37,7 @@
 #include "gfx/gfx.h"
 #include "hw/aica/aica_rtc.h"
 #include "hw/gdrom/gdrom.h"
+#include "hw/gdrom/gdrom_reg.h"
 #include "hw/maple/maple.h"
 #include "hw/maple/maple_device.h"
 #include "hw/maple/maple_controller.h"
@@ -48,13 +49,23 @@
 #include "cmd/cmd.h"
 #include "glfw/window.h"
 #include "hw/pvr2/framebuffer.h"
+#include "hw/pvr2/pvr2_tex_mem.h"
+#include "hw/pvr2/pvr2_ta.h"
 #include "log.h"
 #include "hw/sh4/sh4_read_inst.h"
 #include "hw/pvr2/pvr2.h"
+#include "hw/pvr2/pvr2_reg.h"
 #include "hw/sys/sys_block.h"
 #include "hw/aica/aica.h"
+#include "hw/aica/aica_reg.h"
+#include "hw/aica/aica_rtc.h"
+#include "hw/aica/aica_wave_mem.h"
 #include "hw/g1/g1.h"
+#include "hw/g1/g1_reg.h"
 #include "hw/g2/g2.h"
+#include "hw/g2/g2_reg.h"
+#include "hw/g2/modem.h"
+#include "hw/maple/maple_reg.h"
 #include "jit/code_block.h"
 #include "jit/jit_intp/code_block_intp.h"
 #include "jit/code_cache.h"
@@ -75,6 +86,8 @@
 
 static Sh4 cpu;
 struct Memory dc_mem;
+static struct memory_map mem_map;
+static struct aica_wave_mem aica_wave_mem;
 
 static volatile bool is_running;
 static volatile bool signal_exit_threads;
@@ -101,6 +114,8 @@ static enum dc_state dc_state = DC_STATE_NOT_RUNNING;
 static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
+
+static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map);
 
 #ifndef ENABLE_DEBUGGER
 // Run until the next scheduled event (in dc_sched) should occur
@@ -223,12 +238,17 @@ void dreamcast_init(bool cmd_session) {
     g1_init();
     g2_init();
     aica_init();
+    aica_wave_mem_init(&aica_wave_mem);
     pvr2_init();
     gdrom_init();
     maple_init();
 
+    memory_map_init(&mem_map);
+    construct_sh4_mem_map(&cpu, &mem_map);
+    sh4_set_mem_map(&cpu, &mem_map);
+
 #ifdef ENABLE_JIT_X86_64
-    native_mem_register(&cpu.mem.map);
+    native_mem_register(cpu.mem.map);
 #endif
 
     /* set the PC to the booststrap code within IP.BIN */
@@ -270,9 +290,12 @@ void dreamcast_init(bool cmd_session) {
 }
 
 void dreamcast_cleanup() {
+    memory_map_cleanup(cpu.mem.map);
+
     maple_cleanup();
     gdrom_cleanup();
     pvr2_cleanup();
+    memory_map_cleanup(&mem_map);
     aica_cleanup();
     g2_cleanup();
     g1_cleanup();
@@ -768,4 +791,82 @@ void dc_end_frame(void) {
 void dc_toggle_overlay(void) {
     show_overlay = !show_overlay;
     overlay_show(show_overlay);
+}
+
+static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
+    /*
+     * I don't like the idea of putting SH4_AREA_P4 ahead of AREA3 (memory),
+     * but this absolutely needs to be at the front of the list because the
+     * only distinction between this and the other memory regions is that the
+     * upper three bits of the address are all 1, and for the other regions the
+     * upper three bits can be anything as long as they are not all 1.
+     *
+     * SH4_OC_RAM_AREA is also an SH4 on-chip component but as far as I know
+     * nothing else in the dreamcast's memory map overlaps with it; this is why
+     * have not also put it at the begging of the regions array.
+     */
+    memory_map_add(map, SH4_AREA_P4_FIRST, SH4_AREA_P4_LAST,
+                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &sh4_p4_intf, sh4);
+    memory_map_add(map, ADDR_AREA3_FIRST, ADDR_AREA3_LAST,
+                   0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
+                   &ram_intf, &dc_mem);
+    memory_map_add(map, ADDR_TEX32_FIRST, ADDR_TEX32_LAST,
+                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &pvr2_tex_mem_area32_intf, NULL);
+    memory_map_add(map, ADDR_TEX64_FIRST, ADDR_TEX64_LAST,
+                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &pvr2_tex_mem_area64_intf, NULL);
+    memory_map_add(map, ADDR_TA_FIFO_POLY_FIRST, ADDR_TA_FIFO_POLY_LAST,
+                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &pvr2_ta_fifo_intf, NULL);
+    memory_map_add(map, SH4_OC_RAM_AREA_FIRST, SH4_OC_RAM_AREA_LAST,
+                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &sh4_ora_intf, sh4);
+
+    /*
+     * TODO: everything below here needs to stay at the end so that the
+     * masking/mirroring doesn't make it pick up addresses that should
+     * belong to other parts of the map.  I need to come up with a better
+     * way to implement mirroring.
+     */
+    memory_map_add(map, ADDR_BIOS_FIRST, ADDR_BIOS_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &bios_file_intf, NULL);
+    memory_map_add(map, ADDR_FLASH_FIRST, ADDR_FLASH_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &flash_mem_intf, NULL);
+    memory_map_add(map, ADDR_G1_FIRST, ADDR_G1_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &g1_intf, NULL);
+    memory_map_add(map, ADDR_SYS_FIRST, ADDR_SYS_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &sys_block_intf, NULL);
+    memory_map_add(map, ADDR_MAPLE_FIRST, ADDR_MAPLE_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &maple_intf, NULL);
+    memory_map_add(map, ADDR_G2_FIRST, ADDR_G2_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &g2_intf, NULL);
+    memory_map_add(map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &pvr2_reg_intf, NULL);
+    memory_map_add(map, ADDR_MODEM_FIRST, ADDR_MODEM_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &modem_intf, NULL);
+    memory_map_add(map, ADDR_PVR2_CORE_FIRST, ADDR_PVR2_CORE_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &pvr2_core_reg_intf, NULL);
+    memory_map_add(map, ADDR_AICA_FIRST, ADDR_AICA_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &aica_reg_intf, NULL);
+    memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &aica_wave_mem_intf, &aica_wave_mem);
+    memory_map_add(map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &aica_rtc_intf, NULL);
+    memory_map_add(map, ADDR_GDROM_FIRST, ADDR_GDROM_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &gdrom_reg_intf, NULL);
 }

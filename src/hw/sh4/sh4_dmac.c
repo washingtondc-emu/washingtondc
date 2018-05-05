@@ -303,7 +303,7 @@ void sh4_dmac_transfer_to_mem(Sh4 *sh4, addr32_t transfer_dst, size_t unit_sz,
         total_len /= 4;
         uint32_t const *dat32 = (uint32_t const*)dat;
         while (total_len) {
-            memory_map_write_32(&sh4->mem.map,
+            memory_map_write_32(sh4->mem.map,
                                 transfer_dst & ~0xe0000000, *dat32);
             transfer_dst += 4;
             dat32++;
@@ -313,7 +313,7 @@ void sh4_dmac_transfer_to_mem(Sh4 *sh4, addr32_t transfer_dst, size_t unit_sz,
         total_len /= 2;
         uint16_t const *dat16 = (uint16_t const*)dat;
         while (total_len) {
-            memory_map_write_16(&sh4->mem.map,
+            memory_map_write_16(sh4->mem.map,
                                 transfer_dst & ~0xe0000000, *dat16);
             transfer_dst += 2;
             dat16++;
@@ -322,7 +322,7 @@ void sh4_dmac_transfer_to_mem(Sh4 *sh4, addr32_t transfer_dst, size_t unit_sz,
     } else {
         uint8_t const *dat8 = (uint8_t const*)dat;
         while (total_len) {
-            memory_map_write_8(&sh4->mem.map,
+            memory_map_write_8(sh4->mem.map,
                                transfer_dst & ~0xe0000000, *dat8);
             transfer_dst++;
             dat8++;
@@ -338,7 +338,7 @@ void sh4_dmac_transfer_from_mem(Sh4 *sh4, addr32_t transfer_src, size_t unit_sz,
         total_len /= 4;
         uint32_t *dat32 = (uint32_t*)dat;
         while (total_len) {
-            *dat32 = memory_map_read_32(&sh4->mem.map,
+            *dat32 = memory_map_read_32(sh4->mem.map,
                                         transfer_src & ~0xe0000000);
             dat32++;
             total_len--;
@@ -348,7 +348,7 @@ void sh4_dmac_transfer_from_mem(Sh4 *sh4, addr32_t transfer_src, size_t unit_sz,
         total_len /= 2;
         uint16_t *dat16 = (uint16_t*)dat;
         while (total_len) {
-            *dat16 = memory_map_read_16(&sh4->mem.map,
+            *dat16 = memory_map_read_16(sh4->mem.map,
                                         transfer_src & ~0xe0000000);
             dat16++;
             total_len--;
@@ -357,7 +357,7 @@ void sh4_dmac_transfer_from_mem(Sh4 *sh4, addr32_t transfer_src, size_t unit_sz,
     } else {
         uint8_t *dat8 = (uint8_t*)dat;
         while (total_len) {
-            *dat8 = memory_map_read_8(&sh4->mem.map,
+            *dat8 = memory_map_read_8(sh4->mem.map,
                                       transfer_src & ~0xe0000000);
             dat8++;
             total_len--;
@@ -392,7 +392,7 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
     if ((transfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&
         (transfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
         while (n_words--) {
-            uint32_t buf = memory_map_read_32(&sh4->mem.map, transfer_src);
+            uint32_t buf = memory_map_read_32(sh4->mem.map, transfer_src);
             pvr2_ta_fifo_poly_write_32(transfer_dst, buf, NULL);
             transfer_dst += sizeof(buf);
             transfer_src += sizeof(buf);
@@ -403,7 +403,7 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
         transfer_dst = transfer_dst - ADDR_AREA4_TEX64_FIRST + ADDR_TEX64_FIRST;
 
         while (n_words--) {
-            uint32_t buf = memory_map_read_32(&sh4->mem.map, transfer_src);
+            uint32_t buf = memory_map_read_32(sh4->mem.map, transfer_src);
             pvr2_tex_mem_area64_write_32(transfer_dst, buf, NULL);
             transfer_dst += sizeof(buf);
             transfer_src += sizeof(buf);
@@ -414,7 +414,7 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
         transfer_dst = transfer_dst - ADDR_AREA4_TEX32_FIRST + ADDR_TEX32_FIRST;
 
         while (n_words--) {
-            uint32_t buf = memory_map_read_32(&sh4->mem.map, transfer_src);
+            uint32_t buf = memory_map_read_32(sh4->mem.map, transfer_src);
             pvr2_tex_mem_area32_write_32(transfer_dst, buf, NULL);
             transfer_dst += sizeof(buf);
             transfer_src += sizeof(buf);

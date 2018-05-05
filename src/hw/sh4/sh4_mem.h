@@ -79,8 +79,10 @@ void sh4_mem_init(Sh4 *sh4);
 void sh4_mem_cleanup(Sh4 *sh4);
 
 struct sh4_mem {
-    struct memory_map map;
+    struct memory_map *map;
 };
+
+void sh4_set_mem_map(struct Sh4 *sh4, struct memory_map *map);
 
 extern struct memory_interface sh4_p4_intf;
 
