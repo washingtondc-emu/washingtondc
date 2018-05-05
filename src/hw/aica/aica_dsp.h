@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,21 +20,23 @@
  *
  ******************************************************************************/
 
-#include "aica_common.h"
-#include "aica_channel.h"
+#ifndef AICA_DSP_H_
+#define AICA_DSP_H_
 
-#include "aica.h"
+#include <stdint.h>
 
-void aica_init(struct aica *aica) {
-    aica_common_init(&aica->common);
-    aica_dsp_init(&aica->dsp);
-    aica_channel_init(&aica->channel);
-    aica_wave_mem_init(&aica->mem);
-}
+#include "mem_areas.h"
 
-void aica_cleanup(struct aica *aica) {
-    aica_wave_mem_cleanup(&aica->mem);
-    aica_channel_cleanup(&aica->channel);
-    aica_dsp_cleanup(&aica->dsp);
-    aica_common_cleanup(&aica->common);
-}
+#define AICA_DSP_LEN (ADDR_AICA_DSP_LAST - ADDR_AICA_DSP_FIRST + 1)
+
+struct aica_dsp {
+    // treating this as a simple ram device for now
+    uint8_t backing[AICA_DSP_LEN];
+};
+
+void aica_dsp_init(struct aica_dsp *data);
+void aica_dsp_cleanup(struct aica_dsp *data);
+
+extern struct memory_interface aica_dsp_intf;
+
+#endif

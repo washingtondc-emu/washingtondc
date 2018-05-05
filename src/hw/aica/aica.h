@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,19 @@
 #ifndef AICA_H_
 #define AICA_H_
 
-void aica_init(void);
-void aica_cleanup(void);
+#include "aica_dsp.h"
+#include "aica_channel.h"
+#include "aica_wave_mem.h"
+#include "aica_common.h"
+
+struct aica {
+    struct aica_channel channel;
+    struct aica_dsp dsp;
+    struct aica_wave_mem mem;
+    struct aica_common common;
+};
+
+void aica_init(struct aica *aica);
+void aica_cleanup(struct aica *aica);
 
 #endif

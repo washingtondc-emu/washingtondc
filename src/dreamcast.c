@@ -57,9 +57,8 @@
 #include "hw/pvr2/pvr2_reg.h"
 #include "hw/sys/sys_block.h"
 #include "hw/aica/aica.h"
-#include "hw/aica/aica_reg.h"
+#include "hw/aica/aica_common.h"
 #include "hw/aica/aica_rtc.h"
-#include "hw/aica/aica_wave_mem.h"
 #include "hw/g1/g1.h"
 #include "hw/g1/g1_reg.h"
 #include "hw/g2/g2.h"
@@ -87,7 +86,8 @@
 static Sh4 cpu;
 struct Memory dc_mem;
 static struct memory_map mem_map;
-static struct aica_wave_mem aica_wave_mem;
+
+static struct aica aica;
 
 static volatile bool is_running;
 static volatile bool signal_exit_threads;
@@ -237,8 +237,7 @@ void dreamcast_init(bool cmd_session) {
     sys_block_init();
     g1_init();
     g2_init();
-    aica_init();
-    aica_wave_mem_init(&aica_wave_mem);
+    aica_init(&aica);
     pvr2_init();
     gdrom_init();
     maple_init();
@@ -296,7 +295,7 @@ void dreamcast_cleanup() {
     gdrom_cleanup();
     pvr2_cleanup();
     memory_map_cleanup(&mem_map);
-    aica_cleanup();
+    aica_cleanup(&aica);
     g2_cleanup();
     g1_cleanup();
     sys_block_cleanup();
@@ -857,12 +856,18 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
     memory_map_add(map, ADDR_PVR2_CORE_FIRST, ADDR_PVR2_CORE_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &pvr2_core_reg_intf, NULL);
-    memory_map_add(map, ADDR_AICA_FIRST, ADDR_AICA_LAST,
+    memory_map_add(map, ADDR_AICA_CHANNEL_FIRST, ADDR_AICA_CHANNEL_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_reg_intf, NULL);
+                   &aica_channel_intf, &aica.channel);
+    memory_map_add(map, ADDR_AICA_COMMON_FIRST, ADDR_AICA_COMMON_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &aica_common_intf, &aica.common);
     memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_wave_mem_intf, &aica_wave_mem);
+                   &aica_wave_mem_intf, &aica.mem);
+    memory_map_add(map, ADDR_AICA_DSP_FIRST, ADDR_AICA_DSP_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &aica_dsp_intf, &aica.dsp);
     memory_map_add(map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_rtc_intf, NULL);

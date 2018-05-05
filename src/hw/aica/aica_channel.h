@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,28 +20,22 @@
  *
  ******************************************************************************/
 
-#ifndef AICA_REG_H_
-#define AICA_REG_H_
+#ifndef AICA_CHANNEL_H_
+#define AICA_CHANNEL_H_
 
-#include <stddef.h>
+#include "mem_areas.h"
 
-#include "types.h"
-#include "MemoryMap.h"
+struct memory_interface;
+extern struct memory_interface aica_channel_intf;
 
-void aica_reg_init(void);
-void aica_reg_cleanup(void);
+#define AICA_CHANNEL_LEN (ADDR_AICA_CHANNEL_LAST - ADDR_AICA_CHANNEL_FIRST + 1)
 
-float aica_reg_read_float(addr32_t addr, void *ctxt);
-void aica_reg_write_float(addr32_t addr, float val, void *ctxt);
-double aica_reg_read_double(addr32_t addr, void *ctxt);
-void aica_reg_write_double(addr32_t addr, double val, void *ctxt);
-uint32_t aica_reg_read_32(addr32_t addr, void *ctxt);
-void aica_reg_write_32(addr32_t addr, uint32_t val, void *ctxt);
-uint16_t aica_reg_read_16(addr32_t addr, void *ctxt);
-void aica_reg_write_16(addr32_t addr, uint16_t val, void *ctxt);
-uint8_t aica_reg_read_8(addr32_t addr, void *ctxt);
-void aica_reg_write_8(addr32_t addr, uint8_t val, void *ctxt);
+struct aica_channel {
+    // treating this as a simple ram device for now
+    uint8_t backing[AICA_CHANNEL_LEN];
+};
 
-extern struct memory_interface aica_reg_intf;
+void aica_channel_init(struct aica_channel *data);
+void aica_channel_cleanup(struct aica_channel *data);
 
 #endif

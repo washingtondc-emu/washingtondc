@@ -20,21 +20,24 @@
  *
  ******************************************************************************/
 
-#include "aica_common.h"
-#include "aica_channel.h"
+#ifndef AICA_COMMON_H_
+#define AICA_COMMON_H_
 
-#include "aica.h"
+#include <stddef.h>
+#include <stdint.h>
 
-void aica_init(struct aica *aica) {
-    aica_common_init(&aica->common);
-    aica_dsp_init(&aica->dsp);
-    aica_channel_init(&aica->channel);
-    aica_wave_mem_init(&aica->mem);
-}
+#include "types.h"
+#include "MemoryMap.h"
 
-void aica_cleanup(struct aica *aica) {
-    aica_wave_mem_cleanup(&aica->mem);
-    aica_channel_cleanup(&aica->channel);
-    aica_dsp_cleanup(&aica->dsp);
-    aica_common_cleanup(&aica->common);
-}
+#define AICA_COMMON_LEN (ADDR_AICA_COMMON_LAST - ADDR_AICA_COMMON_FIRST + 1)
+
+struct aica_common {
+    uint8_t backing[AICA_COMMON_LEN];
+};
+
+void aica_common_init(struct aica_common *cmn);
+void aica_common_cleanup(struct aica_common *cmn);
+
+extern struct memory_interface aica_common_intf;
+
+#endif
