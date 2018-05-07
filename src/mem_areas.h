@@ -108,6 +108,9 @@
 #define ADDR_AICA_WAVE_FIRST 0x00800000
 #define ADDR_AICA_WAVE_LAST  0x00ffffff
 
+#define ADDR_EXT_DEV_FIRST 0x01000000
+#define ADDR_EXT_DEV_LAST  0x01ffffff
+
 /*
  * texture memory.
  * I don't yet understand the 32-bit/64-bit access area dichotomy, so I'm

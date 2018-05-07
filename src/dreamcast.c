@@ -64,6 +64,7 @@
 #include "hw/g2/g2.h"
 #include "hw/g2/g2_reg.h"
 #include "hw/g2/modem.h"
+#include "hw/g2/external_dev.h"
 #include "hw/maple/maple_reg.h"
 #include "jit/code_block.h"
 #include "jit/jit_intp/code_block_intp.h"
@@ -874,4 +875,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
     memory_map_add(map, ADDR_GDROM_FIRST, ADDR_GDROM_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &gdrom_reg_intf, NULL);
+    memory_map_add(map, ADDR_EXT_DEV_FIRST, ADDR_EXT_DEV_LAST,
+                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   &ext_dev_intf, NULL);
 }
