@@ -415,6 +415,13 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "IPR_MYSTERY_ffd0000e", 0xffd0000e, 2, (sh4_reg_idx_t)-1, true,
       sh4_write_only_read_handler, sh4_zero_only_reg_write_handler },
 
+    /*
+     * undocumented SH4 register certain games (Virtua Fighter 3tb, Shenume,
+     * etc) want to access.
+     */
+    { "UNKNOWN_0xff100008", 0xff100008, 4, SH4_REG_UNKNOWN_ff100008, true,
+      sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
+
     /* User Break Controller - I don't need this, I got my own debugger */
     { "BARA", 0xff200000, 4, (sh4_reg_idx_t)-1, true,
       sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },

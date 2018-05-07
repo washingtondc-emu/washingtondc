@@ -314,6 +314,12 @@ typedef enum sh4_reg_idx {
     /* Standby Control Register */
     SH4_REG_STBCR,
 
+    /*
+     * undocumented SH4 register certain games (Virtua Fighter 3tb, Shenume,
+     * etc) want to access.
+     */
+    SH4_REG_UNKNOWN_ff100008,
+
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
 
