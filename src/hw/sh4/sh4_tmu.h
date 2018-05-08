@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,13 +23,26 @@
 #ifndef SH4_TMU_H_
 #define SH4_TMU_H_
 
+#include <stdint.h>
+
 #include "sh4_reg.h"
 #include "dc_sched.h"
 
 struct Sh4;
 
+typedef uint64_t tmu_cycle_t;
+
 struct sh4_tmu {
-    unsigned tchan_accum[3];
+    // this is the cycle count from the last time we updated the chan_accum values
+    tmu_cycle_t stamp_last_sync[3];
+
+    struct SchedEvent tmu_chan_event[3];
+
+    unsigned chan_accum[3];
+
+    bool chan_event_scheduled[3];
+
+    bool chan_unf[3];
 };
 
 void sh4_tmu_init(Sh4 *sh4);
@@ -44,8 +57,8 @@ void sh4_tmu_tocr_write_handler(Sh4 *sh4,
 sh4_reg_val sh4_tmu_tstr_read_handler(Sh4 *sh4,
                                       struct Sh4MemMappedReg const *reg_info);
 void sh4_tmu_tstr_write_handler(Sh4 *sh4,
-				struct Sh4MemMappedReg const *reg_info,
-				sh4_reg_val val);
+                                struct Sh4MemMappedReg const *reg_info,
+                                sh4_reg_val val);
 
 sh4_reg_val sh4_tmu_tcr_read_handler(Sh4 *sh4,
                                      struct Sh4MemMappedReg const *reg_info);

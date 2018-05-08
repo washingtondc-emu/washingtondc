@@ -31,20 +31,9 @@
 
 #include "sh4_tmu.h"
 
-typedef uint64_t tmu_cycle_t;
-
-static struct SchedEvent tmu_chan_event[3];
-
 // number of SH4 ticks per TMU tick
 #define TMU_DIV_SHIFT 2
 #define TMU_DIV      (1 << TMU_DIV_SHIFT)
-
-// this is the cycle count from the last time we updated the chan_accum values
-static tmu_cycle_t stamp_last_sync[3];
-
-static unsigned chan_accum[3];
-
-static bool chan_event_scheduled[3];
 
 /*
  * Very Important, this method updates all the tmu accumulators.
@@ -52,8 +41,6 @@ static bool chan_event_scheduled[3];
  * set chan_unf if there is an undeflow in the corresponding channel
  */
 static void tmu_chan_sync(Sh4 *sh4, unsigned chan);
-
-static bool chan_unf[3];
 
 static void tmu_chan_event_handler(SchedEvent *ev);
 static inline tmu_cycle_t tmu_cycle_stamp();
@@ -66,9 +53,9 @@ static void tmu_chan_event_handler(SchedEvent *ev);
 static tmu_cycle_t next_chan_event(Sh4 *sh4, unsigned chan);
 static void chan_event_sched_next(Sh4 *sh4, unsigned chan);
 
-static void chan_event_unsched(unsigned chan) {
-    cancel_event(tmu_chan_event + chan);
-    chan_event_scheduled[chan] = false;
+static void chan_event_unsched(Sh4 *sh4, unsigned chan) {
+    cancel_event(sh4->tmu.tmu_chan_event + chan);
+    sh4->tmu.chan_event_scheduled[chan] = false;
 }
 
 static inline tmu_cycle_t tmu_cycle_stamp() {
@@ -152,14 +139,14 @@ static inline unsigned chan_clock_div(Sh4 *sh4, unsigned chan) {
 }
 
 static void tmu_chan_event_handler(SchedEvent *ev) {
-    unsigned chan = ev - tmu_chan_event;
     Sh4 *sh4 = (Sh4*)ev->arg_ptr;
+    unsigned chan = ev - sh4->tmu.tmu_chan_event;
 
     tmu_chan_sync(sh4, chan);
 
     chan_event_sched_next(sh4, chan);
-    if (chan_unf[chan]) {// TODO: should I even check this?
-        chan_unf[chan] = false;
+    if (sh4->tmu.chan_unf[chan]) {// TODO: should I even check this?
+        sh4->tmu.chan_unf[chan] = false;
         sh4->reg[chan_tcr[chan]] |= SH4_TCR_UNF_MASK;
 
         if (chan_int_enabled(sh4, chan))
@@ -174,8 +161,8 @@ static void tmu_chan_event_handler(SchedEvent *ev) {
  */
 static void tmu_chan_sync(Sh4 *sh4, unsigned chan) {
     tmu_cycle_t stamp_cur = tmu_cycle_stamp();
-    tmu_cycle_t elapsed = stamp_cur - stamp_last_sync[chan];
-    stamp_last_sync[chan] = stamp_cur;
+    tmu_cycle_t elapsed = stamp_cur - sh4->tmu.stamp_last_sync[chan];
+    sh4->tmu.stamp_last_sync[chan] = stamp_cur;
 
     // chan_unf[chan] = false;
     if (!elapsed)
@@ -189,18 +176,18 @@ static void tmu_chan_sync(Sh4 *sh4, unsigned chan) {
      * I could be right-shifting here instead of dividing
      */
     unsigned div = chan_clock_div(sh4, chan);
-    chan_accum[chan] += elapsed;
+    sh4->tmu.chan_accum[chan] += elapsed;
 
-    if (chan_accum[chan] >= div) {
-        tmu_cycle_t chan_cycles = chan_accum[chan] / div;
+    if (sh4->tmu.chan_accum[chan] >= div) {
+        tmu_cycle_t chan_cycles = sh4->tmu.chan_accum[chan] / div;
         if (chan_cycles > chan_get_tcnt(sh4, chan)) {
-            chan_unf[chan] = true;
+            sh4->tmu.chan_unf[chan] = true;
             chan_set_tcnt(sh4, chan, sh4->reg[chan_tcor[chan]]);
             sh4->reg[chan_tcr[chan]] |= SH4_TCR_UNF_MASK;
         } else {
             chan_set_tcnt(sh4, chan, chan_get_tcnt(sh4, chan) - chan_cycles);
         }
-        chan_accum[chan] %= div;
+        sh4->tmu.chan_accum[chan] %= div;
     }
 }
 
@@ -211,8 +198,8 @@ void sh4_tmu_init(Sh4 *sh4) {
 
     unsigned chan;
     for (chan = 0; chan < 3; chan++) {
-        tmu_chan_event[chan].handler = tmu_chan_event_handler;
-        tmu_chan_event[chan].arg_ptr = sh4;
+        sh4->tmu.tmu_chan_event[chan].handler = tmu_chan_event_handler;
+        sh4->tmu.tmu_chan_event[chan].arg_ptr = sh4;
     }
 }
 
@@ -232,7 +219,7 @@ void sh4_tmu_cleanup(Sh4 *sh4) {
  */
 static tmu_cycle_t next_chan_event(Sh4 *sh4, unsigned chan) {
     unsigned clk_div = chan_clock_div(sh4, chan);
-    return (chan_get_tcnt(sh4, chan) + 1) * clk_div - chan_accum[chan];
+    return (chan_get_tcnt(sh4, chan) + 1) * clk_div - sh4->tmu.chan_accum[chan];
 }
 
 /*
@@ -244,7 +231,7 @@ static tmu_cycle_t next_chan_event(Sh4 *sh4, unsigned chan) {
  * the interrupt.
  */
 static void chan_event_sched_next(Sh4 *sh4, unsigned chan) {
-    SchedEvent *ev = tmu_chan_event + chan;
+    SchedEvent *ev = sh4->tmu.tmu_chan_event + chan;
 
     /*
      * It is not a mistake that the following line checks chan_enabled but not
@@ -254,14 +241,14 @@ static void chan_event_sched_next(Sh4 *sh4, unsigned chan) {
      * decide if there needs to be an interrupt when the timer underflows.
      */
     if (!chan_enabled(sh4, chan)) {
-        chan_event_scheduled[chan] = false;
+        sh4->tmu.chan_event_scheduled[chan] = false;
         return;
     }
 
     ev->when = (next_chan_event(sh4, chan) +
                 dc_cycle_stamp() / (TMU_DIV * SH4_CLOCK_SCALE)) *
         (TMU_DIV * SH4_CLOCK_SCALE);
-    chan_event_scheduled[chan] = true;
+    sh4->tmu.chan_event_scheduled[chan] = true;
     sched_event(ev);
 }
 
@@ -299,42 +286,42 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
         (tmp & SH4_TSTR_CHAN0_MASK)) {
 
         tmu_chan_sync(sh4, 0);
-        chan_accum[0] = 0;
+        sh4->tmu.chan_accum[0] = 0;
 
         if (tmp & SH4_TSTR_CHAN0_MASK) {
-            if (!chan_event_scheduled[0])
+            if (!sh4->tmu.chan_event_scheduled[0])
                 chan_event_sched_next(sh4, 0);
         } else {
-            if (chan_event_scheduled[0])
-                chan_event_unsched(0);
+            if (sh4->tmu.chan_event_scheduled[0])
+                chan_event_unsched(sh4, 0);
         }
     }
     if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN1_MASK) ^
         (tmp & SH4_TSTR_CHAN1_MASK)) {
 
         tmu_chan_sync(sh4, 1);
-        chan_accum[1] = 0;
+        sh4->tmu.chan_accum[1] = 0;
 
         if (tmp & SH4_TSTR_CHAN1_MASK) {
-            if (!chan_event_scheduled[1])
+            if (!sh4->tmu.chan_event_scheduled[1])
                 chan_event_sched_next(sh4, 1);
         } else {
-            if (chan_event_scheduled[1])
-                chan_event_unsched(1);
+            if (sh4->tmu.chan_event_scheduled[1])
+                chan_event_unsched(sh4, 1);
         }
     }
     if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN2_MASK) ^
         (tmp & SH4_TSTR_CHAN2_MASK)) {
 
         tmu_chan_sync(sh4, 2);
-        chan_accum[2] = 0;
+        sh4->tmu.chan_accum[2] = 0;
 
         if (tmp & SH4_TSTR_CHAN2_MASK) {
-            if (!chan_event_scheduled[2])
+            if (!sh4->tmu.chan_event_scheduled[2])
                 chan_event_sched_next(sh4, 2);
         } else {
-            if (chan_event_scheduled[2])
-                chan_event_unsched(2);
+            if (sh4->tmu.chan_event_scheduled[2])
+                chan_event_unsched(sh4, 2);
         }
     }
 
@@ -342,8 +329,8 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
 
     for (unsigned chan = 0; chan < 3; chan++) {
         tmu_chan_sync(sh4, chan);
-        if (chan_event_scheduled[chan])
-            chan_event_unsched(chan);
+        if (sh4->tmu.chan_event_scheduled[chan])
+            chan_event_unsched(sh4, chan);
         chan_event_sched_next(sh4, chan);
     }
 }
@@ -388,15 +375,15 @@ void sh4_tmu_tcr_write_handler(Sh4 *sh4,
 
     if ((old_val & SH4_TCR_TPSC_MASK) != (new_val & SH4_TCR_TPSC_MASK)) {
         // changing clock source; clear accumulated ticks
-        chan_accum[chan] = 0;
+        sh4->tmu.chan_accum[chan] = 0;
     }
 
     sh4->reg[reg_idx] = new_val;
 
     tmu_chan_sync(sh4, chan);
 
-    if (chan_event_scheduled[chan])
-        chan_event_unsched(chan);
+    if (sh4->tmu.chan_event_scheduled[chan])
+        chan_event_unsched(sh4, chan);
     chan_event_sched_next(sh4, chan);
 }
 
@@ -446,7 +433,7 @@ void sh4_tmu_tcnt_write_handler(Sh4 *sh4,
     tmu_chan_sync(sh4, chan);
     sh4->reg[reg_idx] = val;
     tmu_chan_sync(sh4, chan);
-    if (chan_event_scheduled[chan])
-        chan_event_unsched(chan);
+    if (sh4->tmu.chan_event_scheduled[chan])
+        chan_event_unsched(sh4, chan);
     chan_event_sched_next(sh4, chan);
 }
