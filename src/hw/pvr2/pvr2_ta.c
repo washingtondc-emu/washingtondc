@@ -38,6 +38,7 @@
 #include "dc_sched.h"
 #include "dreamcast.h"
 #include "gfx/gfx_il.h"
+#include "pvr2.h"
 
 #include "pvr2_ta.h"
 
@@ -1384,41 +1385,42 @@ static void on_end_of_list_received(void) {
         goto the_end;
     }
 
-    dc_cycle_stamp_t int_when = dc_cycle_stamp() + PVR2_LIST_COMPLETE_INT_DELAY;
+    dc_cycle_stamp_t int_when =
+        clock_cycle_stamp(pvr2_clk) + PVR2_LIST_COMPLETE_INT_DELAY;
     switch (poly_state.current_list) {
     case DISPLAY_LIST_OPAQUE:
         if (!pvr2_op_complete_int_event_scheduled) {
             pvr2_op_complete_int_event_scheduled = true;
             pvr2_op_complete_int_event.when = int_when;
-            sched_event(&pvr2_op_complete_int_event);
+            sched_event(pvr2_clk, &pvr2_op_complete_int_event);
         }
         break;
     case DISPLAY_LIST_OPAQUE_MOD:
         if (!pvr2_op_mod_complete_int_event_scheduled) {
             pvr2_op_mod_complete_int_event_scheduled = true;
             pvr2_op_mod_complete_int_event.when = int_when;
-            sched_event(&pvr2_op_mod_complete_int_event);
+            sched_event(pvr2_clk, &pvr2_op_mod_complete_int_event);
         }
         break;
     case DISPLAY_LIST_TRANS:
         if (!pvr2_trans_complete_int_event_scheduled) {
             pvr2_trans_complete_int_event_scheduled = true;
             pvr2_trans_complete_int_event.when = int_when;
-            sched_event(&pvr2_trans_complete_int_event);
+            sched_event(pvr2_clk, &pvr2_trans_complete_int_event);
         }
         break;
     case DISPLAY_LIST_TRANS_MOD:
         if (!pvr2_trans_mod_complete_int_event_scheduled) {
             pvr2_trans_mod_complete_int_event_scheduled = true;
             pvr2_trans_mod_complete_int_event.when = int_when;
-            sched_event(&pvr2_trans_mod_complete_int_event);
+            sched_event(pvr2_clk, &pvr2_trans_mod_complete_int_event);
         }
         break;
     case DISPLAY_LIST_PUNCH_THROUGH:
         if (!pvr2_pt_complete_int_event_scheduled) {
             pvr2_pt_complete_int_event_scheduled = true;
             pvr2_pt_complete_int_event.when = int_when;
-            sched_event(&pvr2_pt_complete_int_event);
+            sched_event(pvr2_clk, &pvr2_pt_complete_int_event);
         }
         break;
     default:
@@ -1556,9 +1558,9 @@ void pvr2_ta_startrender(void) {
     // TODO: This irq definitely should not be triggered immediately
     if (!pvr2_render_complete_int_event_scheduled) {
         pvr2_render_complete_int_event_scheduled = true;
-        pvr2_render_complete_int_event.when = dc_cycle_stamp() +
+        pvr2_render_complete_int_event.when = clock_cycle_stamp(pvr2_clk) +
             PVR2_RENDER_COMPLETE_INT_DELAY;
-        sched_event(&pvr2_render_complete_int_event);
+        sched_event(pvr2_clk, &pvr2_render_complete_int_event);
     }
 }
 

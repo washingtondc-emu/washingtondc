@@ -54,12 +54,12 @@ static tmu_cycle_t next_chan_event(Sh4 *sh4, unsigned chan);
 static void chan_event_sched_next(Sh4 *sh4, unsigned chan);
 
 static void chan_event_unsched(Sh4 *sh4, unsigned chan) {
-    cancel_event(sh4->tmu.tmu_chan_event + chan);
+    cancel_event(sh4->clk, sh4->tmu.tmu_chan_event + chan);
     sh4->tmu.chan_event_scheduled[chan] = false;
 }
 
-static inline tmu_cycle_t tmu_cycle_stamp() {
-    return sh4_get_cycles() >> TMU_DIV_SHIFT;
+static inline tmu_cycle_t tmu_cycle_stamp(struct Sh4 *sh4) {
+    return sh4_get_cycles(sh4) >> TMU_DIV_SHIFT;
 }
 
 // lookup table for TCR register indices
@@ -160,7 +160,7 @@ static void tmu_chan_event_handler(SchedEvent *ev) {
  * stamp_last_sync) until it leaves standby mode.
  */
 static void tmu_chan_sync(Sh4 *sh4, unsigned chan) {
-    tmu_cycle_t stamp_cur = tmu_cycle_stamp();
+    tmu_cycle_t stamp_cur = tmu_cycle_stamp(sh4);
     tmu_cycle_t elapsed = stamp_cur - sh4->tmu.stamp_last_sync[chan];
     sh4->tmu.stamp_last_sync[chan] = stamp_cur;
 
@@ -246,10 +246,10 @@ static void chan_event_sched_next(Sh4 *sh4, unsigned chan) {
     }
 
     ev->when = (next_chan_event(sh4, chan) +
-                dc_cycle_stamp() / (TMU_DIV * SH4_CLOCK_SCALE)) *
+                clock_cycle_stamp(sh4->clk) / (TMU_DIV * SH4_CLOCK_SCALE)) *
         (TMU_DIV * SH4_CLOCK_SCALE);
     sh4->tmu.chan_event_scheduled[chan] = true;
-    sched_event(ev);
+    sched_event(sh4->clk, ev);
 }
 
 sh4_reg_val

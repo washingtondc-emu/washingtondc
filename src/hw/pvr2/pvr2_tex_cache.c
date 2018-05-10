@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "pvr2.h"
 #include "pvr2_tex_mem.h"
 #include "pvr2_core_reg.h"
 #include "pvr2_gfx_obj.h"
@@ -337,7 +338,7 @@ void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
     uint32_t addr_last = addr_first + (len - 1);
     unsigned page_first = addr_first / PVR2_TEX_PAGE_SIZE;
     unsigned page_last = addr_last / PVR2_TEX_PAGE_SIZE;
-    dc_cycle_stamp_t time = dc_cycle_stamp();
+    dc_cycle_stamp_t time = clock_cycle_stamp(pvr2_clk);
 
     unsigned page_no;
     for (page_no = page_first; page_no <= page_last; page_no++)
@@ -813,7 +814,7 @@ void pvr2_tex_cache_xmit(void) {
             }
 
             tex_in->state = PVR2_TEX_READY;
-            tex_in->last_update = dc_cycle_stamp();
+            tex_in->last_update = clock_cycle_stamp(pvr2_clk);
         }
     }
 }

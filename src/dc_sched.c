@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <stddef.h>
+#include <string.h>
 
 #include "error.h"
 #include "hw/sh4/sh4.h" // for SH4_CLOCK_SCALE
@@ -28,17 +29,19 @@
 
 #include "dc_sched.h"
 
-static dc_cycle_stamp_t dc_sched_target_stamp;
-static dc_cycle_stamp_t *tgtp = &dc_sched_target_stamp;
-
-static struct SchedEvent *ev_next;
-
 static DEF_ERROR_U64_ATTR(current_dc_cycle_stamp)
 static DEF_ERROR_U64_ATTR(event_sched_dc_cycle_stamp)
 
-static void update_target_stamp(void) {
-    if (ev_next) {
-        *tgtp = ev_next->when;
+void dc_clock_init(struct dc_clock *clk) {
+    memset(clk, 0, sizeof(*clk));
+}
+
+void dc_clock_cleanup(struct dc_clock *clk) {
+}
+
+static void update_target_stamp(struct dc_clock *clock) {
+    if (clock->ev_next_priv) {
+        clock->target_stamp_priv = clock->ev_next_priv->when;
     } else {
         /*
          * Somehow there are no events scheduled.
@@ -54,17 +57,17 @@ static void update_target_stamp(void) {
          * TBH, I'm not even 100% sure this problem can even happen since
          * there's no way to turn off SPG, TMU, etc.
          */
-        *tgtp = dc_cycle_stamp() + 16 * SH4_CLOCK_SCALE;
+        clock->target_stamp_priv = clock_cycle_stamp(clock) + 16 * SH4_CLOCK_SCALE;
     }
 }
 
-void sched_event(struct SchedEvent *event) {
+void sched_event(struct dc_clock *clock, struct SchedEvent *event) {
 #ifdef INVARIANTS
     /*
      * check to make sure the event isn't being scheduled after it should have
      * already executed.
      */
-    dc_cycle_stamp_t cur_stamp = dc_cycle_stamp();
+    dc_cycle_stamp_t cur_stamp = clock_cycle_stamp(clock);
     if (event->when < cur_stamp) {
         error_set_current_dc_cycle_stamp(cur_stamp);
         error_set_event_sched_dc_cycle_stamp(event->when);
@@ -72,8 +75,8 @@ void sched_event(struct SchedEvent *event) {
     }
 #endif
 
-    struct SchedEvent *next_ptr = ev_next;
-    struct SchedEvent **pprev_ptr = &ev_next;
+    struct SchedEvent *next_ptr = clock->ev_next_priv;
+    struct SchedEvent **pprev_ptr = &clock->ev_next_priv;
     while (next_ptr && next_ptr->when < event->when) {
         pprev_ptr = &next_ptr->next_event;
         next_ptr = next_ptr->next_event;
@@ -84,16 +87,16 @@ void sched_event(struct SchedEvent *event) {
     event->next_event = next_ptr;
     event->pprev_event = pprev_ptr;
 
-    update_target_stamp();
+    update_target_stamp(clock);
 }
 
-void cancel_event(struct SchedEvent *event) {
+void cancel_event(struct dc_clock *clock, struct SchedEvent *event) {
 #ifdef INVARIANTS
     /*
      * check to make sure the event isn't being canceled after it should have
      * already executed.
      */
-    dc_cycle_stamp_t cur_stamp = dc_cycle_stamp();
+    dc_cycle_stamp_t cur_stamp = clock_cycle_stamp(clock);
     if (event->when < cur_stamp) {
         error_set_current_dc_cycle_stamp(cur_stamp);
         error_set_event_sched_dc_cycle_stamp(event->when);
@@ -109,18 +112,18 @@ void cancel_event(struct SchedEvent *event) {
     event->next_event = NULL;
     event->pprev_event = NULL;
 
-    update_target_stamp();
+    update_target_stamp(clock);
 }
 
-struct SchedEvent *pop_event() {
-    struct SchedEvent *ev_ret = ev_next;
+struct SchedEvent *pop_event(struct dc_clock *clock) {
+    struct SchedEvent *ev_ret = clock->ev_next_priv;
 
 #ifdef INVARIANTS
     /*
      * check to make sure the event isn't being canceled after it should have
      * already executed.
      */
-    dc_cycle_stamp_t cur_stamp = dc_cycle_stamp();
+    dc_cycle_stamp_t cur_stamp = clock_cycle_stamp(clock);
     if (ev_ret && (ev_ret->when < cur_stamp)) {
         error_set_current_dc_cycle_stamp(cur_stamp);
         error_set_event_sched_dc_cycle_stamp(ev_ret->when);
@@ -128,10 +131,10 @@ struct SchedEvent *pop_event() {
     }
 #endif
 
-    if (ev_next) {
-        ev_next = ev_next->next_event;
-        if (ev_next)
-            ev_next->pprev_event = &ev_next;
+    if (clock->ev_next_priv) {
+        clock->ev_next_priv = clock->ev_next_priv->next_event;
+        if (clock->ev_next_priv)
+            clock->ev_next_priv->pprev_event = &clock->ev_next_priv;
     }
 
     // XXX this is unnecessary, but I'm trying to be extra-safe here
@@ -140,22 +143,23 @@ struct SchedEvent *pop_event() {
         ev_ret->pprev_event = NULL;
     }
 
-    update_target_stamp();
+    update_target_stamp(clock);
 
     return ev_ret;
 }
 
-struct SchedEvent *peek_event() {
-    return ev_next;
+struct SchedEvent *peek_event(struct dc_clock *clock) {
+    return clock->ev_next_priv;
 }
 
-dc_cycle_stamp_t sched_target_stamp(void) {
-    return *tgtp;
+dc_cycle_stamp_t *clock_get_target_pointer(struct dc_clock *clock) {
+    return &clock->target_stamp_priv;
 }
 
-void sched_set_target_pointer(dc_cycle_stamp_t *ptr) {
-    if (!ptr)
-        ptr = &dc_sched_target_stamp;
-    *ptr = *tgtp;
-    tgtp = ptr;
+dc_cycle_stamp_t *clock_get_cycle_stamp_pointer(struct dc_clock *clock) {
+    return &clock->cycle_stamp_priv;
+}
+
+dc_cycle_stamp_t clock_target_stamp(struct dc_clock *clock) {
+    return clock->target_stamp_priv;
 }

@@ -49,7 +49,10 @@ static void cancel_aica_rtc_event(void);
 
 static bool write_enable;
 
-void aica_rtc_init(void) {
+static struct dc_clock *aica_rtc_clk;
+
+void aica_rtc_init(struct dc_clock *clock) {
+    aica_rtc_clk = clock;
     sched_aica_rtc_event();
 }
 
@@ -199,13 +202,13 @@ static void aica_rtc_event_handler(SchedEvent *ev) {
 }
 
 static void sched_aica_rtc_event(void) {
-    aica_rtc_event.when = dc_cycle_stamp() + SCHED_FREQUENCY;
+    aica_rtc_event.when = clock_cycle_stamp(aica_rtc_clk) + SCHED_FREQUENCY;
     aica_rtc_event.handler = aica_rtc_event_handler;
-    sched_event(&aica_rtc_event);
+    sched_event(aica_rtc_clk, &aica_rtc_event);
 }
 
 static void cancel_aica_rtc_event(void) {
-    cancel_event(&aica_rtc_event);
+    cancel_event(aica_rtc_clk, &aica_rtc_event);
 }
 
 struct memory_interface aica_rtc_intf = {

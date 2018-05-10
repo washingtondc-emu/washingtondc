@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -260,12 +260,14 @@ unsigned maple_addr_pack(unsigned port, unsigned unit) {
     return addr;
 }
 
+static struct dc_clock *maple_clk;
+
 static void maple_dma_complete(void) {
     if (!maple_dma_complete_int_event_scheduled) {
         maple_dma_complete_int_event_scheduled = true;
         maple_dma_complete_int_event.when =
-            dc_cycle_stamp() + MAPLE_DMA_COMPLETE_DELAY;
-        sched_event(&maple_dma_complete_int_event);
+            clock_cycle_stamp(maple_clk) + MAPLE_DMA_COMPLETE_DELAY;
+        sched_event(maple_clk, &maple_dma_complete_int_event);
     }
 }
 
@@ -274,7 +276,9 @@ static void maple_dma_complete_int_event_handler(struct SchedEvent *event) {
     holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
 }
 
-void maple_init(void) {
+void maple_init(struct dc_clock *clk) {
+    maple_clk = clk;
+
     maple_reg_init();
 
     /*

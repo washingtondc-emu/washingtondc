@@ -112,6 +112,8 @@ enum TermReason term_reason = TERM_REASON_NORM;
 
 static enum dc_state dc_state = DC_STATE_NOT_RUNNING;
 
+static struct dc_clock sh4_clock;
+
 static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
@@ -154,29 +156,6 @@ static void dreamcast_enable_cmd_tcp(void);
 
 static void periodic_event_handler(struct SchedEvent *event);
 static struct SchedEvent periodic_event;
-
-/*
- * this counts virtual time.  The frequency of this clock is SCHED_FREQUENCY
- * (see dc_sched.h)
- */
-static dc_cycle_stamp_t dc_cycle_stamp_priv_;
-static dc_cycle_stamp_t *cycle_stamp_ptr = &dc_cycle_stamp_priv_;
-
-dc_cycle_stamp_t dc_cycle_stamp() {
-    return *cycle_stamp_ptr;
-}
-
-void dc_cycle_stamp_set(dc_cycle_stamp_t new_val) {
-    *cycle_stamp_ptr = new_val;
-}
-
-void dc_set_cycle_stamp_pointer(dc_cycle_stamp_t *ptr) {
-    if (!ptr)
-        ptr = &dc_cycle_stamp_priv_;
-
-    *ptr = *cycle_stamp_ptr;
-    cycle_stamp_ptr = ptr;
-}
 
 void dreamcast_init(bool cmd_session) {
     is_running = true;
@@ -233,15 +212,16 @@ void dreamcast_init(bool cmd_session) {
         free(dat_syscall);
     }
 
-    sh4_init(&cpu);
-    jit_init();
+    dc_clock_init(&sh4_clock);
+    sh4_init(&cpu, &sh4_clock);
+    jit_init(&sh4_clock);
     sys_block_init();
     g1_init();
     g2_init();
     aica_init(&aica);
-    pvr2_init();
-    gdrom_init();
-    maple_init();
+    pvr2_init(&sh4_clock);
+    gdrom_init(&sh4_clock);
+    maple_init(&sh4_clock);
 
     memory_map_init(&mem_map);
     construct_sh4_mem_map(&cpu, &mem_map);
@@ -273,7 +253,7 @@ void dreamcast_init(bool cmd_session) {
         cpu.reg[SH4_REG_VBR] = 0x8c00f400;
     }
 
-    aica_rtc_init();
+    aica_rtc_init(&sh4_clock);
 
     if (cmd_session) {
 #ifdef ENABLE_DEBUGGER
@@ -307,6 +287,7 @@ void dreamcast_cleanup() {
 
     jit_cleanup();
     sh4_cleanup(&cpu);
+    dc_clock_cleanup(&sh4_clock);
     bios_file_cleanup();
     memory_cleanup(&dc_mem);
 }
@@ -330,7 +311,7 @@ static void main_loop_jit(void) {
 #else
         dc_run_to_next_event_jit(&cpu);
         code_cache_gc();
-        struct SchedEvent *next_event = pop_event();
+        struct SchedEvent *next_event = pop_event(&sh4_clock);
         if (next_event)
             next_event->handler(next_event);
 #endif
@@ -351,7 +332,7 @@ static void main_loop_jit_native(void) {
 #else
         dc_run_to_next_event_jit_native(&cpu);
         code_cache_gc();
-        struct SchedEvent *next_event = pop_event();
+        struct SchedEvent *next_event = pop_event(&sh4_clock);
         if (next_event)
             next_event->handler(next_event);
 #endif
@@ -371,7 +352,7 @@ static void main_loop_interpreter(void) {
         dc_single_step(&cpu);
 #else
         dc_run_to_next_event(&cpu);
-        struct SchedEvent *next_event = pop_event();
+        struct SchedEvent *next_event = pop_event(&sh4_clock);
         if (next_event)
             next_event->handler(next_event);
 #endif
@@ -396,9 +377,9 @@ void dreamcast_run() {
     cmd_print_banner();
     cmd_run_once();
 
-    periodic_event.when = dc_cycle_stamp() + DC_PERIODIC_EVENT_PERIOD;
+    periodic_event.when = clock_cycle_stamp(&sh4_clock) + DC_PERIODIC_EVENT_PERIOD;
     periodic_event.handler = periodic_event_handler;
-    sched_event(&periodic_event);
+    sched_event(&sh4_clock, &periodic_event);
 
     /*
      * if there's a cmd session attached, then hang here until the user enters
@@ -494,9 +475,9 @@ static void dc_run_to_next_event(Sh4 *sh4) {
     inst_t inst;
     InstOpcode const *op;
     unsigned inst_cycles;
-    dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
+    dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
 
-    while (tgt_stamp > dc_cycle_stamp()) {
+    while (tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
@@ -511,10 +492,10 @@ static void dc_run_to_next_event(Sh4 *sh4) {
          * a guest program's perspective, but the passage of time will still be
          * consistent.
          */
-        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+        dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
             inst_cycles * SH4_CLOCK_SCALE;
 
-        tgt_stamp = sched_target_stamp();
+        tgt_stamp = clock_target_stamp(&sh4_clock);
         if (cycles_after > tgt_stamp)
             cycles_after = tgt_stamp;
 
@@ -524,10 +505,10 @@ static void dc_run_to_next_event(Sh4 *sh4) {
          * advance the cycles, being careful not to skip over any new events
          * which may have been added
          */
-        tgt_stamp = sched_target_stamp();
+        tgt_stamp = clock_target_stamp(&sh4_clock);
         if (cycles_after > tgt_stamp)
             cycles_after = tgt_stamp;
-        dc_cycle_stamp_set(cycles_after);
+        clock_set_cycle_stamp(&sh4_clock, cycles_after);
     }
 }
 
@@ -543,9 +524,9 @@ static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
 
 static void dc_run_to_next_event_jit(Sh4 *sh4) {
     reg32_t newpc = sh4->reg[SH4_REG_PC];
-    dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
+    dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
 
-    while (tgt_stamp > dc_cycle_stamp()) {
+    while (tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
         addr32_t blk_addr = newpc;
         struct cache_entry *ent = code_cache_find(blk_addr);
 
@@ -557,13 +538,13 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
 
         newpc = code_block_intp_exec(blk);
 
-        dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+        dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
             blk->cycle_count;
-        dc_cycle_stamp_set(cycles_after);
-        tgt_stamp = sched_target_stamp();
+        clock_set_cycle_stamp(&sh4_clock, cycles_after);
+        tgt_stamp = clock_target_stamp(&sh4_clock);
     }
-    if (dc_cycle_stamp() > tgt_stamp)
-        dc_cycle_stamp_set(tgt_stamp);
+    if (clock_cycle_stamp(&sh4_clock) > tgt_stamp)
+        clock_set_cycle_stamp(&sh4_clock, tgt_stamp);
 
     sh4->reg[SH4_REG_PC] = newpc;
 }
@@ -586,7 +567,7 @@ void dc_single_step(Sh4 *sh4) {
      * a guest program's perspective, but the passage of time will still be
      * consistent.
      */
-    dc_cycle_stamp_t cycles_after = dc_cycle_stamp() +
+    dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
         n_cycles * SH4_CLOCK_SCALE;
     dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
     if (cycles_after > tgt_stamp)
@@ -596,14 +577,14 @@ void dc_single_step(Sh4 *sh4) {
 
     // now execute any events which would have happened during that instruction
     SchedEvent *next_event;
-    while ((next_event = peek_event()) &&
+    while ((next_event = peek_event(&sh4_clock)) &&
            (next_event->when <= cycles_after)) {
-        pop_event();
-        dc_cycle_stamp_set(next_event->when);
+        pop_event(&sh4_clock);
+        clock_set_cycle_stamp(&sh4_clock, next_event->when);
         next_event->handler(next_event);
     }
 
-    dc_cycle_stamp_set(cycles_after);
+    clock_set_cycle_stamp(&sh4_clock, cycles_after);
 }
 
 #endif
@@ -631,11 +612,11 @@ void dc_print_perf_stats(void) {
              (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
 
     LOG_INFO("%u SH4 CPU cycles executed\n",
-             (unsigned)sh4_get_cycles());
+             (unsigned)sh4_get_cycles(&cpu));
 
     double seconds = delta_time.tv_sec +
         ((double)delta_time.tv_nsec) / 1000000000.0;
-    double hz = (double)sh4_get_cycles() / seconds;
+    double hz = (double)sh4_get_cycles(&cpu) / seconds;
     double hz_ratio = hz / (double)(200 * 1000 * 1000);
 
     LOG_INFO("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
@@ -764,14 +745,14 @@ static void periodic_event_handler(struct SchedEvent *event) {
 
     sh4_periodic(&cpu);
 
-    periodic_event.when = dc_cycle_stamp() + DC_PERIODIC_EVENT_PERIOD;
-    sched_event(&periodic_event);
+    periodic_event.when = clock_cycle_stamp(&sh4_clock) + DC_PERIODIC_EVENT_PERIOD;
+    sched_event(&sh4_clock, &periodic_event);
 }
 
 void dc_end_frame(void) {
     struct timespec timestamp, delta;
     clock_gettime(CLOCK_MONOTONIC, &timestamp);
-    dc_cycle_stamp_t virt_timestamp = dc_cycle_stamp();
+    dc_cycle_stamp_t virt_timestamp = clock_cycle_stamp(&sh4_clock);
 
     time_diff(&delta, &timestamp, &last_frame_realtime);
 

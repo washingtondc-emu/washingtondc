@@ -30,10 +30,10 @@
 
 #include "jit.h"
 
-void jit_init(void) {
+void jit_init(struct dc_clock *clk) {
 #ifdef ENABLE_JIT_X86_64
     exec_mem_init();
-    native_dispatch_init();
+    native_dispatch_init(clk);
     native_mem_init();
 #endif
     code_cache_init();

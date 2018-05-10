@@ -427,9 +427,9 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
     }
 
     ch2_dma_scheduled = true;
-    raise_ch2_dma_int_event.when = dc_cycle_stamp() + CH2_DMA_INT_DELAY;
+    raise_ch2_dma_int_event.when = clock_cycle_stamp(sh4->clk) + CH2_DMA_INT_DELAY;
     raise_ch2_dma_int_event.arg_ptr = sh4;
-    sched_event(&raise_ch2_dma_int_event);
+    sched_event(sh4->clk, &raise_ch2_dma_int_event);
 }
 
 static void raise_ch2_dma_int_event_handler(struct SchedEvent *event) {

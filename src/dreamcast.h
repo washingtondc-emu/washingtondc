@@ -56,28 +56,6 @@ void dreamcast_kill();
 
 Sh4 *dreamcast_get_cpu();
 
-/*
- * This is being made extern so that dc_cycle_stamp() can be an inline function.
- * This variable should not be read from or written to from outside of
- * Dreamcast.cpp.
- */
-/* extern dc_cycle_stamp_t dc_cycle_stamp_priv_; */
-
-dc_cycle_stamp_t dc_cycle_stamp();
-void dc_cycle_stamp_set(dc_cycle_stamp_t new_val);
-
-/*
- * Point to where the dc_cycle_stamp should be stored.  The old pointer must
- * still be valid when this function is called.  If the new pointer is NULL,
- * then this function will choose its own pointer.
- *
- * The purpose of this is to be used as an optimization so that the x86_64 jit
- * backend can reference this variable from executable memory, which will ensure
- * fast cache accesses and also allow it to be referenced relative to the
- * x86_64's instruction pointer.
- */
-void dc_set_cycle_stamp_pointer(dc_cycle_stamp_t *ptr);
-
 void dc_print_perf_stats(void);
 
 bool dc_is_running(void);

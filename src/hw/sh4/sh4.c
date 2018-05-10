@@ -37,9 +37,10 @@ static void sh4_error_set_regs(void *argptr);
 
 static struct error_callback sh4_error_callback;
 
-void sh4_init(Sh4 *sh4) {
+void sh4_init(Sh4 *sh4, struct dc_clock *clk) {
     memset(sh4, 0, sizeof(*sh4));
     sh4->reg_area = (uint8_t*)malloc(sizeof(uint8_t) * (SH4_P4_REGEND - SH4_P4_REGSTART));
+    sh4->clk = clk;
 
     memset(sh4->reg, 0, sizeof(sh4->reg));
 
@@ -209,8 +210,8 @@ void sh4_fpu_bank_switch_maybe(Sh4 *sh4, reg32_t old_fpscr, reg32_t new_fpscr) {
         sh4_fpu_bank_switch(sh4);
 }
 
-dc_cycle_stamp_t sh4_get_cycles(void) {
-    return dc_cycle_stamp() / SH4_CLOCK_SCALE;
+dc_cycle_stamp_t sh4_get_cycles(struct Sh4 *sh4) {
+    return clock_cycle_stamp(sh4->clk) / SH4_CLOCK_SCALE;
 }
 
 static DEF_ERROR_U32_ATTR(sh4_reg_sr)

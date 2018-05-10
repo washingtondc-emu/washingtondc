@@ -25,9 +25,10 @@
 
 #include <stdint.h>
 
+#include "dc_sched.h"
 #include "hw/sh4/sh4.h"
 
-void jit_init(void);
+void jit_init(struct dc_clock *clk);
 void jit_cleanup(void);
 
 static inline void

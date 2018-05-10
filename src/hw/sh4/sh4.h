@@ -37,6 +37,7 @@
 #include "sh4_excp.h"
 #include "sh4_scif.h"
 #include "sh4_dmac.h"
+#include "dc_sched.h"
 
 /*
  * The clock-scale is here defined as the number of scheduler cyclers per sh4
@@ -63,6 +64,8 @@ enum Sh4ExecState {
 typedef enum Sh4ExecState Sh4ExecState;
 
 struct Sh4 {
+    struct dc_clock *clk;
+
     Sh4ExecState exec_state;
 
     reg32_t reg[SH4_REGISTER_COUNT];
@@ -126,7 +129,7 @@ struct Sh4 {
 
 typedef struct Sh4 Sh4;
 
-void sh4_init(Sh4 *sh4);
+void sh4_init(Sh4 *sh4, struct dc_clock *clk);
 void sh4_cleanup(Sh4 *sh4);
 
 // reset all values to their power-on-reset values
@@ -278,7 +281,7 @@ static inline void sh4_periodic(Sh4 *sh4) {
         sh4_scif_periodic(sh4);
 }
 
-dc_cycle_stamp_t sh4_get_cycles(void);
+dc_cycle_stamp_t sh4_get_cycles(struct Sh4 *sh4);
 
 // Fetches the given instruction's metadata and returns it.
 static inline InstOpcode const *sh4_decode_inst(inst_t inst) {

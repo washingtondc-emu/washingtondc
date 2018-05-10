@@ -23,7 +23,7 @@
 #ifndef NATIVE_DISPATCH_H_
 #define NATIVE_DISPATCH_H_
 
-void native_dispatch_init(void);
+void native_dispatch_init(struct dc_clock *clk);
 void native_dispatch_cleanup(void);
 
 /*

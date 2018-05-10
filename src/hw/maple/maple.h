@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "dc_sched.h"
 
 enum maple_cmd {
     // maplebus response codes
@@ -75,7 +77,7 @@ void maple_do_trace(char const *msg, ...);
 unsigned maple_addr_pack(unsigned port, unsigned unit);
 void maple_addr_unpack(unsigned addr, unsigned *port_out, unsigned *unit_out);
 
-void maple_init(void);
+void maple_init(struct dc_clock *clk);
 void maple_cleanup(void);
 
 #endif

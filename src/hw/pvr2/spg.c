@@ -30,6 +30,7 @@
 #include "hw/sys/holly_intc.h"
 #include "dreamcast.h"
 #include "log.h"
+#include "pvr2.h"
 
 #include "spg.h"
 
@@ -174,23 +175,23 @@ void spg_cleanup() {
 
 static void spg_unsched_all() {
     if (hblank_event_scheduled) {
-        cancel_event(&hblank_event);
+        cancel_event(pvr2_clk, &hblank_event);
         hblank_event_scheduled = false;
     }
 
     if (vblank_in_event_scheduled) {
-        cancel_event(&vblank_in_event);
+        cancel_event(pvr2_clk, &vblank_in_event);
         vblank_in_event_scheduled = false;
     }
 
     if (vblank_out_event_scheduled) {
-        cancel_event(&vblank_out_event);
+        cancel_event(pvr2_clk, &vblank_out_event);
         vblank_out_event_scheduled = false;
     }
 }
 
 static void spg_sync() {
-    dc_cycle_stamp_t cur_time = dc_cycle_stamp();
+    dc_cycle_stamp_t cur_time = clock_cycle_stamp(pvr2_clk);
     dc_cycle_stamp_t delta_cycles = cur_time - last_sync_rounded;
 
     // only update the last_sync timestamp if the values have changed
@@ -320,9 +321,9 @@ static void sched_next_hblank_event() {
     /*        raster_x_next, raster_y_next); */
 
     hblank_event.when = (SPG_VCLK_DIV * get_pclk_div()) *
-        (next_hblank_pclk + dc_cycle_stamp() / (SPG_VCLK_DIV * get_pclk_div()));
+        (next_hblank_pclk + clock_cycle_stamp(pvr2_clk) / (SPG_VCLK_DIV * get_pclk_div()));
 
-    sched_event(&hblank_event);
+    sched_event(pvr2_clk, &hblank_event);
     hblank_event_scheduled = true;
 }
 
@@ -344,15 +345,15 @@ static void sched_next_vblank_in_event() {
     unsigned pixels_until_vblank_in =
         lines_until_vblank_in * hcount - raster_x;
     vblank_in_event.when = (SPG_VCLK_DIV * get_pclk_div()) *
-        (pixels_until_vblank_in + dc_cycle_stamp() /
+        (pixels_until_vblank_in + clock_cycle_stamp(pvr2_clk) /
          (SPG_VCLK_DIV * get_pclk_div()));
 
 #ifdef INVARIANTS
-    if (vblank_in_event.when - dc_cycle_stamp() >= SCHED_FREQUENCY)
+    if (vblank_in_event.when - clock_cycle_stamp(pvr2_clk) >= SCHED_FREQUENCY)
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
-    sched_event(&vblank_in_event);
+    sched_event(pvr2_clk, &vblank_in_event);
     vblank_in_event_scheduled = true;
 }
 
@@ -374,15 +375,15 @@ static void sched_next_vblank_out_event() {
     unsigned pixels_until_vblank_out =
         lines_until_vblank_out * hcount - raster_x;
     vblank_out_event.when = (SPG_VCLK_DIV * get_pclk_div()) *
-        (pixels_until_vblank_out + dc_cycle_stamp() /
+        (pixels_until_vblank_out + clock_cycle_stamp(pvr2_clk) /
          (SPG_VCLK_DIV * get_pclk_div()));
 
 #ifdef INVARIANTS
-    if (vblank_out_event.when - dc_cycle_stamp() >= SCHED_FREQUENCY)
+    if (vblank_out_event.when - clock_cycle_stamp(pvr2_clk) >= SCHED_FREQUENCY)
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
-    sched_event(&vblank_out_event);
+    sched_event(pvr2_clk, &vblank_out_event);
     vblank_out_event_scheduled = true;
 }
 

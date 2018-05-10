@@ -29,7 +29,11 @@
 #include "types.h"
 #include "MemoryMap.h"
 
-void aica_rtc_init(void);
+/*
+ * The AICA's RTC is ironically not available to AICA, so this clock should
+ * point to the SH4's clock, not the ARM7's clock.
+ */
+void aica_rtc_init(struct dc_clock *clock);
 
 float aica_rtc_read_float(addr32_t addr, void *ctxt);
 void aica_rtc_write_float(addr32_t addr, float val, void *ctxt);

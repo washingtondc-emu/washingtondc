@@ -214,9 +214,9 @@ static SchedEvent sh4_refresh_intc_event = {
 void sh4_refresh_intc_deferred(Sh4 *sh4) {
     if (!sh4_refresh_intc_event_scheduled) {
         sh4_refresh_intc_event_scheduled = true;
-        sh4_refresh_intc_event.when = dc_cycle_stamp();
+        sh4_refresh_intc_event.when = clock_cycle_stamp(sh4->clk);
         sh4_refresh_intc_event.arg_ptr = sh4;
-        sched_event(&sh4_refresh_intc_event);
+        sched_event(sh4->clk, &sh4_refresh_intc_event);
     }
 }
 

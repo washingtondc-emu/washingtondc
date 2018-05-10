@@ -48,23 +48,15 @@ static void load_quad_into_reg(void *qptr, unsigned reg_no);
 static void store_quad_from_reg(void *qptr, unsigned reg_no,
                                 unsigned clobber_reg);
 
-void native_dispatch_init(void) {
-    sched_tgt = exec_mem_alloc(sizeof(*sched_tgt));
-    sched_set_target_pointer(sched_tgt);
-
-    cycle_stamp = exec_mem_alloc(sizeof(*cycle_stamp));
-    dc_set_cycle_stamp_pointer(cycle_stamp);
+void native_dispatch_init(struct dc_clock *clk) {
+    sched_tgt = clock_get_target_pointer(clk);
+    cycle_stamp = clock_get_cycle_stamp_pointer(clk);
 
     native_dispatch_entry_create();
 }
 
 void native_dispatch_cleanup(void) {
-    sched_set_target_pointer(NULL);
-    dc_set_cycle_stamp_pointer(NULL);
-
     // TODO: free all executable memory pointers
-    exec_mem_free(sched_tgt);
-    exec_mem_free(cycle_stamp);
 }
 
 static void native_dispatch_entry_create(void) {

@@ -197,9 +197,9 @@ static void check_rx_trig(Sh4 *sh4) {
         if (rx_interrupt_enabled(sh4)) {
             if (!sh4_scif_rxi_int_event_scheduled) {
                 sh4_scif_rxi_int_event_scheduled = true;
-                sh4_scif_rxi_int_event.when = dc_cycle_stamp();
+                sh4_scif_rxi_int_event.when = clock_cycle_stamp(sh4->clk);
                 sh4_scif_rxi_int_event.arg_ptr = sh4;
-                sched_event(&sh4_scif_rxi_int_event);
+                sched_event(sh4->clk, &sh4_scif_rxi_int_event);
             }
         }
     }
@@ -214,9 +214,9 @@ static void check_tx_trig(Sh4 *sh4) {
         if (tx_interrupt_enabled(sh4)) {
             if (!sh4_scif_txi_int_event_scheduled) {
                 sh4_scif_txi_int_event_scheduled = true;
-                sh4_scif_txi_int_event.when = dc_cycle_stamp();
+                sh4_scif_txi_int_event.when = clock_cycle_stamp(sh4->clk);
                 sh4_scif_txi_int_event.arg_ptr = sh4;
-                sched_event(&sh4_scif_txi_int_event);
+                sched_event(sh4->clk, &sh4_scif_txi_int_event);
             }
         }
     }

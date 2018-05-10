@@ -64,8 +64,9 @@ struct SchedEvent gdrom_int_raise_event = {
 static void raise_gdrom_int(void) {
     if (!gdrom_int_scheduled) {
         gdrom_int_scheduled = true;
-        gdrom_int_raise_event.when = dc_cycle_stamp() + GDROM_INT_DELAY;
-        sched_event(&gdrom_int_raise_event);
+        gdrom_int_raise_event.when =
+            clock_cycle_stamp(gdrom.clk) + GDROM_INT_DELAY;
+        sched_event(gdrom.clk, &gdrom_int_raise_event);
     }
 }
 
@@ -197,9 +198,10 @@ struct gdrom_ctxt gdrom;
  */
 static void gdrom_complete_dma(void);
 
-void gdrom_init(void) {
+void gdrom_init(struct dc_clock *gdrom_clk) {
     memset(&gdrom, 0, sizeof(gdrom));
 
+    gdrom.clk = gdrom_clk;
     gdrom.gdapro_reg = GDROM_GDAPRO_DEFAULT;
     gdrom.g1gdrc_reg = GDROM_G1GDRC_DEFAULT;
     gdrom.dma_start_addr_reg = GDROM_GDSTAR_DEFAULT;

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -54,28 +54,50 @@ struct SchedEvent {
 typedef struct SchedEvent SchedEvent;
 
 /*
+ * A clock is an object which contains a timer and a scheduler based off of
+ * that timer.  Each CPU will have its own clock, and that clock will be shared
+ * with any system that needs to generate events for that CPU.
+ */
+struct dc_clock {
+    // the current value of this clock
+    dc_cycle_stamp_t cycle_stamp_priv;
+
+    // the stamp of the next scheduled event
+    dc_cycle_stamp_t target_stamp_priv;
+
+    // the next scheduled event
+    struct SchedEvent *ev_next_priv;
+};
+
+void dc_clock_init(struct dc_clock *clk);
+void dc_clock_cleanup(struct dc_clock *clk);
+
+/*
  * these methods do not free or otherwise take ownership of the event.
  * This way, users can use global or static SchedEvent structs.
  */
-void sched_event(struct SchedEvent *event);
-void cancel_event(struct SchedEvent *event);
-struct SchedEvent *pop_event();
-struct SchedEvent *peek_event();
+void sched_event(struct dc_clock *clock, struct SchedEvent *event);
+void cancel_event(struct dc_clock *clock, struct SchedEvent *event);
+struct SchedEvent *pop_event(struct dc_clock *clock);
+struct SchedEvent *peek_event(struct dc_clock *clock);
 
 /*
  * This represents the timestamp of the next event.
  * It can change whenever an event is scheduled, canceled, or popped.
  */
-dc_cycle_stamp_t sched_target_stamp(void);
+dc_cycle_stamp_t clock_target_stamp(struct dc_clock *clock);
 
-/*
- * tell the sched system to use an arbitrary pointer to store the target_stamp.
- *
- * This is only intended to be used from JIT code.  The old pointer must still
- * be valid when you call this function because it will be read from.  If the
- * pointer is NULL, then sched will disassociate whatever pointer is currently
- * bound, and replace it with sched's own default pointer.
- */
-void sched_set_target_pointer(dc_cycle_stamp_t *ptr);
+static inline void
+clock_set_cycle_stamp(struct dc_clock *clock, dc_cycle_stamp_t val) {
+    clock->cycle_stamp_priv = val;
+}
+
+static inline dc_cycle_stamp_t clock_cycle_stamp(struct dc_clock *clock) {
+    return clock->cycle_stamp_priv;
+}
+
+dc_cycle_stamp_t *clock_get_target_pointer(struct dc_clock *clock);
+
+dc_cycle_stamp_t *clock_get_cycle_stamp_pointer(struct dc_clock *clock);
 
 #endif

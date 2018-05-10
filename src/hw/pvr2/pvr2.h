@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,11 @@
 #ifndef PVR2_H_
 #define PVR2_H_
 
-void pvr2_init(void);
+#include "dc_sched.h"
+
+void pvr2_init(struct dc_clock *clk);
 void pvr2_cleanup(void);
+
+extern struct dc_clock *pvr2_clk;
 
 #endif

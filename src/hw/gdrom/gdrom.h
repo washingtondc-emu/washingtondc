@@ -28,6 +28,7 @@
 
 #include "fifo.h"
 #include "log.h"
+#include "dc_sched.h"
 
 #define GDROM_TRACE(msg, ...)                                           \
     do {                                                                \
@@ -109,6 +110,8 @@ enum additional_sense {
 };
 
 struct gdrom_ctxt {
+    struct dc_clock *clk;
+
     struct gdrom_status stat_reg;
     struct gdrom_error error_reg;
     struct gdrom_features feat_reg;       // features register
@@ -164,7 +167,7 @@ struct gdrom_ctxt {
  * reset the gdrom system to its default state.
  * This is effectively a hard-reset.
  */
-void gdrom_init(void);
+void gdrom_init(struct dc_clock *gdrom_clk);
 
 void gdrom_cleanup(void);
 
