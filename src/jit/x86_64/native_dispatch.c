@@ -38,6 +38,7 @@
 
 static dc_cycle_stamp_t *sched_tgt;
 static dc_cycle_stamp_t *cycle_stamp;
+static struct dc_clock *native_dispatch_clk;
 
 uint32_t (*native_dispatch_entry)(uint32_t pc);
 
@@ -49,14 +50,21 @@ static void store_quad_from_reg(void *qptr, unsigned reg_no,
                                 unsigned clobber_reg);
 
 void native_dispatch_init(struct dc_clock *clk) {
-    sched_tgt = clock_get_target_pointer(clk);
-    cycle_stamp = clock_get_cycle_stamp_pointer(clk);
+    native_dispatch_clk = clk;
+    sched_tgt = exec_mem_alloc(sizeof(*sched_tgt));
+    cycle_stamp = exec_mem_alloc(sizeof(*cycle_stamp));
+
+    clock_set_target_pointer(clk, sched_tgt);
+    clock_set_cycle_stamp_pointer(clk, cycle_stamp);
 
     native_dispatch_entry_create();
 }
 
 void native_dispatch_cleanup(void) {
     // TODO: free all executable memory pointers
+    clock_set_target_pointer(native_dispatch_clk, NULL);
+    exec_mem_free(cycle_stamp);
+    exec_mem_free(sched_tgt);
 }
 
 static void native_dispatch_entry_create(void) {

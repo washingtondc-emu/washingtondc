@@ -34,6 +34,8 @@ static DEF_ERROR_U64_ATTR(event_sched_dc_cycle_stamp)
 
 void dc_clock_init(struct dc_clock *clk) {
     memset(clk, 0, sizeof(*clk));
+    clk->cycle_stamp_ptr_priv = &clk->cycle_stamp_priv;
+    clk->target_stamp_ptr_priv = &clk->target_stamp_priv;
 }
 
 void dc_clock_cleanup(struct dc_clock *clk) {
@@ -41,7 +43,7 @@ void dc_clock_cleanup(struct dc_clock *clk) {
 
 static void update_target_stamp(struct dc_clock *clock) {
     if (clock->ev_next_priv) {
-        clock->target_stamp_priv = clock->ev_next_priv->when;
+        *clock->target_stamp_ptr_priv = clock->ev_next_priv->when;
     } else {
         /*
          * Somehow there are no events scheduled.
@@ -57,7 +59,7 @@ static void update_target_stamp(struct dc_clock *clock) {
          * TBH, I'm not even 100% sure this problem can even happen since
          * there's no way to turn off SPG, TMU, etc.
          */
-        clock->target_stamp_priv = clock_cycle_stamp(clock) + 16 * SH4_CLOCK_SCALE;
+        *clock->target_stamp_ptr_priv = clock_cycle_stamp(clock) + 16 * SH4_CLOCK_SCALE;
     }
 }
 
@@ -157,9 +159,30 @@ dc_cycle_stamp_t *clock_get_target_pointer(struct dc_clock *clock) {
 }
 
 dc_cycle_stamp_t *clock_get_cycle_stamp_pointer(struct dc_clock *clock) {
-    return &clock->cycle_stamp_priv;
+    return clock->cycle_stamp_ptr_priv;
 }
 
 dc_cycle_stamp_t clock_target_stamp(struct dc_clock *clock) {
-    return clock->target_stamp_priv;
+    return *clock->target_stamp_ptr_priv;
+}
+
+void clock_set_target_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr) {
+    if (ptr) {
+        *ptr = clock_target_stamp(clock);
+        clock->target_stamp_ptr_priv = ptr;
+    } else {
+        clock->target_stamp_priv = *clock->target_stamp_ptr_priv;
+        clock->target_stamp_ptr_priv = &clock->target_stamp_priv;
+    }
+}
+
+void
+clock_set_cycle_stamp_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr) {
+    if (ptr) {
+        *ptr = clock_cycle_stamp(clock);
+        clock->cycle_stamp_ptr_priv = ptr;
+    } else {
+        clock->cycle_stamp_priv = *clock->cycle_stamp_ptr_priv;
+        clock->cycle_stamp_ptr_priv = &clock->cycle_stamp_priv;
+    }
 }

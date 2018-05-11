@@ -61,9 +61,11 @@ typedef struct SchedEvent SchedEvent;
 struct dc_clock {
     // the current value of this clock
     dc_cycle_stamp_t cycle_stamp_priv;
+    dc_cycle_stamp_t *cycle_stamp_ptr_priv;
 
     // the stamp of the next scheduled event
     dc_cycle_stamp_t target_stamp_priv;
+    dc_cycle_stamp_t *target_stamp_ptr_priv;
 
     // the next scheduled event
     struct SchedEvent *ev_next_priv;
@@ -89,15 +91,20 @@ dc_cycle_stamp_t clock_target_stamp(struct dc_clock *clock);
 
 static inline void
 clock_set_cycle_stamp(struct dc_clock *clock, dc_cycle_stamp_t val) {
-    clock->cycle_stamp_priv = val;
+    *clock->cycle_stamp_ptr_priv = val;
 }
 
 static inline dc_cycle_stamp_t clock_cycle_stamp(struct dc_clock *clock) {
-    return clock->cycle_stamp_priv;
+    return *clock->cycle_stamp_ptr_priv;
 }
 
 dc_cycle_stamp_t *clock_get_target_pointer(struct dc_clock *clock);
 
 dc_cycle_stamp_t *clock_get_cycle_stamp_pointer(struct dc_clock *clock);
+
+void clock_set_target_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr);
+
+void
+clock_set_cycle_stamp_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr);
 
 #endif
