@@ -43,9 +43,12 @@ static void* emit_native_mem_read_32(struct memory_map const *map);
 static void* emit_native_mem_read_16(struct memory_map const *map);
 static void* emit_native_mem_write_32(struct memory_map const *map);
 
-static void emit_ram_read_32(struct memory_map_region const *region);
-static void emit_ram_read_16(struct memory_map_region const *region);
-static void emit_ram_write_32(struct memory_map_region const *region);
+static void
+emit_ram_read_32(struct memory_map_region const *region, void *ctxt);
+static void
+emit_ram_read_16(struct memory_map_region const *region, void *ctxt);
+static void
+emit_ram_write_32(struct memory_map_region const *region, void *ctxt);
 
 struct native_mem_map {
     struct memory_map const *map;
@@ -128,7 +131,7 @@ static void* emit_native_mem_read_16(struct memory_map const *map) {
 
         switch (region->id) {
         case MEMORY_MAP_REGION_RAM:
-            emit_ram_read_16(region);
+            emit_ram_read_16(region, region->ctxt);
             x86asm_ret();
             break;
         default:
@@ -176,7 +179,7 @@ static void* emit_native_mem_read_32(struct memory_map const *map) {
 
         switch (region->id) {
         case MEMORY_MAP_REGION_RAM:
-            emit_ram_read_32(region);
+            emit_ram_read_32(region, region->ctxt);
             x86asm_ret();
             break;
         default:
@@ -224,7 +227,7 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
 
         switch (region->id) {
         case MEMORY_MAP_REGION_RAM:
-            emit_ram_write_32(region);
+            emit_ram_write_32(region, region->ctxt);
             x86asm_ret();
             break;
         default:
@@ -247,26 +250,29 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
     return native_mem_write_32_impl;
 }
 
-static void emit_ram_read_32(struct memory_map_region const *region) {
-    struct Memory *mem = &dc_mem;
+static void
+emit_ram_read_32(struct memory_map_region const *region, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
 
     x86asm_andl_imm32_reg32(region->mask, EDI);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, RSI);
     x86asm_movl_sib_reg(RSI, 1, EDI, EAX);
 }
 
-static void emit_ram_read_16(struct memory_map_region const *region) {
-    struct Memory *mem = &dc_mem;
+static void
+emit_ram_read_16(struct memory_map_region const *region, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
 
     x86asm_andl_imm32_reg32(region->mask, EDI);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, RSI);
     x86asm_movw_sib_reg(RSI, 1, EDI, EAX);
 }
 
-static void emit_ram_write_32(struct memory_map_region const *region) {
+static void
+emit_ram_write_32(struct memory_map_region const *region, void *ctxt) {
     // value to write should be in ESI
     // address should be in EDI
-    struct Memory *mem = &dc_mem;
+    struct Memory *mem = (struct Memory*)ctxt;
 
     x86asm_andl_imm32_reg32(region->mask, EDI);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, RAX);

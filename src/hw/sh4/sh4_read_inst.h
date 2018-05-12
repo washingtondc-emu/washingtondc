@@ -93,12 +93,28 @@ static inline void sh4_check_interrupts(Sh4 *sh4) {
 }
 
 static inline inst_t sh4_do_read_inst(Sh4 *sh4, addr32_t addr) {
+    /*
+     * XXX for the interpreter, this function is actually a pretty big
+     * bottleneck.  The problem is that 99.999% of the time when we want to
+     * read an instruction, that instruction comes from the system memory, and
+     * the other 0.001% of the time it comes from the bootrom.  This function
+     * used to speed things up by explicitly checking the address to see if
+     * it's in memory, and if so it would read directly from memory instead of
+     * wasting time parsing through the memory map.
+     *
+     * In the interests of portability and modularity, I had to take out that
+     * optimization because SH4 doesn't have a memory pointer, just a
+     * memory-map pointer.  This only impacts performance on the interpreter, on
+     * the dynarec performance impact is either negligible or nonexistant.
+     *
+     * Actually the dynarec is running a little faster since I removed this
+     * optimization, but I don't understand why.  It shouldn't have had a
+     * positive impact at all, I was expecting either a negligibly small
+     * negative impact or no impact at all.  I can't explain that but I guess
+     * it's good that things are faster lol.
+     */
     addr &= 0x1fffffff;
-    if (addr >= ADDR_AREA3_FIRST && addr <= ADDR_AREA3_LAST) {
-        return memory_read_16(addr & ADDR_AREA3_MASK, &dc_mem);
-    } else {
-        return memory_map_read_16(sh4->mem.map, addr);
-    }
+    return memory_map_read_16(sh4->mem.map, addr);
 }
 
 static inline inst_t sh4_read_inst(Sh4 *sh4) {

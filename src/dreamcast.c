@@ -85,7 +85,7 @@
 #include "dreamcast.h"
 
 static Sh4 cpu;
-struct Memory dc_mem;
+static struct Memory dc_mem;
 static struct memory_map mem_map;
 
 static struct aica aica;

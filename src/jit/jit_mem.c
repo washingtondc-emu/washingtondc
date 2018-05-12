@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include <stddef.h>
+
 #include "jit/jit_il.h"
 #include "jit/code_block.h"
 #include "mem_areas.h"
@@ -29,26 +31,56 @@
 
 #include "jit_mem.h"
 
+/*
+ * TODO: this only returns the first MEMORY_MAP_REGION_RAM it finds.  Right now
+ * that's not a problem because there's only one MEMORY_MAP_REGION_RAM, but in
+ * the future it will be a problem if I make the AICA or PVR2 memory identify
+ * themselves as MEMORY_MAP_REGION_RAM.
+ */
+static struct memory_map_region *find_ram(struct memory_map *map) {
+    unsigned region_no;
+    for (region_no = 0; region_no < map->n_regions; region_no++) {
+        struct memory_map_region *region = map->regions + region_no;
+        if (region->id == MEMORY_MAP_REGION_RAM)
+            return region;
+    }
+    return NULL;
+}
+
 void jit_sh4_mem_read_constaddr_32(struct Sh4 *sh4, struct il_code_block *block,
                                    addr32_t addr, unsigned slot_no) {
-    addr32_t addr_first = addr & 0x1fffffff;
-    addr32_t addr_last = (addr + 3) & 0x1fffffff;
-    if (addr_first >= ADDR_AREA3_FIRST && addr_last <= ADDR_AREA3_LAST) {
-        void *ptr = dc_mem.mem + (addr & ADDR_AREA3_MASK);
-        jit_load_slot(block, slot_no, ptr);
-    } else {
-        jit_read_32_constaddr(block, sh4->mem.map, addr, slot_no);
+    struct memory_map_region *ram = find_ram(sh4->mem.map);
+
+    if (ram) {
+        addr32_t addr_first = addr & ram->range_mask;
+        addr32_t addr_last = (addr + 3) & ram->range_mask;
+
+        struct Memory *mem = (struct Memory*)ram->ctxt;
+        if (addr_first >= ram->first_addr && addr_last <= ram->last_addr) {
+            void *ptr = mem->mem + (addr & ram->mask);
+            jit_load_slot(block, slot_no, ptr);
+            return;
+        }
     }
+
+    jit_read_32_constaddr(block, sh4->mem.map, addr, slot_no);
 }
 
 void jit_sh4_mem_read_constaddr_16(struct Sh4 *sh4, struct il_code_block *block,
                                    addr32_t addr, unsigned slot_no) {
-    addr32_t addr_first = addr & 0x1fffffff;
-    addr32_t addr_last = (addr + 1) & 0x1fffffff;
-    if (addr_first >= ADDR_AREA3_FIRST && addr_last <= ADDR_AREA3_LAST) {
-        void *ptr = dc_mem.mem + (addr & ADDR_AREA3_MASK);
-        jit_load_slot16(block, slot_no, ptr);
-    } else {
-        jit_read_16_constaddr(block, sh4->mem.map, addr, slot_no);
+    struct memory_map_region *ram = find_ram(sh4->mem.map);
+
+    if (ram) {
+        addr32_t addr_first = addr & ram->range_mask;
+        addr32_t addr_last = (addr + 3) & ram->range_mask;
+
+        struct Memory *mem = (struct Memory*)ram->ctxt;
+        if (addr_first >= ram->first_addr && addr_last <= ram->last_addr) {
+            void *ptr = mem->mem + (addr & ram->mask);
+            jit_load_slot16(block, slot_no, ptr);
+            return;
+        }
     }
+
+    jit_read_16_constaddr(block, sh4->mem.map, addr, slot_no);
 }
