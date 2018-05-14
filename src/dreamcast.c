@@ -71,7 +71,7 @@
 #include "jit/code_cache.h"
 #include "jit/jit.h"
 #include "gfx/opengl/overlay.h"
-#include "BiosFile.h"
+#include "hw/boot_rom.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -87,6 +87,7 @@
 static Sh4 cpu;
 static struct Memory dc_mem;
 static struct memory_map mem_map;
+static struct boot_rom firmware;
 
 static struct aica aica;
 
@@ -162,7 +163,7 @@ void dreamcast_init(bool cmd_session) {
 
     memory_init(&dc_mem);
     flash_mem_load(config_get_dc_flash_path());
-    bios_file_init(config_get_dc_bios_path());
+    boot_rom_init(&firmware, config_get_dc_bios_path());
 
     int boot_mode = config_get_boot_mode();
     if (boot_mode == (int)DC_BOOT_IP_BIN || boot_mode == (int)DC_BOOT_DIRECT) {
@@ -288,7 +289,7 @@ void dreamcast_cleanup() {
     jit_cleanup();
     sh4_cleanup(&cpu);
     dc_clock_cleanup(&sh4_clock);
-    bios_file_cleanup();
+    boot_rom_cleanup(&firmware);
     memory_cleanup(&dc_mem);
 }
 
@@ -813,7 +814,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
      */
     memory_map_add(map, ADDR_BIOS_FIRST, ADDR_BIOS_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &bios_file_intf, NULL);
+                   &boot_rom_intf, &firmware);
     memory_map_add(map, ADDR_FLASH_FIRST, ADDR_FLASH_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &flash_mem_intf, NULL);

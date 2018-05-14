@@ -175,8 +175,8 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/aica/aica_channel.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/aica/aica_dsp.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/aica/aica_dsp.c"
-                "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
-                "${PROJECT_SOURCE_DIR}/src/BiosFile.c"
+                "${PROJECT_SOURCE_DIR}/src/hw/boot_rom.h"
+                "${PROJECT_SOURCE_DIR}/src/hw/boot_rom.c"
                 "${PROJECT_SOURCE_DIR}/src/flash_memory.h"
                 "${PROJECT_SOURCE_DIR}/src/flash_memory.c"
                 "${PROJECT_SOURCE_DIR}/src/mem_code.h"
@@ -285,9 +285,7 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/gfx/opengl/overlay.c"
                 "${PROJECT_SOURCE_DIR}/src/avl.h")
 
-set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/BiosFile.h"
-                         "${PROJECT_SOURCE_DIR}/src/BiosFile.c"
-                         "${PROJECT_SOURCE_DIR}/src/main.c")
+set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/main.c")
 
 if (JIT_OPTIMIZE)
    add_definitions(-DJIT_OPTIMIZE)

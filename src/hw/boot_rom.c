@@ -30,31 +30,25 @@
 #include "error.h"
 #include "log.h"
 
-#include "BiosFile.h"
+#include "boot_rom.h"
 
-struct BiosFile {
-    size_t dat_len;
-    uint8_t *dat;
-};
-typedef struct BiosFile BiosFile;
+static DEF_ERROR_U32_ATTR(max_length)
 
-static struct BiosFile bios_file;
+struct memory_interface boot_rom_intf = {
+    .readdouble = boot_rom_read_double,
+    .readfloat = boot_rom_read_float,
+    .read32 = boot_rom_read_32,
+    .read16 = boot_rom_read_16,
+    .read8 = boot_rom_read_8,
 
-struct memory_interface bios_file_intf = {
-    .readdouble = bios_file_read_double,
-    .readfloat = bios_file_read_float,
-    .read32 = bios_file_read_32,
-    .read16 = bios_file_read_16,
-    .read8 = bios_file_read_8,
-
-    .writedouble = bios_file_write_double,
-    .writefloat = bios_file_write_float,
-    .write32 = bios_file_write_32,
-    .write16 = bios_file_write_16,
-    .write8 = bios_file_write_8
+    .writedouble = boot_rom_write_double,
+    .writefloat = boot_rom_write_float,
+    .write32 = boot_rom_write_32,
+    .write16 = boot_rom_write_16,
+    .write8 = boot_rom_write_8
 };
 
-void bios_file_init(char const *path) {
+void boot_rom_init(struct boot_rom *rom, char const *path) {
     FILE *fp = fopen(path, "rb");
 
     if (!fp) {
@@ -86,23 +80,23 @@ void bios_file_init(char const *path) {
         return;
     }
 
-    bios_file.dat = (uint8_t*)malloc(file_len * sizeof(uint8_t));
-    if (!bios_file.dat) {
+    rom->dat = (uint8_t*)malloc(file_len * sizeof(uint8_t));
+    if (!rom->dat) {
         RAISE_ERROR(ERROR_FAILED_ALLOC);
         return;
     }
 
-    if (fread(bios_file.dat, sizeof(uint8_t), file_len, fp) != file_len) {
+    if (fread(rom->dat, sizeof(uint8_t), file_len, fp) != file_len) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
-        free(bios_file.dat);
+        free(rom->dat);
         fclose(fp);
         return;
     }
 
     fclose(fp);
 
-    bios_file.dat_len = file_len;
+    rom->dat_len = file_len;
 
     if (file_len != BIOS_SZ_EXPECT) {
         LOG_WARN("WARNING - unexpected bios size (expected %d, got %d).  This "
@@ -111,46 +105,74 @@ void bios_file_init(char const *path) {
     }
 }
 
-void bios_file_cleanup(void) {
-    if (bios_file.dat)
-        free(bios_file.dat);
+void boot_rom_cleanup(struct boot_rom *rom) {
+    if (rom->dat)
+        free(rom->dat);
 
-    memset(&bios_file, 0, sizeof(bios_file));
+    memset(rom, 0, sizeof(*rom));
 }
 
-int bios_file_read(void *buf, size_t addr, size_t len) {
-    memcpy(buf, bios_file.dat + addr, len);
-    return MEM_ACCESS_SUCCESS;
+uint8_t boot_rom_read_8(addr32_t addr, void *ctxt) {
+    struct boot_rom *rom = (struct boot_rom*)ctxt;
+
+#ifdef INVARIANTS
+    if (sizeof(uint8_t) - 1 + addr >= rom->dat_len) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint8_t));
+        error_set_max_length(rom->dat_len);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+#endif
+
+    return rom->dat[addr];
 }
 
-uint8_t bios_file_read_8(addr32_t addr, void *ctxt) {
-    return bios_file.dat[addr];
-}
+uint16_t boot_rom_read_16(addr32_t addr, void *ctxt) {
+    struct boot_rom *rom = (struct boot_rom*)ctxt;
+    uint16_t const *bios16 = (uint16_t const*)rom->dat;
 
-uint16_t bios_file_read_16(addr32_t addr, void *ctxt) {
-    uint16_t const *bios16 = (uint16_t const*)bios_file.dat;
+#ifdef INVARIANTS
+    if (sizeof(uint16_t) - 1 + addr >= rom->dat_len) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint16_t));
+        error_set_max_length(rom->dat_len);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+#endif
+
     return bios16[addr / 2];
 }
 
-uint32_t bios_file_read_32(addr32_t addr, void *ctxt) {
-    uint32_t const *bios32 = (uint32_t const*)bios_file.dat;
+uint32_t boot_rom_read_32(addr32_t addr, void *ctxt) {
+    struct boot_rom *rom = (struct boot_rom*)ctxt;
+    uint32_t const *bios32 = (uint32_t const*)rom->dat;
+
+#ifdef INVARIANTS
+    if (sizeof(uint32_t) - 1 + addr >= rom->dat_len) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint32_t));
+        error_set_max_length(rom->dat_len);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+#endif
+
     return bios32[addr / 4];
 }
 
-float bios_file_read_float(addr32_t addr, void *ctxt) {
-    uint32_t tmp = bios_file_read_32(addr, ctxt);
+float boot_rom_read_float(addr32_t addr, void *ctxt) {
+    uint32_t tmp = boot_rom_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-double bios_file_read_double(addr32_t addr, void *ctxt) {
+double boot_rom_read_double(addr32_t addr, void *ctxt) {
     error_set_address(addr);
     error_set_length(8);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+void boot_rom_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -162,7 +184,7 @@ void bios_file_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+void boot_rom_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -174,7 +196,7 @@ void bios_file_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+void boot_rom_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -186,7 +208,7 @@ void bios_file_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_float(addr32_t addr, float val, void *ctxt) {
+void boot_rom_write_float(addr32_t addr, float val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -198,7 +220,7 @@ void bios_file_write_float(addr32_t addr, float val, void *ctxt) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void bios_file_write_double(addr32_t addr, double val, void *ctxt) {
+void boot_rom_write_double(addr32_t addr, double val, void *ctxt) {
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
