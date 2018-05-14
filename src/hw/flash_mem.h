@@ -20,8 +20,8 @@
  *
  ******************************************************************************/
 
-#ifndef FLASH_MEMORY_H_
-#define FLASH_MEMORY_H_
+#ifndef FLASH_MEM_H_
+#define FLASH_MEM_H_
 
 #include "types.h"
 #include "mem_areas.h"
@@ -29,7 +29,29 @@
 
 #define FLASH_MEM_SZ (ADDR_FLASH_LAST - ADDR_FLASH_FIRST + 1)
 
-void flash_mem_load(char const *path);
+enum flash_state {
+    FLASH_STATE_AA,
+    FLASH_STATE_55,
+    FLASH_STATE_CMD,
+    FLASH_STATE_WRITE,
+
+    FLASH_STATE_ERASE
+};
+
+struct flash_mem {
+    enum flash_state state;
+
+    /*
+     * this is set to true when we receive a FLASH_CMD_PRE_ERASE command.
+     * It is cleared upon receiving the FLASH_CMD_ERASE
+     */
+    bool erase_unlocked;
+
+    uint8_t flash_mem[FLASH_MEM_SZ];
+};
+
+void flash_mem_init(struct flash_mem *mem, char const *path);
+void flash_mem_cleanup(struct flash_mem *mem);
 
 extern struct memory_interface flash_mem_intf;
 

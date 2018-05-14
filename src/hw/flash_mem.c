@@ -31,7 +31,7 @@
 #include "types.h"
 #include "log.h"
 
-#include "flash_memory.h"
+#include "flash_mem.h"
 
 /*
  * 128KB flash memory emulation
@@ -60,23 +60,6 @@
 #define FLASH_SECTOR_SIZE (16 * 1024)
 #define FLASH_SECTOR_MASK (~(FLASH_SECTOR_SIZE - 1))
 
-enum flash_state {
-    FLASH_STATE_AA,
-    FLASH_STATE_55,
-    FLASH_STATE_CMD,
-    FLASH_STATE_WRITE,
-
-    FLASH_STATE_ERASE
-};
-
-enum flash_state state = FLASH_STATE_AA;
-
-/*
- * this is set to true when we receive a FLASH_CMD_PRE_ERASE command.
- * It is cleared upon receiving the FLASH_CMD_ERASE
- */
-static bool erase_unlocked;
-
 #define FLASH_MEM_TRACE(msg, ...) flash_mem_do_trace(msg, ##__VA_ARGS__)
 
 // uncomment this to log all flash memory read/write operations
@@ -89,18 +72,21 @@ static void flash_mem_do_trace(char const *msg, ...);
  * this gets called from the write function to input data into the system one
  * byte at a time, including state transitions and command processing.
  */
-static void flash_mem_input_byte(addr32_t addr, uint8_t val);
+static void
+flash_mem_input_byte(struct flash_mem *mem, addr32_t addr, uint8_t val);
 
 /*
  * this gets called from flash_mem_input_byte when it detects that the current
  * byte is a new command byte.  This function is responsible for deciding what
  * state to transfer to.
  */
-static void flash_mem_input_cmd(addr32_t addr, uint8_t val);
+static void
+flash_mem_input_cmd(struct flash_mem *mem, addr32_t addr, uint8_t val);
 
-static void flash_mem_do_erase(addr32_t addr);
+static void flash_mem_do_erase(struct flash_mem *mem, addr32_t addr);
 
-static void flash_mem_do_write_cmd(addr32_t addr, uint8_t val);
+static void
+flash_mem_do_write_cmd(struct flash_mem *mem, addr32_t addr, uint8_t val);
 
 static float flash_mem_read_float(addr32_t addr, void *ctxt);
 static void flash_mem_write_float(addr32_t addr, float val, void *ctxt);
@@ -113,9 +99,20 @@ static void flash_mem_write_16(addr32_t addr, uint16_t val, void *ctxt);
 static uint8_t flash_mem_read_8(addr32_t addr, void *ctxt);
 static void flash_mem_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
-static uint8_t flash_mem[FLASH_MEM_SZ];
+static void flash_mem_load(struct flash_mem *mem, char const *path);
 
-void flash_mem_load(char const *path) {
+void flash_mem_init(struct flash_mem *mem, char const *path) {
+    memset(mem, 0, sizeof(*mem));
+
+    mem->state = FLASH_STATE_AA;
+
+    flash_mem_load(mem, path);
+}
+
+void flash_mem_cleanup(struct flash_mem *mem) {
+}
+
+static void flash_mem_load(struct flash_mem *mem, char const *path) {
     FILE *fp = fopen(path, "rb");
     if (!fp) {
         error_set_errno_val(errno);
@@ -155,7 +152,7 @@ void flash_mem_load(char const *path) {
     if (file_len > FLASH_MEM_SZ || file_len < 0)
         file_len = FLASH_MEM_SZ;
 
-    if (fread(flash_mem, sizeof(uint8_t), file_len, fp) != file_len) {
+    if (fread(mem->flash_mem, sizeof(uint8_t), file_len, fp) != file_len) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
         fclose(fp);
@@ -193,6 +190,8 @@ void flash_mem_write_double(addr32_t addr, double val, void *ctxt) {
 }
 
 uint32_t flash_mem_read_32(addr32_t addr, void *ctxt) {
+    struct flash_mem *mem = (struct flash_mem*)ctxt;
+
     if ((addr + sizeof(uint32_t) - 1 > ADDR_FLASH_LAST) ||
         (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
@@ -205,7 +204,7 @@ uint32_t flash_mem_read_32(addr32_t addr, void *ctxt) {
                     (unsigned)val, (unsigned)addr);
 #endif
 
-    uint32_t const *in_ptr = (uint32_t const*)flash_mem;
+    uint32_t const *in_ptr = (uint32_t const*)mem->flash_mem;
     return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint32_t)];
 }
 
@@ -217,6 +216,8 @@ void flash_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 }
 
 uint16_t flash_mem_read_16(addr32_t addr, void *ctxt) {
+    struct flash_mem *mem = (struct flash_mem*)ctxt;
+
     if ((addr + sizeof(uint16_t) - 1 > ADDR_FLASH_LAST) ||
         (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
@@ -229,7 +230,7 @@ uint16_t flash_mem_read_16(addr32_t addr, void *ctxt) {
                     (unsigned)val, (unsigned)addr);
 #endif
 
-    uint16_t const *in_ptr = (uint16_t const*)flash_mem;
+    uint16_t const *in_ptr = (uint16_t const*)mem->flash_mem;
     return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint16_t)];
 }
 
@@ -241,6 +242,8 @@ void flash_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 }
 
 uint8_t flash_mem_read_8(addr32_t addr, void *ctxt) {
+    struct flash_mem *mem = (struct flash_mem*)ctxt;
+
     if ((addr + sizeof(uint8_t) - 1 > ADDR_FLASH_LAST) ||
         (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
@@ -253,11 +256,13 @@ uint8_t flash_mem_read_8(addr32_t addr, void *ctxt) {
                     (unsigned)val, (unsigned)addr);
 #endif
 
-    uint8_t const *in_ptr = (uint8_t const*)flash_mem;
+    uint8_t const *in_ptr = (uint8_t const*)mem->flash_mem;
     return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint8_t)];
 }
 
 void flash_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    struct flash_mem *mem = (struct flash_mem*)ctxt;
+
     if ((addr > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);
         error_set_length(1);
@@ -268,7 +273,7 @@ void flash_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     FLASH_MEM_TRACE("write %02x to %08x\n", (unsigned)val, (unsigned)addr);
 #endif
 
-    flash_mem_input_byte(addr, val);
+    flash_mem_input_byte(mem, addr, val);
 }
 
 static void flash_mem_do_trace(char const *msg, ...) {
@@ -282,11 +287,12 @@ static void flash_mem_do_trace(char const *msg, ...) {
     va_end(var_args);
 }
 
-static void flash_mem_input_byte(addr32_t addr, uint8_t val) {
-    switch (state) {
+static void
+flash_mem_input_byte(struct flash_mem *mem, addr32_t addr, uint8_t val) {
+    switch (mem->state) {
     case FLASH_STATE_AA:
         if (val == 0xaa && addr == FLASH_ADDR_AA) {
-            state = FLASH_STATE_55;
+            mem->state = FLASH_STATE_55;
         } else {
             FLASH_MEM_TRACE("garbage data input (was expecting AA to "
                             "0x%08x)\n", FLASH_ADDR_AA);
@@ -294,17 +300,17 @@ static void flash_mem_input_byte(addr32_t addr, uint8_t val) {
         break;
     case FLASH_STATE_55:
         if (val == 0x55 && addr == FLASH_ADDR_55) {
-            state = FLASH_STATE_CMD;
+            mem->state = FLASH_STATE_CMD;
         } else {
             FLASH_MEM_TRACE("garbage data input (was expecting tt to "
                             "0x%08x)\n", FLASH_ADDR_55);
         }
         break;
     case FLASH_STATE_CMD:
-        flash_mem_input_cmd(addr, val);
+        flash_mem_input_cmd(mem, addr, val);
         break;
     case FLASH_STATE_WRITE:
-        flash_mem_do_write_cmd(addr, val);
+        flash_mem_do_write_cmd(mem, addr, val);
         break;
     default:
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -322,15 +328,16 @@ static void flash_mem_input_byte(addr32_t addr, uint8_t val) {
  * not immediately preceded by FLASH_CMD_PRE_ERASE, although in that case
  * FLASH_CMD_ERASE is probably just a no-op.
  */
-static void flash_mem_input_cmd(addr32_t addr, uint8_t val) {
+static void
+flash_mem_input_cmd(struct flash_mem *mem, addr32_t addr, uint8_t val) {
     FLASH_MEM_TRACE("input command 0x%02x\n", (unsigned)val);
 
     switch (val) {
     case FLASH_CMD_ERASE:
-        if (erase_unlocked) {
-            flash_mem_do_erase(addr);
-            state = FLASH_STATE_AA;
-            erase_unlocked = false;
+        if (mem->erase_unlocked) {
+            flash_mem_do_erase(mem, addr);
+            mem->state = FLASH_STATE_AA;
+            mem->erase_unlocked = false;
         } else {
             error_set_feature("proper response for failure to send the "
                               "flash PRE_ERASE command");
@@ -338,28 +345,28 @@ static void flash_mem_input_cmd(addr32_t addr, uint8_t val) {
         }
         break;
     case FLASH_CMD_PRE_ERASE:
-        if (erase_unlocked) {
+        if (mem->erase_unlocked) {
             error_set_feature("proper response for not sending "
                               "FLASH_CMD_ERASE immediately after "
                               "FLASH_CMD_PRE_ERASE");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
-        state = FLASH_STATE_AA;
-        erase_unlocked = true;
+        mem->state = FLASH_STATE_AA;
+        mem->erase_unlocked = true;
         break;
     case FLASH_CMD_WRITE:
-        if (erase_unlocked) {
+        if (mem->erase_unlocked) {
             error_set_feature("proper response for not sending "
                               "FLASH_CMD_ERASE immediately after "
                               "FLASH_CMD_PRE_ERASE");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
-        state = FLASH_STATE_WRITE;
+        mem->state = FLASH_STATE_WRITE;
         break;
     default:
         FLASH_MEM_TRACE("command 0x%02x is unrecognized\n", (unsigned)val);
-        state = FLASH_STATE_AA;
-        if (erase_unlocked) {
+        mem->state = FLASH_STATE_AA;
+        if (mem->erase_unlocked) {
             error_set_feature("proper response for not sending "
                               "FLASH_CMD_ERASE immediately after "
                               "FLASH_CMD_PRE_ERASE");
@@ -368,26 +375,27 @@ static void flash_mem_input_cmd(addr32_t addr, uint8_t val) {
     }
 }
 
-static void flash_mem_do_erase(addr32_t addr) {
+static void flash_mem_do_erase(struct flash_mem *mem, addr32_t addr) {
     addr -= ADDR_FLASH_FIRST;
     addr &= FLASH_SECTOR_MASK;
 
     FLASH_MEM_TRACE("FLASH_CMD_ERASE - ERASE SECTOR 0x%08x\n", (unsigned)addr);
 
-    memset(flash_mem + addr, 0xff, FLASH_SECTOR_SIZE);
+    memset(mem->flash_mem + addr, 0xff, FLASH_SECTOR_SIZE);
 }
 
-static void flash_mem_do_write_cmd(addr32_t addr, uint8_t val) {
+static void
+flash_mem_do_write_cmd(struct flash_mem *mem, addr32_t addr, uint8_t val) {
     uint8_t tmp;
 
     FLASH_MEM_TRACE("FLASH_CMD_WRITE - AND 0x%02x into address 0x%08x\n",
                     (unsigned)val, (unsigned)addr);
 
-    memcpy(&tmp, flash_mem + (addr - ADDR_FLASH_FIRST), sizeof(tmp));
+    memcpy(&tmp, mem->flash_mem + (addr - ADDR_FLASH_FIRST), sizeof(tmp));
     tmp &= val;
-    memcpy(flash_mem + (addr - ADDR_FLASH_FIRST), &tmp, sizeof(tmp));
+    memcpy(mem->flash_mem + (addr - ADDR_FLASH_FIRST), &tmp, sizeof(tmp));
 
-    state = FLASH_STATE_AA;
+    mem->state = FLASH_STATE_AA;
 }
 
 struct memory_interface flash_mem_intf = {

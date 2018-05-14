@@ -30,7 +30,7 @@
 
 #include "config.h"
 #include "error.h"
-#include "flash_memory.h"
+#include "hw/flash_mem.h"
 #include "dc_sched.h"
 #include "hw/pvr2/spg.h"
 #include "MemoryMap.h"
@@ -88,6 +88,7 @@ static Sh4 cpu;
 static struct Memory dc_mem;
 static struct memory_map mem_map;
 static struct boot_rom firmware;
+static struct flash_mem flash_mem;
 
 static struct aica aica;
 
@@ -162,7 +163,7 @@ void dreamcast_init(bool cmd_session) {
     is_running = true;
 
     memory_init(&dc_mem);
-    flash_mem_load(config_get_dc_flash_path());
+    flash_mem_init(&flash_mem, config_get_dc_flash_path());
     boot_rom_init(&firmware, config_get_dc_bios_path());
 
     int boot_mode = config_get_boot_mode();
@@ -290,6 +291,7 @@ void dreamcast_cleanup() {
     sh4_cleanup(&cpu);
     dc_clock_cleanup(&sh4_clock);
     boot_rom_cleanup(&firmware);
+    flash_mem_cleanup(&flash_mem);
     memory_cleanup(&dc_mem);
 }
 
@@ -817,7 +819,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    &boot_rom_intf, &firmware);
     memory_map_add(map, ADDR_FLASH_FIRST, ADDR_FLASH_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &flash_mem_intf, NULL);
+                   &flash_mem_intf, &flash_mem);
     memory_map_add(map, ADDR_G1_FIRST, ADDR_G1_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &g1_intf, NULL);
