@@ -98,10 +98,6 @@ static inline dc_cycle_stamp_t clock_cycle_stamp(struct dc_clock *clock) {
     return *clock->cycle_stamp_ptr_priv;
 }
 
-dc_cycle_stamp_t *clock_get_target_pointer(struct dc_clock *clock);
-
-dc_cycle_stamp_t *clock_get_cycle_stamp_pointer(struct dc_clock *clock);
-
 void clock_set_target_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr);
 
 void

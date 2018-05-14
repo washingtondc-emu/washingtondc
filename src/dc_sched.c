@@ -154,14 +154,6 @@ struct SchedEvent *peek_event(struct dc_clock *clock) {
     return clock->ev_next_priv;
 }
 
-dc_cycle_stamp_t *clock_get_target_pointer(struct dc_clock *clock) {
-    return &clock->target_stamp_priv;
-}
-
-dc_cycle_stamp_t *clock_get_cycle_stamp_pointer(struct dc_clock *clock) {
-    return clock->cycle_stamp_ptr_priv;
-}
-
 dc_cycle_stamp_t clock_target_stamp(struct dc_clock *clock) {
     return *clock->target_stamp_ptr_priv;
 }
