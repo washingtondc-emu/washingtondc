@@ -26,14 +26,23 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "dc_sched.h"
 #include "types.h"
 #include "MemoryMap.h"
+
+struct aica_rtc {
+    struct dc_clock *aica_rtc_clk;
+    struct SchedEvent aica_rtc_event;
+    uint32_t cur_rtc_val;
+    bool write_enable;
+};
 
 /*
  * The AICA's RTC is ironically not available to AICA, so this clock should
  * point to the SH4's clock, not the ARM7's clock.
  */
-void aica_rtc_init(struct dc_clock *clock);
+void aica_rtc_init(struct aica_rtc *rtc, struct dc_clock *clock);
+void aica_rtc_cleanup(struct aica_rtc *rtc);
 
 float aica_rtc_read_float(addr32_t addr, void *ctxt);
 void aica_rtc_write_float(addr32_t addr, float val, void *ctxt);

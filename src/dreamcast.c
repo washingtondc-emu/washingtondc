@@ -89,7 +89,7 @@ static struct Memory dc_mem;
 static struct memory_map mem_map;
 static struct boot_rom firmware;
 static struct flash_mem flash_mem;
-
+static struct aica_rtc rtc;
 static struct aica aica;
 
 static volatile bool is_running;
@@ -255,7 +255,7 @@ void dreamcast_init(bool cmd_session) {
         cpu.reg[SH4_REG_VBR] = 0x8c00f400;
     }
 
-    aica_rtc_init(&sh4_clock);
+    aica_rtc_init(&rtc, &sh4_clock);
 
     if (cmd_session) {
 #ifdef ENABLE_DEBUGGER
@@ -275,6 +275,7 @@ void dreamcast_cleanup() {
     memory_map_cleanup(cpu.mem.map);
 
     maple_cleanup();
+    aica_rtc_cleanup(&rtc);
     gdrom_cleanup();
     pvr2_cleanup();
     memory_map_cleanup(&mem_map);
@@ -855,7 +856,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    &aica_dsp_intf, &aica.dsp);
     memory_map_add(map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_rtc_intf, NULL);
+                   &aica_rtc_intf, &rtc);
     memory_map_add(map, ADDR_GDROM_FIRST, ADDR_GDROM_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &gdrom_reg_intf, NULL);

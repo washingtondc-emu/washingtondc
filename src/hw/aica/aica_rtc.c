@@ -35,25 +35,25 @@
 #define AICA_RTC_TRACE(msg, ...) LOG_DBG("AICA_RTC: "msg, ##__VA_ARGS__)
 
 #define RTC_DEFAULT 0
-static uint32_t cur_rtc_val = RTC_DEFAULT;
 
-static struct SchedEvent aica_rtc_event;
 static void aica_rtc_event_handler(SchedEvent *ev);
 
-static void sched_aica_rtc_event(void);
-static void cancel_aica_rtc_event(void);
+static void sched_aica_rtc_event(struct aica_rtc *rtc);
+static void cancel_aica_rtc_event(struct aica_rtc *rtc);
 
 #define AICA_RTC_ADDR_HIGH   0x710000
 #define AICA_RTC_ADDR_LOW    0x710004
 #define AICA_RTC_ADDR_ENABLE 0x710008
 
-static bool write_enable;
+void aica_rtc_init(struct aica_rtc *rtc, struct dc_clock *clock) {
+    memset(rtc, 0, sizeof(*rtc));
+    rtc->cur_rtc_val = RTC_DEFAULT;
+    rtc->aica_rtc_clk = clock;
 
-static struct dc_clock *aica_rtc_clk;
+    sched_aica_rtc_event(rtc);
+}
 
-void aica_rtc_init(struct dc_clock *clock) {
-    aica_rtc_clk = clock;
-    sched_aica_rtc_event();
+void aica_rtc_cleanup(struct aica_rtc *rtc) {
 }
 
 float aica_rtc_read_float(addr32_t addr, void *ctxt) {
@@ -82,21 +82,23 @@ void aica_rtc_write_double(addr32_t addr, double val, void *ctxt) {
 }
 
 uint32_t aica_rtc_read_32(addr32_t addr, void *ctxt) {
+    struct aica_rtc *rtc = (struct aica_rtc*)ctxt;
+
     AICA_RTC_TRACE("Reading 4 bytes from AICA RTC address 0x%08x\n",
                    (unsigned)addr);
 
     uint32_t tmp;
     switch (addr) {
     case AICA_RTC_ADDR_HIGH:
-        tmp = cur_rtc_val >> 16;
+        tmp = rtc->cur_rtc_val >> 16;
         AICA_RTC_TRACE("reading %04x from the upper 16-bits\n", (unsigned)tmp);
         break;
     case AICA_RTC_ADDR_LOW:
-        tmp = cur_rtc_val & 0xffff;
+        tmp = rtc->cur_rtc_val & 0xffff;
         AICA_RTC_TRACE("reading %04x from the lower 16-bits\n", (unsigned)tmp);
         break;
     case AICA_RTC_ADDR_ENABLE:
-        tmp = write_enable;
+        tmp = rtc->write_enable;
         AICA_RTC_TRACE("reading the enable bit (%u)\n", (unsigned)tmp);
         break;
     default:
@@ -112,41 +114,45 @@ uint32_t aica_rtc_read_32(addr32_t addr, void *ctxt) {
 }
 
 void aica_rtc_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    struct aica_rtc *rtc = (struct aica_rtc*)ctxt;
+
     AICA_RTC_TRACE("Writing 4 bytes to address 0x%08x\n",
                    (unsigned)addr);
 
-    __attribute__((unused)) uint32_t old_rtc_val = cur_rtc_val;
+    __attribute__((unused)) uint32_t old_rtc_val = rtc->cur_rtc_val;
 
     switch (addr) {
     case AICA_RTC_ADDR_HIGH:
-        if (!write_enable) {
+        if (!rtc->write_enable) {
             AICA_RTC_TRACE("failed to write to AICA_RTC_ADDR_HIGH because the "
                            "enable bit is not set\n");
             break;
         }
 
-        cur_rtc_val = (val << 16) | (cur_rtc_val & 0xffff);
+        rtc->cur_rtc_val = (val << 16) | (rtc->cur_rtc_val & 0xffff);
         AICA_RTC_TRACE("write to AICA_RTC_ADDR_HIGH - time changed from 0x%08x "
-                   "seconds to 0x%08x seconds\n", old_rtc_val, cur_rtc_val);
+                       "seconds to 0x%08x seconds\n",
+                       old_rtc_val, rtc->cur_rtc_val);
         break;
     case AICA_RTC_ADDR_LOW:
-        if (!write_enable) {
+        if (!rtc->write_enable) {
             AICA_RTC_TRACE("failed to write to AICA_RTC_ADDR_LOW because the "
                            "enable bit is not set\n");
             break;
         }
 
-        cur_rtc_val = (val & 0xffff) | (cur_rtc_val & ~0xffff);
+        rtc->cur_rtc_val = (val & 0xffff) | (rtc->cur_rtc_val & ~0xffff);
         AICA_RTC_TRACE("write to AICA_RTC_ADDR_LOW - time changed from 0x%08x "
-                   "seconds to 0x%08x seconds\n", old_rtc_val, cur_rtc_val);
+                       "seconds to 0x%08x seconds\n",
+                       old_rtc_val, rtc->cur_rtc_val);
 
         // reset the countdown to the next tick
-        cancel_aica_rtc_event();
-        sched_aica_rtc_event();
+        cancel_aica_rtc_event(rtc);
+        sched_aica_rtc_event(rtc);
         break;
     case AICA_RTC_ADDR_ENABLE:
-        write_enable = (bool)(val & 1);
-        if (write_enable)
+        rtc->write_enable = (bool)(val & 1);
+        if (rtc->write_enable)
             AICA_RTC_TRACE("write enable set!\n");
         else
             AICA_RTC_TRACE("write enable cleared\n");
@@ -193,22 +199,26 @@ void aica_rtc_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 }
 
 static void aica_rtc_event_handler(SchedEvent *ev) {
-    cur_rtc_val++;
+    struct aica_rtc *rtc = (struct aica_rtc*)ev->arg_ptr;
+
+    rtc->cur_rtc_val++;
 
     AICA_RTC_TRACE("***BEEEEP*** the time is now 0x%08x seconds\n",
-                   cur_rtc_val);
+                   rtc->cur_rtc_val);
 
-    sched_aica_rtc_event();
+    sched_aica_rtc_event(rtc);
 }
 
-static void sched_aica_rtc_event(void) {
-    aica_rtc_event.when = clock_cycle_stamp(aica_rtc_clk) + SCHED_FREQUENCY;
-    aica_rtc_event.handler = aica_rtc_event_handler;
-    sched_event(aica_rtc_clk, &aica_rtc_event);
+static void sched_aica_rtc_event(struct aica_rtc *rtc) {
+    rtc->aica_rtc_event.when =
+        clock_cycle_stamp(rtc->aica_rtc_clk) + SCHED_FREQUENCY;
+    rtc->aica_rtc_event.handler = aica_rtc_event_handler;
+    rtc->aica_rtc_event.arg_ptr = rtc;
+    sched_event(rtc->aica_rtc_clk, &rtc->aica_rtc_event);
 }
 
-static void cancel_aica_rtc_event(void) {
-    cancel_event(aica_rtc_clk, &aica_rtc_event);
+static void cancel_aica_rtc_event(struct aica_rtc *rtc) {
+    cancel_event(rtc->aica_rtc_clk, &rtc->aica_rtc_event);
 }
 
 struct memory_interface aica_rtc_intf = {
