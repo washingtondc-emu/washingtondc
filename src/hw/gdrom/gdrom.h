@@ -112,6 +112,9 @@ enum additional_sense {
 struct gdrom_ctxt {
     struct dc_clock *clk;
 
+    bool gdrom_int_scheduled;
+    struct SchedEvent gdrom_int_raise_event;
+
     struct gdrom_status stat_reg;
     struct gdrom_error error_reg;
     struct gdrom_features feat_reg;       // features register
@@ -167,23 +170,23 @@ struct gdrom_ctxt {
  * reset the gdrom system to its default state.
  * This is effectively a hard-reset.
  */
-void gdrom_init(struct dc_clock *gdrom_clk);
+void gdrom_init(struct gdrom_ctxt *gdrom, struct dc_clock *gdrom_clk);
 
-void gdrom_cleanup(void);
+void gdrom_cleanup(struct gdrom_ctxt *gdrom);
 
 // ideally this will never be access from outside of the GD-ROM code.
-extern struct gdrom_ctxt gdrom;
+/* extern struct gdrom_ctxt gdrom; */
 
-void gdrom_cmd_set_features(void);
+void gdrom_cmd_set_features(struct gdrom_ctxt *gdrom);
 
 // called when the packet command (0xa0) is written to the cmd register
-void gdrom_cmd_begin_packet(void);
+void gdrom_cmd_begin_packet(struct gdrom_ctxt *gdrom);
 
-void gdrom_cmd_identify(void);
+void gdrom_cmd_identify(struct gdrom_ctxt *gdrom);
 
-void gdrom_read_data(uint8_t *buf, unsigned n_bytes);
+void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes);
 
-void gdrom_write_data(uint8_t const *buf, unsigned n_bytes);
+void gdrom_write_data(struct gdrom_ctxt *gdrom, uint8_t const *buf, unsigned n_bytes);
 
 enum gdrom_disc_type {
     DISC_TYPE_CDDA = 0,
@@ -218,12 +221,12 @@ enum gdrom_disc_type gdrom_get_disc_type(void);
  */
 enum gdrom_disc_state gdrom_get_drive_state(void);
 
-void gdrom_start_dma(void);
+void gdrom_start_dma(struct gdrom_ctxt *gdrom);
 
-void gdrom_input_cmd(unsigned cmd);
+void gdrom_input_cmd(struct gdrom_ctxt *ctxt, unsigned cmd);
 
-unsigned gdrom_dma_prot_top(void);
-unsigned gdrom_dma_prot_bot(void);
+unsigned gdrom_dma_prot_top(struct gdrom_ctxt *gdrom);
+unsigned gdrom_dma_prot_bot(struct gdrom_ctxt *gdrom);
 
 ERROR_INT_ATTR(gdrom_command);
 

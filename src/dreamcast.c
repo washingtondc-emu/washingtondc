@@ -91,6 +91,7 @@ static struct boot_rom firmware;
 static struct flash_mem flash_mem;
 static struct aica_rtc rtc;
 static struct aica aica;
+static struct gdrom_ctxt gdrom;
 
 static volatile bool is_running;
 static volatile bool signal_exit_threads;
@@ -222,7 +223,7 @@ void dreamcast_init(bool cmd_session) {
     g2_init();
     aica_init(&aica);
     pvr2_init(&sh4_clock);
-    gdrom_init(&sh4_clock);
+    gdrom_init(&gdrom, &sh4_clock);
     maple_init(&sh4_clock);
 
     memory_map_init(&mem_map);
@@ -276,7 +277,7 @@ void dreamcast_cleanup() {
 
     maple_cleanup();
     aica_rtc_cleanup(&rtc);
-    gdrom_cleanup();
+    gdrom_cleanup(&gdrom);
     pvr2_cleanup();
     memory_map_cleanup(&mem_map);
     aica_cleanup(&aica);
@@ -859,7 +860,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    &aica_rtc_intf, &rtc);
     memory_map_add(map, ADDR_GDROM_FIRST, ADDR_GDROM_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &gdrom_reg_intf, NULL);
+                   &gdrom_reg_intf, &gdrom);
     memory_map_add(map, ADDR_EXT_DEV_FIRST, ADDR_EXT_DEV_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &ext_dev_intf, NULL);

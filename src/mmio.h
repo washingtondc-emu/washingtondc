@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -46,11 +46,51 @@
         type *backing;                                                  \
         char const *names[(len_bytes) / sizeof(type)];                  \
     };                                                                  \
+    void                                                                \
+    mmio_region_##name##_init_cell(struct mmio_region_##name *region,   \
+                                   char const *name, addr32_t addr,     \
+                                   mmio_region_##name##_read_handler on_read, \
+                                   mmio_region_##name##_write_handler   \
+                                   on_write, void *ctxt);               \
+                                                                        \
+    extern struct mmio_region_##name mmio_region_##name;                \
+    type                                                                \
+    mmio_region_##name##_read_error(struct mmio_region_##name *region,  \
+                                    unsigned idx, void *ctxt);          \
+    void                                                                \
+    mmio_region_##name##_write_error(struct mmio_region_##name *region, \
+                                     unsigned idx, type val, void *ctxt); \
+    void                                                                \
+    mmio_region_##name##_readonly_write_error(                          \
+        struct mmio_region_##name *region,                              \
+        unsigned idx, type val, void *ctxt);                            \
+    type                                                                \
+    mmio_region_##name##_writeonly_read_error(                          \
+        struct mmio_region_##name *region, unsigned idx, void *ctxt);   \
+    type                                                                \
+    mmio_region_##name##_warn_read_handler(struct mmio_region_##name *region, \
+                                           unsigned idx, void *ctxt);   \
+    void                                                                \
+    mmio_region_##name##_warn_write_handler(struct mmio_region_##name *region, \
+                                            unsigned idx, type val,     \
+                                            void *ctxt);                \
+    type                                                                \
+    mmio_region_##name##_silent_read_handler(                           \
+        struct mmio_region_##name *region,                              \
+        unsigned idx, void *ctxt);                                      \
+    void                                                                \
+    mmio_region_##name##_silent_write_handler(                          \
+        struct mmio_region_##name *region,                              \
+        unsigned idx, type val, void *ctxt);                            \
+    void init_mmio_region_##name(struct mmio_region_##name *region,     \
+                                 type *backing);                        \
+    void cleanup_mmio_region_##name(                                    \
+        struct mmio_region_##name *region);                             \
 
 #define DEF_MMIO_REGION(name, len_bytes, beg_bytes, type)               \
-    static struct mmio_region_##name mmio_region_##name;                \
+    struct mmio_region_##name mmio_region_##name;                       \
                                                                         \
-    __attribute__((unused)) static inline type                          \
+    static inline type                                                  \
     mmio_region_##name##_read(struct mmio_region_##name *region,        \
                               addr32_t addr) {                          \
         unsigned idx = (addr - (beg_bytes)) / sizeof(type);             \
@@ -58,7 +98,7 @@
         return region->on_read[idx](region, idx, ctxt);                 \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static inline void                          \
+    static inline void                                                  \
     mmio_region_##name##_write(struct mmio_region_##name *region,       \
                                addr32_t addr, type val) {               \
         unsigned idx = (addr - beg_bytes) / sizeof(type);               \
@@ -66,7 +106,7 @@
         region->on_write[idx](region, idx, val, ctxt);                  \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static type                                 \
+    type                                                                \
     mmio_region_##name##_read_error(struct mmio_region_##name *region,  \
                                     unsigned idx, void *ctxt) {         \
         error_set_length(sizeof(type));                                 \
@@ -75,7 +115,7 @@
         RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static void                                 \
+    void                                                                \
     mmio_region_##name##_write_error(struct mmio_region_##name *region, \
                                      unsigned idx, type val, void *ctxt) { \
         error_set_length(sizeof(type));                                 \
@@ -84,7 +124,7 @@
         RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static void                                 \
+    void                                                                \
     mmio_region_##name##_readonly_write_error(                          \
         struct mmio_region_##name *region,                              \
         unsigned idx, type val, void *ctxt) {                           \
@@ -95,7 +135,7 @@
         RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static type                                 \
+    type                                                                \
     mmio_region_##name##_writeonly_read_error(                          \
         struct mmio_region_##name *region, unsigned idx, void *ctxt) {  \
         error_set_length(sizeof(type));                                 \
@@ -105,7 +145,7 @@
         RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static type                                 \
+    type                                                                \
     mmio_region_##name##_warn_read_handler(struct mmio_region_##name *region, \
                                            unsigned idx, void *ctxt) {  \
         type ret = region->backing[idx];                                \
@@ -114,7 +154,7 @@
         return ret;                                                     \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static void                                 \
+    void                                                                \
     mmio_region_##name##_warn_write_handler(struct mmio_region_##name *region, \
                                             unsigned idx, type val,     \
                                             void *ctxt) {               \
@@ -123,23 +163,22 @@
         region->backing[idx] = val;                                     \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static type                                 \
+    type                                                                \
     mmio_region_##name##_silent_read_handler(                           \
         struct mmio_region_##name *region,                              \
         unsigned idx, void *ctxt) {                                     \
         return region->backing[idx];                                    \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static void                                 \
+    void                                                                \
     mmio_region_##name##_silent_write_handler(                          \
         struct mmio_region_##name *region,                              \
         unsigned idx, type val, void *ctxt) {                           \
         region->backing[idx] = val;                                     \
     }                                                                   \
                                                                         \
-    __attribute__((unused))                                             \
-    static void init_mmio_region_##name(struct mmio_region_##name *region, \
-                                        type *backing) {                \
+    void init_mmio_region_##name(struct mmio_region_##name *region,     \
+                                 type *backing) {                       \
         memset(region, 0, sizeof(*region));                             \
         region->backing = backing;                                      \
         size_t cell_no;                                                 \
@@ -150,13 +189,12 @@
         }                                                               \
     }                                                                   \
                                                                         \
-    __attribute__((unused))                                             \
-    static void cleanup_mmio_region_##name(                             \
+    void cleanup_mmio_region_##name(                                    \
         struct mmio_region_##name *region) {                            \
         memset(region, 0, sizeof(*region));                             \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static void                                 \
+    void                                                                \
     mmio_region_##name##_init_cell(struct mmio_region_##name *region,   \
                                    char const *name, addr32_t addr,     \
                                    mmio_region_##name##_read_handler on_read, \

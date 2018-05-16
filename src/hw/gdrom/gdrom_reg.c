@@ -35,6 +35,7 @@
 #include "hw/sys/holly_intc.h"
 #include "hw/sh4/sh4.h"
 #include "hw/sh4/sh4_dmac.h"
+#include "hw/g1/g1_reg.h"
 #include "cdrom.h"
 #include "dreamcast.h"
 #include "gdrom_response.h"
@@ -42,6 +43,52 @@
 #include "mmio.h"
 
 #include "gdrom_reg.h"
+
+static uint32_t
+gdrom_gdapro_mmio_read(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, void *ctxt);
+static void
+gdrom_gdapro_mmio_write(struct mmio_region_g1_reg_32 *region,
+                        unsigned idx, uint32_t val, void *ctxt);
+static uint32_t
+gdrom_g1gdrc_mmio_read(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, void *ctxt);
+static void
+gdrom_g1gdrc_mmio_write(struct mmio_region_g1_reg_32 *region,
+                        unsigned idx, uint32_t val, void *ctxt);
+static uint32_t
+gdrom_gdstar_mmio_read(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, void *ctxt);
+static void
+gdrom_gdstar_mmio_write(struct mmio_region_g1_reg_32 *region,
+                        unsigned idx, uint32_t val, void *ctxt);
+static uint32_t
+gdrom_gdlen_mmio_read(struct mmio_region_g1_reg_32 *region,
+                      unsigned idx, void *ctxt);
+static void
+gdrom_gdlen_mmio_write(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, uint32_t val, void *ctxt);
+static uint32_t
+gdrom_gddir_mmio_read(struct mmio_region_g1_reg_32 *region,
+                      unsigned idx, void *ctxt);
+static void
+gdrom_gddir_mmio_write(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, uint32_t val, void *ctxt);
+static uint32_t
+gdrom_gden_mmio_read(struct mmio_region_g1_reg_32 *region,
+                     unsigned idx, void *ctxt);
+static void
+gdrom_gden_mmio_write(struct mmio_region_g1_reg_32 *region,
+                      unsigned idx, uint32_t val, void *ctxt);
+static uint32_t
+gdrom_gdst_reg_read_handler(struct mmio_region_g1_reg_32 *region,
+                            unsigned idx, void *ctxt);
+static void
+gdrom_gdst_reg_write_handler(struct mmio_region_g1_reg_32 *region,
+                             unsigned idx, uint32_t val, void *ctxt);
+static uint32_t
+gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, void *ctxt);
 
 static reg32_t
 gdrom_get_status_reg(struct gdrom_status const *stat_in);
@@ -138,7 +185,9 @@ void gdrom_reg_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 static uint32_t
 gdrom_alt_status_mmio_read(struct mmio_region_gdrom_reg_32 *region,
                            unsigned idx, void *ctxt) {
-    reg32_t stat_bin = gdrom_get_status_reg(&gdrom.stat_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    reg32_t stat_bin = gdrom_get_status_reg(&gdrom_ctxt->stat_reg);
+
     GDROM_TRACE("read 0x%02x from alternate status register\n",
                 (unsigned)stat_bin);
     return stat_bin;
@@ -147,7 +196,8 @@ gdrom_alt_status_mmio_read(struct mmio_region_gdrom_reg_32 *region,
 static void
 gdrom_dev_ctrl_mmio_write(struct mmio_region_gdrom_reg_32 *region,
                           unsigned idx, uint32_t val, void *ctxt) {
-    gdrom_set_dev_ctrl_reg(&gdrom.dev_ctrl_reg, val);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_set_dev_ctrl_reg(&gdrom_ctxt->dev_ctrl_reg, val);
 
     GDROM_TRACE("Write %08x to dev_ctrl_reg\n", (unsigned)val);
 }
@@ -155,7 +205,8 @@ gdrom_dev_ctrl_mmio_write(struct mmio_region_gdrom_reg_32 *region,
 static uint8_t
 gdrom_alt_status_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
                              unsigned idx, void *ctxt) {
-    reg32_t stat_bin = gdrom_get_status_reg(&gdrom.stat_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    reg32_t stat_bin = gdrom_get_status_reg(&gdrom_ctxt->stat_reg);
 
     GDROM_TRACE("read 0x%02x from alternate status register\n",
                 (unsigned)stat_bin);
@@ -165,7 +216,8 @@ gdrom_alt_status_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
 static void
 gdrom_dev_ctrl_mmio_write_8(struct mmio_region_gdrom_reg_8 *region,
                             unsigned idx, uint8_t val, void *ctxt) {
-    gdrom_set_dev_ctrl_reg(&gdrom.dev_ctrl_reg, val);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_set_dev_ctrl_reg(&gdrom_ctxt->dev_ctrl_reg, val);
 
     GDROM_TRACE("Write %08x to dev_ctrl_reg\n", (unsigned)val);
 }
@@ -173,6 +225,8 @@ gdrom_dev_ctrl_mmio_write_8(struct mmio_region_gdrom_reg_8 *region,
 static uint8_t
 gdrom_status_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
                          unsigned idx, void *ctxt) {
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+
     /*
      * XXX
      * For the most part, I try to keep all the logic in gdrom.c and all the
@@ -188,7 +242,7 @@ gdrom_status_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
      */
     holly_clear_ext_int(HOLLY_EXT_INT_GDROM);
 
-    reg32_t stat_bin = gdrom_get_status_reg(&gdrom.stat_reg);
+    reg32_t stat_bin = gdrom_get_status_reg(&gdrom_ctxt->stat_reg);
     GDROM_TRACE("read 0x%02x from status register\n", (unsigned)stat_bin);
     return stat_bin;
 }
@@ -211,7 +265,8 @@ gdrom_status_mmio_read(struct mmio_region_gdrom_reg_32 *region,
      */
     holly_clear_ext_int(HOLLY_EXT_INT_GDROM);
 
-    reg32_t stat_bin = gdrom_get_status_reg(&gdrom.stat_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    reg32_t stat_bin = gdrom_get_status_reg(&gdrom_ctxt->stat_reg);
     GDROM_TRACE("read 0x%02x from status register\n", (unsigned)stat_bin);
     return stat_bin;
 }
@@ -219,7 +274,9 @@ gdrom_status_mmio_read(struct mmio_region_gdrom_reg_32 *region,
 static uint32_t
 gdrom_error_mmio_read(struct mmio_region_gdrom_reg_32 *region,
                       unsigned idx, void *ctxt) {
-    reg32_t tmp = gdrom_get_error_reg(&gdrom.error_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    reg32_t tmp = gdrom_get_error_reg(&gdrom_ctxt->error_reg);
+
     GDROM_TRACE("read 0x%02x from error register\n", (unsigned)tmp);
     return tmp;
 }
@@ -227,28 +284,33 @@ gdrom_error_mmio_read(struct mmio_region_gdrom_reg_32 *region,
 static uint8_t
 gdrom_error_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
                         unsigned idx, void *ctxt) {
-    reg32_t tmp = gdrom_get_error_reg(&gdrom.error_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    reg32_t tmp = gdrom_get_error_reg(&gdrom_ctxt->error_reg);
+
     GDROM_TRACE("read 0x%02x from error register\n", (unsigned)tmp);
     return tmp;
 }
 
 static void gdrom_cmd_reg_mmio_write_8(struct mmio_region_gdrom_reg_8 *region,
                                        unsigned idx, uint8_t val, void *ctxt) {
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
     GDROM_TRACE("write 0x%x to command register (4 bytes)\n", (unsigned)val);
-    gdrom_input_cmd(val);
+    gdrom_input_cmd(gdrom_ctxt, val);
 }
 
 static void gdrom_cmd_reg_mmio_write(struct mmio_region_gdrom_reg_32 *region,
                                      unsigned idx, uint32_t val, void *ctxt) {
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
     GDROM_TRACE("write 0x%x to command register (4 bytes)\n", (unsigned)val);
-    gdrom_input_cmd(val);
+    gdrom_input_cmd(gdrom_ctxt, val);
 }
 
 static uint16_t
 gdrom_data_mmio_read_16(struct mmio_region_gdrom_reg_16 *region,
                         unsigned idx, void *ctxt) {
     uint16_t buf;
-    gdrom_read_data((uint8_t*)&buf, sizeof(buf));
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_read_data(gdrom_ctxt, (uint8_t*)&buf, sizeof(buf));
     return buf;
 }
 
@@ -256,54 +318,63 @@ static uint32_t
 gdrom_data_mmio_read(struct mmio_region_gdrom_reg_32 *region,
                      unsigned idx, void *ctxt) {
     uint32_t buf;
-    gdrom_read_data((uint8_t*)&buf, sizeof(buf));
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_read_data(gdrom_ctxt, (uint8_t*)&buf, sizeof(buf));
     return buf;
 }
 
 static void
-gdrom_data_mmio_write_16(struct mmio_region_gdrom_reg_16 *region, unsigned idx,
-                         uint16_t val, void *ctxt) {
-    gdrom_write_data((uint8_t*)&val, sizeof(val));
+gdrom_data_mmio_write_16(struct mmio_region_gdrom_reg_16 *region,
+                         unsigned idx, uint16_t val, void *ctxt) {
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_write_data(gdrom_ctxt, (uint8_t*)&val, sizeof(val));
 }
 
 static void
-gdrom_data_mmio_write(struct mmio_region_gdrom_reg_32 *region, unsigned idx,
-                      uint32_t val, void *ctxt) {
-    gdrom_write_data((uint8_t*)&val, sizeof(val));
+gdrom_data_mmio_write(struct mmio_region_gdrom_reg_32 *region,
+                      unsigned idx, uint32_t val, void *ctxt) {
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_write_data(gdrom_ctxt, (uint8_t*)&val, sizeof(val));
 }
 
 static void
 gdrom_features_mmio_write_8(struct mmio_region_gdrom_reg_8 *region, unsigned idx,
                             uint8_t val, void *ctxt) {
     GDROM_TRACE("write 0x%08x to the features register\n", (unsigned)val);
-    gdrom_set_features_reg(&gdrom.feat_reg, val);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_set_features_reg(&gdrom_ctxt->feat_reg, val);
 }
 
 static void
 gdrom_features_mmio_write(struct mmio_region_gdrom_reg_32 *region, unsigned idx,
                           uint32_t val, void *ctxt) {
     GDROM_TRACE("write 0x%08x to the features register\n", (unsigned)val);
-    gdrom_set_features_reg(&gdrom.feat_reg, val);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_set_features_reg(&gdrom_ctxt->feat_reg, val);
 }
 
 static void
 gdrom_sect_cnt_mmio_write(struct mmio_region_gdrom_reg_32 *region,
                           unsigned idx, uint32_t val, void *ctxt) {
     GDROM_TRACE("Write %08x to sec_cnt_reg\n", (unsigned)val);
-    gdrom_set_sect_cnt_reg(&gdrom.sect_cnt_reg, val);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_set_sect_cnt_reg(&gdrom_ctxt->sect_cnt_reg, val);
 }
 
 static void
 gdrom_sect_cnt_mmio_write_8(struct mmio_region_gdrom_reg_8 *region,
                           unsigned idx, uint8_t val, void *ctxt) {
     GDROM_TRACE("Write %08x to sec_cnt_reg\n", (unsigned)val);
-    gdrom_set_sect_cnt_reg(&gdrom.sect_cnt_reg, val);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_set_sect_cnt_reg(&gdrom_ctxt->sect_cnt_reg, val);
 }
 
 static uint32_t
 gdrom_int_reason_mmio_read(struct mmio_region_gdrom_reg_32 *region,
                            unsigned idx, void *ctxt) {
-    reg32_t tmp = gdrom_get_int_reason_reg(&gdrom.int_reason_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    reg32_t tmp = gdrom_get_int_reason_reg(&gdrom_ctxt->int_reason_reg);
+
     GDROM_TRACE("int_reason is 0x%08x\n", (unsigned)tmp);
     return tmp;
 }
@@ -311,7 +382,8 @@ gdrom_int_reason_mmio_read(struct mmio_region_gdrom_reg_32 *region,
 static uint8_t
 gdrom_int_reason_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
                              unsigned idx, void *ctxt) {
-    reg32_t tmp = gdrom_get_int_reason_reg(&gdrom.int_reason_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    reg32_t tmp = gdrom_get_int_reason_reg(&gdrom_ctxt->int_reason_reg);
 
     GDROM_TRACE("int_reason is 0x%08x\n", (unsigned)tmp);
     return tmp;
@@ -338,7 +410,8 @@ gdrom_sector_num_mmio_read(struct mmio_region_gdrom_reg_32 *region,
 static uint8_t
 gdrom_byte_count_low_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
                                  unsigned idx, void *ctxt) {
-    uint8_t low = gdrom.data_byte_count & 0xff;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    uint8_t low = gdrom_ctxt->data_byte_count & 0xff;
 
     GDROM_TRACE("read 0x%02x from byte_count_low\n", (unsigned)low);
     return low;
@@ -347,7 +420,8 @@ gdrom_byte_count_low_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
 static uint32_t
 gdrom_byte_count_low_mmio_read(struct mmio_region_gdrom_reg_32 *region,
                                unsigned idx, void *ctxt) {
-    uint32_t low = gdrom.data_byte_count & 0xff;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    uint32_t low = gdrom_ctxt->data_byte_count & 0xff;
 
     GDROM_TRACE("read 0x%02x from byte_count_low\n", (unsigned)low);
     return low;
@@ -356,7 +430,8 @@ gdrom_byte_count_low_mmio_read(struct mmio_region_gdrom_reg_32 *region,
 static void
 gdrom_byte_count_low_mmio_write(struct mmio_region_gdrom_reg_32 *region,
                                 unsigned idx, uint32_t val, void *ctxt) {
-    gdrom.data_byte_count = (gdrom.data_byte_count & ~0xff) | (val & 0xff);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->data_byte_count = (gdrom_ctxt->data_byte_count & ~0xff) | (val & 0xff);
 
     GDROM_TRACE("write 0x%02x to byte_count_low\n", (unsigned)(val & 0xff));
 }
@@ -364,7 +439,8 @@ gdrom_byte_count_low_mmio_write(struct mmio_region_gdrom_reg_32 *region,
 static void
 gdrom_byte_count_low_mmio_write_8(struct mmio_region_gdrom_reg_8 *region,
                                   unsigned idx, uint8_t val, void *ctxt) {
-    gdrom.data_byte_count = (gdrom.data_byte_count & ~0xff) | (val & 0xff);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->data_byte_count = (gdrom_ctxt->data_byte_count & ~0xff) | (val & 0xff);
 
     GDROM_TRACE("write 0x%02x to byte_count_low\n", (unsigned)(val & 0xff));
 }
@@ -372,7 +448,8 @@ gdrom_byte_count_low_mmio_write_8(struct mmio_region_gdrom_reg_8 *region,
 static uint8_t
 gdrom_byte_count_high_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
                                 unsigned idx, void *ctxt) {
-    uint8_t high = (gdrom.data_byte_count & 0xff00) >> 8;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    uint8_t high = (gdrom_ctxt->data_byte_count & 0xff00) >> 8;
 
     GDROM_TRACE("read 0x%02x from byte_count_high\n", (unsigned)high);
     return high;
@@ -381,8 +458,9 @@ gdrom_byte_count_high_mmio_read_8(struct mmio_region_gdrom_reg_8 *region,
 static void
 gdrom_byte_count_high_mmio_write_8(struct mmio_region_gdrom_reg_8 *region,
                                    unsigned idx, uint8_t val, void *ctxt) {
-    gdrom.data_byte_count =
-        (gdrom.data_byte_count & ~0xff00) | ((val & 0xff) << 8);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->data_byte_count =
+        (gdrom_ctxt->data_byte_count & ~0xff00) | ((val & 0xff) << 8);
 
     GDROM_TRACE("write 0x%02x to byte_count_high\n",
                 (unsigned)((val & 0xff) << 8));
@@ -391,7 +469,8 @@ gdrom_byte_count_high_mmio_write_8(struct mmio_region_gdrom_reg_8 *region,
 static uint32_t
 gdrom_byte_count_high_mmio_read(struct mmio_region_gdrom_reg_32 *region,
                                 unsigned idx, void *ctxt) {
-    uint32_t high = (gdrom.data_byte_count & 0xff00) >> 8;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    uint32_t high = (gdrom_ctxt->data_byte_count & 0xff00) >> 8;
 
     GDROM_TRACE("read 0x%02x from byte_count_high\n", (unsigned)high);
     return high;
@@ -400,125 +479,141 @@ gdrom_byte_count_high_mmio_read(struct mmio_region_gdrom_reg_32 *region,
 static void
 gdrom_byte_count_high_mmio_write(struct mmio_region_gdrom_reg_32 *region,
                                  unsigned idx, uint32_t val, void *ctxt) {
-    gdrom.data_byte_count =
-        (gdrom.data_byte_count & ~0xff00) | ((val & 0xff) << 8);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->data_byte_count =
+        (gdrom_ctxt->data_byte_count & ~0xff00) | ((val & 0xff) << 8);
 
     GDROM_TRACE("write 0x%02x to byte_count_high\n",
                 (unsigned)((val & 0xff) << 8));
 }
 
-uint32_t
+static uint32_t
 gdrom_gdapro_mmio_read(struct mmio_region_g1_reg_32 *region,
                        unsigned idx, void *ctxt) {
-    GDROM_TRACE("read %08x from GDAPRO\n", gdrom.gdapro_reg);
-    return gdrom.gdapro_reg;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    GDROM_TRACE("read %08x from GDAPRO\n", gdrom_ctxt->gdapro_reg);
+    return gdrom_ctxt->gdapro_reg;
 }
 
-void
+static void
 gdrom_gdapro_mmio_write(struct mmio_region_g1_reg_32 *region,
                         unsigned idx, uint32_t val, void *ctxt) {
     // check security code
     if ((val & 0xffff0000) != 0x88430000)
         return;
 
-    gdrom.gdapro_reg = val;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->gdapro_reg = val;
 
     GDROM_TRACE("GDAPRO (0x%08x) - allowing writes from 0x%08x through "
                 "0x%08x\n",
-                gdrom.gdapro_reg, gdrom_dma_prot_top(), gdrom_dma_prot_bot());
+                gdrom_ctxt->gdapro_reg, gdrom_dma_prot_top(), gdrom_dma_prot_bot());
 }
 
-uint32_t
+static uint32_t
 gdrom_g1gdrc_mmio_read(struct mmio_region_g1_reg_32 *region,
                        unsigned idx, void *ctxt) {
-    GDROM_TRACE("read %08x from G1GDRC\n", gdrom.g1gdrc_reg);
-    return gdrom.g1gdrc_reg;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    GDROM_TRACE("read %08x from G1GDRC\n", gdrom_ctxt->g1gdrc_reg);
+    return gdrom_ctxt->g1gdrc_reg;
 }
 
-void
+static void
 gdrom_g1gdrc_mmio_write(struct mmio_region_g1_reg_32 *region,
                         unsigned idx, uint32_t val, void *ctxt) {
-    GDROM_TRACE("write %08x to G1GDRC\n", gdrom.g1gdrc_reg);
-    gdrom.g1gdrc_reg = val;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    GDROM_TRACE("write %08x to G1GDRC\n", gdrom_ctxt->g1gdrc_reg);
+    gdrom_ctxt->g1gdrc_reg = val;
 }
 
-uint32_t
+static uint32_t
 gdrom_gdstar_mmio_read(struct mmio_region_g1_reg_32 *region,
                        unsigned idx, void *ctxt) {
-    GDROM_TRACE("read %08x from GDSTAR\n", gdrom.dma_start_addr_reg);
-    return gdrom.dma_start_addr_reg;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    GDROM_TRACE("read %08x from GDSTAR\n", gdrom_ctxt->dma_start_addr_reg);
+    return gdrom_ctxt->dma_start_addr_reg;
 }
 
-void
+static void
 gdrom_gdstar_mmio_write(struct mmio_region_g1_reg_32 *region,
                         unsigned idx, uint32_t val, void *ctxt) {
-    gdrom.dma_start_addr_reg = val;
-    gdrom.dma_start_addr_reg &= ~0xe0000000;
-    GDROM_TRACE("write %08x to GDSTAR\n", gdrom.dma_start_addr_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->dma_start_addr_reg = val;
+    gdrom_ctxt->dma_start_addr_reg &= ~0xe0000000;
+    GDROM_TRACE("write %08x to GDSTAR\n", gdrom_ctxt->dma_start_addr_reg);
 }
 
-uint32_t
+static uint32_t
 gdrom_gdlen_mmio_read(struct mmio_region_g1_reg_32 *region,
                       unsigned idx, void *ctxt) {
-    GDROM_TRACE("read %08x from GDLEN\n", gdrom.dma_len_reg);
-    return gdrom.dma_len_reg;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    GDROM_TRACE("read %08x from GDLEN\n", gdrom_ctxt->dma_len_reg);
+    return gdrom_ctxt->dma_len_reg;
 }
 
-void
+static void
 gdrom_gdlen_mmio_write(struct mmio_region_g1_reg_32 *region,
                        unsigned idx, uint32_t val, void *ctxt) {
-    gdrom.dma_len_reg = val;
-    GDROM_TRACE("write %08x to GDLEN\n", gdrom.dma_len_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->dma_len_reg = val;
+    GDROM_TRACE("write %08x to GDLEN\n", gdrom_ctxt->dma_len_reg);
 }
 
-uint32_t
+static uint32_t
 gdrom_gddir_mmio_read(struct mmio_region_g1_reg_32 *region,
                       unsigned idx, void *ctxt) {
-    GDROM_TRACE("read %08x from GDDIR\n", gdrom.dma_dir_reg);
-    return gdrom.dma_dir_reg;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    GDROM_TRACE("read %08x from GDDIR\n", gdrom_ctxt->dma_dir_reg);
+    return gdrom_ctxt->dma_dir_reg;
 }
 
-void
+static void
 gdrom_gddir_mmio_write(struct mmio_region_g1_reg_32 *region,
                        unsigned idx, uint32_t val, void *ctxt) {
-    gdrom.dma_dir_reg = val;
-    GDROM_TRACE("write %08x to GDDIR\n", gdrom.dma_dir_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->dma_dir_reg = val;
+    GDROM_TRACE("write %08x to GDDIR\n", gdrom_ctxt->dma_dir_reg);
 }
 
-uint32_t
+static uint32_t
 gdrom_gden_mmio_read(struct mmio_region_g1_reg_32 *region,
                      unsigned idx, void *ctxt) {
-    GDROM_TRACE("read %08x from GDEN\n", gdrom.dma_en_reg);
-    return gdrom.dma_en_reg;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    GDROM_TRACE("read %08x from GDEN\n", gdrom_ctxt->dma_en_reg);
+    return gdrom_ctxt->dma_en_reg;
 }
 
-void
+static void
 gdrom_gden_mmio_write(struct mmio_region_g1_reg_32 *region,
                       unsigned idx, uint32_t val, void *ctxt) {
-    gdrom.dma_en_reg = val;
-    GDROM_TRACE("write %08x to GDEN\n", gdrom.dma_en_reg);
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->dma_en_reg = val;
+    GDROM_TRACE("write %08x to GDEN\n", gdrom_ctxt->dma_en_reg);
 }
 
-uint32_t
+static uint32_t
 gdrom_gdst_reg_read_handler(struct mmio_region_g1_reg_32 *region,
                             unsigned idx, void *ctxt) {
-    GDROM_TRACE("read %08x from GDST\n", gdrom.dma_start_reg);
-    return gdrom.dma_start_reg;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    GDROM_TRACE("read %08x from GDST\n", gdrom_ctxt->dma_start_reg);
+    return gdrom_ctxt->dma_start_reg;
 }
 
-void
+static void
 gdrom_gdst_reg_write_handler(struct mmio_region_g1_reg_32 *region,
                              unsigned idx, uint32_t val, void *ctxt) {
-    gdrom.dma_start_reg = val;
-    GDROM_TRACE("write %08x to GDST\n", gdrom.dma_start_reg);
-    gdrom_start_dma();
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    gdrom_ctxt->dma_start_reg = val;
+    GDROM_TRACE("write %08x to GDST\n", gdrom_ctxt->dma_start_reg);
+    gdrom_start_dma(gdrom_ctxt);
 }
 
-uint32_t
+static uint32_t
 gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region,
                        unsigned idx, void *ctxt) {
-    GDROM_TRACE("read %08x from GDLEND\n", gdrom.gdlend_reg);
-    return gdrom.gdlend_reg;
+    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
+    GDROM_TRACE("read %08x from GDLEND\n", gdrom_ctxt->gdlend_reg);
+    return gdrom_ctxt->gdlend_reg;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -738,7 +833,50 @@ gdrom_set_dev_ctrl_reg(struct gdrom_dev_ctrl *dev_ctrl_out,
     dev_ctrl_out->srst = (bool)(dev_ctrl_reg & DEV_CTRL_SRST_MASK);
 }
 
-void gdrom_reg_init(void) {
+void gdrom_reg_init(struct gdrom_ctxt *gdrom) {
+    /* GD-ROM DMA registers */
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDAPRO", 0x5f74b8,
+                                    gdrom_gdapro_mmio_read,
+                                    gdrom_gdapro_mmio_write, gdrom);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1GDRC", 0x5f74a0,
+                                    gdrom_g1gdrc_mmio_read,
+                                    gdrom_g1gdrc_mmio_write, gdrom);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_G1GDWC", 0x5f74a4,
+                                    mmio_region_g1_reg_32_warn_read_handler,
+                                    mmio_region_g1_reg_32_warn_write_handler,
+                                    gdrom);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDSTAR", 0x5f7404,
+                                    gdrom_gdstar_mmio_read,
+                                    gdrom_gdstar_mmio_write,
+                                    gdrom);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDLEN", 0x5f7408,
+                                    gdrom_gdlen_mmio_read,
+                                    gdrom_gdlen_mmio_write,
+                                    gdrom);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDDIR", 0x5f740c,
+                                    gdrom_gddir_mmio_read,
+                                    gdrom_gddir_mmio_write,
+                                    gdrom);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDEN", 0x5f7414,
+                                    gdrom_gden_mmio_read,
+                                    gdrom_gden_mmio_write, gdrom);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDST", 0x5f7418,
+                                    gdrom_gdst_reg_read_handler,
+                                    gdrom_gdst_reg_write_handler, gdrom);
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
+                                    "SB_GDLEND", 0x005f74f8,
+                                    gdrom_gdlend_mmio_read,
+                                    mmio_region_g1_reg_32_readonly_write_error,
+                                    gdrom);
+
     init_mmio_region_gdrom_reg_32(&mmio_region_gdrom_reg_32, (void*)reg_backing);
     init_mmio_region_gdrom_reg_16(&mmio_region_gdrom_reg_16, (void*)reg_backing);
     init_mmio_region_gdrom_reg_8(&mmio_region_gdrom_reg_8, (void*)reg_backing);
@@ -746,92 +884,92 @@ void gdrom_reg_init(void) {
     mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
                                       "alt status/device control", 0x5f7018,
                                       gdrom_alt_status_mmio_read_8,
-                                      gdrom_dev_ctrl_mmio_write_8, NULL);
+                                      gdrom_dev_ctrl_mmio_write_8, gdrom);
     mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
                                       "Error/features", 0x5f7084,
                                       gdrom_error_mmio_read_8,
-                                      gdrom_features_mmio_write_8, NULL);
+                                      gdrom_features_mmio_write_8, gdrom);
     mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
                                       "Interrupt reason/sector count", 0x5f7088,
                                       gdrom_int_reason_mmio_read_8,
-                                      gdrom_sect_cnt_mmio_write_8, NULL);
+                                      gdrom_sect_cnt_mmio_write_8, gdrom);
     mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
                                       "status/command", 0x5f709c,
                                       gdrom_status_mmio_read_8,
-                                      gdrom_cmd_reg_mmio_write_8, NULL);
+                                      gdrom_cmd_reg_mmio_write_8, gdrom);
     mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
                                       "Sector number", 0x5f708c,
                                       gdrom_sector_num_mmio_read_8,
                                       mmio_region_gdrom_reg_8_warn_write_handler,
-                                      NULL);
+                                      gdrom);
     mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
                                       "Byte Count (low)", 0x5f7090,
                                       gdrom_byte_count_low_mmio_read_8,
                                       gdrom_byte_count_low_mmio_write_8,
-                                      NULL);
+                                      gdrom);
     mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
                                       "Byte Count (high)", 0x5f7094,
                                       gdrom_byte_count_high_mmio_read_8,
                                       gdrom_byte_count_high_mmio_write_8,
-                                      NULL);
+                                      gdrom);
     mmio_region_gdrom_reg_8_init_cell(&mmio_region_gdrom_reg_8,
                                       "Drive Select", 0x5f7098,
                                       mmio_region_gdrom_reg_8_warn_read_handler,
                                       mmio_region_gdrom_reg_8_warn_write_handler,
-                                      NULL);
+                                      gdrom);
 
     mmio_region_gdrom_reg_16_init_cell(&mmio_region_gdrom_reg_16,
                                        "GD-ROM Data", 0x5f7080,
                                        gdrom_data_mmio_read_16,
                                        gdrom_data_mmio_write_16,
-                                       NULL);
+                                       gdrom);
 
     mmio_region_gdrom_reg_32_init_cell(&mmio_region_gdrom_reg_32,
                                        "Drive Select", 0x5f7098,
                                        mmio_region_gdrom_reg_32_warn_read_handler,
                                        mmio_region_gdrom_reg_32_warn_write_handler,
-                                       NULL);
+                                       gdrom);
     mmio_region_gdrom_reg_32_init_cell(&mmio_region_gdrom_reg_32,
                                        "alt status/device control", 0x5f7018,
                                        gdrom_alt_status_mmio_read,
                                        gdrom_dev_ctrl_mmio_write,
-                                       NULL);
+                                       gdrom);
     mmio_region_gdrom_reg_32_init_cell(&mmio_region_gdrom_reg_32,
                                        "status/command", 0x5f709c,
                                        gdrom_status_mmio_read,
                                        gdrom_cmd_reg_mmio_write,
-                                       NULL);
+                                       gdrom);
     mmio_region_gdrom_reg_32_init_cell(&mmio_region_gdrom_reg_32,
                                        "GD-ROM Data", 0x5f7080,
                                        gdrom_data_mmio_read,
-                                       gdrom_data_mmio_write, NULL);
+                                       gdrom_data_mmio_write, gdrom);
     mmio_region_gdrom_reg_32_init_cell(&mmio_region_gdrom_reg_32,
                                        "Error/features", 0x5f7084,
                                        gdrom_error_mmio_read,
                                        gdrom_features_mmio_write,
-                                       NULL);
+                                       gdrom);
     mmio_region_gdrom_reg_32_init_cell(&mmio_region_gdrom_reg_32,
                                        "Interrupt reason/sector count", 0x5f7088,
                                        gdrom_int_reason_mmio_read,
-                                       gdrom_sect_cnt_mmio_write, NULL);
+                                       gdrom_sect_cnt_mmio_write, gdrom);
     mmio_region_gdrom_reg_32_init_cell(&mmio_region_gdrom_reg_32,
                                        "Sector number", 0x5f708c,
                                        gdrom_sector_num_mmio_read,
                                        mmio_region_gdrom_reg_32_warn_write_handler,
-                                       NULL);
+                                       gdrom);
     mmio_region_gdrom_reg_32_init_cell(&mmio_region_gdrom_reg_32,
                                        "Byte Count (low)", 0x5f7090,
                                        gdrom_byte_count_low_mmio_read,
                                        gdrom_byte_count_low_mmio_write,
-                                       NULL);
+                                       gdrom);
     mmio_region_gdrom_reg_32_init_cell(&mmio_region_gdrom_reg_32,
                                        "Byte Count (high)", 0x5f7094,
                                        gdrom_byte_count_high_mmio_read,
                                        gdrom_byte_count_high_mmio_write,
-                                       NULL);
+                                       gdrom);
 }
 
-void gdrom_reg_cleanup(void) {
+void gdrom_reg_cleanup(struct gdrom_ctxt *gdrom) {
     cleanup_mmio_region_gdrom_reg_8(&mmio_region_gdrom_reg_8);
     cleanup_mmio_region_gdrom_reg_16(&mmio_region_gdrom_reg_16);
     cleanup_mmio_region_gdrom_reg_32(&mmio_region_gdrom_reg_32);
