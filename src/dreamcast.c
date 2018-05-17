@@ -719,7 +719,7 @@ bool dc_debugger_enabled(void) {
  */
 static void periodic_event_handler(struct SchedEvent *event) {
     enum dc_state cur_state = dc_get_state();
-    if (unlikely(cur_state == DC_STATE_SUSPEND)) {
+    if (cur_state == DC_STATE_SUSPEND) {
         cons_puts("Execution suspended.  To resume, enter "
                   "\"resume-execution\" into the CLI prompt.\n");
         do {

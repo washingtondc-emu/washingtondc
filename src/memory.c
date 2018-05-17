@@ -23,8 +23,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "host_branch_pred.h"
-
 #include "memory.h"
 
 void memory_init(struct Memory *mem) {

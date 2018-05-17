@@ -33,7 +33,6 @@
 #include "pvr2_tex_mem.h"
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"
-#include "host_branch_pred.h"
 #include "log.h"
 #include "dc_sched.h"
 #include "dreamcast.h"
@@ -604,8 +603,8 @@ static void on_packet_received(void) {
          * data for the three which don't actually exist.  Here we panic if it
          * does try to send vertex data to one of those three lists.
          */
-        if (unlikely(poly_state.current_list < DISPLAY_LIST_FIRST ||
-                     poly_state.current_list > DISPLAY_LIST_LAST)) {
+        if (poly_state.current_list < DISPLAY_LIST_FIRST ||
+            poly_state.current_list > DISPLAY_LIST_LAST) {
             error_set_feature("unknown display list type");
             error_set_display_list_index(poly_state.current_list);
             error_set_ta_fifo_byte_count(ta_fifo_byte_count);

@@ -29,7 +29,6 @@
 #include "error.h"
 #include "types.h"
 #include "mem_code.h"
-#include "host_branch_pred.h"
 #include "MemoryMap.h"
 
 #define MEMORY_SIZE_SHIFT 24
@@ -49,7 +48,7 @@ void memory_clear(struct Memory *mem);
 static inline int
 memory_read(struct Memory const *mem, void *buf, size_t addr, size_t len) {
     size_t end_addr = addr + (len - 1);
-    if (unlikely(end_addr & ~(MEMORY_SIZE - 1))) {
+    if (end_addr & ~(MEMORY_SIZE - 1)) {
         error_set_address(addr);
         error_set_length(len);
         PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
@@ -64,7 +63,7 @@ memory_read(struct Memory const *mem, void *buf, size_t addr, size_t len) {
 static inline int
 memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len) {
     size_t end_addr = addr + (len - 1);
-    if (unlikely(end_addr & ~(MEMORY_SIZE - 1))) {
+    if (end_addr & ~(MEMORY_SIZE - 1)) {
         error_set_address(addr);
         error_set_length(len);
         PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
