@@ -460,12 +460,15 @@ static inline unsigned get_vbend(void) {
     return (spg_reg[SPG_VBLANK] >> 16) & 0x3ff;
 }
 
-uint32_t spg_hblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
+uint32_t
+spg_hblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                         unsigned idx, void *ctxt) {
     return spg_reg[SPG_HBLANK_INT];
 }
 
-void spg_hblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                               uint32_t val) {
+void
+spg_hblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                          unsigned idx, uint32_t val, void *ctxt) {
     spg_sync();
     spg_unsched_all();
 
@@ -478,12 +481,15 @@ void spg_hblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigne
     sched_next_vblank_out_event();
 }
 
-uint32_t spg_vblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
+uint32_t
+spg_vblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                         unsigned idx, void *ctxt) {
     return spg_reg[SPG_VBLANK_INT];
 }
 
-void spg_vblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                               uint32_t val) {
+void
+spg_vblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                          unsigned idx, uint32_t val, void *ctxt) {
     spg_sync();
     spg_unsched_all();
 
@@ -496,12 +502,15 @@ void spg_vblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigne
     sched_next_vblank_out_event();
 }
 
-uint32_t spg_load_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
+uint32_t
+spg_load_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                   unsigned idx, void *ctxt) {
     return spg_reg[SPG_LOAD];
 }
 
-void spg_load_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                         uint32_t val) {
+void
+spg_load_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                    unsigned idx, uint32_t val, void *ctxt) {
     spg_sync();
     spg_unsched_all();
 
@@ -514,16 +523,21 @@ void spg_load_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
     sched_next_vblank_out_event();
 }
 
-uint32_t spg_control_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
+uint32_t
+spg_control_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                      unsigned idx, void *ctxt) {
     return spg_reg[SPG_CONTROL];
 }
 
-void spg_control_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                            uint32_t val) {
+void
+spg_control_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                       unsigned idx, uint32_t val, void *ctxt) {
     spg_reg[SPG_CONTROL] = val;
 }
 
-uint32_t spg_status_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
+uint32_t
+spg_status_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt) {
     uint32_t spg_stat;
 
     spg_sync();
@@ -546,23 +560,29 @@ uint32_t spg_status_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned
     return spg_stat;
 }
 
-uint32_t spg_hblank_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
+uint32_t
+spg_hblank_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt) {
     return spg_reg[SPG_HBLANK];
 }
 
-void spg_hblank_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                           uint32_t val) {
+void
+spg_hblank_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                      unsigned idx, uint32_t val, void *ctxt) {
     // TODO: should I do spg_sync here?
     spg_reg[SPG_HBLANK] = val;
     // TODO: should I do spg_sync + unsched_all + resched here?
 }
 
-uint32_t spg_vblank_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx) {
+uint32_t
+spg_vblank_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt) {
     return spg_reg[SPG_VBLANK];
 }
 
-void spg_vblank_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                           uint32_t val) {
+void
+spg_vblank_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                      unsigned idx, uint32_t val, void *ctxt) {
     // TODO: should I do spg_sync here?
     spg_reg[SPG_VBLANK] = val;
     // TODO: should I do spg_sync + unsched_all + resched here?

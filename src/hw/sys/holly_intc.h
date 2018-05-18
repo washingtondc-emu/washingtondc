@@ -116,51 +116,51 @@ void holly_clear_ext_int(HollyExtInt int_type);
 void holly_clear_nrm_int(HollyNrmInt int_type);
 
 uint32_t holly_reg_istnrm_mmio_read(struct mmio_region_sys_block *region,
-                                    unsigned idx);
+                                    unsigned idx, void *ctxt);
 void holly_reg_istnrm_mmio_write(struct mmio_region_sys_block *region,
-                                 unsigned idx, uint32_t val);
+                                 unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_istext_mmio_read(struct mmio_region_sys_block *region,
-                                    unsigned idx);
+                                    unsigned idx, void *ctxt);
 void holly_reg_istext_mmio_write(struct mmio_region_sys_block *region,
-                                 unsigned idx, uint32_t val);
+                                 unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_isterr_mmio_read(struct mmio_region_sys_block *region,
-                                    unsigned idx);
+                                    unsigned idx, void *ctxt);
 void holly_reg_isterr_mmio_write(struct mmio_region_sys_block *region,
-                                 unsigned idx, uint32_t val);
+                                 unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_iml2nrm_mmio_read(struct mmio_region_sys_block *region,
-                                     unsigned idx);
+                                     unsigned idx, void *ctxt);
 void holly_reg_iml2nrm_mmio_write(struct mmio_region_sys_block *region,
-                                  unsigned idx, uint32_t val);
+                                  unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_iml2err_mmio_read(struct mmio_region_sys_block *region,
-                                     unsigned idx);
+                                     unsigned idx, void *ctxt);
 void holly_reg_iml2err_mmio_write(struct mmio_region_sys_block *region,
-                                  unsigned idx, uint32_t val);
+                                  unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_iml2ext_mmio_read(struct mmio_region_sys_block *region,
-                                     unsigned idx);
+                                     unsigned idx, void *ctxt);
 void holly_reg_iml2ext_mmio_write(struct mmio_region_sys_block *region,
-                                  unsigned idx, uint32_t val);
+                                  unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_iml4nrm_mmio_read(struct mmio_region_sys_block *region,
-                                     unsigned idx);
+                                     unsigned idx, void *ctxt);
 void holly_reg_iml4nrm_mmio_write(struct mmio_region_sys_block *region,
-                                  unsigned idx, uint32_t val);
+                                  unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_iml4err_mmio_read(struct mmio_region_sys_block *region,
-                                     unsigned idx);
+                                     unsigned idx, void *ctxt);
 void holly_reg_iml4err_mmio_write(struct mmio_region_sys_block *region,
-                                  unsigned idx, uint32_t val);
+                                  unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_iml4ext_mmio_read(struct mmio_region_sys_block *region,
-                                     unsigned idx);
+                                     unsigned idx, void *ctxt);
 void holly_reg_iml4ext_mmio_write(struct mmio_region_sys_block *region,
-                                  unsigned idx, uint32_t val);
+                                  unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_iml6nrm_mmio_read(struct mmio_region_sys_block *region,
-                                     unsigned idx);
+                                     unsigned idx, void *ctxt);
 void holly_reg_iml6nrm_mmio_write(struct mmio_region_sys_block *region,
-                                  unsigned idx, uint32_t val);
+                                  unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_iml6err_mmio_read(struct mmio_region_sys_block *region,
-                                     unsigned idx);
+                                     unsigned idx, void *ctxt);
 void holly_reg_iml6err_mmio_write(struct mmio_region_sys_block *region,
-                                  unsigned idx, uint32_t val);
+                                  unsigned idx, uint32_t val, void *ctxt);
 uint32_t holly_reg_iml6ext_mmio_read(struct mmio_region_sys_block *region,
-                                     unsigned idx);
+                                     unsigned idx, void *ctxt);
 void holly_reg_iml6ext_mmio_write(struct mmio_region_sys_block *region,
-                                  unsigned idx, uint32_t val);
+                                  unsigned idx, uint32_t val, void *ctxt);
 #endif

@@ -99,7 +99,7 @@ void g2_reg_write_double(addr32_t addr, double val, void *ctxt) {
 }
 
 static void sb_adst_reg_mmio_write(struct mmio_region_g2_reg_32 *region,
-                                   unsigned idx, uint32_t val) {
+                                   unsigned idx, uint32_t val, void *ctxt) {
     if (val) {
         error_set_feature("AICA DMA");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -112,186 +112,229 @@ void g2_reg_init(void) {
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADSTAG", 0x5f7800,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADSTAR", 0x5f7804,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADLEN", 0x5f7808,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADDIR", 0x5f780c,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADTSEL", 0x5f7810,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADEN", 0x5f7814,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADST", 0x5f7818,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    sb_adst_reg_mmio_write);
+                                    sb_adst_reg_mmio_write, NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADSUSP", 0x5f781c,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1STAG", 0x5f7820,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1STAR", 0x5f7824,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1LEN", 0x5f7828,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1DIR", 0x5f782c,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1TSEL", 0x5f7830,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1EN", 0x5f7834,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1ST", 0x5f7838,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1SUSP", 0x5f783c,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2STAG", 0x5f7840,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2STAR", 0x5f7844,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2LEN", 0x5f7848,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2DIR", 0x5f784c,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2TSEL", 0x5f7850,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2EN", 0x5f7854,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2ST", 0x5f7858,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2SUSP", 0x5f785c,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDSTAG", 0x5f7860,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDSTAR", 0x5f7864,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDLEN", 0x5f7868,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDIR", 0x5f786c,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDTSEL", 0x5f7870,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDEN", 0x5f7874,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDST", 0x5f7878,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDSUSP", 0x5f787c,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
 
     /* some debugging bullshit, hopefully I never need these... */
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_G2DSTO", 0x5f7890,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_G2TRTO", 0x5f7894,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
 
     /* the modem, it will be a long time before I get around to this */
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_G2MDMTO", 0x5f7898,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_G2MDMW", 0x5f789c,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
 
     /* ??? */
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "UNKNOWN_G2_REG_0x5f78a0", 0x5f78a0,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "UNKNOWN_G2_REG_0x5f78a4", 0x5f78a4,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "UNKNOWN_G2_REG_0x5f78a8", 0x5f78a8,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "UNKNOWN_G2_REG_0x5f78ac", 0x5f78ac,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "UNKNOWN_G2_REG_0x5f78b0", 0x5f78b0,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "UNKNOWN_G2_REG_0x5f78b4", 0x5f78b4,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "UNKNOWN_G2_REG_0x5f78b8", 0x5f78b8,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
 
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_G2APRO", 0x5f78bc,
                                     mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler);
+                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    NULL);
 }
 
 void g2_reg_cleanup(void) {

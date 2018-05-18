@@ -47,35 +47,43 @@ void pvr2_reg_init(void) {
     mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
                                    "SB_PDSTAP", 0x5f7c00,
                                    mmio_region_pvr2_reg_warn_read_handler,
-                                   mmio_region_pvr2_reg_warn_write_handler);
+                                   mmio_region_pvr2_reg_warn_write_handler,
+                                   NULL);
     mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
                                    "SB_PDSTAR", 0x5f7c04,
                                    mmio_region_pvr2_reg_warn_read_handler,
-                                   mmio_region_pvr2_reg_warn_write_handler);
+                                   mmio_region_pvr2_reg_warn_write_handler,
+                                   NULL);
     mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
                                    "SB_PDLEN", 0x5f7c08,
                                    mmio_region_pvr2_reg_warn_read_handler,
-                                   mmio_region_pvr2_reg_warn_write_handler);
+                                   mmio_region_pvr2_reg_warn_write_handler,
+                                   NULL);
     mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
                                    "SB_PDDIR", 0x5f7c0c,
                                    mmio_region_pvr2_reg_warn_read_handler,
-                                   mmio_region_pvr2_reg_warn_write_handler);
+                                   mmio_region_pvr2_reg_warn_write_handler,
+                                   NULL);
     mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
                                    "SB_PDTSEL", 0x5f7c10,
                                    mmio_region_pvr2_reg_warn_read_handler,
-                                   mmio_region_pvr2_reg_warn_write_handler);
+                                   mmio_region_pvr2_reg_warn_write_handler,
+                                   NULL);
     mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
                                    "SB_PDEN", 0x5f7c14,
                                    mmio_region_pvr2_reg_warn_read_handler,
-                                   mmio_region_pvr2_reg_warn_write_handler);
+                                   mmio_region_pvr2_reg_warn_write_handler,
+                                   NULL);
     mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
                                    "SB_PDST", 0x5f7c18,
                                    mmio_region_pvr2_reg_warn_read_handler,
-                                   mmio_region_pvr2_reg_warn_write_handler);
+                                   mmio_region_pvr2_reg_warn_write_handler,
+                                   NULL);
     mmio_region_pvr2_reg_init_cell(&mmio_region_pvr2_reg,
                                    "SB_PDAPRO", 0x5f7c80,
                                    mmio_region_pvr2_reg_warn_read_handler,
-                                   mmio_region_pvr2_reg_warn_write_handler);
+                                   mmio_region_pvr2_reg_warn_write_handler,
+                                   NULL);
 }
 
 void pvr2_reg_cleanup(void) {

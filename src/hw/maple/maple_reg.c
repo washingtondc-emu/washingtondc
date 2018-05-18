@@ -106,14 +106,14 @@ void maple_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 }
 
 static uint32_t mden_reg_mmio_read(struct mmio_region_maple_reg *region,
-                                   unsigned idx) {
+                                   unsigned idx, void *ctxt) {
     MAPLE_TRACE("reading 0 from register \"SB_MDEN\"\n");
     return 0;
 }
 
 static void
 mden_reg_mmio_write(struct mmio_region_maple_reg *region,
-                    unsigned idx, uint32_t val) {
+                    unsigned idx, uint32_t val, void *ctxt) {
     if (val)
         MAPLE_TRACE("WARNING: enabling DMA\n");
     else
@@ -122,14 +122,14 @@ mden_reg_mmio_write(struct mmio_region_maple_reg *region,
 
 static uint32_t
 mdstar_reg_mmio_read(struct mmio_region_maple_reg *region,
-                     unsigned idx) {
+                     unsigned idx, void *ctxt) {
     MAPLE_TRACE("reading %08x from MDSTAR\n",
                 (unsigned)maple_dma_cmd_start);
     return maple_dma_cmd_start;
 }
 
 static void mdstar_reg_mmio_write(struct mmio_region_maple_reg *region,
-                                  unsigned idx, uint32_t val) {
+                                  unsigned idx, uint32_t val, void *ctxt) {
     maple_dma_cmd_start = val;
     MAPLE_TRACE("writing %08x to MDSTAR\n",
                 (unsigned)maple_dma_cmd_start);
@@ -137,13 +137,13 @@ static void mdstar_reg_mmio_write(struct mmio_region_maple_reg *region,
 
 static uint32_t
 mdtsel_reg_mmio_read(struct mmio_region_maple_reg *region,
-                     unsigned idx) {
+                     unsigned idx, void *ctxt) {
     MAPLE_TRACE("reading 0 from MDTSEL\n");
     return 0;
 }
 
 static void mdtsel_reg_mmio_write(struct mmio_region_maple_reg *region,
-                                  unsigned idx, uint32_t val) {
+                                  unsigned idx, uint32_t val, void *ctxt) {
     if (val) {
         error_set_feature("vblank Maple-DMA initialization");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -152,14 +152,14 @@ static void mdtsel_reg_mmio_write(struct mmio_region_maple_reg *region,
 
 static uint32_t
 mdst_reg_mmio_read(struct mmio_region_maple_reg *region,
-                   unsigned idx) {
+                   unsigned idx, void *ctxt) {
     MAPLE_TRACE("reading 0 from MDST\n");
     return 0;
 }
 
 static void
 mdst_reg_mmio_write(struct mmio_region_maple_reg *region,
-                    unsigned idx, uint32_t val) {
+                    unsigned idx, uint32_t val, void *ctxt) {
     if (val) {
         MAPLE_TRACE("starting maple DMA operation\n");
         MAPLE_TRACE("\tstarting address is %08x\n",
@@ -191,31 +191,34 @@ void maple_reg_init(void) {
     mmio_region_maple_reg_init_cell(&mmio_region_maple_reg,
                                     "SB_MDSTAR", 0x5f6c04,
                                     mdstar_reg_mmio_read,
-                                    mdstar_reg_mmio_write);
+                                    mdstar_reg_mmio_write, NULL);
     mmio_region_maple_reg_init_cell(&mmio_region_maple_reg,
                                     "SB_MDTSEL", 0x5f6c10,
                                     mdtsel_reg_mmio_read,
-                                    mdtsel_reg_mmio_write);
+                                    mdtsel_reg_mmio_write, NULL);
     mmio_region_maple_reg_init_cell(&mmio_region_maple_reg,
                                     "SB_MDEN", 0x5f6c14,
                                     mden_reg_mmio_read,
-                                    mden_reg_mmio_write);
+                                    mden_reg_mmio_write, NULL);
     mmio_region_maple_reg_init_cell(&mmio_region_maple_reg,
                                     "SB_MDST", 0x5f6c18,
                                     mdst_reg_mmio_read,
-                                    mdst_reg_mmio_write);
+                                    mdst_reg_mmio_write, NULL);
     mmio_region_maple_reg_init_cell(&mmio_region_maple_reg,
                                     "SB_MSYS", 0x5f6c80,
                                     mmio_region_maple_reg_warn_read_handler,
-                                    mmio_region_maple_reg_warn_write_handler);
+                                    mmio_region_maple_reg_warn_write_handler,
+                                    NULL);
     mmio_region_maple_reg_init_cell(&mmio_region_maple_reg,
                                     "SB_MDAPRO", 0x5f6c8c,
                                     mmio_region_maple_reg_writeonly_read_error,
-                                    mmio_region_maple_reg_warn_write_handler);
+                                    mmio_region_maple_reg_warn_write_handler,
+                                    NULL);
     mmio_region_maple_reg_init_cell(&mmio_region_maple_reg,
                                     "SB_MMSEL", 0x5f6ce8,
                                     mmio_region_maple_reg_warn_read_handler,
-                                    mmio_region_maple_reg_warn_write_handler);
+                                    mmio_region_maple_reg_warn_write_handler,
+                                    NULL);
 }
 
 void maple_reg_cleanup(void) {

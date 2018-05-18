@@ -43,30 +43,50 @@ void spg_set_pix_double_y(bool val);
 
 uint32_t get_spg_control();
 
-uint32_t spg_hblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
-void spg_hblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                               uint32_t val);
+uint32_t
+spg_hblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                         unsigned idx, void *ctxt);
+void
+spg_hblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                          unsigned idx, uint32_t val, void *ctxt);
 
-uint32_t spg_vblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
-void spg_vblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                               uint32_t val);
+uint32_t
+spg_vblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                         unsigned idx, void *ctxt);
+void
+spg_vblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                          unsigned idx, uint32_t val, void *ctxt);
 
-uint32_t spg_control_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
-void spg_control_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                            uint32_t val);
+uint32_t
+spg_control_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                      unsigned idx, void *ctxt);
+void
+spg_control_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                       unsigned idx, uint32_t val, void *ctxt);
 
-uint32_t spg_hblank_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
-void spg_hblank_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                           uint32_t val);
+uint32_t
+spg_hblank_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt);
+void
+spg_hblank_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                      unsigned idx, uint32_t val, void *ctxt);
 
-uint32_t spg_load_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
-void spg_load_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                         uint32_t val);
+uint32_t
+spg_load_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                   unsigned idx, void *ctxt);
+void
+spg_load_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                    unsigned idx, uint32_t val, void *ctxt);
 
-uint32_t spg_vblank_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
-void spg_vblank_mmio_write(struct mmio_region_pvr2_core_reg *region, unsigned idx,
-                           uint32_t val);
+uint32_t
+spg_vblank_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt);
+void
+spg_vblank_mmio_write(struct mmio_region_pvr2_core_reg *region,
+                      unsigned idx, uint32_t val, void *ctxt);
 
-uint32_t spg_status_mmio_read(struct mmio_region_pvr2_core_reg *region, unsigned idx);
+uint32_t
+spg_status_mmio_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt);
 
 #endif
