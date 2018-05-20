@@ -26,6 +26,7 @@
 #include "types.h"
 #include "hw/g1/g1_reg.h"
 #include "MemoryMap.h"
+#include "mmio.h"
 
 struct gdrom_ctxt;
 
@@ -47,5 +48,11 @@ void gdrom_reg_write_32(addr32_t addr, uint32_t val, void *ctxt);
 struct g1_mem_mapped_reg;
 
 extern struct memory_interface gdrom_reg_intf;
+
+#define N_GDROM_REGS (ADDR_GDROM_LAST - ADDR_GDROM_FIRST + 1)
+
+DECL_MMIO_REGION(gdrom_reg_32, N_GDROM_REGS, ADDR_GDROM_FIRST, uint32_t)
+DECL_MMIO_REGION(gdrom_reg_16, N_GDROM_REGS, ADDR_GDROM_FIRST, uint16_t)
+DECL_MMIO_REGION(gdrom_reg_8, N_GDROM_REGS, ADDR_GDROM_FIRST, uint8_t)
 
 #endif

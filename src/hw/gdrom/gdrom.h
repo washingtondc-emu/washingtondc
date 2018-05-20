@@ -29,6 +29,7 @@
 #include "fifo.h"
 #include "log.h"
 #include "dc_sched.h"
+#include "gdrom_reg.h"
 
 #define GDROM_TRACE(msg, ...)                                           \
     do {                                                                \
@@ -164,6 +165,11 @@ struct gdrom_ctxt {
     unsigned n_bytes_received;
 
     struct fifo_head bufq;
+
+    // MMIO regions
+    struct mmio_region_gdrom_reg_32 mmio_region_gdrom_reg_32;
+    struct mmio_region_gdrom_reg_16 mmio_region_gdrom_reg_16;
+    struct mmio_region_gdrom_reg_8 mmio_region_gdrom_reg_8;
 };
 
 /*
