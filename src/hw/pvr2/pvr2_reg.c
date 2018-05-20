@@ -39,6 +39,8 @@
 DECL_MMIO_REGION(pvr2_reg, N_PVR2_REGS, ADDR_PVR2_FIRST, uint32_t)
 DEF_MMIO_REGION(pvr2_reg, N_PVR2_REGS, ADDR_PVR2_FIRST, uint32_t)
 
+static struct mmio_region_pvr2_reg mmio_region_pvr2_reg;
+
 static uint8_t reg_backing[N_PVR2_REGS];
 
 void pvr2_reg_init(void) {

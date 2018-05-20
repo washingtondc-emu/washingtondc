@@ -51,4 +51,9 @@ void g1_reg_cleanup(void);
 
 extern struct memory_interface g1_intf;
 
+void g1_mmio_cell_init_32(char const *name, uint32_t addr,
+                          mmio_region_g1_reg_32_read_handler on_read,
+                          mmio_region_g1_reg_32_write_handler on_write,
+                          void *ctxt);
+
 #endif

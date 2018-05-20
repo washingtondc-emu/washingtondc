@@ -51,6 +51,8 @@ static uint32_t ta_next_opb_init;
 DEF_MMIO_REGION(pvr2_core_reg, N_PVR2_CORE_REGS, ADDR_PVR2_CORE_FIRST, uint32_t)
 static uint8_t reg_backing[N_PVR2_CORE_REGS];
 
+static struct mmio_region_pvr2_core_reg mmio_region_pvr2_core_reg;
+
 uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
 
 static uint32_t

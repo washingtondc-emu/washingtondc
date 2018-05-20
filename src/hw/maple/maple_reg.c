@@ -41,6 +41,8 @@
 DECL_MMIO_REGION(maple_reg, N_MAPLE_REGS, ADDR_MAPLE_FIRST, uint32_t)
 DEF_MMIO_REGION(maple_reg, N_MAPLE_REGS, ADDR_MAPLE_FIRST, uint32_t)
 
+static struct mmio_region_maple_reg mmio_region_maple_reg;
+
 static uint8_t reg_backing[N_MAPLE_REGS];
 
 static addr32_t maple_dma_prot_bot = 0;

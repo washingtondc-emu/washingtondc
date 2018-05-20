@@ -38,6 +38,8 @@
 
 DEF_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST, uint32_t)
 
+static struct mmio_region_sys_block mmio_region_sys_block;
+
 static uint8_t reg_backing[N_SYS_REGS];
 
 static uint32_t reg_sb_c2dstat, reg_sb_c2dlen;

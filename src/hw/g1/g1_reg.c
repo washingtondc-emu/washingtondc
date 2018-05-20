@@ -37,6 +37,9 @@
 DEF_MMIO_REGION(g1_reg_32, N_G1_REGS, ADDR_G1_FIRST, uint32_t)
 DEF_MMIO_REGION(g1_reg_16, N_G1_REGS, ADDR_G1_FIRST, uint16_t)
 
+static struct mmio_region_g1_reg_32 mmio_region_g1_reg_32;
+static struct mmio_region_g1_reg_16 mmio_region_g1_reg_16;
+
 static uint8_t reg_backing[N_G1_REGS];
 
 uint8_t g1_reg_read_8(addr32_t addr, void *ctxt) {
@@ -179,3 +182,11 @@ struct memory_interface g1_intf = {
     .writefloat = g1_reg_write_float,
     .writedouble = g1_reg_write_double
 };
+
+void g1_mmio_cell_init_32(char const *name, uint32_t addr,
+                          mmio_region_g1_reg_32_read_handler on_read,
+                          mmio_region_g1_reg_32_write_handler on_write,
+                          void *ctxt) {
+    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32, name, addr,
+                                    on_read, on_write, ctxt);
+}

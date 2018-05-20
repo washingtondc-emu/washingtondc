@@ -130,6 +130,10 @@ DEF_MMIO_REGION(gdrom_reg_16, N_GDROM_REGS, ADDR_GDROM_FIRST, uint16_t)
 DECL_MMIO_REGION(gdrom_reg_8, N_GDROM_REGS, ADDR_GDROM_FIRST, uint8_t)
 DEF_MMIO_REGION(gdrom_reg_8, N_GDROM_REGS, ADDR_GDROM_FIRST, uint8_t)
 
+static struct mmio_region_gdrom_reg_32 mmio_region_gdrom_reg_32;
+static struct mmio_region_gdrom_reg_16 mmio_region_gdrom_reg_16;
+static struct mmio_region_gdrom_reg_8 mmio_region_gdrom_reg_8;
+
 static uint8_t reg_backing[N_GDROM_REGS];
 
 float gdrom_reg_read_float(addr32_t addr, void *ctxt) {
@@ -835,47 +839,38 @@ gdrom_set_dev_ctrl_reg(struct gdrom_dev_ctrl *dev_ctrl_out,
 
 void gdrom_reg_init(struct gdrom_ctxt *gdrom) {
     /* GD-ROM DMA registers */
-    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "SB_GDAPRO", 0x5f74b8,
-                                    gdrom_gdapro_mmio_read,
-                                    gdrom_gdapro_mmio_write, gdrom);
-    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "SB_G1GDRC", 0x5f74a0,
-                                    gdrom_g1gdrc_mmio_read,
-                                    gdrom_g1gdrc_mmio_write, gdrom);
-    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "SB_G1GDWC", 0x5f74a4,
-                                    mmio_region_g1_reg_32_warn_read_handler,
-                                    mmio_region_g1_reg_32_warn_write_handler,
-                                    gdrom);
-    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "SB_GDSTAR", 0x5f7404,
-                                    gdrom_gdstar_mmio_read,
-                                    gdrom_gdstar_mmio_write,
-                                    gdrom);
-    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "SB_GDLEN", 0x5f7408,
-                                    gdrom_gdlen_mmio_read,
-                                    gdrom_gdlen_mmio_write,
-                                    gdrom);
-    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "SB_GDDIR", 0x5f740c,
-                                    gdrom_gddir_mmio_read,
-                                    gdrom_gddir_mmio_write,
-                                    gdrom);
-    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "SB_GDEN", 0x5f7414,
-                                    gdrom_gden_mmio_read,
-                                    gdrom_gden_mmio_write, gdrom);
-    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "SB_GDST", 0x5f7418,
-                                    gdrom_gdst_reg_read_handler,
-                                    gdrom_gdst_reg_write_handler, gdrom);
-    mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "SB_GDLEND", 0x005f74f8,
-                                    gdrom_gdlend_mmio_read,
-                                    mmio_region_g1_reg_32_readonly_write_error,
-                                    gdrom);
+    g1_mmio_cell_init_32("SB_GDAPRO", 0x5f74b8,
+                         gdrom_gdapro_mmio_read,
+                         gdrom_gdapro_mmio_write, gdrom);
+    g1_mmio_cell_init_32("SB_G1GDRC", 0x5f74a0,
+                         gdrom_g1gdrc_mmio_read,
+                         gdrom_g1gdrc_mmio_write, gdrom);
+    g1_mmio_cell_init_32("SB_G1GDWC", 0x5f74a4,
+                         mmio_region_g1_reg_32_warn_read_handler,
+                         mmio_region_g1_reg_32_warn_write_handler,
+                         gdrom);
+    g1_mmio_cell_init_32("SB_GDSTAR", 0x5f7404,
+                         gdrom_gdstar_mmio_read,
+                         gdrom_gdstar_mmio_write,
+                         gdrom);
+    g1_mmio_cell_init_32("SB_GDLEN", 0x5f7408,
+                         gdrom_gdlen_mmio_read,
+                         gdrom_gdlen_mmio_write,
+                         gdrom);
+    g1_mmio_cell_init_32("SB_GDDIR", 0x5f740c,
+                         gdrom_gddir_mmio_read,
+                         gdrom_gddir_mmio_write,
+                         gdrom);
+    g1_mmio_cell_init_32("SB_GDEN", 0x5f7414,
+                         gdrom_gden_mmio_read,
+                         gdrom_gden_mmio_write, gdrom);
+    g1_mmio_cell_init_32("SB_GDST", 0x5f7418,
+                         gdrom_gdst_reg_read_handler,
+                         gdrom_gdst_reg_write_handler, gdrom);
+    g1_mmio_cell_init_32("SB_GDLEND", 0x005f74f8,
+                         gdrom_gdlend_mmio_read,
+                         mmio_region_g1_reg_32_readonly_write_error,
+                         gdrom);
 
     init_mmio_region_gdrom_reg_32(&mmio_region_gdrom_reg_32, (void*)reg_backing);
     init_mmio_region_gdrom_reg_16(&mmio_region_gdrom_reg_16, (void*)reg_backing);

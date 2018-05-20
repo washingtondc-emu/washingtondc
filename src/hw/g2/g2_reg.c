@@ -38,6 +38,7 @@
 
 DECL_MMIO_REGION(g2_reg_32, N_G2_REGS, ADDR_G2_FIRST, uint32_t)
 DEF_MMIO_REGION(g2_reg_32, N_G2_REGS, ADDR_G2_FIRST, uint32_t)
+static struct mmio_region_g2_reg_32 mmio_region_g2_reg_32;
 
 static uint8_t reg_backing[N_G2_REGS];
 

@@ -53,7 +53,6 @@
                                    mmio_region_##name##_write_handler   \
                                    on_write, void *ctxt);               \
                                                                         \
-    extern struct mmio_region_##name mmio_region_##name;                \
     type                                                                \
     mmio_region_##name##_read_error(struct mmio_region_##name *region,  \
                                     unsigned idx, void *ctxt);          \
@@ -88,8 +87,6 @@
         struct mmio_region_##name *region);                             \
 
 #define DEF_MMIO_REGION(name, len_bytes, beg_bytes, type)               \
-    struct mmio_region_##name mmio_region_##name;                       \
-                                                                        \
     static inline type                                                  \
     mmio_region_##name##_read(struct mmio_region_##name *region,        \
                               addr32_t addr) {                          \
