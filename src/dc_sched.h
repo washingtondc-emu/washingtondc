@@ -31,6 +31,8 @@
  */
 #define SCHED_FREQUENCY 5400000000
 
+#define DC_TIMESLICE (SCHED_FREQUENCY / 400)
+
 // simple priority-queue scheduler
 
 typedef uint64_t dc_cycle_stamp_t;
@@ -59,6 +61,11 @@ typedef struct SchedEvent SchedEvent;
  * with any system that needs to generate events for that CPU.
  */
 struct dc_clock {
+    void (*dispatch)(void *ctxt);
+    void *dispatch_ctxt;
+
+    struct SchedEvent timeslice_end_event;
+
     // the current value of this clock
     dc_cycle_stamp_t cycle_stamp_priv;
     dc_cycle_stamp_t *cycle_stamp_ptr_priv;
@@ -73,6 +80,8 @@ struct dc_clock {
 
 void dc_clock_init(struct dc_clock *clk);
 void dc_clock_cleanup(struct dc_clock *clk);
+
+void dc_clock_run_timeslice(struct dc_clock *clk);
 
 /*
  * these methods do not free or otherwise take ownership of the event.

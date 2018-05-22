@@ -123,15 +123,12 @@ static void *load_file(char const *path, long *len);
 
 static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map);
 
-#ifndef ENABLE_DEBUGGER
 // Run until the next scheduled event (in dc_sched) should occur
-static void dc_run_to_next_event(Sh4 *sh4);
-static void dc_run_to_next_event_jit(Sh4 *sh4);
+static void dc_run_to_next_event(void *ctxt);
+static void dc_run_to_next_event_jit(void *ctxt);
 
 #ifdef ENABLE_JIT_X86_64
-static void dc_run_to_next_event_jit_native(Sh4 *sh4);
-#endif
-
+static void dc_run_to_next_event_jit_native(void *ctxt);
 #endif
 
 #ifdef ENABLE_DEBUGGER
@@ -139,6 +136,9 @@ static void dc_run_to_next_event_jit_native(Sh4 *sh4);
 static void dreamcast_enable_debugger(void);
 
 static void dreamcast_check_debugger(void);
+
+static void dc_run_to_next_event_debugger(void *ctxt);
+
 #endif
 
 // this must be called before run or not at all
@@ -303,65 +303,41 @@ void dreamcast_cleanup() {
  */
 static struct timespec start_time;
 
-static void main_loop_jit(void) {
+static void main_loop_sched(void) {
     while (is_running) {
-#ifdef ENABLE_DEBUGGER
-        dreamcast_check_debugger();
-
-        /*
-         * TODO: don't single-step if there's no
-         * chance of us hitting a breakpoint
-         */
-        dc_single_step(&cpu);
-#else
-        dc_run_to_next_event_jit(&cpu);
+        dc_clock_run_timeslice(&sh4_clock);
         code_cache_gc();
-        struct SchedEvent *next_event = pop_event(&sh4_clock);
-        if (next_event)
-            next_event->handler(next_event);
-#endif
     }
 }
+
+typedef void(*sh4_backend_func)(void*);
+
+static sh4_backend_func select_sh4_backend(void) {
+#ifdef ENABLE_DEBUGGER
+    bool use_gdb_stub = config_get_dbg_enable();
+    if (use_gdb_stub)
+        return dc_run_to_next_event_debugger;
+#endif
 
 #ifdef ENABLE_JIT_X86_64
-static void main_loop_jit_native(void) {
-    while (is_running) {
-#ifdef ENABLE_DEBUGGER
-        dreamcast_check_debugger();
+    bool const native_mode = config_get_native_jit();
+    bool const jit = config_get_jit() || native_mode;
 
-        /*
-         * TODO: don't single-step if there's no
-         * chance of us hitting a breakpoint
-         */
-        dc_single_step(&cpu);
-#else
-        dc_run_to_next_event_jit_native(&cpu);
-        code_cache_gc();
-        struct SchedEvent *next_event = pop_event(&sh4_clock);
-        if (next_event)
-            next_event->handler(next_event);
-#endif
+    if (jit) {
+        if (native_mode)
+            return dc_run_to_next_event_jit_native;
+        else
+            return dc_run_to_next_event_jit;
+    } else {
+        return dc_run_to_next_event;
     }
-}
-#endif
-
-static void main_loop_interpreter(void) {
-    while (is_running) {
-#ifdef ENABLE_DEBUGGER
-        dreamcast_check_debugger();
-
-        /*
-         * TODO: don't single-step if there's no
-         * chance of us hitting a breakpoint
-         */
-        dc_single_step(&cpu);
 #else
-        dc_run_to_next_event(&cpu);
-        struct SchedEvent *next_event = pop_event(&sh4_clock);
-        if (next_event)
-            next_event->handler(next_event);
+    bool const jit = config_get_jit();
+    if (jit)
+        return dc_run_to_next_event_jit;
+    else
+        return dc_run_to_next_event;
 #endif
-    }
 }
 
 void dreamcast_run() {
@@ -397,36 +373,12 @@ void dreamcast_run() {
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-#ifndef ENABLE_DEBUGGER
-
-#ifdef ENABLE_JIT_X86_64
-    bool const jit = config_get_jit() || config_get_native_jit();
-#else
-    bool const jit = config_get_jit();
-#endif
-
-#else
-    bool const jit = !config_get_dbg_enable() &&
-        (config_get_jit() || config_get_native_jit());
-#endif
-
-#ifdef ENABLE_JIT_X86_64
-    bool const native_mode = config_get_native_jit();
-#endif
-
     clock_gettime(CLOCK_MONOTONIC, &last_frame_realtime);
     overlay_show(show_overlay);
 
-    if (jit) {
-#ifdef ENABLE_JIT_X86_64
-        if (native_mode)
-            main_loop_jit_native();
-        else
-#endif
-            main_loop_jit();
-    } else {
-        main_loop_interpreter();
-    }
+    sh4_clock.dispatch = select_sh4_backend();
+    sh4_clock.dispatch_ctxt = &cpu;
+    main_loop_sched();
 
     dc_print_perf_stats();
 
@@ -473,14 +425,61 @@ static void dreamcast_check_debugger(void) {
         } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG);
     }
 }
-#endif
 
-#ifndef ENABLE_DEBUGGER
-static void dc_run_to_next_event(Sh4 *sh4) {
+static void dc_run_to_next_event_debugger(void *ctxt) {
+    Sh4 *sh4 = (void*)ctxt;
     inst_t inst;
     InstOpcode const *op;
     unsigned inst_cycles;
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
+
+    /*
+     * TODO: what if tgt_stamp <= clock_cycle_stamp(&sh4_clock) on first
+     * iteration?
+     */
+
+    while (tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
+        dreamcast_check_debugger();
+
+        inst = sh4_read_inst(sh4);
+        op = sh4_decode_inst(inst);
+        inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
+
+        /*
+         * Advance the cycle counter based on how many cycles this instruction
+         * will take.  If this would take us past the target stamp, that means
+         * the next event should occur while this instruction is executing.
+         * Instead of trying to implement that, I execute the instruction
+         * without advancing the cycle count beyond dc_sched_target_stamp.  This
+         * way, the CPU may appear to be a little faster than it should be from
+         * a guest program's perspective, but the passage of time will still be
+         * consistent.
+         */
+        dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
+            inst_cycles * SH4_CLOCK_SCALE;
+
+        sh4_do_exec_inst(sh4, inst, op);
+
+        /*
+         * advance the cycles, being careful not to skip over any new events
+         * which may have been added
+         */
+        tgt_stamp = clock_target_stamp(&sh4_clock);
+        if (cycles_after > tgt_stamp)
+            cycles_after = tgt_stamp;
+        clock_set_cycle_stamp(&sh4_clock, cycles_after);
+    }
+}
+
+#endif
+
+static void dc_run_to_next_event(void *ctxt) {
+    inst_t inst;
+    InstOpcode const *op;
+    unsigned inst_cycles;
+    dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
+
+    Sh4 *sh4 = (void*)ctxt;
 
     while (tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
         inst = sh4_read_inst(sh4);
@@ -500,10 +499,6 @@ static void dc_run_to_next_event(Sh4 *sh4) {
         dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
             inst_cycles * SH4_CLOCK_SCALE;
 
-        tgt_stamp = clock_target_stamp(&sh4_clock);
-        if (cycles_after > tgt_stamp)
-            cycles_after = tgt_stamp;
-
         sh4_do_exec_inst(sh4, inst, op);
 
         /*
@@ -518,7 +513,9 @@ static void dc_run_to_next_event(Sh4 *sh4) {
 }
 
 #ifdef ENABLE_JIT_X86_64
-static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
+static void dc_run_to_next_event_jit_native(void *ctxt) {
+    Sh4 *sh4 = (Sh4*)ctxt;
+
     reg32_t newpc = sh4->reg[SH4_REG_PC];
 
     newpc = native_dispatch_entry(newpc);
@@ -527,7 +524,9 @@ static void dc_run_to_next_event_jit_native(Sh4 *sh4) {
 }
 #endif
 
-static void dc_run_to_next_event_jit(Sh4 *sh4) {
+static void dc_run_to_next_event_jit(void *ctxt) {
+    Sh4 *sh4 = (Sh4*)ctxt;
+
     reg32_t newpc = sh4->reg[SH4_REG_PC];
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
 
@@ -553,46 +552,6 @@ static void dc_run_to_next_event_jit(Sh4 *sh4) {
 
     sh4->reg[SH4_REG_PC] = newpc;
 }
-
-#else
-
-/* executes a single instruction and maybe ticks the clock. */
-void dc_single_step(Sh4 *sh4) {
-    inst_t inst = sh4_read_inst(sh4);
-    InstOpcode const *op = sh4_decode_inst(inst);
-    unsigned n_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
-
-    /*
-     * Advance the cycle counter based on how many cycles this instruction
-     * will take.  If this would take us past the target stamp, that means
-     * the next event should occur while this instruction is executing.
-     * Instead of trying to implement that, I execute the instruction
-     * without advancing the cycle count beyond dc_sched_target_stamp.  This
-     * way, the CPU may appear to be a little faster than it should be from
-     * a guest program's perspective, but the passage of time will still be
-     * consistent.
-     */
-    dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
-        n_cycles * SH4_CLOCK_SCALE;
-    dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
-    if (cycles_after > tgt_stamp)
-        cycles_after = tgt_stamp;
-
-    sh4_do_exec_inst(sh4, inst, op);
-
-    // now execute any events which would have happened during that instruction
-    SchedEvent *next_event;
-    while ((next_event = peek_event(&sh4_clock)) &&
-           (next_event->when <= cycles_after)) {
-        pop_event(&sh4_clock);
-        clock_set_cycle_stamp(&sh4_clock, next_event->when);
-        next_event->handler(next_event);
-    }
-
-    clock_set_cycle_stamp(&sh4_clock, cycles_after);
-}
-
-#endif
 
 static void time_diff(struct timespec *delta,
                       struct timespec const *end,

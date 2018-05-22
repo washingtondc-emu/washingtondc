@@ -178,3 +178,43 @@ clock_set_cycle_stamp_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr) {
         clock->cycle_stamp_ptr_priv = &clock->cycle_stamp_priv;
     }
 }
+
+static void on_end_of_ts(struct SchedEvent *event) {
+    // do nothing
+}
+
+void dc_clock_run_timeslice(struct dc_clock *clk) {
+    /*
+     * here we insert the timeslice end as an event, and then check for that
+     * event as a special case.  This is a simple approach that leverages
+     * pre-existing infrastructure.  One shortfall of this approach is that it
+     * implicitly overclocks the CPU because the logic used to time events
+     * allows events to happen late (which means that extra CPU cycles are
+     * sometimes executed between events).
+     *
+     * TODO: Ideally, we'd be able to track the extra cycles executed and
+     * subtract them form the next timeslice to avoid this overclock.
+     */
+
+    // ts marks the end of the timeslice
+    dc_cycle_stamp_t ts = clock_cycle_stamp(clk) + DC_TIMESLICE;
+
+    struct SchedEvent *ts_end_evt = &clk->timeslice_end_event;
+    ts_end_evt->when = ts;
+    ts_end_evt->handler = on_end_of_ts;
+
+    sched_event(clk, ts_end_evt);
+
+    void (*dispatch)(void *ctxt) = clk->dispatch;
+    void *dispatch_ctxt = clk->dispatch_ctxt;
+
+    for (;;) {
+        dispatch(dispatch_ctxt);
+
+        struct SchedEvent *next_event = pop_event(clk);
+        if (next_event != ts_end_evt)
+            next_event->handler(next_event);
+        else
+            return;
+    }
+}
