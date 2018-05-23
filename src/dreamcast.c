@@ -464,7 +464,7 @@ static void dreamcast_check_debugger(void) {
     debug_notify_inst(&cpu);
 
     enum dc_state cur_state = dc_get_state();
-    if (unlikely(cur_state == DC_STATE_DEBUG)) {
+    if (cur_state == DC_STATE_DEBUG) {
         do {
             // call debug_run_once 100 times per second
             win_check_events();
@@ -574,7 +574,7 @@ void dc_single_step(Sh4 *sh4) {
      */
     dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
         n_cycles * SH4_CLOCK_SCALE;
-    dc_cycle_stamp_t tgt_stamp = sched_target_stamp();
+    dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
     if (cycles_after > tgt_stamp)
         cycles_after = tgt_stamp;
 

@@ -573,15 +573,15 @@ int debug_read_mem(void *out, addr32_t addr, unsigned len) {
     while (n_units) {
         switch (unit_len) {
         case 4:
-            err = memory_map_try_read_32(&dreamcast_get_cpu()->mem.map, addr,
+            err = memory_map_try_read_32(dreamcast_get_cpu()->mem.map, addr,
                                          (uint32_t*)out_byte_ptr);
             break;
         case 2:
-            err = memory_map_try_read_16(&dreamcast_get_cpu()->mem.map,
+            err = memory_map_try_read_16(dreamcast_get_cpu()->mem.map,
                                          addr, (uint16_t*)out_byte_ptr);
             break;
         case 1:
-            err = memory_map_try_read_8(&dreamcast_get_cpu()->mem.map,
+            err = memory_map_try_read_8(dreamcast_get_cpu()->mem.map,
                                         addr, (uint8_t*)out_byte_ptr);
             break;
         }
@@ -616,7 +616,7 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len / 4;
         uint32_t const *input_byte_ptr = input;
         while (n_units) {
-            int err = memory_map_try_write_32(&dreamcast_get_cpu()->mem.map,
+            int err = memory_map_try_write_32(dreamcast_get_cpu()->mem.map,
                                               addr, *input_byte_ptr);
             if (err != 0) {
                 LOG_ERROR("Failed %u-byte write at 0x%08x\n", len, addr);
@@ -632,7 +632,7 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len / 2;
         uint16_t const *input_byte_ptr = input;
         while (n_units) {
-            int err = memory_map_try_write_16(&dreamcast_get_cpu()->mem.map,
+            int err = memory_map_try_write_16(dreamcast_get_cpu()->mem.map,
                                               addr, *input_byte_ptr);
             if (err != 0) {
                 LOG_ERROR("Failed %u-byte write at 0x%08x\n", len, addr);
@@ -648,7 +648,7 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len;
         uint8_t const *input_byte_ptr = input;
         while (n_units) {
-            int err = memory_map_try_write_8(&dreamcast_get_cpu()->mem.map,
+            int err = memory_map_try_write_8(dreamcast_get_cpu()->mem.map,
                                              addr, *input_byte_ptr);
             if (err != 0) {
                 LOG_ERROR("Failed %u-byte write at 0x%08x\n", len, addr);
