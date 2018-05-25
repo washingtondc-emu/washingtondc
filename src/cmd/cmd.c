@@ -175,13 +175,11 @@ struct cmd {
         "\n"
         "If WashingtonDC is suspended, then resume execution.\n"
 #ifdef ENABLE_DEBUGGER
-        "This command does not work on builds with the remote GDB frontend\n"
-        "enabled.  Use the gdb frontend to control execution instead.\n",
-#else
-        "This command is enabled because the remote GDB frontend is not\n"
-        "enabled.  If WashingtonDC had been built with -DENABLE_DEBUGGER=On,\n"
-        "then this command would not be available.\n",
+        "This command only works when the remote GDB frontend is not in use.\n"
+        "If you've enabled the GDB frontend, you need to use that to control\n"
+        "execution instead.\n"
 #endif
+        ,
         .cmd_handler = cmd_resume_execution
     },
     {
@@ -201,13 +199,11 @@ struct cmd {
         "\n"
         "If WashingtonDC is running, then suspend execution.\n"
 #ifdef ENABLE_DEBUGGER
-        "This command does not work on builds with the remote GDB frontend\n"
-        "enabled.  Use the gdb frontend to control execution instead.\n",
-#else
-        "This command is enabled because the remote GDB frontend is not\n"
-        "enabled.  If WashingtonDC had been built with -DENABLE_DEBUGGER=On,\n"
-        "then this command would not be available.\n",
+        "This command only works when the remote GDB frontend is not in use.\n"
+        "If you've enabled the GDB frontend, you need to use that to control\n"
+        "execution instead.\n"
 #endif
+        ,
         .cmd_handler = cmd_suspend_execution
     },
     {
@@ -433,10 +429,13 @@ static int cmd_exit(int argc, char **argv) {
 
 static int cmd_resume_execution(int argc, char **argv) {
 #ifdef ENABLE_DEBUGGER
-    cons_puts("ERROR: unable to control execution from the cmd prompt in gdb "
-              "builds\n");
-    return 1;
-#else
+    if (config_get_dbg_enable()) {
+        cons_puts("ERROR: unable to control execution from the cmd prompt when "
+                  "gdb is enabled.\n");
+        return 1;
+    }
+#endif
+
     enum dc_state dc_state = dc_get_state();
 
     if (dc_state == DC_STATE_SUSPEND) {
@@ -447,7 +446,6 @@ static int cmd_resume_execution(int argc, char **argv) {
     cons_puts("ERROR: unable to resume execution because WashingtonDC is not "
               "suspended\n");
     return 1;
-#endif
 }
 
 static int cmd_screenshot(int argc, char **argv) {
@@ -468,10 +466,13 @@ static int cmd_screenshot(int argc, char **argv) {
 
 static int cmd_suspend_execution(int argc, char **argv) {
 #ifdef ENABLE_DEBUGGER
-    cons_puts("ERROR: unable to control execution from the cmd prompt in gdb "
-              "builds\n");
-    return 1;
-#else
+    if (config_get_dbg_enable()) {
+        cons_puts("ERROR: unable to control execution from the cmd prompt when "
+                  "gdb is enabled.\n");
+        return 1;
+    }
+#endif
+
     enum dc_state dc_state = dc_get_state();
 
     if (dc_state == DC_STATE_RUNNING) {
@@ -482,15 +483,16 @@ static int cmd_suspend_execution(int argc, char **argv) {
     cons_puts("ERROR: unable to suspend execution because WashingtonDC is not "
               "running\n");
     return 1;
-#endif
 }
 
 static int cmd_begin_execution(int argc, char **argv) {
 #ifdef ENABLE_DEBUGGER
-    cons_puts("ERROR: unable to control execution from the cmd prompt in gdb "
-              "builds\n");
-    return 1;
-#else
+    if (config_get_dbg_enable()) {
+        cons_puts("ERROR: unable to control execution from the cmd prompt when "
+                  "gdb is enabled.\n");
+        return 1;
+    }
+#endif
     enum dc_state dc_state = dc_get_state();
 
     if (dc_state == DC_STATE_NOT_RUNNING) {
@@ -501,7 +503,6 @@ static int cmd_begin_execution(int argc, char **argv) {
     cons_puts("ERROR: unable to begin execution because WashingtonDC is "
               "already running\n");
     return 1;
-#endif
 }
 
 // this gets printed to the dev console every time the emulator starts

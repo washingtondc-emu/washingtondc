@@ -258,16 +258,19 @@ void dreamcast_init(bool cmd_session) {
 
     aica_rtc_init(&rtc, &sh4_clock);
 
-    if (cmd_session) {
 #ifdef ENABLE_DEBUGGER
+    if (config_get_dbg_enable()) {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
+        return;
+    }
 #endif
+
+    if (!cmd_session) {
         /*
          * if there's no debugging support and we have a remote cmd session
          * attached, then leave the system in DC_STATE_NOT_RUNNING until the
          * user executes the begin-execution command.
          */
-    } else {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
     }
 }
