@@ -66,7 +66,7 @@ if(UNIX)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")
 endif()
 
-option(ENABLE_DEBUGGER "Enable the debugger" OFF)
+option(ENABLE_DEBUGGER "Enable the debugger" ON)
 option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
 option(INVARIANTS "runtime sanity checks that should never fail" OFF)
 option(SH4_FPU_PEDANTIC "enable FPU error-checking which most games *probably* don't use" OFF)
