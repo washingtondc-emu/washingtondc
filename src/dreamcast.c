@@ -424,6 +424,7 @@ static void dreamcast_check_debugger(void) {
             // call debug_run_once 100 times per second
             win_check_events();
             debug_run_once();
+            cmd_run_once();
             usleep(1000 * 1000 / 100);
         } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG);
     }
