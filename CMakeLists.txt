@@ -414,4 +414,4 @@ add_executable(washingtondc ${washingtondc_sources})
 
 add_dependencies(washingtondc libevent sh4)
 add_dependencies(sh4 libevent)
-target_link_libraries(washingtondc m sh4 rt png zlib ${OPENGL_gl_LIBRARY} glfw glew pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a)
+target_link_libraries(washingtondc m sh4 rt png zlib glfw glew ${OPENGL_gl_LIBRARY} pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a)
