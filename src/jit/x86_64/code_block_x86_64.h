@@ -51,4 +51,11 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
  */
 void x86_64_align_stack(void);
 
+/*
+ * Microsoft's ABI requires 32 bytes to be allocated on the stack when calling
+ * a function.
+ */
+void ms_shadow_open(void);
+void ms_shadow_close(void);
+
 #endif

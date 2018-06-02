@@ -305,7 +305,8 @@ if (ENABLE_JIT_X86_64)
                                   "${PROJECT_SOURCE_DIR}/src/jit/x86_64/native_dispatch.h"
                                   "${PROJECT_SOURCE_DIR}/src/jit/x86_64/native_dispatch.c"
                                   "${PROJECT_SOURCE_DIR}/src/jit/x86_64/native_mem.h"
-                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/native_mem.c")
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/native_mem.c"
+                                  "${PROJECT_SOURCE_DIR}/src/jit/x86_64/abi.h")
 endif()
 
 if (ENABLE_DEBUGGER)

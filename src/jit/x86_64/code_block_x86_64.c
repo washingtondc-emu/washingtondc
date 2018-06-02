@@ -35,27 +35,13 @@
 #include "dreamcast.h"
 #include "native_dispatch.h"
 #include "native_mem.h"
+#include "abi.h"
 
 #include "code_block_x86_64.h"
 
 #define N_REGS 16
 
-/*
- * x86_64 System V ABI (for Unix systems).
- * Source:
- *     https://en.wikipedia.org/wiki/X86_calling_conventions#System_V_AMD64_ABI
- *
- * non-float args go into RDI, RSI, RDX, RCX, R8, R9
- * Subsequent args get pushed on to the stack, just like in x86 stdcall.
- * If calling a variadic function, number of floats in SSE/AvX regs needs to be
- * passed in RAX
- * non-float return values go into RAX
- * If returning a 128-bit value, RDX is used too (I am not sure which register
- * is high and which register is low).
- * values in RBX, RBP, R12-R15 will be saved by the callee (and also I think
- * RSP, but the wiki page doesn't say that).
- * All other values should be considered clobberred by the function call.
- */
+static DEF_ERROR_INT_ATTR(x86_64_reg);
 
 static struct reg_stat {
     // if true this reg can never ever be allocated under any circumstance.
@@ -229,6 +215,7 @@ static void discard_slot(unsigned slot_no) {
  * they all get saved.
  */
 static void prefunc(void) {
+#if defined(ABI_UNIX)
     grab_register(RAX);
     grab_register(RCX);
     grab_register(RDX);
@@ -248,6 +235,23 @@ static void prefunc(void) {
     evict_register(R9);
     evict_register(R10);
     evict_register(R11);
+#elif defined(ABI_MICROSOFT)
+    grab_register(RAX);
+    grab_register(RCX);
+    grab_register(RDX);
+    grab_register(R8);
+    grab_register(R9);
+    grab_register(R10);
+    grab_register(R11);
+
+    evict_register(RAX);
+    evict_register(RCX);
+    evict_register(RDX);
+    evict_register(R8);
+    evict_register(R9);
+    evict_register(R10);
+    evict_register(R11);
+#endif
 }
 
 /*
@@ -261,6 +265,7 @@ static void prefunc(void) {
  * register.
  */
 static void postfunc(void) {
+#if defined(ABI_UNIX)
     ungrab_register(R11);
     ungrab_register(R10);
     ungrab_register(R9);
@@ -269,6 +274,14 @@ static void postfunc(void) {
     ungrab_register(RSI);
     ungrab_register(RDX);
     ungrab_register(RCX);
+#elif defined(ABI_MICROSOFT)
+    ungrab_register(R11);
+    ungrab_register(R10);
+    ungrab_register(R9);
+    ungrab_register(R8);
+    ungrab_register(RDX);
+    ungrab_register(RCX);
+#endif
 }
 
 /*
@@ -495,14 +508,18 @@ static void ungrab_slot(unsigned slot_no) {
  * register.  To do that, call evict_register first.
  */
 static void grab_register(unsigned reg_no) {
-    if (regs[reg_no].grabbed)
+    if (regs[reg_no].grabbed) {
+        error_set_x86_64_reg(reg_no);
         RAISE_ERROR(ERROR_INTEGRITY);
+    }
     regs[reg_no].grabbed = true;
 }
 
 static void ungrab_register(unsigned reg_no) {
-    if (!regs[reg_no].grabbed)
+    if (!regs[reg_no].grabbed) {
+        error_set_x86_64_reg(reg_no);
         RAISE_ERROR(ERROR_INTEGRITY);
+    }
     regs[reg_no].grabbed = false;
 }
 
@@ -549,10 +566,13 @@ void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
 
     prefunc();
 
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
-    x86asm_mov_imm16_reg(inst_bin, RSI);
+    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, REG_ARG0);
+    x86asm_mov_imm16_reg(inst_bin, REG_ARG1);
+
+    ms_shadow_open();
     x86_64_align_stack();
     x86asm_call_ptr(inst->immed.fallback.fallback_fn);
+    ms_shadow_close();
 
     postfunc();
     ungrab_register(RAX);
@@ -632,19 +652,25 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
 
     prefunc();
 
+    static const unsigned tmp_reg_1 = REG_ARG3;
+    static const unsigned tmp_reg_2 = REG_ARG2;
+
     // move old_sr into ESI for the function call
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sr_ptr, RCX);
-    x86asm_mov_indreg32_reg32(RCX, ESI);
+    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sr_ptr, tmp_reg_1);
+    x86asm_mov_indreg32_reg32(tmp_reg_1, REG_ARG1);
 
     // update SR from SSR
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)ssr_ptr, RDX);
-    x86asm_mov_indreg32_reg32(RDX, EDX);
-    x86asm_mov_reg32_indreg32(EDX, RCX);
+    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)ssr_ptr, tmp_reg_2);
+    x86asm_mov_indreg32_reg32(tmp_reg_2, tmp_reg_2);
+    x86asm_mov_reg32_indreg32(tmp_reg_2, tmp_reg_1);
 
     // now call sh4_on_sr_change(cpu, old_sr)
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, RDI);
+    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, REG_ARG0);
+
+    ms_shadow_open();
     x86_64_align_stack();
     x86asm_call_ptr(sh4_on_sr_change);
+    ms_shadow_close();
 
     postfunc();
     ungrab_register(RAX);
@@ -658,7 +684,7 @@ void emit_read_16_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
 
     // call memory_map_read_16(vaddr)
     prefunc();
-    x86asm_mov_imm32_reg32(vaddr, EDI);
+    x86asm_mov_imm32_reg32(vaddr, REG_ARG0);
     native_mem_read_16(map);
     postfunc();
 
@@ -691,7 +717,7 @@ void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
 
     prefunc();
 
-    x86asm_mov_imm32_reg32(vaddr, EDI);
+    x86asm_mov_imm32_reg32(vaddr, REG_ARG0);
     native_mem_read_32(map);
 
     postfunc();
@@ -712,8 +738,8 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     // call memory_map_read_32(*addr_slot)
     prefunc();
 
-    move_slot_to_reg(addr_slot, EDI);
-    evict_register(EDI);
+    move_slot_to_reg(addr_slot, REG_ARG0);
+    evict_register(REG_ARG0);
 
     native_mem_read_32(map);
 
@@ -734,11 +760,11 @@ void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 
     prefunc();
 
-    move_slot_to_reg(addr_slot, EDI);
-    move_slot_to_reg(src_slot, ESI);
+    move_slot_to_reg(addr_slot, REG_ARG0);
+    move_slot_to_reg(src_slot, REG_ARG1);
 
-    evict_register(EDI);
-    evict_register(ESI);
+    evict_register(REG_ARG0);
+    evict_register(REG_ARG1);
 
     native_mem_write_32(map);
 
@@ -1275,6 +1301,24 @@ void x86_64_align_stack(void) {
     }
 }
 
+/*
+ * Microsoft's ABI requires 32 bytes to be allocated on the stack when calling
+ * a function.
+ */
+void ms_shadow_open(void) {
+#ifdef ABI_MICROSOFT
+    x86asm_addq_imm8_reg(-32, RSP);
+    rsp_offs -= 32;
+#endif
+}
+
+void ms_shadow_close(void) {
+#ifdef ABI_MICROSOFT
+    x86asm_addq_imm8_reg(32, RSP);
+    rsp_offs += 32;
+#endif
+}
+
 void code_block_x86_64_compile(struct code_block_x86_64 *out,
                                struct il_code_block const *il_blk) {
     struct jit_inst const* inst = il_blk->inst_list;
@@ -1408,8 +1452,8 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
         inst++;
     }
 
-    x86asm_mov_imm32_reg32(out->cycle_count, EDI);
-    x86asm_mov_reg32_reg32(EAX, ESI);
+    x86asm_mov_imm32_reg32(out->cycle_count, REG_ARG0/* NATIVE_DISPATCH_CYCLE_COUNT_REG */);
+    x86asm_mov_reg32_reg32(EAX, REG_ARG1/* NATIVE_DISPATCH_JUMP_REG */);
     emit_stack_frame_close();
     native_check_cycles_emit();
 }

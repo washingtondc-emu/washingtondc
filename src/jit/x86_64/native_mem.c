@@ -34,6 +34,7 @@
 #include "MemoryMap.h"
 #include "exec_mem.h"
 #include "dreamcast.h"
+#include "abi.h"
 
 #include "native_mem.h"
 
@@ -78,28 +79,34 @@ void native_mem_cleanup(void) {
 }
 
 void native_mem_read_32(struct memory_map const *map) {
+    ms_shadow_open();
     x86_64_align_stack();
     struct native_mem_map *native_map = mem_map_impl(map);
     if (!native_map)
         RAISE_ERROR(ERROR_INTEGRITY);
     x86asm_call_ptr(native_map->read_32_impl);
+    ms_shadow_close();
 }
 
 void native_mem_read_16(struct memory_map const *map) {
+    ms_shadow_open();
     x86_64_align_stack();
     struct native_mem_map *native_map = mem_map_impl(map);
     if (!native_map)
         RAISE_ERROR(ERROR_INTEGRITY);
     x86asm_call_ptr(native_map->read_16_impl);
     x86asm_and_imm32_rax(0x0000ffff);
+    ms_shadow_close();
 }
 
 void native_mem_write_32(struct memory_map const *map) {
+    ms_shadow_open();
     x86_64_align_stack();
     struct native_mem_map *native_map = mem_map_impl(map);
     if (!native_map)
         RAISE_ERROR(ERROR_INTEGRITY);
     x86asm_call_ptr(native_map->write_32_impl);
+    ms_shadow_close();
 }
 
 static void error_func(void) {
@@ -110,6 +117,10 @@ static void* emit_native_mem_read_16(struct memory_map const *map) {
     void *native_mem_read_16_impl = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_mem_read_16_impl, BASIC_ALLOC);
 
+    static unsigned const addr_reg = EAX;
+
+    static unsigned const func_call_reg = REG_ARG3;
+
     unsigned region_no;
     for (region_no = 0; region_no < map->n_regions; region_no++) {
         struct memory_map_region const *region = map->regions + region_no;
@@ -117,16 +128,16 @@ static void* emit_native_mem_read_16(struct memory_map const *map) {
         struct x86asm_lbl8 check_next;
         x86asm_lbl8_init(&check_next);
 
-        x86asm_mov_reg32_reg32(EDI, EAX);
-        x86asm_andl_imm32_reg32(region->range_mask, EAX);
+        x86asm_mov_reg32_reg32(REG_ARG0, addr_reg);
+        x86asm_andl_imm32_reg32(region->range_mask, addr_reg);
 
         uint32_t region_start = region->first_addr,
             region_end = region->last_addr - (sizeof(uint16_t) - 1);
 
-        x86asm_cmpl_imm32_reg32(region_start, EAX);
+        x86asm_cmpl_imm32_reg32(region_start, addr_reg);
         x86asm_jb_lbl8(&check_next);
 
-        x86asm_cmpl_imm32_reg32(region_end, EAX);
+        x86asm_cmpl_imm32_reg32(region_end, addr_reg);
         x86asm_ja_lbl8(&check_next);
 
         switch (region->id) {
@@ -136,10 +147,10 @@ static void* emit_native_mem_read_16(struct memory_map const *map) {
             break;
         default:
             // tail-call
-            x86asm_andl_imm32_reg32(region->mask, EDI);
-            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, RSI);
-            x86asm_mov_imm64_reg64((uintptr_t)region->intf->read16, RCX);
-            x86asm_jmpq_reg64(RCX);
+            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG1);
+            x86asm_mov_imm64_reg64((uintptr_t)region->intf->read16, func_call_reg);
+            x86asm_jmpq_reg64(func_call_reg);
         }
 
         // check next region
@@ -158,6 +169,11 @@ static void* emit_native_mem_read_32(struct memory_map const *map) {
     void *native_mem_read_32_impl = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_mem_read_32_impl, BASIC_ALLOC);
 
+    static unsigned const addr_reg = EAX;
+
+    // not actually used as an arg, I just need something volatile here
+    static unsigned const func_call_reg = REG_ARG3;
+
     unsigned region_no;
     for (region_no = 0; region_no < map->n_regions; region_no++) {
         struct memory_map_region const *region = map->regions + region_no;
@@ -165,16 +181,16 @@ static void* emit_native_mem_read_32(struct memory_map const *map) {
         struct x86asm_lbl8 check_next;
         x86asm_lbl8_init(&check_next);
 
-        x86asm_mov_reg32_reg32(EDI, EAX);
-        x86asm_andl_imm32_reg32(region->range_mask, EAX);
+        x86asm_mov_reg32_reg32(REG_ARG0, addr_reg);
+        x86asm_andl_imm32_reg32(region->range_mask, addr_reg);
 
         uint32_t region_start = region->first_addr,
             region_end = region->last_addr - (sizeof(uint32_t) - 1);
 
-        x86asm_cmpl_imm32_reg32(region_start, EAX);
+        x86asm_cmpl_imm32_reg32(region_start, addr_reg);
         x86asm_jb_lbl8(&check_next);
 
-        x86asm_cmpl_imm32_reg32(region_end, EAX);
+        x86asm_cmpl_imm32_reg32(region_end, addr_reg);
         x86asm_ja_lbl8(&check_next);
 
         switch (region->id) {
@@ -184,10 +200,10 @@ static void* emit_native_mem_read_32(struct memory_map const *map) {
             break;
         default:
             // tail-call
-            x86asm_andl_imm32_reg32(region->mask, EDI);
-            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, RSI);
-            x86asm_mov_imm64_reg64((uintptr_t)region->intf->read32, RCX);
-            x86asm_jmpq_reg64(RCX);
+            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG1);
+            x86asm_mov_imm64_reg64((uintptr_t)region->intf->read32, func_call_reg);
+            x86asm_jmpq_reg64(func_call_reg);
         }
 
         // check next region
@@ -206,6 +222,11 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
     void *native_mem_write_32_impl = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_mem_write_32_impl, BASIC_ALLOC);
 
+    static unsigned const addr_reg = EAX;
+
+    // not actually used as an arg, I just need something volatile here
+    static unsigned const func_call_reg = REG_ARG3;
+
     unsigned region_no;
     for (region_no = 0; region_no < map->n_regions; region_no++) {
         struct memory_map_region const *region = map->regions + region_no;
@@ -213,16 +234,16 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
         struct x86asm_lbl8 check_next;
         x86asm_lbl8_init(&check_next);
 
-        x86asm_mov_reg32_reg32(EDI, EAX);
-        x86asm_andl_imm32_reg32(region->range_mask, EAX);
+        x86asm_mov_reg32_reg32(REG_ARG0, addr_reg);
+        x86asm_andl_imm32_reg32(region->range_mask, addr_reg);
 
         uint32_t region_start = region->first_addr,
             region_end = region->last_addr - (sizeof(uint32_t) - 1);
 
-        x86asm_cmpl_imm32_reg32(region_start, EAX);
+        x86asm_cmpl_imm32_reg32(region_start, addr_reg);
         x86asm_jb_lbl8(&check_next);
 
-        x86asm_cmpl_imm32_reg32(region_end, EAX);
+        x86asm_cmpl_imm32_reg32(region_end, addr_reg);
         x86asm_ja_lbl8(&check_next);
 
         switch (region->id) {
@@ -232,10 +253,10 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
             break;
         default:
             // tail-call (the value to write is still in ESI)
-            x86asm_andl_imm32_reg32(region->mask, EDI);
-            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, RDX);
-            x86asm_mov_imm64_reg64((uintptr_t)region->intf->write32, RCX);
-            x86asm_jmpq_reg64(RCX);
+            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG2);
+            x86asm_mov_imm64_reg64((uintptr_t)region->intf->write32, func_call_reg);
+            x86asm_jmpq_reg64(func_call_reg);
         }
 
         // check next region
@@ -254,18 +275,18 @@ static void
 emit_ram_read_32(struct memory_map_region const *region, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, EDI);
-    x86asm_mov_imm64_reg64((uintptr_t)mem->mem, RSI);
-    x86asm_movl_sib_reg(RSI, 1, EDI, EAX);
+    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
+    x86asm_movl_sib_reg(REG_ARG1, 1, REG_ARG0, EAX);
 }
 
 static void
 emit_ram_read_16(struct memory_map_region const *region, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, EDI);
-    x86asm_mov_imm64_reg64((uintptr_t)mem->mem, RSI);
-    x86asm_movw_sib_reg(RSI, 1, EDI, EAX);
+    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
+    x86asm_movw_sib_reg(REG_ARG1, 1, REG_ARG0, EAX);
 }
 
 static void
@@ -274,9 +295,9 @@ emit_ram_write_32(struct memory_map_region const *region, void *ctxt) {
     // address should be in EDI
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, EDI);
+    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, RAX);
-    x86asm_movl_reg_sib(ESI, RAX, 1, EDI);
+    x86asm_movl_reg_sib(REG_ARG1, RAX, 1, REG_ARG0);
 }
 
 static struct native_mem_map *mem_map_impl(struct memory_map const *map) {

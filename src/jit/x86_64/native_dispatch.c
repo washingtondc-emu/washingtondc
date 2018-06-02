@@ -31,6 +31,7 @@
 #include "emit_x86_64.h"
 #include "jit/code_cache.h"
 #include "jit/jit.h"
+#include "abi.h"
 
 #include "native_dispatch.h"
 
@@ -71,6 +72,7 @@ static void native_dispatch_entry_create(void) {
     native_dispatch_entry = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_dispatch_entry, BASIC_ALLOC);
 
+#if defined(ABI_UNIX)
     x86asm_pushq_reg64(RBP);
     x86asm_mov_reg64_reg64(RSP, RBP);
     x86asm_pushq_reg64(RBX);
@@ -78,6 +80,25 @@ static void native_dispatch_entry_create(void) {
     x86asm_pushq_reg64(R13);
     x86asm_pushq_reg64(R14);
     x86asm_pushq_reg64(R15);
+#elif defined(ABI_MICROSOFT)
+    x86asm_pushq_reg64(RBP);
+    x86asm_mov_reg64_reg64(RSP, RBP);
+    x86asm_pushq_reg64(RBX);
+    x86asm_pushq_reg64(RDI);
+    x86asm_pushq_reg64(RSI);
+    x86asm_pushq_reg64(R12);
+    x86asm_pushq_reg64(R13);
+    x86asm_pushq_reg64(R14);
+    x86asm_pushq_reg64(R15);
+
+    /*
+     * The native-dispatch code uses its own calling convention which is mostly
+     * identical to the UNIX convention, so we have to move arg0 into rdi
+     */
+    /* x86asm_mov_reg64_reg64(REG_ARG0, RDI); */
+#else
+#error unknown abi
+#endif
 
     /*
      * When native_dispatch_entry is called, the stack is 8 bytes after a
@@ -119,82 +140,95 @@ static void native_dispatch_emit(void) {
      *    values change often.
      */
 
+    // 32-bit SH4 PC address
+    static unsigned const pc_reg = REG_ARG0;
+    static unsigned const cachep_reg = RBX;
+    static unsigned const tmp_reg_1 = R12;
+    static unsigned const tmp_reg_2 = R13;
+    static unsigned const code_hash_reg = R15;
+    static unsigned const code_cache_tbl_ptr_reg = R14;
+    static unsigned const func_reg = RAX;
+    static unsigned const ret_reg = RAX;
+
     x86asm_lbl8_init(&check_valid_bit);
     x86asm_lbl8_init(&code_cache_slow_path);
     x86asm_lbl8_init(&have_valid_ent);
     x86asm_lbl8_init(&compile);
 
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl, RAX);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl, code_cache_tbl_ptr_reg);
 
-    x86asm_mov_reg32_reg32(EDI, ECX);
-    x86asm_andl_imm32_reg32(CODE_CACHE_HASH_TBL_MASK, ECX);
+    x86asm_mov_reg32_reg32(pc_reg, code_hash_reg);
+    x86asm_andl_imm32_reg32(CODE_CACHE_HASH_TBL_MASK, code_hash_reg);
 
-    x86asm_movq_sib_reg(RAX, 8, RCX, RBX);
+    x86asm_movq_sib_reg(code_cache_tbl_ptr_reg, 8, code_hash_reg, cachep_reg);
 
     // make sure the pointer isn't null; if so, jump to the slow-path
-    x86asm_testq_reg64_reg64(RBX, RBX);
+    x86asm_testq_reg64_reg64(cachep_reg, cachep_reg);
     x86asm_jz_lbl8(&code_cache_slow_path);
 
-    // now check the address against the one that's still in EDI
+    // now check the address against the one that's still in pc_reg
     size_t const addr_offs = offsetof(struct cache_entry, node.key);
     if (addr_offs >= 256)
         RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
-    x86asm_movl_disp8_reg_reg(addr_offs, RBX, RSI);
-    x86asm_cmpl_reg32_reg32(ESI, EDI);
+    x86asm_movl_disp8_reg_reg(addr_offs, cachep_reg, tmp_reg_1);
+    x86asm_cmpl_reg32_reg32(tmp_reg_1, pc_reg);
     x86asm_jnz_lbl8(&code_cache_slow_path);// not equal
 
     x86asm_lbl8_define(&check_valid_bit);
-    // RBX now points to the struct cache_entry
+    // cachep_reg now points to the struct cache_entry
     size_t const valid_offs = offsetof(struct cache_entry, valid);
-    x86asm_movb_disp8_reg_reg(valid_offs, RBX, EAX);// EMITTING WRONG INST
-    x86asm_testl_imm32_reg32(1, EAX);
+    x86asm_movb_disp8_reg_reg(valid_offs, cachep_reg, tmp_reg_1);// EMITTING WRONG INST
+    x86asm_testl_imm32_reg32(1, tmp_reg_1);
     x86asm_jnz_lbl8(&have_valid_ent);
 
     x86asm_lbl8_define(&compile);
 
     /*
-     * the PC should still be in EDI.
+     * the PC should still be in pc_reg.
      * this is the last time we'll need it so there's no need to store it
      * anywhere
      */
-    x86asm_mov_reg32_reg32(EDI, EDX);
-    x86asm_mov_reg64_reg64(RBX, RSI);
-    x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), RSI);
-    x86asm_mov_imm64_reg64((uintptr_t)dreamcast_get_cpu(), RDI);
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)jit_compile_native, RAX);
-    x86asm_call_reg(RAX);
+    x86asm_mov_reg32_reg32(pc_reg, REG_ARG2);
+    x86asm_mov_reg64_reg64(cachep_reg, REG_ARG1);
+    x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), REG_ARG1);
+    x86asm_mov_imm64_reg64((uintptr_t)dreamcast_get_cpu(), pc_reg);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)jit_compile_native, func_reg);
+    x86asm_addq_imm8_reg(-32, RSP);
+    x86asm_call_reg(func_reg);
+    x86asm_addq_imm8_reg(32, RSP);
 
     // now set the valid bit
-    x86asm_xorl_reg32_reg32(EAX, EAX);
-    x86asm_incl_reg32(EAX);
-    x86asm_movb_reg_disp8_reg(EAX, valid_offs, RBX);
+    x86asm_xorl_reg32_reg32(ret_reg, ret_reg);
+    x86asm_incl_reg32(ret_reg);
+    x86asm_movb_reg_disp8_reg(ret_reg, valid_offs, cachep_reg);
 
     x86asm_lbl8_define(&have_valid_ent);
-    // RBX points to a valid struct cache_entry which we want to jump to.
+    // cachep_reg points to a valid struct cache_entry which we want to jump to.
 
     size_t const native_offs = offsetof(struct cache_entry, blk.x86_64.native);
     if (native_offs >= 256)
         RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
-    x86asm_movq_disp8_reg_reg(native_offs, RBX, RDX);
+    x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, func_reg);
 
     // the native pointer now resides in RDX
-    x86asm_jmpq_reg64(RDX); // tail-call elimination
+    x86asm_jmpq_reg64(func_reg); // tail-call elimination
     // after this point no code is executed
 
     x86asm_lbl8_define(&code_cache_slow_path);
 
     // call code_cache_find_slow
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)&code_cache_find_slow, RAX);
-    x86asm_mov_reg32_reg32(EDI, RBX);
-    x86asm_mov_reg64_reg64(RCX, R12);
-    x86asm_call_reg(RAX);
-    x86asm_mov_reg32_reg32(RBX, EDI);
-    x86asm_mov_reg64_reg64(R12, RCX);
-    x86asm_mov_reg64_reg64(RAX, RBX);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)&code_cache_find_slow, func_reg);
+    x86asm_mov_reg32_reg32(pc_reg, tmp_reg_1);
+    x86asm_mov_reg64_reg64(code_hash_reg, tmp_reg_2);
+    x86asm_addq_imm8_reg(-32, RSP);
+    x86asm_call_reg(func_reg);
+    x86asm_addq_imm8_reg(32, RSP);
+    x86asm_mov_reg32_reg32(tmp_reg_1, pc_reg);
+    x86asm_mov_reg64_reg64(tmp_reg_2, code_hash_reg);
+    x86asm_mov_reg64_reg64(ret_reg, cachep_reg);
 
     // now write the pointer into the table
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl, RSI);
-    x86asm_movq_reg_sib(RAX, RSI, 8, RCX);
+    x86asm_movq_reg_sib(ret_reg, code_cache_tbl_ptr_reg, 8, code_hash_reg);
 
     // now jump up to the compile-point
     x86asm_jmp_lbl8(&check_valid_bit);
@@ -212,35 +246,56 @@ void native_check_cycles_emit(void) {
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
 
-    load_quad_into_reg(sched_tgt, RCX);
-    load_quad_into_reg(cycle_stamp, RAX);
-    x86asm_addq_reg64_reg64(RAX, RDI);
-    x86asm_cmpq_reg64_reg64(RCX, RDI);
+    static unsigned const sched_tgt_reg = RBX;
+    static unsigned const cycle_count_reg = REG_ARG0;
+    static unsigned const jump_reg = REG_ARG1;
+    static unsigned const cycle_stamp_reg = RAX;
+    static unsigned const ret_reg = RAX;
+
+    load_quad_into_reg(sched_tgt, sched_tgt_reg);
+    load_quad_into_reg(cycle_stamp, cycle_stamp_reg);
+    x86asm_addq_reg64_reg64(cycle_stamp_reg, cycle_count_reg);
+    x86asm_cmpq_reg64_reg64(sched_tgt_reg, cycle_count_reg);
     x86asm_jb_lbl8(&dont_return);
 
     // return PC
-    x86asm_mov_reg32_reg32(ESI, EAX);
+    x86asm_mov_reg32_reg32(jump_reg, ret_reg);
 
     // store sched_tgt into cycle_stamp
-    store_quad_from_reg(cycle_stamp, RCX, RDX);
+    store_quad_from_reg(cycle_stamp, sched_tgt_reg, R8);
 
     // close the stack frame
     x86asm_addq_imm8_reg(8, RSP);
+
+#if defined(ABI_UNIX)
     x86asm_popq_reg64(R15);
     x86asm_popq_reg64(R14);
     x86asm_popq_reg64(R13);
     x86asm_popq_reg64(R12);
     x86asm_popq_reg64(RBX);
     x86asm_popq_reg64(RBP);
+#elif defined(ABI_MICROSOFT)
+    x86asm_popq_reg64(R15);
+    x86asm_popq_reg64(R14);
+    x86asm_popq_reg64(R13);
+    x86asm_popq_reg64(R12);
+    x86asm_popq_reg64(RSI);
+    x86asm_popq_reg64(RDI);
+    x86asm_popq_reg64(RBX);
+    x86asm_popq_reg64(RBP);
+#else
+#error unknown abi
+#endif
+
     x86asm_ret();
 
     // continue
     x86asm_lbl8_define(&dont_return);
 
-    store_quad_from_reg(cycle_stamp, RDI, RDX);
+    store_quad_from_reg(cycle_stamp, cycle_count_reg, R8);
 
     // call native_dispatch
-    x86asm_mov_reg32_reg32(ESI, EDI);
+    x86asm_mov_reg32_reg32(jump_reg, REG_ARG0);
     native_dispatch_emit();
 
     x86asm_lbl8_cleanup(&dont_return);
