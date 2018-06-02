@@ -32,6 +32,9 @@
  * isn't going to be useful for debugging the early boot because the firmware
  * doesn't start using its own system calls until after it gets to the RTC
  * reset screen.
+ *
+ * Names and indices of these system calls were obtained from Marcus Comstedt's
+ * page at http://mc.pp.se/dc/syscalls.html .
  */
 
 #ifndef DEEP_SYSCALL_TRACE
@@ -49,38 +52,59 @@
     } while (0)
 
 static char const* cmd_name(reg32_t r4) {
+#define CMD_NAME_BUF_LEN 32
+    static char cmd_name_buf[CMD_NAME_BUF_LEN];
+
     switch (r4) {
     case 16:
-        return "READ_PIO";
+        strncpy(cmd_name_buf, "READ_PIO", CMD_NAME_BUF_LEN);
+        break;
     case 17:
-        return "READ_DMA";
+        strncpy(cmd_name_buf, "READ_DMA", CMD_NAME_BUF_LEN);
+        break;
     case 18:
-        return "GET_TOC";
+        strncpy(cmd_name_buf, "GET_TOC", CMD_NAME_BUF_LEN);
+        break;
     case 19:
-        return "GET_TOC_2";
+        strncpy(cmd_name_buf, "GET_TOC_2", CMD_NAME_BUF_LEN);
+        break;
     case 20:
-        return "PLAY";
+        strncpy(cmd_name_buf, "PLAY", CMD_NAME_BUF_LEN);
+        break;
     case 21:
-        return "PLAY_2";
+        strncpy(cmd_name_buf, "PLAY_2", CMD_NAME_BUF_LEN);
+        break;
     case 22:
-        return "PAUSE";
+        strncpy(cmd_name_buf, "PAUSE", CMD_NAME_BUF_LEN);
+        break;
     case 23:
-        return "RELEASE";
+        strncpy(cmd_name_buf, "RELEASE", CMD_NAME_BUF_LEN);
+        break;
     case 24:
-        return "INIT";
+        strncpy(cmd_name_buf, "INIT", CMD_NAME_BUF_LEN);
+        break;
     case 27:
-        return "SEEK";
+        strncpy(cmd_name_buf, "SEEK", CMD_NAME_BUF_LEN);
+        break;
     case 28:
-        return "READ";
+        strncpy(cmd_name_buf, "READ", CMD_NAME_BUF_LEN);
+        break;
     case 33:
-        return "STOP";
+        strncpy(cmd_name_buf, "STOP", CMD_NAME_BUF_LEN);
+        break;
     case 34:
-        return "GET_SCD";
+        strncpy(cmd_name_buf, "GET_SCD", CMD_NAME_BUF_LEN);
+        break;
     case 35:
-        return "GET_SESSION";
+        strncpy(cmd_name_buf, "GET_SESSION", CMD_NAME_BUF_LEN);
+        break;
+    default:
+        snprintf(cmd_name_buf, CMD_NAME_BUF_LEN,
+                 "UNKNOWN <0x%02x>", (unsigned)r4);
+        break;
     }
-
-    return "UNKNOWN_CMD";
+    cmd_name_buf[CMD_NAME_BUF_LEN - 1] = '\0';
+    return cmd_name_buf;
 }
 
 void deep_syscall_notify_jump(addr32_t pc) {
@@ -91,12 +115,14 @@ void deep_syscall_notify_jump(addr32_t pc) {
         reg32_t r7 = *sh4_gen_reg(sh4, 7);
 
         if (r6 == -1) {
-            if (r7 == 0)
+            if (r7 == 0) {
                 SYSCALL_TRACE("MISC_INIT\n");
-            else if (r7 == 1)
+            } else if (r7 == 1) {
                 SYSCALL_TRACE("MISC_SETVECTOR\n");
-            else
-                SYSCALL_TRACE("unkown system call\n");
+            } else {
+                SYSCALL_TRACE("unknown system call (r6=0x%02x, r7=0x%02x)\n",
+                              (unsigned)r6, (unsigned)r7);
+            }
         } else if (r6 == 0) {
             switch (r7) {
             case 0:
@@ -112,7 +138,7 @@ void deep_syscall_notify_jump(addr32_t pc) {
             case 3:
                 SYSCALL_TRACE("GDROM_INIT\n");
                 break;
-            case 5:
+            case 4:
                 SYSCALL_TRACE("GDROM_CHECK_DRIVE\n");
                 break;
             case 8:
@@ -125,10 +151,12 @@ void deep_syscall_notify_jump(addr32_t pc) {
                 SYSCALL_TRACE("GDROM_SECTOR_MODE\n");
                 break;
             default:
-                SYSCALL_TRACE("unkown system call\n");
+                SYSCALL_TRACE("unknown system call (r6=0x%02x, r7=0x%02x)\n",
+                              (unsigned)r6, (unsigned)r7);
             }
         } else {
-            SYSCALL_TRACE("unkown system call\n");
+            SYSCALL_TRACE("unknown system call (r6=0x%02x, r7=0x%02x)\n",
+                          (unsigned)r6, (unsigned)r7);
         }
     }
 }
