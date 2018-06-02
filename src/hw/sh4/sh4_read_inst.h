@@ -34,6 +34,10 @@
 #include "mem_areas.h"
 #include "MemoryMap.h"
 
+#ifdef DEEP_SYSCALL_TRACE
+#include "deep_syscall_trace.h"
+#endif
+
 static inline void
 sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
     /*

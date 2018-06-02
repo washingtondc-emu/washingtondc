@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -44,8 +44,8 @@
 
 #define SYSCALL_TRACE(msg, ...)                                         \
     do {                                                                \
-        LOG_DBG("SYSCALL: ");                                           \
-        LOG_DBG(msg, ##__VA_ARGS__);                                    \
+        printf("SYSCALL: ");                                            \
+        printf(msg, ##__VA_ARGS__);                                     \
     } while (0)
 
 static char const* cmd_name(reg32_t r4) {
@@ -88,7 +88,7 @@ void deep_syscall_notify_jump(addr32_t pc) {
     if (pc == GDROM_SYSCALL_ADDR) {
         reg32_t r4 = *sh4_gen_reg(sh4, 4);
         reg32_t r6 = *sh4_gen_reg(sh4, 6);
-        reg32_t r7= *sh4_gen_reg(sh4, 7);
+        reg32_t r7 = *sh4_gen_reg(sh4, 7);
 
         if (r6 == -1) {
             if (r7 == 0)
@@ -124,7 +124,7 @@ void deep_syscall_notify_jump(addr32_t pc) {
             case 10:
                 SYSCALL_TRACE("GDROM_SECTOR_MODE\n");
                 break;
-            dfault:
+            default:
                 SYSCALL_TRACE("unkown system call\n");
             }
         } else {
