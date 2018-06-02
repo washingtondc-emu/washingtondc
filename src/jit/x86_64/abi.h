@@ -66,7 +66,32 @@
 
 #endif
 
-/* #define NATIVE_DISPATCH_CYCLE_COUNT_REG RDI */
-/* #define NATIVE_DISPATCH_JUMP_REG RSI */
+#define REG_RET RAX
+
+/*
+ * volatile registers: registers whose values are not preserved across function
+ * calls.
+ *
+ * The REG_ARG and REG_RET registers defined above are also considered to be
+ * volatile general-purpose registers, and can be safely be used as such.
+ */
+
+#define REG_VOL0 R10
+#define REG_VOL1 R11
+
+/*
+ * non-volatile registers: registers whose values are preserved across function
+ * calls.
+ *
+ * Note that the ones listed here are just the ones common across Microsoft and
+ * Unix ABIs.  There are other nonvolatile registers you have to save when
+ * opening a stack frame.
+ */
+
+#define REG_NONVOL0 RBX
+#define REG_NONVOL1 R12
+#define REG_NONVOL2 R13
+#define REG_NONVOL3 R14
+#define REG_NONVOL4 R15
 
 #endif

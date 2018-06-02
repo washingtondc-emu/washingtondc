@@ -142,13 +142,13 @@ static void native_dispatch_emit(void) {
 
     // 32-bit SH4 PC address
     static unsigned const pc_reg = REG_ARG0;
-    static unsigned const cachep_reg = RBX;
-    static unsigned const tmp_reg_1 = R12;
-    static unsigned const tmp_reg_2 = R13;
-    static unsigned const code_hash_reg = R15;
-    static unsigned const code_cache_tbl_ptr_reg = R14;
-    static unsigned const func_reg = RAX;
-    static unsigned const ret_reg = RAX;
+    static unsigned const cachep_reg = REG_NONVOL0;
+    static unsigned const tmp_reg_1 = REG_NONVOL1;
+    static unsigned const tmp_reg_2 = REG_NONVOL2;
+    static unsigned const code_cache_tbl_ptr_reg = REG_NONVOL3;
+    static unsigned const code_hash_reg = REG_NONVOL4;
+    static unsigned const func_reg = REG_RET;
+    static unsigned const ret_reg = REG_RET;
 
     x86asm_lbl8_init(&check_valid_bit);
     x86asm_lbl8_init(&code_cache_slow_path);
@@ -246,11 +246,11 @@ void native_check_cycles_emit(void) {
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
 
-    static unsigned const sched_tgt_reg = RBX;
+    static unsigned const sched_tgt_reg = REG_NONVOL0;
     static unsigned const cycle_count_reg = REG_ARG0;
     static unsigned const jump_reg = REG_ARG1;
-    static unsigned const cycle_stamp_reg = RAX;
-    static unsigned const ret_reg = RAX;
+    static unsigned const cycle_stamp_reg = REG_RET;
+    static unsigned const ret_reg = REG_RET;
 
     load_quad_into_reg(sched_tgt, sched_tgt_reg);
     load_quad_into_reg(cycle_stamp, cycle_stamp_reg);
@@ -262,7 +262,7 @@ void native_check_cycles_emit(void) {
     x86asm_mov_reg32_reg32(jump_reg, ret_reg);
 
     // store sched_tgt into cycle_stamp
-    store_quad_from_reg(cycle_stamp, sched_tgt_reg, R8);
+    store_quad_from_reg(cycle_stamp, sched_tgt_reg, REG_VOL1);
 
     // close the stack frame
     x86asm_addq_imm8_reg(8, RSP);
@@ -292,7 +292,7 @@ void native_check_cycles_emit(void) {
     // continue
     x86asm_lbl8_define(&dont_return);
 
-    store_quad_from_reg(cycle_stamp, cycle_count_reg, R8);
+    store_quad_from_reg(cycle_stamp, cycle_count_reg, REG_VOL1);
 
     // call native_dispatch
     x86asm_mov_reg32_reg32(jump_reg, REG_ARG0);

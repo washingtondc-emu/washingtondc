@@ -575,19 +575,19 @@ void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
     ms_shadow_close();
 
     postfunc();
-    ungrab_register(RAX);
+    ungrab_register(REG_RET);
 }
 
 // JIT_OP_JUMP implementation
 void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.jump.slot_no;
 
-    grab_register(RAX);
-    evict_register(RAX);
+    grab_register(REG_RET);
+    evict_register(REG_RET);
 
     grab_slot(slot_no);
 
-    x86asm_mov_reg32_reg32(slots[slot_no].reg_no, EAX);
+    x86asm_mov_reg32_reg32(slots[slot_no].reg_no, REG_RET);
 
     ungrab_slot(slot_no);
 }
@@ -602,11 +602,11 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_register(RAX);
-    evict_register(RAX);
+    grab_register(REG_RET);
+    evict_register(REG_RET);
 
     grab_slot(flag_slot);
-    x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, EAX);
+    x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, REG_RET);
     ungrab_slot(flag_slot);
 
     grab_slot(jmp_addr_slot);
@@ -617,12 +617,12 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
      * the normal jmp addr if the flag is set.
      */
     x86asm_and_imm32_rax(1);
-    x86asm_mov_reg32_reg32(slots[alt_jmp_addr_slot].reg_no, EAX);
+    x86asm_mov_reg32_reg32(slots[alt_jmp_addr_slot].reg_no, REG_RET);
     if (t_flag)
         x86asm_jz_lbl8(&lbl);
     else
         x86asm_jnz_lbl8(&lbl);
-    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, EAX);
+    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, REG_RET);
     x86asm_lbl8_define(&lbl);
 
     // the chosen address is now in %rax, so we're ready to return
@@ -630,7 +630,7 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_slot(alt_jmp_addr_slot);
     ungrab_slot(jmp_addr_slot);
 
-    ungrab_register(RAX); // not that it matters at this point...
+    ungrab_register(REG_RET); // not that it matters at this point...
 
     x86asm_lbl8_cleanup(&lbl);
 }
@@ -673,7 +673,7 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
     ms_shadow_close();
 
     postfunc();
-    ungrab_register(RAX);
+    ungrab_register(REG_RET);
 }
 
 // JIT_OP_READ_16_CONSTADDR implementation
@@ -689,9 +689,9 @@ void emit_read_16_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
     postfunc();
 
     grab_slot(slot_no);
-    x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
+    x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
-    ungrab_register(RAX);
+    ungrab_register(REG_RET);
     ungrab_slot(slot_no);
 }
 
@@ -723,10 +723,10 @@ void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
     postfunc();
 
     grab_slot(slot_no);
-    x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
+    x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
-    ungrab_register(RAX);
+    ungrab_register(REG_RET);
 }
 
 // JIT_OP_READ_32_SLOT implementation
@@ -746,10 +746,10 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     postfunc();
 
     grab_slot(dst_slot);
-    x86asm_mov_reg32_reg32(EAX, slots[dst_slot].reg_no);
+    x86asm_mov_reg32_reg32(REG_RET, slots[dst_slot].reg_no);
 
     ungrab_slot(dst_slot);
-    ungrab_register(RAX);
+    ungrab_register(REG_RET);
 }
 
 // JIT_OP_WRITE_32_SLOT implementation
@@ -770,7 +770,7 @@ void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 
     postfunc();
 
-    ungrab_register(RAX);
+    ungrab_register(REG_RET);
 }
 
 static void
@@ -808,16 +808,16 @@ emit_store_slot(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.store_slot.slot_no;
     void const *dst_ptr = inst->immed.store_slot.dst;
 
-    grab_register(RAX);
-    evict_register(RAX);
+    grab_register(REG_RET);
+    evict_register(REG_RET);
     grab_slot(slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
-    x86asm_mov_imm64_reg64((uintptr_t)dst_ptr, RAX);
-    x86asm_mov_reg32_indreg32(reg_no, RAX);
+    x86asm_mov_imm64_reg64((uintptr_t)dst_ptr, REG_RET);
+    x86asm_mov_reg32_indreg32(reg_no, REG_RET);
 
     ungrab_slot(slot_no);
-    ungrab_register(RAX);
+    ungrab_register(REG_RET);
 }
 
 static void
@@ -857,19 +857,19 @@ emit_add_const32(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.add_const32.slot_dst;
     uint32_t const_val = inst->immed.add_const32.const32;
 
-    grab_register(RAX);
-    evict_register(RAX);
+    grab_register(REG_RET);
+    evict_register(REG_RET);
 
     grab_slot(slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
 
-    x86asm_mov_reg32_reg32(reg_no, EAX);
+    x86asm_mov_reg32_reg32(reg_no, REG_RET);
     x86asm_add_imm32_eax(const_val);
-    x86asm_mov_reg32_reg32(EAX, reg_no);
+    x86asm_mov_reg32_reg32(REG_RET, reg_no);
 
     ungrab_slot(slot_no);
-    ungrab_register(RAX);
+    ungrab_register(REG_RET);
 }
 
 static void
@@ -979,20 +979,20 @@ emit_slot_to_bool(Sh4 *sh4, struct jit_inst const *inst) {
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_register(RAX);
-    evict_register(RAX);
+    grab_register(REG_RET);
+    evict_register(REG_RET);
     grab_slot(slot_no);
 
-    x86asm_xorl_reg32_reg32(EAX, EAX);
+    x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
     x86asm_testl_reg32_reg32(slots[slot_no].reg_no, slots[slot_no].reg_no);
     x86asm_jz_lbl8(&lbl);
-    x86asm_incl_reg32(EAX);
+    x86asm_incl_reg32(REG_RET);
 
     x86asm_lbl8_define(&lbl);
-    x86asm_mov_reg32_reg32(EAX, slots[slot_no].reg_no);
+    x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
-    ungrab_register(RAX);
+    ungrab_register(REG_RET);
 
     x86asm_lbl8_cleanup(&lbl);
 }
@@ -1217,24 +1217,24 @@ static void emit_mul_u32(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_rhs = inst->immed.mul_u32.slot_rhs;
     unsigned slot_dst = inst->immed.mul_u32.slot_dst;
 
-    evict_register(EAX);
+    evict_register(REG_RET);
     evict_register(EDX);
-    grab_register(EAX);
+    grab_register(REG_RET);
     grab_register(EDX);
 
     grab_slot(slot_lhs);
     grab_slot(slot_rhs);
     grab_slot(slot_dst);
 
-    x86asm_mov_reg32_reg32(slots[slot_lhs].reg_no, EAX);
+    x86asm_mov_reg32_reg32(slots[slot_lhs].reg_no, REG_RET);
     x86asm_mull_reg32(slots[slot_rhs].reg_no);
-    x86asm_mov_reg32_reg32(EAX, slots[slot_dst].reg_no);
+    x86asm_mov_reg32_reg32(REG_RET, slots[slot_dst].reg_no);
 
     ungrab_slot(slot_dst);
     ungrab_slot(slot_rhs);
     ungrab_slot(slot_lhs);
     ungrab_register(EDX);
-    ungrab_register(EAX);
+    ungrab_register(REG_RET);
 }
 
 static void emit_shad(Sh4 *sh4, struct jit_inst const *inst) {
@@ -1452,8 +1452,8 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
         inst++;
     }
 
-    x86asm_mov_imm32_reg32(out->cycle_count, REG_ARG0/* NATIVE_DISPATCH_CYCLE_COUNT_REG */);
-    x86asm_mov_reg32_reg32(EAX, REG_ARG1/* NATIVE_DISPATCH_JUMP_REG */);
+    x86asm_mov_imm32_reg32(out->cycle_count, REG_ARG0);
+    x86asm_mov_reg32_reg32(REG_RET, REG_ARG1);
     emit_stack_frame_close();
     native_check_cycles_emit();
 }

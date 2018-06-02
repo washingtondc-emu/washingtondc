@@ -117,7 +117,7 @@ static void* emit_native_mem_read_16(struct memory_map const *map) {
     void *native_mem_read_16_impl = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_mem_read_16_impl, BASIC_ALLOC);
 
-    static unsigned const addr_reg = EAX;
+    static unsigned const addr_reg = REG_RET;
 
     static unsigned const func_call_reg = REG_ARG3;
 
@@ -159,8 +159,8 @@ static void* emit_native_mem_read_16(struct memory_map const *map) {
     }
 
     // raise an error, the memory addr is not in a region
-    x86asm_mov_imm64_reg64((uintptr_t)error_func, RSI);
-    x86asm_jmpq_reg64(RSI);
+    x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
+    x86asm_jmpq_reg64(REG_VOL1);
 
     return native_mem_read_16_impl;
 }
@@ -169,7 +169,7 @@ static void* emit_native_mem_read_32(struct memory_map const *map) {
     void *native_mem_read_32_impl = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_mem_read_32_impl, BASIC_ALLOC);
 
-    static unsigned const addr_reg = EAX;
+    static unsigned const addr_reg = REG_RET;
 
     // not actually used as an arg, I just need something volatile here
     static unsigned const func_call_reg = REG_ARG3;
@@ -212,8 +212,8 @@ static void* emit_native_mem_read_32(struct memory_map const *map) {
     }
 
     // raise an error, the memory addr is not in a region
-    x86asm_mov_imm64_reg64((uintptr_t)error_func, RSI);
-    x86asm_jmpq_reg64(RSI);
+    x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
+    x86asm_jmpq_reg64(REG_VOL1);
 
     return native_mem_read_32_impl;
 }
@@ -222,7 +222,7 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
     void *native_mem_write_32_impl = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_mem_write_32_impl, BASIC_ALLOC);
 
-    static unsigned const addr_reg = EAX;
+    static unsigned const addr_reg = REG_RET;
 
     // not actually used as an arg, I just need something volatile here
     static unsigned const func_call_reg = REG_ARG3;
@@ -265,8 +265,8 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
     }
 
     // raise an error, the memory addr is not in a region
-    x86asm_mov_imm64_reg64((uintptr_t)error_func, RSI);
-    x86asm_jmpq_reg64(RSI);
+    x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
+    x86asm_jmpq_reg64(REG_VOL1);
 
     return native_mem_write_32_impl;
 }
@@ -277,7 +277,7 @@ emit_ram_read_32(struct memory_map_region const *region, void *ctxt) {
 
     x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
-    x86asm_movl_sib_reg(REG_ARG1, 1, REG_ARG0, EAX);
+    x86asm_movl_sib_reg(REG_ARG1, 1, REG_ARG0, REG_RET);
 }
 
 static void
@@ -286,7 +286,7 @@ emit_ram_read_16(struct memory_map_region const *region, void *ctxt) {
 
     x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
-    x86asm_movw_sib_reg(REG_ARG1, 1, REG_ARG0, EAX);
+    x86asm_movw_sib_reg(REG_ARG1, 1, REG_ARG0, REG_RET);
 }
 
 static void
@@ -296,8 +296,8 @@ emit_ram_write_32(struct memory_map_region const *region, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
 
     x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
-    x86asm_mov_imm64_reg64((uintptr_t)mem->mem, RAX);
-    x86asm_movl_reg_sib(REG_ARG1, RAX, 1, REG_ARG0);
+    x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_RET);
+    x86asm_movl_reg_sib(REG_ARG1, REG_RET, 1, REG_ARG0);
 }
 
 static struct native_mem_map *mem_map_impl(struct memory_map const *map) {
