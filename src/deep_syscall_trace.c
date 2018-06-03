@@ -21,6 +21,8 @@
  ******************************************************************************/
 
 #include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "hw/sh4/sh4.h"
 #include "dreamcast.h"
@@ -44,6 +46,9 @@
 #include "deep_syscall_trace.h"
 
 #define GDROM_SYSCALL_ADDR 0x8c001000
+
+static uint32_t ret_addr;
+static bool in_syscall;
 
 #define SYSCALL_TRACE(msg, ...)                                         \
     do {                                                                \
@@ -110,9 +115,16 @@ static char const* cmd_name(reg32_t r4) {
 void deep_syscall_notify_jump(addr32_t pc) {
     Sh4 *sh4 = dreamcast_get_cpu();
     if (pc == GDROM_SYSCALL_ADDR) {
+        if (in_syscall) {
+            SYSCALL_TRACE("recursive syscall detected.  "
+                          "Trace will be unreliable!\n");
+        }
+
         reg32_t r4 = *sh4_gen_reg(sh4, 4);
         reg32_t r6 = *sh4_gen_reg(sh4, 6);
         reg32_t r7 = *sh4_gen_reg(sh4, 7);
+        ret_addr = sh4->reg[SH4_REG_PR];
+        in_syscall = true;
 
         if (r6 == -1) {
             if (r7 == 0) {
@@ -158,5 +170,9 @@ void deep_syscall_notify_jump(addr32_t pc) {
             SYSCALL_TRACE("unknown system call (r6=0x%02x, r7=0x%02x)\n",
                           (unsigned)r6, (unsigned)r7);
         }
+    } else if (in_syscall && pc == ret_addr) {
+        SYSCALL_TRACE("Returining 0x%08x to 0x%08x\n",
+                      (unsigned)*sh4_gen_reg(sh4, 0), ret_addr);
+        in_syscall = false;
     }
 }
