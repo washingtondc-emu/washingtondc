@@ -177,10 +177,6 @@ sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
                  * have to do this.
                  */
                 sh4_check_interrupts_no_delay_branch_check(sh4);
-
-#ifdef DEEP_SYSCALL_TRACE
-                deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
-#endif
             }
         } else {
             sh4->aborted_operation = false;
