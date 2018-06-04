@@ -518,7 +518,8 @@ gdrom_gdapro_mmio_write(struct mmio_region_g1_reg_32 *region,
 
     GDROM_TRACE("GDAPRO (0x%08x) - allowing writes from 0x%08x through "
                 "0x%08x\n",
-                gdrom_ctxt->gdapro_reg, gdrom_dma_prot_top(), gdrom_dma_prot_bot());
+                gdrom_ctxt->gdapro_reg,
+                gdrom_dma_prot_top(gdrom_ctxt), gdrom_dma_prot_bot(gdrom_ctxt));
 }
 
 static uint32_t
