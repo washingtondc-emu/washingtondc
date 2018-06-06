@@ -45,7 +45,7 @@ static struct aica_mem_hack {
      * This is read by Power Stone at PC=0xc0e5596.  It will spin forever until
      * this value is non-zero
      */
-    { .addr = 0x0080005c, .val = 1 },
+    { .addr = 0x0000005c, .val = 1 },
 
     /*
      * This value needs to point to AICA waveform memory.  at PC=0xc0e657c,
@@ -58,7 +58,7 @@ static struct aica_mem_hack {
      * know I'm not accidentally trampling over some other value that the SH4 CPU
      * software tries to access.
      */
-    { .addr = 0x00800284, .val = 0x00800000 },
+    { .addr = 0x00000284, .val = 0x00800000 },
 
     /*
      * This value needs to point to AICA waveform memory.  at PC=0xc0e65ae,
@@ -71,7 +71,7 @@ static struct aica_mem_hack {
      * know I'm not accidentally trampling over some other value that the SH4 CPU
      * software tries to access.
      */
-    { .addr = 0x00800288, .val = 0x00800004 },
+    { .addr = 0x00000288, .val = 0x00800004 },
 
     /*
      * This value needs to point to AICA waveform memory.  at PC=0xc0e657c,
@@ -84,7 +84,7 @@ static struct aica_mem_hack {
      * know I'm not accidentally trampling over some other value that the SH4 CPU
      * software tries to access.
      */
-    { .addr = 0x008002e4, .val = 0x00800008 },
+    { .addr = 0x000002e4, .val = 0x00800008 },
 
     /*
      * Once again, in Power Stone at PC=0x0c0e65ae the SH4 will read a 4-byte
@@ -92,7 +92,7 @@ static struct aica_mem_hack {
      * to.  I'm not sure what the correct address is, but having it write to
      * (probable) ARM7 instruction memory makes things work.
      */
-    { .addr = 0x008002e8, .val = 0x0080000c },
+    { .addr = 0x000002e8, .val = 0x0080000c },
 
     /*
      * Crazy Taxi reads from this one location at PC=0x0c07f462.  If it is
@@ -102,7 +102,7 @@ static struct aica_mem_hack {
      * So the value at address 0x00800104 needs to be a pointer to a place where
      * Crazy Taxi can read a 4-byte integer, and it with 0x7ff and write back.
      */
-    { .addr = 0x00800104, .val = 0x00800010 },
+    { .addr = 0x00000104, .val = 0x00800010 },
 
     /*
      * another Crazy Taxi situation, similar to the previous one.  This one
@@ -110,7 +110,7 @@ static struct aica_mem_hack {
      * pointer to aica memory again.  All I know for sure is that it will hang
      * until this is nonzero.
      */
-    { .addr = 0x00800164, .val = 0x00800014 },
+    { .addr = 0x00000164, .val = 0x00800014 },
 
     /*
      * Crazy Taxi again.  As before, I don't know what the correct value is, I
@@ -119,13 +119,13 @@ static struct aica_mem_hack {
      *
      * This happens in Crazy Taxi at PC=0x0c07f462
      */
-    { .addr = 0x00800224, .val = 0x00800018 },
+    { .addr = 0x00000224, .val = 0x00800018 },
 
     /*
      * More Crazy Taxi.
      * AICA: reading 0x00000000 from 0x008001c4 (PC is 0x0c07f462)
      */
-    { .addr = 0x008001c4, .val = 0x0080001c },
+    { .addr = 0x000001c4, .val = 0x0080001c },
 
     { .end = true }
 };
@@ -181,21 +181,20 @@ void aica_wave_mem_write_double(addr32_t addr, double val, void *ctxt) {
 uint8_t aica_wave_mem_read_8(addr32_t addr, void *ctxt) {
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
-    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
-        ((addr - 1 + sizeof(uint8_t)) > ADDR_AICA_WAVE_LAST) ||
-        ((addr - 1 + sizeof(uint8_t)) < ADDR_AICA_WAVE_FIRST)) {
-        error_set_feature("aw fuck it");
+    if ((sizeof(uint8_t) - 1 + addr) >= AICA_WAVE_MEM_LEN) {
+        error_set_feature("out-of-bounds AICA memory access");
+        error_set_address(addr);
+        error_set_length(1);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint8_t const *valp = ((uint8_t const*)wm->mem) +
-        (addr - ADDR_AICA_WAVE_FIRST);
+    uint8_t const *valp = ((uint8_t const*)wm->mem) + addr;
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
-            LOG_DBG("AICA: reading 0x%02x from 0x%08x (PC is 0x%08x)\n",
-                    (unsigned)*valp, (unsigned)addr, pc);
+        LOG_DBG("AICA: reading 0x%02x from 0x%08x (PC is 0x%08x)\n",
+                (unsigned)*valp, (unsigned)addr, pc);
     }
 
     return *valp;
@@ -204,8 +203,7 @@ uint8_t aica_wave_mem_read_8(addr32_t addr, void *ctxt) {
 void aica_wave_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
-    uint8_t *outp = ((uint8_t*)wm->mem) +
-        (addr - ADDR_AICA_WAVE_FIRST);
+    uint8_t *outp = ((uint8_t*)wm->mem) + addr;
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
@@ -214,10 +212,10 @@ void aica_wave_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
                 (unsigned)val, (unsigned)addr, pc);
     }
 
-    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
-        ((addr - 1 + sizeof(uint8_t)) > ADDR_AICA_WAVE_LAST) ||
-        ((addr - 1 + sizeof(uint8_t)) < ADDR_AICA_WAVE_FIRST)) {
-        error_set_feature("aw fuck it");
+    if ((sizeof(uint8_t) - 1 + addr) >= AICA_WAVE_MEM_LEN) {
+        error_set_feature("out-of-bounds AICA memory access");
+        error_set_address(addr);
+        error_set_length(1);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -227,21 +225,20 @@ void aica_wave_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 uint16_t aica_wave_mem_read_16(addr32_t addr, void *ctxt) {
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
-    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
-        ((addr - 1 + sizeof(uint16_t)) > ADDR_AICA_WAVE_LAST) ||
-        ((addr - 1 + sizeof(uint16_t)) < ADDR_AICA_WAVE_FIRST)) {
-        error_set_feature("aw fuck it");
+    if ((sizeof(uint16_t) - 1 + addr) >= AICA_WAVE_MEM_LEN) {
+        error_set_feature("out-of-bounds AICA memory access");
+        error_set_address(addr);
+        error_set_length(2);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint16_t const *valp = ((uint16_t const*)wm->mem) +
-        (addr - ADDR_AICA_WAVE_FIRST) / 2;
+      uint16_t const *valp = ((uint16_t const*)wm->mem) + addr / 2;
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
-            LOG_DBG("AICA: reading 0x%04x from 0x%08x (PC is 0x%08x)\n",
-                    (unsigned)*valp, (unsigned)addr, pc);
+        LOG_DBG("AICA: reading 0x%04x from 0x%08x (PC is 0x%08x)\n",
+                (unsigned)*valp, (unsigned)addr, pc);
     }
 
     return *valp;
@@ -250,8 +247,7 @@ uint16_t aica_wave_mem_read_16(addr32_t addr, void *ctxt) {
 void aica_wave_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
-    uint16_t *outp = ((uint16_t*)wm->mem) +
-        (addr - ADDR_AICA_WAVE_FIRST) / 2;
+    uint16_t *outp = ((uint16_t*)wm->mem) + addr / 2;
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
@@ -260,10 +256,10 @@ void aica_wave_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
                 (unsigned)val, (unsigned)addr, pc);
     }
 
-    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
-        ((addr - 1 + sizeof(uint16_t)) > ADDR_AICA_WAVE_LAST) ||
-        ((addr - 1 + sizeof(uint16_t)) < ADDR_AICA_WAVE_FIRST)) {
-        error_set_feature("aw fuck it");
+    if ((sizeof(uint16_t) - 1 + addr) >= AICA_WAVE_MEM_LEN) {
+        error_set_feature("out-of-bounds AICA memory access");
+        error_set_address(addr);
+        error_set_length(2);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -285,21 +281,20 @@ uint32_t aica_wave_mem_read_32(addr32_t addr, void *ctxt) {
         }
     }
 
-    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
-        ((addr - 1 + sizeof(uint32_t)) > ADDR_AICA_WAVE_LAST) ||
-        ((addr - 1 + sizeof(uint32_t)) < ADDR_AICA_WAVE_FIRST)) {
-        error_set_feature("aw fuck it");
+    if ((sizeof(uint32_t) - 1 + addr) >= AICA_WAVE_MEM_LEN) {
+        error_set_feature("out-of-bounds AICA memory access");
+        error_set_address(addr);
+        error_set_length(4);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t const *valp = ((uint32_t const*)wm->mem) +
-        (addr - ADDR_AICA_WAVE_FIRST) / 4;
+    uint32_t const *valp = ((uint32_t const*)wm->mem) + addr / 4;
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
-            LOG_DBG("AICA: reading 0x%08x from 0x%08x (PC is 0x%08x)\n",
-                    (unsigned)*valp, (unsigned)addr, pc);
+        LOG_DBG("AICA: reading 0x%08x from 0x%08x (PC is 0x%08x)\n",
+                (unsigned)*valp, (unsigned)addr, pc);
     }
 
     return *valp;
@@ -308,8 +303,7 @@ uint32_t aica_wave_mem_read_32(addr32_t addr, void *ctxt) {
 void aica_wave_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
-    uint32_t *outp = ((uint32_t*)wm->mem) +
-        (addr - ADDR_AICA_WAVE_FIRST) / 4;
+    uint32_t *outp = ((uint32_t*)wm->mem) + addr / 4;
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
@@ -318,10 +312,10 @@ void aica_wave_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
                 (unsigned)val, (unsigned)addr, pc);
     }
 
-    if (addr < ADDR_AICA_WAVE_FIRST || addr > ADDR_AICA_WAVE_LAST ||
-        ((addr - 1 + sizeof(uint32_t)) > ADDR_AICA_WAVE_LAST) ||
-        ((addr - 1 + sizeof(uint32_t)) < ADDR_AICA_WAVE_FIRST)) {
-        error_set_feature("aw fuck it");
+    if ((sizeof(uint32_t) - 1 + addr) >= AICA_WAVE_MEM_LEN) {
+        error_set_feature("out-of-bounds AICA memory access");
+        error_set_address(addr);
+        error_set_length(4);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 

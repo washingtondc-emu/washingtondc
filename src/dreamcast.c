@@ -813,7 +813,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_common_intf, &aica.common);
     memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   ADDR_AREA0_MASK, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
     memory_map_add(map, ADDR_AICA_DSP_FIRST, ADDR_AICA_DSP_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,

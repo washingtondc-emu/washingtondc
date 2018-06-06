@@ -23,14 +23,22 @@
 #ifndef AICA_WAVE_MEM_H_
 #define AICA_WAVE_MEM_H_
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 #include "types.h"
 #include "MemoryMap.h"
 
+#define AICA_WAVE_MEM_LEN (ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1)
+
+static_assert(!(AICA_WAVE_MEM_LEN & (AICA_WAVE_MEM_LEN - 1)),
+              "non-power-of-two aica memory length");
+
+#define AICA_WAVE_MEM_MASK (AICA_WAVE_MEM_LEN - 1)
+
 struct aica_wave_mem {
-    uint8_t mem[ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1];
+    uint8_t mem[AICA_WAVE_MEM_LEN];
 };
 
 float aica_wave_mem_read_float(addr32_t addr, void *ctxt);
