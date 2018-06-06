@@ -234,7 +234,7 @@ void dreamcast_init(bool cmd_session) {
     sys_block_init();
     g1_init();
     g2_init();
-    aica_init(&aica);
+    aica_init(&aica, &arm7);
     pvr2_init(&sh4_clock);
     gdrom_init(&gdrom, &sh4_clock);
     maple_init(&sh4_clock);
@@ -437,9 +437,30 @@ void dreamcast_run() {
 }
 
 static void run_to_next_arm7_event(void *ctxt) {
-    // TODO: this is an empty placeholder for actually running the arm7 cpu
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&arm7_clock);
-    clock_set_cycle_stamp(&arm7_clock, tgt_stamp);
+
+    if (arm7.enabled) {
+        arm7_inst inst = arm7_read_inst(&arm7);
+        struct arm7_decoded_inst decoded;
+
+        // TODO: this is an empty placeholder for actually running the arm7 cpu
+        // TODO: cycle counts
+        arm7_decode(&arm7, &decoded, inst);
+    } else {
+        /*
+         * XXX When the ARM7 is disabled, the PC is supposed to continue
+         * incrementing until it's enabled just as if it was executing
+         * instructions.  When the ARM7 is re-enabled, the PC is saved into
+         * R14_svc, the CPSR is saved into SPSR_svc, and the PC is cleared to 0.
+         *
+         * This means it's possible for the SH4 to place arbitrary values into
+         * R14_svc by timing its writes to the ARM7's nReset register.
+         * I'm hoping that nothing ever uses this to set a specific value into
+         * R14_svc.  TBH I think it would be hard to get the timing right even
+         * on real hardware.
+         */
+        clock_set_cycle_stamp(&arm7_clock, tgt_stamp);
+    }
 }
 
 #ifdef ENABLE_DEBUGGER
@@ -783,7 +804,7 @@ void dc_toggle_overlay(void) {
 
 static void construct_arm7_mem_map(struct memory_map *map) {
     memory_map_add(map, 0x00000000, 0x001fffff,
-                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   0xffffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
     memory_map_add(map, 0x00800000, 0x008027ff,
                    0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,

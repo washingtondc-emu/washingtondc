@@ -27,6 +27,7 @@
 #include "MemoryMap.h"
 #include "log.h"
 #include "mem_areas.h"
+#include "hw/arm7/arm7.h"
 
 #include "aica_common.h"
 
@@ -45,10 +46,9 @@ static void aica_common_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
 static inline uint32_t mask_addr(uint32_t addr);
 
-static void arm7_reset(uint32_t val);
-
-void aica_common_init(struct aica_common *cmn) {
+void aica_common_init(struct aica_common *cmn, struct arm7 *arm7) {
     memset(cmn->backing, 0, sizeof(cmn->backing));
+    cmn->arm7 = arm7;
 }
 
 void aica_common_cleanup(struct aica_common *cmn) {
@@ -85,7 +85,7 @@ static void aica_common_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 
     switch (addr) {
     case ARM7RST_ADDR:
-        arm7_reset(val);
+        arm7_reset(cmn->arm7, !(val & 1));
         break;
     default:
         break;
@@ -114,10 +114,6 @@ static void aica_common_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 
 static inline uint32_t mask_addr(uint32_t addr) {
     return addr & 0x7ff;
-}
-
-static void arm7_reset(uint32_t val) {
-    printf("%s(%u)\n", __func__, (unsigned)val);
 }
 
 struct memory_interface aica_common_intf = {

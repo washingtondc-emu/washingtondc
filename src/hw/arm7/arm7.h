@@ -23,6 +23,8 @@
 #ifndef ARM7_H_
 #define ARM7_H_
 
+#include <stdbool.h>
+
 #include "dc_sched.h"
 #include "MemoryMap.h"
 
@@ -142,11 +144,26 @@ struct arm7 {
 
     uint32_t regs[ARM7_REGISTER_COUNT];
     struct memory_map *map;
+
+    bool enabled;
+};
+
+typedef uint32_t arm7_inst;
+
+struct arm7_decoded_inst {
+    arm7_inst inst;
 };
 
 void arm7_init(struct arm7 *arm7, struct dc_clock *clk);
 void arm7_cleanup(struct arm7 *arm7);
 
+arm7_inst arm7_read_inst(struct arm7 *arm7);
+
+void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
+                 arm7_inst inst);
+
 void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map);
+
+void arm7_reset(struct arm7 *arm7, bool val);
 
 #endif

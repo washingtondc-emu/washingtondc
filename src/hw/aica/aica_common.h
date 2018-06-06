@@ -33,9 +33,10 @@
 
 struct aica_common {
     uint8_t backing[AICA_COMMON_LEN];
+    struct arm7 *arm7;
 };
 
-void aica_common_init(struct aica_common *cmn);
+void aica_common_init(struct aica_common *cmn, struct arm7 *arm7);
 void aica_common_cleanup(struct aica_common *cmn);
 
 extern struct memory_interface aica_common_intf;

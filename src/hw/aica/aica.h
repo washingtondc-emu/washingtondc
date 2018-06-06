@@ -28,6 +28,8 @@
 #include "aica_wave_mem.h"
 #include "aica_common.h"
 
+struct arm7;
+
 struct aica {
     struct aica_channel channel;
     struct aica_dsp dsp;
@@ -35,7 +37,7 @@ struct aica {
     struct aica_common common;
 };
 
-void aica_init(struct aica *aica);
+void aica_init(struct aica *aica, struct arm7 *arm7);
 void aica_cleanup(struct aica *aica);
 
 #endif

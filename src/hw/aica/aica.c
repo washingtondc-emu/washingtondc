@@ -25,8 +25,8 @@
 
 #include "aica.h"
 
-void aica_init(struct aica *aica) {
-    aica_common_init(&aica->common);
+void aica_init(struct aica *aica, struct arm7 *arm7) {
+    aica_common_init(&aica->common, arm7);
     aica_dsp_init(&aica->dsp);
     aica_channel_init(&aica->channel);
     aica_wave_mem_init(&aica->mem);
