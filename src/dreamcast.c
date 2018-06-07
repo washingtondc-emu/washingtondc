@@ -440,7 +440,7 @@ static void run_to_next_arm7_event(void *ctxt) {
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&arm7_clock);
 
     if (arm7.enabled) {
-        arm7_inst inst = arm7_read_inst(&arm7);
+        arm7_inst inst = arm7_fetch_inst(&arm7);
         struct arm7_decoded_inst decoded;
 
         // TODO: this is an empty placeholder for actually running the arm7 cpu

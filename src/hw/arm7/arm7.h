@@ -57,12 +57,12 @@
 #define ARM7_CPSR_M_MASK (0x1f << ARM7_CPSR_M_SHIFT)
 
 enum arm7_mode {
-    ARM7_MODE_USER = 0x10,
-    ARM7_MODE_FIQ = 0x11,
-    ARM7_MODE_IRQ = 0x12,
-    ARM7_MODE_SVC = 0x13,
-    ARM7_MODE_ABT = 0x17,
-    ARM7_MODE_UND = 0x33
+    ARM7_MODE_USER = (0x10 << ARM7_CPSR_M_SHIFT),
+    ARM7_MODE_FIQ  = (0x11 << ARM7_CPSR_M_SHIFT),
+    ARM7_MODE_IRQ  = (0x12 << ARM7_CPSR_M_SHIFT),
+    ARM7_MODE_SVC  = (0x13 << ARM7_CPSR_M_SHIFT),
+    ARM7_MODE_ABT  = (0x17 << ARM7_CPSR_M_SHIFT),
+    ARM7_MODE_UND  = (0x33 << ARM7_CPSR_M_SHIFT)
 };
 
 /*
@@ -139,16 +139,46 @@ enum arm7_reg_idx {
     ARM7_REGISTER_COUNT
 };
 
-struct arm7 {
-    struct dc_clock *clk;
-
-    uint32_t regs[ARM7_REGISTER_COUNT];
-    struct memory_map *map;
-
-    bool enabled;
+enum arm7_excp {
+    ARM7_EXCP_NONE = 0,
+    ARM7_EXCP_RESET = 1,
+    ARM7_EXCP_DATA_ABORT = 2,
+    ARM7_EXCP_FIQ = 4,
+    ARM7_EXCP_IRQ = 8,
+    ARM7_EXCP_PREF_ABORT = 16,
+    ARM7_EXCP_SWI = 32
 };
 
 typedef uint32_t arm7_inst;
+
+struct arm7 {
+    struct dc_clock *clk;
+
+    uint32_t reg[ARM7_REGISTER_COUNT];
+    struct memory_map *map;
+
+    bool enabled;
+
+    enum arm7_excp excp;
+
+    /*
+     * One oddity about ARM7 (compared to saner CPUs like x86 and SH4) is that
+     * the CPU does not hide its pipelining from software.  The Program Counter
+     * register (ARM7_REG_R15) always points to the instruction being fetched;
+     * since there's a 3-stage pipeline which is *not* hidden from software,
+     * that means that ARM7_REG_R15 always points two instructions ahead of the
+     * instruction being executed.
+     *
+     * For the sake of simplicity, this interpreter will actually mimic this
+     * design by buffering three instructions in a fake "pipeline".  pipeline[0]
+     * buffers the execution stage (ARM7_REG_R15 - 8), pipeline[1] buffers the
+     * decoding stage (ARM7_REG_R15 - 4), and pipeline[2] buffers the fetch
+     * stage (ARM7_REG_R15).  Instructions are actually fetched two cycles ahead
+     * of their execution like in a real ARM, but the decoding isn't done until
+     * it's at the execution stage.
+     */
+    arm7_inst pipeline[3];
+};
 
 struct arm7_decoded_inst {
     arm7_inst inst;
@@ -157,7 +187,7 @@ struct arm7_decoded_inst {
 void arm7_init(struct arm7 *arm7, struct dc_clock *clk);
 void arm7_cleanup(struct arm7 *arm7);
 
-arm7_inst arm7_read_inst(struct arm7 *arm7);
+arm7_inst arm7_fetch_inst(struct arm7 *arm7);
 
 void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
                  arm7_inst inst);
