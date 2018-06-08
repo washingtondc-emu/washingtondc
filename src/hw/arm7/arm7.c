@@ -31,11 +31,131 @@
 static DEF_ERROR_U32_ATTR(arm7_inst)
 static DEF_ERROR_U32_ATTR(arm7_pc)
 
+#define ARM7_INST_COND_SHIFT 28
+#define ARM7_INST_COND_MASK (0xf << ARM7_INST_COND_SHIFT)
+
+/*
+ * Used to weigh different types of cycles.
+ *
+ * TODO: I think the different cycle types refer to different clocks (CPU clock,
+ * memory clock, etc).  I'm not sure how fast these are relative to each other,
+ * so for now I weigh them all equally.
+ *
+ * see chapter 5.0 (Memory Interface) of the data sheet.
+ */
+#define S_CYCLE 1 // access address at or one word after previous address.
+#define N_CYCLE 1 // access address with no relation to previous address.
 
 static void arm7_check_excp(struct arm7 *arm7);
 
 static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr);
 static void reset_pipeline(struct arm7 *arm7);
+
+static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst);
+
+static bool arm7_cond_eq(struct arm7 *arm7);
+static bool arm7_cond_ne(struct arm7 *arm7);
+static bool arm7_cond_cs(struct arm7 *arm7);
+static bool arm7_cond_cc(struct arm7 *arm7);
+
+static arm7_cond_fn arm7_cond(arm7_inst inst);
+
+static bool arm7_cond_eq(struct arm7 *arm7) {
+    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
+}
+
+static bool arm7_cond_ne(struct arm7 *arm7) {
+    return !arm7_cond_eq(arm7);
+}
+
+static bool arm7_cond_cs(struct arm7 *arm7) {
+    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
+}
+
+static bool arm7_cond_cc(struct arm7 *arm7) {
+    return !arm7_cond_cs(arm7);
+}
+
+static bool arm7_cond_mi(struct arm7 *arm7) {
+    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_N_MASK);
+}
+
+static bool arm7_cond_pl(struct arm7 *arm7) {
+    return !arm7_cond_mi(arm7);
+}
+
+static bool arm7_cond_vs(struct arm7 *arm7) {
+    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_V_MASK);
+}
+
+static bool arm7_cond_vc(struct arm7 *arm7) {
+    return !arm7_cond_vs(arm7);
+}
+
+static bool arm7_cond_hi(struct arm7 *arm7) {
+    return arm7_cond_ne(arm7) && arm7_cond_cs(arm7);
+}
+
+static bool arm7_cond_ls(struct arm7 *arm7) {
+    return arm7_cond_cc(arm7) || arm7_cond_eq(arm7);
+}
+
+static bool arm7_cond_ge(struct arm7 *arm7) {
+    return arm7_cond_mi(arm7) == arm7_cond_vs(arm7);
+}
+
+static bool arm7_cond_lt(struct arm7 *arm7) {
+    return !arm7_cond_ge(arm7);
+}
+
+static bool arm7_cond_gt(struct arm7 *arm7) {
+    return arm7_cond_ne(arm7) && arm7_cond_ge(arm7);
+}
+
+static bool arm7_cond_le(struct arm7 *arm7) {
+    return !arm7_cond_gt(arm7);
+}
+
+static bool arm7_cond_al(struct arm7 *arm7) {
+    return true;
+}
+
+static arm7_cond_fn arm7_cond(arm7_inst inst) {
+    switch ((inst & ARM7_INST_COND_MASK) >> ARM7_INST_COND_SHIFT) {
+    case 0:
+        return arm7_cond_eq;
+    case 1:
+        return arm7_cond_ne;
+    case 2:
+        return arm7_cond_cs;
+    case 3:
+        return arm7_cond_cc;
+    case 4:
+        return arm7_cond_mi;
+    case 5:
+        return arm7_cond_pl;
+    case 6:
+        return arm7_cond_vs;
+    case 7:
+        return arm7_cond_vc;
+    case 8:
+        return arm7_cond_hi;
+    case 9:
+        return arm7_cond_ls;
+    case 10:
+        return arm7_cond_ge;
+    case 11:
+        return arm7_cond_lt;
+    case 12:
+        return arm7_cond_gt;
+    case 13:
+        return arm7_cond_le;
+    case 14:
+        return arm7_cond_al;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
 
 void arm7_init(struct arm7 *arm7, struct dc_clock *clk) {
     memset(arm7, 0, sizeof(*arm7));
@@ -64,9 +184,18 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 
 void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
                  arm7_inst inst) {
-    error_set_arm7_inst(inst);
-    error_set_arm7_pc(arm7->reg[ARM7_REG_R15]);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    inst_out->cond = arm7_cond(inst);
+    inst_out->inst = inst;
+
+    if ((inst & 0x0e000000) == 0x0a000000) {
+        // branch (with or without link)
+        inst_out->op = arm7_op_branch;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else {
+        error_set_arm7_inst(inst);
+        error_set_arm7_pc(arm7->reg[ARM7_REG_R15]);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 arm7_inst arm7_fetch_inst(struct arm7 *arm7) {
@@ -145,4 +274,13 @@ static void reset_pipeline(struct arm7 *arm7) {
     arm7->pipeline[2] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15] + 8);
 
     arm7->reg[ARM7_REG_R15] += 8;
+}
+
+static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst) {
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
+    inst->op(arm7, inst->inst);
+    return inst->cycles;
 }

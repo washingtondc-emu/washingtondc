@@ -440,12 +440,21 @@ static void run_to_next_arm7_event(void *ctxt) {
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&arm7_clock);
 
     if (arm7.enabled) {
-        arm7_inst inst = arm7_fetch_inst(&arm7);
-        struct arm7_decoded_inst decoded;
+        while (tgt_stamp > clock_cycle_stamp(&arm7_clock)) {
+            arm7_inst inst = arm7_fetch_inst(&arm7);
+            struct arm7_decoded_inst decoded;
 
-        // TODO: this is an empty placeholder for actually running the arm7 cpu
-        // TODO: cycle counts
-        arm7_decode(&arm7, &decoded, inst);
+            arm7_decode(&arm7, &decoded, inst);
+
+            unsigned inst_cycles = arm7_exec(&arm7, &decoded);
+            dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&arm7_clock) +
+                inst_cycles * ARM7_CLOCK_SCALE;
+
+            tgt_stamp = clock_target_stamp(&arm7_clock);
+            if (cycles_after > tgt_stamp)
+                cycles_after = tgt_stamp;
+            clock_set_cycle_stamp(&arm7_clock, cycles_after);
+        }
     } else {
         /*
          * XXX When the ARM7 is disabled, the PC is supposed to continue
@@ -459,6 +468,7 @@ static void run_to_next_arm7_event(void *ctxt) {
          * R14_svc.  TBH I think it would be hard to get the timing right even
          * on real hardware.
          */
+        tgt_stamp = clock_target_stamp(&arm7_clock);
         clock_set_cycle_stamp(&arm7_clock, tgt_stamp);
     }
 }

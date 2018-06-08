@@ -24,9 +24,14 @@
 #define ARM7_H_
 
 #include <stdbool.h>
+#include <assert.h>
 
 #include "dc_sched.h"
 #include "MemoryMap.h"
+
+#define ARM7_CLOCK_SCALE (SCHED_FREQUENCY / (45 * 1000 * 1000))
+static_assert(SCHED_FREQUENCY % (45 * 1000 * 1000) == 0,
+              "scheduler frequency does not cleanly divide by SH4 frequency");
 
 // negative/less-than
 #define ARM7_CPSR_N_SHIFT 31
@@ -180,8 +185,15 @@ struct arm7 {
     arm7_inst pipeline[3];
 };
 
+typedef bool(*arm7_cond_fn)(struct arm7*);
+typedef void(*arm7_op_fn)(struct arm7*,arm7_inst);
+
 struct arm7_decoded_inst {
+    arm7_cond_fn cond;
+    arm7_op_fn op;
     arm7_inst inst;
+
+    unsigned cycles;
 };
 
 void arm7_init(struct arm7 *arm7, struct dc_clock *clk);
@@ -191,6 +203,8 @@ arm7_inst arm7_fetch_inst(struct arm7 *arm7);
 
 void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
                  arm7_inst inst);
+
+unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst);
 
 void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map);
 
