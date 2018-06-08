@@ -60,6 +60,8 @@ static bool arm7_cond_cc(struct arm7 *arm7);
 
 static arm7_cond_fn arm7_cond(arm7_inst inst);
 
+static unsigned arm7_reg_idx(struct arm7 *arm7, unsigned reg);
+
 static bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
 }
@@ -200,7 +202,11 @@ void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
 
 arm7_inst arm7_fetch_inst(struct arm7 *arm7) {
     arm7_check_excp(arm7);
-    return arm7->pipeline[0];
+    arm7_inst ret = arm7->pipeline[0];
+    arm7->pipeline[0] = arm7->pipeline[1];
+    arm7->pipeline[1] = arm7->pipeline[2];
+    arm7->pipeline[2] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15] += 4);
+    return ret;
 }
 
 static void arm7_check_excp(struct arm7 *arm7) {
@@ -214,7 +220,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
-        excp &= ~ARM7_EXCP_RESET;
+        arm7->excp &= ~ARM7_EXCP_RESET;
     } else if (excp & ARM7_EXCP_DATA_ABORT) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_I_MASK)) {
@@ -224,7 +230,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
-        excp &= ~ARM7_EXCP_FIQ;
+        arm7->excp &= ~ARM7_EXCP_FIQ;
     } else if ((excp & ARM7_EXCP_IRQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
         arm7->reg[ARM7_REG_SPSR_IRQ] = cpsr;
         arm7->reg[ARM7_REG_R14_IRQ] = arm7->reg[ARM7_REG_R15] - 4;
@@ -232,7 +238,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_IRQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
-        excp &= ~ARM7_EXCP_IRQ;
+        arm7->excp &= ~ARM7_EXCP_IRQ;
     } else if (excp & ARM7_EXCP_PREF_ABORT) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     } else if (excp & ARM7_EXCP_SWI) {
@@ -252,7 +258,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
-        excp &= ~ARM7_EXCP_SWI;
+        arm7->excp &= ~ARM7_EXCP_SWI;
     }
 }
 
@@ -277,10 +283,59 @@ static void reset_pipeline(struct arm7 *arm7) {
 }
 
 static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst) {
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    uint32_t offs = inst & ((1 << 24) - 1);
+    if (offs & (1 << 23))
+        offs |= 0xff000000;
+    offs <<= 2;
+
+    if (inst & (1 << 24)) {
+        // link bit
+        arm7->reg[arm7_reg_idx(arm7, ARM7_REG_R14)] = arm7->reg[ARM7_REG_R15] - 4;
+    }
+
+    uint32_t pc_new = offs + arm7->reg[ARM7_REG_R15];
+
+    arm7->reg[ARM7_REG_R15] = pc_new;
+    reset_pipeline(arm7);
 }
 
 unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
-    inst->op(arm7, inst->inst);
+    if (inst->cond(arm7))
+        inst->op(arm7, inst->inst);
+
+    /*
+     * TODO: how many cycles does it take to execute an instruction when the
+     * conditional fails?
+     */
+
     return inst->cycles;
+}
+
+static unsigned arm7_reg_idx(struct arm7 *arm7, unsigned reg) {
+    switch (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) {
+    case ARM7_MODE_USER:
+        return reg;
+    case ARM7_MODE_FIQ:
+        if (reg >= ARM7_REG_R8 && reg <= ARM7_REG_R14)
+            return (reg - ARM7_REG_R8) + ARM7_REG_R8_FIQ;
+        return reg;
+    case ARM7_MODE_IRQ:
+        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
+            return (reg - ARM7_REG_R13) + ARM7_REG_R13_IRQ;
+        return reg;
+    case ARM7_MODE_SVC:
+        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
+            return (reg - ARM7_REG_R13) + ARM7_REG_R13_SVC;
+        return reg;
+    case ARM7_MODE_ABT:
+        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
+            return (reg - ARM7_REG_R13) + ARM7_REG_R13_ABT;
+        return reg;
+    case ARM7_MODE_UND:
+        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
+            return (reg - ARM7_REG_R13) + ARM7_REG_R13_UND;
+        return reg;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
