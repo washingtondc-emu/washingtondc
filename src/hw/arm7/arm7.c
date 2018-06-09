@@ -200,13 +200,38 @@ void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
     }
 }
 
-arm7_inst arm7_fetch_inst(struct arm7 *arm7) {
+static void next_inst(struct arm7 *arm7) {
+    arm7->reg[ARM7_REG_R15] += 4;
+}
+
+static void arm7_idle_fetch(struct arm7 *arm7, arm7_inst inst) {
+    next_inst(arm7);
+}
+
+void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
+    arm7_inst ret;
+
     arm7_check_excp(arm7);
-    arm7_inst ret = arm7->pipeline[0];
-    arm7->pipeline[0] = arm7->pipeline[1];
-    arm7->pipeline[1] = arm7->pipeline[2];
-    arm7->pipeline[2] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15] += 4);
-    return ret;
+
+    switch (arm7->pipeline_len) {
+    case 2:
+        ret = arm7->pipeline[1];
+        arm7->pipeline[1] = arm7->pipeline[0];
+        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15]);
+        arm7_decode(arm7, inst_out, ret);
+        return;
+    case 1:
+        arm7->pipeline[1] = arm7->pipeline[0];
+    case 0:
+        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15]);
+        arm7->pipeline_len++;
+        inst_out->op = arm7_idle_fetch;
+        inst_out->cycles = 1;
+        inst_out->cond = arm7_cond_al;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
 }
 
 static void arm7_check_excp(struct arm7 *arm7) {
@@ -249,7 +274,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
          * SWI.  I expect the SWI instruction to not increment the PC at the
          * end, so the instruction after the SWI will be pipeline[1].
          * ARM7_REG_R15 points to the next instruction to be fetched, which is
-         * pipeline[2].  Therefore, the next instruction to be executed is at
+         * pipeline[0].  Therefore, the next instruction to be executed is at
          * ARM7_REG_R15 - 4.
          */
         arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
@@ -267,19 +292,11 @@ static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
 }
 
 /*
- * fill the pipeline with three instructions and increment the PC by 12.
- *
- * XXX every time this function gets called, there are two latency cycles that
- * aren't getting simulated.  On a real arm7, the first instruction would spend
- * one cycle getting fetched and one cycle getting decoded before it gets
- * executed; this function forces it to execute immediately.
+ * call this when something like a branch or exception happens that invalidates
+ * instructions in the pipeline.
  */
 static void reset_pipeline(struct arm7 *arm7) {
-    arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15]);
-    arm7->pipeline[1] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15] + 4);
-    arm7->pipeline[2] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15] + 8);
-
-    arm7->reg[ARM7_REG_R15] += 8;
+    arm7->pipeline_len = 0;
 }
 
 static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst) {

@@ -175,14 +175,15 @@ struct arm7 {
      * instruction being executed.
      *
      * For the sake of simplicity, this interpreter will actually mimic this
-     * design by buffering three instructions in a fake "pipeline".  pipeline[0]
+     * design by buffering three instructions in a fake "pipeline".  pipeline[2]
      * buffers the execution stage (ARM7_REG_R15 - 8), pipeline[1] buffers the
-     * decoding stage (ARM7_REG_R15 - 4), and pipeline[2] buffers the fetch
+     * decoding stage (ARM7_REG_R15 - 4), and pipeline[0] buffers the fetch
      * stage (ARM7_REG_R15).  Instructions are actually fetched two cycles ahead
      * of their execution like in a real ARM, but the decoding isn't done until
      * it's at the execution stage.
      */
-    arm7_inst pipeline[3];
+    arm7_inst pipeline[2];
+    int pipeline_len;
 };
 
 typedef bool(*arm7_cond_fn)(struct arm7*);
@@ -199,7 +200,7 @@ struct arm7_decoded_inst {
 void arm7_init(struct arm7 *arm7, struct dc_clock *clk);
 void arm7_cleanup(struct arm7 *arm7);
 
-arm7_inst arm7_fetch_inst(struct arm7 *arm7);
+void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out);
 
 void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
                  arm7_inst inst);

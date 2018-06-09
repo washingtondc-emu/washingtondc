@@ -441,10 +441,8 @@ static void run_to_next_arm7_event(void *ctxt) {
 
     if (arm7.enabled) {
         while (tgt_stamp > clock_cycle_stamp(&arm7_clock)) {
-            arm7_inst inst = arm7_fetch_inst(&arm7);
             struct arm7_decoded_inst decoded;
-
-            arm7_decode(&arm7, &decoded, inst);
+            arm7_fetch_inst(&arm7, &decoded);
 
             unsigned inst_cycles = arm7_exec(&arm7, &decoded);
             dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&arm7_clock) +
