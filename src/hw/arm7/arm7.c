@@ -45,6 +45,7 @@ static DEF_ERROR_U32_ATTR(arm7_pc)
  */
 #define S_CYCLE 1 // access address at or one word after previous address.
 #define N_CYCLE 1 // access address with no relation to previous address.
+#define I_CYCLE 1
 
 static void arm7_check_excp(struct arm7 *arm7);
 
@@ -52,6 +53,7 @@ static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr);
 static void reset_pipeline(struct arm7 *arm7);
 
 static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst);
+static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst);
 
 static bool arm7_cond_eq(struct arm7 *arm7);
 static bool arm7_cond_ne(struct arm7 *arm7);
@@ -184,15 +186,32 @@ void arm7_reset(struct arm7 *arm7, bool val) {
     arm7->enabled = val;
 }
 
+// B or BL instruction
+#define MASK_B 0x0e000000
+#define VAL_B  0x0a000000
+
+#define MASK_LDR 0x0c100000
+#define VAL_LDR  0x04100000
+
+#define MASK_STR 0x0c100000
+#define VAL_STR  0x04000000
+
 void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
                  arm7_inst inst) {
     inst_out->cond = arm7_cond(inst);
     inst_out->inst = inst;
 
-    if ((inst & 0x0e000000) == 0x0a000000) {
+    if ((inst & MASK_B) == VAL_B) {
         // branch (with or without link)
         inst_out->op = arm7_op_branch;
         inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_LDR) == VAL_LDR) {
+        /*
+         * TODO: this is supposed to take 2 * S_CYCLE + 2 * N_CYCLE + I_CYCLE
+         * cycles if R15 is involved...?
+         */
+        inst_out->op = arm7_op_ldr;
+        inst_out->cycles = 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
     } else {
         error_set_arm7_inst(inst);
         error_set_arm7_pc(arm7->reg[ARM7_REG_R15]);
@@ -314,6 +333,47 @@ static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst) {
 
     arm7->reg[ARM7_REG_R15] = pc_new;
     reset_pipeline(arm7);
+}
+
+static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst) {
+    unsigned rn = (inst >> 16) & 0xf;
+    unsigned rd = (inst >> 12) & 0xf;
+
+    bool writeback = inst & (1 << 21);
+    int len = (inst & (1 << 22)) ? 1 : 4;
+    int sign = (inst & (1 << 23)) ? 1 : -1;
+    bool pre = inst & (1 << 24);
+    bool offs_reg = inst & (1 << 25);
+
+    uint32_t offs;
+    if (offs_reg) {
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    } else {
+        offs = inst & ((1 << 12) - 1);
+    }
+
+    uint32_t addr = arm7->reg[arm7_reg_idx(arm7, rn)];
+
+    if (pre) {
+        if (sign < 0)
+            addr -= offs;
+        else
+            addr += offs;
+    }
+
+    if (len == 4) {
+        arm7->reg[arm7_reg_idx(arm7, rd)] = memory_map_read_32(arm7->map, addr);
+    } else {
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    if (!pre)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    if (writeback)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    next_inst(arm7);
 }
 
 unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
