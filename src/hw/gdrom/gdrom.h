@@ -148,6 +148,8 @@ struct gdrom_ctxt {
     // length of DMA result
     uint32_t gdlend_reg;
 
+    uint32_t drive_sel_reg;
+
     enum additional_sense additional_sense;
 
     uint32_t trans_mode_vals[TRANS_MODE_COUNT];
@@ -165,11 +167,6 @@ struct gdrom_ctxt {
     unsigned n_bytes_received;
 
     struct fifo_head bufq;
-
-    // MMIO regions
-    struct mmio_region_gdrom_reg_32 mmio_region_gdrom_reg_32;
-    struct mmio_region_gdrom_reg_16 mmio_region_gdrom_reg_16;
-    struct mmio_region_gdrom_reg_8 mmio_region_gdrom_reg_8;
 };
 
 /*
