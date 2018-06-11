@@ -195,13 +195,13 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define BIT_RANGE(first, last) (SET_TO_BIT(last + 1) & ~SET_TO_BIT(first))
 
 // B or BL instruction
-#define MASK_B 0x0e000000
+#define MASK_B BIT_RANGE(25, 27)
 #define VAL_B  0x0a000000
 
-#define MASK_LDR 0x0c100000
+#define MASK_LDR (BIT_RANGE(26, 27) | (1 << 20))
 #define VAL_LDR  0x04100000
 
-#define MASK_STR 0x0c100000
+#define MASK_STR (BIT_RANGE(26, 27) | (1 << 20))
 #define VAL_STR  0x04000000
 
 #define MASK_MRS (BIT_RANGE(23, 27) | BIT_RANGE(16, 21) | BIT_RANGE(0, 11))
