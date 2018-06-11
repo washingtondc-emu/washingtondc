@@ -54,6 +54,7 @@ static void reset_pipeline(struct arm7 *arm7);
 
 static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst);
+static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst);
 
 static bool arm7_cond_eq(struct arm7 *arm7);
 static bool arm7_cond_ne(struct arm7 *arm7);
@@ -63,6 +64,7 @@ static bool arm7_cond_cc(struct arm7 *arm7);
 static arm7_cond_fn arm7_cond(arm7_inst inst);
 
 static unsigned arm7_reg_idx(struct arm7 *arm7, unsigned reg);
+static unsigned arm7_spsr_idx(struct arm7 *arm7);
 
 static bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
@@ -186,6 +188,12 @@ void arm7_reset(struct arm7 *arm7, bool val) {
     arm7->enabled = val;
 }
 
+// Set all bits up to but not including bit_no:
+#define SET_TO_BIT(bit_no)   ((uint32_t)((((uint64_t)1) << (bit_no)) - 1))
+
+// set all bits between first and last (inclusive)
+#define BIT_RANGE(first, last) (SET_TO_BIT(last + 1) & ~SET_TO_BIT(first))
+
 // B or BL instruction
 #define MASK_B 0x0e000000
 #define VAL_B  0x0a000000
@@ -195,6 +203,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 
 #define MASK_STR 0x0c100000
 #define VAL_STR  0x04000000
+
+#define MASK_MRS (BIT_RANGE(23, 27) | BIT_RANGE(16, 21) | BIT_RANGE(0, 11))
+#define VAL_MRS  0x010f0000
 
 void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
                  arm7_inst inst) {
@@ -212,6 +223,9 @@ void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
          */
         inst_out->op = arm7_op_ldr;
         inst_out->cycles = 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
+    } else if ((inst & MASK_MRS) == VAL_MRS) {
+        inst_out->op = arm7_op_mrs;
+        inst_out->cycles = 1 * S_CYCLE;
     } else {
         error_set_arm7_inst(inst);
         error_set_arm7_pc(arm7->reg[ARM7_REG_R15]);
@@ -376,6 +390,22 @@ static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst) {
     next_inst(arm7);
 }
 
+static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst) {
+    bool src_psr = (1 << 22) & inst;
+    unsigned dst_reg = (inst >> 12) & 0xf;
+
+    uint32_t const *src_p;
+    if (src_psr)
+        src_p = arm7->reg + arm7_spsr_idx(arm7);
+    else
+        src_p = arm7->reg + ARM7_REG_CPSR;
+
+    uint32_t *dst_p = arm7->reg + dst_reg;
+    *dst_p = *src_p;
+
+    next_inst(arm7);
+}
+
 unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
     if (inst->cond(arm7))
         inst->op(arm7, inst->inst);
@@ -414,5 +444,24 @@ static unsigned arm7_reg_idx(struct arm7 *arm7, unsigned reg) {
         return reg;
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+static unsigned arm7_spsr_idx(struct arm7 *arm7) {
+    switch (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) {
+    case ARM7_MODE_FIQ:
+        return ARM7_REG_SPSR_FIQ;
+    case ARM7_MODE_IRQ:
+        return ARM7_EXCP_IRQ;
+    case ARM7_MODE_SVC:
+        return ARM7_REG_SPSR_SVC;
+    case ARM7_MODE_ABT:
+        return ARM7_REG_SPSR_ABT;
+    case ARM7_MODE_UND:
+        return ARM7_REG_SPSR_UND;
+    case ARM7_MODE_USER:
+        /* User mode doesn't have an SPSR */
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 }
