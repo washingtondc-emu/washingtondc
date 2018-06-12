@@ -215,6 +215,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_ORR_IMMED BIT_RANGE(21, 27)
 #define VAL_ORR_IMMED ((1 << 25) | (12 << 21))
 
+#define MASK_TEQ_IMMED BIT_RANGE(20, 27)
+#define VAL_TEQ_IMMED ((1 << 25) | (9 << 21))
+
 #define DATA_OP_FUNC_NAME(op_name) arm7_op_##op_name
 
 #define DATA_OP_FUNC_PROTO(op_name) \
@@ -278,38 +281,61 @@ DEF_DATA_OP(mv, ~rhs)
     }
 
 DEF_IMMED_FN(orr, true, true)
+DEF_IMMED_FN(teq, true, false)
+
+typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
+
+static struct arm7_opcode {
+    arm7_opcode_fn fn;
+    arm7_inst mask;
+    arm7_inst val;
+    unsigned n_cycles;
+} const ops[] = {
+    /*
+     * TODO: these cycle counts are mostly bullshit.  I don't even know if it's
+     * valid to assume that any given opcode will always take the same number
+     * of cycles.  ARM has a lot of corner cases and it's all bullsht, really.
+     */
+
+    // branch (with or without link)
+    { arm7_op_branch, MASK_B, VAL_B, 2 * S_CYCLE + 1 * N_CYCLE },
+
+    /*
+     * TODO: this is supposed to take 2 * S_CYCLE + 2 * N_CYCLE + I_CYCLE
+     * cycles if R15 is involved...?
+     */
+    { arm7_op_ldr, MASK_LDR, VAL_LDR, 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE },
+
+    { arm7_op_mrs, MASK_MRS, VAL_MRS, 1 * S_CYCLE },
+
+    /*
+     * TODO: this cycle count is literally just something I made up with no
+     * basis in reality.  It needs to be corrected.
+     */
+    { arm7_op_orr_immed, MASK_ORR_IMMED, VAL_ORR_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
+
+    { NULL }
+};
 
 void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
                  arm7_inst inst) {
+    struct arm7_opcode const *curs = ops;
+    while (curs->fn) {
+        if ((curs->mask & inst) == curs->val) {
+            inst_out->op = curs->fn;
+            inst_out->cycles = curs->n_cycles;
+            goto return_success;
+        }
+        curs++;
+    }
+
+    error_set_arm7_inst(inst);
+    error_set_arm7_pc(arm7->reg[ARM7_REG_R15]);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+return_success:
     inst_out->cond = arm7_cond(inst);
     inst_out->inst = inst;
-
-    if ((inst & MASK_B) == VAL_B) {
-        // branch (with or without link)
-        inst_out->op = arm7_op_branch;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_LDR) == VAL_LDR) {
-        /*
-         * TODO: this is supposed to take 2 * S_CYCLE + 2 * N_CYCLE + I_CYCLE
-         * cycles if R15 is involved...?
-         */
-        inst_out->op = arm7_op_ldr;
-        inst_out->cycles = 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
-    } else if ((inst & MASK_MRS) == VAL_MRS) {
-        inst_out->op = arm7_op_mrs;
-        inst_out->cycles = 1 * S_CYCLE;
-    } else if ((inst & MASK_ORR_IMMED) == VAL_ORR_IMMED) {
-        /*
-         * TODO: this cycle count is literally just something I made up with no
-         * basis in reality.  It needs to be corrected.
-         */
-        inst_out->op = arm7_op_orr_immed;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else {
-        error_set_arm7_inst(inst);
-        error_set_arm7_pc(arm7->reg[ARM7_REG_R15]);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
 }
 
 static void next_inst(struct arm7 *arm7) {
@@ -497,6 +523,40 @@ static uint32_t decode_immed(arm7_inst inst) {
     uint32_t imm = inst & BIT_RANGE(0, 7);
 
     return ror(imm, n_bits);
+}
+
+__attribute__((unused)) static uint32_t
+decode_shift(struct arm7 *arm7, arm7_inst inst) {
+    bool amt_in_reg = inst & (1 << 4);
+    unsigned shift_fn = (inst & BIT_RANGE(5, 6)) >> 5;
+    uint32_t shift_amt;
+
+    if (amt_in_reg) {
+        unsigned reg_no = (inst & BIT_RANGE(8, 11)) >> 8;
+        if (reg_no == 15)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        shift_amt = *arm7_gen_reg(arm7, reg_no) & 0xff;
+    } else {
+        shift_amt = (inst & BIT_RANGE(7, 11)) >> 7;
+    }
+
+    unsigned src_reg = inst & 0xf;
+    uint32_t src_val = *arm7_gen_reg(arm7, src_reg);
+
+    switch (shift_fn) {
+    case 0:
+        // logical left-shift
+        return src_val << shift_amt;
+    case 1:
+        // logical right-shift
+        return src_val >> shift_amt;
+    case 2:
+        // arithmetic right-shift
+        return ((int32_t)src_val) >> shift_amt;
+    case 3:
+        // right-rotate
+        return ror(src_val, shift_amt);
+    }
 }
 
 unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {

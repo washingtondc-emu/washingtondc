@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#include "error.h"
 #include "dc_sched.h"
 #include "MemoryMap.h"
 
@@ -210,5 +211,42 @@ unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst);
 void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map);
 
 void arm7_reset(struct arm7 *arm7, bool val);
+
+inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
+    unsigned idx_actual;
+    switch (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) {
+    case ARM7_MODE_USER:
+        idx_actual = reg + ARM7_REG_R0;
+    case ARM7_MODE_FIQ:
+        if (reg >= ARM7_REG_R8 && reg <= ARM7_REG_R14)
+            idx_actual = (reg - ARM7_REG_R8) + ARM7_REG_R8_FIQ;
+        else
+            idx_actual = reg + ARM7_REG_R0;
+    case ARM7_MODE_IRQ:
+        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
+            idx_actual = (reg - ARM7_REG_R13) + ARM7_REG_R13_IRQ;
+        else
+            idx_actual = reg + ARM7_REG_R0;
+    case ARM7_MODE_SVC:
+        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
+            idx_actual = (reg - ARM7_REG_R13) + ARM7_REG_R13_SVC;
+        else
+            idx_actual = reg + ARM7_REG_R0;
+    case ARM7_MODE_ABT:
+        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
+            idx_actual = (reg - ARM7_REG_R13) + ARM7_REG_R13_ABT;
+        else
+            idx_actual = reg + ARM7_REG_R0;
+    case ARM7_MODE_UND:
+        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
+            idx_actual = (reg - ARM7_REG_R13) + ARM7_REG_R13_UND;
+        else
+            idx_actual = reg + ARM7_REG_R0;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+        return arm7->reg + idx_actual;
+    }
+}
 
 #endif
