@@ -55,6 +55,7 @@ static void reset_pipeline(struct arm7 *arm7);
 static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst);
+static void arm7_op_orr_immed(struct arm7 *arm7, arm7_inst inst);
 
 static bool arm7_cond_eq(struct arm7 *arm7);
 static bool arm7_cond_ne(struct arm7 *arm7);
@@ -207,6 +208,10 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_MRS (BIT_RANGE(23, 27) | BIT_RANGE(16, 21) | BIT_RANGE(0, 11))
 #define VAL_MRS  0x010f0000
 
+// data processing opcodes
+#define MASK_ORR_IMMED BIT_RANGE(21, 27)
+#define VAL_ORR_IMMED ((1 << 25) | (12 << 21))
+
 void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
                  arm7_inst inst) {
     inst_out->cond = arm7_cond(inst);
@@ -226,6 +231,13 @@ void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
     } else if ((inst & MASK_MRS) == VAL_MRS) {
         inst_out->op = arm7_op_mrs;
         inst_out->cycles = 1 * S_CYCLE;
+    } else if ((inst & MASK_ORR_IMMED) == VAL_ORR_IMMED) {
+        /*
+         * TODO: this cycle count is literally just something I made up with no
+         * basis in reality.  It needs to be corrected.
+         */
+        inst_out->op = arm7_op_orr_immed;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
     } else {
         error_set_arm7_inst(inst);
         error_set_arm7_pc(arm7->reg[ARM7_REG_R15]);
@@ -402,6 +414,47 @@ static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst) {
 
     uint32_t *dst_p = arm7->reg + dst_reg;
     *dst_p = *src_p;
+
+    next_inst(arm7);
+}
+
+static uint32_t ror(uint32_t in, unsigned n_bits) {
+    // TODO: I know there has to be an O(1) way to do this
+    while (n_bits--)
+        in = ((in & 1) << 31) | (in >> 1);
+    return in;
+}
+
+static uint32_t decode_immed(arm7_inst inst) {
+    uint32_t n_bits = (inst & BIT_RANGE(8, 11)) >> 8;
+    uint32_t imm = inst & BIT_RANGE(0, 7);
+
+    return ror(imm, n_bits);
+}
+
+static void arm7_op_orr_immed(struct arm7 *arm7, arm7_inst inst) {
+    bool s_flag = inst & (1 << 20);
+    uint32_t immed = decode_immed(inst);
+    unsigned rn = (inst >> 16) & 0xf;
+    unsigned rd = (inst >> 12) & 0xf;
+
+    uint32_t input_1 = arm7->reg[arm7_reg_idx(arm7, rn)];
+    uint32_t input_2 = immed;
+
+    if (rn == 15) {
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t res = input_1 | input_2;
+
+    if (s_flag) {
+        uint32_t z_flag = !res ? ARM7_CPSR_Z_MASK : 0;
+        uint32_t n_flag = res & (1 << 31) ? ARM7_CPSR_N_MASK : 0;
+        arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK | ARM7_CPSR_N_MASK);
+        arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag);
+    }
+
+    arm7->reg[arm7_reg_idx(arm7, rd)] = res;
 
     next_inst(arm7);
 }
