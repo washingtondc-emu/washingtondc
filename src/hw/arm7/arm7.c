@@ -67,6 +67,9 @@ static arm7_cond_fn arm7_cond(arm7_inst inst);
 static unsigned arm7_reg_idx(struct arm7 *arm7, unsigned reg);
 static unsigned arm7_spsr_idx(struct arm7 *arm7);
 
+static uint32_t decode_immed(arm7_inst inst);
+static void next_inst(struct arm7 *arm7);
+
 static bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
 }
@@ -211,6 +214,70 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 // data processing opcodes
 #define MASK_ORR_IMMED BIT_RANGE(21, 27)
 #define VAL_ORR_IMMED ((1 << 25) | (12 << 21))
+
+#define DATA_OP_FUNC_NAME(op_name) arm7_op_##op_name
+
+#define DATA_OP_FUNC_PROTO(op_name) \
+DATA_OP_FUNC_NAME(op_name)(uint32_t lhs, uint32_t rhs, uint32_t flag_c)
+
+#define DEF_DATA_OP(op_name, op)                                        \
+    static inline uint32_t                                              \
+    DATA_OP_FUNC_PROTO(op_name) {                                       \
+        return (op);                                                    \
+    }
+
+DEF_DATA_OP(and, lhs & rhs)
+DEF_DATA_OP(eor, lhs ^ rhs)
+DEF_DATA_OP(sub, lhs - rhs)
+DEF_DATA_OP(rsb, rhs - lhs)
+DEF_DATA_OP(add, lhs + rhs)
+DEF_DATA_OP(adc, lhs + rhs + flag_c)
+DEF_DATA_OP(sbc, (lhs - rhs) + (flag_c - 1))
+DEF_DATA_OP(rsc, (rhs - lhs) + (flag_c - 1))
+DEF_DATA_OP(tst, lhs & rhs)
+DEF_DATA_OP(teq, lhs ^ rhs)
+DEF_DATA_OP(cmp, lhs - rhs)
+DEF_DATA_OP(cmn, lhs + rhs)
+DEF_DATA_OP(orr, lhs | rhs)
+DEF_DATA_OP(mov, rhs)
+DEF_DATA_OP(bic, lhs & ~rhs)
+DEF_DATA_OP(mv, ~rhs)
+
+#define DEF_IMMED_FN(op_name, is_logic, allow_s)                        \
+    __attribute__((unused)) static void                                 \
+    arm7_op_##op_name##_immed(struct arm7 *arm7, arm7_inst inst) {              \
+        bool s_flag = inst & (1 << 20);                                 \
+        uint32_t immed = decode_immed(inst);                            \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+        bool flag_c = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;      \
+                                                                        \
+        uint32_t input_1 = arm7->reg[arm7_reg_idx(arm7, rn)];           \
+        uint32_t input_2 = immed;                                       \
+                                                                        \
+        if (rn == 15) {                                                 \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
+                                                                        \
+        uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
+                                                  flag_c ? 1 : 0);      \
+        if (s_flag) {                                                   \
+            if (!allow_s)                                               \
+                RAISE_ERROR(ERROR_INTEGRITY);                           \
+            if (!is_logic)                                              \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            uint32_t z_flag = !res ? ARM7_CPSR_Z_MASK : 0;              \
+            uint32_t n_flag = res & (1 << 31) ? ARM7_CPSR_N_MASK : 0;   \
+            arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK | ARM7_CPSR_N_MASK); \
+            arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag);              \
+        }                                                               \
+                                                                        \
+        arm7->reg[arm7_reg_idx(arm7, rd)] = res;                        \
+                                                                        \
+        next_inst(arm7);                                                \
+    }
+
+DEF_IMMED_FN(orr, true, true)
 
 void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
                  arm7_inst inst) {
@@ -430,33 +497,6 @@ static uint32_t decode_immed(arm7_inst inst) {
     uint32_t imm = inst & BIT_RANGE(0, 7);
 
     return ror(imm, n_bits);
-}
-
-static void arm7_op_orr_immed(struct arm7 *arm7, arm7_inst inst) {
-    bool s_flag = inst & (1 << 20);
-    uint32_t immed = decode_immed(inst);
-    unsigned rn = (inst >> 16) & 0xf;
-    unsigned rd = (inst >> 12) & 0xf;
-
-    uint32_t input_1 = arm7->reg[arm7_reg_idx(arm7, rn)];
-    uint32_t input_2 = immed;
-
-    if (rn == 15) {
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    uint32_t res = input_1 | input_2;
-
-    if (s_flag) {
-        uint32_t z_flag = !res ? ARM7_CPSR_Z_MASK : 0;
-        uint32_t n_flag = res & (1 << 31) ? ARM7_CPSR_N_MASK : 0;
-        arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK | ARM7_CPSR_N_MASK);
-        arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag);
-    }
-
-    arm7->reg[arm7_reg_idx(arm7, rd)] = res;
-
-    next_inst(arm7);
 }
 
 unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
