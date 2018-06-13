@@ -55,6 +55,7 @@ static void reset_pipeline(struct arm7 *arm7);
 static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst);
+static void arm7_op_msr(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_orr_immed(struct arm7 *arm7, arm7_inst inst);
 
 static bool arm7_cond_eq(struct arm7 *arm7);
@@ -211,6 +212,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_MRS (BIT_RANGE(23, 27) | BIT_RANGE(16, 21) | BIT_RANGE(0, 11))
 #define VAL_MRS  0x010f0000
 
+#define MASK_MSR (BIT_RANGE(23, 27) | BIT_RANGE(4, 21))
+#define VAL_MSR  (0x0129f000)
+
 // data processing opcodes
 #define MASK_ORR_IMMED BIT_RANGE(21, 27)
 #define VAL_ORR_IMMED ((1 << 25) | (12 << 21))
@@ -306,7 +310,12 @@ static struct arm7_opcode {
      */
     { arm7_op_ldr, MASK_LDR, VAL_LDR, 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE },
 
+    /*
+     * It's important that these always go *before* the data processing
+     * instructions due to opcode overlap.
+     */
     { arm7_op_mrs, MASK_MRS, VAL_MRS, 1 * S_CYCLE },
+    { arm7_op_msr, MASK_MSR, VAL_MSR, 1 * S_CYCLE },
 
     /*
      * TODO: this cycle count is literally just something I made up with no
@@ -495,6 +504,10 @@ static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst) {
     next_inst(arm7);
 }
 
+/*
+ * MSR
+ * Copy CPSR (or SPSR) to a register
+ */
 static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst) {
     bool src_psr = (1 << 22) & inst;
     unsigned dst_reg = (inst >> 12) & 0xf;
@@ -508,6 +521,26 @@ static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst) {
     uint32_t *dst_p = arm7->reg + dst_reg;
     *dst_p = *src_p;
 
+    next_inst(arm7);
+}
+
+/*
+ * MSR
+ * Copy a register to CPSR (or SPSR)
+ */
+static void arm7_op_msr(struct arm7 *arm7, arm7_inst inst) {
+    bool dst_psr = (1 << 22) & inst;
+
+    uint32_t *dst_p;
+    if (dst_psr)
+        dst_p = arm7->reg + arm7_spsr_idx(arm7);
+    else
+        dst_p = arm7->reg + ARM7_REG_CPSR;
+
+    unsigned src_reg = inst & 0xff;
+    uint32_t *src_p = arm7->reg + src_reg;
+
+    *dst_p = *src_p;
     next_inst(arm7);
 }
 
