@@ -36,6 +36,7 @@
 #include "sh4_tbl.h"
 #include "sh4_excp.h"
 #include "log.h"
+#include "intmath.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debugger.h"
@@ -2713,26 +2714,15 @@ void sh4_inst_binary_addc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1110, INST_CONS_0011nnnnmmmm1110);
 
-    // detect carry by doing 64-bit math
-    uint64_t in_src, in_dst;
-    reg32_t *src_reg, *dst_reg;
-
-    src_reg = sh4_gen_reg(sh4, inst.src_reg);
-    dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
-
-    in_src = *src_reg;
-    in_dst = *dst_reg;
-
-    assert(!(in_src & 0xffffffff00000000));
-    assert(!(in_dst & 0xffffffff00000000));
-
-    in_dst += in_src + ((sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) >> SH4_SR_FLAG_T_SHIFT);
-
-    unsigned carry_bit = ((in_dst & 0x100000000) >> 32) << SH4_SR_FLAG_T_SHIFT;
-    sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
-    sh4->reg[SH4_REG_SR] |= carry_bit;
-
-    *dst_reg = in_dst;
+    reg32_t *src_reg = sh4_gen_reg(sh4, inst.src_reg);
+    reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
+    bool carry_out;
+    bool carry_in = (bool)(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK);
+    *dst_reg = add_flags(*src_reg, *dst_reg, carry_in, &carry_out, NULL);
+    if (carry_out)
+        sh4->reg[SH4_REG_SR] |= SH4_SR_FLAG_T_MASK;
+    else
+        sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
 }
 
 #define INST_MASK_0011nnnnmmmm1111 0xf00f
@@ -2744,33 +2734,16 @@ void sh4_inst_binary_addv_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1111, INST_CONS_0011nnnnmmmm1111);
 
-    // detect overflow using 64-bit math
-    reg32_t in_src, in_dst;
-    reg32_t *src_reg, *dst_reg;
+    reg32_t *src_reg = sh4_gen_reg(sh4, inst.src_reg);
+    reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
 
-    src_reg = sh4_gen_reg(sh4, inst.src_reg);
-    dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
+    bool overflow;
+    *dst_reg = add_flags(*src_reg,  *dst_reg, false, NULL, &overflow);
 
-    in_src = *src_reg;
-    in_dst = *dst_reg;
-
-    int32_t in_dst_signed = in_dst;
-    int32_t in_src_signed = in_src;
-
-    unsigned overflow_bit;
-    overflow_bit =
-        ((in_dst_signed > 0) && (in_src_signed > INT_MAX - in_dst_signed)) ||
-        ((in_dst_signed < 0) && (in_src_signed < INT_MIN - in_dst_signed));
-    sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
-    sh4->reg[SH4_REG_SR] |= (overflow_bit << SH4_SR_FLAG_T_SHIFT);
-
-    /*
-     * IMPORTANT - the actual addition is done as uint32_t because in C the
-     * result of signed integer overflow is undefined, but the result of
-     * unsigned integer overflow will always be modulo 2^32.
-     */
-    in_dst += in_src;
-    *dst_reg = in_dst;
+    if (overflow)
+        sh4->reg[SH4_REG_SR] |= SH4_SR_FLAG_T_MASK;
+    else
+        sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
 }
 
 #define INST_MASK_0011nnnnmmmm0000 0xf00f
@@ -3184,25 +3157,18 @@ void sh4_inst_binary_subc_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1010, INST_CONS_0011nnnnmmmm1010);
 
     // detect carry by doing 64-bit math
-    uint64_t in_src, in_dst;
-    reg32_t *src_reg, *dst_reg;
+    reg32_t *src_reg = sh4_gen_reg(sh4, inst.src_reg);
+    reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);;
 
-    src_reg = sh4_gen_reg(sh4, inst.src_reg);
-    dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
+    bool carry_in = (bool)(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK);
+    bool carry_bit;
+    *dst_reg = sub_flags((int32_t)*src_reg, (int32_t)*dst_reg,
+                         carry_in, &carry_bit, NULL);
 
-    in_src = *src_reg;
-    in_dst = *dst_reg;
-
-    assert(!(in_src & 0xffffffff00000000));
-    assert(!(in_dst & 0xffffffff00000000));
-
-    in_dst -= in_src + ((sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) >> SH4_SR_FLAG_T_SHIFT);
-
-    unsigned carry_bit = ((in_dst & 0x100000000) >> 32) << SH4_SR_FLAG_T_SHIFT;
-    sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
-    sh4->reg[SH4_REG_SR] |= carry_bit;
-
-    *dst_reg = in_dst;
+    if (carry_bit)
+        sh4->reg[SH4_REG_SR] |= SH4_SR_FLAG_T_MASK;
+    else
+        sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
 }
 
 #define INST_MASK_0011nnnnmmmm1011 0xf00f
@@ -3215,24 +3181,17 @@ void sh4_inst_binary_subv_gen_gen(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1011, INST_CONS_0011nnnnmmmm1011);
 
     // detect overflow using 64-bit math
-    int64_t in_src, in_dst;
-    reg32_t *src_reg, *dst_reg;
+    reg32_t *src_reg = sh4_gen_reg(sh4, inst.src_reg);
+    reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);;
 
-    src_reg = sh4_gen_reg(sh4, inst.src_reg);
-    dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
+    bool overflow_bit;
+    *dst_reg = sub_flags((int32_t)*src_reg, (int32_t)*dst_reg,
+                         false, NULL, &overflow_bit);
 
-    // cast to int32_t instead of int64_t so it gets sign-extended
-    // instead of zero-extended.
-    in_src = (int32_t)*src_reg;
-    in_dst = (int32_t)*dst_reg;
-
-    in_dst -= in_src;
-
-    unsigned overflow_bit = (in_dst > INT32_MAX) || (in_dst < INT32_MIN);
-    sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
-    sh4->reg[SH4_REG_SR] |= overflow_bit;
-
-    *dst_reg = in_dst;
+    if (overflow_bit)
+        sh4->reg[SH4_REG_SR] |= SH4_SR_FLAG_T_MASK;
+    else
+        sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
 }
 
 #define INST_MASK_0010nnnnmmmm1001 0xf00f
