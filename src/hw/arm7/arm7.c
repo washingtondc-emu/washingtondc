@@ -590,6 +590,8 @@ decode_shift(struct arm7 *arm7, arm7_inst inst) {
         // right-rotate
         return ror(src_val, shift_amt);
     }
+
+    RAISE_ERROR(ERROR_INTEGRITY);
 }
 
 unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
