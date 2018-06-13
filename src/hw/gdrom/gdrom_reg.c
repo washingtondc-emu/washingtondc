@@ -180,7 +180,7 @@ uint8_t gdrom_reg_read_8(addr32_t addr, void *ctxt) {
         return buf;
     case ATA_REG_R_INT_REASON:
         buf = gdrom_get_int_reason_reg(&gdrom_ctxt->int_reason_reg);
-        GDROM_TRACE("int_reason is 0x%08x\n", (unsigned)tmp);
+        GDROM_TRACE("int_reason is 0x%08x\n", (unsigned)buf);
         return buf;
     case ATA_REG_R_SEC_NUM:
         return ((uint8_t)gdrom_get_drive_state() << SEC_NUM_STATUS_SHIFT) |
@@ -191,7 +191,7 @@ uint8_t gdrom_reg_read_8(addr32_t addr, void *ctxt) {
         return buf;
     case ATA_REG_RW_BYTE_CNT_HI:
         buf = (gdrom_ctxt->data_byte_count & 0xff00) >> 8;
-        GDROM_TRACE("read 0x%02x from byte_count_high\n", (unsigned)high);
+        GDROM_TRACE("read 0x%02x from byte_count_high\n", (unsigned)buf);
         return buf;
         break;
     case ATA_REG_RW_DRIVE_SEL:
@@ -321,7 +321,7 @@ uint32_t gdrom_reg_read_32(addr32_t addr, void *ctxt) {
         return buf;
     case ATA_REG_R_INT_REASON:
         buf = gdrom_get_int_reason_reg(&gdrom_ctxt->int_reason_reg);
-        GDROM_TRACE("int_reason is 0x%08x\n", (unsigned)tmp);
+        GDROM_TRACE("int_reason is 0x%08x\n", (unsigned)buf);
         return buf;
     case ATA_REG_R_SEC_NUM:
         return ((uint32_t)gdrom_get_drive_state() << SEC_NUM_STATUS_SHIFT) |
@@ -332,7 +332,7 @@ uint32_t gdrom_reg_read_32(addr32_t addr, void *ctxt) {
         return buf;
     case ATA_REG_RW_BYTE_CNT_HI:
         buf = (gdrom_ctxt->data_byte_count & 0xff00) >> 8;
-        GDROM_TRACE("read 0x%02x from byte_count_high\n", (unsigned)high);
+        GDROM_TRACE("read 0x%02x from byte_count_high\n", (unsigned)buf);
         return buf;
         break;
     case ATA_REG_RW_DRIVE_SEL:
