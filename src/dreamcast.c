@@ -118,7 +118,8 @@ enum TermReason term_reason = TERM_REASON_NORM;
 
 static enum dc_state dc_state = DC_STATE_NOT_RUNNING;
 
-static struct dc_clock sh4_clock, arm7_clock;
+struct dc_clock arm7_clock;
+struct dc_clock sh4_clock;
 
 static void dc_sigint_handler(int param);
 

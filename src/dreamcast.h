@@ -27,12 +27,15 @@
 
 #include "memory.h"
 #include "hw/sh4/sh4.h"
+#include "dc_sched.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debugger.h"
 #endif
 
 #include "io/serial_server.h"
+
+extern struct dc_clock sh4_clock;
 
 #define ADDR_IP_BIN        0x8c008000
 #define ADDR_1ST_READ_BIN  0x8c010000

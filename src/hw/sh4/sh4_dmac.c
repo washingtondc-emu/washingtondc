@@ -366,6 +366,16 @@ void sh4_dmac_transfer_from_mem(Sh4 *sh4, addr32_t transfer_src, size_t unit_sz,
     }
 }
 
+void sh4_dmac_transfer(Sh4 *sh4, addr32_t transfer_src,
+                       addr32_t transfer_dst, size_t n_bytes) {
+    struct memory_map *map = sh4->mem.map;
+    size_t counter;
+    for (counter = 0; counter < n_bytes; counter++) {
+        uint8_t byte = memory_map_read_8(map, transfer_src++);
+        memory_map_write_8(map, transfer_dst++, byte);
+    }
+}
+
 void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
     /*
      * TODO: check DMAOR to make sure DMA is enabled.  Maybe check a few other

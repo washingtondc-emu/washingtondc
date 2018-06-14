@@ -31,6 +31,10 @@
 #include "error.h"
 #include "log.h"
 #include "mmio.h"
+#include "hw/sys/holly_intc.h"
+#include "dc_sched.h"
+#include "dreamcast.h"
+#include "intmath.h"
 
 #include "g2_reg.h"
 
@@ -41,6 +45,8 @@ DEF_MMIO_REGION(g2_reg_32, N_G2_REGS, ADDR_G2_FIRST, uint32_t)
 static struct mmio_region_g2_reg_32 mmio_region_g2_reg_32;
 
 static uint8_t reg_backing[N_G2_REGS];
+
+static uint32_t adtsel, addir, adstar, adstag, adlen;
 
 uint8_t g2_reg_read_8(addr32_t addr, void *ctxt) {
     error_set_length(1);
@@ -99,12 +105,95 @@ void g2_reg_write_double(addr32_t addr, double val, void *ctxt) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
+static uint32_t adst;
+
+static struct SchedEvent aica_dma_raise_event;
+static bool sched_aica_dma_event;
+
+static void post_delay_aica_dma_int(struct SchedEvent *event) {
+    holly_raise_nrm_int(HOLLY_REG_ISTNRM_AICA_DMA_COMPLETE); // ?
+    sched_aica_dma_event = false;
+    adst = 0;
+}
+
 static void sb_adst_reg_mmio_write(struct mmio_region_g2_reg_32 *region,
                                    unsigned idx, uint32_t val, void *ctxt) {
     if (val) {
-        error_set_feature("AICA DMA");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        LOG_DBG("AICA: addir is %d\n", (int)addir);
+        LOG_DBG("AICA: adtsel is %d\n", (int)adtsel);
+        if (addir)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+        uint32_t src_addr = adstar & ~(BIT_RANGE(0, 4) | BIT_RANGE(29, 31));
+        uint32_t dst_addr = adstag & ~(BIT_RANGE(0, 4) | BIT_RANGE(29, 31));
+        unsigned n_bytes = adlen & BIT_RANGE(5, 24);
+
+        LOG_DBG("AICA: Request to transfer 0x%08x bytes from 0x%08x to "
+                "0x%08x\n",
+                n_bytes, (unsigned)src_addr, (unsigned)dst_addr);
+
+        sh4_dmac_transfer(dreamcast_get_cpu(), src_addr, dst_addr, n_bytes);
+
+        aica_dma_raise_event.handler = post_delay_aica_dma_int;
+        aica_dma_raise_event.when = clock_cycle_stamp(&sh4_clock);
+        sched_event(&sh4_clock, &aica_dma_raise_event);
     }
+    adst = val;
+}
+
+static uint32_t sb_adst_reg_mmio_read(struct mmio_region_g2_reg_32 *region,
+                                      unsigned idx, void *ctxt) {
+    return adst;
+}
+
+static uint32_t adtsel_reg_read(struct mmio_region_g2_reg_32 *region,
+                                unsigned idx, void *ctxt) {
+    return adtsel;
+}
+
+static void adtsel_reg_write(struct mmio_region_g2_reg_32 *region,
+                             unsigned idx, uint32_t val, void *ctxt) {
+    adtsel = val;
+}
+
+static uint32_t addir_reg_read(struct mmio_region_g2_reg_32 *region,
+                                unsigned idx, void *ctxt) {
+    return addir;
+}
+
+static void addir_reg_write(struct mmio_region_g2_reg_32 *region,
+                             unsigned idx, uint32_t val, void *ctxt) {
+    addir = val;
+}
+
+static uint32_t adstar_reg_read(struct mmio_region_g2_reg_32 *region,
+                                unsigned idx, void *ctxt) {
+    return adstar;
+}
+
+static void adstar_reg_write(struct mmio_region_g2_reg_32 *region,
+                             unsigned idx, uint32_t val, void *ctxt) {
+    adstar = val;
+}
+
+static uint32_t adstag_reg_read(struct mmio_region_g2_reg_32 *region,
+                                unsigned idx, void *ctxt) {
+    return adstag;
+}
+
+static void adstag_reg_write(struct mmio_region_g2_reg_32 *region,
+                             unsigned idx, uint32_t val, void *ctxt) {
+    adstag = val;
+}
+
+static uint32_t adlen_reg_read(struct mmio_region_g2_reg_32 *region,
+                               unsigned idx, void *ctxt) {
+    return adlen;
+}
+
+static void adlen_reg_write(struct mmio_region_g2_reg_32 *region,
+                            unsigned idx, uint32_t val, void *ctxt) {
+    adlen = val;
 }
 
 void g2_reg_init(void) {
@@ -112,28 +201,28 @@ void g2_reg_init(void) {
 
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADSTAG", 0x5f7800,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    adstag_reg_read,
+                                    adstag_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADSTAR", 0x5f7804,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    adstar_reg_read,
+                                    adstar_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADLEN", 0x5f7808,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    adlen_reg_read,
+                                    adlen_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADDIR", 0x5f780c,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    addir_reg_read,
+                                    addir_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADTSEL", 0x5f7810,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    adtsel_reg_read,
+                                    adtsel_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADEN", 0x5f7814,
@@ -142,7 +231,7 @@ void g2_reg_init(void) {
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADST", 0x5f7818,
-                                    mmio_region_g2_reg_32_warn_read_handler,
+                                    sb_adst_reg_mmio_read,
                                     sb_adst_reg_mmio_write, NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADSUSP", 0x5f781c,
