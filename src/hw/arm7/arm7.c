@@ -25,6 +25,7 @@
 #include <stdbool.h>
 
 #include "error.h"
+#include "intmath.h"
 
 #include "arm7.h"
 
@@ -219,36 +220,97 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_ORR_IMMED BIT_RANGE(21, 27)
 #define VAL_ORR_IMMED ((1 << 25) | (12 << 21))
 
-#define MASK_TEQ_IMMED BIT_RANGE(20, 27)
-#define VAL_TEQ_IMMED ((1 << 25) | (9 << 21))
+#define MASK_ADD_IMMED BIT_RANGE(21, 27)
+#define VAL_ADD_IMMED ((1 << 25) | (4 << 21))
+
+/* #define MASK_TEQ_IMMED BIT_RANGE(20, 27) */
+/* #define VAL_TEQ_IMMED ((1 << 25) | (9 << 21)) */
 
 #define DATA_OP_FUNC_NAME(op_name) arm7_op_##op_name
 
 #define DATA_OP_FUNC_PROTO(op_name) \
-DATA_OP_FUNC_NAME(op_name)(uint32_t lhs, uint32_t rhs, uint32_t flag_c)
+DATA_OP_FUNC_NAME(op_name)(uint32_t lhs, uint32_t rhs, bool carry_in,\
+                           bool *n_out, bool *c_out, bool *z_out, bool *v_out)
 
-#define DEF_DATA_OP(op_name, op)                                        \
+#define DEF_DATA_OP(op_name)                                            \
     static inline uint32_t                                              \
-    DATA_OP_FUNC_PROTO(op_name) {                                       \
-        return (op);                                                    \
-    }
+    DATA_OP_FUNC_PROTO(op_name)
 
-DEF_DATA_OP(and, lhs & rhs)
-DEF_DATA_OP(eor, lhs ^ rhs)
-DEF_DATA_OP(sub, lhs - rhs)
-DEF_DATA_OP(rsb, rhs - lhs)
-DEF_DATA_OP(add, lhs + rhs)
-DEF_DATA_OP(adc, lhs + rhs + flag_c)
-DEF_DATA_OP(sbc, (lhs - rhs) + (flag_c - 1))
-DEF_DATA_OP(rsc, (rhs - lhs) + (flag_c - 1))
-DEF_DATA_OP(tst, lhs & rhs)
-DEF_DATA_OP(teq, lhs ^ rhs)
-DEF_DATA_OP(cmp, lhs - rhs)
-DEF_DATA_OP(cmn, lhs + rhs)
-DEF_DATA_OP(orr, lhs | rhs)
-DEF_DATA_OP(mov, rhs)
-DEF_DATA_OP(bic, lhs & ~rhs)
-DEF_DATA_OP(mv, ~rhs)
+/* DEF_DATA_OP(and) { */
+/*     return lhs & rhs; */
+/* } */
+
+/* DEF_DATA_OP(eor) { */
+/*     return lhs ^ rhs; */
+/* } */
+
+/* DEF_DATA_OP(sub) { */
+/*     return lhs - rhs; */
+/* } */
+
+/* DEF_DATA_OP(rsb) { */
+/*     return rhs - lhs; */
+/* } */
+
+DEF_DATA_OP(add) {
+    uint32_t val = add_flags(lhs, rhs, carry_in, c_out, v_out);
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+    return val;
+}
+
+/* DEF_DATA_OP(adc) { */
+/*     return lhs + rhs + carry_in; */
+/* } */
+
+/* DEF_DATA_OP(sbc) { */
+/*     return (lhs - rhs) + (carry_in - 1); */
+/* } */
+
+/* DEF_DATA_OP(rsc) { */
+/*     return (rhs - lhs) + (carry_in - 1); */
+/* } */
+
+/* DEF_DATA_OP(tst) { */
+/*     return lhs & rhs; */
+/* } */
+
+/* DEF_DATA_OP(teq) { */
+/*     return lhs ^ rhs; */
+/* } */
+
+/* DEF_DATA_OP(cmp) { */
+/*     return lhs - rhs; */
+/* } */
+
+/* DEF_DATA_OP(cmn) { */
+/*     return lhs + rhs; */
+/* } */
+
+DEF_DATA_OP(orr) {
+    uint32_t val = lhs | rhs;
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+
+    /*
+     * TODO: c_out is supposed to be set to the output from the barrel shifter
+     * (whatever that means)
+     */
+    *c_out = false;
+    return val;
+}
+
+/* DEF_DATA_OP(mov) { */
+/*     return rhs; */
+/* } */
+
+/* DEF_DATA_OP(bic) { */
+/*     return lhs & ~rhs; */
+/* } */
+
+/* DEF_DATA_OP(mv) { */
+/*     return ~rhs; */
+/* } */
 
 #define DEF_IMMED_FN(op_name, is_logic, allow_s)                        \
     __attribute__((unused)) static void                                 \
@@ -257,7 +319,9 @@ DEF_DATA_OP(mv, ~rhs)
         uint32_t immed = decode_immed(inst);                            \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
-        bool flag_c = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;      \
+                                                                        \
+        bool carry_in = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;    \
+        bool n_out, c_out, z_out, v_out;                                \
                                                                         \
         uint32_t input_1 = arm7->reg[arm7_reg_idx(arm7, rn)];           \
         uint32_t input_2 = immed;                                       \
@@ -267,16 +331,31 @@ DEF_DATA_OP(mv, ~rhs)
         }                                                               \
                                                                         \
         uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
-                                                  flag_c ? 1 : 0);      \
+                                                  carry_in, &n_out,     \
+                                                  &c_out, &z_out, &v_out); \
         if (s_flag) {                                                   \
             if (!allow_s)                                               \
                 RAISE_ERROR(ERROR_INTEGRITY);                           \
-            if (!is_logic)                                              \
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
-            uint32_t z_flag = !res ? ARM7_CPSR_Z_MASK : 0;              \
-            uint32_t n_flag = res & (1 << 31) ? ARM7_CPSR_N_MASK : 0;   \
-            arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK | ARM7_CPSR_N_MASK); \
-            arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag);              \
+            if (is_logic) {                                             \
+                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
+                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
+                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
+                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
+                                              ARM7_CPSR_N_MASK |        \
+                                              ARM7_CPSR_C_MASK);        \
+                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag | c_flag); \
+            } else {                                                    \
+                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
+                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
+                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
+                uint32_t v_flag = c_out ? ARM7_CPSR_V_MASK : 0;         \
+                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
+                                              ARM7_CPSR_N_MASK |        \
+                                              ARM7_CPSR_C_MASK |        \
+                                              ARM7_CPSR_V_MASK);        \
+                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag |          \
+                                             c_flag | v_flag);          \
+            }                                                           \
         }                                                               \
                                                                         \
         arm7->reg[arm7_reg_idx(arm7, rd)] = res;                        \
@@ -285,7 +364,8 @@ DEF_DATA_OP(mv, ~rhs)
     }
 
 DEF_IMMED_FN(orr, true, true)
-DEF_IMMED_FN(teq, true, false)
+DEF_IMMED_FN(add, false, false)
+/* DEF_IMMED_FN(teq, true, false) */
 
 typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
 
@@ -322,6 +402,7 @@ static struct arm7_opcode {
      * basis in reality.  It needs to be corrected.
      */
     { arm7_op_orr_immed, MASK_ORR_IMMED, VAL_ORR_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_op_add_immed, MASK_ADD_IMMED, VAL_ADD_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
 };

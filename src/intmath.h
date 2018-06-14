@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <limits.h>
 
 static inline uint32_t add_flags(uint32_t lhs, uint32_t rhs, bool carry_in,
                                  bool *carry_out, bool *overflow_out) {
