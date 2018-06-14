@@ -54,7 +54,7 @@ static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr);
 static void reset_pipeline(struct arm7 *arm7);
 
 static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst);
-static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst);
+static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_msr(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_orr_immed(struct arm7 *arm7, arm7_inst inst);
@@ -204,8 +204,8 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_B BIT_RANGE(25, 27)
 #define VAL_B  0x0a000000
 
-#define MASK_LDR (BIT_RANGE(26, 27) | (1 << 20))
-#define VAL_LDR  0x04100000
+#define MASK_LDR_STR BIT_RANGE(26, 27)
+#define VAL_LDR_STR  0x04000000
 
 #define MASK_STR (BIT_RANGE(26, 27) | (1 << 20))
 #define VAL_STR  0x04000000
@@ -388,7 +388,8 @@ static struct arm7_opcode {
      * TODO: this is supposed to take 2 * S_CYCLE + 2 * N_CYCLE + I_CYCLE
      * cycles if R15 is involved...?
      */
-    { arm7_op_ldr, MASK_LDR, VAL_LDR, 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE },
+    { arm7_op_ldr_str, MASK_LDR_STR, VAL_LDR_STR,
+      1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE },
 
     /*
      * It's important that these always go *before* the data processing
@@ -544,7 +545,7 @@ static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst) {
     reset_pipeline(arm7);
 }
 
-static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst) {
+static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst) {
     unsigned rn = (inst >> 16) & 0xf;
     unsigned rd = (inst >> 12) & 0xf;
 
@@ -553,6 +554,7 @@ static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst) {
     int sign = (inst & (1 << 23)) ? 1 : -1;
     bool pre = inst & (1 << 24);
     bool offs_reg = inst & (1 << 25);
+    bool to_mem = inst & (1 << 20);
 
     uint32_t offs;
     if (offs_reg) {
@@ -571,7 +573,10 @@ static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst) {
     }
 
     if (len == 4) {
-        arm7->reg[arm7_reg_idx(arm7, rd)] = memory_map_read_32(arm7->map, addr);
+        if (to_mem)
+            arm7->reg[arm7_reg_idx(arm7, rd)] = memory_map_read_32(arm7->map, addr);
+        else
+            memory_map_write_32(arm7->map, addr, arm7->reg[arm7_reg_idx(arm7, rd)]);
     } else {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
