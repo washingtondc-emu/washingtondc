@@ -567,9 +567,7 @@ void pvr2_core_reg_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 }
 
 uint16_t pvr2_core_reg_read_16(addr32_t addr, void *ctxt) {
-    error_set_length(2);
-    error_set_address(addr);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    return pvr2_core_reg_read_32(addr, ctxt);
 }
 
 void pvr2_core_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
