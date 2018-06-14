@@ -505,7 +505,7 @@ static void arm7_op_ldr(struct arm7 *arm7, arm7_inst inst) {
 }
 
 /*
- * MSR
+ * MRS
  * Copy CPSR (or SPSR) to a register
  */
 static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst) {
