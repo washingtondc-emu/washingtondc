@@ -95,6 +95,7 @@ static struct gdrom_ctxt gdrom;
 
 static volatile bool is_running;
 static volatile bool signal_exit_threads;
+static bool init_complete;
 
 static bool using_debugger;
 
@@ -273,9 +274,12 @@ void dreamcast_init(bool cmd_session) {
          */
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
     }
+
+    init_complete = true;
 }
 
 void dreamcast_cleanup() {
+    init_complete = false;
     memory_map_cleanup(cpu.mem.map);
 
     maple_cleanup();
@@ -571,23 +575,29 @@ static void time_diff(struct timespec *delta,
 }
 
 void dc_print_perf_stats(void) {
-    struct timespec end_time, delta_time;
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    if (init_complete) {
+        struct timespec end_time, delta_time;
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
 
-    time_diff(&delta_time, &end_time, &start_time);
+        time_diff(&delta_time, &end_time, &start_time);
 
-    LOG_INFO("Total elapsed time: %u seconds and %u nanoseconds\n",
-             (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
+        LOG_INFO("Total elapsed time: %u seconds and %u nanoseconds\n",
+                 (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
 
-    LOG_INFO("%u SH4 CPU cycles executed\n",
-             (unsigned)sh4_get_cycles(&cpu));
+        LOG_INFO("%u SH4 CPU cycles executed\n",
+                 (unsigned)sh4_get_cycles(&cpu));
 
-    double seconds = delta_time.tv_sec +
-        ((double)delta_time.tv_nsec) / 1000000000.0;
-    double hz = (double)sh4_get_cycles(&cpu) / seconds;
-    double hz_ratio = hz / (double)(200 * 1000 * 1000);
+        double seconds = delta_time.tv_sec +
+            ((double)delta_time.tv_nsec) / 1000000000.0;
+        double hz = (double)sh4_get_cycles(&cpu) / seconds;
+        double hz_ratio = hz / (double)(200 * 1000 * 1000);
 
-    LOG_INFO("Performance is %f MHz (%f%%)\n", hz / 1000000.0, hz_ratio * 100.0);
+        LOG_INFO("Performance is %f MHz (%f%%)\n",
+                 hz / 1000000.0, hz_ratio * 100.0);
+    } else {
+        LOG_INFO("Program execution halted before WashingtonDC was completely "
+                 "initialized.\n");
+    }
 }
 
 void dreamcast_kill(void) {
