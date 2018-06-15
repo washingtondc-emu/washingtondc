@@ -58,6 +58,7 @@ static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_msr(struct arm7 *arm7, arm7_inst inst);
 static void arm7_op_orr_immed(struct arm7 *arm7, arm7_inst inst);
+static void arm7_op_mov_immed(struct arm7 *arm7, arm7_inst inst);
 
 static bool arm7_cond_eq(struct arm7 *arm7);
 static bool arm7_cond_ne(struct arm7 *arm7);
@@ -223,6 +224,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_ADD_IMMED BIT_RANGE(21, 27)
 #define VAL_ADD_IMMED ((1 << 25) | (4 << 21))
 
+#define MASK_MOV_IMMED BIT_RANGE(21, 27)
+#define VAL_MOV_IMMED ((1 << 25) | (13 << 21))
+
 /* #define MASK_TEQ_IMMED BIT_RANGE(20, 27) */
 /* #define VAL_TEQ_IMMED ((1 << 25) | (9 << 21)) */
 
@@ -300,9 +304,17 @@ DEF_DATA_OP(orr) {
     return val;
 }
 
-/* DEF_DATA_OP(mov) { */
-/*     return rhs; */
-/* } */
+DEF_DATA_OP(mov) {
+    *n_out = rhs & (1 << 31);
+    *z_out = !rhs;
+
+    /*
+     * TODO: c_out is supposed to be set to the output from the barrel shifter
+     * (whatever that means)
+     */
+    *c_out = false;
+    return rhs;
+}
 
 /* DEF_DATA_OP(bic) { */
 /*     return lhs & ~rhs; */
@@ -364,6 +376,7 @@ DEF_DATA_OP(orr) {
     }
 
 DEF_IMMED_FN(orr, true, true)
+DEF_IMMED_FN(mov, true, true)
 DEF_IMMED_FN(add, false, false)
 /* DEF_IMMED_FN(teq, true, false) */
 
@@ -403,6 +416,7 @@ static struct arm7_opcode {
      * basis in reality.  It needs to be corrected.
      */
     { arm7_op_orr_immed, MASK_ORR_IMMED, VAL_ORR_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_op_mov_immed, MASK_MOV_IMMED, VAL_MOV_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_op_add_immed, MASK_ADD_IMMED, VAL_ADD_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
