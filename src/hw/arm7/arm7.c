@@ -592,6 +592,7 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
 
     uint32_t offs;
     if (offs_reg) {
+        error_set_arm7_inst(inst);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     } else {
         offs = inst & ((1 << 12) - 1);
@@ -612,14 +613,28 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
         else
             *arm7_gen_reg(arm7, rd) = memory_map_read_32(arm7->map, addr);
     } else {
+        error_set_arm7_inst(inst);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    if (!pre)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    if (!pre) {
+        if (writeback) {
+            /*
+             * docs say the writeback is implied when the pre bit is set, and
+             * that the writeback bit should be zero in this case.
+             */
+            error_set_arm7_inst(inst);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+        writeback = true;
+        if (sign < 0)
+            addr -= offs;
+        else
+            addr += offs;
+    }
 
     if (writeback)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        *arm7_gen_reg(arm7, rn) = addr;
 
     next_inst(arm7);
 }
