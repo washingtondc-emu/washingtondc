@@ -72,6 +72,8 @@ static unsigned arm7_spsr_idx(struct arm7 *arm7);
 static uint32_t decode_immed(arm7_inst inst);
 static void next_inst(struct arm7 *arm7);
 
+static uint32_t decode_shift(struct arm7 *arm7, arm7_inst inst);
+
 static bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
 }
@@ -217,17 +219,17 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define VAL_MSR  (0x0129f000)
 
 // data processing opcodes
-#define MASK_ORR_IMMED BIT_RANGE(21, 27)
-#define VAL_ORR_IMMED ((1 << 25) | (12 << 21))
+#define MASK_ORR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_ORR (12 << 21)
 
-#define MASK_ADD_IMMED BIT_RANGE(21, 27)
-#define VAL_ADD_IMMED ((1 << 25) | (4 << 21))
+#define MASK_ADD (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_ADD (4 << 21)
 
-#define MASK_SUB_IMMED BIT_RANGE(21, 27)
-#define VAL_SUB_IMMED  ((1 << 25) | (2 << 21))
+#define MASK_SUB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_SUB (2 << 21)
 
-#define MASK_MOV_IMMED BIT_RANGE(21, 27)
-#define VAL_MOV_IMMED ((1 << 25) | (13 << 21))
+#define MASK_MOV (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_MOV (13 << 21)
 
 /* #define MASK_TEQ_IMMED BIT_RANGE(20, 27) */
 /* #define VAL_TEQ_IMMED ((1 << 25) | (9 << 21)) */
@@ -338,7 +340,7 @@ DEF_DATA_OP(mov) {
     __attribute__((unused)) static void                                 \
     arm7_op_##op_name##_immed(struct arm7 *arm7, arm7_inst inst) {      \
         bool s_flag = inst & (1 << 20);                                 \
-        uint32_t immed = decode_immed(inst);                            \
+        bool i_flag = inst & (1 << 25);                                 \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
                                                                         \
@@ -346,7 +348,13 @@ DEF_DATA_OP(mov) {
         bool n_out, c_out, z_out, v_out;                                \
                                                                         \
         uint32_t input_1 = *arm7_gen_reg(arm7, rn);                     \
-        uint32_t input_2 = immed;                                       \
+        uint32_t input_2;                                               \
+                                                                        \
+        if (i_flag) {                                                   \
+            input_2 = decode_immed(inst);                               \
+        } else {                                                        \
+            input_2 = decode_shift(arm7, inst);                         \
+        }                                                               \
                                                                         \
         if (rn == 15) {                                                 \
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
@@ -426,10 +434,10 @@ static struct arm7_opcode {
      * TODO: this cycle count is literally just something I made up with no
      * basis in reality.  It needs to be corrected.
      */
-    { arm7_op_orr_immed, MASK_ORR_IMMED, VAL_ORR_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_op_mov_immed, MASK_MOV_IMMED, VAL_MOV_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_op_add_immed, MASK_ADD_IMMED, VAL_ADD_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_op_sub_immed, MASK_SUB_IMMED, VAL_SUB_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_op_orr_immed, MASK_ORR, VAL_ORR, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_op_mov_immed, MASK_MOV, VAL_MOV, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_op_add_immed, MASK_ADD, VAL_ADD, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_op_sub_immed, MASK_SUB, VAL_SUB, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
 };
@@ -668,7 +676,7 @@ static uint32_t decode_immed(arm7_inst inst) {
     return ror(imm, n_bits);
 }
 
-__attribute__((unused)) static uint32_t
+static uint32_t
 decode_shift(struct arm7 *arm7, arm7_inst inst) {
     bool amt_in_reg = inst & (1 << 4);
     unsigned shift_fn = (inst & BIT_RANGE(5, 6)) >> 5;
