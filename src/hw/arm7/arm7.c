@@ -53,12 +53,12 @@ static void arm7_check_excp(struct arm7 *arm7);
 static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr);
 static void reset_pipeline(struct arm7 *arm7);
 
-static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst);
-static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst);
-static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst);
-static void arm7_op_msr(struct arm7 *arm7, arm7_inst inst);
-static void arm7_op_orr_immed(struct arm7 *arm7, arm7_inst inst);
-static void arm7_op_mov_immed(struct arm7 *arm7, arm7_inst inst);
+static void arm7_inst_branch(struct arm7 *arm7, arm7_inst inst);
+static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst);
+static void arm7_inst_mrs(struct arm7 *arm7, arm7_inst inst);
+static void arm7_inst_msr(struct arm7 *arm7, arm7_inst inst);
+static void arm7_inst_orr(struct arm7 *arm7, arm7_inst inst);
+static void arm7_inst_mov(struct arm7 *arm7, arm7_inst inst);
 
 static bool arm7_cond_eq(struct arm7 *arm7);
 static bool arm7_cond_ne(struct arm7 *arm7);
@@ -336,9 +336,9 @@ DEF_DATA_OP(mov) {
 /*     return ~rhs; */
 /* } */
 
-#define DEF_IMMED_FN(op_name, is_logic, require_s)                      \
+#define DEF_INST_FN(op_name, is_logic, require_s)                      \
     __attribute__((unused)) static void                                 \
-    arm7_op_##op_name##_immed(struct arm7 *arm7, arm7_inst inst) {      \
+    arm7_inst_##op_name(struct arm7 *arm7, arm7_inst inst) {      \
         bool s_flag = inst & (1 << 20);                                 \
         bool i_flag = inst & (1 << 25);                                 \
         unsigned rn = (inst >> 16) & 0xf;                               \
@@ -393,11 +393,11 @@ DEF_DATA_OP(mov) {
         next_inst(arm7);                                                \
     }
 
-DEF_IMMED_FN(orr, true, false)
-DEF_IMMED_FN(mov, true, false)
-DEF_IMMED_FN(add, false, false)
-DEF_IMMED_FN(sub, false, false)
-/* DEF_IMMED_FN(teq, true, false) */
+DEF_INST_FN(orr, true, false)
+DEF_INST_FN(mov, true, false)
+DEF_INST_FN(add, false, false)
+DEF_INST_FN(sub, false, false)
+/* DEF_INST_FN(teq, true, false) */
 
 typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
 
@@ -414,30 +414,30 @@ static struct arm7_opcode {
      */
 
     // branch (with or without link)
-    { arm7_op_branch, MASK_B, VAL_B, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_branch, MASK_B, VAL_B, 2 * S_CYCLE + 1 * N_CYCLE },
 
     /*
      * TODO: this is supposed to take 2 * S_CYCLE + 2 * N_CYCLE + I_CYCLE
      * cycles if R15 is involved...?
      */
-    { arm7_op_ldr_str, MASK_LDR_STR, VAL_LDR_STR,
+    { arm7_inst_ldr_str, MASK_LDR_STR, VAL_LDR_STR,
       1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE },
 
     /*
      * It's important that these always go *before* the data processing
      * instructions due to opcode overlap.
      */
-    { arm7_op_mrs, MASK_MRS, VAL_MRS, 1 * S_CYCLE },
-    { arm7_op_msr, MASK_MSR, VAL_MSR, 1 * S_CYCLE },
+    { arm7_inst_mrs, MASK_MRS, VAL_MRS, 1 * S_CYCLE },
+    { arm7_inst_msr, MASK_MSR, VAL_MSR, 1 * S_CYCLE },
 
     /*
      * TODO: this cycle count is literally just something I made up with no
      * basis in reality.  It needs to be corrected.
      */
-    { arm7_op_orr_immed, MASK_ORR, VAL_ORR, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_op_mov_immed, MASK_MOV, VAL_MOV, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_op_add_immed, MASK_ADD, VAL_ADD, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_op_sub_immed, MASK_SUB, VAL_SUB, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_orr, MASK_ORR, VAL_ORR, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_mov, MASK_MOV, VAL_MOV, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_add, MASK_ADD, VAL_ADD, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_sub, MASK_SUB, VAL_SUB, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
 };
@@ -562,7 +562,7 @@ static void reset_pipeline(struct arm7 *arm7) {
     arm7->pipeline_len = 0;
 }
 
-static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst) {
+static void arm7_inst_branch(struct arm7 *arm7, arm7_inst inst) {
     uint32_t offs = inst & ((1 << 24) - 1);
     if (offs & (1 << 23))
         offs |= 0xff000000;
@@ -579,7 +579,7 @@ static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst) {
     reset_pipeline(arm7);
 }
 
-static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst) {
+static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
     unsigned rn = (inst >> 16) & 0xf;
     unsigned rd = (inst >> 12) & 0xf;
 
@@ -628,7 +628,7 @@ static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst) {
  * MRS
  * Copy CPSR (or SPSR) to a register
  */
-static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst) {
+static void arm7_inst_mrs(struct arm7 *arm7, arm7_inst inst) {
     bool src_psr = (1 << 22) & inst;
     unsigned dst_reg = (inst >> 12) & 0xf;
 
@@ -647,7 +647,7 @@ static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst) {
  * MSR
  * Copy a register to CPSR (or SPSR)
  */
-static void arm7_op_msr(struct arm7 *arm7, arm7_inst inst) {
+static void arm7_inst_msr(struct arm7 *arm7, arm7_inst inst) {
     bool dst_psr = (1 << 22) & inst;
 
     uint32_t *dst_p;
