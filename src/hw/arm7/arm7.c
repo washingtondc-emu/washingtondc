@@ -67,7 +67,6 @@ static bool arm7_cond_cc(struct arm7 *arm7);
 
 static arm7_cond_fn arm7_cond(arm7_inst inst);
 
-static unsigned arm7_reg_idx(struct arm7 *arm7, unsigned reg);
 static unsigned arm7_spsr_idx(struct arm7 *arm7);
 
 static uint32_t decode_immed(arm7_inst inst);
@@ -326,7 +325,7 @@ DEF_DATA_OP(mov) {
 
 #define DEF_IMMED_FN(op_name, is_logic, allow_s)                        \
     __attribute__((unused)) static void                                 \
-    arm7_op_##op_name##_immed(struct arm7 *arm7, arm7_inst inst) {              \
+    arm7_op_##op_name##_immed(struct arm7 *arm7, arm7_inst inst) {      \
         bool s_flag = inst & (1 << 20);                                 \
         uint32_t immed = decode_immed(inst);                            \
         unsigned rn = (inst >> 16) & 0xf;                               \
@@ -335,7 +334,7 @@ DEF_DATA_OP(mov) {
         bool carry_in = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;    \
         bool n_out, c_out, z_out, v_out;                                \
                                                                         \
-        uint32_t input_1 = arm7->reg[arm7_reg_idx(arm7, rn)];           \
+        uint32_t input_1 = *arm7_gen_reg(arm7, rn);                     \
         uint32_t input_2 = immed;                                       \
                                                                         \
         if (rn == 15) {                                                 \
@@ -370,7 +369,7 @@ DEF_DATA_OP(mov) {
             }                                                           \
         }                                                               \
                                                                         \
-        arm7->reg[arm7_reg_idx(arm7, rd)] = res;                        \
+        *arm7_gen_reg(arm7, rd) = res;                                  \
                                                                         \
         next_inst(arm7);                                                \
     }
@@ -435,7 +434,7 @@ void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
     }
 
     error_set_arm7_inst(inst);
-    error_set_arm7_pc(arm7->reg[ARM7_REG_R15]);
+    error_set_arm7_pc(arm7->reg[ARM7_REG_PC]);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
 return_success:
@@ -444,7 +443,7 @@ return_success:
 }
 
 static void next_inst(struct arm7 *arm7) {
-    arm7->reg[ARM7_REG_R15] += 4;
+    arm7->reg[ARM7_REG_PC] += 4;
 }
 
 static void arm7_idle_fetch(struct arm7 *arm7, arm7_inst inst) {
@@ -460,13 +459,13 @@ void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
     case 2:
         ret = arm7->pipeline[1];
         arm7->pipeline[1] = arm7->pipeline[0];
-        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15]);
+        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
         arm7_decode(arm7, inst_out, ret);
         return;
     case 1:
         arm7->pipeline[1] = arm7->pipeline[0];
     case 0:
-        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_R15]);
+        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
         arm7->pipeline_len++;
         inst_out->op = arm7_idle_fetch;
         inst_out->cycles = 1;
@@ -483,8 +482,8 @@ static void arm7_check_excp(struct arm7 *arm7) {
 
     if (excp & ARM7_EXCP_RESET) {
         arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-        arm7->reg[ARM7_REG_R14_SVC] = arm7->reg[ARM7_REG_R15] - 4;
-        arm7->reg[ARM7_REG_R15] = 0;
+        arm7->reg[ARM7_REG_R14_SVC] = arm7->reg[ARM7_REG_PC] - 4;
+        arm7->reg[ARM7_REG_PC] = 0;
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
@@ -493,16 +492,16 @@ static void arm7_check_excp(struct arm7 *arm7) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_I_MASK)) {
         arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
-        arm7->reg[ARM7_REG_R14_FIQ] = arm7->reg[ARM7_REG_R15] - 4;
-        arm7->reg[ARM7_REG_R15] = 0x1c;
+        arm7->reg[ARM7_REG_R14_FIQ] = arm7->reg[ARM7_REG_PC] - 4;
+        arm7->reg[ARM7_REG_PC] = 0x1c;
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_FIQ;
     } else if ((excp & ARM7_EXCP_IRQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
         arm7->reg[ARM7_REG_SPSR_IRQ] = cpsr;
-        arm7->reg[ARM7_REG_R14_IRQ] = arm7->reg[ARM7_REG_R15] - 4;
-        arm7->reg[ARM7_REG_R15] = 0x18;
+        arm7->reg[ARM7_REG_R14_IRQ] = arm7->reg[ARM7_REG_PC] - 4;
+        arm7->reg[ARM7_REG_PC] = 0x18;
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_IRQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
@@ -521,8 +520,8 @@ static void arm7_check_excp(struct arm7 *arm7) {
          * ARM7_REG_R15 - 4.
          */
         arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-        arm7->reg[ARM7_REG_R14_SVC] = arm7->reg[ARM7_REG_R15] - 4;
-        arm7->reg[ARM7_REG_R15] = 0;
+        arm7->reg[ARM7_REG_R14_SVC] = arm7->reg[ARM7_REG_PC] - 4;
+        arm7->reg[ARM7_REG_PC] = 0;
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
@@ -550,12 +549,12 @@ static void arm7_op_branch(struct arm7 *arm7, arm7_inst inst) {
 
     if (inst & (1 << 24)) {
         // link bit
-        arm7->reg[arm7_reg_idx(arm7, ARM7_REG_R14)] = arm7->reg[ARM7_REG_R15] - 4;
+        *arm7_gen_reg(arm7, 14) = arm7->reg[ARM7_REG_PC] - 4;
     }
 
-    uint32_t pc_new = offs + arm7->reg[ARM7_REG_R15];
+    uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];
 
-    arm7->reg[ARM7_REG_R15] = pc_new;
+    arm7->reg[ARM7_REG_PC] = pc_new;
     reset_pipeline(arm7);
 }
 
@@ -577,7 +576,7 @@ static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst) {
         offs = inst & ((1 << 12) - 1);
     }
 
-    uint32_t addr = arm7->reg[arm7_reg_idx(arm7, rn)];
+    uint32_t addr = *arm7_gen_reg(arm7, rn);
 
     if (pre) {
         if (sign < 0)
@@ -588,9 +587,9 @@ static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst) {
 
     if (len == 4) {
         if (to_mem)
-            memory_map_write_32(arm7->map, addr, arm7->reg[arm7_reg_idx(arm7, rd)]);
+            memory_map_write_32(arm7->map, addr, *arm7_gen_reg(arm7, rd));
         else
-            arm7->reg[arm7_reg_idx(arm7, rd)] = memory_map_read_32(arm7->map, addr);
+            *arm7_gen_reg(arm7, rd) = memory_map_read_32(arm7->map, addr);
     } else {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
@@ -618,8 +617,7 @@ static void arm7_op_mrs(struct arm7 *arm7, arm7_inst inst) {
     else
         src_p = arm7->reg + ARM7_REG_CPSR;
 
-    uint32_t *dst_p = arm7->reg + dst_reg;
-    *dst_p = *src_p;
+    *arm7_gen_reg(arm7, dst_reg) = *src_p;
 
     next_inst(arm7);
 }
@@ -638,9 +636,8 @@ static void arm7_op_msr(struct arm7 *arm7, arm7_inst inst) {
         dst_p = arm7->reg + ARM7_REG_CPSR;
 
     unsigned src_reg = inst & 0xff;
-    uint32_t *src_p = arm7->reg + src_reg;
+    *dst_p = *arm7_gen_reg(arm7, src_reg);
 
-    *dst_p = *src_p;
     next_inst(arm7);
 }
 
@@ -704,35 +701,6 @@ unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
      */
 
     return inst->cycles;
-}
-
-static unsigned arm7_reg_idx(struct arm7 *arm7, unsigned reg) {
-    switch (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) {
-    case ARM7_MODE_USER:
-        return reg;
-    case ARM7_MODE_FIQ:
-        if (reg >= ARM7_REG_R8 && reg <= ARM7_REG_R14)
-            return (reg - ARM7_REG_R8) + ARM7_REG_R8_FIQ;
-        return reg;
-    case ARM7_MODE_IRQ:
-        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
-            return (reg - ARM7_REG_R13) + ARM7_REG_R13_IRQ;
-        return reg;
-    case ARM7_MODE_SVC:
-        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
-            return (reg - ARM7_REG_R13) + ARM7_REG_R13_SVC;
-        return reg;
-    case ARM7_MODE_ABT:
-        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
-            return (reg - ARM7_REG_R13) + ARM7_REG_R13_ABT;
-        return reg;
-    case ARM7_MODE_UND:
-        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
-            return (reg - ARM7_REG_R13) + ARM7_REG_R13_UND;
-        return reg;
-    default:
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
 }
 
 static unsigned arm7_spsr_idx(struct arm7 *arm7) {

@@ -104,6 +104,7 @@ enum arm7_reg_idx {
      * as R15.
      */
     ARM7_REG_R15,
+    ARM7_REG_PC = ARM7_REG_R15,
 
     /*
      * banked-registers.  ARM7 defines six distinct execution modes:
@@ -217,36 +218,42 @@ inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
     switch (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) {
     case ARM7_MODE_USER:
         idx_actual = reg + ARM7_REG_R0;
+        break;
     case ARM7_MODE_FIQ:
-        if (reg >= ARM7_REG_R8 && reg <= ARM7_REG_R14)
-            idx_actual = (reg - ARM7_REG_R8) + ARM7_REG_R8_FIQ;
+        if (reg >= 8 && reg <= 14)
+            idx_actual = (reg - 8) + ARM7_REG_R8_FIQ;
         else
             idx_actual = reg + ARM7_REG_R0;
+        break;
     case ARM7_MODE_IRQ:
-        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
-            idx_actual = (reg - ARM7_REG_R13) + ARM7_REG_R13_IRQ;
+        if (reg >= 13 && reg <= 14)
+            idx_actual = (reg - 13) + ARM7_REG_R13_IRQ;
         else
             idx_actual = reg + ARM7_REG_R0;
+        break;
     case ARM7_MODE_SVC:
-        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
-            idx_actual = (reg - ARM7_REG_R13) + ARM7_REG_R13_SVC;
+        if (reg >= 13 && reg <= 14)
+            idx_actual = (reg - 13) + ARM7_REG_R13_SVC;
         else
             idx_actual = reg + ARM7_REG_R0;
+        break;
     case ARM7_MODE_ABT:
-        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
-            idx_actual = (reg - ARM7_REG_R13) + ARM7_REG_R13_ABT;
+        if (reg >= 13 && reg <= 14)
+            idx_actual = (reg - 13) + ARM7_REG_R13_ABT;
         else
             idx_actual = reg + ARM7_REG_R0;
+        break;
     case ARM7_MODE_UND:
-        if (reg >= ARM7_REG_R13 && reg <= ARM7_REG_R14)
-            idx_actual = (reg - ARM7_REG_R13) + ARM7_REG_R13_UND;
+        if (reg >= 13 && reg <= 14)
+            idx_actual = (reg - 13) + ARM7_REG_R13_UND;
         else
             idx_actual = reg + ARM7_REG_R0;
+        break;
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
-        return arm7->reg + idx_actual;
     }
+
+    return arm7->reg + idx_actual;
 }
 
 #endif
