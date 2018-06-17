@@ -223,6 +223,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_ADD_IMMED BIT_RANGE(21, 27)
 #define VAL_ADD_IMMED ((1 << 25) | (4 << 21))
 
+#define MASK_SUB_IMMED BIT_RANGE(21, 27)
+#define VAL_SUB_IMMED  ((1 << 25) | (2 << 21))
+
 #define MASK_MOV_IMMED BIT_RANGE(21, 27)
 #define VAL_MOV_IMMED ((1 << 25) | (13 << 21))
 
@@ -247,9 +250,17 @@ DATA_OP_FUNC_NAME(op_name)(uint32_t lhs, uint32_t rhs, bool carry_in,\
 /*     return lhs ^ rhs; */
 /* } */
 
-/* DEF_DATA_OP(sub) { */
-/*     return lhs - rhs; */
-/* } */
+DEF_DATA_OP(sub) {
+    /*
+     * XXX The nomenclature for lhs/rhs is flipped in ARM7's notation compared
+     * to the SH4's notation; that's why I have rhs on the left and lhs on the
+     * right here.
+     */
+    uint32_t val = sub_flags(rhs, lhs, false, c_out, v_out);
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+    return val;
+}
 
 /* DEF_DATA_OP(rsb) { */
 /*     return rhs - lhs; */
@@ -323,7 +334,7 @@ DEF_DATA_OP(mov) {
 /*     return ~rhs; */
 /* } */
 
-#define DEF_IMMED_FN(op_name, is_logic, allow_s)                        \
+#define DEF_IMMED_FN(op_name, is_logic, require_s)                      \
     __attribute__((unused)) static void                                 \
     arm7_op_##op_name##_immed(struct arm7 *arm7, arm7_inst inst) {      \
         bool s_flag = inst & (1 << 20);                                 \
@@ -345,8 +356,6 @@ DEF_DATA_OP(mov) {
                                                   carry_in, &n_out,     \
                                                   &c_out, &z_out, &v_out); \
         if (s_flag) {                                                   \
-            if (!allow_s)                                               \
-                RAISE_ERROR(ERROR_INTEGRITY);                           \
             if (is_logic) {                                             \
                 uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
                 uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
@@ -367,6 +376,8 @@ DEF_DATA_OP(mov) {
                 arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag |          \
                                              c_flag | v_flag);          \
             }                                                           \
+        } else if (require_s) {                                         \
+            RAISE_ERROR(ERROR_INTEGRITY);                               \
         }                                                               \
                                                                         \
         *arm7_gen_reg(arm7, rd) = res;                                  \
@@ -374,9 +385,10 @@ DEF_DATA_OP(mov) {
         next_inst(arm7);                                                \
     }
 
-DEF_IMMED_FN(orr, true, true)
-DEF_IMMED_FN(mov, true, true)
+DEF_IMMED_FN(orr, true, false)
+DEF_IMMED_FN(mov, true, false)
 DEF_IMMED_FN(add, false, false)
+DEF_IMMED_FN(sub, false, false)
 /* DEF_IMMED_FN(teq, true, false) */
 
 typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
@@ -417,6 +429,7 @@ static struct arm7_opcode {
     { arm7_op_orr_immed, MASK_ORR_IMMED, VAL_ORR_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_op_mov_immed, MASK_MOV_IMMED, VAL_MOV_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_op_add_immed, MASK_ADD_IMMED, VAL_ADD_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_op_sub_immed, MASK_SUB_IMMED, VAL_SUB_IMMED, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
 };
