@@ -257,7 +257,7 @@ DATA_OP_FUNC_NAME(op_name)(uint32_t lhs, uint32_t rhs, bool carry_in,\
 /* } */
 
 DEF_DATA_OP(add) {
-    uint32_t val = add_flags(lhs, rhs, carry_in, c_out, v_out);
+    uint32_t val = add_flags(lhs, rhs, false, c_out, v_out);
     *n_out = val & (1 << 31);
     *z_out = !val;
     return val;
