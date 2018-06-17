@@ -568,7 +568,7 @@ static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst) {
     int sign = (inst & (1 << 23)) ? 1 : -1;
     bool pre = inst & (1 << 24);
     bool offs_reg = inst & (1 << 25);
-    bool to_mem = inst & (1 << 20);
+    bool to_mem = !(inst & (1 << 20));
 
     uint32_t offs;
     if (offs_reg) {
@@ -588,9 +588,9 @@ static void arm7_op_ldr_str(struct arm7 *arm7, arm7_inst inst) {
 
     if (len == 4) {
         if (to_mem)
-            arm7->reg[arm7_reg_idx(arm7, rd)] = memory_map_read_32(arm7->map, addr);
-        else
             memory_map_write_32(arm7->map, addr, arm7->reg[arm7_reg_idx(arm7, rd)]);
+        else
+            arm7->reg[arm7_reg_idx(arm7, rd)] = memory_map_read_32(arm7->map, addr);
     } else {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
