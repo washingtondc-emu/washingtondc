@@ -649,7 +649,7 @@ static uint32_t ror(uint32_t in, unsigned n_bits) {
 }
 
 static uint32_t decode_immed(arm7_inst inst) {
-    uint32_t n_bits = (inst & BIT_RANGE(8, 11)) >> 8;
+    uint32_t n_bits = 2 * ((inst & BIT_RANGE(8, 11)) >> 8);
     uint32_t imm = inst & BIT_RANGE(0, 7);
 
     return ror(imm, n_bits);
