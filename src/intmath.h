@@ -69,9 +69,9 @@ static inline int32_t sub_flags(int32_t lhs, int32_t rhs, bool carry_in,
     uint64_t c_in = carry_in ? 1 : 0;
 
     // detect carry by doing 64-bit math
-    uint64_t lhs64 = lhs;
-    uint64_t rhs64 = rhs;
-    uint64_t res64 = rhs64 - lhs64 + c_in;
+    uint64_t lhs64 = (uint32_t)lhs;
+    uint64_t rhs64 = (uint32_t)rhs;
+    uint64_t res64 = rhs64 - lhs64 - c_in;
 
     if (carry_out)
         *carry_out = (res64 & (((uint64_t)1) << 32)) ? true : false;
