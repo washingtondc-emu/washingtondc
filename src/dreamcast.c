@@ -172,28 +172,32 @@ void dreamcast_init(bool cmd_session) {
     if (boot_mode == (int)DC_BOOT_IP_BIN || boot_mode == (int)DC_BOOT_DIRECT) {
         long len_ip_bin;
         char const *ip_bin_path = config_get_ip_bin_path();
-        void *dat_ip_bin = load_file(ip_bin_path, &len_ip_bin);
-        if (!dat_ip_bin) {
-            error_set_file_path(ip_bin_path);
-            error_set_errno_val(errno);
-            RAISE_ERROR(ERROR_FILE_IO);
-        }
+        if (ip_bin_path && strlen(ip_bin_path)) {
+            void *dat_ip_bin = load_file(ip_bin_path, &len_ip_bin);
+            if (!dat_ip_bin) {
+                error_set_file_path(ip_bin_path);
+                error_set_errno_val(errno);
+                RAISE_ERROR(ERROR_FILE_IO);
+            }
 
-        memory_write(&dc_mem, dat_ip_bin, ADDR_IP_BIN & ADDR_AREA3_MASK,
-                     len_ip_bin);
-        free(dat_ip_bin);
+            memory_write(&dc_mem, dat_ip_bin, ADDR_IP_BIN & ADDR_AREA3_MASK,
+                         len_ip_bin);
+            free(dat_ip_bin);
+        }
 
         long len_1st_read_bin;
         char const *exec_bin_path = config_get_exec_bin_path();
-        void *dat_1st_read_bin = load_file(exec_bin_path, &len_1st_read_bin);
-        if (!dat_1st_read_bin) {
-            error_set_file_path(exec_bin_path);
-            error_set_errno_val(errno);
-            RAISE_ERROR(ERROR_FILE_IO);
+        if (exec_bin_path && strlen(exec_bin_path)) {
+            void *dat_1st_read_bin = load_file(exec_bin_path, &len_1st_read_bin);
+            if (!dat_1st_read_bin) {
+                error_set_file_path(exec_bin_path);
+                error_set_errno_val(errno);
+                RAISE_ERROR(ERROR_FILE_IO);
+            }
+            memory_write(&dc_mem, dat_1st_read_bin,
+                         ADDR_1ST_READ_BIN & ADDR_AREA3_MASK, len_1st_read_bin);
+            free(dat_1st_read_bin);
         }
-        memory_write(&dc_mem, dat_1st_read_bin,
-                     ADDR_1ST_READ_BIN & ADDR_AREA3_MASK, len_1st_read_bin);
-        free(dat_1st_read_bin);
 
         char const *syscall_path = config_get_syscall_path();
         long syscall_len;

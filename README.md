@@ -30,15 +30,15 @@ DEEP_SYSCALL_TRACE=On/Off(default) - log system calls made by guest software.
 ```
 ## USAGE
 ```
-./washingtondc -b dc_bios.bin -f dc_flash.bin [options] [IP.BIN 1ST_READ.BIN]
+./washingtondc -b dc_bios.bin -f dc_flash.bin [options] [-d IP.BIN] [-u 1ST_READ.BIN]
 
 OPTIONS:
 -b <bios_path> path to dreamcast boot ROM
 -c enable development/debugging console access via TCP port 2000
 -f <flash_path> path to dreamcast flash ROM image
 -g enable remote GDB backend via TCP port 1999
--d enable direct boot (skip BIOS)
--u skip IP.BIN and boot straight to 1ST_READ.BIN (only valid for direct boot)
+-d enable direct boot <IP.BIN path>
+-u skip IP.BIN and boot straight to 1ST_READ.BIN <1ST_READ.BIN>
 -m <gdi path> path to .gdi file which will be mounted in the GD-ROM drive
 -s path to dreamcast system call image (only needed for direct boot)
 -t establish serial server over TCP port 1998
@@ -91,7 +91,7 @@ load the firmware with a .gdi disc image mounted:
 ```
 direct-boot a homebrew program (requires a system call table dump):
 ```
-./washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -du IP.BIN 1st_read.bin
+./washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -u 1st_read.bin
 ```
 ## LICENSE
 WashingtonDC is licensed under the terms of the GNU GPLv3.  The terms of this

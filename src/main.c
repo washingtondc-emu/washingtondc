@@ -39,7 +39,7 @@
 #include "log.h"
 
 static void print_usage(char const *cmd) {
-    fprintf(stderr, "USAGE: %s [options] [IP.BIN 1ST_READ.BIN]\n\n", cmd);
+    fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
 
     fprintf(stderr, "WashingtonDC Dreamcast Emulator\n\n");
 
@@ -48,8 +48,7 @@ static void print_usage(char const *cmd) {
             "\t-f <flash_path>\tpath to dreamcast flash ROM image\n"
             "\t-g\t\tenable remote GDB backend\n"
             "\t-d\t\tenable direct boot (skip BIOS)\n"
-            "\t-u\t\tskip IP.BIN and boot straight to 1ST_READ.BIN (only "
-            "valid for direct boot)\n"
+            "\t-u\t\tskip IP.BIN and boot straight to 1ST_READ.BIN\n"
             "\t-s\t\tpath to dreamcast system call image (only needed for "
             "direct boot)\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"
@@ -76,7 +75,7 @@ int main(int argc, char **argv) {
     struct mount_meta content_meta; // only valid if path_gdi is non-null
     bool enable_jit = false, enable_native_jit = false, enable_interpreter = false;
 
-    while ((opt = getopt(argc, argv, "cb:f:s:m:gduhtjxp")) != -1) {
+    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxp")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -92,9 +91,11 @@ int main(int argc, char **argv) {
             break;
         case 'd':
             boot_direct = true;
+            path_ip_bin = optarg;
             break;
         case 'u':
             skip_ip_bin = true;
+            path_1st_read_bin = optarg;
             break;
         case 's':
             path_syscalls_bin = optarg;
@@ -196,49 +197,33 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (boot_direct) {
-        if (argc != 2) {
-            print_usage(cmd);
-            exit(1);
-        }
-
+    if (skip_ip_bin) {
         if (!path_syscalls_bin) {
             LOG_ERROR("Error: cannot direct-boot without a system call "
                       "table (-s flag).\n");
             exit(1);
         }
 
-        path_ip_bin = argv[0];
-        path_1st_read_bin = argv[1];
+        if (!path_1st_read_bin) {
+            LOG_ERROR("Error: cannot direct-boot without a 1ST-READ.BIN\n");
+            exit(1);
+        }
 
-        LOG_INFO("direct boot enbaled, loading IP.BIN from %s and loading "
-                 "1ST_READ.BIN from %s\n", path_ip_bin, path_1st_read_bin);
-        title_content = basename(path_1st_read_bin);
-    } else if (argc != 0 || !bios_path) {
-        print_usage(cmd);
-        exit(1);
-    }
-
-    if (boot_direct) {
-        if (skip_ip_bin)
-            config_set_boot_mode(DC_BOOT_DIRECT);
-        else
-            config_set_boot_mode(DC_BOOT_IP_BIN);
+        config_set_boot_mode(DC_BOOT_DIRECT);
         config_set_ip_bin_path(path_ip_bin);
         config_set_exec_bin_path(path_1st_read_bin);
         config_set_syscall_path(path_syscalls_bin);
+    } else if (boot_direct) {
+        if (!path_syscalls_bin) {
+            LOG_ERROR("Error: cannot direct-boot without a system call "
+                      "table (-s flag).\n");
+            exit(1);
+        }
+
+        config_set_boot_mode(DC_BOOT_IP_BIN);
+        config_set_ip_bin_path(path_ip_bin);
+        config_set_syscall_path(path_syscalls_bin);
     } else {
-        if (skip_ip_bin) {
-            LOG_ERROR("Error: -u option is meaningless with -d!\n");
-            exit(1);
-        }
-
-        if (path_syscalls_bin) {
-            LOG_ERROR("Error: -s option is meaningless when not "
-                      "performing a direct boot (-d option)\n");
-            exit(1);
-        }
-
         config_set_boot_mode(DC_BOOT_FIRMWARE);
     }
 
