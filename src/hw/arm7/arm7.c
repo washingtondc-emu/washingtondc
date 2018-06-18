@@ -230,6 +230,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_SUB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_SUB (2 << 21)
 
+#define MASK_CMP (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_CMP (10 << 21)
+
 #define MASK_MOV (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_MOV (13 << 21)
 
@@ -297,9 +300,17 @@ DEF_DATA_OP(add) {
 /*     return lhs ^ rhs; */
 /* } */
 
-/* DEF_DATA_OP(cmp) { */
-/*     return lhs - rhs; */
-/* } */
+DEF_DATA_OP(cmp) {
+    /*
+     * XXX The nomenclature for lhs/rhs is flipped in ARM7's notation compared
+     * to the SH4's notation; that's why I have rhs on the left and lhs on the
+     * right here.
+     */
+    uint32_t val = sub_flags(rhs, lhs, false, c_out, v_out);
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+    return 0xdeadbabe; // result should never be written
+}
 
 /* DEF_DATA_OP(cmn) { */
 /*     return lhs + rhs; */
@@ -338,7 +349,7 @@ DEF_DATA_OP(mov) {
 /*     return ~rhs; */
 /* } */
 
-#define DEF_INST_FN(op_name, is_logic, require_s)                       \
+#define DEF_INST_FN(op_name, is_logic, require_s, write_result)         \
     __attribute__((unused)) static void                                 \
     arm7_inst_##op_name(struct arm7 *arm7, arm7_inst inst) {            \
         bool s_flag = inst & (1 << 20);                                 \
@@ -395,17 +406,20 @@ DEF_DATA_OP(mov) {
             RAISE_ERROR(ERROR_INTEGRITY);                               \
         }                                                               \
                                                                         \
-        *arm7_gen_reg(arm7, rd) = res;                                  \
+        if (write_result)                                               \
+            *arm7_gen_reg(arm7, rd) = res;                              \
+                                                                        \
         if (rd == 15)                                                   \
             reset_pipeline(arm7);                                       \
                                                                         \
         next_inst(arm7);                                                \
     }
 
-DEF_INST_FN(orr, true, false)
-DEF_INST_FN(mov, true, false)
-DEF_INST_FN(add, false, false)
-DEF_INST_FN(sub, false, false)
+DEF_INST_FN(orr, true, false, true)
+DEF_INST_FN(mov, true, false, true)
+DEF_INST_FN(add, false, false, true)
+DEF_INST_FN(sub, false, false, true)
+DEF_INST_FN(cmp, false, true, false)
 /* DEF_INST_FN(teq, true, false) */
 
 typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
@@ -447,6 +461,7 @@ static struct arm7_opcode {
     { arm7_inst_mov, MASK_MOV, VAL_MOV, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_add, MASK_ADD, VAL_ADD, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_sub, MASK_SUB, VAL_SUB, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_cmp, MASK_CMP, VAL_CMP, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
 };
