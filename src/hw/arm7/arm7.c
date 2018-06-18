@@ -241,6 +241,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_TST (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_TST (8 << 21)
 
+#define MASK_AND (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_AND 0
+
 #define MASK_MOV (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_MOV (13 << 21)
 
@@ -260,9 +263,18 @@ DATA_OP_FUNC_NAME(op_name)(uint32_t lhs, uint32_t rhs, bool carry_in,\
     static inline uint32_t                                              \
     DATA_OP_FUNC_PROTO(op_name)
 
-/* DEF_DATA_OP(and) { */
-/*     return lhs & rhs; */
-/* } */
+DEF_DATA_OP(and) {
+    uint32_t val = lhs & rhs;
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+
+    /*
+     * TODO: c_out is supposed to be set to the output from the barrel shifter
+     * (whatever that means)
+     */
+    *c_out = false;
+    return val;
+}
 
 /* DEF_DATA_OP(eor) { */
 /*     return lhs ^ rhs; */
@@ -445,6 +457,7 @@ DEF_DATA_OP(bic) {
     }
 
 DEF_INST_FN(orr, true, false, true)
+DEF_INST_FN(and, true, false, true)
 DEF_INST_FN(bic, true, false, true)
 DEF_INST_FN(mov, true, false, true)
 DEF_INST_FN(add, false, false, true)
@@ -498,6 +511,7 @@ static struct arm7_opcode {
     { arm7_inst_sub, MASK_SUB, VAL_SUB, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_cmp, MASK_CMP, VAL_CMP, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_tst, MASK_TST, VAL_TST, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_and, MASK_AND, VAL_AND, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
 };
