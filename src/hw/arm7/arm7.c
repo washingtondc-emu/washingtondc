@@ -55,6 +55,7 @@ static void reset_pipeline(struct arm7 *arm7);
 
 static void arm7_inst_branch(struct arm7 *arm7, arm7_inst inst);
 static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst);
+static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst);
 static void arm7_inst_mrs(struct arm7 *arm7, arm7_inst inst);
 static void arm7_inst_msr(struct arm7 *arm7, arm7_inst inst);
 static void arm7_inst_orr(struct arm7 *arm7, arm7_inst inst);
@@ -239,6 +240,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 
 #define MASK_MOV (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_MOV (13 << 21)
+
+#define MASK_BLOCK_XFER BIT_RANGE(25, 27)
+#define VAL_BLOCK_XFER (4 << 25)
 
 /* #define MASK_TEQ_IMMED BIT_RANGE(20, 27) */
 /* #define VAL_TEQ_IMMED ((1 << 25) | (9 << 21)) */
@@ -458,6 +462,10 @@ static struct arm7_opcode {
      * cycles if R15 is involved...?
      */
     { arm7_inst_ldr_str, MASK_LDR_STR, VAL_LDR_STR,
+      1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE },
+
+    // TODO: yet another made up fictional cycle-count
+    { arm7_block_xfer, MASK_BLOCK_XFER, VAL_BLOCK_XFER,
       1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE },
 
     /*
@@ -688,6 +696,104 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         *arm7_gen_reg(arm7, rn) = addr;
     }
+
+    next_inst(arm7);
+}
+
+static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
+    unsigned rn = (inst & BIT_RANGE(16, 19)) >> 16;
+    unsigned reg_list = inst & 0xffff;
+    bool pre = (bool)(inst & (1 << 24));
+    bool up = (bool)(inst & (1 << 23));
+    bool psr_user_force = (bool)(inst & (1 << 22));
+    bool writeback = (bool)(inst & (1 << 21));
+    bool load = (bool)(inst & (1 << 20));
+
+    if (psr_user_force)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    // docs say you cant do this
+    if (rn == 15)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    // docs say you *can* do this, but I haven't implemented it yet
+    if (reg_list & (1 << 15))
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    uint32_t base = *arm7_gen_reg(arm7, rn);
+
+    /*
+     * This is actually not illegal, but there are some weird corner cases I
+     * have to consider first.
+     */
+    if (writeback && (reg_list & (1 << rn)))
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    int reg_no;
+    if (up) {
+        if (load) {
+            for (reg_no = 0; reg_no < 16; reg_no++)
+                if (reg_list & (1 << reg_no)) {
+                    if (pre)
+                        base += 4;
+                    *arm7_gen_reg(arm7, reg_no) =
+                        memory_map_read_32(arm7->map, base);
+                    if (!pre)
+                        base += 4;
+                }
+        } else {
+            for (reg_no = 0; reg_no < 16; reg_no++)
+                if (reg_list & (1 << reg_no)) {
+                    if (pre)
+                        base += 4;
+                    memory_map_write_32(arm7->map, base,
+                                        *arm7_gen_reg(arm7, reg_no));
+                    if (!pre)
+                        base += 4;
+                }
+        }
+    } else {
+        /*
+         * TODO:
+         * This transfers higher registers before lower registers.  The spec
+         * says that lower registers must always go first.  I don't think that
+         * will be a problem since it all happens instantly, but it's something
+         * to keep in mind if you ever try to use this interpreter on a system
+         * which has a FIFO register like the one SH4 uses to communicate with
+         * PowerVR2's Tile Accelerator.
+         */
+        if (load) {
+            for (reg_no = 15; reg_no >= 0; reg_no--) {
+                if (reg_list & (1 << reg_no)) {
+                    if (pre)
+                        base -= 4;
+                    *arm7_gen_reg(arm7, reg_no) =
+                        memory_map_read_32(arm7->map, base);
+                    if (!pre)
+                        base -= 4;
+                }
+            }
+        } else {
+            for (reg_no = 15; reg_no >= 0; reg_no--) {
+                if (reg_list & (1 << reg_no)) {
+                    if (pre)
+                        base -= 4;
+                    memory_map_write_32(arm7->map, base,
+                                        *arm7_gen_reg(arm7, reg_no));
+                    if (!pre)
+                        base -= 4;
+                }
+            }
+        }
+    }
+
+    /*
+     * Now handle the writeback.  Spec has some fairly complicated rules about
+     * this when the rn is in the register list, but the code above should have
+     * raised an ERROR_UNIMPLEMENTED if that was the case.
+     */
+    if (writeback)
+        *arm7_gen_reg(arm7, rn) = base;
 
     next_inst(arm7);
 }
