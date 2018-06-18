@@ -87,6 +87,7 @@ static bool arm7_cond_ne(struct arm7 *arm7) {
 }
 
 static bool arm7_cond_cs(struct arm7 *arm7) {
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
 }
 
@@ -743,10 +744,6 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
     if (rn == 15)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
-    // docs say you *can* do this, but I haven't implemented it yet
-    if (reg_list & (1 << 15))
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
     uint32_t base = *arm7_gen_reg(arm7, rn);
 
     /*
@@ -813,6 +810,9 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
             }
         }
     }
+
+    if (reg_list & (1 << 15))
+        reset_pipeline(arm7);
 
     /*
      * Now handle the writeback.  Spec has some fairly complicated rules about
