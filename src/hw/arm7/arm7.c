@@ -236,6 +236,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_SUB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_SUB (2 << 21)
 
+#define MASK_RSB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_RSB (3 << 21)
+
 #define MASK_CMP (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_CMP (10 << 21)
 
@@ -288,6 +291,18 @@ DEF_DATA_OP(sub) {
      * right here.
      */
     uint32_t val = sub_flags(rhs, lhs, false, c_out, v_out);
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+    return val;
+}
+
+DEF_DATA_OP(rsb) {
+    /*
+     * XXX The nomenclature for lhs/rhs is flipped in ARM7's notation compared
+     * to the SH4's notation; that's why I have rhs on the left and lhs on the
+     * right here.
+     */
+    uint32_t val = sub_flags(lhs, rhs, false, c_out, v_out);
     *n_out = val & (1 << 31);
     *z_out = !val;
     return val;
@@ -409,12 +424,10 @@ DEF_DATA_OP(bic) {
             input_2 = decode_immed(inst);                               \
         } else {                                                        \
             input_2 = decode_shift(arm7, inst);                         \
+            if ((inst & (1 << 4)) && rn == 15)                          \
+                input_1 += 4;                                           \
         }                                                               \
                                                                         \
-        if (rn == 15) {                                                 \
-            printf("Unimplemented: PC as source register\n");           \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
-        }                                                               \
         if (rd == 15 && s_flag) {                                       \
             printf("Unimplemented: PC as destination register with s_flag\n"); \
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
@@ -463,6 +476,7 @@ DEF_INST_FN(bic, true, false, true)
 DEF_INST_FN(mov, true, false, true)
 DEF_INST_FN(add, false, false, true)
 DEF_INST_FN(sub, false, false, true)
+DEF_INST_FN(rsb, false, false, true)
 DEF_INST_FN(cmp, false, true, false)
 DEF_INST_FN(tst, true, true, false)
 
@@ -510,6 +524,7 @@ static struct arm7_opcode {
     { arm7_inst_mov, MASK_MOV, VAL_MOV, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_add, MASK_ADD, VAL_ADD, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_sub, MASK_SUB, VAL_SUB, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_rsb, MASK_RSB, VAL_RSB, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_cmp, MASK_CMP, VAL_CMP, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_tst, MASK_TST, VAL_TST, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_and, MASK_AND, VAL_AND, 2 * S_CYCLE + 1 * N_CYCLE },
