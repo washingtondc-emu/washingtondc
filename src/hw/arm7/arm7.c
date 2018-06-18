@@ -336,9 +336,9 @@ DEF_DATA_OP(mov) {
 /*     return ~rhs; */
 /* } */
 
-#define DEF_INST_FN(op_name, is_logic, require_s)                      \
+#define DEF_INST_FN(op_name, is_logic, require_s)                       \
     __attribute__((unused)) static void                                 \
-    arm7_inst_##op_name(struct arm7 *arm7, arm7_inst inst) {      \
+    arm7_inst_##op_name(struct arm7 *arm7, arm7_inst inst) {            \
         bool s_flag = inst & (1 << 20);                                 \
         bool i_flag = inst & (1 << 25);                                 \
         unsigned rn = (inst >> 16) & 0xf;                               \
@@ -357,6 +357,11 @@ DEF_DATA_OP(mov) {
         }                                                               \
                                                                         \
         if (rn == 15) {                                                 \
+            printf("Unimplemented: PC as source register\n");           \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
+        if (rd == 15 && s_flag) {                                       \
+            printf("Unimplemented: PC as destination register with s_flag\n"); \
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
         }                                                               \
                                                                         \
@@ -389,6 +394,8 @@ DEF_DATA_OP(mov) {
         }                                                               \
                                                                         \
         *arm7_gen_reg(arm7, rd) = res;                                  \
+        if (rd == 15)                                                   \
+            reset_pipeline(arm7);                                       \
                                                                         \
         next_inst(arm7);                                                \
     }
@@ -591,6 +598,10 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
     bool to_mem = !(inst & (1 << 20));
 
     uint32_t offs;
+
+    if (rd == 15)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
     if (offs_reg) {
         error_set_arm7_inst(inst);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -641,8 +652,11 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
             addr += offs;
     }
 
-    if (writeback)
+    if (writeback) {
+        if (rn == 15)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         *arm7_gen_reg(arm7, rn) = addr;
+    }
 
     next_inst(arm7);
 }
