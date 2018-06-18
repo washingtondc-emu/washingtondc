@@ -802,6 +802,8 @@ decode_shift(struct arm7 *arm7, arm7_inst inst) {
 unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
     if (inst->cond(arm7))
         inst->op(arm7, inst->inst);
+    else
+        next_inst(arm7);
 
     /*
      * TODO: how many cycles does it take to execute an instruction when the
