@@ -608,13 +608,21 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
     }
 
     if (len == 4) {
+        if (addr % 4) {
+            // unaligned memory access
+            error_set_arm7_inst(inst);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
         if (to_mem)
             memory_map_write_32(arm7->map, addr, *arm7_gen_reg(arm7, rd));
         else
             *arm7_gen_reg(arm7, rd) = memory_map_read_32(arm7->map, addr);
     } else {
-        error_set_arm7_inst(inst);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (to_mem)
+            memory_map_write_8(arm7->map, addr, *arm7_gen_reg(arm7, rd));
+        else
+            *arm7_gen_reg(arm7, rd) = (uint32_t)memory_map_read_8(arm7->map, addr);
     }
 
     if (!pre) {
