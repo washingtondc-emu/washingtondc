@@ -74,6 +74,8 @@ static void next_inst(struct arm7 *arm7);
 
 static uint32_t decode_shift(struct arm7 *arm7, arm7_inst inst);
 
+static uint32_t decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst);
+
 static bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
 }
@@ -603,8 +605,7 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     if (offs_reg) {
-        error_set_arm7_inst(inst);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        offs = decode_shift_ldr_str(arm7, inst);
     } else {
         offs = inst & ((1 << 12) - 1);
     }
@@ -711,6 +712,40 @@ static uint32_t decode_immed(arm7_inst inst) {
     uint32_t imm = inst & BIT_RANGE(0, 7);
 
     return ror(imm, n_bits);
+}
+
+static uint32_t
+decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst) {
+    bool amt_in_reg = inst & (1 << 4);
+    unsigned shift_fn = (inst & BIT_RANGE(5, 6)) >> 5;
+    uint32_t shift_amt;
+
+    if (amt_in_reg) {
+        // Docs say this feature isn't available for load/store
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    } else {
+        shift_amt = (inst & BIT_RANGE(7, 11)) >> 7;
+    }
+
+    unsigned src_reg = inst & 0xf;
+    uint32_t src_val = *arm7_gen_reg(arm7, src_reg);
+
+    switch (shift_fn) {
+    case 0:
+        // logical left-shift
+        return src_val << shift_amt;
+    case 1:
+        // logical right-shift
+        return src_val >> shift_amt;
+    case 2:
+        // arithmetic right-shift
+        return ((int32_t)src_val) >> shift_amt;
+    case 3:
+        // right-rotate
+        return ror(src_val, shift_amt);
+    }
+
+    RAISE_ERROR(ERROR_INTEGRITY);
 }
 
 static uint32_t
