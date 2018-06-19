@@ -21,7 +21,9 @@
  ******************************************************************************/
 
 #include <string.h>
+#include <stdio.h>
 
+#include "error.h"
 #include "MemoryMap.h"
 
 #include "aica_dsp.h"
@@ -60,50 +62,120 @@ void aica_dsp_cleanup(struct aica_dsp *data) {
 
 static float aica_dsp_read_float(uint32_t addr, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(float));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     return ((float*)dsp->backing)[addr / sizeof(float)];
 }
 
 static double aica_dsp_read_double(uint32_t addr, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(double));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     return ((double*)dsp->backing)[addr / sizeof(double)];
 }
 
 static uint32_t aica_dsp_read_32(uint32_t addr, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint32_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     return ((uint32_t*)dsp->backing)[addr / sizeof(uint32_t)];
 }
 
 static uint16_t aica_dsp_read_16(uint32_t addr, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint16_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     return ((uint16_t*)dsp->backing)[addr / sizeof(uint16_t)];
 }
 
 static uint8_t aica_dsp_read_8(uint32_t addr, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint8_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     return ((uint8_t*)dsp->backing)[addr / sizeof(uint8_t)];
 }
 
 static void aica_dsp_write_float(uint32_t addr, float val, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(float));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     ((float*)dsp->backing)[addr / sizeof(float)] = val;
 }
 
 static void aica_dsp_write_double(uint32_t addr, double val, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(double));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     ((double*)dsp->backing)[addr / sizeof(double)] = val;
 }
 
 static void aica_dsp_write_32(uint32_t addr, uint32_t val, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint32_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     ((uint32_t*)dsp->backing)[addr / sizeof(uint32_t)] = val;
 }
 
 static void aica_dsp_write_16(uint32_t addr, uint16_t val, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint16_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     ((uint16_t*)dsp->backing)[addr / sizeof(uint16_t)] = val;
 }
 
 static void aica_dsp_write_8(uint32_t addr, uint8_t val, void *ctxt) {
     struct aica_dsp *dsp = (struct aica_dsp*)ctxt;
+
+    if (addr >= AICA_DSP_LEN) {
+        error_set_address(addr);
+        error_set_length(sizeof(uint8_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+
     ((uint8_t*)dsp->backing)[addr / sizeof(uint8_t)] = val;
 }
