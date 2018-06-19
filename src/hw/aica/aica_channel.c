@@ -61,8 +61,12 @@ void aica_channel_init(struct aica_channel *data) {
 void aica_channel_cleanup(struct aica_channel *data) {
 }
 
+#define START 0
+
 static float aica_channel_read_float(uint32_t addr, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
+
+    addr -= START;
 
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);
@@ -76,6 +80,8 @@ static float aica_channel_read_float(uint32_t addr, void *ctxt) {
 static double aica_channel_read_double(uint32_t addr, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
 
+    addr -= START;
+
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);
         error_set_length(sizeof(double));
@@ -87,6 +93,8 @@ static double aica_channel_read_double(uint32_t addr, void *ctxt) {
 
 static uint32_t aica_channel_read_32(uint32_t addr, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
+
+    addr -= START;
 
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);
@@ -100,6 +108,8 @@ static uint32_t aica_channel_read_32(uint32_t addr, void *ctxt) {
 static uint16_t aica_channel_read_16(uint32_t addr, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
 
+    addr -= START;
+
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);
         error_set_length(sizeof(uint16_t));
@@ -111,6 +121,8 @@ static uint16_t aica_channel_read_16(uint32_t addr, void *ctxt) {
 
 static uint8_t aica_channel_read_8(uint32_t addr, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
+
+    addr -= START;
 
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);
@@ -124,6 +136,8 @@ static uint8_t aica_channel_read_8(uint32_t addr, void *ctxt) {
 static void aica_channel_write_float(uint32_t addr, float val, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
 
+    addr -= START;
+
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);
         error_set_length(sizeof(float));
@@ -135,6 +149,8 @@ static void aica_channel_write_float(uint32_t addr, float val, void *ctxt) {
 
 static void aica_channel_write_double(uint32_t addr, double val, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
+
+    addr -= START;
 
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);
@@ -148,6 +164,8 @@ static void aica_channel_write_double(uint32_t addr, double val, void *ctxt) {
 static void aica_channel_write_32(uint32_t addr, uint32_t val, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
 
+    addr -= START;
+
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);
         error_set_length(sizeof(uint32_t));
@@ -160,6 +178,8 @@ static void aica_channel_write_32(uint32_t addr, uint32_t val, void *ctxt) {
 static void aica_channel_write_16(uint32_t addr, uint16_t val, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
 
+    addr -= START;
+
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);
         error_set_length(sizeof(uint16_t));
@@ -171,6 +191,8 @@ static void aica_channel_write_16(uint32_t addr, uint16_t val, void *ctxt) {
 
 static void aica_channel_write_8(uint32_t addr, uint8_t val, void *ctxt) {
     struct aica_channel *ch = (struct aica_channel*)ctxt;
+
+    addr -= START;
 
     if (addr >= AICA_CHANNEL_LEN) {
         error_set_address(addr);

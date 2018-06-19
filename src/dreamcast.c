@@ -815,13 +815,13 @@ static void construct_arm7_mem_map(struct memory_map *map) {
                    0xffffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
     memory_map_add(map, 0x00800000, 0x008027ff,
-                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   0xffffffff, AICA_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_channel_intf, &aica.channel);
     memory_map_add(map, 0x00802800, 0x00802fff,
-                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   0xffffffff, AICA_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_common_intf, &aica.common);
     memory_map_add(map, 0x00803000, 0x00807fff,
-                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   0xffffffff, AICA_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_dsp_intf, &aica.dsp);
 }
 
@@ -890,16 +890,16 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &pvr2_core_reg_intf, NULL);
     memory_map_add(map, ADDR_AICA_CHANNEL_FIRST, ADDR_AICA_CHANNEL_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   ADDR_AREA0_MASK, AICA_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_channel_intf, &aica.channel);
     memory_map_add(map, ADDR_AICA_COMMON_FIRST, ADDR_AICA_COMMON_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   ADDR_AREA0_MASK, AICA_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_common_intf, &aica.common);
     memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
                    ADDR_AREA0_MASK, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
     memory_map_add(map, ADDR_AICA_DSP_FIRST, ADDR_AICA_DSP_LAST,
-                   ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   ADDR_AREA0_MASK, AICA_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_dsp_intf, &aica.dsp);
     memory_map_add(map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
