@@ -30,6 +30,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "error.h"
 #include "hw/arm7/arm7.h"
 
 #include "aica.h"
@@ -189,6 +190,7 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 #ifdef AICA_PEDANTIC
         error_set_address(addr);
         error_set_length(4);
+        error_set_value(val);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
     }
@@ -221,6 +223,7 @@ static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 #ifdef AICA_PEDANTIC
         error_set_address(addr);
         error_set_length(2);
+        error_set_value(val);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
         ((uint16_t*)aica->sys_reg)[addr / 2] = val;
@@ -253,6 +256,7 @@ static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 #ifdef AICA_PEDANTIC
         error_set_address(addr);
         error_set_length(1);
+        error_set_value(val);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
         ((uint8_t*)aica->sys_reg)[addr] = val;
