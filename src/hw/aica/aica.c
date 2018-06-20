@@ -29,6 +29,9 @@
 
 #define AICA_ARM7_RST 0x2c00
 
+// If this is defined, WashingtonDC will panic on unrecognized AICA addresses.
+#define AICA_PEDANTIC
+
 static float aica_sys_read_float(addr32_t addr, void *ctxt);
 static void aica_sys_write_float(addr32_t addr, float val, void *ctxt);
 static double aica_sys_read_double(addr32_t addr, void *ctxt);
@@ -68,7 +71,15 @@ static float aica_sys_read_float(addr32_t addr, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
-    return ((float*)aica->sys_reg)[addr / 4];
+    switch (addr) {
+    default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(4);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+        return ((float*)aica->sys_reg)[addr / 4];
+    }
 }
 
 static void aica_sys_write_float(addr32_t addr, float val, void *ctxt) {
@@ -76,7 +87,15 @@ static void aica_sys_write_float(addr32_t addr, float val, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
-    ((float*)aica->sys_reg)[addr / 4] = val;
+    switch (addr) {
+    default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(4);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+        ((float*)aica->sys_reg)[addr / 4] = val;
+    }
 }
 
 static double aica_sys_read_double(addr32_t addr, void *ctxt) {
@@ -84,7 +103,15 @@ static double aica_sys_read_double(addr32_t addr, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
-    return ((double*)aica->sys_reg)[addr / 8];
+    switch (addr) {
+    default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(8);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+        return ((double*)aica->sys_reg)[addr / 8];
+    }
 }
 
 static void aica_sys_write_double(addr32_t addr, double val, void *ctxt) {
@@ -92,7 +119,15 @@ static void aica_sys_write_double(addr32_t addr, double val, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
-    ((double*)aica->sys_reg)[addr / 8] = val;
+    switch (addr) {
+    default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(8);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+        ((double*)aica->sys_reg)[addr / 8] = val;
+    }
 }
 
 static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
@@ -100,7 +135,15 @@ static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
-    return aica->sys_reg[addr / 4];
+    switch (addr) {
+    default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(4);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+        return aica->sys_reg[addr / 4];
+    }
 }
 
 static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
@@ -119,6 +162,11 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
         }
         break;
     default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(4);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
         aica->sys_reg[addr / 4] = val;
     }
 }
@@ -128,7 +176,15 @@ static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
-    return ((uint16_t*)aica->sys_reg)[addr / 2];
+    switch (addr) {
+    default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(2);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+        return ((uint16_t*)aica->sys_reg)[addr / 2];
+    }
 }
 
 static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
@@ -136,7 +192,15 @@ static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
-    ((uint16_t*)aica->sys_reg)[addr / 2] = val;
+    switch (addr) {
+    default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(2);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+        ((uint16_t*)aica->sys_reg)[addr / 2] = val;
+    }
 }
 
 static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
@@ -144,7 +208,15 @@ static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
-    return ((uint8_t*)aica->sys_reg)[addr];
+    switch (addr) {
+    default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(1);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+        return ((uint8_t*)aica->sys_reg)[addr];
+    }
 }
 
 static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
@@ -152,5 +224,13 @@ static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
-    ((uint8_t*)aica->sys_reg)[addr] = val;
+    switch (addr) {
+    default:
+#ifdef AICA_PEDANTIC
+        error_set_address(addr);
+        error_set_length(1);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+        ((uint8_t*)aica->sys_reg)[addr] = val;
+    }
 }
