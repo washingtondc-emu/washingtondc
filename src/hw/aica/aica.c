@@ -20,6 +20,13 @@
  *
  ******************************************************************************/
 
+/*
+ * Yamaha AICA Super-Intelligent Sound Processor.
+ *
+ * This implementation is based on Neill Corlett's AICA notes and a little bit
+ * of my own experimentation.
+ */
+
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -27,6 +34,7 @@
 
 #include "aica.h"
 
+#define AICA_MASTER_VOLUME 0x2800
 #define AICA_ARM7_RST 0x2c00
 
 // If this is defined, WashingtonDC will panic on unrecognized AICA addresses.
@@ -137,6 +145,9 @@ static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
     addr &= AICA_SYS_MASK;
 
     switch (addr) {
+    case AICA_MASTER_VOLUME:
+        // Neill Corlett's AICA notes say this is always 16 when you read from it
+        return 16;
     case AICA_ARM7_RST:
         if (from_sh4) {
             break;
@@ -163,6 +174,9 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     addr &= AICA_SYS_MASK;
 
     switch (addr) {
+    case AICA_MASTER_VOLUME:
+        LOG_DBG("Writing 0x%08x to AICA_MASTER_VOLUME\n", (unsigned)val);
+        break;
     case AICA_ARM7_RST:
         if (from_sh4) {
             arm7_reset(aica->arm7, !(val & 1));
