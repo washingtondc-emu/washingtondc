@@ -132,18 +132,28 @@ static void aica_sys_write_double(addr32_t addr, double val, void *ctxt) {
 
 static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
 
     switch (addr) {
+    case AICA_ARM7_RST:
+        if (from_sh4) {
+            break;
+        } else {
+            printf("ARM7 suicide unimplemented\n");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+        break;
     default:
 #ifdef AICA_PEDANTIC
         error_set_address(addr);
         error_set_length(4);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
-        return aica->sys_reg[addr / 4];
     }
+
+    return aica->sys_reg[addr / 4];
 }
 
 static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
@@ -167,8 +177,8 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
         error_set_length(4);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
-        aica->sys_reg[addr / 4] = val;
     }
+    aica->sys_reg[addr / 4] = val;
 }
 
 static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
