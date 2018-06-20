@@ -23,21 +23,26 @@
 #ifndef AICA_H_
 #define AICA_H_
 
-#include "aica_dsp.h"
-#include "aica_channel.h"
+#include <stdint.h>
+
 #include "aica_wave_mem.h"
-#include "aica_common.h"
 
 struct arm7;
 
+#define AICA_SYS_LEN 0x8000
+#define AICA_SYS_MASK (AICA_SYS_LEN - 1)
+
 struct aica {
-    struct aica_channel channel;
-    struct aica_dsp dsp;
     struct aica_wave_mem mem;
-    struct aica_common common;
+    struct arm7 *arm7;
+
+    // the purpose of the + 8 is to prevent buffer over-runs
+    uint32_t sys_reg[(AICA_SYS_LEN / 4) + 8];
 };
 
 void aica_init(struct aica *aica, struct arm7 *arm7);
 void aica_cleanup(struct aica *aica);
+
+extern struct memory_interface aica_sys_intf;
 
 #endif
