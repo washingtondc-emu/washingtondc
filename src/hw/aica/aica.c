@@ -216,6 +216,16 @@ static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
+    if (addr < 0x1fff) {
+        // Channel registers
+        uint32_t val = aica->sys_reg[addr / 4];
+        if (aica_log_verbose_val) {
+            LOG_DBG("AICA CHANNEL DATA: Reading 0x%08x from 0x%04x\n",
+                    (unsigned)val, (unsigned)addr);
+        }
+        return val;
+    }
+
     if (addr >= 0x3000 && addr <= 0x7fff) {
         // DSP registers
         uint32_t val = aica->sys_reg[addr / 4];
@@ -268,6 +278,16 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
+
+    if (addr <= 0x1fff) {
+        // channel data
+        aica->sys_reg[addr / 4] = val;
+        if (aica_log_verbose_val) {
+            LOG_DBG("AICA CHANNEL DATA: Writing 0x%08x to 0x%04x\n",
+                    (unsigned)val, (unsigned)addr);
+        }
+        return;
+    }
 
     if (addr >= 0x3000 && addr <= 0x7fff) {
         // DSP registers
