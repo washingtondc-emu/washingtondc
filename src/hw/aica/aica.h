@@ -68,4 +68,6 @@ void aica_cleanup(struct aica *aica);
 
 extern struct memory_interface aica_sys_intf;
 
+extern bool aica_log_verbose_val;
+
 #endif
