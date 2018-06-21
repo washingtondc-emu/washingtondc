@@ -36,7 +36,24 @@ struct aica {
     struct aica_wave_mem mem;
     struct arm7 *arm7;
 
-    // the purpose of the + 8 is to prevent buffer over-runs
+    // interrupt enable (SCIEB)
+    uint32_t int_enable;
+
+    // pending interrupts (SCIPD)
+    uint32_t int_pending;
+
+    /*
+     * This is backing for registers that allow reads/writes to go through
+     * transparently. There is space for every register here, but not every
+     * register will use it.  Some register reads/writes will go to other
+     * members of this struct instead.
+     *
+     * the purpose of the + 8 is to prevent buffer over-runs.  Bounds-checking
+     * code in this AICA implementation tends to not take the length of the
+     * read/write into account (not for any good reason, that's just the way I
+     * wrote it...), so extending it by sizeof(double) (== 8 bytes) prevents
+     * buffer overruns.
+     */
     uint32_t sys_reg[(AICA_SYS_LEN / 4) + 8];
 };
 

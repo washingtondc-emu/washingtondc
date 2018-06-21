@@ -591,6 +591,16 @@ static void arm7_check_excp(struct arm7 *arm7) {
     enum arm7_excp excp = arm7->excp;
     uint32_t cpsr = arm7->reg[ARM7_REG_CPSR];
 
+    if (arm7->check_irq && arm7->check_irq(arm7->check_irq_dat))
+        excp |= ARM7_EXCP_IRQ;
+    else
+        excp &= ~ARM7_EXCP_IRQ;
+
+    if (arm7->check_fiq && arm7->check_fiq(arm7->check_fiq_dat))
+        excp |= ARM7_EXCP_FIQ;
+    else
+        excp &= ~ARM7_EXCP_FIQ;
+
     if (excp & ARM7_EXCP_RESET) {
         arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
         arm7->reg[ARM7_REG_R14_SVC] = arm7->reg[ARM7_REG_PC] - 4;

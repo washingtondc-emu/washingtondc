@@ -158,6 +158,8 @@ enum arm7_excp {
 
 typedef uint32_t arm7_inst;
 
+typedef bool(*arm7_irq_fn)(void *dat);
+
 struct arm7 {
     struct dc_clock *clk;
 
@@ -167,6 +169,11 @@ struct arm7 {
     bool enabled;
 
     enum arm7_excp excp;
+
+    arm7_irq_fn check_irq;
+    void *check_irq_dat;
+    arm7_irq_fn check_fiq;
+    void *check_fiq_dat;
 
     /*
      * One oddity about ARM7 (compared to saner CPUs like x86 and SH4) is that
