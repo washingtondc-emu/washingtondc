@@ -42,6 +42,12 @@ struct aica {
     // pending interrupts (SCIPD)
     uint32_t int_pending;
 
+    // AICA_MCIEB
+    uint32_t int_enable_sh4;
+
+    // AICA_MCIPD
+    uint32_t int_pending_sh4;
+
     /*
      * This is backing for registers that allow reads/writes to go through
      * transparently. There is space for every register here, but not every

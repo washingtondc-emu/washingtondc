@@ -49,6 +49,15 @@
 // interrupt reset
 #define AICA_SCIRE 0x28a4
 
+// SH4 interrupt enable
+#define AICA_MCIEB 0x28b4
+
+// SH4 interrupt pending
+#define AICA_MCIPD 0x28b8
+
+// SH4 interrupt reset
+#define AICA_MCIRE 0x28bc
+
 #define AICA_INT_EXTERNAL_SHIFT 0
 #define AICA_INT_EXTERNAL_MASK (1 << AICA_INT_EXTERNAL_SHIFT)
 
@@ -227,6 +236,10 @@ static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
         return aica->int_pending;
     case AICA_SCIEB:
         return aica->int_enable;
+    case AICA_MCIEB:
+        return aica->int_enable_sh4;
+    case AICA_MCIPD:
+        return aica->int_pending_sh4;
     default:
 #ifdef AICA_PEDANTIC
         error_set_address(addr);
@@ -261,6 +274,10 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
         aica->int_pending &= ~val;
         aica_update_interrupts(aica);
         break;
+    case AICA_MCIRE:
+        aica->int_pending_sh4 &= ~val;
+        aica_update_interrupts(aica);
+        break;
     case AICA_SCIPD:
         /*
          * TODO: Neill Corlett's doc says that interrupt 5 (CPU interrupt) can
@@ -268,9 +285,21 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
          */
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
+    case AICA_MCIPD:
+        /*
+         * TODO: You can write to bit 5 (CPU interrupt) to send an interrupt to
+         * the SH4.
+         */
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        break;
     case AICA_SCIEB:
         aica->int_enable = val;
         aica_update_interrupts(aica);
+        break;
+    case AICA_MCIEB:
+        if (val & ~AICA_INT_CPU_MASK)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        aica->int_enable_sh4 = val;
         break;
     default:
 #ifdef AICA_PEDANTIC
