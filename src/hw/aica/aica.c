@@ -59,6 +59,8 @@
 // SH4 interrupt reset
 #define AICA_MCIRE 0x28bc
 
+#define AICA_MIDI_INPUT 0x2808
+
 #define AICA_INT_EXTERNAL_SHIFT 0
 #define AICA_INT_EXTERNAL_MASK (1 << AICA_INT_EXTERNAL_SHIFT)
 
@@ -271,6 +273,14 @@ static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
         return aica->int_enable_sh4;
     case AICA_MCIPD:
         return aica->int_pending_sh4;
+    case AICA_MIDI_INPUT:
+        /*
+         * The MIDI interface, as far as I know, only exists on development
+         * systems and not on retail Dreamcasts.  The value hardcoded below will
+         * hopefully convince programs that the MIDI is empty (see the Corlett
+         * doc).
+         */
+        return  (1 << 11) | (1 << 8);
     default:
 #ifdef AICA_PEDANTIC
         error_set_address(addr);
