@@ -134,27 +134,36 @@ static void scan_input(void) {
     unsigned hat_vert = 128;
     unsigned trig_l = 0, trig_r = 0;
 
-    if (axis_cnt >= 6) {
+    if (axis_cnt >= 1)
         stick_hor = (unsigned)(axis_state[0] * 128) + 128;
+
+    if (axis_cnt >= 2)
         stick_vert = (unsigned)(axis_state[1] * 128) + 128;
+
+    if (axis_cnt >= 7)
         hat_hor = (unsigned)(axis_state[6] * 128) + 128;
+
+    if (axis_cnt >= 8)
         hat_vert = (unsigned)(axis_state[7] * 128) + 128;
+
+    if (axis_cnt >= 3)
         trig_l = (unsigned)(axis_state[2] * 128) + 128;
+
+    if (axis_cnt >= 6)
         trig_r = (unsigned)(axis_state[5] * 128) + 128;
 
-        if (stick_hor > 255)
-            stick_hor = 255;
-        if (stick_vert > 255)
-            stick_vert = 255;
-        if (hat_hor > 255)
-            hat_hor = 255;
-        if (hat_vert > 255)
-            hat_vert = 255;
-        if (trig_l > 255)
-            trig_l = 255;
-        if (trig_r > 255)
-            trig_r = 255;
-    }
+    if (stick_hor > 255)
+        stick_hor = 255;
+    if (stick_vert > 255)
+        stick_vert = 255;
+    if (hat_hor > 255)
+        hat_hor = 255;
+    if (hat_vert > 255)
+        hat_vert = 255;
+    if (trig_l > 255)
+        trig_l = 255;
+    if (trig_r > 255)
+        trig_r = 255;
 
     if (hat_vert <= 64)
         hat[GAMEPAD_HAT_UP] = true;
