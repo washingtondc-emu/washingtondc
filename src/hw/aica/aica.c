@@ -74,6 +74,7 @@
 #define AICA_INT_CPU_MASK (1 << AICA_INT_CPU_SHIFT)
 
 #define AICA_INT_TIMA_SHIFT 6
+
 #define AICA_INT_TIMA_MASK (1 << AICA_INT_TIMA_SHIFT)
 
 #define AICA_INT_TIMB_SHIFT 7
@@ -103,6 +104,11 @@
 #define AICA_PEDANTIC
 
 static void aica_update_interrupts(struct aica *aica);
+
+static uint32_t aica_sys_reg_read(struct aica *aica, addr32_t addr,
+                                  bool from_sh4);
+static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
+                               uint32_t val, bool from_sh4);
 
 static float aica_sys_read_float(addr32_t addr, void *ctxt);
 static void aica_sys_write_float(addr32_t addr, float val, void *ctxt);
@@ -149,104 +155,44 @@ void aica_cleanup(struct aica *aica) {
 }
 
 static float aica_sys_read_float(addr32_t addr, void *ctxt) {
-    struct aica *aica = (struct aica*)ctxt;
-
     addr &= AICA_SYS_MASK;
 
-    switch (addr) {
-    default:
-#ifdef AICA_PEDANTIC
-        error_set_address(addr);
-        error_set_length(4);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-#endif
-        return ((float*)aica->sys_reg)[addr / 4];
-    }
+    error_set_address(addr);
+    error_set_length(4);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static void aica_sys_write_float(addr32_t addr, float val, void *ctxt) {
-    struct aica *aica = (struct aica*)ctxt;
-
     addr &= AICA_SYS_MASK;
 
-    switch (addr) {
-    default:
-#ifdef AICA_PEDANTIC
-        error_set_address(addr);
-        error_set_length(4);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-#endif
-        ((float*)aica->sys_reg)[addr / 4] = val;
-    }
+    error_set_address(addr);
+    error_set_length(4);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static double aica_sys_read_double(addr32_t addr, void *ctxt) {
-    struct aica *aica = (struct aica*)ctxt;
-
     addr &= AICA_SYS_MASK;
 
-    switch (addr) {
-    default:
-#ifdef AICA_PEDANTIC
-        error_set_address(addr);
-        error_set_length(8);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-#endif
-        return ((double*)aica->sys_reg)[addr / 8];
-    }
+    error_set_address(addr);
+    error_set_length(8);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static void aica_sys_write_double(addr32_t addr, double val, void *ctxt) {
-    struct aica *aica = (struct aica*)ctxt;
-
     addr &= AICA_SYS_MASK;
 
-    switch (addr) {
-    default:
-#ifdef AICA_PEDANTIC
-        error_set_address(addr);
-        error_set_length(8);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-#endif
-        ((double*)aica->sys_reg)[addr / 8] = val;
-    }
+    error_set_address(addr);
+    error_set_length(8);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
-    struct aica *aica = (struct aica*)ctxt;
-    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
-
-    addr &= AICA_SYS_MASK;
-
-    if (addr < 0x1fff) {
-        // Channel registers
-        uint32_t val = aica->sys_reg[addr / 4];
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA CHANNEL DATA: Reading 0x%08x from 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
-        return val;
+static uint32_t aica_sys_reg_read(struct aica *aica, addr32_t addr, bool from_sh4) {
+#ifdef INVARANTS
+    if (addr <= 0x7fff) {
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
-
-    if (addr <= 0x2044) {
-        // DSP mixer
-        uint32_t val = aica->sys_reg[addr / 4];
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA DSP MIXER: Reading 0x%08x from 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
-        return val;
-    }
-
-    if (addr >= 0x3000 && addr <= 0x7fff) {
-        // DSP registers
-        uint32_t val = aica->sys_reg[addr / 4];
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA DSP: Reading 0x%08x from 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
-        return val;
-    }
+#endif
 
     switch (addr) {
     case AICA_MASTER_VOLUME:
@@ -293,41 +239,14 @@ static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
     return aica->sys_reg[addr / 4];
 }
 
-static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
-    struct aica *aica = (struct aica*)ctxt;
-    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
-
-    addr &= AICA_SYS_MASK;
-
-    if (addr <= 0x1fff) {
-        // channel data
-        aica->sys_reg[addr / 4] = val;
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA CHANNEL DATA: Writing 0x%08x to 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
-        return;
+static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
+                               uint32_t val, bool from_sh4) {
+#ifdef INVARANTS
+    if (addr <= 0x7fff) {
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
-
-    if (addr <= 0x2044) {
-        // DSP mixer
-        aica->sys_reg[addr / 4] = val;
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA DSP MIXER: Writing 0x%08x to 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
-        return;
-    }
-
-    if (addr >= 0x3000 && addr <= 0x7fff) {
-        // DSP registers
-        aica->sys_reg[addr / 4] = val;
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA DSP: Writing 0x%08x to 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
-        return;
-    }
+#endif
 
     switch (addr) {
     case AICA_MASTER_VOLUME:
@@ -384,69 +303,150 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     aica->sys_reg[addr / 4] = val;
 }
 
-static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
+static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
 
-    switch (addr) {
-    default:
-#ifdef AICA_PEDANTIC
-        error_set_address(addr);
-        error_set_length(2);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-#endif
-        return ((uint16_t*)aica->sys_reg)[addr / 2];
+    if (addr < 0x1fff) {
+        // Channel registers
+        uint32_t val = aica->sys_reg[addr / 4];
+        if (aica_log_verbose_val) {
+            LOG_DBG("AICA CHANNEL DATA: Reading 0x%08x from 0x%04x\n",
+                    (unsigned)val, (unsigned)addr);
+        }
+        return val;
     }
+
+    if (addr <= 0x2044) {
+        // DSP mixer
+        uint32_t val = aica->sys_reg[addr / 4];
+        if (aica_log_verbose_val) {
+            LOG_DBG("AICA DSP MIXER: Reading 0x%08x from 0x%04x\n",
+                    (unsigned)val, (unsigned)addr);
+        }
+        return val;
+    }
+
+    if (addr >= 0x3000 && addr <= 0x7fff) {
+        // DSP registers
+        uint32_t val = aica->sys_reg[addr / 4];
+        if (aica_log_verbose_val) {
+            LOG_DBG("AICA DSP: Reading 0x%08x from 0x%04x\n",
+                    (unsigned)val, (unsigned)addr);
+        }
+        return val;
+    }
+
+    if (addr >= 0x2800 && addr <= 0x2fff)
+        return aica_sys_reg_read(aica, addr, from_sh4);
+
+    error_set_address(addr);
+    error_set_length(4);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    struct aica *aica = (struct aica*)ctxt;
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
+
+    addr &= AICA_SYS_MASK;
+
+    if (addr <= 0x1fff) {
+        // channel data
+        aica->sys_reg[addr / 4] = val;
+        if (aica_log_verbose_val) {
+            LOG_DBG("AICA CHANNEL DATA: Writing 0x%08x to 0x%04x\n",
+                    (unsigned)val, (unsigned)addr);
+        }
+        return;
+    }
+
+    if (addr <= 0x2044) {
+        // DSP mixer
+        aica->sys_reg[addr / 4] = val;
+        if (aica_log_verbose_val) {
+            LOG_DBG("AICA DSP MIXER: Writing 0x%08x to 0x%04x\n",
+                    (unsigned)val, (unsigned)addr);
+        }
+        return;
+    }
+
+    if (addr >= 0x3000 && addr <= 0x7fff) {
+        // DSP registers
+        aica->sys_reg[addr / 4] = val;
+        if (aica_log_verbose_val) {
+            LOG_DBG("AICA DSP: Writing 0x%08x to 0x%04x\n",
+                    (unsigned)val, (unsigned)addr);
+        }
+        return;
+    }
+
+    if (addr >= 0x2800 && addr <= 0x2fff) {
+        aica_sys_reg_write(aica, addr, val, from_sh4);
+    } else {
+        error_set_address(addr);
+        error_set_length(4);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
+    struct aica *aica = (struct aica*)ctxt;
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
+
+    addr &= AICA_SYS_MASK;
+
+    if (addr >= 0x2800 && addr <= 0x2fff)
+        return aica_sys_reg_read(aica, addr, from_sh4);
+
+    error_set_address(addr);
+    error_set_length(2);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
 
-    switch (addr) {
-    default:
-#ifdef AICA_PEDANTIC
+    if (addr >= 0x2800 && addr <= 0x2fff) {
+        aica_sys_reg_write(aica, addr, val, from_sh4);
+    } else {
         error_set_address(addr);
         error_set_length(2);
-        error_set_value(val);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
-#endif
-        ((uint16_t*)aica->sys_reg)[addr / 2] = val;
     }
 }
 
 static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
 
-    switch (addr) {
-    default:
-#ifdef AICA_PEDANTIC
-        error_set_address(addr);
-        error_set_length(1);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-#endif
-        return ((uint8_t*)aica->sys_reg)[addr];
-    }
+    if (addr >= 0x2800 && addr <= 0x2fff)
+        return aica_sys_reg_read(aica, addr, from_sh4);
+
+    error_set_address(addr);
+    error_set_length(1);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
 
-    switch (addr) {
-    default:
-#ifdef AICA_PEDANTIC
+    if (addr >= 0x2800 && addr <= 0x2fff) {
+        aica_sys_reg_write(aica, addr, val, from_sh4);
+    } else {
         error_set_address(addr);
         error_set_length(1);
-        error_set_value(val);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
-#endif
-        ((uint8_t*)aica->sys_reg)[addr] = val;
     }
 }
 
