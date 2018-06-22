@@ -808,6 +808,9 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
     if (writeback && (reg_list & (1 << rn)))
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
+    if (!reg_list)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
     int reg_no;
     if (up) {
         if (load) {
