@@ -462,11 +462,11 @@ DEF_DATA_OP(bic) {
             RAISE_ERROR(ERROR_INTEGRITY);                               \
         }                                                               \
                                                                         \
-        if (write_result)                                               \
+        if (write_result) {                                             \
             *arm7_gen_reg(arm7, rd) = res;                              \
-                                                                        \
-        if (rd == 15)                                                   \
-            reset_pipeline(arm7);                                       \
+            if (rd == 15)                                               \
+                reset_pipeline(arm7);                                   \
+        }                                                               \
                                                                         \
         next_inst(arm7);                                                \
     }
@@ -682,6 +682,11 @@ static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
 /*
  * call this when something like a branch or exception happens that invalidates
  * instructions in the pipeline.
+ *
+ * This won't effect the PC, but it will clear out anything already in the
+ * pipeline.  What that means is that anything in the pipeline which hasn't
+ * been executed yet will get trashed.  The upshot of this is that it's only
+ * safe to call reset_pipeline when the PC has actually changed.
  */
 static void reset_pipeline(struct arm7 *arm7) {
     arm7->pipeline_len = 0;
@@ -861,7 +866,7 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
         }
     }
 
-    if (reg_list & (1 << 15))
+    if (load && (reg_list & (1 << 15)))
         reset_pipeline(arm7);
 
     /*
