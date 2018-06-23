@@ -50,6 +50,10 @@
 #define AICA_TIMERB_CTRL 0x2894
 #define AICA_TIMERC_CTRL 0x2898
 
+#define AICA_SCILV0 0x28a8
+#define AICA_SCILV1 0x28ac
+#define AICA_SCILV2 0x28b0
+
 // interrupt enable
 #define AICA_SCIEB 0x289c
 
@@ -69,6 +73,10 @@
 #define AICA_MCIRE 0x28bc
 
 #define AICA_MIDI_INPUT 0x2808
+
+#define AICA_INTCLEAR 0x2d04
+
+#define AICA_CHANINFOREQ 0x280c
 
 #define AICA_INT_EXTERNAL_SHIFT 0
 #define AICA_INT_EXTERNAL_MASK (1 << AICA_INT_EXTERNAL_SHIFT)
@@ -329,6 +337,24 @@ static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
         break;
     case AICA_TIMERC_CTRL:
         LOG_DBG("Writing 0x%08x to AICC_TIMERA_CTRL\n", (unsigned)val);
+        break;
+
+    case AICA_SCILV0:
+        LOG_DBG("Writing 0x%08x to AICA_SCILV0\n", (unsigned)val);
+        break;
+    case AICA_SCILV1:
+        LOG_DBG("Writing 0x%08x to AICA_SCILV1\n", (unsigned)val);
+        break;
+    case AICA_SCILV2:
+        LOG_DBG("Writing 0x%08x to AICA_SCILV2\n", (unsigned)val);
+        break;
+
+    case AICA_INTCLEAR:
+        LOG_DBG("Writing 0x%08x to AICA_INTCLEAR\n", (unsigned)val);
+        break;
+
+    case AICA_CHANINFOREQ:
+        LOG_DBG("Writing 0x%08x to AICA_CHANINFOREQ\n", (unsigned)val);
         break;
 
     default:
