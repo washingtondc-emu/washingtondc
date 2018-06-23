@@ -32,6 +32,13 @@ struct arm7;
 #define AICA_SYS_LEN 0x8000
 #define AICA_SYS_MASK (AICA_SYS_LEN - 1)
 
+enum ringbuffer_size {
+    RINGBUFFER_SIZE_8K,
+    RINGBUFFER_SIZE_16K,
+    RINGBUFFER_SIZE_32K,
+    RINGBUFFER_SIZE_64K
+};
+
 struct aica {
     struct aica_wave_mem mem;
     struct arm7 *arm7;
@@ -47,6 +54,10 @@ struct aica {
 
     // AICA_MCIPD
     uint32_t int_pending_sh4;
+
+    unsigned ringbuffer_addr;
+    enum ringbuffer_size ringbuffer_size;
+    bool ringbuffer_bit15;
 
     /*
      * This is backing for registers that allow reads/writes to go through

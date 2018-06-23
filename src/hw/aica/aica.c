@@ -33,6 +33,7 @@
 
 #include "log.h"
 #include "error.h"
+#include "intmath.h"
 #include "hw/arm7/arm7.h"
 
 #include "aica.h"
@@ -40,6 +41,8 @@
 #define AICA_MASTER_VOLUME 0x2800
 
 #define AICA_ARM7_RST 0x2c00
+
+#define AICA_RINGBUFFER_ADDRESS 0x2804
 
 // interrupt enable
 #define AICA_SCIEB 0x289c
@@ -290,6 +293,12 @@ static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
         if (val & ~AICA_INT_CPU_MASK)
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         aica->int_enable_sh4 = val;
+        break;
+    case AICA_RINGBUFFER_ADDRESS:
+        aica->ringbuffer_addr = (val & BIT_RANGE(0, 11)) << 11;
+        aica->ringbuffer_size = (val & BIT_RANGE(13, 14)) >> 13;
+        aica->ringbuffer_bit15 = (bool)(val & (1 << 15));
+        LOG_DBG("Writing 0x%08x to AICA_RINGBUFFER_ADDRESS\n", (unsigned)val);
         break;
     default:
 #ifdef AICA_PEDANTIC

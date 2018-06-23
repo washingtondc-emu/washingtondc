@@ -202,12 +202,6 @@ void arm7_reset(struct arm7 *arm7, bool val) {
     arm7->enabled = val;
 }
 
-// Set all bits up to but not including bit_no:
-#define SET_TO_BIT(bit_no)   ((uint32_t)((((uint64_t)1) << (bit_no)) - 1))
-
-// set all bits between first and last (inclusive)
-#define BIT_RANGE(first, last) (SET_TO_BIT(last + 1) & ~SET_TO_BIT(first))
-
 // B or BL instruction
 #define MASK_B BIT_RANGE(25, 27)
 #define VAL_B  0x0a000000

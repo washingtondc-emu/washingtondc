@@ -27,6 +27,12 @@
 #include <stdbool.h>
 #include <limits.h>
 
+// Set all bits up to but not including bit_no:
+#define SET_TO_BIT(bit_no)   ((uint32_t)((((uint64_t)1) << (bit_no)) - 1))
+
+// set all bits between first and last (inclusive)
+#define BIT_RANGE(first, last) (SET_TO_BIT(last + 1) & ~SET_TO_BIT(first))
+
 static inline uint32_t add_flags(uint32_t lhs, uint32_t rhs, bool carry_in,
                                  bool *carry_out, bool *overflow_out) {
     uint64_t c_in = carry_in ? 1 : 0;
