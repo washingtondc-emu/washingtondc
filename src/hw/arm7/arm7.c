@@ -246,6 +246,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_MOV (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_MOV (13 << 21)
 
+#define MASK_MVN (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_MVN (15 << 21)
+
 #define MASK_BLOCK_XFER BIT_RANGE(25, 27)
 #define VAL_BLOCK_XFER (4 << 25)
 
@@ -384,6 +387,19 @@ DEF_DATA_OP(mov) {
     return rhs;
 }
 
+DEF_DATA_OP(mvn) {
+    uint32_t val = ~lhs;
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+
+    /*
+     * TODO: c_out is supposed to be set to the output from the barrel shifter
+     * (whatever that means)
+     */
+    *c_out = false;
+    return val;
+}
+
 DEF_DATA_OP(bic) {
     uint32_t val = lhs & ~rhs;
     *n_out = val & (1 << 31);
@@ -474,6 +490,7 @@ DEF_INST_FN(sub, false, false, true)
 DEF_INST_FN(rsb, false, false, true)
 DEF_INST_FN(cmp, false, true, false)
 DEF_INST_FN(tst, true, true, false)
+DEF_INST_FN(mvn, true, false, true)
 
 typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
 
@@ -523,6 +540,7 @@ static struct arm7_opcode {
     { arm7_inst_cmp, MASK_CMP, VAL_CMP, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_tst, MASK_TST, VAL_TST, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_and, MASK_AND, VAL_AND, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_mvn, MASK_MVN, VAL_MVN, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
 };
