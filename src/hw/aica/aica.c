@@ -44,6 +44,12 @@
 
 #define AICA_RINGBUFFER_ADDRESS 0x2804
 
+#define AICA_UNKNOWN_2880 0x2880
+
+#define AICA_TIMERA_CTRL 0x2890
+#define AICA_TIMERB_CTRL 0x2894
+#define AICA_TIMERC_CTRL 0x2898
+
 // interrupt enable
 #define AICA_SCIEB 0x289c
 
@@ -300,6 +306,31 @@ static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
         aica->ringbuffer_bit15 = (bool)(val & (1 << 15));
         LOG_DBG("Writing 0x%08x to AICA_RINGBUFFER_ADDRESS\n", (unsigned)val);
         break;
+    case AICA_UNKNOWN_2880:
+        LOG_DBG("Writing 0x%08x to AICA_UNKNOWN_2880\n", (unsigned)val);
+        break;
+
+        /*
+         * TODO: there are three timers in the AICA system.
+         *
+         * The lower byte of the timer register is a counter which increments
+         * periodically and raises an interrupt when it overflows.
+         *
+         * bits 10-8 are the base-2 logarithm of how many samples occur per
+         * timer increment.  Ostensibly "samples" refers to audio samples, but
+         * I still don't understand AICA well enough to implement that so I
+         * didn't implement that.
+         */
+    case AICA_TIMERA_CTRL:
+        LOG_DBG("Writing 0x%08x to AICA_TIMERA_CTRL\n", (unsigned)val);
+        break;
+    case AICA_TIMERB_CTRL:
+        LOG_DBG("Writing 0x%08x to AICB_TIMERA_CTRL\n", (unsigned)val);
+        break;
+    case AICA_TIMERC_CTRL:
+        LOG_DBG("Writing 0x%08x to AICC_TIMERA_CTRL\n", (unsigned)val);
+        break;
+
     default:
 #ifdef AICA_PEDANTIC
         error_set_address(addr);
