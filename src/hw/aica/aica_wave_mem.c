@@ -232,22 +232,21 @@ uint16_t aica_wave_mem_read_16(addr32_t addr, void *ctxt) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-      uint16_t const *valp = ((uint16_t const*)wm->mem) + addr / 2;
+    uint16_t ret;
+    memcpy(&ret, wm->mem + addr, sizeof(ret));
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
         LOG_DBG("AICA: reading 0x%04x from 0x%08x (PC is 0x%08x)\n",
-                (unsigned)*valp, (unsigned)addr, pc);
+                (unsigned)ret, (unsigned)addr, pc);
     }
 
-    return *valp;
+    return ret;
 }
 
 void aica_wave_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
-
-    uint16_t *outp = ((uint16_t*)wm->mem) + addr / 2;
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
@@ -263,7 +262,7 @@ void aica_wave_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    *outp = val;
+    memcpy(wm->mem + addr, &val, sizeof(val));
 }
 
 uint32_t aica_wave_mem_read_32(addr32_t addr, void *ctxt) {
@@ -288,22 +287,21 @@ uint32_t aica_wave_mem_read_32(addr32_t addr, void *ctxt) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t const *valp = ((uint32_t const*)wm->mem) + addr / 4;
+    uint32_t ret;
+    memcpy(&ret, wm->mem + addr, sizeof(ret));
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
         LOG_DBG("AICA: reading 0x%08x from 0x%08x (PC is 0x%08x)\n",
-                (unsigned)*valp, (unsigned)addr, pc);
+                (unsigned)ret, (unsigned)addr, pc);
     }
 
-    return *valp;
+    return ret;
 }
 
 void aica_wave_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
-
-    uint32_t *outp = ((uint32_t*)wm->mem) + addr / 4;
 
     if (aica_log_verbose_val) {
         __attribute__((unused)) unsigned pc =
@@ -319,7 +317,7 @@ void aica_wave_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    *outp = val;
+    memcpy(wm->mem + addr, &val, sizeof(val));
 }
 
 struct memory_interface aica_wave_mem_intf = {
