@@ -249,6 +249,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_MVN (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_MVN (15 << 21)
 
+#define MASK_CMN (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_CMN (11 << 21)
+
 #define MASK_BLOCK_XFER BIT_RANGE(25, 27)
 #define VAL_BLOCK_XFER (4 << 25)
 
@@ -315,6 +318,13 @@ DEF_DATA_OP(add) {
     *n_out = val & (1 << 31);
     *z_out = !val;
     return val;
+}
+
+DEF_DATA_OP(cmn) {
+    uint32_t val = add_flags(lhs, rhs, false, c_out, v_out);
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+    return 0xdeadbeef;
 }
 
 /* DEF_DATA_OP(adc) { */
@@ -491,6 +501,7 @@ DEF_INST_FN(rsb, false, false, true)
 DEF_INST_FN(cmp, false, true, false)
 DEF_INST_FN(tst, true, true, false)
 DEF_INST_FN(mvn, true, false, true)
+DEF_INST_FN(cmn, false, true, false)
 
 typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
 
@@ -541,6 +552,7 @@ static struct arm7_opcode {
     { arm7_inst_tst, MASK_TST, VAL_TST, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_and, MASK_AND, VAL_AND, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_mvn, MASK_MVN, VAL_MVN, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_cmn, MASK_CMN, VAL_CMN, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
 };
