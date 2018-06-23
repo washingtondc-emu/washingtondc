@@ -744,9 +744,19 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
 
     if (len == 4) {
         if (addr % 4) {
-            // unaligned memory access
-            error_set_arm7_inst(inst);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            /*
+             * unaligned memory access.  Log this if logging is enabled because
+             * the manual I have  on hand is somewhat ambiguous as to whether
+             * this is actually allowed.
+             *
+             * I'm also pretty surprised that this might be possible.  Usually
+             * when ARM is given the choice between doing something intuitively
+             * and doing something in the most inconvenient manner possible
+             * ARM7 will choosethe latter, so it's very surprising to see it
+             * let unaligned memory access through.
+             */
+            LOG_DBG("ARM7 Unaligned memory %s at PC=0x%08x\n",
+                    to_mem ? "store" : "load", (unsigned)arm7->reg[ARM7_REG_PC]);
         }
 
         if (to_mem)
