@@ -75,9 +75,10 @@ static unsigned arm7_spsr_idx(struct arm7 *arm7);
 static uint32_t decode_immed(arm7_inst inst);
 static void next_inst(struct arm7 *arm7);
 
-static uint32_t decode_shift(struct arm7 *arm7, arm7_inst inst);
+static uint32_t decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry);
 
-static uint32_t decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst);
+static uint32_t decode_shift_ldr_str(struct arm7 *arm7,
+                                     arm7_inst inst, bool *carry);
 
 static bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
@@ -88,7 +89,6 @@ static bool arm7_cond_ne(struct arm7 *arm7) {
 }
 
 static bool arm7_cond_cs(struct arm7 *arm7) {
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
 }
 
@@ -273,11 +273,6 @@ DEF_DATA_OP(and) {
     *n_out = val & (1 << 31);
     *z_out = !val;
 
-    /*
-     * TODO: c_out is supposed to be set to the output from the barrel shifter
-     * (whatever that means)
-     */
-    *c_out = false;
     return val;
 }
 
@@ -291,9 +286,11 @@ DEF_DATA_OP(sub) {
      * to the SH4's notation; that's why I have rhs on the left and lhs on the
      * right here.
      */
-    uint32_t val = sub_flags(rhs, lhs, false, c_out, v_out);
+    bool c_tmp;
+    uint32_t val = sub_flags(rhs, lhs, false, &c_tmp, v_out);
     *n_out = val & (1 << 31);
     *z_out = !val;
+    *c_out = !c_tmp;
     return val;
 }
 
@@ -344,11 +341,6 @@ DEF_DATA_OP(tst) {
     *n_out = val & (1 << 31);
     *z_out = !val;
 
-    /*
-     * TODO: c_out is supposed to be set to the output from the barrel shifter
-     * (whatever that means)
-     */
-    *c_out = false;
     return 0xdeadbabe; // result should never be written
 }
 
@@ -362,9 +354,11 @@ DEF_DATA_OP(cmp) {
      * to the SH4's notation; that's why I have rhs on the left and lhs on the
      * right here.
      */
-    uint32_t val = sub_flags(rhs, lhs, false, c_out, v_out);
+    bool c_tmp;
+    uint32_t val = sub_flags(rhs, lhs, false, &c_tmp, v_out);
     *n_out = val & (1 << 31);
     *z_out = !val;
+    *c_out = !c_tmp;
     return 0xdeadbabe; // result should never be written
 }
 
@@ -377,11 +371,6 @@ DEF_DATA_OP(orr) {
     *n_out = val & (1 << 31);
     *z_out = !val;
 
-    /*
-     * TODO: c_out is supposed to be set to the output from the barrel shifter
-     * (whatever that means)
-     */
-    *c_out = false;
     return val;
 }
 
@@ -389,11 +378,6 @@ DEF_DATA_OP(mov) {
     *n_out = rhs & (1 << 31);
     *z_out = !rhs;
 
-    /*
-     * TODO: c_out is supposed to be set to the output from the barrel shifter
-     * (whatever that means)
-     */
-    *c_out = false;
     return rhs;
 }
 
@@ -402,11 +386,6 @@ DEF_DATA_OP(mvn) {
     *n_out = val & (1 << 31);
     *z_out = !val;
 
-    /*
-     * TODO: c_out is supposed to be set to the output from the barrel shifter
-     * (whatever that means)
-     */
-    *c_out = false;
     return val;
 }
 
@@ -415,11 +394,6 @@ DEF_DATA_OP(bic) {
     *n_out = val & (1 << 31);
     *z_out = !val;
 
-    /*
-     * TODO: c_out is supposed to be set to the output from the barrel shifter
-     * (whatever that means)
-     */
-    *c_out = false;
     return val;
 }
 
@@ -441,10 +415,11 @@ DEF_DATA_OP(bic) {
         uint32_t input_1 = *arm7_gen_reg(arm7, rn);                     \
         uint32_t input_2;                                               \
                                                                         \
+        c_out = carry_in;                                               \
         if (i_flag) {                                                   \
             input_2 = decode_immed(inst);                               \
         } else {                                                        \
-            input_2 = decode_shift(arm7, inst);                         \
+            input_2 = decode_shift(arm7, inst, &c_out);                 \
             if ((inst & (1 << 4)) && rn == 15)                          \
                 input_1 += 4;                                           \
         }                                                               \
@@ -743,6 +718,7 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
     bool pre = inst & (1 << 24);
     bool offs_reg = inst & (1 << 25);
     bool to_mem = !(inst & (1 << 20));
+    bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
 
     uint32_t offs;
 
@@ -750,10 +726,12 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     if (offs_reg) {
-        offs = decode_shift_ldr_str(arm7, inst);
+        offs = decode_shift_ldr_str(arm7, inst, &carry);
     } else {
         offs = inst & ((1 << 12) - 1);
     }
+
+    // TODO: should this instruction update the carry flag?
 
     uint32_t addr = *arm7_gen_reg(arm7, rn);
 
@@ -959,8 +937,58 @@ static uint32_t decode_immed(arm7_inst inst) {
     return ror(imm, n_bits);
 }
 
+static uint32_t do_decode_shift(struct arm7 *arm7, unsigned shift_fn,
+                                uint32_t src_val, unsigned shift_amt,
+                                bool *carry) {
+    uint32_t ret_val;
+    /*
+     * For all cases except logical left-shift, a shift of 0 is actually a
+     * shift of 32.  For now I've chosen to raise an ERROR_UNIMPLEMENTED when
+     * that happens because I'd rather not think about it.
+     */
+    switch (shift_fn) {
+    case 0:
+        // logical left-shift
+        if (shift_amt) {
+            // LSL 0 doesn't effect the carry flag
+            if (shift_amt < 32)
+                *carry = (bool)(1 << (31 - shift_amt + 1) & src_val);
+            else
+                *carry = false;
+        }
+        return src_val << shift_amt;
+    case 1:
+        // logical right-shift
+        if (shift_amt == 0)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (shift_amt < 32)
+            *carry = ((1 << (shift_amt - 1)) & src_val);
+        else
+            *carry = (1 << 31) & src_val;
+        return src_val >> shift_amt;
+    case 2:
+        // arithmetic right-shift
+        if (shift_amt == 0)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (shift_amt < 32)
+            *carry = ((1 << (shift_amt - 1)) & src_val);
+        else
+            *carry = (1 << 31) & src_val;
+        return ((int32_t)src_val) >> shift_amt;
+    case 3:
+        // right-rotate
+        if (shift_amt == 0)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        ret_val = ror(src_val, shift_amt);
+        *carry = (1 << 31) & ret_val;
+        return ret_val;
+    }
+
+    RAISE_ERROR(ERROR_INTEGRITY);
+}
+
 static uint32_t
-decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst) {
+decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst, bool *carry) {
     bool amt_in_reg = inst & (1 << 4);
     unsigned shift_fn = (inst & BIT_RANGE(5, 6)) >> 5;
     uint32_t shift_amt;
@@ -975,30 +1003,20 @@ decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst) {
     unsigned src_reg = inst & 0xf;
     uint32_t src_val = *arm7_gen_reg(arm7, src_reg);
 
-    switch (shift_fn) {
-    case 0:
-        // logical left-shift
-        return src_val << shift_amt;
-    case 1:
-        // logical right-shift
-        return src_val >> shift_amt;
-    case 2:
-        // arithmetic right-shift
-        return ((int32_t)src_val) >> shift_amt;
-    case 3:
-        // right-rotate
-        return ror(src_val, shift_amt);
-    }
-
-    RAISE_ERROR(ERROR_INTEGRITY);
+    return do_decode_shift(arm7, shift_fn, src_val, shift_amt, carry);
 }
 
 static uint32_t
-decode_shift(struct arm7 *arm7, arm7_inst inst) {
+decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry) {
     bool amt_in_reg = inst & (1 << 4);
     unsigned shift_fn = (inst & BIT_RANGE(5, 6)) >> 5;
     uint32_t shift_amt;
 
+    /*
+     * For all cases except logical left-shift, a shift of 0 is actually a
+     * shift of 32.  For now I've chosen to raise an ERROR_UNIMPLEMENTED when
+     * that happens because I'd rather not think about it.
+     */
     if (amt_in_reg) {
         unsigned reg_no = (inst & BIT_RANGE(8, 11)) >> 8;
         if (reg_no == 15)
@@ -1011,22 +1029,7 @@ decode_shift(struct arm7 *arm7, arm7_inst inst) {
     unsigned src_reg = inst & 0xf;
     uint32_t src_val = *arm7_gen_reg(arm7, src_reg);
 
-    switch (shift_fn) {
-    case 0:
-        // logical left-shift
-        return src_val << shift_amt;
-    case 1:
-        // logical right-shift
-        return src_val >> shift_amt;
-    case 2:
-        // arithmetic right-shift
-        return ((int32_t)src_val) >> shift_amt;
-    case 3:
-        // right-rotate
-        return ror(src_val, shift_amt);
-    }
-
-    RAISE_ERROR(ERROR_INTEGRITY);
+    return do_decode_shift(arm7, shift_fn, src_val, shift_amt, carry);
 }
 
 unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
