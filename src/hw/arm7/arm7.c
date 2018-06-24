@@ -222,6 +222,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_ORR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_ORR (12 << 21)
 
+#define MASK_EOR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_EOR (1 << 21)
+
 #define MASK_BIC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_BIC (14 << 21)
 
@@ -362,6 +365,19 @@ DEF_DATA_OP(cmp) {
     return 0xdeadbabe; // result should never be written
 }
 
+/*
+ * This is really xor.  For some stupid reason the ARM mnemonic is 'eor' even
+ * though literally everbody else in the entire world ignores the silent E and
+ * calls this xor.
+ */
+DEF_DATA_OP(eor) {
+    uint32_t val = lhs ^ rhs;
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+
+    return val;
+}
+
 /* DEF_DATA_OP(cmn) { */
 /*     return lhs + rhs; */
 /* } */
@@ -469,6 +485,7 @@ DEF_DATA_OP(bic) {
     }
 
 DEF_INST_FN(orr, true, false, true)
+DEF_INST_FN(eor, true, false, true)
 DEF_INST_FN(and, true, false, true)
 DEF_INST_FN(bic, true, false, true)
 DEF_INST_FN(mov, true, false, true)
@@ -520,6 +537,7 @@ static struct arm7_opcode {
      * basis in reality.  It needs to be corrected.
      */
     { arm7_inst_orr, MASK_ORR, VAL_ORR, 2 * S_CYCLE + 1 * N_CYCLE },
+    { arm7_inst_eor, MASK_EOR, VAL_EOR, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_bic, MASK_BIC, VAL_BIC, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_mov, MASK_MOV, VAL_MOV, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_add, MASK_ADD, VAL_ADD, 2 * S_CYCLE + 1 * N_CYCLE },
