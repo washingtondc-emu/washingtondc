@@ -33,7 +33,7 @@
  *
  * this limit is arbitrary; it is safe to make MAX_SLOTS bigger if necessary
  */
-#define MAX_SLOTS 512
+#define MAX_SLOTS (8 * 1024)
 
 enum jit_opcode {
     // this opcode calls an interpreter function

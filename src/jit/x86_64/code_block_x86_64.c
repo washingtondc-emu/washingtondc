@@ -30,6 +30,7 @@
 #include "hw/sh4/sh4.h"
 #include "error.h"
 #include "jit/code_block.h"
+#include "jit/jit_il.h"
 #include "exec_mem.h"
 #include "emit_x86_64.h"
 #include "dreamcast.h"
@@ -141,8 +142,6 @@ static struct reg_stat {
         .prio = 5
     }
 };
-
-#define MAX_SLOTS 512
 
 struct slot {
     union {
