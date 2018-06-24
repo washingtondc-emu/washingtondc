@@ -459,8 +459,10 @@ DEF_DATA_OP(bic) {
                                                                         \
         if (write_result) {                                             \
             *arm7_gen_reg(arm7, rd) = res;                              \
-            if (rd == 15)                                               \
+            if (rd == 15) {                                             \
                 reset_pipeline(arm7);                                   \
+                return;                                                 \
+            }                                                           \
         }                                                               \
                                                                         \
         next_inst(arm7);                                                \
@@ -881,9 +883,6 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
         }
     }
 
-    if (load && (reg_list & (1 << 15)))
-        reset_pipeline(arm7);
-
     /*
      * Now handle the writeback.  Spec has some fairly complicated rules about
      * this when the rn is in the register list, but the code above should have
@@ -892,7 +891,10 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
     if (writeback)
         *arm7_gen_reg(arm7, rn) = base;
 
-    next_inst(arm7);
+    if (load && (reg_list & (1 << 15)))
+        reset_pipeline(arm7);
+    else
+        next_inst(arm7);
 }
 
 /*
