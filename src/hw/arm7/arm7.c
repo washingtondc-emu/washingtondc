@@ -1050,6 +1050,14 @@ decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry) {
      * that happens because I'd rather not think about it.
      */
     if (amt_in_reg) {
+        if (inst & (1 << 7)) {
+            /*
+             * setting bit 7 and bit 4 is illegal.  If this happens, it means
+             * we have a decoder error.
+             */
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+
         unsigned reg_no = (inst & BIT_RANGE(8, 11)) >> 8;
         if (reg_no == 15)
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
