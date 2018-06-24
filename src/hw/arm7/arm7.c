@@ -463,7 +463,7 @@ DEF_DATA_OP(bic) {
                 uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
                 uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
                 uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
-                uint32_t v_flag = c_out ? ARM7_CPSR_V_MASK : 0;         \
+                uint32_t v_flag = v_out ? ARM7_CPSR_V_MASK : 0;         \
                 arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
                                               ARM7_CPSR_N_MASK |        \
                                               ARM7_CPSR_C_MASK |        \
