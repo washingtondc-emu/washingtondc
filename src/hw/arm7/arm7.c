@@ -303,9 +303,11 @@ DEF_DATA_OP(rsb) {
      * to the SH4's notation; that's why I have rhs on the left and lhs on the
      * right here.
      */
-    uint32_t val = sub_flags(lhs, rhs, false, c_out, v_out);
+    bool c_tmp;
+    uint32_t val = sub_flags(lhs, rhs, false, &c_tmp, v_out);
     *n_out = val & (1 << 31);
     *z_out = !val;
+    *c_out = !c_tmp;
     return val;
 }
 
