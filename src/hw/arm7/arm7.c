@@ -404,7 +404,7 @@ DEF_DATA_OP(mov) {
 }
 
 DEF_DATA_OP(mvn) {
-    uint32_t val = ~lhs;
+    uint32_t val = ~rhs;
     *n_out = val & (1 << 31);
     *z_out = !val;
 
