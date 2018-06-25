@@ -62,6 +62,7 @@ static void arm7_inst_msr(struct arm7 *arm7, arm7_inst inst);
 static void arm7_inst_orr(struct arm7 *arm7, arm7_inst inst);
 static void arm7_inst_bic(struct arm7 *arm7, arm7_inst inst);
 static void arm7_inst_mov(struct arm7 *arm7, arm7_inst inst);
+static void arm7_inst_mul(struct arm7 *arm7, arm7_inst inst);
 
 static bool arm7_cond_eq(struct arm7 *arm7);
 static bool arm7_cond_ne(struct arm7 *arm7);
@@ -257,6 +258,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 
 #define MASK_BLOCK_XFER BIT_RANGE(25, 27)
 #define VAL_BLOCK_XFER (4 << 25)
+
+#define MASK_MUL (BIT_RANGE(22, 27) | BIT_RANGE(4, 7))
+#define VAL_MUL  (9 << 4)
 
 /* #define MASK_TEQ_IMMED BIT_RANGE(20, 27) */
 /* #define VAL_TEQ_IMMED ((1 << 25) | (9 << 21)) */
@@ -533,6 +537,12 @@ static struct arm7_opcode {
      */
     { arm7_inst_mrs, MASK_MRS, VAL_MRS, 1 * S_CYCLE },
     { arm7_inst_msr, MASK_MSR, VAL_MSR, 1 * S_CYCLE },
+
+    /*
+     * this one also has to go before the data processing instructions
+     * TODO: yet another fake cycle count.
+     */
+    { arm7_inst_mul, MASK_MUL, VAL_MUL, 4 * S_CYCLE },
 
     /*
      * TODO: this cycle count is literally just something I made up with no
@@ -951,6 +961,56 @@ static void arm7_inst_msr(struct arm7 *arm7, arm7_inst inst) {
 
     unsigned src_reg = inst & 0xff;
     *dst_p = *arm7_gen_reg(arm7, src_reg);
+
+    next_inst(arm7);
+}
+
+static void arm7_inst_mul(struct arm7 *arm7, arm7_inst inst) {
+    bool accum = (bool)(inst & (1 << 21));
+    bool set_flags = (bool)(inst & (1 << 20));
+    unsigned rd = (BIT_RANGE(16, 19) & inst) >> 16;
+    unsigned rn = (BIT_RANGE(12, 15) & inst) >> 12;
+    unsigned rs = (BIT_RANGE(8, 11) & inst) >> 8;
+    unsigned rm = BIT_RANGE(0, 3) & inst;
+
+#ifdef INVARIANTS
+    if ((BIT_RANGE(22, 27) & inst) || (((BIT_RANGE(4, 7) & inst) >> 4) != 9))
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+    // doc says you can't do this
+    if (rd == rm)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    // doc says you can't do this either
+    if (rd == 15 || rn == 15 || rs == 15 || rm == 15)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    uint32_t val = *arm7_gen_reg(arm7, rm) * *arm7_gen_reg(arm7, rs);
+    if (accum)
+        val += *arm7_gen_reg(arm7, rn);
+
+    *arm7_gen_reg(arm7, rd) = val;
+
+    if (set_flags) {
+        uint32_t cpsr = arm7->reg[ARM7_REG_CPSR];
+        if (val & (1 << 31))
+            cpsr |= ARM7_CPSR_N_MASK;
+        else
+            cpsr &= ~ARM7_CPSR_N_MASK;
+
+        if (!val)
+            cpsr |= ARM7_CPSR_Z_MASK;
+        else
+            cpsr &= ~ARM7_CPSR_Z_MASK;
+
+        // apparently the value of C is undefined
+        cpsr &= ~ARM7_CPSR_C_MASK;
+
+        // V flag is unaffected by this instruction
+
+        arm7->reg[ARM7_REG_CPSR] = cpsr;
+    }
 
     next_inst(arm7);
 }
