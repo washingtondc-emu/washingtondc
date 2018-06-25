@@ -644,7 +644,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
         arm7->excp &= ~ARM7_EXCP_RESET;
     } else if (excp & ARM7_EXCP_DATA_ABORT) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_I_MASK)) {
+    } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
         arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
         arm7->reg[ARM7_REG_R14_FIQ] = arm7->reg[ARM7_REG_PC] - 4;
         arm7->reg[ARM7_REG_PC] = 0x1c;
@@ -652,7 +652,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
             ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_FIQ;
-    } else if ((excp & ARM7_EXCP_IRQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
+    } else if ((excp & ARM7_EXCP_IRQ) && !(cpsr & ARM7_CPSR_I_MASK)) {
         arm7->reg[ARM7_REG_SPSR_IRQ] = cpsr;
         arm7->reg[ARM7_REG_R14_IRQ] = arm7->reg[ARM7_REG_PC] - 4;
         arm7->reg[ARM7_REG_PC] = 0x18;
