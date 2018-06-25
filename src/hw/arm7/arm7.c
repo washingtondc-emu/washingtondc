@@ -610,6 +610,7 @@ void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
     case 0:
         arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
         arm7->pipeline_len++;
+        inst_out->inst = 0xdeadbeef;
         inst_out->op = arm7_idle_fetch;
         inst_out->cycles = 1;
         inst_out->cond = arm7_cond_al;
