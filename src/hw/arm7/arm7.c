@@ -806,8 +806,8 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
     if (!pre) {
         if (writeback) {
             /*
-             * docs say the writeback is implied when the pre bit is set, and
-             * that the writeback bit should be zero in this case.
+             * docs say the writeback is implied when the pre bit is not set,
+             * and that the writeback bit should be zero in this case.
              */
             error_set_arm7_inst(inst);
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -869,7 +869,7 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
                         base += 4;
                 }
         } else {
-            for (reg_no = 0; reg_no < 16; reg_no++)
+            for (reg_no = 0; reg_no < 15; reg_no++)
                 if (reg_list & (1 << reg_no)) {
                     if (pre)
                         base += 4;
@@ -878,6 +878,17 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
                     if (!pre)
                         base += 4;
                 }
+
+            if (reg_list & (1 << 15)) {
+                if (psr_user_force)
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                if (pre)
+                    base += 4;
+                memory_map_write_32(arm7->map, base,
+                                    arm7->reg[ARM7_REG_PC] + 4);
+                if (!pre)
+                    base += 4;
+            }
         }
     } else {
         /*
@@ -901,7 +912,18 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
                 }
             }
         } else {
-            for (reg_no = 15; reg_no >= 0; reg_no--) {
+            if (reg_list & (1 << 15)) {
+                if (psr_user_force)
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                if (pre)
+                    base -= 4;
+                memory_map_write_32(arm7->map, base,
+                                    arm7->reg[ARM7_REG_PC] + 4);
+                if (!pre)
+                    base -= 4;
+            }
+
+            for (reg_no = 14; reg_no >= 0; reg_no--) {
                 if (reg_list & (1 << reg_no)) {
                     if (pre)
                         base -= 4;
