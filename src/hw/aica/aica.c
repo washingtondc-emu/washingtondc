@@ -138,6 +138,19 @@ static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt);
 static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt);
 static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
+static void aica_sys_channel_read(struct aica *aica, void *dst,
+                                  uint32_t addr, unsigned len);
+static void aica_dsp_mixer_read(struct aica *aica, void *dst,
+                                uint32_t addr, unsigned len);
+static void aica_dsp_reg_read(struct aica *aica, void *dst,
+                              uint32_t addr, unsigned len);
+static void aica_sys_channel_write(struct aica *aica, void const *src,
+                                   uint32_t addr, unsigned len);
+static void aica_dsp_mixer_write(struct aica *aica, void const *src,
+                                 uint32_t addr, unsigned len);
+static void aica_dsp_reg_write(struct aica *aica, void const *src,
+                               uint32_t addr, unsigned len);
+
 static bool aica_check_irq(void *ctxt);
 
 struct memory_interface aica_sys_intf = {
@@ -369,6 +382,106 @@ static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
     aica->sys_reg[addr / 4] = val;
 }
 
+static void aica_sys_channel_read(struct aica *aica, void *dst,
+                                  uint32_t addr, unsigned len) {
+    uint32_t addr_first = addr;
+    uint32_t addr_last = addr + (len - 1);
+    if (addr_first > 0x1fff || addr_last > 0x1fff) {
+        error_set_length(len);
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+    if (aica_log_verbose_val) {
+        LOG_DBG("AICA CHANNEL DATA: Reading %u bytes from 0x%08x\n",
+                len, (unsigned)addr);
+    }
+    memcpy(dst, ((uint8_t*)aica->sys_reg) + addr, len);
+}
+
+static void aica_dsp_mixer_read(struct aica *aica, void *dst,
+                                uint32_t addr, unsigned len) {
+    uint32_t addr_first = addr;
+    uint32_t addr_last = addr + (len - 1);
+    if (addr_first >= 0x2048 || addr_last >= 0x2048 ||
+        addr_first <= 0x1fff || addr_last <= 0x1fff) {
+        error_set_length(len);
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+    if (aica_log_verbose_val) {
+        LOG_DBG("AICA DSP MIXER: Reading %u bytes from 0x%08x\n",
+                len, (unsigned)addr);
+    }
+    memcpy(dst, ((uint8_t*)aica->sys_reg) + addr, len);
+}
+
+static void aica_dsp_reg_read(struct aica *aica, void *dst,
+                              uint32_t addr, unsigned len) {
+    uint32_t addr_first = addr;
+    uint32_t addr_last = addr + (len - 1);
+    if (addr_first >= 0x8000 || addr_last >= 0x8000 ||
+        addr_first < 0x3000 || addr_last < 0x3000) {
+        error_set_length(len);
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+    if (aica_log_verbose_val) {
+        LOG_DBG("AICA DSP REG: Reading %u bytes from 0x%08x\n",
+                len, (unsigned)addr);
+    }
+    memcpy(dst, ((uint8_t*)aica->sys_reg) + addr, len);
+}
+
+static void aica_sys_channel_write(struct aica *aica, void const *src,
+                                  uint32_t addr, unsigned len) {
+    uint32_t addr_first = addr;
+    uint32_t addr_last = addr + (len - 1);
+    if (addr_first > 0x1fff || addr_last > 0x1fff) {
+        error_set_length(len);
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+    if (aica_log_verbose_val) {
+        LOG_DBG("AICA CHANNEL DATA: Writing %u bytes from 0x%08x\n",
+                len, (unsigned)addr);
+    }
+    memcpy(((uint8_t*)aica->sys_reg) + addr, src, len);
+}
+
+static void aica_dsp_mixer_write(struct aica *aica, void const *src,
+                                uint32_t addr, unsigned len) {
+    uint32_t addr_first = addr;
+    uint32_t addr_last = addr + (len - 1);
+    if (addr_first >= 0x2048 || addr_last >= 0x2048 ||
+        addr_first <= 0x1fff || addr_last <= 0x1fff) {
+        error_set_length(len);
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+    if (aica_log_verbose_val) {
+        LOG_DBG("AICA DSP MIXER: Writing %u bytes from 0x%08x\n",
+                len, (unsigned)addr);
+    }
+    memcpy(((uint8_t*)aica->sys_reg) + addr, src, len);
+}
+
+static void aica_dsp_reg_write(struct aica *aica, void const *src,
+                               uint32_t addr, unsigned len) {
+    uint32_t addr_first = addr;
+    uint32_t addr_last = addr + (len - 1);
+    if (addr_first >= 0x8000 || addr_last >= 0x8000 ||
+        addr_first < 0x3000 || addr_last < 0x3000) {
+        error_set_length(len);
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
+    }
+    if (aica_log_verbose_val) {
+        LOG_DBG("AICA DSP REG: Writing %u bytes from 0x%08x\n",
+                len, (unsigned)addr);
+    }
+    memcpy(((uint8_t*)aica->sys_reg) + addr, src, len);
+}
+
 static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
     bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
@@ -377,32 +490,23 @@ static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
 
     if (addr < 0x1fff) {
         // Channel registers
-        uint32_t val = aica->sys_reg[addr / 4];
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA CHANNEL DATA: Reading 0x%08x from 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
-        return val;
+        uint32_t ret;
+        aica_sys_channel_read(aica, &ret, addr, sizeof(ret));
+        return ret;
     }
 
     if (addr <= 0x2044) {
         // DSP mixer
-        uint32_t val = aica->sys_reg[addr / 4];
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA DSP MIXER: Reading 0x%08x from 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
-        return val;
+        uint32_t ret;
+        aica_dsp_mixer_read(aica, &ret, addr, sizeof(ret));
+        return ret;
     }
 
     if (addr >= 0x3000 && addr <= 0x7fff) {
         // DSP registers
-        uint32_t val = aica->sys_reg[addr / 4];
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA DSP: Reading 0x%08x from 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
-        return val;
+        uint32_t ret;
+        aica_dsp_reg_read(aica, &ret, addr, sizeof(ret));
+        return ret;
     }
 
     if (addr >= 0x2800 && addr <= 0x2fff)
@@ -421,31 +525,19 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 
     if (addr <= 0x1fff) {
         // channel data
-        aica->sys_reg[addr / 4] = val;
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA CHANNEL DATA: Writing 0x%08x to 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
+        aica_sys_channel_write(aica, &val, addr, sizeof(val));
         return;
     }
 
     if (addr <= 0x2044) {
         // DSP mixer
-        aica->sys_reg[addr / 4] = val;
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA DSP MIXER: Writing 0x%08x to 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
+        aica_dsp_mixer_write(aica, &val, addr, sizeof(val));
         return;
     }
 
     if (addr >= 0x3000 && addr <= 0x7fff) {
         // DSP registers
-        aica->sys_reg[addr / 4] = val;
-        if (aica_log_verbose_val) {
-            LOG_DBG("AICA DSP: Writing 0x%08x to 0x%04x\n",
-                    (unsigned)val, (unsigned)addr);
-        }
+        aica_dsp_reg_write(aica, &val, addr, sizeof(val));
         return;
     }
 
@@ -464,6 +556,27 @@ static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
+    if (addr < 0x1fff) {
+        // Channel registers
+        uint16_t ret;
+        aica_sys_channel_read(aica, &ret, addr, sizeof(ret));
+        return ret;
+    }
+
+    if (addr <= 0x2044) {
+        // DSP mixer
+        uint16_t ret;
+        aica_dsp_mixer_read(aica, &ret, addr, sizeof(ret));
+        return ret;
+    }
+
+    if (addr >= 0x3000 && addr <= 0x7fff) {
+        // DSP registers
+        uint16_t ret;
+        aica_dsp_reg_read(aica, &ret, addr, sizeof(ret));
+        return ret;
+    }
+
     if (addr >= 0x2800 && addr <= 0x2fff)
         return aica_sys_reg_read(aica, addr, from_sh4);
 
@@ -477,6 +590,24 @@ static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
+
+    if (addr <= 0x1fff) {
+        // channel data
+        aica_sys_channel_write(aica, &val, addr, sizeof(val));
+        return;
+    }
+
+    if (addr <= 0x2044) {
+        // DSP mixer
+        aica_dsp_mixer_write(aica, &val, addr, sizeof(val));
+        return;
+    }
+
+    if (addr >= 0x3000 && addr <= 0x7fff) {
+        // DSP registers
+        aica_dsp_reg_write(aica, &val, addr, sizeof(val));
+        return;
+    }
 
     if (addr >= 0x2800 && addr <= 0x2fff) {
         aica_sys_reg_write(aica, addr, val, from_sh4);
@@ -493,6 +624,27 @@ static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
 
     addr &= AICA_SYS_MASK;
 
+    if (addr < 0x1fff) {
+        // Channel registers
+        uint8_t ret;
+        aica_sys_channel_read(aica, &ret, addr, sizeof(ret));
+        return ret;
+    }
+
+    if (addr <= 0x2044) {
+        // DSP mixer
+        uint8_t ret;
+        aica_dsp_mixer_read(aica, &ret, addr, sizeof(ret));
+        return ret;
+    }
+
+    if (addr >= 0x3000 && addr <= 0x7fff) {
+        // DSP registers
+        uint8_t ret;
+        aica_dsp_reg_read(aica, &ret, addr, sizeof(ret));
+        return ret;
+    }
+
     if (addr >= 0x2800 && addr <= 0x2fff)
         return aica_sys_reg_read(aica, addr, from_sh4);
 
@@ -506,6 +658,24 @@ static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
+
+    if (addr <= 0x1fff) {
+        // channel data
+        aica_sys_channel_write(aica, &val, addr, sizeof(val));
+        return;
+    }
+
+    if (addr <= 0x2044) {
+        // DSP mixer
+        aica_dsp_mixer_write(aica, &val, addr, sizeof(val));
+        return;
+    }
+
+    if (addr >= 0x3000 && addr <= 0x7fff) {
+        // DSP registers
+        aica_dsp_reg_write(aica, &val, addr, sizeof(val));
+        return;
+    }
 
     if (addr >= 0x2800 && addr <= 0x2fff) {
         aica_sys_reg_write(aica, addr, val, from_sh4);
