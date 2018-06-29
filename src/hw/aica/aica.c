@@ -44,6 +44,10 @@
 
 #define AICA_RINGBUFFER_ADDRESS 0x2804
 
+#define AICA_PLAYSTATUS 0x2810
+
+#define AICA_PLAYPOS 0x2814
+
 #define AICA_UNKNOWN_2880 0x2880
 
 #define AICA_TIMERA_CTRL 0x2890
@@ -257,6 +261,14 @@ static uint32_t aica_sys_reg_read(struct aica *aica, addr32_t addr, bool from_sh
          * doc).
          */
         return  (1 << 11) | (1 << 8);
+    case AICA_PLAYPOS:
+        LOG_DBG("Reading 0x%08x from AICA_PLAYPOS\n",
+                (unsigned)aica->sys_reg[addr / 4]);
+        break;
+    case AICA_PLAYSTATUS:
+        LOG_DBG("Reading 0x%08x from AICA_PLAYSTATUS\n",
+                (unsigned)aica->sys_reg[addr / 4]);
+        break;
     default:
 #ifdef AICA_PEDANTIC
         error_set_address(addr);
