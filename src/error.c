@@ -56,6 +56,8 @@ void error_raise(enum error_type tp) {
     dc_print_perf_stats();
 
     error_print();
+    fflush(stdout);
+    fflush(stderr);
     abort(); // abort so we get a core-dump
 }
 
