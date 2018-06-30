@@ -599,7 +599,7 @@ static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
 
 static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
-    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
+    /* bool from_sh4 = (addr & 0x00f00000) == 0x00700000; */
 
     addr &= AICA_SYS_MASK;
 
@@ -621,13 +621,13 @@ static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
         return;
     }
 
-    if (addr >= 0x2800 && addr <= 0x2fff) {
-        aica_sys_reg_write(aica, addr, val, from_sh4);
-    } else {
-        error_set_address(addr);
-        error_set_length(2);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
+    /*
+     * TODO: implement a 2-byte version of aica_sys_reg_write.  Beware of
+     * writes to addresses which are not 4-byte aligned.
+     */
+    error_set_address(addr);
+    error_set_length(2);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
@@ -667,7 +667,7 @@ static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
 
 static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
-    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
+    /* bool from_sh4 = (addr & 0x00f00000) == 0x00700000; */
 
     addr &= AICA_SYS_MASK;
 
@@ -690,7 +690,52 @@ static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     }
 
     if (addr >= 0x2800 && addr <= 0x2fff) {
-        aica_sys_reg_write(aica, addr, val, from_sh4);
+        /*
+         * software running on the ARM7 has an annoying tendency to perform
+         * 1-byte writes to certain registers at unaligned addresses.
+         * Presumably the unused bytes are unaffected, but IDK.
+         *
+         * Most of the time it does 4-byte reads/writes which are 4-byte
+         * aligned; the registers handled below are the only ones I know where
+         * it does unaligned and/or 1-byte writes
+         *
+         * TODO: Figure out a way to merge this with the code in
+         * aica_sys_reg_write.  Also confirm that the untouched bytes are
+         * preserved and not cleared by a zero-extend.
+         */
+        unsigned which_reg = 4 * (addr / 4);
+        __attribute__((unused)) unsigned byte_offs = addr % 4;
+        switch (which_reg) {
+        case AICA_MASTER_VOLUME:
+            LOG_DBG("Write 0x%02x (1-byte) to MASTER_VOLUME (offset %u "
+                    "bytes)\n", (unsigned)val, byte_offs);
+            break;
+        case AICA_CHANINFOREQ:
+            LOG_DBG("Write 0x%02x (1-byte) to AICA_CHANINFOREQ (offset %u "
+                    "bytes)\n", (unsigned)val, byte_offs);
+            break;
+        case AICA_SCILV0:
+            LOG_DBG("Write 0x%02x (1-byte) to AICA_SCILV0 (offset %u "
+                    "bytes)\n", (unsigned)val, byte_offs);
+            break;
+        case AICA_SCILV1:
+            LOG_DBG("Write 0x%02x (1-byte) to AICA_SCILV1 (offset %u "
+                    "bytes)\n", (unsigned)val, byte_offs);
+            break;
+        case AICA_SCILV2:
+            LOG_DBG("Write 0x%02x (1-byte) to AICA_SCILV2 (offset %u "
+                    "bytes)\n", (unsigned)val, byte_offs);
+            break;
+        case AICA_INTCLEAR:
+            LOG_DBG("Write 0x%02x (1-byte) to AICA_INTCLEAR (offset %u "
+                    "bytes)\n", (unsigned)val, byte_offs);
+            break;
+        default:
+            error_set_address(addr);
+            error_set_length(1);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+        ((uint8_t*)aica->sys_reg)[addr] = val;
     } else {
         error_set_address(addr);
         error_set_length(1);
