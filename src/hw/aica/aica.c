@@ -564,7 +564,7 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 
 static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
-    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
+    /* bool from_sh4 = (addr & 0x00f00000) == 0x00700000; */
 
     addr &= AICA_SYS_MASK;
 
@@ -589,8 +589,8 @@ static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
         return ret;
     }
 
-    if (addr >= 0x2800 && addr <= 0x2fff)
-        return aica_sys_reg_read(aica, addr, from_sh4);
+    /* if (addr >= 0x2800 && addr <= 0x2fff) */
+    /*     return aica_sys_reg_read(aica, addr, from_sh4); */
 
     error_set_address(addr);
     error_set_length(2);
@@ -632,7 +632,7 @@ static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 
 static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
-    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
+    /* bool from_sh4 = (addr & 0x00f00000) == 0x00700000; */
 
     addr &= AICA_SYS_MASK;
 
@@ -657,8 +657,8 @@ static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
         return ret;
     }
 
-    if (addr >= 0x2800 && addr <= 0x2fff)
-        return aica_sys_reg_read(aica, addr, from_sh4);
+    /* if (addr >= 0x2800 && addr <= 0x2fff) */
+        /* return aica_sys_reg_read(aica, addr, from_sh4); */
 
     error_set_address(addr);
     error_set_length(1);
