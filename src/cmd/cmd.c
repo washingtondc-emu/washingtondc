@@ -61,7 +61,6 @@ static int cmd_tex_info(int argc, char **argv);
 static int cmd_tex_enum(int argc, char **argv);
 static int cmd_tex_dump_all(int argc, char **argv);
 static int cmd_tex_dump(int argc, char **argv);
-static int cmd_power_stone_hack(int argc, char **argv);
 
 static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
                     void const *dat);
@@ -134,16 +133,6 @@ struct cmd {
         "It does exactly what you think it does.  There's no confirmation\n"
         "prompt, so be careful not to type this in absentmindedly\n",
         .cmd_handler = cmd_exit
-    },
-    {
-        .cmd_name = "hack-power-stone-no-aica",
-        .summary = "trick Power Stone into thinking the AICA ARM7 works",
-        .help_str = "hack_power_stone_no_aica enable|disable\n"
-        "\n"
-        "Trick Power Stone into thinking the AICA's ARM7 CPU works.  This\n"
-        "hack works by changing the values that the SH4 software sees when it\n"
-        "access a certain address in AICA waveform memory\n",
-        .cmd_handler = cmd_power_stone_hack
     },
     {
         .cmd_name = "help",
@@ -540,33 +529,6 @@ static int cmd_aica_verbose_log(int argc, char **argv) {
     aica_log_verbose(do_enable);
 
     cons_puts("verbose AICA waveform memory access logging is now ");
-    if (do_enable)
-        cons_puts("enabled.\n");
-    else
-        cons_puts("disabled.\n");
-
-    return 0;
-}
-
-static int cmd_power_stone_hack(int argc, char **argv) {
-    bool do_enable;
-    if (argc != 2) {
-        cons_puts("Usage: hack-power-stone-no-aica enable|disable\n");
-        return 1;
-    }
-
-    if (strcmp(argv[1], "enable") == 0) {
-        do_enable = true;
-    } else if (strcmp(argv[1], "disable") == 0) {
-        do_enable = false;
-    } else {
-        cons_puts("Usage: hack-power-stone-no-aica enable|disable\n");
-        return 1;
-    }
-
-    config_set_hack_power_stone_no_aica(do_enable);
-
-    cons_puts("the Power Stone \"no AICA\" hack is now ");
     if (do_enable)
         cons_puts("enabled.\n");
     else
