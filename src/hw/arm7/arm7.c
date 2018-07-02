@@ -755,9 +755,6 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
 
     uint32_t offs;
 
-    if (rd == 15)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
     if (offs_reg) {
         offs = decode_shift_ldr_str(arm7, inst, &carry);
     } else {
@@ -792,15 +789,23 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
                     to_mem ? "store" : "load", (unsigned)arm7->reg[ARM7_REG_PC]);
         }
 
-        if (to_mem)
-            memory_map_write_32(arm7->map, addr, *arm7_gen_reg(arm7, rd));
-        else
+        if (to_mem) {
+            uint32_t val = *arm7_gen_reg(arm7, rd);
+            if (rd == 15)
+                val += 4;
+            memory_map_write_32(arm7->map, addr, val);
+        } else {
             *arm7_gen_reg(arm7, rd) = memory_map_read_32(arm7->map, addr);
+        }
     } else {
-        if (to_mem)
-            memory_map_write_8(arm7->map, addr, *arm7_gen_reg(arm7, rd));
-        else
+        if (to_mem) {
+            uint32_t val = *arm7_gen_reg(arm7, rd);
+            if (rd == 15)
+                val += 4;
+            memory_map_write_8(arm7->map, addr, val);
+        } else {
             *arm7_gen_reg(arm7, rd) = (uint32_t)memory_map_read_8(arm7->map, addr);
+        }
     }
 
     if (!pre) {
@@ -825,7 +830,10 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
         *arm7_gen_reg(arm7, rn) = addr;
     }
 
-    next_inst(arm7);
+    if (!to_mem && rd == 15)
+        reset_pipeline(arm7);
+    else
+        next_inst(arm7);
 }
 
 static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
