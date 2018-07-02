@@ -141,6 +141,10 @@ static bool arm7_cond_al(struct arm7 *arm7) {
     return true;
 }
 
+static bool arm7_cond_nv(struct arm7 *arm7) {
+    return false;
+}
+
 static arm7_cond_fn arm7_cond(arm7_inst inst) {
     switch ((inst & ARM7_INST_COND_MASK) >> ARM7_INST_COND_SHIFT) {
     case 0:
@@ -173,8 +177,17 @@ static arm7_cond_fn arm7_cond(arm7_inst inst) {
         return arm7_cond_le;
     case 14:
         return arm7_cond_al;
+    case 15:
+        /*
+         * ARM7 docs say that software should not use this because its meaning
+         * may change in later ARM versions.  Despite this, Daytona USA's devs
+         * chose to throw caution to the wind and use it anyways.
+         */
+        return arm7_cond_nv;
     default:
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        // it isn't even possible to jump here tbh
+        error_set_arm7_inst(inst);
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 }
 
