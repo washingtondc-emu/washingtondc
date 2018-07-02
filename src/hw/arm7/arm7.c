@@ -64,6 +64,8 @@ static void arm7_inst_bic(struct arm7 *arm7, arm7_inst inst);
 static void arm7_inst_mov(struct arm7 *arm7, arm7_inst inst);
 static void arm7_inst_mul(struct arm7 *arm7, arm7_inst inst);
 
+static void arm7_inst_swi(struct arm7 *arm7, arm7_inst inst);
+
 static bool arm7_cond_eq(struct arm7 *arm7);
 static bool arm7_cond_ne(struct arm7 *arm7);
 static bool arm7_cond_cs(struct arm7 *arm7);
@@ -274,6 +276,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 
 #define MASK_MUL (BIT_RANGE(22, 27) | BIT_RANGE(4, 7))
 #define VAL_MUL  (9 << 4)
+
+#define MASK_SWI BIT_RANGE(24, 27)
+#define VAL_SWI BIT_RANGE(24, 27)
 
 /* #define MASK_TEQ_IMMED BIT_RANGE(20, 27) */
 /* #define VAL_TEQ_IMMED ((1 << 25) | (9 << 21)) */
@@ -573,6 +578,8 @@ static struct arm7_opcode {
     { arm7_inst_and, MASK_AND, VAL_AND, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_mvn, MASK_MVN, VAL_MVN, 2 * S_CYCLE + 1 * N_CYCLE },
     { arm7_inst_cmn, MASK_CMN, VAL_CMN, 2 * S_CYCLE + 1 * N_CYCLE },
+
+    { arm7_inst_swi, MASK_SWI, VAL_SWI, 2 * S_CYCLE + 1 * N_CYCLE },
 
     { NULL }
 };
@@ -1207,4 +1214,10 @@ static unsigned arm7_spsr_idx(struct arm7 *arm7) {
     default:
         RAISE_ERROR(ERROR_INTEGRITY);
     }
+}
+
+static void arm7_inst_swi(struct arm7 *arm7, arm7_inst inst) {
+    LOG_WARN("Untested ARM7 SWI instruction used\n");
+    arm7->excp |= ARM7_EXCP_SWI;
+    // it is not a mistake that I have chosen to not call next_inst here
 }
