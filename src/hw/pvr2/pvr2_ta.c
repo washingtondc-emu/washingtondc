@@ -1276,10 +1276,22 @@ static void on_vertex_received(void) {
         base_color_b = (float)((ta_fifo32[6] & 0x000000ff) >> 0) / 255.0f;
         break;
     case TA_COLOR_TYPE_FLOAT:
-        memcpy(&base_color_a, ta_fifo32 + 4, sizeof(base_color_a));
-        memcpy(&base_color_r, ta_fifo32 + 5, sizeof(base_color_r));
-        memcpy(&base_color_g, ta_fifo32 + 6, sizeof(base_color_g));
-        memcpy(&base_color_b, ta_fifo32 + 7, sizeof(base_color_b));
+        if (poly_state.vert_len == 16) {
+            memcpy(&base_color_a, ta_fifo32 + 8, sizeof(base_color_a));
+            memcpy(&base_color_r, ta_fifo32 + 9, sizeof(base_color_r));
+            memcpy(&base_color_g, ta_fifo32 + 10, sizeof(base_color_g));
+            memcpy(&base_color_b, ta_fifo32 + 11, sizeof(base_color_b));
+
+            memcpy(&offs_color_a, ta_fifo32 + 12, sizeof(offs_color_a));
+            memcpy(&offs_color_r, ta_fifo32 + 13, sizeof(offs_color_r));
+            memcpy(&offs_color_g, ta_fifo32 + 14, sizeof(offs_color_g));
+            memcpy(&offs_color_b, ta_fifo32 + 15, sizeof(offs_color_b));
+        } else {
+            memcpy(&base_color_a, ta_fifo32 + 4, sizeof(base_color_a));
+            memcpy(&base_color_r, ta_fifo32 + 5, sizeof(base_color_r));
+            memcpy(&base_color_g, ta_fifo32 + 6, sizeof(base_color_g));
+            memcpy(&base_color_b, ta_fifo32 + 7, sizeof(base_color_b));
+        }
         break;
     case TA_COLOR_TYPE_INTENSITY_MODE_1:
     case TA_COLOR_TYPE_INTENSITY_MODE_2:
