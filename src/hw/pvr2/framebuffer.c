@@ -1315,12 +1315,17 @@ int framebuffer_set_render_target(void) {
     unsigned width = ((get_fb_r_size() & 0x3ff) + 1) *
         (4 / bytes_per_pix(get_fb_r_ctrl()));
     unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
-    uint32_t addr = get_fb_w_sof1();
+    uint32_t sof1 = get_fb_w_sof1() & ~3;
+    uint32_t sof2 = get_fb_w_sof2() & ~3;
     bool interlace = get_spg_control() & (1 << 4);
+    uint32_t addr_key = sof1;
 
-    if (interlace)
+    if (interlace) {
         height *= 2;
-    int idx = pick_fb(width, height, addr);
+        if (sof2 < addr_key)
+            addr_key = sof2;
+    }
+    int idx = pick_fb(width, height, addr_key);
 
     struct framebuffer *fb = fb_heap + idx;
 
@@ -1333,8 +1338,6 @@ int framebuffer_set_render_target(void) {
     fb->linestride = get_fb_w_linestride() * 8;
 
     // set addr_first and addr_last
-    uint32_t sof1 = get_fb_w_sof1() & ~3;
-    uint32_t sof2 = get_fb_w_sof2() & ~3;
     uint32_t rows_per_field;
     uint32_t first_addr_field1, last_addr_field1,
         first_addr_field2, last_addr_field2;
@@ -1365,8 +1368,7 @@ int framebuffer_set_render_target(void) {
             last_addr_field2 = sof2 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
 
-            fb->addr_key = first_addr_field1 < first_addr_field2 ?
-                first_addr_field1 : first_addr_field2;
+            fb->addr_key = addr_key;
 
             fb->addr_first[0] = first_addr_field1;
             fb->addr_first[1] = first_addr_field2;
@@ -1375,7 +1377,7 @@ int framebuffer_set_render_target(void) {
         } else {
             uint32_t first_byte = sof1;
             uint32_t last_byte = sof1 + width * height * 2;
-            fb->addr_key = first_byte;
+            fb->addr_key = addr_key;
             fb->addr_first[0] = first_byte;
             fb->addr_first[1] = first_byte;
             fb->addr_last[0] = last_byte;
@@ -1395,8 +1397,7 @@ int framebuffer_set_render_target(void) {
             last_addr_field2 = sof2 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
 
-            fb->addr_key = first_addr_field1 < first_addr_field2 ?
-                first_addr_field1 : first_addr_field2;
+            fb->addr_key = addr_key;
 
             fb->addr_first[0] = first_addr_field1;
             fb->addr_first[1] = first_addr_field2;
@@ -1405,7 +1406,7 @@ int framebuffer_set_render_target(void) {
         } else {
             uint32_t first_byte = sof1;
             uint32_t last_byte = sof1 + width * height * 2;
-            fb->addr_key = first_byte;
+            fb->addr_key = addr_key;
             fb->addr_first[0] = first_byte;
             fb->addr_first[1] = first_byte;
             fb->addr_last[0] = last_byte;
@@ -1425,8 +1426,7 @@ int framebuffer_set_render_target(void) {
             last_addr_field2 = sof2 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
 
-            fb->addr_key = first_addr_field1 < first_addr_field2 ?
-                first_addr_field1 : first_addr_field2;
+            fb->addr_key = addr_key;
 
             fb->addr_first[0] = first_addr_field1;
             fb->addr_first[1] = first_addr_field2;
@@ -1435,7 +1435,7 @@ int framebuffer_set_render_target(void) {
         } else {
             uint32_t first_byte = sof1;
             uint32_t last_byte = sof1 + width * height * 2;
-            fb->addr_key = first_byte;
+            fb->addr_key = addr_key;
             fb->addr_first[0] = first_byte;
             fb->addr_first[1] = first_byte;
             fb->addr_last[0] = last_byte;
@@ -1455,8 +1455,7 @@ int framebuffer_set_render_target(void) {
             last_addr_field2 = sof2 +
                 field_adv * (rows_per_field - 1) + 2 * (width - 1);
 
-            fb->addr_key = first_addr_field1 < first_addr_field2 ?
-                first_addr_field1 : first_addr_field2;
+            fb->addr_key = addr_key;
 
             fb->addr_first[0] = first_addr_field1;
             fb->addr_first[1] = first_addr_field2;
@@ -1465,7 +1464,7 @@ int framebuffer_set_render_target(void) {
         } else {
             uint32_t first_byte = sof1;
             uint32_t last_byte = sof1 + width * height * 4;
-            fb->addr_key = first_byte;
+            fb->addr_key = addr_key;
             fb->addr_first[0] = first_byte;
             fb->addr_first[1] = first_byte;
             fb->addr_last[0] = last_byte;
