@@ -68,7 +68,6 @@ struct fb_flags {
     uint8_t state : 2;
     uint8_t fmt : 3;
     uint8_t vert_flip : 1;
-    uint8_t intl : 1;
 };
 
 #define FB_HEAP_SIZE 8
@@ -144,7 +143,7 @@ sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
      * start of the next row in the same field in terms of bytes.
      */
     unsigned field_adv = fb_width * 2 + modulus * 4 - 4;
-    unsigned rows_per_field = fb_height / 2;
+    unsigned rows_per_field = fb_height;
 
     addr32_t first_addr_field1 = sof1;
     addr32_t last_addr_field1 = sof1 +
@@ -204,7 +203,6 @@ sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->flags.intl = true;
     fb->stamp = stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_565;
 
@@ -269,7 +267,6 @@ sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->flags.intl = false;
     fb->stamp = stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_565;
 
@@ -293,7 +290,7 @@ sync_fb_from_tex_mem_rgb555_intl(struct framebuffer *fb,
      * start of the next row in the same field in terms of bytes.
      */
     unsigned field_adv = fb_width * 2 + modulus * 4 - 4;
-    unsigned rows_per_field = fb_height / 2;
+    unsigned rows_per_field = fb_height;
 
     addr32_t first_addr_field1 = sof1;
     addr32_t last_addr_field1 = sof1 +
@@ -353,7 +350,6 @@ sync_fb_from_tex_mem_rgb555_intl(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->flags.intl = true;
     fb->stamp = stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_555;
 
@@ -418,7 +414,6 @@ sync_fb_from_tex_mem_rgb555_prog(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->flags.intl = false;
     fb->stamp = stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_555;
 
@@ -502,7 +497,6 @@ sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->flags.intl = true;
     fb->stamp = stamp;
     fb->flags.fmt = FB_PIX_FMT_0RGB_0888;
 
@@ -564,7 +558,6 @@ sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->flags.intl = false;
     fb->stamp = stamp;
     fb->flags.fmt = FB_PIX_FMT_0RGB_0888;
 
@@ -729,27 +722,30 @@ void framebuffer_render() {
     unsigned width_scale = 4 / bytes_per_pix(get_fb_r_ctrl());
     unsigned width = ((get_fb_r_size() & 0x3ff) + 1) * width_scale;
     unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
-    if (interlace)
-        height *= 2;
 
     struct gfx_il_inst cmd;
 
     uint32_t addr_first = fb_r_sof1;
+    if (interlace) {
+        uint32_t fb_r_sof2 = get_fb_r_sof2() & ~3;
+        if (fb_r_sof2 < addr_first)
+            addr_first = fb_r_sof2;
+    }
 
     int fb_idx;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
         struct framebuffer *fb = fb_heap + fb_idx;
-        if (fb->flags.intl == interlace) {
-            if (fb->fb_read_width == width &&
-                fb->fb_read_height == height &&
-                fb->addr_key == addr_first &&
-                fb->flags.state != FB_STATE_INVALID) {
+        if (fb->fb_read_width == width &&
+            fb->fb_read_height == height &&
+            fb->addr_key == addr_first &&
+            fb->flags.state != FB_STATE_INVALID) {
 
-                if (!(fb_heap[fb_idx].flags.state & FB_STATE_GFX))
-                    sync_fb_from_tex_mem(fb_heap + fb_idx, width, height, modulus, concat);
-
-                goto submit_the_fb;
+            if (!(fb_heap[fb_idx].flags.state & FB_STATE_GFX)) {
+                sync_fb_from_tex_mem(fb_heap + fb_idx, width,
+                                     height, modulus, concat);
             }
+
+            goto submit_the_fb;
         }
     }
 
@@ -763,49 +759,15 @@ submit_the_fb:
     cmd.arg.post_framebuffer.obj_handle = fb_heap[fb_idx].obj_handle;
     cmd.arg.post_framebuffer.width = fb_heap[fb_idx].fb_read_width;
     cmd.arg.post_framebuffer.height = fb_heap[fb_idx].fb_read_height;
+    if (interlace)
+        cmd.arg.post_framebuffer.height *= 2;
     cmd.arg.post_framebuffer.vert_flip = fb_heap[fb_idx].flags.vert_flip;
 
     rend_exec_il(&cmd, 1);
 }
 
 static void
-fb_sync_from_host_0565_krgb_prog(struct framebuffer *fb) {
-    /*
-     * TODO: don't get width, height from fb_read_width and fb_read_height
-     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
-     * work).
-     */
-    uint32_t addr = fb->addr_first[0];
-    unsigned width = fb->fb_read_width;
-    unsigned height = fb->fb_read_height;
-    unsigned stride = fb->linestride;
-
-    uint16_t const k_val = 0;
-
-    assert((width * height * 4) < OGL_FB_BYTES);
-
-    unsigned row, col;
-    for (row = 0; row < height; row++) {
-        unsigned line_offs = addr + (height - (row + 1)) * stride;
-
-        for (col = 0; col < width; col++) {
-            unsigned ogl_fb_idx = row * width + col;
-
-            uint16_t pix_out = ((ogl_fb[4 * ogl_fb_idx + 2] & 0xf8) >> 3) |
-                ((ogl_fb[4 * ogl_fb_idx + 1] & 0xfc) << 3) |
-                ((ogl_fb[4 * ogl_fb_idx] & 0xf8) << 8) | k_val;
-
-            /*
-             * XXX this is suboptimal because it does the bounds-checking once
-             * per pixel.
-             */
-            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
-        }
-    }
-}
-
-static void
-fb_sync_from_host_0565_krgb_intl(struct framebuffer *fb) {
+fb_sync_from_host_0565_krgb(struct framebuffer *fb) {
     unsigned x_min = fb->x_clip_min;
     unsigned y_min = fb->y_clip_min;
     unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
@@ -822,46 +784,6 @@ fb_sync_from_host_0565_krgb_intl(struct framebuffer *fb) {
 
     unsigned row, col;
     for (row = y_min; row <= y_max; row++) {
-        /*
-         * TODO: figure out how this is supposed to work with interlacing.
-         *
-         * The below commented-out code implements this for interlacing, but
-         * it doesn't work right.  The other code block (the one that actually
-         * gets compiled) implements this as if it was progressive-scan, and
-         * that works perfectly.  Obviously this means that either my
-         * understanding of interlace-scan is incorrect, or it's actually
-         * supposed to be progressive-scan and WashingtonDC is not figuring
-         * that out right.
-         */
-#if 0
-        unsigned rows_per_field = height / 2;
-        unsigned row_actual[2] = { 2 * row, 2 * row + 1 };
-        unsigned line_offs[2] = {
-            addr[0] + (rows_per_field - (row + 1)) * stride,
-            addr[1] + (rows_per_field - (row + 1)) * stride
-        };
-
-        for (col = x_min; col <= x_max; col++) {
-            unsigned ogl_fb_idx[2] = {
-                row_actual[0] * width + col,
-                row_actual[1] * width + col
-            };
-
-            uint16_t pix_out[2] = {
-                ((ogl_fb[4 * ogl_fb_idx[0] + 2] & 0xf8) >> 3) |
-                ((ogl_fb[4 * ogl_fb_idx[0] + 1] & 0xfc) << 3) |
-                ((ogl_fb[4 * ogl_fb_idx[0]] & 0xf8) << 8) | k_val,
-
-                ((ogl_fb[4 * ogl_fb_idx[1] + 2] & 0xf8) >> 3) |
-                ((ogl_fb[4 * ogl_fb_idx[1] + 1] & 0xfc) << 3) |
-                ((ogl_fb[4 * ogl_fb_idx[1]] & 0xf8) << 8) | k_val
-            };
-
-            copy_to_tex_mem(pix_out + 0, line_offs[0] + 2 * col, sizeof(pix_out));
-            copy_to_tex_mem(pix_out + 1, line_offs[1] + 2 * col, sizeof(pix_out));
-        }
-#else
-        // TODO: account for interlacing
         unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
         for (col = x_min; col <= x_max; col++) {
             unsigned fb_idx = row * width + col;
@@ -870,48 +792,11 @@ fb_sync_from_host_0565_krgb_intl(struct framebuffer *fb) {
                 ((ogl_fb[4 * fb_idx] & 0xf8) << 8) | k_val;
             copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
         }
-#endif
     }
 }
 
 static void
-fb_sync_from_host_0555_krgb_prog(struct framebuffer *fb) {
-    /*
-     * TODO: don't get width, height from fb_read_width and fb_read_height
-     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
-     * work).
-     */
-    uint32_t addr = fb->addr_first[0];
-    unsigned width = fb->fb_read_width;
-    unsigned height = fb->fb_read_height;
-    unsigned stride = fb->linestride;
-
-    uint16_t const k_val = 0;
-
-    assert((width * height * 4) < OGL_FB_BYTES);
-
-    unsigned row, col;
-    for (row = 0; row < height; row++) {
-        unsigned line_offs = addr + (height - (row + 1)) * stride;
-
-        for (col = 0; col < width; col++) {
-            unsigned ogl_fb_idx = row * width + col;
-
-            uint16_t pix_out = ((ogl_fb[4 * ogl_fb_idx + 2] & 0xf8) >> 3) |
-                ((ogl_fb[4 * ogl_fb_idx + 1] & 0xf8) << 2) |
-                ((ogl_fb[4 * ogl_fb_idx] & 0xf8) << 7) | k_val;
-
-            /*
-             * XXX this is suboptimal because it does the bounds-checking once
-             * per pixel.
-             */
-            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
-        }
-    }
-}
-
-static void
-fb_sync_from_host_0555_krgb_intl(struct framebuffer *fb) {
+fb_sync_from_host_0555_krgb(struct framebuffer *fb) {
     unsigned x_min = fb->x_clip_min;
     unsigned y_min = fb->y_clip_min;
     unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
@@ -928,46 +813,6 @@ fb_sync_from_host_0555_krgb_intl(struct framebuffer *fb) {
 
     unsigned row, col;
     for (row = y_min; row <= y_max; row++) {
-        /*
-         * TODO: figure out how this is supposed to work with interlacing.
-         *
-         * The below commented-out code implements this for interlacing, but
-         * it doesn't work right.  The other code block (the one that actually
-         * gets compiled) implements this as if it was progressive-scan, and
-         * that works perfectly.  Obviously this means that either my
-         * understanding of interlace-scan is incorrect, or it's actually
-         * supposed to be progressive-scan and WashingtonDC is not figuring
-         * that out right.
-         */
-#if 0
-        unsigned rows_per_field = height / 2;
-        unsigned row_actual[2] = { 2 * row, 2 * row + 1 };
-        unsigned line_offs[2] = {
-            addr[0] + (rows_per_field - (row + 1)) * stride,
-            addr[1] + (rows_per_field - (row + 1)) * stride
-        };
-
-        for (col = x_min; col <= x_max; col++) {
-            unsigned ogl_fb_idx[2] = {
-                row_actual[0] * width + col,
-                row_actual[1] * width + col
-            };
-
-            uint16_t pix_out[2] = {
-                ((ogl_fb[4 * ogl_fb_idx[0] + 2] & 0xf8) >> 3) |
-                ((ogl_fb[4 * ogl_fb_idx[0] + 1] & 0xfc) << 2) |
-                ((ogl_fb[4 * ogl_fb_idx[0]] & 0xf8) << 7) | k_val,
-
-                ((ogl_fb[4 * ogl_fb_idx[1] + 2] & 0xf8) >> 3) |
-                ((ogl_fb[4 * ogl_fb_idx[1] + 1] & 0xf8) << 2) |
-                ((ogl_fb[4 * ogl_fb_idx[1]] & 0xf8) << 7) | k_val
-            };
-
-            copy_to_tex_mem(pix_out + 0, line_offs[0] + 2 * col, sizeof(pix_out));
-            copy_to_tex_mem(pix_out + 1, line_offs[1] + 2 * col, sizeof(pix_out));
-        }
-#else
-        // TODO: account for interlacing
         unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
         for (col = x_min; col <= x_max; col++) {
             unsigned fb_idx = row * width + col;
@@ -976,52 +821,12 @@ fb_sync_from_host_0555_krgb_intl(struct framebuffer *fb) {
                 ((ogl_fb[4 * fb_idx] & 0xf8) << 7) | k_val;
             copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
         }
-#endif
     }
 }
 
 
 static void
-fb_sync_from_host_1555_argb_prog(struct framebuffer *fb) {
-    /*
-     * TODO: don't get width, height from fb_read_width and fb_read_height
-     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
-     * work).
-     */
-    uint32_t addr = fb->addr_first[0];
-    unsigned width = fb->fb_read_width;
-    unsigned height = fb->fb_read_height;
-    unsigned stride = fb->linestride;
-
-    assert((width * height * 4) < OGL_FB_BYTES);
-
-    unsigned row, col;
-    for (row = 0; row < height; row++) {
-        unsigned line_offs = addr + (height - (row + 1)) * stride;
-
-        for (col = 0; col < width; col++) {
-            unsigned ogl_fb_idx = row * width + col;
-
-            uint8_t const *pix_in = ogl_fb + 4 * ogl_fb_idx;
-            uint16_t red = (pix_in[0] & 0xf8) >> 3;
-            uint16_t green = (pix_in[1] & 0xf8) >> 3;
-            uint16_t blue = (pix_in[2] * 0xf8) >> 3;
-            uint16_t alpha = pix_in[3] ? 1 : 0;
-
-            uint16_t pix_out =
-                (alpha << 15) | (red << 10) | (green << 5) | blue;
-
-            /*
-             * XXX this is suboptimal because it does the bounds-checking once
-             * per pixel.
-             */
-            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
-        }
-    }
-}
-
-static void
-fb_sync_from_host_1555_argb_intl(struct framebuffer *fb) {
+fb_sync_from_host_1555_argb(struct framebuffer *fb) {
     unsigned x_min = fb->x_clip_min;
     unsigned y_min = fb->y_clip_min;
     unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
@@ -1063,35 +868,7 @@ fb_sync_from_host_1555_argb_intl(struct framebuffer *fb) {
     }
 }
 
-static void fb_sync_from_host_rgb0888_prog(struct framebuffer *fb) {
-    /*
-     * TODO: don't get width, height from fb_read_width and fb_read_height
-     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
-     * work).
-     */
-    unsigned width = fb->fb_read_width;
-    unsigned height = fb->fb_read_height;
-    unsigned stride = fb->linestride;
-    uint32_t const *fb_in = (uint32_t*)ogl_fb;
-
-    assert((width * height * 4) < OGL_FB_BYTES);
-
-    unsigned row, col;
-    for (row = 0; row < height; row++) {
-        unsigned line_offs = fb->addr_first[0] + (height - (row + 1)) * stride;
-
-        for (col = 0; col < width; col++) {
-            unsigned ogl_fb_idx = row * width + col;
-
-            uint32_t pix_in = fb_in[ogl_fb_idx];
-            uint32_t pix_out = pix_in & 0x00ffffff;
-
-            copy_to_tex_mem(&pix_out, line_offs + 4 * col, sizeof(pix_out));
-        }
-    }
-}
-
-static void fb_sync_from_host_rgb0888_intl(struct framebuffer *fb) {
+static void fb_sync_from_host_rgb0888(struct framebuffer *fb) {
     /*
      * TODO: don't get width, height from fb_read_width and fb_read_height
      * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
@@ -1154,32 +931,17 @@ sync_fb_to_tex_mem(struct framebuffer *fb) {
     rend_exec_il(&cmd, 1);
     switch (fb->flags.fmt) {
     case FB_PIX_FMT_RGB_555:
-        if (!fb->flags.intl) {
-            fb_sync_from_host_0555_krgb_prog(fb);
-        } else {
-            fb_sync_from_host_0555_krgb_intl(fb);
-        }
+        fb_sync_from_host_0555_krgb(fb);
         break;
     case FB_PIX_FMT_RGB_565:
-        if (!fb->flags.intl) {
-            fb_sync_from_host_0565_krgb_prog(fb);
-        } else {
-            fb_sync_from_host_0565_krgb_intl(fb);
-        }
+        fb_sync_from_host_0565_krgb(fb);
         break;
     case FB_PIX_FMT_0RGB_0888:
-        if (!fb->flags.intl) {
-            fb_sync_from_host_rgb0888_prog(fb);
-        } else {
-            fb_sync_from_host_rgb0888_intl(fb);
-        }
+        fb_sync_from_host_rgb0888(fb);
         break;
     case FB_PIX_FMT_ARGB_1555:
-        if (!fb->flags.intl) {
-            fb_sync_from_host_1555_argb_prog(fb);
-        } else {
-            fb_sync_from_host_1555_argb_intl(fb);
-        }
+        fb_sync_from_host_1555_argb(fb);
+        break;
     default:
         LOG_ERROR("fb->flags.fmt is %d\n", fb->flags.fmt);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -1316,15 +1078,8 @@ int framebuffer_set_render_target(void) {
         (4 / bytes_per_pix(get_fb_r_ctrl()));
     unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
     uint32_t sof1 = get_fb_w_sof1() & ~3;
-    uint32_t sof2 = get_fb_w_sof2() & ~3;
-    bool interlace = get_spg_control() & (1 << 4);
     uint32_t addr_key = sof1;
 
-    if (interlace) {
-        height *= 2;
-        if (sof2 < addr_key)
-            addr_key = sof2;
-    }
     int idx = pick_fb(width, height, addr_key);
 
     struct framebuffer *fb = fb_heap + idx;
@@ -1334,13 +1089,10 @@ int framebuffer_set_render_target(void) {
     fb->fb_read_width = width;
     fb->fb_read_height = height;
     fb->stamp = stamp;
-    fb->flags.intl = interlace;
     fb->linestride = get_fb_w_linestride() * 8;
 
     // set addr_first and addr_last
-    uint32_t rows_per_field;
-    uint32_t first_addr_field1, last_addr_field1,
-        first_addr_field2, last_addr_field2;
+    uint32_t first_addr_field1, last_addr_field1;
     unsigned field_adv;
     unsigned modulus = (get_fb_r_size() >> 20) & 0x3ff;
 
@@ -1358,124 +1110,70 @@ int framebuffer_set_render_target(void) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     case 0:
         // 16-bit 555 KRGB
-        if (interlace) {
-            field_adv = width * 2 + modulus * 4 - 4;
-            rows_per_field = height / 2;
-            first_addr_field1 = sof1;
-            last_addr_field1 = sof1 +
-                field_adv * (rows_per_field - 1) + 2 * (width - 1);
-            first_addr_field2 = sof2;
-            last_addr_field2 = sof2 +
-                field_adv * (rows_per_field - 1) + 2 * (width - 1);
+        field_adv = width * 2 + modulus * 4 - 4;
+        first_addr_field1 = sof1;
+        last_addr_field1 = sof1 +
+            field_adv * (height - 1) + 2 * (width - 1);
 
-            fb->addr_key = addr_key;
+        fb->addr_key = addr_key;
 
-            fb->addr_first[0] = first_addr_field1;
-            fb->addr_first[1] = first_addr_field2;
-            fb->addr_last[0] = last_addr_field1;
-            fb->addr_last[1] = last_addr_field2;
-        } else {
-            uint32_t first_byte = sof1;
-            uint32_t last_byte = sof1 + width * height * 2;
-            fb->addr_key = addr_key;
-            fb->addr_first[0] = first_byte;
-            fb->addr_first[1] = first_byte;
-            fb->addr_last[0] = last_byte;
-            fb->addr_last[1] = last_byte;
-        }
+        fb->addr_first[0] = first_addr_field1;
+        fb->addr_first[1] = first_addr_field1;
+        fb->addr_last[0] = last_addr_field1;
+        fb->addr_last[1] = last_addr_field1;
+
         fb_heap[idx].flags.fmt = FB_PIX_FMT_RGB_555;
         break;
     case 1:
         // 16-bit 565 RGB
-        if (interlace) {
-            field_adv = width * 2 + modulus * 4 - 4;
-            rows_per_field = height / 2;
-            first_addr_field1 = sof1;
-            last_addr_field1 = sof1 +
-                field_adv * (rows_per_field - 1) + 2 * (width - 1);
-            first_addr_field2 = sof2;
-            last_addr_field2 = sof2 +
-                field_adv * (rows_per_field - 1) + 2 * (width - 1);
+        field_adv = width * 2 + modulus * 4 - 4;
+        first_addr_field1 = sof1;
+        last_addr_field1 = sof1 +
+            field_adv * (height - 1) + 2 * (width - 1);
 
-            fb->addr_key = addr_key;
+        fb->addr_key = addr_key;
 
-            fb->addr_first[0] = first_addr_field1;
-            fb->addr_first[1] = first_addr_field2;
-            fb->addr_last[0] = last_addr_field1;
-            fb->addr_last[1] = last_addr_field2;
-        } else {
-            uint32_t first_byte = sof1;
-            uint32_t last_byte = sof1 + width * height * 2;
-            fb->addr_key = addr_key;
-            fb->addr_first[0] = first_byte;
-            fb->addr_first[1] = first_byte;
-            fb->addr_last[0] = last_byte;
-            fb->addr_last[1] = last_byte;
-        }
+        fb->addr_first[0] = first_addr_field1;
+        fb->addr_first[1] = first_addr_field1;
+        fb->addr_last[0] = last_addr_field1;
+        fb->addr_last[1] = last_addr_field1;
+
         fb_heap[idx].flags.fmt = FB_PIX_FMT_RGB_565;
         break;
     case 3:
         // 16-bit 1555 ARGB
-        if (interlace) {
-            field_adv = width * 2 + modulus * 4 - 4;
-            rows_per_field = height / 2;
-            first_addr_field1 = sof1;
-            last_addr_field1 = sof1 +
-                field_adv * (rows_per_field - 1) + 2 * (width - 1);
-            first_addr_field2 = sof2;
-            last_addr_field2 = sof2 +
-                field_adv * (rows_per_field - 1) + 2 * (width - 1);
+        field_adv = width * 2 + modulus * 4 - 4;
+        first_addr_field1 = sof1;
+        last_addr_field1 = sof1 +
+            field_adv * (height - 1) + 2 * (width - 1);
 
-            fb->addr_key = addr_key;
+        fb->addr_key = addr_key;
 
-            fb->addr_first[0] = first_addr_field1;
-            fb->addr_first[1] = first_addr_field2;
-            fb->addr_last[0] = last_addr_field1;
-            fb->addr_last[1] = last_addr_field2;
-        } else {
-            uint32_t first_byte = sof1;
-            uint32_t last_byte = sof1 + width * height * 2;
-            fb->addr_key = addr_key;
-            fb->addr_first[0] = first_byte;
-            fb->addr_first[1] = first_byte;
-            fb->addr_last[0] = last_byte;
-            fb->addr_last[1] = last_byte;
-        }
+        fb->addr_first[0] = first_addr_field1;
+        fb->addr_first[1] = first_addr_field1;
+        fb->addr_last[0] = last_addr_field1;
+        fb->addr_last[1] = last_addr_field1;
+
         fb_heap[idx].flags.fmt = FB_PIX_FMT_ARGB_1555;
         break;
     case 5:
         // 32-bit 0888 KRGB
-        if (interlace) {
-            field_adv = (width * 4) + (modulus * 4) - 4;
-            rows_per_field = height;
-            first_addr_field1 = sof1;
-            last_addr_field1 = sof1 +
-                field_adv * (rows_per_field - 1) + 2 * (width - 1);
-            first_addr_field2 = sof2;
-            last_addr_field2 = sof2 +
-                field_adv * (rows_per_field - 1) + 2 * (width - 1);
+        field_adv = (width * 4) + (modulus * 4) - 4;
+        first_addr_field1 = sof1;
+        last_addr_field1 = sof1 +
+            field_adv * (height - 1) + 4 * (width - 1);
 
-            fb->addr_key = addr_key;
+        fb->addr_key = addr_key;
 
-            fb->addr_first[0] = first_addr_field1;
-            fb->addr_first[1] = first_addr_field2;
-            fb->addr_last[0] = last_addr_field1;
-            fb->addr_last[1] = last_addr_field2;
-        } else {
-            uint32_t first_byte = sof1;
-            uint32_t last_byte = sof1 + width * height * 4;
-            fb->addr_key = addr_key;
-            fb->addr_first[0] = first_byte;
-            fb->addr_first[1] = first_byte;
-            fb->addr_last[0] = last_byte;
-            fb->addr_last[1] = last_byte;
-        }
+        fb->addr_first[0] = first_addr_field1;
+        fb->addr_first[1] = first_addr_field1;
+        fb->addr_last[0] = last_addr_field1;
+        fb->addr_last[1] = last_addr_field1;
+
         fb_heap[idx].flags.fmt = FB_PIX_FMT_0RGB_0888;
         break;
     }
 
-    /* unsigned tile_w, tile_h; */
-    /* unsigned x_clip_min, x_clip_max, y_clip_min, y_clip_max; */
     fb->tile_w = get_glob_tile_clip_x() << 5;
     fb->tile_h = get_glob_tile_clip_y() << 5;
     fb->x_clip_min = get_fb_x_clip_min();
