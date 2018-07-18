@@ -4,6 +4,11 @@ are not recorded here.
 
 General:
 * Unit testing
+* Figure out how long it should take for IRQs to fire on real hardware.
+  Most IRQs fire instantly on WashingtonDC; this is obviously not correct.
+  In the case of PowerVR2, the delay I'm using is entirely fictional because
+  I found out that there are a lot of games which will miss interrupts and hang
+  indefinitely if IRQs happen instantly.
 
 DMA:
 * I think there might be a few places where I need to be making sure that
