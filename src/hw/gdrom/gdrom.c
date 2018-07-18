@@ -1414,12 +1414,20 @@ gdrom_pre_read(struct gdrom_ctxt *gdrom, addr32_t addr, unsigned n_bytes) {
             gdrom->data_byte_count & 0xff;
         GDROM_TRACE("read 0x%02x from byte_count_low\n",
                     (unsigned)gdrom->regs[ATA_REG_RW_BYTE_CNT_LO]);
+        if (gdrom->data_byte_count > UINT16_MAX) {
+            error_set_feature("reading more than 64 kilobytes from GD-ROM");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
         break;
     case ATA_REG_RW_BYTE_CNT_HI:
         gdrom->regs[ATA_REG_RW_BYTE_CNT_HI] =
             (gdrom->data_byte_count & 0xff00) >> 8;
         GDROM_TRACE("read 0x%02x from byte_count_high\n",
                     (unsigned)gdrom->regs[ATA_REG_RW_BYTE_CNT_HI]);
+        if (gdrom->data_byte_count > UINT16_MAX) {
+            error_set_feature("reading more than 64 kilobytes from GD-ROM");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
         break;
     case ATA_REG_RW_DRIVE_SEL:
         gdrom->regs[ATA_REG_RW_DRIVE_SEL] = gdrom->drive_sel_reg;
