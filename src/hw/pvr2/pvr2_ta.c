@@ -356,10 +356,14 @@ static void unpack_uv16(float *u_coord, float *v_coord, void const *input);
 /*
  * the delay between when the STARTRENDER command is received and when the
  * RENDER_COMPLETE interrupt gets raised.
- * this value is arbitrary, for now it is 0 so it happens instantly.
- * TODO: This irq definitely should not be triggered immediately
+ *
+ * TODO: This value has no basis in reality.  I need to run some tests on real
+ * hardware and come up with a good heuristic.
+ *
+ * If this value is too low, it will trigger race conditions in certain games
+ * which can cause them to miss interrupts.
  */
-#define PVR2_RENDER_COMPLETE_INT_DELAY 0
+#define PVR2_RENDER_COMPLETE_INT_DELAY (SCHED_FREQUENCY / 1024)
 
 static void pvr2_render_complete_int_event_handler(struct SchedEvent *event);
 
@@ -372,10 +376,15 @@ static bool pvr2_render_complete_int_event_scheduled;
 /*
  * the delay between when a list is rendered and when the list-complete
  * interrupt happens.
- * this value is arbitrary, for now it is 0 so it happens instantly.
- * TODO: In a real dreamcast this probably would not happen instantly
+ *
+ * TODO: This value has no basis in reality.  I need to run some tests on real
+ * hardware and come up with a good heuristic.
+ *
+ * If this value is too low, it will trigger race conditions in certain games
+ * which can cause them to miss interrupts.
+ *
  */
-#define PVR2_LIST_COMPLETE_INT_DELAY 0
+#define PVR2_LIST_COMPLETE_INT_DELAY (SCHED_FREQUENCY / 1024)
 
 static void pvr2_op_complete_int_event_handler(struct SchedEvent *event);
 static void pvr2_op_mod_complete_int_event_handler(struct SchedEvent *event);
