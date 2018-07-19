@@ -1291,10 +1291,12 @@ static void on_vertex_received(void) {
             memcpy(&base_color_g, ta_fifo32 + 10, sizeof(base_color_g));
             memcpy(&base_color_b, ta_fifo32 + 11, sizeof(base_color_b));
 
-            memcpy(&offs_color_a, ta_fifo32 + 12, sizeof(offs_color_a));
-            memcpy(&offs_color_r, ta_fifo32 + 13, sizeof(offs_color_r));
-            memcpy(&offs_color_g, ta_fifo32 + 14, sizeof(offs_color_g));
-            memcpy(&offs_color_b, ta_fifo32 + 15, sizeof(offs_color_b));
+            if (poly_state.offset_color_enable) {
+                memcpy(&offs_color_a, ta_fifo32 + 12, sizeof(offs_color_a));
+                memcpy(&offs_color_r, ta_fifo32 + 13, sizeof(offs_color_r));
+                memcpy(&offs_color_g, ta_fifo32 + 14, sizeof(offs_color_g));
+                memcpy(&offs_color_b, ta_fifo32 + 15, sizeof(offs_color_b));
+            }
         } else {
             memcpy(&base_color_a, ta_fifo32 + 4, sizeof(base_color_a));
             memcpy(&base_color_r, ta_fifo32 + 5, sizeof(base_color_r));
