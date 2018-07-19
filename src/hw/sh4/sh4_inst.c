@@ -4915,10 +4915,15 @@ void sh4_inst_binary_fadd_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00000, INST_CONS_1111nnn0mmm00000);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnn0mmm00000");
-    error_set_opcode_name("FADD DRm, DRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+
+    double *dstp = sh4_fpu_dr(sh4, inst.dr_dst);
+    double const *srcp = sh4_fpu_dr(sh4, inst.dr_src);
+
+    double dst = *dstp;
+    double src = *srcp;
+
+    *dstp = src + dst;
 }
 
 #define INST_MASK_1111nnn0mmm00100 0xf11f
