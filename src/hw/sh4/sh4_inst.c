@@ -5038,7 +5038,7 @@ void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     double *dst_reg = sh4_fpu_dr(sh4, inst.dr_reg);
 
-    *dst_reg = (double)((int64_t)sh4->reg[SH4_REG_FPUL]);
+    *dst_reg = (double)((int64_t)(int32_t)sh4->reg[SH4_REG_FPUL]);
 }
 
 #define INST_MASK_1111nnn0mmm00010 0xf11f
