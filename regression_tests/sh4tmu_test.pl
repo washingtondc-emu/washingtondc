@@ -4,7 +4,7 @@
 #
 #
 #    dctest: Dreamcast test program collection
-#    Copyright (C) 2017 snickerbockers
+#    Copyright (C) 2017, 2018 snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -51,10 +51,9 @@ $dc_sh4tmu_test_bin_url=$ENV{'SH4TMU_TEST_BIN'};
 $FIRMWARE_PATH="./dc_bios.bin";
 $FLASH_PATH="./dc_flash.bin";
 $SYSCALL_PATH="./syscalls.bin";
-$IP_BIN_PATH="./IP.BIN";
 $SH4TMU_TEST_PATH="./sh4tmu_test.bin";
 $WASH_PATH="./washingtondc";
-$WASH_ARGS="-b $FIRMWARE_PATH -f $FLASH_PATH -s $SYSCALL_PATH -dutc $IP_BIN_PATH $SH4TMU_TEST_PATH";
+$WASH_ARGS="-b $FIRMWARE_PATH -f $FLASH_PATH -s $SYSCALL_PATH -u $SH4TMU_TEST_PATH -tc";
 
 # path to where the serial port output from WashingtonDC gets logged
 $WASH_SERIAL_LOG = "sh4tmu_test_wash_serial.txt";
