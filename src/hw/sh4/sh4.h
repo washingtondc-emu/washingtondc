@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdatomic.h>
+#include <string.h>
 
 #include "error.h"
 #include "types.h"
@@ -253,7 +254,7 @@ static inline float *sh4_bank1_fpu_fr(Sh4 *sh4, unsigned reg_no) {
 static inline double *sh4_fpu_dr(Sh4 *sh4, unsigned reg_no) {
     assert(reg_no < SH4_N_DOUBLE_REGS);
 
-    return (double*)(sh4->reg + SH4_REG_FR0 + (reg_no << 1));
+    return (double*)(sh4->reg + SH4_REG_DR0 + (reg_no * 2));
 }
 
 static inline double *sh4_fpu_xd(Sh4 *sh4, unsigned reg_no) {
@@ -320,6 +321,41 @@ sh4_count_inst_cycles(InstOpcode const *op, unsigned *last_inst_type_p) {
     }
     *last_inst_type_p = last_inst_type;
     return n_cycles;
+}
+
+/*
+ * In Little-Endian mode, the SH-4 swaps the upper and lower quads of
+ * double-precision floating point.  The two quads are themselves still
+ * little-endian.
+ *
+ * These functions should only be used by opcodes that need to interpret the
+ * data in the register as a double.  Opcodes that merely need to move the
+ * contents of a double-precision float register should use a simple binary copy
+ * instead.
+ */
+static inline double sh4_read_double(struct Sh4 *sh4, unsigned dr_reg) {
+#ifdef INVARIANTS
+    if ((dr_reg % 2) || (dr_reg > 14))
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+    double ret_val;
+    double const *ptr = (double*)(sh4->reg + SH4_REG_DR0 + dr_reg);
+
+    memcpy(&ret_val, ((uint32_t*)ptr) + 1, sizeof(uint32_t));
+    memcpy(((uint32_t*)&ret_val) + 1, ptr, sizeof(uint32_t));
+
+    return ret_val;
+}
+
+static inline void sh4_write_double(struct Sh4 *sh4, unsigned dr_reg, double val) {
+#ifdef INVARIANTS
+    if ((dr_reg % 2) || (dr_reg > 14))
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+    double *ptr = (double*)(sh4->reg + SH4_REG_DR0 + dr_reg);
+
+    memcpy(ptr, ((uint32_t*)&val) + 1, sizeof(uint32_t));
+    memcpy(((uint32_t*)ptr) + 1, &val, sizeof(uint32_t));
 }
 
 #endif

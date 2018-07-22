@@ -4917,13 +4917,12 @@ void sh4_inst_binary_fadd_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_fpu_clear_cause(sh4);
 
-    double *dstp = sh4_fpu_dr(sh4, inst.dr_dst);
-    double const *srcp = sh4_fpu_dr(sh4, inst.dr_src);
+    double src = sh4_read_double(sh4, inst.dr_src * 2);
+    double dst = sh4_read_double(sh4, inst.dr_dst * 2);
 
-    double dst = *dstp;
-    double src = *srcp;
+    dst += src;
 
-    *dstp = src + dst;
+    sh4_write_double(sh4, inst.dr_dst * 2, dst);
 }
 
 #define INST_MASK_1111nnn0mmm00100 0xf11f
@@ -4970,13 +4969,12 @@ void sh4_inst_binary_fdiv_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
 
     sh4_fpu_clear_cause(sh4);
 
-    double const *srcp = sh4_fpu_dr(sh4, inst.dr_src);
-    double *dstp = sh4_fpu_dr(sh4, inst.dr_dst);
+    double src = sh4_read_double(sh4, inst.dr_src * 2);
+    double dst = sh4_read_double(sh4, inst.dr_dst * 2);
 
-    double src = *srcp;
-    double dst = *dstp;
+    dst /= src;
 
-    *dstp = dst / src;
+    sh4_write_double(sh4, inst.dr_dst * 2, dst);
 }
 
 #define INST_MASK_1111mmm010111101 0xf1ff
@@ -4996,7 +4994,7 @@ void sh4_inst_binary_fcnvds_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
      */
     sh4_fpu_clear_cause(sh4);
 
-    double in_val = *sh4_fpu_dr(sh4, inst.dr_reg);
+    double in_val = sh4_read_double(sh4, inst.dr_reg * 2);
     float out_val = in_val;
 
     memcpy(sh4->reg + SH4_REG_FPUL, &out_val, sizeof(sh4->reg[SH4_REG_FPUL]));
@@ -5023,7 +5021,7 @@ void sh4_inst_binary_fcnvsd_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
     memcpy(&in_val, sh4->reg + SH4_REG_FPUL, sizeof(in_val));
     double out_val = in_val;
 
-    *sh4_fpu_dr(sh4, inst.dr_reg) = out_val;
+    sh4_write_double(sh4, inst.dr_reg * 2, out_val);
 }
 
 #define INST_MASK_1111nnn000101101 0xf1ff
@@ -5036,9 +5034,8 @@ void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1111nnn000101101, INST_CONS_1111nnn000101101);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
-    double *dst_reg = sh4_fpu_dr(sh4, inst.dr_reg);
-
-    *dst_reg = (double)((int64_t)(int32_t)sh4->reg[SH4_REG_FPUL]);
+    sh4_write_double(sh4, inst.dr_reg * 2,
+                     (double)((int64_t)(int32_t)sh4->reg[SH4_REG_FPUL]));
 }
 
 #define INST_MASK_1111nnn0mmm00010 0xf11f
@@ -5120,16 +5117,13 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, Sh4OpArgs inst) {
      * should be done here.  I'm just going to implement this the naive way
      * instead
      */
-    double val_in = *sh4_fpu_dr(sh4, inst.dr_reg);
-    int32_t val_int;
-
-    sh4_fpu_clear_cause(sh4);
+    double val_in = sh4_read_double(sh4, inst.dr_reg * 2);
+    int32_t val_int = val_in;
 
     int round_mode = fegetround();
     fesetround(FE_TOWARDZERO);
 
-    val_int = val_in;
-    memcpy(sh4->reg + SH4_REG_FPUL, &val_int, sizeof(sh4->reg[SH4_REG_FPUL]));
+    sh4->reg[SH4_REG_FPUL] = val_int;
 
     fesetround(round_mode);
 }
