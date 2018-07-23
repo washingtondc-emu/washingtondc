@@ -113,4 +113,6 @@ enum dc_boot_mode {
 
 void dc_toggle_overlay(void);
 
+void dc_request_frame_stop(void);
+
 #endif

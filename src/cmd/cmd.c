@@ -53,6 +53,7 @@ static int cmd_help(int argc, char **argv);
 static int cmd_render_set_mode(int argc, char **argv);
 static int cmd_exit(int argc, char **argv);
 static int cmd_resume_execution(int argc, char **argv);
+static int cmd_run_frame(int argc, char **argv);
 static int cmd_screenshot(int argc, char **argv);
 static int cmd_suspend_execution(int argc, char **argv);
 static int cmd_begin_execution(int argc, char **argv);
@@ -170,6 +171,22 @@ struct cmd {
 #endif
         ,
         .cmd_handler = cmd_resume_execution
+    },
+    {
+        .cmd_name = "run-frame",
+        .summary = "run to the next VBLANK.",
+        .help_str =
+        "run-frame\n"
+        "\n"
+        "If WashingtonDC is suspended, then resume execution and suspend\n"
+        "again after the next VBLANK.\n"
+#ifdef ENABLE_DEBUGGER
+        "This command only works when the remote GDB frontend is not in use.\n"
+        "If you've enabled the GDB frontend, you need to use that to control\n"
+        "execution instead.\n"
+#endif
+        ,
+        .cmd_handler = cmd_run_frame
     },
     {
         .cmd_name = "screenshot",
@@ -428,6 +445,28 @@ static int cmd_resume_execution(int argc, char **argv) {
     enum dc_state dc_state = dc_get_state();
 
     if (dc_state == DC_STATE_SUSPEND) {
+        dc_state_transition(DC_STATE_RUNNING, DC_STATE_SUSPEND);
+        return 0;
+    }
+
+    cons_puts("ERROR: unable to resume execution because WashingtonDC is not "
+              "suspended\n");
+    return 1;
+}
+
+static int cmd_run_frame(int argc, char **argv) {
+#ifdef ENABLE_DEBUGGER
+    if (config_get_dbg_enable()) {
+        cons_puts("ERROR: unable to control execution from the cmd prompt when "
+                  "gdb is enabled.\n");
+        return 1;
+    }
+#endif
+
+    enum dc_state dc_state = dc_get_state();
+
+    if (dc_state == DC_STATE_SUSPEND) {
+        dc_request_frame_stop();
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_SUSPEND);
         return 0;
     }

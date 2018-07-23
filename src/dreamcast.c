@@ -95,7 +95,7 @@ static struct memory_map arm7_mem_map;
 static struct aica aica;
 static struct gdrom_ctxt gdrom;
 
-static volatile bool is_running;
+static volatile bool is_running, end_of_frame, frame_stop;
 static volatile bool signal_exit_threads;
 static bool init_complete;
 
@@ -152,6 +152,8 @@ static void run_to_next_sh4_event_debugger(void *ctxt);
 static void dreamcast_enable_serial_server(void);
 
 static void dreamcast_enable_cmd_tcp(void);
+
+static void suspend_loop(void);
 
 /*
  * XXX this used to be (SCHED_FREQUENCY / 10).  Now it's (SCHED_FREQUENCY / 100)
@@ -328,11 +330,28 @@ void dreamcast_cleanup() {
  */
 static struct timespec start_time;
 
-static void main_loop_sched(void) {
-    while (is_running) {
+static void run_one_frame(void) {
+    while (!end_of_frame) {
         dc_clock_run_timeslice(&sh4_clock);
         dc_clock_run_timeslice(&arm7_clock);
         code_cache_gc();
+    }
+    end_of_frame = false;
+}
+
+static void main_loop_sched(void) {
+    while (is_running) {
+        run_one_frame();
+        if (frame_stop) {
+            frame_stop = false;
+            if (dc_state == DC_STATE_RUNNING) {
+                dc_state_transition(DC_STATE_SUSPEND, DC_STATE_RUNNING);
+                suspend_loop();
+            } else {
+                LOG_WARN("Unable to suspend execution at frame stop: "
+                         "system is not running\n");
+            }
+        }
     }
 }
 
@@ -743,13 +762,7 @@ bool dc_debugger_enabled(void) {
     return using_debugger;
 }
 
-/*
- * the purpose of this handler is to perform processing that needs to happen
- * occasionally but has no hard timing requirements.  The timing of this event
- * is *technically* deterministic, but users should not assume any determinism
- * because the frequency of this event is subject to change.
- */
-static void periodic_event_handler(struct SchedEvent *event) {
+static void suspend_loop(void) {
     enum dc_state cur_state = dc_get_state();
     if (cur_state == DC_STATE_SUSPEND) {
         cons_puts("Execution suspended.  To resume, enter "
@@ -778,6 +791,16 @@ static void periodic_event_handler(struct SchedEvent *event) {
             cons_puts("responding to request to exit\n");
         }
     }
+}
+
+/*
+ * the purpose of this handler is to perform processing that needs to happen
+ * occasionally but has no hard timing requirements.  The timing of this event
+ * is *technically* deterministic, but users should not assume any determinism
+ * because the frequency of this event is subject to change.
+ */
+static void periodic_event_handler(struct SchedEvent *event) {
+    suspend_loop();
 
     sh4_periodic(&cpu);
 
@@ -789,6 +812,8 @@ void dc_end_frame(void) {
     struct timespec timestamp, delta;
     clock_gettime(CLOCK_MONOTONIC, &timestamp);
     dc_cycle_stamp_t virt_timestamp = clock_cycle_stamp(&sh4_clock);
+
+    end_of_frame = true;
 
     time_diff(&delta, &timestamp, &last_frame_realtime);
 
@@ -898,4 +923,8 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
     memory_map_add(map, ADDR_EXT_DEV_FIRST, ADDR_EXT_DEV_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &ext_dev_intf, NULL);
+}
+
+void dc_request_frame_stop(void) {
+    frame_stop = true;
 }
