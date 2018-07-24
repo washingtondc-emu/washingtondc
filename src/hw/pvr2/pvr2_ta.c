@@ -20,6 +20,12 @@
  *
  ******************************************************************************/
 
+/*
+ * TODO: This is a terribly inaccurate, HLE-like implementation of the PowerVR2
+ * that doesn't correclty emulate the interactions between TA and ISP and it
+ * doesn't really even do tile rendering like it should.
+ */
+
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -1538,6 +1544,21 @@ void pvr2_ta_startrender(void) {
     finish_poly_group(poly_state.current_list);
 
     int tgt = framebuffer_set_render_target();
+
+    /*
+     * TODO: This is extremely inaccurate.  PVR2 only draws on a per-tile
+     * basis; I think that includes clearing the framebuffer on a per-tile
+     * basis as well.
+     *
+     * This is definitely the reason why the spinning graphics during Namco
+     * Museum's bootup disappear when they come to their final position (because
+     * the game issues a STARTRENDER without intending to draw anything).  It
+     * might also be related to the bad background color on the first frame of
+     * Dreamcast bootup (see issue #10 on github) and also maybe related to some
+     * of the incorrect screen transitions (like when the silver background at
+     * the end of IP.BIN is supposed to fade to black but instead it instantly
+     * turns black).
+     */
 
     // set up rendering context
     cmd.op = GFX_IL_BEGIN_REND;
