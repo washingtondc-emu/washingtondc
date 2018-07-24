@@ -215,41 +215,39 @@ static void discard_slot(unsigned slot_no) {
  */
 static void prefunc(void) {
 #if defined(ABI_UNIX)
-    grab_register(RAX);
-    grab_register(RCX);
-    grab_register(RDX);
-    grab_register(RSI);
-    grab_register(RDI);
-    grab_register(R8);
-    grab_register(R9);
-    grab_register(R10);
-    grab_register(R11);
-
     evict_register(RAX);
+    grab_register(RAX);
     evict_register(RCX);
+    grab_register(RCX);
     evict_register(RDX);
+    grab_register(RDX);
     evict_register(RSI);
+    grab_register(RSI);
     evict_register(RDI);
+    grab_register(RDI);
     evict_register(R8);
-    evict_register(R9);
-    evict_register(R10);
-    evict_register(R11);
-#elif defined(ABI_MICROSOFT)
-    grab_register(RAX);
-    grab_register(RCX);
-    grab_register(RDX);
     grab_register(R8);
-    grab_register(R9);
-    grab_register(R10);
-    grab_register(R11);
-
-    evict_register(RAX);
-    evict_register(RCX);
-    evict_register(RDX);
-    evict_register(R8);
     evict_register(R9);
+    grab_register(R9);
     evict_register(R10);
+    grab_register(R10);
     evict_register(R11);
+    grab_register(R11);
+#elif defined(ABI_MICROSOFT)
+    evict_register(RAX);
+    grab_register(RAX);
+    evict_register(RCX);
+    grab_register(RCX);
+    evict_register(RDX);
+    grab_register(RDX);
+    evict_register(R8);
+    grab_register(R8);
+    evict_register(R9);
+    grab_register(R9);
+    evict_register(R10);
+    grab_register(R10);
+    evict_register(R11);
+    grab_register(R11);
 #endif
 }
 
@@ -435,14 +433,16 @@ static unsigned pick_reg(void) {
 
 /*
  * call this function to send the given register's contents (if any) to the
- * stack.  You should first grab the register to prevent it from being
- * allocated, and subsequently ungrab it when finished.  The register's contents
- * are unchanged by this function.
+ * stack.  Immediately after calling this, grab the register to prevent it from
+ * being allocated, and subsequently ungrab it when finished.  The register's
+ * contents are unchanged by this function.
  */
 static void evict_register(unsigned reg_no) {
     struct reg_stat *reg = regs + reg_no;
     if (reg->in_use) {
         int reg_dst = pick_unused_reg();
+        if (reg_dst == reg_no)
+            RAISE_ERROR(ERROR_INTEGRITY);
 
         if (reg_dst >= 0)
             move_slot_to_reg(reg->slot_no, reg_dst);
@@ -469,8 +469,12 @@ static void grab_slot(unsigned slot_no) {
     struct slot *slot = slots + slot_no;
 
     if (slot->in_use) {
-        if (slot->in_reg)
-            goto mark_grabbed;
+        if (slot->in_reg) {
+            if (regs[slot->reg_no].grabbed)
+                return;
+            else
+                goto mark_grabbed;
+        }
 
         unsigned reg_no = pick_reg();
         move_slot_to_reg(slot_no, reg_no);
@@ -581,8 +585,8 @@ void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
 void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.jump.slot_no;
 
-    grab_register(REG_RET);
     evict_register(REG_RET);
+    grab_register(REG_RET);
 
     grab_slot(slot_no);
 
@@ -601,8 +605,8 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_register(REG_RET);
     evict_register(REG_RET);
+    grab_register(REG_RET);
 
     grab_slot(flag_slot);
     x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, REG_RET);
@@ -807,8 +811,8 @@ emit_store_slot(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.store_slot.slot_no;
     void const *dst_ptr = inst->immed.store_slot.dst;
 
-    grab_register(REG_RET);
     evict_register(REG_RET);
+    grab_register(REG_RET);
     grab_slot(slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
@@ -856,8 +860,8 @@ emit_add_const32(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.add_const32.slot_dst;
     uint32_t const_val = inst->immed.add_const32.const32;
 
-    grab_register(REG_RET);
     evict_register(REG_RET);
+    grab_register(REG_RET);
 
     grab_slot(slot_no);
 
@@ -978,8 +982,8 @@ emit_slot_to_bool(Sh4 *sh4, struct jit_inst const *inst) {
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_register(REG_RET);
     evict_register(REG_RET);
+    grab_register(REG_RET);
     grab_slot(slot_no);
 
     x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
@@ -1217,13 +1221,20 @@ static void emit_mul_u32(Sh4 *sh4, struct jit_inst const *inst) {
     unsigned slot_dst = inst->immed.mul_u32.slot_dst;
 
     evict_register(REG_RET);
-    evict_register(EDX);
     grab_register(REG_RET);
+    evict_register(EDX);
     grab_register(EDX);
 
     grab_slot(slot_lhs);
     grab_slot(slot_rhs);
     grab_slot(slot_dst);
+
+#ifdef INVARIANTS
+    if (slots[slot_lhs].reg_no == REG_RET || slots[slot_lhs].reg_no == EDX ||
+        slots[slot_rhs].reg_no == REG_RET || slots[slot_rhs].reg_no == EDX ||
+        slots[slot_dst].reg_no == REG_RET || slots[slot_dst].reg_no == EDX)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
     x86asm_mov_reg32_reg32(slots[slot_lhs].reg_no, REG_RET);
     x86asm_mull_reg32(slots[slot_rhs].reg_no);
