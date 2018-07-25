@@ -93,12 +93,17 @@ struct framebuffer {
 static unsigned bytes_per_pix(uint32_t fb_r_ctrl) {
     unsigned px_tp = (fb_r_ctrl & 0xc) >> 2;
 
-    if (px_tp == 0 || px_tp == 1)
+    switch (px_tp) {
+    case 0:
+    case 1:
         return 2;
-    if (px_tp == 3)
+    case 2:
+        return 3;
+    case 3:
         return 4;
-
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 static uint8_t *get_tex_mem_area(addr32_t addr);
@@ -719,8 +724,14 @@ void framebuffer_render() {
     unsigned modulus = (fb_r_size >> 20) & 0x3ff;
     unsigned concat = (fb_r_ctrl >> 4) & 7;
 
-    unsigned width_scale = 4 / bytes_per_pix(get_fb_r_ctrl());
-    unsigned width = ((get_fb_r_size() & 0x3ff) + 1) * width_scale;
+    unsigned pix_sz = bytes_per_pix(get_fb_r_ctrl());
+    unsigned width = ((get_fb_r_size() & 0x3ff) + 1) * 4;
+    if (width % pix_sz) {
+        LOG_ERROR("fb x size is %u\n", width);
+        LOG_ERROR("px_sz is %u\n", pix_sz);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+    width /= pix_sz;
     unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
 
     struct gfx_il_inst cmd;
@@ -1074,8 +1085,14 @@ int framebuffer_set_render_target(void) {
      * interrupt, but I don't know any better way to solve this problem.  This is
      * something to keep in mind for the future.
      */
-    unsigned width = ((get_fb_r_size() & 0x3ff) + 1) *
-        (4 / bytes_per_pix(get_fb_r_ctrl()));
+    unsigned pix_sz = bytes_per_pix(get_fb_r_ctrl());
+    unsigned width = (((get_fb_r_size() & 0x3ff) + 1) * 4);
+    if (width % pix_sz) {
+        LOG_ERROR("fb x size is %u\n", width);
+        LOG_ERROR("px_sz is %u\n", pix_sz);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+    width /= pix_sz;
     unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
     uint32_t sof1 = get_fb_w_sof1() & ~3;
     uint32_t addr_key = sof1;
@@ -1100,8 +1117,6 @@ int framebuffer_set_render_target(void) {
     switch (get_fb_w_ctrl() & 0x7) {
     case 2:
         // 16-bit 4444 RGB
-    case 4:
-        // 888 RGB 24-bit
     case 6:
         // 8888 ARGB
     case 7:
@@ -1155,6 +1170,22 @@ int framebuffer_set_render_target(void) {
         fb->addr_last[1] = last_addr_field1;
 
         fb_heap[idx].flags.fmt = FB_PIX_FMT_ARGB_1555;
+        break;
+    case 4:
+        // 24-bit 888 RGB
+        field_adv = width * 3 + modulus * 4 - 4;
+        first_addr_field1 = sof1;
+        last_addr_field1 = sof1 +
+            field_adv * (height - 1) + 3 * (width - 1);
+
+        fb->addr_key = addr_key;
+
+        fb->addr_first[0] = first_addr_field1;
+        fb->addr_first[1] = first_addr_field1;
+        fb->addr_last[0] = last_addr_field1;
+        fb->addr_last[1] = last_addr_field1;
+
+        fb_heap[idx].flags.fmt = FB_PIX_FMT_RGB_888;
         break;
     case 5:
         // 32-bit 0888 KRGB
