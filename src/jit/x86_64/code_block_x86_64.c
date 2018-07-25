@@ -37,6 +37,7 @@
 #include "native_dispatch.h"
 #include "native_mem.h"
 #include "abi.h"
+#include "config.h"
 
 #include "code_block_x86_64.h"
 
@@ -687,8 +688,19 @@ void emit_read_16_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
 
     // call memory_map_read_16(vaddr)
     prefunc();
-    x86asm_mov_imm32_reg32(vaddr, REG_ARG0);
-    native_mem_read_16(map);
+
+    if (config_get_inline_mem()) {
+        x86asm_mov_imm32_reg32(vaddr, REG_ARG0);
+        native_mem_read_16(map);
+    } else {
+        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+        x86asm_mov_imm32_reg32(vaddr, REG_ARG1);
+        ms_shadow_open();
+        x86_64_align_stack();
+        x86asm_call_ptr(memory_map_read_16);
+        ms_shadow_close();
+    }
+
     postfunc();
 
     grab_slot(slot_no);
@@ -720,8 +732,17 @@ void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
 
     prefunc();
 
-    x86asm_mov_imm32_reg32(vaddr, REG_ARG0);
-    native_mem_read_32(map);
+    if (config_get_inline_mem()) {
+        x86asm_mov_imm32_reg32(vaddr, REG_ARG0);
+        native_mem_read_32(map);
+    } else {
+        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+        x86asm_mov_imm32_reg32(vaddr, REG_ARG1);
+        ms_shadow_open();
+        x86_64_align_stack();
+        x86asm_call_ptr(memory_map_read_32);
+        ms_shadow_close();
+    }
 
     postfunc();
 
@@ -741,10 +762,19 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
     // call memory_map_read_32(*addr_slot)
     prefunc();
 
-    move_slot_to_reg(addr_slot, REG_ARG0);
-    evict_register(REG_ARG0);
-
-    native_mem_read_32(map);
+    if (config_get_inline_mem()) {
+        move_slot_to_reg(addr_slot, REG_ARG0);
+        evict_register(REG_ARG0);
+        native_mem_read_32(map);
+    } else {
+        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+        move_slot_to_reg(addr_slot, REG_ARG1);
+        evict_register(REG_ARG1);
+        ms_shadow_open();
+        x86_64_align_stack();
+        x86asm_call_ptr(memory_map_read_32);
+        ms_shadow_close();
+    }
 
     postfunc();
 
@@ -763,13 +793,27 @@ void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 
     prefunc();
 
-    move_slot_to_reg(addr_slot, REG_ARG0);
-    move_slot_to_reg(src_slot, REG_ARG1);
+    if (config_get_inline_mem()) {
+        move_slot_to_reg(addr_slot, REG_ARG0);
+        move_slot_to_reg(src_slot, REG_ARG1);
 
-    evict_register(REG_ARG0);
-    evict_register(REG_ARG1);
+        evict_register(REG_ARG0);
+        evict_register(REG_ARG1);
 
-    native_mem_write_32(map);
+        native_mem_write_32(map);
+    } else {
+        move_slot_to_reg(addr_slot, REG_ARG1);
+        move_slot_to_reg(src_slot, REG_ARG2);
+
+        evict_register(REG_ARG1);
+        evict_register(REG_ARG2);
+
+        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+        ms_shadow_open();
+        x86_64_align_stack();
+        x86asm_call_ptr(memory_map_write_32);
+        ms_shadow_close();
+    }
 
     postfunc();
 

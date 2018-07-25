@@ -40,6 +40,7 @@ OPTIONS:
 -d enable direct boot <IP.BIN path>
 -u skip IP.BIN and boot straight to 1ST_READ.BIN <1ST_READ.BIN>
 -m <gdi path> path to .gdi file which will be mounted in the GD-ROM drive
+-n don't do native memory inlining when the jit is enabled
 -s path to dreamcast system call image (only needed for direct boot)
 -t establish serial server over TCP port 1998
 -h display this message and exit

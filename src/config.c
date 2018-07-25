@@ -95,3 +95,5 @@ CONFIG_DEF_BOOL(jit, false);
 #ifdef ENABLE_JIT_X86_64
 CONFIG_DEF_BOOL(native_jit, false);
 #endif
+
+CONFIG_DEF_BOOL(inline_mem, true);

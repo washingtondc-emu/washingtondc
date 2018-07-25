@@ -54,6 +54,7 @@ static void print_usage(char const *cmd) {
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
             "\t-m\t\tmount the given image in the GD-ROM drive\n"
+            "\t-n\t\tdon't inline memory reads/writes into the jit\n"
             "\t-p\t\tdisable the dynarec and enable the interpreter instead\n"
             "\t-j\t\tenable dynamic recompiler (as opposed to interpreter)\n"
             "\t-x\t\tenable native x86_64 dynamic recompiler backend "
@@ -73,9 +74,10 @@ int main(int argc, char **argv) {
     bool enable_cmd_tcp = false;
     char const *title_content = NULL;
     struct mount_meta content_meta; // only valid if path_gdi is non-null
-    bool enable_jit = false, enable_native_jit = false, enable_interpreter = false;
+    bool enable_jit = false, enable_native_jit = false,
+        enable_interpreter = false, inline_mem = true;
 
-    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxp")) != -1) {
+    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxpn")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -117,6 +119,9 @@ int main(int argc, char **argv) {
             break;
         case 'p':
             enable_interpreter = true;
+            break;
+        case 'n':
+            inline_mem = false;
             break;
         }
     }
@@ -162,6 +167,7 @@ int main(int argc, char **argv) {
         enable_jit = true;
 #endif
 
+    config_set_inline_mem(inline_mem);
     config_set_jit(enable_jit);
 
 #ifdef ENABLE_JIT_X86_64

@@ -93,4 +93,10 @@ CONFIG_DECL_BOOL(jit);
 CONFIG_DECL_BOOL(native_jit);
 #endif
 
+/*
+ * if this is set (default is true) then the jit's x86_64 backend will
+ * inline memory accesses.
+ */
+CONFIG_DECL_BOOL(inline_mem);
+
 #endif
