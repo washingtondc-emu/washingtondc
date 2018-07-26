@@ -37,6 +37,7 @@
 #include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "gfx/gfx.h"
+#include "pix_conv.h"
 
 #include "cmd.h"
 
@@ -684,7 +685,8 @@ static int cmd_tex_dump(int argc, char **argv) {
         size_t n_bytes;
         pvr2_tex_cache_read(&tex_dat, &n_bytes, &meta);
         if (tex_dat) {
-            save_tex(file, &meta, tex_dat);
+            if (save_tex(file, &meta, tex_dat) < 0)
+                cons_printf("Failed to save texture\n");
 
             free(tex_dat);
         } else {
@@ -704,6 +706,7 @@ static int cmd_tex_dump_all(int argc, char **argv) {
     char const *dir_path;
     char const *path_last_char;
     char total_path[TEX_DUMP_ALL_PATH_LEN];
+    bool all_success = true;
 
     if (argc != 2) {
         cons_puts("Usage: tex-dump-all directory\n");
@@ -728,10 +731,14 @@ static int cmd_tex_dump_all(int argc, char **argv) {
             }
             total_path[TEX_DUMP_ALL_PATH_LEN - 1] = '\0';
 
-            save_tex(total_path, &meta, tex_dat);
+            if (save_tex(total_path, &meta, tex_dat) < 0)
+                all_success = false;
             free(tex_dat);
         }
     }
+
+    if (!all_success)
+        cons_printf("Some textures could not be saved\n");
 
     return 0;
 }
@@ -748,6 +755,7 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
         return -1;
 
     int err_val = 0;
+    void *dat_conv = NULL;
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING,
                                                   NULL, NULL, NULL);
     if (!png_ptr) {
@@ -772,10 +780,20 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
 
     if (meta->pix_fmt != TEX_CTRL_PIX_FMT_ARGB_1555 &&
         meta->pix_fmt != TEX_CTRL_PIX_FMT_RGB_565 &&
-        meta->pix_fmt != TEX_CTRL_PIX_FMT_ARGB_4444) {
+        meta->pix_fmt != TEX_CTRL_PIX_FMT_ARGB_4444 &&
+        meta->pix_fmt != TEX_CTRL_PIX_FMT_YUV_422) {
         err_val = -1;
         goto cleanup_png;
     }
+
+    /*
+     * prevent integer overflows when we call malloc below.
+     *
+     * Also, the max texture-side-log2 on pvr2 is 10 anyways.
+     */
+    if (meta->w_shift > 10 || meta->h_shift > 10)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    unsigned tex_w = 1 << meta->w_shift, tex_h = 1 << meta->h_shift;
 
     int color_tp_png;
     unsigned n_colors;
@@ -792,19 +810,18 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
         n_colors = 3;
         pvr2_pix_size = 2;
         break;
+    case TEX_CTRL_PIX_FMT_YUV_422:
+        color_tp_png = PNG_COLOR_TYPE_RGB;
+        n_colors = 3;
+        pvr2_pix_size = 3;
+        dat_conv = (uint8_t*)malloc(sizeof(uint8_t) * n_colors * tex_w * tex_h);
+        conv_yuv422_rgb888(dat_conv, dat, tex_w, tex_h);
+        dat = dat_conv;
+        break;
     default:
         err_val = -1;
         goto cleanup_png;
     }
-
-    /*
-     * prevent integer overflows when we call malloc below.
-     *
-     * Also, the max texture-side-log2 on pvr2 is 10 anyways.
-     */
-    if (meta->w_shift > 10 || meta->h_shift > 10)
-        RAISE_ERROR(ERROR_INTEGRITY);
-    unsigned tex_w = 1 << meta->w_shift, tex_h = 1 << meta->h_shift;
 
     // this should not be possible, but scan-build thinks it is...?
     if (!tex_w || !tex_h)
@@ -857,6 +874,11 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
                 green <<= 2;
                 blue <<= 3;
                 break;
+            case TEX_CTRL_PIX_FMT_YUV_422:
+                red = src_pix[0];
+                green = src_pix[1];
+                blue = src_pix[2];
+                break;
             default:
                 err_val = -1;
                 goto cleanup_rows;
@@ -890,5 +912,7 @@ cleanup_png:
 
 finish:
     fclose(stream);
+    if (dat_conv)
+        free(dat_conv);
     return err_val;
 }

@@ -692,8 +692,6 @@ static void decode_poly_hdr(struct poly_hdr *hdr) {
     /*     hdr->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL || */
     /*     hdr->tex_fmt == TEX_CTRL_PIX_FMT_YUV_422 || */
     /*     hdr->tex_fmt >= TEX_CTRL_PIX_FMT_INVALID) */
-    if (hdr->tex_fmt == TEX_CTRL_PIX_FMT_YUV_422)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     hdr->tex_width_shift = 3 +
         ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);

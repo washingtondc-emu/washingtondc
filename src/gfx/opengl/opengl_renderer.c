@@ -35,6 +35,7 @@
 #include "gfx/gfx_tex_cache.h"
 #include "gfx/gfx.h"
 #include "log.h"
+#include "pix_conv.h"
 
 #include "opengl_renderer.h"
 
@@ -286,6 +287,16 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
                      format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_1555], tex_dat_conv);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         free(tex_dat_conv);
+    } else if (tex->pix_fmt == TEX_CTRL_PIX_FMT_YUV_422) {
+        uint8_t *tmp_dat =
+            (uint8_t*)malloc(sizeof(uint8_t) * 3 * tex_w * tex_h);
+        if (!tmp_dat)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+        conv_yuv422_rgb888(tmp_dat, tex_dat, tex_w, tex_h);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex_w, tex_h, 0,
+                     GL_RGB, GL_UNSIGNED_BYTE, tmp_dat);
+        opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
+        free(tmp_dat);
     } else {
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
                      format, tex_formats[tex->pix_fmt], tex_dat);

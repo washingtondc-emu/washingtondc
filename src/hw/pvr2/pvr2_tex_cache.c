@@ -66,7 +66,7 @@ unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
     [TEX_CTRL_PIX_FMT_ARGB_1555] = 2,
     [TEX_CTRL_PIX_FMT_RGB_565]   = 2,
     [TEX_CTRL_PIX_FMT_ARGB_4444] = 2,
-    [TEX_CTRL_PIX_FMT_YUV_422]   = 1,
+    [TEX_CTRL_PIX_FMT_YUV_422]   = 2,
     [TEX_CTRL_PIX_FMT_BUMP_MAP]  = 0, // TODO: implement this
     [TEX_CTRL_PIX_FMT_4_BPP_PAL] = 0,
     [TEX_CTRL_PIX_FMT_8_BPP_PAL] = 1,
@@ -528,6 +528,11 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
+        if (meta->tex_fmt == TEX_CTRL_PIX_FMT_YUV_422) {
+            error_set_feature("mipmapped YUV422 textures\n");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
         unsigned side_shift = meta->w_shift;
 
         if (meta->vq_compression) {
@@ -574,6 +579,11 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
              */
             error_set_feature("VQ compressed palette textures");
             error_set_tex_fmt(meta->tex_fmt);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        if (meta->tex_fmt == TEX_CTRL_PIX_FMT_YUV_422) {
+            error_set_feature("VQ-compressed YUV422 textures\n");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 

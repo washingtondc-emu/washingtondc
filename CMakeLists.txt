@@ -280,7 +280,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/avl.h"
                 "${PROJECT_SOURCE_DIR}/src/intmath.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/arm7/arm7.h"
-                "${PROJECT_SOURCE_DIR}/src/hw/arm7/arm7.c")
+                "${PROJECT_SOURCE_DIR}/src/hw/arm7/arm7.c"
+                "${PROJECT_SOURCE_DIR}/src/pix_conv.h"
+                "${PROJECT_SOURCE_DIR}/src/pix_conv.c")
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/main.c")
 
