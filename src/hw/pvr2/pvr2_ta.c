@@ -867,7 +867,6 @@ static void on_polyhdr_received(void) {
         LOG_WARN("WARNING: attempting to input poly header for list %s without "
                  "first closing %s\n", display_list_names[list],
                  display_list_names[poly_state.current_list]);
-        goto the_end;
     }
 
     /*
