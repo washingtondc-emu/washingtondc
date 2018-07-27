@@ -128,9 +128,8 @@ static void
 conv_rgb555_to_rgba8888(uint32_t *pixels_out,
                         uint16_t const *pixels_in,
                         unsigned n_pixels, uint8_t concat);
-__attribute__((unused))
 static void
-conv_rgb888_to_argb8888(uint32_t *pixels_out,
+conv_rgb888_to_rgba8888(uint32_t *pixels_out,
                         uint8_t const *pixels_in,
                         unsigned n_pixels);
 static void
@@ -357,6 +356,89 @@ sync_fb_from_tex_mem_rgb555_intl(struct framebuffer *fb,
     fb->flags.vert_flip = true;
     fb->stamp = stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_555;
+
+    struct gfx_il_inst cmd;
+
+    cmd.op = GFX_IL_WRITE_OBJ;
+    cmd.arg.write_obj.dat = dst_fb;
+    cmd.arg.write_obj.obj_no = fb->obj_handle;
+    cmd.arg.write_obj.n_bytes = OGL_FB_W_MAX * OGL_FB_H_MAX * 4;
+
+    rend_exec_il(&cmd, 1);
+}
+
+static void
+sync_fb_from_tex_mem_rgb888_intl(struct framebuffer *fb,
+                                 unsigned fb_width, unsigned fb_height,
+                                 uint32_t sof1, uint32_t sof2,
+                                 unsigned modulus) {
+    /*
+     * field_adv represents the distand between the start of one row and the
+     * start of the next row in the same field in terms of bytes.
+     */
+    unsigned field_adv = fb_width * 3 + modulus * 4 - 4;
+    unsigned rows_per_field = fb_height;
+
+    addr32_t first_addr_field1 = sof1;
+    addr32_t last_addr_field1 = sof1 +
+        field_adv * (rows_per_field - 1) + 3 * (fb_width - 1);
+    addr32_t first_addr_field2 = sof2;
+    addr32_t last_addr_field2 = sof2 +
+        field_adv * (rows_per_field - 1) + 3 * (fb_width - 1);
+
+    // bounds checking.
+    addr32_t bounds_field1[2] = {
+        first_addr_field1 + ADDR_TEX32_FIRST,
+        last_addr_field1 + ADDR_TEX32_FIRST
+    };
+    addr32_t bounds_field2[2] = {
+        first_addr_field2 + ADDR_TEX32_FIRST,
+        last_addr_field2 + ADDR_TEX32_FIRST
+    };
+    if (bounds_field1[0] < ADDR_TEX32_FIRST ||
+        bounds_field1[0] > ADDR_TEX32_LAST ||
+        bounds_field1[1] < ADDR_TEX32_FIRST ||
+        bounds_field1[1] > ADDR_TEX32_LAST ||
+        bounds_field2[0] < ADDR_TEX32_FIRST ||
+        bounds_field2[0] > ADDR_TEX32_LAST ||
+        bounds_field2[1] < ADDR_TEX32_FIRST ||
+        bounds_field2[1] > ADDR_TEX32_LAST) {
+        error_set_feature("whatever happens when a framebuffer is configured "
+                          "to read outside of texture memory");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+
+    unsigned row;
+    for (row = 0; row < rows_per_field; row++) {
+        uint8_t const *ptr_row1 =
+            pvr2_tex32_mem + sof1 + row * field_adv;
+        uint8_t const *ptr_row2 =
+            pvr2_tex32_mem + sof2 + row * field_adv;
+
+        conv_rgb888_to_rgba8888(dst_fb + row * 2 * fb_width,
+                                ptr_row1, fb_width);
+        conv_rgb888_to_rgba8888(dst_fb + (row * 2 + 1) * fb_width,
+                                ptr_row2, fb_width);
+    }
+
+    fb->addr_key = first_addr_field1  < first_addr_field2 ?
+        first_addr_field1 : first_addr_field2;
+
+    fb->addr_first[0] = first_addr_field1;
+    fb->addr_first[1] = first_addr_field2;
+    fb->addr_last[0] = last_addr_field1;
+    fb->addr_last[1] = last_addr_field2;
+
+    fb->fb_read_width = fb_width;
+    fb->fb_read_height = fb_height;
+
+    fb->flags.state = FB_STATE_VIRT_AND_GFX;
+
+    fb->flags.vert_flip = true;
+    fb->stamp = stamp;
+    fb->flags.fmt = FB_PIX_FMT_RGB_888;
 
     struct gfx_il_inst cmd;
 
@@ -609,8 +691,13 @@ sync_fb_from_tex_mem(struct framebuffer *fb, unsigned width, unsigned height,
         break;
     case 2:
         // 24-bit 888 RGB
-        error_set_feature("video mode RGB888");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (interlace) {
+            sync_fb_from_tex_mem_rgb888_intl(fb, width, height, fb_r_sof1,
+                                             fb_r_sof2, modulus);
+        } else {
+            error_set_feature("video mode RGB888 (progressive scan)");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
         break;
     case 3:
         // 32-bit 08888 RGB
@@ -663,7 +750,7 @@ conv_rgb555_to_rgba8888(uint32_t *pixels_out,
 }
 
 static void
-conv_rgb888_to_argb8888(uint32_t *pixels_out,
+conv_rgb888_to_rgba8888(uint32_t *pixels_out,
                         uint8_t const *pixels_in,
                         unsigned n_pixels) {
     for (unsigned idx = 0; idx < n_pixels; idx++) {
