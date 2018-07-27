@@ -606,6 +606,16 @@ static void input_poly_fifo(uint8_t byte) {
     }
 }
 
+static void dump_fifo(void) {
+#ifdef ENABLE_LOG_DEBUG
+    unsigned idx;
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
+    LOG_DBG("Dumping FIFO: %u bytes\n", ta_fifo_byte_count);
+    for (idx = 0; idx < ta_fifo_byte_count / 4; idx++)
+        LOG_DBG("\t0x%08x\n", (unsigned)ta_fifo32[idx]);
+#endif
+}
+
 static void on_packet_received(void) {
     uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
     unsigned cmd_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
@@ -662,18 +672,84 @@ static void on_packet_received(void) {
         on_user_clip_received();
         break;
     case TA_CMD_TYPE_INPUT_LIST:
-        // I only semi-understand what this is
+        /*
+         * TODO: This needs to be researched and implemented
+         *
+         * I only semi-understand what this is
+         *
+         * Sample input:
+         * Dumping FIFO: 32 bytes
+         *      0x4626fbac
+         *      0x413a02ca
+         *      0x00000000
+         *      0x00000000
+         *      0x3de73d67
+         *      0x3f7e7000
+         *      0x00efffff
+         *      0x0030303f
+         *
+         * This is used by SoulCalibur.  In that game, the first two dwords vary
+         * every time but the rest of the packet never changes (or if it does
+         * change it does so rarely, I don't have time to read through every
+         * packet in my log dump).
+         */
         LOG_DBG("TA_CMD_TYPE_INPUT_LIST received on pvr2 ta fifo!\n");
+        dump_fifo();
+        ta_fifo_finish_packet();
+        break;
+    case 3:
+        /*
+         * TODO: this needs to be researched and implemented
+         *
+         * I have no idea what this is.
+         *
+         * Sample input:
+         * Dumping FIFO: 32 bytes
+         *        0x7f800000
+         *        0x7f800000
+         *        0x00000000
+         *        0x00000000
+         *        0x3de73d67
+         *        0x3d670000
+         *        0x00efffff
+         *        0x0030303f
+         *
+         * This is used by SoulCalibur.  In that game, the fifth and sixth
+         * dwords vary every time but the rest of the packet rarely (or never) changes.
+         *
+         * I think the fifth and sixth dwords might be 32-bit floating points.
+         */
+        LOG_DBG("WARNING: TA COMMAND 3 received on pvr2_ta_fifo\n");
+        dump_fifo();
         ta_fifo_finish_packet();
         break;
     case TA_CMD_TYPE_UNKNOWN:
         LOG_DBG("WARNING: TA_CMD_TYPE_UNKNOWN received on pvr2 ta fifo!\n");
+        dump_fifo();
         ta_fifo_finish_packet();
         break;
     default:
         LOG_ERROR("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
         error_set_feature("PVR2 command type");
         error_set_ta_fifo_cmd(cmd_tp);
+        error_set_display_list_index(poly_state.current_list);
+        error_set_ta_fifo_byte_count(ta_fifo_byte_count);
+        error_set_ta_fifo_word_0(ta_fifo32[0]);
+        error_set_ta_fifo_word_1(ta_fifo32[1]);
+        error_set_ta_fifo_word_2(ta_fifo32[2]);
+        error_set_ta_fifo_word_3(ta_fifo32[3]);
+        error_set_ta_fifo_word_4(ta_fifo32[4]);
+        error_set_ta_fifo_word_5(ta_fifo32[5]);
+        error_set_ta_fifo_word_6(ta_fifo32[6]);
+        error_set_ta_fifo_word_7(ta_fifo32[7]);
+        error_set_ta_fifo_word_8(ta_fifo32[8]);
+        error_set_ta_fifo_word_9(ta_fifo32[9]);
+        error_set_ta_fifo_word_a(ta_fifo32[10]);
+        error_set_ta_fifo_word_b(ta_fifo32[11]);
+        error_set_ta_fifo_word_c(ta_fifo32[12]);
+        error_set_ta_fifo_word_d(ta_fifo32[13]);
+        error_set_ta_fifo_word_e(ta_fifo32[14]);
+        error_set_ta_fifo_word_f(ta_fifo32[15]);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 }

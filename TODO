@@ -41,3 +41,5 @@ PVR2:
 * Figure out what to do when the 1/z value input by guest-programs is zero.
   Obviously this fucks things up when we do the divide to get z.  It might be
   that 1/z==0 is never a valid input value, but I need to verify.
+* Research and implement the type 2 (INPUT LIST) and type 3 (unknown) tafifo
+  commands.  SoulCalibur uses both of these.
