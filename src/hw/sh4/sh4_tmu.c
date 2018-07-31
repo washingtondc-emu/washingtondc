@@ -130,10 +130,11 @@ static inline unsigned chan_clock_div(Sh4 *sh4, unsigned chan) {
         return 64;
     case 3:
         return 256;
-    case 5:
+    case 4:
         return 1024;
     default:
         // software shouldn't be doing this anyways
+        error_set_value(sh4->reg[chan_tcr[chan]] & SH4_TCR_TPSC_MASK);
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 }
