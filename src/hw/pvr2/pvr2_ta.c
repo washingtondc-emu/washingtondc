@@ -933,10 +933,15 @@ static void on_polyhdr_received(void) {
      * not 100% clear on whether or not it has its own offset header.  That
      * said, I am confident that intensity mode 2 is 32 bits.
      */
-    if (hdr.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1 &&
-        hdr.offset_color_enable && ta_fifo_byte_count != 64) {
-        // need 64 bytes not, 32.
-        return;
+    unsigned cmd_type = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
+
+    if (list != DISPLAY_LIST_OPAQUE_MOD &&
+        list != DISPLAY_LIST_TRANS_MOD &&
+        cmd_type != TA_CMD_TYPE_SPRITE_HDR &&
+        hdr.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1 &&
+            hdr.offset_color_enable && ta_fifo_byte_count != 64) {
+            // need 64 bytes not, 32.
+            return;
     }
 
     if ((poly_state.current_list == DISPLAY_LIST_NONE) &&
