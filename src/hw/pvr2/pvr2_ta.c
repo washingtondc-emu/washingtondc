@@ -310,6 +310,7 @@ char const *display_list_names[DISPLAY_LIST_COUNT] = {
     "Transparent",
     "Transparent Modifier Volume",
     "Punch-through Polygon",
+    "Unknown Display list 5",
     "Unknown Display list 6",
     "Unknown Display list 7"
 };
@@ -672,6 +673,7 @@ static void on_packet_received(void) {
         on_user_clip_received();
         break;
     case TA_CMD_TYPE_INPUT_LIST:
+        LOG_DBG("TAFIFO: TA_CMD_TYPE_INPUT_LIST received!\n");
         /*
          * TODO: This needs to be researched and implemented
          *
@@ -695,9 +697,11 @@ static void on_packet_received(void) {
          */
         LOG_DBG("TA_CMD_TYPE_INPUT_LIST received on pvr2 ta fifo!\n");
         dump_fifo();
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         ta_fifo_finish_packet();
         break;
     case 3:
+        LOG_DBG("TAFIFO: 3 received!\n");
         /*
          * TODO: this needs to be researched and implemented
          *
@@ -721,15 +725,19 @@ static void on_packet_received(void) {
          */
         LOG_DBG("WARNING: TA COMMAND 3 received on pvr2_ta_fifo\n");
         dump_fifo();
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         ta_fifo_finish_packet();
         break;
     case TA_CMD_TYPE_UNKNOWN:
+        LOG_DBG("TAFIFO: TA_CMD_TYPE_UNKNOWN received!\n");
         LOG_DBG("WARNING: TA_CMD_TYPE_UNKNOWN received on pvr2 ta fifo!\n");
         dump_fifo();
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         ta_fifo_finish_packet();
         break;
     default:
         LOG_ERROR("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
+        dump_fifo();
         error_set_feature("PVR2 command type");
         error_set_ta_fifo_cmd(cmd_tp);
         error_set_display_list_index(poly_state.current_list);
@@ -943,6 +951,25 @@ static void on_polyhdr_received(void) {
         LOG_WARN("WARNING: attempting to input poly header for list %s without "
                  "first closing %s\n", display_list_names[list],
                  display_list_names[poly_state.current_list]);
+        error_set_display_list_index(list);
+        error_set_ta_fifo_byte_count(ta_fifo_byte_count);
+        error_set_ta_fifo_word_0(ta_fifo32[0]);
+        error_set_ta_fifo_word_1(ta_fifo32[1]);
+        error_set_ta_fifo_word_2(ta_fifo32[2]);
+        error_set_ta_fifo_word_3(ta_fifo32[3]);
+        error_set_ta_fifo_word_4(ta_fifo32[4]);
+        error_set_ta_fifo_word_5(ta_fifo32[5]);
+        error_set_ta_fifo_word_6(ta_fifo32[6]);
+        error_set_ta_fifo_word_7(ta_fifo32[7]);
+        error_set_ta_fifo_word_8(ta_fifo32[8]);
+        error_set_ta_fifo_word_9(ta_fifo32[9]);
+        error_set_ta_fifo_word_a(ta_fifo32[10]);
+        error_set_ta_fifo_word_b(ta_fifo32[11]);
+        error_set_ta_fifo_word_c(ta_fifo32[12]);
+        error_set_ta_fifo_word_d(ta_fifo32[13]);
+        error_set_ta_fifo_word_e(ta_fifo32[14]);
+        error_set_ta_fifo_word_f(ta_fifo32[15]);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     /*
@@ -1048,7 +1075,12 @@ static void on_polyhdr_received(void) {
     poly_state.tex_coord_16_bit_enable = hdr.tex_coord_16_bit_enable;
 
     poly_state.vert_type = classify_vert();
-    poly_state.vert_len = vert_lengths[poly_state.vert_type];
+
+    // Modifier volumes unconditionally have a length of 32 bytes.
+    if (list != DISPLAY_LIST_OPAQUE_MOD && list != DISPLAY_LIST_TRANS_MOD)
+        poly_state.vert_len = vert_lengths[poly_state.vert_type];
+    else
+        poly_state.vert_len = 16;
 
     poly_state.tex_inst = hdr.tex_inst;
     poly_state.tex_filter = hdr.tex_filter;
