@@ -697,42 +697,6 @@ static void on_packet_received(void) {
          */
         LOG_DBG("TA_CMD_TYPE_INPUT_LIST received on pvr2 ta fifo!\n");
         dump_fifo();
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        ta_fifo_finish_packet();
-        break;
-    case 3:
-        LOG_DBG("TAFIFO: 3 received!\n");
-        /*
-         * TODO: this needs to be researched and implemented
-         *
-         * I have no idea what this is.
-         *
-         * Sample input:
-         * Dumping FIFO: 32 bytes
-         *        0x7f800000
-         *        0x7f800000
-         *        0x00000000
-         *        0x00000000
-         *        0x3de73d67
-         *        0x3d670000
-         *        0x00efffff
-         *        0x0030303f
-         *
-         * This is used by SoulCalibur.  In that game, the fifth and sixth
-         * dwords vary every time but the rest of the packet rarely (or never) changes.
-         *
-         * I think the fifth and sixth dwords might be 32-bit floating points.
-         */
-        LOG_DBG("WARNING: TA COMMAND 3 received on pvr2_ta_fifo\n");
-        dump_fifo();
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        ta_fifo_finish_packet();
-        break;
-    case TA_CMD_TYPE_UNKNOWN:
-        LOG_DBG("TAFIFO: TA_CMD_TYPE_UNKNOWN received!\n");
-        LOG_DBG("WARNING: TA_CMD_TYPE_UNKNOWN received on pvr2 ta fifo!\n");
-        dump_fifo();
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         ta_fifo_finish_packet();
         break;
     default:
