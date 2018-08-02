@@ -956,25 +956,36 @@ static void on_polyhdr_received(void) {
         LOG_WARN("WARNING: attempting to input poly header for list %s without "
                  "first closing %s\n", display_list_names[list],
                  display_list_names[poly_state.current_list]);
-        error_set_display_list_index(list);
-        error_set_ta_fifo_byte_count(ta_fifo_byte_count);
-        error_set_ta_fifo_word_0(ta_fifo32[0]);
-        error_set_ta_fifo_word_1(ta_fifo32[1]);
-        error_set_ta_fifo_word_2(ta_fifo32[2]);
-        error_set_ta_fifo_word_3(ta_fifo32[3]);
-        error_set_ta_fifo_word_4(ta_fifo32[4]);
-        error_set_ta_fifo_word_5(ta_fifo32[5]);
-        error_set_ta_fifo_word_6(ta_fifo32[6]);
-        error_set_ta_fifo_word_7(ta_fifo32[7]);
-        error_set_ta_fifo_word_8(ta_fifo32[8]);
-        error_set_ta_fifo_word_9(ta_fifo32[9]);
-        error_set_ta_fifo_word_a(ta_fifo32[10]);
-        error_set_ta_fifo_word_b(ta_fifo32[11]);
-        error_set_ta_fifo_word_c(ta_fifo32[12]);
-        error_set_ta_fifo_word_d(ta_fifo32[13]);
-        error_set_ta_fifo_word_e(ta_fifo32[14]);
-        error_set_ta_fifo_word_f(ta_fifo32[15]);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        /*
+         * SoulCalibur and DaytonaUSA both do this, and they seem to be doing it
+         * on purpose because they do it during long DMA transactions.  I feel
+         * confident that the root-cause is not a misaligned TA FIFO.
+         *
+         * IDK what to do about it, my best guess is that maybe the list doesn't
+         * actually get opened until the first polygon is input.  Even so, that
+         * wouldn't explain why they bothered to do this.  They literally linput
+         * a polygon header followed by another polygon header from a different
+         * list.
+         */
+        /* error_set_display_list_index(list); */
+        /* error_set_ta_fifo_byte_count(ta_fifo_byte_count); */
+        /* error_set_ta_fifo_word_0(ta_fifo32[0]); */
+        /* error_set_ta_fifo_word_1(ta_fifo32[1]); */
+        /* error_set_ta_fifo_word_2(ta_fifo32[2]); */
+        /* error_set_ta_fifo_word_3(ta_fifo32[3]); */
+        /* error_set_ta_fifo_word_4(ta_fifo32[4]); */
+        /* error_set_ta_fifo_word_5(ta_fifo32[5]); */
+        /* error_set_ta_fifo_word_6(ta_fifo32[6]); */
+        /* error_set_ta_fifo_word_7(ta_fifo32[7]); */
+        /* error_set_ta_fifo_word_8(ta_fifo32[8]); */
+        /* error_set_ta_fifo_word_9(ta_fifo32[9]); */
+        /* error_set_ta_fifo_word_a(ta_fifo32[10]); */
+        /* error_set_ta_fifo_word_b(ta_fifo32[11]); */
+        /* error_set_ta_fifo_word_c(ta_fifo32[12]); */
+        /* error_set_ta_fifo_word_d(ta_fifo32[13]); */
+        /* error_set_ta_fifo_word_e(ta_fifo32[14]); */
+        /* error_set_ta_fifo_word_f(ta_fifo32[15]); */
+        /* RAISE_ERROR(ERROR_UNIMPLEMENTED); */
     }
 
     /*
