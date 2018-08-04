@@ -61,6 +61,7 @@ enum fb_pix_fmt {
     FB_PIX_FMT_RGB_565,
     FB_PIX_FMT_RGB_888,
     FB_PIX_FMT_0RGB_0888,
+    FB_PIX_FMT_ARGB_8888,
     FB_PIX_FMT_ARGB_1555
 };
 
@@ -1005,8 +1006,53 @@ static void fb_sync_from_host_rgb0888(struct framebuffer *fb) {
                 pix_in[1] & 0x00ffffff
             };
 
-            copy_to_tex_mem(pix_out + 0, line_offs[0] + 2 * col, sizeof(pix_out));
-            copy_to_tex_mem(pix_out + 1, line_offs[1] + 2 * col, sizeof(pix_out));
+            copy_to_tex_mem(pix_out + 0, line_offs[0] + 2 * col, sizeof(pix_out[0]));
+            copy_to_tex_mem(pix_out + 1, line_offs[1] + 2 * col, sizeof(pix_out[1]));
+        }
+    }
+}
+
+static void fb_sync_from_host_argb8888(struct framebuffer *fb) {
+    /*
+     * TODO: don't get width, height from fb_read_width and fb_read_height
+     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
+     * work).
+     */
+    unsigned width = fb->fb_read_width;
+    unsigned height = fb->fb_read_height;
+    unsigned stride = fb->linestride;
+    uint32_t const *fb_in = (uint32_t*)ogl_fb;
+    unsigned rows_per_field = height / 2;
+    unsigned const *addr = fb->addr_first;
+
+    assert((width * height * 4) < OGL_FB_BYTES);
+
+    unsigned row, col;
+    for (row = 0; row < rows_per_field; row++) {
+        unsigned row_actual[2] = { 2 * row, 2 * row + 1 };
+        unsigned line_offs[2] = {
+            addr[0] + (rows_per_field - (row + 1)) * stride,
+            addr[1] + (rows_per_field - (row + 1)) * stride
+        };
+
+        for (col = 0; col < width; col++) {
+            unsigned ogl_fb_idx[2] = {
+                row_actual[0] * width + col,
+                row_actual[1] * width + col
+            };
+
+            uint32_t pix_in[2] = {
+                fb_in[ogl_fb_idx[0]],
+                fb_in[ogl_fb_idx[1]]
+            };
+
+            uint32_t pix_out[2] = {
+                pix_in[0],
+                pix_in[1]
+            };
+
+            copy_to_tex_mem(pix_out + 0, line_offs[0] + 2 * col, sizeof(pix_out[0]));
+            copy_to_tex_mem(pix_out + 1, line_offs[1] + 2 * col, sizeof(pix_out[1]));
         }
     }
 }
@@ -1036,6 +1082,9 @@ sync_fb_to_tex_mem(struct framebuffer *fb) {
         break;
     case FB_PIX_FMT_0RGB_0888:
         fb_sync_from_host_rgb0888(fb);
+        break;
+    case FB_PIX_FMT_ARGB_8888:
+        fb_sync_from_host_argb8888(fb);
         break;
     case FB_PIX_FMT_ARGB_1555:
         fb_sync_from_host_1555_argb(fb);
@@ -1204,8 +1253,6 @@ int framebuffer_set_render_target(void) {
     switch (get_fb_w_ctrl() & 0x7) {
     case 2:
         // 16-bit 4444 RGB
-    case 6:
-        // 8888 ARGB
     case 7:
         // absolutely haram
         error_set_fb_pix_fmt(get_fb_w_ctrl() & 0x7);
@@ -1289,6 +1336,23 @@ int framebuffer_set_render_target(void) {
         fb->addr_last[1] = last_addr_field1;
 
         fb_heap[idx].flags.fmt = FB_PIX_FMT_0RGB_0888;
+        break;
+    case 6:
+        // 32-bit 8888 ARGB
+        field_adv = (width * 4) + (modulus * 4) - 4;
+        first_addr_field1 = sof1;
+        last_addr_field1 = sof1 +
+            field_adv * (height - 1) + 4 * (width - 1);
+
+        fb->addr_key = addr_key;
+
+        fb->addr_first[0] = first_addr_field1;
+        fb->addr_first[1] = first_addr_field1;
+        fb->addr_last[0] = last_addr_field1;
+        fb->addr_last[1] = last_addr_field1;
+
+        // TODO: fix this part
+        fb_heap[idx].flags.fmt = FB_PIX_FMT_ARGB_8888;
         break;
     }
 
