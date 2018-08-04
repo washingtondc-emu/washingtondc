@@ -2,7 +2,7 @@
  *
  *
  *   WashingtonDC Dreamcast Emulator
- *   Copyright (C) 2017 snickerbockers
+ *   Copyright (C) 2017, 2018 snickerbockers
  *   chimerasaurusrex@gmail.com
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -65,7 +65,7 @@ static struct mount_ops gdi_mount_ops = {
 };
 
 /* enforce sane limits - MAX_TRACKS might need to be bigger tbh */
-#define MAX_TRACKS 32
+#define MAX_TRACKS 64
 #define MAX_TRACK_FIELDS 16
 
 /*
