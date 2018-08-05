@@ -33,6 +33,7 @@
 #include "mem_areas.h"
 #include "hw/pvr2/pvr2_ta.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
+#include "hw/pvr2/pvr2_yuv.h"
 #include "hw/sys/holly_intc.h"
 #include "log.h"
 #include "dc_sched.h"
@@ -399,6 +400,10 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
     LOG_DBG("SH4 - initiating %u-byte DMA transfer from 0x%08x to "
             "0x%08x\n", n_bytes, transfer_src, transfer_dst);
 
+    /*
+     * TODO: The below code does not account for what happens when a DMA tranfer
+     * crosses over into a different memory region.
+     */
     if ((transfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&
         (transfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
         while (n_words--) {
@@ -428,6 +433,13 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
             pvr2_tex_mem_area32_write_32(transfer_dst, buf, NULL);
             transfer_dst += sizeof(buf);
             transfer_src += sizeof(buf);
+        }
+    } else if (transfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
+               transfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
+        while (n_words--) {
+            uint32_t in = memory_map_read_32(sh4->mem.map, transfer_src);
+            transfer_src += sizeof(in);
+            pvr2_yuv_input_data(&in, sizeof(in));
         }
     } else {
         error_set_address(transfer_dst);

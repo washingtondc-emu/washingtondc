@@ -86,6 +86,9 @@ unsigned get_glob_tile_clip_y(void);
 uint32_t get_isp_backgnd_d(void);
 uint32_t get_isp_backgnd_t(void);
 
+uint32_t get_ta_yuv_tex_base(void);
+uint32_t get_ta_yuv_tex_ctrl(void);
+
 enum palette_tp {
     PALETTE_TP_ARGB_1555,
     PALETTE_TP_RGB_565,

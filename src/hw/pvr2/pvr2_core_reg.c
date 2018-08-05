@@ -34,6 +34,8 @@
 #include "pvr2_tex_cache.h"
 #include "log.h"
 #include "mmio.h"
+#include "intmath.h"
+#include "pvr2_yuv.h"
 
 #include "pvr2_core_reg.h"
 
@@ -47,6 +49,8 @@ static enum palette_tp palette_tp;
 static uint32_t ta_vertbuf_pos, ta_vertbuf_start;
 
 static uint32_t ta_next_opb_init;
+
+static uint32_t ta_yuv_tex_ctrl, ta_yuv_tex_base;
 
 DEF_MMIO_REGION(pvr2_core_reg, N_PVR2_CORE_REGS, ADDR_PVR2_CORE_FIRST, uint32_t)
 static uint8_t reg_backing[N_PVR2_CORE_REGS];
@@ -204,6 +208,17 @@ pal_ram_mmio_read(struct mmio_region_pvr2_core_reg *region,
 static void
 pal_ram_mmio_write(struct mmio_region_pvr2_core_reg *region,
                    unsigned idx, uint32_t val, void *ctxt);
+
+static uint32_t
+ta_yuv_tex_ctrl_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt);
+static void ta_yuv_tex_ctrl_write(struct mmio_region_pvr2_core_reg *region,
+                                  unsigned idx, uint32_t val, void *ctxt);
+static uint32_t
+ta_yuv_tex_base_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt);
+static void ta_yuv_tex_base_write(struct mmio_region_pvr2_core_reg *region,
+                                  unsigned idx, uint32_t val, void *ctxt);
 
 void pvr2_core_reg_init(void) {
     init_mmio_region_pvr2_core_reg(&mmio_region_pvr2_core_reg, (void*)reg_backing);
@@ -505,6 +520,16 @@ void pvr2_core_reg_init(void) {
                                         "TA_RESET", 0x5f8144,
                                         ta_reset_mmio_read,
                                         ta_reset_mmio_write,
+                                        NULL);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg,
+                                        "TA_YUV_TEX_BASE", 0x5f8148,
+                                        ta_yuv_tex_base_read,
+                                        ta_yuv_tex_base_write,
+                                        NULL);
+    mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg,
+                                        "TA_YUV_TEX_CTRL", 0x5f814c,
+                                        ta_yuv_tex_ctrl_read,
+                                        ta_yuv_tex_ctrl_write,
                                         NULL);
     mmio_region_pvr2_core_reg_init_cell(&mmio_region_pvr2_core_reg,
                                         "TA_NEXT_OPB_INIT", 0x5f8164,
@@ -891,6 +916,48 @@ ta_next_opb_init_mmio_write(struct mmio_region_pvr2_core_reg *region,
             (unsigned)ta_next_opb_init);
 }
 
+static uint32_t
+ta_yuv_tex_ctrl_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt) {
+    LOG_DBG("Reading 0x%08x from TA_YUV_CTRL\n", (unsigned)ta_yuv_tex_ctrl);
+    return ta_yuv_tex_ctrl;
+}
+
+static void
+ta_yuv_tex_ctrl_write(struct mmio_region_pvr2_core_reg *region,
+                      unsigned idx, uint32_t val, void *ctxt) {
+    LOG_DBG("Writing 0x%08x to TA_YUV_CTRL\n", (unsigned)val);
+    ta_yuv_tex_ctrl = val;
+#ifdef ENABLE_LOG_DEBUG
+    unsigned u_res = ((ta_yuv_tex_ctrl & 0x3f) + 1) * 16;
+    unsigned v_res = (((ta_yuv_tex_ctrl >> 8) & 0x3f) + 1) * 16;
+    LOG_DBG("dimensions are %ux%u\n", u_res, v_res);
+#endif
+
+    if (ta_yuv_tex_ctrl & (1 << 16)) {
+        LOG_DBG("an array of 16x16 macroblocks\n");
+    } else {
+        LOG_DBG("a single texture\n");
+    }
+
+    LOG_DBG("Format is %s\n",
+            ta_yuv_tex_ctrl & (1 << 24) ? "YUV422" : "YUV420");
+}
+
+static uint32_t
+ta_yuv_tex_base_read(struct mmio_region_pvr2_core_reg *region,
+                     unsigned idx, void *ctxt) {
+    LOG_DBG("Reading 0x%08x from TA_YUV_TEX_BASE\n", (unsigned)ta_yuv_tex_base);
+    return ta_yuv_tex_base;
+}
+
+static void ta_yuv_tex_base_write(struct mmio_region_pvr2_core_reg *region,
+                                  unsigned idx, uint32_t val, void *ctxt) {
+    LOG_DBG("Writing 0x%08x to TA_YUV_TEX_BASE\n", (unsigned)val);
+    ta_yuv_tex_base = val & BIT_RANGE(3, 23);
+    pvr2_yuv_set_base(ta_yuv_tex_base);
+}
+
 #define PAL_RAM_FIRST_IDX ((PVR2_PALETTE_RAM_FIRST - ADDR_PVR2_CORE_FIRST) / 4)
 #define PAL_RAM_LAST_IDX  ((PVR2_PALETTE_RAM_LAST - ADDR_PVR2_CORE_FIRST) / 4)
 
@@ -1009,6 +1076,14 @@ unsigned get_glob_tile_clip_y(void) {
 
 enum palette_tp get_palette_tp(void) {
     return palette_tp;
+}
+
+uint32_t get_ta_yuv_tex_base(void) {
+    return ta_yuv_tex_base;
+}
+
+uint32_t get_ta_yuv_tex_ctrl(void) {
+    return ta_yuv_tex_ctrl;
 }
 
 struct memory_interface pvr2_core_reg_intf = {

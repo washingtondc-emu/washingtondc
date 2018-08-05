@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -142,5 +142,8 @@
 
 #define ADDR_TA_FIFO_POLY_FIRST 0x10000000
 #define ADDR_TA_FIFO_POLY_LAST  0x107fffff
+
+#define ADDR_TA_FIFO_YUV_FIRST 0x10800000
+#define ADDR_TA_FIFO_YUV_LAST  0x10ffffff
 
 #endif
