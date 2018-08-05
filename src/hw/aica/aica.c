@@ -126,10 +126,12 @@
 
 static void aica_update_interrupts(struct aica *aica);
 
-static uint32_t aica_sys_reg_read(struct aica *aica, addr32_t addr,
-                                  bool from_sh4);
+static void
+aica_sys_reg_read(struct aica *aica, addr32_t addr,
+                  void *out, unsigned n_bytes, bool from_sh4);
 static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
-                               uint32_t val, bool from_sh4);
+                               void const *val_in, unsigned n_bytes,
+                               bool from_sh4);
 
 static float aica_sys_read_float(addr32_t addr, void *ctxt);
 static void aica_sys_write_float(addr32_t addr, float val, void *ctxt);
@@ -220,18 +222,15 @@ static void aica_sys_write_double(addr32_t addr, double val, void *ctxt) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-static uint32_t aica_sys_reg_read(struct aica *aica, addr32_t addr, bool from_sh4) {
-#ifdef INVARANTS
-    if (addr <= 0x7fff) {
-        error_set_address(addr);
-        RAISE_ERROR(ERROR_INTEGRITY);
-    }
-#endif
-
-    switch (addr) {
+static void
+aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
+    uint32_t val;
+    switch (4 * idx) {
     case AICA_MASTER_VOLUME:
         // Neill Corlett's AICA notes say this is always 16 when you read from it
-        return 16;
+        val = 16;
+        memcpy(aica->sys_reg + idx, &val, sizeof(uint32_t));
+        break;
     case AICA_ARM7_RST:
         if (!from_sh4) {
             printf("ARM7 suicide unimplemented\n");
@@ -246,13 +245,17 @@ static uint32_t aica_sys_reg_read(struct aica *aica, addr32_t addr, bool from_sh
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case AICA_SCIPD:
-        return aica->int_pending;
+        memcpy(aica->sys_reg + idx, &aica->int_pending, sizeof(uint32_t));
+        break;
     case AICA_SCIEB:
-        return aica->int_enable;
+        memcpy(aica->sys_reg + idx, &aica->int_enable, sizeof(uint32_t));
+        break;
     case AICA_MCIEB:
-        return aica->int_enable_sh4;
+        memcpy(aica->sys_reg + idx, &aica->int_enable_sh4, sizeof(uint32_t));
+        break;
     case AICA_MCIPD:
-        return aica->int_pending_sh4;
+        memcpy(aica->sys_reg + idx, &aica->int_pending_sh4, sizeof(uint32_t));
+        break;
     case AICA_MIDI_INPUT:
         /*
          * The MIDI interface, as far as I know, only exists on development
@@ -260,29 +263,29 @@ static uint32_t aica_sys_reg_read(struct aica *aica, addr32_t addr, bool from_sh
          * hopefully convince programs that the MIDI is empty (see the Corlett
          * doc).
          */
-        return  (1 << 11) | (1 << 8);
+        val = (1 << 11) | (1 << 8);
+        memcpy(aica->sys_reg + idx, &val, sizeof(uint32_t));
+        break;
     case AICA_PLAYPOS:
         LOG_DBG("Reading 0x%08x from AICA_PLAYPOS\n",
-                (unsigned)aica->sys_reg[addr / 4]);
+                (unsigned)aica->sys_reg[idx]);
         break;
     case AICA_PLAYSTATUS:
         LOG_DBG("Reading 0x%08x from AICA_PLAYSTATUS\n",
-                (unsigned)aica->sys_reg[addr / 4]);
+                (unsigned)aica->sys_reg[idx]);
         break;
     default:
 #ifdef AICA_PEDANTIC
-        error_set_address(addr);
-        error_set_length(4);
+        error_set_address(4 * idx);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
         break;
     }
-
-    return aica->sys_reg[addr / 4];
 }
 
-static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
-                               uint32_t val, bool from_sh4) {
+static void
+aica_sys_reg_read(struct aica *aica, addr32_t addr,
+                  void *out, unsigned n_bytes, bool from_sh4) {
 #ifdef INVARANTS
     if (addr <= 0x7fff) {
         error_set_address(addr);
@@ -290,11 +293,21 @@ static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
     }
 #endif
 
-    switch (addr) {
+    aica_sys_reg_pre_read(aica, addr / 4, from_sh4);
+
+    memcpy(out, ((uint8_t*)aica->sys_reg) + addr, n_bytes);
+}
+
+static void
+aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
+    uint32_t val;
+
+    switch (idx * 4) {
     case AICA_MASTER_VOLUME:
         LOG_DBG("Writing 0x%08x to AICA_MASTER_VOLUME\n", (unsigned)val);
         break;
     case AICA_ARM7_RST:
+        memcpy(&val, aica->sys_reg + (AICA_ARM7_RST/4), sizeof(val));
         if (from_sh4) {
             arm7_reset(aica->arm7, !(val & 1));
         } else {
@@ -303,10 +316,12 @@ static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
         }
         break;
     case AICA_SCIRE:
+        memcpy(&val, aica->sys_reg + (AICA_SCIRE/4), sizeof(val));
         aica->int_pending &= ~val;
         aica_update_interrupts(aica);
         break;
     case AICA_MCIRE:
+        memcpy(&val, aica->sys_reg + (AICA_MCIRE/4), sizeof(val));
         aica->int_pending_sh4 &= ~val;
         aica_update_interrupts(aica);
         break;
@@ -325,21 +340,25 @@ static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case AICA_SCIEB:
+        memcpy(&val, aica->sys_reg + (AICA_SCIEB/4), sizeof(val));
         aica->int_enable = val;
         aica_update_interrupts(aica);
         break;
     case AICA_MCIEB:
+        memcpy(&val, aica->sys_reg + (AICA_MCIEB/4), sizeof(val));
         if (val & ~AICA_INT_CPU_MASK)
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         aica->int_enable_sh4 = val;
         break;
     case AICA_RINGBUFFER_ADDRESS:
+        memcpy(&val, aica->sys_reg + (AICA_RINGBUFFER_ADDRESS/4), sizeof(val));
         aica->ringbuffer_addr = (val & BIT_RANGE(0, 11)) << 11;
         aica->ringbuffer_size = (val & BIT_RANGE(13, 14)) >> 13;
         aica->ringbuffer_bit15 = (bool)(val & (1 << 15));
         LOG_DBG("Writing 0x%08x to AICA_RINGBUFFER_ADDRESS\n", (unsigned)val);
         break;
     case AICA_UNKNOWN_2880:
+        memcpy(&val, aica->sys_reg + (AICA_UNKNOWN_2880/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_UNKNOWN_2880\n", (unsigned)val);
         break;
 
@@ -355,43 +374,62 @@ static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
          * didn't implement that.
          */
     case AICA_TIMERA_CTRL:
+        memcpy(&val, aica->sys_reg + (AICA_TIMERA_CTRL/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_TIMERA_CTRL\n", (unsigned)val);
         break;
     case AICA_TIMERB_CTRL:
+        memcpy(&val, aica->sys_reg + (AICA_TIMERB_CTRL/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICB_TIMERA_CTRL\n", (unsigned)val);
         break;
     case AICA_TIMERC_CTRL:
+        memcpy(&val, aica->sys_reg + (AICA_TIMERC_CTRL/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICC_TIMERA_CTRL\n", (unsigned)val);
         break;
 
     case AICA_SCILV0:
+        memcpy(&val, aica->sys_reg + (AICA_SCILV0/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_SCILV0\n", (unsigned)val);
         break;
     case AICA_SCILV1:
+        memcpy(&val, aica->sys_reg + (AICA_SCILV1/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_SCILV1\n", (unsigned)val);
         break;
     case AICA_SCILV2:
+        memcpy(&val, aica->sys_reg + (AICA_SCILV2/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_SCILV2\n", (unsigned)val);
         break;
 
     case AICA_INTCLEAR:
+        memcpy(&val, aica->sys_reg + (AICA_INTCLEAR/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_INTCLEAR\n", (unsigned)val);
         break;
 
     case AICA_CHANINFOREQ:
+        memcpy(&val, aica->sys_reg + (AICA_CHANINFOREQ/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_CHANINFOREQ\n", (unsigned)val);
         break;
 
     default:
 #ifdef AICA_PEDANTIC
-        error_set_address(addr);
-        error_set_length(4);
-        error_set_value(val);
+        error_set_address(4 * idx);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
         break;
     }
-    aica->sys_reg[addr / 4] = val;
+}
+
+static void aica_sys_reg_write(struct aica *aica, addr32_t addr,
+                               void const *val_in, unsigned n_bytes,
+                               bool from_sh4) {
+#ifdef INVARANTS
+    if (addr <= 0x7fff) {
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+#endif
+
+    memcpy(((uint8_t*)aica->sys_reg) + addr, val_in, n_bytes);
+    aica_sys_reg_post_write(aica, addr / 4, from_sh4);
 }
 
 static void aica_sys_channel_read(struct aica *aica, void *dst,
@@ -521,8 +559,11 @@ static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
         return ret;
     }
 
-    if (addr >= 0x2800 && addr <= 0x2fff)
-        return aica_sys_reg_read(aica, addr, from_sh4);
+    if (addr >= 0x2800 && addr <= 0x2fff) {
+        uint32_t ret;
+        aica_sys_reg_read(aica, addr, &ret, sizeof(ret), from_sh4);
+        return ret;
+    }
 
     error_set_address(addr);
     error_set_length(4);
@@ -554,7 +595,7 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     }
 
     if (addr >= 0x2800 && addr <= 0x2fff) {
-        aica_sys_reg_write(aica, addr, val, from_sh4);
+        aica_sys_reg_write(aica, addr, &val, sizeof(val), from_sh4);
     } else {
         error_set_address(addr);
         error_set_length(4);
@@ -564,7 +605,7 @@ static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 
 static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
-    /* bool from_sh4 = (addr & 0x00f00000) == 0x00700000; */
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
 
@@ -589,8 +630,11 @@ static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
         return ret;
     }
 
-    /* if (addr >= 0x2800 && addr <= 0x2fff) */
-    /*     return aica_sys_reg_read(aica, addr, from_sh4); */
+    if (addr >= 0x2800 && addr <= 0x2fff) {
+        uint16_t ret;
+        aica_sys_reg_read(aica, addr, &ret, sizeof(ret), from_sh4);
+        return ret;
+    }
 
     error_set_address(addr);
     error_set_length(2);
@@ -599,75 +643,7 @@ static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt) {
 
 static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
-    /* bool from_sh4 = (addr & 0x00f00000) == 0x00700000; */
-
-    addr &= AICA_SYS_MASK;
-
-    if (addr <= 0x1fff) {
-        // channel data
-        aica_sys_channel_write(aica, &val, addr, sizeof(val));
-        return;
-    }
-
-    if (addr <= 0x2044) {
-        // DSP mixer
-        aica_dsp_mixer_write(aica, &val, addr, sizeof(val));
-        return;
-    }
-
-    if (addr >= 0x3000 && addr <= 0x7fff) {
-        // DSP registers
-        aica_dsp_reg_write(aica, &val, addr, sizeof(val));
-        return;
-    }
-
-    /*
-     * TODO: implement a 2-byte version of aica_sys_reg_write.  Beware of
-     * writes to addresses which are not 4-byte aligned.
-     */
-    error_set_address(addr);
-    error_set_length(2);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-}
-
-static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
-    struct aica *aica = (struct aica*)ctxt;
-    /* bool from_sh4 = (addr & 0x00f00000) == 0x00700000; */
-
-    addr &= AICA_SYS_MASK;
-
-    if (addr < 0x1fff) {
-        // Channel registers
-        uint8_t ret;
-        aica_sys_channel_read(aica, &ret, addr, sizeof(ret));
-        return ret;
-    }
-
-    if (addr <= 0x2044) {
-        // DSP mixer
-        uint8_t ret;
-        aica_dsp_mixer_read(aica, &ret, addr, sizeof(ret));
-        return ret;
-    }
-
-    if (addr >= 0x3000 && addr <= 0x7fff) {
-        // DSP registers
-        uint8_t ret;
-        aica_dsp_reg_read(aica, &ret, addr, sizeof(ret));
-        return ret;
-    }
-
-    /* if (addr >= 0x2800 && addr <= 0x2fff) */
-        /* return aica_sys_reg_read(aica, addr, from_sh4); */
-
-    error_set_address(addr);
-    error_set_length(1);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-}
-
-static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
-    struct aica *aica = (struct aica*)ctxt;
-    /* bool from_sh4 = (addr & 0x00f00000) == 0x00700000; */
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
     addr &= AICA_SYS_MASK;
 
@@ -690,52 +666,78 @@ static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     }
 
     if (addr >= 0x2800 && addr <= 0x2fff) {
-        /*
-         * software running on the ARM7 has an annoying tendency to perform
-         * 1-byte writes to certain registers at unaligned addresses.
-         * Presumably the unused bytes are unaffected, but IDK.
-         *
-         * Most of the time it does 4-byte reads/writes which are 4-byte
-         * aligned; the registers handled below are the only ones I know where
-         * it does unaligned and/or 1-byte writes
-         *
-         * TODO: Figure out a way to merge this with the code in
-         * aica_sys_reg_write.  Also confirm that the untouched bytes are
-         * preserved and not cleared by a zero-extend.
-         */
-        unsigned which_reg = 4 * (addr / 4);
-        __attribute__((unused)) unsigned byte_offs = addr % 4;
-        switch (which_reg) {
-        case AICA_MASTER_VOLUME:
-            LOG_DBG("Write 0x%02x (1-byte) to MASTER_VOLUME (offset %u "
-                    "bytes)\n", (unsigned)val, byte_offs);
-            break;
-        case AICA_CHANINFOREQ:
-            LOG_DBG("Write 0x%02x (1-byte) to AICA_CHANINFOREQ (offset %u "
-                    "bytes)\n", (unsigned)val, byte_offs);
-            break;
-        case AICA_SCILV0:
-            LOG_DBG("Write 0x%02x (1-byte) to AICA_SCILV0 (offset %u "
-                    "bytes)\n", (unsigned)val, byte_offs);
-            break;
-        case AICA_SCILV1:
-            LOG_DBG("Write 0x%02x (1-byte) to AICA_SCILV1 (offset %u "
-                    "bytes)\n", (unsigned)val, byte_offs);
-            break;
-        case AICA_SCILV2:
-            LOG_DBG("Write 0x%02x (1-byte) to AICA_SCILV2 (offset %u "
-                    "bytes)\n", (unsigned)val, byte_offs);
-            break;
-        case AICA_INTCLEAR:
-            LOG_DBG("Write 0x%02x (1-byte) to AICA_INTCLEAR (offset %u "
-                    "bytes)\n", (unsigned)val, byte_offs);
-            break;
-        default:
-            error_set_address(addr);
-            error_set_length(1);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        ((uint8_t*)aica->sys_reg)[addr] = val;
+        aica_sys_reg_write(aica, addr, &val, sizeof(val), from_sh4);
+    } else {
+        error_set_address(addr);
+        error_set_length(2);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
+    struct aica *aica = (struct aica*)ctxt;
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
+
+    addr &= AICA_SYS_MASK;
+
+    if (addr < 0x1fff) {
+        // Channel registers
+        uint8_t ret;
+        aica_sys_channel_read(aica, &ret, addr, sizeof(ret));
+        return ret;
+    }
+
+    if (addr <= 0x2044) {
+        // DSP mixer
+        uint8_t ret;
+        aica_dsp_mixer_read(aica, &ret, addr, sizeof(ret));
+        return ret;
+    }
+
+    if (addr >= 0x3000 && addr <= 0x7fff) {
+        // DSP registers
+        uint8_t ret;
+        aica_dsp_reg_read(aica, &ret, addr, sizeof(ret));
+        return ret;
+    }
+
+    if (addr >= 0x2800 && addr <= 0x2fff) {
+        uint8_t ret;
+        aica_sys_reg_read(aica, addr, &ret, sizeof(ret), from_sh4);
+        return ret;
+    }
+
+    error_set_address(addr);
+    error_set_length(1);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    struct aica *aica = (struct aica*)ctxt;
+    bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
+
+    addr &= AICA_SYS_MASK;
+
+    if (addr <= 0x1fff) {
+        // channel data
+        aica_sys_channel_write(aica, &val, addr, sizeof(val));
+        return;
+    }
+
+    if (addr <= 0x2044) {
+        // DSP mixer
+        aica_dsp_mixer_write(aica, &val, addr, sizeof(val));
+        return;
+    }
+
+    if (addr >= 0x3000 && addr <= 0x7fff) {
+        // DSP registers
+        aica_dsp_reg_write(aica, &val, addr, sizeof(val));
+        return;
+    }
+
+    if (addr >= 0x2800 && addr <= 0x2fff) {
+        aica_sys_reg_write(aica, addr, &val, sizeof(val), from_sh4);
     } else {
         error_set_address(addr);
         error_set_length(1);
