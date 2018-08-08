@@ -24,32 +24,38 @@
 
 // pix_conv.c: The future home of all texture and pixel conversion functions
 
-// converts a given YUV value to 24-bit RGB
+/*
+ * converts a given YUV value to 24-bit RGB
+ * The source for these values is the wikipedia article on YUV:
+ * https://en.wikipedia.org/wiki/YUV#Y′UV444_to_RGB888_conversion
+ */
 void yuv_to_rgb(uint8_t *rgb_out, unsigned lum,
                 unsigned chrom_b, unsigned chrom_r) {
     double yuv[3] = {
-        lum / 255.0, chrom_b / 255.0, chrom_r / 255.0
+        lum, chrom_b, chrom_r
     };
     double rgb[3] = {
-        yuv[0] + (11.0 / 8.0) * yuv[2] - 0.5,
-        yuv[0] - 0.25 * (11.0 / 8.0) * (yuv[1] - 0.5) -
-        0.5 * (11.0 / 8.0) * (yuv[2] - 0.5),
-        yuv[0] + 1.25 * (11.0 / 8.0) * (yuv[1] - 0.5)
+        yuv[0] + 1.402 *  (yuv[2] - 128),
+        yuv[0] - 0.344 * (yuv[1] - 128) - 0.714 * (yuv[2] - 128),
+        yuv[0] + 1.772 * (yuv[1] - 128)
     };
 
-    unsigned red = rgb[0] * 255.0;
-    unsigned green = rgb[1] * 255.0;
-    unsigned blue = rgb[2] * 255.0;
-    if (red > 255)
-        red = 255;
-    if (green > 255)
-        green = 255;
-    if (blue > 255)
-        blue = 255;
+    if (rgb[0] < 0)
+        rgb[0] = 0;
+    else if (rgb[0] > 255)
+        rgb[0] = 255;
+    if (rgb[1] < 0)
+        rgb[1] = 0;
+    else if (rgb[1] > 255)
+        rgb[1] = 255;
+    if (rgb[2] < 0)
+        rgb[2] = 0;
+    else if (rgb[2] > 255)
+        rgb[2] = 255;
 
-    rgb_out[0] = (uint8_t)red;
-    rgb_out[1] = (uint8_t)green;
-    rgb_out[2] = (uint8_t)blue;
+    rgb_out[0] = (uint8_t)rgb[0];
+    rgb_out[1] = (uint8_t)rgb[1];
+    rgb_out[2] = (uint8_t)rgb[2];
 }
 
 void conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
