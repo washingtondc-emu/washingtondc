@@ -128,9 +128,10 @@ static void pvr2_yuv_macroblock(void) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
     if (pvr2_yuv.cur_macroblock_y >= pvr2_yuv.macroblock_count_y) {
+        // TODO: should reset to zero here
         LOG_ERROR("pvr2_yuv.cur_macroblock_y is %u\n", pvr2_yuv.cur_macroblock_y);
         LOG_ERROR("pvr2_yuv.macroblock_count_y is %u\n", pvr2_yuv.macroblock_count_y);
-        RAISE_ERROR(ERROR_INTEGRITY);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     unsigned row, col;
@@ -180,10 +181,13 @@ static void pvr2_yuv_macroblock(void) {
      * TODO: how to know the output linestride?  For now it is hardocoded to
      * 1024 bytes (512 pixels) because that is what NBA2K expects.  Maybe it's
      * 16 * macroblock_count_x * 2 bytes rounded up to next power of two?
+     *
+     * logically you'd expect the answer to be
+     * (2 * 16 * pvr2_yuv.cur_macroblock_x) bytes, but NBA2K clearly needs it to
+     * be 1024 bytes...
      */
 
-    /* unsigned linestride = 8 * sizeof(uint32_t) * pvr2_yuv.macroblock_count_x ; */
-    unsigned linestride = 512 * 2; //DO NOT COMMIT
+    unsigned linestride = 512 * 2;
     unsigned macroblock_offs = linestride * 16 * pvr2_yuv.cur_macroblock_y +
         pvr2_yuv.cur_macroblock_x * 8 * sizeof(uint32_t);
 
