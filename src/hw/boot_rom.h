@@ -40,19 +40,6 @@ struct boot_rom {
 void boot_rom_init(struct boot_rom *rom, char const *path);
 void boot_rom_cleanup(struct boot_rom *rom);
 
-// consider yourself warned: these functions don't do bounds-checking
-uint8_t boot_rom_read_8(addr32_t addr, void *ctxt);
-uint16_t boot_rom_read_16(addr32_t addr, void *ctxt);
-uint32_t boot_rom_read_32(addr32_t addr, void *ctxt);
-float boot_rom_read_float(addr32_t addr, void *ctxt);
-double boot_rom_read_double(addr32_t addr, void *ctxt);
-
-void boot_rom_write_8(addr32_t addr, uint8_t val, void *ctxt);
-void boot_rom_write_16(addr32_t addr, uint16_t val, void *ctxt);
-void boot_rom_write_32(addr32_t addr, uint32_t val, void *ctxt);
-void boot_rom_write_float(addr32_t addr, float val, void *ctxt);
-void boot_rom_write_double(addr32_t addr, double val, void *ctxt);
-
 extern struct memory_interface boot_rom_intf;
 
 #endif
