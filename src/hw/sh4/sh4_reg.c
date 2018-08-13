@@ -31,6 +31,7 @@
 #include "sh4.h"
 #include "log.h"
 #include "jit/code_cache.h"
+#include "config.h"
 
 static struct avl_tree sh4_reg_tree;
 
@@ -665,7 +666,8 @@ static void
 sh4_ccr_write_handler(Sh4 *sh4,
                       struct Sh4MemMappedReg const *reg_info,
                       sh4_reg_val val) {
-    code_cache_invalidate_all();
+    if (config_get_jit())
+        code_cache_invalidate_all();
     sh4->reg[SH4_REG_CCR] = val;
 }
 

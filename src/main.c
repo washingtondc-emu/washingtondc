@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
 #endif
 
     config_set_inline_mem(inline_mem);
-    config_set_jit(enable_jit);
+    config_set_jit(enable_jit || enable_native_jit);
 
 #ifdef ENABLE_JIT_X86_64
     config_set_native_jit(enable_native_jit);

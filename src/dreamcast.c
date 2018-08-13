@@ -334,7 +334,8 @@ static void run_one_frame(void) {
     while (!end_of_frame) {
         dc_clock_run_timeslice(&sh4_clock);
         dc_clock_run_timeslice(&arm7_clock);
-        code_cache_gc();
+        if (config_get_jit())
+            code_cache_gc();
     }
     end_of_frame = false;
 }
@@ -366,7 +367,7 @@ static sh4_backend_func select_sh4_backend(void) {
 
 #ifdef ENABLE_JIT_X86_64
     bool const native_mode = config_get_native_jit();
-    bool const jit = config_get_jit() || native_mode;
+    bool const jit = config_get_jit();
 
     if (jit) {
         if (native_mode)
