@@ -161,7 +161,16 @@ sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
         deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
 #endif
         op_func(sh4, oa);
-        sh4->reg[SH4_REG_PC] += 2;
+
+        /*
+         * TRAPA is not supposed to increment the PC.  Ideally it's supposed to
+         * jump to an exception handler, but since WashDC implements its own
+         * debugger, the emulator needs to handle TRAPA itself.  remote GDB
+         * expects the PC that it receives from the stub to always point to the
+         * TRAPA instruciton and not the instruction after the TRAPA.
+         */
+        if (sh4_inst_increments_pc(inst))
+            sh4->reg[SH4_REG_PC] += 2;
 
 #ifdef ENABLE_DEBUGGER
         if (!sh4->aborted_operation) {

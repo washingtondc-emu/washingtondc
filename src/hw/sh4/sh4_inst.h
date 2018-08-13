@@ -33,6 +33,17 @@
 struct Sh4;
 typedef struct Sh4 Sh4;
 
+/*
+ * this function returns true if the given instruction should increment the PC.
+ * This function is not performant, and should only be called when the debugger
+ * is being used.  For now it only handles TRAPA, but it may need to handle
+ * SLEEP as well.
+ */
+static inline bool sh4_inst_increments_pc(inst_t inst) {
+    // TRAPA
+    return (inst & 0xff00) != 0xc300;
+}
+
 union Sh4OpArgs {
     inst_t inst;
 
