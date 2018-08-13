@@ -44,13 +44,14 @@ void memory_map_cleanup(struct memory_map *map) {
                                                                         \
         unsigned region_no;                                             \
         for (region_no = 0; region_no < map->n_regions; region_no++) {  \
-            uint32_t range_mask = map->regions[region_no].range_mask;   \
-            if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
-                (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
-                uint32_t mask = map->regions[region_no].mask;           \
-                void *ctxt = map->regions[region_no].ctxt;              \
-                return map->regions[region_no].intf->read##type_postfix(addr & mask, \
-                                                                        ctxt); \
+            struct memory_map_region *reg = map->regions + region_no;   \
+            uint32_t range_mask = reg->range_mask;                      \
+            if ((first_addr & range_mask) >= reg->first_addr &&         \
+                (last_addr & range_mask) <= reg->last_addr) {           \
+                struct memory_interface const *intf = reg->intf;        \
+                uint32_t mask = reg->mask;                              \
+                void *ctxt = reg->ctxt;                                 \
+                return intf->read##type_postfix(addr & mask, ctxt);     \
             }                                                           \
         }                                                               \
                                                                         \
@@ -74,13 +75,19 @@ MEMORY_MAP_READ_TMPL(double, double)
                                                                         \
         unsigned region_no;                                             \
         for (region_no = 0; region_no < map->n_regions; region_no++) {  \
-            uint32_t range_mask = map->regions[region_no].range_mask;   \
-            if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
-                (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
-                uint32_t mask = map->regions[region_no].mask;           \
-                void *ctxt = map->regions[region_no].ctxt;              \
-                *val = map->regions[region_no].intf->read##type_postfix(addr & mask, \
-                                                                        ctxt); \
+            struct memory_map_region *reg = map->regions + region_no;   \
+            uint32_t range_mask = reg->range_mask;                      \
+            if ((first_addr & range_mask) >= reg->first_addr &&         \
+                (last_addr & range_mask) <= reg->last_addr) {           \
+                struct memory_interface const *intf = reg->intf;        \
+                uint32_t mask = reg->mask;                              \
+                void *ctxt = reg->ctxt;                                 \
+                if (intf->try_read##type_postfix) {                     \
+                    return intf->try_read##type_postfix(addr & mask,    \
+                                                        val, ctxt);     \
+                } else {                                                \
+                    *val = intf->read##type_postfix(addr & mask, ctxt); \
+                }                                                       \
                 return 0;                                               \
             }                                                           \
         }                                                               \
@@ -102,13 +109,14 @@ MEMORY_MAP_TRY_READ_TMPL(double, double)
                                                                         \
         unsigned region_no;                                             \
         for (region_no = 0; region_no < map->n_regions; region_no++) {  \
-            uint32_t range_mask = map->regions[region_no].range_mask;   \
-            if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
-                (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
-                uint32_t mask = map->regions[region_no].mask;           \
-                void *ctxt = map->regions[region_no].ctxt;              \
-                map->regions[region_no].intf->write##type_postfix(addr & mask, \
-                                                                  val, ctxt); \
+            struct memory_map_region *reg = map->regions + region_no;   \
+            uint32_t range_mask = reg->range_mask;                      \
+            if ((first_addr & range_mask) >= reg->first_addr &&         \
+                (last_addr & range_mask) <= reg->last_addr) {           \
+                struct memory_interface const *intf = reg->intf;        \
+                uint32_t mask = reg->mask;                              \
+                void *ctxt = reg->ctxt;                                 \
+                intf->write##type_postfix(addr & mask, val, ctxt);      \
                 return;                                                 \
             }                                                           \
         }                                                               \
@@ -132,13 +140,19 @@ MEM_MAP_WRITE_TMPL(double, double)
                                                                         \
         unsigned region_no;                                             \
         for (region_no = 0; region_no < map->n_regions; region_no++) {  \
-            uint32_t range_mask = map->regions[region_no].range_mask;   \
-            if ((first_addr & range_mask) >= map->regions[region_no].first_addr && \
-                (last_addr & range_mask) <= map->regions[region_no].last_addr) { \
-                uint32_t mask = map->regions[region_no].mask;           \
-                void *ctxt = map->regions[region_no].ctxt;              \
-                map->regions[region_no].intf->write##type_postfix(addr & mask, \
-                                                                  val, ctxt); \
+            struct memory_map_region *reg = map->regions + region_no;   \
+            uint32_t range_mask = reg->range_mask;                      \
+            if ((first_addr & range_mask) >= reg->first_addr &&         \
+                (last_addr & range_mask) <= reg->last_addr) {           \
+                struct memory_interface const *intf = reg->intf;        \
+                uint32_t mask = reg->mask;                              \
+                void *ctxt = reg->ctxt;                                 \
+                if (intf->try_write##type_postfix) {                    \
+                    return intf->try_write##type_postfix(addr & mask,   \
+                                                         val, ctxt);    \
+                } else {                                                \
+                    intf->write##type_postfix(addr & mask, val, ctxt);  \
+                }                                                       \
                 return 0;                                               \
             }                                                           \
         }                                                               \
