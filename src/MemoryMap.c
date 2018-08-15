@@ -36,6 +36,14 @@ void memory_map_cleanup(struct memory_map *map) {
     memset(map, 0, sizeof(*map));
 }
 
+#ifdef ENABLE_WATCHPOINTS
+#define CHECK_R_WATCHPOINT(addr, type) debug_is_r_watch(map, addr, sizeof(type))
+#define CHECK_W_WATCHPOINT(addr, type) debug_is_w_watch(map, addr, sizeof(type))
+#else
+#define CHECK_R_WATCHPOINT(addr, type)
+#define CHECK_W_WATCHPOINT(addr, type)
+#endif
+
 #define MEMORY_MAP_READ_TMPL(type, type_postfix)                        \
     type memory_map_read_##type_postfix(struct memory_map *map,         \
                                         uint32_t addr) {                \
@@ -51,6 +59,9 @@ void memory_map_cleanup(struct memory_map *map) {
                 struct memory_interface const *intf = reg->intf;        \
                 uint32_t mask = reg->mask;                              \
                 void *ctxt = reg->ctxt;                                 \
+                                                                        \
+                CHECK_R_WATCHPOINT(addr, type);                         \
+                                                                        \
                 return intf->read##type_postfix(addr & mask, ctxt);     \
             }                                                           \
         }                                                               \
@@ -116,6 +127,9 @@ MEMORY_MAP_TRY_READ_TMPL(double, double)
                 struct memory_interface const *intf = reg->intf;        \
                 uint32_t mask = reg->mask;                              \
                 void *ctxt = reg->ctxt;                                 \
+                                                                        \
+                CHECK_W_WATCHPOINT(addr, type);                         \
+                                                                        \
                 intf->write##type_postfix(addr & mask, val, ctxt);      \
                 return;                                                 \
             }                                                           \

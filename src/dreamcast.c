@@ -524,9 +524,9 @@ static void run_to_next_sh4_event_debugger(void *ctxt) {
      * iteration?
      */
 
-    while (tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
-        dreamcast_check_debugger();
+    dreamcast_check_debugger();
 
+    while (tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
@@ -554,6 +554,8 @@ static void run_to_next_sh4_event_debugger(void *ctxt) {
         if (cycles_after > tgt_stamp)
             cycles_after = tgt_stamp;
         clock_set_cycle_stamp(&sh4_clock, cycles_after);
+
+        dreamcast_check_debugger();
     }
 }
 

@@ -1787,39 +1787,55 @@ static void deferred_cmd_do_remove_break(struct deferred_cmd *cmd) {
 }
 
 static void deferred_cmd_do_add_write_watch(struct deferred_cmd *cmd) {
+#ifdef ENABLE_WATCHPOINTS
     addr32_t addr = cmd->meta.add_write_watch.addr;
     unsigned len = cmd->meta.add_write_watch.len;
     if (debug_add_w_watch(addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
+#else
+    cmd->status = DEFERRED_CMD_FAILURE;
+#endif
 }
 
 static void deferred_cmd_do_remove_write_watch(struct deferred_cmd *cmd) {
+#ifdef ENABLE_WATCHPOINTS
     addr32_t addr = cmd->meta.remove_write_watch.addr;
     unsigned len = cmd->meta.remove_write_watch.len;
     if (debug_remove_w_watch(addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
+#else
+    cmd->status = DEFERRED_CMD_FAILURE;
+#endif
 }
 
 static void deferred_cmd_do_add_read_watch(struct deferred_cmd *cmd) {
+#ifdef ENABLE_WATCHPOINTS
     addr32_t addr = cmd->meta.add_read_watch.addr;
     unsigned len = cmd->meta.add_read_watch.len;
     if (debug_add_r_watch(addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
+#else
+    cmd->status = DEFERRED_CMD_FAILURE;
+#endif
 }
 
 static void deferred_cmd_do_remove_read_watch(struct deferred_cmd *cmd) {
+#ifdef ENABLE_WATCHPOINTS
     addr32_t addr = cmd->meta.remove_read_watch.addr;
     unsigned len = cmd->meta.remove_read_watch.len;
     if (debug_remove_r_watch(addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
+#else
+    cmd->status = DEFERRED_CMD_FAILURE;
+#endif
 }
 
 static void deferred_cmd_run(void) {

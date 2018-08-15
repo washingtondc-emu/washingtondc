@@ -68,6 +68,7 @@ if(UNIX)
 endif()
 
 option(ENABLE_DEBUGGER "Enable the debugger" ON)
+option(ENABLE_WATCHPOINTS "Enable debugger watchpoints" OFF)
 option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
 option(INVARIANTS "runtime sanity checks that should never fail" OFF)
 option(SH4_FPU_PEDANTIC "enable FPU error-checking which most games *probably* don't use" OFF)
@@ -316,6 +317,9 @@ if (ENABLE_DEBUGGER)
                                    "${PROJECT_SOURCE_DIR}/src/debugger.c"
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.h"
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.c")
+    if (ENABLE_WATCHPOINTS)
+        add_definitions(-DENABLE_WATCHPOINTS)
+    endif()
 endif()
 
 if (DEEP_SYSCALL_TRACE)

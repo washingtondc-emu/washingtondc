@@ -178,6 +178,8 @@ memory_map_write_double(struct memory_map *map, uint32_t addr, double val);
  * gone wrong.  This is primarily intended for the benefit of the debugger so
  * that an invalid read coming from the remote GDB frontend doesn't needlessly
  * crash the system.
+ *
+ * Also, these functions do not check for watchpoints.
  */
 int
 memory_map_try_write_8(struct memory_map *map, uint32_t addr, uint8_t val);
@@ -196,6 +198,8 @@ memory_map_try_write_double(struct memory_map *map, uint32_t addr, double val);
  * gone wrong.  This is primarily intended for the benefit of the debugger so
  * that an invalid read coming from the remote GDB frontend doesn't needlessly
  * crash the system.
+ *
+ * Also, these functions do not check for watchpoints.
  */
 int
 memory_map_try_read_8(struct memory_map *map, uint32_t addr, uint8_t *val);

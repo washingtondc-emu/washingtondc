@@ -139,6 +139,24 @@ void debug_cleanup(void) {
     frontend_on_cleanup();
 }
 
+static inline bool debug_is_at_watch(void) {
+#ifdef ENABLE_WATCHPOINTS
+    if (dbg.cur_state == DEBUG_STATE_PRE_WATCH) {
+        Sh4 *sh4 = dreamcast_get_cpu();
+        printf("DEBUGGER: NOW ENTERING WATCHPOINT BREAK AT PC=0x%08x\n",
+               (unsigned)sh4->reg[SH4_REG_PC]);
+        if (dbg.is_read_watchpoint)
+            frontend_on_read_watchpoint(dbg.watchpoint_addr);
+        else
+            frontend_on_write_watchpoint(dbg.watchpoint_addr);
+        dbg_state_transition(DEBUG_STATE_WATCH);
+        dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
+        return true;
+    }
+#endif
+    return false;
+}
+
 void debug_check_break(Sh4 *sh4) {
     /*
      * clear the flag now, but don't actually check it until the end of the
@@ -178,15 +196,8 @@ void debug_check_break(Sh4 *sh4) {
         dbg_state_transition(DEBUG_STATE_NORM);
     }
 
-    if (dbg.cur_state == DEBUG_STATE_PRE_WATCH) {
-        if (dbg.is_read_watchpoint)
-            frontend_on_read_watchpoint(dbg.watchpoint_addr);
-        else
-            frontend_on_write_watchpoint(dbg.watchpoint_addr);
-        dbg_state_transition(DEBUG_STATE_WATCH);
-        dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
+    if (debug_is_at_watch())
         return;
-    }
 
     for (unsigned bp_idx = 0; bp_idx < DEBUG_N_BREAKPOINTS; bp_idx++) {
         reg32_t pc = sh4->reg[SH4_REG_PC];
@@ -305,12 +316,17 @@ int debug_remove_w_watch(addr32_t addr, unsigned len) {
     return EINVAL;
 }
 
-bool debug_is_w_watch(addr32_t addr, unsigned len) {
+bool debug_is_w_watch(struct memory_map const *map, addr32_t addr, unsigned len) {
     if (dbg.cur_state != DEBUG_STATE_NORM)
         return false;
 
     addr32_t access_first = addr;
     addr32_t access_last = addr + (len - 1);
+
+    struct Sh4 *sh4 = dreamcast_get_cpu();
+
+    if (map != sh4->mem.map)
+        return false;
 
     for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++) {
         if (dbg.w_watchpoint_enable[idx]) {
@@ -324,8 +340,9 @@ bool debug_is_w_watch(addr32_t addr, unsigned len) {
                 dbg_state_transition(DEBUG_STATE_PRE_WATCH);
                 dbg.watchpoint_addr = addr;
                 dbg.is_read_watchpoint = false;
-                DBG_TRACE("write-watchpoint at 0x%08x triggered!\n",
-                          (unsigned)addr);
+                printf("DEBUGGER: write-watchpoint at 0x%08x triggered "
+                       "(PC=0x%08x)!\n",
+                       (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
                 return true;
             }
         }
@@ -333,8 +350,13 @@ bool debug_is_w_watch(addr32_t addr, unsigned len) {
     return false;
 }
 
-bool debug_is_r_watch(addr32_t addr, unsigned len) {
+bool debug_is_r_watch(struct memory_map const *map, addr32_t addr, unsigned len) {
     if (dbg.cur_state != DEBUG_STATE_NORM)
+        return false;
+
+    struct Sh4 *sh4 = dreamcast_get_cpu();
+
+    if (map != sh4->mem.map)
         return false;
 
     addr32_t access_first = addr;
@@ -352,8 +374,9 @@ bool debug_is_r_watch(addr32_t addr, unsigned len) {
                 dbg_state_transition(DEBUG_STATE_PRE_WATCH);
                 dbg.watchpoint_addr = addr;
                 dbg.is_read_watchpoint = true;
-                DBG_TRACE("read-watchpoint at 0x%08x triggered!\n",
-                          (unsigned)addr);
+                printf("DEBUGGER: read-watchpoint at 0x%08x triggered "
+                       "(PC=0x%08x)!\n",
+                       (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
                 return true;
             }
         }

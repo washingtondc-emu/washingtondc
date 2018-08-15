@@ -142,8 +142,10 @@ int debug_add_w_watch(addr32_t addr, unsigned len);
 int debug_remove_w_watch(addr32_t addr, unsigned len);
 
 // return true if the given addr and len trigger a watchpoint
-bool debug_is_w_watch(addr32_t addr, unsigned len);
-bool debug_is_r_watch(addr32_t addr, unsigned len);
+bool
+debug_is_w_watch(struct memory_map const *map, addr32_t addr, unsigned len);
+bool
+debug_is_r_watch(struct memory_map const *map, addr32_t addr, unsigned len);
 
 /*
  * called by the dreamcast code to notify the debugger that a new instruction
