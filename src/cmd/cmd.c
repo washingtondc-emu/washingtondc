@@ -470,6 +470,10 @@ static int cmd_run_frame(int argc, char **argv) {
         dc_request_frame_stop();
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_SUSPEND);
         return 0;
+    } else if (dc_state == DC_STATE_NOT_RUNNING) {
+        dc_request_frame_stop();
+        dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
+        return 0;
     }
 
     cons_puts("ERROR: unable to resume execution because WashingtonDC is not "
