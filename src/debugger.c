@@ -107,11 +107,14 @@ static atomic_flag not_detach = ATOMIC_FLAG_INIT;
 
 static void frontend_attach(void);
 static void frontend_on_break(void);
-static void frontend_on_read_watchpoint(addr32_t addr);
-static void frontend_on_write_watchpoint(addr32_t addr);
 static void frontend_on_softbreak(inst_t inst, addr32_t addr);
 static void frontend_on_cleanup(void);
 static void frontend_run_once(void);
+
+#ifdef ENABLE_WATCHPOINTS
+static void frontend_on_read_watchpoint(addr32_t addr);
+static void frontend_on_write_watchpoint(addr32_t addr);
+#endif
 
 #ifdef DEBUGGER_LOG_VERBOSE
 // don't call this directly, use the DBG_TRACE macro instead
@@ -419,6 +422,7 @@ static void frontend_on_break(void) {
         dbg.frontend->on_break(dbg.frontend->arg);
 }
 
+#ifdef ENABLE_WATCHPOINTS
 static void frontend_on_read_watchpoint(addr32_t addr) {
     if (dbg.frontend && dbg.frontend->on_read_watchpoint)
         dbg.frontend->on_read_watchpoint(addr, dbg.frontend->arg);
@@ -428,6 +432,7 @@ static void frontend_on_write_watchpoint(addr32_t addr) {
     if (dbg.frontend->on_write_watchpoint)
         dbg.frontend->on_write_watchpoint(addr, dbg.frontend->arg);
 }
+#endif
 
 static void frontend_on_softbreak(inst_t inst, addr32_t addr) {
     if (dbg.frontend->on_softbreak)
