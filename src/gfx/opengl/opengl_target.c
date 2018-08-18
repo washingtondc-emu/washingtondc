@@ -84,9 +84,13 @@ void opengl_target_begin(unsigned width, unsigned height, int tgt_handle) {
                      GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-        glViewport(0, 0, fbo_width, fbo_height);
     }
+
+    /*
+     * it is guaranteed that fbo_width == width && fbo_height == height due to
+     * the above if statement.
+     */
+    glViewport(0, 0, width, height);
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                            GL_TEXTURE_2D, color_buf_tex, 0);
