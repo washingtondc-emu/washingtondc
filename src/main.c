@@ -36,6 +36,7 @@
 #include "log.h"
 #include "title.h"
 #include "config_file.h"
+#include "sound/sound.h"
 
 #ifdef USE_LIBEVENT
 #include "io/io_thread.h"
@@ -277,6 +278,8 @@ int main(int argc, char **argv) {
     win_init(win_width, win_height);
     gfx_init(win_width, win_height);
 
+    sound_init();
+
 #ifdef USE_LIBEVENT
     io_thread_launch();
 #endif
@@ -286,6 +289,7 @@ int main(int argc, char **argv) {
 
     dreamcast_run();
 
+    sound_cleanup();
     gfx_cleanup();
 
     LOG_INFO("killing the window...\n");

@@ -68,6 +68,9 @@ enum error_type {
     /* more data than we can handle */
     ERROR_OVERFLOW,
 
+    /* something beyond my control (library, system call, etc) failed. */
+    ERROR_EXT_FAILURE,
+
     ERROR_INVALID_FILE_LEN
 };
 

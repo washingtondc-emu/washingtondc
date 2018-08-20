@@ -141,6 +141,8 @@ static char const *error_type_string(enum error_type tp) {
         return "some mandatory parameter was not provided";
     case ERROR_OVERFLOW:
         return "out of buffer space";
+    case ERROR_EXT_FAILURE:
+        return "a failure occurred in a component WashingtonDC depends upon";
     default:
         return "Unknown error (this shouldn\'t happen)";
     }

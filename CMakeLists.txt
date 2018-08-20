@@ -296,7 +296,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/hostfile.h"
                 "${PROJECT_SOURCE_DIR}/src/hostfile.c"
                 "${PROJECT_SOURCE_DIR}/src/screenshot.h"
-                "${PROJECT_SOURCE_DIR}/src/screenshot.c")
+                "${PROJECT_SOURCE_DIR}/src/screenshot.c"
+                "${PROJECT_SOURCE_DIR}/src/sound/sound.h"
+                "${PROJECT_SOURCE_DIR}/src/sound/sound.c")
 
 if (ENABLE_TCP_CMD)
     set (sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/cmd/cmd.h"
@@ -313,7 +315,6 @@ if (ENABLE_TCP_SERIAL)
     set (sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/io/serial_server.h"
                                     "${PROJECT_SOURCE_DIR}/src/io/serial_server.c")
 endif()
-
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/main.c")
 
@@ -471,7 +472,8 @@ set(include_dirs "${OPENGL_INCLUDE_DIR}"
                  "${PROJECT_SOURCE_DIR}/external"
                  "${PROJECT_SOURCE_DIR}/external/glfw/include"
                  "${libpng_path}"
-                 "${zlib_path}")
+                 "${zlib_path}"
+                 "${PROJECT_SOURCE_DIR}/external/portaudio/include")
 
 if (ENABLE_DEBUGGER)
   set(include_dirs "${include_dirs}"
@@ -495,7 +497,8 @@ set(washingtondc_libs "m"
                       "glfw"
                       "glew"
                       "${OPENGL_gl_LIBRARY}"
-                      "pthread")
+                      "pthread"
+                      "portaudio")
 
 if (USE_LIBEVENT)
     add_definitions(-DUSE_LIBEVENT)
