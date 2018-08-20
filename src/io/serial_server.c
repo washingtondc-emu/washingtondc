@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -133,7 +133,9 @@ static void handle_read(struct bufferevent *bev, void *arg) {
         if (evbuffer_remove(read_buffer, &cur_byte, sizeof(cur_byte)) < 0)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
+        // TODO: it is possible for data to get dropped here.
         text_ring_produce(rxq, (char)cur_byte);
+
         sh4_scif_rx(srv.cpu);
     }
 
@@ -252,17 +254,24 @@ void serial_server_run(void) {
     }
 }
 
+// returns true if tx was successful, false otherwise
+static bool do_tx_char(struct text_ring *txq) {
+    if (text_ring_empty(txq))
+        return false;
+    char ch = text_ring_consume(txq);
+    evbuffer_add(srv.outbound, &ch, sizeof(ch));
+    return true;
+}
+
 static void drain_txq(void) {
     Sh4 *sh4 = dreamcast_get_cpu();
 
     // drain the txq
     struct text_ring *txq = &sh4->scif.txq;
-    bool was_empty = text_ring_empty(txq);
-    while (!text_ring_empty(txq)) {
-        char ch = text_ring_consume(txq);
-        evbuffer_add(srv.outbound, &ch, sizeof(ch));
-    }
-    if (srv.ready_to_write && !was_empty) {
+    bool did_tx = false;
+    while (do_tx_char(txq))
+        did_tx = true;
+    if (srv.ready_to_write && did_tx) {
         bufferevent_write_buffer(srv.bev, srv.outbound);
         srv.ready_to_write = false;
     }
