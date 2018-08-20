@@ -79,6 +79,97 @@ static inline bool rx_err_interrupt_enabled(Sh4 *sh4) {
     return (bool)(sh4->reg[SH4_REG_SCSCR2] & SH4_SCSCR2_REIE_MASK);
 }
 
+/*
+ * receive a character from the rxq into the rx_buf.
+ * This function will return true if there is more data to be received and there
+ * is space in the rx_buf to hold that data.  If the rx_buf is full or the rxq
+ * is empty, this function wil lreturn false.
+ *
+ * The return value of this function does not have a bearing on whether or not
+ * data was successfully fetched from the rxq.  It is possible for this function
+ * to successfully receive a char but still return false if there's no more data
+ * to be received or the rx_buf is full.
+ */
+static bool recv_char(struct sh4_scif *scif) {
+    if (scif->rx_buf_len >= SCIF_BUF_LEN)
+        return false;
+
+    struct text_ring *rxq = &scif->rxq;
+
+    if (text_ring_empty(rxq))
+        return false;
+
+    scif->rx_buf[scif->rx_buf_len++] = text_ring_consume(rxq);
+
+    return (!text_ring_empty(rxq)) && (scif->rx_buf_len < SCIF_BUF_LEN);
+}
+
+/*
+ * similar to recv_char, but for the txq.  This function moves a character from
+ * the tx_buf into the txq.  If there are more characters that can be moved into
+ * the txq, this function returns true; else it returns false.
+ */
+static bool send_char(struct sh4_scif *scif) {
+    if (scif->tx_buf_len <= 0)
+        return false;
+
+    struct text_ring *txq = &scif->txq;
+
+    text_ring_produce(txq, scif->tx_buf[0]);
+    memmove(scif->tx_buf, scif->tx_buf + 1,
+            (SCIF_BUF_LEN - 1) * sizeof(scif->tx_buf[0]));
+    scif->tx_buf_len--;
+
+    return scif->tx_buf_len;
+}
+
+//  get data in the rx_buf if possible
+static void fill_rx_buf(struct sh4_scif *scif) {
+    while (recv_char(scif))
+        ;
+}
+
+static void drain_tx_buf(struct sh4_scif *scif) {
+    while (send_char(scif))
+        ;
+}
+
+/*
+ * read a character from the rx_buf.  This function returns true if the
+ * character was successsfully read, else 0 (which would mean the rx_buf and
+ * rxq are both empty).
+ */
+static bool read_char(struct sh4_scif *scif, char *char_out) {
+    fill_rx_buf(scif);
+
+    if (scif->rx_buf_len > 0) {
+        *char_out = scif->rx_buf[0];
+        memmove(scif->rx_buf, scif->rx_buf + 1,
+                (SCIF_BUF_LEN - 1) * sizeof(scif->rx_buf[0]));
+        scif->rx_buf_len--;
+
+        fill_rx_buf(scif);
+
+        return true;
+    }
+
+    return false;
+}
+
+static bool write_char(struct sh4_scif *scif, char in) {
+    drain_tx_buf(scif);
+
+    if (scif->tx_buf_len < SCIF_BUF_LEN) {
+        scif->tx_buf[scif->tx_buf_len++] = in;
+
+        drain_tx_buf(scif);
+
+        return true;
+    }
+
+    return false;
+}
+
 static void check_rx_trig(Sh4 *sh4);
 static void check_tx_trig(Sh4 *sh4);
 static void check_rx_reset(Sh4 *sh4);
@@ -133,8 +224,8 @@ sh4_scfdr2_reg_read_handler(Sh4 *sh4,
                             struct Sh4MemMappedReg const *reg_info) {
     struct sh4_scif *scif = &sh4->scif;
 
-    size_t rx_sz = text_ring_len(&scif->rxq);
-    size_t tx_sz = text_ring_len(&scif->txq);
+    size_t rx_sz = scif->rx_buf_len;
+    size_t tx_sz = scif->tx_buf_len;
 
     if (rx_sz > 16)
         rx_sz = 16;
@@ -152,11 +243,10 @@ sh4_reg_val
 sh4_scfrdr2_reg_read_handler(Sh4 *sh4,
                              struct Sh4MemMappedReg const *reg_info) {
    struct sh4_scif *scif = &sh4->scif;
-   uint8_t val;
+   char val;
 
-   if (!text_ring_empty(&scif->rxq)) {
-       val = text_ring_consume(&scif->rxq);
-       if (text_ring_len(&sh4->scif.rxq) >= rx_fifo_trigger(sh4)) {
+   if (read_char(scif, &val)) {
+       if (scif->rx_buf_len >= rx_fifo_trigger(sh4)) {
            sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_DR_MASK;
            sh4->scif.dr_read = false;
        }
@@ -164,8 +254,8 @@ sh4_scfrdr2_reg_read_handler(Sh4 *sh4,
        return val;
    }
 
-    // sh4 spec says the value is undefined in this case
-    return 0;
+   // sh4 spec says the value is undefined in this case
+   return 0;
 }
 
 // this is called when the software wants to write to the SCIF's tx fifo
@@ -173,9 +263,11 @@ void
 sh4_scftdr2_reg_write_handler(Sh4 *sh4,
                               struct Sh4MemMappedReg const *reg_info,
                               sh4_reg_val val) {
-    if (sh4->scif.ser_srv_connected) {
+    struct sh4_scif *scif = &sh4->scif;
+    if (scif->ser_srv_connected) {
         uint8_t dat = val;
-        text_ring_produce(&sh4->scif.txq, (char)dat);
+        write_char(scif, (char)dat);
+
         serial_server_notify_tx_ready();
     }
 }
@@ -191,7 +283,10 @@ void sh4_scif_rx(Sh4 *sh4) {
 static void check_rx_trig(Sh4 *sh4) {
     unsigned rtrg = rx_fifo_trigger(sh4);
 
-    if (text_ring_len(&sh4->scif.rxq) >= rtrg) {
+    struct sh4_scif *scif = &sh4->scif;
+    fill_rx_buf(scif);
+
+    if (scif->rx_buf_len >= rtrg) {
         sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_RDF_MASK;
 
         if (rx_interrupt_enabled(sh4)) {
@@ -208,7 +303,7 @@ static void check_rx_trig(Sh4 *sh4) {
 static void check_tx_trig(Sh4 *sh4) {
     unsigned ttrg = tx_fifo_trigger(sh4);
 
-    if (text_ring_len(&sh4->scif.txq) <= ttrg) {
+    if (sh4->scif.tx_buf_len <= ttrg) {
         sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_TDFE_MASK;
 
         if (tx_interrupt_enabled(sh4)) {
@@ -224,8 +319,11 @@ static void check_tx_trig(Sh4 *sh4) {
 
 static void check_rx_reset(Sh4 *sh4) {
     if (sh4->reg[SH4_REG_SCFCR2] & SH4_SCFCR2_RFRST_MASK) {
-        while (!text_ring_empty(&sh4->scif.rxq))
-            text_ring_consume(&sh4->scif.rxq);
+        sh4->scif.rx_buf_len = 0;
+        char trash;
+        struct sh4_scif *scif = &sh4->scif;
+        while (read_char(scif, &trash))
+            ;
 
         sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_DR_MASK;
     }
@@ -324,14 +422,17 @@ void
 sh4_scfsr2_reg_write_handler(Sh4 *sh4,
                              struct Sh4MemMappedReg const *reg_info,
                              sh4_reg_val val) {
+    struct sh4_scif *scif = &sh4->scif;
     uint16_t new_val, orig_val;
 
     new_val = val;
 
     orig_val = sh4->reg[SH4_REG_SCFSR2];
 
-    size_t tx_sz = text_ring_len(&sh4->scif.txq);
-    size_t rx_sz = text_ring_len(&sh4->scif.rxq);
+    fill_rx_buf(scif);
+
+    size_t tx_sz = scif->tx_buf_len;
+    size_t rx_sz = scif->rx_buf_len;
 
     bool turning_off_tend = !(new_val & SH4_SCFSR2_TEND_MASK) &&
         (orig_val & SH4_SCFSR2_TEND_MASK);
@@ -373,19 +474,22 @@ sh4_scfsr2_reg_write_handler(Sh4 *sh4,
  * don't like solutions that rely on polling because it seems inefficient.
  */
 void sh4_scif_periodic(Sh4 *sh4) {
+    struct sh4_scif *scif = &sh4->scif;
+
+    fill_rx_buf(scif);
+    drain_tx_buf(scif);
+
     check_rx_reset(sh4);
     check_tx_reset(sh4);
     check_rx_trig(sh4);
     check_tx_trig(sh4);
 
-    if (text_ring_empty(&sh4->scif.txq)) {
+    if (scif->tx_buf_len == 0) {
         sh4->reg[SH4_REG_SCFSR2] |= SH4_SCFSR2_TEND_MASK;
     }
 
-    if (!text_ring_empty(&sh4->scif.rxq)) {
-        if (text_ring_len(&sh4->scif.rxq) >= rx_fifo_trigger(sh4))
-            sh4->reg[SH4_REG_SCFSR2] &= ~SH4_SCFSR2_DR_MASK;
-    }
+    if (scif->rx_buf_len >= rx_fifo_trigger(sh4))
+        sh4->reg[SH4_REG_SCFSR2] &= ~SH4_SCFSR2_DR_MASK;
 }
 
 static void sh4_scif_rxi_int_handler(struct SchedEvent *event) {

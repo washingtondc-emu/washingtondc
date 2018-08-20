@@ -59,10 +59,20 @@
  * with the Neo Geo Pocket stuff, that's a long way into the future.
  */
 
+#define SCIF_BUF_LEN 16
+
 struct sh4_scif {
     // for txq, the SCIF is the producer
     // for rxq, the SCIF is the consumer
     struct text_ring txq, rxq;
+
+    /*
+     * We dequeue stuff from txq and rxq as often as we can into these two
+     * buffers.
+     */
+    char tx_buf[SCIF_BUF_LEN];
+    char rx_buf[SCIF_BUF_LEN];
+    unsigned tx_buf_len, rx_buf_len;
 
     /*
      * For the DR, TEND, TDFE and RDF bits in SCFSR2, the SH4 spec states that
