@@ -256,11 +256,12 @@ void serial_server_run(void) {
 
 // returns true if tx was successful, false otherwise
 static bool do_tx_char(struct text_ring *txq) {
-    if (text_ring_empty(txq))
-        return false;
-    char ch = text_ring_consume(txq);
-    evbuffer_add(srv.outbound, &ch, sizeof(ch));
-    return true;
+    char ch;
+    if (text_ring_consume(txq, &ch)) {
+        evbuffer_add(srv.outbound, &ch, sizeof(ch));
+        return true;
+    }
+    return false;
 }
 
 static void drain_txq(void) {

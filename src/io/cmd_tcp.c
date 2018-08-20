@@ -220,10 +220,9 @@ static void on_check_tx_event(evutil_socket_t fd, short ev, void *arg) {
 
 // drain the tx_ring
 static void drain_tx(void) {
-    while (!text_ring_empty(&tx_ring)) {
-        char c = text_ring_consume(&tx_ring);
-
-        if (evbuffer_add(outbound_buf, &c, sizeof(c)) < 0)
+    char ch;
+    while (text_ring_consume(&tx_ring, &ch)) {
+        if (evbuffer_add(outbound_buf, &ch, sizeof(ch)) < 0)
             warnx("%s - evbuffer_add returned an error\n", __func__);
     }
 
@@ -244,19 +243,12 @@ void cmd_tcp_put_text(char const *txt) {
 /*
  * read a character from the tcp frontend and store it in *out
  *
- * if this returns false, then *out is invalid and the ring is empty.
- * otherwise *out is valid.  It might be empty, but you can only know by
- * calling cmd_tcp_get again
+ * returns true if the operation succeeded, else returns false
  *
  * this function gets called from the emu thread
  */
 bool cmd_tcp_get(char *out) {
-    bool is_empty = text_ring_empty(&rx_ring);
-
-    if (!is_empty)
-        *out = text_ring_consume(&rx_ring);
-
-    return !is_empty;
+    return text_ring_consume(&rx_ring, out);
 }
 
 static void listener_lock(void) {

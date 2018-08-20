@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,38 +27,38 @@
 
 #include "text_ring.h"
 
+static bool text_ring_empty(struct text_ring *ring);
+
 void text_ring_init(struct text_ring *ring) {
     ring->prod_idx = ring->cons_idx = 0;
 }
 
-void text_ring_produce(struct text_ring *ring, char ch) {
+bool text_ring_produce(struct text_ring *ring, char ch) {
     unsigned next_prod_idx = (ring->prod_idx + 1) & (TEXT_RING_LEN - 1);
 
     if (next_prod_idx == ring->cons_idx) {
         LOG_WARN("WARNING: text_ring character dropped\n");
-        return;
+        return false;
     }
 
     ring->buf[ring->prod_idx] = ch;
     ring->prod_idx = next_prod_idx;
+
+    return true;
 }
 
-char text_ring_consume(struct text_ring *ring) {
-    assert(!text_ring_empty(ring));
+bool text_ring_consume(struct text_ring *ring, char *outp) {
+    if (text_ring_empty(ring))
+        return false;
 
     char ch = ring->buf[ring->cons_idx];
 
     ring->cons_idx = (ring->cons_idx + 1) & (TEXT_RING_LEN - 1);
 
-    return ch;
+    *outp = ch;
+    return true;
 }
 
-bool text_ring_empty(struct text_ring *ring) {
+static bool text_ring_empty(struct text_ring *ring) {
     return ring->prod_idx == ring->cons_idx;
-}
-
-unsigned text_ring_len(struct text_ring *ring) {
-    if (ring->prod_idx < ring->cons_idx)
-        return TEXT_RING_LEN - ring->cons_idx + ring->prod_idx;
-    return ring->prod_idx - ring->cons_idx;
 }

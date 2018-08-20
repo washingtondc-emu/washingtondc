@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017. 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -44,13 +44,8 @@ struct text_ring {
 
 void text_ring_init(struct text_ring *ring);
 
-/* char text_ring_get_prod(struct text_ring *ring); */
-void text_ring_produce(struct text_ring *ring, char ch);
-
-bool text_ring_empty(struct text_ring *ring);
-
-unsigned text_ring_len(struct text_ring *ring);
-
-char text_ring_consume(struct text_ring *ring);
+// these functions return true if the operation succeeded, false if it failed.
+bool text_ring_produce(struct text_ring *ring, char ch);
+bool text_ring_consume(struct text_ring *ring, char *outp);
 
 #endif

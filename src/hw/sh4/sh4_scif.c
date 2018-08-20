@@ -81,14 +81,7 @@ static inline bool rx_err_interrupt_enabled(Sh4 *sh4) {
 
 /*
  * receive a character from the rxq into the rx_buf.
- * This function will return true if there is more data to be received and there
- * is space in the rx_buf to hold that data.  If the rx_buf is full or the rxq
- * is empty, this function wil lreturn false.
- *
- * The return value of this function does not have a bearing on whether or not
- * data was successfully fetched from the rxq.  It is possible for this function
- * to successfully receive a char but still return false if there's no more data
- * to be received or the rx_buf is full.
+ * This function will return true if the operation succeeded.
  */
 static bool recv_char(struct sh4_scif *scif) {
     if (scif->rx_buf_len >= SCIF_BUF_LEN)
@@ -96,18 +89,17 @@ static bool recv_char(struct sh4_scif *scif) {
 
     struct text_ring *rxq = &scif->rxq;
 
-    if (text_ring_empty(rxq))
+    if (!text_ring_consume(rxq, scif->rx_buf + scif->rx_buf_len))
         return false;
+    scif->rx_buf_len++;
 
-    scif->rx_buf[scif->rx_buf_len++] = text_ring_consume(rxq);
-
-    return (!text_ring_empty(rxq)) && (scif->rx_buf_len < SCIF_BUF_LEN);
+    return true;
 }
 
 /*
  * similar to recv_char, but for the txq.  This function moves a character from
- * the tx_buf into the txq.  If there are more characters that can be moved into
- * the txq, this function returns true; else it returns false.
+ * the tx_buf into the txq.  If the operation succeeded, it returns true.  If
+ * the operation failed, it returns false.
  */
 static bool send_char(struct sh4_scif *scif) {
     if (scif->tx_buf_len <= 0)
@@ -120,7 +112,7 @@ static bool send_char(struct sh4_scif *scif) {
             (SCIF_BUF_LEN - 1) * sizeof(scif->tx_buf[0]));
     scif->tx_buf_len--;
 
-    return scif->tx_buf_len;
+    return true;
 }
 
 //  get data in the rx_buf if possible
