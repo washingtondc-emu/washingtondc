@@ -31,10 +31,10 @@
 #include "cons.h"
 
 // fifo queue for program-output being printed to the console
-static struct text_ring cons_txq = TEXT_RING_INITIALIZER;
+static struct text_ring cons_txq = RING_INITIALIZER;
 
 // fifo queue for user-input text
-static struct text_ring cons_rxq = TEXT_RING_INITIALIZER;
+static struct text_ring cons_rxq = RING_INITIALIZER;
 
 static pthread_mutex_t cons_tx_mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t cons_rx_mtx = PTHREAD_MUTEX_INITIALIZER;

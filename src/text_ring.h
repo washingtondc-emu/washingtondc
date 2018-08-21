@@ -26,6 +26,8 @@
 #include <stdbool.h>
 #include <stdatomic.h>
 
+#include "log.h"
+
 /*
  * This is a ringbuffer designed to buffer text between threads.
  * In the event of an overflow, this buffer will drop incoming data at the
@@ -34,23 +36,64 @@
  * This ringbuffer is SINGLE CONSUMER, SINGLE PRODUCER ONLY!
  */
 
-#define TEXT_RING_LEN_SHIFT 10
-#define TEXT_RING_LEN (1 << TEXT_RING_LEN_SHIFT)
-#define TEXT_RING_MASK (TEXT_RING_LEN - 1)
 
-struct text_ring {
-    atomic_int prod_idx, cons_idx;
-
-    char buf[TEXT_RING_LEN];
-};
-
-#define TEXT_RING_INITIALIZER                                           \
+#define RING_INITIALIZER                                                \
     { .prod_idx = ATOMIC_VAR_INIT(0), .cons_idx = ATOMIC_VAR_INIT(0) }
 
-void text_ring_init(struct text_ring *ring);
 
-// these functions return true if the operation succeeded, false if it failed.
-bool text_ring_produce(struct text_ring *ring, char ch);
-bool text_ring_consume(struct text_ring *ring, char *outp);
+#define DEF_RING(name, tp, log)                                         \
+    struct name {                                                       \
+        atomic_int prod_idx, cons_idx;                                  \
+                                                                        \
+        tp buf[1 << (log)];                                             \
+    };                                                                  \
+                                                                        \
+    static inline void name##_init(struct name *ring) {                 \
+        atomic_init(&ring->prod_idx, 0);                                \
+        atomic_init(&ring->cons_idx, 0);                                \
+    }                                                                   \
+                                                                        \
+    /* return true if the operation succeeded, false if it failed. */   \
+    static inline bool                                                  \
+    name##_produce(struct name *ring, tp val) {                         \
+        int prod_idx = atomic_load(&ring->prod_idx);                    \
+        int cons_idx = atomic_load(&ring->cons_idx);                    \
+        int next_prod_idx = (prod_idx + 1) & ((1 << (log)) - 1);        \
+                                                                        \
+        if (next_prod_idx == cons_idx) {                                \
+            LOG_WARN("WARNING: text_ring character dropped\n");         \
+            return false;                                               \
+        }                                                               \
+                                                                        \
+        ring->buf[next_prod_idx] = val;                                 \
+        atomic_store(&ring->prod_idx, next_prod_idx);                   \
+                                                                        \
+        return true;                                                    \
+    }                                                                   \
+                                                                        \
+    /* return true if the operation succeeded, false if it failed. */   \
+    static inline bool                                                  \
+    name##_consume(struct name *ring, tp *outp) {                       \
+        tp val;                                                         \
+        int prod_idx, cons_idx, next_cons_idx;                          \
+                                                                        \
+        do {                                                            \
+            prod_idx = atomic_load(&ring->prod_idx);                    \
+            cons_idx = atomic_load(&ring->cons_idx);                    \
+            next_cons_idx = (cons_idx + 1) & ((1 << (log)) - 1);        \
+                                                                        \
+            if (prod_idx == cons_idx)                                   \
+                return false;                                           \
+                                                                        \
+            val = ring->buf[ring->cons_idx];                            \
+        } while (!atomic_compare_exchange_strong(&ring->cons_idx,       \
+                                                 &cons_idx,             \
+                                                 next_cons_idx));       \
+                                                                        \
+        *outp = val;                                                    \
+        return true;                                                    \
+    }                                                                   \
+
+DEF_RING(text_ring, char, 10)
 
 #endif

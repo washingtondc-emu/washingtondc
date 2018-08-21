@@ -52,8 +52,8 @@ enum cmd_tcp_state {
     CMD_TCP_ATTACHED
 };
 
-static struct text_ring tx_ring = TEXT_RING_INITIALIZER;
-static struct text_ring rx_ring = TEXT_RING_INITIALIZER;
+static struct text_ring tx_ring = RING_INITIALIZER;
+static struct text_ring rx_ring = RING_INITIALIZER;
 
 static enum cmd_tcp_state state = CMD_TCP_DISABLED;
 
