@@ -65,7 +65,7 @@
             return false;                                               \
         }                                                               \
                                                                         \
-        ring->buf[next_prod_idx] = val;                                 \
+        ring->buf[prod_idx] = val;                                      \
         atomic_store(&ring->prod_idx, next_prod_idx);                   \
                                                                         \
         return true;                                                    \
@@ -74,23 +74,18 @@
     /* return true if the operation succeeded, false if it failed. */   \
     static inline bool                                                  \
     name##_consume(struct name *ring, tp *outp) {                       \
-        tp val;                                                         \
         int prod_idx, cons_idx, next_cons_idx;                          \
                                                                         \
-        do {                                                            \
-            prod_idx = atomic_load(&ring->prod_idx);                    \
-            cons_idx = atomic_load(&ring->cons_idx);                    \
-            next_cons_idx = (cons_idx + 1) & ((1 << (log)) - 1);        \
+        prod_idx = atomic_load(&ring->prod_idx);                        \
+        cons_idx = atomic_load(&ring->cons_idx);                        \
+        next_cons_idx = (cons_idx + 1) & ((1 << (log)) - 1);            \
                                                                         \
-            if (prod_idx == cons_idx)                                   \
-                return false;                                           \
+        if (prod_idx == cons_idx)                                       \
+            return false;                                               \
                                                                         \
-            val = ring->buf[ring->cons_idx];                            \
-        } while (!atomic_compare_exchange_strong(&ring->cons_idx,       \
-                                                 &cons_idx,             \
-                                                 next_cons_idx));       \
+        *outp = ring->buf[ring->cons_idx];                              \
+        atomic_store(&ring->cons_idx, next_cons_idx);                   \
                                                                         \
-        *outp = val;                                                    \
         return true;                                                    \
     }                                                                   \
 
