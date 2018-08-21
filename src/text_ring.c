@@ -27,38 +27,55 @@
 
 #include "text_ring.h"
 
-static bool text_ring_empty(struct text_ring *ring);
-
 void text_ring_init(struct text_ring *ring) {
-    ring->prod_idx = ring->cons_idx = 0;
+    atomic_init(&ring->prod_idx, 0);
+    atomic_init(&ring->cons_idx, 0);
 }
 
 bool text_ring_produce(struct text_ring *ring, char ch) {
-    unsigned next_prod_idx = (ring->prod_idx + 1) & (TEXT_RING_LEN - 1);
+    int prod_idx = atomic_load(&ring->prod_idx);
+    int cons_idx = atomic_load(&ring->cons_idx);
+    int next_prod_idx = (prod_idx + 1) & TEXT_RING_MASK;
 
-    if (next_prod_idx == ring->cons_idx) {
+    if (next_prod_idx == cons_idx) {
         LOG_WARN("WARNING: text_ring character dropped\n");
         return false;
     }
 
-    ring->buf[ring->prod_idx] = ch;
-    ring->prod_idx = next_prod_idx;
+    ring->buf[next_prod_idx] = ch;
+    atomic_store(&ring->prod_idx, next_prod_idx);
 
     return true;
 }
 
+/*
+ * XXX I want this function to be safe for multiple consumers
+ *
+ * That said, this probably isn't good for multiple consumers because of the
+ * unlikely-yet-possible case that some other consumer very quickly consumes
+ * the entirety of the ringbuffer.  That would cause cons_idx to wrap around to
+ * its initial position, meaning that the value of ch is invalid but we don't
+ * know that.
+ *
+ * Single consumer is definitely safe, though.  Just be wary of multiple consumers.
+ */
 bool text_ring_consume(struct text_ring *ring, char *outp) {
-    if (text_ring_empty(ring))
-        return false;
+    char ch;
+    int prod_idx, cons_idx, next_cons_idx;
 
-    char ch = ring->buf[ring->cons_idx];
+    do {
+        prod_idx = atomic_load(&ring->prod_idx);
+        cons_idx = atomic_load(&ring->cons_idx);
+        next_cons_idx = (cons_idx + 1) & TEXT_RING_MASK;
 
-    ring->cons_idx = (ring->cons_idx + 1) & (TEXT_RING_LEN - 1);
+        if (prod_idx == cons_idx)
+            return false;
+
+        ch = ring->buf[ring->cons_idx];
+    } while (!atomic_compare_exchange_strong(&ring->cons_idx,
+                                             &cons_idx,
+                                             next_cons_idx));
 
     *outp = ch;
     return true;
-}
-
-static bool text_ring_empty(struct text_ring *ring) {
-    return ring->prod_idx == ring->cons_idx;
 }

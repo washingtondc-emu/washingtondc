@@ -24,23 +24,28 @@
 #define TEXT_RING_H_
 
 #include <stdbool.h>
+#include <stdatomic.h>
 
 /*
  * This is a ringbuffer designed to buffer text between threads.
  * In the event of an overflow, this buffer will drop incoming data at the
  * producer-side.
+ *
+ * This ringbuffer is SINGLE CONSUMER, SINGLE PRODUCER ONLY!
  */
 
 #define TEXT_RING_LEN_SHIFT 10
 #define TEXT_RING_LEN (1 << TEXT_RING_LEN_SHIFT)
+#define TEXT_RING_MASK (TEXT_RING_LEN - 1)
 
 struct text_ring {
-    volatile unsigned prod_idx, cons_idx;
+    atomic_int prod_idx, cons_idx;
 
-    volatile char buf[TEXT_RING_LEN];
+    char buf[TEXT_RING_LEN];
 };
 
-#define TEXT_RING_INITIALIZER { .prod_idx = 0, .cons_idx = 0 }
+#define TEXT_RING_INITIALIZER                                           \
+    { .prod_idx = ATOMIC_VAR_INIT(0), .cons_idx = ATOMIC_VAR_INIT(0) }
 
 void text_ring_init(struct text_ring *ring);
 
