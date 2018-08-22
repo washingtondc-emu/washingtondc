@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <stdatomic.h>
 
-#include "text_ring.h"
+#include "ring.h"
 
 /*
  * SH4 SCIF (Serial Port) emulation
