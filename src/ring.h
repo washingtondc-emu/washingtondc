@@ -56,8 +56,11 @@
     /* return true if the operation succeeded, false if it failed. */   \
     static inline bool                                                  \
     name##_produce(struct name *ring, tp val) {                         \
-        int prod_idx = atomic_load(&ring->prod_idx);                    \
-        int cons_idx = atomic_load(&ring->cons_idx);                    \
+        /* TODO: can I use memory_order_relaxed to load prod_idx ?*/    \
+        int prod_idx = atomic_load_explicit(&ring->prod_idx,            \
+                                            memory_order_acquire);      \
+        int cons_idx = atomic_load_explicit(&ring->cons_idx,            \
+                                            memory_order_acquire);      \
         int next_prod_idx = (prod_idx + 1) & ((1 << (log)) - 1);        \
                                                                         \
         if (next_prod_idx == cons_idx) {                                \
@@ -66,7 +69,8 @@
         }                                                               \
                                                                         \
         ring->buf[prod_idx] = val;                                      \
-        atomic_store(&ring->prod_idx, next_prod_idx);                   \
+        atomic_store_explicit(&ring->prod_idx, next_prod_idx,           \
+                              memory_order_release);                    \
                                                                         \
         return true;                                                    \
     }                                                                   \
@@ -76,15 +80,19 @@
     name##_consume(struct name *ring, tp *outp) {                       \
         int prod_idx, cons_idx, next_cons_idx;                          \
                                                                         \
-        prod_idx = atomic_load(&ring->prod_idx);                        \
-        cons_idx = atomic_load(&ring->cons_idx);                        \
+        /* TODO: can I use memory_order_relaxed to load cons_idx ?*/    \
+        cons_idx = atomic_load_explicit(&ring->cons_idx,                \
+                                        memory_order_acquire);          \
+        prod_idx = atomic_load_explicit(&ring->prod_idx,                \
+                                        memory_order_acquire);          \
         next_cons_idx = (cons_idx + 1) & ((1 << (log)) - 1);            \
                                                                         \
         if (prod_idx == cons_idx)                                       \
             return false;                                               \
                                                                         \
         *outp = ring->buf[ring->cons_idx];                              \
-        atomic_store(&ring->cons_idx, next_cons_idx);                   \
+        atomic_store_explicit(&ring->cons_idx, next_cons_idx,           \
+                              memory_order_release);                    \
                                                                         \
         return true;                                                    \
     }                                                                   \
