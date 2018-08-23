@@ -44,9 +44,9 @@ static struct serial_server {
      * used to signal whether or not the serial server is
      * listening for a remote connection over TCP.
      */
-    volatile bool is_listening;
+    atomic_bool is_listening;
 
-    volatile bool ready_to_write;
+    atomic_bool ready_to_write;
 
     atomic_flag no_more_work;
 } srv = {
@@ -76,6 +76,8 @@ static void drain_txq(void);
 
 void serial_server_init(struct Sh4 *cpu) {
     atomic_flag_test_and_set(&srv.no_more_work);
+    atomic_init(&srv.is_listening, false);
+    atomic_init(&srv.ready_to_write, false);
 }
 
 void serial_server_cleanup(void) {
@@ -148,14 +150,14 @@ static void handle_read(struct bufferevent *bev, void *arg) {
  */
 static void handle_write(struct bufferevent *bev, void *arg) {
     if (!evbuffer_get_length(srv.outbound)) {
-        srv.ready_to_write = true;
+        atomic_store(&srv.ready_to_write, true);
         drain_txq();
         sh4_scif_cts(srv.cpu);
         return;
     }
 
     bufferevent_write_buffer(bev, srv.outbound);
-    srv.ready_to_write = false;
+    atomic_store(&srv.ready_to_write, false);
 }
 
 void serial_server_notify_tx_ready(void) {
@@ -178,7 +180,7 @@ listener_cb(struct evconnlistener *listener,
     bufferevent_enable(srv.bev, EV_WRITE);
     bufferevent_enable(srv.bev, EV_READ);
 
-    srv.is_listening = false;
+    atomic_store(&srv.is_listening, false);
 
     signal_connection();
 
@@ -232,7 +234,7 @@ static void ser_srv_unlock(void) {
 }
 
 static void wait_for_connection(void) {
-    srv.is_listening = true;
+    atomic_store(&srv.is_listening, true);
 
     do {
         LOG_INFO("still waiting...\n");
@@ -240,7 +242,7 @@ static void wait_for_connection(void) {
             abort(); // TODO: error handling
 
         // TODO: handle case where dreamcast_is_running() is now false?
-    } while (srv.is_listening);
+    } while (atomic_load(&srv.is_listening));
 }
 
 static void signal_connection(void) {
@@ -272,7 +274,7 @@ static void drain_txq(void) {
     bool did_tx = false;
     while (do_tx_char(txq))
         did_tx = true;
-    if (srv.ready_to_write && did_tx) {
+    if (atomic_load(&srv.ready_to_write) && did_tx) {
         bufferevent_write_buffer(srv.bev, srv.outbound);
         srv.ready_to_write = false;
     }
