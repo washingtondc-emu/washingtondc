@@ -95,8 +95,11 @@ static struct memory_map arm7_mem_map;
 static struct aica aica;
 static struct gdrom_ctxt gdrom;
 
-static volatile bool is_running, end_of_frame, frame_stop;
-static volatile bool signal_exit_threads;
+static atomic_bool is_running = ATOMIC_VAR_INIT(false);
+static atomic_bool end_of_frame = ATOMIC_VAR_INIT(false);
+static atomic_bool frame_stop = ATOMIC_VAR_INIT(false);
+static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
+
 static bool init_complete;
 
 static bool using_debugger;
@@ -170,7 +173,7 @@ static void periodic_event_handler(struct SchedEvent *event);
 static struct SchedEvent periodic_event;
 
 void dreamcast_init(bool cmd_session) {
-    is_running = true;
+    atomic_store_explicit(&is_running, true, memory_order_relaxed);
 
     memory_init(&dc_mem);
     flash_mem_init(&flash_mem, config_get_dc_flash_path());
@@ -331,20 +334,27 @@ void dreamcast_cleanup() {
 static struct timespec start_time;
 
 static void run_one_frame(void) {
-    while (!end_of_frame) {
+    bool true_val = true;
+    while (!atomic_compare_exchange_strong_explicit(&end_of_frame, &true_val,
+                                                    false,
+                                                    memory_order_relaxed,
+                                                    memory_order_relaxed)) {
         dc_clock_run_timeslice(&sh4_clock);
         dc_clock_run_timeslice(&arm7_clock);
         if (config_get_jit())
             code_cache_gc();
+
+        true_val = true;
     }
-    end_of_frame = false;
 }
 
 static void main_loop_sched(void) {
-    while (is_running) {
+    while (atomic_load_explicit(&is_running, memory_order_relaxed)) {
         run_one_frame();
-        if (frame_stop) {
-            frame_stop = false;
+        bool true_val = true;
+        if (atomic_compare_exchange_strong_explicit(&frame_stop, &true_val,
+                                                    false, memory_order_relaxed,
+                                                    memory_order_relaxed)) {
             if (dc_state == DC_STATE_RUNNING) {
                 dc_state_transition(DC_STATE_SUSPEND, DC_STATE_RUNNING);
                 suspend_loop();
@@ -352,6 +362,8 @@ static void main_loop_sched(void) {
                 LOG_WARN("Unable to suspend execution at frame stop: "
                          "system is not running\n");
             }
+
+            true_val = true;
         }
     }
 }
@@ -412,7 +424,8 @@ void dreamcast_run() {
      * if there's a cmd session attached, then hang here until the user enters
      * the begin-execution command.
      */
-    while (is_running && (dc_get_state() == DC_STATE_NOT_RUNNING)) {
+    while (atomic_load_explicit(&is_running, memory_order_relaxed) &&
+           (dc_get_state() == DC_STATE_NOT_RUNNING)) {
         usleep(1000 * 1000 / 10);
         cmd_run_once();
     }
@@ -433,7 +446,7 @@ void dreamcast_run() {
     dc_print_perf_stats();
 
     // tell the other threads it's time to clean up and exit
-    signal_exit_threads = true;
+    atomic_store_explicit(&signal_exit_threads, true, memory_order_relaxed);
 
     // kick the io_thread so it knows to check dc_is_running
     io_thread_kick();
@@ -682,7 +695,7 @@ void dc_print_perf_stats(void) {
 
 void dreamcast_kill(void) {
     LOG_INFO("%s called - WashingtonDC will exit soon\n", __func__);
-    is_running = false;
+    atomic_store_explicit(&is_running, false, memory_order_relaxed);
 }
 
 Sh4 *dreamcast_get_cpu() {
@@ -707,7 +720,7 @@ void dreamcast_enable_cmd_tcp(void) {
 }
 
 static void dc_sigint_handler(int param) {
-    is_running = false;
+    atomic_store_explicit(&is_running, false, memory_order_relaxed);
     term_reason = TERM_REASON_SIGINT;
 }
 
@@ -744,11 +757,11 @@ close_fp:
 }
 
 bool dc_is_running(void) {
-    return !signal_exit_threads;
+    return !atomic_load_explicit(&signal_exit_threads, memory_order_relaxed);
 }
 
 bool dc_emu_thread_is_running(void) {
-    return is_running;
+    return atomic_load_explicit(&is_running, memory_order_relaxed);
 }
 
 enum dc_state dc_get_state(void) {
@@ -778,7 +791,7 @@ static void suspend_loop(void) {
              * polling.
              */
             usleep(1000 * 1000 / 60);
-        } while (is_running &&
+        } while (atomic_load_explicit(&is_running, memory_order_relaxed) &&
                  ((cur_state = dc_get_state()) == DC_STATE_SUSPEND));
 
         if (dc_is_running()) {
@@ -816,7 +829,7 @@ void dc_end_frame(void) {
     clock_gettime(CLOCK_MONOTONIC, &timestamp);
     dc_cycle_stamp_t virt_timestamp = clock_cycle_stamp(&sh4_clock);
 
-    end_of_frame = true;
+    atomic_store_explicit(&end_of_frame, true, memory_order_relaxed);
 
     time_diff(&delta, &timestamp, &last_frame_realtime);
 
@@ -929,5 +942,5 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
 }
 
 void dc_request_frame_stop(void) {
-    frame_stop = true;
+    atomic_store_explicit(&frame_stop, true, memory_order_relaxed);
 }
