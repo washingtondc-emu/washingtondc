@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@
  ******************************************************************************/
 
 #include <string.h>
+#include <stdint.h>
+#include <stdatomic.h>
 
 #include "gfx_config.h"
 
@@ -42,16 +44,21 @@ static struct gfx_cfg const gfx_cfg_wireframe = {
     .color_enable = false
 };
 
-static struct gfx_cfg const * volatile cur_profile = &gfx_cfg_default;
+static atomic_uintptr_t cur_profile_intptr =
+    ATOMIC_VAR_INIT((uintptr_t)&gfx_cfg_default);
 
 void gfx_config_default(void) {
-    cur_profile = &gfx_cfg_default;
+    atomic_store_explicit(&cur_profile_intptr, (uintptr_t)&gfx_cfg_default,
+                          memory_order_relaxed);
 }
 
 void gfx_config_wireframe(void) {
-    cur_profile = &gfx_cfg_wireframe;
+    atomic_store_explicit(&cur_profile_intptr, (uintptr_t)&gfx_cfg_wireframe,
+                          memory_order_relaxed);
 }
 
 void gfx_config_read(struct gfx_cfg *cfg) {
+    void *cur_profile = (void*)atomic_load_explicit(&cur_profile_intptr,
+                                                    memory_order_relaxed);
     memcpy(cfg, cur_profile, sizeof(&cfg));
 }
