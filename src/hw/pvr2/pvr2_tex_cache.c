@@ -100,6 +100,9 @@ static bool pvr2_tex_valid(enum pvr2_tex_state state) {
 static unsigned tex_twiddle(unsigned x, unsigned y,
                             unsigned w_shift, unsigned h_shift);
 
+static enum gfx_tex_fmt
+translate_palette_to_pix_format(enum palette_tp palette_tp);
+
 /*
  * maps from a normal row-major configuration to the
  * pvr2's own "twiddled" format.
@@ -270,9 +273,9 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
 
     if (tex_fmt != TEX_CTRL_PIX_FMT_4_BPP_PAL &&
         tex_fmt != TEX_CTRL_PIX_FMT_8_BPP_PAL) {
-        tex->meta.pix_fmt = tex_fmt;
+        tex->meta.pix_fmt = pvr2_tex_fmt_to_gfx(tex_fmt);
     } else {
-        tex->meta.pix_fmt = get_palette_tp();
+        tex->meta.pix_fmt = translate_palette_to_pix_format(get_palette_tp());
     }
 
     if (tex->meta.vq_compression && (tex->meta.w_shift != tex->meta.h_shift)) {
@@ -631,7 +634,6 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
             break;
         case PALETTE_TP_ARGB_8888:
             tex_size_actual = 4;
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
             break;
         default:
             RAISE_ERROR(ERROR_INTEGRITY);
@@ -676,7 +678,6 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
             break;
         case PALETTE_TP_ARGB_8888:
             tex_size_actual = 4;
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
             break;
         default:
             RAISE_ERROR(ERROR_INTEGRITY);
@@ -781,7 +782,7 @@ void pvr2_tex_cache_xmit(void) {
                 struct pvr2_tex_meta tmp = tex_in->meta;
                 if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
                     tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-                    tmp.pix_fmt = get_palette_tp();
+                    tmp.pix_fmt = translate_palette_to_pix_format(get_palette_tp());
                 }
                 pvr2_tex_cache_read(&tex_dat, &n_bytes, &tmp);
 
@@ -800,9 +801,9 @@ void pvr2_tex_cache_xmit(void) {
                 cmd.op = GFX_IL_BIND_TEX;
                 cmd.arg.bind_tex.gfx_obj_handle = tex_in->obj_no;
                 cmd.arg.bind_tex.tex_no = idx;
+                cmd.arg.bind_tex.pix_fmt = tmp.pix_fmt;
                 cmd.arg.bind_tex.width = 1 << tex_in->meta.w_shift;
                 cmd.arg.bind_tex.height = 1 << tex_in->meta.h_shift;
-                cmd.arg.bind_tex.pix_fmt = pvr2_tex_fmt_to_gfx(tmp.pix_fmt);
 
                 rend_exec_il(&cmd, 1);
             } else {
@@ -814,7 +815,7 @@ void pvr2_tex_cache_xmit(void) {
                 struct pvr2_tex_meta tmp = tex_in->meta;
                 if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
                     tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-                    tmp.pix_fmt = get_palette_tp();
+                    tmp.pix_fmt = translate_palette_to_pix_format(get_palette_tp());
                 }
                 void *tex_dat;
                 size_t n_bytes;
@@ -856,8 +857,31 @@ static enum gfx_tex_fmt pvr2_tex_fmt_to_gfx(enum TexCtrlPixFmt in_fmt) {
         return GFX_TEX_FMT_ARGB_4444;
     case TEX_CTRL_PIX_FMT_YUV_422:
         return GFX_TEX_FMT_YUV_422;
+    case TEX_CTRL_PIX_FMT_4_BPP_PAL:
+    case TEX_CTRL_PIX_FMT_8_BPP_PAL:
+        /*
+         * for paletted textures you need to call
+         * translate_palette_to_pix_format(get_palette_tp())
+         */
+        RAISE_ERROR(ERROR_INTEGRITY);
     default:
         error_set_tex_fmt(in_fmt);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+static enum gfx_tex_fmt
+translate_palette_to_pix_format(enum palette_tp palette_tp) {
+    switch (palette_tp) {
+    case PALETTE_TP_ARGB_1555:
+        return GFX_TEX_FMT_ARGB_1555;
+    case PALETTE_TP_RGB_565:
+        return GFX_TEX_FMT_RGB_565;
+    case PALETTE_TP_ARGB_4444:
+        return GFX_TEX_FMT_ARGB_4444;
+    case PALETTE_TP_ARGB_8888:
+        return GFX_TEX_FMT_ARGB_8888;
+    default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 }

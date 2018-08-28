@@ -50,7 +50,7 @@ struct pvr2_tex_meta {
      * of the parameters that has to match for the pvr2_tex_cache_find function,
      * so there's that too.
      */
-    int pix_fmt;
+    enum gfx_tex_fmt pix_fmt;
     int tex_fmt;
 
     /*

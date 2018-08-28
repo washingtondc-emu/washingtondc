@@ -71,11 +71,9 @@ static struct obj_tex_meta obj_tex_meta_array[GFX_OBJ_COUNT];
 
 static struct gfx_cfg rend_cfg;
 
-static const GLenum tex_formats[GFX_TEX_FMT_COUNT] = {
-    [GFX_TEX_FMT_ARGB_1555] = GL_UNSIGNED_SHORT_1_5_5_5_REV,
-    [GFX_TEX_FMT_RGB_565] = GL_UNSIGNED_SHORT_5_6_5,
-    [GFX_TEX_FMT_ARGB_4444] = GL_UNSIGNED_SHORT_4_4_4_4,
-};
+static DEF_ERROR_INT_ATTR(gfx_tex_fmt);
+
+static GLenum translate_tex_format(enum gfx_tex_fmt gfx_fmt);
 
 static const GLenum src_blend_factors[PVR2_BLEND_FACTOR_COUNT] = {
     [PVR2_BLEND_ZERO]                = GL_ZERO,
@@ -265,7 +263,8 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
         memcpy(tex_dat_conv, tex_dat, n_bytes);
         render_conv_argb_4444(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, tex_formats[GFX_TEX_FMT_ARGB_4444], tex_dat_conv);
+                     format, translate_tex_format(GFX_TEX_FMT_ARGB_4444),
+                     tex_dat_conv);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         free(tex_dat_conv);
     } else if (tex->pix_fmt == GFX_TEX_FMT_ARGB_1555) {
@@ -283,7 +282,8 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
         memcpy(tex_dat_conv, tex_dat, n_bytes);
         render_conv_argb_1555(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, tex_formats[GFX_TEX_FMT_ARGB_1555], tex_dat_conv);
+                     format, translate_tex_format(GFX_TEX_FMT_ARGB_1555),
+                     tex_dat_conv);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         free(tex_dat_conv);
     } else if (tex->pix_fmt == GFX_TEX_FMT_YUV_422) {
@@ -298,7 +298,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
         free(tmp_dat);
     } else {
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, tex_formats[tex->pix_fmt], tex_dat);
+                     format, translate_tex_format(tex->pix_fmt), tex_dat);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
     }
     obj->state |= GFX_OBJ_STATE_TEX;
@@ -549,4 +549,20 @@ void opengl_renderer_tex_set_dims(unsigned obj_no,
                                   unsigned width, unsigned height) {
     obj_tex_meta_array[obj_no].width = width;
     obj_tex_meta_array[obj_no].height = height;
+}
+
+static GLenum translate_tex_format(enum gfx_tex_fmt gfx_fmt) {
+    switch (gfx_fmt) {
+    case GFX_TEX_FMT_ARGB_1555:
+        return GL_UNSIGNED_SHORT_1_5_5_5_REV;
+    case GFX_TEX_FMT_RGB_565:
+        return GL_UNSIGNED_SHORT_5_6_5;
+    case GFX_TEX_FMT_ARGB_4444:
+        return GL_UNSIGNED_SHORT_4_4_4_4;
+    case GFX_TEX_FMT_ARGB_8888:
+        return GL_UNSIGNED_BYTE;
+    default:
+        error_set_gfx_tex_fmt(gfx_fmt);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }

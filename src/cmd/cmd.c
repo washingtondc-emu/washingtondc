@@ -592,6 +592,23 @@ static char const *tex_fmt_names[TEX_CTRL_PIX_FMT_COUNT] = {
     [TEX_CTRL_PIX_FMT_INVALID] = "<invalid format>",
 };
 
+static char const *gfx_tex_fmt_name(enum gfx_tex_fmt fmt) {
+    switch (fmt) {
+    case GFX_TEX_FMT_ARGB_1555:
+        return "ARGB_1555";
+    case GFX_TEX_FMT_RGB_565:
+        return "RGB_565";
+    case GFX_TEX_FMT_ARGB_4444:
+        return "ARGB_4444";
+    case GFX_TEX_FMT_ARGB_8888:
+        return "ARGB_8888";
+    case GFX_TEX_FMT_YUV_422:
+        return "YUV_422";
+    default:
+        return "<invalid format>";
+    }
+}
+
 static int cmd_tex_info(int argc, char **argv) {
     unsigned first_tex_no, last_tex_no, tex_no;
     bool print_missing = true;
@@ -621,8 +638,7 @@ static int cmd_tex_info(int argc, char **argv) {
             cons_printf("\tdimensions: (%u, %u)\n",
                         1 << meta.w_shift, 1 << meta.h_shift);
             cons_printf("\tpix_fmt: %s\n",
-                        meta.pix_fmt < TEX_CTRL_PIX_FMT_COUNT ?
-                        tex_fmt_names[meta.pix_fmt] : "<invalid format>");
+                        gfx_tex_fmt_name(meta.pix_fmt));
             cons_printf("\ttex_fmt: %s\n",
                         meta.tex_fmt < TEX_CTRL_PIX_FMT_COUNT ?
                         tex_fmt_names[meta.tex_fmt] : "<invalid format>");
@@ -782,10 +798,10 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
 
     png_init_io(png_ptr, stream);
 
-    if (meta->pix_fmt != TEX_CTRL_PIX_FMT_ARGB_1555 &&
-        meta->pix_fmt != TEX_CTRL_PIX_FMT_RGB_565 &&
-        meta->pix_fmt != TEX_CTRL_PIX_FMT_ARGB_4444 &&
-        meta->pix_fmt != TEX_CTRL_PIX_FMT_YUV_422) {
+    if (meta->pix_fmt != GFX_TEX_FMT_ARGB_1555 &&
+        meta->pix_fmt != GFX_TEX_FMT_RGB_565 &&
+        meta->pix_fmt != GFX_TEX_FMT_ARGB_4444 &&
+        meta->pix_fmt != GFX_TEX_FMT_YUV_422) {
         err_val = -1;
         goto cleanup_png;
     }
@@ -803,18 +819,18 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
     unsigned n_colors;
     unsigned pvr2_pix_size;
     switch (meta->pix_fmt) {
-    case TEX_CTRL_PIX_FMT_ARGB_1555:
-    case TEX_CTRL_PIX_FMT_ARGB_4444:
+    case GFX_TEX_FMT_ARGB_1555:
+    case GFX_TEX_FMT_ARGB_4444:
         color_tp_png = PNG_COLOR_TYPE_RGB_ALPHA;
         n_colors = 4;
         pvr2_pix_size = 2;
         break;
-    case TEX_CTRL_PIX_FMT_RGB_565:
+    case GFX_TEX_FMT_RGB_565:
         color_tp_png = PNG_COLOR_TYPE_RGB;
         n_colors = 3;
         pvr2_pix_size = 2;
         break;
-    case TEX_CTRL_PIX_FMT_YUV_422:
+    case GFX_TEX_FMT_YUV_422:
         color_tp_png = PNG_COLOR_TYPE_RGB;
         n_colors = 3;
         pvr2_pix_size = 3;
