@@ -56,7 +56,7 @@ void rend_release_tex(unsigned tex_no) {
 static void rend_bind_tex(struct gfx_il_inst *cmd) {
     unsigned tex_no = cmd->arg.bind_tex.tex_no;
     int obj_handle = cmd->arg.bind_tex.gfx_obj_handle;
-    int pix_fmt = cmd->arg.bind_tex.pix_fmt;
+    enum gfx_tex_fmt pix_fmt = cmd->arg.bind_tex.pix_fmt;
     int width = cmd->arg.bind_tex.width;
     int height = cmd->arg.bind_tex.height;
 

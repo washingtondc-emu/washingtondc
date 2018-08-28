@@ -26,6 +26,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+enum gfx_tex_fmt {
+    GFX_TEX_FMT_ARGB_1555,
+    GFX_TEX_FMT_RGB_565,
+    GFX_TEX_FMT_ARGB_4444,
+    GFX_TEX_FMT_YUV_422,
+
+    GFX_TEX_FMT_COUNT
+};
+
 /*
  * This is the gfx_thread's copy of the texture cache.  It mirrors the one
  * in the geo_buf code, and is updated every time a new geo_buf is submitted by
@@ -37,7 +46,7 @@
 
 struct gfx_tex {
     int obj_handle;
-    int pix_fmt;
+    enum gfx_tex_fmt pix_fmt;
     unsigned width, height;
     bool valid;
 };
@@ -46,7 +55,7 @@ struct gfx_tex {
  * Bind the given gfx_obj to the given texture-unit.
  */
 void gfx_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
-                        unsigned height, int pix_fmt);
+                        unsigned height, enum gfx_tex_fmt pix_fmt);
 
 void gfx_tex_cache_unbind(unsigned tex_no);
 

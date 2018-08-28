@@ -43,12 +43,12 @@ void gfx_tex_cache_cleanup(void) {
 }
 
 void gfx_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
-                        unsigned height, int pix_fmt) {
+                        unsigned height, enum gfx_tex_fmt pix_fmt) {
     struct gfx_obj *obj = gfx_obj_get(obj_no);
     struct gfx_tex *tex = tex_cache + tex_no;
 
     tex->obj_handle = obj_no;
-    tex->pix_fmt = pix_fmt;
+    tex->pix_fmt = (enum gfx_tex_fmt)pix_fmt;
     tex->width = width;
     tex->height = height;
     tex->valid = true;

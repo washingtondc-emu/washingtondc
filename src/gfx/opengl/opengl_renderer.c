@@ -27,7 +27,6 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "hw/pvr2/pvr2_tex_cache.h"
 #include "shader.h"
 #include "opengl_target.h"
 #include "dreamcast.h"
@@ -72,10 +71,10 @@ static struct obj_tex_meta obj_tex_meta_array[GFX_OBJ_COUNT];
 
 static struct gfx_cfg rend_cfg;
 
-static const GLenum tex_formats[TEX_CTRL_PIX_FMT_COUNT] = {
-    [TEX_CTRL_PIX_FMT_ARGB_1555] = GL_UNSIGNED_SHORT_1_5_5_5_REV,
-    [TEX_CTRL_PIX_FMT_RGB_565] = GL_UNSIGNED_SHORT_5_6_5,
-    [TEX_CTRL_PIX_FMT_ARGB_4444] = GL_UNSIGNED_SHORT_4_4_4_4,
+static const GLenum tex_formats[GFX_TEX_FMT_COUNT] = {
+    [GFX_TEX_FMT_ARGB_1555] = GL_UNSIGNED_SHORT_1_5_5_5_REV,
+    [GFX_TEX_FMT_RGB_565] = GL_UNSIGNED_SHORT_5_6_5,
+    [GFX_TEX_FMT_ARGB_4444] = GL_UNSIGNED_SHORT_4_4_4_4,
 };
 
 static const GLenum src_blend_factors[PVR2_BLEND_FACTOR_COUNT] = {
@@ -234,7 +233,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
     gfx_obj_alloc(obj);
 
     void const *tex_dat = obj->dat;
-    GLenum format = tex->pix_fmt == TEX_CTRL_PIX_FMT_RGB_565 ?
+    GLenum format = tex->pix_fmt == GFX_TEX_FMT_RGB_565 ?
         GL_RGB : GL_RGBA;
 
     unsigned tex_w = tex->width;
@@ -251,7 +250,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
      * struct gfx_tex, so I don't want to modify that.  Maybe someday I'll
      * change things to remove this mostly-unnecessary buffering...
      */
-    if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_4444) {
+    if (tex->pix_fmt == GFX_TEX_FMT_ARGB_4444) {
         size_t n_bytes = tex->width * tex->height * sizeof(uint16_t);
 #ifdef INVARIANTS
         if (n_bytes > obj->dat_len) {
@@ -266,10 +265,10 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
         memcpy(tex_dat_conv, tex_dat, n_bytes);
         render_conv_argb_4444(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_4444], tex_dat_conv);
+                     format, tex_formats[GFX_TEX_FMT_ARGB_4444], tex_dat_conv);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         free(tex_dat_conv);
-    } else if (tex->pix_fmt == TEX_CTRL_PIX_FMT_ARGB_1555) {
+    } else if (tex->pix_fmt == GFX_TEX_FMT_ARGB_1555) {
         size_t n_bytes = tex->width * tex->height * sizeof(uint16_t);
 #ifdef INVARIANTS
         if (n_bytes > obj->dat_len) {
@@ -284,10 +283,10 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
         memcpy(tex_dat_conv, tex_dat, n_bytes);
         render_conv_argb_1555(tex_dat_conv, tex_w * tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, tex_formats[TEX_CTRL_PIX_FMT_ARGB_1555], tex_dat_conv);
+                     format, tex_formats[GFX_TEX_FMT_ARGB_1555], tex_dat_conv);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         free(tex_dat_conv);
-    } else if (tex->pix_fmt == TEX_CTRL_PIX_FMT_YUV_422) {
+    } else if (tex->pix_fmt == GFX_TEX_FMT_YUV_422) {
         uint8_t *tmp_dat =
             (uint8_t*)malloc(sizeof(uint8_t) * 3 * tex_w * tex_h);
         if (!tmp_dat)

@@ -107,7 +107,7 @@ union gfx_il_arg {
     struct {
         int gfx_obj_handle;
         unsigned tex_no;
-        int pix_fmt;
+        enum gfx_tex_fmt pix_fmt;
         int width, height;
     } bind_tex;
 

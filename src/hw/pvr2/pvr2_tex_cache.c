@@ -35,6 +35,7 @@
 #include "log.h"
 #include "error.h"
 #include "gfx/gfx_il.h"
+#include "gfx/gfx_tex_cache.h"
 #include "dreamcast.h"
 
 #include "pvr2_tex_cache.h"
@@ -61,6 +62,8 @@ static DEF_ERROR_INT_ATTR(tex_fmt);
 #define PVR2_CODE_BOOK_ENTRY_COUNT 256
 #define PVR2_CODE_BOOK_LEN (PVR2_CODE_BOOK_ENTRY_COUNT * \
                             PVR2_CODE_BOOK_ENTRY_SIZE)
+
+static enum gfx_tex_fmt pvr2_tex_fmt_to_gfx(enum TexCtrlPixFmt in_fmt);
 
 unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
     [TEX_CTRL_PIX_FMT_ARGB_1555] = 2,
@@ -797,9 +800,10 @@ void pvr2_tex_cache_xmit(void) {
                 cmd.op = GFX_IL_BIND_TEX;
                 cmd.arg.bind_tex.gfx_obj_handle = tex_in->obj_no;
                 cmd.arg.bind_tex.tex_no = idx;
-                cmd.arg.bind_tex.pix_fmt = tmp.pix_fmt;
                 cmd.arg.bind_tex.width = 1 << tex_in->meta.w_shift;
                 cmd.arg.bind_tex.height = 1 << tex_in->meta.h_shift;
+                cmd.arg.bind_tex.pix_fmt = pvr2_tex_fmt_to_gfx(tmp.pix_fmt);
+
                 rend_exec_il(&cmd, 1);
             } else {
                 /*
@@ -840,4 +844,20 @@ int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx) {
         return 0;
     }
     return -1;
+}
+
+static enum gfx_tex_fmt pvr2_tex_fmt_to_gfx(enum TexCtrlPixFmt in_fmt) {
+    switch (in_fmt) {
+    case TEX_CTRL_PIX_FMT_ARGB_1555:
+        return GFX_TEX_FMT_ARGB_1555;
+    case TEX_CTRL_PIX_FMT_RGB_565:
+        return GFX_TEX_FMT_RGB_565;
+    case TEX_CTRL_PIX_FMT_ARGB_4444:
+        return GFX_TEX_FMT_ARGB_4444;
+    case TEX_CTRL_PIX_FMT_YUV_422:
+        return GFX_TEX_FMT_YUV_422;
+    default:
+        error_set_tex_fmt(in_fmt);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
