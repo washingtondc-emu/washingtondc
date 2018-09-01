@@ -513,7 +513,7 @@ static inline void pvr2_ta_push_gfx_il(struct gfx_il_inst inst) {
 
 uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt) {
 #ifdef PVR2_LOG_VERBOSE
-    LOG_DBG(stderr, "WARNING: trying to read 4 bytes from the TA polygon FIFO "
+    LOG_DBG("WARNING: trying to read 4 bytes from the TA polygon FIFO "
             "(you get all 0s)\n");
 #endif
     return 0;
@@ -538,7 +538,7 @@ void pvr2_ta_fifo_poly_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 
 uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr, void *ctxt) {
 #ifdef PVR2_LOG_VERBOSE
-    LOG_DBG(stderr, "WARNING: trying to read 2 bytes from the TA polygon FIFO "
+    LOG_DBG("WARNING: trying to read 2 bytes from the TA polygon FIFO "
             "(you get all 0s)\n");
 #endif
     return 0;
@@ -560,7 +560,7 @@ void pvr2_ta_fifo_poly_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 
 uint8_t pvr2_ta_fifo_poly_read_8(addr32_t addr, void *ctxt) {
 #ifdef PVR2_LOG_VERBOSE
-    LOG_DBG(stderr, "WARNING: trying to read 1 byte from the TA polygon FIFO "
+    LOG_DBG("WARNING: trying to read 1 byte from the TA polygon FIFO "
             "(you get all 0s)\n");
 #endif
     return 0;
