@@ -231,7 +231,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
     gfx_obj_alloc(obj);
 
     void const *tex_dat = obj->dat;
-    GLenum format = tex->pix_fmt == GFX_TEX_FMT_RGB_565 ?
+    GLenum format = tex->tex_fmt == GFX_TEX_FMT_RGB_565 ?
         GL_RGB : GL_RGBA;
 
     unsigned tex_w = tex->width;
@@ -248,7 +248,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
      * struct gfx_tex, so I don't want to modify that.  Maybe someday I'll
      * change things to remove this mostly-unnecessary buffering...
      */
-    if (tex->pix_fmt == GFX_TEX_FMT_ARGB_4444) {
+    if (tex->tex_fmt == GFX_TEX_FMT_ARGB_4444) {
         size_t n_bytes = tex->width * tex->height * sizeof(uint16_t);
 #ifdef INVARIANTS
         if (n_bytes > obj->dat_len) {
@@ -267,7 +267,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
                      tex_dat_conv);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         free(tex_dat_conv);
-    } else if (tex->pix_fmt == GFX_TEX_FMT_ARGB_1555) {
+    } else if (tex->tex_fmt == GFX_TEX_FMT_ARGB_1555) {
         size_t n_bytes = tex->width * tex->height * sizeof(uint16_t);
 #ifdef INVARIANTS
         if (n_bytes > obj->dat_len) {
@@ -286,7 +286,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
                      tex_dat_conv);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         free(tex_dat_conv);
-    } else if (tex->pix_fmt == GFX_TEX_FMT_YUV_422) {
+    } else if (tex->tex_fmt == GFX_TEX_FMT_YUV_422) {
         uint8_t *tmp_dat =
             (uint8_t*)malloc(sizeof(uint8_t) * 3 * tex_w * tex_h);
         if (!tmp_dat)
@@ -298,7 +298,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
         free(tmp_dat);
     } else {
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
-                     format, translate_tex_format(tex->pix_fmt), tex_dat);
+                     format, translate_tex_format(tex->tex_fmt), tex_dat);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
     }
     obj->state |= GFX_OBJ_STATE_TEX;

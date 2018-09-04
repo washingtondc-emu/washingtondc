@@ -47,7 +47,7 @@ enum gfx_tex_fmt {
 
 struct gfx_tex {
     int obj_handle;
-    enum gfx_tex_fmt pix_fmt;
+    enum gfx_tex_fmt tex_fmt;
     unsigned width, height;
     bool valid;
 };
@@ -56,7 +56,7 @@ struct gfx_tex {
  * Bind the given gfx_obj to the given texture-unit.
  */
 void gfx_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
-                        unsigned height, enum gfx_tex_fmt pix_fmt);
+                        unsigned height, enum gfx_tex_fmt tex_fmt);
 
 void gfx_tex_cache_unbind(unsigned tex_no);
 
