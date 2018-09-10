@@ -39,6 +39,24 @@ enum ringbuffer_size {
     RINGBUFFER_SIZE_64K
 };
 
+#define AICA_CHAN_COUNT 64
+#define AICA_CHAN_LEN 128
+
+// It's AICA's cute younger sister, aica-chan!
+struct aica_chan {
+    uint8_t raw[AICA_CHAN_LEN];
+
+    /*
+     * bit 15 of the play control register will execute a key-on (if set) or
+     * key-off (if cleared) for every channel which has bit 14 set.  Bit 15
+     * effects every channel which has bit 14 set, not just the channel that
+     * was actually written to.
+     */
+    bool ready_keyon; // bit 14 of play control
+    bool playing;     // if true, this channel is playing
+    bool keyon;       // bit 15 of play control
+};
+
 struct aica {
     struct aica_wave_mem mem;
     struct arm7 *arm7;
@@ -72,6 +90,8 @@ struct aica {
      * buffer overruns.
      */
     uint32_t sys_reg[(AICA_SYS_LEN / 4) + 8];
+
+    struct aica_chan channels[AICA_CHAN_COUNT];
 };
 
 void aica_init(struct aica *aica, struct arm7 *arm7);

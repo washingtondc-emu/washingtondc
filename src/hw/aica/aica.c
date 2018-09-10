@@ -38,6 +38,8 @@
 
 #include "aica.h"
 
+#define AICA_CHAN_PLAY_CTRL 0x0000
+
 #define AICA_MASTER_VOLUME 0x2800
 
 #define AICA_ARM7_RST 0x2c00
@@ -445,7 +447,22 @@ static void aica_sys_channel_read(struct aica *aica, void *dst,
         LOG_DBG("AICA CHANNEL DATA: Reading %u bytes from 0x%08x\n",
                 len, (unsigned)addr);
     }
-    memcpy(dst, ((uint8_t*)aica->sys_reg) + addr, len);
+
+    unsigned chan_no = addr / AICA_CHAN_LEN;
+    unsigned chan_reg = addr % AICA_CHAN_LEN;
+
+    struct aica_chan *chan = aica->channels + chan_no;
+    uint32_t tmp;
+
+    switch (chan_reg / 4) {
+    case AICA_CHAN_PLAY_CTRL:
+        memcpy(&tmp, chan->raw + AICA_CHAN_PLAY_CTRL, sizeof(tmp));
+        tmp &= ~(1 << 15);
+        memcpy(chan->raw + AICA_CHAN_PLAY_CTRL, &tmp, sizeof(tmp));
+        break;
+    }
+
+    memcpy(dst, chan->raw + chan_reg, len);
 }
 
 static void aica_dsp_mixer_read(struct aica *aica, void *dst,
@@ -482,8 +499,33 @@ static void aica_dsp_reg_read(struct aica *aica, void *dst,
     memcpy(dst, ((uint8_t*)aica->sys_reg) + addr, len);
 }
 
+static void aica_do_keyon(struct aica *aica) {
+    unsigned chan_no;
+    for (chan_no = 0; chan_no < AICA_CHAN_COUNT; chan_no++) {
+        struct aica_chan *chan = aica->channels + chan_no;
+        if (chan->ready_keyon && !chan->playing) {
+            chan->playing = true;
+            printf("AICA channel %u key-on\n", chan_no);
+        } else if (!chan->ready_keyon && chan->playing) {
+            chan->playing = false;
+            printf("AICA channel %u key-off\n", chan_no);
+        }
+    }
+}
+
+static void aica_chan_playctrl_write(struct aica *aica, unsigned chan_no) {
+    uint32_t val;
+    struct aica_chan *chan = aica->channels + chan_no;
+    memcpy(&val, chan->raw + AICA_CHAN_PLAY_CTRL, sizeof(val));
+
+    chan->ready_keyon = (bool)(val & (1 << 14));
+    if (val & (1 << 15))
+        aica_do_keyon(aica);
+    chan->keyon = (bool)(val & (1 << 15));
+}
+
 static void aica_sys_channel_write(struct aica *aica, void const *src,
-                                  uint32_t addr, unsigned len) {
+                                   uint32_t addr, unsigned len) {
     uint32_t addr_first = addr;
     uint32_t addr_last = addr + (len - 1);
     if (addr_first > 0x1fff || addr_last > 0x1fff) {
@@ -491,11 +533,23 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         error_set_address(addr);
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
+
+    unsigned chan_no = addr / AICA_CHAN_LEN;
+    unsigned chan_reg = addr % AICA_CHAN_LEN;
+
+    struct aica_chan *chan = aica->channels + chan_no;
+
     if (aica_log_verbose_val) {
         LOG_DBG("AICA CHANNEL DATA: Writing %u bytes from 0x%08x\n",
                 len, (unsigned)addr);
     }
-    memcpy(((uint8_t*)aica->sys_reg) + addr, src, len);
+    memcpy(chan->raw + chan_reg, src, len);
+
+    switch (chan_reg / 4) {
+    case AICA_CHAN_PLAY_CTRL:
+        aica_chan_playctrl_write(aica, chan_no);
+        break;
+    }
 }
 
 static void aica_dsp_mixer_write(struct aica *aica, void const *src,
