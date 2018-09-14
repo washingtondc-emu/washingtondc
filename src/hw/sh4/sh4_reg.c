@@ -213,7 +213,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
       sh4_warn_read_handler, sh4_warn_write_handler,
       0, 0 },
     { "PDTRB", 0xff800044, 2, SH4_REG_PDTRB, true,
-      sh4_ignore_read_handler, sh4_ignore_write_handler,
+      sh4_warn_read_handler, sh4_warn_write_handler,
       0, 0 },
     { "GPIOIC", 0xff800048, 2, (sh4_reg_idx_t)-1, true,
       sh4_ignore_read_handler, sh4_ignore_write_handler,
@@ -711,32 +711,48 @@ sh4_pdtra_read_handler(Sh4 *sh4,
         n_input_mask |= n_input << bit_no;
     }
 
-    /* show the bios what (i think) it wants to see... */
-    uint16_t out_val;
-    switch (sh4->reg[SH4_REG_PR]) {
-    case 0x8c00b97a:
-    case 0x8c00b996:
-        out_val = 0;
-        break;
-    case 0x8c00b964:
-    case 0x8c00b96e:
-    case 0x8c00b980:
-    case 0x8c00b98a:
-    default:
-        out_val = 3;
-    }
-
     /*
-     * Set cable type - for now I hardcode to composite video (because that's
-     * the only one games are required to support).  In the future, there should
-     * be a way to select different video output types.
+     * Put the first byte to 0xe because that seems to be what it always is on
+     * real hardware.
      */
-    out_val |= 0x0300;
+    uint32_t out_val = 0xe0;
+
+    out_val |= 0x0300; // hardocde cable type to composite NTSC video
 
     /*
+     * The lower 4 bits of the output value appear to be important, but I don't
+     * know what they represent.  The below table was dumped from an NTSC-U
+     * Dreamcast connected to a TV via composite video.  If these values are
+     * wrong, then the Dreamcast firmware will hang during early bootup.
+     */
+    unsigned const tbl[16][4] = {
+        { 0x03, 0x03, 0x03, 0x03 },
+        { 0x00, 0x03, 0x00, 0x03 },
+        { 0x03, 0x03, 0x03, 0x03 },
+        { 0x00, 0x03, 0x00, 0x03 },
+        { 0x00, 0x00, 0x03, 0x03 },
+        { 0x00, 0x01, 0x02, 0x03 },
+        { 0x00, 0x00, 0x03, 0x03 },
+        { 0x00, 0x01, 0x02, 0x03 },
+        { 0x03, 0x03, 0x03, 0x03 },
+        { 0x00, 0x03, 0x00, 0x03 },
+        { 0x03, 0x03, 0x03, 0x03 },
+        { 0x00, 0x03, 0x00, 0x03 },
+        { 0x00, 0x00, 0x03, 0x03 },
+        { 0x00, 0x01, 0x02, 0x03 },
+        { 0x00, 0x00, 0x03, 0x03 },
+        { 0x00, 0x01, 0x02, 0x03 }
+    };
+
+    out_val |= tbl[pctra & 0xf][sh4->reg[SH4_REG_PDTRA] & 3];
+
+    /*
+     * TODO:
      * I also need to add in a way to select the TV video type in bits 4:2.  For
      * now I leave those three bits at zero, which corresponds to NTSC.  For PAL
      * formats, some of those bits are supposed to be non-zero.
+     *
+     * ALSO TODO: What about the upper two bytes of PDTRA?
      */
 
     /*
