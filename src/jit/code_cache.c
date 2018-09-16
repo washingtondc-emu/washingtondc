@@ -164,6 +164,8 @@ void code_cache_invalidate_all(void) {
 
     reinit_tree();
     memset(code_cache_tbl, 0, sizeof(code_cache_tbl));
+
+    n_entries = 0;
 }
 
 void code_cache_gc(void) {
