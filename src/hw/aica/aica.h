@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 
+#include "dc_sched.h"
 #include "aica_wave_mem.h"
 
 struct arm7;
@@ -55,6 +56,16 @@ struct aica_chan {
     bool ready_keyon; // bit 14 of play control
     bool playing;     // if true, this channel is playing
     bool keyon;       // bit 15 of play control
+};
+
+struct aica_timer {
+    struct SchedEvent evt;
+
+    dc_cycle_stamp_t stamp_last_sync;
+
+    bool scheduled;
+
+    unsigned counter;
 };
 
 struct aica {
@@ -92,9 +103,14 @@ struct aica {
     uint32_t sys_reg[(AICA_SYS_LEN / 4) + 8];
 
     struct aica_chan channels[AICA_CHAN_COUNT];
+
+    // timerA, timerB, timerC
+    struct aica_timer timers[3];
+
+    struct dc_clock *clk;
 };
 
-void aica_init(struct aica *aica, struct arm7 *arm7);
+void aica_init(struct aica *aica, struct arm7 *arm7, struct dc_clock *clk);
 void aica_cleanup(struct aica *aica);
 
 extern struct memory_interface aica_sys_intf;

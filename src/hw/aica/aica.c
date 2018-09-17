@@ -38,6 +38,18 @@
 
 #include "aica.h"
 
+/*
+ * TODO: I'm really only assuming this is 44.1KHz because that's the standard,
+ * I don't actually know if this is correct.
+ */
+#define AICA_SAMPLE_FREQ 44100
+
+/*
+ * TODO: SCHED_FREQUENCY is not an integer multiple of AICA_SAMPLE_FREQ, so
+ * there will be some inaccuracies here.
+ */
+#define TICKS_PER_SAMPLE (SCHED_FREQUENCY / AICA_SAMPLE_FREQ)
+
 #define AICA_CHAN_PLAY_CTRL 0x0000
 
 #define AICA_MASTER_VOLUME 0x2800
@@ -97,7 +109,6 @@
 #define AICA_INT_CPU_MASK (1 << AICA_INT_CPU_SHIFT)
 
 #define AICA_INT_TIMA_SHIFT 6
-
 #define AICA_INT_TIMA_MASK (1 << AICA_INT_TIMA_SHIFT)
 
 #define AICA_INT_TIMB_SHIFT 7
@@ -161,6 +172,26 @@ static void aica_dsp_reg_write(struct aica *aica, void const *src,
 
 static bool aica_check_irq(void *ctxt);
 
+__attribute__((unused))
+static void aica_unsched_all_timers(struct aica *aica);
+
+__attribute__((unused))
+static void aica_sched_all_timers(struct aica *aica);
+
+static void aica_unsched_timer(struct aica *aica, unsigned tim_idx);
+static void aica_sched_timer(struct aica *aica, unsigned tim_idx);
+
+static void aica_sync_timer(struct aica *aica, unsigned tim_idx);
+
+static void
+aica_timer_a_handler(struct SchedEvent *evt);
+static void
+aica_timer_b_handler(struct SchedEvent *evt);
+static void
+aica_timer_c_handler(struct SchedEvent *evt);
+
+static void aica_timer_handler(struct aica *aica, unsigned tim_idx);
+
 struct memory_interface aica_sys_intf = {
     .read32 = aica_sys_read_32,
     .read16 = aica_sys_read_16,
@@ -175,12 +206,27 @@ struct memory_interface aica_sys_intf = {
     .writedouble = aica_sys_write_double
 };
 
-void aica_init(struct aica *aica, struct arm7 *arm7) {
+void aica_init(struct aica *aica, struct arm7 *arm7, struct dc_clock *clk) {
     memset(aica, 0, sizeof(*aica));
 
+    aica->clk = clk;
     aica->arm7 = arm7;
+
+    /*
+     * TODO: I think this might actually be meant to be handled as FIQ, not IRQ.
+     * I need to do more research to confirm.
+     */
     arm7->check_irq = aica_check_irq;
     arm7->check_irq_dat = aica;
+
+    aica->timers[0].evt.handler = aica_timer_a_handler;
+    aica->timers[1].evt.handler = aica_timer_b_handler;
+    aica->timers[2].evt.handler = aica_timer_c_handler;
+    aica->timers[0].evt.arg_ptr = aica;
+    aica->timers[1].evt.arg_ptr = aica;
+    aica->timers[2].evt.arg_ptr = aica;
+
+    aica_sched_all_timers(aica);
 
     aica_wave_mem_init(&aica->mem);
 }
@@ -319,6 +365,9 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
         break;
     case AICA_SCIRE:
         memcpy(&val, aica->sys_reg + (AICA_SCIRE/4), sizeof(val));
+        if ((aica->int_pending & AICA_INT_TIMA_MASK) & (val & AICA_INT_TIMA_MASK)) {
+            printf("clearing timerA interrupt\n");
+        }
         aica->int_pending &= ~val;
         aica_update_interrupts(aica);
         break;
@@ -810,4 +859,107 @@ static bool aica_check_irq(void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
 
     return (bool)(aica->int_enable & aica->int_pending & AICA_ALL_INT_MASK);
+}
+
+static void aica_unsched_all_timers(struct aica *aica) {
+    unsigned idx;
+    for (idx = 0; idx < 3; idx++)
+        aica_unsched_timer(aica, idx);
+}
+
+static void aica_sched_all_timers(struct aica *aica) {
+    unsigned idx;
+    for (idx = 0; idx < 3; idx++)
+        aica_sched_timer(aica, idx);
+}
+
+static void aica_unsched_timer(struct aica *aica, unsigned tim_idx) {
+    struct aica_timer *timer = aica->timers + tim_idx;
+    if (timer->scheduled) {
+        timer->scheduled = false;
+        cancel_event(aica->clk, &timer->evt);
+    }
+}
+
+static void aica_sched_timer(struct aica *aica, unsigned tim_idx) {
+    struct aica_timer *timer = aica->timers + tim_idx;
+
+    if (timer->scheduled)
+        return;
+
+    struct SchedEvent *evt = &timer->evt;
+    struct dc_clock *clk = aica->clk;
+
+    // TODO: implement the prescale
+    unsigned samples_to_go = 256 - timer->counter;
+    dc_cycle_stamp_t clk_ticks = TICKS_PER_SAMPLE * samples_to_go;
+
+    evt->when = clock_cycle_stamp(clk) + clk_ticks;
+
+    sched_event(aica->clk, evt);
+
+    timer->scheduled = true;
+}
+
+/*
+ * TODO: the most accurate way to handle the integer rounding error would be to
+ * always evaluate the current sample based on the total number of clock ticks
+ * that have occured since the emulator began.
+ */
+static void aica_sync_timer(struct aica *aica, unsigned tim_idx) {
+    struct aica_timer *timer = aica->timers + tim_idx;
+    dc_cycle_stamp_t cur_stamp = clock_cycle_stamp(aica->clk);
+    dc_cycle_stamp_t delta = cur_stamp - timer->stamp_last_sync;
+    unsigned sample_delta = delta / TICKS_PER_SAMPLE;
+
+    if (sample_delta) {
+        timer->counter += sample_delta;
+        timer->counter %= 256;
+    }
+
+    timer->stamp_last_sync = cur_stamp;
+}
+
+static void
+aica_timer_a_handler(struct SchedEvent *evt) {
+    struct aica *aica = (struct aica*)evt->arg_ptr;
+    aica_timer_handler(aica, 0);
+}
+
+static void
+aica_timer_b_handler(struct SchedEvent *evt) {
+    struct aica *aica = (struct aica*)evt->arg_ptr;
+    aica_timer_handler(aica, 1);
+}
+
+static void
+aica_timer_c_handler(struct SchedEvent *evt) {
+    struct aica *aica = (struct aica*)evt->arg_ptr;
+    aica_timer_handler(aica, 2);
+}
+
+static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
+    struct aica_timer *timer = aica->timers + tim_idx;
+
+    timer->scheduled = false;
+    aica_sync_timer(aica, tim_idx);
+
+    if (timer->counter) {
+        LOG_ERROR("timer->counter is %u\n", timer->counter);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    switch (tim_idx) {
+    case 0:
+        aica->int_pending |= AICA_INT_TIMA_MASK;
+        break;
+    case 1:
+        aica->int_pending |= AICA_INT_TIMB_MASK;
+        break;
+    case 2:
+        aica->int_pending |= AICA_INT_TIMC_MASK;
+        break;
+    }
+
+    aica_sched_timer(aica, tim_idx);
 }
