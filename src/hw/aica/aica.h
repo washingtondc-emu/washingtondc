@@ -66,6 +66,7 @@ struct aica_timer {
     bool scheduled;
 
     unsigned counter;
+    unsigned prescale; // TODO: implement
 };
 
 struct aica {

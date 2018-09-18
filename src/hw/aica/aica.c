@@ -92,6 +92,8 @@
 
 #define AICA_MIDI_INPUT 0x2808
 
+#define AICA_INTREQ 0x2d00
+
 #define AICA_INTCLEAR 0x2d04
 
 #define AICA_CHANINFOREQ 0x280c
@@ -192,6 +194,8 @@ aica_timer_c_handler(struct SchedEvent *evt);
 
 static void aica_timer_handler(struct aica *aica, unsigned tim_idx);
 
+static unsigned aica_read_sci(struct aica *aica, unsigned bit);
+
 struct memory_interface aica_sys_intf = {
     .read32 = aica_sys_read_32,
     .read16 = aica_sys_read_16,
@@ -212,12 +216,22 @@ void aica_init(struct aica *aica, struct arm7 *arm7, struct dc_clock *clk) {
     aica->clk = clk;
     aica->arm7 = arm7;
 
+    // HACK
+    aica->int_enable = AICA_TIMERA_CTRL;
+
+    /*
+     * The corlett docs say these are default values
+     */
+    aica->sys_reg[AICA_SCILV0 / 4] = 0x18;
+    aica->sys_reg[AICA_SCILV1 / 4] = 0x50;
+    aica->sys_reg[AICA_SCILV2 / 4] = 0x08;
+
     /*
      * TODO: I think this might actually be meant to be handled as FIQ, not IRQ.
      * I need to do more research to confirm.
      */
-    arm7->check_irq = aica_check_irq;
-    arm7->check_irq_dat = aica;
+    arm7->check_fiq = aica_check_irq;
+    arm7->check_fiq_dat = aica;
 
     aica->timers[0].evt.handler = aica_timer_a_handler;
     aica->timers[1].evt.handler = aica_timer_b_handler;
@@ -321,6 +335,30 @@ aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
     case AICA_PLAYSTATUS:
         LOG_DBG("Reading 0x%08x from AICA_PLAYSTATUS\n",
                 (unsigned)aica->sys_reg[idx]);
+        break;
+
+    case AICA_TIMERA_CTRL:
+        printf("read AICA_TIMERA_CTRL\n");
+        aica_sync_timer(aica, 0);
+        aica->sys_reg[AICA_TIMERA_CTRL / 4] =
+            ((aica->timers[0].prescale & 0x7) << 8) |
+            (aica->timers[0].counter & 0xf);
+        break;
+    case AICA_TIMERB_CTRL:
+        printf("read AICA_TIMERA_CTRL\n");
+        aica_sync_timer(aica, 1);
+        aica->sys_reg[AICA_TIMERB_CTRL / 4] =
+            ((aica->timers[1].prescale & 0x7) << 8) |
+            (aica->timers[1].counter & 0xf);
+        break;
+    case AICA_TIMERC_CTRL:
+        printf("read AICA_TIMERA_CTRL\n");
+        aica_sync_timer(aica, 2);
+        aica->sys_reg[AICA_TIMERC_CTRL / 4] =
+            ((aica->timers[2].prescale & 0x7) << 8) |
+            (aica->timers[2].counter & 0xf);
+        break;
+    case AICA_INTREQ:
         break;
     default:
 #ifdef AICA_PEDANTIC
@@ -853,12 +891,19 @@ static void aica_update_interrupts(struct aica *aica) {
      * this is really just a placeholder in case I ever want to put some logging
      * in or something, this function doesn't actually need to be here.
      */
+    printf("FIQ: aica->int_enable is now 0x%08x\n", (unsigned)aica->int_enable);
 }
 
 static bool aica_check_irq(void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
 
-    return (bool)(aica->int_enable & aica->int_pending & AICA_ALL_INT_MASK);
+    bool ret_val = (bool)(aica->int_enable & aica->int_pending & AICA_ALL_INT_MASK);
+    /* if (ret_val) */
+    /*     printf("FIQ!\n"); */
+    /* else if (aica->int_pending) */
+    /*     printf("pending FIQ!\n"); */
+    return ret_val;
+    /* return (bool)(aica->int_enable & aica->int_pending & AICA_ALL_INT_MASK); */
 }
 
 static void aica_unsched_all_timers(struct aica *aica) {
@@ -952,6 +997,7 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
     switch (tim_idx) {
     case 0:
         aica->int_pending |= AICA_INT_TIMA_MASK;
+        aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 6);
         break;
     case 1:
         aica->int_pending |= AICA_INT_TIMB_MASK;
@@ -962,4 +1008,12 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
     }
 
     aica_sched_timer(aica, tim_idx);
+}
+
+static unsigned aica_read_sci(struct aica *aica, unsigned bit) {
+    if (bit >= 8)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    return (aica->sys_reg[AICA_SCILV2 / 4] << 2) |
+        (aica->sys_reg[AICA_SCILV1 / 4] << 1) |
+        aica->sys_reg[AICA_SCILV0 / 4];
 }

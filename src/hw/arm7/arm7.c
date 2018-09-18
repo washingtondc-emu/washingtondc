@@ -687,6 +687,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
         arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
         arm7->reg[ARM7_REG_R14_FIQ] = arm7_pc_next(arm7) + 4;
         arm7->reg[ARM7_REG_PC] = 0x1c;
+        printf("FIQ jump to 0x1c\n");
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
