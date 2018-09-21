@@ -217,7 +217,7 @@ void aica_init(struct aica *aica, struct arm7 *arm7, struct dc_clock *clk) {
     aica->arm7 = arm7;
 
     // HACK
-    aica->int_enable = AICA_TIMERA_CTRL;
+    aica->int_enable = AICA_INT_TIMA_MASK;
 
     /*
      * The corlett docs say these are default values
@@ -999,17 +999,32 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    /*
+     * it is not a mistake that timer B and timer C both share pin 7 scilv.
+     * the corlett doc says that bit 7 of scilv referes to bits 7, 8, 9 and 10
+     * of SCIPD all at the same time.
+     */
     switch (tim_idx) {
     case 0:
         aica->int_pending |= AICA_INT_TIMA_MASK;
-        aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 6);
-        aica->irq_line = true;
+        if (aica->int_enable & AICA_INT_TIMA_MASK) {
+            aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 6);
+            aica->irq_line = true;
+        }
         break;
     case 1:
         aica->int_pending |= AICA_INT_TIMB_MASK;
+        if (aica->int_enable & AICA_INT_TIMB_MASK) {
+            aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 7);
+            aica->irq_line = true;
+        }
         break;
     case 2:
         aica->int_pending |= AICA_INT_TIMC_MASK;
+        if (aica->int_enable & AICA_INT_TIMC_MASK) {
+            aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 7);
+            aica->irq_line = true;
+        }
         break;
     }
 
