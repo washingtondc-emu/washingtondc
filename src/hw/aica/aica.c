@@ -390,7 +390,7 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
 
     switch (idx * 4) {
     case AICA_MASTER_VOLUME:
-        LOG_DBG("Writing 0x%08x to AICA_MASTER_VOLUME\n", (unsigned)val);
+        LOG_DBG("Writing to AICA_MASTER_VOLUME\n");
         break;
     case AICA_ARM7_RST:
         memcpy(&val, aica->sys_reg + (AICA_ARM7_RST/4), sizeof(val));
