@@ -500,6 +500,8 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
     case AICA_INTCLEAR:
         memcpy(&val, aica->sys_reg + (AICA_INTCLEAR/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_INTCLEAR\n", (unsigned)val);
+        if ((val & 0xff) == 1)
+            aica->irq_line = false;
         break;
 
     case AICA_CHANINFOREQ:
@@ -906,13 +908,7 @@ static void aica_update_interrupts(struct aica *aica) {
 static bool aica_check_irq(void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
 
-    bool ret_val = (bool)(aica->int_enable & aica->int_pending & AICA_ALL_INT_MASK);
-    /* if (ret_val) */
-    /*     printf("FIQ!\n"); */
-    /* else if (aica->int_pending) */
-    /*     printf("pending FIQ!\n"); */
-    return ret_val;
-    /* return (bool)(aica->int_enable & aica->int_pending & AICA_ALL_INT_MASK); */
+    return aica->irq_line;
 }
 
 static void aica_unsched_all_timers(struct aica *aica) {
@@ -1007,6 +1003,7 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
     case 0:
         aica->int_pending |= AICA_INT_TIMA_MASK;
         aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 6);
+        aica->irq_line = true;
         break;
     case 1:
         aica->int_pending |= AICA_INT_TIMB_MASK;

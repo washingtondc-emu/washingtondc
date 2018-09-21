@@ -85,6 +85,8 @@ struct aica {
     // AICA_MCIPD
     uint32_t int_pending_sh4;
 
+    bool irq_line;
+
     unsigned ringbuffer_addr;
     enum ringbuffer_size ringbuffer_size;
     bool ringbuffer_bit15;
