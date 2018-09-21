@@ -1013,7 +1013,12 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
 static unsigned aica_read_sci(struct aica *aica, unsigned bit) {
     if (bit >= 8)
         RAISE_ERROR(ERROR_INTEGRITY);
-    return (aica->sys_reg[AICA_SCILV2 / 4] << 2) |
-        (aica->sys_reg[AICA_SCILV1 / 4] << 1) |
-        aica->sys_reg[AICA_SCILV0 / 4];
+
+    unsigned bits[3] = {
+        (aica->sys_reg[AICA_SCILV0 / 4] >> bit) & 1,
+        (aica->sys_reg[AICA_SCILV1 / 4] >> bit) & 1,
+        (aica->sys_reg[AICA_SCILV2 / 4] >> bit) & 1
+    };
+
+    return (bits[2] << 2) | (bits[1] << 1) | bits[0];
 }
