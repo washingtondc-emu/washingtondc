@@ -463,15 +463,24 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
          * didn't implement that.
          */
     case AICA_TIMERA_CTRL:
+        aica_sync_timer(aica, 0);
+        aica_unsched_timer(aica, 0);
         memcpy(&val, aica->sys_reg + (AICA_TIMERA_CTRL/4), sizeof(val));
+        aica_sched_timer(aica, 0);
         LOG_DBG("Writing 0x%08x to AICA_TIMERA_CTRL\n", (unsigned)val);
         break;
     case AICA_TIMERB_CTRL:
+        aica_sync_timer(aica, 1);
+        aica_unsched_timer(aica, 1);
         memcpy(&val, aica->sys_reg + (AICA_TIMERB_CTRL/4), sizeof(val));
+        aica_sched_timer(aica, 1);
         LOG_DBG("Writing 0x%08x to AICB_TIMERA_CTRL\n", (unsigned)val);
         break;
     case AICA_TIMERC_CTRL:
+        aica_sync_timer(aica, 2);
+        aica_unsched_timer(aica, 2);
         memcpy(&val, aica->sys_reg + (AICA_TIMERC_CTRL/4), sizeof(val));
+        aica_sched_timer(aica, 2);
         LOG_DBG("Writing 0x%08x to AICC_TIMERA_CTRL\n", (unsigned)val);
         break;
 
