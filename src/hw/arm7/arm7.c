@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <signal.h>
 
 #include "log.h"
 #include "error.h"
@@ -464,15 +465,10 @@ DEF_DATA_OP(bic) {
                 input_1 += 4;                                           \
         }                                                               \
                                                                         \
-        if (rd == 15 && s_flag) {                                       \
-            printf("Unimplemented: PC as destination register with s_flag\n"); \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
-        }                                                               \
-                                                                        \
         uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
                                                   carry_in, &n_out,     \
                                                   &c_out, &z_out, &v_out); \
-        if (s_flag) {                                                   \
+        if (s_flag && rd != 15) {                                       \
             if (is_logic) {                                             \
                 uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
                 uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
@@ -493,6 +489,8 @@ DEF_DATA_OP(bic) {
                 arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag |          \
                                              c_flag | v_flag);          \
             }                                                           \
+        } else if (s_flag && rd == 15) {                                \
+            arm7->reg[ARM7_REG_CPSR] = arm7->reg[arm7_spsr_idx(arm7)];  \
         } else if (require_s) {                                         \
             RAISE_ERROR(ERROR_INTEGRITY);                               \
         }                                                               \
