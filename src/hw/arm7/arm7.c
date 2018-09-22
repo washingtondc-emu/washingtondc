@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <signal.h>
 
 #include "log.h"
 #include "error.h"
@@ -876,14 +875,17 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
     bool writeback = (bool)(inst & (1 << 21));
     bool load = (bool)(inst & (1 << 20));
 
-    if (psr_user_force)
+    if (psr_user_force && (!(reg_list & (1 << 15)) || !load)) {
+        error_set_arm7_inst(inst);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 
     // docs say you cant do this
     if (rn == 15)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
-    uint32_t base = *arm7_gen_reg(arm7, rn);
+    uint32_t *baseptr = arm7_gen_reg(arm7, rn);
+    uint32_t base = *baseptr;
 
     /*
      * This is actually not illegal, but there are some weird corner cases I
@@ -898,7 +900,7 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
     int reg_no;
     if (up) {
         if (load) {
-            for (reg_no = 0; reg_no < 16; reg_no++)
+            for (reg_no = 0; reg_no < 15; reg_no++)
                 if (reg_list & (1 << reg_no)) {
                     if (pre)
                         base += 4;
@@ -907,7 +909,20 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
                     if (!pre)
                         base += 4;
                 }
+            if (reg_list & (1 << 15)) {
+                if (psr_user_force)
+                    arm7->reg[ARM7_REG_CPSR] = arm7->reg[arm7_spsr_idx(arm7)];
+                if (pre)
+                    base += 4;
+                arm7->reg[ARM7_REG_PC] =
+                    memory_map_read_32(arm7->map, base);
+                if (!pre)
+                    base += 4;
+            }
         } else {
+            // store
+            if (psr_user_force)
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
             for (reg_no = 0; reg_no < 15; reg_no++)
                 if (reg_list & (1 << reg_no)) {
                     if (pre)
@@ -919,8 +934,6 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
                 }
 
             if (reg_list & (1 << 15)) {
-                if (psr_user_force)
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
                 if (pre)
                     base += 4;
                 memory_map_write_32(arm7->map, base,
@@ -930,6 +943,8 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
             }
         }
     } else {
+        if (psr_user_force)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         /*
          * TODO:
          * This transfers higher registers before lower registers.  The spec
@@ -981,7 +996,7 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
      * raised an ERROR_UNIMPLEMENTED if that was the case.
      */
     if (writeback)
-        *arm7_gen_reg(arm7, rn) = base;
+        *baseptr = base;
 
     if (load && (reg_list & (1 << 15)))
         reset_pipeline(arm7);
