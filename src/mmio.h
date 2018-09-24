@@ -87,7 +87,7 @@
         struct mmio_region_##name *region);                             \
 
 #define DEF_MMIO_REGION(name, len_bytes, beg_bytes, type)               \
-    static inline type                                                  \
+    __attribute__((unused)) static inline type                          \
     mmio_region_##name##_read(struct mmio_region_##name *region,        \
                               addr32_t addr) {                          \
         unsigned idx = (addr - (beg_bytes)) / sizeof(type);             \
@@ -95,7 +95,7 @@
         return region->on_read[idx](region, idx, ctxt);                 \
     }                                                                   \
                                                                         \
-    static inline void                                                  \
+    __attribute__((unused)) static inline void                          \
     mmio_region_##name##_write(struct mmio_region_##name *region,       \
                                addr32_t addr, type val) {               \
         unsigned idx = (addr - beg_bytes) / sizeof(type);               \
