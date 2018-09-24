@@ -68,7 +68,7 @@ enum arm7_mode {
     ARM7_MODE_IRQ  = (0x12 << ARM7_CPSR_M_SHIFT),
     ARM7_MODE_SVC  = (0x13 << ARM7_CPSR_M_SHIFT),
     ARM7_MODE_ABT  = (0x17 << ARM7_CPSR_M_SHIFT),
-    ARM7_MODE_UND  = (0x33 << ARM7_CPSR_M_SHIFT)
+    ARM7_MODE_UND  = (0x1b << ARM7_CPSR_M_SHIFT)
 };
 
 /*
