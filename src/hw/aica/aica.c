@@ -876,7 +876,7 @@ static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
         return;
     }
 
-    if (addr <= 0x2044) {
+    if (addr <= 0x2047) {
         // DSP mixer
         aica_dsp_mixer_write(aica, &val, addr, sizeof(val));
         return;
