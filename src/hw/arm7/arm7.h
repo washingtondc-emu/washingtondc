@@ -192,6 +192,7 @@ struct arm7 {
      * it's at the execution stage.
      */
     arm7_inst pipeline[2];
+    uint32_t pipeline_pc[2];
     int pipeline_len;
 };
 

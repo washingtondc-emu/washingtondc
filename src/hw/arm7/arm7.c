@@ -621,13 +621,20 @@ void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
     switch (arm7->pipeline_len) {
     case 2:
         ret = arm7->pipeline[1];
+
+        arm7->pipeline_pc[1] = arm7->pipeline_pc[0];
         arm7->pipeline[1] = arm7->pipeline[0];
+
+        arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
         arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
+
         arm7_decode(arm7, inst_out, ret);
         return;
     case 1:
+        arm7->pipeline_pc[1] = arm7->pipeline_pc[0];
         arm7->pipeline[1] = arm7->pipeline[0];
     case 0:
+        arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
         arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
         arm7->pipeline_len++;
         inst_out->inst = 0xdeadbeef;
@@ -638,6 +645,12 @@ void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
     default:
         RAISE_ERROR(ERROR_INTEGRITY);
     }
+}
+
+static uint32_t arm7_pc_next(struct arm7 *arm7) {
+    if (arm7->pipeline_len)
+        return arm7->pipeline_pc[arm7->pipeline_len - 1];
+    return arm7->reg[ARM7_REG_PC];
 }
 
 static void arm7_check_excp(struct arm7 *arm7) {
@@ -656,7 +669,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
 
     if (excp & ARM7_EXCP_RESET) {
         arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-        arm7->reg[ARM7_REG_R14_SVC] = arm7->reg[ARM7_REG_PC] - 4;
+        arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
         arm7->reg[ARM7_REG_PC] = 0;
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
@@ -666,7 +679,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
         arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
-        arm7->reg[ARM7_REG_R14_FIQ] = arm7->reg[ARM7_REG_PC] - 4;
+        arm7->reg[ARM7_REG_R14_FIQ] = arm7_pc_next(arm7) + 4;
         arm7->reg[ARM7_REG_PC] = 0x1c;
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
@@ -674,7 +687,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
         arm7->excp &= ~ARM7_EXCP_FIQ;
     } else if ((excp & ARM7_EXCP_IRQ) && !(cpsr & ARM7_CPSR_I_MASK)) {
         arm7->reg[ARM7_REG_SPSR_IRQ] = cpsr;
-        arm7->reg[ARM7_REG_R14_IRQ] = arm7->reg[ARM7_REG_PC] - 4;
+        arm7->reg[ARM7_REG_R14_IRQ] = arm7_pc_next(arm7) + 4;
         arm7->reg[ARM7_REG_PC] = 0x18;
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_IRQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
@@ -694,7 +707,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
          * ARM7_REG_R15 - 4.
          */
         arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-        arm7->reg[ARM7_REG_R14_SVC] = arm7->reg[ARM7_REG_PC] - 4;
+        arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
         arm7->reg[ARM7_REG_PC] = 0;
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
