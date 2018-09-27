@@ -186,6 +186,9 @@ static void aica_sched_timer(struct aica *aica, unsigned tim_idx);
 static void aica_sync_timer(struct aica *aica, unsigned tim_idx);
 
 static void
+on_timer_ctrl_write(struct aica *aica, unsigned tim_idx, uint32_t val);
+
+static void
 aica_timer_a_handler(struct SchedEvent *evt);
 static void
 aica_timer_b_handler(struct SchedEvent *evt);
@@ -341,21 +344,21 @@ aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
         printf("read AICA_TIMERA_CTRL\n");
         aica_sync_timer(aica, 0);
         aica->sys_reg[AICA_TIMERA_CTRL / 4] =
-            ((aica->timers[0].prescale & 0x7) << 8) |
+            ((aica->timers[0].prescale_log & 0x7) << 8) |
             (aica->timers[0].counter & 0xf);
         break;
     case AICA_TIMERB_CTRL:
         printf("read AICA_TIMERA_CTRL\n");
         aica_sync_timer(aica, 1);
         aica->sys_reg[AICA_TIMERB_CTRL / 4] =
-            ((aica->timers[1].prescale & 0x7) << 8) |
+            ((aica->timers[1].prescale_log & 0x7) << 8) |
             (aica->timers[1].counter & 0xf);
         break;
     case AICA_TIMERC_CTRL:
         printf("read AICA_TIMERA_CTRL\n");
         aica_sync_timer(aica, 2);
         aica->sys_reg[AICA_TIMERC_CTRL / 4] =
-            ((aica->timers[2].prescale & 0x7) << 8) |
+            ((aica->timers[2].prescale_log & 0x7) << 8) |
             (aica->timers[2].counter & 0xf);
         break;
     case AICA_INTREQ:
@@ -463,25 +466,16 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
          * didn't implement that.
          */
     case AICA_TIMERA_CTRL:
-        aica_sync_timer(aica, 0);
-        aica_unsched_timer(aica, 0);
         memcpy(&val, aica->sys_reg + (AICA_TIMERA_CTRL/4), sizeof(val));
-        aica_sched_timer(aica, 0);
-        LOG_DBG("Writing 0x%08x to AICA_TIMERA_CTRL\n", (unsigned)val);
+        on_timer_ctrl_write(aica, 0, val);
         break;
     case AICA_TIMERB_CTRL:
-        aica_sync_timer(aica, 1);
-        aica_unsched_timer(aica, 1);
         memcpy(&val, aica->sys_reg + (AICA_TIMERB_CTRL/4), sizeof(val));
-        aica_sched_timer(aica, 1);
-        LOG_DBG("Writing 0x%08x to AICB_TIMERA_CTRL\n", (unsigned)val);
+        on_timer_ctrl_write(aica, 1, val);
         break;
     case AICA_TIMERC_CTRL:
-        aica_sync_timer(aica, 2);
-        aica_unsched_timer(aica, 2);
         memcpy(&val, aica->sys_reg + (AICA_TIMERC_CTRL/4), sizeof(val));
-        aica_sched_timer(aica, 2);
-        LOG_DBG("Writing 0x%08x to AICC_TIMERA_CTRL\n", (unsigned)val);
+        on_timer_ctrl_write(aica, 2, val);
         break;
 
     case AICA_SCILV0:
@@ -940,9 +934,9 @@ static void aica_sched_timer(struct aica *aica, unsigned tim_idx) {
     struct SchedEvent *evt = &timer->evt;
     struct dc_clock *clk = aica->clk;
 
-    // TODO: implement the prescale
+    unsigned prescale = 1 << timer->prescale_log;
     unsigned samples_to_go = 256 - timer->counter;
-    dc_cycle_stamp_t clk_ticks = TICKS_PER_SAMPLE * samples_to_go;
+    dc_cycle_stamp_t clk_ticks = TICKS_PER_SAMPLE * samples_to_go * prescale;
 
     evt->when = clock_cycle_stamp(clk) + clk_ticks;
 
@@ -958,9 +952,11 @@ static void aica_sched_timer(struct aica *aica, unsigned tim_idx) {
  */
 static void aica_sync_timer(struct aica *aica, unsigned tim_idx) {
     struct aica_timer *timer = aica->timers + tim_idx;
+
+    unsigned prescale = 1 << timer->prescale_log;
     dc_cycle_stamp_t cur_stamp = clock_cycle_stamp(aica->clk);
     dc_cycle_stamp_t delta = cur_stamp - timer->stamp_last_sync;
-    unsigned sample_delta = delta / TICKS_PER_SAMPLE;
+    unsigned sample_delta = (delta / TICKS_PER_SAMPLE) / prescale;
 
     if (sample_delta) {
         timer->counter += sample_delta;
@@ -968,6 +964,23 @@ static void aica_sync_timer(struct aica *aica, unsigned tim_idx) {
     }
 
     timer->stamp_last_sync = cur_stamp;
+}
+
+static void
+on_timer_ctrl_write(struct aica *aica, unsigned tim_idx, uint32_t val) {
+    struct aica_timer *timer = aica->timers + tim_idx;
+
+    aica_sync_timer(aica, tim_idx);
+    aica_unsched_timer(aica, tim_idx);
+
+    timer->counter = val & 0xff;
+    timer->prescale_log = (val >> 8) & 0x7;
+
+    aica_sched_timer(aica, tim_idx);
+
+    LOG_DBG("Writing 0x%08x to AICA_TIMER%c_CTRL\n",
+            (unsigned)val,
+            tim_idx == 0 ? 'A' : (tim_idx == 1 ? 'B' : 'C'));
 }
 
 static void
