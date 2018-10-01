@@ -802,30 +802,47 @@ static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
             addr += offs;
     }
 
+
     if (len == 4) {
         if (addr % 4) {
             /*
-             * unaligned memory access.  Log this if logging is enabled because
-             * the manual I have  on hand is somewhat ambiguous as to whether
-             * this is actually allowed.
-             *
-             * I'm also pretty surprised that this might be possible.  Usually
-             * when ARM is given the choice between doing something intuitively
-             * and doing something in the most inconvenient manner possible
-             * ARM7 will choosethe latter, so it's very surprising to see it
-             * let unaligned memory access through.
+             * Log this case, it's got some pretty fucked up handling for loads
+             * (see below).  Stores appear to only clear the lower two bits, but I
+             * must tread carefully; this would not be the first time I
+             * misinterpreted an obscure corner-case in ARM7DI's CPU manual.
              */
             LOG_DBG("ARM7 Unaligned memory %s at PC=0x%08x\n",
-                    to_mem ? "store" : "load", (unsigned)arm7->reg[ARM7_REG_PC]);
+                    to_mem ? "store" : "load",
+                    (unsigned)arm7->reg[ARM7_REG_PC]);
         }
-
         if (to_mem) {
             uint32_t val = *arm7_gen_reg(arm7, rd);
             if (rd == 15)
                 val += 4;
+            addr &= ~3;
             memory_map_write_32(arm7->map, addr, val);
         } else {
-            *arm7_gen_reg(arm7, rd) = memory_map_read_32(arm7->map, addr);
+            uint32_t addr_read = addr & ~3;
+            uint32_t val = memory_map_read_32(arm7->map, addr_read);
+
+            /*
+             * Deal with unaligned offsets.  It does the load from the aligned
+             * address (ie address with bits 0 and 1 cleared) and then
+             * right-rotates so that the LSB corresponds to the original
+             * unaligned address.
+             */
+            switch (addr % 4) {
+            case 3:
+                val = ((val >> 24) & 0xffffff) | (val << 8);
+                break;
+            case 2:
+                val = ((val >> 16) & 0xffffff) | (val << 16);
+                break;
+            case 1:
+                val = ((val >> 8) & 0xffffff) | (val << 24);
+                break;
+            }
+            *arm7_gen_reg(arm7, rd) = val;
         }
     } else {
         if (to_mem) {
@@ -896,6 +913,11 @@ static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
 
     if (!reg_list)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    if (base % 4) {
+        error_set_feature("unaligned ARM7 block transfers");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 
     int reg_no;
     if (up) {
