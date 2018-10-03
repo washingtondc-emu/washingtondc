@@ -43,9 +43,54 @@ enum ringbuffer_size {
 #define AICA_CHAN_COUNT 64
 #define AICA_CHAN_LEN 128
 
+enum aica_fmt {
+    AICA_FMT_16_BIT_SIGNED,
+    AICA_FMT_8_BIT_SIGNED,
+    AICA_FMT_4_BIT_ADPCM,
+    AICA_FMT_INVALID
+};
+
+enum aica_env_state {
+    AICA_ENV_ATTACK = 0,
+    AICA_ENV_DECAY = 1,
+    AICA_ENV_SUSTAIN = 2,
+    AICA_ENV_RELEASE = 3
+};
+
+enum aica_afsel {
+    AICA_AFSEL_ATTEN,
+    AICA_AFSEL_FILTER
+};
+
 // It's AICA's cute younger sister, aica-chan!
 struct aica_chan {
     uint8_t raw[AICA_CHAN_LEN];
+
+    /*
+     * attenuation (referred to as envelope level in Neil Corlett's document)
+     *
+     * This is negative gain, expressed in a notation similar to floating point.
+     * I don't completely understand the documentation, but I think bits 0-5 are
+     * the mantissa and bits 6-9 are the logarithm.  According to corlett's
+     * notes, the maximum value is 0x3bf, and anything above that is changed to
+     * by 0x1fff.  The PlayStatus register allocated 13 bits for this, but only
+     * 10 bits are used (unless it gets clamped to 0x1fff).
+     */
+    unsigned atten;
+
+    // the state of the amplitude envelope in the PlayStatus register
+    enum aica_env_state atten_env_state;
+
+    /*
+     * the loop-end flag in the PlayStatus register.  This gets cleared every
+     * time it is read from.
+     */
+    bool loop_end_playstatus_flag;
+
+    enum aica_fmt fmt;
+
+    uint32_t addr_start, addr_cur;
+    uint32_t loop_start, loop_end;
 
     /*
      * bit 15 of the play control register will execute a key-on (if set) or
@@ -90,6 +135,21 @@ struct aica {
     unsigned ringbuffer_addr;
     enum ringbuffer_size ringbuffer_size;
     bool ringbuffer_bit15;
+
+    /*
+     * Selects the channel that the PlayStatus register refers to
+     *
+     * (mslc bit in the ChnInfoReq register).
+     */
+    unsigned chan_sel;
+
+    /*
+     * selects whether PlayStatus refers to the amplitude envelope or the
+     * filter envelope
+     *
+     * (afsel bit in the ChnInfoReq register)
+     */
+    enum aica_afsel afsel;
 
     /*
      * This is backing for registers that allow reads/writes to go through

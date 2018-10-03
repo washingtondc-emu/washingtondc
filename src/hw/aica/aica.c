@@ -51,6 +51,9 @@
 #define TICKS_PER_SAMPLE (SCHED_FREQUENCY / AICA_SAMPLE_FREQ)
 
 #define AICA_CHAN_PLAY_CTRL 0x0000
+#define AICA_CHAN_SAMPLE_ADDR_LOW 0x0004
+#define AICA_CHAN_LOOP_START 0x0008
+#define AICA_CHAN_LOOP_END 0x000c
 
 #define AICA_MASTER_VOLUME 0x2800
 
@@ -199,6 +202,8 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx);
 
 static unsigned aica_read_sci(struct aica *aica, unsigned bit);
 
+static char const *fmt_name(enum aica_fmt fmt);
+
 struct memory_interface aica_sys_intf = {
     .read32 = aica_sys_read_32,
     .read16 = aica_sys_read_16,
@@ -290,6 +295,7 @@ static void aica_sys_write_double(addr32_t addr, double val, void *ctxt) {
 static void
 aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
     uint32_t val;
+    struct aica_chan *chan;
     switch (4 * idx) {
     case AICA_MASTER_VOLUME:
         // Neill Corlett's AICA notes say this is always 16 when you read from it
@@ -336,6 +342,18 @@ aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
                 (unsigned)aica->sys_reg[idx]);
         break;
     case AICA_PLAYSTATUS:
+        chan = aica->channels + aica->chan_sel;
+
+        if (aica->afsel != AICA_AFSEL_ATTEN)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (chan->atten > 0x3bf && chan->atten != 0x1fff)
+            RAISE_ERROR(ERROR_INTEGRITY); // should have already been clamped
+
+        val = chan->atten | (((unsigned)chan->atten_env_state) << 13) |
+            (chan->loop_end_playstatus_flag ? (1 << 15) : 0);
+        chan->loop_end_playstatus_flag = false;
+
+        memcpy(aica->sys_reg + idx, &val, sizeof(uint32_t));
         LOG_DBG("Reading 0x%08x from AICA_PLAYSTATUS\n",
                 (unsigned)aica->sys_reg[idx]);
         break;
@@ -466,6 +484,7 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
          * didn't implement that.
          */
     case AICA_TIMERA_CTRL:
+        printf("write to TIMERA_CTRL\n");
         memcpy(&val, aica->sys_reg + (AICA_TIMERA_CTRL/4), sizeof(val));
         on_timer_ctrl_write(aica, 0, val);
         break;
@@ -501,6 +520,10 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
     case AICA_CHANINFOREQ:
         memcpy(&val, aica->sys_reg + (AICA_CHANINFOREQ/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_CHANINFOREQ\n", (unsigned)val);
+
+        aica->chan_sel = (val >> 8) & (0x40 - 1);
+        aica->afsel = (enum aica_afsel)(val >> 14);
+
         break;
 
     default:
@@ -552,6 +575,12 @@ static void aica_sys_channel_read(struct aica *aica, void *dst,
         tmp &= ~(1 << 15);
         memcpy(chan->raw + AICA_CHAN_PLAY_CTRL, &tmp, sizeof(tmp));
         break;
+    case AICA_CHAN_SAMPLE_ADDR_LOW:
+        tmp = chan->addr_start & 0xffff;
+        memcpy(chan->raw + AICA_CHAN_SAMPLE_ADDR_LOW, &tmp, sizeof(tmp));
+        break;
+    default:
+        LOG_INFO("Reading from AICA register 0x%08x\n", (unsigned)chan_reg/4);
     }
 
     memcpy(dst, chan->raw + chan_reg, len);
@@ -597,7 +626,9 @@ static void aica_do_keyon(struct aica *aica) {
         struct aica_chan *chan = aica->channels + chan_no;
         if (chan->ready_keyon && !chan->playing) {
             chan->playing = true;
-            printf("AICA channel %u key-on\n", chan_no);
+            printf("AICA channel %u key-on fmt %s ptr 0x%08x\n",
+                   chan_no, fmt_name(chan->fmt),
+                   (unsigned)chan->addr_start);
         } else if (!chan->ready_keyon && chan->playing) {
             chan->playing = false;
             printf("AICA channel %u key-off\n", chan_no);
@@ -610,6 +641,12 @@ static void aica_chan_playctrl_write(struct aica *aica, unsigned chan_no) {
     struct aica_chan *chan = aica->channels + chan_no;
     memcpy(&val, chan->raw + AICA_CHAN_PLAY_CTRL, sizeof(val));
 
+    chan->fmt = (val >> 7) & 3;
+    chan->addr_start &= ~(0xffff << 16);
+    chan->addr_start |= (chan->addr_start & 0x7f) << 16;
+    chan->addr_cur = chan->addr_start;
+    printf("addr_start is now 0x%08x\n", (unsigned)chan->addr_start);
+
     chan->ready_keyon = (bool)(val & (1 << 14));
     if (val & (1 << 15))
         aica_do_keyon(aica);
@@ -618,6 +655,7 @@ static void aica_chan_playctrl_write(struct aica *aica, unsigned chan_no) {
 
 static void aica_sys_channel_write(struct aica *aica, void const *src,
                                    uint32_t addr, unsigned len) {
+    uint32_t tmp;
     uint32_t addr_first = addr;
     uint32_t addr_last = addr + (len - 1);
     if (addr_first > 0x1fff || addr_last > 0x1fff) {
@@ -637,10 +675,35 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
     }
     memcpy(chan->raw + chan_reg, src, len);
 
-    switch (chan_reg / 4) {
+    switch (4 * (chan_reg / 4)) {
     case AICA_CHAN_PLAY_CTRL:
         aica_chan_playctrl_write(aica, chan_no);
         break;
+    case AICA_CHAN_SAMPLE_ADDR_LOW:
+        memcpy(&tmp, chan->raw + AICA_CHAN_SAMPLE_ADDR_LOW, sizeof(tmp));
+        chan->addr_start &= ~0xffff;
+        chan->addr_start |= tmp & 0xffff;
+        chan->addr_cur = chan->addr_start;
+        printf("chan %u addr_start is now 0x%08x\n",
+               chan_no, (unsigned)chan->addr_start);
+        break;
+    case AICA_CHAN_LOOP_START:
+        memcpy(&chan->loop_start, chan->raw + AICA_CHAN_LOOP_START,
+               sizeof(chan->loop_start));
+        /* chan->loop_start &= ~0xffff; */
+        printf("chan %u loop_start is now 0x%08x\n",
+               chan_no, (unsigned)chan->loop_start);
+        break;
+    case AICA_CHAN_LOOP_END:
+        memcpy(&chan->loop_end, chan->raw + AICA_CHAN_LOOP_END,
+               sizeof(chan->loop_end));
+        /* chan->loop_end &= ~0xffff; */
+        printf("chan %u loop_end is now 0x%08x\n",
+               chan_no, (unsigned)chan->loop_end);
+        break;
+    default:
+        memcpy(&tmp, src, sizeof(tmp));
+        printf("addr 0x%08x chan %u offset %u val 0x%08x\n", (unsigned)addr, chan_no, chan_reg, (unsigned)tmp);
     }
 }
 
@@ -1055,4 +1118,17 @@ static unsigned aica_read_sci(struct aica *aica, unsigned bit) {
     };
 
     return (bits[2] << 2) | (bits[1] << 1) | bits[0];
+}
+
+static char const *fmt_name(enum aica_fmt fmt) {
+    switch (fmt) {
+    case AICA_FMT_16_BIT_SIGNED:
+        return "16-bit signed";
+    case AICA_FMT_8_BIT_SIGNED:
+        return "8-bit signed";
+    case AICA_FMT_4_BIT_ADPCM:
+        return "4-bit Yamaha ADPCM";
+    default:
+        return "unknown or invalid";
+    }
 }
