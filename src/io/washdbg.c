@@ -77,6 +77,9 @@ static void handle_read(struct bufferevent *bev, void *arg);
 
 static void washdbg_run_once(void *argptr);
 
+static void handle_events(struct bufferevent *bev, short events, void *arg);
+static void handle_read(struct bufferevent *bev, void *arg);
+
 static struct event *request_listen_event;
 
 struct debug_frontend washdbg_frontend = {
@@ -185,6 +188,9 @@ listener_cb(struct evconnlistener *listener,
     bufferevent_setcb(bev, handle_read, NULL, NULL, NULL);
     bufferevent_enable(bev, EV_READ);
 
+    bufferevent_setcb(bev, handle_read,
+                      NULL, handle_events, NULL);
+
     state = WASHDBG_ATTACHED;
 
 signal_listener:
@@ -192,6 +198,10 @@ signal_listener:
     listener_unlock();
 
     /* drain_tx(); */
+}
+
+static void handle_events(struct bufferevent *bev, short events, void *arg) {
+    exit(2);
 }
 
 // libevent callback for when the socket has data for us to read
@@ -232,7 +242,13 @@ static void handle_read(struct bufferevent *bev, void *arg) {
     // transmit any residual data.
     if (read_buf_idx) {
         read_buf[read_buf_idx] = '\0';
+        if (read_buf_idx >= 1 && read_buf[read_buf_idx - 1] == '\n') {
+            read_buf[read_buf_idx - 1] = '\0';
+            if (read_buf_idx >= 2 && read_buf[read_buf_idx - 2] == '\r')
+                read_buf[read_buf_idx - 2] = '\0';
+        }
         /* cons_rx_recv_text(read_buf); */
+        washdbg_input_text(read_buf);
         printf("text received \"%s\"\n",  read_buf);
     }
 }

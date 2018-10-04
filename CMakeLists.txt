@@ -317,7 +317,9 @@ if (ENABLE_DEBUGGER)
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.h"
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.c"
                                    "${PROJECT_SOURCE_DIR}/src/io/washdbg.h"
-                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg.c")
+                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg.c"
+                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg_core.h"
+                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg_core.c")
     if (ENABLE_WATCHPOINTS)
         add_definitions(-DENABLE_WATCHPOINTS)
     endif()
