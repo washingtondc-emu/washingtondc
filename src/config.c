@@ -67,6 +67,7 @@
 
 #ifdef ENABLE_DEBUGGER
 CONFIG_DEF_BOOL(dbg_enable, false)
+CONFIG_DEF_BOOL(washdbg_enable, false)
 #endif
 
 CONFIG_DEF_BOOL(ser_srv_enable, false)

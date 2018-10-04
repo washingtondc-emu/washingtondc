@@ -72,6 +72,7 @@
 #include "gfx/opengl/overlay.h"
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
+#include "io/washdbg.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -516,6 +517,7 @@ static void dreamcast_check_debugger(void) {
 
     enum dc_state cur_state = dc_get_state();
     if (cur_state == DC_STATE_DEBUG) {
+        printf("cur_state is DC_STATE_DEBUG\n");
         do {
             // call debug_run_once 100 times per second
             win_check_events();
@@ -706,7 +708,10 @@ Sh4 *dreamcast_get_cpu() {
 #ifdef ENABLE_DEBUGGER
 static void dreamcast_enable_debugger(void) {
     using_debugger = true;
-    debug_attach(&gdb_frontend);
+    if (config_get_washdbg_enable())
+        debug_attach(&washdbg_frontend);
+    else
+        debug_attach(&gdb_frontend);
 }
 #endif
 

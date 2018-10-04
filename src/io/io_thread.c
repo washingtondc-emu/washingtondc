@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
+#include "washdbg.h"
 #endif
 
 #include "io_thread.h"
@@ -102,6 +103,7 @@ static void *io_main(void *arg) {
 
 #ifdef ENABLE_DEBUGGER
     gdb_init();
+    washdbg_init();
 #endif
 
     if (pthread_cond_signal(&io_thread_create_condition) != 0)
@@ -123,6 +125,7 @@ static void *io_main(void *arg) {
     event_free(io_thread_work_event);
 
 #ifdef ENABLE_DEBUGGER
+    washdbg_cleanup();
     gdb_cleanup();
 #endif
 

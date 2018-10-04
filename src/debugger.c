@@ -395,7 +395,7 @@ void debug_on_softbreak(inst_t inst, addr32_t pc) {
 }
 
 void debug_attach(struct debug_frontend const *frontend) {
-    DBG_TRACE("debugger attached\n");
+    LOG_INFO("debugger attached\n");
     dbg.frontend = frontend;
     frontend_attach();
     dbg_state_transition(DEBUG_STATE_BREAK);
@@ -405,6 +405,7 @@ void debug_attach(struct debug_frontend const *frontend) {
     atomic_flag_test_and_set(&not_single_step);
     atomic_flag_test_and_set(&not_continue);
     atomic_flag_test_and_set(&not_detach);
+    LOG_INFO("done attaching debugger\n");
 }
 
 static void frontend_attach(void) {
@@ -541,6 +542,7 @@ void debug_run_once(void) {
             dbg_state_transition(DEBUG_STATE_POST_WATCH);
         else
             dbg_state_transition(DEBUG_STATE_NORM);
+        LOG_INFO("Transition to DC_STATE_RUNNING\n");
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_DEBUG);
     }
 

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 
 #include "types.h"
 #include "hw/sh4/sh4_reg.h"
+#include "MemoryMap.h"
 
 enum debug_state {
     // the debugger is not suspending the dreamcast

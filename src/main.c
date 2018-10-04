@@ -47,6 +47,7 @@ static void print_usage(char const *cmd) {
             "\t-b <bios_path>\tpath to dreamcast boot ROM\n"
             "\t-f <flash_path>\tpath to dreamcast flash ROM image\n"
             "\t-g\t\tenable remote GDB backend\n"
+            "\t-w\t\tenable remote WashDbg backend\n"
             "\t-d\t\tenable direct boot (skip BIOS)\n"
             "\t-u\t\tskip IP.BIN and boot straight to 1ST_READ.BIN\n"
             "\t-s\t\tpath to dreamcast system call image (only needed for "
@@ -66,6 +67,7 @@ int main(int argc, char **argv) {
     char const *bios_path = NULL, *flash_path = NULL;
     char const *cmd = argv[0];
     bool enable_debugger = false;
+    bool enable_washdbg = false;
     bool boot_direct = false, skip_ip_bin = false;
     char *path_1st_read_bin = NULL, *path_ip_bin = NULL;
     char *path_syscalls_bin = NULL;
@@ -77,7 +79,7 @@ int main(int argc, char **argv) {
     bool enable_jit = false, enable_native_jit = false,
         enable_interpreter = false, inline_mem = true;
 
-    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxpn")) != -1) {
+    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxpnw")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -90,6 +92,9 @@ int main(int argc, char **argv) {
             break;
         case 'g':
             enable_debugger = true;
+            break;
+        case 'w':
+            enable_washdbg = true;
             break;
         case 'd':
             boot_direct = true;
@@ -129,7 +134,12 @@ int main(int argc, char **argv) {
     argv += optind;
     argc -= optind;
 
-    if (enable_debugger) {
+    if (enable_debugger && enable_washdbg) {
+        LOG_ERROR("You can't enable WashDbg and GDB at the same time\n");
+        exit(1);
+    }
+
+    if (enable_debugger || enable_washdbg) {
         if (enable_jit || enable_native_jit) {
             LOG_WARN("Debugger enabled - this overrides the jit compiler "
                      "and sets WashingtonDC to interpreter mode\n");
@@ -140,6 +150,7 @@ int main(int argc, char **argv) {
 
 #ifdef ENABLE_DEBUGGER
         config_set_dbg_enable(true);
+        config_set_washdbg_enable(enable_washdbg);
 #else
         LOG_ERROR("ERROR: Unable to enable remote gdb stub.\n"
                   "Please rebuild with -DENABLE_DEBUGGER=On\n");

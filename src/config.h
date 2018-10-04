@@ -41,6 +41,13 @@
 #ifdef ENABLE_DEBUGGER
 // if true, enable the remote GDB debugger
 CONFIG_DECL_BOOL(dbg_enable);
+
+/*
+ * if true, use washdbg.  If false, use GDB instead.
+ *
+ * If this is true then dbg_enable should also be true.
+ */
+CONFIG_DECL_BOOL(washdbg_enable);
 #endif
 
 // if true, enable the TCP/IP serial server
