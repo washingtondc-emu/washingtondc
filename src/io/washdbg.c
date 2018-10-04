@@ -34,6 +34,7 @@
 #include "log.h"
 #include "io_thread.h"
 #include "error.h"
+#include "washdbg_core.h"
 
 #include "washdbg.h"
 
@@ -96,8 +97,37 @@ void washdbg_cleanup(void) {
     LOG_INFO("washdbg de-initialized\n");
 }
 
+int washdbg_putchar(char ch) {
+    if (evbuffer_add(outbound_buf, &ch, sizeof(ch)) < 0) {
+        LOG_WARN("Dropped character\n");
+        return 0;
+    }
+
+    bufferevent_write_buffer(bev, outbound_buf);
+    return 1;
+}
+
+int washdbg_puts(char const *str) {
+    size_t len = strlen(str);
+    if (evbuffer_add(outbound_buf, str, len) < 0) {
+        LOG_WARN("dropped string \"%s\"\n", str);
+        return 0;
+    }
+
+    bufferevent_write_buffer(bev, outbound_buf);
+    return len;
+}
+
 static void washdbg_run_once(void *argptr) {
 }
+
+// this gets printed to the dev console every time somebody connects to the debugger
+static char const *login_banner =
+    "Welcome to WashDbg!\n"
+    "WashingtonDC Copyright (C) 2016-2018 snickerbockers\n"
+    "This program comes with ABSOLUTELY NO WARRANTY;\n"
+    "This is free software, and you are welcome to redistribute it\n"
+    "under the terms of the GNU GPL version 3.\n";
 
 static void washdbg_attach(void* argptr) {
     printf("washdbg awaiting remote connection on port %d...\n", WASHDBG_PORT);
@@ -114,6 +144,8 @@ static void washdbg_attach(void* argptr) {
         LOG_INFO("Failed to establish a remote WashDbg connection.\n");
 
     listener_unlock();
+
+    washdbg_puts(login_banner);
 }
 
 static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg) {
@@ -125,7 +157,8 @@ static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg) {
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_port = htons(WASHDBG_PORT);
-    unsigned evflags = LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE;
+    unsigned evflags = LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE |
+        LEV_OPT_THREADSAFE;
     listener = evconnlistener_new_bind(io_thread_event_base, listener_cb,
                                        NULL, evflags, -1,
                                        (struct sockaddr*)&sin, sizeof(sin));
