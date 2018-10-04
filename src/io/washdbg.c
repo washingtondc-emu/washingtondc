@@ -70,10 +70,13 @@ static void
 listener_cb(struct evconnlistener *listener,
             evutil_socket_t fd, struct sockaddr *saddr,
             int socklen, void *arg);
+static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg);
 
 static void handle_read(struct bufferevent *bev, void *arg);
 
 static void washdbg_run_once(void *argptr);
+
+static struct event *request_listen_event;
 
 struct debug_frontend washdbg_frontend = {
     .attach = washdbg_attach,
@@ -81,12 +84,15 @@ struct debug_frontend washdbg_frontend = {
 };
 
 void washdbg_init(void) {
-    LOG_INFO("washdbg initialized\n");
     state = WASHDBG_DISABLED;
     outbound_buf = evbuffer_new();
+    request_listen_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+                                         on_request_listen_event, NULL);
+    LOG_INFO("washdbg initialized\n");
 }
 
 void washdbg_cleanup(void) {
+    event_free(request_listen_event);
     LOG_INFO("washdbg de-initialized\n");
 }
 
@@ -98,35 +104,34 @@ static void washdbg_attach(void* argptr) {
 
     listener_lock();
 
-    if (!outbound_buf) {
-        LOG_ERROR("evbuffer_new returned NULL!\n");
-        goto unlock;
-    }
+    event_active(request_listen_event, 0, 0);
 
-    struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(WASHDBG_PORT);
-    unsigned evflags = LEV_OPT_THREADSAFE | LEV_OPT_REUSEABLE |
-        LEV_OPT_CLOSE_ON_FREE;
-    listener = evconnlistener_new_bind(io_thread_event_base, listener_cb,
-                                       NULL, evflags, -1,
-                                       (struct sockaddr*)&sin, sizeof(sin));
-    if (!listener)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    state = WASHDBG_LISTENING;
-    do {
-        listener_wait();
-    } while (state == WASHDBG_LISTENING);
+    listener_wait();
 
     if (state == WASHDBG_ATTACHED)
         LOG_INFO("WashDbg remote connection established\n");
     else
         LOG_INFO("Failed to establish a remote WashDbg connection.\n");
 
-    /* debug_request_continue(); */
-unlock:
+    listener_unlock();
+}
+
+static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg) {
+    listener_lock();
+
+    state = WASHDBG_LISTENING;
+
+    struct sockaddr_in sin;
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(WASHDBG_PORT);
+    unsigned evflags = LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE;
+    listener = evconnlistener_new_bind(io_thread_event_base, listener_cb,
+                                       NULL, evflags, -1,
+                                       (struct sockaddr*)&sin, sizeof(sin));
+    if (!listener)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
     listener_unlock();
 }
 
