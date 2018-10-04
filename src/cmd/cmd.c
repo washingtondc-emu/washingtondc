@@ -540,7 +540,7 @@ static int cmd_begin_execution(int argc, char **argv) {
 
 // this gets printed to the dev console every time the emulator starts
 static char const *login_banner =
-    "WashingtonDC Copyright (C) 2016, 2017 snickerbockers\n"
+    "WashingtonDC Copyright (C) 2016-2018 snickerbockers\n"
     "This program comes with ABSOLUTELY NO WARRANTY;\n"
     "This is free software, and you are welcome to redistribute it\n"
     "under the terms of the GNU GPL version 3.\n";
