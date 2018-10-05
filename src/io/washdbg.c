@@ -35,6 +35,7 @@
 #include "io_thread.h"
 #include "error.h"
 #include "washdbg_core.h"
+#include "ring.h"
 
 #include "washdbg.h"
 
@@ -79,60 +80,86 @@ static void washdbg_run_once(void *argptr);
 
 static void handle_events(struct bufferevent *bev, short events, void *arg);
 static void handle_read(struct bufferevent *bev, void *arg);
+static void on_check_tx_event(evutil_socket_t fd, short ev, void *arg);
 
-static struct event *request_listen_event;
+// drain the tx_ring
+static void drain_tx(void);
+
+static struct event *request_listen_event, *check_tx_event;
 
 struct debug_frontend washdbg_frontend = {
     .attach = washdbg_attach,
     .run_once = washdbg_run_once
 };
 
+struct text_ring tx_ring, rx_ring;
+
 void washdbg_init(void) {
+    text_ring_init(&rx_ring);
+    text_ring_init(&tx_ring);
+
     state = WASHDBG_DISABLED;
     outbound_buf = evbuffer_new();
     request_listen_event = event_new(io_thread_event_base, -1, EV_PERSIST,
                                          on_request_listen_event, NULL);
+    check_tx_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+                               on_check_tx_event, NULL);
     LOG_INFO("washdbg initialized\n");
 }
 
 void washdbg_cleanup(void) {
+    event_free(check_tx_event);
     event_free(request_listen_event);
     LOG_INFO("washdbg de-initialized\n");
 }
 
-int washdbg_putchar(char ch) {
-    if (evbuffer_add(outbound_buf, &ch, sizeof(ch)) < 0) {
-        LOG_WARN("Dropped character\n");
-        return 0;
+int washdbg_puts(char const *str) {
+    int n_chars = 0;
+    while (*str) {
+        if (!text_ring_produce(&tx_ring, *str)) {
+            LOG_WARN("%s - tx_ring failed to produce\n", __func__);
+            break;
+        }
+        str++;
+        n_chars++;
     }
-
-    bufferevent_write_buffer(bev, outbound_buf);
-    return 1;
+    event_active(check_tx_event, 0, 0);
+    return n_chars;
 }
 
-int washdbg_puts(char const *str) {
-    size_t len = strlen(str);
-    if (evbuffer_add(outbound_buf, str, len) < 0) {
-        LOG_WARN("dropped string \"%s\"\n", str);
-        return 0;
+// drain the tx_ring
+static void drain_tx(void) {
+    char ch;
+    while (text_ring_consume(&tx_ring, &ch)) {
+        if (evbuffer_add(outbound_buf, &ch, sizeof(ch)) < 0) {
+            /*
+             * TODO: what to do here?  We already took the character out of the
+             * tx_ring...
+             */
+            warnx("%s - evbuffer_add returned an error\n", __func__);
+            break;
+        }
     }
 
     bufferevent_write_buffer(bev, outbound_buf);
-    return len;
 }
 
 static void washdbg_run_once(void *argptr) {
+    char ch;
+    while (text_ring_consume(&rx_ring, &ch))
+        washdbg_input_ch(ch);
 }
 
-// this gets printed to the dev console every time somebody connects to the debugger
-static char const *login_banner =
-    "Welcome to WashDbg!\n"
-    "WashingtonDC Copyright (C) 2016-2018 snickerbockers\n"
-    "This program comes with ABSOLUTELY NO WARRANTY;\n"
-    "This is free software, and you are welcome to redistribute it\n"
-    "under the terms of the GNU GPL version 3.\n";
-
+// this function gets called from the emulation thread.
 static void washdbg_attach(void* argptr) {
+// this gets printed to the dev console every time somebody connects to the debugger
+    static char const *login_banner =
+        "Welcome to WashDbg!\n"
+        "WashingtonDC Copyright (C) 2016-2018 snickerbockers\n"
+        "This program comes with ABSOLUTELY NO WARRANTY;\n"
+        "This is free software, and you are welcome to redistribute it\n"
+        "under the terms of the GNU GPL version 3.\n";
+
     printf("washdbg awaiting remote connection on port %d...\n", WASHDBG_PORT);
 
     listener_lock();
@@ -185,9 +212,7 @@ listener_cb(struct evconnlistener *listener,
         goto signal_listener;
     }
 
-    bufferevent_setcb(bev, handle_read, NULL, NULL, NULL);
     bufferevent_enable(bev, EV_READ);
-
     bufferevent_setcb(bev, handle_read,
                       NULL, handle_events, NULL);
 
@@ -197,11 +222,27 @@ signal_listener:
     listener_signal();
     listener_unlock();
 
-    /* drain_tx(); */
+    drain_tx();
+}
+
+/*
+ * this is a libevent callback for an event that gets triggered whenever the
+ * washdbg_core code calls washdbg_puts
+ */
+static void on_check_tx_event(evutil_socket_t fd, short ev, void *arg) {
+    if (state == WASHDBG_ATTACHED)
+        drain_tx();
 }
 
 static void handle_events(struct bufferevent *bev, short events, void *arg) {
     exit(2);
+}
+
+// dat should *not* be null-terminated
+static void dump_to_rx_ring(char const *dat, unsigned n_chars) {
+    unsigned idx;
+    for (idx = 0; idx < n_chars; idx++)
+        text_ring_produce(&rx_ring, dat[idx]);
 }
 
 // libevent callback for when the socket has data for us to read
@@ -231,26 +272,15 @@ static void handle_read(struct bufferevent *bev, void *arg) {
          * Some characters will get dropped if the buffer overflows
          */
         read_buf[read_buf_idx++] = (char)tmp;
-        if (read_buf_idx >= (WASHDBG_READ_BUF_LEN - 1)) {
-            read_buf[WASHDBG_READ_BUF_LEN - 1] = '\0';
-            /* cons_rx_recv_text(read_buf); */
-            printf("text received \"%s\"\n",  read_buf);
+        if (read_buf_idx >= WASHDBG_READ_BUF_LEN) {
+            dump_to_rx_ring(read_buf, read_buf_idx);
             read_buf_idx = 0;
         }
     }
 
     // transmit any residual data.
-    if (read_buf_idx) {
-        read_buf[read_buf_idx] = '\0';
-        if (read_buf_idx >= 1 && read_buf[read_buf_idx - 1] == '\n') {
-            read_buf[read_buf_idx - 1] = '\0';
-            if (read_buf_idx >= 2 && read_buf[read_buf_idx - 2] == '\r')
-                read_buf[read_buf_idx - 2] = '\0';
-        }
-        /* cons_rx_recv_text(read_buf); */
-        washdbg_input_text(read_buf);
-        printf("text received \"%s\"\n",  read_buf);
-    }
+    if (read_buf_idx)
+        dump_to_rx_ring(read_buf, read_buf_idx);
 }
 
 static void listener_lock(void) {

@@ -33,4 +33,6 @@ void washdbg_do_continue(void);
 
 void washdbg_input_text(char const *txt);
 
+void washdbg_input_ch(char ch);
+
 #endif

@@ -20,11 +20,19 @@
  *
  ******************************************************************************/
 
+#include <stdio.h>
 #include <string.h>
 
 #include "washdbg.h"
 
 #include "washdbg_core.h"
+
+#define BUF_LEN 1024
+
+static char in_buf[BUF_LEN];
+unsigned in_buf_pos;
+
+static void washdbg_process_line(void);
 
 bool washdbg_on_step(addr32_t addr, void *argp) {
     return true;
@@ -36,15 +44,34 @@ void washdbg_do_continue(void) {
     debug_request_continue();
 }
 
-void washdbg_input_text(char const *txt) {
-    /*
-     * TODO: THIS IS NOT THREAD-SAFE.
-     *
-     * WE NEED A TEXT RING!
-     */
-    washdbg_puts(txt);
-    if (strcmp(txt, "c") == 0)
+void washdbg_input_ch(char ch) {
+    if (ch == '\r')
+        return;
+    if (ch == '\n') {
+        washdbg_process_line();
+        return;
+    }
+
+    // in_buf[1023] will always be \0
+    if (in_buf_pos <= 1022)
+        in_buf[in_buf_pos++] = ch;
+}
+
+static void washdbg_process_line(void) {
+    if (strcmp(in_buf, "c") == 0) {
+        washdbg_puts("continue!\n");
         washdbg_do_continue();
-    else
-        washdbg_puts("Unrecognized input\n");
+    } else {
+        washdbg_puts("Unrecognized input \"");
+        washdbg_puts(in_buf);
+        washdbg_puts("\"\n");
+    }
+
+    memset(in_buf, 0, sizeof(in_buf));
+    in_buf_pos = 0;
+}
+
+void washdbg_input_text(char const *txt) {
+    while (*txt)
+        washdbg_input_ch(*txt++);
 }
