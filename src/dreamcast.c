@@ -72,7 +72,7 @@
 #include "gfx/opengl/overlay.h"
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
-#include "io/washdbg.h"
+#include "io/washdbg_tcp.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"

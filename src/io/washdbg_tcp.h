@@ -23,7 +23,7 @@
 #ifndef WASHDBG_H_
 #define WASHDBG_H_
 
-#include "debugger.h"
+#include "dbg/debugger.h"
 
 #ifndef ENABLE_DEBUGGER
 #error This file should not be included unless the debugger is enabled

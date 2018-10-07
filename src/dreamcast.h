@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include "dc_sched.h"
 
 #ifdef ENABLE_DEBUGGER
-#include "debugger.h"
+#include "dbg/debugger.h"
 #endif
 
 #include "io/serial_server.h"

@@ -30,7 +30,7 @@
 #include "fifo.h"
 #include "MemoryMap.h"
 
-#include "debugger.h"
+#include "dbg/debugger.h"
 
 #ifndef ENABLE_DEBUGGER
 #error This file should not be included unless the debugger is enabled

@@ -39,7 +39,7 @@
 #include "intmath.h"
 
 #ifdef ENABLE_DEBUGGER
-#include "debugger.h"
+#include "dbg/debugger.h"
 #endif
 
 #ifdef DEEP_SYSCALL_TRACE

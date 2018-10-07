@@ -312,14 +312,14 @@ endif()
 
 if (ENABLE_DEBUGGER)
     add_definitions(-DENABLE_DEBUGGER)
-    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/debugger.h"
-                                   "${PROJECT_SOURCE_DIR}/src/debugger.c"
+    set(sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/dbg/debugger.h"
+                                   "${PROJECT_SOURCE_DIR}/src/dbg/debugger.c"
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.h"
                                    "${PROJECT_SOURCE_DIR}/src/io/gdb_stub.c"
-                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg.h"
-                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg.c"
-                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg_core.h"
-                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg_core.c")
+                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg_tcp.h"
+                                   "${PROJECT_SOURCE_DIR}/src/io/washdbg_tcp.c"
+                                   "${PROJECT_SOURCE_DIR}/src/dbg/washdbg_core.h"
+                                   "${PROJECT_SOURCE_DIR}/src/dbg/washdbg_core.c")
     if (ENABLE_WATCHPOINTS)
         add_definitions(-DENABLE_WATCHPOINTS)
     endif()

@@ -39,7 +39,7 @@
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
-#include "washdbg.h"
+#include "washdbg_tcp.h"
 #endif
 
 #include "io_thread.h"

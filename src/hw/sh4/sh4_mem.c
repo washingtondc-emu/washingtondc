@@ -27,7 +27,7 @@
 #include "hw/sh4/sh4_ocache.h"
 
 #ifdef ENABLE_DEBUGGER
-#include "debugger.h"
+#include "dbg/debugger.h"
 #endif
 
 static void sh4_do_write_p4_double(addr32_t addr, double val, void *ctxt);

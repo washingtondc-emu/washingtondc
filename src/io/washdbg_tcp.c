@@ -34,10 +34,10 @@
 #include "log.h"
 #include "io_thread.h"
 #include "error.h"
-#include "washdbg_core.h"
+#include "dbg/washdbg_core.h"
 #include "ring.h"
 
-#include "washdbg.h"
+#include "washdbg_tcp.h"
 
 static enum washdbg_state {
     // washdbg is not in use

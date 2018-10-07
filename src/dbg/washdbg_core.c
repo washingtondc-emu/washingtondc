@@ -23,9 +23,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "washdbg.h"
+#include "io/washdbg_tcp.h"
 
-#include "washdbg_core.h"
+#include "dbg/washdbg_core.h"
 
 #define BUF_LEN 1024
 
