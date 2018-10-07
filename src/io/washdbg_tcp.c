@@ -133,14 +133,20 @@ int washdbg_tcp_puts(char const *str) {
 
 // drain the tx_ring
 static void drain_tx(void) {
+    static bool have_extra_char = false;
+    static char extra_char;
     char ch;
+
+    if (have_extra_char) {
+        if (evbuffer_add(outbound_buf, &extra_char, sizeof(extra_char)) < 0)
+            return;
+        have_extra_char = false;
+    }
+
     while (text_ring_consume(&tx_ring, &ch)) {
         if (evbuffer_add(outbound_buf, &ch, sizeof(ch)) < 0) {
-            /*
-             * TODO: what to do here?  We already took the character out of the
-             * tx_ring...
-             */
-            warnx("%s - evbuffer_add returned an error\n", __func__);
+            extra_char = ch;
+            have_extra_char = true;
             break;
         }
     }
