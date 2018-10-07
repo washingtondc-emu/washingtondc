@@ -94,7 +94,7 @@ struct debug_frontend washdbg_frontend = {
 
 struct text_ring tx_ring, rx_ring;
 
-void washdbg_init(void) {
+void washdbg_tcp_init(void) {
     text_ring_init(&rx_ring);
     text_ring_init(&tx_ring);
 
@@ -107,13 +107,17 @@ void washdbg_init(void) {
     LOG_INFO("washdbg initialized\n");
 }
 
-void washdbg_cleanup(void) {
+void washdbg_tcp_cleanup(void) {
     event_free(check_tx_event);
     event_free(request_listen_event);
     LOG_INFO("washdbg de-initialized\n");
 }
 
-int washdbg_puts(char const *str) {
+/*
+ * this gets called from the emulation thread to send text to the remote
+ * TCP/IP connection.
+ */
+int washdbg_tcp_puts(char const *str) {
     int n_chars = 0;
     while (*str) {
         if (!text_ring_produce(&tx_ring, *str)) {
@@ -152,14 +156,6 @@ static void washdbg_run_once(void *argptr) {
 
 // this function gets called from the emulation thread.
 static void washdbg_attach(void* argptr) {
-// this gets printed to the dev console every time somebody connects to the debugger
-    static char const *login_banner =
-        "Welcome to WashDbg!\n"
-        "WashingtonDC Copyright (C) 2016-2018 snickerbockers\n"
-        "This program comes with ABSOLUTELY NO WARRANTY;\n"
-        "This is free software, and you are welcome to redistribute it\n"
-        "under the terms of the GNU GPL version 3.\n";
-
     printf("washdbg awaiting remote connection on port %d...\n", WASHDBG_PORT);
 
     listener_lock();
@@ -174,8 +170,6 @@ static void washdbg_attach(void* argptr) {
         LOG_INFO("Failed to establish a remote WashDbg connection.\n");
 
     listener_unlock();
-
-    washdbg_puts(login_banner);
 }
 
 static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg) {
@@ -227,7 +221,7 @@ signal_listener:
 
 /*
  * this is a libevent callback for an event that gets triggered whenever the
- * washdbg_core code calls washdbg_puts
+ * washdbg_core code calls washdbg_tcp_puts
  */
 static void on_check_tx_event(evutil_socket_t fd, short ev, void *arg) {
     if (state == WASHDBG_ATTACHED)

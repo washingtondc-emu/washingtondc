@@ -33,6 +33,7 @@ static char in_buf[BUF_LEN];
 unsigned in_buf_pos;
 
 static void washdbg_process_line(void);
+static void washdbg_puts(char const *txt);
 
 bool washdbg_on_step(addr32_t addr, void *argp) {
     return true;
@@ -57,6 +58,18 @@ void washdbg_input_ch(char ch) {
         in_buf[in_buf_pos++] = ch;
 }
 
+void washdbg_print_banner(void) {
+    // this gets printed to the dev console every time somebody connects to the debugger
+    static char const *login_banner =
+        "Welcome to WashDbg!\n"
+        "WashingtonDC Copyright (C) 2016-2018 snickerbockers\n"
+        "This program comes with ABSOLUTELY NO WARRANTY;\n"
+        "This is free software, and you are welcome to redistribute it\n"
+        "under the terms of the GNU GPL version 3.\n";
+
+    washdbg_puts(login_banner);
+}
+
 static void washdbg_process_line(void) {
     if (strcmp(in_buf, "c") == 0) {
         washdbg_puts("continue!\n");
@@ -71,7 +84,6 @@ static void washdbg_process_line(void) {
     in_buf_pos = 0;
 }
 
-void washdbg_input_text(char const *txt) {
-    while (*txt)
-        washdbg_input_ch(*txt++);
+static void washdbg_puts(char const *txt) {
+    washdbg_tcp_puts(txt);
 }

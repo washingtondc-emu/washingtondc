@@ -37,10 +37,9 @@
 
 extern struct debug_frontend washdbg_frontend;
 
-void washdbg_init(void);
-void washdbg_cleanup(void);
+void washdbg_tcp_init(void);
+void washdbg_tcp_cleanup(void);
 
-int washdbg_putchar(char ch);
-int washdbg_puts(char const *str);
+int washdbg_tcp_puts(char const *str);
 
 #endif

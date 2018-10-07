@@ -103,7 +103,7 @@ static void *io_main(void *arg) {
 
 #ifdef ENABLE_DEBUGGER
     gdb_init();
-    washdbg_init();
+    washdbg_tcp_init();
 #endif
 
     if (pthread_cond_signal(&io_thread_create_condition) != 0)
@@ -125,7 +125,7 @@ static void *io_main(void *arg) {
     event_free(io_thread_work_event);
 
 #ifdef ENABLE_DEBUGGER
-    washdbg_cleanup();
+    washdbg_tcp_cleanup();
     gdb_cleanup();
 #endif
 
