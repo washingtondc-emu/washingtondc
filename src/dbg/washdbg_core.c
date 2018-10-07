@@ -35,10 +35,6 @@ unsigned in_buf_pos;
 static void washdbg_process_line(void);
 static void washdbg_puts(char const *txt);
 
-bool washdbg_on_step(addr32_t addr, void *argp) {
-    return true;
-}
-
 void washdbg_do_continue(void) {
     washdbg_puts("Continuing execution\n");
 
