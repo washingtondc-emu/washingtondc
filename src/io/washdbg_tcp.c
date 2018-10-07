@@ -176,6 +176,8 @@ static void washdbg_attach(void* argptr) {
         LOG_INFO("Failed to establish a remote WashDbg connection.\n");
 
     listener_unlock();
+
+    washdbg_print_banner();
 }
 
 static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg) {
