@@ -167,7 +167,8 @@ static void washdbg_process_input(void) {
             in_buf_pos = 0;
         }
 
-        if (strcmp(cur_line, "continue") == 0) {
+        if (strcmp(cur_line, "continue") == 0 ||
+            strcmp(cur_line, "c") == 0) {
             washdbg_do_continue();
         } else {
             washdbg_bad_input(cur_line);
