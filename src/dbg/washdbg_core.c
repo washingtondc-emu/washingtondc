@@ -50,7 +50,7 @@ void washdbg_input_ch(char ch) {
     }
 
     // in_buf[1023] will always be \0
-    if (in_buf_pos <= 1022)
+    if (in_buf_pos <= (BUF_LEN - 2))
         in_buf[in_buf_pos++] = ch;
 }
 
