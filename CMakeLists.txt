@@ -64,7 +64,10 @@ find_package(OpenGL REQUIRED)
 
 # turn on strict warnings - i have no idea how to do this in windows
 if(UNIX)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror")
+    # the -Wno-format-trunction is there to prevent gcc from raising frivolous
+    # warnings whenever there's a chance that snprintf might do the one thing
+    # it exists to do.
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wno-format-truncation")
 endif()
 
 option(ENABLE_DEBUGGER "Enable the debugger" ON)

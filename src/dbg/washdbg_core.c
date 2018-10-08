@@ -46,6 +46,7 @@ enum washdbg_state {
     WASHDBG_STATE_BANNER,
     WASHDBG_STATE_PROMPT,
     WASHDBG_STATE_NORMAL,
+    WASHDBG_STATE_BAD_INPUT,
     WASHDBG_STATE_CMD_CONTINUE,
     WASHDBG_STATE_RUNNING
 } cur_state;
@@ -105,6 +106,22 @@ void washdbg_print_prompt(void) {
     cur_state = WASHDBG_STATE_PROMPT;
 }
 
+static struct bad_input_state {
+    struct washdbg_txt_state txt;
+    char bad_input_line[BUF_LEN];
+} bad_input_state;
+
+static void washdbg_bad_input(char const *bad_cmd) {
+    snprintf(bad_input_state.bad_input_line,
+             sizeof(bad_input_state.bad_input_line),
+             "Unrecognized input \"%s\"\n", bad_cmd);
+    bad_input_state.bad_input_line[BUF_LEN - 1] = '\0';
+
+    bad_input_state.txt.txt = bad_input_state.bad_input_line;
+    bad_input_state.txt.pos = 0;
+    cur_state = WASHDBG_STATE_BAD_INPUT;
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -123,6 +140,11 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_NORMAL:
         washdbg_process_input();
+        break;
+    case WASHDBG_STATE_BAD_INPUT:
+        if (washdbg_print_buffer(&bad_input_state.txt) == 0) {
+            cur_state = WASHDBG_STATE_PROMPT;
+        }
     default:
         break;
     }
@@ -146,14 +168,9 @@ static void washdbg_process_input(void) {
         }
 
         if (strcmp(cur_line, "continue") == 0) {
-            washdbg_puts("continue!\n");
             washdbg_do_continue();
         } else {
-            washdbg_puts("Unrecognized input \"");
-            washdbg_puts(cur_line);
-            washdbg_puts("\"\n");
-
-            washdbg_print_prompt();
+            washdbg_bad_input(cur_line);
         }
 
         newline_ptr = strchr(in_buf, '\n');
