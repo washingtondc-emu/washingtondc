@@ -142,9 +142,8 @@ void washdbg_core_run_once(void) {
         washdbg_process_input();
         break;
     case WASHDBG_STATE_BAD_INPUT:
-        if (washdbg_print_buffer(&bad_input_state.txt) == 0) {
-            cur_state = WASHDBG_STATE_PROMPT;
-        }
+        if (washdbg_print_buffer(&bad_input_state.txt) == 0)
+            washdbg_print_prompt();
     default:
         break;
     }
