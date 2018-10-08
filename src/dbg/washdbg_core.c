@@ -37,7 +37,7 @@ struct washdbg_txt_state {
     unsigned pos;
 };
 
-static void washdbg_process_line(void);
+static void washdbg_process_input(void);
 static int washdbg_puts(char const *txt);
 
 static unsigned washdbg_print_buffer(struct washdbg_txt_state *state);
@@ -68,10 +68,6 @@ void washdbg_do_continue(void) {
 void washdbg_input_ch(char ch) {
     if (ch == '\r')
         return;
-    if (ch == '\n') {
-        washdbg_process_line();
-        return;
-    }
 
     // in_buf[1023] will always be \0
     if (in_buf_pos <= (BUF_LEN - 2))
@@ -125,25 +121,43 @@ void washdbg_core_run_once(void) {
             cur_state = WASHDBG_STATE_RUNNING;
         }
         break;
+    case WASHDBG_STATE_NORMAL:
+        washdbg_process_input();
     default:
         break;
     }
 }
 
-static void washdbg_process_line(void) {
-    if (strcmp(in_buf, "c") == 0) {
-        washdbg_puts("continue!\n");
-        washdbg_do_continue();
-    } else {
-        washdbg_puts("Unrecognized input \"");
-        washdbg_puts(in_buf);
-        washdbg_puts("\"\n");
+static void washdbg_process_input(void) {
+    static char cur_line[BUF_LEN];
 
-        washdbg_print_prompt();
+    char const *newline_ptr = strchr(in_buf, '\n');
+    while (newline_ptr) {
+        unsigned newline_idx = newline_ptr - in_buf;
+
+        memset(cur_line, 0, sizeof(cur_line));
+        memcpy(cur_line, in_buf, newline_idx);
+
+        printf("%s - line to be processed \"%s\"\n", __func__, cur_line);
+
+        if (newline_idx < (BUF_LEN - 1)) {
+            memmove(in_buf, newline_ptr + 1, BUF_LEN - newline_idx + 1);
+            in_buf_pos = 0;
+        }
+
+        if (strcmp(cur_line, "continue") == 0) {
+            washdbg_puts("continue!\n");
+            washdbg_do_continue();
+        } else {
+            washdbg_puts("Unrecognized input \"");
+            washdbg_puts(cur_line);
+            washdbg_puts("\"\n");
+
+            washdbg_print_prompt();
+        }
+
+        newline_ptr = strchr(in_buf, '\n');
     }
-
-    memset(in_buf, 0, sizeof(in_buf));
-    in_buf_pos = 0;
 }
 
 static int washdbg_puts(char const *txt) {
