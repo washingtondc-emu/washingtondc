@@ -160,10 +160,9 @@ static void washdbg_process_input(void) {
         memset(cur_line, 0, sizeof(cur_line));
         memcpy(cur_line, in_buf, newline_idx);
 
-        printf("%s - line to be processed \"%s\"\n", __func__, cur_line);
-
         if (newline_idx < (BUF_LEN - 1)) {
-            memmove(in_buf, newline_ptr + 1, BUF_LEN - newline_idx + 1);
+            size_t chars_to_move = BUF_LEN - newline_idx - 1;
+            memmove(in_buf, newline_ptr + 1, chars_to_move);
             in_buf_pos = 0;
         }
 
