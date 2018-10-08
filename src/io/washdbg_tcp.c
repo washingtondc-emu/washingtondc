@@ -158,6 +158,7 @@ static void washdbg_run_once(void *argptr) {
     char ch;
     while (text_ring_consume(&rx_ring, &ch))
         washdbg_input_ch(ch);
+    washdbg_core_run_once();
 }
 
 // this function gets called from the emulation thread.
@@ -177,7 +178,7 @@ static void washdbg_attach(void* argptr) {
 
     listener_unlock();
 
-    washdbg_print_banner();
+    washdbg_init();
 }
 
 static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg) {
@@ -244,7 +245,10 @@ static void handle_events(struct bufferevent *bev, short events, void *arg) {
 static void dump_to_rx_ring(char const *dat, unsigned n_chars) {
     unsigned idx;
     for (idx = 0; idx < n_chars; idx++)
-        text_ring_produce(&rx_ring, dat[idx]);
+        if (dat[idx] == 3)
+            debug_request_break();
+        else
+            text_ring_produce(&rx_ring, dat[idx]);
 }
 
 // libevent callback for when the socket has data for us to read
