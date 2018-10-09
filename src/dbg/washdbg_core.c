@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "log.h"
+#include "dreamcast.h"
 #include "io/washdbg_tcp.h"
 
 #include "dbg/washdbg_core.h"
@@ -48,7 +50,10 @@ enum washdbg_state {
     WASHDBG_STATE_NORMAL,
     WASHDBG_STATE_BAD_INPUT,
     WASHDBG_STATE_CMD_CONTINUE,
-    WASHDBG_STATE_RUNNING
+    WASHDBG_STATE_RUNNING,
+
+    // permanently stop accepting commands because we're about to disconnect.
+    WASHDBG_STATE_CMD_EXIT
 } cur_state;
 
 void washdbg_init(void) {
@@ -64,6 +69,12 @@ void washdbg_do_continue(void) {
     continue_state.txt.pos = 0;
 
     cur_state = WASHDBG_STATE_CMD_CONTINUE;
+}
+
+void washdbg_do_exit(void) {
+    LOG_INFO("User requested exit via WashDbg\n");
+    dreamcast_kill();
+    cur_state = WASHDBG_STATE_CMD_EXIT;
 }
 
 void washdbg_input_ch(char ch) {
@@ -168,6 +179,8 @@ static void washdbg_process_input(void) {
         if (strcmp(cur_line, "continue") == 0 ||
             strcmp(cur_line, "c") == 0) {
             washdbg_do_continue();
+        } else if (strcmp(cur_line, "exit") == 0) {
+            washdbg_do_exit();
         } else {
             washdbg_bad_input(cur_line);
         }

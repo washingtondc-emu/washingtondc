@@ -183,7 +183,7 @@ static void on_end_of_ts(struct SchedEvent *event) {
     // do nothing
 }
 
-void dc_clock_run_timeslice(struct dc_clock *clk) {
+bool dc_clock_run_timeslice(struct dc_clock *clk) {
     /*
      * here we insert the timeslice end as an event, and then check for that
      * event as a special case.  This is a simple approach that leverages
@@ -205,16 +205,18 @@ void dc_clock_run_timeslice(struct dc_clock *clk) {
 
     sched_event(clk, ts_end_evt);
 
-    void (*dispatch)(void *ctxt) = clk->dispatch;
+    bool (*dispatch)(void *ctxt) = clk->dispatch;
     void *dispatch_ctxt = clk->dispatch_ctxt;
 
-    for (;;) {
-        dispatch(dispatch_ctxt);
+    bool ret_val;
 
+    while (!(ret_val = dispatch(dispatch_ctxt))) {
         struct SchedEvent *next_event = pop_event(clk);
         if (next_event != ts_end_evt)
             next_event->handler(next_event);
         else
-            return;
+            break;
     }
+
+    return ret_val;
 }

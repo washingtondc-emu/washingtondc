@@ -133,22 +133,23 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map);
 static void construct_arm7_mem_map(struct memory_map *map);
 
 // Run until the next scheduled event (in dc_sched) should occur
-static void run_to_next_sh4_event(void *ctxt);
-static void run_to_next_sh4_event_jit(void *ctxt);
+static bool run_to_next_sh4_event(void *ctxt);
+static bool run_to_next_sh4_event_jit(void *ctxt);
 
-static void run_to_next_arm7_event(void *ctxt);
+static bool run_to_next_arm7_event(void *ctxt);
 
 #ifdef ENABLE_JIT_X86_64
-static void run_to_next_sh4_event_jit_native(void *ctxt);
+static bool run_to_next_sh4_event_jit_native(void *ctxt);
 #endif
 
 #ifdef ENABLE_DEBUGGER
 // this must be called before run or not at all
 static void dreamcast_enable_debugger(void);
 
-static void dreamcast_check_debugger(void);
+// returns true if it's time to exit
+static bool dreamcast_check_debugger(void);
 
-static void run_to_next_sh4_event_debugger(void *ctxt);
+static bool run_to_next_sh4_event_debugger(void *ctxt);
 
 #endif
 
@@ -341,8 +342,10 @@ static void run_one_frame(void) {
                                                     false,
                                                     memory_order_relaxed,
                                                     memory_order_relaxed)) {
-        dc_clock_run_timeslice(&sh4_clock);
-        dc_clock_run_timeslice(&arm7_clock);
+        if (dc_clock_run_timeslice(&sh4_clock))
+            return;
+        if (dc_clock_run_timeslice(&arm7_clock))
+            return;
         if (config_get_jit())
             code_cache_gc();
 
@@ -370,7 +373,7 @@ static void main_loop_sched(void) {
     }
 }
 
-typedef void(*sh4_backend_func)(void*);
+typedef bool(*sh4_backend_func)(void*);
 
 static sh4_backend_func select_sh4_backend(void) {
 #ifdef ENABLE_DEBUGGER
@@ -471,7 +474,7 @@ void dreamcast_run() {
     dreamcast_cleanup();
 }
 
-static void run_to_next_arm7_event(void *ctxt) {
+static bool run_to_next_arm7_event(void *ctxt) {
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&arm7_clock);
 
     if (arm7.enabled) {
@@ -504,19 +507,23 @@ static void run_to_next_arm7_event(void *ctxt) {
         tgt_stamp = clock_target_stamp(&arm7_clock);
         clock_set_cycle_stamp(&arm7_clock, tgt_stamp);
     }
+
+    return false;
 }
 
 #ifdef ENABLE_DEBUGGER
-static void dreamcast_check_debugger(void) {
+static bool dreamcast_check_debugger(void) {
     /*
      * If the debugger is enabled, make sure we have its permission to
      * single-step; if we don't then  block until something interresting
      * happens, and then skip the rest of the loop.
      */
     debug_notify_inst(&cpu);
+    bool is_running;
 
     enum dc_state cur_state = dc_get_state();
-    if (cur_state == DC_STATE_DEBUG) {
+    if ((is_running = dc_emu_thread_is_running()) &&
+        cur_state == DC_STATE_DEBUG) {
         printf("cur_state is DC_STATE_DEBUG\n");
         do {
             // call debug_run_once 100 times per second
@@ -524,25 +531,27 @@ static void dreamcast_check_debugger(void) {
             debug_run_once();
             cmd_run_once();
             usleep(1000 * 1000 / 100);
-        } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG);
+        } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG &&
+                 (is_running = dc_emu_thread_is_running()));
     }
+    return !is_running;
 }
 
-static void run_to_next_sh4_event_debugger(void *ctxt) {
+static bool run_to_next_sh4_event_debugger(void *ctxt) {
     Sh4 *sh4 = (void*)ctxt;
     inst_t inst;
     InstOpcode const *op;
     unsigned inst_cycles;
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
+    bool exit_now;
 
     /*
      * TODO: what if tgt_stamp <= clock_cycle_stamp(&sh4_clock) on first
      * iteration?
      */
 
-    dreamcast_check_debugger();
-
-    while (tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
+    while (!(exit_now = dreamcast_check_debugger()) &&
+           tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
@@ -570,14 +579,14 @@ static void run_to_next_sh4_event_debugger(void *ctxt) {
         if (cycles_after > tgt_stamp)
             cycles_after = tgt_stamp;
         clock_set_cycle_stamp(&sh4_clock, cycles_after);
-
-        dreamcast_check_debugger();
     }
+
+    return exit_now;
 }
 
 #endif
 
-static void run_to_next_sh4_event(void *ctxt) {
+static bool run_to_next_sh4_event(void *ctxt) {
     inst_t inst;
     InstOpcode const *op;
     unsigned inst_cycles;
@@ -614,10 +623,12 @@ static void run_to_next_sh4_event(void *ctxt) {
             cycles_after = tgt_stamp;
         clock_set_cycle_stamp(&sh4_clock, cycles_after);
     }
+
+    return false;
 }
 
 #ifdef ENABLE_JIT_X86_64
-static void run_to_next_sh4_event_jit_native(void *ctxt) {
+static bool run_to_next_sh4_event_jit_native(void *ctxt) {
     Sh4 *sh4 = (Sh4*)ctxt;
 
     reg32_t newpc = sh4->reg[SH4_REG_PC];
@@ -625,10 +636,12 @@ static void run_to_next_sh4_event_jit_native(void *ctxt) {
     newpc = native_dispatch_entry(newpc);
 
     sh4->reg[SH4_REG_PC] = newpc;
+
+    return false;
 }
 #endif
 
-static void run_to_next_sh4_event_jit(void *ctxt) {
+static bool run_to_next_sh4_event_jit(void *ctxt) {
     Sh4 *sh4 = (Sh4*)ctxt;
 
     reg32_t newpc = sh4->reg[SH4_REG_PC];
@@ -655,6 +668,8 @@ static void run_to_next_sh4_event_jit(void *ctxt) {
         clock_set_cycle_stamp(&sh4_clock, tgt_stamp);
 
     sh4->reg[SH4_REG_PC] = newpc;
+
+    return false;
 }
 
 static void time_diff(struct timespec *delta,

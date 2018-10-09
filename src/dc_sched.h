@@ -24,6 +24,7 @@
 #define DC_SCHED_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * this is the least common denominator of 13.5MHz (SPG VCLK)
@@ -61,7 +62,7 @@ typedef struct SchedEvent SchedEvent;
  * with any system that needs to generate events for that CPU.
  */
 struct dc_clock {
-    void (*dispatch)(void *ctxt);
+    bool (*dispatch)(void *ctxt);
     void *dispatch_ctxt;
 
     struct SchedEvent timeslice_end_event;
@@ -81,7 +82,7 @@ struct dc_clock {
 void dc_clock_init(struct dc_clock *clk);
 void dc_clock_cleanup(struct dc_clock *clk);
 
-void dc_clock_run_timeslice(struct dc_clock *clk);
+bool dc_clock_run_timeslice(struct dc_clock *clk);
 
 /*
  * these methods do not free or otherwise take ownership of the event.
