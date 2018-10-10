@@ -38,17 +38,25 @@
 
 static DEF_ERROR_INT_ATTR(dbg_state);
 
-struct debugger {
-    addr32_t breakpoints[DEBUG_N_BREAKPOINTS];
-    bool breakpoint_enable[DEBUG_N_BREAKPOINTS];
+struct breakpoint {
+    addr32_t addr;
+    bool enabled;
+};
 
-    addr32_t w_watchpoints[DEBUG_N_W_WATCHPOINTS];
-    unsigned w_watchpoint_len[DEBUG_N_W_WATCHPOINTS];
-    bool w_watchpoint_enable[DEBUG_N_W_WATCHPOINTS];
+struct watchpoint {
+    addr32_t addr;
+    unsigned len;
+    bool enabled;
+};
 
-    addr32_t r_watchpoints[DEBUG_N_R_WATCHPOINTS];
-    unsigned r_watchpoint_len[DEBUG_N_R_WATCHPOINTS];
-    bool r_watchpoint_enable[DEBUG_N_R_WATCHPOINTS];
+struct debug_context {
+    enum dbg_context_id id;
+    void *cpu;
+    struct memory_map *map;
+
+    struct breakpoint breakpoints[DEBUG_N_BREAKPOINTS];
+    struct watchpoint w_watchpoints[DEBUG_N_W_WATCHPOINTS];
+    struct watchpoint r_watchpoints[DEBUG_N_R_WATCHPOINTS];
 
     // when a watchpoint gets triggered, at_watchpoint is set to true
     // and the memory address is placed in watchpoint_addr
@@ -60,41 +68,57 @@ struct debugger {
 
     enum debug_state cur_state;
 
+    /*
+     * this gets cleared by debug_request_single_step to request the debugger do a
+     * single-step.
+     *
+     * debug_request_single_step is called from outside of the emu thread
+     *
+     * The reason why this is per-context is that we want the debugger to skip
+     * over other contexts when the user requests a single-step just before a
+     * context-switch.
+     *
+     * That way we can still handle breakpoints and watchpoints from within the
+     * other context and return to single-stepping through this context once the
+     * context switches back to the original context.
+     */
+    atomic_flag not_single_step;
+};
+
+struct debugger {
     struct debug_frontend const *frontend;
+
+    enum dbg_context_id cur_ctx;
+    struct debug_context contexts[NUM_DEBUG_CONTEXTS];
+
+    /*
+     * this gets cleared by debug_request_break to request the debugger break
+     *
+     * debug_request_break is called from outside of the emu thread in response
+     * to the user pressing Ctrl+C on his gdb client.
+     */
+    atomic_flag not_request_break;
+
+    /*
+     * this gets cleared by debug_request_continue to request the debugger
+     * continue execution from a breakpoint or watchpoin
+     *
+     * debug_request_continue is called from outside of the emu thread
+     */
+    atomic_flag not_continue;
+
+    /*
+     * this gets cleared by debug_request_detach to request the debugger detach
+     *
+     * debug_request_detach is called from outside of the emu thread
+     */
+    atomic_flag not_detach;
 };
 
 static struct debugger dbg;
 
-/*
- * this gets cleared by debug_request_break to request the debugger break
- *
- * debug_request_break is called from outside of the emu thread in response to
- * the user pressing Ctrl+C on his gdb client.
- */
-static atomic_flag not_request_break = ATOMIC_FLAG_INIT;
+static struct debug_context *get_ctx(void);
 
-/*
- * this gets cleared by debug_request_single_step to request the debugger do a
- * single-step.
- *
- * debug_request_single_step is called from outside of the emu thread
- */
-static atomic_flag not_single_step = ATOMIC_FLAG_INIT;
-
-/*
- * this gets cleared by debug_request_continue to request the debugger continue
- * execution from a breakpoint or watchpoin
- *
- * debug_request_continue is called from outside of the emu thread
- */
-static atomic_flag not_continue = ATOMIC_FLAG_INIT;
-
-/*
- * this gets cleared by debug_request_detach to request the debugger detach
- *
- * debug_request_detach is called from outside of the emu thread
- */
-static atomic_flag not_detach = ATOMIC_FLAG_INIT;
 
 // uncomment this line to make the debugger print what it's doing
 // #define DEBUGGER_LOG_VERBOSE
@@ -123,19 +147,23 @@ static void dbg_do_trace(char const *msg, ...);
 
 static void dbg_state_transition(enum debug_state new_state);
 
+static char const *cur_ctx_str(void);
+
+static addr32_t dbg_get_pc(enum dbg_context_id id);
+
 void debug_init(void) {
     memset(&dbg, 0, sizeof(dbg));
 
-    dbg.cur_state = DEBUG_STATE_BREAK;
+    dbg.contexts[DEBUG_CONTEXT_SH4].cur_state = DEBUG_STATE_NORM;
+    dbg.contexts[DEBUG_CONTEXT_ARM7].cur_state = DEBUG_STATE_NORM;
 
-    memset(dbg.breakpoint_enable, 0, sizeof(dbg.breakpoint_enable));
-    memset(dbg.w_watchpoint_enable, 0, sizeof(dbg.w_watchpoint_enable));
-    memset(dbg.r_watchpoint_enable, 0, sizeof(dbg.r_watchpoint_enable));
+    atomic_flag_test_and_set(&dbg.not_request_break);
+    atomic_flag_test_and_set(&dbg.not_continue);
+    atomic_flag_test_and_set(&dbg.not_detach);
 
-    atomic_flag_test_and_set(&not_request_break);
-    atomic_flag_test_and_set(&not_single_step);
-    atomic_flag_test_and_set(&not_continue);
-    atomic_flag_test_and_set(&not_detach);
+    unsigned ctx_no;
+    for (ctx_no = 0; ctx_no < NUM_DEBUG_CONTEXTS; ctx_no++)
+        atomic_flag_test_and_set(&dbg.contexts[ctx_no].not_single_step);
 }
 
 void debug_cleanup(void) {
@@ -160,21 +188,22 @@ static inline bool debug_is_at_watch(void) {
     return false;
 }
 
-void debug_check_break(Sh4 *sh4) {
+static void debug_check_break(enum dbg_context_id id) {
     /*
      * clear the flag now, but don't actually check it until the end of the
      * function.  We want this to be the lowest-priority break-reason and we
      * also don't want it to linger around if we find some higher-priority
      * reason to stop
      */
-    bool user_break = !atomic_flag_test_and_set(&not_request_break);
+    struct debug_context *ctx = dbg.contexts + id;
+    bool user_break = !atomic_flag_test_and_set(&dbg.not_request_break);
 
     // hold at a breakpoint for user interaction
-    if ((dbg.cur_state == DEBUG_STATE_BREAK) ||
-        (dbg.cur_state == DEBUG_STATE_WATCH))
+    if ((ctx->cur_state == DEBUG_STATE_BREAK) ||
+        (ctx->cur_state == DEBUG_STATE_WATCH))
         return;
 
-    if (dbg.cur_state == DEBUG_STATE_STEP) {
+    if (ctx->cur_state == DEBUG_STATE_STEP) {
         dbg_state_transition(DEBUG_STATE_BREAK);
         frontend_on_break();
         dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
@@ -191,7 +220,7 @@ void debug_check_break(Sh4 *sh4) {
      * cur_state is DEBUG_STATE_POST_WATCH.
      *
      */
-    if (dbg.cur_state == DEBUG_STATE_POST_WATCH) {
+    if (ctx->cur_state == DEBUG_STATE_POST_WATCH) {
         /*
          * we intentionally do not return here because we still want to check
          * the breakpoints below.
@@ -202,9 +231,11 @@ void debug_check_break(Sh4 *sh4) {
     if (debug_is_at_watch())
         return;
 
+    reg32_t pc = dbg_get_pc(id);
+
     for (unsigned bp_idx = 0; bp_idx < DEBUG_N_BREAKPOINTS; bp_idx++) {
-        reg32_t pc = sh4->reg[SH4_REG_PC];
-        if (dbg.breakpoint_enable[bp_idx] && pc == dbg.breakpoints[bp_idx]) {
+        if (ctx->breakpoints[bp_idx].enabled &&
+            pc == ctx->breakpoints[bp_idx].addr) {
             frontend_on_break();
             dbg_state_transition(DEBUG_STATE_BREAK);
             dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
@@ -219,21 +250,22 @@ void debug_check_break(Sh4 *sh4) {
     }
 }
 
-void debug_notify_inst(Sh4 *sh4) {
-    debug_check_break(sh4);
+void debug_notify_inst(void) {
+    debug_check_break(dbg.cur_ctx);
 }
 
 void debug_request_detach(void) {
-    atomic_flag_clear(&not_detach);
+    atomic_flag_clear(&dbg.not_detach);
 }
 
-int debug_add_break(addr32_t addr) {
+int debug_add_break(enum dbg_context_id id, addr32_t addr) {
+    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to add hardware breakpoint at 0x%08x\n",
         (unsigned)addr);
     for (unsigned idx = 0; idx < DEBUG_N_BREAKPOINTS; idx++)
-        if (!dbg.breakpoint_enable[idx]) {
-            dbg.breakpoints[idx] = addr;
-            dbg.breakpoint_enable[idx] = true;
+        if (!ctx->breakpoints[idx].enabled) {
+            ctx->breakpoints[idx].addr = addr;
+            ctx->breakpoints[idx].enabled = true;
             return 0;
         }
 
@@ -243,12 +275,14 @@ int debug_add_break(addr32_t addr) {
     return ENOBUFS;
 }
 
-int debug_remove_break(addr32_t addr) {
+int debug_remove_break(enum dbg_context_id id, addr32_t addr) {
+    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to remove hardware breakpoint at 0x%08x\n",
               (unsigned)addr);
     for (unsigned idx = 0; idx < DEBUG_N_BREAKPOINTS; idx++)
-        if (dbg.breakpoint_enable[idx] && dbg.breakpoints[idx] == addr) {
-            dbg.breakpoint_enable[idx] = false;
+        if (ctx->breakpoints[idx].enabled &&
+            ctx->breakpoints[idx].addr == addr) {
+            ctx->breakpoints[idx].enabled = false;
             return 0;
         }
 
@@ -258,15 +292,18 @@ int debug_remove_break(addr32_t addr) {
 }
 
 // these functions return 0 on success, nonzero on failure
-int debug_add_r_watch(addr32_t addr, unsigned len) {
+int debug_add_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
+    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to add read-watchpoint at 0x%08x\n", (unsigned)addr);
-    for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++)
-        if (!dbg.r_watchpoint_enable[idx]) {
-            dbg.r_watchpoints[idx] = addr;
-            dbg.r_watchpoint_len[idx] = len;
-            dbg.r_watchpoint_enable[idx] = true;
+    for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++) {
+        struct watchpoint *wp = ctx->r_watchpoints + idx;
+        if (!wp->enabled) {
+            wp->addr = addr;
+            wp->len = len;
+            wp->enabled = true;
             return 0;
         }
+    }
 
     DBG_TRACE("unable to add read-watchpoint at 0x%08x (there are already %u "
               "read-watchpoints)\n",
@@ -274,14 +311,16 @@ int debug_add_r_watch(addr32_t addr, unsigned len) {
     return ENOBUFS;
 }
 
-int debug_remove_r_watch(addr32_t addr, unsigned len) {
+int debug_remove_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
+    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to remove read-watchpoint at 0x%08x\n", (unsigned)addr);
-    for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++)
-        if (dbg.r_watchpoint_enable[idx] && dbg.r_watchpoints[idx] == addr &&
-            dbg.r_watchpoint_len[idx] == len) {
-            dbg.r_watchpoint_enable[idx] = false;
+    for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++) {
+        struct watchpoint *wp = ctx->r_watchpoints + idx;
+        if (wp->enabled && wp->addr == addr && wp->len == len) {
+            wp->enabled = false;
             return 0;
         }
+    }
 
     DBG_TRACE("unable to remove read-watchpoint at 0x%08x (it does not "
               "exist)\n", (unsigned)addr);
@@ -289,15 +328,18 @@ int debug_remove_r_watch(addr32_t addr, unsigned len) {
 }
 
 // these functions return 0 on success, nonzer on failure
-int debug_add_w_watch(addr32_t addr, unsigned len) {
+int debug_add_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
+    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to add write-watchpoint at 0x%08x\n", (unsigned)addr);
-    for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++)
-        if (!dbg.w_watchpoint_enable[idx]) {
-            dbg.w_watchpoints[idx] = addr;
-            dbg.w_watchpoint_len[idx] = len;
-            dbg.w_watchpoint_enable[idx] = true;
+    for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++) {
+        struct watchpoint *wp = ctx->w_watchpoints + idx;
+        if (!wp->enabled) {
+            wp->addr = addr;
+            wp->len = len;
+            wp->enabled = true;
             return 0;
         }
+    }
 
     DBG_TRACE("unable to add write-watchpoint at 0x%08x (there are already %u "
               "read-watchpoints)\n",
@@ -305,47 +347,47 @@ int debug_add_w_watch(addr32_t addr, unsigned len) {
     return ENOBUFS;
 }
 
-int debug_remove_w_watch(addr32_t addr, unsigned len) {
+int debug_remove_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
+    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to remove write-watchpoint at 0x%08x\n", (unsigned)addr);
-    for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++)
-        if (dbg.w_watchpoint_enable[idx] && dbg.w_watchpoints[idx] == addr &&
-            dbg.w_watchpoint_len[idx] == len) {
-            dbg.w_watchpoint_enable[idx] = false;
+    for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++) {
+        struct watchpoint *wp = ctx->w_watchpoints + idx;
+        if (wp->enabled && wp->addr == addr && wp->len == len) {
+            wp->enabled = false;
             return 0;
         }
+    }
 
     DBG_TRACE("unable to remove write-watchpoint at 0x%08x (it does not "
               "exist)\n", (unsigned)addr);
     return EINVAL;
 }
 
-bool debug_is_w_watch(struct memory_map const *map, addr32_t addr, unsigned len) {
-    if (dbg.cur_state != DEBUG_STATE_NORM)
+bool debug_is_w_watch(addr32_t addr, unsigned len) {
+    struct debug_context *ctx = get_ctx();
+
+    if (ctx->cur_state != DEBUG_STATE_NORM)
         return false;
 
     addr32_t access_first = addr;
     addr32_t access_last = addr + (len - 1);
 
-    struct Sh4 *sh4 = dreamcast_get_cpu();
-
-    if (map != sh4->mem.map)
-        return false;
-
     for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++) {
-        if (dbg.w_watchpoint_enable[idx]) {
-            addr32_t watch_first = dbg.w_watchpoints[idx];
-            addr32_t watch_last = watch_first +
-                (dbg.w_watchpoint_len[idx] - 1);
+        struct watchpoint *wp = ctx->w_watchpoints + idx;
+        if (wp->enabled) {
+            addr32_t watch_first = wp->addr;
+            addr32_t watch_last = watch_first + (wp->len - 1);
             if ((access_first >= watch_first && access_first <= watch_last) ||
                 (access_last >= watch_first && access_last <= watch_last) ||
                 (watch_first >= access_first && watch_first <= access_last) ||
                 (watch_last >= access_first && watch_last <= access_last)) {
                 dbg_state_transition(DEBUG_STATE_PRE_WATCH);
-                dbg.watchpoint_addr = addr;
-                dbg.is_read_watchpoint = false;
+                ctx->watchpoint_addr = addr;
+                ctx->is_read_watchpoint = false;
                 printf("DEBUGGER: write-watchpoint at 0x%08x triggered "
-                       "(PC=0x%08x)!\n",
-                       (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+                       "(PC=0x%08x, cur_ctx = %s)!\n",
+                       (unsigned)addr, (unsigned)dbg_get_pc(dbg.cur_ctx),
+                       cur_ctx_str());
                 return true;
             }
         }
@@ -353,33 +395,31 @@ bool debug_is_w_watch(struct memory_map const *map, addr32_t addr, unsigned len)
     return false;
 }
 
-bool debug_is_r_watch(struct memory_map const *map, addr32_t addr, unsigned len) {
-    if (dbg.cur_state != DEBUG_STATE_NORM)
-        return false;
+bool debug_is_r_watch(addr32_t addr, unsigned len) {
+    struct debug_context *ctx = get_ctx();
 
-    struct Sh4 *sh4 = dreamcast_get_cpu();
-
-    if (map != sh4->mem.map)
+    if (ctx->cur_state != DEBUG_STATE_NORM)
         return false;
 
     addr32_t access_first = addr;
     addr32_t access_last = addr + (len - 1);
 
     for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++) {
-        if (dbg.r_watchpoint_enable[idx]) {
-            addr32_t watch_first = dbg.r_watchpoints[idx];
-            addr32_t watch_last = watch_first +
-                (dbg.r_watchpoint_len[idx] - 1);
+        struct watchpoint *wp = ctx->w_watchpoints + idx;
+        if (wp->enabled) {
+            addr32_t watch_first = wp->addr;
+            addr32_t watch_last = watch_first + (wp->len - 1);
             if ((access_first >= watch_first && access_first <= watch_last) ||
                 (access_last >= watch_first && access_last <= watch_last) ||
                 (watch_first >= access_first && watch_first <= access_last) ||
                 (watch_last >= access_first && watch_last <= access_last)) {
                 dbg_state_transition(DEBUG_STATE_PRE_WATCH);
-                dbg.watchpoint_addr = addr;
-                dbg.is_read_watchpoint = true;
+                ctx->watchpoint_addr = addr;
+                ctx->is_read_watchpoint = true;
                 printf("DEBUGGER: read-watchpoint at 0x%08x triggered "
-                       "(PC=0x%08x)!\n",
-                       (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+                       "(PC=0x%08x, cur_ctx = %s)!\n",
+                       (unsigned)addr, (unsigned)dbg_get_pc(dbg.cur_ctx),
+                       cur_ctx_str());
                 return true;
             }
         }
@@ -396,15 +436,22 @@ void debug_on_softbreak(inst_t inst, addr32_t pc) {
 
 void debug_attach(struct debug_frontend const *frontend) {
     LOG_INFO("debugger attached\n");
+
+    dbg.contexts[DEBUG_CONTEXT_SH4].cur_state = DEBUG_STATE_BREAK;
+
     dbg.frontend = frontend;
     frontend_attach();
     dbg_state_transition(DEBUG_STATE_BREAK);
     dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
 
-    atomic_flag_test_and_set(&not_request_break);
-    atomic_flag_test_and_set(&not_single_step);
-    atomic_flag_test_and_set(&not_continue);
-    atomic_flag_test_and_set(&not_detach);
+    atomic_flag_test_and_set(&dbg.not_request_break);
+    atomic_flag_test_and_set(&dbg.not_continue);
+    atomic_flag_test_and_set(&dbg.not_detach);
+
+    unsigned ctx_no;
+    for (ctx_no = 0; ctx_no < NUM_DEBUG_CONTEXTS; ctx_no++)
+        atomic_flag_test_and_set(&dbg.contexts[ctx_no].not_single_step);
+
     LOG_INFO("done attaching debugger\n");
 }
 
@@ -420,24 +467,24 @@ static void frontend_run_once(void) {
 
 static void frontend_on_break(void) {
     if (dbg.frontend && dbg.frontend->on_break)
-        dbg.frontend->on_break(dbg.frontend->arg);
+        dbg.frontend->on_break(dbg.cur_ctx, dbg.frontend->arg);
 }
 
 #ifdef ENABLE_WATCHPOINTS
 static void frontend_on_read_watchpoint(addr32_t addr) {
     if (dbg.frontend && dbg.frontend->on_read_watchpoint)
-        dbg.frontend->on_read_watchpoint(addr, dbg.frontend->arg);
+        dbg.frontend->on_read_watchpoint(dbg.cur_ctx, addr, dbg.frontend->arg);
 }
 
 static void frontend_on_write_watchpoint(addr32_t addr) {
     if (dbg.frontend->on_write_watchpoint)
-        dbg.frontend->on_write_watchpoint(addr, dbg.frontend->arg);
+        dbg.frontend->on_write_watchpoint(dbg.cur_ctx, addr, dbg.frontend->arg);
 }
 #endif
 
 static void frontend_on_softbreak(inst_t inst, addr32_t addr) {
     if (dbg.frontend->on_softbreak)
-        dbg.frontend->on_softbreak(inst, addr, dbg.frontend->arg);
+        dbg.frontend->on_softbreak(dbg.cur_ctx, inst, addr, dbg.frontend->arg);
 }
 
 static void frontend_on_cleanup(void) {
@@ -445,32 +492,47 @@ static void frontend_on_cleanup(void) {
         dbg.frontend->on_cleanup(dbg.frontend->arg);
 }
 
-unsigned debug_gen_reg_idx(unsigned idx) {
-    return SH4_REG_R0 + idx;
-}
-
-unsigned debug_bank0_reg_idx(unsigned reg_sr, unsigned idx) {
-    if (reg_sr & SH4_SR_RB_MASK)
-        return SH4_REG_R0_BANK + idx;
-    return SH4_REG_R0 + idx;
-}
-
-unsigned debug_bank1_reg_idx(unsigned reg_sr, unsigned idx) {
-    if (reg_sr & SH4_SR_RB_MASK)
+unsigned debug_gen_reg_idx(enum dbg_context_id id, unsigned idx) {
+    switch (dbg.cur_ctx) {
+    case DEBUG_CONTEXT_SH4:
         return SH4_REG_R0 + idx;
-    return SH4_REG_R0_BANK + idx;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+unsigned debug_bank0_reg_idx(enum dbg_context_id id, unsigned reg_sr, unsigned idx) {
+    switch (id) {
+    case DEBUG_CONTEXT_SH4:
+        if (reg_sr & SH4_SR_RB_MASK)
+            return SH4_REG_R0_BANK + idx;
+        return SH4_REG_R0 + idx;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+unsigned debug_bank1_reg_idx(enum dbg_context_id id, unsigned reg_sr, unsigned idx) {
+    switch (id) {
+    case DEBUG_CONTEXT_SH4:
+        if (reg_sr & SH4_SR_RB_MASK)
+            return SH4_REG_R0 + idx;
+        return SH4_REG_R0_BANK + idx;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 void debug_request_continue(void) {
-    atomic_flag_clear(&not_continue);
+    atomic_flag_clear(&dbg.not_continue);
 }
 
 void debug_request_single_step(void) {
-    atomic_flag_clear(&not_single_step);
+    atomic_flag_clear(&get_ctx()->not_single_step);
 }
 
 void debug_request_break() {
-    atomic_flag_clear(&not_request_break);
+    atomic_flag_clear(&dbg.not_request_break);
 }
 
 #ifdef DEBUGGER_LOG_VERBOSE
@@ -499,9 +561,10 @@ dbg_state_names[DEBUG_STATE_COUNT] = {
 #endif
 
 static void dbg_state_transition(enum debug_state new_state) {
+    struct debug_context *ctx = get_ctx();
     DBG_TRACE("state transition from %s to %s\n",
-              dbg_state_names[dbg.cur_state], dbg_state_names[new_state]);
-    dbg.cur_state = new_state;
+              dbg_state_names[ctx->cur_state], dbg_state_names[new_state]);
+    ctx->cur_state = new_state;
 }
 
 static pthread_mutex_t debug_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -525,20 +588,22 @@ void debug_signal(void) {
 void debug_run_once(void) {
     frontend_run_once();
 
-    if ((dbg.cur_state != DEBUG_STATE_BREAK) &&
-        (dbg.cur_state != DEBUG_STATE_WATCH)) {
-        error_set_dbg_state(dbg.cur_state);
+    struct debug_context *ctx = get_ctx();
+
+    if ((ctx->cur_state != DEBUG_STATE_BREAK) &&
+        (ctx->cur_state != DEBUG_STATE_WATCH)) {
+        error_set_dbg_state(ctx->cur_state);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    if (!atomic_flag_test_and_set(&not_single_step)) {
+    if (!atomic_flag_test_and_set(&ctx->not_single_step)) {
         // gdb frontend requested a single-step via debug_request_single_step
         dbg_state_transition(DEBUG_STATE_STEP);
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_DEBUG);
     }
 
-    if (!atomic_flag_test_and_set(&not_continue)) {
-        if (dbg.cur_state == DEBUG_STATE_WATCH)
+    if (!atomic_flag_test_and_set(&dbg.not_continue)) {
+        if (ctx->cur_state == DEBUG_STATE_WATCH)
             dbg_state_transition(DEBUG_STATE_POST_WATCH);
         else
             dbg_state_transition(DEBUG_STATE_NORM);
@@ -546,42 +611,84 @@ void debug_run_once(void) {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_DEBUG);
     }
 
-    if (!atomic_flag_test_and_set(&not_detach)) {
+    if (!atomic_flag_test_and_set(&dbg.not_detach)) {
         DBG_TRACE("detach request\n");
-        memset(dbg.breakpoint_enable, 0, sizeof(dbg.breakpoint_enable));
-        memset(dbg.w_watchpoint_enable, 0, sizeof(dbg.w_watchpoint_enable));
-        memset(dbg.r_watchpoint_enable, 0, sizeof(dbg.r_watchpoint_enable));
+
+        unsigned ctx_no;
+        for (ctx_no = 0; ctx_no < NUM_DEBUG_CONTEXTS; ctx_no++) {
+            struct debug_context *ctx = dbg.contexts + ctx_no;
+            memset(ctx->breakpoints, 0, sizeof(ctx->breakpoints));
+            memset(ctx->r_watchpoints, 0, sizeof(ctx->r_watchpoints));
+            memset(ctx->w_watchpoints, 0, sizeof(ctx->w_watchpoints));
+        }
 
         dbg_state_transition(DEBUG_STATE_NORM);
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_DEBUG);
     }
 }
 
-void debug_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]) {
-    sh4_get_regs(dreamcast_get_cpu(), reg_file);
+void debug_get_all_regs(enum dbg_context_id id,
+                        void *reg_file_out, size_t n_bytes) {
+    reg32_t sh4_reg_file[SH4_REGISTER_COUNT];
+    switch (id) {
+    case DEBUG_CONTEXT_SH4:
+        if (n_bytes != SH4_REGISTER_COUNT * sizeof(reg32_t))
+            RAISE_ERROR(ERROR_INTEGRITY);
+        sh4_get_regs(dreamcast_get_cpu(), sh4_reg_file);
+        memcpy(reg_file_out, sh4_reg_file, n_bytes);
+        break;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
-void debug_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]) {
+void debug_set_all_regs(enum dbg_context_id id, void const *reg_file_in,
+                        size_t n_bytes) {
     DBG_TRACE("writing to all registers\n");
-    sh4_set_regs(dreamcast_get_cpu(), reg_file);
+
+    reg32_t sh4_reg_file[SH4_REGISTER_COUNT];
+    switch (id) {
+    case DEBUG_CONTEXT_SH4:
+        if (n_bytes != SH4_REGISTER_COUNT * sizeof(reg32_t))
+            RAISE_ERROR(ERROR_INTEGRITY);
+        memcpy(sh4_reg_file, reg_file_in, sizeof(sh4_reg_file));
+        sh4_set_regs(dreamcast_get_cpu(), sh4_reg_file);
+        break;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 // this one's just a layer on top of get_all_regs
-reg32_t debug_get_reg(unsigned reg_no) {
+reg32_t debug_get_reg(enum dbg_context_id id, unsigned reg_no) {
     reg32_t reg_file[SH4_REGISTER_COUNT];
-    debug_get_all_regs(reg_file);
-    return reg_file[reg_no];
+    switch (id) {
+    case DEBUG_CONTEXT_SH4:
+        debug_get_all_regs(DEBUG_CONTEXT_SH4, reg_file, sizeof(reg_file));
+        return reg_file[reg_no];
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
-void debug_set_reg(unsigned reg_no, reg32_t val) {
+void debug_set_reg(enum dbg_context_id id, unsigned reg_no, reg32_t val) {
     DBG_TRACE("setting register index %u to 0x%08x\n",
               (unsigned)reg_no, (unsigned)val);
-    sh4_set_individual_reg(dreamcast_get_cpu(),
-                           (unsigned)reg_no, (unsigned)val);
+    switch (id) {
+    case DEBUG_CONTEXT_SH4:
+        sh4_set_individual_reg(dreamcast_get_cpu(),
+                               (unsigned)reg_no, (unsigned)val);
+        break;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
-int debug_read_mem(void *out, addr32_t addr, unsigned len) {
+int debug_read_mem(enum dbg_context_id id, void *out,
+                   addr32_t addr, unsigned len) {
     unsigned unit_len, n_units;
+    struct debug_context *ctxt = dbg.contexts + id;
+    struct memory_map *mmap = ctxt->map;
 
     DBG_TRACE("request to read %u bytes from %08x\n",
               (unsigned)len, (unsigned)addr);
@@ -603,16 +710,13 @@ int debug_read_mem(void *out, addr32_t addr, unsigned len) {
     while (n_units) {
         switch (unit_len) {
         case 4:
-            err = memory_map_try_read_32(dreamcast_get_cpu()->mem.map, addr,
-                                         (uint32_t*)out_byte_ptr);
+            err = memory_map_try_read_32(mmap, addr, (uint32_t*)out_byte_ptr);
             break;
         case 2:
-            err = memory_map_try_read_16(dreamcast_get_cpu()->mem.map,
-                                         addr, (uint16_t*)out_byte_ptr);
+            err = memory_map_try_read_16(mmap, addr, (uint16_t*)out_byte_ptr);
             break;
         case 1:
-            err = memory_map_try_read_8(dreamcast_get_cpu()->mem.map,
-                                        addr, (uint8_t*)out_byte_ptr);
+            err = memory_map_try_read_8(mmap, addr, (uint8_t*)out_byte_ptr);
             break;
         }
 
@@ -631,8 +735,11 @@ int debug_read_mem(void *out, addr32_t addr, unsigned len) {
     return 0;
 }
 
-int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
+int debug_write_mem(enum dbg_context_id id, void const *input,
+                    addr32_t addr, unsigned len) {
     unsigned n_units;
+    struct debug_context *ctxt = dbg.contexts + id;
+    struct memory_map *mmap = ctxt->map;
 
     DBG_TRACE("request to write %u bytes to 0x%08x\n",
               (unsigned)len, (unsigned)addr);
@@ -646,8 +753,7 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len / 4;
         uint32_t const *input_byte_ptr = input;
         while (n_units) {
-            int err = memory_map_try_write_32(dreamcast_get_cpu()->mem.map,
-                                              addr, *input_byte_ptr);
+            int err = memory_map_try_write_32(mmap, addr, *input_byte_ptr);
             if (err != 0) {
                 LOG_ERROR("Failed %u-byte write at 0x%08x\n", len, addr);
                 if (len != 4)
@@ -662,8 +768,7 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len / 2;
         uint16_t const *input_byte_ptr = input;
         while (n_units) {
-            int err = memory_map_try_write_16(dreamcast_get_cpu()->mem.map,
-                                              addr, *input_byte_ptr);
+            int err = memory_map_try_write_16(mmap, addr, *input_byte_ptr);
             if (err != 0) {
                 LOG_ERROR("Failed %u-byte write at 0x%08x\n", len, addr);
                 if (len != 2)
@@ -678,8 +783,7 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
         n_units = len;
         uint8_t const *input_byte_ptr = input;
         while (n_units) {
-            int err = memory_map_try_write_8(dreamcast_get_cpu()->mem.map,
-                                             addr, *input_byte_ptr);
+            int err = memory_map_try_write_8(mmap, addr, *input_byte_ptr);
             if (err != 0) {
                 LOG_ERROR("Failed %u-byte write at 0x%08x\n", len, addr);
                 if (len != 1)
@@ -693,4 +797,45 @@ int debug_write_mem(void const *input, addr32_t addr, unsigned len) {
     }
 
     return 0;
+}
+
+void debug_init_context(enum dbg_context_id id, void *cpu,
+                        struct memory_map *map) {
+    memset(dbg.contexts + id, 0, sizeof(dbg.contexts[id]));
+
+    if (id != DEBUG_CONTEXT_SH4 && id != DEBUG_CONTEXT_ARM7)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    dbg.contexts[id].id = id;
+    dbg.contexts[id].cpu = cpu;
+    dbg.contexts[id].map = map;
+}
+
+void debug_set_context(enum dbg_context_id id) {
+    dbg.cur_ctx = id;
+}
+
+enum dbg_context_id debug_current_context(void) {
+    return dbg.cur_ctx;
+}
+
+static addr32_t dbg_get_pc(enum dbg_context_id id) {
+    if (id == DEBUG_CONTEXT_SH4)
+        return ((struct Sh4*)dbg.contexts[id].cpu)->reg[SH4_REG_PC];
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static char const *cur_ctx_str(void) {
+    switch (dbg.cur_ctx) {
+    case DEBUG_CONTEXT_SH4:
+        return "sh4";
+    case DEBUG_CONTEXT_ARM7:
+        return "arm7";
+    default:
+        return "unknown";
+    }
+}
+
+static struct debug_context *get_ctx(void) {
+    return dbg.contexts + dbg.cur_ctx;
 }

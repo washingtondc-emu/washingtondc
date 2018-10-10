@@ -37,8 +37,8 @@ void memory_map_cleanup(struct memory_map *map) {
 }
 
 #ifdef ENABLE_WATCHPOINTS
-#define CHECK_R_WATCHPOINT(addr, type) debug_is_r_watch(map, addr, sizeof(type))
-#define CHECK_W_WATCHPOINT(addr, type) debug_is_w_watch(map, addr, sizeof(type))
+#define CHECK_R_WATCHPOINT(addr, type) debug_is_r_watch(addr, sizeof(type))
+#define CHECK_W_WATCHPOINT(addr, type) debug_is_w_watch(addr, sizeof(type))
 #else
 #define CHECK_R_WATCHPOINT(addr, type)
 #define CHECK_W_WATCHPOINT(addr, type)

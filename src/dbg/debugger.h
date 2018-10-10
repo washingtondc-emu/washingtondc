@@ -73,9 +73,20 @@ enum debug_state {
     DEBUG_STATE_COUNT
 };
 
-struct debug_frontend {
-    bool(*step)(addr32_t, void*);
+enum dbg_context_id {
+    DEBUG_CONTEXT_SH4,
+    DEBUG_CONTEXT_ARM7,
 
+    NUM_DEBUG_CONTEXTS
+};
+
+void debug_init_context(enum dbg_context_id id, void *cpu,
+                        struct memory_map *map);
+
+void debug_set_context(enum dbg_context_id id);
+enum dbg_context_id debug_current_context(void);
+
+struct debug_frontend {
     /*
      * this method gets called from the emulation thread.  It signals that the
      * debugger should configure its interface and block until that interface
@@ -86,16 +97,16 @@ struct debug_frontend {
      */
     void(*attach)(void*);
 
-    void(*on_break)(void*);
-    void(*on_read_watchpoint)(addr32_t addr, void*);
-    void(*on_write_watchpoint)(addr32_t, void*);
+    void(*on_break)(enum dbg_context_id, void*);
+    void(*on_read_watchpoint)(enum dbg_context_id, addr32_t, void*);
+    void(*on_write_watchpoint)(enum dbg_context_id, addr32_t, void*);
 
     /*
      * called by the sh4 instruction decoder when it doesn't recognize an
      * opcode or it hits a TRAPA.  This generally means that we stumbled
      * across a softbreak.
      */
-    void(*on_softbreak)(inst_t, addr32_t, void*);
+    void(*on_softbreak)(enum dbg_context_id, inst_t, addr32_t, void*);
 
     void(*on_cleanup)(void*);
 
@@ -131,29 +142,29 @@ void debug_attach(struct debug_frontend const *frontend);
 void debug_on_softbreak(inst_t inst, addr32_t pc);
 
 // these functions return 0 on success, nonzer on failure
-int debug_add_break(addr32_t addr);
-int debug_remove_break(addr32_t addr);
+int debug_add_break(enum dbg_context_id id, addr32_t addr);
+int debug_remove_break(enum dbg_context_id id, addr32_t addr);
 
 // these functions return 0 on success, nonzer on failure
-int debug_add_r_watch(addr32_t addr, unsigned len);
-int debug_remove_r_watch(addr32_t addr, unsigned len);
+int debug_add_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len);
+int debug_remove_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len);
 
 // these functions return 0 on success, nonzer on failure
-int debug_add_w_watch(addr32_t addr, unsigned len);
-int debug_remove_w_watch(addr32_t addr, unsigned len);
+int debug_add_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len);
+int debug_remove_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len);
 
 // return true if the given addr and len trigger a watchpoint
 bool
-debug_is_w_watch(struct memory_map const *map, addr32_t addr, unsigned len);
+debug_is_w_watch(addr32_t addr, unsigned len);
 bool
-debug_is_r_watch(struct memory_map const *map, addr32_t addr, unsigned len);
+debug_is_r_watch(addr32_t addr, unsigned len);
 
 /*
  * called by the dreamcast code to notify the debugger that a new instruction
  * is about to execute.  This should check for hardware breakpoints and set the
  * emulator's state to DC_STATE_DEBUG if a breakpoint has been hit.
  */
-void debug_notify_inst(Sh4 *sh4);
+void debug_notify_inst(void);
 
 /*
  * called by the gdb_stub to tell the debugger to continue executing if
@@ -203,20 +214,26 @@ void debug_run_once(void);
  *
  ******************************************************************************/
 // this function is meant to be called from the io thread
-void debug_get_all_regs(reg32_t reg_file[SH4_REGISTER_COUNT]);
+void debug_get_all_regs(enum dbg_context_id id, void *reg_file_out,
+                        size_t n_bytes);
 
-void debug_set_all_regs(reg32_t const reg_file[SH4_REGISTER_COUNT]);
+void debug_set_all_regs(enum dbg_context_id id, void const *reg_file_in,
+                        size_t n_bytes);
 
-void debug_set_reg(unsigned reg_no, reg32_t val);
+void debug_set_reg(enum dbg_context_id id, unsigned reg_no, reg32_t val);
 
-reg32_t debug_get_reg(unsigned reg_no);
+reg32_t debug_get_reg(enum dbg_context_id id, unsigned reg_no);
 
-unsigned debug_gen_reg_idx(unsigned idx);
-unsigned debug_bank0_reg_idx(unsigned reg_sr, unsigned idx);
-unsigned debug_bank1_reg_idx(unsigned reg_sr, unsigned idx);
+unsigned debug_gen_reg_idx(enum dbg_context_id id, unsigned idx);
+unsigned debug_bank0_reg_idx(enum dbg_context_id id,
+                             unsigned reg_sr, unsigned idx);
+unsigned debug_bank1_reg_idx(enum dbg_context_id id,
+                             unsigned reg_sr, unsigned idx);
 
-int debug_read_mem(void *out, addr32_t addr, unsigned len);
+int debug_read_mem(enum dbg_context_id id, void *out,
+                   addr32_t addr, unsigned len);
 
-int debug_write_mem(void const *input, addr32_t addr, unsigned len);
+int debug_write_mem(enum dbg_context_id id, void const *input,
+                    addr32_t addr, unsigned len);
 
 #endif

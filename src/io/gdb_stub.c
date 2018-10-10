@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 #include "hw/sh4/sh4_reg.h"
 #include "dreamcast.h"
 #include "io/io_thread.h"
+#include "dbg/debugger.h"
 #include "fifo.h"
 #include "log.h"
 
@@ -87,6 +88,9 @@ struct gdb_stub {
      * io_thread.  This is only used when one of those events is activated.
      */
     addr32_t break_addr;
+
+    // variable used to transport current context into the io_thread.
+    enum dbg_context_id dbg_ctx;
 };
 
 static struct gdb_stub stub = {
@@ -99,11 +103,18 @@ static struct event *gdb_request_listen_event,
     *gdb_inform_break_event, *gdb_inform_softbreak_event,
     *gdb_inform_read_watchpoint_event, *gdb_inform_write_watchpoint_event;
 
-static void gdb_callback_attach(void *argptr);
-static void gdb_callback_break(void *arg);
-static void gdb_callback_read_watchpoint(addr32_t addr, void *arg);
-static void gdb_callback_write_watchpoint(addr32_t addr, void *arg);
-static void gdb_callback_softbreak(inst_t inst, addr32_t addr, void *arg);
+static void
+gdb_callback_attach(void *argptr);
+static void
+gdb_callback_break(enum dbg_context_id ctx, void *arg);
+static void
+gdb_callback_read_watchpoint(enum dbg_context_id ctx, addr32_t addr, void *arg);
+static void
+gdb_callback_write_watchpoint(enum dbg_context_id ctx,
+                              addr32_t addr, void *arg);
+static void
+gdb_callback_softbreak(enum dbg_context_id id, inst_t inst,
+                       addr32_t addr, void *arg);
 static void gdb_callback_run_once(void *argptr);
 static int decode_hex(char ch);
 
@@ -321,29 +332,41 @@ static void gdb_callback_run_once(void *argptr) {
     deferred_cmd_run();
 }
 
-static void gdb_callback_break(void *arg) {
+static void gdb_callback_break(enum dbg_context_id ctx, void *arg) {
+    gdb_stub_lock();
+    stub.dbg_ctx = ctx;
+    gdb_stub_unlock();
+
     event_active(gdb_inform_break_event, 0, 0);
 }
 
-static void gdb_callback_softbreak(inst_t inst, addr32_t addr, void *arg) {
+static void gdb_callback_softbreak(enum dbg_context_id ctx, inst_t inst,
+                                   addr32_t addr, void *arg) {
     gdb_stub_lock();
     stub.break_addr = addr;
+    stub.dbg_ctx = ctx;
     gdb_stub_unlock();
 
     event_active(gdb_inform_softbreak_event, 0, 0);
 }
 
-static void gdb_callback_read_watchpoint(addr32_t addr, void *arg) {
+static void
+gdb_callback_read_watchpoint(enum dbg_context_id ctx,
+                             addr32_t addr, void *arg) {
     gdb_stub_lock();
     stub.break_addr = addr;
+    stub.dbg_ctx = ctx;
     gdb_stub_unlock();
 
     event_active(gdb_inform_read_watchpoint_event, 0, 0);
 }
 
-static void gdb_callback_write_watchpoint(addr32_t addr, void *arg) {
+static void
+gdb_callback_write_watchpoint(enum dbg_context_id ctx,
+                              addr32_t addr, void *arg) {
     gdb_stub_lock();
     stub.break_addr = addr;
+    stub.dbg_ctx = ctx;
     gdb_stub_unlock();
 
     event_active(gdb_inform_write_watchpoint_event, 0, 0);
@@ -351,17 +374,19 @@ static void gdb_callback_write_watchpoint(addr32_t addr, void *arg) {
 
 static void gdb_serialize_regs(struct string *out) {
     reg32_t reg_file[SH4_REGISTER_COUNT];
-    debug_get_all_regs(reg_file);
+    debug_get_all_regs(DEBUG_CONTEXT_SH4, reg_file, sizeof(reg_file));
     reg32_t regs[N_REGS] = { 0 };
 
     // general-purpose registers
     for (int i = 0; i < 16; i++)
-        regs[R0 + i] = reg_file[debug_gen_reg_idx(i)];
+        regs[R0 + i] = reg_file[debug_gen_reg_idx(DEBUG_CONTEXT_SH4, i)];
 
     // banked registers
     for (int i = 0; i < 8; i++) {
-        regs[R0B0 + i] = reg_file[debug_bank0_reg_idx(reg_file[SH4_REG_SR], i)];
-        regs[R0B1 + i] = reg_file[debug_bank1_reg_idx(reg_file[SH4_REG_SR], i)];
+        regs[R0B0 + i] = reg_file[debug_bank0_reg_idx(DEBUG_CONTEXT_SH4,
+                                                      reg_file[SH4_REG_SR], i)];
+        regs[R0B1 + i] = reg_file[debug_bank1_reg_idx(DEBUG_CONTEXT_SH4,
+                                                      reg_file[SH4_REG_SR], i)];
     }
 
     // FPU registers
@@ -481,11 +506,11 @@ static void extract_packet(struct string *out, struct string const *packet_in) {
 
 static int conv_reg_idx_to_sh4(unsigned reg_no, reg32_t reg_sr) {
     if (reg_no >= R0 && reg_no <= R15)
-        return debug_gen_reg_idx(reg_no - R0);
+        return debug_gen_reg_idx(DEBUG_CONTEXT_SH4, reg_no - R0);
     else if (reg_no >= R0B0 && reg_no <= R7B0)
-        return debug_bank0_reg_idx(reg_sr, reg_no - R0B0);
+        return debug_bank0_reg_idx(DEBUG_CONTEXT_SH4, reg_sr, reg_no - R0B0);
     else if (reg_no >= R0B1 && reg_no <= R7B1)
-        return debug_bank1_reg_idx(reg_sr, reg_no - R0B1);
+        return debug_bank1_reg_idx(DEBUG_CONTEXT_SH4, reg_sr, reg_no - R0B1);
     else if (reg_no == PC)
         return SH4_REG_PC;
     else if (reg_no == PR)
@@ -732,11 +757,11 @@ static void handle_G_packet(struct string *out, struct string const *dat) {
     string_cleanup(&tmp);
 
     reg32_t new_regs[SH4_REGISTER_COUNT];
-    debug_get_all_regs(new_regs);
+    debug_get_all_regs(DEBUG_CONTEXT_SH4, new_regs, sizeof(new_regs));
 
     for (unsigned reg_no = 0; reg_no < N_REGS; reg_no++)
         set_reg(new_regs, reg_no, regs[reg_no]);
-    debug_set_all_regs(new_regs);
+    debug_set_all_regs(DEBUG_CONTEXT_SH4, new_regs, sizeof(new_regs));
 
     string_set(out, "OK");
 }
@@ -777,10 +802,12 @@ static void handle_P_packet(struct string *out, struct string const *dat) {
         LOG_WARN("WARNING: this gdb stub does not allow writes to "
                  "banked registers\n");
     } else {
-        int sh4_reg_no = conv_reg_idx_to_sh4(reg_no, debug_get_reg(SH4_REG_SR));
+        int sh4_reg_no = conv_reg_idx_to_sh4(reg_no,
+                                             debug_get_reg(DEBUG_CONTEXT_SH4,
+                                                           SH4_REG_SR));
 
         if (sh4_reg_no >= 0)
-            debug_set_reg(sh4_reg_no, reg_val);
+            debug_set_reg(DEBUG_CONTEXT_SH4, sh4_reg_no, reg_val);
     }
 
     string_set(out, "OK");
@@ -1380,7 +1407,8 @@ static void on_break_event(evutil_socket_t fd, short ev, void *arg) {
     string_cleanup(&pkt);
 }
 
-static void on_softbreak_event(evutil_socket_t fd, short ev, void *arg) {
+static void
+on_softbreak_event(evutil_socket_t fd, short ev, void *arg) {
     struct string resp, pkt;
     string_init(&pkt);
     string_init(&resp);
@@ -1734,17 +1762,19 @@ static int gdb_stub_remove_read_watchpoint(addr32_t addr, unsigned len) {
 }
 
 static void deferred_cmd_do_get_all_regs(struct deferred_cmd *cmd) {
-    debug_get_all_regs(cmd->meta.get_all_regs.reg_file_out);
+    debug_get_all_regs(DEBUG_CONTEXT_SH4, cmd->meta.get_all_regs.reg_file_out,
+                       sizeof(cmd->meta.get_all_regs.reg_file_out));
     cmd->status = DEFERRED_CMD_SUCCESS;
 }
 
 static void deferred_cmd_do_set_all_regs(struct deferred_cmd *cmd) {
-    debug_set_all_regs(cmd->meta.set_all_regs.reg_file_in);
+    debug_set_all_regs(DEBUG_CONTEXT_SH4, cmd->meta.set_all_regs.reg_file_in,
+                       sizeof(cmd->meta.set_all_regs.reg_file_in));
     cmd->status = DEFERRED_CMD_SUCCESS;
 }
 
 static void deferred_cmd_do_set_reg(struct deferred_cmd *cmd) {
-    debug_set_reg(cmd->meta.set_reg.idx, cmd->meta.set_reg.val);
+    debug_set_reg(DEBUG_CONTEXT_SH4, cmd->meta.set_reg.idx, cmd->meta.set_reg.val);
     cmd->status = DEFERRED_CMD_SUCCESS;
 }
 
@@ -1753,7 +1783,7 @@ static void deferred_cmd_do_read_mem(struct deferred_cmd *cmd) {
     unsigned len = cmd->meta.read_mem.len;
     addr32_t addr = cmd->meta.read_mem.addr;
 
-    if (debug_read_mem(out, addr, len) != 0)
+    if (debug_read_mem(DEBUG_CONTEXT_SH4, out, addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
@@ -1764,7 +1794,7 @@ static void deferred_cmd_do_write_mem(struct deferred_cmd *cmd) {
     unsigned len = cmd->meta.write_mem.len;
     addr32_t addr = cmd->meta.write_mem.addr;
 
-    if (debug_write_mem(input, addr, len) != 0)
+    if (debug_write_mem(DEBUG_CONTEXT_SH4, input, addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
@@ -1772,7 +1802,7 @@ static void deferred_cmd_do_write_mem(struct deferred_cmd *cmd) {
 
 static void deferred_cmd_do_add_break(struct deferred_cmd *cmd) {
     addr32_t addr = cmd->meta.add_break.addr;
-    if (debug_add_break(addr) != 0)
+    if (debug_add_break(DEBUG_CONTEXT_SH4, addr) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
@@ -1780,7 +1810,7 @@ static void deferred_cmd_do_add_break(struct deferred_cmd *cmd) {
 
 static void deferred_cmd_do_remove_break(struct deferred_cmd *cmd) {
     addr32_t addr = cmd->meta.remove_break.addr;
-    if (debug_remove_break(addr) != 0)
+    if (debug_remove_break(DEBUG_CONTEXT_SH4, addr) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
@@ -1790,7 +1820,7 @@ static void deferred_cmd_do_add_write_watch(struct deferred_cmd *cmd) {
 #ifdef ENABLE_WATCHPOINTS
     addr32_t addr = cmd->meta.add_write_watch.addr;
     unsigned len = cmd->meta.add_write_watch.len;
-    if (debug_add_w_watch(addr, len) != 0)
+    if (debug_add_w_watch(DEBUG_CONTEXT_SH4, addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
@@ -1803,7 +1833,7 @@ static void deferred_cmd_do_remove_write_watch(struct deferred_cmd *cmd) {
 #ifdef ENABLE_WATCHPOINTS
     addr32_t addr = cmd->meta.remove_write_watch.addr;
     unsigned len = cmd->meta.remove_write_watch.len;
-    if (debug_remove_w_watch(addr, len) != 0)
+    if (debug_remove_w_watch(DEBUG_CONTEXT_SH4, addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
@@ -1816,7 +1846,7 @@ static void deferred_cmd_do_add_read_watch(struct deferred_cmd *cmd) {
 #ifdef ENABLE_WATCHPOINTS
     addr32_t addr = cmd->meta.add_read_watch.addr;
     unsigned len = cmd->meta.add_read_watch.len;
-    if (debug_add_r_watch(addr, len) != 0)
+    if (debug_add_r_watch(DEBUG_CONTEXT_SH4, addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;
@@ -1829,7 +1859,7 @@ static void deferred_cmd_do_remove_read_watch(struct deferred_cmd *cmd) {
 #ifdef ENABLE_WATCHPOINTS
     addr32_t addr = cmd->meta.remove_read_watch.addr;
     unsigned len = cmd->meta.remove_read_watch.len;
-    if (debug_remove_r_watch(addr, len) != 0)
+    if (debug_remove_r_watch(DEBUG_CONTEXT_SH4, addr, len) != 0)
         cmd->status = DEFERRED_CMD_FAILURE;
     else
         cmd->status = DEFERRED_CMD_SUCCESS;

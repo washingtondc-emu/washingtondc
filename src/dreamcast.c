@@ -414,6 +414,8 @@ void dreamcast_run() {
 
 #ifdef ENABLE_DEBUGGER
     debug_init();
+    debug_init_context(DEBUG_CONTEXT_SH4, &cpu, &mem_map);
+    debug_init_context(DEBUG_CONTEXT_ARM7, &arm7, &arm7_mem_map);
     if (config_get_dbg_enable())
         dreamcast_enable_debugger();
 #endif
@@ -518,7 +520,7 @@ static bool dreamcast_check_debugger(void) {
      * single-step; if we don't then  block until something interresting
      * happens, and then skip the rest of the loop.
      */
-    debug_notify_inst(&cpu);
+    debug_notify_inst();
     bool is_running;
 
     enum dc_state cur_state = dc_get_state();
@@ -544,6 +546,8 @@ static bool run_to_next_sh4_event_debugger(void *ctxt) {
     unsigned inst_cycles;
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
     bool exit_now;
+
+    debug_set_context(DEBUG_CONTEXT_SH4);
 
     /*
      * TODO: what if tgt_stamp <= clock_cycle_stamp(&sh4_clock) on first
