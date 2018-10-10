@@ -51,6 +51,7 @@ enum washdbg_state {
     WASHDBG_STATE_BAD_INPUT,
     WASHDBG_STATE_CMD_CONTINUE,
     WASHDBG_STATE_RUNNING,
+    WASHDBG_STATE_HELP,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -105,6 +106,23 @@ void washdbg_print_banner(void) {
     cur_state = WASHDBG_STATE_BANNER;
 }
 
+static struct help_state {
+    struct washdbg_txt_state txt;
+} help_state;
+
+void washdbg_do_help(void) {
+    static char const *help_msg =
+        "WashDbg command list\n"
+        "\n"
+        "continue - continue execution when suspended.\n"
+        "exit     - exit the debugger and close WashingtonDC\n"
+        "help     - display this message\n";
+
+    help_state.txt.txt = help_msg;
+    help_state.txt.pos = 0;
+    cur_state = WASHDBG_STATE_HELP;
+}
+
 struct print_prompt_state {
     struct washdbg_txt_state txt;
 } print_prompt_state;
@@ -155,6 +173,11 @@ void washdbg_core_run_once(void) {
     case WASHDBG_STATE_BAD_INPUT:
         if (washdbg_print_buffer(&bad_input_state.txt) == 0)
             washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_HELP:
+        if (washdbg_print_buffer(&help_state.txt) == 0)
+            washdbg_print_prompt();
+        break;
     default:
         break;
     }
@@ -181,6 +204,8 @@ static void washdbg_process_input(void) {
             washdbg_do_continue();
         } else if (strcmp(cur_line, "exit") == 0) {
             washdbg_do_exit();
+        } else if (strcmp(cur_line, "help") == 0) {
+            washdbg_do_help();
         } else {
             washdbg_bad_input(cur_line);
         }
