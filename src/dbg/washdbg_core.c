@@ -235,8 +235,10 @@ static void washdbg_process_input(void) {
             washdbg_do_exit();
         } else if (strcmp(cur_line, "help") == 0) {
             washdbg_do_help();
-        } else {
+        } else if (strlen(cur_line)) {
             washdbg_bad_input(cur_line);
+        } else {
+            washdbg_print_prompt();
         }
 
         newline_ptr = strchr(in_buf, '\n');
