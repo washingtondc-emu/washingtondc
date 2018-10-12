@@ -31,10 +31,7 @@
 
 void washdbg_init(void);
 
-void washdbg_do_continue(void);
 void washdbg_input_ch(char ch);
-
-void washdbg_print_banner(void);
 
 void washdbg_core_run_once(void);
 

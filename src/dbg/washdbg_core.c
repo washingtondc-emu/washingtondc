@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "log.h"
@@ -44,6 +45,8 @@ static int washdbg_puts(char const *txt);
 
 static unsigned washdbg_print_buffer(struct washdbg_txt_state *state);
 
+static void washdbg_print_banner(void);
+
 enum washdbg_state {
     WASHDBG_STATE_BANNER,
     WASHDBG_STATE_PROMPT,
@@ -53,6 +56,7 @@ enum washdbg_state {
     WASHDBG_STATE_RUNNING,
     WASHDBG_STATE_HELP,
     WASHDBG_STATE_CONTEXT_INFO,
+    WASHDBG_STATE_PRINT_ERROR,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -66,14 +70,14 @@ static struct continue_state {
     struct washdbg_txt_state txt;
 } continue_state;
 
-void washdbg_do_continue(void) {
+void washdbg_do_continue(int argc, char **argv) {
     continue_state.txt.txt = "Continuing execution\n";
     continue_state.txt.pos = 0;
 
     cur_state = WASHDBG_STATE_CMD_CONTINUE;
 }
 
-void washdbg_do_exit(void) {
+void washdbg_do_exit(int argc, char **argv) {
     LOG_INFO("User requested exit via WashDbg\n");
     dreamcast_kill();
     cur_state = WASHDBG_STATE_CMD_EXIT;
@@ -92,7 +96,7 @@ struct print_banner_state {
     struct washdbg_txt_state txt;
 } print_banner_state;
 
-void washdbg_print_banner(void) {
+static void washdbg_print_banner(void) {
     // this gets printed to the dev console every time somebody connects to the debugger
     static char const *login_banner =
         "Welcome to WashDbg!\n"
@@ -111,7 +115,7 @@ static struct help_state {
     struct washdbg_txt_state txt;
 } help_state;
 
-void washdbg_do_help(void) {
+void washdbg_do_help(int argc, char **argv) {
     static char const *help_msg =
         "WashDbg command list\n"
         "\n"
@@ -176,6 +180,17 @@ static void washdbg_bad_input(char const *bad_cmd) {
     cur_state = WASHDBG_STATE_BAD_INPUT;
 }
 
+static struct print_error_state {
+    struct washdbg_txt_state txt;
+    char error_line[BUF_LEN];
+} print_error_state;
+
+static void washdbg_print_error(char const *error) {
+    print_error_state.txt.txt = error;
+    print_error_state.txt.pos = 0;
+    cur_state = WASHDBG_STATE_PRINT_ERROR;
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -207,16 +222,29 @@ void washdbg_core_run_once(void) {
         if (washdbg_print_buffer(&context_info_state.txt) == 0)
             washdbg_print_prompt();
         break;
+    case WASHDBG_STATE_PRINT_ERROR:
+        if (washdbg_print_buffer(&print_error_state.txt) == 0)
+            washdbg_print_prompt();
+        break;
     default:
         break;
     }
 }
 
+// maximum length of a single argument
+#define SINGLE_ARG_MAX 128
+
+// maximum number of arguments
+#define MAX_ARG_COUNT 256
+
 static void washdbg_process_input(void) {
     static char cur_line[BUF_LEN];
+    int argc = 0;
+    char **argv = NULL;
+    int arg_no;
 
     char const *newline_ptr = strchr(in_buf, '\n');
-    while (newline_ptr) {
+    if (newline_ptr) {
         unsigned newline_idx = newline_ptr - in_buf;
 
         memset(cur_line, 0, sizeof(cur_line));
@@ -228,21 +256,67 @@ static void washdbg_process_input(void) {
             in_buf_pos = 0;
         }
 
-        if (strcmp(cur_line, "continue") == 0 ||
-            strcmp(cur_line, "c") == 0) {
-            washdbg_do_continue();
-        } else if (strcmp(cur_line, "exit") == 0) {
-            washdbg_do_exit();
-        } else if (strcmp(cur_line, "help") == 0) {
-            washdbg_do_help();
-        } else if (strlen(cur_line)) {
-            washdbg_bad_input(cur_line);
+        // Now separate the current line out into arguments
+        char *token = strtok(cur_line, " \t");
+        while (token) {
+            if (argc + 1 > MAX_ARG_COUNT) {
+                washdbg_print_error("too many arguments\n");
+                goto cleanup_args;
+            }
+
+            // the + 1 is to add in space for the \0
+            size_t tok_len = strlen(token) + 1;
+
+            if (tok_len > SINGLE_ARG_MAX) {
+                washdbg_print_error("argument exceeded maximum length.\n");
+                goto cleanup_args;
+            }
+
+            char *new_arg = (char*)malloc(tok_len * sizeof(char));
+            if (!new_arg) {
+                washdbg_print_error("Failed allocation.\n");
+                goto cleanup_args;
+            }
+
+            memcpy(new_arg, token, tok_len * sizeof(char));
+
+            char **new_argv = (char**)realloc(argv, sizeof(char*) * (argc + 1));
+            if (!new_argv) {
+                washdbg_print_error("Failed allocation.\n");
+                goto cleanup_args;
+            }
+
+            argv = new_argv;
+            argv[argc] = new_arg;
+            argc++;
+
+            token = strtok(NULL, " \t");
+        }
+
+        char const *cmd;
+        if (argc)
+            cmd = argv[0];
+        else
+            cmd = "";
+
+        if (strcmp(cmd, "continue") == 0 ||
+            strcmp(cmd, "c") == 0) {
+            washdbg_do_continue(argc, argv);
+        } else if (strcmp(cmd, "exit") == 0) {
+            washdbg_do_exit(argc, argv);
+        } else if (strcmp(cmd, "help") == 0) {
+            washdbg_do_help(argc, argv);
+        } else if (strlen(cmd)) {
+            washdbg_bad_input(cmd);
         } else {
             washdbg_print_prompt();
         }
-
-        newline_ptr = strchr(in_buf, '\n');
     }
+
+cleanup_args:
+    for (arg_no = 0; arg_no < argc; arg_no++)
+        free(argv[arg_no]);
+    free(argv);
 }
 
 static int washdbg_puts(char const *txt) {
