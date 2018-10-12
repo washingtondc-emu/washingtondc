@@ -47,6 +47,8 @@ static unsigned washdbg_print_buffer(struct washdbg_txt_state *state);
 
 static void washdbg_print_banner(void);
 
+static void washdbg_echo(int argc, char **argv);
+
 enum washdbg_state {
     WASHDBG_STATE_BANNER,
     WASHDBG_STATE_PROMPT,
@@ -57,6 +59,7 @@ enum washdbg_state {
     WASHDBG_STATE_HELP,
     WASHDBG_STATE_CONTEXT_INFO,
     WASHDBG_STATE_PRINT_ERROR,
+    WASHDBG_STATE_ECHO,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -120,6 +123,7 @@ void washdbg_do_help(int argc, char **argv) {
         "WashDbg command list\n"
         "\n"
         "continue - continue execution when suspended.\n"
+        "echo     - echo back text\n"
         "exit     - exit the debugger and close WashingtonDC\n"
         "help     - display this message\n";
 
@@ -182,7 +186,6 @@ static void washdbg_bad_input(char const *bad_cmd) {
 
 static struct print_error_state {
     struct washdbg_txt_state txt;
-    char error_line[BUF_LEN];
 } print_error_state;
 
 static void washdbg_print_error(char const *error) {
@@ -190,6 +193,52 @@ static void washdbg_print_error(char const *error) {
     print_error_state.txt.pos = 0;
     cur_state = WASHDBG_STATE_PRINT_ERROR;
 }
+
+static struct echo_state {
+    int argc;
+    char **argv;
+    int cur_arg;
+    unsigned cur_arg_pos;
+    bool print_space;
+} echo_state;
+
+static void washdbg_echo(int argc, char **argv) {
+    int arg_no;
+
+    if (argc <= 1) {
+        washdbg_print_prompt();
+        return;
+    }
+
+    echo_state.cur_arg = 1;
+    echo_state.cur_arg_pos = 0;
+    echo_state.print_space = false;
+    echo_state.argc = argc;
+    echo_state.argv = (char**)calloc(sizeof(char*), argc);
+    if (!echo_state.argv) {
+        washdbg_print_error("Failed allocation.\n");
+        goto cleanup_args;
+    }
+
+    for (arg_no = 0; arg_no < argc; arg_no++) {
+        echo_state.argv[arg_no] = strdup(argv[arg_no]);
+        if (!echo_state.argv[arg_no]) {
+            washdbg_print_error("Failed allocation.\n");
+            goto cleanup_args;
+        }
+    }
+
+    cur_state = WASHDBG_STATE_ECHO;
+
+    return;
+
+cleanup_args:
+    for (arg_no = 0; arg_no < argc; arg_no++)
+        free(echo_state.argv[arg_no]);
+    free(echo_state.argv);
+}
+
+    static void washdbg_state_echo_process(void);
 
 void washdbg_core_run_once(void) {
     switch (cur_state) {
@@ -225,6 +274,9 @@ void washdbg_core_run_once(void) {
     case WASHDBG_STATE_PRINT_ERROR:
         if (washdbg_print_buffer(&print_error_state.txt) == 0)
             washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_ECHO:
+        washdbg_state_echo_process();
         break;
     default:
         break;
@@ -306,6 +358,8 @@ static void washdbg_process_input(void) {
             washdbg_do_exit(argc, argv);
         } else if (strcmp(cmd, "help") == 0) {
             washdbg_do_help(argc, argv);
+        } else if (strcmp(cmd, "echo") == 0) {
+            washdbg_echo(argc, argv);
         } else if (strlen(cmd)) {
             washdbg_bad_input(cmd);
         } else {
@@ -321,6 +375,52 @@ cleanup_args:
 
 static int washdbg_puts(char const *txt) {
     return washdbg_tcp_puts(txt);
+}
+
+static void washdbg_state_echo_process(void) {
+    if (echo_state.cur_arg >= echo_state.argc) {
+        if (echo_state.print_space) {
+            if (washdbg_puts("\n"))
+                echo_state.print_space = false;
+            else
+                return;
+        }
+        washdbg_print_prompt();
+        int arg_no;
+        for (arg_no = 0; arg_no < echo_state.argc; arg_no++)
+            free(echo_state.argv[arg_no]);
+        free(echo_state.argv);
+        memset(&echo_state, 0, sizeof(echo_state));
+        return;
+    }
+
+    for (;;) {
+        if (echo_state.print_space == true) {
+            if (washdbg_puts(" "))
+                echo_state.print_space = false;
+            else
+                return;
+        }
+
+        char *arg = echo_state.argv[echo_state.cur_arg];
+        unsigned arg_len = strlen(arg);
+        unsigned arg_pos = echo_state.cur_arg_pos;
+        unsigned rem_chars = arg_len - arg_pos;
+
+        if (rem_chars) {
+            unsigned n_chars = washdbg_puts(arg + arg_pos);
+            if (n_chars == rem_chars) {
+                echo_state.cur_arg_pos = 0;
+                echo_state.cur_arg++;
+                echo_state.print_space = true;
+                if (echo_state.cur_arg >= echo_state.argc)
+                    return;
+            } else {
+                echo_state.cur_arg_pos += n_chars;
+                return;
+            }
+        }
+    }
 }
 
 static unsigned washdbg_print_buffer(struct washdbg_txt_state *state) {
