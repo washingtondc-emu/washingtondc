@@ -52,6 +52,7 @@ enum washdbg_state {
     WASHDBG_STATE_CMD_CONTINUE,
     WASHDBG_STATE_RUNNING,
     WASHDBG_STATE_HELP,
+    WASHDBG_STATE_CONTEXT_INFO,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -98,7 +99,7 @@ void washdbg_print_banner(void) {
         "WashingtonDC Copyright (C) 2016-2018 snickerbockers\n"
         "This program comes with ABSOLUTELY NO WARRANTY;\n"
         "This is free software, and you are welcome to redistribute it\n"
-        "under the terms of the GNU GPL version 3.\n";
+        "under the terms of the GNU GPL version 3.\n\n";
 
     print_banner_state.txt.txt = login_banner;
     print_banner_state.txt.pos = 0;
@@ -121,6 +122,30 @@ void washdbg_do_help(void) {
     help_state.txt.txt = help_msg;
     help_state.txt.pos = 0;
     cur_state = WASHDBG_STATE_HELP;
+}
+
+struct context_info_state {
+    struct washdbg_txt_state txt;
+} context_info_state;
+
+/*
+ * Display info about the current context before showing a new prompt
+ */
+void washdbg_print_context_info(void) {
+    char const *msg = NULL;
+    switch (debug_current_context()) {
+    case DEBUG_CONTEXT_SH4:
+        msg = "Current debug context is SH4\n";
+        break;
+    case DEBUG_CONTEXT_ARM7:
+        msg = "Current debug context is ARM7\n";
+        break;
+    default:
+        msg = "Current debug context is <unknown/error>\n";
+    }
+    context_info_state.txt.txt = msg;
+    context_info_state.txt.pos = 0;
+    cur_state = WASHDBG_STATE_CONTEXT_INFO;
 }
 
 struct print_prompt_state {
@@ -155,7 +180,7 @@ void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
         if (washdbg_print_buffer(&print_banner_state.txt) == 0)
-            washdbg_print_prompt();
+            washdbg_print_context_info();
         break;
     case WASHDBG_STATE_PROMPT:
         if (washdbg_print_buffer(&print_prompt_state.txt) == 0)
@@ -176,6 +201,10 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_HELP:
         if (washdbg_print_buffer(&help_state.txt) == 0)
+            washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_CONTEXT_INFO:
+        if (washdbg_print_buffer(&context_info_state.txt) == 0)
             washdbg_print_prompt();
         break;
     default:
