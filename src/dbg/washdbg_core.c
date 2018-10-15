@@ -719,6 +719,100 @@ static unsigned parse_hex_str(char const *str) {
     return total;
 }
 
+static struct name_map {
+    char const *str;
+    int idx;
+} const sh4_reg_map[] = {
+    { "r0", SH4_REG_R0 },
+    { "r1", SH4_REG_R1 },
+    { "r2", SH4_REG_R2 },
+    { "r3", SH4_REG_R3 },
+    { "r4", SH4_REG_R4 },
+    { "r5", SH4_REG_R5 },
+    { "r6", SH4_REG_R6 },
+    { "r7", SH4_REG_R7 },
+    { "r8", SH4_REG_R8 },
+    { "r9", SH4_REG_R9 },
+    { "r10", SH4_REG_R10 },
+    { "r11", SH4_REG_R11 },
+    { "r12", SH4_REG_R12 },
+    { "r13", SH4_REG_R13 },
+    { "r14", SH4_REG_R14 },
+    { "r15", SH4_REG_R15 },
+
+    { "r0b", SH4_REG_R0_BANK },
+    { "r1b", SH4_REG_R1_BANK },
+    { "r2b", SH4_REG_R2_BANK },
+    { "r3b", SH4_REG_R3_BANK },
+    { "r4b", SH4_REG_R4_BANK },
+    { "r5b", SH4_REG_R5_BANK },
+    { "r6b", SH4_REG_R6_BANK },
+    { "r7b", SH4_REG_R7_BANK },
+
+    { "fr0", SH4_REG_FR0 },
+    { "fr1", SH4_REG_FR1 },
+    { "fr2", SH4_REG_FR2 },
+    { "fr3", SH4_REG_FR3 },
+    { "fr4", SH4_REG_FR4 },
+    { "fr5", SH4_REG_FR5 },
+    { "fr6", SH4_REG_FR6 },
+    { "fr7", SH4_REG_FR7 },
+    { "fr8", SH4_REG_FR8 },
+    { "fr9", SH4_REG_FR9 },
+    { "fr10", SH4_REG_FR10 },
+    { "fr11", SH4_REG_FR11 },
+    { "fr12", SH4_REG_FR12 },
+    { "fr13", SH4_REG_FR13 },
+    { "fr14", SH4_REG_FR14 },
+    { "fr15", SH4_REG_FR15 },
+
+    // TODO: double-precision registers, vector registers, XMTRX
+
+    { "xf0", SH4_REG_XF0 },
+    { "xf1", SH4_REG_XF1 },
+    { "xf2", SH4_REG_XF2 },
+    { "xf3", SH4_REG_XF3 },
+    { "xf4", SH4_REG_XF4 },
+    { "xf5", SH4_REG_XF5 },
+    { "xf6", SH4_REG_XF6 },
+    { "xf7", SH4_REG_XF7 },
+    { "xf8", SH4_REG_XF8 },
+    { "xf9", SH4_REG_XF9 },
+    { "xf10", SH4_REG_XF10 },
+    { "xf11", SH4_REG_XF11 },
+    { "xf12", SH4_REG_XF12 },
+    { "xf13", SH4_REG_XF13 },
+    { "xf14", SH4_REG_XF14 },
+    { "xf15", SH4_REG_XF15 },
+
+    { "fpscr", SH4_REG_FPSCR },
+    { "fpul", SH4_REG_FPUL },
+    { "sr", SH4_REG_SR },
+    { "ssr", SH4_REG_SSR },
+    { "spc", SH4_REG_SPC },
+    { "gbr", SH4_REG_GBR },
+    { "vbr", SH4_REG_VBR },
+    { "sgr", SH4_REG_SGR },
+    { "dbr", SH4_REG_DBR },
+    { "mach", SH4_REG_MACH },
+    { "macl", SH4_REG_MACL },
+    { "pr", SH4_REG_PR },
+    { "pc", SH4_REG_PC },
+
+    { NULL }
+};
+
+static int reg_idx_sh4(char const *reg_name) {
+    struct name_map const *cursor = sh4_reg_map;
+
+    while (cursor->str) {
+        if (strcmp(reg_name, cursor->str) == 0)
+            return cursor->idx;
+        cursor++;
+    }
+    return -1;
+}
+
 /*
  * expression format:
  * <ctx>:0xhex_val
@@ -766,8 +860,18 @@ static int eval_expression(char const *expr, enum dbg_context_id *ctx_id, unsign
 
     if (expr[0] == '$') {
         // register
-        washdbg_print_error("register expressions are not implemented yet\n");
-        return -1;
+        if (ctx == DEBUG_CONTEXT_SH4) {
+            int reg_idx = reg_idx_sh4(expr + 1);
+            if (reg_idx >= 0) {
+                *out = debug_get_reg(DEBUG_CONTEXT_SH4, reg_idx);
+                return 0;
+            }
+            washdbg_print_error("unknown sh4 register\n");
+            return -1;
+        } else {
+            washdbg_print_error("register expressions are not implemented yet\n");
+            return -1;
+        }
     } else if (expr[0] == '0' && toupper(expr[1]) == 'X' &&
                is_hex_str(expr + 2)) {
         // hex
