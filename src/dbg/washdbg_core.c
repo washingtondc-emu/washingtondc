@@ -343,9 +343,11 @@ static void washdbg_x(int argc, char **argv) {
         return;
     }
 
-    fmt_str = strchr(argv[0], '/') + 1;
-    if (fmt_str)
+    fmt_str = strchr(argv[0], '/');
+    if (fmt_str) {
+        fmt_str++;
         printf("The format string is \"%s\"\n", fmt_str);
+    }
 
     memset(&x_state, 0, sizeof(x_state));
 
@@ -794,6 +796,9 @@ parse_fmt_string(char const *str, enum washdbg_byte_count *byte_count_out,
 
     char const *digit_start = NULL;
 
+    if (!str)
+        goto the_end;
+
     while (*str || parsing_digits) {
         if (parsing_digits) {
             if (*str < '0' || *str > '9') {
@@ -865,6 +870,8 @@ parse_fmt_string(char const *str, enum washdbg_byte_count *byte_count_out,
         washdbg_print_error("too much data\n");
         return -1;
     }
+
+the_end:
 
     *count_out = count;
     *byte_count_out = byte_count;
