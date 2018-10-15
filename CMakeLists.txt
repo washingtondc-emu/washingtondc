@@ -322,7 +322,12 @@ if (ENABLE_DEBUGGER)
                                    "${PROJECT_SOURCE_DIR}/src/io/washdbg_tcp.h"
                                    "${PROJECT_SOURCE_DIR}/src/io/washdbg_tcp.c"
                                    "${PROJECT_SOURCE_DIR}/src/dbg/washdbg_core.h"
-                                   "${PROJECT_SOURCE_DIR}/src/dbg/washdbg_core.c")
+                                   "${PROJECT_SOURCE_DIR}/src/dbg/washdbg_core.c"
+                                   "${PROJECT_SOURCE_DIR}/external/sh4asm/sh4asm_core/disas.h"
+                                   "${PROJECT_SOURCE_DIR}/external/sh4asm/sh4asm_core/disas.c"
+                                   "${PROJECT_SOURCE_DIR}/external/sh4asm/sh4asm_core/sh4_asm_emit.h"
+                                   "${PROJECT_SOURCE_DIR}/external/sh4asm/sh4asm_core/sh4_asm_emit.c")
+
     if (ENABLE_WATCHPOINTS)
         add_definitions(-DENABLE_WATCHPOINTS)
     endif()
@@ -407,6 +412,11 @@ set(include_dirs "${OPENGL_INCLUDE_DIR}"
                  "${libpng_path}"
                  "${zlib_path}"
                  "${CMAKE_BINARY_DIR}/washingtondc-libevent/src/libevent/include")
+
+if (ENABLE_DEBUGGER)
+  set(include_dirs "${include_dirs}"
+                   "${PROJECT_SOURCE_DIR}/external/sh4asm")
+endif()
 
 include_directories("${include_dirs}")
 

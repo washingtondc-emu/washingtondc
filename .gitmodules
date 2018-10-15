@@ -1,3 +1,6 @@
 [submodule "external/glfw"]
 	path = external/glfw
 	url = https://github.com/glfw/glfw
+[submodule "external/sh4asm"]
+	path = external/sh4asm
+	url = https://github.com/washingtondc-emu/sh4asm

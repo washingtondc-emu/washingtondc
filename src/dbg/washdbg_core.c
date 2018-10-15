@@ -28,6 +28,7 @@
 #include "log.h"
 #include "dreamcast.h"
 #include "io/washdbg_tcp.h"
+#include "sh4asm_core/disas.h"
 
 #include "dbg/washdbg_core.h"
 
@@ -57,11 +58,16 @@ eval_expression(char const *expr, enum dbg_context_id *ctx_id, unsigned *out);
 
 static unsigned washdbg_print_x(void);
 
-static int
-parse_fmt_string(char const *str, unsigned *byte_count_out,
-                 unsigned *count_out);
+enum washdbg_byte_count {
+    WASHDBG_1_BYTE = 1,
+    WASHDBG_2_BYTE = 2,
+    WASHDBG_4_BYTE = 4,
+    WASHDBG_INST   = 5
+};
 
-static void unsigned_to_hex(char *out, size_t n_chars, unsigned val);
+static int
+parse_fmt_string(char const *str, enum washdbg_byte_count *byte_count_out,
+                 unsigned *count_out);
 
 enum washdbg_state {
     WASHDBG_STATE_BANNER,
@@ -271,36 +277,58 @@ static bool washdbg_is_echo_cmd(char const *cmd) {
     return strcmp(cmd, "echo") == 0;
 }
 
+#define WASHDBG_X_STATE_STR_LEN 128
+
 static struct x_state {
-    char str[32];
+    char str[WASHDBG_X_STATE_STR_LEN];
     size_t str_pos;
 
     void *dat;
     unsigned byte_count;
     unsigned count;
     unsigned idx;
+    bool disas_mode;
 } x_state;
+
+static void washdbg_x_state_disas_emit(char ch) {
+    size_t len = strlen(x_state.str);
+    if (len >= WASHDBG_X_STATE_STR_LEN - 1)
+        return; // no more space
+    x_state.str[len] = ch;
+}
 
 static void washdbg_x_set_string(void) {
     uint32_t val32;
     uint16_t val16;
     uint8_t val8;
-    switch (x_state.byte_count) {
-    case 4:
-        val32 = ((uint32_t*)x_state.dat)[x_state.idx];
-        snprintf(x_state.str, sizeof(x_state.str), "0x%08x\n", (unsigned)val32);
-        break;
-    case 2:
+
+    if (x_state.disas_mode) {
+        memset(x_state.str, 0, sizeof(x_state.str));
         val16 = ((uint16_t*)x_state.dat)[x_state.idx];
-        snprintf(x_state.str, sizeof(x_state.str), "0x%04x\n", (unsigned)val16);
-        break;
-    case 1:
-        val8 = ((uint8_t*)x_state.dat)[x_state.idx];
-        snprintf(x_state.str, sizeof(x_state.str), "0x%02x\n", (unsigned)val8);
-        break;
-    default:
-        strncpy(x_state.str, "<ERROR>\n", sizeof(x_state.str));
-        x_state.str[31] = '\0';
+        disas_inst(val16, washdbg_x_state_disas_emit);
+        size_t len = strlen(x_state.str);
+        if (len >= WASHDBG_X_STATE_STR_LEN - 1)
+            x_state.str[WASHDBG_X_STATE_STR_LEN - 2] = '\n';
+        else
+            x_state.str[len] = '\n';
+    } else {
+        switch (x_state.byte_count) {
+        case 4:
+            val32 = ((uint32_t*)x_state.dat)[x_state.idx];
+            snprintf(x_state.str, sizeof(x_state.str), "0x%08x\n", (unsigned)val32);
+            break;
+        case 2:
+            val16 = ((uint16_t*)x_state.dat)[x_state.idx];
+            snprintf(x_state.str, sizeof(x_state.str), "0x%04x\n", (unsigned)val16);
+            break;
+        case 1:
+            val8 = ((uint8_t*)x_state.dat)[x_state.idx];
+            snprintf(x_state.str, sizeof(x_state.str), "0x%02x\n", (unsigned)val8);
+            break;
+        default:
+            strncpy(x_state.str, "<ERROR>\n", sizeof(x_state.str));
+            x_state.str[WASHDBG_X_STATE_STR_LEN - 1] = '\0';
+        }
     }
 }
 
@@ -328,6 +356,21 @@ static void washdbg_x(int argc, char **argv) {
 
     if (eval_expression(argv[1], &ctx, &addr) != 0)
         return;
+
+    if (x_state.byte_count == WASHDBG_INST) {
+        switch (ctx) {
+        case DEBUG_CONTEXT_SH4:
+            x_state.byte_count = 2;
+            x_state.disas_mode = true;
+            break;
+        case DEBUG_CONTEXT_ARM7:
+            x_state.byte_count = 4;
+            x_state.disas_mode = false; // not implemented yet
+            break;
+        default:
+            washdbg_print_error("unknown context ???\n");
+        }
+    }
 
     if (x_state.count > 1024 * 32) {
         washdbg_print_error("too much data\n");
@@ -739,14 +782,8 @@ static int eval_expression(char const *expr, enum dbg_context_id *ctx_id, unsign
     }
 }
 
-__attribute__((unused))
-static void unsigned_to_hex(char *out, size_t n_chars, unsigned val) {
-    snprintf(out, n_chars, "0x%08x\n", val);
-    out[n_chars - 1] = '\0';
-}
-
 static int
-parse_fmt_string(char const *str, unsigned *byte_count_out,
+parse_fmt_string(char const *str, enum washdbg_byte_count *byte_count_out,
                  unsigned *count_out) {
     bool have_count = false;
     bool have_byte_count = false;
@@ -779,19 +816,25 @@ parse_fmt_string(char const *str, unsigned *byte_count_out,
             case 'w':
                 if (have_byte_count)
                     return -1;
-                byte_count = 4;
+                byte_count = WASHDBG_4_BYTE;
                 have_byte_count = true;
                 break;
             case 'h':
                 if (have_byte_count)
                     return -1;
-                byte_count = 2;
+                byte_count = WASHDBG_2_BYTE;
                 have_byte_count = true;
                 break;
             case 'b':
                 if (have_byte_count)
                     return -1;
-                byte_count = 1;
+                byte_count = WASHDBG_1_BYTE;
+                have_byte_count = true;
+                break;
+            case 'i':
+                if (have_byte_count)
+                    return -1;
+                byte_count = WASHDBG_INST;
                 have_byte_count = true;
                 break;
             case '0':
