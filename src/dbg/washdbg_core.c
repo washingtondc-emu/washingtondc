@@ -125,6 +125,17 @@ void washdbg_input_ch(char ch) {
         in_buf[in_buf_pos++] = ch;
 }
 
+static bool washdbg_is_step_cmd(char const *cmd) {
+    return strcmp(cmd, "s") == 0 ||
+        strcmp(cmd, "step") == 0;
+}
+
+static void washdbg_do_step(int argc, char **argv) {
+    LOG_INFO("WashDbg single-step requested\n");
+    cur_state = WASHDBG_STATE_RUNNING;
+    debug_request_single_step();
+}
+
 struct print_banner_state {
     struct washdbg_txt_state txt;
 } print_banner_state;
@@ -156,6 +167,7 @@ void washdbg_do_help(int argc, char **argv) {
         "echo     - echo back text\n"
         "exit     - exit the debugger and close WashingtonDC\n"
         "help     - display this message\n"
+        "step     - single-step\n"
         "x        - eXamine memory address\n";
 
     help_state.txt.txt = help_msg;
@@ -478,6 +490,12 @@ void washdbg_core_run_once(void) {
     }
 }
 
+void washdbg_core_on_break(enum dbg_context_id id, void *argptr) {
+    if (cur_state != WASHDBG_STATE_RUNNING)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    washdbg_print_context_info();
+}
+
 // maximum length of a single argument
 #define SINGLE_ARG_MAX 128
 
@@ -557,6 +575,8 @@ static void washdbg_process_input(void) {
                 washdbg_echo(argc, argv);
             } else if (washdbg_is_x_cmd(cmd)) {
                 washdbg_x(argc, argv);
+            } else if (washdbg_is_step_cmd(cmd)) {
+                washdbg_do_step(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }

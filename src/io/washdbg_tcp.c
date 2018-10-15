@@ -89,7 +89,8 @@ static struct event *request_listen_event, *check_tx_event;
 
 struct debug_frontend washdbg_frontend = {
     .attach = washdbg_attach,
-    .run_once = washdbg_run_once
+    .run_once = washdbg_run_once,
+    .on_break = washdbg_core_on_break
 };
 
 struct text_ring tx_ring, rx_ring;

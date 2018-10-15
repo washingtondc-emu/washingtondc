@@ -25,6 +25,7 @@
 
 #include <stdbool.h>
 
+#include "dbg/debugger.h"
 #include "types.h"
 
 // These functions should only be called from within the emulation thread
@@ -34,5 +35,7 @@ void washdbg_init(void);
 void washdbg_input_ch(char ch);
 
 void washdbg_core_run_once(void);
+
+void washdbg_core_on_break(enum dbg_context_id id, void *argptr);
 
 #endif
