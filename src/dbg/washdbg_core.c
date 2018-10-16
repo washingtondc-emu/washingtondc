@@ -29,6 +29,7 @@
 #include "dreamcast.h"
 #include "io/washdbg_tcp.h"
 #include "sh4asm_core/disas.h"
+#include "dbg/debugger.h"
 
 #include "dbg/washdbg_core.h"
 
@@ -41,6 +42,14 @@ struct washdbg_txt_state {
     char const *txt;
     unsigned pos;
 };
+
+/*
+ * map bp index to address
+ */
+static struct washdbg_bp_stat {
+    uint32_t addr;
+    bool enabled;
+} washdbg_bp_stat[NUM_DEBUG_CONTEXTS][DEBUG_N_BREAKPOINTS];
 
 static void washdbg_process_input(void);
 static int washdbg_puts(char const *txt);
@@ -81,6 +90,7 @@ enum washdbg_state {
     WASHDBG_STATE_PRINT_ERROR,
     WASHDBG_STATE_ECHO,
     WASHDBG_STATE_X,
+    WASHDBG_STATE_CMD_BPSET,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -88,6 +98,7 @@ enum washdbg_state {
 
 void washdbg_init(void) {
     washdbg_print_banner();
+    memset(washdbg_bp_stat, 0, sizeof(washdbg_bp_stat));
 }
 
 static struct continue_state {
@@ -163,12 +174,13 @@ void washdbg_do_help(int argc, char **argv) {
     static char const *help_msg =
         "WashDbg command list\n"
         "\n"
-        "continue - continue execution when suspended.\n"
-        "echo     - echo back text\n"
-        "exit     - exit the debugger and close WashingtonDC\n"
-        "help     - display this message\n"
-        "step     - single-step\n"
-        "x        - eXamine memory address\n";
+        "bpset <addr> - set a breakpoint\n"
+        "continue     - continue execution when suspended.\n"
+        "echo         - echo back text\n"
+        "exit         - exit the debugger and close WashingtonDC\n"
+        "help         - display this message\n"
+        "step         - single-step\n"
+        "x            - eXamine memory address\n";
 
     help_state.txt.txt = help_msg;
     help_state.txt.pos = 0;
@@ -440,6 +452,54 @@ static bool washdbg_is_x_cmd(char const *cmd) {
         (strlen(cmd) && cmd[0] == 'x' && cmd[1] == '/');
 }
 
+#define WASHDBG_BPSET_STR_LEN 64
+
+static struct bpset_state {
+    struct washdbg_txt_state txt;
+    char str[WASHDBG_BPSET_STR_LEN];
+} bpset_state;
+
+static void washdbg_bpset(int argc, char **argv) {
+    if (argc != 2) {
+        washdbg_print_error("only a single argument is supported for the bpset "
+                            "command.\n");
+        return;
+    }
+
+    unsigned addr;
+    enum dbg_context_id ctx;
+    if (eval_expression(argv[1], &ctx, &addr) != 0)
+        return;
+
+    unsigned bp_idx;
+    for (bp_idx = 0; bp_idx < DEBUG_N_BREAKPOINTS; bp_idx++)
+        if (!washdbg_bp_stat[ctx][bp_idx].enabled) {
+            washdbg_bp_stat[ctx][bp_idx].addr = addr;
+            washdbg_bp_stat[ctx][bp_idx].enabled = true;
+            break;
+        }
+
+    if (bp_idx >= DEBUG_N_BREAKPOINTS ||
+        debug_add_break(ctx, addr) != 0) {
+        washdbg_print_error("failed to add breakpoint\n");
+        return;
+    }
+
+    memset(bpset_state.str, 0, sizeof(bpset_state.str));
+
+    snprintf(bpset_state.str, sizeof(bpset_state.str),
+             "breakpoint %u added successfully.\n", bp_idx);
+
+    bpset_state.txt.txt = bpset_state.str;
+    bpset_state.txt.pos = 0;
+
+    cur_state = WASHDBG_STATE_CMD_BPSET;
+}
+
+static bool washdbg_is_bpset_cmd(char const *cmd) {
+    return strcmp(cmd, "bpset") == 0;
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -484,6 +544,10 @@ void washdbg_core_run_once(void) {
             x_state.dat = NULL;
             washdbg_print_prompt();
         }
+        break;
+    case WASHDBG_STATE_CMD_BPSET:
+        if (washdbg_print_buffer(&bpset_state.txt) == 0)
+            washdbg_print_prompt();
         break;
     default:
         break;
@@ -577,6 +641,8 @@ static void washdbg_process_input(void) {
                 washdbg_x(argc, argv);
             } else if (washdbg_is_step_cmd(cmd)) {
                 washdbg_do_step(argc, argv);
+            } else if (washdbg_is_bpset_cmd(cmd)) {
+                washdbg_bpset(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
