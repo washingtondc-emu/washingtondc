@@ -49,6 +49,7 @@ struct washdbg_txt_state {
 static struct washdbg_bp_stat {
     uint32_t addr;
     bool enabled;
+    bool valid;
 } washdbg_bp_stat[NUM_DEBUG_CONTEXTS][DEBUG_N_BREAKPOINTS];
 
 static void washdbg_process_input(void);
@@ -91,6 +92,7 @@ enum washdbg_state {
     WASHDBG_STATE_ECHO,
     WASHDBG_STATE_X,
     WASHDBG_STATE_CMD_BPSET,
+    WASHDBG_STATE_CMD_BPLIST,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -174,6 +176,7 @@ void washdbg_do_help(int argc, char **argv) {
     static char const *help_msg =
         "WashDbg command list\n"
         "\n"
+        "bplist       - list all breakpoints\n"
         "bpset <addr> - set a breakpoint\n"
         "continue     - continue execution when suspended.\n"
         "echo         - echo back text\n"
@@ -473,8 +476,9 @@ static void washdbg_bpset(int argc, char **argv) {
 
     unsigned bp_idx;
     for (bp_idx = 0; bp_idx < DEBUG_N_BREAKPOINTS; bp_idx++)
-        if (!washdbg_bp_stat[ctx][bp_idx].enabled) {
+        if (!washdbg_bp_stat[ctx][bp_idx].valid) {
             washdbg_bp_stat[ctx][bp_idx].addr = addr;
+            washdbg_bp_stat[ctx][bp_idx].valid = true;
             washdbg_bp_stat[ctx][bp_idx].enabled = true;
             break;
         }
@@ -498,6 +502,80 @@ static void washdbg_bpset(int argc, char **argv) {
 
 static bool washdbg_is_bpset_cmd(char const *cmd) {
     return strcmp(cmd, "bpset") == 0;
+}
+
+#define WASHDBG_BPLIST_STR_LEN 64
+
+static struct bplist_state {
+    char str[WASHDBG_BPLIST_STR_LEN];
+    unsigned str_idx;
+    unsigned bp_next;
+    enum dbg_context_id ctx_next;
+    struct washdbg_txt_state txt;
+} bplist_state;
+
+static int washdbg_bplist_load_bp(void) {
+    if (bplist_state.ctx_next >= NUM_DEBUG_CONTEXTS)
+        return -1;
+
+    struct washdbg_bp_stat *chosen = NULL;
+    unsigned idx_cur;
+    enum dbg_context_id ctx_cur;
+    for (ctx_cur = bplist_state.ctx_next, idx_cur = bplist_state.bp_next;
+         ctx_cur < NUM_DEBUG_CONTEXTS; ctx_cur++) {
+        for (; idx_cur < DEBUG_N_BREAKPOINTS;
+             idx_cur++) {
+            struct washdbg_bp_stat *bp = &washdbg_bp_stat[ctx_cur][idx_cur];
+            if (bp->valid) {
+                chosen = bp;
+
+                bplist_state.bp_next = idx_cur + 1;
+                bplist_state.ctx_next = ctx_cur;
+                if (bplist_state.bp_next >= DEBUG_N_BREAKPOINTS) {
+                    bplist_state.bp_next = 0;
+                    bplist_state.ctx_next++;
+                }
+                goto have_chosen;
+            }
+        }
+        idx_cur = 0;
+    }
+
+have_chosen:
+
+    if (!chosen)
+        return -1;
+
+    memset(bplist_state.str, 0, sizeof(bplist_state.str));
+
+    char const *ctx_name = ctx_cur == DEBUG_CONTEXT_SH4 ? "sh4" :
+        (ctx_cur == DEBUG_CONTEXT_ARM7 ? "arm7" : "unknown");
+    snprintf(bplist_state.str, sizeof(bplist_state.str),
+             "%s breakpoint %u: 0x%08x (%s)\n",
+             ctx_name, idx_cur, (unsigned)chosen->addr,
+             chosen->enabled ? "enabled" : "disabled");
+    bplist_state.str[WASHDBG_BPLIST_STR_LEN - 1] = '\0';
+    bplist_state.txt.pos = 0;
+    return 0;
+}
+
+static void washdbg_bplist_run(void) {
+    if (washdbg_print_buffer(&bplist_state.txt) != 0)
+        return;
+    if (washdbg_bplist_load_bp() != 0)
+        washdbg_print_prompt();
+}
+
+static void washdbg_do_bplist(int argc, char **argv) {
+    if (argc != 1)
+        washdbg_print_error("bplist takes no arguments!\n");
+    memset(&bplist_state, 0, sizeof(bplist_state));
+    bplist_state.txt.txt = bplist_state.str;
+    cur_state = WASHDBG_STATE_CMD_BPLIST;
+}
+
+static bool washdbg_is_bplist_cmd(char const *cmd) {
+    return strcmp(cmd, "bplist") == 0;
 }
 
 void washdbg_core_run_once(void) {
@@ -548,6 +626,9 @@ void washdbg_core_run_once(void) {
     case WASHDBG_STATE_CMD_BPSET:
         if (washdbg_print_buffer(&bpset_state.txt) == 0)
             washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_CMD_BPLIST:
+        washdbg_bplist_run();
         break;
     default:
         break;
@@ -643,6 +724,8 @@ static void washdbg_process_input(void) {
                 washdbg_do_step(argc, argv);
             } else if (washdbg_is_bpset_cmd(cmd)) {
                 washdbg_bpset(argc, argv);
+            } else if (washdbg_is_bplist_cmd(cmd)) {
+                washdbg_do_bplist(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
