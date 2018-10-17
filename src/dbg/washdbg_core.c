@@ -177,6 +177,7 @@ void washdbg_do_help(int argc, char **argv) {
     static char const *help_msg =
         "WashDbg command list\n"
         "\n"
+        "bpdel        - delete a breakpoint\n"
         "bpdis        - disable a breakpoint\n"
         "bpen         - enable a breakpoint\n"
         "bplist       - list all breakpoints\n"
@@ -655,6 +656,42 @@ static bool washdbg_is_bpen_cmd(char const *str) {
     return strcmp(str, "bpen") == 0;
 }
 
+static void washdbg_do_bpdel(int argc, char **argv) {
+    if (argc != 2) {
+        washdbg_print_error("need to provide breakpoint id\n");
+        return;
+    }
+
+    enum dbg_context_id ctx;
+    unsigned idx;
+    if (eval_expression(argv[1], &ctx, &idx) != 0)
+        return;
+
+    if ((ctx != DEBUG_CONTEXT_SH4 && ctx != DEBUG_CONTEXT_ARM7) ||
+        (idx >= DEBUG_N_BREAKPOINTS)) {
+        washdbg_print_error("bad breakpoint idx\n");
+        return;
+    }
+
+    struct washdbg_bp_stat *bp = &washdbg_bp_stat[ctx][idx];
+    if (!bp->valid) {
+        washdbg_print_error("breakpoint is not set\n");
+        return;
+    }
+
+    if (debug_remove_break(ctx, bp->addr) != 0) {
+        washdbg_print_error("failed to remove breakpoint\n");
+        return;
+    }
+
+    memset(bp, 0, sizeof(*bp));
+    washdbg_print_prompt();
+}
+
+static bool washdbg_is_bpdel_cmd(char const *str) {
+    return strcmp(str, "bpdel") == 0;
+}
+
 #define WASHDBG_PRINT_STATE_STR_LEN 128
 
 static struct washdbg_print_state {
@@ -845,6 +882,8 @@ static void washdbg_process_input(void) {
                 washdbg_do_bpdis(argc, argv);
             } else if (washdbg_is_bpen_cmd(cmd)) {
                 washdbg_do_bpen(argc, argv);
+            } else if (washdbg_is_bpdel_cmd(cmd)) {
+                washdbg_do_bpdel(argc, argv);
             } else if (washdbg_is_print_cmd(cmd)) {
                 washdbg_print(argc, argv);
             } else {
