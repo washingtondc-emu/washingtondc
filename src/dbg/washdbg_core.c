@@ -177,12 +177,15 @@ void washdbg_do_help(int argc, char **argv) {
     static char const *help_msg =
         "WashDbg command list\n"
         "\n"
+        "bpdis        - disable a breakpoint\n"
+        "bpen         - enable a breakpoint\n"
         "bplist       - list all breakpoints\n"
         "bpset <addr> - set a breakpoint\n"
         "continue     - continue execution when suspended.\n"
         "echo         - echo back text\n"
         "exit         - exit the debugger and close WashingtonDC\n"
         "help         - display this message\n"
+        "print        - print a value\n"
         "step         - single-step\n"
         "x            - eXamine memory address\n";
 
