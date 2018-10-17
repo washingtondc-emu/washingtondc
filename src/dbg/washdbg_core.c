@@ -93,6 +93,7 @@ enum washdbg_state {
     WASHDBG_STATE_X,
     WASHDBG_STATE_CMD_BPSET,
     WASHDBG_STATE_CMD_BPLIST,
+    WASHDBG_STATE_CMD_PRINT,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -647,9 +648,42 @@ static void washdbg_do_bpen(int argc, char **argv) {
     washdbg_print_prompt();
 }
 
-
 static bool washdbg_is_bpen_cmd(char const *str) {
     return strcmp(str, "bpen") == 0;
+}
+
+#define WASHDBG_PRINT_STATE_STR_LEN 128
+
+static struct washdbg_print_state {
+    char str[WASHDBG_PRINT_STATE_STR_LEN];
+    struct washdbg_txt_state txt;
+} print_state;
+
+static void washdbg_print(int argc, char **argv) {
+    unsigned val;
+    enum dbg_context_id ctx;
+
+    if (argc != 2) {
+        washdbg_print_error("only a single argument is supported for the print "
+                            "command.\n");
+        return;
+    }
+
+    memset(&print_state, 0, sizeof(print_state));
+    print_state.txt.txt = print_state.str;
+
+    if (eval_expression(argv[1], &ctx, &val) != 0)
+        return;
+
+    snprintf(print_state.str, sizeof(print_state.str), "0x%08x\n", val);
+    print_state.str[WASHDBG_PRINT_STATE_STR_LEN - 1] = '\0';
+
+    cur_state = WASHDBG_STATE_CMD_PRINT;
+}
+
+static bool washdbg_is_print_cmd(char const *str) {
+    return strcmp(str, "print") == 0 ||
+        strcmp(str, "p") == 0;
 }
 
 void washdbg_core_run_once(void) {
@@ -703,6 +737,10 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_CMD_BPLIST:
         washdbg_bplist_run();
+        break;
+    case WASHDBG_STATE_CMD_PRINT:
+        if (washdbg_print_buffer(&print_state.txt) == 0)
+            washdbg_print_prompt();
         break;
     default:
         break;
@@ -804,6 +842,8 @@ static void washdbg_process_input(void) {
                 washdbg_do_bpdis(argc, argv);
             } else if (washdbg_is_bpen_cmd(cmd)) {
                 washdbg_do_bpen(argc, argv);
+            } else if (washdbg_is_print_cmd(cmd)) {
+                washdbg_print(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
