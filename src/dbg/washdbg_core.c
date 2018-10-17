@@ -616,6 +616,42 @@ static bool washdbg_is_bpdis_cmd(char const *str) {
     return strcmp(str, "bpdis") == 0;
 }
 
+static void washdbg_do_bpen(int argc, char **argv) {
+    if (argc != 2) {
+        washdbg_print_error("need to provide breakpoint id\n");
+        return;
+    }
+
+    enum dbg_context_id ctx;
+    unsigned idx;
+    if (eval_expression(argv[1], &ctx, &idx) != 0)
+        return;
+
+    if ((ctx != DEBUG_CONTEXT_SH4 && ctx != DEBUG_CONTEXT_ARM7) ||
+        (idx >= DEBUG_N_BREAKPOINTS)) {
+        washdbg_print_error("bad breakpoint idx\n");
+        return;
+    }
+
+    struct washdbg_bp_stat *bp = &washdbg_bp_stat[ctx][idx];
+    if (!bp->valid) {
+        washdbg_print_error("breakpoint is not set\n");
+        return;
+    }
+
+    if (debug_add_break(ctx, bp->addr) != 0) {
+        washdbg_print_error("failed to re-add breakpoint\n");
+        return;
+    }
+    bp->enabled = true;
+    washdbg_print_prompt();
+}
+
+
+static bool washdbg_is_bpen_cmd(char const *str) {
+    return strcmp(str, "bpen") == 0;
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -766,6 +802,8 @@ static void washdbg_process_input(void) {
                 washdbg_do_bplist(argc, argv);
             } else if (washdbg_is_bpdis_cmd(cmd)) {
                 washdbg_do_bpdis(argc, argv);
+            } else if (washdbg_is_bpen_cmd(cmd)) {
+                washdbg_do_bpen(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
