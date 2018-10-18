@@ -283,7 +283,7 @@ void dreamcast_init(bool cmd_session) {
 #ifdef ENABLE_DEBUGGER
     if (config_get_dbg_enable()) {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
-        return;
+        goto on_init_complete;
     }
 #endif
 
@@ -296,6 +296,7 @@ void dreamcast_init(bool cmd_session) {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
     }
 
+on_init_complete:
     init_complete = true;
 }
 
