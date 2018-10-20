@@ -4,7 +4,7 @@
 #
 #
 #   WashingtonDC Dreamcast Emulator
-#   Copyright (C) 2017 snickerbockers
+#   Copyright (C) 2017, 2018 snickerbockers
 #   chimerasaurusrex@gmail.com
 #
 #   This program is free software; you can redistribute it and/or modify
@@ -47,11 +47,11 @@ touch $out_path
 
 while test $iter -ne 16 ; do
 
-    set -x
+    # set -x
     skip_count=$(expr $iter "*" 2352 + 16)
 
     dd if=$in_path of=$out_path bs=1 count=2048 skip=$skip_count oflag=append conv=notrunc > /dev/null 2>&1
-    set +x
+    # set +x
 
     iter=$(expr "$iter" + 1)
 done
