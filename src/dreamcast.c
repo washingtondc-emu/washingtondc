@@ -151,6 +151,8 @@ static bool dreamcast_check_debugger(void);
 
 static bool run_to_next_sh4_event_debugger(void *ctxt);
 
+static bool run_to_next_arm7_event_debugger(void *ctxt);
+
 #endif
 
 // this must be called before run or not at all
@@ -373,9 +375,9 @@ static void main_loop_sched(void) {
     }
 }
 
-typedef bool(*sh4_backend_func)(void*);
+typedef bool(*cpu_backend_func)(void*);
 
-static sh4_backend_func select_sh4_backend(void) {
+static cpu_backend_func select_sh4_backend(void) {
 #ifdef ENABLE_DEBUGGER
     bool use_gdb_stub = config_get_dbg_enable();
     if (use_gdb_stub)
@@ -401,6 +403,15 @@ static sh4_backend_func select_sh4_backend(void) {
     else
         return run_to_next_sh4_event;
 #endif
+}
+
+static cpu_backend_func select_arm7_backend(void) {
+#ifdef ENABLE_DEBUGGER
+    bool use_debugger = config_get_dbg_enable();
+    if (use_debugger)
+        return run_to_next_arm7_event_debugger;
+#endif
+    return run_to_next_arm7_event;
 }
 
 void dreamcast_run() {
@@ -445,7 +456,7 @@ void dreamcast_run() {
     sh4_clock.dispatch = select_sh4_backend();
     sh4_clock.dispatch_ctxt = &cpu;
 
-    arm7_clock.dispatch = run_to_next_arm7_event;
+    arm7_clock.dispatch = select_arm7_backend();
     arm7_clock.dispatch_ctxt = &arm7;
 
     main_loop_sched();
@@ -512,6 +523,49 @@ static bool run_to_next_arm7_event(void *ctxt) {
 
     return false;
 }
+
+#ifdef ENABLE_DEBUGGER
+static bool run_to_next_arm7_event_debugger(void *ctxt) {
+    dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&arm7_clock);
+    bool exit_now;
+
+    if (arm7.enabled) {
+        debug_set_context(DEBUG_CONTEXT_ARM7); //TODO unfinished
+
+        while (!(exit_now = dreamcast_check_debugger()) &&
+               tgt_stamp > clock_cycle_stamp(&arm7_clock)) {
+            struct arm7_decoded_inst decoded;
+            arm7_fetch_inst(&arm7, &decoded);
+
+            unsigned inst_cycles = arm7_exec(&arm7, &decoded);
+            dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&arm7_clock) +
+                inst_cycles * ARM7_CLOCK_SCALE;
+
+            tgt_stamp = clock_target_stamp(&arm7_clock);
+            if (cycles_after > tgt_stamp)
+                cycles_after = tgt_stamp;
+            clock_set_cycle_stamp(&arm7_clock, cycles_after);
+        }
+    } else {
+        /*
+         * XXX When the ARM7 is disabled, the PC is supposed to continue
+         * incrementing until it's enabled just as if it was executing
+         * instructions.  When the ARM7 is re-enabled, the PC is saved into
+         * R14_svc, the CPSR is saved into SPSR_svc, and the PC is cleared to 0.
+         *
+         * This means it's possible for the SH4 to place arbitrary values into
+         * R14_svc by timing its writes to the ARM7's nReset register.
+         * I'm hoping that nothing ever uses this to set a specific value into
+         * R14_svc.  TBH I think it would be hard to get the timing right even
+         * on real hardware.
+         */
+        tgt_stamp = clock_target_stamp(&arm7_clock);
+        clock_set_cycle_stamp(&arm7_clock, tgt_stamp);
+    }
+
+    return false;
+}
+#endif
 
 #ifdef ENABLE_DEBUGGER
 static bool dreamcast_check_debugger(void) {

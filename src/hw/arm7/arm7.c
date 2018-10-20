@@ -1269,3 +1269,7 @@ static void arm7_inst_swi(struct arm7 *arm7, arm7_inst inst) {
     arm7->excp |= ARM7_EXCP_SWI;
     // it is not a mistake that I have chosen to not call next_inst here
 }
+
+void arm7_get_regs(struct arm7 *arm7, void *dat_out) {
+    memcpy(dat_out, arm7->reg, sizeof(uint32_t) * ARM7_REGISTER_COUNT);
+}

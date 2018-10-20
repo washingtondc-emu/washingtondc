@@ -30,6 +30,7 @@
 #include "io/washdbg_tcp.h"
 #include "sh4asm_core/disas.h"
 #include "dbg/debugger.h"
+#include "hw/arm7/arm7.h"
 
 #include "dbg/washdbg_core.h"
 
@@ -1131,8 +1132,66 @@ static struct name_map {
     { NULL }
 };
 
+__attribute__((unused))
+static struct name_map const arm7_reg_map[] = {
+    { "r0", ARM7_REG_R0 },
+    { "r1", ARM7_REG_R1 },
+    { "r2", ARM7_REG_R2 },
+    { "r3", ARM7_REG_R3 },
+    { "r4", ARM7_REG_R4 },
+    { "r5", ARM7_REG_R5 },
+    { "r6", ARM7_REG_R6 },
+    { "r7", ARM7_REG_R7 },
+    { "r8", ARM7_REG_R8 },
+    { "r9", ARM7_REG_R9 },
+    { "r10", ARM7_REG_R10 },
+    { "r11", ARM7_REG_R11 },
+    { "r12", ARM7_REG_R12 },
+    { "r13", ARM7_REG_R13 },
+    { "r14", ARM7_REG_R14 },
+    { "r15", ARM7_REG_R15 },
+    { "pc", ARM7_REG_PC },
+
+    { "r8_fiq", ARM7_REG_R8_FIQ },
+    { "r9_fiq", ARM7_REG_R9_FIQ },
+    { "r10_fiq", ARM7_REG_R10_FIQ },
+    { "r11_fiq", ARM7_REG_R11_FIQ },
+    { "r12_fiq", ARM7_REG_R12_FIQ },
+    { "r13_fiq", ARM7_REG_R13_FIQ },
+    { "r14_fiq", ARM7_REG_R14_FIQ },
+    { "r13_svc", ARM7_REG_R13_SVC },
+    { "r14_svc", ARM7_REG_R14_SVC },
+    { "r13_abt", ARM7_REG_R13_ABT },
+    { "r14_abt", ARM7_REG_R14_ABT },
+    { "r13_irq", ARM7_REG_R13_IRQ },
+    { "r14_irq", ARM7_REG_R14_IRQ },
+    { "r13_und", ARM7_REG_R13_UND },
+    { "r14_und", ARM7_REG_R14_UND },
+
+    { "cpsr", ARM7_REG_CPSR },
+
+    { "spsr_fiq", ARM7_REG_SPSR_FIQ },
+    { "spsr_svc", ARM7_REG_SPSR_SVC },
+    { "spsr_abt", ARM7_REG_SPSR_ABT },
+    { "spsr_irq", ARM7_REG_SPSR_IRQ },
+    { "spsr_und", ARM7_REG_SPSR_UND },
+
+    { NULL }
+};
+
 static int reg_idx_sh4(char const *reg_name) {
     struct name_map const *cursor = sh4_reg_map;
+
+    while (cursor->str) {
+        if (strcmp(reg_name, cursor->str) == 0)
+            return cursor->idx;
+        cursor++;
+    }
+    return -1;
+}
+
+static int reg_idx_arm7(char const *reg_name) {
+    struct name_map const *cursor = arm7_reg_map;
 
     while (cursor->str) {
         if (strcmp(reg_name, cursor->str) == 0)
@@ -1193,6 +1252,14 @@ static int eval_expression(char const *expr, enum dbg_context_id *ctx_id, unsign
             int reg_idx = reg_idx_sh4(expr + 1);
             if (reg_idx >= 0) {
                 *out = debug_get_reg(DEBUG_CONTEXT_SH4, reg_idx);
+                return 0;
+            }
+            washdbg_print_error("unknown sh4 register\n");
+            return -1;
+        } else if (ctx == DEBUG_CONTEXT_ARM7) {
+            int reg_idx = reg_idx_arm7(expr + 1);
+            if (reg_idx >= 0) {
+                *out = debug_get_reg(DEBUG_CONTEXT_ARM7, reg_idx);
                 return 0;
             }
             washdbg_print_error("unknown sh4 register\n");

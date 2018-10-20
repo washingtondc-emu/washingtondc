@@ -221,6 +221,8 @@ void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map);
 
 void arm7_reset(struct arm7 *arm7, bool val);
 
+void arm7_get_regs(struct arm7 *arm7, void *dat_out);
+
 inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
     unsigned idx_actual;
     switch (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) {

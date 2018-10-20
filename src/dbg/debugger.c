@@ -29,6 +29,7 @@
 #include "dreamcast.h"
 #include "fifo.h"
 #include "MemoryMap.h"
+#include "hw/arm7/arm7.h"
 
 #include "dbg/debugger.h"
 
@@ -496,6 +497,10 @@ unsigned debug_gen_reg_idx(enum dbg_context_id id, unsigned idx) {
     switch (dbg.cur_ctx) {
     case DEBUG_CONTEXT_SH4:
         return SH4_REG_R0 + idx;
+        /*
+         * It's okay to not implement this for ARM7 because only the gdb_stub
+         * uses it.
+         */
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
@@ -507,6 +512,10 @@ unsigned debug_bank0_reg_idx(enum dbg_context_id id, unsigned reg_sr, unsigned i
         if (reg_sr & SH4_SR_RB_MASK)
             return SH4_REG_R0_BANK + idx;
         return SH4_REG_R0 + idx;
+        /*
+         * It's okay to not implement this for ARM7 because only the gdb_stub
+         * uses it.
+         */
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
@@ -518,6 +527,10 @@ unsigned debug_bank1_reg_idx(enum dbg_context_id id, unsigned reg_sr, unsigned i
         if (reg_sr & SH4_SR_RB_MASK)
             return SH4_REG_R0 + idx;
         return SH4_REG_R0_BANK + idx;
+        /*
+         * It's okay to not implement this for ARM7 because only the gdb_stub
+         * uses it.
+         */
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
@@ -627,15 +640,27 @@ void debug_run_once(void) {
     }
 }
 
+union reg_union {
+    reg32_t sh4_reg_file[SH4_REGISTER_COUNT];
+    reg32_t arm7_reg_file[ARM7_REGISTER_COUNT];
+};
+
 void debug_get_all_regs(enum dbg_context_id id,
                         void *reg_file_out, size_t n_bytes) {
-    reg32_t sh4_reg_file[SH4_REGISTER_COUNT];
+    union reg_union reg;
+
     switch (id) {
     case DEBUG_CONTEXT_SH4:
         if (n_bytes != SH4_REGISTER_COUNT * sizeof(reg32_t))
             RAISE_ERROR(ERROR_INTEGRITY);
-        sh4_get_regs(dreamcast_get_cpu(), sh4_reg_file);
-        memcpy(reg_file_out, sh4_reg_file, n_bytes);
+        sh4_get_regs(get_ctx()->cpu, reg.sh4_reg_file);
+        memcpy(reg_file_out, reg.sh4_reg_file, n_bytes);
+        break;
+    case DEBUG_CONTEXT_ARM7:
+        if (n_bytes != ARM7_REGISTER_COUNT * sizeof(reg32_t))
+            RAISE_ERROR(ERROR_INTEGRITY);
+        arm7_get_regs(get_ctx()->cpu, reg.arm7_reg_file);
+        memcpy(reg_file_out, reg.arm7_reg_file, n_bytes);
         break;
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -654,6 +679,11 @@ void debug_set_all_regs(enum dbg_context_id id, void const *reg_file_in,
         memcpy(sh4_reg_file, reg_file_in, sizeof(sh4_reg_file));
         sh4_set_regs(dreamcast_get_cpu(), sh4_reg_file);
         break;
+        /*
+         * TODO: implement this for ARM7.
+         * For now, WashDbg lacks a way to set reigsters and GdbStub only
+         * supports SH4, so this doesn't matter.
+         */
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
@@ -661,11 +691,17 @@ void debug_set_all_regs(enum dbg_context_id id, void const *reg_file_in,
 
 // this one's just a layer on top of get_all_regs
 reg32_t debug_get_reg(enum dbg_context_id id, unsigned reg_no) {
-    reg32_t reg_file[SH4_REGISTER_COUNT];
+    union reg_union reg;
     switch (id) {
     case DEBUG_CONTEXT_SH4:
-        debug_get_all_regs(DEBUG_CONTEXT_SH4, reg_file, sizeof(reg_file));
-        return reg_file[reg_no];
+        debug_get_all_regs(DEBUG_CONTEXT_SH4, reg.sh4_reg_file,
+                           sizeof(reg.sh4_reg_file));
+        return reg.sh4_reg_file[reg_no];
+    case DEBUG_CONTEXT_ARM7:
+        debug_get_all_regs(DEBUG_CONTEXT_ARM7, reg.arm7_reg_file,
+                           sizeof(reg.arm7_reg_file));
+        return reg.arm7_reg_file[reg_no];
+        break;
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
@@ -679,6 +715,11 @@ void debug_set_reg(enum dbg_context_id id, unsigned reg_no, reg32_t val) {
         sh4_set_individual_reg(dreamcast_get_cpu(),
                                (unsigned)reg_no, (unsigned)val);
         break;
+        /*
+         * TODO: implement this for ARM7.
+         * For now, WashDbg lacks a way to set reigsters and GdbStub only
+         * supports SH4, so this doesn't matter.
+         */
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
@@ -820,9 +861,14 @@ enum dbg_context_id debug_current_context(void) {
 }
 
 static addr32_t dbg_get_pc(enum dbg_context_id id) {
-    if (id == DEBUG_CONTEXT_SH4)
+    switch (id) {
+    case DEBUG_CONTEXT_SH4:
         return ((struct Sh4*)dbg.contexts[id].cpu)->reg[SH4_REG_PC];
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    case DEBUG_CONTEXT_ARM7:
+        return ((struct arm7*)dbg.contexts[id].cpu)->reg[ARM7_REG_PC];
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 static char const *cur_ctx_str(void) {
