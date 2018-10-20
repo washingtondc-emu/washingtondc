@@ -51,6 +51,25 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(external/glfw)
 
+set(CAPSTONE_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "" FORCE)
+
+set(CAPSTONE_ARM_SUPPORT ON CACHE BOOL "" FORCE)
+set(CAPSTONE_ARM64_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_M68K_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_MIPS_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_PPC_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_SPARC_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_SYSZ_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_XCORE_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_X86_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_TMS320C64X_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_M680X_SUPPORT OFF CACHE BOOL "" FORCE)
+set(CAPSTONE_EVM_SUPPORT OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(external/capstone)
+
 # i need this for strdup and clock_gettime on Debian for some unknown reason
 add_definitions(-D_POSIX_C_SOURCE=200809L)
 
@@ -415,7 +434,8 @@ set(include_dirs "${OPENGL_INCLUDE_DIR}"
 
 if (ENABLE_DEBUGGER)
   set(include_dirs "${include_dirs}"
-                   "${PROJECT_SOURCE_DIR}/external/sh4asm")
+                   "${PROJECT_SOURCE_DIR}/external/sh4asm"
+                   "${PROJECT_SOURCE_DIR}/external/capstone/include")
 endif()
 
 include_directories("${include_dirs}")
@@ -436,4 +456,19 @@ add_executable(washingtondc ${washingtondc_sources})
 
 add_dependencies(washingtondc libevent sh4)
 add_dependencies(sh4 libevent)
-target_link_libraries(washingtondc m sh4 rt png zlib glfw glew ${OPENGL_gl_LIBRARY} pthread ${LIBEVENT_LIB_PATH}/lib/libevent.a)
+set(washingtondc_libs "m"
+                      "sh4"
+                      "rt"
+                      "png"
+                      "zlib"
+                      "glfw"
+                      "glew"
+                      "${OPENGL_gl_LIBRARY}"
+                      "pthread"
+                      "${LIBEVENT_LIB_PATH}/lib/libevent.a")
+
+if (ENABLE_DEBUGGER)
+    set(washingtondc_libs "${washingtondc_libs}" capstone-static)
+endif()
+
+target_link_libraries(washingtondc "${washingtondc_libs}")

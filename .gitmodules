@@ -4,3 +4,6 @@
 [submodule "external/sh4asm"]
 	path = external/sh4asm
 	url = https://github.com/washingtondc-emu/sh4asm
+[submodule "external/capstone"]
+	path = external/capstone
+	url = https://github.com/aquynh/capstone

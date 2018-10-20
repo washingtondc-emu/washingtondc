@@ -114,6 +114,11 @@ WashingtonDC also makes use of the glfw library.  This is not included in this
 source distribution, and is instead distributed using a git submodule.  The
 license for this software can be found in external/glfw/LICENSE.md.
 
+WashingtonDC also makes use of the Capstone library.  This is not included in
+this source distribution, and is instead distributed using a git submodule.  The
+licenses for this software can be found in external/capstone/LICENSE.txt and
+external/capstone/LICENSE_LLVM.txt.
+
 WashingtonDC also makes use of the libevent library.  This is not included in
 this source distribution, and is instead automatically downloaded by the build
 system as a tarball.  The license for this software can be found in the tarball

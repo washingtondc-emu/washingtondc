@@ -25,6 +25,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "capstone/capstone.h"
+
 #include "log.h"
 #include "dreamcast.h"
 #include "io/washdbg_tcp.h"
@@ -312,6 +314,12 @@ static bool washdbg_is_echo_cmd(char const *cmd) {
 
 #define WASHDBG_X_STATE_STR_LEN 128
 
+enum x_state_disas_mode {
+    X_STATE_DISAS_DISABLED,
+    X_STATE_DISAS_SH4,
+    X_STATE_DISAS_ARM7
+};
+
 static struct x_state {
     char str[WASHDBG_X_STATE_STR_LEN];
     size_t str_pos;
@@ -320,7 +328,10 @@ static struct x_state {
     unsigned byte_count;
     unsigned count;
     unsigned idx;
-    bool disas_mode;
+    enum x_state_disas_mode disas_mode;
+
+    // only used for arm7 disassembly
+    csh capstone_handle;
 } x_state;
 
 static void washdbg_x_state_disas_emit(char ch) {
@@ -335,7 +346,7 @@ static void washdbg_x_set_string(void) {
     uint16_t val16;
     uint8_t val8;
 
-    if (x_state.disas_mode) {
+    if (x_state.disas_mode == X_STATE_DISAS_SH4) {
         memset(x_state.str, 0, sizeof(x_state.str));
         val16 = ((uint16_t*)x_state.dat)[x_state.idx];
         disas_inst(val16, washdbg_x_state_disas_emit);
@@ -344,24 +355,44 @@ static void washdbg_x_set_string(void) {
             x_state.str[WASHDBG_X_STATE_STR_LEN - 2] = '\n';
         else
             x_state.str[len] = '\n';
-    } else {
-        switch (x_state.byte_count) {
-        case 4:
-            val32 = ((uint32_t*)x_state.dat)[x_state.idx];
-            snprintf(x_state.str, sizeof(x_state.str), "0x%08x\n", (unsigned)val32);
-            break;
-        case 2:
-            val16 = ((uint16_t*)x_state.dat)[x_state.idx];
-            snprintf(x_state.str, sizeof(x_state.str), "0x%04x\n", (unsigned)val16);
-            break;
-        case 1:
-            val8 = ((uint8_t*)x_state.dat)[x_state.idx];
-            snprintf(x_state.str, sizeof(x_state.str), "0x%02x\n", (unsigned)val8);
-            break;
-        default:
-            strncpy(x_state.str, "<ERROR>\n", sizeof(x_state.str));
-            x_state.str[WASHDBG_X_STATE_STR_LEN - 1] = '\0';
+        return;
+    } else if (x_state.disas_mode == X_STATE_DISAS_ARM7) {
+        val32 = ((uint32_t*)x_state.dat)[x_state.idx];
+        cs_insn *insn;
+        size_t count = cs_disasm(x_state.capstone_handle, (uint8_t*)&val32,
+                                 sizeof(val32), 0, 1, &insn);
+
+        if (count == 1) {
+            snprintf(x_state.str, sizeof(x_state.str),
+                     "%s %s\n", insn->mnemonic, insn->op_str);
+            x_state.str[sizeof(x_state.str) - 1] = '\0';
+
+            cs_free(insn, 1);
+
+            return;
+        } else if (count) {
+            cs_free(insn, count);
         }
+
+        LOG_ERROR("cs_disasm returned %u; cs_errno is %d\n",
+                  (unsigned)count, (int)cs_errno(x_state.capstone_handle));
+    }
+    switch (x_state.byte_count) {
+    case 4:
+        val32 = ((uint32_t*)x_state.dat)[x_state.idx];
+        snprintf(x_state.str, sizeof(x_state.str), "0x%08x\n", (unsigned)val32);
+        break;
+    case 2:
+        val16 = ((uint16_t*)x_state.dat)[x_state.idx];
+        snprintf(x_state.str, sizeof(x_state.str), "0x%04x\n", (unsigned)val16);
+        break;
+    case 1:
+        val8 = ((uint8_t*)x_state.dat)[x_state.idx];
+        snprintf(x_state.str, sizeof(x_state.str), "0x%02x\n", (unsigned)val8);
+        break;
+    default:
+        strncpy(x_state.str, "<ERROR>\n", sizeof(x_state.str));
+        x_state.str[WASHDBG_X_STATE_STR_LEN - 1] = '\0';
     }
 }
 
@@ -393,14 +424,20 @@ static void washdbg_x(int argc, char **argv) {
         return;
 
     if (x_state.byte_count == WASHDBG_INST) {
+        cs_err cs_err_val;
         switch (ctx) {
         case DEBUG_CONTEXT_SH4:
             x_state.byte_count = 2;
-            x_state.disas_mode = true;
+            x_state.disas_mode = X_STATE_DISAS_SH4;
             break;
         case DEBUG_CONTEXT_ARM7:
             x_state.byte_count = 4;
-            x_state.disas_mode = false; // not implemented yet
+            x_state.disas_mode = X_STATE_DISAS_ARM7;
+            if ((cs_err_val = cs_open(CS_ARCH_ARM, CS_MODE_ARM,
+                                      &x_state.capstone_handle)) != CS_ERR_OK) {
+                LOG_ERROR("cs_open returned error code %d\n", (int)cs_err_val);
+                x_state.disas_mode = X_STATE_DISAS_DISABLED;
+            }
             break;
         default:
             washdbg_print_error("unknown context ???\n");
@@ -767,6 +804,8 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_X:
         if (washdbg_print_x() == 0) {
+            if (x_state.disas_mode == X_STATE_DISAS_ARM7)
+                cs_close(&x_state.capstone_handle);
             free(x_state.dat);
             x_state.dat = NULL;
             washdbg_print_prompt();
