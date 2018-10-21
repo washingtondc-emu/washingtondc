@@ -885,3 +885,57 @@ static char const *cur_ctx_str(void) {
 static struct debug_context *get_ctx(void) {
     return dbg.contexts + dbg.cur_ctx;
 }
+
+#ifdef ENABLE_DBG_COND
+
+static struct dbg_condition conditions[N_DEBUG_CONDITIONS];
+
+static bool debug_eval_cond(enum dbg_context_id ctx,
+                            struct dbg_condition *cond) {
+    if (ctx != cond->ctx)
+        return false;
+    uint32_t reg_val;
+    switch (cond->cond_tp) {
+    case DEBUG_CONDITON_REG_VAL:
+        reg_val = debug_get_reg(ctx, cond->status.cond_reg_val.reg_no);
+        if (reg_val == cond->status.cond_reg_val.reg_val &&
+            reg_val != cond->status.cond_reg_val.prev_reg_val) {
+            frontend_on_break();
+            dbg_state_transition(DEBUG_STATE_BREAK);
+            dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
+        }
+        cond->status.cond_reg_val.prev_reg_val = reg_val;
+        return true;
+    case DEBUG_CONDITION_NONE:
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+    return false;
+}
+
+void debug_check_conditions(enum dbg_context_id ctx) {
+    int idx;
+    for (idx = 0; idx < N_DEBUG_CONDITIONS; idx++)
+        if (debug_eval_cond(ctx, conditions + idx))
+            return;
+}
+
+bool debug_reg_cond(enum dbg_context_id ctx, unsigned reg_no,
+                    uint32_t reg_val) {
+    int idx;
+    for (idx = 0; idx < N_DEBUG_CONDITIONS; idx++) {
+        struct dbg_condition *cond = conditions + idx;
+        if (cond->cond_tp == DEBUG_CONDITION_NONE) {
+            cond->cond_tp = DEBUG_CONDITON_REG_VAL;
+            cond->ctx = ctx;
+            cond->status.cond_reg_val.reg_no = reg_no;
+            cond->status.cond_reg_val.reg_val = reg_val;
+            cond->status.cond_reg_val.prev_reg_val = debug_get_reg(ctx, reg_no);
+            return true;
+        }
+    }
+    return false;
+}
+
+#endif

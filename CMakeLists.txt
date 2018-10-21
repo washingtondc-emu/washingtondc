@@ -91,6 +91,7 @@ endif()
 
 option(ENABLE_DEBUGGER "Enable the debugger" ON)
 option(ENABLE_WATCHPOINTS "Enable debugger watchpoints" OFF)
+option(ENABLE_DBG_COND "enable debugger conditions" OFF)
 option(DBG_EXIT_ON_UNDEFINED_OPCODE "Bail out if the emulator hits an undefined opcode" OFF)
 option(INVARIANTS "runtime sanity checks that should never fail" OFF)
 option(SH4_FPU_PEDANTIC "enable FPU error-checking which most games *probably* don't use" OFF)
@@ -349,6 +350,10 @@ if (ENABLE_DEBUGGER)
 
     if (ENABLE_WATCHPOINTS)
         add_definitions(-DENABLE_WATCHPOINTS)
+    endif()
+
+    if (ENABLE_DBG_COND)
+        add_definitions(-DENABLE_DBG_COND)
     endif()
 endif()
 

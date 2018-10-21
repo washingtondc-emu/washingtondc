@@ -80,6 +80,44 @@ enum dbg_context_id {
     NUM_DEBUG_CONTEXTS
 };
 
+#ifdef ENABLE_DBG_COND
+
+enum dbg_cond_tp {
+    DEBUG_CONDITION_NONE,
+
+    // break when a register is set to a given value
+    DEBUG_CONDITON_REG_VAL
+};
+
+struct dbg_cond_reg_val {
+    unsigned reg_no;
+    uint32_t reg_val;
+
+    uint32_t prev_reg_val;
+};
+
+union dbg_cond_status {
+    struct dbg_cond_reg_val cond_reg_val;
+};
+
+struct dbg_condition {
+    enum dbg_cond_tp cond_tp;
+
+    union dbg_cond_status status;
+
+    enum dbg_context_id ctx;
+};
+
+void debug_check_conditions(enum dbg_context_id ctx);
+
+// returns false if it failed to add the condition
+bool debug_reg_cond(enum dbg_context_id ctx, unsigned reg_no,
+                    uint32_t reg_val);
+
+#define N_DEBUG_CONDITIONS 16
+
+#endif
+
 void debug_init_context(enum dbg_context_id id, void *cpu,
                         struct memory_map *map);
 

@@ -71,6 +71,14 @@ eval_expression(char const *expr, enum dbg_context_id *ctx_id, unsigned *out);
 
 static unsigned washdbg_print_x(void);
 
+static int reg_idx_arm7(char const *reg_name);
+static int reg_idx_sh4(char const *reg_name);
+
+static bool is_dec_str(char const *str);
+static unsigned parse_dec_str(char const *str);
+static bool is_hex_str(char const *str);
+static unsigned parse_hex_str(char const *str);
+
 enum washdbg_byte_count {
     WASHDBG_1_BYTE = 1,
     WASHDBG_2_BYTE = 2,
@@ -190,6 +198,9 @@ void washdbg_do_help(int argc, char **argv) {
         "exit         - exit the debugger and close WashingtonDC\n"
         "help         - display this message\n"
         "print        - print a value\n"
+#ifdef ENABLE_DBG_COND
+        "regwatch     - watch for a register to be set to a given value\n"
+#endif
         "step         - single-step\n"
         "x            - eXamine memory address\n";
 
@@ -764,6 +775,63 @@ static bool washdbg_is_print_cmd(char const *str) {
         strcmp(str, "p") == 0;
 }
 
+static bool washdbg_is_regwatch_cmd(char const *str) {
+    return strcmp(str, "regwatch") == 0;
+}
+
+static void washdbg_regwatch(int argc, char **argv) {
+#ifdef ENABLE_DBG_COND
+    if (argc != 4) {
+        washdbg_print_error("usage: regwatch context register value\n");
+        return;
+    }
+
+    enum dbg_context_id ctx;
+    if (strcmp(argv[1], "arm7") == 0) {
+        ctx = DEBUG_CONTEXT_ARM7;
+    } else if (strcmp(argv[1], "sh4") == 0) {
+        ctx = DEBUG_CONTEXT_SH4;
+    } else {
+        washdbg_print_error("unrecognized context string.\n");
+        return;
+    }
+
+    int reg_idx;
+    if (ctx == DEBUG_CONTEXT_ARM7) {
+        reg_idx = reg_idx_arm7(argv[2]);
+    } else {
+        reg_idx = reg_idx_sh4(argv[2]);
+    }
+
+    if (reg_idx < 0) {
+        washdbg_print_error("unrecognized register.\n");
+        return;
+    }
+
+    int32_t value;
+    char *valstr = argv[3];
+    if (is_dec_str(valstr)) {
+        value = parse_dec_str(valstr);
+    } else if (strlen(valstr) > 2 && valstr[0] == '0' && valstr[1] == 'x' &&
+               is_hex_str(valstr + 2)) {
+        value = parse_hex_str(argv[3]);
+    } else {
+        LOG_ERROR("valstr is \"%s\"\n", valstr);
+        washdbg_print_error("unable to parse value.\n");
+        return;
+    }
+
+    if (!debug_reg_cond(ctx, reg_idx, value))
+        washdbg_print_error("failed to insert condition\n");
+    else
+        washdbg_print_prompt();
+
+#else
+    washdbg_print_error("regwatch command not available; rebuild WashingtonDC "
+                        "with -DENABLE_DBG_COND=On.\n");
+#endif
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -926,6 +994,8 @@ static void washdbg_process_input(void) {
                 washdbg_do_bpdel(argc, argv);
             } else if (washdbg_is_print_cmd(cmd)) {
                 washdbg_print(argc, argv);
+            } else if (washdbg_is_regwatch_cmd(cmd)) {
+                washdbg_regwatch(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
