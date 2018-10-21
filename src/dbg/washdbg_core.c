@@ -347,6 +347,8 @@ static struct x_state {
     unsigned idx;
     enum x_state_disas_mode disas_mode;
 
+    uint32_t next_addr;
+
     // only used for arm7 disassembly
     csh capstone_handle;
 } x_state;
@@ -365,6 +367,9 @@ static void washdbg_x_set_string(void) {
 
     if (x_state.disas_mode == X_STATE_DISAS_SH4) {
         memset(x_state.str, 0, sizeof(x_state.str));
+        snprintf(x_state.str, sizeof(x_state.str), "0x%08x: ",
+                 (unsigned)x_state.next_addr);
+        x_state.str[sizeof(x_state.str) - 1] = '\0';
         val16 = ((uint16_t*)x_state.dat)[x_state.idx];
         disas_inst(val16, washdbg_x_state_disas_emit);
         size_t len = strlen(x_state.str);
@@ -381,7 +386,8 @@ static void washdbg_x_set_string(void) {
 
         if (count == 1) {
             snprintf(x_state.str, sizeof(x_state.str),
-                     "%s %s\n", insn->mnemonic, insn->op_str);
+                     "0x%08x: %s %s\n", (unsigned)x_state.next_addr,
+                     insn->mnemonic, insn->op_str);
             x_state.str[sizeof(x_state.str) - 1] = '\0';
 
             cs_free(insn, 1);
@@ -397,15 +403,18 @@ static void washdbg_x_set_string(void) {
     switch (x_state.byte_count) {
     case 4:
         val32 = ((uint32_t*)x_state.dat)[x_state.idx];
-        snprintf(x_state.str, sizeof(x_state.str), "0x%08x\n", (unsigned)val32);
+        snprintf(x_state.str, sizeof(x_state.str), "0x%08x: 0x%08x\n",
+                 (unsigned)x_state.next_addr, (unsigned)val32);
         break;
     case 2:
         val16 = ((uint16_t*)x_state.dat)[x_state.idx];
-        snprintf(x_state.str, sizeof(x_state.str), "0x%04x\n", (unsigned)val16);
+        snprintf(x_state.str, sizeof(x_state.str), "0x%08x: 0x%04x\n",
+                 (unsigned)x_state.next_addr, (unsigned)val16);
         break;
     case 1:
         val8 = ((uint8_t*)x_state.dat)[x_state.idx];
-        snprintf(x_state.str, sizeof(x_state.str), "0x%02x\n", (unsigned)val8);
+        snprintf(x_state.str, sizeof(x_state.str), "0x%08x: 0x%02x\n",
+                 (unsigned)x_state.next_addr, (unsigned)val8);
         break;
     default:
         strncpy(x_state.str, "<ERROR>\n", sizeof(x_state.str));
@@ -458,8 +467,11 @@ static void washdbg_x(int argc, char **argv) {
             break;
         default:
             washdbg_print_error("unknown context ???\n");
+            return;
         }
     }
+
+    x_state.next_addr = addr;
 
     if (x_state.count > 1024 * 32) {
         washdbg_print_error("too much data\n");
@@ -482,6 +494,7 @@ static void washdbg_x(int argc, char **argv) {
 
     washdbg_x_set_string();
     x_state.idx = 1;
+    x_state.next_addr += x_state.byte_count;
 
     cur_state = WASHDBG_STATE_X;
 }
@@ -506,6 +519,7 @@ reload:
         return 0;
     washdbg_x_set_string();
     x_state.idx++;
+    x_state.next_addr += x_state.byte_count;
     return 1;
 }
 
