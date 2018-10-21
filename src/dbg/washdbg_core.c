@@ -214,6 +214,7 @@ static bool washdbg_is_help_cmd(char const *cmd) {
 }
 
 struct context_info_state {
+    char msg[128];
     struct washdbg_txt_state txt;
 } context_info_state;
 
@@ -221,18 +222,23 @@ struct context_info_state {
  * Display info about the current context before showing a new prompt
  */
 void washdbg_print_context_info(void) {
-    char const *msg = NULL;
     switch (debug_current_context()) {
     case DEBUG_CONTEXT_SH4:
-        msg = "Current debug context is SH4\n";
+        snprintf(context_info_state.msg, sizeof(context_info_state.msg),
+                 "Current debug context is SH4\nPC is 0x%08x\n",
+                 (unsigned)debug_get_reg(DEBUG_CONTEXT_SH4, SH4_REG_PC));
         break;
     case DEBUG_CONTEXT_ARM7:
-        msg = "Current debug context is ARM7\n";
+        snprintf(context_info_state.msg, sizeof(context_info_state.msg),
+                 "Current debug context is ARM7\nPC is 0x%08x\n",
+                 (unsigned)debug_get_reg(DEBUG_CONTEXT_ARM7, ARM7_REG_PC));
         break;
     default:
-        msg = "Current debug context is <unknown/error>\n";
+        snprintf(context_info_state.msg, sizeof(context_info_state.msg),
+                 "Current debug context is <unknown/error>\n");
     }
-    context_info_state.txt.txt = msg;
+    context_info_state.msg[sizeof(context_info_state.msg) - 1] = '\0';
+    context_info_state.txt.txt = context_info_state.msg;
     context_info_state.txt.pos = 0;
     cur_state = WASHDBG_STATE_CONTEXT_INFO;
 }
