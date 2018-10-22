@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016-2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -212,6 +212,10 @@ void sh4_fpu_bank_switch_maybe(Sh4 *sh4, reg32_t old_fpscr, reg32_t new_fpscr) {
 
 dc_cycle_stamp_t sh4_get_cycles(struct Sh4 *sh4) {
     return clock_cycle_stamp(sh4->clk) / SH4_CLOCK_SCALE;
+}
+
+uint32_t sh4_pc_next(struct Sh4 *sh4) {
+    return sh4->reg[SH4_REG_PC];
 }
 
 static DEF_ERROR_U32_ATTR(sh4_reg_sr)

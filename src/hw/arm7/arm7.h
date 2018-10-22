@@ -223,6 +223,8 @@ void arm7_reset(struct arm7 *arm7, bool val);
 
 void arm7_get_regs(struct arm7 *arm7, void *dat_out);
 
+uint32_t arm7_pc_next(struct arm7 *arm7);
+
 inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
     unsigned idx_actual;
     switch (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) {

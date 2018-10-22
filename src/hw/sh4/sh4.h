@@ -358,4 +358,6 @@ static inline void sh4_write_double(struct Sh4 *sh4, unsigned dr_reg, double val
     memcpy(((uint32_t*)ptr) + 1, &val, sizeof(uint32_t));
 }
 
+uint32_t sh4_pc_next(struct Sh4 *sh4);
+
 #endif

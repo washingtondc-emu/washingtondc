@@ -886,6 +886,17 @@ static struct debug_context *get_ctx(void) {
     return dbg.contexts + dbg.cur_ctx;
 }
 
+uint32_t debug_pc_next(enum dbg_context_id id) {
+    switch (id) {
+    case DEBUG_CONTEXT_SH4:
+        return sh4_pc_next(dbg.contexts[DEBUG_CONTEXT_SH4].cpu);
+    case DEBUG_CONTEXT_ARM7:
+        return arm7_pc_next(dbg.contexts[DEBUG_CONTEXT_ARM7].cpu);
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+}
+
 #ifdef ENABLE_DBG_COND
 
 static struct dbg_condition conditions[N_DEBUG_CONDITIONS];

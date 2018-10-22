@@ -39,7 +39,10 @@
 #define BUF_LEN 1024
 
 static char in_buf[BUF_LEN];
-unsigned in_buf_pos;
+static unsigned in_buf_pos;
+
+static csh capstone_handle;
+static bool capstone_avail;
 
 struct washdbg_txt_state {
     char const *txt;
@@ -79,6 +82,9 @@ static unsigned parse_dec_str(char const *str);
 static bool is_hex_str(char const *str);
 static unsigned parse_hex_str(char const *str);
 
+static char const *washdbg_disas_single_sh4(uint32_t addr, uint16_t val);
+static char const *washdbg_disas_single_arm7(uint32_t addr, uint32_t val);
+
 enum washdbg_byte_count {
     WASHDBG_1_BYTE = 1,
     WASHDBG_2_BYTE = 2,
@@ -111,8 +117,23 @@ enum washdbg_state {
 } cur_state;
 
 void washdbg_init(void) {
+    LOG_INFO("%s called\n", __func__);
+    cs_err cs_err_val = cs_open(CS_ARCH_ARM, CS_MODE_ARM,
+                                &capstone_handle);
+    if (cs_err_val != CS_ERR_OK) {
+        // disable disassembly for ARM7
+        LOG_ERROR("cs_open returned error code %d\n", (int)cs_err_val);
+    } else {
+        capstone_avail = true;
+    }
+
     washdbg_print_banner();
     memset(washdbg_bp_stat, 0, sizeof(washdbg_bp_stat));
+}
+
+void washdbg_cleanup(void* argp) {
+    capstone_avail = false;
+    cs_close(&capstone_handle);
 }
 
 static struct continue_state {
@@ -222,16 +243,37 @@ struct context_info_state {
  * Display info about the current context before showing a new prompt
  */
 void washdbg_print_context_info(void) {
+    uint32_t pc_next;
+    uint32_t inst32;
+    uint16_t inst16;
+    char const *disas = "";
+
     switch (debug_current_context()) {
     case DEBUG_CONTEXT_SH4:
+        pc_next = debug_pc_next(DEBUG_CONTEXT_SH4);
+        if (debug_read_mem(DEBUG_CONTEXT_SH4, &inst16,
+                           pc_next, sizeof(inst16)) == 0) {
+            disas = washdbg_disas_single_sh4(pc_next, inst16);
+        }
         snprintf(context_info_state.msg, sizeof(context_info_state.msg),
-                 "Current debug context is SH4\nPC is 0x%08x\n",
-                 (unsigned)debug_get_reg(DEBUG_CONTEXT_SH4, SH4_REG_PC));
+                 "Current debug context is SH4\n"
+                 "PC is 0x%08x\n"
+                 "next_inst:\n\t0x%08x: %s\n",
+                 (unsigned)debug_get_reg(DEBUG_CONTEXT_SH4, SH4_REG_PC),
+                 (unsigned)pc_next, disas);
         break;
     case DEBUG_CONTEXT_ARM7:
+        pc_next = debug_pc_next(DEBUG_CONTEXT_ARM7);
+        if (debug_read_mem(DEBUG_CONTEXT_ARM7, &inst32,
+                           pc_next, sizeof(inst32)) == 0) {
+            disas = washdbg_disas_single_arm7(pc_next, inst32);
+        }
         snprintf(context_info_state.msg, sizeof(context_info_state.msg),
-                 "Current debug context is ARM7\nPC is 0x%08x\n",
-                 (unsigned)debug_get_reg(DEBUG_CONTEXT_ARM7, ARM7_REG_PC));
+                 "Current debug context is ARM7\n"
+                 "PC is 0x%08x\n"
+                 "next_inst:\n\t0x%08x: %s\n",
+                 (unsigned)debug_get_reg(DEBUG_CONTEXT_ARM7, ARM7_REG_PC),
+                 (unsigned)pc_next, disas);
         break;
     default:
         snprintf(context_info_state.msg, sizeof(context_info_state.msg),
@@ -348,17 +390,7 @@ static struct x_state {
     enum x_state_disas_mode disas_mode;
 
     uint32_t next_addr;
-
-    // only used for arm7 disassembly
-    csh capstone_handle;
 } x_state;
-
-static void washdbg_x_state_disas_emit(char ch) {
-    size_t len = strlen(x_state.str);
-    if (len >= WASHDBG_X_STATE_STR_LEN - 1)
-        return; // no more space
-    x_state.str[len] = ch;
-}
 
 static void washdbg_x_set_string(void) {
     uint32_t val32;
@@ -366,39 +398,21 @@ static void washdbg_x_set_string(void) {
     uint8_t val8;
 
     if (x_state.disas_mode == X_STATE_DISAS_SH4) {
-        memset(x_state.str, 0, sizeof(x_state.str));
-        snprintf(x_state.str, sizeof(x_state.str), "0x%08x: ",
-                 (unsigned)x_state.next_addr);
-        x_state.str[sizeof(x_state.str) - 1] = '\0';
         val16 = ((uint16_t*)x_state.dat)[x_state.idx];
-        disas_inst(val16, washdbg_x_state_disas_emit);
-        size_t len = strlen(x_state.str);
-        if (len >= WASHDBG_X_STATE_STR_LEN - 1)
-            x_state.str[WASHDBG_X_STATE_STR_LEN - 2] = '\n';
-        else
-            x_state.str[len] = '\n';
+
+        snprintf(x_state.str, sizeof(x_state.str), "0x%08x: %s\n",
+                 x_state.next_addr,
+                 washdbg_disas_single_sh4(x_state.next_addr, val16));
+        x_state.str[sizeof(x_state.str) - 1] = '\0';
         return;
     } else if (x_state.disas_mode == X_STATE_DISAS_ARM7) {
         val32 = ((uint32_t*)x_state.dat)[x_state.idx];
-        cs_insn *insn;
-        size_t count = cs_disasm(x_state.capstone_handle, (uint8_t*)&val32,
-                                 sizeof(val32), 0, 1, &insn);
 
-        if (count == 1) {
-            snprintf(x_state.str, sizeof(x_state.str),
-                     "0x%08x: %s %s\n", (unsigned)x_state.next_addr,
-                     insn->mnemonic, insn->op_str);
-            x_state.str[sizeof(x_state.str) - 1] = '\0';
-
-            cs_free(insn, 1);
-
-            return;
-        } else if (count) {
-            cs_free(insn, count);
-        }
-
-        LOG_ERROR("cs_disasm returned %u; cs_errno is %d\n",
-                  (unsigned)count, (int)cs_errno(x_state.capstone_handle));
+        snprintf(x_state.str, sizeof(x_state.str), "0x%08x: %s\n",
+                 x_state.next_addr,
+                 washdbg_disas_single_arm7(x_state.next_addr, val32));
+        x_state.str[sizeof(x_state.str) - 1] = '\0';
+        return;
     }
     switch (x_state.byte_count) {
     case 4:
@@ -450,7 +464,6 @@ static void washdbg_x(int argc, char **argv) {
         return;
 
     if (x_state.byte_count == WASHDBG_INST) {
-        cs_err cs_err_val;
         switch (ctx) {
         case DEBUG_CONTEXT_SH4:
             x_state.byte_count = 2;
@@ -458,10 +471,10 @@ static void washdbg_x(int argc, char **argv) {
             break;
         case DEBUG_CONTEXT_ARM7:
             x_state.byte_count = 4;
-            x_state.disas_mode = X_STATE_DISAS_ARM7;
-            if ((cs_err_val = cs_open(CS_ARCH_ARM, CS_MODE_ARM,
-                                      &x_state.capstone_handle)) != CS_ERR_OK) {
-                LOG_ERROR("cs_open returned error code %d\n", (int)cs_err_val);
+            if (capstone_avail) {
+                x_state.disas_mode = X_STATE_DISAS_ARM7;
+            } else {
+                LOG_ERROR("capstone_avail is false\n");
                 x_state.disas_mode = X_STATE_DISAS_DISABLED;
             }
             break;
@@ -892,8 +905,6 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_X:
         if (washdbg_print_x() == 0) {
-            if (x_state.disas_mode == X_STATE_DISAS_ARM7)
-                cs_close(&x_state.capstone_handle);
             free(x_state.dat);
             x_state.dat = NULL;
             washdbg_print_prompt();
@@ -1398,7 +1409,7 @@ static int eval_expression(char const *expr, enum dbg_context_id *ctx_id, unsign
                 *out = debug_get_reg(DEBUG_CONTEXT_ARM7, reg_idx);
                 return 0;
             }
-            washdbg_print_error("unknown sh4 register\n");
+            washdbg_print_error("unknown arm7 register\n");
             return -1;
         } else {
             washdbg_print_error("register expressions are not implemented yet\n");
@@ -1513,4 +1524,44 @@ the_end:
     *byte_count_out = byte_count;
 
     return 0;
+}
+
+#define DISAS_LINE_LEN 128
+static char sh4_disas_line[DISAS_LINE_LEN];
+
+static void washdbg_disas_single_emit(char ch) {
+    size_t len = strlen(sh4_disas_line);
+    if (len >= DISAS_LINE_LEN - 1)
+        return; // no more space
+    sh4_disas_line[len] = ch;
+}
+
+static char const *washdbg_disas_single_sh4(uint32_t addr, uint16_t val) {
+    memset(sh4_disas_line, 0, sizeof(sh4_disas_line));
+    disas_inst(val, washdbg_disas_single_emit);
+
+    return sh4_disas_line;
+}
+
+static char const *washdbg_disas_single_arm7(uint32_t addr, uint32_t val) {
+    cs_insn *insn;
+    static char buf[DISAS_LINE_LEN];
+
+    size_t count = cs_disasm(capstone_handle, (uint8_t*)&val,
+                             sizeof(val), 0, 1, &insn);
+
+    if (count == 1) {
+        snprintf(buf, sizeof(buf), "%s %s", insn->mnemonic, insn->op_str);
+    } else {
+        LOG_ERROR("cs_disasm returned %u; cs_errno is %d\n",
+                  (unsigned)count, (int)cs_errno(capstone_handle));
+        snprintf(buf, sizeof(buf), "0x%08x", (unsigned)val);
+    }
+
+    if (count)
+        cs_free(insn, count);
+
+    buf[sizeof(buf) - 1] = '\0';
+
+    return buf;
 }

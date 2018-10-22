@@ -644,7 +644,7 @@ void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
     }
 }
 
-static uint32_t arm7_pc_next(struct arm7 *arm7) {
+uint32_t arm7_pc_next(struct arm7 *arm7) {
     if (arm7->pipeline_len)
         return arm7->pipeline_pc[arm7->pipeline_len - 1];
     return arm7->reg[ARM7_REG_PC];

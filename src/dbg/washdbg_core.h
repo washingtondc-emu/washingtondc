@@ -32,6 +32,8 @@
 
 void washdbg_init(void);
 
+void washdbg_cleanup(void* argp);
+
 void washdbg_input_ch(char ch);
 
 void washdbg_core_run_once(void);

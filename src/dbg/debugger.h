@@ -274,4 +274,6 @@ int debug_read_mem(enum dbg_context_id id, void *out,
 int debug_write_mem(enum dbg_context_id id, void const *input,
                     addr32_t addr, unsigned len);
 
+uint32_t debug_pc_next(enum dbg_context_id id);
+
 #endif
