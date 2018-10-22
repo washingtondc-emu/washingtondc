@@ -1295,7 +1295,7 @@ static struct name_map const arm7_reg_map[] = {
     { "sl", ARM7_REG_R10 },
     { "fp", ARM7_REG_R11 },
     { "ip", ARM7_REG_R12 },
-    { "sr", ARM7_REG_R13 },
+    { "sp", ARM7_REG_R13 },
     { "lr", ARM7_REG_R14 },
     { "pc", ARM7_REG_PC },
 
