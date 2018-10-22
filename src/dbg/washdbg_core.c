@@ -1548,7 +1548,7 @@ static char const *washdbg_disas_single_arm7(uint32_t addr, uint32_t val) {
     static char buf[DISAS_LINE_LEN];
 
     size_t count = cs_disasm(capstone_handle, (uint8_t*)&val,
-                             sizeof(val), 0, 1, &insn);
+                             sizeof(val), addr, 1, &insn);
 
     if (count == 1) {
         snprintf(buf, sizeof(buf), "%s %s", insn->mnemonic, insn->op_str);
