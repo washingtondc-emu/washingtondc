@@ -83,6 +83,8 @@ static uint32_t decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry);
 static uint32_t decode_shift_ldr_str(struct arm7 *arm7,
                                      arm7_inst inst, bool *carry);
 
+static void arm7_error_set_regs(void *argptr);
+
 static bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
 }
@@ -193,12 +195,19 @@ static arm7_cond_fn arm7_cond(arm7_inst inst) {
     }
 }
 
+static struct error_callback arm7_error_callback;
+
 void arm7_init(struct arm7 *arm7, struct dc_clock *clk) {
     memset(arm7, 0, sizeof(*arm7));
     arm7->clk = clk;
+
+    arm7_error_callback.arg = arm7;
+    arm7_error_callback.callback_fn = arm7_error_set_regs;
+    error_add_callback(&arm7_error_callback);
 }
 
 void arm7_cleanup(struct arm7 *arm7) {
+    error_rm_callback(&arm7_error_callback);
 }
 
 void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map) {
@@ -1272,4 +1281,96 @@ static void arm7_inst_swi(struct arm7 *arm7, arm7_inst inst) {
 
 void arm7_get_regs(struct arm7 *arm7, void *dat_out) {
     memcpy(dat_out, arm7->reg, sizeof(uint32_t) * ARM7_REGISTER_COUNT);
+}
+
+static DEF_ERROR_U32_ATTR(arm7_reg_r0)
+static DEF_ERROR_U32_ATTR(arm7_reg_r1)
+static DEF_ERROR_U32_ATTR(arm7_reg_r2)
+static DEF_ERROR_U32_ATTR(arm7_reg_r3)
+static DEF_ERROR_U32_ATTR(arm7_reg_r4)
+static DEF_ERROR_U32_ATTR(arm7_reg_r5)
+static DEF_ERROR_U32_ATTR(arm7_reg_r6)
+static DEF_ERROR_U32_ATTR(arm7_reg_r7)
+static DEF_ERROR_U32_ATTR(arm7_reg_r8)
+static DEF_ERROR_U32_ATTR(arm7_reg_r9)
+static DEF_ERROR_U32_ATTR(arm7_reg_r10)
+static DEF_ERROR_U32_ATTR(arm7_reg_r11)
+static DEF_ERROR_U32_ATTR(arm7_reg_r12)
+static DEF_ERROR_U32_ATTR(arm7_reg_r13)
+static DEF_ERROR_U32_ATTR(arm7_reg_r14)
+static DEF_ERROR_U32_ATTR(arm7_reg_r15)
+
+// putthing this here even though it's just an alias for r15
+static DEF_ERROR_U32_ATTR(arm7_reg_pc)
+
+static DEF_ERROR_U32_ATTR(arm7_reg_r8_fiq)
+static DEF_ERROR_U32_ATTR(arm7_reg_r9_fiq)
+static DEF_ERROR_U32_ATTR(arm7_reg_r10_fiq)
+static DEF_ERROR_U32_ATTR(arm7_reg_r11_fiq)
+static DEF_ERROR_U32_ATTR(arm7_reg_r12_fiq)
+static DEF_ERROR_U32_ATTR(arm7_reg_r13_fiq)
+static DEF_ERROR_U32_ATTR(arm7_reg_r14_fiq)
+static DEF_ERROR_U32_ATTR(arm7_reg_r13_svc)
+static DEF_ERROR_U32_ATTR(arm7_reg_r14_svc)
+static DEF_ERROR_U32_ATTR(arm7_reg_r13_abt)
+static DEF_ERROR_U32_ATTR(arm7_reg_r14_abt)
+static DEF_ERROR_U32_ATTR(arm7_reg_r13_irq)
+static DEF_ERROR_U32_ATTR(arm7_reg_r14_irq)
+static DEF_ERROR_U32_ATTR(arm7_reg_r13_und)
+static DEF_ERROR_U32_ATTR(arm7_reg_r14_und)
+
+static DEF_ERROR_U32_ATTR(arm7_reg_cpsr)
+
+static DEF_ERROR_U32_ATTR(arm7_reg_spsr_fiq)
+static DEF_ERROR_U32_ATTR(arm7_reg_spsr_svc)
+static DEF_ERROR_U32_ATTR(arm7_reg_spsr_abt)
+static DEF_ERROR_U32_ATTR(arm7_reg_spsr_irq)
+static DEF_ERROR_U32_ATTR(arm7_reg_spsr_und)
+
+static void arm7_error_set_regs(void *argptr) {
+    struct arm7 *arm7 = (struct arm7*)argptr;
+
+    error_set_arm7_reg_r0(arm7->reg[ARM7_REG_R0]);
+    error_set_arm7_reg_r1(arm7->reg[ARM7_REG_R1]);
+    error_set_arm7_reg_r2(arm7->reg[ARM7_REG_R2]);
+    error_set_arm7_reg_r3(arm7->reg[ARM7_REG_R3]);
+    error_set_arm7_reg_r4(arm7->reg[ARM7_REG_R4]);
+    error_set_arm7_reg_r5(arm7->reg[ARM7_REG_R5]);
+    error_set_arm7_reg_r6(arm7->reg[ARM7_REG_R6]);
+    error_set_arm7_reg_r7(arm7->reg[ARM7_REG_R7]);
+    error_set_arm7_reg_r8(arm7->reg[ARM7_REG_R8]);
+    error_set_arm7_reg_r9(arm7->reg[ARM7_REG_R9]);
+    error_set_arm7_reg_r10(arm7->reg[ARM7_REG_R10]);
+    error_set_arm7_reg_r11(arm7->reg[ARM7_REG_R11]);
+    error_set_arm7_reg_r12(arm7->reg[ARM7_REG_R12]);
+    error_set_arm7_reg_r13(arm7->reg[ARM7_REG_R13]);
+    error_set_arm7_reg_r14(arm7->reg[ARM7_REG_R14]);
+    error_set_arm7_reg_r15(arm7->reg[ARM7_REG_R15]);
+
+    // putting this here even though it's just an alias for r15
+    error_set_arm7_reg_pc(arm7->reg[ARM7_REG_PC]);
+
+    error_set_arm7_reg_r8_fiq(arm7->reg[ARM7_REG_R8_FIQ]);
+    error_set_arm7_reg_r9_fiq(arm7->reg[ARM7_REG_R9_FIQ]);
+    error_set_arm7_reg_r10_fiq(arm7->reg[ARM7_REG_R10_FIQ]);
+    error_set_arm7_reg_r11_fiq(arm7->reg[ARM7_REG_R11_FIQ]);
+    error_set_arm7_reg_r12_fiq(arm7->reg[ARM7_REG_R12_FIQ]);
+    error_set_arm7_reg_r13_fiq(arm7->reg[ARM7_REG_R13_FIQ]);
+    error_set_arm7_reg_r14_fiq(arm7->reg[ARM7_REG_R14_FIQ]);
+    error_set_arm7_reg_r13_svc(arm7->reg[ARM7_REG_R13_SVC]);
+    error_set_arm7_reg_r14_svc(arm7->reg[ARM7_REG_R14_SVC]);
+    error_set_arm7_reg_r13_abt(arm7->reg[ARM7_REG_R13_ABT]);
+    error_set_arm7_reg_r14_abt(arm7->reg[ARM7_REG_R14_ABT]);
+    error_set_arm7_reg_r13_irq(arm7->reg[ARM7_REG_R13_IRQ]);
+    error_set_arm7_reg_r14_irq(arm7->reg[ARM7_REG_R14_IRQ]);
+    error_set_arm7_reg_r13_und(arm7->reg[ARM7_REG_R13_UND]);
+    error_set_arm7_reg_r14_und(arm7->reg[ARM7_REG_R14_UND]);
+
+    error_set_arm7_reg_cpsr(arm7->reg[ARM7_REG_CPSR]);
+
+    error_set_arm7_reg_spsr_fiq(arm7->reg[ARM7_REG_SPSR_FIQ]);
+    error_set_arm7_reg_spsr_svc(arm7->reg[ARM7_REG_SPSR_SVC]);
+    error_set_arm7_reg_spsr_abt(arm7->reg[ARM7_REG_SPSR_ABT]);
+    error_set_arm7_reg_spsr_irq(arm7->reg[ARM7_REG_SPSR_IRQ]);
+    error_set_arm7_reg_spsr_und(arm7->reg[ARM7_REG_SPSR_UND]);
 }
