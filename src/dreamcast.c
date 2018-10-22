@@ -72,10 +72,10 @@
 #include "gfx/opengl/overlay.h"
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
-#include "io/washdbg_tcp.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
+#include "io/washdbg_tcp.h"
 #endif
 
 #ifdef ENABLE_JIT_X86_64
@@ -300,7 +300,9 @@ void dreamcast_init(bool cmd_session) {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
     }
 
+#ifdef ENABLE_DEBUGGER
 on_init_complete:
+#endif
     init_complete = true;
 }
 
