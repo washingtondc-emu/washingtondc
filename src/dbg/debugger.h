@@ -86,7 +86,13 @@ enum dbg_cond_tp {
     DEBUG_CONDITION_NONE,
 
     // break when a register is set to a given value
-    DEBUG_CONDITON_REG_VAL
+    DEBUG_CONDITION_REG_VAL,
+
+    /*
+     * break when a memory address is set to a given value.
+     * TODO: re-implement watchpoints on top of this.
+     */
+    DEBUG_CONDITION_MEM_VAL
 };
 
 struct dbg_cond_reg_val {
@@ -96,8 +102,19 @@ struct dbg_cond_reg_val {
     uint32_t prev_reg_val;
 };
 
+struct dbg_cond_mem_val {
+    uint32_t addr;
+    uint32_t val;
+
+    // size can only be 1, 2 or 4
+    unsigned size;
+
+    uint32_t prev_val;
+};
+
 union dbg_cond_status {
     struct dbg_cond_reg_val cond_reg_val;
+    struct dbg_cond_mem_val cond_mem_val;
 };
 
 struct dbg_condition {
@@ -113,6 +130,9 @@ void debug_check_conditions(enum dbg_context_id ctx);
 // returns false if it failed to add the condition
 bool debug_reg_cond(enum dbg_context_id ctx, unsigned reg_no,
                     uint32_t reg_val);
+
+bool debug_mem_cond(enum dbg_context_id ctx, uint32_t addr,
+                    uint32_t val, unsigned size);
 
 #define N_DEBUG_CONDITIONS 16
 

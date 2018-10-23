@@ -901,13 +901,82 @@ uint32_t debug_pc_next(enum dbg_context_id id) {
 
 static struct dbg_condition conditions[N_DEBUG_CONDITIONS];
 
+static bool
+debug_eval_cond_mem_val_8(enum dbg_context_id ctx, struct dbg_condition *cond) {
+    uint8_t val;
+    struct dbg_cond_mem_val *cond_mem_val = &cond->status.cond_mem_val;
+
+    if (debug_read_mem(ctx, &val, cond_mem_val->addr,
+                       cond->status.cond_mem_val.size) != 0) {
+        return false;
+    }
+
+    if (val != (uint8_t)cond_mem_val->prev_val) {
+        cond_mem_val->prev_val = val;
+
+        if (val == (uint8_t)cond_mem_val->val) {
+            frontend_on_break();
+            dbg_state_transition(DEBUG_STATE_BREAK);
+            dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool
+debug_eval_cond_mem_val_16(enum dbg_context_id ctx, struct dbg_condition *cond) {
+    uint16_t val;
+    struct dbg_cond_mem_val *cond_mem_val = &cond->status.cond_mem_val;
+
+    if (debug_read_mem(ctx, &val, cond_mem_val->addr,
+                       cond->status.cond_mem_val.size) != 0) {
+        return false;
+    }
+
+    if (val != (uint16_t)cond_mem_val->prev_val) {
+        cond_mem_val->prev_val = val;
+
+        if (val == (uint16_t)cond_mem_val->val) {
+            frontend_on_break();
+            dbg_state_transition(DEBUG_STATE_BREAK);
+            dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool
+debug_eval_cond_mem_val_32(enum dbg_context_id ctx, struct dbg_condition *cond) {
+    uint32_t val;
+    struct dbg_cond_mem_val *cond_mem_val = &cond->status.cond_mem_val;
+
+    if (debug_read_mem(ctx, &val, cond_mem_val->addr,
+                       cond->status.cond_mem_val.size) != 0) {
+        return false;
+    }
+
+    if (val != (uint32_t)cond_mem_val->prev_val) {
+        cond_mem_val->prev_val = val;
+
+        if (val == (uint32_t)cond_mem_val->val) {
+            frontend_on_break();
+            dbg_state_transition(DEBUG_STATE_BREAK);
+            dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
+            return true;
+        }
+    }
+    return false;
+}
+
 static bool debug_eval_cond(enum dbg_context_id ctx,
                             struct dbg_condition *cond) {
-    if (ctx != cond->ctx)
-        return false;
     uint32_t reg_val;
     switch (cond->cond_tp) {
-    case DEBUG_CONDITON_REG_VAL:
+    case DEBUG_CONDITION_REG_VAL:
+        if (ctx != cond->ctx)
+            return false;
         reg_val = debug_get_reg(ctx, cond->status.cond_reg_val.reg_no);
         if (reg_val == cond->status.cond_reg_val.reg_val &&
             reg_val != cond->status.cond_reg_val.prev_reg_val) {
@@ -917,6 +986,16 @@ static bool debug_eval_cond(enum dbg_context_id ctx,
         }
         cond->status.cond_reg_val.prev_reg_val = reg_val;
         return true;
+    case DEBUG_CONDITION_MEM_VAL:
+        if (cond->status.cond_mem_val.size == 1)
+            return debug_eval_cond_mem_val_8(ctx, cond);
+        else if (cond->status.cond_mem_val.size == 2)
+            return debug_eval_cond_mem_val_16(ctx, cond);
+        else if (cond->status.cond_mem_val.size == 4)
+            return debug_eval_cond_mem_val_32(ctx, cond);
+        else
+            RAISE_ERROR(ERROR_INTEGRITY);
+        break;
     case DEBUG_CONDITION_NONE:
         break;
     default:
@@ -938,11 +1017,54 @@ bool debug_reg_cond(enum dbg_context_id ctx, unsigned reg_no,
     for (idx = 0; idx < N_DEBUG_CONDITIONS; idx++) {
         struct dbg_condition *cond = conditions + idx;
         if (cond->cond_tp == DEBUG_CONDITION_NONE) {
-            cond->cond_tp = DEBUG_CONDITON_REG_VAL;
+            cond->cond_tp = DEBUG_CONDITION_REG_VAL;
             cond->ctx = ctx;
             cond->status.cond_reg_val.reg_no = reg_no;
             cond->status.cond_reg_val.reg_val = reg_val;
             cond->status.cond_reg_val.prev_reg_val = debug_get_reg(ctx, reg_no);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool debug_mem_cond(enum dbg_context_id ctx, uint32_t addr,
+                    uint32_t val, unsigned size) {
+    uint8_t prev_val8;
+    uint16_t prev_val16;
+    uint32_t prev_val32;
+
+    int err_val;
+
+    switch (size) {
+    case 1:
+        err_val = debug_read_mem(ctx, &prev_val8, addr, size);
+        prev_val32 = prev_val8;
+        break;
+    case 2:
+        err_val = debug_read_mem(ctx, &prev_val16, addr, size);
+        prev_val32 = prev_val16;
+        break;
+    case 4:
+        err_val = debug_read_mem(ctx, &prev_val32, addr, size);
+        break;
+    default:
+        return false;
+    }
+
+    if (err_val != 0)
+        return false;
+
+    int idx;
+    for (idx = 0; idx < N_DEBUG_CONDITIONS; idx++) {
+        struct dbg_condition *cond = conditions + idx;
+        if (cond->cond_tp == DEBUG_CONDITION_NONE) {
+            cond->cond_tp = DEBUG_CONDITION_MEM_VAL;
+            cond->ctx = ctx;
+            cond->status.cond_mem_val.addr = addr;
+            cond->status.cond_mem_val.size = size;
+            cond->status.cond_mem_val.val = val;
+            cond->status.cond_mem_val.prev_val = prev_val32;
             return true;
         }
     }

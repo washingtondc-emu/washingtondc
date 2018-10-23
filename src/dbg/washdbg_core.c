@@ -82,6 +82,10 @@ static unsigned parse_dec_str(char const *str);
 static bool is_hex_str(char const *str);
 static unsigned parse_hex_str(char const *str);
 
+#ifdef ENABLE_DBG_COND
+static int parse_int_str(char const *valstr, uint32_t *out);
+#endif
+
 static char const *washdbg_disas_single_sh4(uint32_t addr, uint16_t val);
 static char const *washdbg_disas_single_arm7(uint32_t addr, uint32_t val);
 
@@ -218,6 +222,9 @@ void washdbg_do_help(int argc, char **argv) {
         "echo         - echo back text\n"
         "exit         - exit the debugger and close WashingtonDC\n"
         "help         - display this message\n"
+#ifdef ENABLE_DBG_COND
+        "memwatch     - watch a specific memory address for a specific value\n"
+#endif
         "print        - print a value\n"
 #ifdef ENABLE_DBG_COND
         "regwatch     - watch for a register to be set to a given value\n"
@@ -841,18 +848,9 @@ static void washdbg_regwatch(int argc, char **argv) {
         return;
     }
 
-    int32_t value;
-    char *valstr = argv[3];
-    if (is_dec_str(valstr)) {
-        value = parse_dec_str(valstr);
-    } else if (strlen(valstr) > 2 && valstr[0] == '0' && valstr[1] == 'x' &&
-               is_hex_str(valstr + 2)) {
-        value = parse_hex_str(argv[3]);
-    } else {
-        LOG_ERROR("valstr is \"%s\"\n", valstr);
-        washdbg_print_error("unable to parse value.\n");
+    uint32_t value;
+    if (parse_int_str(argv[3], &value) != 0)
         return;
-    }
 
     if (!debug_reg_cond(ctx, reg_idx, value))
         washdbg_print_error("failed to insert condition\n");
@@ -861,6 +859,47 @@ static void washdbg_regwatch(int argc, char **argv) {
 
 #else
     washdbg_print_error("regwatch command not available; rebuild WashingtonDC "
+                        "with -DENABLE_DBG_COND=On.\n");
+#endif
+}
+
+static bool washdbg_is_memwatch_cmd(char const *str) {
+    return strcmp(str, "memwatch") == 0;
+}
+
+static void washdbg_memwatch(int argc, char **argv) {
+#ifdef ENABLE_DBG_COND
+    uint32_t size, addr, val;
+
+    if (argc != 5) {
+        washdbg_print_error("usage: memwatch context size addr value\n");
+        return;
+    }
+
+    enum dbg_context_id ctx;
+    if (strcmp(argv[1], "arm7") == 0) {
+        ctx = DEBUG_CONTEXT_ARM7;
+    } else if (strcmp(argv[1], "sh4") == 0) {
+        ctx = DEBUG_CONTEXT_SH4;
+    } else {
+        washdbg_print_error("unrecognized context string.\n");
+        return;
+    }
+
+    if (parse_int_str(argv[2], &size) != 0)
+        return;
+    if (parse_int_str(argv[3], &addr) != 0)
+        return;
+    if (parse_int_str(argv[4], &val) != 0)
+        return;
+
+    if (!debug_mem_cond(ctx, addr, val, size))
+        washdbg_print_error("failed to insert condition\n");
+    else
+        washdbg_print_prompt();
+
+#else
+    washdbg_print_error("memwatch command not available; rebuild WashingtonDC "
                         "with -DENABLE_DBG_COND=On.\n");
 #endif
 }
@@ -1027,6 +1066,8 @@ static void washdbg_process_input(void) {
                 washdbg_print(argc, argv);
             } else if (washdbg_is_regwatch_cmd(cmd)) {
                 washdbg_regwatch(argc, argv);
+            } else if (washdbg_is_memwatch_cmd(cmd)) {
+                washdbg_memwatch(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
@@ -1565,3 +1606,20 @@ static char const *washdbg_disas_single_arm7(uint32_t addr, uint32_t val) {
 
     return buf;
 }
+
+#ifdef ENABLE_DBG_COND
+static int parse_int_str(char const *valstr, uint32_t *out) {
+    if (is_dec_str(valstr)) {
+        *out = parse_dec_str(valstr);
+        return 0;
+    } else if (strlen(valstr) > 2 && valstr[0] == '0' && valstr[1] == 'x' &&
+               is_hex_str(valstr + 2)) {
+        *out = parse_hex_str(valstr + 2);
+        return 0;
+    } else {
+        LOG_ERROR("valstr is \"%s\"\n", valstr);
+        washdbg_print_error("unable to parse value.\n");
+    }
+    return - 1;
+}
+#endif
