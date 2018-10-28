@@ -106,8 +106,6 @@ struct aica_chan {
 struct aica_timer {
     struct SchedEvent evt;
 
-    dc_cycle_stamp_t stamp_last_sync;
-
     bool scheduled;
 
     unsigned counter;
@@ -166,6 +164,8 @@ struct aica {
     uint32_t sys_reg[(AICA_SYS_LEN / 4) + 8];
 
     struct aica_chan channels[AICA_CHAN_COUNT];
+
+    dc_cycle_stamp_t last_sample_sync;
 
     // timerA, timerB, timerC
     struct aica_timer timers[3];

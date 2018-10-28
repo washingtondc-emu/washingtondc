@@ -187,6 +187,7 @@ static void aica_unsched_timer(struct aica *aica, unsigned tim_idx);
 static void aica_sched_timer(struct aica *aica, unsigned tim_idx);
 
 static void aica_sync_timer(struct aica *aica, unsigned tim_idx);
+static dc_cycle_stamp_t aica_get_sample_count(struct aica *aica);
 
 static void
 on_timer_ctrl_write(struct aica *aica, unsigned tim_idx, uint32_t val);
@@ -203,6 +204,8 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx);
 static unsigned aica_read_sci(struct aica *aica, unsigned bit);
 
 static char const *fmt_name(enum aica_fmt fmt);
+
+static void aica_sync(struct aica *aica);
 
 struct memory_interface aica_sys_intf = {
     .read32 = aica_sys_read_32,
@@ -359,22 +362,22 @@ aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
         break;
 
     case AICA_TIMERA_CTRL:
-        printf("read AICA_TIMERA_CTRL\n");
-        aica_sync_timer(aica, 0);
+        LOG_DBG("read AICA_TIMERA_CTRL\n");
+        aica_sync(aica);
         aica->sys_reg[AICA_TIMERA_CTRL / 4] =
             ((aica->timers[0].prescale_log & 0x7) << 8) |
             (aica->timers[0].counter & 0xf);
         break;
     case AICA_TIMERB_CTRL:
-        printf("read AICA_TIMERA_CTRL\n");
-        aica_sync_timer(aica, 1);
+        LOG_DBG("read AICA_TIMERB_CTRL\n");
+        aica_sync(aica);
         aica->sys_reg[AICA_TIMERB_CTRL / 4] =
             ((aica->timers[1].prescale_log & 0x7) << 8) |
             (aica->timers[1].counter & 0xf);
         break;
     case AICA_TIMERC_CTRL:
-        printf("read AICA_TIMERA_CTRL\n");
-        aica_sync_timer(aica, 2);
+        LOG_DBG("read AICA_TIMERC_CTRL\n");
+        aica_sync(aica);
         aica->sys_reg[AICA_TIMERC_CTRL / 4] =
             ((aica->timers[2].prescale_log & 0x7) << 8) |
             (aica->timers[2].counter & 0xf);
@@ -998,8 +1001,8 @@ static void aica_sched_timer(struct aica *aica, unsigned tim_idx) {
     struct dc_clock *clk = aica->clk;
 
     unsigned prescale = 1 << timer->prescale_log;
-    unsigned samples_to_go = 256 - timer->counter;
-    dc_cycle_stamp_t clk_ticks = TICKS_PER_SAMPLE * samples_to_go * prescale;
+    unsigned ticks_to_go = 256 - timer->counter;
+    dc_cycle_stamp_t clk_ticks = TICKS_PER_SAMPLE * ticks_to_go * prescale;
 
     evt->when = clock_cycle_stamp(clk) + clk_ticks;
 
@@ -1008,32 +1011,27 @@ static void aica_sched_timer(struct aica *aica, unsigned tim_idx) {
     timer->scheduled = true;
 }
 
-/*
- * TODO: the most accurate way to handle the integer rounding error would be to
- * always evaluate the current sample based on the total number of clock ticks
- * that have occured since the emulator began.
- */
 static void aica_sync_timer(struct aica *aica, unsigned tim_idx) {
     struct aica_timer *timer = aica->timers + tim_idx;
-
     unsigned prescale = 1 << timer->prescale_log;
-    dc_cycle_stamp_t cur_stamp = clock_cycle_stamp(aica->clk);
-    dc_cycle_stamp_t delta = cur_stamp - timer->stamp_last_sync;
-    unsigned sample_delta = (delta / TICKS_PER_SAMPLE) / prescale;
+    dc_cycle_stamp_t sample_delta =
+        aica_get_sample_count(aica) - aica->last_sample_sync;
 
     if (sample_delta) {
-        timer->counter += sample_delta;
-        timer->counter %= 256;
-    }
+        unsigned clock_tick_delta = sample_delta / prescale;
 
-    timer->stamp_last_sync = cur_stamp;
+        if (clock_tick_delta) {
+            timer->counter += clock_tick_delta;
+            timer->counter %= 256;
+        }
+    }
 }
 
 static void
 on_timer_ctrl_write(struct aica *aica, unsigned tim_idx, uint32_t val) {
     struct aica_timer *timer = aica->timers + tim_idx;
 
-    aica_sync_timer(aica, tim_idx);
+    aica_sync(aica);
     aica_unsched_timer(aica, tim_idx);
 
     timer->counter = val & 0xff;
@@ -1068,7 +1066,7 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
     struct aica_timer *timer = aica->timers + tim_idx;
 
     timer->scheduled = false;
-    aica_sync_timer(aica, tim_idx);
+    aica_sync(aica);
 
     if (timer->counter) {
         LOG_ERROR("timer->counter is %u\n", timer->counter);
@@ -1131,4 +1129,21 @@ static char const *fmt_name(enum aica_fmt fmt) {
     default:
         return "unknown or invalid";
     }
+}
+
+static dc_cycle_stamp_t aica_get_sample_count(struct aica *aica) {
+    return clock_cycle_stamp(aica->clk) / TICKS_PER_SAMPLE;
+}
+
+static void aica_sync(struct aica *aica) {
+    aica_sync_timer(aica, 0);
+    aica_sync_timer(aica, 1);
+    aica_sync_timer(aica, 2);
+
+    /*
+     * TODO: process all samples between aica->last_sample_sync and
+     * aica_get_sample_count(aica) here.
+     */
+
+    aica->last_sample_sync = aica_get_sample_count(aica);
 }
