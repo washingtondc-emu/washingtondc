@@ -101,6 +101,17 @@ struct aica_chan {
     bool ready_keyon; // bit 14 of play control
     bool playing;     // if true, this channel is playing
     bool keyon;       // bit 15 of play control
+
+    unsigned step_no;
+    unsigned sample_no;
+
+    // from the AmpEnv2 register
+    unsigned krs;
+    unsigned decay_level;
+
+    // from the SampleRatePitch register
+    unsigned octave;
+    unsigned fns;
 };
 
 struct aica_timer {

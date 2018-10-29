@@ -54,6 +54,8 @@
 #define AICA_CHAN_SAMPLE_ADDR_LOW 0x0004
 #define AICA_CHAN_LOOP_START 0x0008
 #define AICA_CHAN_LOOP_END 0x000c
+#define AICA_CHAN_AMP_ENV2 0x0014
+#define AICA_CHAN_SAMPLE_RATE_PITCH 0x0018
 
 #define AICA_MASTER_VOLUME 0x2800
 
@@ -206,6 +208,12 @@ static unsigned aica_read_sci(struct aica *aica, unsigned bit);
 static char const *fmt_name(enum aica_fmt fmt);
 
 static void aica_sync(struct aica *aica);
+
+static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no);
+
+static unsigned aica_samples_per_step(unsigned effective_rate);
+
+static void aica_process_sample(struct aica *aica);
 
 struct memory_interface aica_sys_intf = {
     .read32 = aica_sys_read_32,
@@ -627,13 +635,18 @@ static void aica_do_keyon(struct aica *aica) {
     unsigned chan_no;
     for (chan_no = 0; chan_no < AICA_CHAN_COUNT; chan_no++) {
         struct aica_chan *chan = aica->channels + chan_no;
-        if (chan->ready_keyon && !chan->playing) {
+        if (chan->ready_keyon &&
+            (!chan->playing || chan->atten_env_state == AICA_ENV_RELEASE)) {
             chan->playing = true;
+            chan->step_no = 0;
+            chan->sample_no = 0;
+            chan->atten_env_state = AICA_ENV_ATTACK;
+            chan->atten = 0x280;
             printf("AICA channel %u key-on fmt %s ptr 0x%08x\n",
                    chan_no, fmt_name(chan->fmt),
                    (unsigned)chan->addr_start);
         } else if (!chan->ready_keyon && chan->playing) {
-            chan->playing = false;
+            chan->atten_env_state = AICA_ENV_RELEASE;
             printf("AICA channel %u key-off\n", chan_no);
         }
     }
@@ -677,8 +690,9 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
                 len, (unsigned)addr);
     }
     memcpy(chan->raw + chan_reg, src, len);
+    unsigned reg_no = 4 * (chan_reg / 4);
 
-    switch (4 * (chan_reg / 4)) {
+    switch (reg_no) {
     case AICA_CHAN_PLAY_CTRL:
         aica_chan_playctrl_write(aica, chan_no);
         break;
@@ -703,6 +717,16 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         /* chan->loop_end &= ~0xffff; */
         printf("chan %u loop_end is now 0x%08x\n",
                chan_no, (unsigned)chan->loop_end);
+        break;
+    case AICA_CHAN_AMP_ENV2:
+        memcpy(&tmp, chan->raw + AICA_CHAN_AMP_ENV2, sizeof(tmp));
+        chan->krs = (tmp >> 10) & 0xf;
+        chan->decay_level = tmp & BIT_RANGE(5, 9);
+        break;
+    case AICA_CHAN_SAMPLE_RATE_PITCH:
+        memcpy(&tmp, chan->raw + AICA_CHAN_SAMPLE_RATE_PITCH, sizeof(tmp));
+        chan->fns = tmp & BIT_RANGE(0, 10);
+        chan->octave = (tmp & BIT_RANGE(11, 14)) >> 11;
         break;
     default:
         memcpy(&tmp, src, sizeof(tmp));
@@ -1136,14 +1160,133 @@ static dc_cycle_stamp_t aica_get_sample_count(struct aica *aica) {
 }
 
 static void aica_sync(struct aica *aica) {
-    aica_sync_timer(aica, 0);
-    aica_sync_timer(aica, 1);
-    aica_sync_timer(aica, 2);
+    if (aica->last_sample_sync != aica_get_sample_count(aica)) {
+        aica_sync_timer(aica, 0);
+        aica_sync_timer(aica, 1);
+        aica_sync_timer(aica, 2);
+
+        /*
+         * process all samples between aica->last_sample_sync and aica_get
+         * sample_count(aica)
+         */
+        dc_cycle_stamp_t n_samples =
+            aica_get_sample_count(aica) - aica->last_sample_sync;
+
+        while (n_samples--)
+            aica_process_sample(aica);
+
+        aica->last_sample_sync = aica_get_sample_count(aica);
+    }
+}
+
+static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no) {
+    struct aica_chan *chan = aica->channels + chan_no;
 
     /*
-     * TODO: process all samples between aica->last_sample_sync and
-     * aica_get_sample_count(aica) here.
+     * TODO: corlett aica docs reference a variable called RATE.  I'm not sure
+     * where this comes from, so I'm using 0 instead.
      */
+    if (chan->krs == 15) {
+        return 0; //RATE * 2
+    } else {
+        return (chan->krs + chan->octave) * 2 + chan->fns;
+    }
+}
 
-    aica->last_sample_sync = aica_get_sample_count(aica);
+/*
+ * TODO: this is inaccurate.  There's a chart in corlett's doc that explains
+ * how it works, but I don't understand that chart so I just return either 0 or
+ * 2.
+ */
+static unsigned aica_samples_per_step(unsigned effective_rate) {
+    switch (effective_rate) {
+    case 0:
+    case 1:
+        return 0;
+    default:
+        return 2;
+    }
+}
+
+static unsigned const attack_step_delta[][4] = {
+    { 4, 4, 4, 4 }, // 0x30
+    { 3, 4, 4, 4 }, // 0x31
+    { 3, 4, 3, 4 }, // 0x32
+    { 3, 3, 3, 4 }, // 0x33
+    { 3, 3, 3, 3 }, // 0x34
+    { 2, 3, 3, 3 }, // 0x35
+    { 2, 3, 2, 3 }, // 0x36
+    { 2, 2, 2, 3 }, // 0x37
+    { 2, 2, 2, 2 }, // 0x38
+    { 1, 2, 2, 2 }, // 0x39
+    { 1, 2, 1, 2 }, // 0x3a
+    { 1, 1, 1, 1 }, // 0x3b
+    { 1, 1, 1, 1 }  // 0x3c
+};
+
+static unsigned const decay_step_delta[][4] = {
+    { 1, 1, 1, 1 }, // 0x30
+    { 2, 1, 1, 1 }, // 0x31
+    { 2, 1, 2, 1 }, // 0x32
+    { 2, 2, 2, 1 }, // 0x33
+    { 2, 2, 2, 2 }, // 0x34
+    { 4, 2, 2, 2 }, // 0x35
+    { 4, 2, 4, 2 }, // 0x36
+    { 4, 4, 4, 2 }, // 0x37
+    { 4, 4, 4, 4 }, // 0x38
+    { 8, 4, 4, 4 }, // 0x39
+    { 8, 4, 8, 4 }, // 0x3a
+    { 8, 8, 8, 4 }, // 0x3b
+    { 8, 8, 8, 8 }  // 0x3c
+};
+
+static void aica_process_sample(struct aica *aica) {
+    unsigned chan_no;
+
+    for (chan_no = 0; chan_no < AICA_CHAN_COUNT; chan_no++) {
+        struct aica_chan *chan = aica->channels + chan_no;
+
+        if (!chan->playing)
+            continue;
+
+        unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
+        unsigned samples_per_step = aica_samples_per_step(effective_rate);
+
+        chan->sample_no++;
+        if (chan->sample_no >= samples_per_step) {
+            unsigned step_mod = chan->step_no % 4;
+            unsigned rate_idx;
+            if (effective_rate >= 0x30 && effective_rate <= 0x3c)
+                rate_idx = effective_rate - 0x30;
+            else if (effective_rate < 0x30)
+                rate_idx = 0;
+            else
+                rate_idx = 0x3c - 0x30;
+
+            if (chan->atten_env_state == AICA_ENV_ATTACK) {
+                chan->atten -=
+                    (chan->atten >> attack_step_delta[rate_idx][step_mod]) + 1;
+                if (!chan->atten) {
+                    chan->atten_env_state = AICA_ENV_DECAY;
+                }
+            } else {
+                chan->atten += decay_step_delta[rate_idx][step_mod];
+
+                if (chan->atten >= 0x3bf)
+                    chan->atten = 0x1fff;
+
+                if (chan->atten_env_state == AICA_ENV_DECAY) {
+                    if (chan->atten >= chan->decay_level)
+                        chan->atten_env_state = AICA_ENV_SUSTAIN;
+                } else {
+                    // sustain or release
+                    if (chan->atten >= 0x3bf)
+                        chan->playing = false;
+                }
+            }
+
+            chan->sample_no = 0;
+            chan->step_no++;
+        }
+    }
 }
