@@ -906,15 +906,22 @@ debug_eval_cond_mem_val_8(enum dbg_context_id ctx, struct dbg_condition *cond) {
     uint8_t val;
     struct dbg_cond_mem_val *cond_mem_val = &cond->status.cond_mem_val;
 
-    if (debug_read_mem(ctx, &val, cond_mem_val->addr,
-                       cond->status.cond_mem_val.size) != 0) {
+    if (debug_read_mem(cond->ctx, &val, cond_mem_val->addr,
+                       cond_mem_val->size) != 0) {
         return false;
     }
 
     if (val != (uint8_t)cond_mem_val->prev_val) {
+        uint32_t prev = cond_mem_val->prev_val;
         cond_mem_val->prev_val = val;
 
-        if (val == (uint8_t)cond_mem_val->val) {
+        if ((val & 0xff) == (cond_mem_val->val & 0xff)) {
+            LOG_INFO("memory condition triggered\n");
+            LOG_INFO("\tsize is 1 byte.\n");
+            LOG_INFO("\taddr 0x%08x: 0x%02x -> 0x%02x\n",
+                     (unsigned)cond_mem_val->addr,
+                     (unsigned)prev, (unsigned)val);
+            LOG_INFO("\tcurrent ctx is %s\n", cur_ctx_str());
             frontend_on_break();
             dbg_state_transition(DEBUG_STATE_BREAK);
             dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
@@ -929,15 +936,22 @@ debug_eval_cond_mem_val_16(enum dbg_context_id ctx, struct dbg_condition *cond) 
     uint16_t val;
     struct dbg_cond_mem_val *cond_mem_val = &cond->status.cond_mem_val;
 
-    if (debug_read_mem(ctx, &val, cond_mem_val->addr,
-                       cond->status.cond_mem_val.size) != 0) {
+    if (debug_read_mem(cond->ctx, &val, cond_mem_val->addr,
+                       cond_mem_val->size) != 0) {
         return false;
     }
 
-    if (val != (uint16_t)cond_mem_val->prev_val) {
+    if ((val & 0xffff) != (cond_mem_val->prev_val & 0xffff)) {
+        uint32_t prev = cond_mem_val->prev_val;
         cond_mem_val->prev_val = val;
 
         if (val == (uint16_t)cond_mem_val->val) {
+            LOG_INFO("memory condition triggered\n");
+            LOG_INFO("\tsize is 2 bytes.\n");
+            LOG_INFO("\taddr 0x%08x: 0x%04x -> 0x%04x\n",
+                     (unsigned)cond_mem_val->addr,
+                     (unsigned)prev, (unsigned)val);
+            LOG_INFO("\tcurrent ctx is %s\n", cur_ctx_str());
             frontend_on_break();
             dbg_state_transition(DEBUG_STATE_BREAK);
             dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
@@ -952,15 +966,22 @@ debug_eval_cond_mem_val_32(enum dbg_context_id ctx, struct dbg_condition *cond) 
     uint32_t val;
     struct dbg_cond_mem_val *cond_mem_val = &cond->status.cond_mem_val;
 
-    if (debug_read_mem(ctx, &val, cond_mem_val->addr,
-                       cond->status.cond_mem_val.size) != 0) {
+    if (debug_read_mem(cond->ctx, &val, cond_mem_val->addr,
+                       cond_mem_val->size) != 0) {
         return false;
     }
 
     if (val != (uint32_t)cond_mem_val->prev_val) {
+        uint32_t prev = cond_mem_val->prev_val;
         cond_mem_val->prev_val = val;
 
         if (val == (uint32_t)cond_mem_val->val) {
+            LOG_INFO("memory condition triggered\n");
+            LOG_INFO("\tsize is 4 bytes.\n");
+            LOG_INFO("\taddr 0x%08x: 0x%08x -> 0x%08x\n",
+                     (unsigned)cond_mem_val->addr,
+                     (unsigned)prev, (unsigned)val);
+            LOG_INFO("\tcurrent ctx is %s\n", cur_ctx_str());
             frontend_on_break();
             dbg_state_transition(DEBUG_STATE_BREAK);
             dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
