@@ -911,16 +911,15 @@ debug_eval_cond_mem_val_8(enum dbg_context_id ctx, struct dbg_condition *cond) {
         return false;
     }
 
-    if (val != (uint8_t)cond_mem_val->prev_val) {
-        uint32_t prev = cond_mem_val->prev_val;
-        cond_mem_val->prev_val = val;
+    if (val != cond_mem_val->prev_val.val8) {
+        cond_mem_val->prev_val.val8 = val;
 
-        if ((val & 0xff) == (cond_mem_val->val & 0xff)) {
+        if (val == cond_mem_val->val.val8) {
             LOG_INFO("memory condition triggered\n");
             LOG_INFO("\tsize is 1 byte.\n");
             LOG_INFO("\taddr 0x%08x: 0x%02x -> 0x%02x\n",
                      (unsigned)cond_mem_val->addr,
-                     (unsigned)prev, (unsigned)val);
+                     (unsigned)cond_mem_val->prev_val.val8, (unsigned)val);
             LOG_INFO("\tcurrent ctx is %s\n", cur_ctx_str());
             frontend_on_break();
             dbg_state_transition(DEBUG_STATE_BREAK);
@@ -941,16 +940,15 @@ debug_eval_cond_mem_val_16(enum dbg_context_id ctx, struct dbg_condition *cond) 
         return false;
     }
 
-    if ((val & 0xffff) != (cond_mem_val->prev_val & 0xffff)) {
-        uint32_t prev = cond_mem_val->prev_val;
-        cond_mem_val->prev_val = val;
+    if (val != cond_mem_val->prev_val.val16) {
+        cond_mem_val->prev_val.val16 = val;
 
-        if (val == (uint16_t)cond_mem_val->val) {
+        if (val == cond_mem_val->val.val16) {
             LOG_INFO("memory condition triggered\n");
             LOG_INFO("\tsize is 2 bytes.\n");
             LOG_INFO("\taddr 0x%08x: 0x%04x -> 0x%04x\n",
                      (unsigned)cond_mem_val->addr,
-                     (unsigned)prev, (unsigned)val);
+                     (unsigned)cond_mem_val->prev_val.val16, (unsigned)val);
             LOG_INFO("\tcurrent ctx is %s\n", cur_ctx_str());
             frontend_on_break();
             dbg_state_transition(DEBUG_STATE_BREAK);
@@ -971,16 +969,15 @@ debug_eval_cond_mem_val_32(enum dbg_context_id ctx, struct dbg_condition *cond) 
         return false;
     }
 
-    if (val != (uint32_t)cond_mem_val->prev_val) {
-        uint32_t prev = cond_mem_val->prev_val;
-        cond_mem_val->prev_val = val;
+    if (val != cond_mem_val->prev_val.val32) {
+        cond_mem_val->prev_val.val32 = val;
 
-        if (val == (uint32_t)cond_mem_val->val) {
+        if (val == cond_mem_val->val.val32) {
             LOG_INFO("memory condition triggered\n");
             LOG_INFO("\tsize is 4 bytes.\n");
             LOG_INFO("\taddr 0x%08x: 0x%08x -> 0x%08x\n",
                      (unsigned)cond_mem_val->addr,
-                     (unsigned)prev, (unsigned)val);
+                     (unsigned)cond_mem_val->prev_val.val32, (unsigned)val);
             LOG_INFO("\tcurrent ctx is %s\n", cur_ctx_str());
             frontend_on_break();
             dbg_state_transition(DEBUG_STATE_BREAK);
@@ -1051,23 +1048,22 @@ bool debug_reg_cond(enum dbg_context_id ctx, unsigned reg_no,
 
 bool debug_mem_cond(enum dbg_context_id ctx, uint32_t addr,
                     uint32_t val, unsigned size) {
-    uint8_t prev_val8;
-    uint16_t prev_val16;
-    uint32_t prev_val32;
+    union dbg_val prev_val, tgt_val;
 
     int err_val;
 
     switch (size) {
     case 1:
-        err_val = debug_read_mem(ctx, &prev_val8, addr, size);
-        prev_val32 = prev_val8;
+        err_val = debug_read_mem(ctx, &prev_val.val8, addr, 1);
+        tgt_val.val8 = (uint8_t)(val & 0xff);
         break;
     case 2:
-        err_val = debug_read_mem(ctx, &prev_val16, addr, size);
-        prev_val32 = prev_val16;
+        err_val = debug_read_mem(ctx, &prev_val.val16, addr, 2);
+        tgt_val.val16 = (uint16_t)(val & 0xffff);
         break;
     case 4:
-        err_val = debug_read_mem(ctx, &prev_val32, addr, size);
+        err_val = debug_read_mem(ctx, &prev_val.val32, addr, 4);
+        tgt_val.val32 = val;
         break;
     default:
         return false;
@@ -1084,8 +1080,8 @@ bool debug_mem_cond(enum dbg_context_id ctx, uint32_t addr,
             cond->ctx = ctx;
             cond->status.cond_mem_val.addr = addr;
             cond->status.cond_mem_val.size = size;
-            cond->status.cond_mem_val.val = val;
-            cond->status.cond_mem_val.prev_val = prev_val32;
+            cond->status.cond_mem_val.val = tgt_val;
+            cond->status.cond_mem_val.prev_val = prev_val;
             return true;
         }
     }

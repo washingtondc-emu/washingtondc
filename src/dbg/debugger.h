@@ -102,14 +102,20 @@ struct dbg_cond_reg_val {
     uint32_t prev_reg_val;
 };
 
+union dbg_val {
+    uint32_t val32;
+    uint16_t val16;
+    uint8_t val8;
+};
+
 struct dbg_cond_mem_val {
     uint32_t addr;
-    uint32_t val;
+    union dbg_val val;
 
     // size can only be 1, 2 or 4
     unsigned size;
 
-    uint32_t prev_val;
+    union dbg_val prev_val;
 };
 
 union dbg_cond_status {
