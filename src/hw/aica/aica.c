@@ -1253,7 +1253,7 @@ static void aica_process_sample(struct aica *aica) {
         unsigned samples_per_step = aica_samples_per_step(effective_rate);
 
         chan->sample_no++;
-        if (chan->sample_no >= samples_per_step) {
+        if (samples_per_step && chan->sample_no >= samples_per_step) {
             unsigned step_mod = chan->step_no % 4;
             unsigned rate_idx;
             if (effective_rate >= 0x30 && effective_rate <= 0x3c)
