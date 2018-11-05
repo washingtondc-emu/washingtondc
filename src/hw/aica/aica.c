@@ -580,7 +580,7 @@ static void aica_sys_channel_read(struct aica *aica, void *dst,
     struct aica_chan *chan = aica->channels + chan_no;
     uint32_t tmp;
 
-    switch (chan_reg / 4) {
+    switch (4 * (chan_reg / 4)) {
     case AICA_CHAN_PLAY_CTRL:
         memcpy(&tmp, chan->raw + AICA_CHAN_PLAY_CTRL, sizeof(tmp));
         tmp &= ~(1 << 15);
