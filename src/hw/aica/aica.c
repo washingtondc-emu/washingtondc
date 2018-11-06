@@ -645,7 +645,7 @@ static void aica_do_keyon(struct aica *aica) {
             printf("AICA channel %u key-on fmt %s ptr 0x%08x\n",
                    chan_no, fmt_name(chan->fmt),
                    (unsigned)chan->addr_start);
-        } else if (!chan->ready_keyon && chan->playing) {
+        } else if (!chan->ready_keyon && chan->playing && chan->atten_env_state != AICA_ENV_RELEASE) {
             chan->atten_env_state = AICA_ENV_RELEASE;
             printf("AICA channel %u key-off\n", chan_no);
         }
