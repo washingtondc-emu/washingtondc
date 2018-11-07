@@ -4935,10 +4935,14 @@ void sh4_inst_binary_fcmpeq_dr_dr(Sh4 *sh4, Sh4OpArgs inst) {
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00100, INST_CONS_1111nnn0mmm00100);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnn0mmm00100");
-    error_set_opcode_name("FCMP/EQ DRm, DRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+
+    double src = sh4_read_double(sh4, inst.dr_src * 2);
+    double dst = sh4_read_double(sh4, inst.dr_dst * 2);
+
+    unsigned t_flag = (dst == src);
+    sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
+    sh4->reg[SH4_REG_SR] |= (t_flag << SH4_SR_FLAG_T_SHIFT);
 }
 
 #define INST_MASK_1111nnn0mmm00101 0xf11f
