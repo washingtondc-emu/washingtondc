@@ -54,6 +54,7 @@
 #define AICA_CHAN_SAMPLE_ADDR_LOW 0x0004
 #define AICA_CHAN_LOOP_START 0x0008
 #define AICA_CHAN_LOOP_END 0x000c
+#define AICA_CHAN_AMP_ENV1 0x0010
 #define AICA_CHAN_AMP_ENV2 0x0014
 #define AICA_CHAN_SAMPLE_RATE_PITCH 0x0018
 
@@ -718,10 +719,17 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         printf("chan %u loop_end is now 0x%08x\n",
                chan_no, (unsigned)chan->loop_end);
         break;
+    case AICA_CHAN_AMP_ENV1:
+        memcpy(&tmp, chan->raw + AICA_CHAN_AMP_ENV2, sizeof(tmp));
+        chan->attack_rate = tmp & BIT_RANGE(0, 4);
+        chan->decay_rate = (tmp & BIT_RANGE(6, 10)) >> 6;
+        chan->sustain_rate = (tmp & BIT_RANGE(11, 15)) >> 11;
+        break;
     case AICA_CHAN_AMP_ENV2:
         memcpy(&tmp, chan->raw + AICA_CHAN_AMP_ENV2, sizeof(tmp));
         chan->krs = (tmp >> 10) & 0xf;
         chan->decay_level = tmp & BIT_RANGE(5, 9);
+        chan->release_rate = tmp & BIT_RANGE(0, 4);
         break;
     case AICA_CHAN_SAMPLE_RATE_PITCH:
         memcpy(&tmp, chan->raw + AICA_CHAN_SAMPLE_RATE_PITCH, sizeof(tmp));
@@ -1181,15 +1189,28 @@ static void aica_sync(struct aica *aica) {
 
 static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no) {
     struct aica_chan *chan = aica->channels + chan_no;
+    unsigned rate;
+    switch (chan->atten_env_state) {
+    case AICA_ENV_ATTACK:
+        rate = chan->attack_rate;
+        break;
+    case AICA_ENV_DECAY:
+        rate = chan->decay_rate;
+        break;
+    case AICA_ENV_SUSTAIN:
+        rate = chan->sustain_rate;
+        break;
+    case AICA_ENV_RELEASE:
+        rate = chan->release_rate;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
 
-    /*
-     * TODO: corlett aica docs reference a variable called RATE.  I'm not sure
-     * where this comes from, so I'm using 0 instead.
-     */
     if (chan->krs == 15) {
-        return 0; //RATE * 2
+        return rate * 2; //RATE * 2
     } else {
-        return (chan->krs + chan->octave) * 2 + chan->fns;
+        return (chan->krs + chan->octave + rate) * 2 + chan->fns;
     }
 }
 

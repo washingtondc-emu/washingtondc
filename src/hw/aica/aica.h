@@ -105,9 +105,13 @@ struct aica_chan {
     unsigned step_no;
     unsigned sample_no;
 
+    // from the AmpEnv1 register
+    unsigned attack_rate, decay_rate, sustain_rate;
+
     // from the AmpEnv2 register
     unsigned krs;
     unsigned decay_level;
+    unsigned release_rate;
 
     // from the SampleRatePitch register
     unsigned octave;
