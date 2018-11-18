@@ -350,6 +350,8 @@ aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
         memcpy(aica->sys_reg + idx, &val, sizeof(uint32_t));
         break;
     case AICA_PLAYPOS:
+        chan = aica->channels + aica->chan_sel;
+        aica->sys_reg[idx] = chan->sample_pos & 0xffff;
         LOG_DBG("Reading 0x%08x from AICA_PLAYPOS\n",
                 (unsigned)aica->sys_reg[idx]);
         break;
@@ -641,8 +643,11 @@ static void aica_do_keyon(struct aica *aica) {
             chan->playing = true;
             chan->step_no = 0;
             chan->sample_no = 0;
+            chan->sample_pos = chan->loop_start;
             chan->atten_env_state = AICA_ENV_ATTACK;
             chan->atten = 0x280;
+            chan->loop_end_playstatus_flag = false;
+            chan->loop_end_signaled = false;
             printf("AICA channel %u key-on fmt %s ptr 0x%08x\n",
                    chan_no, fmt_name(chan->fmt),
                    (unsigned)chan->addr_start);
@@ -662,6 +667,7 @@ static void aica_chan_playctrl_write(struct aica *aica, unsigned chan_no) {
     chan->addr_start &= ~(0xffff << 16);
     chan->addr_start |= (chan->addr_start & 0x7f) << 16;
     chan->addr_cur = chan->addr_start;
+    chan->loop_en = (bool)(val & (1 << 9));
     printf("addr_start is now 0x%08x\n", (unsigned)chan->addr_start);
 
     chan->ready_keyon = (bool)(val & (1 << 14));
@@ -1272,6 +1278,19 @@ static void aica_process_sample(struct aica *aica) {
 
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate);
+
+        chan->sample_pos++;
+        if (chan->sample_pos >= chan->loop_end) {
+            if (!chan->loop_end_signaled)
+                chan->loop_end_playstatus_flag = true;
+
+            if (chan->loop_en) {
+                chan->sample_pos = chan->loop_start;
+            } else {
+                chan->sample_pos = chan->loop_end;
+                chan->loop_end_signaled = true;
+            }
+        }
 
         chan->sample_no++;
         if (samples_per_step && chan->sample_no >= samples_per_step) {

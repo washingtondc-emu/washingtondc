@@ -86,11 +86,14 @@ struct aica_chan {
      * time it is read from.
      */
     bool loop_end_playstatus_flag;
+    bool loop_end_signaled;
 
     enum aica_fmt fmt;
 
     uint32_t addr_start, addr_cur;
     uint32_t loop_start, loop_end;
+
+    bool loop_en;
 
     /*
      * bit 15 of the play control register will execute a key-on (if set) or
@@ -104,6 +107,7 @@ struct aica_chan {
 
     unsigned step_no;
     unsigned sample_no;
+    unsigned sample_pos;
 
     // from the AmpEnv1 register
     unsigned attack_rate, decay_rate, sustain_rate;
