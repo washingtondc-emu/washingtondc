@@ -212,7 +212,7 @@ static void aica_sync(struct aica *aica);
 
 static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no);
 
-static unsigned aica_samples_per_step(unsigned effective_rate);
+static unsigned aica_samples_per_step(unsigned effective_rate, unsigned step_no);
 
 static void aica_process_sample(struct aica *aica);
 
@@ -1220,16 +1220,176 @@ static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no) {
     }
 }
 
-/*
- * TODO: this is inaccurate.  There's a chart in corlett's doc that explains
- * how it works, but I don't understand that chart so I just return either 0 or
- * 2.
- */
-static unsigned aica_samples_per_step(unsigned effective_rate) {
+static unsigned aica_samples_per_step(unsigned effective_rate, unsigned step_no) {
     switch (effective_rate) {
     case 0:
     case 1:
         return 0;
+    case 2: {
+        unsigned const static tbl[3] = { 8192, 4096, 4096 };
+        return tbl[step_no % 3];
+    }
+    case 3: {
+        unsigned const static tbl[7] = { 8192, 4096, 4096,
+                                         4096, 4096, 4096, 4096 };
+        return tbl[step_no % 7];
+    }
+    case 4:
+        return 4096;
+    case 5: {
+        unsigned const static tbl[5] = { 4096, 4096, 4096, 2048, 2048 };
+        return tbl[step_no % 5];
+    }
+    case 6: {
+        unsigned const static tbl[3] = { 4096, 2048, 2048 };
+        return tbl[step_no % 3];
+    }
+    case 7: {
+        unsigned const static tbl[7] = { 4096, 2048, 2048,
+                                         2048, 2048, 2048, 2048 };
+        return tbl[step_no % 7];
+    }
+    case 8:
+        return 2048;
+    case 9: {
+        unsigned const static tbl[5] = { 2048, 2048, 2048, 1024, 1024 };
+        return tbl[step_no % 5];
+    }
+    case 10: {
+        unsigned const static tbl[3] = { 2048, 1024, 1024 };
+        return tbl[step_no % 3];
+    }
+    case 11: {
+        unsigned const static tbl[7] = { 2048, 1024, 1024,
+                                         1024, 1024, 1024, 1024 };
+        return tbl[step_no % 7];
+    }
+    case 12:
+        return 1024;
+    case 13: {
+        unsigned const static tbl[5] = { 1024, 1024, 1024, 512, 512 };
+        return tbl[step_no % 5];
+    }
+    case 14: {
+        unsigned const static tbl[3] = { 1024, 512, 512 };
+        return tbl[step_no % 3];
+    }
+    case 15: {
+        unsigned const static tbl[7] = { 1024, 512, 512, 512, 512, 512, 512 };
+        return tbl[step_no % 7];
+    }
+    case 16:
+        return 512;
+    case 17: {
+        unsigned const static tbl[5] = { 512, 512, 512, 256, 256 };
+        return tbl[step_no % 5];
+    }
+    case 18: {
+        unsigned const static tbl[3] = { 512, 256, 256 };
+        return tbl[step_no % 3];
+    }
+    case 19: {
+        unsigned const static tbl[7] = { 512, 256, 256, 256, 256, 256, 256 };
+        return tbl[step_no % 7];
+    }
+    case 20:
+        return 256;
+    case 21: {
+        unsigned const static tbl[5] = { 256, 256, 256, 128, 128 };
+        return tbl[step_no % 5];
+    }
+    case 22: {
+        unsigned const static tbl[3] = { 256, 128, 128 };
+        return tbl[step_no % 3];
+    }
+    case 23: {
+        unsigned const static tbl[7] = { 256, 128, 128, 128, 128, 128, 128 };
+        return tbl[step_no % 7];
+    }
+    case 24:
+        return 128;
+    case 25: {
+        unsigned const static tbl[5] = { 128, 128, 128, 64, 64 };
+        return tbl[step_no % 5];
+    }
+    case 26: {
+        unsigned const static tbl[3] = { 128, 64, 64 };
+        return tbl[step_no % 3];
+    }
+    case 27: {
+        unsigned const static tbl[7] = { 128, 64, 64, 64, 64, 64, 64 };
+        return tbl[step_no % 7];
+    }
+    case 28:
+        return 64;
+    case 29: {
+        unsigned const static tbl[5] = { 64, 64, 64, 32, 32 };
+        return tbl[step_no % 5];
+    }
+    case 30: {
+        unsigned const static tbl[3] = { 64, 32, 32 };
+        return tbl[step_no % 3];
+    }
+    case 31: {
+        unsigned const static tbl[7] = { 64, 32, 32, 32, 32, 32, 32 };
+        return tbl[step_no % 7];
+    }
+    case 32:
+        return 32;
+    case 33: {
+        unsigned const static tbl[5] = { 32, 32, 32, 16, 16 };
+        return tbl[step_no % 5];
+    }
+    case 34: {
+        unsigned const static tbl[3] = { 32, 16, 16 };
+        return tbl[step_no % 3];
+    }
+    case 35: {
+        unsigned const static tbl[7] = { 32, 16, 16, 16, 16, 16, 16 };
+        return tbl[step_no % 7];
+    }
+    case 36:
+        return 16;
+    case 37: {
+        unsigned const static tbl[5] = { 16, 16, 16, 8, 8 };
+        return tbl[step_no % 5];
+    }
+    case 38: {
+        unsigned const static tbl[3] = { 16, 8, 8 };
+        return tbl[step_no % 3];
+    }
+    case 39: {
+        unsigned const static tbl[7] = { 16, 8, 8, 8, 8, 8, 8 };
+        return tbl[step_no % 7];
+    }
+    case 40:
+        return 8;
+    case 41: {
+        unsigned const static tbl[5] = { 8, 8, 8, 4, 4 };
+        return tbl[step_no % 5];
+    }
+    case 42: {
+        unsigned const static tbl[3] = { 8, 4, 4 };
+        return tbl[step_no % 3];
+    }
+    case 43: {
+        unsigned const static tbl[7] = { 8, 4, 4, 4, 4, 4, 4 };
+        return tbl[step_no % 7];
+    }
+    case 44:
+        return 4;
+    case 45: {
+        unsigned const static tbl[5] = { 4, 4, 4, 2, 2 };
+        return tbl[step_no % 5];
+    }
+    case 46: {
+        unsigned const static tbl[3] = { 4, 2, 2 };
+        return tbl[step_no % 3];
+    }
+    case 47: {
+        unsigned const static tbl[7] = { 4, 2, 2, 2, 2, 2, 2 };
+        return tbl[step_no % 7];
+    }
     default:
         return 2;
     }
@@ -1277,7 +1437,7 @@ static void aica_process_sample(struct aica *aica) {
             continue;
 
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
-        unsigned samples_per_step = aica_samples_per_step(effective_rate);
+        unsigned samples_per_step = aica_samples_per_step(effective_rate, chan->step_no);
 
         chan->sample_pos++;
         if (chan->sample_pos >= chan->loop_end) {
