@@ -123,6 +123,8 @@ struct aica_chan {
 };
 
 struct aica_timer {
+    dc_cycle_stamp_t last_sample_sync;
+
     struct SchedEvent evt;
 
     bool scheduled;

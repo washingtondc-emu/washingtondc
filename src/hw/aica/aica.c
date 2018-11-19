@@ -1053,7 +1053,7 @@ static void aica_sync_timer(struct aica *aica, unsigned tim_idx) {
     struct aica_timer *timer = aica->timers + tim_idx;
     unsigned prescale = 1 << timer->prescale_log;
     dc_cycle_stamp_t sample_delta =
-        aica_get_sample_count(aica) - aica->last_sample_sync;
+        aica_get_sample_count(aica) - timer->last_sample_sync;
 
     if (sample_delta) {
         unsigned clock_tick_delta = sample_delta / prescale;
@@ -1061,6 +1061,7 @@ static void aica_sync_timer(struct aica *aica, unsigned tim_idx) {
         if (clock_tick_delta) {
             timer->counter += clock_tick_delta;
             timer->counter %= 256;
+            timer->last_sample_sync = aica_get_sample_count(aica);
         }
     }
 }
@@ -1174,11 +1175,11 @@ static dc_cycle_stamp_t aica_get_sample_count(struct aica *aica) {
 }
 
 static void aica_sync(struct aica *aica) {
-    if (aica->last_sample_sync != aica_get_sample_count(aica)) {
-        aica_sync_timer(aica, 0);
-        aica_sync_timer(aica, 1);
-        aica_sync_timer(aica, 2);
+    aica_sync_timer(aica, 0);
+    aica_sync_timer(aica, 1);
+    aica_sync_timer(aica, 2);
 
+    if (aica->last_sample_sync != aica_get_sample_count(aica)) {
         /*
          * process all samples between aica->last_sample_sync and aica_get
          * sample_count(aica)
