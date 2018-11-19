@@ -118,7 +118,7 @@ struct aica_chan {
     unsigned release_rate;
 
     // from the SampleRatePitch register
-    unsigned octave;
+    int octave;
     unsigned fns;
 };
 

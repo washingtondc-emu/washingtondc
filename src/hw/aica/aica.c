@@ -740,7 +740,9 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
     case AICA_CHAN_SAMPLE_RATE_PITCH:
         memcpy(&tmp, chan->raw + AICA_CHAN_SAMPLE_RATE_PITCH, sizeof(tmp));
         chan->fns = tmp & BIT_RANGE(0, 10);
-        chan->octave = (tmp & BIT_RANGE(11, 14)) >> 11;
+
+        // octage is a 4-bit two's complement value that ranges from -8 to +7
+        chan->octave = 0xf & ((~((tmp & BIT_RANGE(11, 14)) >> 11)) + 1);
         break;
     default:
         memcpy(&tmp, src, sizeof(tmp));
