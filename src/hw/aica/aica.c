@@ -1217,9 +1217,9 @@ static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no) {
     }
 
     if (chan->krs == 15) {
-        return rate * 2; //RATE * 2
+        return rate * 2;
     } else {
-        return (chan->krs + chan->octave + rate) * 2 + chan->fns;
+        return (chan->krs + chan->octave + rate) * 2 + ((chan->fns >> 9) & 1);
     }
 }
 
