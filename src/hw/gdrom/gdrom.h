@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -230,7 +230,5 @@ void gdrom_input_cmd(struct gdrom_ctxt *ctxt, unsigned cmd);
 
 unsigned gdrom_dma_prot_top(struct gdrom_ctxt *gdrom);
 unsigned gdrom_dma_prot_bot(struct gdrom_ctxt *gdrom);
-
-ERROR_INT_ATTR(gdrom_command);
 
 #endif

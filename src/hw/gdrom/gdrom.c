@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -36,7 +36,9 @@
 
 #include "gdrom.h"
 
-DEF_ERROR_INT_ATTR(gdrom_command);
+static DEF_ERROR_INT_ATTR(gdrom_command)
+static DEF_ERROR_INT_ATTR(gdrom_seek_param_tp)
+static DEF_ERROR_INT_ATTR(gdrom_seek_seek_pt)
 
 #define GDROM_GDAPRO_DEFAULT 0x00007f00
 #define GDROM_G1GDRC_DEFAULT 0x0000ffff
@@ -150,6 +152,7 @@ struct gdrom_bufq_node {
 #define GDROM_PKT_REQ_ERROR  0x13
 #define GDROM_PKT_READ_TOC   0x14
 #define GDROM_PKT_READ       0x30
+#define GDROM_PKT_SEEK       0x21
 #define GDROM_PKT_SUBCODE    0x40
 #define GDROM_PKT_START_DISK 0x70
 #define GDROM_PKT_UNKNOWN_71 0x71
@@ -185,6 +188,8 @@ static void gdrom_input_read_toc_packet(struct gdrom_ctxt *gdrom);
 static void gdrom_input_packet_71(struct gdrom_ctxt *gdrom);
 
 static void gdrom_input_read_subcode_packet(struct gdrom_ctxt *gdrom);
+
+static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom);
 
 /* struct gdrom_ctxt gdrom; */
 
@@ -435,6 +440,9 @@ static void gdrom_input_packet(struct gdrom_ctxt *gdrom) {
         break;
     case GDROM_PKT_UNKNOWN_71:
         gdrom_input_packet_71(gdrom);
+        break;
+    case GDROM_PKT_SEEK:
+        gdrom_input_seek_packet(gdrom);
         break;
     default:
         error_set_feature("unknown GD-ROM packet command");
@@ -844,6 +852,22 @@ static void gdrom_input_read_subcode_packet(struct gdrom_ctxt *gdrom) {
 
     gdrom->stat_reg.check = false;
     gdrom_clear_error(gdrom);
+}
+
+static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom) {
+    unsigned param_tp = gdrom->pkt_buf[1] & 0xf;
+    unsigned seek_pt = (((unsigned)gdrom->pkt_buf[2]) << 16) |
+        (((unsigned)gdrom->pkt_buf[3]) << 8) |
+        (((unsigned)gdrom->pkt_buf[4]) << 24);
+
+    if (param_tp == 4) {
+        LOG_INFO("%s - Pausing playback\n", __func__);
+    } else {
+        error_set_gdrom_seek_param_tp(param_tp);
+        error_set_gdrom_seek_seek_pt(seek_pt);
+        error_set_gdrom_command((unsigned)gdrom->pkt_buf[0]);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 unsigned gdrom_dma_prot_top(struct gdrom_ctxt *gdrom) {
