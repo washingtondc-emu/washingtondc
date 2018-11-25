@@ -395,6 +395,9 @@ aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
         break;
     case AICA_INTREQ:
         break;
+    case AICA_CHANINFOREQ:
+        LOG_DBG("read AICA_CHANINFOREQ\n");
+        break;
     default:
 #ifdef AICA_PEDANTIC
         error_set_address(4 * idx);
