@@ -152,6 +152,7 @@ struct gdrom_bufq_node {
 #define GDROM_PKT_REQ_ERROR  0x13
 #define GDROM_PKT_READ_TOC   0x14
 #define GDROM_PKT_READ       0x30
+#define GDROM_PKT_PLAY       0x20
 #define GDROM_PKT_SEEK       0x21
 #define GDROM_PKT_SUBCODE    0x40
 #define GDROM_PKT_START_DISK 0x70
@@ -190,6 +191,7 @@ static void gdrom_input_packet_71(struct gdrom_ctxt *gdrom);
 static void gdrom_input_read_subcode_packet(struct gdrom_ctxt *gdrom);
 
 static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom);
+static void gdrom_input_play_packet(struct gdrom_ctxt *gdrom);
 
 /* struct gdrom_ctxt gdrom; */
 
@@ -443,6 +445,9 @@ static void gdrom_input_packet(struct gdrom_ctxt *gdrom) {
         break;
     case GDROM_PKT_SEEK:
         gdrom_input_seek_packet(gdrom);
+        break;
+    case GDROM_PKT_PLAY:
+        gdrom_input_play_packet(gdrom);
         break;
     default:
         error_set_feature("unknown GD-ROM packet command");
@@ -868,6 +873,23 @@ static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom) {
         error_set_gdrom_command((unsigned)gdrom->pkt_buf[0]);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+}
+
+static void gdrom_input_play_packet(struct gdrom_ctxt *gdrom) {
+    unsigned param_tp = gdrom->pkt_buf[1] & 0x7;
+    unsigned start = (((unsigned)gdrom->pkt_buf[2]) << 16) |
+        (((unsigned)gdrom->pkt_buf[3]) << 8) |
+        (((unsigned)gdrom->pkt_buf[4]) << 24);
+    unsigned n_repeat = gdrom->pkt_buf[6] & 0xf;
+    unsigned end = (((unsigned)gdrom->pkt_buf[8]) << 16) |
+        (((unsigned)gdrom->pkt_buf[9]) << 8) |
+        (((unsigned)gdrom->pkt_buf[10]) << 24);
+
+    LOG_INFO("%s - CDDA PLAY command received.\n", __func__);
+    LOG_INFO("\tparam_tp = 0x%02x\n", param_tp);
+    LOG_INFO("\tstart = 0x%04x\n", start);
+    LOG_INFO("\tend = 0x%04x\n", end);
+    LOG_INFO("\tn_repeat = %u\n", n_repeat);
 }
 
 unsigned gdrom_dma_prot_top(struct gdrom_ctxt *gdrom) {
