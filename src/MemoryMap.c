@@ -66,10 +66,15 @@ void memory_map_cleanup(struct memory_map *map) {
             }                                                           \
         }                                                               \
                                                                         \
-        error_set_feature("memory mapping");                            \
-        error_set_address(addr);                                        \
-        error_set_length(sizeof(type));                                 \
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
+        struct memory_interface const *unmap = map->unmap;              \
+        if (unmap && unmap->read##type_postfix)                         \
+            return unmap->read##type_postfix(addr, map->unmap_ctxt);    \
+        else {                                                          \
+            error_set_feature("memory mapping");                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(type));                             \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
     }
 
 MEMORY_MAP_READ_TMPL(uint8_t, 8)
@@ -134,11 +139,17 @@ MEMORY_MAP_TRY_READ_TMPL(double, double)
                 return;                                                 \
             }                                                           \
         }                                                               \
-        error_set_feature("memory mapping");                            \
-        error_set_address(addr);                                        \
-        error_set_length(sizeof(val));                                  \
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
-    }                                                                   \
+                                                                        \
+        struct memory_interface const *unmap = map->unmap;              \
+        if (unmap && unmap->read##type_postfix)                         \
+            unmap->write##type_postfix(addr, val, map->unmap_ctxt);     \
+        else {                                                          \
+            error_set_feature("memory mapping");                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(type));                             \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
+    }
 
 MEM_MAP_WRITE_TMPL(uint8_t, 8)
 MEM_MAP_WRITE_TMPL(uint16_t, 16)

@@ -136,6 +136,13 @@ struct memory_map_region {
 struct memory_map {
     struct memory_map_region regions[MAX_MEM_MAP_REGIONS];
     unsigned n_regions;
+
+    /*
+     * Called when software tries to read/write to an address that is not in
+     * any of the regions.
+     */
+    struct memory_interface const *unmap;
+    void *unmap_ctxt;
 };
 
 void memory_map_init(struct memory_map *map);

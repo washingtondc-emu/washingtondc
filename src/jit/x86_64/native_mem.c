@@ -158,9 +158,17 @@ static void* emit_native_mem_read_16(struct memory_map const *map) {
         x86asm_lbl8_cleanup(&check_next);
     }
 
-    // raise an error, the memory addr is not in a region
-    x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
-    x86asm_jmpq_reg64(REG_VOL1);
+    struct memory_interface const *unmap = map->unmap;
+    if (unmap && unmap->read16) {
+        x86asm_mov_reg32_reg32(REG_ARG0, addr_reg);
+        x86asm_mov_imm64_reg64((uintptr_t)map->unmap_ctxt, REG_ARG1);
+        x86asm_mov_imm64_reg64((uintptr_t)unmap->read16, func_call_reg);
+        x86asm_jmpq_reg64(func_call_reg);
+    } else {
+        // raise an error, the memory addr is not in a region
+        x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
+        x86asm_jmpq_reg64(REG_VOL1);
+    }
 
     return native_mem_read_16_impl;
 }
@@ -211,9 +219,17 @@ static void* emit_native_mem_read_32(struct memory_map const *map) {
         x86asm_lbl8_cleanup(&check_next);
     }
 
-    // raise an error, the memory addr is not in a region
-    x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
-    x86asm_jmpq_reg64(REG_VOL1);
+    struct memory_interface const *unmap = map->unmap;
+    if (unmap && unmap->read32) {
+        x86asm_mov_reg32_reg32(REG_ARG0, addr_reg);
+        x86asm_mov_imm64_reg64((uintptr_t)map->unmap_ctxt, REG_ARG1);
+        x86asm_mov_imm64_reg64((uintptr_t)unmap->read32, func_call_reg);
+        x86asm_jmpq_reg64(func_call_reg);
+    } else {
+        // raise an error, the memory addr is not in a region
+        x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
+        x86asm_jmpq_reg64(REG_VOL1);
+    }
 
     return native_mem_read_32_impl;
 }
@@ -264,9 +280,17 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
         x86asm_lbl8_cleanup(&check_next);
     }
 
-    // raise an error, the memory addr is not in a region
-    x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
-    x86asm_jmpq_reg64(REG_VOL1);
+    struct memory_interface const *unmap = map->unmap;
+    if (unmap && unmap->write32) {
+        x86asm_mov_reg32_reg32(REG_ARG0, addr_reg);
+        x86asm_mov_imm64_reg64((uintptr_t)map->unmap_ctxt, REG_ARG1);
+        x86asm_mov_imm64_reg64((uintptr_t)unmap->write32, func_call_reg);
+        x86asm_jmpq_reg64(func_call_reg);
+    } else {
+        // raise an error, the memory addr is not in a region
+        x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
+        x86asm_jmpq_reg64(REG_VOL1);
+    }
 
     return native_mem_write_32_impl;
 }

@@ -111,6 +111,9 @@ static struct timespec last_frame_realtime;
 static dc_cycle_stamp_t last_frame_virttime;
 static bool show_overlay;
 
+static struct memory_interface sh4_unmapped_mem;
+static struct memory_interface arm7_unmapped_mem;
+
 enum TermReason {
     TERM_REASON_NORM,   // normal program exit
     TERM_REASON_SIGINT, // received SIGINT
@@ -947,6 +950,8 @@ static void construct_arm7_mem_map(struct memory_map *map) {
     memory_map_add(map, 0x00800000, 0x00807fff,
                    0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_sys_intf, &aica);
+
+    map->unmap = &arm7_unmapped_mem;
 }
 
 static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
@@ -1028,8 +1033,151 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
     memory_map_add(map, ADDR_EXT_DEV_FIRST, ADDR_EXT_DEV_LAST,
                    ADDR_AREA0_MASK, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &ext_dev_intf, NULL);
+
+    map->unmap = &sh4_unmapped_mem;
 }
 
 void dc_request_frame_stop(void) {
     atomic_store_explicit(&frame_stop, true, memory_order_relaxed);
 }
+
+static float sh4_unmapped_readfloat(uint32_t addr, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(float));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static double sh4_unmapped_readdouble(uint32_t addr, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(double));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static uint32_t sh4_unmapped_read32(uint32_t addr, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(uint32_t));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static uint16_t sh4_unmapped_read16(uint32_t addr, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(uint16_t));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static uint8_t sh4_unmapped_read8(uint32_t addr, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(uint8_t));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static void sh4_unmapped_writefloat(uint32_t addr, float val, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(float));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static void sh4_unmapped_writedouble(uint32_t addr, double val, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(double));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static void sh4_unmapped_write32(uint32_t addr, uint32_t val, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(uint32_t));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static void sh4_unmapped_write16(uint32_t addr, uint16_t val, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(uint16_t));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static void sh4_unmapped_write8(uint32_t addr, uint8_t val, void *ctxt) {
+    error_set_feature("memory mapping");
+    error_set_address(addr);
+    error_set_length(sizeof(uint8_t));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static struct memory_interface sh4_unmapped_mem = {
+    .readdouble = sh4_unmapped_readdouble,
+    .readfloat = sh4_unmapped_readfloat,
+    .read32 = sh4_unmapped_read32,
+    .read16 = sh4_unmapped_read16,
+    .read8 = sh4_unmapped_read8,
+
+    .writedouble = sh4_unmapped_writedouble,
+    .writefloat = sh4_unmapped_writefloat,
+    .write32 = sh4_unmapped_write32,
+    .write16 = sh4_unmapped_write16,
+    .write8 = sh4_unmapped_write8
+};
+
+/*
+ * Evolution: The World of Sacred Device will attempt to read and write to
+ * invalid addresses from the ARM7.  This behavior was also observed when I
+ * tested it on MAME.  On real hardware, this does not fail.  The value returned
+ * by read operations is all zeroes.  I have confirmed this behavior with a
+ * hardware test.
+ */
+
+static float arm7_unmapped_readfloat(uint32_t addr, void *ctxt) {
+    return 0.0f;
+}
+
+static double arm7_unmapped_readdouble(uint32_t addr, void *ctxt) {
+    return 0.0;
+}
+
+static uint32_t arm7_unmapped_read32(uint32_t addr, void *ctxt) {
+    return 0;
+}
+
+static uint16_t arm7_unmapped_read16(uint32_t addr, void *ctxt) {
+    return 0;
+}
+
+static uint8_t arm7_unmapped_read8(uint32_t addr, void *ctxt) {
+    return 0;
+}
+
+static void arm7_unmapped_writefloat(uint32_t addr, float val, void *ctxt) {
+}
+
+static void arm7_unmapped_writedouble(uint32_t addr, double val, void *ctxt) {
+}
+
+static void arm7_unmapped_write32(uint32_t addr, uint32_t val, void *ctxt) {
+}
+
+static void arm7_unmapped_write16(uint32_t addr, uint16_t val, void *ctxt) {
+}
+
+static void arm7_unmapped_write8(uint32_t addr, uint8_t val, void *ctxt) {
+}
+
+static struct memory_interface arm7_unmapped_mem = {
+    .readdouble = arm7_unmapped_readdouble,
+    .readfloat = arm7_unmapped_readfloat,
+    .read32 = arm7_unmapped_read32,
+    .read16 = arm7_unmapped_read16,
+    .read8 = arm7_unmapped_read8,
+
+    .writedouble = arm7_unmapped_writedouble,
+    .writefloat = arm7_unmapped_writefloat,
+    .write32 = arm7_unmapped_write32,
+    .write16 = arm7_unmapped_write16,
+    .write8 = arm7_unmapped_write8
+};
