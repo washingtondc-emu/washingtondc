@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,26 +20,38 @@
  *
  ******************************************************************************/
 
-#ifndef WINDOW_H_
-#define WINDOW_H_
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 
-void win_init(unsigned width, unsigned height);
-void win_cleanup();
+#include "title.h"
 
-void win_check_events(void);
+#define TITLE_LEN 128
 
-/*
- * this function can safely be called from outside of the window thread
- * It's best if  you call it indirectly through win_update()
- */
-void win_update(void);
+#define CONTENT_LEN 64
 
-/*
- * this function can safely be called from outside of the window thread.
- * It should only be called from the gfx_thread.
- *
- * It's best if you call it indirectly through win_make_context_current
- */
-void win_make_context_current(void);
+static char content[CONTENT_LEN];
 
-#endif
+void title_set_content(char const *new_content) {
+    strncpy(content, new_content, sizeof(content));
+    content[CONTENT_LEN - 1] = '\0';
+}
+
+// return the window title
+char const *title_get(void) {
+    static char title[TITLE_LEN];
+
+    if (strlen(content))
+        snprintf(title, TITLE_LEN, "WashingtonDC - %s", content);
+    else
+        strncpy(title, "WashingtonDC", TITLE_LEN);
+
+    title[TITLE_LEN - 1] = '\0';
+
+    // trim trailing whitespace
+    int idx;
+    for (idx = strlen(title) - 1; (idx >= 0) && isspace(title[idx]); idx--)
+        title[idx] = '\0';
+
+    return title;
+}

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,26 +20,9 @@
  *
  ******************************************************************************/
 
-#ifndef WINDOW_H_
-#define WINDOW_H_
+/* APIs in this file are used to set the title of the window */
 
-void win_init(unsigned width, unsigned height);
-void win_cleanup();
+void title_set_content(char const *content);
 
-void win_check_events(void);
-
-/*
- * this function can safely be called from outside of the window thread
- * It's best if  you call it indirectly through win_update()
- */
-void win_update(void);
-
-/*
- * this function can safely be called from outside of the window thread.
- * It should only be called from the gfx_thread.
- *
- * It's best if you call it indirectly through win_make_context_current
- */
-void win_make_context_current(void);
-
-#endif
+// return the window title
+char const *title_get(void);

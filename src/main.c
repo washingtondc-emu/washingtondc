@@ -37,6 +37,7 @@
 #include "gdi.h"
 #include "config.h"
 #include "log.h"
+#include "title.h"
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
@@ -252,7 +253,9 @@ int main(int argc, char **argv) {
 
     dreamcast_init(enable_cmd_tcp);
 
-    win_init(640, 480, title_content);
+    title_set_content(title_content);
+
+    win_init(640, 480);
     gfx_init(640, 480);
     framebuffer_init(640, 480);
     io_thread_launch();
