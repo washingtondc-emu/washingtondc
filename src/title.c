@@ -27,10 +27,11 @@
 #include "title.h"
 
 #define TITLE_LEN 128
-
 #define CONTENT_LEN 64
+#define PIX_FMT_LEN 16
 
 static char content[CONTENT_LEN];
+static char pix_fmt[PIX_FMT_LEN];
 static unsigned xres, yres;
 static double fps_internal;
 
@@ -53,16 +54,21 @@ void title_set_fps_internal(double fps) {
     fps_internal = fps;
 }
 
+void title_set_pix_fmt(char const *fmt) {
+    strncpy(pix_fmt, fmt, sizeof(pix_fmt));
+    pix_fmt[PIX_FMT_LEN - 1] = '\0';
+}
+
 // return the window title
 char const *title_get(void) {
     static char title[TITLE_LEN];
 
     if (strlen(content)) {
-        snprintf(title, TITLE_LEN, "WashingtonDC - %s (%ux%u, %.2f Hz)",
-                 content, xres, yres, fps_internal);
+        snprintf(title, TITLE_LEN, "WashingtonDC - %s (%ux%u %s, %.2f Hz)",
+                 content, xres, yres, pix_fmt, fps_internal);
     } else {
-        snprintf(title, TITLE_LEN, "WashingtonDC (%ux%u, %.2f Hz)",
-                 xres, yres, fps_internal);
+        snprintf(title, TITLE_LEN, "WashingtonDC (%ux%u %s, %.2f Hz)",
+                 xres, yres, pix_fmt, fps_internal);
     }
 
     title[TITLE_LEN - 1] = '\0';

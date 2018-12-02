@@ -866,6 +866,25 @@ submit_the_fb:
     title_set_resolution(cmd.arg.post_framebuffer.width,
                          cmd.arg.post_framebuffer.height);
 
+    char const *pix_fmt_str;
+    switch ((get_fb_r_ctrl() & 0xc) >> 2) {
+    case 0:
+        pix_fmt_str = "555 RGB";
+        break;
+    case 1:
+        pix_fmt_str = "565 RGB";
+        break;
+    case 2:
+        pix_fmt_str = "888 RGB";
+        break;
+    case 3:
+        pix_fmt_str = "0888 RGB";
+        break;
+    default:
+        pix_fmt_str = "<unknown>";
+    }
+    title_set_pix_fmt(pix_fmt_str);
+
     rend_exec_il(&cmd, 1);
 }
 
