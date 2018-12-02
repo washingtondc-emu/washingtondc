@@ -865,6 +865,7 @@ submit_the_fb:
 
     title_set_resolution(cmd.arg.post_framebuffer.width,
                          cmd.arg.post_framebuffer.height);
+    title_set_interlace(interlace);
 
     char const *pix_fmt_str;
     switch ((get_fb_r_ctrl() & 0xc) >> 2) {

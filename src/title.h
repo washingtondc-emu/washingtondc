@@ -22,6 +22,8 @@
 
 /* APIs in this file are used to set the title of the window */
 
+#include <stdbool.h>
+
 void title_set_content(char const *content);
 
 void title_set_resolution(unsigned width, unsigned height);
@@ -29,6 +31,8 @@ void title_set_resolution(unsigned width, unsigned height);
 void title_set_fps_internal(double fps);
 
 void title_set_pix_fmt(char const *fmt);
+
+void title_set_interlace(bool intl);
 
 // return the window title
 char const *title_get(void);

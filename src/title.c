@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -34,6 +35,7 @@ static char content[CONTENT_LEN];
 static char pix_fmt[PIX_FMT_LEN];
 static unsigned xres, yres;
 static double fps_internal;
+static bool interlaced;
 
 void title_set_content(char const *new_content) {
     strncpy(content, new_content, sizeof(content));
@@ -59,16 +61,20 @@ void title_set_pix_fmt(char const *fmt) {
     pix_fmt[PIX_FMT_LEN - 1] = '\0';
 }
 
+void title_set_interlace(bool intl) {
+    interlaced = intl;
+}
+
 // return the window title
 char const *title_get(void) {
     static char title[TITLE_LEN];
 
     if (strlen(content)) {
-        snprintf(title, TITLE_LEN, "WashingtonDC - %s (%ux%u %s, %.2f Hz)",
-                 content, xres, yres, pix_fmt, fps_internal);
+        snprintf(title, TITLE_LEN, "WashingtonDC - %s (%ux%u%c %s, %.2f Hz)",
+                 content, xres, yres, interlaced ? 'i' : 'p', pix_fmt, fps_internal);
     } else {
-        snprintf(title, TITLE_LEN, "WashingtonDC (%ux%u %s, %.2f Hz)",
-                 xres, yres, pix_fmt, fps_internal);
+        snprintf(title, TITLE_LEN, "WashingtonDC (%ux%u%c %s, %.2f Hz)",
+                 xres, yres, interlaced ? 'i' : 'p', pix_fmt, fps_internal);
     }
 
     title[TITLE_LEN - 1] = '\0';
