@@ -36,6 +36,7 @@
 #include "gfx/gfx_il.h"
 #include "gfx/gfx_obj.h"
 #include "log.h"
+#include "title.h"
 
 #include "framebuffer.h"
 
@@ -861,6 +862,9 @@ submit_the_fb:
     if (interlace)
         cmd.arg.post_framebuffer.height *= 2;
     cmd.arg.post_framebuffer.vert_flip = fb_heap[fb_idx].flags.vert_flip;
+
+    title_set_resolution(cmd.arg.post_framebuffer.width,
+                         cmd.arg.post_framebuffer.height);
 
     rend_exec_il(&cmd, 1);
 }

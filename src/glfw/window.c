@@ -250,3 +250,7 @@ static void scan_input(void) {
 void win_make_context_current(void) {
     glfwMakeContextCurrent(win);
 }
+
+void win_update_title(void) {
+    glfwSetWindowTitle(win, title_get());
+}

@@ -24,5 +24,9 @@
 
 void title_set_content(char const *content);
 
+void title_set_resolution(unsigned width, unsigned height);
+
+void title_set_fps_internal(double fps);
+
 // return the window title
 char const *title_get(void);

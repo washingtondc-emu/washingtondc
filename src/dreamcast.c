@@ -72,6 +72,7 @@
 #include "gfx/opengl/overlay.h"
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
+#include "title.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -933,6 +934,9 @@ void dc_end_frame(void) {
     overlay_set_fps(framerate);
     overlay_set_virt_fps(virt_framerate);
 
+    title_set_fps_internal(virt_framerate);
+
+    win_update_title();
     framebuffer_render();
     win_check_events();
     cmd_run_once();

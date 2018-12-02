@@ -42,4 +42,6 @@ void win_update(void);
  */
 void win_make_context_current(void);
 
+void win_update_title(void);
+
 #endif

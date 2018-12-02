@@ -31,27 +31,41 @@
 #define CONTENT_LEN 64
 
 static char content[CONTENT_LEN];
+static unsigned xres, yres;
+static double fps_internal;
 
 void title_set_content(char const *new_content) {
     strncpy(content, new_content, sizeof(content));
     content[CONTENT_LEN - 1] = '\0';
+
+    // trim trailing whitespace
+    int idx;
+    for (idx = strlen(content) - 1; (idx >= 0) && isspace(content[idx]); idx--)
+        content[idx] = '\0';
+}
+
+void title_set_resolution(unsigned width, unsigned height) {
+    xres = width;
+    yres = height;
+}
+
+void title_set_fps_internal(double fps) {
+    fps_internal = fps;
 }
 
 // return the window title
 char const *title_get(void) {
     static char title[TITLE_LEN];
 
-    if (strlen(content))
-        snprintf(title, TITLE_LEN, "WashingtonDC - %s", content);
-    else
-        strncpy(title, "WashingtonDC", TITLE_LEN);
+    if (strlen(content)) {
+        snprintf(title, TITLE_LEN, "WashingtonDC - %s (%ux%u, %.2f Hz)",
+                 content, xres, yres, fps_internal);
+    } else {
+        snprintf(title, TITLE_LEN, "WashingtonDC (%ux%u, %.2f Hz)",
+                 xres, yres, fps_internal);
+    }
 
     title[TITLE_LEN - 1] = '\0';
-
-    // trim trailing whitespace
-    int idx;
-    for (idx = strlen(title) - 1; (idx >= 0) && isspace(title[idx]); idx--)
-        title[idx] = '\0';
 
     return title;
 }
