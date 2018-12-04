@@ -780,11 +780,34 @@ conv_rgb0888_to_rgba8888(uint32_t *pixels_out,
 
 static int pick_fb(unsigned width, unsigned height, uint32_t addr);
 
+// reset all members except the gfx_obj handle
+static void fb_reset(struct framebuffer *fb) {
+    fb->fb_read_width = 0;
+    fb->fb_read_height = 0;
+    fb->linestride = 0;
+    fb->addr_first[0] = 0;
+    fb->addr_first[1] = 0;
+    fb->addr_last[0] = 0;
+    fb->addr_last[1] = 0;
+    fb->addr_key = 0;
+    fb->stamp = 0;
+    fb->tile_w = 0;
+    fb->tile_h = 0;
+    fb->x_clip_min = 0;
+    fb->x_clip_max = 0;
+    fb->y_clip_min = 0;
+    fb->y_clip_max = 0;
+    fb->flags.state = FB_STATE_INVALID;
+    fb->flags.fmt = FB_PIX_FMT_RGB_555;
+    fb->flags.vert_flip = false;
+}
+
 void framebuffer_init(unsigned width, unsigned height) {
     struct gfx_il_inst cmd;
 
     int fb_no;
     for (fb_no = 0; fb_no < FB_HEAP_SIZE; fb_no++) {
+        fb_reset(fb_heap + fb_no);
         fb_heap[fb_no].obj_handle = pvr2_alloc_gfx_obj();
 
         cmd.op = GFX_IL_INIT_OBJ;
@@ -1200,7 +1223,7 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
             if (fb_heap[idx].fb_read_width == width &&
                 fb_heap[idx].fb_read_height == height &&
                 fb_heap[idx].addr_key == addr) {
-                break;
+                return idx;
             }
             if (fb_heap[idx].stamp <= oldest_stamp) {
                 oldest_stamp = fb_heap[idx].stamp;
@@ -1220,9 +1243,12 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
         }
 
         // sync the framebuffer to memory because it's about to get overwritten
-        sync_fb_to_tex_mem(fb_heap + idx);
+        struct framebuffer *fb = fb_heap + idx;
+        sync_fb_to_tex_mem(fb);
+        fb_reset(fb);
     }
 
+    fb_reset(fb_heap + idx);
     return idx;
 }
 
