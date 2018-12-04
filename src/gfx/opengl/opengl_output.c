@@ -151,6 +151,11 @@ opengl_video_update_framebuffer(int obj_handle,
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_read_width, fb_read_height, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, obj->dat);
         glBindTexture(GL_TEXTURE_2D, 0);
+
+        opengl_renderer_tex_set_dims(obj_handle, fb_read_width, fb_read_height);
+        opengl_renderer_tex_set_format(obj_handle, GL_RGBA);
+        opengl_renderer_tex_set_dat_type(obj_handle, GL_UNSIGNED_BYTE);
+        opengl_renderer_tex_set_dirty(obj_handle, false);
     }
 
     bound_obj_handle = obj_handle;

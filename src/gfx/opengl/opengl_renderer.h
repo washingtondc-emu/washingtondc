@@ -36,5 +36,11 @@ unsigned opengl_renderer_tex_get_height(unsigned obj_no);
 
 void opengl_renderer_tex_set_dims(unsigned obj_no,
                                   unsigned width, unsigned height);
+void opengl_renderer_tex_set_format(unsigned obj_no, GLenum fmt);
+void opengl_renderer_tex_set_dat_type(unsigned obj_no, GLenum dat_tp);
+void opengl_renderer_tex_set_dirty(unsigned obj_no, bool dirty);
+GLenum opengl_renderer_tex_get_format(unsigned obj_no);
+GLenum opengl_renderer_tex_get_dat_type(unsigned obj_no);
+bool opengl_renderer_tex_get_dirty(unsigned obj_no);
 
 #endif

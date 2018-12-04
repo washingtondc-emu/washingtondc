@@ -62,14 +62,20 @@ void opengl_target_begin(unsigned width, unsigned height, int tgt_handle) {
 
     GLuint color_buf_tex = opengl_renderer_tex(tgt_handle);
 
-    if (opengl_renderer_tex_get_width(tgt_handle) != width ||
-        opengl_renderer_tex_get_height(tgt_handle) != height) {
+    if (opengl_renderer_tex_get_dirty(tgt_handle) ||
+        opengl_renderer_tex_get_width(tgt_handle) != width ||
+        opengl_renderer_tex_get_height(tgt_handle) != height ||
+        opengl_renderer_tex_get_format(tgt_handle) != GL_RGBA ||
+        opengl_renderer_tex_get_dat_type(tgt_handle) != GL_UNSIGNED_BYTE) {
         glBindTexture(GL_TEXTURE_2D, color_buf_tex);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
                      GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         opengl_renderer_tex_set_dims(tgt_handle, width, height);
+        opengl_renderer_tex_set_format(tgt_handle, GL_RGBA);
+        opengl_renderer_tex_set_dat_type(tgt_handle, GL_UNSIGNED_BYTE);
+        opengl_renderer_tex_set_dirty(tgt_handle, false);
     }
 
     if (width != fbo_width || height != fbo_height) {
