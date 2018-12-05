@@ -801,7 +801,8 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
     if (meta->pix_fmt != GFX_TEX_FMT_ARGB_1555 &&
         meta->pix_fmt != GFX_TEX_FMT_RGB_565 &&
         meta->pix_fmt != GFX_TEX_FMT_ARGB_4444 &&
-        meta->pix_fmt != GFX_TEX_FMT_YUV_422) {
+        meta->pix_fmt != GFX_TEX_FMT_YUV_422 &&
+        meta->pix_fmt != GFX_TEX_FMT_ARGB_8888) {
         err_val = -1;
         goto cleanup_png;
     }
@@ -837,6 +838,11 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
         dat_conv = (uint8_t*)malloc(sizeof(uint8_t) * n_colors * tex_w * tex_h);
         conv_yuv422_rgb888(dat_conv, dat, tex_w, tex_h);
         dat = dat_conv;
+        break;
+    case GFX_TEX_FMT_ARGB_8888:
+        color_tp_png = PNG_COLOR_TYPE_RGB_ALPHA;
+        n_colors = 4;
+        pvr2_pix_size = 4;
         break;
     default:
         err_val = -1;
@@ -898,6 +904,12 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
                 red = src_pix[0];
                 green = src_pix[1];
                 blue = src_pix[2];
+                break;
+            case GFX_TEX_FMT_ARGB_8888:
+                alpha = src_pix[0];
+                red = src_pix[1];
+                green = src_pix[2];
+                blue = src_pix[3];
                 break;
             default:
                 err_val = -1;
