@@ -864,7 +864,7 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
             memcpy(src_pix, dat + pix_idx * pvr2_pix_size, sizeof(src_pix));
 
             switch (meta->pix_fmt) {
-            case TEX_CTRL_PIX_FMT_ARGB_1555:
+            case GFX_TEX_FMT_ARGB_1555:
                 alpha = src_pix[1] & 0x80 ? 255 : 0;
                 red = (src_pix[1] & 0x7c) >> 2;
                 green = ((src_pix[1] & 0x03) << 3) | ((src_pix[0] & 0xe0) >> 5);
@@ -874,7 +874,7 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
                 green <<= 3;
                 blue <<= 3;
                 break;
-            case TEX_CTRL_PIX_FMT_ARGB_4444:
+            case GFX_TEX_FMT_ARGB_4444:
                 blue = src_pix[0] & 0x0f;
                 green = (src_pix[0] & 0xf0) >> 4;
                 red = src_pix[1] & 0x0f;
@@ -885,7 +885,7 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
                 green <<= 4;
                 blue <<= 4;
                 break;
-            case TEX_CTRL_PIX_FMT_RGB_565:
+            case GFX_TEX_FMT_RGB_565:
                 blue = src_pix[0] & 0x1f;
                 green = ((src_pix[0] & 0xe0) >> 5) | ((src_pix[1] & 0x7) << 3);
                 red = (src_pix[1] & 0xf1) >> 3;
@@ -894,7 +894,7 @@ static int save_tex(char const *path, struct pvr2_tex_meta const *meta,
                 green <<= 2;
                 blue <<= 3;
                 break;
-            case TEX_CTRL_PIX_FMT_YUV_422:
+            case GFX_TEX_FMT_YUV_422:
                 red = src_pix[0];
                 green = src_pix[1];
                 blue = src_pix[2];
