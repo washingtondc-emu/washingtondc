@@ -155,6 +155,9 @@ struct aica {
     enum ringbuffer_size ringbuffer_size;
     bool ringbuffer_bit15;
 
+    bool aica_sh4_int_scheduled;
+    struct SchedEvent aica_sh4_raise_event;
+
     /*
      * Selects the channel that the PlayStatus register refers to
      *
@@ -192,9 +195,11 @@ struct aica {
     struct aica_timer timers[3];
 
     struct dc_clock *clk;
+    struct dc_clock *sh4_clk;
 };
 
-void aica_init(struct aica *aica, struct arm7 *arm7, struct dc_clock *clk);
+void aica_init(struct aica *aica, struct arm7 *arm7,
+               struct dc_clock *clk, struct dc_clock *sh4_clk);
 void aica_cleanup(struct aica *aica);
 
 extern struct memory_interface aica_sys_intf;

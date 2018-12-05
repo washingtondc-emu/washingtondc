@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 
 enum HollyExtInt {
     HOLLY_EXT_INT_GDROM,
+    HOLLY_EXT_INT_AICA,
 
     HOLLY_EXT_INT_COUNT
 };
@@ -115,6 +116,8 @@ typedef enum HollyNrmInt HollyNrmInt;
 #define HOLLY_REG_ISTEXT_GDROM_SHIFT 0
 #define HOLLY_REG_ISTEXT_GDROM_MASK (1 << HOLLY_REG_ISTEXT_GDROM_SHIFT)
 
+#define HOLLY_REG_ISTEXT_AICA_SHIFT 1
+#define HOLLY_REG_ISTEXT_AICA_MASK (1 << HOLLY_REG_ISTEXT_AICA_SHIFT)
 
 /*
  * these functionse should not be called from within an sh4 instruction handler

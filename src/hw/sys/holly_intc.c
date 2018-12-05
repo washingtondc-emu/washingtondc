@@ -43,6 +43,10 @@ static struct holly_intp_info ext_intp_tbl[HOLLY_EXT_INT_COUNT] = {
     {
         "GD-ROM",
         HOLLY_REG_ISTEXT_GDROM_MASK
+    },
+    {
+        "AICA",
+        HOLLY_REG_ISTEXT_AICA_MASK
     }
 };
 

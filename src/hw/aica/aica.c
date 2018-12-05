@@ -32,9 +32,11 @@
 #include <stdio.h>
 
 #include "log.h"
+#include "dc_sched.h"
 #include "error.h"
 #include "intmath.h"
 #include "hw/arm7/arm7.h"
+#include "hw/sys/holly_intc.h"
 
 #include "aica.h"
 
@@ -142,6 +144,15 @@
                            AICA_INT_MIDI_IN_MASK |              \
                            AICA_INT_EXTERNAL_MASK)
 
+/*
+ * 0 is probably the correct value for this since this interrupt is actually
+ * triggered by software on a different CPU
+ */
+#define AICA_SH4_INT_DELAY 0
+
+static void raise_aica_sh4_int(struct aica *aica);
+static void post_delay_raise_aica_sh4_int(struct SchedEvent *event);
+
 // If this is defined, WashingtonDC will panic on unrecognized AICA addresses.
 #define AICA_PEDANTIC
 
@@ -230,11 +241,16 @@ struct memory_interface aica_sys_intf = {
     .writedouble = aica_sys_write_double
 };
 
-void aica_init(struct aica *aica, struct arm7 *arm7, struct dc_clock *clk) {
+void aica_init(struct aica *aica, struct arm7 *arm7,
+               struct dc_clock *clk, struct dc_clock *sh4_clk) {
     memset(aica, 0, sizeof(*aica));
 
     aica->clk = clk;
+    aica->sh4_clk = sh4_clk;
     aica->arm7 = arm7;
+
+    aica->aica_sh4_raise_event.handler = post_delay_raise_aica_sh4_int;
+    aica->aica_sh4_raise_event.arg_ptr = aica;
 
     // HACK
     aica->int_enable = AICA_INT_TIMA_MASK;
@@ -425,6 +441,7 @@ aica_sys_reg_read(struct aica *aica, addr32_t addr,
 static void
 aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
     uint32_t val;
+    uint32_t mcire;
 
     switch (idx * 4) {
     case AICA_MASTER_VOLUME:
@@ -451,6 +468,8 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
         memcpy(&val, aica->sys_reg + (AICA_MCIRE/4), sizeof(val));
         aica->int_pending_sh4 &= ~val;
         aica_update_interrupts(aica);
+        if (val & (1<<5))
+            holly_clear_ext_int(HOLLY_EXT_INT_AICA);
         break;
     case AICA_SCIPD:
         /*
@@ -464,7 +483,19 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
          * TODO: You can write to bit 5 (CPU interrupt) to send an interrupt to
          * the SH4.
          */
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+
+        memcpy(&val, aica->sys_reg + (AICA_MCIPD/4), sizeof(val));
+        memcpy(&mcire, aica->sys_reg + (AICA_MCIRE/4), sizeof(mcire));
+
+        if (!(val & (1<<5))) // TODO: what if guest writes 0?
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+        if ((val & (1<<5)) && !(mcire & (1<<5)))
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (val & (1<<5)) {
+            raise_aica_sh4_int(aica);
+        }
         break;
     case AICA_SCIEB:
         memcpy(&val, aica->sys_reg + (AICA_SCIEB/4), sizeof(val));
@@ -1494,5 +1525,21 @@ static void aica_process_sample(struct aica *aica) {
             chan->sample_no = 0;
             chan->step_no++;
         }
+    }
+}
+
+static void raise_aica_sh4_int(struct aica *aica) {
+    holly_raise_ext_int(HOLLY_EXT_INT_AICA);
+    aica->int_pending_sh4 |= (1<<5);
+    aica->aica_sh4_int_scheduled = false;
+}
+
+static void post_delay_raise_aica_sh4_int(struct SchedEvent *event) {
+    struct aica *aica = (struct aica*)event->arg_ptr;
+    if (!aica->aica_sh4_int_scheduled) {
+        aica->aica_sh4_int_scheduled = true;
+        aica->aica_sh4_raise_event.when =
+            clock_cycle_stamp(aica->clk) + AICA_SH4_INT_DELAY;
+        sched_event(aica->sh4_clk, &aica->aica_sh4_raise_event);
     }
 }

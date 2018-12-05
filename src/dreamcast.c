@@ -247,7 +247,7 @@ void dreamcast_init(bool cmd_session) {
     sys_block_init();
     g1_init();
     g2_init();
-    aica_init(&aica, &arm7, &arm7_clock);
+    aica_init(&aica, &arm7, &arm7_clock, &sh4_clock);
     pvr2_init(&sh4_clock);
     gdrom_init(&gdrom, &sh4_clock);
     maple_init(&sh4_clock);
