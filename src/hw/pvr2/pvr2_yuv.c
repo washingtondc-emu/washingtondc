@@ -27,6 +27,8 @@
 #include "hw/sys/holly_intc.h"
 #include "dc_sched.h"
 #include "pvr2.h"
+#include "framebuffer.h"
+#include "pvr2_tex_cache.h"
 
 #include "pvr2_yuv.h"
 
@@ -191,11 +193,19 @@ static void pvr2_yuv_macroblock(void) {
     unsigned macroblock_offs = linestride * 16 * pvr2_yuv.cur_macroblock_y +
         pvr2_yuv.cur_macroblock_x * 8 * sizeof(uint32_t);
 
-    uint32_t *row_ptr = ((uint32_t*)pvr2_tex64_mem) + pvr2_yuv.dst_addr / 4 + macroblock_offs / 4;
+    uint32_t row_offs32 = pvr2_yuv.dst_addr / 4 + macroblock_offs / 4;
+    uint32_t *row_ptr = ((uint32_t*)pvr2_tex64_mem) + row_offs32;
+    uint32_t addr_base = 4 * row_offs32;
 
     for (row = 0; row < 16; row++) {
         memcpy(row_ptr, block[row], 8 * sizeof(uint32_t));
         row_ptr += linestride / 4;
+        addr_base += linestride;
+
+        pvr2_framebuffer_notify_write(ADDR_TEX64_FIRST + addr_base,
+                                      8 * sizeof(uint32_t));
+        pvr2_tex_cache_notify_write(ADDR_TEX64_FIRST + addr_base,
+                                    8 * sizeof(uint32_t));
     }
 
     pvr2_yuv.cur_macroblock_x++;
