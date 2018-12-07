@@ -173,14 +173,14 @@ void debug_cleanup(void) {
 
 static inline bool debug_is_at_watch(void) {
 #ifdef ENABLE_WATCHPOINTS
-    if (dbg.cur_state == DEBUG_STATE_PRE_WATCH) {
+    if (get_ctx()->cur_state == DEBUG_STATE_PRE_WATCH) {
         Sh4 *sh4 = dreamcast_get_cpu();
         printf("DEBUGGER: NOW ENTERING WATCHPOINT BREAK AT PC=0x%08x\n",
                (unsigned)sh4->reg[SH4_REG_PC]);
-        if (dbg.is_read_watchpoint)
-            frontend_on_read_watchpoint(dbg.watchpoint_addr);
+        if (get_ctx()->is_read_watchpoint)
+            frontend_on_read_watchpoint(get_ctx()->watchpoint_addr);
         else
-            frontend_on_write_watchpoint(dbg.watchpoint_addr);
+            frontend_on_write_watchpoint(get_ctx()->watchpoint_addr);
         dbg_state_transition(DEBUG_STATE_WATCH);
         dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
         return true;
