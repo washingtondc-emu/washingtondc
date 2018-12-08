@@ -49,7 +49,7 @@
 #define MAPLE_LAST_MASK (1 << MAPLE_LAST_SHIFT)
 
 #define MAPLE_CMD_SHIFT 0
-#define MAPLE_CMD_MASK (0xff << MAPLE_CMD_SHIFT)
+#define MAPLE_CMD_MASK (0xf << MAPLE_CMD_SHIFT)
 
 #define MAPLE_ADDR_SHIFT 8
 #define MAPLE_ADDR_MASK (0xff << MAPLE_ADDR_SHIFT)
@@ -97,6 +97,16 @@ void maple_handle_frame(struct maple_frame *frame) {
     else
         MAPLE_TRACE("\tthis was not the last frame\n");
 
+    switch (frame->ptrn) {
+    case 0:
+        break;
+    case 7:
+        if (frame->pack_len)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        return;
+    default:RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
     switch (frame->cmd) {
     case MAPLE_CMD_DEVINFO:
         maple_handle_devinfo(frame);
@@ -104,6 +114,12 @@ void maple_handle_frame(struct maple_frame *frame) {
     case MAPLE_CMD_GETCOND:
         maple_handle_getcond(frame);
         break;
+    /* case MAPLE_CMD_NOP: */
+    /*     frame->output_len = 0; */
+    /*     maple_write_frame_resp(frame, MAPLE_RESP_NONE); */
+    /*     break; */
+    /* case MAPLE_CMD_FUCK: */
+        /* break; */
     default:
         error_set_feature("ERROR: no handler for maplebus command frame");
         error_set_maple_command(frame->cmd);
@@ -198,24 +214,46 @@ static void maple_decode_frame(struct maple_frame *frame_out,
     }
 }
 
-uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr) {
-    uint32_t frame_hdr[3];
+void maple_process_dma(uint32_t src_addr) {
+    bool xfer_complete;
+    unsigned ptrn;
+    struct maple_frame frame;
+    uint32_t frame_meta[3];
 
-    sh4_dmac_transfer_from_mem(dreamcast_get_cpu(), addr,
-                               sizeof(frame_hdr[0]), 3, frame_hdr);
-    maple_decode_frame(frame_out, frame_hdr);
+    do {
+        sh4_dmac_transfer_from_mem(dreamcast_get_cpu(), src_addr,
+                                   sizeof(frame_meta[0]), 1, frame_meta);
+        xfer_complete = (bool)(frame_meta[0] >> 31);
+        ptrn = (frame_meta[0] >> 8) & 7;
 
-    addr += 12;
+        src_addr += 4;
 
-    if (frame_out->input_len) {
-        sh4_dmac_transfer_from_mem(dreamcast_get_cpu(), addr, 4,
-                                   frame_out->input_len / 4,
-                                   frame_out->input_data);
-    }
+        switch (ptrn) {
+        case 0:
+            break;
+        case 7:
+            continue;
+        default:
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
 
-    addr += frame_out->input_len;
+        sh4_dmac_transfer_from_mem(dreamcast_get_cpu(), src_addr,
+                                   sizeof(frame_meta[1]), 2, frame_meta + 1);
+        maple_decode_frame(&frame, frame_meta);
 
-    return addr;
+        src_addr += 8;
+
+        if (frame.input_len) {
+            sh4_dmac_transfer_from_mem(dreamcast_get_cpu(), src_addr, 4,
+                                       frame.input_len / 4,
+                                       frame.input_data);
+        }
+
+        src_addr += frame.input_len;
+
+        maple_handle_frame(&frame);
+
+    } while (!xfer_complete);
 }
 
 void maple_addr_unpack(unsigned addr, unsigned *port_out, unsigned *unit_out) {

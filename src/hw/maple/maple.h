@@ -35,7 +35,9 @@ enum maple_cmd {
     MAPLE_RESP_DATATRF = 8,
 
     // maplebus command codes
+    MAPLE_CMD_FUCK = 0,
     MAPLE_CMD_DEVINFO = 1,
+    MAPLE_CMD_NOP = 7,
     MAPLE_CMD_GETCOND = 9
 };
 
@@ -63,7 +65,6 @@ struct maple_frame {
 
 void maple_handle_frame(struct maple_frame *frame);
 
-uint32_t maple_read_frame(struct maple_frame *frame_out, uint32_t addr);
 void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code);
 
 #define MAPLE_TRACE(msg, ...) LOG_DBG("MAPLE: "msg, ##__VA_ARGS__)
@@ -79,5 +80,7 @@ void maple_addr_unpack(unsigned addr, unsigned *port_out, unsigned *unit_out);
 
 void maple_init(struct dc_clock *clk);
 void maple_cleanup(void);
+
+void maple_process_dma(uint32_t src_addr);
 
 #endif

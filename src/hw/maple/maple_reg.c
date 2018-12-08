@@ -159,6 +159,8 @@ mdst_reg_mmio_read(struct mmio_region_maple_reg *region,
     return 0;
 }
 
+#include "dreamcast.h"
+
 static void
 mdst_reg_mmio_write(struct mmio_region_maple_reg *region,
                     unsigned idx, uint32_t val, void *ctxt) {
@@ -166,16 +168,9 @@ mdst_reg_mmio_write(struct mmio_region_maple_reg *region,
         MAPLE_TRACE("starting maple DMA operation\n");
         MAPLE_TRACE("\tstarting address is %08x\n",
                     (unsigned)maple_dma_cmd_start);
-        addr32_t addr = maple_dma_cmd_start;
+        MAPLE_TRACE("SH4 PC address is 0x%08x\n", (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);
 
-        // it's static because I don't want it allocated on the stack
-        static struct maple_frame frame;
-
-        do {
-            addr = maple_read_frame(&frame, addr);
-
-            maple_handle_frame(&frame);
-        } while(!frame.last_frame);
+        maple_process_dma(maple_dma_cmd_start);
     }
 }
 
