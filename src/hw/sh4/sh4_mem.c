@@ -25,6 +25,7 @@
 #include "sh4.h"
 #include "MemoryMap.h"
 #include "hw/sh4/sh4_ocache.h"
+#include "hw/sh4/sh4_icache.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "dbg/debugger.h"
@@ -103,7 +104,10 @@ void sh4_mem_cleanup(Sh4 *sh4) {
             sh4_write_mem_mapped_reg_##postfix(sh4, addr, val);         \
         } else if (addr >= SH4_OC_ADDR_ARRAY_FIRST &&                   \
                    addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
-            sh4_ocache_write_addr_array_##postfix(sh4, addr, val);  \
+            sh4_ocache_write_addr_array_##postfix(sh4, addr, val);      \
+        } else if (addr >= SH4_IC_ADDR_ARRAY_FIRST &&                   \
+                   addr <= SH4_IC_ADDR_ARRAY_LAST) {                    \
+            sh4_icache_write_addr_array_##postfix(sh4, addr, val);      \
         } else {                                                        \
             error_set_address(addr);                                    \
             error_set_length(sizeof(val));                              \
@@ -132,6 +136,10 @@ SH4_DO_WRITE_P4_TMPL(double, double)
                    addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
             sh4_ocache_write_addr_array_##postfix(sh4, addr, val);      \
             return 0;                                                   \
+        } else if (addr >= SH4_IC_ADDR_ARRAY_FIRST &&                   \
+                   addr <= SH4_IC_ADDR_ARRAY_LAST) {                    \
+            sh4_icache_write_addr_array_##postfix(sh4, addr, val);      \
+            return 0;                                                   \
         } else {                                                        \
             return -1;                                                  \
         }                                                               \
@@ -154,6 +162,9 @@ SH4_TRY_WRITE_P4_TMPL(double, double)
         } else if (addr >= SH4_OC_ADDR_ARRAY_FIRST &&                   \
                    addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
             return sh4_ocache_read_addr_array_##postfix(sh4, addr);     \
+        } else if (addr >= SH4_IC_ADDR_ARRAY_FIRST &&                   \
+                   addr <= SH4_IC_ADDR_ARRAY_LAST) {                    \
+            return sh4_icache_read_addr_array_##postfix(sh4, addr);     \
         } else {                                                        \
             error_set_length(sizeof(type));                             \
             error_set_address(addr);                                    \
@@ -182,6 +193,10 @@ SH4_DO_READ_P4_TMPL(double, double)
         } else if (addr >= SH4_OC_ADDR_ARRAY_FIRST &&                   \
                    addr <= SH4_OC_ADDR_ARRAY_LAST) {                    \
             *valp = sh4_ocache_read_addr_array_##postfix(sh4, addr);    \
+            return 0;                                                   \
+        } else if (addr >= SH4_IC_ADDR_ARRAY_FIRST &&                   \
+                   addr <= SH4_IC_ADDR_ARRAY_LAST) {                    \
+            *valp = sh4_icache_read_addr_array_##postfix(sh4, addr);    \
             return 0;                                                   \
         } else {                                                        \
             return -1;                                                  \
