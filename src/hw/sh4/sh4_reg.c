@@ -446,6 +446,16 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "BRCR", 0xff200020, 2, (sh4_reg_idx_t)-1, true,
       sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
 
+    /*
+     * Does not appear in the sh7750 hardware manual.  According to the Linux
+     * kernel sources, this is part of the sh4's performance monitoring unit
+     * (PMU), and it is identified as PM_CR_BASE.
+     *
+     * See arch/sh/kernel/cpu/sh4/perf_event.c in Linux source code.
+     */
+    { "PM_CR_BASE", 0xff000084, 2, (sh4_reg_idx_t)-1, true,
+      sh4_ignore_read_handler, sh4_ignore_write_handler, 0, 0 },
+
     { NULL }
 };
 
