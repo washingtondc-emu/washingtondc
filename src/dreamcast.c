@@ -948,7 +948,12 @@ void dc_toggle_overlay(void) {
 }
 
 static void construct_arm7_mem_map(struct memory_map *map) {
-    memory_map_add(map, 0x00000000, 0x001fffff,
+    /*
+     * TODO: I'm not actually 100% sure that the aica wave mem should be
+     * mirrored four times over here, but it is mirrored on the sh4-side of
+     * things.
+     */
+    memory_map_add(map, 0x00000000, 0x007fffff,
                    0xffffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
     memory_map_add(map, 0x00800000, 0x00807fff,

@@ -30,7 +30,7 @@
 #include "types.h"
 #include "MemoryMap.h"
 
-#define AICA_WAVE_MEM_LEN (ADDR_AICA_WAVE_LAST - ADDR_AICA_WAVE_FIRST + 1)
+#define AICA_WAVE_MEM_LEN (0x009fffff - 0x00800000 + 1)
 
 static_assert(!(AICA_WAVE_MEM_LEN & (AICA_WAVE_MEM_LEN - 1)),
               "non-power-of-two aica memory length");
