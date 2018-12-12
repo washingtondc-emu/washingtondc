@@ -131,7 +131,7 @@ struct memory_map_region {
     struct memory_interface const *intf;
 };
 
-#define MAX_MEM_MAP_REGIONS 32
+#define MAX_MEM_MAP_REGIONS 64
 
 struct memory_map {
     struct memory_map_region regions[MAX_MEM_MAP_REGIONS];
