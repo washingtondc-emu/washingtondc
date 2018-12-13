@@ -1162,14 +1162,20 @@ static uint8_t sh4_unmapped_read8(uint32_t addr, void *ctxt) {
 }
 
 static void sh4_unmapped_writefloat(uint32_t addr, float val, void *ctxt) {
+    uint32_t val_hex;
+    memcpy(&val_hex, &val, sizeof(val_hex));
     error_set_feature("memory mapping");
+    error_set_value(val_hex);
     error_set_address(addr);
     error_set_length(sizeof(float));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static void sh4_unmapped_writedouble(uint32_t addr, double val, void *ctxt) {
+    uint64_t val_hex;
+    memcpy(&val_hex, &val, sizeof(val_hex));
     error_set_feature("memory mapping");
+    error_set_value(val_hex);
     error_set_address(addr);
     error_set_length(sizeof(double));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -1177,6 +1183,7 @@ static void sh4_unmapped_writedouble(uint32_t addr, double val, void *ctxt) {
 
 static void sh4_unmapped_write32(uint32_t addr, uint32_t val, void *ctxt) {
     error_set_feature("memory mapping");
+    error_set_value(val);
     error_set_address(addr);
     error_set_length(sizeof(uint32_t));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -1184,6 +1191,7 @@ static void sh4_unmapped_write32(uint32_t addr, uint32_t val, void *ctxt) {
 
 static void sh4_unmapped_write16(uint32_t addr, uint16_t val, void *ctxt) {
     error_set_feature("memory mapping");
+    error_set_value(val);
     error_set_address(addr);
     error_set_length(sizeof(uint16_t));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -1191,6 +1199,7 @@ static void sh4_unmapped_write16(uint32_t addr, uint16_t val, void *ctxt) {
 
 static void sh4_unmapped_write8(uint32_t addr, uint8_t val, void *ctxt) {
     error_set_feature("memory mapping");
+    error_set_value(val);
     error_set_address(addr);
     error_set_length(sizeof(uint8_t));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
