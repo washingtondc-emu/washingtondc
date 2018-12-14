@@ -1181,11 +1181,40 @@ static void sh4_unmapped_writedouble(uint32_t addr, double val, void *ctxt) {
 }
 
 static void sh4_unmapped_write32(uint32_t addr, uint32_t val, void *ctxt) {
-    error_set_feature("memory mapping");
-    error_set_value(val);
-    error_set_address(addr);
-    error_set_length(sizeof(uint32_t));
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    if (((addr >> 16) == 0xbc2d) && !val) {
+        /*
+         * HACK - this memory region is off-limits according to SH-4 documentation.
+         * Star Wars Episode I Racer writes 0 (4-bytes) to the following addresses:
+         * 0xbc2dca74, 0xbc2dcdc4, 0xbc2dd114, 0xbc2dd464, 0xbc2dd7b4, 0xbc2ddb04,
+         * 0xbc2dde54, 0xbc2de1a4, 0xbc2de4f4, 0xbc2de844, 0xbc2deb94, 0xbc2deee4,
+         * 0xbc2df234, 0xbc2df584, 0xbc2df8d4, 0xbc2dfc24.  Note that all values
+         * are 0x350 apart.
+         *
+         * citation for this being off-limits is page 268 of sh7750.pdf (Hitachi
+         * SH-4 hardware manual):
+         *
+         * "The area 7 address range, H'1C000000 to H'1FFFFFFFF, is a reserved
+         * space and must not be used."
+         *
+         * I have confirmed via hardware test that this is *not* a mirror of
+         * the main system ram.  I have also confirmed that on real hardware
+         * writes to these addresses retain their values, so there must be some
+         * sort of registers or memory backing these addresses.
+         *
+         * Without further information it's impossible to know what these
+         * addresses are, so for now we'll allow writes of 0 to pass while still
+         * failing on non-zero writes.  According to hardware tests, 0 is the
+         * default value of all of these registers, anyways.
+         */
+        LOG_WARN("%s (PC=0x%08x) - allowing 4-byte write of 0x%08x to unmapped address "
+                 "0x%08x\n", __func__, (unsigned)cpu.reg[SH4_REG_PC], (unsigned)val, (unsigned)addr);
+    } else {
+        error_set_feature("memory mapping");
+        error_set_value(val);
+        error_set_address(addr);
+        error_set_length(sizeof(uint32_t));
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 static void sh4_unmapped_write16(uint32_t addr, uint16_t val, void *ctxt) {
