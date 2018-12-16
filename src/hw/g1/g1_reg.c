@@ -26,7 +26,6 @@
 #include <stdint.h>
 
 #include "g1_reg.h"
-#include "hw/gdrom/gdrom_reg.h"
 
 #include "mem_code.h"
 #include "error.h"

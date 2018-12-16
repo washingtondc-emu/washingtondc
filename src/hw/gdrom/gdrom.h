@@ -29,7 +29,6 @@
 #include "fifo.h"
 #include "log.h"
 #include "dc_sched.h"
-#include "gdrom_reg.h"
 
 #define GDROM_TRACE(msg, ...)                                           \
     do {                                                                \
@@ -110,8 +109,13 @@ enum additional_sense {
     ADDITIONAL_SENSE_NO_DISC = 0x3a
 };
 
+#define GDROM_MMIO_LEN (ADDR_GDROM_LAST - ADDR_GDROM_FIRST + 1)
+#define GDROM_REG_COUNT (GDROM_MMIO_LEN / 4)
+
 struct gdrom_ctxt {
     struct dc_clock *clk;
+
+    uint32_t regs[GDROM_REG_COUNT];
 
     bool gdrom_int_scheduled;
     struct SchedEvent gdrom_int_raise_event;
@@ -223,6 +227,8 @@ enum gdrom_disc_type gdrom_get_disc_type(void);
  * GDROM_STATE_PAUSE, etc).
  */
 enum gdrom_disc_state gdrom_get_drive_state(void);
+
+struct memory_interface gdrom_reg_intf;
 
 void gdrom_start_dma(struct gdrom_ctxt *gdrom);
 

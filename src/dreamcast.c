@@ -37,7 +37,6 @@
 #include "gfx/gfx.h"
 #include "hw/aica/aica_rtc.h"
 #include "hw/gdrom/gdrom.h"
-#include "hw/gdrom/gdrom_reg.h"
 #include "hw/maple/maple.h"
 #include "hw/maple/maple_device.h"
 #include "hw/maple/maple_controller.h"

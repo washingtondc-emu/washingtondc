@@ -23,7 +23,6 @@
 #include <stdio.h>
 
 #include "MemoryMap.h"
-#include "hw/gdrom/gdrom_reg.h"
 #include "holly_intc.h"
 #include "mem_code.h"
 #include "dreamcast.h"
