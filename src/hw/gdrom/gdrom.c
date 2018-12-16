@@ -501,6 +501,8 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
         if (mount_read_sectors(node->dat, start_addr + fad_offs++, 1) < 0) {
+            LOG_ERROR("GD-ROM failed to read fad %u\n", fad_offs);
+
             free(node);
 
             gdrom->error_reg.sense_key = SENSE_KEY_ILLEGAL_REQ;
