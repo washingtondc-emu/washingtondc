@@ -94,13 +94,41 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event) {
 
     switch (gdrom->state) {
     case GDROM_STATE_PIO_READING:
-        gdrom->state = GDROM_STATE_NORM;
+        RAISE_ERROR(ERROR_INTEGRITY);
+        break;
+    case GDROM_STATE_PIO_READ_DELAY:
+        gdrom->meta.read.bytes_read = 0;
 
-        gdrom->data_byte_count = gdrom->meta.read.byte_count;
+        if (gdrom->meta.read.byte_count == 0) {
+            /*
+             * This case will only happen if the byte_count parameter in
+             * gdrom_state_transfer_pio_read is 0.  Otherwise, gdrom_read_data
+             * will transition to GDROM_STATE_NORM when we run out of data.
+             */
+            gdrom->stat_reg.drq = false;
+            gdrom->state = GDROM_STATE_NORM;
+            gdrom->data_byte_count = 0;
+        } else if (gdrom->meta.read.byte_count > 0x8000) {
+            gdrom->data_byte_count = 0x8000;
+            gdrom->meta.read.byte_count -= 0x8000;
+            gdrom->stat_reg.drq = true;
+            gdrom->state = GDROM_STATE_PIO_READING;
+        } else {
+            gdrom->data_byte_count = gdrom->meta.read.byte_count;
+            gdrom->meta.read.byte_count = 0;
+            gdrom->stat_reg.drq = true;
+            gdrom->state = GDROM_STATE_PIO_READING;
+        }
+
         gdrom->stat_reg.bsy = false;
-        gdrom->int_reason_reg.io = true;
-        gdrom->int_reason_reg.cod = false;
-        gdrom->stat_reg.drq = true;
+        if (gdrom->stat_reg.drq) {
+            gdrom->int_reason_reg.io = true;
+            gdrom->int_reason_reg.cod = false;
+        } else {
+            gdrom->stat_reg.drdy = true;
+            gdrom->int_reason_reg.cod = true;
+            gdrom->int_reason_reg.io = true;
+        }
 
         if (!gdrom->dev_ctrl_reg.nien)
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
@@ -475,7 +503,7 @@ done:
 
 static void
 gdrom_state_transfer_pio_read(struct gdrom_ctxt *gdrom, unsigned byte_count) {
-    gdrom->state = GDROM_STATE_PIO_READING;
+    gdrom->state = GDROM_STATE_PIO_READ_DELAY;
     gdrom->meta.read.byte_count = byte_count;
 
     gdrom->stat_reg.bsy = true;
@@ -1016,27 +1044,46 @@ unsigned gdrom_dma_prot_bot(struct gdrom_ctxt *gdrom) {
 void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes) {
     uint8_t *ptr = buf;
 
-    if (gdrom->state == GDROM_STATE_PIO_READING) {
+    if (gdrom->state != GDROM_STATE_PIO_READING) {
         LOG_WARN("Game tried to read from GD-ROM data register before data "
                  "was ready\n");
+        memset(buf, 0, n_bytes);
+        return;
     }
 
     while (n_bytes--) {
         unsigned dat;
-        if (bufq_consume_byte(gdrom, &dat) == 0)
+        if (bufq_consume_byte(gdrom, &dat) == 0 &&
+            gdrom->meta.read.bytes_read < gdrom->data_byte_count) {
             *ptr++ = dat;
-        else
+        } else {
             *ptr++ = 0;
+        }
+        gdrom->meta.read.bytes_read++;
     }
 
-    if (fifo_empty(&gdrom->bufq)) {
-        // done transmitting data from gdrom to host - notify host
-        gdrom->stat_reg.drq = false;
-        gdrom->stat_reg.bsy = false;
-        gdrom->stat_reg.drdy = true;
-        gdrom->int_reason_reg.cod = true;
-        gdrom->int_reason_reg.io = true;
-        gdrom_delayed_processing(gdrom);
+    if (gdrom->meta.read.bytes_read == gdrom->data_byte_count) {
+        if (!gdrom->meta.read.byte_count) {
+            // done transmitting data from gdrom to host - notify host
+            GDROM_TRACE("DATA TRANSMIT COMPLETE.\n");
+            gdrom->stat_reg.drq = false;
+            gdrom->stat_reg.bsy = false;
+            gdrom->stat_reg.drdy = true;
+            gdrom->int_reason_reg.cod = true;
+            gdrom->int_reason_reg.io = true;
+            gdrom->state = GDROM_STATE_NORM;
+            gdrom_delayed_processing(gdrom);
+        } else {
+            GDROM_TRACE("MORE DATA TO FOLLOW\n");
+            gdrom->stat_reg.drq = false;
+            gdrom->stat_reg.bsy = true;
+            gdrom->state = GDROM_STATE_PIO_READ_DELAY;
+            gdrom_delayed_processing(gdrom);
+        }
+    } else if (gdrom->meta.read.bytes_read > gdrom->data_byte_count) {
+        error_set_feature("reading more data from the GD-ROM than is "
+                          "available.\n");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 }
 

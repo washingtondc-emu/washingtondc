@@ -107,6 +107,8 @@ enum gdrom_state {
      * currently executing a PIO command that needs to spend a little
      * time fetching data
      */
+    GDROM_STATE_PIO_READ_DELAY,
+
     GDROM_STATE_PIO_READING
 };
 
@@ -121,6 +123,8 @@ enum additional_sense {
 struct gdrom_read_meta {
     // number of bytes to transfer
     unsigned byte_count;
+
+    unsigned bytes_read;
 };
 
 union state_meta {
