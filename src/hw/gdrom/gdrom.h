@@ -101,7 +101,13 @@ struct gdrom_dev_ctrl {
 enum gdrom_state {
     GDROM_STATE_NORM,
     GDROM_STATE_INPUT_PKT,
-    GDROM_STATE_SET_MODE // waiting for PIO input for the SET_MODE packet
+    GDROM_STATE_SET_MODE, // waiting for PIO input for the SET_MODE packet
+
+    /*
+     * currently executing a PIO command that needs to spend a little
+     * time fetching data
+     */
+    GDROM_STATE_PIO_READING
 };
 
 enum additional_sense {
@@ -111,6 +117,15 @@ enum additional_sense {
 
 #define GDROM_MMIO_LEN (ADDR_GDROM_LAST - ADDR_GDROM_FIRST + 1)
 #define GDROM_REG_COUNT (GDROM_MMIO_LEN / 4)
+
+struct gdrom_read_meta {
+    // number of bytes to transfer
+    unsigned byte_count;
+};
+
+union state_meta {
+    struct gdrom_read_meta read;
+};
 
 struct gdrom_ctxt {
     struct dc_clock *clk;
@@ -159,6 +174,7 @@ struct gdrom_ctxt {
     uint32_t trans_mode_vals[TRANS_MODE_COUNT];
 
     enum gdrom_state state;
+    union state_meta meta;
 
     /*
      * number of bytes we're waiting for.  This only holds meaning when

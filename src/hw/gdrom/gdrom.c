@@ -65,9 +65,9 @@ static DEF_ERROR_INT_ATTR(gdrom_seek_seek_pt)
 #define ATA_REG_R_STATUS       GDROM_REG_IDX(0x5f709c)
 #define ATA_REG_W_CMD          GDROM_REG_IDX(0x5f709c)
 
-static void raise_gdrom_int(struct gdrom_ctxt *gdrom);
+static void gdrom_delayed_processing(struct gdrom_ctxt *gdrom);
 
-static void post_delay_raise_gdrom_int(struct SchedEvent *event);
+static void post_delay_gdrom_delayed_processing(struct SchedEvent *event);
 
 // how long to wait before raising a gdrom interrupt event.
 // this value is arbitrary and completely made up.
@@ -76,10 +76,10 @@ static void post_delay_raise_gdrom_int(struct SchedEvent *event);
 
 /* static bool gdrom_int_scheduled; */
 /* struct SchedEvent gdrom_int_raise_event = { */
-/*     .handler = post_delay_raise_gdrom_int */
+/*     .handler = post_delay_gdrom_delayed_processing */
 /* }; */
 
-static void raise_gdrom_int(struct gdrom_ctxt *gdrom) {
+static void gdrom_delayed_processing(struct gdrom_ctxt *gdrom) {
     if (!gdrom->gdrom_int_scheduled) {
         gdrom->gdrom_int_scheduled = true;
         gdrom->gdrom_int_raise_event.when =
@@ -88,10 +88,27 @@ static void raise_gdrom_int(struct gdrom_ctxt *gdrom) {
     }
 }
 
-static void post_delay_raise_gdrom_int(struct SchedEvent *event) {
+static void post_delay_gdrom_delayed_processing(struct SchedEvent *event) {
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)event->arg_ptr;
     gdrom->gdrom_int_scheduled = false;
-    holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+
+    switch (gdrom->state) {
+    case GDROM_STATE_PIO_READING:
+        gdrom->state = GDROM_STATE_NORM;
+
+        gdrom->data_byte_count = gdrom->meta.read.byte_count;
+        gdrom->stat_reg.bsy = false;
+        gdrom->int_reason_reg.io = true;
+        gdrom->int_reason_reg.cod = false;
+        gdrom->stat_reg.drq = true;
+
+        if (!gdrom->dev_ctrl_reg.nien)
+            holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        break;
+    default:
+        if (!gdrom->dev_ctrl_reg.nien)
+            holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+    }
 }
 
 enum sense_key {
@@ -283,6 +300,9 @@ static void gdrom_post_write(struct gdrom_ctxt *gdrom, addr32_t addr,
                              unsigned n_bytes);
 static void gdrom_reg_init(struct gdrom_ctxt *gdrom);
 
+static void
+gdrom_state_transfer_pio_read(struct gdrom_ctxt *gdrom, unsigned byte_count);
+
 struct memory_interface gdrom_reg_intf = {
     .read32 = gdrom_reg_read_32,
     .read16 = gdrom_reg_read_16,
@@ -300,7 +320,7 @@ struct memory_interface gdrom_reg_intf = {
 void gdrom_init(struct gdrom_ctxt *gdrom, struct dc_clock *gdrom_clk) {
     memset(gdrom, 0, sizeof(*gdrom));
 
-    gdrom->gdrom_int_raise_event.handler = post_delay_raise_gdrom_int;
+    gdrom->gdrom_int_raise_event.handler = post_delay_gdrom_delayed_processing;
     gdrom->gdrom_int_raise_event.arg_ptr = gdrom;
 
     gdrom->clk = gdrom_clk;
@@ -453,6 +473,19 @@ done:
     gdrom->dma_start_reg = 0;
 }
 
+static void
+gdrom_state_transfer_pio_read(struct gdrom_ctxt *gdrom, unsigned byte_count) {
+    gdrom->state = GDROM_STATE_PIO_READING;
+    gdrom->meta.read.byte_count = byte_count;
+
+    gdrom->stat_reg.bsy = true;
+    gdrom->stat_reg.drq = false;
+    gdrom->stat_reg.check = false;
+    gdrom_clear_error(gdrom);
+
+    gdrom_delayed_processing(gdrom);
+}
+
 static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
     GDROM_TRACE("READ_PACKET command received\n");
 
@@ -482,15 +515,13 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
     GDROM_TRACE("request to read %u sectors from FAD %u\n",
                 trans_len, start_addr);
 
-    if (gdrom->feat_reg.dma_enable) {
-        GDROM_TRACE("DMA READ ACCESS\n");
-        /* error_set_feature("GD-ROM DMA access"); */
-        /* RAISE_ERROR(ERROR_UNIMPLEMENTED); */
-    }
-
     bufq_clear(gdrom);
 
-    gdrom->data_byte_count = CDROM_FRAME_DATA_SIZE * trans_len;
+    unsigned byte_count = CDROM_FRAME_DATA_SIZE * trans_len;
+    gdrom->data_byte_count = 0;
+
+    if (!gdrom->feat_reg.dma_enable && gdrom->data_byte_count > UINT16_MAX)
+        LOG_WARN("OVERFLOW: Reading %u bytes from gdrom PIO!\n", gdrom->data_byte_count);
 
     unsigned fad_offs = 0;
     while (trans_len--) {
@@ -518,19 +549,11 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
     }
 
     if (gdrom->feat_reg.dma_enable) {
-        return; // wait for them to write 1 to GDST before doing something
+        // wait for them to write 1 to GDST before doing something
+        GDROM_TRACE("DMA READ ACCESS\n");
     } else {
-        gdrom->int_reason_reg.io = true;
-        gdrom->int_reason_reg.cod = false;
-        gdrom->stat_reg.drq = true;
+        gdrom_state_transfer_pio_read(gdrom, byte_count);
     }
-
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
-
-    gdrom->state = GDROM_STATE_NORM;
-    gdrom->stat_reg.check = false;
-    gdrom_clear_error(gdrom);
 }
 
 /*
@@ -542,9 +565,6 @@ static void gdrom_input_packet(struct gdrom_ctxt *gdrom) {
     gdrom->stat_reg.drq = false;
     gdrom->stat_reg.bsy = false;
 
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
-
     switch (gdrom->pkt_buf[0]) {
     case GDROM_PKT_TEST_UNIT:
         gdrom_input_test_unit_packet(gdrom);
@@ -552,6 +572,7 @@ static void gdrom_input_packet(struct gdrom_ctxt *gdrom) {
     case GDROM_PKT_REQ_STAT:
         GDROM_TRACE("REQ_STAT command received!\n");
         gdrom->state = GDROM_STATE_NORM; // TODO: implement
+        gdrom_delayed_processing(gdrom);
         break;
     case GDROM_PKT_REQ_MODE:
         gdrom_input_req_mode_packet(gdrom);
@@ -655,8 +676,7 @@ void gdrom_cmd_set_features(struct gdrom_ctxt *gdrom) {
     gdrom_clear_error(gdrom);
     gdrom->int_reason_reg.cod = true; // is this correct ?
 
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
+    gdrom_delayed_processing(gdrom);
 }
 
 void gdrom_cmd_identify(struct gdrom_ctxt *gdrom) {
@@ -667,8 +687,7 @@ void gdrom_cmd_identify(struct gdrom_ctxt *gdrom) {
     gdrom->stat_reg.bsy = false;
     gdrom->stat_reg.drq = true;
 
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
+    gdrom_delayed_processing(gdrom);
 
     bufq_clear(gdrom);
 
@@ -715,10 +734,8 @@ static void gdrom_input_test_unit_packet(struct gdrom_ctxt *gdrom) {
     gdrom->stat_reg.bsy = false;
     gdrom->stat_reg.drq = false;
 
-    // raise interrupt if it is enabled - this is already done from
-    // gdrom_input_packet
-    /* if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK)) */
-    /*     raise_gdrom_int(gdrom); */
+    // raise interrupt if it is enabled
+    gdrom_delayed_processing(gdrom);
 
     gdrom->state = GDROM_STATE_NORM;
 
@@ -755,6 +772,7 @@ static void gdrom_input_req_error_packet(struct gdrom_ctxt *gdrom) {
 
     bufq_clear(gdrom);
 
+    unsigned byte_count;
     if (len != 0) {
         struct gdrom_bufq_node *node =
             (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
@@ -762,17 +780,12 @@ static void gdrom_input_req_error_packet(struct gdrom_ctxt *gdrom) {
         node->len = len;
         memcpy(&node->dat, dat_out, len);
         fifo_push(&gdrom->bufq, &node->fifo_node);
-        gdrom->data_byte_count = node->len;
+        byte_count = node->len;
+    } else {
+        byte_count = 0;
     }
 
-    gdrom->int_reason_reg.io = true;
-    gdrom->int_reason_reg.cod = false;
-    gdrom->stat_reg.drq = true;
-    gdrom->stat_reg.bsy = false;
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
-
-    gdrom->state = GDROM_STATE_NORM;
+    gdrom_state_transfer_pio_read(gdrom, byte_count);
 }
 
 /*
@@ -791,15 +804,11 @@ static void gdrom_input_start_disk_packet(struct gdrom_ctxt *gdrom) {
     gdrom->stat_reg.bsy = false;
     gdrom->stat_reg.drq = false;
 
-    // raise interrupt if it is enabled - this is already done from
-    // gdrom_input_packet
-    /* if (!(dev_ctrl_reg & DEV_CTRL_NIEN_MASK)) */
-    /*     raise_gdrom_int(gdrom); */
-
     gdrom->state = GDROM_STATE_NORM;
 
     gdrom->stat_reg.check = false;
     gdrom_clear_error(gdrom);
+    gdrom_delayed_processing(gdrom);
 }
 
 /*
@@ -835,20 +844,9 @@ static void gdrom_input_packet_71(struct gdrom_ctxt *gdrom) {
      */
     memcpy(node->dat, pkt71_resp, GDROM_PKT_71_RESP_LEN);
 
-    gdrom->data_byte_count = GDROM_PKT_71_RESP_LEN;
-
     fifo_push(&gdrom->bufq, &node->fifo_node);
 
-    gdrom->int_reason_reg.io = true;
-    gdrom->int_reason_reg.cod = false;
-    gdrom->stat_reg.drq = true;
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
-
-    gdrom->state = GDROM_STATE_NORM;
-
-    gdrom->stat_reg.check = false;
-    gdrom_clear_error(gdrom);
+    gdrom_state_transfer_pio_read(gdrom, GDROM_PKT_71_RESP_LEN);
 }
 
 static void gdrom_input_set_mode_packet(struct gdrom_ctxt *gdrom) {
@@ -874,6 +872,8 @@ static void gdrom_input_set_mode_packet(struct gdrom_ctxt *gdrom) {
     gdrom->stat_reg.drq = true;
 
     gdrom->state = GDROM_STATE_SET_MODE;
+
+    gdrom_delayed_processing(gdrom);
 }
 
 static void gdrom_input_req_mode_packet(struct gdrom_ctxt *gdrom) {
@@ -884,6 +884,8 @@ static void gdrom_input_req_mode_packet(struct gdrom_ctxt *gdrom) {
     GDROM_TRACE("read %u bytes starting at %u\n", len, starting_addr);
 
     bufq_clear(gdrom);
+
+    unsigned byte_count;
     if (len != 0) {
         unsigned first_idx = starting_addr;
         unsigned last_idx = starting_addr + (len - 1);
@@ -903,19 +905,12 @@ static void gdrom_input_req_mode_packet(struct gdrom_ctxt *gdrom) {
 
         bufq_clear(gdrom);
         fifo_push(&gdrom->bufq, &node->fifo_node);
-        gdrom->data_byte_count = node->len;
+        byte_count = node->len;
+    } else {
+        byte_count = 0;
     }
 
-    gdrom->int_reason_reg.io = true;
-    gdrom->int_reason_reg.cod = false;
-    gdrom->stat_reg.drq = true;
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
-
-    gdrom->state = GDROM_STATE_NORM;
-
-    gdrom->stat_reg.check = false;
-    gdrom_clear_error(gdrom);
+    gdrom_state_transfer_pio_read(gdrom, byte_count);
 }
 
 static void gdrom_input_read_toc_packet(struct gdrom_ctxt *gdrom) {
@@ -944,20 +939,10 @@ static void gdrom_input_read_toc_packet(struct gdrom_ctxt *gdrom) {
     node->idx = 0;
     node->len = len;
     memcpy(node->dat, ptr, len);
-    gdrom->data_byte_count = len;
 
     fifo_push(&gdrom->bufq, &node->fifo_node);
 
-    gdrom->int_reason_reg.io = true;
-    gdrom->int_reason_reg.cod = false;
-    gdrom->stat_reg.drq = true;
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
-
-    gdrom->state = GDROM_STATE_NORM;
-
-    gdrom->stat_reg.check = false;
-    gdrom_clear_error(gdrom);
+    gdrom_state_transfer_pio_read(gdrom, len);
 }
 
 static void gdrom_input_read_subcode_packet(struct gdrom_ctxt *gdrom) {
@@ -977,20 +962,10 @@ static void gdrom_input_read_subcode_packet(struct gdrom_ctxt *gdrom) {
 
     // TODO: fill in with real data instead of all zeroes
     memset(node->dat, 0, len);
-    gdrom->data_byte_count = len;
 
     fifo_push(&gdrom->bufq, &node->fifo_node);
 
-    gdrom->int_reason_reg.io = true;
-    gdrom->int_reason_reg.cod = false;
-    gdrom->stat_reg.drq = true;
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
-
-    gdrom->state = GDROM_STATE_NORM;
-
-    gdrom->stat_reg.check = false;
-    gdrom_clear_error(gdrom);
+    gdrom_state_transfer_pio_read(gdrom, len);
 }
 
 static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom) {
@@ -1007,6 +982,8 @@ static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom) {
         error_set_gdrom_command((unsigned)gdrom->pkt_buf[0]);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+
+    gdrom_delayed_processing(gdrom);
 }
 
 static void gdrom_input_play_packet(struct gdrom_ctxt *gdrom) {
@@ -1018,6 +995,8 @@ static void gdrom_input_play_packet(struct gdrom_ctxt *gdrom) {
     unsigned end = (((unsigned)gdrom->pkt_buf[8]) << 16) |
         (((unsigned)gdrom->pkt_buf[9]) << 8) |
         (((unsigned)gdrom->pkt_buf[10]) << 24);
+
+    gdrom_delayed_processing(gdrom);
 
     LOG_INFO("%s - CDDA PLAY command received.\n", __func__);
     LOG_INFO("\tparam_tp = 0x%02x\n", param_tp);
@@ -1037,6 +1016,11 @@ unsigned gdrom_dma_prot_bot(struct gdrom_ctxt *gdrom) {
 void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes) {
     uint8_t *ptr = buf;
 
+    if (gdrom->state == GDROM_STATE_PIO_READING) {
+        LOG_WARN("Game tried to read from GD-ROM data register before data "
+                 "was ready\n");
+    }
+
     while (n_bytes--) {
         unsigned dat;
         if (bufq_consume_byte(gdrom, &dat) == 0)
@@ -1052,8 +1036,7 @@ void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes) {
         gdrom->stat_reg.drdy = true;
         gdrom->int_reason_reg.cod = true;
         gdrom->int_reason_reg.io = true;
-        if (!gdrom->dev_ctrl_reg.nien)
-            raise_gdrom_int(gdrom);
+        gdrom_delayed_processing(gdrom);
     }
 }
 
@@ -1086,8 +1069,7 @@ gdrom_write_data(struct gdrom_ctxt *gdrom, uint8_t const *buf,
             gdrom->stat_reg.drq = false;
             gdrom->state = GDROM_STATE_NORM;
 
-            if (!gdrom->dev_ctrl_reg.nien)
-                raise_gdrom_int(gdrom);
+            gdrom_delayed_processing(gdrom);
         }
     }
 }
@@ -1128,8 +1110,7 @@ void gdrom_start_dma(struct gdrom_ctxt *gdrom) {
         gdrom_complete_dma(gdrom);
     }
 
-    if (!gdrom->dev_ctrl_reg.nien)
-        raise_gdrom_int(gdrom);
+    gdrom_delayed_processing(gdrom);
 
     gdrom->state = GDROM_STATE_NORM;
     gdrom->stat_reg.check = false;
