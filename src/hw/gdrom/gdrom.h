@@ -109,7 +109,9 @@ enum gdrom_state {
      */
     GDROM_STATE_PIO_READ_DELAY,
 
-    GDROM_STATE_PIO_READING
+    GDROM_STATE_PIO_READING,
+
+    GDROM_STATE_DMA_READING
 };
 
 enum additional_sense {

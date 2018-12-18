@@ -133,6 +133,17 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event) {
         if (!gdrom->dev_ctrl_reg.nien)
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
         break;
+    case GDROM_STATE_DMA_READING:
+        gdrom->int_reason_reg.io = true;
+        gdrom->int_reason_reg.cod = true;
+        gdrom->stat_reg.drdy = true;
+        gdrom->stat_reg.drq = false;
+        gdrom->stat_reg.bsy = false;
+        gdrom->state = GDROM_STATE_NORM;
+
+        if (!gdrom->dev_ctrl_reg.nien)
+            holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        break;
     default:
         if (!gdrom->dev_ctrl_reg.nien)
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
@@ -1150,18 +1161,17 @@ enum gdrom_disc_state gdrom_get_drive_state(void) {
 
 void gdrom_start_dma(struct gdrom_ctxt *gdrom) {
     if (gdrom->dma_start_reg) {
-        gdrom->int_reason_reg.io = true;
-        gdrom->int_reason_reg.cod = true;
-        gdrom->stat_reg.drdy = true;
         gdrom->stat_reg.drq = false;
+        gdrom->stat_reg.bsy = true;
         gdrom_complete_dma(gdrom);
     }
 
-    gdrom_delayed_processing(gdrom);
-
-    gdrom->state = GDROM_STATE_NORM;
+    // TODO: should I even be doing anything if gdrom->dma_start_reg is not set?
+    gdrom->state = GDROM_STATE_DMA_READING;
     gdrom->stat_reg.check = false;
     gdrom_clear_error(gdrom);
+
+    gdrom_delayed_processing(gdrom);
 }
 
 void gdrom_input_cmd(struct gdrom_ctxt *gdrom, unsigned cmd) {
