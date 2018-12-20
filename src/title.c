@@ -38,13 +38,17 @@ static double fps_internal;
 static bool interlaced;
 
 void title_set_content(char const *new_content) {
-    strncpy(content, new_content, sizeof(content));
-    content[CONTENT_LEN - 1] = '\0';
+    if (new_content) {
+        strncpy(content, new_content, sizeof(content));
+        content[CONTENT_LEN - 1] = '\0';
 
-    // trim trailing whitespace
-    int idx;
-    for (idx = strlen(content) - 1; (idx >= 0) && isspace(content[idx]); idx--)
-        content[idx] = '\0';
+        // trim trailing whitespace
+        int idx;
+        for (idx = strlen(content) - 1; (idx >= 0) && isspace(content[idx]); idx--)
+            content[idx] = '\0';
+    } else {
+        memset(content, 0, sizeof(content));
+    }
 }
 
 void title_set_resolution(unsigned width, unsigned height) {
