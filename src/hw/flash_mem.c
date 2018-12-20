@@ -199,13 +199,15 @@ uint32_t flash_mem_read_32(addr32_t addr, void *ctxt) {
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
+
+    uint32_t const *in_ptr = (uint32_t const*)mem->flash_mem;
+    uint32_t val = in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint32_t)];
+
 #ifdef FLASH_MEM_VERBOSE
     FLASH_MEM_TRACE("read %08x (4 bytes) from %08x\n",
                     (unsigned)val, (unsigned)addr);
 #endif
-
-    uint32_t const *in_ptr = (uint32_t const*)mem->flash_mem;
-    return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint32_t)];
+    return val;
 }
 
 void flash_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
@@ -225,13 +227,14 @@ uint16_t flash_mem_read_16(addr32_t addr, void *ctxt) {
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
+    uint16_t const *in_ptr = (uint16_t const*)mem->flash_mem;
+    uint16_t val = in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint16_t)];
+
 #ifdef FLASH_MEM_VERBOSE
     FLASH_MEM_TRACE("read %04x (2 bytes) from %08x\n",
                     (unsigned)val, (unsigned)addr);
 #endif
-
-    uint16_t const *in_ptr = (uint16_t const*)mem->flash_mem;
-    return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint16_t)];
+    return val;
 }
 
 void flash_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
@@ -251,13 +254,15 @@ uint8_t flash_mem_read_8(addr32_t addr, void *ctxt) {
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
 
+    uint8_t const *in_ptr = (uint8_t const*)mem->flash_mem;
+    uint8_t val = in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint8_t)];
+
 #ifdef FLASH_MEM_VERBOSE
     FLASH_MEM_TRACE("read %02x (1 byte) from %08x\n",
                     (unsigned)val, (unsigned)addr);
 #endif
 
-    uint8_t const *in_ptr = (uint8_t const*)mem->flash_mem;
-    return in_ptr[(addr - ADDR_FLASH_FIRST) / sizeof(uint8_t)];
+    return val;
 }
 
 void flash_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
