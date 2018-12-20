@@ -92,6 +92,11 @@ sh4_zero_only_reg_write_handler(Sh4 *sh4,
                                 struct Sh4MemMappedReg const *reg_info,
                                 sh4_reg_val val);
 
+static void
+sh4_expevt_reg_write_handler(Sh4 *sh4,
+                             struct Sh4MemMappedReg const *reg_info,
+                             sh4_reg_val val);
+
 static struct Sh4MemMappedReg *find_reg_by_addr(addr32_t addr);
 
 /*
@@ -132,7 +137,7 @@ static struct Sh4MemMappedReg sh4_sdmr3_reg = {
 
 static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "EXPEVT", 0xff000024, 4, SH4_REG_EXPEVT, false,
-      sh4_default_read_handler, sh4_default_write_handler, 0, 0x20 },
+      sh4_default_read_handler, sh4_expevt_reg_write_handler, 0, 0x20 },
     { "INTEVT", 0xff000028, 4, SH4_REG_INTEVT, false,
       sh4_default_read_handler, sh4_default_write_handler, 0, 0x20 },
     { "MMUCR", 0xff000010, 4, SH4_REG_MMUCR, false,
@@ -857,3 +862,11 @@ sh4_ignore_write_handler(Sh4 *sh4,
            &val, reg_info->len);
 }
 
+static void
+sh4_expevt_reg_write_handler(Sh4 *sh4,
+                             struct Sh4MemMappedReg const *reg_info,
+                             sh4_reg_val val) {
+    LOG_INFO("Write 0x%08x to SH4 EXPEVT register at PC=0x%08x\n",
+             (unsigned)val, (unsigned)sh4->reg[SH4_REG_PC]);
+    sh4->reg[SH4_REG_EXPEVT] = val;
+}
