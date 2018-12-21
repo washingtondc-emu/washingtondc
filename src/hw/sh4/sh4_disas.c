@@ -859,7 +859,8 @@ bool sh4_disas_movl_armp_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     unsigned slot_dst = reg_slot(sh4, block, reg_dst);
 
     jit_read_32_slot(block, sh4->mem.map, slot_src, slot_dst);
-    jit_add_const32(block, slot_src, 4);
+    if (reg_src != reg_dst)
+        jit_add_const32(block, slot_src, 4);
 
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
     reg_map[reg_src].stat = REG_STATUS_SLOT;

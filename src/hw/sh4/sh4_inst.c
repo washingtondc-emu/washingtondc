@@ -3753,11 +3753,11 @@ void sh4_inst_binary_movb_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
     int8_t val;
 
-    val = memory_map_read_8(sh4->mem.map, *src_reg);
+    reg32_t src_addr = *src_reg;
+    (*src_reg)++;
+    val = memory_map_read_8(sh4->mem.map, src_addr);
 
     *dst_reg = (int32_t)val;
-
-    (*src_reg)++;
 }
 
 #define INST_MASK_0110nnnnmmmm0101 0xf00f
@@ -3773,11 +3773,11 @@ void sh4_inst_binary_movw_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
     int16_t val;
 
-    val = memory_map_read_16(sh4->mem.map, *src_reg);
+    reg32_t src_addr = *src_reg;
+    (*src_reg) += 2;
+    val = memory_map_read_16(sh4->mem.map, src_addr);
 
     *dst_reg = (int32_t)val;
-
-    (*src_reg) += 2;
 }
 
 #define INST_MASK_0110nnnnmmmm0110 0xf00f
@@ -3793,11 +3793,11 @@ void sh4_inst_binary_movl_indgeninc_gen(Sh4 *sh4, Sh4OpArgs inst) {
     reg32_t *dst_reg = sh4_gen_reg(sh4, inst.dst_reg);
     int32_t val;
 
-    val = memory_map_read_32(sh4->mem.map, *src_reg);
+    reg32_t src_addr = *src_reg;
+    (*src_reg) += 4;
+    val = memory_map_read_32(sh4->mem.map, src_addr);
 
     *dst_reg = (int32_t)val;
-
-    (*src_reg) += 4;
 }
 
 #define INST_MASK_0000nnnnmmmm1111 0xf00f
