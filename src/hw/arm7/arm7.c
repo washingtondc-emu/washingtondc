@@ -724,31 +724,7 @@ static void arm7_check_excp(struct arm7 *arm7) {
 }
 
 static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
-    uint32_t inst = memory_map_read_32(arm7->map, addr);
-
-    if (addr == 0 && inst == 0xeafffff8) {
-        /*
-         * TODO: this is a workaround for a KallistOS bug.  In spu_init, it
-         * loads 0xeafffff8 into AICA memory at 0x0.  This is supposed to be an
-         * infinite loop that works by branching back by -8, which goes back to
-         * 0x0 since ARM7's PC is always 8 bytes ahead.  The problem is that
-         * this instruction actually branches back by -32, not -8.
-         * (unsigned)-32 is not in the memory map, so WashingtonDC thinks
-         * something is wrong and raises an ERROR_UNIMPLEMENTED.
-         *
-         * This code does actually work on real hardware, and I suspect that
-         * means that whatever garbage value the memory bus returns for those
-         * addresses does not prevent the PC from incrementing a couple times
-         * at getting back to 0x0.  Until I can confirm that this is what
-         * actually happens, I will manually patch the instruction to have the
-         * correct jump offset instead.
-         */
-        /* LOG_DBG("%s - replacing instruction 0x%08x with 0x%08x " */
-        /*         "(compatibility hack)\n", */
-        /*         __func__, (unsigned)inst, 0xeafffffe); */
-        return 0xeafffffe;
-    }
-    return inst;
+    return memory_map_read_32(arm7->map, addr);
 }
 
 /*
