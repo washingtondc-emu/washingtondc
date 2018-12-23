@@ -615,16 +615,32 @@ static void next_inst(struct arm7 *arm7) {
     arm7->reg[ARM7_REG_PC] += 4;
 }
 
-static void arm7_idle_fetch(struct arm7 *arm7, arm7_inst inst) {
-    next_inst(arm7);
-}
-
 void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
     arm7_inst ret;
 
     arm7_check_excp(arm7);
 
+    int cycle_count = 0;
     switch (arm7->pipeline_len) {
+    case 0:
+        cycle_count = 1;
+
+        arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
+        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
+
+        next_inst(arm7);
+    case 1:
+        cycle_count++;
+
+        arm7->pipeline_pc[1] = arm7->pipeline_pc[0];
+        arm7->pipeline[1] = arm7->pipeline[0];
+
+        arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
+        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
+
+        arm7->pipeline_len = 2;
+
+        next_inst(arm7);
     case 2:
         ret = arm7->pipeline[1];
 
@@ -635,21 +651,7 @@ void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
         arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
 
         arm7_decode(arm7, inst_out, ret);
-        return;
-    case 1:
-        arm7->pipeline_pc[1] = arm7->pipeline_pc[0];
-        arm7->pipeline[1] = arm7->pipeline[0];
-    case 0:
-        arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
-        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
-        arm7->pipeline_len++;
-        inst_out->inst = 0xdeadbeef;
-        inst_out->op = arm7_idle_fetch;
-        inst_out->cycles = 1;
-        inst_out->cond = arm7_cond_al;
-        break;
-    default:
-        RAISE_ERROR(ERROR_INTEGRITY);
+        inst_out->cycles += cycle_count;
     }
 }
 
