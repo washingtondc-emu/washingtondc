@@ -623,14 +623,31 @@ static void on_packet_received(void) {
 
     switch(cmd_tp) {
     case TA_CMD_TYPE_VERTEX:
-        /*
-         * Crazyy Taxi seems to send headers for all 8 possible polygon lists
-         * even though only 5 lists actually exist.  It never submits vertex
-         * data for the three which don't actually exist.  Here we panic if it
-         * does try to send vertex data to one of those three lists.
-         */
-        if (poly_state.current_list < DISPLAY_LIST_FIRST ||
+        if (poly_state.current_list == DISPLAY_LIST_NONE) {
+            /*
+             * SEGA Bass Fishing does some apparently nonsensical data to the
+             * TAFIFO on booting.  In that game's case, this message will print
+             * 240 times during boot and never again after that.  The reason it
+             * prints is that the pvr emulation thinks it's trying to submit
+             * data to the transparent list after it has already been closed.
+             * The actual data being sent does not conform to the format of any
+             * known PowerVR2 packets.  Only four bytes in the packets ever
+             * change and it's always a junk value like 0x41414141.
+             */
+            ta_fifo_finish_packet();
+#ifdef PVR2_LOG_VERBOSE
+            LOG_DBG("PVR2 Packet dropped because no display lists are opened\n");
+#endif
+            return;
+        } else if (poly_state.current_list < DISPLAY_LIST_FIRST ||
             poly_state.current_list > DISPLAY_LIST_LAST) {
+            /*
+             * Crazyy Taxi seems to send headers for all 8 possible polygon
+             * lists even though only 5 lists actually exist.  It never submits
+             * vertex data for the three which don't actually exist.  Here we
+             * panic if it does try to send vertex data to one of those three
+             * lists.
+             */
             error_set_feature("unknown display list type");
             error_set_display_list_index(poly_state.current_list);
             error_set_ta_fifo_byte_count(ta_fifo_byte_count);
