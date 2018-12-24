@@ -665,12 +665,15 @@ static void arm7_check_excp(struct arm7 *arm7) {
     enum arm7_excp excp = arm7->excp;
     uint32_t cpsr = arm7->reg[ARM7_REG_CPSR];
 
-    if (arm7->check_irq && arm7->check_irq(arm7->check_irq_dat))
-        excp |= ARM7_EXCP_IRQ;
-    else
-        excp &= ~ARM7_EXCP_IRQ;
+    /*
+     * TODO: if we ever add support for systems other than Dreamcast, we need to
+     * check the IRQ line here.  Dreamcast only uses FIQ, so there's no point
+     * in checking for IRQ.
+     *
+     * TODO: also need to check for ARM7_EXCP_DATA_ABORT.
+     */
 
-    if (arm7->check_fiq && arm7->check_fiq(arm7->check_fiq_dat))
+    if (arm7->fiq_line)
         excp |= ARM7_EXCP_FIQ;
     else
         excp &= ~ARM7_EXCP_FIQ;
@@ -683,27 +686,15 @@ static void arm7_check_excp(struct arm7 *arm7) {
             ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_RESET;
-    } else if (excp & ARM7_EXCP_DATA_ABORT) {
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
         arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
         arm7->reg[ARM7_REG_R14_FIQ] = arm7_pc_next(arm7) + 4;
         arm7->reg[ARM7_REG_PC] = 0x1c;
-        printf("FIQ jump to 0x1c\n");
+        LOG_DBG("FIQ jump to 0x1c\n");
         arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
             ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
         reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_FIQ;
-    } else if ((excp & ARM7_EXCP_IRQ) && !(cpsr & ARM7_CPSR_I_MASK)) {
-        arm7->reg[ARM7_REG_SPSR_IRQ] = cpsr;
-        arm7->reg[ARM7_REG_R14_IRQ] = arm7_pc_next(arm7) + 4;
-        arm7->reg[ARM7_REG_PC] = 0x18;
-        arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-            ARM7_MODE_IRQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
-        reset_pipeline(arm7);
-        arm7->excp &= ~ARM7_EXCP_IRQ;
-    } else if (excp & ARM7_EXCP_PREF_ABORT) {
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     } else if (excp & ARM7_EXCP_SWI) {
         /*
          * This will be called *after* the SWI instruction has executed, when
@@ -1352,4 +1343,12 @@ static void arm7_error_set_regs(void *argptr) {
     error_set_arm7_reg_spsr_abt(arm7->reg[ARM7_REG_SPSR_ABT]);
     error_set_arm7_reg_spsr_irq(arm7->reg[ARM7_REG_SPSR_IRQ]);
     error_set_arm7_reg_spsr_und(arm7->reg[ARM7_REG_SPSR_UND]);
+}
+
+void arm7_set_fiq(struct arm7 *arm7) {
+    arm7->fiq_line = true;
+}
+
+void arm7_clear_fiq(struct arm7 *arm7) {
+    arm7->fiq_line = false;
 }

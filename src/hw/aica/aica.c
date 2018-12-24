@@ -189,8 +189,6 @@ static void aica_dsp_mixer_write(struct aica *aica, void const *src,
 static void aica_dsp_reg_write(struct aica *aica, void const *src,
                                uint32_t addr, unsigned len);
 
-static bool aica_check_irq(void *ctxt);
-
 __attribute__((unused))
 static void aica_unsched_all_timers(struct aica *aica);
 
@@ -262,13 +260,6 @@ void aica_init(struct aica *aica, struct arm7 *arm7,
     aica->sys_reg[AICA_SCILV1 / 4] = 0x50;
     aica->sys_reg[AICA_SCILV2 / 4] = 0x08;
 
-    /*
-     * TODO: I think this might actually be meant to be handled as FIQ, not IRQ.
-     * I need to do more research to confirm.
-     */
-    arm7->check_fiq = aica_check_irq;
-    arm7->check_fiq_dat = aica;
-
     aica->timers[0].evt.handler = aica_timer_a_handler;
     aica->timers[1].evt.handler = aica_timer_b_handler;
     aica->timers[2].evt.handler = aica_timer_c_handler;
@@ -282,9 +273,6 @@ void aica_init(struct aica *aica, struct arm7 *arm7,
 }
 
 void aica_cleanup(struct aica *aica) {
-    aica->arm7->check_irq = NULL;
-    aica->arm7->check_irq_dat = NULL;
-
     aica_wave_mem_cleanup(&aica->mem);
 }
 
@@ -564,7 +552,7 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
         memcpy(&val, aica->sys_reg + (AICA_INTCLEAR/4), sizeof(val));
         LOG_DBG("Writing 0x%08x to AICA_INTCLEAR\n", (unsigned)val);
         if ((val & 0xff) == 1)
-            aica->irq_line = false;
+            arm7_clear_fiq(aica->arm7);
         break;
 
     case AICA_CHANINFOREQ:
@@ -1043,12 +1031,6 @@ static void aica_update_interrupts(struct aica *aica) {
             (unsigned)aica->int_enable);
 }
 
-static bool aica_check_irq(void *ctxt) {
-    struct aica *aica = (struct aica*)ctxt;
-
-    return aica->irq_line;
-}
-
 static void aica_unsched_all_timers(struct aica *aica) {
     unsigned idx;
     for (idx = 0; idx < 3; idx++)
@@ -1162,21 +1144,21 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
         aica->int_pending |= AICA_INT_TIMA_MASK;
         if (aica->int_enable & AICA_INT_TIMA_MASK) {
             aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 6);
-            aica->irq_line = true;
+            arm7_set_fiq(aica->arm7);
         }
         break;
     case 1:
         aica->int_pending |= AICA_INT_TIMB_MASK;
         if (aica->int_enable & AICA_INT_TIMB_MASK) {
             aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 7);
-            aica->irq_line = true;
+            arm7_set_fiq(aica->arm7);
         }
         break;
     case 2:
         aica->int_pending |= AICA_INT_TIMC_MASK;
         if (aica->int_enable & AICA_INT_TIMC_MASK) {
             aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 7);
-            aica->irq_line = true;
+            arm7_set_fiq(aica->arm7);
         }
         break;
     }

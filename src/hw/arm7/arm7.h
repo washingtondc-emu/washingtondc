@@ -169,11 +169,7 @@ struct arm7 {
     bool enabled;
 
     enum arm7_excp excp;
-
-    arm7_irq_fn check_irq;
-    void *check_irq_dat;
-    arm7_irq_fn check_fiq;
-    void *check_fiq_dat;
+    bool fiq_line;
 
     /*
      * One oddity about ARM7 (compared to saner CPUs like x86 and SH4) is that
@@ -224,6 +220,9 @@ void arm7_reset(struct arm7 *arm7, bool val);
 void arm7_get_regs(struct arm7 *arm7, void *dat_out);
 
 uint32_t arm7_pc_next(struct arm7 *arm7);
+
+void arm7_set_fiq(struct arm7 *arm7);
+void arm7_clear_fiq(struct arm7 *arm7);
 
 inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
     unsigned idx_actual;
