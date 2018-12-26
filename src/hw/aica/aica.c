@@ -332,7 +332,7 @@ aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
         break;
     case AICA_ARM7_RST:
         if (!from_sh4) {
-            printf("ARM7 suicide unimplemented\n");
+            LOG_ERROR("ARM7 suicide unimplemented\n");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
         break;
@@ -452,14 +452,14 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
         if (from_sh4) {
             arm7_reset(aica->arm7, !(val & 1));
         } else {
-            printf("ARM7 suicide unimplemented\n");
+            LOG_ERROR("ARM7 suicide unimplemented\n");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
         break;
     case AICA_SCIRE:
         memcpy(&val, aica->sys_reg + (AICA_SCIRE/4), sizeof(val));
         if ((aica->int_pending & AICA_INT_TIMA_MASK) & (val & AICA_INT_TIMA_MASK)) {
-            printf("clearing timerA interrupt\n");
+            LOG_DBG("AICA: clearing timerA interrupt\n");
         }
         aica->int_pending &= ~val;
         aica_update_interrupts(aica);
@@ -532,15 +532,17 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
          * didn't implement that.
          */
     case AICA_TIMERA_CTRL:
-        printf("write to TIMERA_CTRL\n");
+        LOG_DBG("AICA: write to TIMERA_CTRL\n");
         memcpy(&val, aica->sys_reg + (AICA_TIMERA_CTRL/4), sizeof(val));
         on_timer_ctrl_write(aica, 0, val);
         break;
     case AICA_TIMERB_CTRL:
+        LOG_DBG("AICA: write to TIMERA_CTRL\n");
         memcpy(&val, aica->sys_reg + (AICA_TIMERB_CTRL/4), sizeof(val));
         on_timer_ctrl_write(aica, 1, val);
         break;
     case AICA_TIMERC_CTRL:
+        LOG_DBG("AICA: write to TIMERA_CTRL\n");
         memcpy(&val, aica->sys_reg + (AICA_TIMERC_CTRL/4), sizeof(val));
         on_timer_ctrl_write(aica, 2, val);
         break;
@@ -682,12 +684,12 @@ static void aica_do_keyon(struct aica *aica) {
             chan->atten = 0x280;
             chan->loop_end_playstatus_flag = false;
             chan->loop_end_signaled = false;
-            printf("AICA channel %u key-on fmt %s ptr 0x%08x\n",
+            LOG_INFO("AICA channel %u key-on fmt %s ptr 0x%08x\n",
                    chan_no, fmt_name(chan->fmt),
                    (unsigned)chan->addr_start);
         } else if (!chan->ready_keyon && chan->playing && chan->atten_env_state != AICA_ENV_RELEASE) {
             chan->atten_env_state = AICA_ENV_RELEASE;
-            printf("AICA channel %u key-off\n", chan_no);
+            LOG_INFO("AICA channel %u key-off\n", chan_no);
         }
     }
 }
@@ -702,7 +704,7 @@ static void aica_chan_playctrl_write(struct aica *aica, unsigned chan_no) {
     chan->addr_start |= (chan->addr_start & 0x7f) << 16;
     chan->addr_cur = chan->addr_start;
     chan->loop_en = (bool)(val & (1 << 9));
-    printf("addr_start is now 0x%08x\n", (unsigned)chan->addr_start);
+    LOG_DBG("AICA: addr_start is now 0x%08x\n", (unsigned)chan->addr_start);
 
     chan->ready_keyon = (bool)(val & (1 << 14));
     if (val & (1 << 15))
@@ -742,21 +744,21 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         chan->addr_start &= ~0xffff;
         chan->addr_start |= tmp & 0xffff;
         chan->addr_cur = chan->addr_start;
-        printf("chan %u addr_start is now 0x%08x\n",
+        LOG_DBG("AICA: chan %u addr_start is now 0x%08x\n",
                chan_no, (unsigned)chan->addr_start);
         break;
     case AICA_CHAN_LOOP_START:
         memcpy(&chan->loop_start, chan->raw + AICA_CHAN_LOOP_START,
                sizeof(chan->loop_start));
         /* chan->loop_start &= ~0xffff; */
-        printf("chan %u loop_start is now 0x%08x\n",
+        LOG_DBG("AICA: chan %u loop_start is now 0x%08x\n",
                chan_no, (unsigned)chan->loop_start);
         break;
     case AICA_CHAN_LOOP_END:
         memcpy(&chan->loop_end, chan->raw + AICA_CHAN_LOOP_END,
                sizeof(chan->loop_end));
         /* chan->loop_end &= ~0xffff; */
-        printf("chan %u loop_end is now 0x%08x\n",
+        LOG_DBG("AICA: chan %u loop_end is now 0x%08x\n",
                chan_no, (unsigned)chan->loop_end);
         break;
     case AICA_CHAN_AMP_ENV1:
@@ -780,7 +782,8 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         break;
     default:
         memcpy(&tmp, src, sizeof(tmp));
-        printf("addr 0x%08x chan %u offset %u val 0x%08x\n", (unsigned)addr, chan_no, chan_reg, (unsigned)tmp);
+        LOG_DBG("AICA: write to addr 0x%08x chan %u offset %u val 0x%08x\n",
+                (unsigned)addr, chan_no, chan_reg, (unsigned)tmp);
     }
 }
 
@@ -1036,7 +1039,8 @@ static void aica_update_interrupts(struct aica *aica) {
      * this is really just a placeholder in case I ever want to put some logging
      * in or something, this function doesn't actually need to be here.
      */
-    printf("FIQ: aica->int_enable is now 0x%08x\n", (unsigned)aica->int_enable);
+    LOG_DBG("FIQ: aica->int_enable is now 0x%08x\n",
+            (unsigned)aica->int_enable);
 }
 
 static bool aica_check_irq(void *ctxt) {
@@ -1476,7 +1480,7 @@ static void aica_process_sample(struct aica *aica) {
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate, chan->step_no);
 
-        chan->sample_pos++;
+        chan->sample_pos += 8;
         if (chan->sample_pos >= chan->loop_end) {
             if (!chan->loop_end_signaled)
                 chan->loop_end_playstatus_flag = true;
