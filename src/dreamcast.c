@@ -241,7 +241,7 @@ void dreamcast_init(bool cmd_session) {
     dc_clock_init(&sh4_clock);
     dc_clock_init(&arm7_clock);
     sh4_init(&cpu, &sh4_clock);
-    arm7_init(&arm7, &arm7_clock);
+    arm7_init(&arm7, &arm7_clock, &aica.mem);
     jit_init(&sh4_clock);
     sys_block_init();
     g1_init();

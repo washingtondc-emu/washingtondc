@@ -29,6 +29,7 @@
 #include "error.h"
 #include "dc_sched.h"
 #include "MemoryMap.h"
+#include "hw/aica/aica_wave_mem.h"
 
 #define ARM7_CLOCK_SCALE (SCHED_FREQUENCY / (45 * 1000 * 1000))
 static_assert(SCHED_FREQUENCY % (45 * 1000 * 1000) == 0,
@@ -166,6 +167,13 @@ struct arm7 {
     uint32_t reg[ARM7_REGISTER_COUNT];
     struct memory_map *map;
 
+    /*
+     * For the sake of instruction-fetching, ARM7 disregards the memory_map and
+     * goes straight here.  This is less modular than going to the memory_map
+     * since it hardcodes for AICA's memory map but needs must.
+     */
+    struct aica_wave_mem *inst_mem;
+
     bool enabled;
 
     enum arm7_excp excp;
@@ -203,7 +211,7 @@ struct arm7_decoded_inst {
     unsigned cycles;
 };
 
-void arm7_init(struct arm7 *arm7, struct dc_clock *clk);
+void arm7_init(struct arm7 *arm7, struct dc_clock *clk, struct aica_wave_mem *inst_mem);
 void arm7_cleanup(struct arm7 *arm7);
 
 void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out);

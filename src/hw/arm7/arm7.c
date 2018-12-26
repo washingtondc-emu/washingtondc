@@ -197,9 +197,11 @@ static arm7_cond_fn arm7_cond(arm7_inst inst) {
 
 static struct error_callback arm7_error_callback;
 
-void arm7_init(struct arm7 *arm7, struct dc_clock *clk) {
+void arm7_init(struct arm7 *arm7,
+               struct dc_clock *clk, struct aica_wave_mem *inst_mem) {
     memset(arm7, 0, sizeof(*arm7));
     arm7->clk = clk;
+    arm7->inst_mem = inst_mem;
 
     arm7_error_callback.arg = arm7;
     arm7_error_callback.callback_fn = arm7_error_set_regs;
@@ -717,7 +719,10 @@ static void arm7_check_excp(struct arm7 *arm7) {
 }
 
 static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
-    return memory_map_read_32(arm7->map, addr);
+    if (addr <= 0x007fffff)
+        return aica_wave_mem_read_32(addr & 0x001fffff, arm7->inst_mem);
+    return ~0;
+    /* return memory_map_read_32(arm7->map, addr); */
 }
 
 /*
