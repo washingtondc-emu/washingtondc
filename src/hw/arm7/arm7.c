@@ -623,43 +623,37 @@ void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
     arm7_check_excp(arm7);
 
     int cycle_count = 0;
-    switch (arm7->pipeline_len) {
-    case 0:
-        cycle_count = 1;
+    if (!arm7->pipeline_full) {
+        cycle_count = 2;
 
-        arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
-        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
+        uint32_t pc = arm7->reg[ARM7_REG_PC];
 
-        next_inst(arm7);
-    case 1:
-        cycle_count++;
+        arm7->pipeline_pc[0] = pc + 4;
+        arm7->pipeline[0] = do_fetch_inst(arm7, pc + 4);
 
-        arm7->pipeline_pc[1] = arm7->pipeline_pc[0];
-        arm7->pipeline[1] = arm7->pipeline[0];
+        arm7->pipeline_pc[1] = pc;
+        arm7->pipeline[1] = do_fetch_inst(arm7, pc);
 
-        arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
-        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
+        arm7->pipeline_full = true;
 
-        arm7->pipeline_len = 2;
-
-        next_inst(arm7);
-    case 2:
-        ret = arm7->pipeline[1];
-
-        arm7->pipeline_pc[1] = arm7->pipeline_pc[0];
-        arm7->pipeline[1] = arm7->pipeline[0];
-
-        arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
-        arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
-
-        arm7_decode(arm7, inst_out, ret);
-        inst_out->cycles += cycle_count;
+        arm7->reg[ARM7_REG_PC] = pc + 8;
     }
+
+    ret = arm7->pipeline[1];
+
+    arm7->pipeline_pc[1] = arm7->pipeline_pc[0];
+    arm7->pipeline[1] = arm7->pipeline[0];
+
+    arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
+    arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
+
+    arm7_decode(arm7, inst_out, ret);
+    inst_out->cycles += cycle_count;
 }
 
 uint32_t arm7_pc_next(struct arm7 *arm7) {
-    if (arm7->pipeline_len)
-        return arm7->pipeline_pc[arm7->pipeline_len - 1];
+    if (arm7->pipeline_full)
+        return arm7->pipeline_pc[1];
     return arm7->reg[ARM7_REG_PC];
 }
 
@@ -735,7 +729,7 @@ static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
  * safe to call reset_pipeline when the PC has actually changed.
  */
 static void reset_pipeline(struct arm7 *arm7) {
-    arm7->pipeline_len = 0;
+    arm7->pipeline_full = false;
 }
 
 static void arm7_inst_branch(struct arm7 *arm7, arm7_inst inst) {

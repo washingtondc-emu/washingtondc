@@ -197,7 +197,7 @@ struct arm7 {
      */
     arm7_inst pipeline[2];
     uint32_t pipeline_pc[2];
-    int pipeline_len;
+    bool pipeline_full;
 };
 
 typedef bool(*arm7_cond_fn)(struct arm7*);
