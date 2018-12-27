@@ -618,15 +618,13 @@ static void next_inst(struct arm7 *arm7) {
 }
 
 void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
-    arm7_inst ret;
-
     arm7_check_excp(arm7);
 
     int cycle_count = 0;
+    uint32_t pc = arm7->reg[ARM7_REG_PC];
+
     if (!arm7->pipeline_full) {
         cycle_count = 2;
-
-        uint32_t pc = arm7->reg[ARM7_REG_PC];
 
         arm7->pipeline_pc[0] = pc + 4;
         arm7->pipeline[0] = do_fetch_inst(arm7, pc + 4);
@@ -636,16 +634,19 @@ void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
 
         arm7->pipeline_full = true;
 
-        arm7->reg[ARM7_REG_PC] = pc + 8;
+        pc += 8;
+        arm7->reg[ARM7_REG_PC] = pc;
     }
 
-    ret = arm7->pipeline[1];
+    arm7_inst inst_fetched = do_fetch_inst(arm7, pc);
+    uint32_t newpc = arm7->pipeline_pc[0];
+    arm7_inst newinst = arm7->pipeline[0];
+    arm7_inst ret = arm7->pipeline[1];
 
-    arm7->pipeline_pc[1] = arm7->pipeline_pc[0];
-    arm7->pipeline[1] = arm7->pipeline[0];
-
-    arm7->pipeline_pc[0] = arm7->reg[ARM7_REG_PC];
-    arm7->pipeline[0] = do_fetch_inst(arm7, arm7->reg[ARM7_REG_PC]);
+    arm7->pipeline_pc[0] = pc;
+    arm7->pipeline[0] = inst_fetched;
+    arm7->pipeline_pc[1] = newpc;
+    arm7->pipeline[1] = newinst;
 
     arm7_decode(arm7, inst_out, ret);
     inst_out->cycles += cycle_count;
