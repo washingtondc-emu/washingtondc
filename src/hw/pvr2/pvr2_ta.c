@@ -1786,6 +1786,8 @@ static void finish_poly_group(enum display_list_type disp_list) {
     cmd.arg.draw_array.verts = pvr2_ta_vert_buf + pvr2_ta_vert_cur_group * GFX_VERT_LEN;
     pvr2_ta_push_gfx_il(cmd);
 
+    LOG_DBG("PVR2: submit %u verts\n", cmd.arg.draw_array.n_verts);
+
     pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count;
 
     open_group = false;
