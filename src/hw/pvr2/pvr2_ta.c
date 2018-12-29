@@ -47,6 +47,12 @@
 
 #include "pvr2_ta.h"
 
+#define PVR2_TRACE(msg, ...)                                            \
+    do {                                                                \
+        LOG_DBG("PVR2: ");                                              \
+        LOG_DBG(msg, ##__VA_ARGS__);                                    \
+    } while (0)
+
 #define PVR2_CMD_MAX_LEN 64
 
 #define TA_CMD_TYPE_SHIFT 29
@@ -155,26 +161,6 @@ enum display_list_type {
     DISPLAY_LIST_NONE = -1
 };
 
-enum vert_type {
-    VERT_NO_TEX_PACKED_COLOR,
-    VERT_NO_TEX_FLOAT_COLOR,
-    VERT_NO_TEX_INTENSITY,
-    VERT_TEX_PACKED_COLOR,
-    VERT_TEX_PACKED_COLOR_16_BIT_TEX_COORD,
-    VERT_TEX_FLOATING_COLOR,
-    VERT_TEX_FLOATING_COLOR_16_BIT_TEX_COORD,
-    VERT_TEX_INTENSITY,
-    VERT_TEX_INTENSITY_16_BIT_TEX_COORD,
-    VERT_NO_TEX_PACKED_COLOR_TWO_VOLUMES,
-    VERT_NO_TEX_INTENSITY_TWO_VOLUMES,
-    VERT_TEX_PACKED_COLOR_TWO_VOLUMES,
-    VERT_TEX_PACKED_COLOR_TWO_VOLUMES_16_BIT_TEX_COORD,
-    VERT_TEX_INTENSITY_TWO_VOLUMES,
-    VERT_TEX_INTENSITY_TWO_VOLUMES_16_BIT_TEX_COORD,
-
-    N_VERT_TYPES
-};
-
 static DEF_ERROR_INT_ATTR(src_blend_factor);
 static DEF_ERROR_INT_ATTR(dst_blend_factor);
 static DEF_ERROR_INT_ATTR(display_list_index);
@@ -199,6 +185,97 @@ static DEF_ERROR_U32_ATTR(ta_fifo_word_d)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_e)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_f)
 
+enum pvr2_pkt_tp {
+    PVR2_PKT_HDR,
+    PVR2_PKT_VTX,
+    PVR2_PKT_END_OF_LIST,
+    PVR2_PKT_INPUT_LIST,
+    PVR2_PKT_USER_CLIP
+};
+
+struct pvr2_pkt_vtx {
+    float base_color[4];
+    float offs_color[4];
+    float uv[2];
+    float pos[3];
+
+    bool end_of_strip;
+};
+
+enum pvr2_hdr_tp {
+    PVR2_HDR_TRIANGLE_STRIP,
+    PVR2_HDR_QUAD
+};
+
+struct pvr2_pkt_hdr {
+    enum pvr2_hdr_tp tp;
+
+    unsigned vtx_len;
+
+    enum display_list_type list;
+
+    bool tex_enable;
+    uint32_t tex_addr;
+
+    /*
+     * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
+     * palette address referenced by this texture.  It needs to be shifted left
+     * by 2 or 6 bits and ORed with pixel values to get palette addresses.
+     *
+     * this field only holds meaning if tex_fmt is TEX_CTRL_PIX_FMT_4_BPP_PAL
+     * or TEX_CTRL_PIX_FMT_8_BPP_PAL; otherwise it is meaningless.
+     */
+    unsigned tex_palette_start;
+
+    unsigned tex_width_shift, tex_height_shift;
+    bool tex_twiddle;
+    bool stride_sel;
+    bool tex_vq_compression;
+    bool tex_mipmap;
+    enum TexCtrlPixFmt pix_fmt;
+    enum tex_inst tex_inst;
+    enum tex_filter tex_filter;
+    enum tex_wrap_mode tex_wrap_mode[2];
+
+    enum ta_color_type ta_color_fmt;
+    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
+
+    bool enable_depth_writes;
+    enum Pvr2DepthFunc depth_func;
+
+    bool shadow;
+    bool two_volumes_mode;
+    /* enum ta_color_type color_type; */
+    bool offset_color_enable;
+    bool gourad_shading_enable;
+    bool tex_coord_16_bit_enable;
+
+    float poly_base_color_rgba[4];
+    float poly_offs_color_rgba[4];
+
+    float sprite_base_color_rgba[4];
+    float sprite_offs_color_rgba[4];
+};
+
+struct pvr2_pkt_user_clip {
+    /*
+     * these are in terms of tiles, so the actual coordinates are these
+     * multiplied by 32.
+     */
+    unsigned xmin, ymin, xmax, ymax;
+};
+
+union pvr2_pkt_inner {
+    struct pvr2_pkt_vtx vtx;
+    struct pvr2_pkt_hdr hdr;
+    struct pvr2_pkt_user_clip user_clip;
+};
+
+struct pvr2_pkt {
+    enum pvr2_pkt_tp tp;
+    union pvr2_pkt_inner dat;
+};
+
 enum global_param {
     GLOBAL_PARAM_POLY = 4,
     GLOBAL_PARAM_SPRITE = 5
@@ -211,98 +288,39 @@ struct pvr2_ta_vert {
     float tex_coord[2];
 };
 
-struct poly_hdr {
-    bool tex_enable;
-    uint32_t tex_addr;
+static struct ta_state {
+    enum display_list_type cur_list;
+
+    bool list_submitted[DISPLAY_LIST_COUNT];
+
+    struct pvr2_pkt_hdr hdr;
 
     /*
-     * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
-     * palette address referenced by this texture.  It needs to be shifted left
-     * by 2 or 6 bits and ORed with pixel values to get palette addresses.
-     *
-     * this field only holds meaning if tex_fmt is TEX_CTRL_PIX_FMT_4_BPP_PAL
-     * or TEX_CTRL_PIX_FMT_8_BPP_PAL; otherwise it is meaningless.
+     * used to store the previous two verts when we're
+     * rendering a triangle strip
      */
-    uint32_t tex_palette_start;
-
-    unsigned tex_width_shift, tex_height_shift;
-    bool tex_twiddle;
-    bool stride_sel;
-    bool tex_vq_compression;
-    bool tex_mipmap;
-    int tex_fmt;
-    enum tex_inst tex_inst;
-    enum tex_filter tex_filter;
-    enum tex_wrap_mode tex_wrap_mode[2];
-
-    unsigned ta_color_fmt;
-    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
-
-    bool enable_depth_writes;
-    enum Pvr2DepthFunc depth_func;
-
-    bool shadow;
-    bool two_volumes_mode;
-    enum ta_color_type color_type;
-    bool offset_color_enable;
-    bool gourad_shading_enable;
-    bool tex_coord_16_bit_enable;
-
-    float poly_base_color_rgba[4];
-    float poly_offs_color_rgba[4];
-
-    float sprite_base_color_rgba[4];
-    float sprite_offs_color_rgba[4];
-};
-
-static struct poly_state {
-    enum global_param global_param;
-
-    // used to store the previous two verts when we're rendering a triangle strip
     struct pvr2_ta_vert strip_vert_1;
     struct pvr2_ta_vert strip_vert_2;
     unsigned strip_len; // number of verts in the current triangle strip
 
-    unsigned ta_color_fmt;
-
-    bool tex_enable;
+    float clip_min, clip_max;
 
     // index into the texture cache
     unsigned tex_idx;
 
-    // which display list is currently open
-    enum display_list_type current_list;
+    bool open_group;
 
-    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
-    enum tex_wrap_mode tex_wrap_mode[2];
-
-    bool enable_depth_writes;
-    enum Pvr2DepthFunc depth_func;
-
-    bool shadow;
-    bool two_volumes_mode;
-    enum ta_color_type color_type;
-    bool offset_color_enable;
-    bool gourad_shading_enable;
-    bool tex_coord_16_bit_enable;
-
-    enum tex_inst tex_inst;
-    enum tex_filter tex_filter;
-
-    // number of 4-byte quads per vertex
-    unsigned vert_len;
-
+    /*
+     * the intensity mode base and offset colors.  These should be referenced
+     * instead of the copies held in hdr because hdr's version of these gets
+     * overwritten every time there's a new header, whereas these variables here
+     * only get overwritten when there's a new INTENSITY_MODE_1 header packet.
+     */
     float poly_base_color_rgba[4];
     float poly_offs_color_rgba[4];
-
     float sprite_base_color_rgba[4];
     float sprite_offs_color_rgba[4];
-
-    enum vert_type vert_type;
-} poly_state = {
-    .current_list = DISPLAY_LIST_NONE,
-    .vert_len = 8
-};
+} ta;
 
 char const *display_list_names[DISPLAY_LIST_COUNT] = {
     "Opaque",
@@ -315,50 +333,29 @@ char const *display_list_names[DISPLAY_LIST_COUNT] = {
     "Unknown Display list 7"
 };
 
-// lengths of each type of vert, in terms of 32-bit integers
-static const unsigned vert_lengths[N_VERT_TYPES] = {
-    [VERT_NO_TEX_PACKED_COLOR] = 8,
-    [VERT_NO_TEX_FLOAT_COLOR] = 8,
-    [VERT_NO_TEX_INTENSITY] = 8,
-    [VERT_TEX_PACKED_COLOR] = 8,
-    [VERT_TEX_PACKED_COLOR_16_BIT_TEX_COORD] = 8,
-    [VERT_TEX_FLOATING_COLOR] = 16,
-    [VERT_TEX_FLOATING_COLOR_16_BIT_TEX_COORD] = 16,
-    [VERT_TEX_INTENSITY] = 8,
-    [VERT_TEX_INTENSITY_16_BIT_TEX_COORD] = 8,
-    [VERT_NO_TEX_PACKED_COLOR_TWO_VOLUMES] = 8,
-    [VERT_NO_TEX_INTENSITY_TWO_VOLUMES] = 8,
-    [VERT_TEX_PACKED_COLOR_TWO_VOLUMES] = 16,
-    [VERT_TEX_PACKED_COLOR_TWO_VOLUMES_16_BIT_TEX_COORD] = 16,
-    [VERT_TEX_INTENSITY_TWO_VOLUMES] = 16,
-    [VERT_TEX_INTENSITY_TWO_VOLUMES_16_BIT_TEX_COORD] = 16
-};
-
-bool list_submitted[DISPLAY_LIST_COUNT];
-
 static void input_poly_fifo(uint8_t byte);
 
 // this function gets called every time a full packet is received by the TA
-static void on_packet_received(void);
-static void on_polyhdr_received(void);
-static void on_vertex_received(void);
-static void on_sprite_received(void);
-static void on_end_of_list_received(void);
-static void on_user_clip_received(void);
+static int decode_packet(struct pvr2_pkt *pkt);
+
+static void handle_packet(struct pvr2_pkt const *pkt);
 
 static void render_frame_init(void);
 
 static void finish_poly_group(enum display_list_type disp_list);
 static void next_poly_group(enum display_list_type disp_list);
 
-static void decode_poly_hdr(struct poly_hdr *hdr);
+static int decode_poly_hdr(struct pvr2_pkt *pkt);
+static int decode_end_of_list(struct pvr2_pkt *pkt);
+static int decode_vtx(struct pvr2_pkt *pkt);
+static int decode_input_list(struct pvr2_pkt *pkt);
+static int decode_user_clip(struct pvr2_pkt *pkt);
 
 // call this whenever a packet has been processed
 static void ta_fifo_finish_packet(void);
 
-static enum vert_type classify_vert(void);
-
 static void unpack_uv16(float *u_coord, float *v_coord, void const *input);
+static void unpack_rgba_8888(float *rgba, uint32_t input);
 
 /*
  * the delay between when the STARTRENDER command is received and when the
@@ -374,6 +371,7 @@ static void unpack_uv16(float *u_coord, float *v_coord, void const *input);
 
 static void pvr2_render_complete_int_event_handler(struct SchedEvent *event);
 
+__attribute__((unused))
 static struct SchedEvent pvr2_render_complete_int_event = {
     .handler = pvr2_render_complete_int_event_handler
 };
@@ -399,22 +397,27 @@ static void pvr2_trans_complete_int_event_handler(struct SchedEvent *event);
 static void pvr2_trans_mod_complete_int_event_handler(struct SchedEvent *event);
 static void pvr2_pt_complete_int_event_handler(struct SchedEvent *event);
 
+__attribute__((unused))
 static struct SchedEvent pvr2_op_complete_int_event = {
     .handler = pvr2_op_complete_int_event_handler
 };
 
+__attribute__((unused))
 static struct SchedEvent pvr2_op_mod_complete_int_event = {
     .handler = pvr2_op_mod_complete_int_event_handler
 };
 
+__attribute__((unused))
 static struct SchedEvent pvr2_trans_complete_int_event = {
     .handler = pvr2_trans_complete_int_event_handler
 };
 
+__attribute__((unused))
 static struct SchedEvent pvr2_trans_mod_complete_int_event = {
     .handler = pvr2_trans_mod_complete_int_event_handler
 };
 
+__attribute__((unused))
 static struct SchedEvent pvr2_pt_complete_int_event = {
     .handler = pvr2_pt_complete_int_event_handler
 };
@@ -443,11 +446,12 @@ static struct gfx_il_inst_chain *gfx_il_inst_buf;
 static unsigned gfx_il_inst_buf_count;
 
 // the 4-component color that gets sent to glClearColor
+__attribute__((unused))
 static float pvr2_bgcolor[4];
 
-static float clip_min, clip_max;
+/* static float clip_min, clip_max; */
 
-static bool open_group;
+/* static bool open_group; */
 
 static unsigned next_frame_stamp;
 
@@ -482,6 +486,7 @@ static inline void pvr2_ta_push_vert(struct pvr2_ta_vert vert) {
     }
 
     float *outp = pvr2_ta_vert_buf + GFX_VERT_LEN * pvr2_ta_vert_buf_count++;
+    PVR2_TRACE("vert_buf_count is now %u\n", pvr2_ta_vert_buf_count);
     outp[GFX_VERT_POS_OFFSET + 0] = vert.pos[0];
     outp[GFX_VERT_POS_OFFSET + 1] = vert.pos[1];
     outp[GFX_VERT_POS_OFFSET + 2] = vert.pos[2];
@@ -504,11 +509,11 @@ static inline void pvr2_ta_push_gfx_il(struct gfx_il_inst inst) {
     struct gfx_il_inst_chain *ent = gfx_il_inst_buf + gfx_il_inst_buf_count++;
     ent->next = NULL;
     ent->cmd = inst;
-    if (!disp_list_begin[poly_state.current_list])
-        disp_list_begin[poly_state.current_list] = ent;
-    if (disp_list_end[poly_state.current_list])
-        disp_list_end[poly_state.current_list]->next = ent;
-    disp_list_end[poly_state.current_list] = ent;
+    if (!disp_list_begin[ta.cur_list])
+        disp_list_begin[ta.cur_list] = ent;
+    if (disp_list_end[ta.cur_list])
+        disp_list_end[ta.cur_list]->next = ent;
+    disp_list_end[ta.cur_list] = ent;
 }
 
 uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt) {
@@ -520,10 +525,8 @@ uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_ta_fifo_poly_write_32(addr32_t addr, uint32_t val, void *ctxt) {
-#ifdef PVR2_LOG_VERBOSE
-    LOG_DBG("WARNING: writing 4 bytes to TA polygon FIFO: 0x%08x\n",
-            (unsigned)val);
-#endif
+    PVR2_TRACE("writing 4 bytes to TA polygon FIFO: 0x%08x\n", (unsigned)val);
+
     uint8_t bytes[4] = {
         val & 0xff,
         (val >> 8) & 0xff,
@@ -599,544 +602,200 @@ void pvr2_ta_fifo_poly_write_double(addr32_t addr, double val, void *ctxt) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-static void input_poly_fifo(uint8_t byte) {
-    ta_fifo[ta_fifo_byte_count++] = byte;
-
-    if (!(ta_fifo_byte_count % 32)) {
-        on_packet_received();
-    }
-}
-
-static void dump_fifo(void) {
-#ifdef ENABLE_LOG_DEBUG
-    unsigned idx;
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
-    LOG_DBG("Dumping FIFO: %u bytes\n", ta_fifo_byte_count);
-    for (idx = 0; idx < ta_fifo_byte_count / 4; idx++)
-        LOG_DBG("\t0x%08x\n", (unsigned)ta_fifo32[idx]);
-#endif
-}
-
-static void on_packet_received(void) {
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
-    unsigned cmd_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
-
-    switch(cmd_tp) {
-    case TA_CMD_TYPE_VERTEX:
-        if (poly_state.current_list == DISPLAY_LIST_NONE) {
-            /*
-             * SEGA Bass Fishing does some apparently nonsensical data to the
-             * TAFIFO on booting.  In that game's case, this message will print
-             * 240 times during boot and never again after that.  The reason it
-             * prints is that the pvr emulation thinks it's trying to submit
-             * data to the transparent list after it has already been closed.
-             * The actual data being sent does not conform to the format of any
-             * known PowerVR2 packets.  Only four bytes in the packets ever
-             * change and it's always a junk value like 0x41414141.
-             */
-            ta_fifo_finish_packet();
 #ifdef PVR2_LOG_VERBOSE
-            LOG_DBG("PVR2 Packet dropped because no display lists are opened\n");
-#endif
-            return;
-        } else if (poly_state.current_list < DISPLAY_LIST_FIRST ||
-            poly_state.current_list > DISPLAY_LIST_LAST) {
-            /*
-             * Crazyy Taxi seems to send headers for all 8 possible polygon
-             * lists even though only 5 lists actually exist.  It never submits
-             * vertex data for the three which don't actually exist.  Here we
-             * panic if it does try to send vertex data to one of those three
-             * lists.
-             */
-            error_set_feature("unknown display list type");
-            error_set_display_list_index(poly_state.current_list);
-            error_set_ta_fifo_byte_count(ta_fifo_byte_count);
-            error_set_ta_fifo_word_0(ta_fifo32[0]);
-            error_set_ta_fifo_word_1(ta_fifo32[1]);
-            error_set_ta_fifo_word_2(ta_fifo32[2]);
-            error_set_ta_fifo_word_3(ta_fifo32[3]);
-            error_set_ta_fifo_word_4(ta_fifo32[4]);
-            error_set_ta_fifo_word_5(ta_fifo32[5]);
-            error_set_ta_fifo_word_6(ta_fifo32[6]);
-            error_set_ta_fifo_word_7(ta_fifo32[7]);
-            error_set_ta_fifo_word_8(ta_fifo32[8]);
-            error_set_ta_fifo_word_9(ta_fifo32[9]);
-            error_set_ta_fifo_word_a(ta_fifo32[10]);
-            error_set_ta_fifo_word_b(ta_fifo32[11]);
-            error_set_ta_fifo_word_c(ta_fifo32[12]);
-            error_set_ta_fifo_word_d(ta_fifo32[13]);
-            error_set_ta_fifo_word_e(ta_fifo32[14]);
-            error_set_ta_fifo_word_f(ta_fifo32[15]);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        if (poly_state.global_param == GLOBAL_PARAM_POLY) {
-            on_vertex_received();
-        } else if (poly_state.global_param == GLOBAL_PARAM_SPRITE) {
-            on_sprite_received();
-        } else {
-            error_set_feature("some unknown vertex type");
-            error_set_pvr2_global_param(poly_state.global_param);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        break;
-    case TA_CMD_TYPE_POLY_HDR:
-    case TA_CMD_TYPE_SPRITE_HDR:
-        on_polyhdr_received();
-        break;
-    case TA_CMD_TYPE_END_OF_LIST:
-        on_end_of_list_received();
-        break;
-    case TA_CMD_TYPE_USER_CLIP:
-        on_user_clip_received();
-        break;
-    case TA_CMD_TYPE_INPUT_LIST:
-        LOG_DBG("TAFIFO: TA_CMD_TYPE_INPUT_LIST received!\n");
-        /*
-         * TODO: This needs to be researched and implemented
-         *
-         * I only semi-understand what this is
-         *
-         * Sample input:
-         * Dumping FIFO: 32 bytes
-         *      0x4626fbac
-         *      0x413a02ca
-         *      0x00000000
-         *      0x00000000
-         *      0x3de73d67
-         *      0x3f7e7000
-         *      0x00efffff
-         *      0x0030303f
-         *
-         * This is used by SoulCalibur.  In that game, the first two dwords vary
-         * every time but the rest of the packet never changes (or if it does
-         * change it does so rarely, I don't have time to read through every
-         * packet in my log dump).
-         */
-        LOG_DBG("TA_CMD_TYPE_INPUT_LIST received on pvr2 ta fifo!\n");
-        dump_fifo();
-        ta_fifo_finish_packet();
-        break;
-    default:
-        LOG_ERROR("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
-        dump_fifo();
-        error_set_feature("PVR2 command type");
-        error_set_ta_fifo_cmd(cmd_tp);
-        error_set_display_list_index(poly_state.current_list);
-        error_set_ta_fifo_byte_count(ta_fifo_byte_count);
-        error_set_ta_fifo_word_0(ta_fifo32[0]);
-        error_set_ta_fifo_word_1(ta_fifo32[1]);
-        error_set_ta_fifo_word_2(ta_fifo32[2]);
-        error_set_ta_fifo_word_3(ta_fifo32[3]);
-        error_set_ta_fifo_word_4(ta_fifo32[4]);
-        error_set_ta_fifo_word_5(ta_fifo32[5]);
-        error_set_ta_fifo_word_6(ta_fifo32[6]);
-        error_set_ta_fifo_word_7(ta_fifo32[7]);
-        error_set_ta_fifo_word_8(ta_fifo32[8]);
-        error_set_ta_fifo_word_9(ta_fifo32[9]);
-        error_set_ta_fifo_word_a(ta_fifo32[10]);
-        error_set_ta_fifo_word_b(ta_fifo32[11]);
-        error_set_ta_fifo_word_c(ta_fifo32[12]);
-        error_set_ta_fifo_word_d(ta_fifo32[13]);
-        error_set_ta_fifo_word_e(ta_fifo32[14]);
-        error_set_ta_fifo_word_f(ta_fifo32[15]);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
+static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
+#define HDR_BOOL(hdr, mem) PVR2_TRACE("\t"#mem": %s\n", hdr->mem ? "true" : "false")
+#define HDR_INT(hdr, mem) PVR2_TRACE("\t"#mem": %d\n", (int)hdr->mem)
+#define HDR_HEX(hdr, mem) PVR2_TRACE("\t"#mem": 0x%08x\n", (int)hdr->mem)
+    PVR2_TRACE("packet header:\n");
+    PVR2_TRACE("\ttype: %s\n", hdr->tp == PVR2_HDR_TRIANGLE_STRIP ?
+               "triangle strip" : "quadrilateral");
+    HDR_INT(hdr, vtx_len);
+    PVR2_TRACE("\tpolygon list: %s\n", display_list_names[hdr->list]);
+    HDR_BOOL(hdr, tex_enable);
+    HDR_HEX(hdr, tex_addr);
+    PVR2_TRACE("\ttexture dimensions: %ux%u\n", 1 << hdr->tex_width_shift, 1 << hdr->tex_height_shift);
+    HDR_BOOL(hdr, tex_twiddle);
+    HDR_BOOL(hdr, stride_sel);
+    HDR_BOOL(hdr, tex_vq_compression);
+    HDR_BOOL(hdr, tex_mipmap);
+    HDR_INT(hdr, pix_fmt);
+    HDR_INT(hdr, tex_inst);
+    HDR_INT(hdr, tex_filter);
+    HDR_INT(hdr, tex_wrap_mode[0]);
+    HDR_INT(hdr, tex_wrap_mode[1]);
+    HDR_INT(hdr, ta_color_fmt);
+    HDR_INT(hdr, src_blend_factor);
+    HDR_INT(hdr, dst_blend_factor);
+    HDR_BOOL(hdr, enable_depth_writes);
+    HDR_INT(hdr, depth_func);
+    HDR_BOOL(hdr, two_volumes_mode);
+    HDR_BOOL(hdr, offset_color_enable);
+    HDR_BOOL(hdr, gourad_shading_enable);
+    HDR_BOOL(hdr, tex_coord_16_bit_enable);
 }
-
-static void decode_poly_hdr(struct poly_hdr *hdr) {
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
-
-    hdr->tex_enable = (bool)(ta_fifo32[0] & TA_CMD_TEX_ENABLE_MASK);
-    hdr->ta_color_fmt = (ta_fifo32[0] & TA_COLOR_FMT_MASK) >>
-        TA_COLOR_FMT_SHIFT;
-
-    hdr->tex_fmt = (ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
-        TEX_CTRL_PIX_FMT_SHIFT;
-
-    /* if (hdr->tex_fmt == TEX_CTRL_PIX_FMT_BUMP_MAP || */
-    /*     hdr->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL || */
-    /*     hdr->tex_fmt == TEX_CTRL_PIX_FMT_YUV_422 || */
-    /*     hdr->tex_fmt >= TEX_CTRL_PIX_FMT_INVALID) */
-
-    hdr->tex_width_shift = 3 +
-        ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
-    hdr->tex_height_shift = 3 +
-        ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
-    hdr->tex_inst = (ta_fifo32[2] & TSP_TEX_INST_MASK) >>
-        TSP_TEX_INST_SHIFT;
-
-    if (hdr->tex_fmt != TEX_CTRL_PIX_FMT_4_BPP_PAL &&
-        hdr->tex_fmt != TEX_CTRL_PIX_FMT_8_BPP_PAL) {
-        hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
-        if (!hdr->tex_twiddle)
-            hdr->stride_sel = (bool)(TEX_CTRL_STRIDE_SEL_MASK & ta_fifo32[3]);
-        else
-            hdr->stride_sel = false;
-        hdr->tex_palette_start = 0xdeadbeef;
-    } else {
-        hdr->tex_twiddle = true;
-        hdr->stride_sel = false;
-        hdr->tex_palette_start = (ta_fifo32[3] & TEX_CTRL_PALETTE_START_MASK) >>
-            TEX_CTRL_PALETTE_START_SHIFT;
-    }
-
-    hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
-    hdr->tex_mipmap = (bool)(TEX_CTRL_MIP_MAPPED_MASK & ta_fifo32[3]);
-    hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
-                     TEX_CTRL_TEX_ADDR_SHIFT) << 3;
-    hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>
-        TSP_TEX_INST_FILTER_SHIFT;
-
-    hdr->src_blend_factor =
-        (ta_fifo32[2] & TSP_WORD_SRC_ALPHA_FACTOR_MASK) >>
-        TSP_WORD_SRC_ALPHA_FACTOR_SHIFT;
-    hdr->dst_blend_factor =
-        (ta_fifo32[2] & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
-        TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
-
-    if (ta_fifo32[2] & (2 << TSP_TEX_CLAMP_SHIFT))
-        hdr->tex_wrap_mode[0] = TEX_WRAP_CLAMP;
-    else if (ta_fifo32[2] & (2 << TSP_TEX_FLIP_SHIFT))
-        hdr->tex_wrap_mode[0] = TEX_WRAP_FLIP;
-    else
-        hdr->tex_wrap_mode[0] = TEX_WRAP_REPEAT;
-
-    if (ta_fifo32[2] & (1 << TSP_TEX_CLAMP_SHIFT))
-        hdr->tex_wrap_mode[1] = TEX_WRAP_CLAMP;
-    else if (ta_fifo32[2] & (1 << TSP_TEX_FLIP_SHIFT))
-        hdr->tex_wrap_mode[1] = TEX_WRAP_FLIP;
-    else
-        hdr->tex_wrap_mode[1] = TEX_WRAP_REPEAT;
-
-    hdr->enable_depth_writes =
-        !((ta_fifo32[0] & DEPTH_WRITE_DISABLE_MASK) >>
-          DEPTH_WRITE_DISABLE_SHIFT);
-    hdr->depth_func =
-        (ta_fifo32[0] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
-
-    hdr->shadow = (bool)(ta_fifo32[0] & TA_CMD_SHADOW_MASK);
-    hdr->two_volumes_mode = (bool)(ta_fifo32[0] & TA_CMD_TWO_VOLUMES_MASK);
-    hdr->color_type =
-        (enum ta_color_type)((ta_fifo32[0] & TA_CMD_COLOR_TYPE_MASK) >>
-                             TA_CMD_COLOR_TYPE_SHIFT);
-    hdr->offset_color_enable = (bool)(ta_fifo32[0] & TA_CMD_OFFSET_COLOR_MASK);
-    hdr->gourad_shading_enable =
-        (bool)(ta_fifo32[0] & TA_CMD_GOURAD_SHADING_MASK);
-    hdr->tex_coord_16_bit_enable =
-        (bool)(ta_fifo32[0] & TA_CMD_16_BIT_TEX_COORD_MASK);
-
-    if (((ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT) ==
-        TA_CMD_TYPE_SPRITE_HDR) {
-        hdr->tex_coord_16_bit_enable = true; // force this on
-    }
-
-    // unpack the sprite color
-    uint32_t base_color = ta_fifo32[4];
-    uint32_t offset_color = ta_fifo32[5];
-    unsigned base_r = (base_color & 0x00ff0000) >> 16;
-    unsigned base_g = (base_color & 0x0000ff00) >> 8;
-    unsigned base_b = base_color & 0x000000ff;
-    unsigned base_a = (base_color & 0xff000000) >> 24;
-    unsigned offset_r = (offset_color & 0x00ff0000) >> 16;
-    unsigned offset_g = (offset_color & 0x0000ff00) >> 8;
-    unsigned offset_b = offset_color & 0x000000ff;
-    unsigned offset_a = (offset_color & 0xff000000) >> 24;
-
-    hdr->sprite_base_color_rgba[0] = base_r / 255.0f;
-    hdr->sprite_base_color_rgba[1] = base_g / 255.0f;
-    hdr->sprite_base_color_rgba[2] = base_b / 255.0f;
-    hdr->sprite_base_color_rgba[3] = base_a / 255.0f;
-
-    if (hdr->offset_color_enable) {
-        hdr->sprite_offs_color_rgba[0] = offset_r / 255.0f;
-        hdr->sprite_offs_color_rgba[1] = offset_g / 255.0f;
-        hdr->sprite_offs_color_rgba[2] = offset_b / 255.0f;
-        hdr->sprite_offs_color_rgba[3] = offset_a / 255.0f;
-    } else {
-        memset(hdr->sprite_offs_color_rgba, 0,
-               sizeof(hdr->sprite_offs_color_rgba));
-    }
-
-    if (hdr->color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) {
-        if (hdr->offset_color_enable) {
-            memcpy(hdr->poly_base_color_rgba, ta_fifo32 + 9, 3 * sizeof(float));
-            memcpy(hdr->poly_base_color_rgba + 3, ta_fifo32 + 8, sizeof(float));
-            memcpy(hdr->poly_offs_color_rgba, ta_fifo32 + 13, 3 * sizeof(float));
-            memcpy(hdr->poly_offs_color_rgba + 3, ta_fifo32 + 12, sizeof(float));
-        } else {
-            memcpy(hdr->poly_base_color_rgba, ta_fifo32 + 5, 3 * sizeof(float));
-            memcpy(hdr->poly_base_color_rgba + 3, ta_fifo32 + 4, sizeof(float));
-            memset(hdr->poly_offs_color_rgba, 0, sizeof(float) * 4);
-        }
-    } else {
-        memset(hdr->poly_base_color_rgba, 0, sizeof(hdr->poly_base_color_rgba));
-        memset(hdr->poly_offs_color_rgba, 0, sizeof(hdr->poly_offs_color_rgba));
-    }
-}
-
-static void on_polyhdr_received(void) {
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
-    enum display_list_type list =
-        (enum display_list_type)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
-                                 TA_CMD_DISP_LIST_SHIFT);
-    struct poly_hdr hdr;
-
-    if (list >= DISPLAY_LIST_COUNT || list < 0) {
-        error_set_feature("correct response for invalid display list indices");
-        error_set_display_list_index(list);
-        error_set_ta_fifo_byte_count(ta_fifo_byte_count);
-        error_set_ta_fifo_word_0(ta_fifo32[0]);
-        error_set_ta_fifo_word_1(ta_fifo32[1]);
-        error_set_ta_fifo_word_2(ta_fifo32[2]);
-        error_set_ta_fifo_word_3(ta_fifo32[3]);
-        error_set_ta_fifo_word_4(ta_fifo32[4]);
-        error_set_ta_fifo_word_5(ta_fifo32[5]);
-        error_set_ta_fifo_word_6(ta_fifo32[6]);
-        error_set_ta_fifo_word_7(ta_fifo32[7]);
-        error_set_ta_fifo_word_8(ta_fifo32[8]);
-        error_set_ta_fifo_word_9(ta_fifo32[9]);
-        error_set_ta_fifo_word_a(ta_fifo32[10]);
-        error_set_ta_fifo_word_b(ta_fifo32[11]);
-        error_set_ta_fifo_word_c(ta_fifo32[12]);
-        error_set_ta_fifo_word_d(ta_fifo32[13]);
-        error_set_ta_fifo_word_e(ta_fifo32[14]);
-        error_set_ta_fifo_word_f(ta_fifo32[15]);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    decode_poly_hdr(&hdr);
-
-    /*
-     * XXX It seems that intensity mode 1 is 64 bits, but mode 2 is only 32.
-     * This is most likely because the point of intensity mode 2 is to reuse
-     * the face color from the previous intensity mode 1 polygon.  I'm not 100%
-     * clear on what the format of an intensity mode 2 header is, and I'm also
-     * not 100% clear on whether or not it has its own offset header.  That
-     * said, I am confident that intensity mode 2 is 32 bits.
-     */
-    unsigned cmd_type = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
-
-    if (list != DISPLAY_LIST_OPAQUE_MOD &&
-        list != DISPLAY_LIST_TRANS_MOD &&
-        cmd_type != TA_CMD_TYPE_SPRITE_HDR &&
-        hdr.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1 &&
-            hdr.offset_color_enable && ta_fifo_byte_count != 64) {
-            // need 64 bytes not, 32.
-            return;
-    }
-
-    if ((poly_state.current_list == DISPLAY_LIST_NONE) &&
-        list_submitted[list]) {
-        LOG_WARN("WARNING: unable to open list %s because it is already "
-                 "closed\n", display_list_names[list]);
-        goto the_end;
-    }
-
-    if ((poly_state.current_list != DISPLAY_LIST_NONE) &&
-        (poly_state.current_list != list)) {
-        LOG_WARN("WARNING: attempting to input poly header for list %s without "
-                 "first closing %s\n", display_list_names[list],
-                 display_list_names[poly_state.current_list]);
-        /*
-         * SoulCalibur and DaytonaUSA both do this, and they seem to be doing it
-         * on purpose because they do it during long DMA transactions.  I feel
-         * confident that the root-cause is not a misaligned TA FIFO.
-         *
-         * IDK what to do about it, my best guess is that maybe the list doesn't
-         * actually get opened until the first polygon is input.  Even so, that
-         * wouldn't explain why they bothered to do this.  They literally linput
-         * a polygon header followed by another polygon header from a different
-         * list.
-         */
-        /* error_set_display_list_index(list); */
-        /* error_set_ta_fifo_byte_count(ta_fifo_byte_count); */
-        /* error_set_ta_fifo_word_0(ta_fifo32[0]); */
-        /* error_set_ta_fifo_word_1(ta_fifo32[1]); */
-        /* error_set_ta_fifo_word_2(ta_fifo32[2]); */
-        /* error_set_ta_fifo_word_3(ta_fifo32[3]); */
-        /* error_set_ta_fifo_word_4(ta_fifo32[4]); */
-        /* error_set_ta_fifo_word_5(ta_fifo32[5]); */
-        /* error_set_ta_fifo_word_6(ta_fifo32[6]); */
-        /* error_set_ta_fifo_word_7(ta_fifo32[7]); */
-        /* error_set_ta_fifo_word_8(ta_fifo32[8]); */
-        /* error_set_ta_fifo_word_9(ta_fifo32[9]); */
-        /* error_set_ta_fifo_word_a(ta_fifo32[10]); */
-        /* error_set_ta_fifo_word_b(ta_fifo32[11]); */
-        /* error_set_ta_fifo_word_c(ta_fifo32[12]); */
-        /* error_set_ta_fifo_word_d(ta_fifo32[13]); */
-        /* error_set_ta_fifo_word_e(ta_fifo32[14]); */
-        /* error_set_ta_fifo_word_f(ta_fifo32[15]); */
-        /* RAISE_ERROR(ERROR_UNIMPLEMENTED); */
-    }
-
-    /*
-     * next_poly_group will finish the current poly_group (if there is one),
-     * and that will reference the poly_state.  Ergo, next_poly_group must be
-     * called BEFORE any poly_state changes are made.
-     */
-    if (poly_state.current_list != DISPLAY_LIST_NONE &&
-        poly_state.current_list != list) {
-        // finish the last poly group of the current list
-
-#ifdef INVARIANTS
-        if (poly_state.current_list < 0 || poly_state.current_list >= DISPLAY_LIST_COUNT) {
-            LOG_ERROR("ERROR: poly_state.current_list is 0x%08x\n",
-                   (unsigned)poly_state.current_list);
-            RAISE_ERROR(ERROR_INTEGRITY);
-        }
 #endif
 
-        if (open_group)
-            finish_poly_group(poly_state.current_list);
+static void on_pkt_hdr_received(struct pvr2_pkt const *pkt) {
+    struct pvr2_pkt_hdr const *hdr = &pkt->dat.hdr;
+    ta.strip_len = 0;
+
+#ifdef PVR2_LOG_VERBOSE
+    dump_pkt_hdr(hdr);
+#endif
+
+    if (hdr->two_volumes_mode)
+        LOG_WARN("Unimplemented two-volumes mode polygon!\n");
+
+    if (ta.cur_list != hdr->list) {
+        if (ta.cur_list == DISPLAY_LIST_NONE) {
+            PVR2_TRACE("Opening display list \"%s\"\n", display_list_names[hdr->list]);
+            ta.cur_list = hdr->list;
+            ta.open_group = true;
+        } else {
+            PVR2_TRACE("software did not close list %d\n",
+                      (int)ta.cur_list);
+            PVR2_TRACE("Beginning polygon group within list \"%s\"\n",
+                       display_list_names[ta.cur_list]);
+
+            next_poly_group(ta.cur_list);
+        }
+
+        if (ta.list_submitted[ta.cur_list]) {
+            LOG_ERROR("Already submitted list %d\n", (int)hdr->list);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        /* pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count; */
+    } else {
+        PVR2_TRACE("Beginning polygon group within list \"%s\"\n",
+                   display_list_names[hdr->list]);
+
+        next_poly_group(ta.cur_list);
     }
 
-    if ((poly_state.current_list != list) &&
-        !list_submitted[list]) {
+    ta.strip_len = 0;
 
-        LOG_DBG("Opening display list %s\n", display_list_names[list]);
-        poly_state.current_list = list;
-        list_submitted[list] = true;
-    }
+    /*
+     * XXX this happens before the texture caching code because we need to be
+     * able to disable textures if the cache is full, but hdr is const.
+     */
+    memcpy(&ta.hdr, hdr, sizeof(ta.hdr));
 
-    next_poly_group(poly_state.current_list);
+    if (hdr->tex_enable) {
+        PVR2_TRACE("texture enabled\n");
 
-    // reset triangle strips
-    poly_state.strip_len = 0;
+        PVR2_TRACE("the texture format is %d\n", hdr->pix_fmt);
+        PVR2_TRACE("The texture address ix 0x%08x\n", hdr->tex_addr);
 
-    poly_state.ta_color_fmt = hdr.ta_color_fmt;
-
-    if (hdr.tex_enable) {
-        poly_state.tex_enable = true;
-        LOG_DBG("texture enabled\n");
-
-        LOG_DBG("the texture format is %d\n", hdr.tex_fmt);
-        LOG_DBG("The texture address ix 0x%08x\n", hdr.tex_addr);
-
-        if (hdr.tex_twiddle)
-            LOG_DBG("not twiddled\n");
+        if (hdr->tex_twiddle)
+            PVR2_TRACE("not twiddled\n");
         else
-            LOG_DBG("twiddled\n");
+            PVR2_TRACE("twiddled\n");
 
         struct pvr2_tex *ent =
-            pvr2_tex_cache_find(hdr.tex_addr, hdr.tex_palette_start,
-                                hdr.tex_width_shift,
-                                hdr.tex_height_shift,
-                                hdr.tex_fmt, hdr.tex_twiddle,
-                                hdr.tex_vq_compression,
-                                hdr.tex_mipmap,
-                                hdr.stride_sel);
+            pvr2_tex_cache_find(hdr->tex_addr, hdr->tex_palette_start,
+                                hdr->tex_width_shift,
+                                hdr->tex_height_shift,
+                                hdr->pix_fmt, hdr->tex_twiddle,
+                                hdr->tex_vq_compression,
+                                hdr->tex_mipmap,
+                                hdr->stride_sel);
 
-        LOG_DBG("texture dimensions are (%u, %u)\n",
-               1 << hdr.tex_width_shift,
-               1 << hdr.tex_height_shift);
+        PVR2_TRACE("texture dimensions are (%u, %u)\n",
+               1 << hdr->tex_width_shift,
+               1 << hdr->tex_height_shift);
         if (ent) {
-            LOG_DBG("Texture 0x%08x found in cache\n",
-                    hdr.tex_addr);
+            PVR2_TRACE("Texture 0x%08x found in cache\n",
+                    hdr->tex_addr);
         } else {
-            LOG_DBG("Adding 0x%08x to texture cache...\n",
-                    hdr.tex_addr);
-            ent = pvr2_tex_cache_add(hdr.tex_addr, hdr.tex_palette_start,
-                                     hdr.tex_width_shift,
-                                     hdr.tex_height_shift,
-                                     hdr.tex_fmt,
-                                     hdr.tex_twiddle,
-                                     hdr.tex_vq_compression,
-                                     hdr.tex_mipmap,
-                                     hdr.stride_sel);
+            PVR2_TRACE("Adding 0x%08x to texture cache...\n",
+                    hdr->tex_addr);
+            ent = pvr2_tex_cache_add(hdr->tex_addr, hdr->tex_palette_start,
+                                     hdr->tex_width_shift,
+                                     hdr->tex_height_shift,
+                                     hdr->pix_fmt,
+                                     hdr->tex_twiddle,
+                                     hdr->tex_vq_compression,
+                                     hdr->tex_mipmap,
+                                     hdr->stride_sel);
         }
 
         if (!ent) {
             LOG_WARN("WARNING: failed to add texture 0x%08x to "
-                    "the texture cache\n", hdr.tex_addr);
-            poly_state.tex_enable = false;
+                    "the texture cache\n", hdr->tex_addr);
+            ta.hdr.tex_enable = false;
         } else {
-            poly_state.tex_idx = pvr2_tex_cache_get_idx(ent);
+            ta.tex_idx = pvr2_tex_cache_get_idx(ent);
         }
     } else {
-        LOG_DBG("textures are NOT enabled\n");
-        poly_state.tex_enable = false;
+        PVR2_TRACE("textures are NOT enabled\n");
+        /* poly_state.tex_enable = false; */
     }
-    poly_state.src_blend_factor = hdr.src_blend_factor;
-    poly_state.dst_blend_factor = hdr.dst_blend_factor;
-    memcpy(poly_state.tex_wrap_mode, hdr.tex_wrap_mode,
-           sizeof(poly_state.tex_wrap_mode));
-
-    poly_state.enable_depth_writes = hdr.enable_depth_writes;
-    poly_state.depth_func = hdr.depth_func;
-
-    poly_state.shadow = hdr.shadow;
-    poly_state.two_volumes_mode = hdr.two_volumes_mode;
-    poly_state.color_type = hdr.color_type;
-    poly_state.offset_color_enable = hdr.offset_color_enable;
-    poly_state.gourad_shading_enable = hdr.gourad_shading_enable;
-    poly_state.tex_coord_16_bit_enable = hdr.tex_coord_16_bit_enable;
-
-    poly_state.vert_type = classify_vert();
-
-    // Modifier volumes unconditionally have a length of 32 bytes.
-    if (list != DISPLAY_LIST_OPAQUE_MOD && list != DISPLAY_LIST_TRANS_MOD)
-        poly_state.vert_len = vert_lengths[poly_state.vert_type];
-    else
-        poly_state.vert_len = 16;
-
-    poly_state.tex_inst = hdr.tex_inst;
-    poly_state.tex_filter = hdr.tex_filter;
-
-    if (hdr.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) {
-        memcpy(poly_state.poly_base_color_rgba, hdr.poly_base_color_rgba,
-               sizeof(poly_state.poly_base_color_rgba));
-        memcpy(poly_state.poly_offs_color_rgba, hdr.poly_offs_color_rgba,
-               sizeof(poly_state.poly_offs_color_rgba));
-    }
-
-    memcpy(poly_state.sprite_base_color_rgba, hdr.sprite_base_color_rgba,
-           sizeof(poly_state.sprite_base_color_rgba));
-    memcpy(poly_state.sprite_offs_color_rgba, hdr.sprite_offs_color_rgba,
-           sizeof(poly_state.sprite_offs_color_rgba));
-
-    poly_state.global_param =
-        (enum global_param)((ta_fifo32[0] & TA_CMD_TYPE_MASK) >>
-                            TA_CMD_TYPE_SHIFT);
-
-    LOG_DBG("POLY HEADER PACKET!\n");
-
-the_end:
-    ta_fifo_finish_packet();
 }
 
-// unpack 16-bit texture coordinates into two floats
-static void unpack_uv16(float *u_coord, float *v_coord, void const *input) {
-    uint32_t val = *(uint32_t*)input;
-    uint32_t u_val = val & 0xffff0000;
-    uint32_t v_val = val << 16;
+static void on_pkt_end_of_list_received(struct pvr2_pkt const *pkt) {
+    PVR2_TRACE("END-OF-LIST PACKET!\n");
 
-    memcpy(u_coord, &u_val, sizeof(*u_coord));
-    memcpy(v_coord, &v_val, sizeof(*v_coord));
+    if (ta.cur_list == DISPLAY_LIST_NONE) {
+        LOG_ERROR("attempt to close list when no list is open!\n");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    dc_cycle_stamp_t int_when =
+        clock_cycle_stamp(pvr2_clk) + PVR2_LIST_COMPLETE_INT_DELAY;
+
+    switch (ta.cur_list) {
+    case DISPLAY_LIST_OPAQUE:
+        if (!pvr2_op_complete_int_event_scheduled) {
+            pvr2_op_complete_int_event_scheduled = true;
+            pvr2_op_complete_int_event.when = int_when;
+            sched_event(pvr2_clk, &pvr2_op_complete_int_event);
+        }
+        break;
+    case DISPLAY_LIST_OPAQUE_MOD:
+        if (!pvr2_op_mod_complete_int_event_scheduled) {
+            pvr2_op_mod_complete_int_event_scheduled = true;
+            pvr2_op_mod_complete_int_event.when = int_when;
+            sched_event(pvr2_clk, &pvr2_op_mod_complete_int_event);
+        }
+        break;
+    case DISPLAY_LIST_TRANS:
+        if (!pvr2_trans_complete_int_event_scheduled) {
+            pvr2_trans_complete_int_event_scheduled = true;
+            pvr2_trans_complete_int_event.when = int_when;
+            sched_event(pvr2_clk, &pvr2_trans_complete_int_event);
+        }
+        break;
+    case DISPLAY_LIST_TRANS_MOD:
+        if (!pvr2_trans_mod_complete_int_event_scheduled) {
+            pvr2_trans_mod_complete_int_event_scheduled = true;
+            pvr2_trans_mod_complete_int_event.when = int_when;
+            sched_event(pvr2_clk, &pvr2_trans_mod_complete_int_event);
+        }
+        break;
+    case DISPLAY_LIST_PUNCH_THROUGH:
+        if (!pvr2_pt_complete_int_event_scheduled) {
+            pvr2_pt_complete_int_event_scheduled = true;
+            pvr2_pt_complete_int_event.when = int_when;
+            sched_event(pvr2_clk, &pvr2_pt_complete_int_event);
+        }
+        break;
+    default:
+        /*
+         * this can never actually happen because this
+         * functionshould have returned early above
+         */
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    finish_poly_group(ta.cur_list);
+
+    ta.list_submitted[ta.cur_list] = true;
+    ta.cur_list = DISPLAY_LIST_NONE;
 }
 
-static void on_sprite_received(void) {
-    /*
-     * if the vertex is not long enough, return and make input_poly_fifo call
-     * us again later when there is more data.  Practically, this means that we
-     * are expecting 64 bytes, but we only have 32 bytes so far.
-     */
-    if (ta_fifo_byte_count != 64)
-        return;
-
-    if (poly_state.current_list < 0) {
-        LOG_WARN("WARNING: unable to render sprite because no display lists "
-                 "are open\n");
-        ta_fifo_finish_packet();
-        return;
-    }
-
-    if (!open_group) {
-        LOG_WARN("WARNING: unable to render sprite because I'm still waiting "
-                 "to see a polygon header\n");
-        ta_fifo_finish_packet();
-        return;
-    }
-
+static void on_quad_received(struct pvr2_pkt_vtx const *vtx) {
     float const *ta_fifo_float = (float const*)ta_fifo;
 
     /*
@@ -1212,7 +871,7 @@ static void on_sprite_received(void) {
     float norm[3] = {
         v1[1] * v2[2] - v1[2] * v2[1],
         v1[2] * v2[0] - v1[0] * v2[2],
-        v1[0] * v2[1] - v1[1] * v2[0]
+            v1[0] * v2[1] - v1[1] * v2[0]
     };
 
     /*
@@ -1234,17 +893,17 @@ static void on_sprite_received(void) {
     p4[2] = -1.0f * (dist + norm[0] * p4[0] + norm[1] * p4[1]) / norm[2];
 
     float const base_col[] = {
-        poly_state.sprite_base_color_rgba[0],
-        poly_state.sprite_base_color_rgba[1],
-        poly_state.sprite_base_color_rgba[2],
-        poly_state.sprite_base_color_rgba[3]
+        ta.sprite_base_color_rgba[0],
+        ta.sprite_base_color_rgba[1],
+        ta.sprite_base_color_rgba[2],
+        ta.sprite_base_color_rgba[3]
     };
 
     float const offs_col[] = {
-        poly_state.sprite_offs_color_rgba[0],
-        poly_state.sprite_offs_color_rgba[1],
-        poly_state.sprite_offs_color_rgba[2],
-        poly_state.sprite_offs_color_rgba[3]
+        ta.sprite_offs_color_rgba[0],
+        ta.sprite_offs_color_rgba[1],
+        ta.sprite_offs_color_rgba[2],
+        ta.sprite_offs_color_rgba[3]
     };
 
     struct pvr2_ta_vert vert1 = {
@@ -1283,57 +942,36 @@ static void on_sprite_received(void) {
     pvr2_ta_push_vert(vert3);
     pvr2_ta_push_vert(vert4);
 
-    if (p1[2] < clip_min)
-        clip_min = p1[2];
-    if (p1[2] > clip_max)
-        clip_max = p1[2];
+    if (p1[2] < ta.clip_min)
+        ta.clip_min = p1[2];
+    if (p1[2] > ta.clip_max)
+        ta.clip_max = p1[2];
 
-    if (p2[2] < clip_min)
-        clip_min = p2[2];
-    if (p2[2] > clip_max)
-        clip_max = p2[2];
+    if (p2[2] < ta.clip_min)
+        ta.clip_min = p2[2];
+    if (p2[2] > ta.clip_max)
+        ta.clip_max = p2[2];
 
-    if (p3[2] < clip_min)
-        clip_min = p3[2];
-    if (p3[2] > clip_max)
-        clip_max = p3[2];
+    if (p3[2] < ta.clip_min)
+        ta.clip_min = p3[2];
+    if (p3[2] > ta.clip_max)
+        ta.clip_max = p3[2];
 
-    if (p4[2] < clip_min)
-        clip_min = p4[2];
-    if (p4[2] > clip_max)
-        clip_max = p4[2];
-
-    ta_fifo_finish_packet();
+    if (p4[2] < ta.clip_min)
+        ta.clip_min = p4[2];
+    if (p4[2] > ta.clip_max)
+        ta.clip_max = p4[2];
 }
 
-static void on_vertex_received(void) {
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
-    float const *ta_fifo_float = (float const*)ta_fifo;
+static void on_pkt_vtx_received(struct pvr2_pkt const *pkt) {
+    struct pvr2_pkt_vtx const *vtx = &pkt->dat.vtx;
 
-    /*
-     * if the vertex is not long enough, return and make input_poly_fifo call
-     * us again later when there is more data.  Practically, this means that we
-     * are expecting 64 bytes, but we only have 32 bytes so far.
-     */
-    if (ta_fifo_byte_count != (poly_state.vert_len * 4))
-        return;
-
-#ifdef PVR2_LOG_VERBOSE
-    LOG_DBG("vertex received!\n");
-#endif
-    if (poly_state.current_list < 0) {
-        LOG_WARN("WARNING: unable to render vertex because no display lists "
-                 "are open\n");
-        ta_fifo_finish_packet();
+    if (ta.hdr.tp == PVR2_HDR_QUAD) {
+        on_quad_received(vtx);
         return;
     }
 
-    if (!open_group) {
-        LOG_WARN("ERROR: unable to render vertex because I'm still waiting to "
-                 "see a polygon header\n");
-        ta_fifo_finish_packet();
-        return;
-    }
+    ta.open_group = true;
 
     /*
      * un-strip triangle strips by duplicating the previous two vertices.
@@ -1344,9 +982,9 @@ static void on_vertex_received(void) {
      * re-start strips.  It might also be possible to stitch separate strips
      * together with degenerate triangles...
      */
-    if (poly_state.strip_len >= 3) {
-        pvr2_ta_push_vert(poly_state.strip_vert_1);
-        pvr2_ta_push_vert(poly_state.strip_vert_2);
+    if (ta.strip_len >= 3) {
+        pvr2_ta_push_vert(ta.strip_vert_1);
+        pvr2_ta_push_vert(ta.strip_vert_2);
     }
 
     // first update the clipping planes
@@ -1354,121 +992,559 @@ static void on_vertex_received(void) {
      * TODO: there are FPU instructions on x86 that can do this without
      * branching
      */
-    float z_recip = 1.0 / ta_fifo_float[3];
-    if (z_recip < clip_min)
-        clip_min = z_recip;
-    if (z_recip > clip_max)
-        clip_max = z_recip;
+    float z_recip = 1.0 / vtx->pos[2];
+    if (z_recip < ta.clip_min)
+        ta.clip_min = z_recip;
+    if (z_recip > ta.clip_max)
+        ta.clip_max = z_recip;
 
     struct pvr2_ta_vert vert;
 
-    vert.pos[0] = ta_fifo_float[1];
-    vert.pos[1] = ta_fifo_float[2];
+    vert.pos[0] = vtx->pos[0];
+    vert.pos[1] = vtx->pos[1];
     vert.pos[2] = z_recip;
 
-    if (poly_state.tex_enable) {
-        float uv[2];
+    PVR2_TRACE("(%f, %f, %f)\n", vert.pos[0], vert.pos[1], vert.pos[2]);
 
-        if (poly_state.tex_coord_16_bit_enable) {
-            unpack_uv16(uv, uv + 1, ta_fifo_float + 4);
-        } else {
-            uv[0] = ta_fifo_float[4];
-            uv[1] = ta_fifo_float[5];
-        }
-
-        vert.tex_coord[0] = uv[0];
-        vert.tex_coord[1] = uv[1];
-    }
-
-    float base_color_r, base_color_g, base_color_b, base_color_a;
-    float offs_color_r = 0.0f, offs_color_g = 0.0f,
-        offs_color_b = 0.0f, offs_color_a = 0.0f;
-    float base_intensity, offs_intensity;
-
-    switch (poly_state.ta_color_fmt) {
-    case TA_COLOR_TYPE_PACKED:
-        base_color_a = (float)((ta_fifo32[6] & 0xff000000) >> 24) / 255.0f;
-        base_color_r = (float)((ta_fifo32[6] & 0x00ff0000) >> 16) / 255.0f;
-        base_color_g = (float)((ta_fifo32[6] & 0x0000ff00) >> 8) / 255.0f;
-        base_color_b = (float)((ta_fifo32[6] & 0x000000ff) >> 0) / 255.0f;
-        break;
-    case TA_COLOR_TYPE_FLOAT:
-        if (poly_state.vert_len == 16) {
-            memcpy(&base_color_a, ta_fifo32 + 8, sizeof(base_color_a));
-            memcpy(&base_color_r, ta_fifo32 + 9, sizeof(base_color_r));
-            memcpy(&base_color_g, ta_fifo32 + 10, sizeof(base_color_g));
-            memcpy(&base_color_b, ta_fifo32 + 11, sizeof(base_color_b));
-
-            if (poly_state.offset_color_enable) {
-                memcpy(&offs_color_a, ta_fifo32 + 12, sizeof(offs_color_a));
-                memcpy(&offs_color_r, ta_fifo32 + 13, sizeof(offs_color_r));
-                memcpy(&offs_color_g, ta_fifo32 + 14, sizeof(offs_color_g));
-                memcpy(&offs_color_b, ta_fifo32 + 15, sizeof(offs_color_b));
-            }
-        } else {
-            memcpy(&base_color_a, ta_fifo32 + 4, sizeof(base_color_a));
-            memcpy(&base_color_r, ta_fifo32 + 5, sizeof(base_color_r));
-            memcpy(&base_color_g, ta_fifo32 + 6, sizeof(base_color_g));
-            memcpy(&base_color_b, ta_fifo32 + 7, sizeof(base_color_b));
-        }
-        break;
-    case TA_COLOR_TYPE_INTENSITY_MODE_1:
-    case TA_COLOR_TYPE_INTENSITY_MODE_2:
-        base_color_a = poly_state.poly_base_color_rgba[3];
-
-        memcpy(&base_intensity, ta_fifo32 + 6, sizeof(float));
-        memcpy(&offs_intensity, ta_fifo32 + 7, sizeof(float));
-
-        base_color_r = base_intensity * poly_state.poly_base_color_rgba[0];
-        base_color_g = base_intensity * poly_state.poly_base_color_rgba[1];
-        base_color_b = base_intensity * poly_state.poly_base_color_rgba[2];
-
-        if (poly_state.offset_color_enable) {
-            offs_color_r =
-                offs_intensity * poly_state.poly_offs_color_rgba[0];
-            offs_color_g =
-                offs_intensity * poly_state.poly_offs_color_rgba[1];
-            offs_color_b =
-                offs_intensity * poly_state.poly_offs_color_rgba[2];
-            offs_color_a =
-                offs_intensity * poly_state.poly_offs_color_rgba[3];
-        }
-        break;
-    default:
-        base_color_r = base_color_g = base_color_b = base_color_a = 1.0f;
-        LOG_WARN("WARNING: unknown TA color format %u\n",
-                 poly_state.ta_color_fmt);
-    }
-
-    vert.base_color[0] = base_color_r;
-    vert.base_color[1] = base_color_g;
-    vert.base_color[2] = base_color_b;
-    vert.base_color[3] = base_color_a;
-
-    vert.offs_color[0] = offs_color_r;
-    vert.offs_color[1] = offs_color_g;
-    vert.offs_color[2] = offs_color_b;
-    vert.offs_color[3] = offs_color_a;
+    memcpy(vert.tex_coord, vtx->uv, sizeof(vert.tex_coord));
+    memcpy(vert.base_color, vtx->base_color, sizeof(vtx->base_color));
+    memcpy(vert.offs_color, vtx->offs_color, sizeof(vtx->offs_color));
 
     pvr2_ta_push_vert(vert);
 
-    if (ta_fifo32[0] & TA_CMD_END_OF_STRIP_MASK) {
+    if (vtx->end_of_strip) {
         /*
          * TODO: handle degenerate cases where the user sends an
          * end-of-strip on the first or second vertex
          */
-        poly_state.strip_len = 0;
+        ta.strip_len = 0;
     } else {
         /*
          * shift the new vert into strip_vert2 and
          * shift strip_vert2 into strip_vert1
          */
-        poly_state.strip_vert_1 = poly_state.strip_vert_2;
-        poly_state.strip_vert_2 = vert;
-        poly_state.strip_len++;
+        ta.strip_vert_1 = ta.strip_vert_2;
+        ta.strip_vert_2 = vert;
+        ta.strip_len++;
+    }
+}
+
+static void on_pkt_input_list_received(struct pvr2_pkt const *pkt) {
+    LOG_WARN("PVR2: unimplemented type 2 (input list) packet received\n");
+}
+
+static void on_pkt_user_clip_received(struct pvr2_pkt const *pkt) {
+    LOG_WARN("PVR2: unimplemented type 1 (user tile clip) packet received\n");
+    PVR2_TRACE("\tmin: (%u, %u)\n\tax: (%u, %u)\n",
+               pkt->dat.user_clip.xmin * 32,
+               pkt->dat.user_clip.ymin * 32,
+               pkt->dat.user_clip.xmax * 32,
+               pkt->dat.user_clip.ymax * 32);
+}
+
+static void handle_packet(struct pvr2_pkt const *pkt) {
+    switch (pkt->tp) {
+    case PVR2_PKT_HDR:
+        PVR2_TRACE("header packet received\n");
+        on_pkt_hdr_received(pkt);
+        break;
+    case PVR2_PKT_END_OF_LIST:
+        PVR2_TRACE("end-of-list packet received\n");
+        on_pkt_end_of_list_received(pkt);
+        break;
+    case PVR2_PKT_VTX:
+        PVR2_TRACE("vertex packet received\n");
+        on_pkt_vtx_received(pkt);
+        break;
+    case PVR2_PKT_INPUT_LIST:
+        PVR2_TRACE("input list packet received\n");
+        on_pkt_input_list_received(pkt);
+        break;
+    case PVR2_PKT_USER_CLIP:
+        PVR2_TRACE("user clip packet received\n");
+        on_pkt_user_clip_received(pkt);
+        break;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+static void input_poly_fifo(uint8_t byte) {
+    ta_fifo[ta_fifo_byte_count++] = byte;
+
+    if (!(ta_fifo_byte_count % 32)) {
+        struct pvr2_pkt pkt;
+        if (decode_packet(&pkt) == 0) {
+            handle_packet(&pkt);
+            ta_fifo_finish_packet();
+        }
+    }
+}
+
+static void dump_fifo(void) {
+#ifdef ENABLE_LOG_DEBUG
+    unsigned idx;
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
+    LOG_DBG("Dumping FIFO: %u bytes\n", ta_fifo_byte_count);
+    for (idx = 0; idx < ta_fifo_byte_count / 4; idx++)
+        LOG_DBG("\t0x%08x\n", (unsigned)ta_fifo32[idx]);
+#endif
+}
+
+static int decode_packet(struct pvr2_pkt *pkt) {
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
+    unsigned cmd_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
+
+    switch(cmd_tp) {
+    case TA_CMD_TYPE_POLY_HDR:
+    case TA_CMD_TYPE_SPRITE_HDR:
+        return decode_poly_hdr(pkt);
+    case TA_CMD_TYPE_END_OF_LIST:
+        return decode_end_of_list(pkt);
+    case TA_CMD_TYPE_VERTEX:
+        return decode_vtx(pkt);
+    case TA_CMD_TYPE_INPUT_LIST:
+        return decode_input_list(pkt);
+    case TA_CMD_TYPE_USER_CLIP:
+        return decode_user_clip(pkt);
+    default:
+        LOG_ERROR("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
+        dump_fifo();
+        error_set_feature("PVR2 command type");
+        error_set_ta_fifo_cmd(cmd_tp);
+        /* error_set_display_list_index(poly_state.current_list); */
+        error_set_ta_fifo_byte_count(ta_fifo_byte_count);
+        error_set_ta_fifo_word_0(ta_fifo32[0]);
+        error_set_ta_fifo_word_1(ta_fifo32[1]);
+        error_set_ta_fifo_word_2(ta_fifo32[2]);
+        error_set_ta_fifo_word_3(ta_fifo32[3]);
+        error_set_ta_fifo_word_4(ta_fifo32[4]);
+        error_set_ta_fifo_word_5(ta_fifo32[5]);
+        error_set_ta_fifo_word_6(ta_fifo32[6]);
+        error_set_ta_fifo_word_7(ta_fifo32[7]);
+        error_set_ta_fifo_word_8(ta_fifo32[8]);
+        error_set_ta_fifo_word_9(ta_fifo32[9]);
+        error_set_ta_fifo_word_a(ta_fifo32[10]);
+        error_set_ta_fifo_word_b(ta_fifo32[11]);
+        error_set_ta_fifo_word_c(ta_fifo32[12]);
+        error_set_ta_fifo_word_d(ta_fifo32[13]);
+        error_set_ta_fifo_word_e(ta_fifo32[14]);
+        error_set_ta_fifo_word_f(ta_fifo32[15]);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+static int decode_end_of_list(struct pvr2_pkt *pkt) {
+    pkt->tp = PVR2_PKT_END_OF_LIST;
+    return 0;
+}
+
+static int decode_vtx(struct pvr2_pkt *pkt) {
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
+
+    if (ta_fifo_byte_count < ta.hdr.vtx_len)
+        return -1;
+    else if (ta_fifo_byte_count > ta.hdr.vtx_len) {
+        LOG_ERROR("byte count is %u, vtx_len is %u\n", ta_fifo_byte_count, ta.hdr.vtx_len);
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    ta_fifo_finish_packet();
+    pkt->tp = PVR2_PKT_VTX;
+    struct pvr2_pkt_vtx *vtx = &pkt->dat.vtx;
+
+    vtx->end_of_strip = (bool)(ta_fifo32[0] & TA_CMD_END_OF_STRIP_MASK);
+
+    memcpy(vtx->pos, ta_fifo32 + 1, 3 * sizeof(float));
+
+    if (ta.hdr.tex_enable) {
+        if (ta.hdr.tex_coord_16_bit_enable)
+            unpack_uv16(vtx->uv, vtx->uv + 1, ta_fifo32 + 4);
+        else
+            memcpy(vtx->uv, ta_fifo32 + 4, 2 * sizeof(float));
+    }
+
+    if (ta.hdr.two_volumes_mode) {
+        switch (ta.hdr.ta_color_fmt) {
+        case TA_COLOR_TYPE_PACKED:
+            if (ta.hdr.tex_enable)
+                unpack_rgba_8888(vtx->base_color, ta_fifo32[6]);
+            else
+                unpack_rgba_8888(vtx->base_color, ta_fifo32[4]);
+            if (ta.hdr.offset_color_enable && ta.hdr.tex_enable) {
+                unpack_rgba_8888(vtx->offs_color, ta_fifo32[7]);
+            } else {
+                vtx->offs_color[0] = 0.0f;
+                vtx->offs_color[1] = 0.0f;
+                vtx->offs_color[2] = 0.0f;
+                vtx->offs_color[3] = 0.0f;
+            }
+            break;
+        case TA_COLOR_TYPE_INTENSITY_MODE_1:
+        case TA_COLOR_TYPE_INTENSITY_MODE_2:
+            {
+                float base_intensity, offs_intensity;
+                if (ta.hdr.tex_enable) {
+                    memcpy(&base_intensity, ta_fifo32 + 6, sizeof(float));
+                    memcpy(&offs_intensity, ta_fifo32 + 7, sizeof(float));
+                } else {
+                    memcpy(&base_intensity, ta_fifo32 + 4, sizeof(float));
+                    memcpy(&offs_intensity, ta_fifo32 + 5, sizeof(float));
+                }
+                vtx->base_color[0] =
+                    base_intensity * ta.poly_base_color_rgba[0];
+                vtx->base_color[1] =
+                    base_intensity * ta.poly_base_color_rgba[1];
+                vtx->base_color[2] =
+                    base_intensity * ta.poly_base_color_rgba[2];
+                vtx->base_color[3] = ta.poly_base_color_rgba[3];
+                if (ta.hdr.offset_color_enable) {
+                    vtx->offs_color[0] =
+                        offs_intensity * ta.poly_offs_color_rgba[0];
+                    vtx->offs_color[1] =
+                        offs_intensity * ta.poly_offs_color_rgba[1];
+                    vtx->offs_color[2] =
+                        offs_intensity * ta.poly_offs_color_rgba[2];
+                    vtx->offs_color[3] = ta.poly_offs_color_rgba[3];
+                } else {
+                    vtx->offs_color[0] = 0.0f;
+                    vtx->offs_color[1] = 0.0f;
+                    vtx->offs_color[2] = 0.0f;
+                    vtx->offs_color[3] = 0.0f;
+                }
+            }
+            break;
+        case TA_COLOR_TYPE_FLOAT:
+            // this is not supported, AFAIK
+        default:
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+    } else {
+        switch (ta.hdr.ta_color_fmt) {
+        case TA_COLOR_TYPE_PACKED:
+            unpack_rgba_8888(vtx->base_color, ta_fifo32[6]);
+            if (ta.hdr.offset_color_enable) {
+                unpack_rgba_8888(vtx->offs_color, ta_fifo32[7]);
+            } else {
+                vtx->offs_color[0] = 0.0f;
+                vtx->offs_color[1] = 0.0f;
+                vtx->offs_color[2] = 0.0f;
+                vtx->offs_color[3] = 0.0f;
+            }
+            break;
+        case TA_COLOR_TYPE_FLOAT:
+            if (ta.hdr.tex_enable) {
+                memcpy(vtx->base_color + 3, ta_fifo32 + 8, sizeof(float));
+                memcpy(vtx->base_color + 0, ta_fifo32 + 9, sizeof(float));
+                memcpy(vtx->base_color + 1, ta_fifo32 + 10, sizeof(float));
+                memcpy(vtx->base_color + 2, ta_fifo32 + 11, sizeof(float));
+                if (ta.hdr.offset_color_enable) {
+                    memcpy(vtx->offs_color + 3, ta_fifo32 + 12,
+                           sizeof(float));
+                    memcpy(vtx->offs_color + 0, ta_fifo32 + 13,
+                           sizeof(float));
+                    memcpy(vtx->offs_color + 1, ta_fifo32 + 14,
+                           sizeof(float));
+                    memcpy(vtx->offs_color + 2, ta_fifo32 + 15,
+                           sizeof(float));
+                } else {
+                    vtx->offs_color[0] = 0.0f;
+                    vtx->offs_color[1] = 0.0f;
+                    vtx->offs_color[2] = 0.0f;
+                    vtx->offs_color[3] = 0.0f;
+                }
+            } else {
+                memcpy(vtx->base_color + 3, ta_fifo32 + 4, sizeof(float));
+                memcpy(vtx->base_color + 0, ta_fifo32 + 5, sizeof(float));
+                memcpy(vtx->base_color + 1, ta_fifo32 + 6, sizeof(float));
+                memcpy(vtx->base_color + 2, ta_fifo32 + 7, sizeof(float));
+
+                vtx->offs_color[0] = 0.0f;
+                vtx->offs_color[1] = 0.0f;
+                vtx->offs_color[2] = 0.0f;
+                vtx->offs_color[3] = 0.0f;
+            }
+            break;
+        case TA_COLOR_TYPE_INTENSITY_MODE_1:
+        case TA_COLOR_TYPE_INTENSITY_MODE_2:
+            {
+                float base_intensity, offs_intensity;
+                memcpy(&base_intensity, ta_fifo32 + 6, sizeof(float));
+                memcpy(&offs_intensity, ta_fifo32 + 7, sizeof(float));
+                vtx->base_color[0] =
+                    base_intensity * ta.poly_base_color_rgba[0];
+                vtx->base_color[1] =
+                    base_intensity * ta.poly_base_color_rgba[1];
+                vtx->base_color[2] =
+                    base_intensity * ta.poly_base_color_rgba[2];
+                vtx->base_color[3] = ta.poly_base_color_rgba[3];
+                if (ta.hdr.offset_color_enable) {
+                    vtx->offs_color[0] =
+                        offs_intensity * ta.poly_offs_color_rgba[0];
+                    vtx->offs_color[1] =
+                        offs_intensity * ta.poly_offs_color_rgba[1];
+                    vtx->offs_color[2] =
+                        offs_intensity * ta.poly_offs_color_rgba[2];
+                    vtx->offs_color[3] = ta.poly_offs_color_rgba[3];
+                } else {
+                    vtx->offs_color[0] = 0.0f;
+                    vtx->offs_color[1] = 0.0f;
+                    vtx->offs_color[2] = 0.0f;
+                    vtx->offs_color[3] = 0.0f;
+                }
+            }
+            break;
+        default:
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+    }
+
+    return 0;
+}
+
+static int decode_user_clip(struct pvr2_pkt *pkt) {
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
+    struct pvr2_pkt_user_clip *user_clip = &pkt->dat.user_clip;
+
+    pkt->tp = PVR2_PKT_USER_CLIP;
+    user_clip->xmin = ta_fifo32[4];
+    user_clip->ymin = ta_fifo32[5];
+    user_clip->xmax = ta_fifo32[6];
+    user_clip->ymax = ta_fifo32[7];
+
+    return 0;
+}
+
+static int decode_poly_hdr(struct pvr2_pkt *pkt) {
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
+    struct pvr2_pkt_hdr *hdr = &pkt->dat.hdr;
+
+    unsigned param_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
+    enum pvr2_hdr_tp tp;
+
+    unsigned hdr_len = 32;
+    unsigned vtx_len = 32;
+
+    // we need these to figure out whether the header is 32 bytes or 64 bytes.
+    bool two_volumes_mode = (bool)(ta_fifo32[0] & TA_CMD_TWO_VOLUMES_MASK);
+    enum ta_color_type col_tp =
+        (enum ta_color_type)((ta_fifo32[0] & TA_CMD_COLOR_TYPE_MASK) >>
+                             TA_CMD_COLOR_TYPE_SHIFT);
+    bool tex_enable = (bool)(ta_fifo32[0] & TA_CMD_TEX_ENABLE_MASK);
+    bool offset_color_enable = (bool)(ta_fifo32[0] & TA_CMD_OFFSET_COLOR_MASK);
+    enum display_list_type disp_list =
+        (enum display_list_type)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
+                                 TA_CMD_DISP_LIST_SHIFT);
+
+    switch (param_tp) {
+    case TA_CMD_TYPE_POLY_HDR:
+        tp = PVR2_HDR_TRIANGLE_STRIP;
+        if (disp_list == DISPLAY_LIST_OPAQUE_MOD ||
+            disp_list == DISPLAY_LIST_TRANS_MOD) {
+            hdr_len = 32;
+            vtx_len = 64;
+        } else {
+            if (col_tp == TA_COLOR_TYPE_INTENSITY_MODE_1 &&
+                (two_volumes_mode || (tex_enable && offset_color_enable))) {
+                hdr_len = 64;
+            }
+
+            if (tex_enable) {
+                if ((!two_volumes_mode && col_tp == TA_COLOR_TYPE_FLOAT) ||
+                    (two_volumes_mode && col_tp != TA_COLOR_TYPE_FLOAT))
+                    vtx_len = 64;
+            }
+        }
+
+        break;
+    case TA_CMD_TYPE_SPRITE_HDR:
+        tp = PVR2_HDR_QUAD;
+        vtx_len = 64;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    if (ta_fifo_byte_count < hdr_len)
+        return -1;
+    else if (ta_fifo_byte_count > hdr_len)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    pkt->tp = PVR2_PKT_HDR;
+    hdr->tp = tp;
+    hdr->vtx_len = vtx_len;
+
+    hdr->list = disp_list;
+
+    hdr->two_volumes_mode = two_volumes_mode;
+    hdr->tex_enable = tex_enable;
+    hdr->ta_color_fmt = col_tp;
+
+    /*
+     * When textures are disabled, offset colors are implicitly disabled even
+     * if the offset_color_enable bit was set.
+     */
+    if (hdr->tex_enable &&
+        hdr->ta_color_fmt != TA_COLOR_TYPE_PACKED &&
+        hdr->ta_color_fmt != TA_COLOR_TYPE_FLOAT) {
+        hdr->offset_color_enable = offset_color_enable;
+    } else {
+        hdr->offset_color_enable = false;
+    }
+
+    hdr->tex_width_shift = 3 +
+        ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
+    hdr->tex_height_shift = 3 +
+        ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
+    hdr->tex_inst = (ta_fifo32[2] & TSP_TEX_INST_MASK) >>
+        TSP_TEX_INST_SHIFT;
+    hdr->pix_fmt =
+        (enum TexCtrlPixFmt)((ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
+                             TEX_CTRL_PIX_FMT_SHIFT);
+
+
+    hdr->gourad_shading_enable =
+        (bool)(ta_fifo32[0] & TA_CMD_GOURAD_SHADING_MASK);
+    hdr->tex_coord_16_bit_enable =
+        (bool)(ta_fifo32[0] & TA_CMD_16_BIT_TEX_COORD_MASK);
+
+    if (hdr->pix_fmt != TEX_CTRL_PIX_FMT_4_BPP_PAL &&
+        hdr->pix_fmt != TEX_CTRL_PIX_FMT_8_BPP_PAL) {
+        hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
+        if (!hdr->tex_twiddle)
+            hdr->stride_sel = (bool)(TEX_CTRL_STRIDE_SEL_MASK & ta_fifo32[3]);
+        else
+            hdr->stride_sel = false;
+        hdr->tex_palette_start = 0xdeadbeef;
+    } else {
+        hdr->tex_twiddle = true;
+        hdr->stride_sel = false;
+        hdr->tex_palette_start = (ta_fifo32[3] & TEX_CTRL_PALETTE_START_MASK) >>
+            TEX_CTRL_PALETTE_START_SHIFT;
+    }
+
+    hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
+    hdr->tex_mipmap = (bool)(TEX_CTRL_MIP_MAPPED_MASK & ta_fifo32[3]);
+    hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
+                     TEX_CTRL_TEX_ADDR_SHIFT) << 3;
+    hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>
+        TSP_TEX_INST_FILTER_SHIFT;
+
+    hdr->src_blend_factor =
+        (ta_fifo32[2] & TSP_WORD_SRC_ALPHA_FACTOR_MASK) >>
+        TSP_WORD_SRC_ALPHA_FACTOR_SHIFT;
+    hdr->dst_blend_factor =
+        (ta_fifo32[2] & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
+        TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
+
+    if (ta_fifo32[2] & (2 << TSP_TEX_CLAMP_SHIFT))
+        hdr->tex_wrap_mode[0] = TEX_WRAP_CLAMP;
+    else if (ta_fifo32[2] & (2 << TSP_TEX_FLIP_SHIFT))
+        hdr->tex_wrap_mode[0] = TEX_WRAP_FLIP;
+    else
+        hdr->tex_wrap_mode[0] = TEX_WRAP_REPEAT;
+
+    if (ta_fifo32[2] & (1 << TSP_TEX_CLAMP_SHIFT))
+        hdr->tex_wrap_mode[1] = TEX_WRAP_CLAMP;
+    else if (ta_fifo32[2] & (1 << TSP_TEX_FLIP_SHIFT))
+        hdr->tex_wrap_mode[1] = TEX_WRAP_FLIP;
+    else
+        hdr->tex_wrap_mode[1] = TEX_WRAP_REPEAT;
+
+    hdr->enable_depth_writes =
+        !((ta_fifo32[0] & DEPTH_WRITE_DISABLE_MASK) >>
+          DEPTH_WRITE_DISABLE_SHIFT);
+    hdr->depth_func =
+        (ta_fifo32[0] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
+
+    hdr->shadow = (bool)(ta_fifo32[0] & TA_CMD_SHADOW_MASK);
+
+    if (((ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT) ==
+        TA_CMD_TYPE_SPRITE_HDR) {
+        hdr->tex_coord_16_bit_enable = true; // force this on
+    }
+
+    // unpack the sprite color
+    if (tp == PVR2_HDR_QUAD) {
+        uint32_t base_color = ta_fifo32[4];
+        uint32_t offset_color = ta_fifo32[5];
+        unsigned base_r = (base_color & 0x00ff0000) >> 16;
+        unsigned base_g = (base_color & 0x0000ff00) >> 8;
+        unsigned base_b = base_color & 0x000000ff;
+        unsigned base_a = (base_color & 0xff000000) >> 24;
+        unsigned offset_r = (offset_color & 0x00ff0000) >> 16;
+        unsigned offset_g = (offset_color & 0x0000ff00) >> 8;
+        unsigned offset_b = offset_color & 0x000000ff;
+        unsigned offset_a = (offset_color & 0xff000000) >> 24;
+
+        hdr->sprite_base_color_rgba[0] = base_r / 255.0f;
+        hdr->sprite_base_color_rgba[1] = base_g / 255.0f;
+        hdr->sprite_base_color_rgba[2] = base_b / 255.0f;
+        hdr->sprite_base_color_rgba[3] = base_a / 255.0f;
+
+        if (hdr->offset_color_enable) {
+            hdr->sprite_offs_color_rgba[0] = offset_r / 255.0f;
+            hdr->sprite_offs_color_rgba[1] = offset_g / 255.0f;
+            hdr->sprite_offs_color_rgba[2] = offset_b / 255.0f;
+            hdr->sprite_offs_color_rgba[3] = offset_a / 255.0f;
+        } else {
+            memset(hdr->sprite_offs_color_rgba, 0,
+                   sizeof(hdr->sprite_offs_color_rgba));
+        }
+
+        memcpy(ta.sprite_base_color_rgba, hdr->sprite_base_color_rgba,
+               sizeof(ta.sprite_base_color_rgba));
+        memcpy(ta.sprite_offs_color_rgba, hdr->sprite_offs_color_rgba,
+               sizeof(ta.sprite_offs_color_rgba));
+    }
+
+    if (hdr->ta_color_fmt == TA_COLOR_TYPE_INTENSITY_MODE_1) {
+        if (hdr->offset_color_enable) {
+            memcpy(hdr->poly_base_color_rgba, ta_fifo32 + 9, 3 * sizeof(float));
+            memcpy(hdr->poly_base_color_rgba + 3, ta_fifo32 + 8, sizeof(float));
+            memcpy(hdr->poly_offs_color_rgba, ta_fifo32 + 13, 3 * sizeof(float));
+            memcpy(hdr->poly_offs_color_rgba + 3, ta_fifo32 + 12, sizeof(float));
+        } else {
+            memcpy(hdr->poly_base_color_rgba, ta_fifo32 + 5, 3 * sizeof(float));
+            memcpy(hdr->poly_base_color_rgba + 3, ta_fifo32 + 4, sizeof(float));
+            memset(hdr->poly_offs_color_rgba, 0, sizeof(float) * 4);
+        }
+
+        memcpy(ta.poly_base_color_rgba, hdr->poly_base_color_rgba,
+               sizeof(ta.poly_base_color_rgba));
+        memcpy(ta.poly_offs_color_rgba, hdr->poly_offs_color_rgba,
+               sizeof(ta.poly_base_color_rgba));
+    }
+
+    return 0;
+}
+
+static int decode_input_list(struct pvr2_pkt *pkt) {
+    pkt->tp = PVR2_PKT_INPUT_LIST;
+    return 0;
+}
+
+// unpack 16-bit texture coordinates into two floats
+static void unpack_uv16(float *u_coord, float *v_coord, void const *input) {
+    uint32_t val = *(uint32_t*)input;
+    uint32_t u_val = val & 0xffff0000;
+    uint32_t v_val = val << 16;
+
+    memcpy(u_coord, &u_val, sizeof(*u_coord));
+    memcpy(v_coord, &v_val, sizeof(*v_coord));
+}
+
+static void unpack_rgba_8888(float *rgba, uint32_t input) {
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta_fifo;
+
+    float alpha = (float)((ta_fifo32[6] & 0xff000000) >> 24) / 255.0f;
+    float red = (float)((ta_fifo32[6] & 0x00ff0000) >> 16) / 255.0f;
+    float green = (float)((ta_fifo32[6] & 0x0000ff00) >> 8) / 255.0f;
+    float blue = (float)((ta_fifo32[6] & 0x000000ff) >> 0) / 255.0f;
+
+    rgba[0] = red;
+    rgba[1] = green;
+    rgba[2] = blue;
+    rgba[3] = alpha;
 }
 
 static void
@@ -1501,88 +1577,13 @@ pvr2_pt_complete_int_event_handler(struct SchedEvent *event) {
     holly_raise_nrm_int(HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE);
 }
 
-static void on_end_of_list_received(void) {
-    LOG_DBG("END-OF-LIST PACKET!\n");
-
-    finish_poly_group(poly_state.current_list);
-
-    if (poly_state.current_list != DISPLAY_LIST_NONE) {
-        LOG_DBG("Display list \"%s\" closed\n",
-                display_list_names[poly_state.current_list]);
-    } else {
-        LOG_WARN("Unable to close the current display list because no display "
-                 "list has been opened\n");
-        goto the_end;
-    }
-
-    dc_cycle_stamp_t int_when =
-        clock_cycle_stamp(pvr2_clk) + PVR2_LIST_COMPLETE_INT_DELAY;
-    switch (poly_state.current_list) {
-    case DISPLAY_LIST_OPAQUE:
-        if (!pvr2_op_complete_int_event_scheduled) {
-            pvr2_op_complete_int_event_scheduled = true;
-            pvr2_op_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &pvr2_op_complete_int_event);
-        }
-        break;
-    case DISPLAY_LIST_OPAQUE_MOD:
-        if (!pvr2_op_mod_complete_int_event_scheduled) {
-            pvr2_op_mod_complete_int_event_scheduled = true;
-            pvr2_op_mod_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &pvr2_op_mod_complete_int_event);
-        }
-        break;
-    case DISPLAY_LIST_TRANS:
-        if (!pvr2_trans_complete_int_event_scheduled) {
-            pvr2_trans_complete_int_event_scheduled = true;
-            pvr2_trans_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &pvr2_trans_complete_int_event);
-        }
-        break;
-    case DISPLAY_LIST_TRANS_MOD:
-        if (!pvr2_trans_mod_complete_int_event_scheduled) {
-            pvr2_trans_mod_complete_int_event_scheduled = true;
-            pvr2_trans_mod_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &pvr2_trans_mod_complete_int_event);
-        }
-        break;
-    case DISPLAY_LIST_PUNCH_THROUGH:
-        if (!pvr2_pt_complete_int_event_scheduled) {
-            pvr2_pt_complete_int_event_scheduled = true;
-            pvr2_pt_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &pvr2_pt_complete_int_event);
-        }
-        break;
-    default:
-        /*
-         * this can never actually happen because this
-         * functionshould have returned early above
-         */
-        RAISE_ERROR(ERROR_INTEGRITY);
-    }
-
-    poly_state.current_list = DISPLAY_LIST_NONE;
-
-the_end:
-    ta_fifo_finish_packet();
-}
-
-static void on_user_clip_received(void) {
-    LOG_WARN("PVR2 WARNING: UNIMPLEMENTED USER TILE CLIP PACKET RECEIVED!\n");
-
-    // TODO: implement tile clipping
-
-    ta_fifo_finish_packet();
-}
-
 static void pvr2_render_complete_int_event_handler(struct SchedEvent *event) {
     pvr2_render_complete_int_event_scheduled = false;
     holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
 }
 
 void pvr2_ta_startrender(void) {
-    LOG_DBG("STARTRENDER requested!\n");
-
+    PVR2_TRACE("STARTRENDER requested!\n");
     struct gfx_il_inst cmd;
 
     unsigned tile_w = get_glob_tile_clip_x() << 5;
@@ -1643,7 +1644,9 @@ void pvr2_ta_startrender(void) {
 
     pvr2_tex_cache_xmit();
 
-    finish_poly_group(poly_state.current_list);
+    if (ta.cur_list != DISPLAY_LIST_NONE)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    /* finish_poly_group(poly_state.current_list); */
 
     int tgt = framebuffer_set_render_target();
 
@@ -1670,8 +1673,8 @@ void pvr2_ta_startrender(void) {
     rend_exec_il(&cmd, 1);
 
     cmd.op = GFX_IL_SET_CLIP_RANGE;
-    cmd.arg.set_clip_range.clip_min = clip_min;
-    cmd.arg.set_clip_range.clip_max = clip_max;
+    cmd.arg.set_clip_range.clip_min = ta.clip_min;
+    cmd.arg.set_clip_range.clip_max = ta.clip_max;
     rend_exec_il(&cmd, 1);
 
     // initial rendering settings
@@ -1700,7 +1703,6 @@ void pvr2_ta_startrender(void) {
     next_frame_stamp++;
     render_frame_init();
 
-    // TODO: This irq definitely should not be triggered immediately
     if (!pvr2_render_complete_int_event_scheduled) {
         pvr2_render_complete_int_event_scheduled = true;
         pvr2_render_complete_int_event.when = clock_cycle_stamp(pvr2_clk) +
@@ -1710,20 +1712,30 @@ void pvr2_ta_startrender(void) {
 }
 
 void pvr2_ta_reinit(void) {
-    memset(list_submitted, 0, sizeof(list_submitted));
+    memset(ta.list_submitted, 0, sizeof(ta.list_submitted));
 }
 
-static void finish_poly_group(enum display_list_type disp_list) {
-    struct gfx_il_inst cmd;
+static void next_poly_group(enum display_list_type disp_list) {
+    PVR2_TRACE("%s(%s)\n", __func__, display_list_names[disp_list]);
 
     if (disp_list < 0) {
-        LOG_DBG("%s - no lists are open\n", __func__);
+        LOG_WARN("%s - no lists are open\n", __func__);
         return;
     }
 
-    if (!open_group) {
-        LOG_WARN("%s - still waiting for a polygon header to be opened!\n",
-               __func__);
+    if (ta.open_group)
+        finish_poly_group(disp_list);
+    ta.open_group = true;
+
+    pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count;
+}
+
+static void finish_poly_group(enum display_list_type disp_list) {
+    PVR2_TRACE("%s(%s)\n", __func__, display_list_names[disp_list]);
+    struct gfx_il_inst cmd;
+
+    if (disp_list < 0) {
+        PVR2_TRACE("%s - no lists are open\n", __func__);
         return;
     }
 
@@ -1732,27 +1744,33 @@ static void finish_poly_group(enum display_list_type disp_list) {
         disp_list == DISPLAY_LIST_TRANS_MOD)
         return;
 
+    if (!ta.open_group) {
+        LOG_WARN("%s - still waiting for a polygon header to be opened!\n",
+               __func__);
+        return;
+    }
+
     cmd.op = GFX_IL_SET_REND_PARAM;
-    if (poly_state.tex_enable) {
-        LOG_DBG("tex_enable should be true\n");
+    if (ta.hdr.tex_enable) {
+        PVR2_TRACE("tex_enable should be true\n");
         cmd.arg.set_rend_param.param.tex_enable = true;
-        cmd.arg.set_rend_param.param.tex_idx = poly_state.tex_idx;
+        cmd.arg.set_rend_param.param.tex_idx = ta.tex_idx;
     } else {
-        LOG_DBG("tex_enable should be false\n");
+        PVR2_TRACE("tex_enable should be false\n");
         cmd.arg.set_rend_param.param.tex_enable = false;
     }
 
-    cmd.arg.set_rend_param.param.src_blend_factor = poly_state.src_blend_factor;
-    cmd.arg.set_rend_param.param.dst_blend_factor = poly_state.dst_blend_factor;
-    cmd.arg.set_rend_param.param.tex_wrap_mode[0] = poly_state.tex_wrap_mode[0];
-    cmd.arg.set_rend_param.param.tex_wrap_mode[1] = poly_state.tex_wrap_mode[1];
+    cmd.arg.set_rend_param.param.src_blend_factor = ta.hdr.src_blend_factor;
+    cmd.arg.set_rend_param.param.dst_blend_factor = ta.hdr.dst_blend_factor;
+    cmd.arg.set_rend_param.param.tex_wrap_mode[0] = ta.hdr.tex_wrap_mode[0];
+    cmd.arg.set_rend_param.param.tex_wrap_mode[1] = ta.hdr.tex_wrap_mode[1];
 
     cmd.arg.set_rend_param.param.enable_depth_writes =
-        poly_state.enable_depth_writes;
-    cmd.arg.set_rend_param.param.depth_func = poly_state.depth_func;
+        ta.hdr.enable_depth_writes;
+    cmd.arg.set_rend_param.param.depth_func = ta.hdr.depth_func;
 
-    cmd.arg.set_rend_param.param.tex_inst = poly_state.tex_inst;
-    cmd.arg.set_rend_param.param.tex_filter = poly_state.tex_filter;
+    cmd.arg.set_rend_param.param.tex_inst = ta.hdr.tex_inst;
+    cmd.arg.set_rend_param.param.tex_filter = ta.hdr.tex_filter;
 
     // enqueue the configuration command
     pvr2_ta_push_gfx_il(cmd);
@@ -1786,80 +1804,11 @@ static void finish_poly_group(enum display_list_type disp_list) {
     cmd.arg.draw_array.verts = pvr2_ta_vert_buf + pvr2_ta_vert_cur_group * GFX_VERT_LEN;
     pvr2_ta_push_gfx_il(cmd);
 
-    LOG_DBG("PVR2: submit %u verts\n", cmd.arg.draw_array.n_verts);
+    PVR2_TRACE("submit %u verts\n", cmd.arg.draw_array.n_verts);
 
     pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count;
 
-    open_group = false;
-}
-
-static void next_poly_group(enum display_list_type disp_list) {
-    if (disp_list < 0) {
-        LOG_WARN("%s - no lists are open\n", __func__);
-        return;
-    }
-
-    if (open_group)
-        finish_poly_group(disp_list);
-    open_group = true;
-
-    pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count;
-}
-
-static enum vert_type classify_vert(void) {
-    if (poly_state.tex_enable) {
-        if (poly_state.two_volumes_mode) {
-            if (poly_state.tex_coord_16_bit_enable) {
-                if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
-                    return VERT_TEX_PACKED_COLOR_TWO_VOLUMES_16_BIT_TEX_COORD;
-                if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
-                    (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
-                    return VERT_TEX_INTENSITY_TWO_VOLUMES_16_BIT_TEX_COORD;
-            } else {
-                if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
-                    return VERT_TEX_PACKED_COLOR_TWO_VOLUMES;
-                if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
-                    (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
-                    return VERT_TEX_INTENSITY_TWO_VOLUMES;
-            }
-        } else {
-            if (poly_state.tex_coord_16_bit_enable) {
-                if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
-                    return VERT_TEX_PACKED_COLOR_16_BIT_TEX_COORD;
-                if (poly_state.color_type == TA_COLOR_TYPE_FLOAT)
-                    return VERT_TEX_FLOATING_COLOR_16_BIT_TEX_COORD;
-                if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
-                    (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
-                    return VERT_TEX_INTENSITY_16_BIT_TEX_COORD;
-            } else {
-                if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
-                    return VERT_TEX_PACKED_COLOR;
-                if (poly_state.color_type == TA_COLOR_TYPE_FLOAT)
-                    return VERT_TEX_FLOATING_COLOR;
-                if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
-                    (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
-                    return VERT_TEX_INTENSITY;
-            }
-        }
-    } else {
-        if (poly_state.two_volumes_mode) {
-            if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
-                return VERT_NO_TEX_PACKED_COLOR_TWO_VOLUMES;
-            if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
-                (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
-                return VERT_NO_TEX_INTENSITY_TWO_VOLUMES;
-        } else {
-            if (poly_state.color_type == TA_COLOR_TYPE_PACKED)
-                return VERT_NO_TEX_PACKED_COLOR;
-            if (poly_state.color_type == TA_COLOR_TYPE_FLOAT)
-                return VERT_NO_TEX_FLOAT_COLOR;
-            if ((poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_1) ||
-                (poly_state.color_type == TA_COLOR_TYPE_INTENSITY_MODE_2))
-                return VERT_NO_TEX_INTENSITY;
-        }
-    }
-
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    ta.open_group = false;
 }
 
 static void ta_fifo_finish_packet(void) {
@@ -1871,7 +1820,7 @@ static void render_frame_init(void) {
     pvr2_ta_vert_buf_count = 0;
     pvr2_ta_vert_cur_group = 0;
 
-    open_group = false;
+    ta.open_group = false;
 
     // free up gfx_il commands
     gfx_il_inst_buf_count = 0;
@@ -1881,11 +1830,11 @@ static void render_frame_init(void) {
         disp_list_end[list] = NULL;
     }
 
-    clip_min = -1.0f;
-    clip_max = 1.0f;
+    ta.clip_min = -1.0f;
+    ta.clip_max = 1.0f;
 
-    memset(list_submitted, 0, sizeof(list_submitted));
-    poly_state.current_list = DISPLAY_LIST_NONE;
+    memset(ta.list_submitted, 0, sizeof(ta.list_submitted));
+    ta.cur_list = DISPLAY_LIST_NONE;
 }
 
 unsigned get_cur_frame_stamp(void) {
