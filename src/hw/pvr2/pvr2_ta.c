@@ -738,8 +738,22 @@ static void on_pkt_end_of_list_received(struct pvr2_pkt const *pkt) {
     PVR2_TRACE("END-OF-LIST PACKET!\n");
 
     if (ta.cur_list == DISPLAY_LIST_NONE) {
-        LOG_ERROR("attempt to close list when no list is open!\n");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        LOG_WARN("attempt to close list when no list is open!\n");
+        /*
+         * SEGA Bass Fishing does this.  At bootup, before the loading icon, it
+         * appears to think it's submitting 64-bit vertices, but they're
+         * actually 32-bit (control word is 0x82000000).  Because of this, the
+         * vertex packets get cut in half and the second halves are interpreted
+         * as end-of-list packets because they begin with 0.
+         *
+         * Intended behavior of the developers may have been to have been to
+         * gradually darken the screen because one of the dwords in the
+         * second-half of each packet increases by 0x01010101 with each
+         * successive packet (meaning it is intended to be 32-bit packed RGBA
+         * color).  This behavior does not manifest on real hardware, so my
+         * conclusion is that the devs must have fucked up.
+         */
+        return;
     }
 
     dc_cycle_stamp_t int_when =
