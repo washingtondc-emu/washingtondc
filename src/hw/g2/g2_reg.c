@@ -38,6 +38,19 @@
 
 #include "g2_reg.h"
 
+/*
+ * TODO: this definitely should not be 0.
+ *
+ * Some games react positively when this is non-zero, but I've never been able
+ * to completely fix a game with this (for example Ecco the Dolphin can get
+ * in-game when this is SCHED_FREQUENCY / (1024*5) but it still hangs
+ * eventually).
+ *
+ * More research is needed to figure out how long this should take and how it
+ * interacts with other interrupts.
+ */
+#define AICA_DMA_COMPLETE_INT_DELAY 0
+
 #define N_G2_REGS (ADDR_G2_LAST - ADDR_G2_FIRST + 1)
 
 DECL_MMIO_REGION(g2_reg_32, N_G2_REGS, ADDR_G2_FIRST, uint32_t)
@@ -135,7 +148,8 @@ static void sb_adst_reg_mmio_write(struct mmio_region_g2_reg_32 *region,
         sh4_dmac_transfer(dreamcast_get_cpu(), src_addr, dst_addr, n_bytes);
 
         aica_dma_raise_event.handler = post_delay_aica_dma_int;
-        aica_dma_raise_event.when = clock_cycle_stamp(&sh4_clock);
+        aica_dma_raise_event.when =
+            clock_cycle_stamp(&sh4_clock) + AICA_DMA_COMPLETE_INT_DELAY;
         sched_event(&sh4_clock, &aica_dma_raise_event);
     }
     adst = val;
