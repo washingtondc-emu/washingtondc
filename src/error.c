@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -177,3 +177,4 @@ DEF_ERROR_STRING_ATTR(file_path)
 DEF_ERROR_INT_ATTR(max_val)
 DEF_ERROR_STRING_ATTR(function)
 DEF_ERROR_STRING_ATTR(pending_error_function)
+DEF_ERROR_INT_ATTR(index)
