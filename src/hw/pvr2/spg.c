@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -460,15 +460,11 @@ static inline unsigned get_vbend(void) {
     return (spg_reg[SPG_VBLANK] >> 16) & 0x3ff;
 }
 
-uint32_t
-spg_hblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region,
-                         unsigned idx, void *ctxt) {
+uint32_t pvr2_spg_get_hblank_int(void) {
     return spg_reg[SPG_HBLANK_INT];
 }
 
-void
-spg_hblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region,
-                          unsigned idx, uint32_t val, void *ctxt) {
+void pvr2_spg_set_hblank_int(uint32_t val) {
     spg_sync();
     spg_unsched_all();
 
@@ -481,15 +477,11 @@ spg_hblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region,
     sched_next_vblank_out_event();
 }
 
-uint32_t
-spg_vblank_int_mmio_read(struct mmio_region_pvr2_core_reg *region,
-                         unsigned idx, void *ctxt) {
+uint32_t pvr2_spg_get_vblank_int(void) {
     return spg_reg[SPG_VBLANK_INT];
 }
 
-void
-spg_vblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region,
-                          unsigned idx, uint32_t val, void *ctxt) {
+void pvr2_spg_set_vblank_int(uint32_t val) {
     spg_sync();
     spg_unsched_all();
 
@@ -502,15 +494,11 @@ spg_vblank_int_mmio_write(struct mmio_region_pvr2_core_reg *region,
     sched_next_vblank_out_event();
 }
 
-uint32_t
-spg_load_mmio_read(struct mmio_region_pvr2_core_reg *region,
-                   unsigned idx, void *ctxt) {
+uint32_t pvr2_spg_get_load(void) {
     return spg_reg[SPG_LOAD];
 }
 
-void
-spg_load_mmio_write(struct mmio_region_pvr2_core_reg *region,
-                    unsigned idx, uint32_t val, void *ctxt) {
+void pvr2_spg_set_load(uint32_t val) {
     spg_sync();
     spg_unsched_all();
 
@@ -523,21 +511,15 @@ spg_load_mmio_write(struct mmio_region_pvr2_core_reg *region,
     sched_next_vblank_out_event();
 }
 
-uint32_t
-spg_control_mmio_read(struct mmio_region_pvr2_core_reg *region,
-                      unsigned idx, void *ctxt) {
+uint32_t pvr2_spg_get_control(void) {
     return spg_reg[SPG_CONTROL];
 }
 
-void
-spg_control_mmio_write(struct mmio_region_pvr2_core_reg *region,
-                       unsigned idx, uint32_t val, void *ctxt) {
+void pvr2_spg_set_control(uint32_t val) {
     spg_reg[SPG_CONTROL] = val;
 }
 
-uint32_t
-spg_status_mmio_read(struct mmio_region_pvr2_core_reg *region,
-                     unsigned idx, void *ctxt) {
+uint32_t pvr2_spg_get_status(void) {
     uint32_t spg_stat;
 
     spg_sync();
@@ -560,29 +542,21 @@ spg_status_mmio_read(struct mmio_region_pvr2_core_reg *region,
     return spg_stat;
 }
 
-uint32_t
-spg_hblank_mmio_read(struct mmio_region_pvr2_core_reg *region,
-                     unsigned idx, void *ctxt) {
+uint32_t pvr2_spg_get_hblank(void) {
     return spg_reg[SPG_HBLANK];
 }
 
-void
-spg_hblank_mmio_write(struct mmio_region_pvr2_core_reg *region,
-                      unsigned idx, uint32_t val, void *ctxt) {
+void pvr2_spg_set_hblank(uint32_t val) {
     // TODO: should I do spg_sync here?
     spg_reg[SPG_HBLANK] = val;
     // TODO: should I do spg_sync + unsched_all + resched here?
 }
 
-uint32_t
-spg_vblank_mmio_read(struct mmio_region_pvr2_core_reg *region,
-                     unsigned idx, void *ctxt) {
+uint32_t pvr2_spg_get_vblank(void) {
     return spg_reg[SPG_VBLANK];
 }
 
-void
-spg_vblank_mmio_write(struct mmio_region_pvr2_core_reg *region,
-                      unsigned idx, uint32_t val, void *ctxt) {
+void pvr2_spg_set_vblank(uint32_t val) {
     // TODO: should I do spg_sync here?
     spg_reg[SPG_VBLANK] = val;
     // TODO: should I do spg_sync + unsched_all + resched here?

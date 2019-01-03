@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -35,7 +35,6 @@
 #include "error.h"
 #include "gfx/gfx.h"
 #include "hw/sys/holly_intc.h"
-#include "pvr2_core_reg.h"
 #include "pvr2_tex_mem.h"
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"
@@ -44,6 +43,7 @@
 #include "dreamcast.h"
 #include "gfx/gfx_il.h"
 #include "pvr2.h"
+#include "pvr2_reg.h"
 
 #include "pvr2_ta.h"
 

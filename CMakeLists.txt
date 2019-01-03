@@ -2,7 +2,7 @@
 #
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2016-2018 snickerbockers
+#    Copyright (C) 2016-2019 snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -147,8 +147,6 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/g2/modem.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_reg.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_reg.c"
-                "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_core_reg.h"
-                "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_core_reg.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_tex_mem.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/pvr2_tex_mem.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/pvr2/spg.c"

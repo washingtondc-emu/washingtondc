@@ -34,7 +34,6 @@
 #include "cons.h"
 #include "dreamcast.h"
 #include "config.h"
-#include "hw/pvr2/pvr2_core_reg.h"
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "gfx/gfx.h"
 #include "pix_conv.h"

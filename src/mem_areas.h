@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -83,10 +83,7 @@
 
 // NEC PowerVR 2 control registers
 #define ADDR_PVR2_FIRST  0x5f7c00
-#define ADDR_PVR2_LAST   0x5f7cff
-
-#define ADDR_PVR2_CORE_FIRST 0x5f8000
-#define ADDR_PVR2_CORE_LAST  0x5f9fff
+#define ADDR_PVR2_LAST   0x5f9fff
 
 // yep, it's the modem.  And probably the broadband adapter, too.
 #define ADDR_MODEM_FIRST     0x600000

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -1056,9 +1056,9 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
     memory_map_add(map, ADDR_MODEM_FIRST, ADDR_MODEM_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &modem_intf, NULL);
-    memory_map_add(map, ADDR_PVR2_CORE_FIRST, ADDR_PVR2_CORE_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_core_reg_intf, NULL);
+    /* memory_map_add(map, ADDR_PVR2_CORE_FIRST, ADDR_PVR2_CORE_LAST, */
+    /*                0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN, */
+    /*                &pvr2_core_reg_intf, NULL); */
     memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
                    0x1fffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
@@ -1099,9 +1099,9 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
     memory_map_add(map, ADDR_MODEM_FIRST + 0x02000000, ADDR_MODEM_LAST + 0x02000000,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &modem_intf, NULL);
-    memory_map_add(map, ADDR_PVR2_CORE_FIRST + 0x02000000, ADDR_PVR2_CORE_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_core_reg_intf, NULL);
+    /* memory_map_add(map, ADDR_PVR2_CORE_FIRST + 0x02000000, ADDR_PVR2_CORE_LAST + 0x02000000, */
+    /*                0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN, */
+    /*                &pvr2_core_reg_intf, NULL); */
     memory_map_add(map, ADDR_AICA_WAVE_FIRST + 0x02000000, ADDR_AICA_WAVE_LAST + 0x02000000,
                    0x1fffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
