@@ -136,15 +136,14 @@ uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
         LOG_DBG(msg, ##__VA_ARGS__);                                    \
     } while (0)
 
-#define PVR2_REG_WRITE_CASE(idx_const)                 \
-    case idx_const:                                    \
-    PVR2_TRACE("Write 0x%08x to " #idx_const "\n",     \
-               (unsigned)reg_backing[idx_const]);      \
+#define PVR2_REG_WRITE_CASE(idx_const)                              \
+    case idx_const:                                                 \
+    reg_backing[idx_const] = val;                                   \
+    PVR2_TRACE("Write 0x%08x to " #idx_const "\n", (unsigned)val);  \
     break
 
 static void
-pvr2_reg_post_write(unsigned idx) {
-    uint32_t val;
+pvr2_reg_do_write(unsigned idx, uint32_t val) {
     switch (idx) {
     PVR2_REG_WRITE_CASE(PVR2_SB_PDSTAP);
     PVR2_REG_WRITE_CASE(PVR2_SB_PDSTAR);
@@ -205,12 +204,14 @@ pvr2_reg_post_write(unsigned idx) {
         break;
     case PVR2_PT_ALPHA_REF:
         // let it go through silently
+        reg_backing[PVR2_PT_ALPHA_REF] = val;
         break;
     case PVR2_STARTRENDER:
+        reg_backing[PVR2_STARTRENDER] = val;
         pvr2_ta_startrender();
         break;
     case PVR2_FB_R_CTRL:
-        val = reg_backing[PVR2_FB_R_CTRL];
+        reg_backing[PVR2_FB_R_CTRL] = val;
         if (val & PVR2_VCLK_DIV_MASK)
             spg_set_pclk_div(1);
         else
@@ -219,37 +220,45 @@ pvr2_reg_post_write(unsigned idx) {
         spg_set_pix_double_y((bool)(val & PVR2_LINE_DOUBLE_MASK));
         break;
     case PVR2_FB_W_CTRL:
+        reg_backing[PVR2_FB_W_CTRL] = val;
         // should it sync framebuffer from host here?
         break;
     case PVR2_FB_W_LINESTRIDE:
+        reg_backing[PVR2_FB_W_LINESTRIDE] = val;
         // should it sync framebuffer from host here?
         break;
     case PVR2_SPG_HBLANK_INT:
-        pvr2_spg_set_hblank_int(reg_backing[PVR2_SPG_HBLANK_INT]);
+        reg_backing[PVR2_SPG_HBLANK_INT] = val;
+        pvr2_spg_set_hblank_int(val);
         break;
     case PVR2_SPG_VBLANK_INT:
-        pvr2_spg_set_vblank_int(reg_backing[PVR2_SPG_VBLANK_INT]);
+        reg_backing[PVR2_SPG_VBLANK_INT] = val;
+        pvr2_spg_set_vblank_int(val);
         break;
     case PVR2_SPG_CONTROL:
-        pvr2_spg_set_control(reg_backing[PVR2_SPG_CONTROL]);
+        reg_backing[PVR2_SPG_CONTROL] = val;
+        pvr2_spg_set_control(val);
         break;
     case PVR2_SPG_HBLANK:
-        pvr2_spg_set_hblank(reg_backing[PVR2_SPG_HBLANK]);
+        reg_backing[PVR2_SPG_HBLANK] = val;
+        pvr2_spg_set_hblank(val);
         break;
     case PVR2_SPG_LOAD:
-        pvr2_spg_set_load(reg_backing[PVR2_SPG_LOAD]);
+        reg_backing[PVR2_SPG_LOAD] = val;
+        pvr2_spg_set_load(val);
         break;
     case PVR2_SPG_VBLANK:
-        pvr2_spg_set_vblank(reg_backing[PVR2_SPG_VBLANK]);
+        reg_backing[PVR2_SPG_VBLANK] = val;
+        pvr2_spg_set_vblank(val);
         break;
     case PVR2_VO_CONTROL:
-        val = reg_backing[PVR2_VO_CONTROL];
+        reg_backing[PVR2_VO_CONTROL] = val;
         spg_set_pix_double_x((bool)(val & PVR2_PIXEL_DOUBLE_MASK));
         PVR2_TRACE("Write 0x%08x to PVR2_VO_CONTROL\n",
-                   (unsigned)reg_backing[PVR2_VO_CONTROL]);
+                   (unsigned)val);
         break;
     case PVR2_PALETTE_TP:
-        val = reg_backing[PVR2_PALETTE_TP];
+        reg_backing[PVR2_PALETTE_TP] = val;
         LOG_DBG("PVR2: palette type set to: ");
 
         switch (val) {
@@ -272,10 +281,10 @@ pvr2_reg_post_write(unsigned idx) {
         pvr2_tex_cache_notify_palette_tp_change();
         break;
     case PVR2_TA_VERTBUF_START:
-        reg_backing[PVR2_TA_VERTBUF_START] &= ~3;
+        reg_backing[PVR2_TA_VERTBUF_START] = val & ~3;
         break;
     case PVR2_TA_RESET:
-        val = reg_backing[PVR2_TA_RESET];
+        reg_backing[PVR2_TA_RESET] = val;
         if (val & 0x80000000) {
             LOG_DBG("TA_RESET!\n");
             reg_backing[PVR2_TA_VERTBUF_POS] =
@@ -287,12 +296,12 @@ pvr2_reg_post_write(unsigned idx) {
         pvr2_ta_reinit();
         break;
     case PVR2_TA_YUV_TEX_BASE:
-        val = reg_backing[PVR2_TA_YUV_TEX_BASE];
+        reg_backing[PVR2_TA_YUV_TEX_BASE] = val;
         PVR2_TRACE("Writing 0x%08x to TA_YUV_TEX_BASE\n", (unsigned)val);
         pvr2_yuv_set_base(val & BIT_RANGE(3, 23));
         break;
     case PVR2_TA_YUV_TEX_CTRL:
-        val = reg_backing[PVR2_TA_YUV_TEX_CTRL];
+        reg_backing[PVR2_TA_YUV_TEX_CTRL] = val;
         PVR2_TRACE("Writing 0x%08x to TA_YUV_CTRL\n", (unsigned)val);
 #ifdef ENABLE_LOG_DEBUG
         unsigned u_res = ((val & 0x3f) + 1) * 16;
@@ -312,7 +321,8 @@ pvr2_reg_post_write(unsigned idx) {
                        (unsigned)reg_backing[idx], idx);
         } else if (idx >= PVR2_PAL_RAM_FIRST && idx <= PVR2_PAL_RAM_LAST) {
             uint32_t *pal32 = (uint32_t*)pvr2_palette_ram;
-            pal32[idx - PVR2_PAL_RAM_FIRST] = reg_backing[idx];
+            pal32[idx - PVR2_PAL_RAM_FIRST] = val;
+            reg_backing[idx] = val;
             pvr2_tex_cache_notify_palette_write(idx * 4 + ADDR_PVR2_FIRST, 4);
         } else {
             error_set_index(idx);
@@ -324,12 +334,12 @@ pvr2_reg_post_write(unsigned idx) {
 
 #define PVR2_REG_READ_CASE(idx_const)                  \
     case idx_const:                                    \
-    PVR2_TRACE("Read 0x%08x from " #idx_const "\n",     \
+    PVR2_TRACE("Read 0x%08x from " #idx_const "\n",    \
                (unsigned)reg_backing[idx_const]);      \
-    break
+    return reg_backing[idx_const]
 
-static void
-pvr2_reg_pre_read(unsigned idx) {
+static uint32_t
+pvr2_reg_do_read(unsigned idx) {
     switch (idx) {
     PVR2_REG_READ_CASE(PVR2_SB_PDSTAP);
     PVR2_REG_READ_CASE(PVR2_SB_PDSTAR);
@@ -389,13 +399,13 @@ pvr2_reg_pre_read(unsigned idx) {
     PVR2_REG_READ_CASE(PVR2_TA_NEXT_OPB_INIT);
     case PVR2_PT_ALPHA_REF:
         // let it go through silently
-        break;
+        return reg_backing[PVR2_PT_ALPHA_REF];
     case PVR2_ID:
         /* hardcoded hardware ID */
-        reg_backing[PVR2_ID] = 0x17fd11db;
+        return 0x17fd11db;
         break;
     case PVR2_REV:
-        reg_backing[PVR2_REV] = 17;
+        return 17;
         break;
     case PVR2_STARTRENDER:
         error_set_index(idx);
@@ -403,52 +413,48 @@ pvr2_reg_pre_read(unsigned idx) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case PVR2_SPG_HBLANK_INT:
-        reg_backing[PVR2_SPG_HBLANK_INT] = pvr2_spg_get_hblank_int();
-        break;
+        return pvr2_spg_get_hblank_int();
     case PVR2_SPG_VBLANK_INT:
-        reg_backing[PVR2_SPG_VBLANK_INT] = pvr2_spg_get_vblank_int();
-        break;
+        return pvr2_spg_get_vblank_int();
     case PVR2_SPG_CONTROL:
-        reg_backing[PVR2_SPG_CONTROL] = pvr2_spg_get_control();
-        break;
+        return pvr2_spg_get_control();
     case PVR2_SPG_HBLANK:
-        reg_backing[PVR2_SPG_HBLANK] = pvr2_spg_get_hblank();
-        break;
+        return pvr2_spg_get_hblank();
     case PVR2_SPG_LOAD:
-        reg_backing[PVR2_SPG_LOAD] = pvr2_spg_get_load();
-        break;
+        return pvr2_spg_get_load();
     case PVR2_SPG_VBLANK:
-        reg_backing[PVR2_SPG_VBLANK] = pvr2_spg_get_vblank();
-        break;
+        return pvr2_spg_get_vblank();
     case PVR2_SPG_STATUS:
-        reg_backing[PVR2_SPG_STATUS] = pvr2_spg_get_status();
-        break;
+        return pvr2_spg_get_status();
     case PVR2_TA_VERTBUF_START:
-        break;
+        return reg_backing[PVR2_TA_VERTBUF_START];
     case PVR2_TA_NEXT_OPB:
             // TODO: actually track the positions of where the OPB blocks should go
         LOG_WARN("You should *really* come up with a real implementation of "
              "%s at line %d of %s\n", __func__, __LINE__, __FILE__);
         PVR2_TRACE("reading 0x%08x from TA_NEXT_OPB\n",
                    (unsigned)reg_backing[PVR2_TA_NEXT_OPB]);
-        break;
+        return reg_backing[PVR2_TA_NEXT_OPB];
     case PVR2_TA_RESET:
         LOG_DBG("reading 0 from TA_RESET\n");
-        reg_backing[PVR2_TA_RESET] = 0;
-        break;
+        return 0;
     default:
         if (idx >= PVR2_FOG_TABLE_FIRST && idx <= PVR2_FOG_TABLE_LAST) {
             PVR2_TRACE("Reading 0x%08x from fog table index %u\n",
                        (unsigned)reg_backing[idx], idx);
+            return reg_backing[idx];
         } else if (idx >= PVR2_PAL_RAM_FIRST && idx <= PVR2_PAL_RAM_LAST) {
             uint32_t *pal32 = (uint32_t*)pvr2_palette_ram;
-            reg_backing[idx] = pal32[idx - PVR2_PAL_RAM_FIRST];
+            return pal32[idx - PVR2_PAL_RAM_FIRST];
         } else {
             error_set_index(idx);
             error_set_feature("reading from an unknown PVR2 register");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     }
+
+    error_set_index(idx);
+    RAISE_ERROR(ERROR_INTEGRITY);
 }
 
 void pvr2_reg_init(void) {
@@ -459,8 +465,7 @@ void pvr2_reg_cleanup(void) {
 }
 
 #define PVR2_REG_READ_TMPL(tp)                                          \
-    tp ret;                                                             \
-    if (addr % sizeof(tp) || addr % sizeof(uint32_t)) {                 \
+    if (addr % sizeof(uint32_t)) {                                      \
         error_set_feature("unaligned pvr2 register reads\n");           \
         error_set_address(addr);                                        \
         error_set_length(sizeof(tp));                                   \
@@ -468,12 +473,10 @@ void pvr2_reg_cleanup(void) {
     }                                                                   \
     unsigned offs = addr - ADDR_PVR2_FIRST;                             \
     unsigned idx = offs / sizeof(uint32_t);                             \
-    pvr2_reg_pre_read(idx);                                             \
-    memcpy(&ret, ((tp*)reg_backing) + offs / sizeof(tp), sizeof(tp));   \
-    return ret
+    return pvr2_reg_do_read(idx)
 
 #define PVR2_REG_WRITE_TMPL(tp)                                         \
-    if (addr % sizeof(tp) || addr % sizeof(uint32_t)) {                 \
+    if (addr % sizeof(uint32_t)) {                                      \
         error_set_feature("unaligned pvr2 register writes\n");          \
         error_set_address(addr);                                        \
         error_set_length(sizeof(tp));                                   \
@@ -481,23 +484,31 @@ void pvr2_reg_cleanup(void) {
     }                                                                   \
     unsigned offs = addr - ADDR_PVR2_FIRST;                             \
     unsigned idx = offs / sizeof(uint32_t);                             \
-    memcpy(((tp*)reg_backing) + offs / sizeof(tp), &val, sizeof(tp));   \
-    pvr2_reg_post_write(idx)
+    pvr2_reg_do_write(idx, val)
 
 double pvr2_reg_read_double(addr32_t addr, void *ctxt) {
-    PVR2_REG_READ_TMPL(double);
+    error_set_address(addr);
+    error_set_length(sizeof(double));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void pvr2_reg_write_double(addr32_t addr, double val, void *ctxt) {
-    PVR2_REG_WRITE_TMPL(double);
+    error_set_address(addr);
+    error_set_length(sizeof(double));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 float pvr2_reg_read_float(addr32_t addr, void *ctxt) {
-    PVR2_REG_READ_TMPL(float);
+    uint32_t val = pvr2_reg_read_32(addr, ctxt);
+    float ret;
+    memcpy(&ret, &val, sizeof(ret));
+    return ret;
 }
 
 void pvr2_reg_write_float(addr32_t addr, float val, void *ctxt) {
-    PVR2_REG_WRITE_TMPL(float);
+    uint32_t val32;
+    memcpy(&val32, &val, sizeof(val32));
+    pvr2_reg_write_32(addr, val32, ctxt);
 }
 
 uint32_t pvr2_reg_read_32(addr32_t addr, void *ctxt) {
@@ -513,15 +524,21 @@ uint16_t pvr2_reg_read_16(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
-    PVR2_REG_WRITE_TMPL(uint16_t);
+    error_set_address(addr);
+    error_set_length(sizeof(uint16_t));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint8_t pvr2_reg_read_8(addr32_t addr, void *ctxt) {
-    PVR2_REG_READ_TMPL(uint8_t);
+    error_set_address(addr);
+    error_set_length(sizeof(uint8_t));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void pvr2_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
-    PVR2_REG_WRITE_TMPL(uint8_t);
+    error_set_address(addr);
+    error_set_length(sizeof(uint8_t));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 struct memory_interface pvr2_reg_intf = {
