@@ -45,11 +45,6 @@
 #define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
 static uint32_t reg_backing[N_PVR2_REGS / sizeof(uint32_t)];
 
-uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
-
-/* #define PAL_RAM_FIRST_IDX ((PVR2_PALETTE_RAM_FIRST - ADDR_PVR2_CORE_FIRST) / 4) */
-/* #define PAL_RAM_LAST_IDX  ((PVR2_PALETTE_RAM_LAST - ADDR_PVR2_CORE_FIRST) / 4) */
-
 #define PVR2_SB_PDSTAP  0
 #define PVR2_SB_PDSTAR  1
 #define PVR2_SB_PDLEN   2
@@ -320,8 +315,6 @@ pvr2_reg_do_write(unsigned idx, uint32_t val) {
             PVR2_TRACE("Writing 0x%08x to fog table index %u\n",
                        (unsigned)reg_backing[idx], idx);
         } else if (idx >= PVR2_PAL_RAM_FIRST && idx <= PVR2_PAL_RAM_LAST) {
-            uint32_t *pal32 = (uint32_t*)pvr2_palette_ram;
-            pal32[idx - PVR2_PAL_RAM_FIRST] = val;
             reg_backing[idx] = val;
             pvr2_tex_cache_notify_palette_write(idx * 4 + ADDR_PVR2_FIRST, 4);
         } else {
@@ -444,8 +437,7 @@ pvr2_reg_do_read(unsigned idx) {
                        (unsigned)reg_backing[idx], idx);
             return reg_backing[idx];
         } else if (idx >= PVR2_PAL_RAM_FIRST && idx <= PVR2_PAL_RAM_LAST) {
-            uint32_t *pal32 = (uint32_t*)pvr2_palette_ram;
-            return pal32[idx - PVR2_PAL_RAM_FIRST];
+            return reg_backing[idx];
         } else {
             error_set_index(idx);
             error_set_feature("reading from an unknown PVR2 register");
@@ -641,4 +633,8 @@ uint32_t get_ta_yuv_tex_base(void) {
 
 uint32_t get_ta_yuv_tex_ctrl(void) {
     return reg_backing[PVR2_TA_YUV_TEX_CTRL];
+}
+
+uint8_t *pvr2_get_palette_ram(void) {
+    return (uint8_t*)(reg_backing + PVR2_PAL_RAM_FIRST);
 }

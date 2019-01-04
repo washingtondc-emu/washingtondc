@@ -648,6 +648,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
         uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
 
         unsigned row, col;
+        uint8_t *pal_ram = pvr2_get_palette_ram();
         for (row = 0; row < tex_h; row++) {
             for (col = 0; col < tex_w; col++) {
                 unsigned pix_idx = row * tex_w + col;
@@ -656,7 +657,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
                 uint8_t pix_in = tex_dat8[pix_idx];
                 uint32_t palette_addr =
                     (pal_start | (uint32_t)pix_in) * 4;
-                memcpy(pix_out, pvr2_palette_ram + palette_addr, tex_size_actual);
+                memcpy(pix_out, pal_ram + palette_addr, tex_size_actual);
             }
         }
         free(tex_dat);
@@ -691,6 +692,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
         uint32_t pal_start = meta->tex_palette_start << 4;
         uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
 
+        uint8_t *pal_ram = pvr2_get_palette_ram();
         unsigned row, col;
         for (row = 0; row < tex_h; row++) {
             for (col = 0; col < tex_w; col++) {
@@ -707,7 +709,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
 
                 uint32_t palette_addr =
                     (pal_start | (uint32_t)pix_in) * 4;
-                memcpy(pix_out, pvr2_palette_ram + palette_addr, tex_size_actual);
+                memcpy(pix_out, pal_ram + palette_addr, tex_size_actual);
             }
         }
         free(tex_dat);

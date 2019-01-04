@@ -41,7 +41,8 @@
 #define PVR2_PALETTE_RAM_LAST  0x5f9fff
 #define PVR2_PALETTE_RAM_LEN \
     (PVR2_PALETTE_RAM_LAST - PVR2_PALETTE_RAM_FIRST + 1)
-extern uint8_t pvr2_palette_ram[PVR2_PALETTE_RAM_LEN];
+
+uint8_t *pvr2_get_palette_ram(void);
 
 void pvr2_reg_init(void);
 void pvr2_reg_cleanup(void);
