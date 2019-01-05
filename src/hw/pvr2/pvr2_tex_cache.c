@@ -179,7 +179,8 @@ void pvr2_tex_cache_cleanup(void) {
             pvr2_free_gfx_obj(tex_cache[idx].obj_no);
 }
 
-struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, uint32_t pal_addr,
+struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
+                                     uint32_t addr, uint32_t pal_addr,
                                      unsigned w_shift, unsigned h_shift,
                                      int tex_fmt, bool twiddled,
                                      bool vq_compression, bool mipmap,
@@ -198,7 +199,7 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, uint32_t pal_addr,
             (tex->meta.vq_compression == vq_compression) &&
             (mipmap == tex->meta.mipmap) &&
             (!pal_tex || pal_addr == tex->meta.tex_palette_start)) {
-            tex->frame_stamp_last_used = get_cur_frame_stamp();
+            tex->frame_stamp_last_used = get_cur_frame_stamp(pvr2);
             return tex;
         }
     }
@@ -213,7 +214,7 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
                                     bool vq_compression, bool mipmap,
                                     bool stride_sel) {
     assert(tex_fmt < TEX_CTRL_PIX_FMT_INVALID);
-    unsigned cur_frame_stamp = get_cur_frame_stamp();
+    unsigned cur_frame_stamp = get_cur_frame_stamp(pvr2);
 
 #ifdef INVARIANTS
     if (w_shift > 10 || h_shift > 10 || w_shift < 3 || h_shift < 3) {
@@ -726,7 +727,7 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
 
 void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
     unsigned idx;
-    unsigned cur_frame_stamp = get_cur_frame_stamp();
+    unsigned cur_frame_stamp = get_cur_frame_stamp(pvr2);
     struct gfx_il_inst cmd;
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {

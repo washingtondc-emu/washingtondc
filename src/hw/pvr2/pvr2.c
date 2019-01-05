@@ -39,11 +39,11 @@ void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk) {
     pvr2_reg_init(pvr2);
     spg_init(pvr2);
     pvr2_tex_cache_init();
-    pvr2_ta_init();
+    pvr2_ta_init(pvr2);
 }
 
 void pvr2_cleanup(struct pvr2 *pvr2) {
-    pvr2_ta_cleanup();
+    pvr2_ta_cleanup(pvr2);
     pvr2_tex_cache_cleanup();
     spg_cleanup(pvr2);
     pvr2_reg_cleanup(pvr2);

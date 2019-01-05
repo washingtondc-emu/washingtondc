@@ -287,7 +287,7 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
             LOG_WARN("WARNING: TA_RESET was written to, but the one bit that "
                      "actually matters was not set\n");
         }
-        pvr2_ta_reinit();
+        pvr2_ta_reinit(pvr2);
         break;
     case PVR2_TA_YUV_TEX_BASE:
         reg_backing[PVR2_TA_YUV_TEX_BASE] = val;

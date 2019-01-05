@@ -1136,7 +1136,7 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
         (xfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
         while (n_words--) {
             uint32_t buf = memory_map_read_32(&mem_map, xfer_src);
-            pvr2_ta_fifo_poly_write_32(xfer_dst, buf, NULL);
+            pvr2_ta_fifo_poly_write_32(xfer_dst, buf, &dc_pvr2);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
         }
@@ -1147,7 +1147,7 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
 
         while (n_words--) {
             uint32_t buf = memory_map_read_32(&mem_map, xfer_src);
-            pvr2_tex_mem_area64_write_32(xfer_dst, buf, NULL);
+            pvr2_tex_mem_area64_write_32(xfer_dst, buf, &dc_pvr2);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
         }
@@ -1158,7 +1158,7 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
 
         while (n_words--) {
             uint32_t buf = memory_map_read_32(&mem_map, xfer_src);
-            pvr2_tex_mem_area32_write_32(xfer_dst, buf, NULL);
+            pvr2_tex_mem_area32_write_32(xfer_dst, buf, &dc_pvr2);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
         }

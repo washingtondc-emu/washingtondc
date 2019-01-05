@@ -35,7 +35,7 @@
 struct pvr2 {
     uint32_t reg_backing[N_PVR2_REGS / sizeof(uint32_t)];
     struct dc_clock *clk;
-    struct ta_state ta;
+    struct pvr2_ta ta;
     struct pvr2_spg spg;
 };
 

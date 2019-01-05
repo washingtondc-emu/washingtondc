@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,9 +26,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "dc_sched.h"
 #include "types.h"
 #include "MemoryMap.h"
 #include "gfx/gfx.h"
+#include "gfx/gfx_il.h"
 
 struct pvr2;
 
@@ -117,12 +119,12 @@ void pvr2_ta_startrender(struct pvr2 *pvr2);
  * This gets called when the TA gets reset by a register write.  It is not
  * related to pvr2_ta_init/pvr2_ta_cleanup.
  */
-void pvr2_ta_reinit(void);
+void pvr2_ta_reinit(struct pvr2 *pvr2);
 
-void pvr2_ta_init(void);
-void pvr2_ta_cleanup(void);
+void pvr2_ta_init(struct pvr2 *pvr2);
+void pvr2_ta_cleanup(struct pvr2 *pvr2);
 
-unsigned get_cur_frame_stamp(void);
+unsigned get_cur_frame_stamp(struct pvr2 *pvr2);
 
 /*
  * There are five display lists:
@@ -264,8 +266,18 @@ struct pvr2_ta_vert {
     float tex_coord[2];
 };
 
-struct ta_state {
+#define PVR2_CMD_MAX_LEN 64
+
+struct gfx_il_inst_chain {
+    struct gfx_il_inst cmd;
+    struct gfx_il_inst_chain *next;
+};
+
+struct pvr2_ta {
     enum display_list_type cur_list;
+
+    uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
+    unsigned ta_fifo_byte_count;
 
     bool list_submitted[DISPLAY_LIST_COUNT];
 
@@ -286,6 +298,21 @@ struct ta_state {
 
     bool open_group;
 
+    float *pvr2_ta_vert_buf;
+    unsigned pvr2_ta_vert_buf_count;
+    unsigned pvr2_ta_vert_cur_group;
+
+    struct gfx_il_inst_chain *disp_list_begin[DISPLAY_LIST_COUNT];
+    struct gfx_il_inst_chain *disp_list_end[DISPLAY_LIST_COUNT];
+
+    struct gfx_il_inst_chain *gfx_il_inst_buf;
+    unsigned gfx_il_inst_buf_count;
+
+    // the 4-component color that gets sent to glClearColor
+    float pvr2_bgcolor[4];
+
+    unsigned next_frame_stamp;
+
     /*
      * the intensity mode base and offset colors.  These should be referenced
      * instead of the copies held in hdr because hdr's version of these gets
@@ -296,6 +323,19 @@ struct ta_state {
     float poly_offs_color_rgba[4];
     float sprite_base_color_rgba[4];
     float sprite_offs_color_rgba[4];
+
+    struct SchedEvent pvr2_render_complete_int_event,
+        pvr2_op_complete_int_event,
+        pvr2_op_mod_complete_int_event,
+        pvr2_trans_complete_int_event,
+        pvr2_trans_mod_complete_int_event,
+        pvr2_pt_complete_int_event;
+    bool pvr2_render_complete_int_event_scheduled,
+        pvr2_op_complete_int_event_scheduled,
+        pvr2_op_mod_complete_int_event_scheduled,
+        pvr2_trans_complete_int_event_scheduled,
+        pvr2_trans_mod_complete_int_event_scheduled,
+        pvr2_pt_complete_int_event_scheduled;
 };
 
 #endif

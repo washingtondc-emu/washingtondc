@@ -116,7 +116,8 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
  * search the cache for the given texture
  * pal_addr is only used for paletted textures
  */
-struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, uint32_t pal_addr,
+struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
+                                     uint32_t addr, uint32_t pal_addr,
                                      unsigned w_shift, unsigned h_shift,
                                      int tex_fmt, bool twiddled,
                                      bool vq_compression, bool mipmap,
