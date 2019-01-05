@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 #define PVR2_FRAMEBUFFER_H_
 
 #include <stdint.h>
+
+struct pvr2;
 
 /*
  * The framebuffer runs in the Dreamcast thread.  On vsync events, it is called
@@ -91,7 +93,7 @@ void framebuffer_render();
 static inline void framebuffer_sync_from_host_maybe(void) {
 }
 
-int framebuffer_set_render_target(void);
+int framebuffer_set_render_target(struct pvr2 *pvr2);
 
 void pvr2_framebuffer_notify_write(uint32_t addr, unsigned n_bytes);
 

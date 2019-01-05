@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -105,7 +105,8 @@ struct pvr2_tex {
  * insert the given texture into the cache.
  * pal_addr is only used for paletted textures
  */
-struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
+struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
+                                    uint32_t addr, uint32_t pal_addr,
                                     unsigned w_shift, unsigned h_shift,
                                     int tex_fmt, bool twiddled,
                                     bool vq_compression, bool mipmap,
@@ -129,7 +130,7 @@ void pvr2_tex_cache_notify_palette_tp_change(void);
 int pvr2_tex_cache_get_idx(struct pvr2_tex const *tex);
 
 // this function sends the texture cache over to gfx by way of the gfx_il
-void pvr2_tex_cache_xmit(void);
+void pvr2_tex_cache_xmit(struct pvr2 *pvr2);
 
 /*
  * Read the meta-information of the given texture.  This function will return
@@ -138,7 +139,8 @@ void pvr2_tex_cache_xmit(void);
  */
 int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx);
 
-void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
+void pvr2_tex_cache_read(struct pvr2 *pvr2,
+                         void **tex_dat_out, size_t *n_bytes_out,
                          struct pvr2_tex_meta const *meta);
 
 void pvr2_tex_cache_init(void);

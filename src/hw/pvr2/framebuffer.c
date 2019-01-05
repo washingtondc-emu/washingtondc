@@ -661,14 +661,15 @@ sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
 }
 
 static void
-sync_fb_from_tex_mem(struct framebuffer *fb, unsigned width, unsigned height,
+sync_fb_from_tex_mem(struct pvr2 *pvr2, struct framebuffer *fb,
+                     unsigned width, unsigned height,
                      unsigned modulus, unsigned concat) {
     bool interlace = get_spg_control() & (1 << 4);
 
-    uint32_t fb_r_sof1 = get_fb_r_sof1() & ~3;
-    uint32_t fb_r_sof2 = get_fb_r_sof2() & ~3;
+    uint32_t fb_r_sof1 = get_fb_r_sof1(pvr2) & ~3;
+    uint32_t fb_r_sof2 = get_fb_r_sof2(pvr2) & ~3;
 
-    uint32_t fb_r_ctrl = get_fb_r_ctrl();
+    uint32_t fb_r_ctrl = get_fb_r_ctrl(pvr2);
     unsigned px_tp = (fb_r_ctrl & 0xc) >> 2;
     switch (px_tp) {
     case 0:
@@ -819,8 +820,8 @@ void framebuffer_init(unsigned width, unsigned height) {
     }
 }
 
-void framebuffer_render() {
-    uint32_t fb_r_ctrl = get_fb_r_ctrl();
+void framebuffer_render(struct pvr2 *pvr2) {
+    uint32_t fb_r_ctrl = get_fb_r_ctrl(pvr2);
     if (!(fb_r_ctrl & 1)) {
         LOG_DBG("framebuffer disabled\n");
         // framebuffer is not enabled.
@@ -830,14 +831,14 @@ void framebuffer_render() {
     }
 
     bool interlace = get_spg_control() & (1 << 4);
-    uint32_t fb_r_size = get_fb_r_size();
-    uint32_t fb_r_sof1 = get_fb_r_sof1() & ~3;
+    uint32_t fb_r_size = get_fb_r_size(pvr2);
+    uint32_t fb_r_sof1 = get_fb_r_sof1(pvr2) & ~3;
 
     unsigned modulus = (fb_r_size >> 20) & 0x3ff;
     unsigned concat = (fb_r_ctrl >> 4) & 7;
 
-    unsigned pix_sz = bytes_per_pix(get_fb_r_ctrl());
-    unsigned width = ((get_fb_r_size() & 0x3ff) + 1) * 4;
+    unsigned pix_sz = bytes_per_pix(fb_r_ctrl);
+    unsigned width = ((fb_r_size & 0x3ff) + 1) * 4;
     if (width % pix_sz) {
         LOG_ERROR("fb x size is %u\n", width);
         LOG_ERROR("px_sz is %u\n", pix_sz);
@@ -850,7 +851,7 @@ void framebuffer_render() {
 
     uint32_t addr_first = fb_r_sof1;
     if (interlace) {
-        uint32_t fb_r_sof2 = get_fb_r_sof2() & ~3;
+        uint32_t fb_r_sof2 = get_fb_r_sof2(pvr2) & ~3;
         if (fb_r_sof2 < addr_first)
             addr_first = fb_r_sof2;
     }
@@ -864,7 +865,7 @@ void framebuffer_render() {
             fb->flags.state != FB_STATE_INVALID) {
 
             if (!(fb_heap[fb_idx].flags.state & FB_STATE_GFX)) {
-                sync_fb_from_tex_mem(fb_heap + fb_idx, width,
+                sync_fb_from_tex_mem(pvr2, fb_heap + fb_idx, width,
                                      height, modulus, concat);
             }
 
@@ -873,7 +874,8 @@ void framebuffer_render() {
     }
 
     fb_idx = pick_fb(width, height, fb_r_sof1);
-    sync_fb_from_tex_mem(fb_heap + fb_idx, width, height, modulus, concat);
+    sync_fb_from_tex_mem(pvr2, fb_heap + fb_idx,
+                         width, height, modulus, concat);
 
 submit_the_fb:
     stamp++;
@@ -891,7 +893,7 @@ submit_the_fb:
     title_set_interlace(interlace);
 
     char const *pix_fmt_str;
-    switch ((get_fb_r_ctrl() & 0xc) >> 2) {
+    switch ((fb_r_ctrl & 0xc) >> 2) {
     case 0:
         pix_fmt_str = "555 RGB";
         break;
@@ -1252,7 +1254,7 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
     return idx;
 }
 
-int framebuffer_set_render_target(void) {
+int framebuffer_set_render_target(struct pvr2 *pvr2) {
 
     /*
      * XXX
@@ -1271,16 +1273,17 @@ int framebuffer_set_render_target(void) {
      * interrupt, but I don't know any better way to solve this problem.  This is
      * something to keep in mind for the future.
      */
-    unsigned pix_sz = bytes_per_pix(get_fb_r_ctrl());
-    unsigned width = (((get_fb_r_size() & 0x3ff) + 1) * 4);
+    unsigned pix_sz = bytes_per_pix(get_fb_r_ctrl(pvr2));
+    uint32_t fb_r_size = get_fb_r_size(pvr2);
+    unsigned width = (((fb_r_size & 0x3ff) + 1) * 4);
     if (width % pix_sz) {
         LOG_ERROR("fb x size is %u\n", width);
         LOG_ERROR("px_sz is %u\n", pix_sz);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
     width /= pix_sz;
-    unsigned height = ((get_fb_r_size() >> 10) & 0x3ff) + 1;
-    uint32_t sof1 = get_fb_w_sof1() & ~3;
+    unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
+    uint32_t sof1 = get_fb_w_sof1(pvr2) & ~3;
     uint32_t addr_key = sof1;
 
     int idx = pick_fb(width, height, addr_key);
@@ -1292,20 +1295,21 @@ int framebuffer_set_render_target(void) {
     fb->fb_read_width = width;
     fb->fb_read_height = height;
     fb->stamp = stamp;
-    fb->linestride = get_fb_w_linestride() * 8;
+    fb->linestride = get_fb_w_linestride(pvr2) * 8;
 
     // set addr_first and addr_last
     uint32_t first_addr_field1, last_addr_field1;
     unsigned field_adv;
-    unsigned modulus = (get_fb_r_size() >> 20) & 0x3ff;
+    unsigned modulus = (fb_r_size >> 20) & 0x3ff;
+    uint32_t fb_w_ctrl = get_fb_w_ctrl(pvr2);
 
     // TODO: the k-bit
-    switch (get_fb_w_ctrl() & 0x7) {
+    switch (fb_w_ctrl & 0x7) {
     case 2:
         // 16-bit 4444 RGB
     case 7:
         // absolutely haram
-        error_set_fb_pix_fmt(get_fb_w_ctrl() & 0x7);
+        error_set_fb_pix_fmt(fb_w_ctrl & 0x7);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     case 0:
         // 16-bit 555 KRGB
@@ -1406,12 +1410,12 @@ int framebuffer_set_render_target(void) {
         break;
     }
 
-    fb->tile_w = get_glob_tile_clip_x() << 5;
-    fb->tile_h = get_glob_tile_clip_y() << 5;
-    fb->x_clip_min = get_fb_x_clip_min();
-    fb->x_clip_max = get_fb_x_clip_max();
-    fb->y_clip_min = get_fb_y_clip_min();
-    fb->y_clip_max = get_fb_y_clip_max();
+    fb->tile_w = get_glob_tile_clip_x(pvr2) << 5;
+    fb->tile_h = get_glob_tile_clip_y(pvr2) << 5;
+    fb->x_clip_min = get_fb_x_clip_min(pvr2);
+    fb->x_clip_max = get_fb_x_clip_max(pvr2);
+    fb->y_clip_min = get_fb_y_clip_min(pvr2);
+    fb->y_clip_max = get_fb_y_clip_max(pvr2);
 
     /*
      * It's safe to re-bind an object that is already bound as a render target

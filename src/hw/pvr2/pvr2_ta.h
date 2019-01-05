@@ -28,6 +28,9 @@
 
 #include "types.h"
 #include "MemoryMap.h"
+#include "gfx/gfx.h"
+
+struct pvr2;
 
 // texture control word
 #define TEX_CTRL_MIP_MAPPED_SHIFT 31
@@ -108,7 +111,7 @@ void pvr2_ta_fifo_poly_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
 extern struct memory_interface pvr2_ta_fifo_intf;
 
-void pvr2_ta_startrender(void);
+void pvr2_ta_startrender(struct pvr2 *pvr2);
 
 /*
  * This gets called when the TA gets reset by a register write.  It is not
@@ -120,5 +123,179 @@ void pvr2_ta_init(void);
 void pvr2_ta_cleanup(void);
 
 unsigned get_cur_frame_stamp(void);
+
+/*
+ * There are five display lists:
+ *
+ * Opaque
+ * Punch-through polygon
+ * Opaque/punch-through modifier volume
+ * Translucent
+ * Translucent modifier volume
+ *
+ * They are rendered by the opengl backend in that order.
+ */
+enum display_list_type {
+    DISPLAY_LIST_FIRST,
+    DISPLAY_LIST_OPAQUE = DISPLAY_LIST_FIRST,
+    DISPLAY_LIST_OPAQUE_MOD,
+    DISPLAY_LIST_TRANS,
+    DISPLAY_LIST_TRANS_MOD,
+    DISPLAY_LIST_PUNCH_THROUGH,
+    DISPLAY_LIST_LAST = DISPLAY_LIST_PUNCH_THROUGH,
+
+    // These three list types are invalid, but I do see DISPLAY_LIST_7 sometimes
+    DISPLAY_LIST_5,
+    DISPLAY_LIST_6,
+    DISPLAY_LIST_7,
+
+    DISPLAY_LIST_COUNT,
+
+    DISPLAY_LIST_NONE = -1
+};
+
+enum ta_color_type {
+    TA_COLOR_TYPE_PACKED,
+    TA_COLOR_TYPE_FLOAT,
+    TA_COLOR_TYPE_INTENSITY_MODE_1,
+    TA_COLOR_TYPE_INTENSITY_MODE_2
+};
+
+enum pvr2_pkt_tp {
+    PVR2_PKT_HDR,
+    PVR2_PKT_VTX,
+    PVR2_PKT_END_OF_LIST,
+    PVR2_PKT_INPUT_LIST,
+    PVR2_PKT_USER_CLIP
+};
+
+struct pvr2_pkt_vtx {
+    float base_color[4];
+    float offs_color[4];
+    float uv[2];
+    float pos[3];
+
+    bool end_of_strip;
+};
+
+enum pvr2_hdr_tp {
+    PVR2_HDR_TRIANGLE_STRIP,
+    PVR2_HDR_QUAD
+};
+
+struct pvr2_pkt_hdr {
+    enum pvr2_hdr_tp tp;
+
+    unsigned vtx_len;
+
+    enum display_list_type list;
+
+    bool tex_enable;
+    uint32_t tex_addr;
+
+    /*
+     * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
+     * palette address referenced by this texture.  It needs to be shifted left
+     * by 2 or 6 bits and ORed with pixel values to get palette addresses.
+     *
+     * this field only holds meaning if tex_fmt is TEX_CTRL_PIX_FMT_4_BPP_PAL
+     * or TEX_CTRL_PIX_FMT_8_BPP_PAL; otherwise it is meaningless.
+     */
+    unsigned tex_palette_start;
+
+    unsigned tex_width_shift, tex_height_shift;
+    bool tex_twiddle;
+    bool stride_sel;
+    bool tex_vq_compression;
+    bool tex_mipmap;
+    enum TexCtrlPixFmt pix_fmt;
+    enum tex_inst tex_inst;
+    enum tex_filter tex_filter;
+    enum tex_wrap_mode tex_wrap_mode[2];
+
+    enum ta_color_type ta_color_fmt;
+    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
+
+    bool enable_depth_writes;
+    enum Pvr2DepthFunc depth_func;
+
+    bool shadow;
+    bool two_volumes_mode;
+    /* enum ta_color_type color_type; */
+    bool offset_color_enable;
+    bool gourad_shading_enable;
+    bool tex_coord_16_bit_enable;
+
+    float poly_base_color_rgba[4];
+    float poly_offs_color_rgba[4];
+
+    float sprite_base_color_rgba[4];
+    float sprite_offs_color_rgba[4];
+};
+
+struct pvr2_pkt_user_clip {
+    /*
+     * these are in terms of tiles, so the actual coordinates are these
+     * multiplied by 32.
+     */
+    unsigned xmin, ymin, xmax, ymax;
+};
+
+union pvr2_pkt_inner {
+    struct pvr2_pkt_vtx vtx;
+    struct pvr2_pkt_hdr hdr;
+    struct pvr2_pkt_user_clip user_clip;
+};
+
+struct pvr2_pkt {
+    enum pvr2_pkt_tp tp;
+    union pvr2_pkt_inner dat;
+};
+
+enum global_param {
+    GLOBAL_PARAM_POLY = 4,
+    GLOBAL_PARAM_SPRITE = 5
+};
+
+struct pvr2_ta_vert {
+    float pos[3];
+    float base_color[4];
+    float offs_color[4];
+    float tex_coord[2];
+};
+
+struct ta_state {
+    enum display_list_type cur_list;
+
+    bool list_submitted[DISPLAY_LIST_COUNT];
+
+    struct pvr2_pkt_hdr hdr;
+
+    /*
+     * used to store the previous two verts when we're
+     * rendering a triangle strip
+     */
+    struct pvr2_ta_vert strip_vert_1;
+    struct pvr2_ta_vert strip_vert_2;
+    unsigned strip_len; // number of verts in the current triangle strip
+
+    float clip_min, clip_max;
+
+    // index into the texture cache
+    unsigned tex_idx;
+
+    bool open_group;
+
+    /*
+     * the intensity mode base and offset colors.  These should be referenced
+     * instead of the copies held in hdr because hdr's version of these gets
+     * overwritten every time there's a new header, whereas these variables here
+     * only get overwritten when there's a new INTENSITY_MODE_1 header packet.
+     */
+    float poly_base_color_rgba[4];
+    float poly_offs_color_rgba[4];
+    float sprite_base_color_rgba[4];
+    float sprite_offs_color_rgba[4];
+};
 
 #endif

@@ -89,13 +89,6 @@
 #define TA_CMD_16_BIT_TEX_COORD_SHIFT 0
 #define TA_CMD_16_BIT_TEX_COORD_MASK (1 << TA_CMD_16_BIT_TEX_COORD_SHIFT)
 
-enum ta_color_type {
-    TA_COLOR_TYPE_PACKED,
-    TA_COLOR_TYPE_FLOAT,
-    TA_COLOR_TYPE_INTENSITY_MODE_1,
-    TA_COLOR_TYPE_INTENSITY_MODE_2
-};
-
 #define TA_CMD_TYPE_END_OF_LIST 0x0
 #define TA_CMD_TYPE_USER_CLIP   0x1
 #define TA_CMD_TYPE_INPUT_LIST  0x2
@@ -130,37 +123,6 @@ static uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
 
 static unsigned ta_fifo_byte_count = 0;
 
-
-/*
- * There are five display lists:
- *
- * Opaque
- * Punch-through polygon
- * Opaque/punch-through modifier volume
- * Translucent
- * Translucent modifier volume
- *
- * They are rendered by the opengl backend in that order.
- */
-enum display_list_type {
-    DISPLAY_LIST_FIRST,
-    DISPLAY_LIST_OPAQUE = DISPLAY_LIST_FIRST,
-    DISPLAY_LIST_OPAQUE_MOD,
-    DISPLAY_LIST_TRANS,
-    DISPLAY_LIST_TRANS_MOD,
-    DISPLAY_LIST_PUNCH_THROUGH,
-    DISPLAY_LIST_LAST = DISPLAY_LIST_PUNCH_THROUGH,
-
-    // These three list types are invalid, but I do see DISPLAY_LIST_7 sometimes
-    DISPLAY_LIST_5,
-    DISPLAY_LIST_6,
-    DISPLAY_LIST_7,
-
-    DISPLAY_LIST_COUNT,
-
-    DISPLAY_LIST_NONE = -1
-};
-
 static DEF_ERROR_INT_ATTR(src_blend_factor);
 static DEF_ERROR_INT_ATTR(dst_blend_factor);
 static DEF_ERROR_INT_ATTR(display_list_index);
@@ -185,142 +147,7 @@ static DEF_ERROR_U32_ATTR(ta_fifo_word_d)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_e)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_f)
 
-enum pvr2_pkt_tp {
-    PVR2_PKT_HDR,
-    PVR2_PKT_VTX,
-    PVR2_PKT_END_OF_LIST,
-    PVR2_PKT_INPUT_LIST,
-    PVR2_PKT_USER_CLIP
-};
-
-struct pvr2_pkt_vtx {
-    float base_color[4];
-    float offs_color[4];
-    float uv[2];
-    float pos[3];
-
-    bool end_of_strip;
-};
-
-enum pvr2_hdr_tp {
-    PVR2_HDR_TRIANGLE_STRIP,
-    PVR2_HDR_QUAD
-};
-
-struct pvr2_pkt_hdr {
-    enum pvr2_hdr_tp tp;
-
-    unsigned vtx_len;
-
-    enum display_list_type list;
-
-    bool tex_enable;
-    uint32_t tex_addr;
-
-    /*
-     * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
-     * palette address referenced by this texture.  It needs to be shifted left
-     * by 2 or 6 bits and ORed with pixel values to get palette addresses.
-     *
-     * this field only holds meaning if tex_fmt is TEX_CTRL_PIX_FMT_4_BPP_PAL
-     * or TEX_CTRL_PIX_FMT_8_BPP_PAL; otherwise it is meaningless.
-     */
-    unsigned tex_palette_start;
-
-    unsigned tex_width_shift, tex_height_shift;
-    bool tex_twiddle;
-    bool stride_sel;
-    bool tex_vq_compression;
-    bool tex_mipmap;
-    enum TexCtrlPixFmt pix_fmt;
-    enum tex_inst tex_inst;
-    enum tex_filter tex_filter;
-    enum tex_wrap_mode tex_wrap_mode[2];
-
-    enum ta_color_type ta_color_fmt;
-    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
-
-    bool enable_depth_writes;
-    enum Pvr2DepthFunc depth_func;
-
-    bool shadow;
-    bool two_volumes_mode;
-    /* enum ta_color_type color_type; */
-    bool offset_color_enable;
-    bool gourad_shading_enable;
-    bool tex_coord_16_bit_enable;
-
-    float poly_base_color_rgba[4];
-    float poly_offs_color_rgba[4];
-
-    float sprite_base_color_rgba[4];
-    float sprite_offs_color_rgba[4];
-};
-
-struct pvr2_pkt_user_clip {
-    /*
-     * these are in terms of tiles, so the actual coordinates are these
-     * multiplied by 32.
-     */
-    unsigned xmin, ymin, xmax, ymax;
-};
-
-union pvr2_pkt_inner {
-    struct pvr2_pkt_vtx vtx;
-    struct pvr2_pkt_hdr hdr;
-    struct pvr2_pkt_user_clip user_clip;
-};
-
-struct pvr2_pkt {
-    enum pvr2_pkt_tp tp;
-    union pvr2_pkt_inner dat;
-};
-
-enum global_param {
-    GLOBAL_PARAM_POLY = 4,
-    GLOBAL_PARAM_SPRITE = 5
-};
-
-struct pvr2_ta_vert {
-    float pos[3];
-    float base_color[4];
-    float offs_color[4];
-    float tex_coord[2];
-};
-
-static struct ta_state {
-    enum display_list_type cur_list;
-
-    bool list_submitted[DISPLAY_LIST_COUNT];
-
-    struct pvr2_pkt_hdr hdr;
-
-    /*
-     * used to store the previous two verts when we're
-     * rendering a triangle strip
-     */
-    struct pvr2_ta_vert strip_vert_1;
-    struct pvr2_ta_vert strip_vert_2;
-    unsigned strip_len; // number of verts in the current triangle strip
-
-    float clip_min, clip_max;
-
-    // index into the texture cache
-    unsigned tex_idx;
-
-    bool open_group;
-
-    /*
-     * the intensity mode base and offset colors.  These should be referenced
-     * instead of the copies held in hdr because hdr's version of these gets
-     * overwritten every time there's a new header, whereas these variables here
-     * only get overwritten when there's a new INTENSITY_MODE_1 header packet.
-     */
-    float poly_base_color_rgba[4];
-    float poly_offs_color_rgba[4];
-    float sprite_base_color_rgba[4];
-    float sprite_offs_color_rgba[4];
-} ta;
+static struct ta_state ta;
 
 char const *display_list_names[DISPLAY_LIST_COUNT] = {
     "Opaque",
@@ -333,12 +160,12 @@ char const *display_list_names[DISPLAY_LIST_COUNT] = {
     "Unknown Display list 7"
 };
 
-static void input_poly_fifo(uint8_t byte);
+static void input_poly_fifo(struct pvr2 *pvr2, uint8_t byte);
 
 // this function gets called every time a full packet is received by the TA
 static int decode_packet(struct pvr2_pkt *pkt);
 
-static void handle_packet(struct pvr2_pkt const *pkt);
+static void handle_packet(struct pvr2 *pvr2, struct pvr2_pkt const *pkt);
 
 static void render_frame_init(void);
 
@@ -525,6 +352,7 @@ uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_ta_fifo_poly_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
     PVR2_TRACE("writing 4 bytes to TA polygon FIFO: 0x%08x\n", (unsigned)val);
 
     uint8_t bytes[4] = {
@@ -533,10 +361,10 @@ void pvr2_ta_fifo_poly_write_32(addr32_t addr, uint32_t val, void *ctxt) {
         (val >> 16) & 0xff,
         (val >> 24) & 0xff
     };
-    input_poly_fifo(bytes[0]);
-    input_poly_fifo(bytes[1]);
-    input_poly_fifo(bytes[2]);
-    input_poly_fifo(bytes[3]);
+    input_poly_fifo(pvr2, bytes[0]);
+    input_poly_fifo(pvr2, bytes[1]);
+    input_poly_fifo(pvr2, bytes[2]);
+    input_poly_fifo(pvr2, bytes[3]);
 }
 
 uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr, void *ctxt) {
@@ -548,6 +376,7 @@ uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_ta_fifo_poly_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 #ifdef PVR2_LOG_VERBOSE
     LOG_DBG("WARNING: writing 2 bytes to TA polygon FIFO: 0x%04x\n",
             (unsigned)val);
@@ -556,8 +385,8 @@ void pvr2_ta_fifo_poly_write_16(addr32_t addr, uint16_t val, void *ctxt) {
         val & 0xff,
         (val >> 8) & 0xff,
     };
-    input_poly_fifo(bytes[0]);
-    input_poly_fifo(bytes[1]);
+    input_poly_fifo(pvr2, bytes[0]);
+    input_poly_fifo(pvr2, bytes[1]);
 }
 
 
@@ -570,11 +399,12 @@ uint8_t pvr2_ta_fifo_poly_read_8(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_ta_fifo_poly_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 #ifdef PVR2_LOG_VERBOSE
     LOG_DBG("WARNING: writing 1 byte to TA polygon FIFO: 0x%02x\n",
             (unsigned)val);
 #endif
-    input_poly_fifo(val);
+    input_poly_fifo(pvr2, val);
 }
 
 float pvr2_ta_fifo_poly_read_float(addr32_t addr, void *ctxt) {
@@ -636,7 +466,7 @@ static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
 }
 #endif
 
-static void on_pkt_hdr_received(struct pvr2_pkt const *pkt) {
+static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     struct pvr2_pkt_hdr const *hdr = &pkt->dat.hdr;
     ta.strip_len = 0;
 
@@ -711,7 +541,8 @@ static void on_pkt_hdr_received(struct pvr2_pkt const *pkt) {
         } else {
             PVR2_TRACE("Adding 0x%08x to texture cache...\n",
                     hdr->tex_addr);
-            ent = pvr2_tex_cache_add(hdr->tex_addr, hdr->tex_palette_start,
+            ent = pvr2_tex_cache_add(pvr2,
+                                     hdr->tex_addr, hdr->tex_palette_start,
                                      hdr->tex_width_shift,
                                      hdr->tex_height_shift,
                                      hdr->pix_fmt,
@@ -1056,11 +887,11 @@ static void on_pkt_user_clip_received(struct pvr2_pkt const *pkt) {
                pkt->dat.user_clip.ymax * 32);
 }
 
-static void handle_packet(struct pvr2_pkt const *pkt) {
+static void handle_packet(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     switch (pkt->tp) {
     case PVR2_PKT_HDR:
         PVR2_TRACE("header packet received\n");
-        on_pkt_hdr_received(pkt);
+        on_pkt_hdr_received(pvr2, pkt);
         break;
     case PVR2_PKT_END_OF_LIST:
         PVR2_TRACE("end-of-list packet received\n");
@@ -1083,13 +914,13 @@ static void handle_packet(struct pvr2_pkt const *pkt) {
     }
 }
 
-static void input_poly_fifo(uint8_t byte) {
+static void input_poly_fifo(struct pvr2 *pvr2, uint8_t byte) {
     ta_fifo[ta_fifo_byte_count++] = byte;
 
     if (!(ta_fifo_byte_count % 32)) {
         struct pvr2_pkt pkt;
         if (decode_packet(&pkt) == 0) {
-            handle_packet(&pkt);
+            handle_packet(pvr2, &pkt);
             ta_fifo_finish_packet();
         }
     }
@@ -1596,16 +1427,16 @@ static void pvr2_render_complete_int_event_handler(struct SchedEvent *event) {
     holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
 }
 
-void pvr2_ta_startrender(void) {
+void pvr2_ta_startrender(struct pvr2 *pvr2) {
     PVR2_TRACE("STARTRENDER requested!\n");
     struct gfx_il_inst cmd;
 
-    unsigned tile_w = get_glob_tile_clip_x() << 5;
-    unsigned tile_h = get_glob_tile_clip_y() << 5;
-    unsigned x_clip_min = get_fb_x_clip_min();
-    unsigned x_clip_max = get_fb_x_clip_max();
-    unsigned y_clip_min = get_fb_y_clip_min();
-    unsigned y_clip_max = get_fb_y_clip_max();
+    unsigned tile_w = get_glob_tile_clip_x(pvr2) << 5;
+    unsigned tile_h = get_glob_tile_clip_y(pvr2) << 5;
+    unsigned x_clip_min = get_fb_x_clip_min(pvr2);
+    unsigned x_clip_max = get_fb_x_clip_max(pvr2);
+    unsigned y_clip_min = get_fb_y_clip_min(pvr2);
+    unsigned y_clip_max = get_fb_y_clip_max(pvr2);
 
     unsigned x_min = x_clip_min;
     unsigned y_min = y_clip_min;
@@ -1630,7 +1461,7 @@ void pvr2_ta_startrender(void) {
      *
      * This hack inspired by MAME's powervr2 code.
      */
-    uint32_t backgnd_tag = get_isp_backgnd_t();
+    uint32_t backgnd_tag = get_isp_backgnd_t(pvr2);
     addr32_t backgnd_info_addr = (backgnd_tag & ISP_BACKGND_T_ADDR_MASK) >>
         ISP_BACKGND_T_ADDR_SHIFT;
     uint32_t backgnd_skip = ((ISP_BACKGND_T_SKIP_MASK & backgnd_tag) >>
@@ -1656,13 +1487,13 @@ void pvr2_ta_startrender(void) {
     /* uint32_t backgnd_depth_as_int = get_isp_backgnd_d(); */
     /* memcpy(&geo->bgdepth, &backgnd_depth_as_int, sizeof(float)); */
 
-    pvr2_tex_cache_xmit();
+    pvr2_tex_cache_xmit(pvr2);
 
     if (ta.cur_list != DISPLAY_LIST_NONE)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     /* finish_poly_group(poly_state.current_list); */
 
-    int tgt = framebuffer_set_render_target();
+    int tgt = framebuffer_set_render_target(pvr2);
 
     /*
      * TODO: This is extremely inaccurate.  PVR2 only draws on a per-tile

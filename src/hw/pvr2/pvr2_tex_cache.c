@@ -206,7 +206,8 @@ struct pvr2_tex *pvr2_tex_cache_find(uint32_t addr, uint32_t pal_addr,
     return NULL;
 }
 
-struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
+struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
+                                    uint32_t addr, uint32_t pal_addr,
                                     unsigned w_shift, unsigned h_shift,
                                     int tex_fmt, bool twiddled,
                                     bool vq_compression, bool mipmap,
@@ -275,7 +276,7 @@ struct pvr2_tex *pvr2_tex_cache_add(uint32_t addr, uint32_t pal_addr,
         tex_fmt != TEX_CTRL_PIX_FMT_8_BPP_PAL) {
         tex->meta.pix_fmt = pvr2_tex_fmt_to_gfx(tex_fmt);
     } else {
-        tex->meta.pix_fmt = translate_palette_to_pix_format(get_palette_tp());
+        tex->meta.pix_fmt = translate_palette_to_pix_format(get_palette_tp(pvr2));
     }
 
     if (tex->meta.vq_compression && (tex->meta.w_shift != tex->meta.h_shift)) {
@@ -484,7 +485,8 @@ static void pvr2_tex_vq_decompress(void *dst, void const *code_book,
     }
 }
 
-void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
+void pvr2_tex_cache_read(struct pvr2 *pvr2,
+                         void **tex_dat_out, size_t *n_bytes_out,
                          struct pvr2_tex_meta const *meta) {
     unsigned tex_w = 1 << meta->w_shift, tex_h = 1 << meta->h_shift;
 
@@ -621,7 +623,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
 
     if (meta->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
         uint32_t tex_size_actual;
-        enum palette_tp palette_tp = get_palette_tp();
+        enum palette_tp palette_tp = get_palette_tp(pvr2);
         switch (palette_tp) {
         case PALETTE_TP_ARGB_1555:
             tex_size_actual = 2;
@@ -648,7 +650,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
         uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
 
         unsigned row, col;
-        uint8_t *pal_ram = pvr2_get_palette_ram();
+        uint8_t *pal_ram = pvr2_get_palette_ram(pvr2);
         for (row = 0; row < tex_h; row++) {
             for (col = 0; col < tex_w; col++) {
                 unsigned pix_idx = row * tex_w + col;
@@ -666,7 +668,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
                (unsigned)meta->tex_palette_start);
     } else if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
         uint32_t tex_size_actual;
-        enum palette_tp palette_tp = get_palette_tp();
+        enum palette_tp palette_tp = get_palette_tp(pvr2);
         switch (palette_tp) {
         case PALETTE_TP_ARGB_1555:
             tex_size_actual = 2;
@@ -692,7 +694,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
         uint32_t pal_start = meta->tex_palette_start << 4;
         uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
 
-        uint8_t *pal_ram = pvr2_get_palette_ram();
+        uint8_t *pal_ram = pvr2_get_palette_ram(pvr2);
         unsigned row, col;
         for (row = 0; row < tex_h; row++) {
             for (col = 0; col < tex_w; col++) {
@@ -722,7 +724,7 @@ void pvr2_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
     *n_bytes_out = n_bytes;
 }
 
-void pvr2_tex_cache_xmit(void) {
+void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
     unsigned idx;
     unsigned cur_frame_stamp = get_cur_frame_stamp();
     struct gfx_il_inst cmd;
@@ -784,9 +786,10 @@ void pvr2_tex_cache_xmit(void) {
                 struct pvr2_tex_meta tmp = tex_in->meta;
                 if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
                     tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-                    tmp.pix_fmt = translate_palette_to_pix_format(get_palette_tp());
+                    tmp.pix_fmt =
+                        translate_palette_to_pix_format(get_palette_tp(pvr2));
                 }
-                pvr2_tex_cache_read(&tex_dat, &n_bytes, &tmp);
+                pvr2_tex_cache_read(pvr2, &tex_dat, &n_bytes, &tmp);
 
                 cmd.op = GFX_IL_INIT_OBJ;
                 cmd.arg.init_obj.obj_no = tex_in->obj_no;
@@ -817,11 +820,11 @@ void pvr2_tex_cache_xmit(void) {
                 struct pvr2_tex_meta tmp = tex_in->meta;
                 if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
                     tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-                    tmp.pix_fmt = translate_palette_to_pix_format(get_palette_tp());
+                    tmp.pix_fmt = translate_palette_to_pix_format(get_palette_tp(pvr2));
                 }
                 void *tex_dat;
                 size_t n_bytes;
-                pvr2_tex_cache_read(&tex_dat, &n_bytes, &tmp);
+                pvr2_tex_cache_read(pvr2, &tex_dat, &n_bytes, &tmp);
                 cmd.op = GFX_IL_WRITE_OBJ;
                 cmd.arg.write_obj.dat = tex_dat;
                 cmd.arg.write_obj.obj_no = tex_in->obj_no;

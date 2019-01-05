@@ -29,6 +29,8 @@
 #include "MemoryMap.h"
 #include "hw/sh4/types.h"
 
+struct pvr2;
+
 // vlck divider bit for the FB_R_CTRL register
 #define PVR2_VCLK_DIV_SHIFT 23
 #define PVR2_VCLK_DIV_MASK (1 << PVR2_VCLK_DIV_SHIFT)
@@ -42,10 +44,10 @@
 #define PVR2_PALETTE_RAM_LEN \
     (PVR2_PALETTE_RAM_LAST - PVR2_PALETTE_RAM_FIRST + 1)
 
-uint8_t *pvr2_get_palette_ram(void);
+uint8_t *pvr2_get_palette_ram(struct pvr2 *pvr2);
 
-void pvr2_reg_init(void);
-void pvr2_reg_cleanup(void);
+void pvr2_reg_init(struct pvr2 *pvr2);
+void pvr2_reg_cleanup(struct pvr2 *pvr2);
 
 double pvr2_reg_read_double(addr32_t addr, void *ctxt);
 void pvr2_reg_write_double(addr32_t addr, double val, void *ctxt);
@@ -69,27 +71,27 @@ enum palette_tp {
     PALETTE_TP_COUNT
 };
 
-uint32_t get_fb_r_ctrl(void);
-uint32_t get_fb_w_ctrl(void);
-uint32_t get_fb_w_linestride(void);
-uint32_t get_fb_r_sof1(void);
-uint32_t get_fb_r_sof2(void);
-uint32_t get_fb_r_size(void);
-uint32_t get_fb_w_sof1(void);
-uint32_t get_fb_w_sof2(void);
-uint32_t get_isp_backgnd_t(void);
-uint32_t get_isp_backgnd_d(void);
-uint32_t get_glob_tile_clip(void);
-uint32_t get_glob_tile_clip_x(void);
-uint32_t get_glob_tile_clip_y(void);
-uint32_t get_fb_x_clip(void);
-uint32_t get_fb_y_clip(void);
-unsigned get_fb_x_clip_min(void);
-unsigned get_fb_y_clip_min(void);
-unsigned get_fb_x_clip_max(void);
-unsigned get_fb_y_clip_max(void);
-enum palette_tp get_palette_tp(void);
-uint32_t get_ta_yuv_tex_base(void);
-uint32_t get_ta_yuv_tex_ctrl(void);
+uint32_t get_fb_r_ctrl(struct pvr2 *pvr2);
+uint32_t get_fb_w_ctrl(struct pvr2 *pvr2);
+uint32_t get_fb_w_linestride(struct pvr2 *pvr2);
+uint32_t get_fb_r_sof1(struct pvr2 *pvr2);
+uint32_t get_fb_r_sof2(struct pvr2 *pvr2);
+uint32_t get_fb_r_size(struct pvr2 *pvr2);
+uint32_t get_fb_w_sof1(struct pvr2 *pvr2);
+uint32_t get_fb_w_sof2(struct pvr2 *pvr2);
+uint32_t get_isp_backgnd_t(struct pvr2 *pvr2);
+uint32_t get_isp_backgnd_d(struct pvr2 *pvr2);
+uint32_t get_glob_tile_clip(struct pvr2 *pvr2);
+uint32_t get_glob_tile_clip_x(struct pvr2 *pvr2);
+uint32_t get_glob_tile_clip_y(struct pvr2 *pvr2);
+uint32_t get_fb_x_clip(struct pvr2 *pvr2);
+uint32_t get_fb_y_clip(struct pvr2 *pvr2);
+unsigned get_fb_x_clip_min(struct pvr2 *pvr2);
+unsigned get_fb_y_clip_min(struct pvr2 *pvr2);
+unsigned get_fb_x_clip_max(struct pvr2 *pvr2);
+unsigned get_fb_y_clip_max(struct pvr2 *pvr2);
+enum palette_tp get_palette_tp(struct pvr2 *pvr2);
+uint32_t get_ta_yuv_tex_base(struct pvr2 *pvr2);
+uint32_t get_ta_yuv_tex_ctrl(struct pvr2 *pvr2);
 
 #endif

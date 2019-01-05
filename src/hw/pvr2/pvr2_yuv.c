@@ -78,8 +78,8 @@ static void pvr2_yuv_schedule_int(void) {
     }
 }
 
-void pvr2_yuv_set_base(uint32_t new_base) {
-    uint32_t tex_ctrl = get_ta_yuv_tex_ctrl();
+void pvr2_yuv_set_base(struct pvr2 *pvr2, uint32_t new_base) {
+    uint32_t tex_ctrl = get_ta_yuv_tex_ctrl(pvr2);
 
     if (tex_ctrl & (1 << 16))
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -99,8 +99,8 @@ void pvr2_yuv_set_base(uint32_t new_base) {
     pvr2_yuv.macroblock_count_y = ((tex_ctrl >> 8) & 0x3f) + 1;
 }
 
-void pvr2_yuv_input_data(void const *dat, unsigned n_bytes) {
-    uint32_t tex_ctrl = get_ta_yuv_tex_ctrl();
+void pvr2_yuv_input_data(struct pvr2 *pvr2, void const *dat, unsigned n_bytes) {
+    uint32_t tex_ctrl = get_ta_yuv_tex_ctrl(pvr2);
 
     if (tex_ctrl & (1 << 16))
         RAISE_ERROR(ERROR_UNIMPLEMENTED);

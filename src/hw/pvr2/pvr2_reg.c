@@ -35,15 +35,13 @@
 #include "pvr2_tex_cache.h"
 #include "pvr2_yuv.h"
 #include "intmath.h"
+#include "pvr2.h"
 
 #include "pvr2_reg.h"
 
 // bit in the VO_CONTROL register that causes each pixel to be sent twice
 #define PVR2_PIXEL_DOUBLE_SHIFT 8
 #define PVR2_PIXEL_DOUBLE_MASK (1 << PVR2_PIXEL_DOUBLE_SHIFT)
-
-#define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
-static uint32_t reg_backing[N_PVR2_REGS / sizeof(uint32_t)];
 
 #define PVR2_SB_PDSTAP  0
 #define PVR2_SB_PDSTAR  1
@@ -138,7 +136,8 @@ static uint32_t reg_backing[N_PVR2_REGS / sizeof(uint32_t)];
     break
 
 static void
-pvr2_reg_do_write(unsigned idx, uint32_t val) {
+pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
+    uint32_t *reg_backing = pvr2->reg_backing;
     switch (idx) {
     PVR2_REG_WRITE_CASE(PVR2_SB_PDSTAP);
     PVR2_REG_WRITE_CASE(PVR2_SB_PDSTAR);
@@ -203,7 +202,7 @@ pvr2_reg_do_write(unsigned idx, uint32_t val) {
         break;
     case PVR2_STARTRENDER:
         reg_backing[PVR2_STARTRENDER] = val;
-        pvr2_ta_startrender();
+        pvr2_ta_startrender(pvr2);
         break;
     case PVR2_FB_R_CTRL:
         reg_backing[PVR2_FB_R_CTRL] = val;
@@ -293,7 +292,7 @@ pvr2_reg_do_write(unsigned idx, uint32_t val) {
     case PVR2_TA_YUV_TEX_BASE:
         reg_backing[PVR2_TA_YUV_TEX_BASE] = val;
         PVR2_TRACE("Writing 0x%08x to TA_YUV_TEX_BASE\n", (unsigned)val);
-        pvr2_yuv_set_base(val & BIT_RANGE(3, 23));
+        pvr2_yuv_set_base(pvr2, val & BIT_RANGE(3, 23));
         break;
     case PVR2_TA_YUV_TEX_CTRL:
         reg_backing[PVR2_TA_YUV_TEX_CTRL] = val;
@@ -332,7 +331,8 @@ pvr2_reg_do_write(unsigned idx, uint32_t val) {
     return reg_backing[idx_const]
 
 static uint32_t
-pvr2_reg_do_read(unsigned idx) {
+pvr2_reg_do_read(struct pvr2 *pvr2, unsigned idx) {
+    uint32_t *reg_backing = pvr2->reg_backing;
     switch (idx) {
     PVR2_REG_READ_CASE(PVR2_SB_PDSTAP);
     PVR2_REG_READ_CASE(PVR2_SB_PDSTAR);
@@ -449,11 +449,11 @@ pvr2_reg_do_read(unsigned idx) {
     RAISE_ERROR(ERROR_INTEGRITY);
 }
 
-void pvr2_reg_init(void) {
-    memset(reg_backing, 0, sizeof(reg_backing));
+void pvr2_reg_init(struct pvr2 *pvr2) {
+    memset(pvr2->reg_backing, 0, sizeof(pvr2->reg_backing));
 }
 
-void pvr2_reg_cleanup(void) {
+void pvr2_reg_cleanup(struct pvr2 *pvr2) {
 }
 
 #define PVR2_REG_READ_TMPL(tp)                                          \
@@ -465,7 +465,7 @@ void pvr2_reg_cleanup(void) {
     }                                                                   \
     unsigned offs = addr - ADDR_PVR2_FIRST;                             \
     unsigned idx = offs / sizeof(uint32_t);                             \
-    return pvr2_reg_do_read(idx)
+    return pvr2_reg_do_read((struct pvr2*)ctxt, idx)
 
 #define PVR2_REG_WRITE_TMPL(tp)                                         \
     if (addr % sizeof(uint32_t)) {                                      \
@@ -476,7 +476,7 @@ void pvr2_reg_cleanup(void) {
     }                                                                   \
     unsigned offs = addr - ADDR_PVR2_FIRST;                             \
     unsigned idx = offs / sizeof(uint32_t);                             \
-    pvr2_reg_do_write(idx, val)
+    pvr2_reg_do_write((struct pvr2*)ctxt, idx, val)
 
 double pvr2_reg_read_double(addr32_t addr, void *ctxt) {
     error_set_address(addr);
@@ -547,94 +547,94 @@ struct memory_interface pvr2_reg_intf = {
     .writedouble = pvr2_reg_write_double
 };
 
-uint32_t get_fb_r_ctrl(void) {
-    return reg_backing[PVR2_FB_R_CTRL];
+uint32_t get_fb_r_ctrl(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_R_CTRL];
 }
 
-uint32_t get_fb_w_ctrl(void) {
-    return reg_backing[PVR2_FB_W_CTRL];
+uint32_t get_fb_w_ctrl(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_W_CTRL];
 }
 
-uint32_t get_fb_w_linestride(void) {
-    return reg_backing[PVR2_FB_W_LINESTRIDE] & 0x1ff;
+uint32_t get_fb_w_linestride(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_W_LINESTRIDE] & 0x1ff;
 }
 
-uint32_t get_fb_r_sof1(void) {
-    return reg_backing[PVR2_FB_R_SOF1];
+uint32_t get_fb_r_sof1(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_R_SOF1];
 }
 
-uint32_t get_fb_r_sof2(void) {
-    return reg_backing[PVR2_FB_R_SOF2];
+uint32_t get_fb_r_sof2(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_R_SOF2];
 }
 
-uint32_t get_fb_r_size(void) {
-    return reg_backing[PVR2_FB_R_SIZE];
+uint32_t get_fb_r_size(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_R_SIZE];
 }
 
-uint32_t get_fb_w_sof1(void) {
-    return reg_backing[PVR2_FB_W_SOF1];
+uint32_t get_fb_w_sof1(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_W_SOF1];
 }
 
-uint32_t get_fb_w_sof2(void) {
-    return reg_backing[PVR2_FB_W_SOF2];
+uint32_t get_fb_w_sof2(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_W_SOF2];
 }
 
-uint32_t get_isp_backgnd_t(void) {
-    return reg_backing[PVR2_ISP_BACKGND_T];
+uint32_t get_isp_backgnd_t(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_ISP_BACKGND_T];
 }
 
-uint32_t get_isp_backgnd_d(void) {
-    return reg_backing[PVR2_ISP_BACKGND_D];
+uint32_t get_isp_backgnd_d(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_ISP_BACKGND_D];
 }
 
-uint32_t get_glob_tile_clip(void) {
-    return reg_backing[PVR2_TA_GLOB_TILE_CLIP];
+uint32_t get_glob_tile_clip(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_TA_GLOB_TILE_CLIP];
 }
 
-uint32_t get_glob_tile_clip_x(void) {
-    return (get_glob_tile_clip() & 0x3f) + 1;
+uint32_t get_glob_tile_clip_x(struct pvr2 *pvr2) {
+    return (get_glob_tile_clip(pvr2) & 0x3f) + 1;
 }
 
-uint32_t get_glob_tile_clip_y(void) {
-    return ((get_glob_tile_clip() >> 16) & 0xf) + 1;
+uint32_t get_glob_tile_clip_y(struct pvr2 *pvr2) {
+    return ((get_glob_tile_clip(pvr2) >> 16) & 0xf) + 1;
 }
 
-uint32_t get_fb_x_clip(void) {
-    return reg_backing[PVR2_FB_X_CLIP];
+uint32_t get_fb_x_clip(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_X_CLIP];
 }
 
-uint32_t get_fb_y_clip(void) {
-    return reg_backing[PVR2_FB_Y_CLIP];
+uint32_t get_fb_y_clip(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_FB_Y_CLIP];
 }
 
-unsigned get_fb_x_clip_min(void) {
-    return get_fb_x_clip() & 0x7ff;
+unsigned get_fb_x_clip_min(struct pvr2 *pvr2) {
+    return get_fb_x_clip(pvr2) & 0x7ff;
 }
 
-unsigned get_fb_y_clip_min(void) {
-    return get_fb_y_clip() & 0x3ff;
+unsigned get_fb_y_clip_min(struct pvr2 *pvr2) {
+    return get_fb_y_clip(pvr2) & 0x3ff;
 }
 
-unsigned get_fb_x_clip_max(void) {
-    return (get_fb_x_clip() >> 16) & 0x7ff;
+unsigned get_fb_x_clip_max(struct pvr2 *pvr2) {
+    return (get_fb_x_clip(pvr2) >> 16) & 0x7ff;
 }
 
-unsigned get_fb_y_clip_max(void) {
-    return (get_fb_y_clip() >> 16) & 0x3ff;
+unsigned get_fb_y_clip_max(struct pvr2 *pvr2) {
+    return (get_fb_y_clip(pvr2) >> 16) & 0x3ff;
 }
 
-enum palette_tp get_palette_tp(void) {
-    return (enum palette_tp)reg_backing[PVR2_PALETTE_TP];
+enum palette_tp get_palette_tp(struct pvr2 *pvr2) {
+    return (enum palette_tp)pvr2->reg_backing[PVR2_PALETTE_TP];
 }
 
-uint32_t get_ta_yuv_tex_base(void) {
-    return reg_backing[PVR2_TA_YUV_TEX_BASE];
+uint32_t get_ta_yuv_tex_base(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_TA_YUV_TEX_BASE];
 }
 
-uint32_t get_ta_yuv_tex_ctrl(void) {
-    return reg_backing[PVR2_TA_YUV_TEX_CTRL];
+uint32_t get_ta_yuv_tex_ctrl(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_TA_YUV_TEX_CTRL];
 }
 
-uint8_t *pvr2_get_palette_ram(void) {
-    return (uint8_t*)(reg_backing + PVR2_PAL_RAM_FIRST);
+uint8_t *pvr2_get_palette_ram(struct pvr2 *pvr2) {
+    return (uint8_t*)(pvr2->reg_backing + PVR2_PAL_RAM_FIRST);
 }

@@ -685,6 +685,8 @@ static int cmd_tex_enum(int argc, char **argv) {
     return 0;
 }
 
+extern struct pvr2 dc_pvr2;//TODO: delete this
+
 static int cmd_tex_dump(int argc, char **argv) {
     unsigned tex_no;
 
@@ -702,7 +704,7 @@ static int cmd_tex_dump(int argc, char **argv) {
     if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
         void *tex_dat;
         size_t n_bytes;
-        pvr2_tex_cache_read(&tex_dat, &n_bytes, &meta);
+        pvr2_tex_cache_read(&dc_pvr2, &tex_dat, &n_bytes, &meta);
         if (tex_dat) {
             if (save_tex(file, &meta, tex_dat) < 0)
                 cons_printf("Failed to save texture\n");
@@ -740,7 +742,7 @@ static int cmd_tex_dump_all(int argc, char **argv) {
         if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
             void *tex_dat;
             size_t n_bytes;
-            pvr2_tex_cache_read(&tex_dat, &n_bytes, &meta);
+            pvr2_tex_cache_read(&dc_pvr2, &tex_dat, &n_bytes, &meta);
             if (*path_last_char == '/') {
                 snprintf(total_path, TEX_DUMP_ALL_PATH_LEN, "%stex_%03u.png",
                          dir_path, tex_no);

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,8 +25,8 @@
 
 #include <stdint.h>
 
-void pvr2_yuv_set_base(uint32_t new_base);
+void pvr2_yuv_set_base(struct pvr2 *pvr2, uint32_t new_base);
 
-void pvr2_yuv_input_data(void const *dat, unsigned n_bytes);
+void pvr2_yuv_input_data(struct pvr2 *pvr2, void const *dat, unsigned n_bytes);
 
 #endif

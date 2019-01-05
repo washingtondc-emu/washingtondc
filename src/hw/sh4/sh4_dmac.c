@@ -377,6 +377,10 @@ void sh4_dmac_transfer(Sh4 *sh4, addr32_t transfer_src,
     }
 }
 
+// TODO: delete this
+#include "hw/pvr2/pvr2.h"
+extern struct pvr2 dc_pvr2;
+
 void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
     /*
      * TODO: check DMAOR to make sure DMA is enabled.  Maybe check a few other
@@ -439,7 +443,7 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
         while (n_words--) {
             uint32_t in = memory_map_read_32(sh4->mem.map, transfer_src);
             transfer_src += sizeof(in);
-            pvr2_yuv_input_data(&in, sizeof(in));
+            pvr2_yuv_input_data(&dc_pvr2, &in, sizeof(in));
         }
     } else {
         error_set_address(transfer_dst);

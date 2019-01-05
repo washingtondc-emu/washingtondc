@@ -95,6 +95,7 @@ static struct arm7 arm7;
 static struct memory_map arm7_mem_map;
 static struct aica aica;
 static struct gdrom_ctxt gdrom;
+struct pvr2 dc_pvr2;
 
 static atomic_bool is_running = ATOMIC_VAR_INIT(false);
 static atomic_bool end_of_frame = ATOMIC_VAR_INIT(false);
@@ -247,7 +248,7 @@ void dreamcast_init(bool cmd_session) {
     g1_init();
     g2_init();
     aica_init(&aica, &arm7, &arm7_clock, &sh4_clock);
-    pvr2_init(&sh4_clock);
+    pvr2_init(&dc_pvr2, &sh4_clock);
     gdrom_init(&gdrom, &sh4_clock);
     maple_init(&sh4_clock);
 
@@ -316,7 +317,7 @@ void dreamcast_cleanup() {
     maple_cleanup();
     aica_rtc_cleanup(&rtc);
     gdrom_cleanup(&gdrom);
-    pvr2_cleanup();
+    pvr2_cleanup(&dc_pvr2);
     memory_map_cleanup(&mem_map);
     aica_cleanup(&aica);
     g2_cleanup();
@@ -936,7 +937,7 @@ void dc_end_frame(void) {
     title_set_fps_internal(virt_framerate);
 
     win_update_title();
-    framebuffer_render();
+    framebuffer_render(&dc_pvr2);
     win_check_events();
     cmd_run_once();
 }
@@ -1012,15 +1013,15 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
      */
     memory_map_add(map, 0x04000000, 0x047fffff,
                    0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area64_intf, NULL);
+                   &pvr2_tex_mem_area64_intf, &dc_pvr2);
     memory_map_add(map, 0x05000000, 0x057fffff,
                    0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area32_intf, NULL);
+                   &pvr2_tex_mem_area32_intf, &dc_pvr2);
 
 
     memory_map_add(map, 0x10000000, 0x107fffff,
                    0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_ta_fifo_intf, NULL);
+                   &pvr2_ta_fifo_intf, &dc_pvr2);
 
     /*
      * TODO: YUV FIFO - apparently I made it a special case in the DMAC code
@@ -1052,7 +1053,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    &g2_intf, NULL);
     memory_map_add(map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_reg_intf, NULL);
+                   &pvr2_reg_intf, &dc_pvr2);
     memory_map_add(map, ADDR_MODEM_FIRST, ADDR_MODEM_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &modem_intf, NULL);
@@ -1095,7 +1096,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    &g2_intf, NULL);
     memory_map_add(map, ADDR_PVR2_FIRST + 0x02000000, ADDR_PVR2_LAST + 0x02000000,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_reg_intf, NULL);
+                   &pvr2_reg_intf, &dc_pvr2);
     memory_map_add(map, ADDR_MODEM_FIRST + 0x02000000, ADDR_MODEM_LAST + 0x02000000,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &modem_intf, NULL);
