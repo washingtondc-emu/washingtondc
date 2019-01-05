@@ -664,7 +664,7 @@ static void
 sync_fb_from_tex_mem(struct pvr2 *pvr2, struct framebuffer *fb,
                      unsigned width, unsigned height,
                      unsigned modulus, unsigned concat) {
-    bool interlace = get_spg_control() & (1 << 4);
+    bool interlace = get_spg_control(pvr2) & (1 << 4);
 
     uint32_t fb_r_sof1 = get_fb_r_sof1(pvr2) & ~3;
     uint32_t fb_r_sof2 = get_fb_r_sof2(pvr2) & ~3;
@@ -830,7 +830,7 @@ void framebuffer_render(struct pvr2 *pvr2) {
         return;
     }
 
-    bool interlace = get_spg_control() & (1 << 4);
+    bool interlace = get_spg_control(pvr2) & (1 << 4);
     uint32_t fb_r_size = get_fb_r_size(pvr2);
     uint32_t fb_r_sof1 = get_fb_r_sof1(pvr2) & ~3;
 

@@ -207,11 +207,11 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
     case PVR2_FB_R_CTRL:
         reg_backing[PVR2_FB_R_CTRL] = val;
         if (val & PVR2_VCLK_DIV_MASK)
-            spg_set_pclk_div(1);
+            spg_set_pclk_div(pvr2, 1);
         else
-            spg_set_pclk_div(2);
+            spg_set_pclk_div(pvr2, 2);
 
-        spg_set_pix_double_y((bool)(val & PVR2_LINE_DOUBLE_MASK));
+        spg_set_pix_double_y(pvr2, (bool)(val & PVR2_LINE_DOUBLE_MASK));
         break;
     case PVR2_FB_W_CTRL:
         reg_backing[PVR2_FB_W_CTRL] = val;
@@ -223,31 +223,31 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
         break;
     case PVR2_SPG_HBLANK_INT:
         reg_backing[PVR2_SPG_HBLANK_INT] = val;
-        pvr2_spg_set_hblank_int(val);
+        pvr2_spg_set_hblank_int(pvr2, val);
         break;
     case PVR2_SPG_VBLANK_INT:
         reg_backing[PVR2_SPG_VBLANK_INT] = val;
-        pvr2_spg_set_vblank_int(val);
+        pvr2_spg_set_vblank_int(pvr2, val);
         break;
     case PVR2_SPG_CONTROL:
         reg_backing[PVR2_SPG_CONTROL] = val;
-        pvr2_spg_set_control(val);
+        pvr2_spg_set_control(pvr2, val);
         break;
     case PVR2_SPG_HBLANK:
         reg_backing[PVR2_SPG_HBLANK] = val;
-        pvr2_spg_set_hblank(val);
+        pvr2_spg_set_hblank(pvr2, val);
         break;
     case PVR2_SPG_LOAD:
         reg_backing[PVR2_SPG_LOAD] = val;
-        pvr2_spg_set_load(val);
+        pvr2_spg_set_load(pvr2, val);
         break;
     case PVR2_SPG_VBLANK:
         reg_backing[PVR2_SPG_VBLANK] = val;
-        pvr2_spg_set_vblank(val);
+        pvr2_spg_set_vblank(pvr2, val);
         break;
     case PVR2_VO_CONTROL:
         reg_backing[PVR2_VO_CONTROL] = val;
-        spg_set_pix_double_x((bool)(val & PVR2_PIXEL_DOUBLE_MASK));
+        spg_set_pix_double_x(pvr2, (bool)(val & PVR2_PIXEL_DOUBLE_MASK));
         PVR2_TRACE("Write 0x%08x to PVR2_VO_CONTROL\n",
                    (unsigned)val);
         break;
@@ -406,19 +406,19 @@ pvr2_reg_do_read(struct pvr2 *pvr2, unsigned idx) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case PVR2_SPG_HBLANK_INT:
-        return pvr2_spg_get_hblank_int();
+        return pvr2_spg_get_hblank_int(pvr2);
     case PVR2_SPG_VBLANK_INT:
-        return pvr2_spg_get_vblank_int();
+        return pvr2_spg_get_vblank_int(pvr2);
     case PVR2_SPG_CONTROL:
-        return pvr2_spg_get_control();
+        return pvr2_spg_get_control(pvr2);
     case PVR2_SPG_HBLANK:
-        return pvr2_spg_get_hblank();
+        return pvr2_spg_get_hblank(pvr2);
     case PVR2_SPG_LOAD:
-        return pvr2_spg_get_load();
+        return pvr2_spg_get_load(pvr2);
     case PVR2_SPG_VBLANK:
-        return pvr2_spg_get_vblank();
+        return pvr2_spg_get_vblank(pvr2);
     case PVR2_SPG_STATUS:
-        return pvr2_spg_get_status();
+        return pvr2_spg_get_status(pvr2);
     case PVR2_TA_VERTBUF_START:
         return reg_backing[PVR2_TA_VERTBUF_START];
     case PVR2_TA_NEXT_OPB:

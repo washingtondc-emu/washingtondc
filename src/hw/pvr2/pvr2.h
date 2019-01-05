@@ -28,6 +28,7 @@
 #include "dc_sched.h"
 #include "pvr2_ta.h"
 #include "mem_areas.h"
+#include "spg.h"
 
 #define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
 
@@ -35,6 +36,7 @@ struct pvr2 {
     uint32_t reg_backing[N_PVR2_REGS / sizeof(uint32_t)];
     struct dc_clock *clk;
     struct ta_state ta;
+    struct pvr2_spg spg;
 };
 
 void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk);
