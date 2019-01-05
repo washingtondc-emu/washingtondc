@@ -54,6 +54,7 @@
 #include "hw/sh4/sh4_read_inst.h"
 #include "hw/pvr2/pvr2.h"
 #include "hw/pvr2/pvr2_reg.h"
+#include "hw/pvr2/pvr2_yuv.h"
 #include "hw/sys/sys_block.h"
 #include "hw/aica/aica.h"
 #include "hw/aica/aica_rtc.h"
@@ -1124,6 +1125,56 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
 
 void dc_request_frame_stop(void) {
     atomic_store_explicit(&frame_stop, true, memory_order_relaxed);
+}
+
+void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
+    /*
+     * TODO: The below code does not account for what happens when a DMA tranfer
+     * crosses over into a different memory region.
+     */
+    if ((xfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&
+        (xfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
+        while (n_words--) {
+            uint32_t buf = memory_map_read_32(&mem_map, xfer_src);
+            pvr2_ta_fifo_poly_write_32(xfer_dst, buf, NULL);
+            xfer_dst += sizeof(buf);
+            xfer_src += sizeof(buf);
+        }
+    } else if ((xfer_dst >= ADDR_AREA4_TEX64_FIRST) &&
+               (xfer_dst <= ADDR_AREA4_TEX64_LAST)) {
+        // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
+        xfer_dst = xfer_dst - ADDR_AREA4_TEX64_FIRST + ADDR_TEX64_FIRST;
+
+        while (n_words--) {
+            uint32_t buf = memory_map_read_32(&mem_map, xfer_src);
+            pvr2_tex_mem_area64_write_32(xfer_dst, buf, NULL);
+            xfer_dst += sizeof(buf);
+            xfer_src += sizeof(buf);
+        }
+    } else if ((xfer_dst >= ADDR_AREA4_TEX32_FIRST) &&
+               (xfer_dst <= ADDR_AREA4_TEX32_LAST)) {
+        // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
+        xfer_dst = xfer_dst - ADDR_AREA4_TEX32_FIRST + ADDR_TEX32_FIRST;
+
+        while (n_words--) {
+            uint32_t buf = memory_map_read_32(&mem_map, xfer_src);
+            pvr2_tex_mem_area32_write_32(xfer_dst, buf, NULL);
+            xfer_dst += sizeof(buf);
+            xfer_src += sizeof(buf);
+        }
+    } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
+               xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
+        while (n_words--) {
+            uint32_t in = memory_map_read_32(&mem_map, xfer_src);
+            xfer_src += sizeof(in);
+            pvr2_yuv_input_data(&dc_pvr2, &in, sizeof(in));
+        }
+    } else {
+        error_set_address(xfer_dst);
+        error_set_length(n_words * 4);
+        error_set_feature("channel-2 DMA transfers to an unknown destination");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 static float sh4_unmapped_readfloat(uint32_t addr, void *ctxt) {

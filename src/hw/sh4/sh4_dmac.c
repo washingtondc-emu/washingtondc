@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017. 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,9 +31,6 @@
 #include "MemoryMap.h"
 #include "sh4_dmac.h"
 #include "mem_areas.h"
-#include "hw/pvr2/pvr2_ta.h"
-#include "hw/pvr2/pvr2_tex_mem.h"
-#include "hw/pvr2/pvr2_yuv.h"
 #include "hw/sys/holly_intc.h"
 #include "log.h"
 #include "dc_sched.h"
@@ -377,10 +374,6 @@ void sh4_dmac_transfer(Sh4 *sh4, addr32_t transfer_src,
     }
 }
 
-// TODO: delete this
-#include "hw/pvr2/pvr2.h"
-extern struct pvr2 dc_pvr2;
-
 void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
     /*
      * TODO: check DMAOR to make sure DMA is enabled.  Maybe check a few other
@@ -405,52 +398,11 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
             "0x%08x\n", n_bytes, transfer_src, transfer_dst);
 
     /*
-     * TODO: The below code does not account for what happens when a DMA tranfer
-     * crosses over into a different memory region.
+     * TODO: replace this function call with a hook of some sort so that other
+     * platforms can have different behavior.  Alternatively, use the
+     * memory_map.
      */
-    if ((transfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&
-        (transfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
-        while (n_words--) {
-            uint32_t buf = memory_map_read_32(sh4->mem.map, transfer_src);
-            pvr2_ta_fifo_poly_write_32(transfer_dst, buf, NULL);
-            transfer_dst += sizeof(buf);
-            transfer_src += sizeof(buf);
-        }
-    } else if ((transfer_dst >= ADDR_AREA4_TEX64_FIRST) &&
-               (transfer_dst <= ADDR_AREA4_TEX64_LAST)) {
-        // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
-        transfer_dst = transfer_dst - ADDR_AREA4_TEX64_FIRST + ADDR_TEX64_FIRST;
-
-        while (n_words--) {
-            uint32_t buf = memory_map_read_32(sh4->mem.map, transfer_src);
-            pvr2_tex_mem_area64_write_32(transfer_dst, buf, NULL);
-            transfer_dst += sizeof(buf);
-            transfer_src += sizeof(buf);
-        }
-    } else if ((transfer_dst >= ADDR_AREA4_TEX32_FIRST) &&
-               (transfer_dst <= ADDR_AREA4_TEX32_LAST)) {
-        // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
-        transfer_dst = transfer_dst - ADDR_AREA4_TEX32_FIRST + ADDR_TEX32_FIRST;
-
-        while (n_words--) {
-            uint32_t buf = memory_map_read_32(sh4->mem.map, transfer_src);
-            pvr2_tex_mem_area32_write_32(transfer_dst, buf, NULL);
-            transfer_dst += sizeof(buf);
-            transfer_src += sizeof(buf);
-        }
-    } else if (transfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
-               transfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
-        while (n_words--) {
-            uint32_t in = memory_map_read_32(sh4->mem.map, transfer_src);
-            transfer_src += sizeof(in);
-            pvr2_yuv_input_data(&dc_pvr2, &in, sizeof(in));
-        }
-    } else {
-        error_set_address(transfer_dst);
-        error_set_length(n_bytes);
-        error_set_feature("channel-2 DMA transfers to an unknown destination");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
+    dc_ch2_dma_xfer(transfer_src, transfer_dst, n_words);
 
     ch2_dma_scheduled = true;
     raise_ch2_dma_int_event.when = clock_cycle_stamp(sh4->clk) + CH2_DMA_INT_DELAY;
