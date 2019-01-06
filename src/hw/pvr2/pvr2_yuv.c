@@ -32,54 +32,42 @@
 
 #include "pvr2_yuv.h"
 
-static void pvr2_yuv_input_byte(unsigned byte);
+static void pvr2_yuv_input_byte(struct pvr2 *pvr2, unsigned byte);
+static void
+pvr2_yuv_complete_int_event_handler(struct SchedEvent *event);
 
-enum pvr2_yuv_fmt {
-    PVR2_YUV_FMT_420,
-    PVR2_YUV_FMT_422
-};
+void pvr2_yuv_init(struct pvr2 *pvr2) {
+    pvr2->yuv.pvr2_yuv_complete_int_event.handler =
+        pvr2_yuv_complete_int_event_handler;
+    pvr2->yuv.pvr2_yuv_complete_int_event.arg_ptr = pvr2;
+}
 
-static struct pvr2_yuv {
-    uint32_t dst_addr;
-    enum pvr2_yuv_fmt fmt;
-    unsigned macroblock_offset;
-
-    unsigned cur_macroblock_x, cur_macroblock_y;
-
-    // width and height, in terms of 16x16 macroblocks
-    unsigned macroblock_count_x, macroblock_count_y;
-
-    uint8_t u_buf[64];
-    uint8_t v_buf[64];
-    uint8_t y_buf[256];
-
-    bool yuv_complete_event_scheduled;
-} pvr2_yuv;
+void pvr2_yuv_cleanup(struct pvr2 *pvr2) {
+}
 
 #define PVR2_YUV_COMPLETE_INT_DELAY (SCHED_FREQUENCY / 1024)
 
 static void
 pvr2_yuv_complete_int_event_handler(struct SchedEvent *event) {
-    pvr2_yuv.yuv_complete_event_scheduled = false;
+    struct pvr2 *pvr2 = (struct pvr2*)event->arg_ptr;
+    pvr2->yuv.yuv_complete_event_scheduled = false;
     holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_YUV_COMPLETE);
 }
 
-static struct SchedEvent pvr2_render_complete_int_event = {
-    .handler = pvr2_yuv_complete_int_event_handler
-};
-
-static void pvr2_yuv_schedule_int(void) {
-    if (!pvr2_yuv.yuv_complete_event_scheduled) {
+static void pvr2_yuv_schedule_int(struct pvr2 *pvr2) {
+    struct pvr2_yuv *yuv = &pvr2->yuv;
+    if (!yuv->yuv_complete_event_scheduled) {
         dc_cycle_stamp_t int_when =
             clock_cycle_stamp(pvr2_clk) + PVR2_YUV_COMPLETE_INT_DELAY;
-        pvr2_yuv.yuv_complete_event_scheduled = true;
-        pvr2_render_complete_int_event.when = int_when;
-        sched_event(pvr2_clk, &pvr2_render_complete_int_event);
+        yuv->yuv_complete_event_scheduled = true;
+        yuv->pvr2_yuv_complete_int_event.when = int_when;
+        sched_event(pvr2_clk, &yuv->pvr2_yuv_complete_int_event);
     }
 }
 
 void pvr2_yuv_set_base(struct pvr2 *pvr2, uint32_t new_base) {
     uint32_t tex_ctrl = get_ta_yuv_tex_ctrl(pvr2);
+    struct pvr2_yuv *yuv = &pvr2->yuv;
 
     if (tex_ctrl & (1 << 16))
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -90,13 +78,13 @@ void pvr2_yuv_set_base(struct pvr2 *pvr2, uint32_t new_base) {
      * TODO: what happens if any of these settings change without updating the
      * base address?
      */
-    pvr2_yuv.dst_addr = new_base;
-    pvr2_yuv.fmt = PVR2_YUV_FMT_420;
-    pvr2_yuv.macroblock_offset = 0;
-    pvr2_yuv.cur_macroblock_x = 0;
-    pvr2_yuv.cur_macroblock_y = 0;
-    pvr2_yuv.macroblock_count_x = (tex_ctrl & 0x3f) + 1;
-    pvr2_yuv.macroblock_count_y = ((tex_ctrl >> 8) & 0x3f) + 1;
+    yuv->dst_addr = new_base;
+    yuv->fmt = PVR2_YUV_FMT_420;
+    yuv->macroblock_offset = 0;
+    yuv->cur_macroblock_x = 0;
+    yuv->cur_macroblock_y = 0;
+    yuv->macroblock_count_x = (tex_ctrl & 0x3f) + 1;
+    yuv->macroblock_count_y = ((tex_ctrl >> 8) & 0x3f) + 1;
 }
 
 void pvr2_yuv_input_data(struct pvr2 *pvr2, void const *dat, unsigned n_bytes) {
@@ -107,7 +95,7 @@ void pvr2_yuv_input_data(struct pvr2 *pvr2, void const *dat, unsigned n_bytes) {
     if (tex_ctrl & (1 << 24))
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
-    if ((pvr2_yuv.dst_addr + 3) >= (ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1))
+    if ((pvr2->yuv.dst_addr + 3) >= (ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1))
         RAISE_ERROR(ERROR_INTEGRITY);
 
     uint8_t const *dat8 = (uint8_t const*)dat;
@@ -115,24 +103,25 @@ void pvr2_yuv_input_data(struct pvr2 *pvr2, void const *dat, unsigned n_bytes) {
     while (n_bytes) {
         uint8_t dat_byte;
         memcpy(&dat_byte, dat8, sizeof(dat_byte));
-        pvr2_yuv_input_byte(dat_byte);
+        pvr2_yuv_input_byte(pvr2, dat_byte);
         dat8++;
         n_bytes--;
     }
 }
 
-static void pvr2_yuv_macroblock(void) {
+static void pvr2_yuv_macroblock(struct pvr2 *pvr2) {
+    struct pvr2_yuv *yuv = &pvr2->yuv;
     uint32_t block[16][8];
 
-    if (pvr2_yuv.cur_macroblock_x >= pvr2_yuv.macroblock_count_x) {
-        LOG_ERROR("pvr2_yuv.cur_macroblock_x is %u\n", pvr2_yuv.cur_macroblock_x);
-        LOG_ERROR("pvr2_yuv.macroblock_count_x is %u\n", pvr2_yuv.macroblock_count_x);
+    if (yuv->cur_macroblock_x >= yuv->macroblock_count_x) {
+        LOG_ERROR("yuv->cur_macroblock_x is %u\n", yuv->cur_macroblock_x);
+        LOG_ERROR("yuv->macroblock_count_x is %u\n", yuv->macroblock_count_x);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
-    if (pvr2_yuv.cur_macroblock_y >= pvr2_yuv.macroblock_count_y) {
+    if (yuv->cur_macroblock_y >= yuv->macroblock_count_y) {
         // TODO: should reset to zero here
-        LOG_ERROR("pvr2_yuv.cur_macroblock_y is %u\n", pvr2_yuv.cur_macroblock_y);
-        LOG_ERROR("pvr2_yuv.macroblock_count_y is %u\n", pvr2_yuv.macroblock_count_y);
+        LOG_ERROR("yuv->cur_macroblock_y is %u\n", yuv->cur_macroblock_y);
+        LOG_ERROR("yuv->macroblock_count_y is %u\n", yuv->macroblock_count_y);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
@@ -168,12 +157,12 @@ static void pvr2_yuv_macroblock(void) {
             }
 
             unsigned lum[2] = {
-                pvr2_yuv.y_buf[row_lum * 8 + col_lum * 2 + lum_start],
-                pvr2_yuv.y_buf[row_lum * 8 + col_lum * 2 + lum_start + 1],
+                yuv->y_buf[row_lum * 8 + col_lum * 2 + lum_start],
+                yuv->y_buf[row_lum * 8 + col_lum * 2 + lum_start + 1],
             };
 
-            unsigned u_val = pvr2_yuv.u_buf[(row / 2) * 8 + col];
-            unsigned v_val = pvr2_yuv.v_buf[(row / 2) * 8 + col];
+            unsigned u_val = yuv->u_buf[(row / 2) * 8 + col];
+            unsigned v_val = yuv->v_buf[(row / 2) * 8 + col];
 
             block[row][col] = (lum[0] << 8) | (lum[1] << 24) | u_val | (v_val << 16);
         }
@@ -185,15 +174,15 @@ static void pvr2_yuv_macroblock(void) {
      * 16 * macroblock_count_x * 2 bytes rounded up to next power of two?
      *
      * logically you'd expect the answer to be
-     * (2 * 16 * pvr2_yuv.cur_macroblock_x) bytes, but NBA2K clearly needs it to
+     * (2 * 16 * yuv->cur_macroblock_x) bytes, but NBA2K clearly needs it to
      * be 1024 bytes...
      */
 
     unsigned linestride = 512 * 2;
-    unsigned macroblock_offs = linestride * 16 * pvr2_yuv.cur_macroblock_y +
-        pvr2_yuv.cur_macroblock_x * 8 * sizeof(uint32_t);
+    unsigned macroblock_offs = linestride * 16 * yuv->cur_macroblock_y +
+        yuv->cur_macroblock_x * 8 * sizeof(uint32_t);
 
-    uint32_t row_offs32 = pvr2_yuv.dst_addr / 4 + macroblock_offs / 4;
+    uint32_t row_offs32 = yuv->dst_addr / 4 + macroblock_offs / 4;
     uint32_t *row_ptr = ((uint32_t*)pvr2_tex64_mem) + row_offs32;
     uint32_t addr_base = 4 * row_offs32;
 
@@ -208,38 +197,39 @@ static void pvr2_yuv_macroblock(void) {
                                     8 * sizeof(uint32_t));
     }
 
-    pvr2_yuv.cur_macroblock_x++;
-    if (pvr2_yuv.cur_macroblock_x >= pvr2_yuv.macroblock_count_x) {
-        pvr2_yuv.cur_macroblock_x = 0;
-        pvr2_yuv.cur_macroblock_y++;
+    yuv->cur_macroblock_x++;
+    if (yuv->cur_macroblock_x >= yuv->macroblock_count_x) {
+        yuv->cur_macroblock_x = 0;
+        yuv->cur_macroblock_y++;
     }
 
-    if (pvr2_yuv.cur_macroblock_y == pvr2_yuv.macroblock_count_y) {
-        pvr2_yuv_schedule_int();
+    if (yuv->cur_macroblock_y == yuv->macroblock_count_y) {
+        pvr2_yuv_schedule_int(pvr2);
     }
 }
 
-static void pvr2_yuv_input_byte(unsigned dat) {
-    if (pvr2_yuv.fmt != PVR2_YUV_FMT_420)
+static void pvr2_yuv_input_byte(struct pvr2 *pvr2, unsigned dat) {
+    struct pvr2_yuv *yuv = &pvr2->yuv;
+    if (yuv->fmt != PVR2_YUV_FMT_420)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
-    if (pvr2_yuv.macroblock_offset < 64) {
-        pvr2_yuv.u_buf[pvr2_yuv.macroblock_offset++] = dat;
-    } else if (pvr2_yuv.macroblock_offset < 128) {
-        pvr2_yuv.v_buf[pvr2_yuv.macroblock_offset++ - 64] = dat;
-    } else if (pvr2_yuv.macroblock_offset < 384) {
-        pvr2_yuv.y_buf[pvr2_yuv.macroblock_offset++ - 128] = dat;
+    if (yuv->macroblock_offset < 64) {
+        yuv->u_buf[yuv->macroblock_offset++] = dat;
+    } else if (yuv->macroblock_offset < 128) {
+        yuv->v_buf[yuv->macroblock_offset++ - 64] = dat;
+    } else if (yuv->macroblock_offset < 384) {
+        yuv->y_buf[yuv->macroblock_offset++ - 128] = dat;
     } else {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    if (pvr2_yuv.macroblock_offset == 384) {
-        pvr2_yuv.macroblock_offset = 0;
+    if (yuv->macroblock_offset == 384) {
+        yuv->macroblock_offset = 0;
 
-        if (pvr2_yuv.cur_macroblock_x >= pvr2_yuv.macroblock_count_x ||
-            pvr2_yuv.cur_macroblock_y >= pvr2_yuv.macroblock_count_y)
+        if (yuv->cur_macroblock_x >= yuv->macroblock_count_x ||
+            yuv->cur_macroblock_y >= yuv->macroblock_count_y)
             RAISE_ERROR(ERROR_INTEGRITY);
 
-        pvr2_yuv_macroblock();
+        pvr2_yuv_macroblock(pvr2);
     }
 }

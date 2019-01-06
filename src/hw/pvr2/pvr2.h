@@ -29,6 +29,7 @@
 #include "pvr2_ta.h"
 #include "mem_areas.h"
 #include "spg.h"
+#include "pvr2_yuv.h"
 
 #define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
 
@@ -37,6 +38,7 @@ struct pvr2 {
     struct dc_clock *clk;
     struct pvr2_ta ta;
     struct pvr2_spg spg;
+    struct pvr2_yuv yuv;
 };
 
 void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk);
