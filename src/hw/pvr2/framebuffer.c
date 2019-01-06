@@ -27,6 +27,7 @@
 
 #include "types.h"
 #include "error.h"
+#include "hw/pvr2/pvr2.h"
 #include "hw/pvr2/spg.h"
 #include "hw/pvr2/pvr2_reg.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
@@ -44,12 +45,6 @@ static DEF_ERROR_INT_ATTR(width)
 static DEF_ERROR_INT_ATTR(height)
 static DEF_ERROR_INT_ATTR(fb_pix_fmt)
 
-#define OGL_FB_W_MAX (0x3ff + 1)
-#define OGL_FB_H_MAX (0x3ff + 1)
-#define OGL_FB_BYTES (OGL_FB_W_MAX * OGL_FB_H_MAX * 4)
-static uint8_t ogl_fb[OGL_FB_BYTES];
-static unsigned stamp;
-
 enum fb_state {
     FB_STATE_INVALID = 0,
     FB_STATE_VIRT = 1,
@@ -64,32 +59,6 @@ enum fb_pix_fmt {
     FB_PIX_FMT_0RGB_0888,
     FB_PIX_FMT_ARGB_8888,
     FB_PIX_FMT_ARGB_1555
-};
-
-struct fb_flags {
-    uint8_t state : 2;
-    uint8_t fmt : 3;
-    uint8_t vert_flip : 1;
-};
-
-#define FB_HEAP_SIZE 8
-struct framebuffer {
-    int obj_handle;
-    unsigned fb_read_width, fb_read_height;
-
-    // only used for writing back to texture memory
-    unsigned linestride;
-
-    uint32_t addr_first[2], addr_last[2];
-    uint32_t addr_key; // min of addr_first[0], addr_first[1]
-
-    unsigned stamp;
-
-    // These variables are only valid if flags.state == FB_STATE_GFX
-    unsigned tile_w, tile_h, x_clip_min, x_clip_max,
-        y_clip_min, y_clip_max;
-
-    struct fb_flags flags;
 };
 
 static unsigned bytes_per_pix(uint32_t fb_r_ctrl) {
@@ -140,7 +109,7 @@ conv_rgb0888_to_rgba8888(uint32_t *pixels_out,
                          unsigned n_pixels);
 
 static void
-sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
+sync_fb_from_tex_mem_rgb565_intl(struct pvr2 *pvr2, struct framebuffer *fb,
                                  unsigned fb_width, unsigned fb_height,
                                  uint32_t sof1, uint32_t sof2,
                                  unsigned modulus, unsigned concat) {
@@ -180,7 +149,7 @@ sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
@@ -209,7 +178,7 @@ sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->stamp = stamp;
+    fb->stamp = pvr2->fb.stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_565;
 
     struct gfx_il_inst cmd;
@@ -223,7 +192,7 @@ sync_fb_from_tex_mem_rgb565_intl(struct framebuffer *fb,
 }
 
 static void
-sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
+sync_fb_from_tex_mem_rgb565_prog(struct pvr2 *pvr2, struct framebuffer *fb,
                                  unsigned fb_width, unsigned fb_height,
                                  uint32_t sof1, unsigned concat) {
     unsigned field_adv = fb_width;
@@ -251,8 +220,8 @@ sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)ogl_fb;
-    memset(ogl_fb, 0xff, sizeof(ogl_fb));
+    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
+    memset(pvr2->fb.ogl_fb, 0xff, sizeof(pvr2->fb.ogl_fb));
 
     unsigned row;
     for (row = 0; row < fb_height; row++) {
@@ -273,7 +242,7 @@ sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->stamp = stamp;
+    fb->stamp = pvr2->fb.stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_565;
 
     struct gfx_il_inst cmd;
@@ -287,7 +256,7 @@ sync_fb_from_tex_mem_rgb565_prog(struct framebuffer *fb,
 }
 
 static void
-sync_fb_from_tex_mem_rgb555_intl(struct framebuffer *fb,
+sync_fb_from_tex_mem_rgb555_intl(struct pvr2 *pvr2, struct framebuffer *fb,
                                  unsigned fb_width, unsigned fb_height,
                                  uint32_t sof1, uint32_t sof2,
                                  unsigned modulus, unsigned concat) {
@@ -327,7 +296,7 @@ sync_fb_from_tex_mem_rgb555_intl(struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
@@ -356,7 +325,7 @@ sync_fb_from_tex_mem_rgb555_intl(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->stamp = stamp;
+    fb->stamp = pvr2->fb.stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_555;
 
     struct gfx_il_inst cmd;
@@ -370,7 +339,7 @@ sync_fb_from_tex_mem_rgb555_intl(struct framebuffer *fb,
 }
 
 static void
-sync_fb_from_tex_mem_rgb888_intl(struct framebuffer *fb,
+sync_fb_from_tex_mem_rgb888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
                                  unsigned fb_width, unsigned fb_height,
                                  uint32_t sof1, uint32_t sof2,
                                  unsigned modulus) {
@@ -410,7 +379,7 @@ sync_fb_from_tex_mem_rgb888_intl(struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
@@ -439,7 +408,7 @@ sync_fb_from_tex_mem_rgb888_intl(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->stamp = stamp;
+    fb->stamp = pvr2->fb.stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_888;
 
     struct gfx_il_inst cmd;
@@ -453,7 +422,7 @@ sync_fb_from_tex_mem_rgb888_intl(struct framebuffer *fb,
 }
 
 static void
-sync_fb_from_tex_mem_rgb555_prog(struct framebuffer *fb,
+sync_fb_from_tex_mem_rgb555_prog(struct pvr2 *pvr2, struct framebuffer *fb,
                                  unsigned fb_width, unsigned fb_height,
                                  uint32_t sof1, unsigned concat) {
     unsigned field_adv = fb_width;
@@ -481,8 +450,8 @@ sync_fb_from_tex_mem_rgb555_prog(struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)ogl_fb;
-    memset(ogl_fb, 0xff, sizeof(ogl_fb));
+    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
+    memset(pvr2->fb.ogl_fb, 0xff, sizeof(pvr2->fb.ogl_fb));
 
     unsigned row;
     for (row = 0; row < fb_height; row++) {
@@ -503,7 +472,7 @@ sync_fb_from_tex_mem_rgb555_prog(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->stamp = stamp;
+    fb->stamp = pvr2->fb.stamp;
     fb->flags.fmt = FB_PIX_FMT_RGB_555;
 
     struct gfx_il_inst cmd;
@@ -517,7 +486,7 @@ sync_fb_from_tex_mem_rgb555_prog(struct framebuffer *fb,
 }
 
 static void
-sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
+sync_fb_from_tex_mem_rgb0888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
                                   unsigned fb_width, unsigned fb_height,
                                   uint32_t sof1, uint32_t sof2,
                                   unsigned modulus) {
@@ -557,7 +526,7 @@ sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
@@ -586,7 +555,7 @@ sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->stamp = stamp;
+    fb->stamp = pvr2->fb.stamp;
     fb->flags.fmt = FB_PIX_FMT_0RGB_0888;
 
     struct gfx_il_inst cmd;
@@ -600,7 +569,7 @@ sync_fb_from_tex_mem_rgb0888_intl(struct framebuffer *fb,
 }
 
 static void
-sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
+sync_fb_from_tex_mem_rgb0888_prog(struct pvr2 *pvr2, struct framebuffer *fb,
                                   unsigned fb_width, unsigned fb_height,
                                   uint32_t sof1) {
     uint32_t const *pixels_in = (uint32_t const*)(pvr2_tex32_mem + sof1);
@@ -626,7 +595,7 @@ sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)ogl_fb;
+    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < fb_height; row++) {
@@ -647,7 +616,7 @@ sync_fb_from_tex_mem_rgb0888_prog(struct framebuffer *fb,
     fb->flags.state = FB_STATE_VIRT_AND_GFX;
 
     fb->flags.vert_flip = true;
-    fb->stamp = stamp;
+    fb->stamp = pvr2->fb.stamp;
     fb->flags.fmt = FB_PIX_FMT_0RGB_0888;
 
     struct gfx_il_inst cmd;
@@ -675,27 +644,27 @@ sync_fb_from_tex_mem(struct pvr2 *pvr2, struct framebuffer *fb,
     case 0:
         // 16-bit 555 RGB
         if (interlace) {
-            sync_fb_from_tex_mem_rgb555_intl(fb, width, height, fb_r_sof1,
+            sync_fb_from_tex_mem_rgb555_intl(pvr2, fb, width, height, fb_r_sof1,
                                              fb_r_sof2, modulus, concat);
         } else {
-            sync_fb_from_tex_mem_rgb555_prog(fb, width, height,
+            sync_fb_from_tex_mem_rgb555_prog(pvr2, fb, width, height,
                                              fb_r_sof1, concat);
         }
         break;
     case 1:
         // 16-bit 565 RGB
         if (interlace) {
-            sync_fb_from_tex_mem_rgb565_intl(fb, width, height, fb_r_sof1,
+            sync_fb_from_tex_mem_rgb565_intl(pvr2, fb, width, height, fb_r_sof1,
                                              fb_r_sof2, modulus, concat);
         } else {
-            sync_fb_from_tex_mem_rgb565_prog(fb, width, height,
+            sync_fb_from_tex_mem_rgb565_prog(pvr2, fb, width, height,
                                              fb_r_sof1, concat);
         }
         break;
     case 2:
         // 24-bit 888 RGB
         if (interlace) {
-            sync_fb_from_tex_mem_rgb888_intl(fb, width, height, fb_r_sof1,
+            sync_fb_from_tex_mem_rgb888_intl(pvr2, fb, width, height, fb_r_sof1,
                                              fb_r_sof2, modulus);
         } else {
             error_set_feature("video mode RGB888 (progressive scan)");
@@ -705,16 +674,14 @@ sync_fb_from_tex_mem(struct pvr2 *pvr2, struct framebuffer *fb,
     case 3:
         // 32-bit 08888 RGB
         if (interlace) {
-            sync_fb_from_tex_mem_rgb0888_intl(fb, width, height, fb_r_sof1,
+            sync_fb_from_tex_mem_rgb0888_intl(pvr2, fb, width, height, fb_r_sof1,
                                               fb_r_sof2, modulus);
         } else {
-            sync_fb_from_tex_mem_rgb0888_prog(fb, width, height,
+            sync_fb_from_tex_mem_rgb0888_prog(pvr2, fb, width, height,
                                               fb_r_sof1);
         }
     }
 }
-
-static struct framebuffer fb_heap[FB_HEAP_SIZE];
 
 /*
  * this is a simple "dumb" memcpy function that doesn't handle the framebuffer
@@ -779,7 +746,8 @@ conv_rgb0888_to_rgba8888(uint32_t *pixels_out,
     }
 }
 
-static int pick_fb(unsigned width, unsigned height, uint32_t addr);
+static int
+pick_fb(struct pvr2 *pvr2, unsigned width, unsigned height, uint32_t addr);
 
 // reset all members except the gfx_obj handle
 static void fb_reset(struct framebuffer *fb) {
@@ -803,8 +771,9 @@ static void fb_reset(struct framebuffer *fb) {
     fb->flags.vert_flip = false;
 }
 
-void framebuffer_init(unsigned width, unsigned height) {
+void pvr2_framebuffer_init(struct pvr2 *pvr2) {
     struct gfx_il_inst cmd;
+    struct framebuffer *fb_heap = pvr2->fb.fb_heap;
 
     int fb_no;
     for (fb_no = 0; fb_no < FB_HEAP_SIZE; fb_no++) {
@@ -818,6 +787,9 @@ void framebuffer_init(unsigned width, unsigned height) {
 
         rend_exec_il(&cmd, 1);
     }
+}
+
+void pvr2_framebuffer_cleanup(struct pvr2 *pvr2) {
 }
 
 void framebuffer_render(struct pvr2 *pvr2) {
@@ -856,6 +828,8 @@ void framebuffer_render(struct pvr2 *pvr2) {
             addr_first = fb_r_sof2;
     }
 
+    struct framebuffer *fb_heap = pvr2->fb.fb_heap;
+
     int fb_idx;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
         struct framebuffer *fb = fb_heap + fb_idx;
@@ -873,12 +847,12 @@ void framebuffer_render(struct pvr2 *pvr2) {
         }
     }
 
-    fb_idx = pick_fb(width, height, fb_r_sof1);
+    fb_idx = pick_fb(pvr2, width, height, fb_r_sof1);
     sync_fb_from_tex_mem(pvr2, fb_heap + fb_idx,
                          width, height, modulus, concat);
 
 submit_the_fb:
-    stamp++;
+    pvr2->fb.stamp++;
 
     cmd.op = GFX_IL_POST_FRAMEBUFFER;
     cmd.arg.post_framebuffer.obj_handle = fb_heap[fb_idx].obj_handle;
@@ -915,7 +889,7 @@ submit_the_fb:
 }
 
 static void
-fb_sync_from_host_0565_krgb(struct framebuffer *fb) {
+fb_sync_from_host_0565_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
     unsigned x_min = fb->x_clip_min;
     unsigned y_min = fb->y_clip_min;
     unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
@@ -931,6 +905,7 @@ fb_sync_from_host_0565_krgb(struct framebuffer *fb) {
     assert((width * height * 4) < OGL_FB_BYTES);
 
     unsigned row, col;
+    uint8_t *ogl_fb = pvr2->fb.ogl_fb;
     for (row = y_min; row <= y_max; row++) {
         unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
         for (col = x_min; col <= x_max; col++) {
@@ -944,7 +919,7 @@ fb_sync_from_host_0565_krgb(struct framebuffer *fb) {
 }
 
 static void
-fb_sync_from_host_0555_krgb(struct framebuffer *fb) {
+fb_sync_from_host_0555_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
     unsigned x_min = fb->x_clip_min;
     unsigned y_min = fb->y_clip_min;
     unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
@@ -960,6 +935,7 @@ fb_sync_from_host_0555_krgb(struct framebuffer *fb) {
     assert((width * height * 4) < OGL_FB_BYTES);
 
     unsigned row, col;
+    uint8_t *ogl_fb = pvr2->fb.ogl_fb;
     for (row = y_min; row <= y_max; row++) {
         unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
         for (col = x_min; col <= x_max; col++) {
@@ -974,7 +950,7 @@ fb_sync_from_host_0555_krgb(struct framebuffer *fb) {
 
 
 static void
-fb_sync_from_host_1555_argb(struct framebuffer *fb) {
+fb_sync_from_host_1555_argb(struct pvr2 *pvr2, struct framebuffer *fb) {
     unsigned x_min = fb->x_clip_min;
     unsigned y_min = fb->y_clip_min;
     unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
@@ -988,6 +964,7 @@ fb_sync_from_host_1555_argb(struct framebuffer *fb) {
     assert((width * height * 4) < OGL_FB_BYTES);
 
     unsigned row, col;
+    uint8_t *ogl_fb = pvr2->fb.ogl_fb;
     for (row = y_min; row <= y_max; row++) {
         /*
          * TODO: figure out how this is supposed to work with interlacing.
@@ -1016,7 +993,7 @@ fb_sync_from_host_1555_argb(struct framebuffer *fb) {
     }
 }
 
-static void fb_sync_from_host_rgb0888(struct framebuffer *fb) {
+static void fb_sync_from_host_rgb0888(struct pvr2 *pvr2, struct framebuffer *fb) {
     /*
      * TODO: don't get width, height from fb_read_width and fb_read_height
      * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
@@ -1025,7 +1002,7 @@ static void fb_sync_from_host_rgb0888(struct framebuffer *fb) {
     unsigned width = fb->fb_read_width;
     unsigned height = fb->fb_read_height;
     unsigned stride = fb->linestride;
-    uint32_t const *fb_in = (uint32_t*)ogl_fb;
+    uint32_t const *fb_in = (uint32_t*)pvr2->fb.ogl_fb;
     unsigned rows_per_field = height / 2;
     unsigned const *addr = fb->addr_first;
 
@@ -1061,7 +1038,7 @@ static void fb_sync_from_host_rgb0888(struct framebuffer *fb) {
     }
 }
 
-static void fb_sync_from_host_argb8888(struct framebuffer *fb) {
+static void fb_sync_from_host_argb8888(struct pvr2 *pvr2, struct framebuffer *fb) {
     /*
      * TODO: don't get width, height from fb_read_width and fb_read_height
      * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
@@ -1070,7 +1047,7 @@ static void fb_sync_from_host_argb8888(struct framebuffer *fb) {
     unsigned width = fb->fb_read_width;
     unsigned height = fb->fb_read_height;
     unsigned stride = fb->linestride;
-    uint32_t const *fb_in = (uint32_t*)ogl_fb;
+    uint32_t const *fb_in = (uint32_t*)pvr2->fb.ogl_fb;
     unsigned rows_per_field = height / 2;
     unsigned const *addr = fb->addr_first;
 
@@ -1107,7 +1084,7 @@ static void fb_sync_from_host_argb8888(struct framebuffer *fb) {
 }
 
 static void
-sync_fb_to_tex_mem(struct framebuffer *fb) {
+sync_fb_to_tex_mem(struct pvr2 *pvr2, struct framebuffer *fb) {
     if (fb->flags.state != FB_STATE_GFX)
         return;
 
@@ -1116,27 +1093,27 @@ sync_fb_to_tex_mem(struct framebuffer *fb) {
     struct gfx_il_inst cmd = {
         .op = GFX_IL_READ_OBJ,
         .arg = { .read_obj = {
-            .dat = ogl_fb,
+            .dat = pvr2->fb.ogl_fb,
             .obj_no = fb->obj_handle,
-            .n_bytes = sizeof(ogl_fb)/* OGL_FB_W_MAX * OGL_FB_H_MAX * 4 */
+            .n_bytes = sizeof(pvr2->fb.ogl_fb)/* OGL_FB_W_MAX * OGL_FB_H_MAX * 4 */
             } }
     };
     rend_exec_il(&cmd, 1);
     switch (fb->flags.fmt) {
     case FB_PIX_FMT_RGB_555:
-        fb_sync_from_host_0555_krgb(fb);
+        fb_sync_from_host_0555_krgb(pvr2, fb);
         break;
     case FB_PIX_FMT_RGB_565:
-        fb_sync_from_host_0565_krgb(fb);
+        fb_sync_from_host_0565_krgb(pvr2, fb);
         break;
     case FB_PIX_FMT_0RGB_0888:
-        fb_sync_from_host_rgb0888(fb);
+        fb_sync_from_host_rgb0888(pvr2, fb);
         break;
     case FB_PIX_FMT_ARGB_8888:
-        fb_sync_from_host_argb8888(fb);
+        fb_sync_from_host_argb8888(pvr2, fb);
         break;
     case FB_PIX_FMT_ARGB_1555:
-        fb_sync_from_host_1555_argb(fb);
+        fb_sync_from_host_1555_argb(pvr2, fb);
         break;
     default:
         LOG_ERROR("fb->flags.fmt is %d\n", fb->flags.fmt);
@@ -1215,11 +1192,14 @@ static void copy_to_tex_mem(void const *in, addr32_t offs, size_t len) {
         pvr2_tex_cache_notify_write(offs + ADDR_TEX64_FIRST, len);
 }
 
-static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
+static int
+pick_fb(struct pvr2 *pvr2, unsigned width, unsigned height, uint32_t addr) {
     int first_invalid = -1;
     int idx;
-    int oldest_stamp = stamp;
+    int oldest_stamp = pvr2->fb.stamp;
     int oldest_stamp_idx = -1;
+    struct framebuffer *fb_heap = pvr2->fb.fb_heap;
+
     for (idx = 0; idx < FB_HEAP_SIZE; idx++) {
         if (fb_heap[idx].flags.state != FB_STATE_INVALID) {
             if (fb_heap[idx].fb_read_width == width &&
@@ -1246,7 +1226,7 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
 
         // sync the framebuffer to memory because it's about to get overwritten
         struct framebuffer *fb = fb_heap + idx;
-        sync_fb_to_tex_mem(fb);
+        sync_fb_to_tex_mem(pvr2, fb);
         fb_reset(fb);
     }
 
@@ -1255,6 +1235,7 @@ static int pick_fb(unsigned width, unsigned height, uint32_t addr) {
 }
 
 int framebuffer_set_render_target(struct pvr2 *pvr2) {
+    struct framebuffer *fb_heap = pvr2->fb.fb_heap;
 
     /*
      * XXX
@@ -1286,15 +1267,15 @@ int framebuffer_set_render_target(struct pvr2 *pvr2) {
     uint32_t sof1 = get_fb_w_sof1(pvr2) & ~3;
     uint32_t addr_key = sof1;
 
-    int idx = pick_fb(width, height, addr_key);
+    int idx = pick_fb(pvr2, width, height, addr_key);
 
-    struct framebuffer *fb = fb_heap + idx;
+    struct framebuffer *fb = pvr2->fb.fb_heap + idx;
 
     fb->flags.state = FB_STATE_GFX;
     fb->flags.vert_flip = false;
     fb->fb_read_width = width;
     fb->fb_read_height = height;
-    fb->stamp = stamp;
+    fb->stamp = pvr2->fb.stamp;
     fb->linestride = get_fb_w_linestride(pvr2) * 8;
 
     // set addr_first and addr_last
@@ -1442,11 +1423,13 @@ static inline bool check_overlap(uint32_t range1_start, uint32_t range1_end,
     return false;
 }
 
-void pvr2_framebuffer_notify_write(uint32_t addr, unsigned n_bytes) {
+void pvr2_framebuffer_notify_write(struct pvr2 *pvr2, uint32_t addr,
+                                   unsigned n_bytes) {
     uint32_t first_byte = addr - ADDR_TEX32_FIRST;
     uint32_t last_byte = n_bytes - 1 + first_byte;
 
     unsigned fb_idx;
+    struct framebuffer *fb_heap = pvr2->fb.fb_heap;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
         /*
          * TODO: this overlap check is naive because it will issue a
@@ -1469,13 +1452,14 @@ void pvr2_framebuffer_notify_write(uint32_t addr, unsigned n_bytes) {
     }
 }
 
-void pvr2_framebuffer_notify_texture(uint32_t first_tex_addr,
+void pvr2_framebuffer_notify_texture(struct pvr2 *pvr2, uint32_t first_tex_addr,
                                      uint32_t last_tex_addr) {
     first_tex_addr &= TEX_MIRROR_MASK;
     last_tex_addr &= TEX_MIRROR_MASK;
 
     int sync_count = 0;
     unsigned fb_idx;
+    struct framebuffer *fb_heap = pvr2->fb.fb_heap;
     for (fb_idx = 0; fb_idx < FB_HEAP_SIZE; fb_idx++) {
         if (fb_heap[fb_idx].flags.state != FB_STATE_GFX)
             continue;
@@ -1509,7 +1493,7 @@ void pvr2_framebuffer_notify_texture(uint32_t first_tex_addr,
                           addr_first[0] & TEX_MIRROR_MASK, addr_last[0] & TEX_MIRROR_MASK) ||
             check_overlap(first_tex_addr, last_tex_addr,
                           addr_first[1] & TEX_MIRROR_MASK, addr_last[1] & TEX_MIRROR_MASK)) {
-            sync_fb_to_tex_mem(fb_heap + fb_idx);
+            sync_fb_to_tex_mem(pvr2, fb_heap + fb_idx);
             fb_heap[fb_idx].flags.state = FB_STATE_VIRT_AND_GFX;
             sync_count++;
         }

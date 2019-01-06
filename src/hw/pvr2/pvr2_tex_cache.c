@@ -734,8 +734,11 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
         struct pvr2_tex *tex_in = tex_cache + idx;
 
         if (tex_in->state != PVR2_TEX_INVALID) {
-            pvr2_framebuffer_notify_texture(tex_in->meta.addr_first + ADDR_TEX64_FIRST,
-                                            tex_in->meta.addr_last + ADDR_TEX64_FIRST);
+            pvr2_framebuffer_notify_texture(pvr2,
+                                            tex_in->meta.addr_first +
+                                            ADDR_TEX64_FIRST,
+                                            tex_in->meta.addr_last +
+                                            ADDR_TEX64_FIRST);
         }
 
         bool need_update = false;

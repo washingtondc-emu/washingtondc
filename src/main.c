@@ -31,7 +31,6 @@
 #include "gfx/gfx.h"
 #include "glfw/window.h"
 #include "io/io_thread.h"
-#include "hw/pvr2/framebuffer.h"
 #include "gfx/opengl/opengl_output.h"
 #include "mount.h"
 #include "gdi.h"
@@ -257,7 +256,6 @@ int main(int argc, char **argv) {
 
     win_init(640, 480);
     gfx_init(640, 480);
-    framebuffer_init(640, 480);
     io_thread_launch();
 
     config_set_enable_cmd_tcp(enable_cmd_tcp);

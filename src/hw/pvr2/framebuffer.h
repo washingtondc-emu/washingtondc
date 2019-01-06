@@ -85,9 +85,47 @@ enum FramebufferFormat {
  * framebuffer->CRT transfer; the FB_W_CTRL and FB_W_SOF1/FB_W_SOF2 registers
  * control settings for the PVR2->framebuffer transfer.
  */
-void framebuffer_init(unsigned width, unsigned height);
 
-void framebuffer_render();
+struct fb_flags {
+    uint8_t state : 2;
+    uint8_t fmt : 3;
+    uint8_t vert_flip : 1;
+};
+
+#define FB_HEAP_SIZE 8
+struct framebuffer {
+    int obj_handle;
+    unsigned fb_read_width, fb_read_height;
+
+    // only used for writing back to texture memory
+    unsigned linestride;
+
+    uint32_t addr_first[2], addr_last[2];
+    uint32_t addr_key; // min of addr_first[0], addr_first[1]
+
+    unsigned stamp;
+
+    // These variables are only valid if flags.state == FB_STATE_GFX
+    unsigned tile_w, tile_h, x_clip_min, x_clip_max,
+        y_clip_min, y_clip_max;
+
+    struct fb_flags flags;
+};
+
+#define OGL_FB_W_MAX (0x3ff + 1)
+#define OGL_FB_H_MAX (0x3ff + 1)
+#define OGL_FB_BYTES (OGL_FB_W_MAX * OGL_FB_H_MAX * 4)
+
+struct pvr2_fb {
+    uint8_t ogl_fb[OGL_FB_BYTES];
+    struct framebuffer fb_heap[FB_HEAP_SIZE];
+    unsigned stamp;
+};
+
+void pvr2_framebuffer_init(struct pvr2 *pvr2);
+void pvr2_framebuffer_cleanup(struct pvr2 *pvr2);
+
+void framebuffer_render(struct pvr2 *pvr2);
 
 // old deprecated function that should not be called anymore
 static inline void framebuffer_sync_from_host_maybe(void) {
@@ -95,9 +133,10 @@ static inline void framebuffer_sync_from_host_maybe(void) {
 
 int framebuffer_set_render_target(struct pvr2 *pvr2);
 
-void pvr2_framebuffer_notify_write(uint32_t addr, unsigned n_bytes);
+void pvr2_framebuffer_notify_write(struct pvr2 *pvr2, uint32_t addr,
+                                   unsigned n_bytes);
 
-void pvr2_framebuffer_notify_texture(uint32_t first_tex_addr,
+void pvr2_framebuffer_notify_texture(struct pvr2 *pvr2, uint32_t first_tex_addr,
                                      uint32_t last_tex_addr);
 
 #endif
