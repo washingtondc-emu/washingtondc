@@ -183,7 +183,7 @@ static void pvr2_yuv_macroblock(struct pvr2 *pvr2) {
         yuv->cur_macroblock_x * 8 * sizeof(uint32_t);
 
     uint32_t row_offs32 = yuv->dst_addr / 4 + macroblock_offs / 4;
-    uint32_t *row_ptr = ((uint32_t*)pvr2_tex64_mem) + row_offs32;
+    uint32_t *row_ptr = ((uint32_t*)pvr2->mem.tex64) + row_offs32;
     uint32_t addr_base = 4 * row_offs32;
 
     for (row = 0; row < 16; row++) {

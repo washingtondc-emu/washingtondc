@@ -1445,7 +1445,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
         ISP_BACKGND_T_ADDR_SHIFT;
     uint32_t backgnd_skip = ((ISP_BACKGND_T_SKIP_MASK & backgnd_tag) >>
                              ISP_BACKGND_T_SKIP_SHIFT) + 3;
-    uint32_t const *backgnd_info = (uint32_t*)(pvr2_tex32_mem + backgnd_info_addr);
+    uint32_t const *backgnd_info = (uint32_t*)(pvr2->mem.tex32 + backgnd_info_addr);
 
     /* printf("background skip is %d\n", (int)backgnd_skip); */
 

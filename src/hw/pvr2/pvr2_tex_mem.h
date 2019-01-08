@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -35,9 +35,10 @@
  * keeping them separated for now.  They might both map th the same memory, I'm
  * just not sure yet.
  */
-
-extern uint8_t pvr2_tex32_mem[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
-extern uint8_t pvr2_tex64_mem[ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1];
+struct pvr2_tex_mem {
+    uint8_t tex32[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
+    uint8_t tex64[ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1];
+};
 
 uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt);
 void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt);

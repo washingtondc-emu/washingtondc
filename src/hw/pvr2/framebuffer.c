@@ -77,7 +77,7 @@ static unsigned bytes_per_pix(uint32_t fb_r_ctrl) {
     }
 }
 
-static uint8_t *get_tex_mem_area(addr32_t addr);
+static uint8_t *get_tex_mem_area(struct pvr2 *pvr2, addr32_t addr);
 
 /*
  * The concat parameter in these functions corresponds to the fb_concat value
@@ -152,6 +152,7 @@ sync_fb_from_tex_mem_rgb565_intl(struct pvr2 *pvr2, struct framebuffer *fb,
     uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
 
     unsigned row;
+    uint8_t const *pvr2_tex32_mem = pvr2->mem.tex32;
     for (row = 0; row < rows_per_field; row++) {
         uint16_t const *ptr_row1 =
             (uint16_t const*)(pvr2_tex32_mem + sof1 + row * field_adv);
@@ -196,7 +197,7 @@ sync_fb_from_tex_mem_rgb565_prog(struct pvr2 *pvr2, struct framebuffer *fb,
                                  unsigned fb_width, unsigned fb_height,
                                  uint32_t sof1, unsigned concat) {
     unsigned field_adv = fb_width;
-    uint16_t const *pixels_in = (uint16_t*)(pvr2_tex32_mem + sof1);
+    uint16_t const *pixels_in = (uint16_t*)(pvr2->mem.tex32 + sof1);
     /*
      * bounds checking
      *
@@ -298,6 +299,7 @@ sync_fb_from_tex_mem_rgb555_intl(struct pvr2 *pvr2, struct framebuffer *fb,
 
     uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
 
+    uint8_t const *pvr2_tex32_mem = pvr2->mem.tex32;
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
         uint16_t const *ptr_row1 =
@@ -381,6 +383,7 @@ sync_fb_from_tex_mem_rgb888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
 
     uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
 
+    uint8_t const *pvr2_tex32_mem = pvr2->mem.tex32;
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
         uint8_t const *ptr_row1 =
@@ -426,7 +429,7 @@ sync_fb_from_tex_mem_rgb555_prog(struct pvr2 *pvr2, struct framebuffer *fb,
                                  unsigned fb_width, unsigned fb_height,
                                  uint32_t sof1, unsigned concat) {
     unsigned field_adv = fb_width;
-    uint16_t const *pixels_in = (uint16_t*)(pvr2_tex32_mem + sof1);
+    uint16_t const *pixels_in = (uint16_t*)(pvr2->mem.tex32 + sof1);
     /*
      * bounds checking
      *
@@ -528,6 +531,7 @@ sync_fb_from_tex_mem_rgb0888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
 
     uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
 
+    uint8_t const *pvr2_tex32_mem = pvr2->mem.tex32;
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
         uint32_t const *ptr_row1 =
@@ -572,7 +576,7 @@ static void
 sync_fb_from_tex_mem_rgb0888_prog(struct pvr2 *pvr2, struct framebuffer *fb,
                                   unsigned fb_width, unsigned fb_height,
                                   uint32_t sof1) {
-    uint32_t const *pixels_in = (uint32_t const*)(pvr2_tex32_mem + sof1);
+    uint32_t const *pixels_in = (uint32_t const*)(pvr2->mem.tex32 + sof1);
     addr32_t last_byte = sof1 + fb_width * fb_height * 4;
     addr32_t first_byte = sof1;
 
@@ -689,7 +693,8 @@ sync_fb_from_tex_mem(struct pvr2 *pvr2, struct framebuffer *fb,
  * does, however, perform bounds-checking and raise an error for out-of-bounds
  * memory access.
  */
-static void copy_to_tex_mem(void const *in, addr32_t offs, size_t len);
+static void copy_to_tex_mem(struct pvr2 *pvr2, void const *in,
+                            addr32_t offs, size_t len);
 
 static void conv_rgb565_to_rgba8888(uint32_t *pixels_out,
                                     uint16_t const *pixels_in,
@@ -913,7 +918,8 @@ fb_sync_from_host_0565_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
             uint16_t pix_out = ((ogl_fb[4 * fb_idx + 2] & 0xf8) >> 3) |
                 ((ogl_fb[4 * fb_idx + 1] & 0xfc) << 3) |
                 ((ogl_fb[4 * fb_idx] & 0xf8) << 8) | k_val;
-            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
+            copy_to_tex_mem(pvr2, &pix_out,
+                            line_offs + 2 * col, sizeof(pix_out));
         }
     }
 }
@@ -943,7 +949,8 @@ fb_sync_from_host_0555_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
             uint16_t pix_out = ((ogl_fb[4 * fb_idx + 2] & 0xf8) >> 3) |
                 ((ogl_fb[4 * fb_idx + 1] & 0xf8) << 3) |
                 ((ogl_fb[4 * fb_idx] & 0xf8) << 7) | k_val;
-            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
+            copy_to_tex_mem(pvr2, &pix_out,
+                            line_offs + 2 * col, sizeof(pix_out));
         }
     }
 }
@@ -988,7 +995,8 @@ fb_sync_from_host_1555_argb(struct pvr2 *pvr2, struct framebuffer *fb) {
             uint16_t pix_out =
                 (alpha << 15) | (red << 10) | (green << 5) | blue;
 
-            copy_to_tex_mem(&pix_out, line_offs + 2 * col, sizeof(pix_out));
+            copy_to_tex_mem(pvr2, &pix_out,
+                            line_offs + 2 * col, sizeof(pix_out));
         }
     }
 }
@@ -1032,8 +1040,10 @@ static void fb_sync_from_host_rgb0888(struct pvr2 *pvr2, struct framebuffer *fb)
                 pix_in[1] & 0x00ffffff
             };
 
-            copy_to_tex_mem(pix_out + 0, line_offs[0] + 2 * col, sizeof(pix_out[0]));
-            copy_to_tex_mem(pix_out + 1, line_offs[1] + 2 * col, sizeof(pix_out[1]));
+            copy_to_tex_mem(pvr2, pix_out + 0,
+                            line_offs[0] + 2 * col, sizeof(pix_out[0]));
+            copy_to_tex_mem(pvr2, pix_out + 1,
+                            line_offs[1] + 2 * col, sizeof(pix_out[1]));
         }
     }
 }
@@ -1077,8 +1087,10 @@ static void fb_sync_from_host_argb8888(struct pvr2 *pvr2, struct framebuffer *fb
                 pix_in[1]
             };
 
-            copy_to_tex_mem(pix_out + 0, line_offs[0] + 2 * col, sizeof(pix_out[0]));
-            copy_to_tex_mem(pix_out + 1, line_offs[1] + 2 * col, sizeof(pix_out[1]));
+            copy_to_tex_mem(pvr2, pix_out + 0,
+                            line_offs[0] + 2 * col, sizeof(pix_out[0]));
+            copy_to_tex_mem(pvr2, pix_out + 1,
+                            line_offs[1] + 2 * col, sizeof(pix_out[1]));
         }
     }
 }
@@ -1126,14 +1138,14 @@ sync_fb_to_tex_mem(struct pvr2 *pvr2, struct framebuffer *fb) {
  * Keep in mind that this pointer points to the beginning of that area,
  * it doesn NOT point to the actual byte that corresponds to the addr.
  */
-static uint8_t *get_tex_mem_area(addr32_t addr) {
+static uint8_t *get_tex_mem_area(struct pvr2 *pvr2, addr32_t addr) {
     switch (addr & 0xff000000) {
     case 0x04000000:
     case 0x06000000:
-        return pvr2_tex64_mem;
+        return pvr2->mem.tex64;
     case 0x05000000:
     case 0x07000000:
-        return pvr2_tex32_mem;
+        return pvr2->mem.tex32;
     default:
         return NULL;
     }
@@ -1156,7 +1168,8 @@ static uint32_t get_tex_mem_offs(addr32_t addr) {
 
 #define TEX_MIRROR_MASK 0x7fffff
 
-static void copy_to_tex_mem(void const *in, addr32_t offs, size_t len) {
+static void copy_to_tex_mem(struct pvr2 *pvr2, void const *in,
+                            addr32_t offs, size_t len) {
     addr32_t last_byte = offs - 1 + len;
 
     if ((last_byte & 0xff000000) != (offs & 0xff000000)) {
@@ -1166,7 +1179,7 @@ static void copy_to_tex_mem(void const *in, addr32_t offs, size_t len) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint8_t *tex_mem_ptr = get_tex_mem_area(offs + ADDR_TEX32_FIRST);
+    uint8_t *tex_mem_ptr = get_tex_mem_area(pvr2, offs + ADDR_TEX32_FIRST);
     if (!tex_mem_ptr) {
         error_set_length(len);
         error_set_address(offs + ADDR_TEX32_FIRST);
@@ -1188,7 +1201,7 @@ static void copy_to_tex_mem(void const *in, addr32_t offs, size_t len) {
      * let the texture tracking system know we may have just overwritten a
      * texture in the cache.
      */
-    if (tex_mem_ptr == pvr2_tex64_mem)
+    if (tex_mem_ptr == pvr2->mem.tex64)
         pvr2_tex_cache_notify_write(offs + ADDR_TEX64_FIRST, len);
 }
 

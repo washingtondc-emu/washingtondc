@@ -22,15 +22,13 @@
 
 #include <string.h>
 
+#include "pvr2.h"
 #include "error.h"
 #include "mem_code.h"
 #include "MemoryMap.h"
 #include "pvr2_reg.h"
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"
-
-uint8_t pvr2_tex32_mem[ADDR_TEX32_LAST - ADDR_TEX32_FIRST + 1];
-uint8_t pvr2_tex64_mem[ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1];
 
 uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
@@ -52,7 +50,7 @@ uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
         (addr + sizeof(uint8_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return pvr2_tex32_mem[addr - ADDR_TEX32_FIRST];
+    return pvr2->mem.tex32[addr - ADDR_TEX32_FIRST];
 }
 
 void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt) {
@@ -68,7 +66,7 @@ void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
 
-    pvr2_tex32_mem[addr - ADDR_TEX32_FIRST] = val;
+    pvr2->mem.tex32[addr - ADDR_TEX32_FIRST] = val;
 }
 
 uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt) {
@@ -91,7 +89,7 @@ uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt) {
         (addr + sizeof(uint16_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return ((uint16_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 2];
+    return ((uint16_t*)pvr2->mem.tex32)[(addr - ADDR_TEX32_FIRST) / 2];
 }
 
 void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt) {
@@ -108,7 +106,7 @@ void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
 
-    ((uint16_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 2] = val;
+    ((uint16_t*)pvr2->mem.tex32)[(addr - ADDR_TEX32_FIRST) / 2] = val;
 }
 
 uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt) {
@@ -131,7 +129,7 @@ uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt) {
         (addr + sizeof(uint32_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return ((uint32_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 4];
+    return ((uint32_t*)pvr2->mem.tex32)[(addr - ADDR_TEX32_FIRST) / 4];
 }
 
 void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt) {
@@ -148,7 +146,7 @@ void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
 
-    ((uint32_t*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / 4] = val;
+    ((uint32_t*)pvr2->mem.tex32)[(addr - ADDR_TEX32_FIRST) / 4] = val;
 }
 
 float pvr2_tex_mem_area32_read_float(addr32_t addr, void *ctxt) {
@@ -183,7 +181,7 @@ void pvr2_tex_mem_area32_write_double(addr32_t addr, double val, void *ctxt) {
     }
 
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    ((double*)pvr2_tex32_mem)[(addr - ADDR_TEX32_FIRST) / sizeof(val)] = val;
+    ((double*)pvr2->mem.tex32)[(addr - ADDR_TEX32_FIRST) / sizeof(val)] = val;
 }
 
 uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt) {
@@ -205,7 +203,7 @@ uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt) {
         (addr + sizeof(uint8_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return pvr2_tex64_mem[addr - ADDR_TEX64_FIRST];
+    return pvr2->mem.tex64[addr - ADDR_TEX64_FIRST];
 }
 
 void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
@@ -222,7 +220,7 @@ void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
     pvr2_tex_cache_notify_write(addr, sizeof(val));
 
-    ((uint8_t*)pvr2_tex64_mem)[addr - ADDR_TEX64_FIRST] = val;
+    ((uint8_t*)pvr2->mem.tex64)[addr - ADDR_TEX64_FIRST] = val;
 }
 
 uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt) {
@@ -245,7 +243,7 @@ uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt) {
         (addr + sizeof(uint16_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return ((uint16_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 2];
+    return ((uint16_t*)pvr2->mem.tex64)[(addr - ADDR_TEX64_FIRST) / 2];
 }
 
 void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
@@ -263,7 +261,7 @@ void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
     pvr2_tex_cache_notify_write(addr, sizeof(val));
 
-    ((uint16_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 2] = val;
+    ((uint16_t*)pvr2->mem.tex64)[(addr - ADDR_TEX64_FIRST) / 2] = val;
 }
 
 uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt) {
@@ -286,7 +284,7 @@ uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt) {
         (addr + sizeof(uint32_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return ((uint32_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 4];
+    return ((uint32_t*)pvr2->mem.tex64)[(addr - ADDR_TEX64_FIRST) / 4];
 }
 
 void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
@@ -304,7 +302,7 @@ void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
     pvr2_tex_cache_notify_write(addr, sizeof(val));
 
-    ((uint32_t*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / 4] = val;
+    ((uint32_t*)pvr2->mem.tex64)[(addr - ADDR_TEX64_FIRST) / 4] = val;
 }
 
 float pvr2_tex_mem_area64_read_float(addr32_t addr, void *ctxt) {
@@ -341,7 +339,7 @@ void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt) {
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
     pvr2_tex_cache_notify_write(addr, sizeof(val));
 
-    ((double*)pvr2_tex64_mem)[(addr - ADDR_TEX64_FIRST) / sizeof(val)] = val;
+    ((double*)pvr2->mem.tex64)[(addr - ADDR_TEX64_FIRST) / sizeof(val)] = val;
 }
 
 struct memory_interface pvr2_tex_mem_area32_intf = {

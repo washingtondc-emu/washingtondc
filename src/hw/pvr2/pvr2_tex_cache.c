@@ -529,6 +529,7 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
      * accomplish this, we have to offset the addr_first by the offset
      * to the highest-order mipmap.
      */
+    uint8_t const *pvr2_tex64_mem = pvr2->mem.tex64;
     if (meta->mipmap) {
         if (meta->w_shift != meta->h_shift) {
             error_set_feature("proper response for attempting to "
