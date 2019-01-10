@@ -552,43 +552,44 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         return;
     }
 
+    struct dc_clock *clk = pvr2->clk;
     dc_cycle_stamp_t int_when =
-        clock_cycle_stamp(pvr2_clk) + PVR2_LIST_COMPLETE_INT_DELAY;
+        clock_cycle_stamp(clk) + PVR2_LIST_COMPLETE_INT_DELAY;
 
     switch (ta->cur_list) {
     case DISPLAY_LIST_OPAQUE:
         if (!ta->pvr2_op_complete_int_event_scheduled) {
             ta->pvr2_op_complete_int_event_scheduled = true;
             ta->pvr2_op_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &ta->pvr2_op_complete_int_event);
+            sched_event(clk, &ta->pvr2_op_complete_int_event);
         }
         break;
     case DISPLAY_LIST_OPAQUE_MOD:
         if (!ta->pvr2_op_mod_complete_int_event_scheduled) {
             ta->pvr2_op_mod_complete_int_event_scheduled = true;
             ta->pvr2_op_mod_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &ta->pvr2_op_mod_complete_int_event);
+            sched_event(clk, &ta->pvr2_op_mod_complete_int_event);
         }
         break;
     case DISPLAY_LIST_TRANS:
         if (!ta->pvr2_trans_complete_int_event_scheduled) {
             ta->pvr2_trans_complete_int_event_scheduled = true;
             ta->pvr2_trans_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &ta->pvr2_trans_complete_int_event);
+            sched_event(clk, &ta->pvr2_trans_complete_int_event);
         }
         break;
     case DISPLAY_LIST_TRANS_MOD:
         if (!ta->pvr2_trans_mod_complete_int_event_scheduled) {
             ta->pvr2_trans_mod_complete_int_event_scheduled = true;
             ta->pvr2_trans_mod_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &ta->pvr2_trans_mod_complete_int_event);
+            sched_event(clk, &ta->pvr2_trans_mod_complete_int_event);
         }
         break;
     case DISPLAY_LIST_PUNCH_THROUGH:
         if (!ta->pvr2_pt_complete_int_event_scheduled) {
             ta->pvr2_pt_complete_int_event_scheduled = true;
             ta->pvr2_pt_complete_int_event.when = int_when;
-            sched_event(pvr2_clk, &ta->pvr2_pt_complete_int_event);
+            sched_event(clk, &ta->pvr2_pt_complete_int_event);
         }
         break;
     default:
@@ -1528,10 +1529,11 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     render_frame_init(pvr2);
 
     if (!ta->pvr2_render_complete_int_event_scheduled) {
+        struct dc_clock *clk = pvr2->clk;
         ta->pvr2_render_complete_int_event_scheduled = true;
-        ta->pvr2_render_complete_int_event.when = clock_cycle_stamp(pvr2_clk) +
+        ta->pvr2_render_complete_int_event.when = clock_cycle_stamp(clk) +
             PVR2_RENDER_COMPLETE_INT_DELAY;
-        sched_event(pvr2_clk, &ta->pvr2_render_complete_int_event);
+        sched_event(clk, &ta->pvr2_render_complete_int_event);
     }
 }
 

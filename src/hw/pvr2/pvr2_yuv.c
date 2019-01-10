@@ -56,12 +56,13 @@ pvr2_yuv_complete_int_event_handler(struct SchedEvent *event) {
 
 static void pvr2_yuv_schedule_int(struct pvr2 *pvr2) {
     struct pvr2_yuv *yuv = &pvr2->yuv;
+    struct dc_clock *clk = pvr2->clk;
     if (!yuv->yuv_complete_event_scheduled) {
         dc_cycle_stamp_t int_when =
-            clock_cycle_stamp(pvr2_clk) + PVR2_YUV_COMPLETE_INT_DELAY;
+            clock_cycle_stamp(clk) + PVR2_YUV_COMPLETE_INT_DELAY;
         yuv->yuv_complete_event_scheduled = true;
         yuv->pvr2_yuv_complete_int_event.when = int_when;
-        sched_event(pvr2_clk, &yuv->pvr2_yuv_complete_int_event);
+        sched_event(clk, &yuv->pvr2_yuv_complete_int_event);
     }
 }
 

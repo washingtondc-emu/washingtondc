@@ -50,6 +50,4 @@ struct pvr2 {
 void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk);
 void pvr2_cleanup(struct pvr2 *pvr2);
 
-extern struct dc_clock *pvr2_clk;
-
 #endif

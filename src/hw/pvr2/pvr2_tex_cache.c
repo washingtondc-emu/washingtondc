@@ -334,7 +334,7 @@ void pvr2_tex_cache_notify_write(struct pvr2 *pvr2,
     uint32_t addr_last = addr_first + (len - 1);
     unsigned page_first = addr_first / PVR2_TEX_PAGE_SIZE;
     unsigned page_last = addr_last / PVR2_TEX_PAGE_SIZE;
-    dc_cycle_stamp_t time = clock_cycle_stamp(pvr2_clk);
+    dc_cycle_stamp_t time = clock_cycle_stamp(pvr2->clk);
     struct pvr2_tex_cache *cache = &pvr2->tex_cache;
     dc_cycle_stamp_t *page_stamps = cache->page_stamps;
 
@@ -835,7 +835,7 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
             }
 
             tex_in->state = PVR2_TEX_READY;
-            tex_in->last_update = clock_cycle_stamp(pvr2_clk);
+            tex_in->last_update = clock_cycle_stamp(pvr2->clk);
         }
     }
 }

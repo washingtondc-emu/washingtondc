@@ -31,13 +31,10 @@
 
 #include "pvr2.h"
 
-struct dc_clock *pvr2_clk;
-
 void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk) {
     memset(pvr2, 0, sizeof(*pvr2));
 
     pvr2->clk = clk;
-    pvr2_clk = clk;
     pvr2_reg_init(pvr2);
     spg_init(pvr2);
     pvr2_tex_cache_init(pvr2);
