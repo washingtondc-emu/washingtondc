@@ -608,6 +608,8 @@ static char const *gfx_tex_fmt_name(enum gfx_tex_fmt fmt) {
     }
 }
 
+extern struct pvr2 dc_pvr2;//TODO: delete this
+
 static int cmd_tex_info(int argc, char **argv) {
     unsigned first_tex_no, last_tex_no, tex_no;
     bool print_missing = true;
@@ -632,7 +634,7 @@ static int cmd_tex_info(int argc, char **argv) {
 
     for (tex_no = first_tex_no; tex_no <= last_tex_no; tex_no++) {
         struct pvr2_tex_meta meta;
-        if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
+        if (pvr2_tex_get_meta(&dc_pvr2, &meta, tex_no) == 0) {
             cons_printf("texture %u:\n", tex_no);
             cons_printf("\tdimensions: (%u, %u)\n",
                         1 << meta.w_shift, 1 << meta.h_shift);
@@ -671,7 +673,7 @@ static int cmd_tex_enum(int argc, char **argv) {
 
     for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
         struct pvr2_tex_meta meta;
-        if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
+        if (pvr2_tex_get_meta(&dc_pvr2, &meta, tex_no) == 0) {
             cons_printf("%s%u", did_print ? ", " : "", tex_no);
             did_print = true;
         }
@@ -684,8 +686,6 @@ static int cmd_tex_enum(int argc, char **argv) {
 
     return 0;
 }
-
-extern struct pvr2 dc_pvr2;//TODO: delete this
 
 static int cmd_tex_dump(int argc, char **argv) {
     unsigned tex_no;
@@ -701,7 +701,7 @@ static int cmd_tex_dump(int argc, char **argv) {
 
     struct pvr2_tex_meta meta;
 
-    if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
+    if (pvr2_tex_get_meta(&dc_pvr2, &meta, tex_no) == 0) {
         void *tex_dat;
         size_t n_bytes;
         pvr2_tex_cache_read(&dc_pvr2, &tex_dat, &n_bytes, &meta);
@@ -739,7 +739,7 @@ static int cmd_tex_dump_all(int argc, char **argv) {
 
     for (tex_no = 0; tex_no < PVR2_TEX_CACHE_SIZE; tex_no++) {
         struct pvr2_tex_meta meta;
-        if (pvr2_tex_get_meta(&meta, tex_no) == 0) {
+        if (pvr2_tex_get_meta(&dc_pvr2, &meta, tex_no) == 0) {
             void *tex_dat;
             size_t n_bytes;
             pvr2_tex_cache_read(&dc_pvr2, &tex_dat, &n_bytes, &meta);

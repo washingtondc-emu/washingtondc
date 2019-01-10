@@ -1202,7 +1202,7 @@ static void copy_to_tex_mem(struct pvr2 *pvr2, void const *in,
      * texture in the cache.
      */
     if (tex_mem_ptr == pvr2->mem.tex64)
-        pvr2_tex_cache_notify_write(offs + ADDR_TEX64_FIRST, len);
+        pvr2_tex_cache_notify_write(pvr2, offs + ADDR_TEX64_FIRST, len);
 }
 
 static int

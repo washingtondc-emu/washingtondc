@@ -272,7 +272,7 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
             LOG_DBG("<unknown %u>\n", (unsigned)val);
         }
 
-        pvr2_tex_cache_notify_palette_tp_change();
+        pvr2_tex_cache_notify_palette_tp_change(pvr2);
         break;
     case PVR2_TA_VERTBUF_START:
         reg_backing[PVR2_TA_VERTBUF_START] = val & ~3;
@@ -315,7 +315,8 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
                        (unsigned)reg_backing[idx], idx);
         } else if (idx >= PVR2_PAL_RAM_FIRST && idx <= PVR2_PAL_RAM_LAST) {
             reg_backing[idx] = val;
-            pvr2_tex_cache_notify_palette_write(idx * 4 + ADDR_PVR2_FIRST, 4);
+            pvr2_tex_cache_notify_palette_write(pvr2,
+                                                idx * 4 + ADDR_PVR2_FIRST, 4);
         } else {
             error_set_index(idx);
             error_set_feature("writing to an unknown PVR2 register");

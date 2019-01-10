@@ -31,6 +31,7 @@
 #include "gfx/gfx_tex_cache.h"
 #include "pvr2_ta.h"
 #include "dc_sched.h"
+#include "mem_areas.h"
 
 #define PVR2_TEX_CACHE_SIZE GFX_TEX_CACHE_SIZE
 #define PVR2_TEX_CACHE_MASK GFX_TEX_CACHE_MASK
@@ -102,6 +103,25 @@ struct pvr2_tex {
 };
 
 /*
+ * For the purposes of texture cache invalidation, we divide texture memory
+ * into a number of distinct pages.  When a texture is updated, we remember the
+ * time-stamp at which that update happened.  When texture-memory is written to,
+ * we set the timestamp of that page to the current timestamp.  When a texture
+ * is used for rendering, we update it if its timestamp is behind the timestamps
+ * of any of the pages it references.
+ *
+ * This macro defines the page size in bytes.  It must be a power of two.
+ */
+#define PVR2_TEX_PAGE_SIZE 512
+#define PVR2_TEX_MEM_LEN (ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1)
+#define PVR2_TEX_N_PAGES (PVR2_TEX_MEM_LEN / PVR2_TEX_PAGE_SIZE)
+
+struct pvr2_tex_cache {
+    dc_cycle_stamp_t page_stamps[PVR2_TEX_N_PAGES];
+    struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
+};
+
+/*
  * insert the given texture into the cache.
  * pal_addr is only used for paletted textures
  */
@@ -123,12 +143,16 @@ struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
                                      bool vq_compression, bool mipmap,
                                      bool stride_sel);
 
-void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len);
+void
+pvr2_tex_cache_notify_write(struct pvr2 *pvr2,
+                            uint32_t addr_first, uint32_t len);
 
-void pvr2_tex_cache_notify_palette_write(uint32_t addr_first, uint32_t len);
-void pvr2_tex_cache_notify_palette_tp_change(void);
+void
+pvr2_tex_cache_notify_palette_write(struct pvr2 *pvr2,
+                                    uint32_t addr_first, uint32_t len);
+void pvr2_tex_cache_notify_palette_tp_change(struct pvr2 *pvr2);
 
-int pvr2_tex_cache_get_idx(struct pvr2_tex const *tex);
+int pvr2_tex_cache_get_idx(struct pvr2 *pvr2, struct pvr2_tex const *tex);
 
 // this function sends the texture cache over to gfx by way of the gfx_il
 void pvr2_tex_cache_xmit(struct pvr2 *pvr2);
@@ -138,13 +162,14 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2);
  * -1 if the slot indicated by tex_idx points to an invalid texture; else it
  * will return 0.
  */
-int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx);
+int pvr2_tex_get_meta(struct pvr2 *pvr2,
+                      struct pvr2_tex_meta *meta, unsigned tex_idx);
 
 void pvr2_tex_cache_read(struct pvr2 *pvr2,
                          void **tex_dat_out, size_t *n_bytes_out,
                          struct pvr2_tex_meta const *meta);
 
-void pvr2_tex_cache_init(void);
-void pvr2_tex_cache_cleanup(void);
+void pvr2_tex_cache_init(struct pvr2 *pvr2);
+void pvr2_tex_cache_cleanup(struct pvr2 *pvr2);
 
 #endif

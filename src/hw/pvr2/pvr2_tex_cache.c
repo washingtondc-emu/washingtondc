@@ -40,22 +40,6 @@
 
 #include "pvr2_tex_cache.h"
 
-/*
- * For the purposes of texture cache invalidation, we divide texture memory
- * into a number of distinct pages.  When a texture is updated, we remember the
- * time-stamp at which that update happened.  When texture-memory is written to,
- * we set the timestamp of that page to the current timestamp.  When a texture
- * is used for rendering, we update it if its timestamp is behind the timestamps
- * of any of the pages it references.
- *
- * This macro defines the page size in bytes.  It must be a power of two.
- */
-#define PVR2_TEX_PAGE_SIZE 512
-#define PVR2_TEX_MEM_LEN (ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1)
-#define PVR2_TEX_N_PAGES (PVR2_TEX_MEM_LEN / PVR2_TEX_PAGE_SIZE)
-
-static dc_cycle_stamp_t page_stamps[PVR2_TEX_N_PAGES];
-
 static DEF_ERROR_INT_ATTR(tex_fmt);
 
 #define PVR2_CODE_BOOK_ENTRY_SIZE (4 * sizeof(uint16_t))
@@ -76,20 +60,18 @@ unsigned static const pixel_sizes[TEX_CTRL_PIX_FMT_COUNT] = {
     [TEX_CTRL_PIX_FMT_INVALID]   = 0
 };
 
-static struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
-
 // byte offsets for mipmaps for 4bpp and 8bpp paletted textures
-static unsigned mipmap_byte_offset_palette[11] = {
+static unsigned const mipmap_byte_offset_palette[11] = {
     0x3, 0x4, 0x8, 0x18, 0x58, 0x158, 0x558, 0x1558, 0x5558, 0x15558, 0x55558
 };
 
 // byte offsets for mipmaps for VQ textures
-static unsigned mipmap_byte_offset_vq[11] = {
+static unsigned const mipmap_byte_offset_vq[11] = {
     0x0, 0x1, 0x2, 0x6, 0x16, 0x56, 0x156, 0x556, 0x1556, 0x5556, 0x15556
 };
 
 // byte offsets for mipmaps for "normal" textures
-static unsigned mipmap_byte_offset_norm[11] = {
+static unsigned const mipmap_byte_offset_norm[11] = {
     0x6, 0x8, 0x10, 0x30, 0xb0, 0x2b0, 0xab0, 0x2ab0, 0xaab0, 0x2aab0, 0xaaab0
 };
 
@@ -162,21 +144,25 @@ static unsigned tex_twiddle(unsigned x, unsigned y, unsigned w_shift, unsigned h
     return twid_idx;
 }
 
-void pvr2_tex_cache_init(void) {
+void pvr2_tex_cache_init(struct pvr2 *pvr2) {
+    struct pvr2_tex_cache *cache = &pvr2->tex_cache;
+
     unsigned idx;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
-        memset(tex_cache + idx, 0, sizeof(tex_cache[idx]));
-        tex_cache[idx].obj_no = -1;
+        memset(cache->tex_cache + idx, 0, sizeof(cache->tex_cache[idx]));
+        cache->tex_cache[idx].obj_no = -1;
     }
 
-    memset(page_stamps, 0, sizeof(page_stamps));
+    memset(cache->page_stamps, 0, sizeof(cache->page_stamps));
 }
 
-void pvr2_tex_cache_cleanup(void) {
+void pvr2_tex_cache_cleanup(struct pvr2 *pvr2) {
+    struct pvr2_tex_cache *cache = &pvr2->tex_cache;
+
     unsigned idx;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++)
-        if (tex_cache[idx].obj_no >= 0)
-            pvr2_free_gfx_obj(tex_cache[idx].obj_no);
+        if (cache->tex_cache[idx].obj_no >= 0)
+            pvr2_free_gfx_obj(cache->tex_cache[idx].obj_no);
 }
 
 struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
@@ -190,6 +176,7 @@ struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
     bool pal_tex =
         tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
         tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL;
+    struct pvr2_tex *tex_cache = pvr2->tex_cache.tex_cache;
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
@@ -228,7 +215,7 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
 #endif
 
     unsigned idx;// = addr & PVR2_TEX_CACHE_MASK;
-    /* struct pvr2_tex *tex = tex_cache + idx; */
+    struct pvr2_tex *tex_cache = pvr2->tex_cache.tex_cache;
     struct pvr2_tex *tex, *oldest_tex = NULL;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
@@ -332,7 +319,8 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
     return tex;
 }
 
-void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
+void pvr2_tex_cache_notify_write(struct pvr2 *pvr2,
+                                 uint32_t addr_first, uint32_t len) {
 #ifdef INVARIANTS
     uint32_t addr_last_abs = addr_first + (len - 1);
     if (addr_first < ADDR_TEX64_FIRST || addr_first > ADDR_TEX64_LAST ||
@@ -347,13 +335,17 @@ void pvr2_tex_cache_notify_write(uint32_t addr_first, uint32_t len) {
     unsigned page_first = addr_first / PVR2_TEX_PAGE_SIZE;
     unsigned page_last = addr_last / PVR2_TEX_PAGE_SIZE;
     dc_cycle_stamp_t time = clock_cycle_stamp(pvr2_clk);
+    struct pvr2_tex_cache *cache = &pvr2->tex_cache;
+    dc_cycle_stamp_t *page_stamps = cache->page_stamps;
 
     unsigned page_no;
     for (page_no = page_first; page_no <= page_last; page_no++)
         page_stamps[page_no] = time;
 }
 
-void pvr2_tex_cache_notify_palette_write(uint32_t addr_first, uint32_t len) {
+void
+pvr2_tex_cache_notify_palette_write(struct pvr2 *pvr2,
+                                    uint32_t addr_first, uint32_t len) {
     /*
      * TODO: all paletted textures will be invalidated whenever there is a
      * write to the PVR2's palette memory.  Obviously this is suboptimal
@@ -361,11 +353,12 @@ void pvr2_tex_cache_notify_palette_write(uint32_t addr_first, uint32_t len) {
      * palette memory which is being written to, but I'm keeping it this way
      * for now because it is simpler.
      */
-    pvr2_tex_cache_notify_palette_tp_change();
+    pvr2_tex_cache_notify_palette_tp_change(pvr2);
 }
 
-void pvr2_tex_cache_notify_palette_tp_change(void) {
+void pvr2_tex_cache_notify_palette_tp_change(struct pvr2 *pvr2) {
     unsigned idx;
+    struct pvr2_tex *tex_cache = pvr2->tex_cache.tex_cache;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex = tex_cache + idx;
         if (tex->state == PVR2_TEX_READY &&
@@ -730,6 +723,9 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
     unsigned idx;
     unsigned cur_frame_stamp = get_cur_frame_stamp(pvr2);
     struct gfx_il_inst cmd;
+    struct pvr2_tex_cache *cache = &pvr2->tex_cache;
+    dc_cycle_stamp_t *page_stamps = cache->page_stamps;
+    struct pvr2_tex *tex_cache = pvr2->tex_cache.tex_cache;
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex_in = tex_cache + idx;
@@ -844,12 +840,13 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
     }
 }
 
-int pvr2_tex_cache_get_idx(struct pvr2_tex const *tex) {
-    return tex - tex_cache;
+int pvr2_tex_cache_get_idx(struct pvr2 *pvr2, struct pvr2_tex const *tex) {
+    return tex - pvr2->tex_cache.tex_cache;
 }
 
-int pvr2_tex_get_meta(struct pvr2_tex_meta *meta, unsigned tex_idx) {
-    struct pvr2_tex const *tex_in = tex_cache + tex_idx;
+int pvr2_tex_get_meta(struct pvr2 *pvr2,
+                      struct pvr2_tex_meta *meta, unsigned tex_idx) {
+    struct pvr2_tex const *tex_in = pvr2->tex_cache.tex_cache + tex_idx;
     if (pvr2_tex_valid(tex_in->state)) {
         memcpy(meta, &tex_in->meta, sizeof(struct pvr2_tex_meta));
         return 0;

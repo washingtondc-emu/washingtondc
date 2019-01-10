@@ -520,7 +520,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
                     "the texture cache\n", hdr->tex_addr);
             ta->hdr.tex_enable = false;
         } else {
-            ta->tex_idx = pvr2_tex_cache_get_idx(ent);
+            ta->tex_idx = pvr2_tex_cache_get_idx(pvr2, ent);
         }
     } else {
         PVR2_TRACE("textures are NOT enabled\n");

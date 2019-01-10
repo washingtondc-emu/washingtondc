@@ -218,7 +218,7 @@ void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     }
 
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_cache_notify_write(addr, sizeof(val));
+    pvr2_tex_cache_notify_write(pvr2, addr, sizeof(val));
 
     ((uint8_t*)pvr2->mem.tex64)[addr - ADDR_TEX64_FIRST] = val;
 }
@@ -259,7 +259,7 @@ void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     }
 
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_cache_notify_write(addr, sizeof(val));
+    pvr2_tex_cache_notify_write(pvr2, addr, sizeof(val));
 
     ((uint16_t*)pvr2->mem.tex64)[(addr - ADDR_TEX64_FIRST) / 2] = val;
 }
@@ -300,7 +300,7 @@ void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     }
 
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_cache_notify_write(addr, sizeof(val));
+    pvr2_tex_cache_notify_write(pvr2, addr, sizeof(val));
 
     ((uint32_t*)pvr2->mem.tex64)[(addr - ADDR_TEX64_FIRST) / 4] = val;
 }
@@ -337,7 +337,7 @@ void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt) {
     }
 
     pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_cache_notify_write(addr, sizeof(val));
+    pvr2_tex_cache_notify_write(pvr2, addr, sizeof(val));
 
     ((double*)pvr2->mem.tex64)[(addr - ADDR_TEX64_FIRST) / sizeof(val)] = val;
 }
