@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,8 +25,14 @@
 
 #include "pvr2_gfx_obj.h"
 
+/*
+ * The purpose of this file is to manage gfx_obj allocation from the emu-side
+ * of things.  Because of this, it stores state as global static rather than
+ * storing it in struct pvr2.  If there were to be more than one PVR2 on the
+ * same system (as is the case with NAOMI 2) then they'd be allocating gfx_objs
+ * from the same pool because there's only one gfx backend.
+ */
 static bool states[GFX_OBJ_COUNT];
-
 static unsigned alloc_count, free_count;
 
 static DEF_ERROR_U32_ATTR(alloc_count)
