@@ -96,7 +96,7 @@ static struct arm7 arm7;
 static struct memory_map arm7_mem_map;
 static struct aica aica;
 static struct gdrom_ctxt gdrom;
-struct pvr2 dc_pvr2;
+static struct pvr2 dc_pvr2;
 
 static atomic_bool is_running = ATOMIC_VAR_INIT(false);
 static atomic_bool end_of_frame = ATOMIC_VAR_INIT(false);
@@ -946,6 +946,15 @@ void dc_end_frame(void) {
 void dc_toggle_overlay(void) {
     show_overlay = !show_overlay;
     overlay_show(show_overlay);
+}
+
+int dc_tex_get_meta(struct pvr2_tex_meta *out, unsigned tex_no) {
+    return pvr2_tex_get_meta(&dc_pvr2, out, tex_no);
+}
+
+void dc_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
+                       struct pvr2_tex_meta const *meta) {
+    pvr2_tex_cache_read(&dc_pvr2, tex_dat_out, n_bytes_out, meta);
 }
 
 static void construct_arm7_mem_map(struct memory_map *map) {
