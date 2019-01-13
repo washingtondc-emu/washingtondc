@@ -898,12 +898,12 @@ static void input_poly_fifo(struct pvr2 *pvr2, uint8_t byte) {
     }
 }
 
-static void dump_fifo(void) {
+static void dump_fifo(struct pvr2 *pvr2) {
 #ifdef ENABLE_LOG_DEBUG
     unsigned idx;
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta->ta_fifo;
-    LOG_DBG("Dumping FIFO: %u bytes\n", ta->ta_fifo_byte_count);
-    for (idx = 0; idx < ta->ta_fifo_byte_count / 4; idx++)
+    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo;
+    LOG_DBG("Dumping FIFO: %u bytes\n", pvr2->ta.ta_fifo_byte_count);
+    for (idx = 0; idx < pvr2->ta.ta_fifo_byte_count / 4; idx++)
         LOG_DBG("\t0x%08x\n", (unsigned)ta_fifo32[idx]);
 #endif
 }
@@ -926,7 +926,7 @@ static int decode_packet(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         return decode_user_clip(pvr2, pkt);
     default:
         LOG_ERROR("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
-        dump_fifo();
+        dump_fifo(pvr2);
         error_set_feature("PVR2 command type");
         error_set_ta_fifo_cmd(cmd_tp);
         /* error_set_display_list_index(poly_state.current_list); */
