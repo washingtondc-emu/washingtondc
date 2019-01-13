@@ -31,6 +31,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "sound/sound.h"
 #include "log.h"
 #include "dc_sched.h"
 #include "error.h"
@@ -1495,6 +1496,15 @@ static void aica_process_sample(struct aica *aica) {
                 chan->sample_pos = chan->loop_end;
                 chan->loop_end_signaled = true;
             }
+        }
+
+        if (chan_no == 0 && chan->fmt == AICA_FMT_16_BIT_SIGNED) {
+            /* printf("loop goes from 0x%04x to 0x%04x\n", (unsigned)chan->loop_start, (unsigned)chan->loop_end); */
+            /* printf("sample_pos 0x%04x\n", (unsigned)chan->sample_pos); */
+
+            uint16_t sample = aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
+            sound_submit_sample(sample);
+            chan->addr_cur += 2;
         }
 
         chan->sample_no++;

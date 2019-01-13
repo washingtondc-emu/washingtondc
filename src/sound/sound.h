@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,11 @@
 #ifndef SOUND_H_
 #define SOUND_H_
 
+#include <stdint.h>
+
 void sound_init(void);
 void sound_cleanup(void);
+
+void sound_submit_sample(int16_t sample);
 
 #endif

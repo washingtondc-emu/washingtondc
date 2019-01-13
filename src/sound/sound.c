@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
  ******************************************************************************/
 
 #include <math.h>
+#include <stdbool.h>
 
 #include <portaudio.h>
 
@@ -38,7 +39,13 @@ static int snd_cb(const void *input, void *output,
                   PaStreamCallbackFlags flags,
                   void *argp);
 
+static const bool dump_sound_to_file = false;
+
+static FILE *outfile;
+
 void sound_init(void) {
+    if (dump_sound_to_file)
+        outfile = fopen("snd.raw", "w");
     int err;
     if ((err = Pa_Initialize()) != paNoError) {
         error_set_portaudio_error(err);
@@ -69,6 +76,10 @@ void sound_cleanup(void) {
         error_set_portaudio_error_text(Pa_GetErrorText(err));
         RAISE_ERROR(ERROR_EXT_FAILURE);
     }
+    if (outfile) {
+        fclose(outfile);
+        outfile = NULL;
+    }
 }
 
 /*
@@ -93,4 +104,9 @@ static int snd_cb(const void *input, void *output,
         *output_as_float++ = sample;
     }
     return 0;
+}
+
+void sound_submit_sample(int16_t sample) {
+    if (outfile)
+        fwrite(&sample, sizeof(sample), 1, outfile);
 }
