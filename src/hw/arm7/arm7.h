@@ -162,22 +162,16 @@ typedef uint32_t arm7_inst;
 typedef bool(*arm7_irq_fn)(void *dat);
 
 struct arm7 {
-    struct dc_clock *clk;
-
-    uint32_t reg[ARM7_REGISTER_COUNT];
-    struct memory_map *map;
-
     /*
      * For the sake of instruction-fetching, ARM7 disregards the memory_map and
      * goes straight here.  This is less modular than going to the memory_map
      * since it hardcodes for AICA's memory map but needs must.
      */
     struct aica_wave_mem *inst_mem;
+    struct dc_clock *clk;
+    struct memory_map *map;
 
-    bool enabled;
-
-    enum arm7_excp excp;
-    bool fiq_line;
+    uint32_t reg[ARM7_REGISTER_COUNT];
 
     /*
      * One oddity about ARM7 (compared to saner CPUs like x86 and SH4) is that
@@ -197,6 +191,13 @@ struct arm7 {
      */
     arm7_inst pipeline[2];
     uint32_t pipeline_pc[2];
+
+    enum arm7_excp excp;
+
+    bool enabled;
+
+    bool fiq_line;
+
     bool pipeline_full;
 };
 
