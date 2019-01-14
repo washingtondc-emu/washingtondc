@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include "code_block.h"
 #include "dreamcast.h"
 #include "hw/sh4/sh4_reg.h"
-#include "hw/sh4/sh4_disas.h"
+#include "hw/sh4/sh4_jit.h"
 
 #define DEFAULT_BLOCK_LEN 32
 #define BLOCK_GROW_LEN 1
@@ -72,10 +72,10 @@ il_code_block_compile(struct Sh4 *sh4,
                       struct il_code_block *block, addr32_t addr) {
     bool do_continue;
 
-    sh4_disas_new_block();
+    sh4_jit_new_block();
 
     do {
-        do_continue = sh4_disas_inst(sh4, block, addr);
+        do_continue = sh4_jit_compile_inst(sh4, block, addr);
         addr += 2;
     } while (do_continue);
 }

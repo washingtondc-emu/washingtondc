@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "sh4_disas.h"
+#include "sh4_jit.h"
 #include "types.h"
 
 struct Sh4;
@@ -222,7 +222,7 @@ struct InstOpcode {
     // opcode handler function
     opcode_func_t func;
 
-    sh4_disas_fn disas;
+    sh4_jit_fn disas;
 
     // if this is true, this inst cant be called from a delay slot
     bool pc_relative;
