@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,12 +25,12 @@
 #include "jit_il.h"
 
 void jit_fallback(struct il_code_block *block,
-                  void(*fallback_fn)(Sh4*,Sh4OpArgs), inst_t inst) {
+                  void(*fallback_fn)(Sh4*,sh4_inst_parm), sh4_inst_parm inst) {
     struct jit_inst op;
 
     op.op = JIT_OP_FALLBACK;
     op.immed.fallback.fallback_fn = fallback_fn;
-    op.immed.fallback.inst.inst = inst;
+    op.immed.fallback.inst = inst;
 
     il_code_block_push_inst(block, &op);
 }

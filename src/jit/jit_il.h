@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #ifndef JIT_IL_H_
 #define JIT_IL_H_
 
-// for union Sh4OpArgs
+// for sh4_inst_parm
 #include "hw/sh4/sh4_inst.h"
 
 #include "MemoryMap.h"
@@ -161,8 +161,8 @@ enum jit_opcode {
 };
 
 struct jit_fallback_immed {
-    void(*fallback_fn)(Sh4*,Sh4OpArgs);
-    Sh4OpArgs inst;
+    void(*fallback_fn)(Sh4*,sh4_inst_parm);
+    sh4_inst_parm inst;
 };
 
 struct jump_immed {
@@ -414,7 +414,7 @@ struct jit_inst {
 struct il_code_block;
 
 void jit_fallback(struct il_code_block *block,
-                  void(*fallback_fn)(Sh4*,Sh4OpArgs), inst_t inst);
+                  void(*fallback_fn)(Sh4*,sh4_inst_parm), sh4_inst_parm inst);
 void jit_jump(struct il_code_block *block, unsigned slot_no);
 void jit_jump_cond(struct il_code_block *block,
                    unsigned slot_no, unsigned jmp_addr_slot,

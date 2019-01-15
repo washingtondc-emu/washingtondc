@@ -186,7 +186,7 @@ sh4_jit_fallback(struct Sh4 *sh4, struct il_code_block *block,
 
     il_inst.op = JIT_OP_FALLBACK;
     il_inst.immed.fallback.fallback_fn = op->func;
-    il_inst.immed.fallback.inst.inst = inst;
+    il_inst.immed.fallback.inst = inst;
 
     il_code_block_push_inst(block, &il_inst);
 

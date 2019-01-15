@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -149,8 +149,7 @@ static inline inst_t sh4_read_inst(Sh4 *sh4) {
 
 static inline void
 sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
-    Sh4OpArgs oa;
-    oa.inst = inst;
+    sh4_inst_parm oa = inst;
 
     if (!(sh4->delayed_branch && op->pc_relative)) {
         opcode_func_t op_func = op->func;

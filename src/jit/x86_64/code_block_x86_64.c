@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -566,12 +566,12 @@ static void emit_stack_frame_close(void) {
 
 // JIT_OP_FALLBACK implementation
 void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
-    uint16_t inst_bin = inst->immed.fallback.inst.inst;
+    sh4_inst_parm inst_bin = inst->immed.fallback.inst;
 
     prefunc();
 
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, REG_ARG0);
-    x86asm_mov_imm16_reg(inst_bin, REG_ARG1);
+    x86asm_mov_imm32_reg32(inst_bin, REG_ARG1);
 
     ms_shadow_open();
     x86_64_align_stack();
