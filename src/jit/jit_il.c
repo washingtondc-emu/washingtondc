@@ -20,12 +20,13 @@
  *
  ******************************************************************************/
 
+#include "cpu.h"
 #include "code_block.h"
 
 #include "jit_il.h"
 
 void jit_fallback(struct il_code_block *block,
-                  void(*fallback_fn)(Sh4*,sh4_inst_parm), sh4_inst_parm inst) {
+                  void(*fallback_fn)(Sh4*,cpu_inst_param), cpu_inst_param inst) {
     struct jit_inst op;
 
     op.op = JIT_OP_FALLBACK;

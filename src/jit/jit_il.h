@@ -23,9 +23,8 @@
 #ifndef JIT_IL_H_
 #define JIT_IL_H_
 
-// for sh4_inst_parm
+#include "cpu.h"
 #include "hw/sh4/sh4_inst.h"
-
 #include "MemoryMap.h"
 
 /*
@@ -161,8 +160,8 @@ enum jit_opcode {
 };
 
 struct jit_fallback_immed {
-    void(*fallback_fn)(Sh4*,sh4_inst_parm);
-    sh4_inst_parm inst;
+    void(*fallback_fn)(Sh4*,cpu_inst_param);
+    cpu_inst_param inst;
 };
 
 struct jump_immed {
@@ -414,7 +413,7 @@ struct jit_inst {
 struct il_code_block;
 
 void jit_fallback(struct il_code_block *block,
-                  void(*fallback_fn)(Sh4*,sh4_inst_parm), sh4_inst_parm inst);
+                  void(*fallback_fn)(Sh4*,cpu_inst_param), cpu_inst_param inst);
 void jit_jump(struct il_code_block *block, unsigned slot_no);
 void jit_jump_cond(struct il_code_block *block,
                    unsigned slot_no, unsigned jmp_addr_slot,

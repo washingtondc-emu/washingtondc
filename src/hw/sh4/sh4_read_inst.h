@@ -28,6 +28,7 @@
  * and sh4_mem.c that I wanted to inline.
  */
 
+#include "cpu.h"
 #include "sh4.h"
 #include "sh4_excp.h"
 #include "dreamcast.h"
@@ -149,7 +150,7 @@ static inline inst_t sh4_read_inst(Sh4 *sh4) {
 
 static inline void
 sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
-    sh4_inst_parm oa = inst;
+    cpu_inst_param oa = inst;
 
     if (!(sh4->delayed_branch && op->pc_relative)) {
         opcode_func_t op_func = op->func;

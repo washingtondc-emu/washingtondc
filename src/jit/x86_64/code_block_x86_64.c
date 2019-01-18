@@ -38,6 +38,7 @@
 #include "native_mem.h"
 #include "abi.h"
 #include "config.h"
+#include "cpu.h"
 
 #include "code_block_x86_64.h"
 
@@ -566,7 +567,7 @@ static void emit_stack_frame_close(void) {
 
 // JIT_OP_FALLBACK implementation
 void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
-    sh4_inst_parm inst_bin = inst->immed.fallback.inst;
+    cpu_inst_param inst_bin = inst->immed.fallback.inst;
 
     prefunc();
 
