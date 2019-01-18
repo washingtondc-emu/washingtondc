@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -47,9 +47,9 @@ static struct memory_map_region *find_ram(struct memory_map *map) {
     return NULL;
 }
 
-void jit_sh4_mem_read_constaddr_32(struct Sh4 *sh4, struct il_code_block *block,
-                                   addr32_t addr, unsigned slot_no) {
-    struct memory_map_region *ram = find_ram(sh4->mem.map);
+void jit_mem_read_constaddr_32(struct memory_map *map, struct il_code_block *block,
+                               addr32_t addr, unsigned slot_no) {
+    struct memory_map_region *ram = find_ram(map);
 
     if (ram) {
         addr32_t addr_first = addr & ram->range_mask;
@@ -63,12 +63,12 @@ void jit_sh4_mem_read_constaddr_32(struct Sh4 *sh4, struct il_code_block *block,
         }
     }
 
-    jit_read_32_constaddr(block, sh4->mem.map, addr, slot_no);
+    jit_read_32_constaddr(block, map, addr, slot_no);
 }
 
-void jit_sh4_mem_read_constaddr_16(struct Sh4 *sh4, struct il_code_block *block,
-                                   addr32_t addr, unsigned slot_no) {
-    struct memory_map_region *ram = find_ram(sh4->mem.map);
+void jit_mem_read_constaddr_16(struct memory_map *map, struct il_code_block *block,
+                               addr32_t addr, unsigned slot_no) {
+    struct memory_map_region *ram = find_ram(map);
 
     if (ram) {
         addr32_t addr_first = addr & ram->range_mask;
@@ -82,5 +82,5 @@ void jit_sh4_mem_read_constaddr_16(struct Sh4 *sh4, struct il_code_block *block,
         }
     }
 
-    jit_read_16_constaddr(block, sh4->mem.map, addr, slot_no);
+    jit_read_16_constaddr(block, map, addr, slot_no);
 }

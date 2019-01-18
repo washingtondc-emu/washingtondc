@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,15 +25,15 @@
 
 #include "jit/code_block.h"
 #include "types.h"
-#include "hw/sh4/sh4.h"
+#include "MemoryMap.h"
 
 /*
  * this function can intelligently bypass the memory-mapping and go straight
  * to reading/writing from memory since the address is a constant.
  */
-void jit_sh4_mem_read_constaddr_32(struct Sh4 *sh4, struct il_code_block *block,
-                                   addr32_t addr, unsigned slot_no);
-void jit_sh4_mem_read_constaddr_16(struct Sh4 *sh4, struct il_code_block *block,
-                                   addr32_t addr, unsigned slot_no);
+void jit_mem_read_constaddr_32(struct memory_map *map, struct il_code_block *block,
+                               addr32_t addr, unsigned slot_no);
+void jit_mem_read_constaddr_16(struct memory_map *map, struct il_code_block *block,
+                               addr32_t addr, unsigned slot_no);
 
 #endif

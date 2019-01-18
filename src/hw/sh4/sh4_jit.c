@@ -498,7 +498,7 @@ sh4_jit_movw_a_disp_pc_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
     unsigned slot_no = reg_slot_noload(sh4, block, reg_no);
 
-    jit_sh4_mem_read_constaddr_16(sh4, block, addr, slot_no);
+    jit_mem_read_constaddr_16(sh4->mem.map, block, addr, slot_no);
 
     jit_sign_extend_16(block, slot_no);
 
@@ -514,7 +514,7 @@ sh4_jit_movl_a_disp_pc_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     addr32_t addr = disp * 4 + (pc & ~3) + 4;
 
     unsigned slot_no = reg_slot_noload(sh4, block, reg_no);
-    jit_sh4_mem_read_constaddr_32(sh4, block, addr, slot_no);
+    jit_mem_read_constaddr_32(sh4->mem.map, block, addr, slot_no);
 
     return true;
 }
