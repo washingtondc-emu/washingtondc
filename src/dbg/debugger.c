@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -132,7 +132,7 @@ static struct debug_context *get_ctx(void);
 
 static void frontend_attach(void);
 static void frontend_on_break(void);
-static void frontend_on_softbreak(inst_t inst, addr32_t addr);
+static void frontend_on_softbreak(cpu_inst_param inst, addr32_t addr);
 static void frontend_on_cleanup(void);
 static void frontend_run_once(void);
 
@@ -428,7 +428,7 @@ bool debug_is_r_watch(addr32_t addr, unsigned len) {
     return false;
 }
 
-void debug_on_softbreak(inst_t inst, addr32_t pc) {
+void debug_on_softbreak(cpu_inst_param inst, addr32_t pc) {
     DBG_TRACE("softbreak at 0x%08x\n", (unsigned)pc);
     dbg_state_transition(DEBUG_STATE_BREAK);
     dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
@@ -483,7 +483,7 @@ static void frontend_on_write_watchpoint(addr32_t addr) {
 }
 #endif
 
-static void frontend_on_softbreak(inst_t inst, addr32_t addr) {
+static void frontend_on_softbreak(cpu_inst_param inst, addr32_t addr) {
     if (dbg.frontend->on_softbreak)
         dbg.frontend->on_softbreak(dbg.cur_ctx, inst, addr, dbg.frontend->arg);
 }

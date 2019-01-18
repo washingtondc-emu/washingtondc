@@ -85,7 +85,7 @@ static inline uint16_t inst_imm4(int inst) {
 static void sh4_fr_invalid(Sh4 *sh4, unsigned dst_reg);
 #endif
 
-static InstOpcode const* sh4_decode_inst_slow(inst_t inst);
+static InstOpcode const* sh4_decode_inst_slow(cpu_inst_param inst);
 
 #ifdef INVARIANTS
 #define CHECK_INST(inst, mask, val) \
@@ -1058,13 +1058,13 @@ static InstOpcode invalid_opcode = {
 InstOpcode const *sh4_inst_lut[1 << 16];
 
 void sh4_init_inst_lut() {
-    unsigned inst;
+    cpu_inst_param inst;
     for (inst = 0; inst < (1 << 16); inst++)
-        sh4_inst_lut[inst] = sh4_decode_inst_slow((inst_t)inst);
+        sh4_inst_lut[inst] = sh4_decode_inst_slow(inst);
 }
 
 // used to initialize the sh4_inst_lut
-static InstOpcode const* sh4_decode_inst_slow(inst_t inst) {
+static InstOpcode const* sh4_decode_inst_slow(cpu_inst_param inst) {
     InstOpcode const *op = opcode_list;
 
     while (op->func) {

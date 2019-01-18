@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 
 #include <stdbool.h>
 
+#include "cpu.h"
 #include "types.h"
 #include "hw/sh4/sh4_reg.h"
 #include "MemoryMap.h"
@@ -170,7 +171,7 @@ struct debug_frontend {
      * opcode or it hits a TRAPA.  This generally means that we stumbled
      * across a softbreak.
      */
-    void(*on_softbreak)(enum dbg_context_id, inst_t, addr32_t, void*);
+    void(*on_softbreak)(enum dbg_context_id, cpu_inst_param, addr32_t, void*);
 
     void(*on_cleanup)(void*);
 
@@ -203,7 +204,7 @@ void debug_attach(struct debug_frontend const *frontend);
  * this function is called from the emulation thread when it encounters a TRAPA
  * instruction.  It cannot safely be called from any other thread.
  */
-void debug_on_softbreak(inst_t inst, addr32_t pc);
+void debug_on_softbreak(cpu_inst_param inst, addr32_t pc);
 
 // these functions return 0 on success, nonzer on failure
 int debug_add_break(enum dbg_context_id id, addr32_t addr);

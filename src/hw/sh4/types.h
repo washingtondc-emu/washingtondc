@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016, 2017 snickerbockers
+ *    Copyright (C) 2016, 2017, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -28,8 +28,6 @@
 
 typedef uint32_t reg32_t;
 typedef uint32_t addr32_t;
-typedef uint32_t page_no_t;
-typedef uint16_t inst_t; // instruction
 
 static_assert(sizeof(reg32_t) == sizeof(float),
               "cannot fit a float into a reg32_t");

@@ -606,7 +606,7 @@ static bool dreamcast_check_debugger(void) {
 
 static bool run_to_next_sh4_event_debugger(void *ctxt) {
     Sh4 *sh4 = (void*)ctxt;
-    inst_t inst;
+    cpu_inst_param inst;
     InstOpcode const *op;
     unsigned inst_cycles;
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
@@ -660,7 +660,7 @@ static bool run_to_next_sh4_event_debugger(void *ctxt) {
 #endif
 
 static bool run_to_next_sh4_event(void *ctxt) {
-    inst_t inst;
+    cpu_inst_param inst;
     InstOpcode const *op;
     unsigned inst_cycles;
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);

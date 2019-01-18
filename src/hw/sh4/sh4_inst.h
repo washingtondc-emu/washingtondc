@@ -40,7 +40,7 @@ typedef struct Sh4 Sh4;
  * is being used.  For now it only handles TRAPA, but it may need to handle
  * SLEEP as well.
  */
-static inline bool sh4_inst_increments_pc(inst_t inst) {
+static inline bool sh4_inst_increments_pc(cpu_inst_param inst) {
     // TRAPA
     return (inst & 0xff00) != 0xc300;
 }
@@ -122,8 +122,8 @@ struct InstOpcode {
 
     // instructions are matched to this opcode
     // by anding with mask and checking for equality with val
-    inst_t mask;
-    inst_t val;
+    cpu_inst_param mask;
+    cpu_inst_param val;
 };
 
 typedef struct InstOpcode InstOpcode;

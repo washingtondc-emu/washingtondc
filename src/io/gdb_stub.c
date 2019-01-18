@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#include "cpu.h"
 #include "hw/sh4/sh4_reg.h"
 #include "dreamcast.h"
 #include "io/io_thread.h"
@@ -113,7 +114,7 @@ static void
 gdb_callback_write_watchpoint(enum dbg_context_id ctx,
                               addr32_t addr, void *arg);
 static void
-gdb_callback_softbreak(enum dbg_context_id id, inst_t inst,
+gdb_callback_softbreak(enum dbg_context_id id, cpu_inst_param inst,
                        addr32_t addr, void *arg);
 static void gdb_callback_run_once(void *argptr);
 static int decode_hex(char ch);
@@ -340,7 +341,7 @@ static void gdb_callback_break(enum dbg_context_id ctx, void *arg) {
     event_active(gdb_inform_break_event, 0, 0);
 }
 
-static void gdb_callback_softbreak(enum dbg_context_id ctx, inst_t inst,
+static void gdb_callback_softbreak(enum dbg_context_id ctx, cpu_inst_param inst,
                                    addr32_t addr, void *arg) {
     gdb_stub_lock();
     stub.break_addr = addr;

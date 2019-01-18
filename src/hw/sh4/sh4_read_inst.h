@@ -97,7 +97,7 @@ static inline void sh4_check_interrupts(Sh4 *sh4) {
         sh4_check_interrupts_no_delay_branch_check(sh4);
 }
 
-static inline inst_t sh4_do_read_inst(Sh4 *sh4, addr32_t addr) {
+static inline cpu_inst_param sh4_do_read_inst(Sh4 *sh4, addr32_t addr) {
     /*
      * XXX for the interpreter, this function is actually a pretty big
      * bottleneck.  The problem is that 99.999% of the time when we want to
@@ -122,7 +122,7 @@ static inline inst_t sh4_do_read_inst(Sh4 *sh4, addr32_t addr) {
     return memory_map_read_16(sh4->mem.map, addr);
 }
 
-static inline inst_t sh4_read_inst(Sh4 *sh4) {
+static inline cpu_inst_param sh4_read_inst(Sh4 *sh4) {
     return sh4_do_read_inst(sh4, sh4->reg[SH4_REG_PC]);
 #if 0
     /*
@@ -149,7 +149,7 @@ static inline inst_t sh4_read_inst(Sh4 *sh4) {
 }
 
 static inline void
-sh4_do_exec_inst(Sh4 *sh4, inst_t inst, InstOpcode const *op) {
+sh4_do_exec_inst(Sh4 *sh4, cpu_inst_param inst, InstOpcode const *op) {
     cpu_inst_param oa = inst;
 
     if (!(sh4->delayed_branch && op->pc_relative)) {
