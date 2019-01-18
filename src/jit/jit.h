@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ jit_compile_native(Sh4 *sh4, struct code_block_x86_64 *blk, uint32_t pc) {
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
-    code_block_x86_64_compile(blk, &il_blk);
+    code_block_x86_64_compile(sh4, blk, &il_blk);
     il_code_block_cleanup(&il_blk);
 }
 
@@ -51,7 +51,7 @@ jit_compile_intp(Sh4 *sh4, struct code_block_intp *blk, uint32_t pc) {
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
-    code_block_intp_compile(blk, &il_blk);
+    code_block_intp_compile(sh4, blk, &il_blk);
     il_code_block_cleanup(&il_blk);
 }
 

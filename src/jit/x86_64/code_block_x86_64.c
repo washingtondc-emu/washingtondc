@@ -566,12 +566,12 @@ static void emit_stack_frame_close(void) {
 }
 
 // JIT_OP_FALLBACK implementation
-void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_fallback(void *cpu, struct jit_inst const *inst) {
     cpu_inst_param inst_bin = inst->immed.fallback.inst;
 
     prefunc();
 
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, REG_ARG0);
+    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)cpu, REG_ARG0);
     x86asm_mov_imm32_reg32(inst_bin, REG_ARG1);
 
     ms_shadow_open();
@@ -584,7 +584,7 @@ void emit_fallback(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 // JIT_OP_JUMP implementation
-void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_jump(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.jump.slot_no;
 
     evict_register(REG_RET);
@@ -598,7 +598,7 @@ void emit_jump(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 // JIT_JUMP_COND implementation
-void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_jump_cond(void *cpu, struct jit_inst const *inst) {
     unsigned t_flag = inst->immed.jump_cond.t_flag ? 1 : 0;
     unsigned flag_slot = inst->immed.jump_cond.slot_no;
     unsigned jmp_addr_slot = inst->immed.jump_cond.jmp_addr_slot;
@@ -641,7 +641,7 @@ void emit_jump_cond(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 // JIT_SET_REG implementation
-void emit_set_slot(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_set_slot(void *cpu, struct jit_inst const *inst) {
     unsigned slot_idx = inst->immed.set_slot.slot_idx;
     uint32_t new_val = inst->immed.set_slot.new_val;
 
@@ -651,7 +651,9 @@ void emit_set_slot(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 // JIT_OP_RESTORE_SR implementation
-void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_restore_sr(void *cpu, struct jit_inst const *inst) {
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     void *sr_ptr = sh4->reg + SH4_REG_SR;
     void *ssr_ptr = sh4->reg + SH4_REG_SSR;
 
@@ -682,7 +684,7 @@ void emit_restore_sr(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 // JIT_OP_READ_16_CONSTADDR implementation
-void emit_read_16_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_read_16_constaddr(void *cpu, struct jit_inst const *inst) {
     addr32_t vaddr = inst->immed.read_16_constaddr.addr;
     unsigned slot_no = inst->immed.read_16_constaddr.slot_no;
     struct memory_map const *map = inst->immed.read_16_constaddr.map;
@@ -712,7 +714,7 @@ void emit_read_16_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 // JIT_OP_SIGN_EXTEND_16 implementation
-void emit_sign_extend_16(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_sign_extend_16(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.sign_extend_16.slot_no;
 
     grab_slot(slot_no);
@@ -724,7 +726,7 @@ void emit_sign_extend_16(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 // JIT_OP_READ_32_CONSTADDR implementation
-void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_read_32_constaddr(void *cpu, struct jit_inst const *inst) {
     addr32_t vaddr = inst->immed.read_32_constaddr.addr;
     unsigned slot_no = inst->immed.read_32_constaddr.slot_no;
     struct memory_map const *map = inst->immed.read_32_constaddr.map;
@@ -755,7 +757,7 @@ void emit_read_32_constaddr(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 // JIT_OP_READ_32_SLOT implementation
-void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_read_32_slot(void *cpu, struct jit_inst const *inst) {
     unsigned dst_slot = inst->immed.read_32_slot.dst_slot;
     unsigned addr_slot = inst->immed.read_32_slot.addr_slot;
     struct memory_map const *map = inst->immed.read_32_slot.map;
@@ -787,7 +789,7 @@ void emit_read_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 // JIT_OP_WRITE_32_SLOT implementation
-void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_write_32_slot(void *cpu, struct jit_inst const *inst) {
     unsigned src_slot = inst->immed.write_32_slot.src_slot;
     unsigned addr_slot = inst->immed.write_32_slot.addr_slot;
     struct memory_map const *map = inst->immed.write_32_slot.map;
@@ -822,7 +824,7 @@ void emit_write_32_slot(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_load_slot16(Sh4 *sh4, struct jit_inst const* inst) {
+emit_load_slot16(void *cpu, struct jit_inst const* inst) {
     unsigned slot_no = inst->immed.load_slot16.slot_no;
     void const *src_ptr = inst->immed.load_slot16.src;
 
@@ -837,7 +839,7 @@ emit_load_slot16(Sh4 *sh4, struct jit_inst const* inst) {
 }
 
 static void
-emit_load_slot(Sh4 *sh4, struct jit_inst const* inst) {
+emit_load_slot(void *cpu, struct jit_inst const* inst) {
     unsigned slot_no = inst->immed.load_slot.slot_no;
     void const *src_ptr = inst->immed.load_slot.src;
 
@@ -852,7 +854,7 @@ emit_load_slot(Sh4 *sh4, struct jit_inst const* inst) {
 }
 
 static void
-emit_store_slot(Sh4 *sh4, struct jit_inst const *inst) {
+emit_store_slot(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.store_slot.slot_no;
     void const *dst_ptr = inst->immed.store_slot.dst;
 
@@ -869,7 +871,7 @@ emit_store_slot(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_add(Sh4 *sh4, struct jit_inst const *inst) {
+emit_add(void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.add.slot_src;
     unsigned slot_dst = inst->immed.add.slot_dst;
 
@@ -885,7 +887,7 @@ emit_add(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_sub(Sh4 *sh4, struct jit_inst const *inst) {
+emit_sub(void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.add.slot_src;
     unsigned slot_dst = inst->immed.add.slot_dst;
 
@@ -901,7 +903,7 @@ emit_sub(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_add_const32(Sh4 *sh4, struct jit_inst const *inst) {
+emit_add_const32(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.add_const32.slot_dst;
     uint32_t const_val = inst->immed.add_const32.const32;
 
@@ -921,7 +923,7 @@ emit_add_const32(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_xor(Sh4 *sh4, struct jit_inst const *inst) {
+emit_xor(void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.xor.slot_src;
     unsigned slot_dst = inst->immed.xor.slot_dst;
 
@@ -937,7 +939,7 @@ emit_xor(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_mov(Sh4 *sh4, struct jit_inst const *inst) {
+emit_mov(void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.mov.slot_src;
     unsigned slot_dst = inst->immed.mov.slot_dst;
 
@@ -953,7 +955,7 @@ emit_mov(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_and(Sh4 *sh4, struct jit_inst const *inst) {
+emit_and(void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.and.slot_src;
     unsigned slot_dst = inst->immed.and.slot_dst;
 
@@ -969,7 +971,7 @@ emit_and(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_and_const32(Sh4 *sh4, struct jit_inst const *inst) {
+emit_and_const32(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.and_const32.slot_no;
     unsigned const32 = inst->immed.and_const32.const32;
 
@@ -981,7 +983,7 @@ emit_and_const32(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_or(Sh4 *sh4, struct jit_inst const *inst) {
+emit_or(void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.or.slot_src;
     unsigned slot_dst = inst->immed.or.slot_dst;
 
@@ -997,7 +999,7 @@ emit_or(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_or_const32(Sh4 *sh4, struct jit_inst const *inst) {
+emit_or_const32(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.or_const32.slot_no;
     unsigned const32 = inst->immed.or_const32.const32;
 
@@ -1009,7 +1011,7 @@ emit_or_const32(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_xor_const32(Sh4 *sh4, struct jit_inst const *inst) {
+emit_xor_const32(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.xor_const32.slot_no;
     unsigned const32 = inst->immed.xor_const32.const32;
 
@@ -1021,7 +1023,7 @@ emit_xor_const32(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_slot_to_bool(Sh4 *sh4, struct jit_inst const *inst) {
+emit_slot_to_bool(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.slot_to_bool.slot_no;
 
     struct x86asm_lbl8 lbl;
@@ -1046,7 +1048,7 @@ emit_slot_to_bool(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_not(Sh4 *sh4, struct jit_inst const *inst) {
+emit_not(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.not.slot_no;
 
     grab_slot(slot_no);
@@ -1057,7 +1059,7 @@ emit_not(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_shll(Sh4 *sh4, struct jit_inst const *inst) {
+emit_shll(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.shll.slot_no;
     unsigned shift_amt = inst->immed.shll.shift_amt;
 
@@ -1070,7 +1072,7 @@ emit_shll(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_shar(Sh4 *sh4, struct jit_inst const *inst) {
+emit_shar(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.shar.slot_no;
     unsigned shift_amt = inst->immed.shar.shift_amt;
 
@@ -1083,7 +1085,7 @@ emit_shar(Sh4 *sh4, struct jit_inst const *inst) {
 }
 
 static void
-emit_shlr(Sh4 *sh4, struct jit_inst const *inst) {
+emit_shlr(void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.shlr.slot_no;
     unsigned shift_amt = inst->immed.shlr.shift_amt;
 
@@ -1095,7 +1097,7 @@ emit_shlr(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_slot(slot_no);
 }
 
-static void emit_set_gt_unsigned(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_set_gt_unsigned(void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_gt_unsigned.slot_lhs;
     unsigned slot_rhs = inst->immed.set_gt_unsigned.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_unsigned.slot_dst;
@@ -1119,7 +1121,7 @@ static void emit_set_gt_unsigned(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_gt_signed(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_set_gt_signed(void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_gt_signed.slot_lhs;
     unsigned slot_rhs = inst->immed.set_gt_signed.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_signed.slot_dst;
@@ -1143,7 +1145,7 @@ static void emit_set_gt_signed(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_gt_signed_const(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_set_gt_signed_const(void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_gt_signed_const.slot_lhs;
     unsigned imm_rhs = inst->immed.set_gt_signed_const.imm_rhs;
     unsigned slot_dst = inst->immed.set_gt_signed_const.slot_dst;
@@ -1165,7 +1167,7 @@ static void emit_set_gt_signed_const(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_ge_signed_const(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_set_ge_signed_const(void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_ge_signed_const.slot_lhs;
     unsigned imm_rhs = inst->immed.set_ge_signed_const.imm_rhs;
     unsigned slot_dst = inst->immed.set_ge_signed_const.slot_dst;
@@ -1187,7 +1189,7 @@ static void emit_set_ge_signed_const(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_eq(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_set_eq(void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_eq.slot_lhs;
     unsigned slot_rhs = inst->immed.set_eq.slot_rhs;
     unsigned slot_dst = inst->immed.set_eq.slot_dst;
@@ -1212,7 +1214,7 @@ static void emit_set_eq(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_ge_unsigned(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_set_ge_unsigned(void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_ge_unsigned.slot_lhs;
     unsigned slot_rhs = inst->immed.set_ge_unsigned.slot_rhs;
     unsigned slot_dst = inst->immed.set_ge_unsigned.slot_dst;
@@ -1236,7 +1238,7 @@ static void emit_set_ge_unsigned(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_ge_signed(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_set_ge_signed(void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_ge_signed.slot_lhs;
     unsigned slot_rhs = inst->immed.set_ge_signed.slot_rhs;
     unsigned slot_dst = inst->immed.set_ge_signed.slot_dst;
@@ -1260,7 +1262,7 @@ static void emit_set_ge_signed(Sh4 *sh4, struct jit_inst const *inst) {
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_mul_u32(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_mul_u32(void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.mul_u32.slot_lhs;
     unsigned slot_rhs = inst->immed.mul_u32.slot_rhs;
     unsigned slot_dst = inst->immed.mul_u32.slot_dst;
@@ -1292,7 +1294,7 @@ static void emit_mul_u32(Sh4 *sh4, struct jit_inst const *inst) {
     ungrab_register(REG_RET);
 }
 
-static void emit_shad(Sh4 *sh4, struct jit_inst const *inst) {
+static void emit_shad(void *cpu, struct jit_inst const *inst) {
     unsigned slot_val = inst->immed.shad.slot_val;
     unsigned slot_shift_amt = inst->immed.shad.slot_shift_amt;
 
@@ -1374,11 +1376,10 @@ void ms_shadow_close(void) {
 #endif
 }
 
-void code_block_x86_64_compile(struct code_block_x86_64 *out,
+void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
                                struct il_code_block const *il_blk) {
     struct jit_inst const* inst = il_blk->inst_list;
     unsigned inst_count = il_blk->inst_count;
-    Sh4 *sh4 = dreamcast_get_cpu();
     out->cycle_count = il_blk->cycle_count * SH4_CLOCK_SCALE;
 
     x86asm_set_dst(out->native, X86_64_ALLOC_SIZE);
@@ -1390,118 +1391,118 @@ void code_block_x86_64_compile(struct code_block_x86_64 *out,
     while (inst_count--) {
         switch (inst->op) {
         case JIT_OP_FALLBACK:
-            emit_fallback(sh4, inst);
+            emit_fallback(cpu, inst);
             break;
         case JIT_OP_JUMP:
-            emit_jump(sh4, inst);
+            emit_jump(cpu, inst);
             break;
         case JIT_JUMP_COND:
-            emit_jump_cond(sh4, inst);
+            emit_jump_cond(cpu, inst);
             break;
         case JIT_SET_SLOT:
-            emit_set_slot(sh4, inst);
+            emit_set_slot(cpu, inst);
             break;
         case JIT_OP_RESTORE_SR:
-            emit_restore_sr(sh4, inst);
+            emit_restore_sr(cpu, inst);
             break;
         case JIT_OP_READ_16_CONSTADDR:
-            emit_read_16_constaddr(sh4, inst);
+            emit_read_16_constaddr(cpu, inst);
             break;
         case JIT_OP_SIGN_EXTEND_16:
-            emit_sign_extend_16(sh4, inst);
+            emit_sign_extend_16(cpu, inst);
             break;
         case JIT_OP_READ_32_CONSTADDR:
-            emit_read_32_constaddr(sh4, inst);
+            emit_read_32_constaddr(cpu, inst);
             break;
         case JIT_OP_READ_32_SLOT:
-            emit_read_32_slot(sh4, inst);
+            emit_read_32_slot(cpu, inst);
             break;
         case JIT_OP_WRITE_32_SLOT:
-            emit_write_32_slot(sh4, inst);
+            emit_write_32_slot(cpu, inst);
             break;
         case JIT_OP_LOAD_SLOT16:
-            emit_load_slot16(sh4, inst);
+            emit_load_slot16(cpu, inst);
             break;
         case JIT_OP_LOAD_SLOT:
-            emit_load_slot(sh4, inst);
+            emit_load_slot(cpu, inst);
             break;
         case JIT_OP_STORE_SLOT:
-            emit_store_slot(sh4, inst);
+            emit_store_slot(cpu, inst);
             break;
         case JIT_OP_ADD:
-            emit_add(sh4, inst);
+            emit_add(cpu, inst);
             break;
         case JIT_OP_SUB:
-            emit_sub(sh4, inst);
+            emit_sub(cpu, inst);
             break;
         case JIT_OP_ADD_CONST32:
-            emit_add_const32(sh4, inst);
+            emit_add_const32(cpu, inst);
             break;
         case JIT_OP_XOR:
-            emit_xor(sh4, inst);
+            emit_xor(cpu, inst);
             break;
         case JIT_OP_XOR_CONST32:
-            emit_xor_const32(sh4, inst);
+            emit_xor_const32(cpu, inst);
             break;
         case JIT_OP_MOV:
-            emit_mov(sh4, inst);
+            emit_mov(cpu, inst);
             break;
         case JIT_OP_AND:
-            emit_and(sh4, inst);
+            emit_and(cpu, inst);
             break;
         case JIT_OP_AND_CONST32:
-            emit_and_const32(sh4, inst);
+            emit_and_const32(cpu, inst);
             break;
         case JIT_OP_OR:
-            emit_or(sh4, inst);
+            emit_or(cpu, inst);
             break;
         case JIT_OP_OR_CONST32:
-            emit_or_const32(sh4, inst);
+            emit_or_const32(cpu, inst);
             break;
         case JIT_OP_DISCARD_SLOT:
             discard_slot(inst->immed.discard_slot.slot_no);
             break;
         case JIT_OP_SLOT_TO_BOOL:
-            emit_slot_to_bool(sh4, inst);
+            emit_slot_to_bool(cpu, inst);
             break;
         case JIT_OP_NOT:
-            emit_not(sh4, inst);
+            emit_not(cpu, inst);
             break;
         case JIT_OP_SHLL:
-            emit_shll(sh4, inst);
+            emit_shll(cpu, inst);
             break;
         case JIT_OP_SHAR:
-            emit_shar(sh4, inst);
+            emit_shar(cpu, inst);
             break;
         case JIT_OP_SHLR:
-            emit_shlr(sh4, inst);
+            emit_shlr(cpu, inst);
             break;
         case JIT_OP_SET_GT_UNSIGNED:
-            emit_set_gt_unsigned(sh4, inst);
+            emit_set_gt_unsigned(cpu, inst);
             break;
         case JIT_OP_SET_GT_SIGNED:
-            emit_set_gt_signed(sh4, inst);
+            emit_set_gt_signed(cpu, inst);
             break;
         case JIT_OP_SET_GT_SIGNED_CONST:
-            emit_set_gt_signed_const(sh4, inst);
+            emit_set_gt_signed_const(cpu, inst);
             break;
         case JIT_OP_SET_EQ:
-            emit_set_eq(sh4, inst);
+            emit_set_eq(cpu, inst);
             break;
         case JIT_OP_SET_GE_UNSIGNED:
-            emit_set_ge_unsigned(sh4, inst);
+            emit_set_ge_unsigned(cpu, inst);
             break;
         case JIT_OP_SET_GE_SIGNED:
-            emit_set_ge_signed(sh4, inst);
+            emit_set_ge_signed(cpu, inst);
             break;
         case JIT_OP_SET_GE_SIGNED_CONST:
-            emit_set_ge_signed_const(sh4, inst);
+            emit_set_ge_signed_const(cpu, inst);
             break;
         case JIT_OP_MUL_U32:
-            emit_mul_u32(sh4, inst);
+            emit_mul_u32(cpu, inst);
             break;
         case JIT_OP_SHAD:
-            emit_shad(sh4, inst);
+            emit_shad(cpu, inst);
             break;
         }
         inst++;

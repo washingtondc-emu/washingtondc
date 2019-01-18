@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -40,7 +40,8 @@ void code_block_intp_cleanup(struct code_block_intp *block) {
         free(block->slots);
 }
 
-void code_block_intp_compile(struct code_block_intp *out,
+void code_block_intp_compile(void *cpu,
+                             struct code_block_intp *out,
                              struct il_code_block const *il_blk) {
     /*
      * TODO: consider shallow-copying the il_blk into out, and "stealing" its

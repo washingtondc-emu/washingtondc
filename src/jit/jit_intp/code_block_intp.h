@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -45,7 +45,8 @@ struct code_block_intp {
 void code_block_intp_init(struct code_block_intp *block);
 void code_block_intp_cleanup(struct code_block_intp *block);
 
-void code_block_intp_compile(struct code_block_intp *out,
+void code_block_intp_compile(void *cpu,
+                             struct code_block_intp *out,
                              struct il_code_block const *il_blk);
 
 reg32_t code_block_intp_exec(struct code_block_intp const *block);
