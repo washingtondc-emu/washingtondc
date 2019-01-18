@@ -91,7 +91,7 @@ static InstOpcode const* sh4_decode_inst_slow(inst_t inst);
 #define CHECK_INST(inst, mask, val) \
     do_check_inst(inst, mask, val, __LINE__, __FILE__, __func__)
 
-static void do_check_inst(Sh4OpArgs inst, uint16_t mask, uint16_t val,
+static void do_check_inst(cpu_inst_param inst, uint16_t mask, uint16_t val,
                           int line_no, char const *file_name,
                           char const *func_name) {
     if ((inst & mask) != val) {
