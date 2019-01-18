@@ -160,7 +160,7 @@ enum jit_opcode {
 };
 
 struct jit_fallback_immed {
-    void(*fallback_fn)(Sh4*,cpu_inst_param);
+    void(*fallback_fn)(void*,cpu_inst_param);
     cpu_inst_param inst;
 };
 
@@ -413,7 +413,7 @@ struct jit_inst {
 struct il_code_block;
 
 void jit_fallback(struct il_code_block *block,
-                  void(*fallback_fn)(Sh4*,cpu_inst_param), cpu_inst_param inst);
+                  void(*fallback_fn)(void*,cpu_inst_param), cpu_inst_param inst);
 void jit_jump(struct il_code_block *block, unsigned slot_no);
 void jit_jump_cond(struct il_code_block *block,
                    unsigned slot_no, unsigned jmp_addr_slot,

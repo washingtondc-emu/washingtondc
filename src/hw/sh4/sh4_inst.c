@@ -1102,9 +1102,11 @@ static void sh4_fpu_error(Sh4 *sh4) {
 
 // RTS
 // 0000000000001011
-void sh4_inst_rts(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_rts(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000001011, INST_CONS_0000000000001011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->delayed_branch = true;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PR];
@@ -1115,9 +1117,11 @@ void sh4_inst_rts(Sh4 *sh4, cpu_inst_param inst) {
 
 // CLRMAC
 // 0000000000101000
-void sh4_inst_clrmac(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_clrmac(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000101000, INST_CONS_0000000000101000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_MACL] = sh4->reg[SH4_REG_MACH] = 0;
 }
@@ -1127,9 +1131,11 @@ void sh4_inst_clrmac(Sh4 *sh4, cpu_inst_param inst) {
 
 // CLRS
 // 0000000001001000
-void sh4_inst_clrs(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_clrs(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000001001000, INST_CONS_0000000001001000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_S_MASK;
 }
@@ -1140,9 +1146,11 @@ void sh4_inst_clrs(Sh4 *sh4, cpu_inst_param inst) {
 
 // CLRT
 // 0000000000001000
-void sh4_inst_clrt(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_clrt(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000001000, INST_CONS_0000000000001000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
 }
@@ -1152,7 +1160,7 @@ void sh4_inst_clrt(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDTLB
 // 0000000000111000
-void sh4_inst_ldtlb(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_ldtlb(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000111000, INST_CONS_0000000000111000);
 
@@ -1167,7 +1175,7 @@ void sh4_inst_ldtlb(Sh4 *sh4, cpu_inst_param inst) {
 
 // NOP
 // 0000000000001001
-void sh4_inst_nop(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_nop(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000001001, INST_CONS_0000000000001001);
 
@@ -1179,9 +1187,11 @@ void sh4_inst_nop(Sh4 *sh4, cpu_inst_param inst) {
 
 // RTE
 // 0000000000101011
-void sh4_inst_rte(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_rte(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000101011, INST_CONS_0000000000101011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->delayed_branch = true;
 
@@ -1227,9 +1237,11 @@ void sh4_inst_rte(Sh4 *sh4, cpu_inst_param inst) {
 
 // SETS
 // 0000000001011000
-void sh4_inst_sets(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_sets(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000001011000, INST_CONS_0000000001011000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] |= SH4_SR_FLAG_S_MASK;
 }
@@ -1239,9 +1251,11 @@ void sh4_inst_sets(Sh4 *sh4, cpu_inst_param inst) {
 
 // SETT
 // 0000000000011000
-void sh4_inst_sett(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_sett(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000011000, INST_CONS_0000000000011000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] |= SH4_SR_FLAG_T_MASK;
 }
@@ -1251,9 +1265,11 @@ void sh4_inst_sett(Sh4 *sh4, cpu_inst_param inst) {
 
 // SLEEP
 // 0000000000011011
-void sh4_inst_sleep(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_sleep(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000011011, INST_CONS_0000000000011011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     if (sh4->exec_state == SH4_EXEC_STATE_NORM) {
         if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -1278,9 +1294,11 @@ void sh4_inst_sleep(Sh4 *sh4, cpu_inst_param inst) {
 
 // FRCHG
 // 1111101111111101
-void sh4_inst_frchg(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_frchg(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111101111111101, INST_CONS_1111101111111101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     /*
      * TODO: the software manual says the behavior is undefined if the PR bit
@@ -1298,9 +1316,11 @@ void sh4_inst_frchg(Sh4 *sh4, cpu_inst_param inst) {
 
 // FSCHG
 // 1111001111111101
-void sh4_inst_fschg(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_fschg(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111001111111101, INST_CONS_1111001111111101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     /*
      * TODO: the software manual says the behavior is undefined if the PR bit
@@ -1317,8 +1337,10 @@ void sh4_inst_fschg(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOVT Rn
 // 0000nnnn00101001
-void sh4_inst_unary_movt_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_movt_gen(void *cpu, cpu_inst_param inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn00101001, INST_CONS_0000nnnn00101001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1331,9 +1353,11 @@ void sh4_inst_unary_movt_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // CMP/PZ Rn
 // 0100nnnn00010001
-void sh4_inst_unary_cmppz_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_cmppz_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00010001, INST_CONS_0100nnnn00010001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1348,9 +1372,11 @@ void sh4_inst_unary_cmppz_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // CMP/PL Rn
 // 0100nnnn00010101
-void sh4_inst_unary_cmppl_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_cmppl_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00010101, INST_CONS_0100nnnn00010101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1365,9 +1391,11 @@ void sh4_inst_unary_cmppl_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // DT Rn
 // 0100nnnn00010000
-void sh4_inst_unary_dt_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_dt_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00010000, INST_CONS_0100nnnn00010000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1382,9 +1410,11 @@ void sh4_inst_unary_dt_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // ROTL Rn
 // 0100nnnn00000100
-void sh4_inst_unary_rotl_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_rotl_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00000100, INST_CONS_0100nnnn00000100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1403,9 +1433,11 @@ void sh4_inst_unary_rotl_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // ROTR Rn
 // 0100nnnn00000101
-void sh4_inst_unary_rotr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_rotr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00000101, INST_CONS_0100nnnn00000101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1424,9 +1456,11 @@ void sh4_inst_unary_rotr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // ROTCL Rn
 // 0100nnnn00100100
-void sh4_inst_unary_rotcl_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_rotcl_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00100100, INST_CONS_0100nnnn00100100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1446,9 +1480,11 @@ void sh4_inst_unary_rotcl_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // ROTCR Rn
 // 0100nnnn00100101
-void sh4_inst_unary_rotcr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_rotcr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00100101, INST_CONS_0100nnnn00100101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1468,9 +1504,11 @@ void sh4_inst_unary_rotcr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHAL Rn
 // 0100nnnn00100000
-void sh4_inst_unary_shal_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shal_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00100000, INST_CONS_0100nnnn00100000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1489,9 +1527,11 @@ void sh4_inst_unary_shal_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHAR Rn
 // 0100nnnn00100001
-void sh4_inst_unary_shar_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shar_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00100001, INST_CONS_0100nnnn00100001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1510,9 +1550,11 @@ void sh4_inst_unary_shar_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHLL Rn
 // 0100nnnn00000000
-void sh4_inst_unary_shll_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shll_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00000000, INST_CONS_0100nnnn00000000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1531,9 +1573,11 @@ void sh4_inst_unary_shll_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHLR Rn
 // 0100nnnn00000001
-void sh4_inst_unary_shlr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shlr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00000001, INST_CONS_0100nnnn00000001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1552,9 +1596,11 @@ void sh4_inst_unary_shlr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHLL2 Rn
 // 0100nnnn00001000
-void sh4_inst_unary_shll2_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shll2_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00001000, INST_CONS_0100nnnn00001000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1570,9 +1616,11 @@ void sh4_inst_unary_shll2_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHLR2 Rn
 // 0100nnnn00001001
-void sh4_inst_unary_shlr2_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shlr2_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00001001, INST_CONS_0100nnnn00001001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1588,9 +1636,11 @@ void sh4_inst_unary_shlr2_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHLL8 Rn
 // 0100nnnn00011000
-void sh4_inst_unary_shll8_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shll8_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00011000, INST_CONS_0100nnnn00011000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1606,9 +1656,11 @@ void sh4_inst_unary_shll8_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHLR8 Rn
 // 0100nnnn00011001
-void sh4_inst_unary_shlr8_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shlr8_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00011001, INST_CONS_0100nnnn00011001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1624,9 +1676,11 @@ void sh4_inst_unary_shlr8_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHLL16 Rn
 // 0100nnnn00101000
-void sh4_inst_unary_shll16_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shll16_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00101000, INST_CONS_0100nnnn00101000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1642,9 +1696,11 @@ void sh4_inst_unary_shll16_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHLR16 Rn
 // 0100nnnn00101001
-void sh4_inst_unary_shlr16_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_shlr16_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00101001, INST_CONS_0100nnnn00101001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1660,9 +1716,11 @@ void sh4_inst_unary_shlr16_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // BRAF Rn
 // 0000nnnn00100011
-void sh4_inst_unary_braf_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_braf_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00100011, INST_CONS_0000nnnn00100011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1675,9 +1733,11 @@ void sh4_inst_unary_braf_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // BSRF Rn
 // 0000nnnn00000011
-void sh4_inst_unary_bsrf_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_bsrf_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00000011, INST_CONS_0000nnnn00000011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int reg_no = (inst >> 8) & 0xf;
 
@@ -1691,9 +1751,11 @@ void sh4_inst_unary_bsrf_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // CMP/EQ #imm, R0
 // 10001000iiiiiiii
-void sh4_inst_binary_cmpeq_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_cmpeq_imm_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_10001000iiiiiiii, INST_CONS_10001000iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int8_t imm8 = inst_simm8(inst);
     reg32_t imm_val = (int32_t)(imm8);
@@ -1706,9 +1768,11 @@ void sh4_inst_binary_cmpeq_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // AND.B #imm, @(R0, GBR)
 // 11001101iiiiiiii
-void sh4_inst_binary_andb_imm_r0_gbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_andb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11001101iiiiiiii, INST_CONS_11001101iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
     uint8_t val = memory_map_read_8(sh4->mem.map, addr);
@@ -1723,9 +1787,11 @@ void sh4_inst_binary_andb_imm_r0_gbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // AND #imm, R0
 // 11001001iiiiiiii
-void sh4_inst_binary_and_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_and_imm_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11001001iiiiiiii, INST_CONS_11001001iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, 0) &= inst_imm8(inst);
 }
@@ -1735,9 +1801,11 @@ void sh4_inst_binary_and_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // OR.B #imm, @(R0, GBR)
 // 11001111iiiiiiii
-void sh4_inst_binary_orb_imm_r0_gbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_orb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11001111iiiiiiii, INST_CONS_11001111iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
     uint8_t val = memory_map_read_8(sh4->mem.map, addr);
@@ -1752,9 +1820,11 @@ void sh4_inst_binary_orb_imm_r0_gbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // OR #imm, R0
 // 11001011iiiiiiii
-void sh4_inst_binary_or_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_or_imm_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11001011iiiiiiii, INST_CONS_11001011iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, 0) |= inst_imm8(inst);
 }
@@ -1764,8 +1834,10 @@ void sh4_inst_binary_or_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // TST #imm, R0
 // 11001000iiiiiiii
-void sh4_inst_binary_tst_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_tst_imm_r0(void *cpu, cpu_inst_param inst) {
     CHECK_INST(inst, INST_MASK_11001000iiiiiiii, INST_CONS_11001000iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     reg32_t flag = !(inst_imm8(inst) & *sh4_gen_reg(sh4, 0)) <<
@@ -1778,9 +1850,11 @@ void sh4_inst_binary_tst_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // TST.B #imm, @(R0, GBR)
 // 11001100iiiiiiii
-void sh4_inst_binary_tstb_imm_r0_gbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_tstb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11001100iiiiiiii, INST_CONS_11001100iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
     uint8_t val = memory_map_read_8(sh4->mem.map, addr);
@@ -1796,9 +1870,11 @@ void sh4_inst_binary_tstb_imm_r0_gbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // XOR #imm, R0
 // 11001010iiiiiiii
-void sh4_inst_binary_xor_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_xor_imm_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11001010iiiiiiii, INST_CONS_11001010iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, 0) ^= inst_imm8(inst);
 }
@@ -1808,9 +1884,11 @@ void sh4_inst_binary_xor_imm_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // XOR.B #imm, @(R0, GBR)
 // 11001110iiiiiiii
-void sh4_inst_binary_xorb_imm_r0_gbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_xorb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11001110iiiiiiii, INST_CONS_11001110iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
     uint8_t val = memory_map_read_8(sh4->mem.map, addr);
@@ -1825,9 +1903,11 @@ void sh4_inst_binary_xorb_imm_r0_gbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // BF label
 // 10001011dddddddd
-void sh4_inst_unary_bf_disp(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_bf_disp(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_10001011dddddddd, INST_CONS_10001011dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK)) {
         sh4->reg[SH4_REG_PC] += (((int32_t)inst_simm8(inst)) << 1) + (4 - 2);
@@ -1842,9 +1922,11 @@ void sh4_inst_unary_bf_disp(Sh4 *sh4, cpu_inst_param inst) {
 
 // BF/S label
 // 10001111dddddddd
-void sh4_inst_unary_bfs_disp(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_bfs_disp(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_10001111dddddddd, INST_CONS_10001111dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK)) {
         sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm8(inst)) << 1) + 4;
@@ -1857,9 +1939,11 @@ void sh4_inst_unary_bfs_disp(Sh4 *sh4, cpu_inst_param inst) {
 
 // BT label
 // 10001001dddddddd
-void sh4_inst_unary_bt_disp(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_bt_disp(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_10001001dddddddd, INST_CONS_10001001dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     if (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) {
         sh4->reg[SH4_REG_PC] += (((int32_t)inst_simm8(inst)) << 1) + (4 - 2);
@@ -1874,9 +1958,11 @@ void sh4_inst_unary_bt_disp(Sh4 *sh4, cpu_inst_param inst) {
 
 // BT/S label
 // 10001101dddddddd
-void sh4_inst_unary_bts_disp(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_bts_disp(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_10001101dddddddd, INST_CONS_10001101dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     if (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) {
         sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm8(inst)) << 1) + 4;
@@ -1889,9 +1975,11 @@ void sh4_inst_unary_bts_disp(Sh4 *sh4, cpu_inst_param inst) {
 
 // BRA label
 // 1010dddddddddddd
-void sh4_inst_unary_bra_disp(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_bra_disp(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1010dddddddddddd, INST_CONS_1010dddddddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->delayed_branch = true;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm12(inst)) << 1) + 4;
@@ -1902,9 +1990,11 @@ void sh4_inst_unary_bra_disp(Sh4 *sh4, cpu_inst_param inst) {
 
 // BSR label
 // 1011dddddddddddd
-void sh4_inst_unary_bsr_disp(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_bsr_disp(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1011dddddddddddd, INST_CONS_1011dddddddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm12(inst)) << 1) + 4;
@@ -1916,9 +2006,11 @@ void sh4_inst_unary_bsr_disp(Sh4 *sh4, cpu_inst_param inst) {
 
 // TRAPA #immed
 // 11000011iiiiiiii
-void sh4_inst_unary_trapa_disp(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_trapa_disp(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11000011iiiiiiii, INST_CONS_11000011iiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_DEBUGGER
     /*
@@ -1943,9 +2035,11 @@ void sh4_inst_unary_trapa_disp(Sh4 *sh4, cpu_inst_param inst) {
 
 // TAS.B @Rn
 // 0100nnnn00011011
-void sh4_inst_unary_tasb_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_tasb_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00011011, INST_CONS_0100nnnn00011011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint8_t val_new, val_old;
@@ -1965,7 +2059,7 @@ void sh4_inst_unary_tasb_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // OCBI @Rn
 // 0000nnnn10010011
-void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_ocbi_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn10010011, INST_CONS_0000nnnn10010011);
 
@@ -1977,7 +2071,7 @@ void sh4_inst_unary_ocbi_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // OCBP @Rn
 // 0000nnnn10100011
-void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_ocbp_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn10100011, INST_CONS_0000nnnn10100011);
 
@@ -1989,7 +2083,7 @@ void sh4_inst_unary_ocbp_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // OCBWB @Rn
 // 0000nnnn10110011
-void sh4_inst_unary_ocbwb_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_ocbwb_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn10110011, INST_CONS_0000nnnn10110011);
 
@@ -2001,9 +2095,11 @@ void sh4_inst_unary_ocbwb_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // PREF @Rn
 // 0000nnnn10000011
-void sh4_inst_unary_pref_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_pref_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn10000011, INST_CONS_0000nnnn10000011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     unsigned reg_no = (inst >> 8) & 0xf;
     addr32_t addr = *sh4_gen_reg(sh4, reg_no);
@@ -2017,9 +2113,11 @@ void sh4_inst_unary_pref_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // JMP @Rn
 // 0100nnnn00101011
-void sh4_inst_unary_jmp_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_jmp_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00101011, INST_CONS_0100nnnn00101011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->delayed_branch_addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     sh4->delayed_branch = true;
@@ -2030,9 +2128,11 @@ void sh4_inst_unary_jmp_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // JSR @Rn
 // 0100nnnn00001011
-void sh4_inst_unary_jsr_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_jsr_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00001011, INST_CONS_0100nnnn00001011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
     sh4->delayed_branch_addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -2044,9 +2144,11 @@ void sh4_inst_unary_jsr_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC Rm, SR
 // 0100mmmm00001110
-void sh4_inst_binary_ldc_gen_sr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldc_gen_sr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00001110, INST_CONS_0100mmmm00001110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2067,9 +2169,11 @@ void sh4_inst_binary_ldc_gen_sr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC Rm, GBR
 // 0100mmmm00011110
-void sh4_inst_binary_ldc_gen_gbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldc_gen_gbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00011110, INST_CONS_0100mmmm00011110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_GBR] = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 }
@@ -2079,9 +2183,11 @@ void sh4_inst_binary_ldc_gen_gbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC Rm, VBR
 // 0100mmmm00101110
-void sh4_inst_binary_ldc_gen_vbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldc_gen_vbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00101110, INST_CONS_0100mmmm00101110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2100,9 +2206,11 @@ void sh4_inst_binary_ldc_gen_vbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC Rm, SSR
 // 0100mmmm00111110
-void sh4_inst_binary_ldc_gen_ssr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldc_gen_ssr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00111110, INST_CONS_0100mmmm00111110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2121,9 +2229,11 @@ void sh4_inst_binary_ldc_gen_ssr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC Rm, SPC
 // 0100mmmm01001110
-void sh4_inst_binary_ldc_gen_spc(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldc_gen_spc(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm01001110, INST_CONS_0100mmmm01001110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2142,9 +2252,11 @@ void sh4_inst_binary_ldc_gen_spc(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC Rm, DBR
 // 0100mmmm11111010
-void sh4_inst_binary_ldc_gen_dbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldc_gen_dbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm11111010, INST_CONS_0100mmmm11111010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2163,9 +2275,11 @@ void sh4_inst_binary_ldc_gen_dbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC SR, Rn
 // 0000nnnn00000010
-void sh4_inst_binary_stc_sr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stc_sr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00000010, INST_CONS_0000nnnn00000010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2184,9 +2298,11 @@ void sh4_inst_binary_stc_sr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC GBR, Rn
 // 0000nnnn00010010
-void sh4_inst_binary_stc_gbr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stc_gbr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00010010, INST_CONS_0000nnnn00010010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_GBR];
 }
@@ -2196,9 +2312,11 @@ void sh4_inst_binary_stc_gbr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC VBR, Rn
 // 0000nnnn00100010
-void sh4_inst_binary_stc_vbr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stc_vbr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00100010, INST_CONS_0000nnnn00100010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2217,9 +2335,11 @@ void sh4_inst_binary_stc_vbr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC SSR, Rn
 // 0000nnnn00110010
-void sh4_inst_binary_stc_ssr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stc_ssr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00110010, INST_CONS_0000nnnn00110010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2238,9 +2358,11 @@ void sh4_inst_binary_stc_ssr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC SPC, Rn
 // 0000nnnn01000010
-void sh4_inst_binary_stc_spc_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stc_spc_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn01000010, INST_CONS_0000nnnn01000010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2259,9 +2381,11 @@ void sh4_inst_binary_stc_spc_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC SGR, Rn
 // 0000nnnn00111010
-void sh4_inst_binary_stc_sgr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stc_sgr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00111010, INST_CONS_0000nnnn00111010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2280,9 +2404,11 @@ void sh4_inst_binary_stc_sgr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC DBR, Rn
 // 0000nnnn11111010
-void sh4_inst_binary_stc_dbr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stc_dbr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn11111010, INST_CONS_0000nnnn11111010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2301,9 +2427,11 @@ void sh4_inst_binary_stc_dbr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC.L @Rm+, SR
 // 0100mmmm00000111
-void sh4_inst_binary_ldcl_indgeninc_sr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldcl_indgeninc_sr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00000111, INST_CONS_0100mmmm00000111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *src_reg;
@@ -2331,9 +2459,11 @@ void sh4_inst_binary_ldcl_indgeninc_sr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC.L @Rm+, GBR
 // 0100mmmm00010111
-void sh4_inst_binary_ldcl_indgeninc_gbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldcl_indgeninc_gbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00010111, INST_CONS_0100mmmm00010111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *src_reg;
@@ -2350,9 +2480,11 @@ void sh4_inst_binary_ldcl_indgeninc_gbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC.L @Rm+, VBR
 // 0100mmmm00100111
-void sh4_inst_binary_ldcl_indgeninc_vbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldcl_indgeninc_vbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00100111, INST_CONS_0100mmmm00100111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *src_reg;
@@ -2378,9 +2510,11 @@ void sh4_inst_binary_ldcl_indgeninc_vbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC.L @Rm+, SSR
 // 0100mmmm00110111
-void sh4_inst_binary_ldcl_indgenic_ssr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldcl_indgenic_ssr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00110111, INST_CONS_0100mmmm00110111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *src_reg;
@@ -2406,9 +2540,11 @@ void sh4_inst_binary_ldcl_indgenic_ssr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC.L @Rm+, SPC
 // 0100mmmm01000111
-void sh4_inst_binary_ldcl_indgeninc_spc(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldcl_indgeninc_spc(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm01000111, INST_CONS_0100mmmm01000111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *src_reg;
@@ -2434,9 +2570,11 @@ void sh4_inst_binary_ldcl_indgeninc_spc(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC.L @Rm+, DBR
 // 0100mmmm11110110
-void sh4_inst_binary_ldcl_indgeninc_dbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldcl_indgeninc_dbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm11110110, INST_CONS_0100mmmm11110110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *src_reg;
@@ -2462,9 +2600,11 @@ void sh4_inst_binary_ldcl_indgeninc_dbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC.L SR, @-Rn
 // 0100nnnn00000011
-void sh4_inst_binary_stcl_sr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stcl_sr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00000011, INST_CONS_0100nnnn00000011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2487,9 +2627,11 @@ void sh4_inst_binary_stcl_sr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC.L GBR, @-Rn
 // 0100nnnn00010011
-void sh4_inst_binary_stcl_gbr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stcl_gbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00010011, INST_CONS_0100nnnn00010011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
@@ -2503,9 +2645,11 @@ void sh4_inst_binary_stcl_gbr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC.L VBR, @-Rn
 // 0100nnnn00100011
-void sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stcl_vbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00100011, INST_CONS_0100nnnn00100011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2528,9 +2672,11 @@ void sh4_inst_binary_stcl_vbr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC.L SSR, @-Rn
 // 0100nnnn00110011
-void sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stcl_ssr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00110011, INST_CONS_0100nnnn00110011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2553,9 +2699,11 @@ void sh4_inst_binary_stcl_ssr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC.L SPC, @-Rn
 // 0100nnnn01000011
-void sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stcl_spc_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn01000011, INST_CONS_0100nnnn01000011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2578,9 +2726,11 @@ void sh4_inst_binary_stcl_spc_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC.L SGR, @-Rn
 // 0100nnnn00110010
-void sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stcl_sgr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00110010, INST_CONS_0100nnnn00110010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2603,9 +2753,11 @@ void sh4_inst_binary_stcl_sgr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC.L DBR, @-Rn
 // 0100nnnn11110010
-void sh4_inst_binary_stcl_dbr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stcl_dbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn11110010, INST_CONS_0100nnnn11110010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2628,9 +2780,11 @@ void sh4_inst_binary_stcl_dbr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV #imm, Rn
 // 1110nnnniiiiiiii
-void sh4_inst_binary_mov_imm_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_mov_imm_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1110nnnniiiiiiii, INST_CONS_1110nnnniiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)((int8_t)inst_imm8(inst));
 }
@@ -2640,9 +2794,11 @@ void sh4_inst_binary_mov_imm_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // ADD #imm, Rn
 // 0111nnnniiiiiiii
-void sh4_inst_binary_add_imm_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_add_imm_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0111nnnniiiiiiii, INST_CONS_0111nnnniiiiiiii);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) += (int32_t)((int8_t)(inst_imm8(inst)));
 }
@@ -2652,9 +2808,11 @@ void sh4_inst_binary_add_imm_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W @(disp, PC), Rn
 // 1001nnnndddddddd
-void sh4_inst_binary_movw_binind_disp_pc_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_binind_disp_pc_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1001nnnndddddddd, INST_CONS_1001nnnndddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = (inst_imm8(inst) << 1) + sh4->reg[SH4_REG_PC] + 4;
     int reg_no = (inst >> 8) & 0xf;
@@ -2669,9 +2827,11 @@ void sh4_inst_binary_movw_binind_disp_pc_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L @(disp, PC), Rn
 // 1101nnnndddddddd
-void sh4_inst_binary_movl_binind_disp_pc_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_binind_disp_pc_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1101nnnndddddddd, INST_CONS_1101nnnndddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = (inst_imm8(inst) << 2) + (sh4->reg[SH4_REG_PC] & ~3) + 4;
     int reg_no = (inst >> 8) & 0xf;
@@ -2686,9 +2846,11 @@ void sh4_inst_binary_movl_binind_disp_pc_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV Rm, Rn
 // 0110nnnnmmmm0011
-void sh4_inst_binary_mov_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_mov_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0011, INST_CONS_0110nnnnmmmm0011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 }
@@ -2698,9 +2860,11 @@ void sh4_inst_binary_mov_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SWAP.B Rm, Rn
 // 0110nnnnmmmm1000
-void sh4_inst_binary_swapb_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_swapb_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1000, INST_CONS_0110nnnnmmmm1000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     unsigned byte0, byte1;
     reg32_t *reg_src = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -2719,9 +2883,11 @@ void sh4_inst_binary_swapb_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SWAP.W Rm, Rn
 // 0110nnnnmmmm1001
-void sh4_inst_binary_swapw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_swapw_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1001, INST_CONS_0110nnnnmmmm1001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     unsigned word0, word1;
     uint32_t *reg_src = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -2739,9 +2905,11 @@ void sh4_inst_binary_swapw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // XTRCT Rm, Rn
 // 0110nnnnmmmm1101
-void sh4_inst_binary_xtrct_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_xtrct_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1101, INST_CONS_0010nnnnmmmm1101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *reg_dst = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     reg32_t *reg_src = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -2755,9 +2923,11 @@ void sh4_inst_binary_xtrct_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // ADD Rm, Rn
 // 0011nnnnmmmm1100
-void sh4_inst_binary_add_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_add_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1100, INST_CONS_0011nnnnmmmm1100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) += *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 }
@@ -2767,9 +2937,11 @@ void sh4_inst_binary_add_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // ADDC Rm, Rn
 // 0011nnnnmmmm1110
-void sh4_inst_binary_addc_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_addc_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1110, INST_CONS_0011nnnnmmmm1110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -2787,9 +2959,11 @@ void sh4_inst_binary_addc_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // ADDV Rm, Rn
 // 0011nnnnmmmm1111
-void sh4_inst_binary_addv_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_addv_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1111, INST_CONS_0011nnnnmmmm1111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -2808,9 +2982,11 @@ void sh4_inst_binary_addv_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // CMP/EQ Rm, Rn
 // 0011nnnnmmmm0000
-void sh4_inst_binary_cmpeq_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_cmpeq_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm0000, INST_CONS_0011nnnnmmmm0000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     sh4->reg[SH4_REG_SR] |=
@@ -2824,9 +3000,11 @@ void sh4_inst_binary_cmpeq_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // CMP/HS Rm, Rn
 // 0011nnnnmmmm0010
-void sh4_inst_binary_cmphs_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_cmphs_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm0010, INST_CONS_0011nnnnmmmm0010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     uint32_t lhs = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -2839,9 +3017,11 @@ void sh4_inst_binary_cmphs_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // CMP/GE Rm, Rn
 // 0011nnnnmmmm0011
-void sh4_inst_binary_cmpge_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_cmpge_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm0011, INST_CONS_0011nnnnmmmm0011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     int32_t lhs = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -2854,9 +3034,11 @@ void sh4_inst_binary_cmpge_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // CMP/HI Rm, Rn
 // 0011nnnnmmmm0110
-void sh4_inst_binary_cmphi_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_cmphi_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm0110, INST_CONS_0011nnnnmmmm0110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     uint32_t lhs = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -2869,9 +3051,11 @@ void sh4_inst_binary_cmphi_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // CMP/GT Rm, Rn
 // 0011nnnnmmmm0111
-void sh4_inst_binary_cmpgt_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_cmpgt_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm0111, INST_CONS_0011nnnnmmmm0111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     int32_t lhs = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -2884,9 +3068,11 @@ void sh4_inst_binary_cmpgt_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // CMP/STR Rm, Rn
 // 0010nnnnmmmm1100
-void sh4_inst_binary_cmpstr_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_cmpstr_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1100, INST_CONS_0010nnnnmmmm1100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t lhs = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint32_t rhs = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -2906,9 +3092,11 @@ void sh4_inst_binary_cmpstr_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // DIV1 Rm, Rn
 // 0011nnnnmmmm0100
-void sh4_inst_binary_div1_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_div1_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm0100, INST_CONS_0011nnnnmmmm0100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *dividend_p = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     reg32_t *divisor_p  = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3001,9 +3189,11 @@ void sh4_inst_binary_div1_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // DIV0S Rm, Rn
 // 0010nnnnmmmm0111
-void sh4_inst_binary_div0s_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_div0s_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm0111, INST_CONS_0010nnnnmmmm0111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t divisor = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     reg32_t dividend = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3025,9 +3215,11 @@ void sh4_inst_binary_div0s_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // DIV0U
 // 0000000000011001
-void sh4_inst_noarg_div0u(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_noarg_div0u(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000011001, INST_CONS_0000000000011001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &=
         ~(SH4_SR_M_MASK | SH4_SR_Q_MASK | SH4_SR_FLAG_T_MASK);
@@ -3038,9 +3230,11 @@ void sh4_inst_noarg_div0u(Sh4 *sh4, cpu_inst_param inst) {
 
 // DMULS.L Rm, Rn
 // 0011nnnnmmmm1101
-void sh4_inst_binary_dmulsl_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_dmulsl_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1101, INST_CONS_0011nnnnmmmm1101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int32_t val1 = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     int32_t val2 = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3055,9 +3249,11 @@ void sh4_inst_binary_dmulsl_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // DMULU.L Rm, Rn
 // 0011nnnnmmmm0101
-void sh4_inst_binary_dmulul_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_dmulul_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm0101, INST_CONS_0011nnnnmmmm0101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint64_t val1 = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint64_t val2 = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3072,9 +3268,11 @@ void sh4_inst_binary_dmulul_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // EXTS.B Rm, Rn
 // 0110nnnnmmmm1110
-void sh4_inst_binary_extsb_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_extsb_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1110, INST_CONS_0110nnnnmmmm1110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t src_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)((int8_t)(src_val & 0xff));
@@ -3085,9 +3283,11 @@ void sh4_inst_binary_extsb_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // EXTS.W Rm, Rnn
 // 0110nnnnmmmm1111
-void sh4_inst_binary_extsw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_extsw_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1111, INST_CONS_0110nnnnmmmm1111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t src_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)((int16_t)(src_val & 0xffff));
@@ -3098,9 +3298,11 @@ void sh4_inst_binary_extsw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // EXTU.B Rm, Rn
 // 0110nnnnmmmm1100
-void sh4_inst_binary_extub_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_extub_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1100, INST_CONS_0110nnnnmmmm1100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t src_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = src_val & 0xff;
@@ -3111,9 +3313,11 @@ void sh4_inst_binary_extub_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // EXTU.W Rm, Rn
 // 0110nnnnmmmm1101
-void sh4_inst_binary_extuw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_extuw_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1101, INST_CONS_0110nnnnmmmm1101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t src_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = src_val & 0xffff;
@@ -3124,9 +3328,11 @@ void sh4_inst_binary_extuw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MUL.L Rm, Rn
 // 0000nnnnmmmm0111
-void sh4_inst_binary_mull_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_mull_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnnmmmm0111, INST_CONS_0000nnnnmmmm0111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_MACL] =
         *sh4_gen_reg(sh4, (inst >> 8) & 0xf) *
@@ -3138,9 +3344,11 @@ void sh4_inst_binary_mull_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MULS.W Rm, Rn
 // 0010nnnnmmmm1111
-void sh4_inst_binary_mulsw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_mulsw_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1111, INST_CONS_0010nnnnmmmm1111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int16_t lhs = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     int16_t rhs = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3153,9 +3361,11 @@ void sh4_inst_binary_mulsw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MULU.W Rm, Rn
 // 0010nnnnmmmm1110
-void sh4_inst_binary_muluw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_muluw_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1110, INST_CONS_0010nnnnmmmm1110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint16_t lhs = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint16_t rhs = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3168,9 +3378,11 @@ void sh4_inst_binary_muluw_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // NEG Rm, Rn
 // 0110nnnnmmmm1011
-void sh4_inst_binary_neg_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_neg_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1011, INST_CONS_0110nnnnmmmm1011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = -*sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 }
@@ -3180,9 +3392,11 @@ void sh4_inst_binary_neg_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // NEGC Rm, Rn
 // 0110nnnnmmmm1010
-void sh4_inst_binary_negc_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_negc_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm1010, INST_CONS_0110nnnnmmmm1010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int32_t src = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     reg32_t flag_t_in = (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) >>
@@ -3201,9 +3415,11 @@ void sh4_inst_binary_negc_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SUB Rm, Rn
 // 0011nnnnmmmm1000
-void sh4_inst_binary_sub_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_sub_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1000, INST_CONS_0011nnnnmmmm1000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) -= *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 }
@@ -3213,9 +3429,11 @@ void sh4_inst_binary_sub_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SUBC Rm, Rn
 // 0011nnnnmmmm1010
-void sh4_inst_binary_subc_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_subc_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1010, INST_CONS_0011nnnnmmmm1010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     // detect carry by doing 64-bit math
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3237,9 +3455,11 @@ void sh4_inst_binary_subc_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SUBV Rm, Rn
 // 0011nnnnmmmm1011
-void sh4_inst_binary_subv_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_subv_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0011nnnnmmmm1011, INST_CONS_0011nnnnmmmm1011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     // detect overflow using 64-bit math
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3260,9 +3480,11 @@ void sh4_inst_binary_subv_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // AND Rm, Rn
 // 0010nnnnmmmm1001
-void sh4_inst_binary_and_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_and_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1001, INST_CONS_0010nnnnmmmm1001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) &= *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 }
@@ -3272,9 +3494,11 @@ void sh4_inst_binary_and_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // NOT Rm, Rn
 // 0110nnnnmmmm0111
-void sh4_inst_binary_not_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_not_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0111, INST_CONS_0110nnnnmmmm0111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = ~(*sh4_gen_reg(sh4, (inst >> 4) & 0xf));
 }
@@ -3284,9 +3508,11 @@ void sh4_inst_binary_not_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // OR Rm, Rn
 // 0010nnnnmmmm1011
-void sh4_inst_binary_or_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_or_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1011, INST_CONS_0010nnnnmmmm1011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) |= *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 }
@@ -3296,9 +3522,11 @@ void sh4_inst_binary_or_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // TST Rm, Rn
 // 0010nnnnmmmm1000
-void sh4_inst_binary_tst_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_tst_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1000, INST_CONS_0010nnnnmmmm1000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     reg32_t flag = !(*sh4_gen_reg(sh4, (inst >> 4) & 0xf) & *sh4_gen_reg(sh4, (inst >> 8) & 0xf)) <<
@@ -3311,9 +3539,11 @@ void sh4_inst_binary_tst_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // XOR Rm, Rn
 // 0010nnnnmmmm1010
-void sh4_inst_binary_xor_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_xor_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm1010, INST_CONS_0010nnnnmmmm1010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) ^= *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 }
@@ -3323,9 +3553,11 @@ void sh4_inst_binary_xor_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHAD Rm, Rn
 // 0100nnnnmmmm1100
-void sh4_inst_binary_shad_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_shad_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnnmmmm1100, INST_CONS_0100nnnnmmmm1100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *srcp = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     reg32_t *dstp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -3346,9 +3578,11 @@ void sh4_inst_binary_shad_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // SHLD Rm, Rn
 // 0100nnnnmmmm1101
-void sh4_inst_binary_shld_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_shld_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnnmmmm1101, INST_CONS_0100nnnnmmmm1101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *srcp = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     reg32_t *dstp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -3369,9 +3603,11 @@ void sh4_inst_binary_shld_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC Rm, Rn_BANK
 // 0100mmmm1nnn1110
-void sh4_inst_binary_ldc_gen_bank(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldc_gen_bank(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm1nnn1110, INST_CONS_0100mmmm1nnn1110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -3391,9 +3627,11 @@ void sh4_inst_binary_ldc_gen_bank(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDC.L @Rm+, Rn_BANK
 // 0100mmmm1nnn0111
-void sh4_inst_binary_ldcl_indgeninc_bank(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldcl_indgeninc_bank(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm1nnn0111, INST_CONS_0100mmmm1nnn0111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *src_reg;
@@ -3419,9 +3657,11 @@ void sh4_inst_binary_ldcl_indgeninc_bank(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC Rm_BANK, Rn
 // 0000nnnn1mmm0010
-void sh4_inst_binary_stc_bank_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stc_bank_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn1mmm0010, INST_CONS_0000nnnn1mmm0010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -3440,9 +3680,11 @@ void sh4_inst_binary_stc_bank_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STC.L Rm_BANK, @-Rn
 // 0100nnnn1mmm0011
-void sh4_inst_binary_stcl_bank_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stcl_bank_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn1mmm0011, INST_CONS_0100nnnn1mmm0011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
 #ifdef ENABLE_SH4_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -3467,9 +3709,11 @@ void sh4_inst_binary_stcl_bank_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS Rm, MACH
 // 0100mmmm00001010
-void sh4_inst_binary_lds_gen_mach(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_lds_gen_mach(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00001010, INST_CONS_0100mmmm00001010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_MACH] = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 }
@@ -3479,9 +3723,11 @@ void sh4_inst_binary_lds_gen_mach(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS Rm, MACL
 // 0100mmmm00011010
-void sh4_inst_binary_lds_gen_macl(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_lds_gen_macl(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00011010, INST_CONS_0100mmmm00011010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_MACL] = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 }
@@ -3491,9 +3737,11 @@ void sh4_inst_binary_lds_gen_macl(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS MACH, Rn
 // 0000nnnn00001010
-void sh4_inst_binary_sts_mach_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_sts_mach_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00001010, INST_CONS_0000nnnn00001010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_MACH];
 }
@@ -3503,9 +3751,11 @@ void sh4_inst_binary_sts_mach_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS MACL, Rn
 // 0000nnnn00011010
-void sh4_inst_binary_sts_macl_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_sts_macl_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00011010, INST_CONS_0000nnnn00011010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_MACL];
 }
@@ -3515,9 +3765,11 @@ void sh4_inst_binary_sts_macl_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS Rm, PR
 // 0100mmmm00101010
-void sh4_inst_binary_lds_gen_pr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_lds_gen_pr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00101010, INST_CONS_0100mmmm00101010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_PR] = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 }
@@ -3527,9 +3779,11 @@ void sh4_inst_binary_lds_gen_pr(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS PR, Rn
 // 0000nnnn00101010
-void sh4_inst_binary_sts_pr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_sts_pr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn00101010, INST_CONS_0000nnnn00101010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_PR];
 }
@@ -3539,9 +3793,11 @@ void sh4_inst_binary_sts_pr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS.L @Rm+, MACH
 // 0100mmmm00000110
-void sh4_inst_binary_ldsl_indgeninc_mach(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldsl_indgeninc_mach(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00000110, INST_CONS_0100mmmm00000110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -3558,9 +3814,11 @@ void sh4_inst_binary_ldsl_indgeninc_mach(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS.L @Rm+, MACL
 // 0100mmmm00010110
-void sh4_inst_binary_ldsl_indgeninc_macl(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldsl_indgeninc_macl(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00010110, INST_CONS_0100mmmm00010110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -3577,9 +3835,11 @@ void sh4_inst_binary_ldsl_indgeninc_macl(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS.L MACH, @-Rn
 // 0100mmmm00000010
-void sh4_inst_binary_stsl_mach_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stsl_mach_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00000010, INST_CONS_0100mmmm00000010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
@@ -3594,9 +3854,11 @@ void sh4_inst_binary_stsl_mach_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS.L MACL, @-Rn
 // 0100mmmm00010010
-void sh4_inst_binary_stsl_macl_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stsl_macl_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00010010, INST_CONS_0100mmmm00010010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
@@ -3611,9 +3873,11 @@ void sh4_inst_binary_stsl_macl_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS.L @Rm+, PR
 // 0100mmmm00100110
-void sh4_inst_binary_ldsl_indgeninc_pr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldsl_indgeninc_pr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm00100110, INST_CONS_0100mmmm00100110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -3630,9 +3894,11 @@ void sh4_inst_binary_ldsl_indgeninc_pr(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS.L PR, @-Rn
 // 0100nnnn00100010
-void sh4_inst_binary_stsl_pr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stsl_pr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn00100010, INST_CONS_0100nnnn00100010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
@@ -3647,9 +3913,11 @@ void sh4_inst_binary_stsl_pr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B Rm, @Rn
 // 0010nnnnmmmm0000
-void sh4_inst_binary_movb_gen_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_gen_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm0000, INST_CONS_0010nnnnmmmm0000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint8_t mem_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3662,9 +3930,11 @@ void sh4_inst_binary_movb_gen_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W Rm, @Rn
 // 0010nnnnmmmm0001
-void sh4_inst_binary_movw_gen_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_gen_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm0001, INST_CONS_0010nnnnmmmm0001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint16_t mem_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3677,9 +3947,11 @@ void sh4_inst_binary_movw_gen_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L Rm, @Rn
 // 0010nnnnmmmm0010
-void sh4_inst_binary_movl_gen_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_gen_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm0010, INST_CONS_0010nnnnmmmm0010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint32_t mem_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3692,9 +3964,11 @@ void sh4_inst_binary_movl_gen_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B @Rm, Rn
 // 0110nnnnmmmm0000
-void sh4_inst_binary_movb_indgen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_indgen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0000, INST_CONS_0110nnnnmmmm0000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t mem_val;
@@ -3709,9 +3983,11 @@ void sh4_inst_binary_movb_indgen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W @Rm, Rn
 // 0110nnnnmmmm0001
-void sh4_inst_binary_movw_indgen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_indgen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0001, INST_CONS_0110nnnnmmmm0001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t mem_val;
@@ -3725,9 +4001,11 @@ void sh4_inst_binary_movw_indgen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L @Rm, Rn
 // 0110nnnnmmmm0010
-void sh4_inst_binary_movl_indgen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_indgen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0010, INST_CONS_0110nnnnmmmm0010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int32_t mem_val;
@@ -3742,9 +4020,11 @@ void sh4_inst_binary_movl_indgen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B Rm, @-Rn
 // 0010nnnnmmmm0100
-void sh4_inst_binary_movb_gen_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_gen_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm0100, INST_CONS_0010nnnnmmmm0100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3763,9 +4043,11 @@ void sh4_inst_binary_movb_gen_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W Rm, @-Rn
 // 0010nnnnmmmm0101
-void sh4_inst_binary_movw_gen_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_gen_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm0101, INST_CONS_0010nnnnmmmm0101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3785,9 +4067,11 @@ void sh4_inst_binary_movw_gen_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L Rm, @-Rn
 // 0010nnnnmmmm0110
-void sh4_inst_binary_movl_gen_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_gen_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0010nnnnmmmm0110, INST_CONS_0010nnnnmmmm0110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -3807,9 +4091,11 @@ void sh4_inst_binary_movl_gen_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B @Rm+, Rn
 // 0110nnnnmmmm0100
-void sh4_inst_binary_movb_indgeninc_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_indgeninc_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0100, INST_CONS_0110nnnnmmmm0100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -3827,9 +4113,11 @@ void sh4_inst_binary_movb_indgeninc_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W @Rm+, Rn
 // 0110nnnnmmmm0101
-void sh4_inst_binary_movw_indgeninc_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_indgeninc_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0101, INST_CONS_0110nnnnmmmm0101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -3847,9 +4135,11 @@ void sh4_inst_binary_movw_indgeninc_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L @Rm+, Rn
 // 0110nnnnmmmm0110
-void sh4_inst_binary_movl_indgeninc_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_indgeninc_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0110nnnnmmmm0110, INST_CONS_0110nnnnmmmm0110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -3867,9 +4157,11 @@ void sh4_inst_binary_movl_indgeninc_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MAC.L @Rm+, @Rn+
 // 0000nnnnmmmm1111
-void sh4_inst_binary_macl_indgeninc_indgeninc(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_macl_indgeninc_indgeninc(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnnmmmm1111, INST_CONS_0000nnnnmmmm1111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     static const int64_t MAX48 = 0x7fffffffffff;
     static const int64_t MIN48 = 0xffff800000000000;
@@ -3919,9 +4211,11 @@ void sh4_inst_binary_macl_indgeninc_indgeninc(Sh4 *sh4, cpu_inst_param inst) {
 
 // MAC.W @Rm+, @Rn+
 // 0100nnnnmmmm1111
-void sh4_inst_binary_macw_indgeninc_indgeninc(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_macw_indgeninc_indgeninc(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnnmmmm1111, INST_CONS_0100nnnnmmmm1111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     static const int32_t MAX32 = 0x7fffffff;
     static const int32_t MIN32 = 0x80000000;
@@ -3983,9 +4277,11 @@ void sh4_inst_binary_macw_indgeninc_indgeninc(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B R0, @(disp, Rn)
 // 10000000nnnndddd
-void sh4_inst_binary_movb_r0_binind_disp_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_r0_binind_disp_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_10000000nnnndddd, INST_CONS_10000000nnnndddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = (inst & 0xf) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t val = *sh4_gen_reg(sh4, 0);
@@ -3998,9 +4294,11 @@ void sh4_inst_binary_movb_r0_binind_disp_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W R0, @(disp, Rn)
 // 10000001nnnndddd
-void sh4_inst_binary_movw_r0_binind_disp_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_r0_binind_disp_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_10000001nnnndddd, INST_CONS_10000001nnnndddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = ((inst & 0xf) << 1) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t val = *sh4_gen_reg(sh4, 0);
@@ -4013,9 +4311,11 @@ void sh4_inst_binary_movw_r0_binind_disp_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L Rm, @(disp, Rn)
 // 0001nnnnmmmmdddd
-void sh4_inst_binary_movl_gen_binind_disp_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_gen_binind_disp_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0001nnnnmmmmdddd, INST_CONS_0001nnnnmmmmdddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = ((inst & 0xf) << 2) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     int32_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -4028,9 +4328,11 @@ void sh4_inst_binary_movl_gen_binind_disp_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B @(disp, Rm), R0
 // 10000100mmmmdddd
-void sh4_inst_binary_movb_binind_disp_gen_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_binind_disp_gen_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_10000100mmmmdddd, INST_CONS_10000100mmmmdddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = (inst & 0xf) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t val;
@@ -4045,9 +4347,11 @@ void sh4_inst_binary_movb_binind_disp_gen_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W @(disp, Rm), R0
 // 10000101mmmmdddd
-void sh4_inst_binary_movw_binind_disp_gen_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_binind_disp_gen_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_10000101mmmmdddd, INST_CONS_10000101mmmmdddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = ((inst & 0xf) << 1) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t val;
@@ -4062,9 +4366,11 @@ void sh4_inst_binary_movw_binind_disp_gen_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L @(disp, Rm), Rn
 // 0101nnnnmmmmdddd
-void sh4_inst_binary_movl_binind_disp_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_binind_disp_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0101nnnnmmmmdddd, INST_CONS_0101nnnnmmmmdddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = ((inst & 0xf) << 2) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int32_t val;
@@ -4079,9 +4385,11 @@ void sh4_inst_binary_movl_binind_disp_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B Rm, @(R0, Rn)
 // 0000nnnnmmmm0100
-void sh4_inst_binary_movb_gen_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_gen_binind_r0_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnnmmmm0100, INST_CONS_0000nnnnmmmm0100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint8_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -4094,9 +4402,11 @@ void sh4_inst_binary_movb_gen_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W Rm, @(R0, Rn)
 // 0000nnnnmmmm0101
-void sh4_inst_binary_movw_gen_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_gen_binind_r0_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnnmmmm0101, INST_CONS_0000nnnnmmmm0101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint16_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -4109,9 +4419,11 @@ void sh4_inst_binary_movw_gen_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L Rm, @(R0, Rn)
 // 0000nnnnmmmm0110
-void sh4_inst_binary_movl_gen_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_gen_binind_r0_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnnmmmm0110, INST_CONS_0000nnnnmmmm0110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint32_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -4124,9 +4436,11 @@ void sh4_inst_binary_movl_gen_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B @(R0, Rm), Rn
 // 0000nnnnmmmm1100
-void sh4_inst_binary_movb_binind_r0_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_binind_r0_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnnmmmm1100, INST_CONS_0000nnnnmmmm1100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t val;
@@ -4141,9 +4455,11 @@ void sh4_inst_binary_movb_binind_r0_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W @(R0, Rm), Rn
 // 0000nnnnmmmm1101
-void sh4_inst_binary_movw_binind_r0_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_binind_r0_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnnmmmm1101, INST_CONS_0000nnnnmmmm1101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t val;
@@ -4158,9 +4474,11 @@ void sh4_inst_binary_movw_binind_r0_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L @(R0, Rm), Rn
 // 0000nnnnmmmm1110
-void sh4_inst_binary_movl_binind_r0_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_binind_r0_gen_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnnmmmm1110, INST_CONS_0000nnnnmmmm1110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int32_t val;
@@ -4175,9 +4493,11 @@ void sh4_inst_binary_movl_binind_r0_gen_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B R0, @(disp, GBR)
 // 11000000dddddddd
-void sh4_inst_binary_movb_r0_binind_disp_gbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_r0_binind_disp_gbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11000000dddddddd, INST_CONS_11000000dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = inst_imm8(inst) + sh4->reg[SH4_REG_GBR];
     int8_t val = *sh4_gen_reg(sh4, 0);
@@ -4190,9 +4510,11 @@ void sh4_inst_binary_movb_r0_binind_disp_gbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W R0, @(disp, GBR)
 // 11000001dddddddd
-void sh4_inst_binary_movw_r0_binind_disp_gbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_r0_binind_disp_gbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11000001dddddddd, INST_CONS_11000001dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = (inst_imm8(inst) << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val = *sh4_gen_reg(sh4, 0);
@@ -4205,9 +4527,11 @@ void sh4_inst_binary_movw_r0_binind_disp_gbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L R0, @(disp, GBR)
 // 11000010dddddddd
-void sh4_inst_binary_movl_r0_binind_disp_gbr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_r0_binind_disp_gbr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11000010dddddddd, INST_CONS_11000010dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = (inst_imm8(inst) << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val = *sh4_gen_reg(sh4, 0);
@@ -4220,9 +4544,11 @@ void sh4_inst_binary_movl_r0_binind_disp_gbr(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.B @(disp, GBR), R0
 // 11000100dddddddd
-void sh4_inst_binary_movb_binind_disp_gbr_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movb_binind_disp_gbr_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11000100dddddddd, INST_CONS_11000100dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = inst_imm8(inst) + sh4->reg[SH4_REG_GBR];
     int8_t val;
@@ -4237,9 +4563,11 @@ void sh4_inst_binary_movb_binind_disp_gbr_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.W @(disp, GBR), R0
 // 11000101dddddddd
-void sh4_inst_binary_movw_binind_disp_gbr_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movw_binind_disp_gbr_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11000101dddddddd, INST_CONS_11000101dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = (inst_imm8(inst) << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val;
@@ -4254,9 +4582,11 @@ void sh4_inst_binary_movw_binind_disp_gbr_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOV.L @(disp, GBR), R0
 // 11000110dddddddd
-void sh4_inst_binary_movl_binind_disp_gbr_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movl_binind_disp_gbr_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11000110dddddddd, INST_CONS_11000110dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = (inst_imm8(inst) << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val;
@@ -4271,9 +4601,11 @@ void sh4_inst_binary_movl_binind_disp_gbr_r0(Sh4 *sh4, cpu_inst_param inst) {
 
 // MOVA @(disp, PC), R0
 // 11000111dddddddd
-void sh4_inst_binary_mova_binind_disp_pc_r0(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_mova_binind_disp_pc_r0(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11000111dddddddd, INST_CONS_11000111dddddddd);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     /*
      * The assembly for this one is a bit of a misnomer.
@@ -4298,9 +4630,11 @@ void sh4_inst_binary_mova_binind_disp_pc_r0(Sh4 *sh4, cpu_inst_param inst) {
  */
 // MOVCA.L R0, @Rn
 // 0000nnnn11000011
-void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_movcal_r0_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn11000011, INST_CONS_0000nnnn11000011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t src_val = *sh4_gen_reg(sh4, 0);
     addr32_t vaddr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -4313,9 +4647,12 @@ void sh4_inst_binary_movcal_r0_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FLDI0 FRn
 // 1111nnnn10001101
-void sh4_inst_unary_fldi0_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_fldi0_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn10001101, INST_CONS_1111nnnn10001101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     *sh4_fpu_fr(sh4, (inst >> 8) & 0xf) = 0.0f;
@@ -4326,10 +4663,12 @@ void sh4_inst_unary_fldi0_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FLDI1 Frn
 // 1111nnnn10011101
-void sh4_inst_unary_fldi1_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_fldi1_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn10011101, INST_CONS_1111nnnn10011101);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_fpu_fr(sh4, (inst >> 8) & 0xf) = 1.0f;
 }
@@ -4339,9 +4678,12 @@ void sh4_inst_unary_fldi1_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV FRm, FRn
 // 1111nnnnmmmm1100
-void sh4_inst_binary_fmov_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_fr_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1100, INST_CONS_1111nnnnmmmm1100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     *sh4_fpu_fr(sh4, (inst >> 8) & 0xf) = *sh4_fpu_fr(sh4, (inst >> 4) & 0xf);
@@ -4352,9 +4694,12 @@ void sh4_inst_binary_fmov_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV.S @Rm, FRn
 // 1111nnnnmmmm1000
-void sh4_inst_binary_fmovs_indgen_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmovs_indgen_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1000, INST_CONS_1111nnnnmmmm1000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -4368,9 +4713,12 @@ void sh4_inst_binary_fmovs_indgen_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV.S @(R0,Rm), FRn
 // 1111nnnnmmmm0110
-void sh4_inst_binary_fmovs_binind_r0_gen_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmovs_binind_r0_gen_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0110, INST_CONS_1111nnnnmmmm0110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -4384,9 +4732,12 @@ void sh4_inst_binary_fmovs_binind_r0_gen_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV.S @Rm+, FRn
 // 1111nnnnmmmm1001
-void sh4_inst_binary_fmovs_indgeninc_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmovs_indgeninc_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1001, INST_CONS_1111nnnnmmmm1001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -4402,9 +4753,12 @@ void sh4_inst_binary_fmovs_indgeninc_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV.S FRm, @Rn
 // 1111nnnnmmmm1010
-void sh4_inst_binary_fmovs_fr_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmovs_fr_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1010, INST_CONS_1111nnnnmmmm1010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -4418,9 +4772,12 @@ void sh4_inst_binary_fmovs_fr_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV.S FRm, @-Rn
 // 1111nnnnmmmm1011
-void sh4_inst_binary_fmovs_fr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmovs_fr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1011, INST_CONS_1111nnnnmmmm1011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -4437,9 +4794,12 @@ void sh4_inst_binary_fmovs_fr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV.S FRm, @(R0, Rn)
 // 1111nnnnmmmm0111
-void sh4_inst_binary_fmovs_fr_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmovs_fr_binind_r0_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0111, INST_CONS_1111nnnnmmmm0111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, 0);
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -4453,9 +4813,12 @@ void sh4_inst_binary_fmovs_fr_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV DRm, DRn
 // 1111nnn0mmm01100
-void sh4_inst_binary_fmov_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_dr_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm01100, INST_CONS_1111nnn0mmm01100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     *sh4_fpu_dr(sh4, (inst >> 9) & 0x7) = *sh4_fpu_dr(sh4, (inst >> 5) & 0x7);
@@ -4466,10 +4829,12 @@ void sh4_inst_binary_fmov_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV @Rm, DRn
 // 1111nnn0mmmm1000
-void sh4_inst_binary_fmov_indgen_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_indgen_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmmm1000, INST_CONS_1111nnn0mmmm1000);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_dr(sh4, (inst >> 9) & 0x7);
@@ -4482,9 +4847,12 @@ void sh4_inst_binary_fmov_indgen_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV @(R0, Rm), DRn
 // 1111nnn0mmmm0110
-void sh4_inst_binary_fmov_binind_r0_gen_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_binind_r0_gen_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmmm0110, INST_CONS_1111nnn0mmmm0110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -4498,9 +4866,12 @@ void sh4_inst_binary_fmov_binind_r0_gen_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV @Rm+, DRn
 // 1111nnn0mmmm1001
-void sh4_inst_binary_fmov_indgeninc_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_indgeninc_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmmm1001, INST_CONS_1111nnn0mmmm1001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -4516,9 +4887,12 @@ void sh4_inst_binary_fmov_indgeninc_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV DRm, @Rn
 // 1111nnnnmmm01010
-void sh4_inst_binary_fmov_dr_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_dr_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm01010, INST_CONS_1111nnnnmmm01010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -4532,9 +4906,12 @@ void sh4_inst_binary_fmov_dr_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV DRm, @-Rn
 // 1111nnnnmmm01011
-void sh4_inst_binary_fmov_dr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_dr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm01011, INST_CONS_1111nnnnmmm01011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -4551,9 +4928,12 @@ void sh4_inst_binary_fmov_dr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV DRm, @(R0, Rn)
 // 1111nnnnmmm00111
-void sh4_inst_binary_fmov_dr_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_dr_binind_r0_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm00111, INST_CONS_1111nnnnmmm00111);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -4567,9 +4947,11 @@ void sh4_inst_binary_fmov_dr_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FLDS FRm, FPUL
 // 1111mmmm00011101
-void sh4_inst_binary_flds_fr_fpul(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_flds_fr_fpul(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111mmmm00011101, INST_CONS_1111mmmm00011101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     float *src_reg = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
 
@@ -4581,9 +4963,11 @@ void sh4_inst_binary_flds_fr_fpul(Sh4 *sh4, cpu_inst_param inst) {
 
 // FSTS FPUL, FRn
 // 1111nnnn00001101
-void sh4_inst_binary_fsts_fpul_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fsts_fpul_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn00001101, INST_CONS_1111nnnn00001101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     float *dst_reg = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
 
@@ -4595,9 +4979,12 @@ void sh4_inst_binary_fsts_fpul_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FABS FRn
 // 1111nnnn01011101
-void sh4_inst_unary_fabs_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_fabs_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn01011101, INST_CONS_1111nnnn01011101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     float *regp = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
@@ -4609,9 +4996,12 @@ void sh4_inst_unary_fabs_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FADD FRm, FRn
 // 1111nnnnmmmm0000
-void sh4_inst_binary_fadd_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fadd_fr_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0000, INST_CONS_1111nnnnmmmm0000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
@@ -4652,9 +5042,12 @@ void sh4_inst_binary_fadd_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FCMP/EQ FRm, FRn
 // 1111nnnnmmmm0100
-void sh4_inst_binary_fcmpeq_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fcmpeq_fr_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0100, INST_CONS_1111nnnnmmmm0100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
@@ -4685,9 +5078,12 @@ void sh4_inst_binary_fcmpeq_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FCMP/GT FRm, FRn
 // 1111nnnnmmmm0101
-void sh4_inst_binary_fcmpgt_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fcmpgt_fr_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0101, INST_CONS_1111nnnnmmmm0101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
@@ -4718,9 +5114,12 @@ void sh4_inst_binary_fcmpgt_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FDIV FRm, FRn
 // 1111nnnnmmmm0011
-void sh4_inst_binary_fdiv_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fdiv_fr_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0011, INST_CONS_1111nnnnmmmm0011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
@@ -4768,9 +5167,12 @@ void sh4_inst_binary_fdiv_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FLOAT FPUL, FRn
 // 1111nnnn00101101
-void sh4_inst_binary_float_fpul_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_float_fpul_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn00101101, INST_CONS_1111nnnn00101101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     float *dst_reg = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
@@ -4783,9 +5185,12 @@ void sh4_inst_binary_float_fpul_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMAC FR0, FRm, FRn
 // 1111nnnnmmmm1110
-void sh4_inst_trinary_fmac_fr0_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_trinary_fmac_fr0_fr_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm1110, INST_CONS_1111nnnnmmmm1110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
@@ -4806,9 +5211,12 @@ void sh4_inst_trinary_fmac_fr0_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMUL FRm, FRn
 // 1111nnnnmmmm0010
-void sh4_inst_binary_fmul_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmul_fr_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0010, INST_CONS_1111nnnnmmmm0010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
@@ -4848,9 +5256,12 @@ void sh4_inst_binary_fmul_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FNEG FRn
 // 1111nnnn01001101
-void sh4_inst_unary_fneg_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_fneg_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn01001101, INST_CONS_1111nnnn01001101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     int fr_reg = (inst >> 8) & 0xf;
@@ -4863,9 +5274,12 @@ void sh4_inst_unary_fneg_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FSQRT FRn
 // 1111nnnn01101101
-void sh4_inst_unary_fsqrt_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_fsqrt_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn01101101, INST_CONS_1111nnnn01101101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
@@ -4886,9 +5300,12 @@ void sh4_inst_unary_fsqrt_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FSUB FRm, FRn
 // 1111nnnnmmmm0001
-void sh4_inst_binary_fsub_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fsub_fr_fr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmmm0001, INST_CONS_1111nnnnmmmm0001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
@@ -4932,9 +5349,12 @@ void sh4_inst_binary_fsub_fr_fr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FTRC FRm, FPUL
 // 1111mmmm00111101
-void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ftrc_fr_fpul(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111mmmm00111101, INST_CONS_1111mmmm00111101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     /*
@@ -4962,9 +5382,14 @@ void sh4_inst_binary_ftrc_fr_fpul(Sh4 *sh4, cpu_inst_param inst) {
 
 // FABS DRn
 // 1111nnn001011101
-void sh4_inst_unary_fabs_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_fabs_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn001011101, INST_CONS_1111nnn001011101);
+
+#ifdef INVARIANTS
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+#endif
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
@@ -4978,9 +5403,12 @@ void sh4_inst_unary_fabs_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FADD DRm, DRn
 // 1111nnn0mmm00000
-void sh4_inst_binary_fadd_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fadd_dr_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00000, INST_CONS_1111nnn0mmm00000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     sh4_fpu_clear_cause(sh4);
@@ -5001,9 +5429,12 @@ void sh4_inst_binary_fadd_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FCMP/EQ DRm, DRn
 // 1111nnn0mmm00100
-void sh4_inst_binary_fcmpeq_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fcmpeq_dr_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00100, INST_CONS_1111nnn0mmm00100);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     sh4_fpu_clear_cause(sh4);
@@ -5024,9 +5455,12 @@ void sh4_inst_binary_fcmpeq_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FCMP/GT DRm, DRn
 // 1111nnn0mmm00101
-void sh4_inst_binary_fcmpgt_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fcmpgt_dr_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00101, INST_CONS_1111nnn0mmm00101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     sh4_fpu_clear_cause(sh4);
@@ -5044,9 +5478,12 @@ void sh4_inst_binary_fcmpgt_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FDIV DRm, DRn
 // 1111nnn0mmm00011
-void sh4_inst_binary_fdiv_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fdiv_dr_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00011, INST_CONS_1111nnn0mmm00011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     sh4_fpu_clear_cause(sh4);
@@ -5067,9 +5504,12 @@ void sh4_inst_binary_fdiv_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FCNVDS DRm, FPUL
 // 1111mmm010111101
-void sh4_inst_binary_fcnvds_dr_fpul(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fcnvds_dr_fpul(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111mmm010111101, INST_CONS_1111mmm010111101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     /*
@@ -5090,9 +5530,12 @@ void sh4_inst_binary_fcnvds_dr_fpul(Sh4 *sh4, cpu_inst_param inst) {
 
 // FCNVSD FPUL, DRn
 // 1111nnn010101101
-void sh4_inst_binary_fcnvsd_fpul_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fcnvsd_fpul_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn010101101, INST_CONS_1111nnn010101101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     /*
@@ -5114,9 +5557,12 @@ void sh4_inst_binary_fcnvsd_fpul_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FLOAT FPUL, DRn
 // 1111nnn000101101
-void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_float_fpul_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn000101101, INST_CONS_1111nnn000101101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     sh4_write_double(sh4, ((inst >> 9) & 0x7) * 2,
@@ -5128,9 +5574,12 @@ void sh4_inst_binary_float_fpul_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMUL DRm, DRn
 // 1111nnn0mmm00010
-void sh4_inst_binary_fmul_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmul_dr_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00010, INST_CONS_1111nnn0mmm00010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
 
@@ -5152,9 +5601,14 @@ void sh4_inst_binary_fmul_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FNEG DRn
 // 1111nnn001001101
-void sh4_inst_unary_fneg_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_fneg_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn001001101, INST_CONS_1111nnn001001101);
+
+#ifdef INVARIANTS
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+#endif
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
@@ -5168,9 +5622,14 @@ void sh4_inst_unary_fneg_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FSQRT DRn
 // 1111nnn001101101
-void sh4_inst_unary_fsqrt_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_fsqrt_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn001101101, INST_CONS_1111nnn001101101);
+
+#ifdef INVARIANTS
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+#endif
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     error_set_feature("opcode implementation");
@@ -5184,9 +5643,12 @@ void sh4_inst_unary_fsqrt_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FSUB DRm, DRn
 // 1111nnn0mmm00001
-void sh4_inst_binary_fsub_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fsub_dr_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm00001, INST_CONS_1111nnn0mmm00001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
 
@@ -5208,9 +5670,12 @@ void sh4_inst_binary_fsub_dr_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FTRC DRm, FPUL
 // 1111mmm000111101
-void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ftrc_dr_fpul(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111mmm000111101, INST_CONS_1111mmm000111101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
     /*
@@ -5234,9 +5699,12 @@ void sh4_inst_binary_ftrc_dr_fpul(Sh4 *sh4, cpu_inst_param inst) {
 
 // FSCA FPUL, DRn
 // 1111nnn011111101
-void sh4_inst_binary_fsca_fpul_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fsca_fpul_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn011111101, INST_CONS_1111nnn011111101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     // TODO: should I really be calling sh4_fpu_clear_cause here ?
@@ -5261,9 +5729,11 @@ void sh4_inst_binary_fsca_fpul_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS Rm, FPSCR
 // 0100mmmm01101010
-void sh4_inst_binary_lds_gen_fpscr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_lds_gen_fpscr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm01101010, INST_CONS_0100mmmm01101010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4_set_fpscr(sh4, *sh4_gen_reg(sh4, (inst >> 8) & 0xf));
 }
@@ -5273,9 +5743,11 @@ void sh4_inst_binary_lds_gen_fpscr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS Rm, FPUL
 // 0100mmmm01011010
-void sh4_inst_binary_gen_fpul(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_gen_fpul(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm01011010, INST_CONS_0100mmmm01011010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     memcpy(sh4->reg + SH4_REG_FPUL, sh4_gen_reg(sh4, (inst >> 8) & 0xf),
            sizeof(sh4->reg[SH4_REG_FPUL]));
@@ -5286,9 +5758,11 @@ void sh4_inst_binary_gen_fpul(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS.L @Rm+, FPSCR
 // 0100mmmm01100110
-void sh4_inst_binary_ldsl_indgeninc_fpscr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldsl_indgeninc_fpscr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm01100110, INST_CONS_0100mmmm01100110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -5305,9 +5779,11 @@ void sh4_inst_binary_ldsl_indgeninc_fpscr(Sh4 *sh4, cpu_inst_param inst) {
 
 // LDS.L @Rm+, FPUL
 // 0100mmmm01010110
-void sh4_inst_binary_ldsl_indgeninc_fpul(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_ldsl_indgeninc_fpul(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100mmmm01010110, INST_CONS_0100mmmm01010110);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -5324,9 +5800,11 @@ void sh4_inst_binary_ldsl_indgeninc_fpul(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS FPSCR, Rn
 // 0000nnnn01101010
-void sh4_inst_binary_sts_fpscr_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_sts_fpscr_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn01101010, INST_CONS_0000nnnn01101010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_FPSCR];
 }
@@ -5336,9 +5814,11 @@ void sh4_inst_binary_sts_fpscr_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS FPUL, Rn
 // 0000nnnn01011010
-void sh4_inst_binary_sts_fpul_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_sts_fpul_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000nnnn01011010, INST_CONS_0000nnnn01011010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     memcpy(sh4_gen_reg(sh4, (inst >> 8) & 0xf), sh4->reg + SH4_REG_FPUL,
            sizeof(sh4->reg[SH4_REG_FPUL]));
@@ -5349,9 +5829,11 @@ void sh4_inst_binary_sts_fpul_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS.L FPSCR, @-Rn
 // 0100nnnn01100010
-void sh4_inst_binary_stsl_fpscr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stsl_fpscr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn01100010, INST_CONS_0100nnnn01100010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
@@ -5366,9 +5848,11 @@ void sh4_inst_binary_stsl_fpscr_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // STS.L FPUL, @-Rn
 // 0100nnnn01010010
-void sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_stsl_fpul_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0100nnnn01010010, INST_CONS_0100nnnn01010010);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
@@ -5383,10 +5867,12 @@ void sh4_inst_binary_stsl_fpul_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV DRm, XDn
 // 1111nnn1mmm01100
-void sh4_inst_binary_fmov_dr_xd(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_dr_xd(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmm01100, INST_CONS_1111nnn1mmm01100);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int dr_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
@@ -5399,10 +5885,12 @@ void sh4_inst_binary_fmov_dr_xd(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV XDm, DRn
 // 1111nnn0mmm11100
-void sh4_inst_binary_fmov_xd_dr(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_xd_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn0mmm11100, INST_CONS_1111nnn0mmm11100);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int dr_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
@@ -5415,9 +5903,14 @@ void sh4_inst_binary_fmov_xd_dr(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV XDm, XDn
 // 1111nnn1mmm11100
-void sh4_inst_binary_fmov_xd_xd(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_xd_xd(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmm11100, INST_CONS_1111nnn1mmm11100);
+
+#ifdef INVARIANTS
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+#endif
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
@@ -5431,9 +5924,12 @@ void sh4_inst_binary_fmov_xd_xd(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV @Rm, XDn
 // 1111nnn1mmmm1000
-void sh4_inst_binary_fmov_indgen_xd(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_indgen_xd(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmmm1000, INST_CONS_1111nnn1mmmm1000);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -5447,9 +5943,12 @@ void sh4_inst_binary_fmov_indgen_xd(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV @Rm+, XDn
 // 1111nnn1mmmm1001
-void sh4_inst_binary_fmov_indgeninc_xd(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_indgeninc_xd(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmmm1001, INST_CONS_1111nnn1mmmm1001);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
@@ -5465,9 +5964,14 @@ void sh4_inst_binary_fmov_indgeninc_xd(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV @(R0, Rn), XDn
 // 1111nnn1mmmm0110
-void sh4_inst_binary_fmov_binind_r0_gen_xd(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_binind_r0_gen_xd(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn1mmmm0110, INST_CONS_1111nnn1mmmm0110);
+
+#ifdef INVARIANTS
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+#endif
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
@@ -5481,9 +5985,14 @@ void sh4_inst_binary_fmov_binind_r0_gen_xd(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV XDm, @Rn
 // 1111nnnnmmm11010
-void sh4_inst_binary_fmov_xd_indgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_xd_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm11010, INST_CONS_1111nnnnmmm11010);
+
+#ifdef INVARIANTS
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+#endif
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
@@ -5497,9 +6006,12 @@ void sh4_inst_binary_fmov_xd_indgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV XDm, @-Rn
 // 1111nnnnmmm11011
-void sh4_inst_binary_fmov_xd_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_xd_inddecgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm11011, INST_CONS_1111nnnnmmm11011);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
@@ -5516,9 +6028,14 @@ void sh4_inst_binary_fmov_xd_inddecgen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FMOV XDm, @(R0, Rn)
 // 1111nnnnmmm10111
-void sh4_inst_binary_fmov_xs_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fmov_xs_binind_r0_gen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm10111, INST_CONS_1111nnnnmmm10111);
+
+#ifdef INVARIANTS
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+#endif
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     error_set_feature("opcode implementation");
@@ -5532,9 +6049,11 @@ void sh4_inst_binary_fmov_xs_binind_r0_gen(Sh4 *sh4, cpu_inst_param inst) {
 
 // FIPR FVm, FVn - vector dot product
 // 1111nnmm11101101
-void sh4_inst_binary_fipr_fv_fv(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fipr_fv_fv(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnmm11101101, INST_CONS_1111nnmm11101101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4_fpu_clear_cause(sh4);
 
@@ -5573,9 +6092,11 @@ void sh4_inst_binary_fipr_fv_fv(Sh4 *sh4, cpu_inst_param inst) {
 
 // FTRV XMTRX, FVn - multiple vector by matrix
 // 1111nn0111111101
-void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_binary_fitrv_mxtrx_fv(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nn0111111101, INST_CONS_1111nn0111111101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4_fpu_clear_cause(sh4);
 
@@ -5652,9 +6173,12 @@ void sh4_inst_binary_fitrv_mxtrx_fv(Sh4 *sh4, cpu_inst_param inst) {
 
 // FSRRA FRn
 // 1111nnnn01111101
-void sh4_inst_unary_fsrra_frn(Sh4  *sh4, cpu_inst_param inst) {
+void sh4_inst_unary_fsrra_frn(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnn01111101, INST_CONS_1111nnnn01111101);
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
 
     sh4_fpu_clear_cause(sh4);
@@ -5686,7 +6210,9 @@ void sh4_inst_unary_fsrra_frn(Sh4  *sh4, cpu_inst_param inst) {
     *srcp = 1.0 / sqrt(src);
 }
 
-void sh4_inst_invalid(Sh4 *sh4, cpu_inst_param inst) {
+void sh4_inst_invalid(void *cpu, cpu_inst_param inst) {
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     LOG_ERROR("ERROR - unrecognized opcode at PC=0x%08x\n",
               sh4->reg[SH4_REG_PC]);
 
@@ -5734,6 +6260,9 @@ DEF_FPU_HANDLER(fldi1, SH4_FPSCR_PR_MASK,
 // FMOV XDm, XDn
 // 1111nnn1mmm11100
 DEF_FPU_HANDLER_CUSTOM(fmov_gen) {
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
 
         /*
@@ -5770,6 +6299,9 @@ DEF_FPU_HANDLER_CUSTOM(fmov_gen) {
 // FMOV @Rm, XDn
 // 1111nnn1mmmm1000
 DEF_FPU_HANDLER_CUSTOM(fmovs_ind_gen) {
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
 
         /*
@@ -5800,6 +6332,9 @@ DEF_FPU_HANDLER_CUSTOM(fmovs_ind_gen) {
 // FMOV @(R0, Rm), XDn
 // 1111nnn1mmmm0110
 DEF_FPU_HANDLER_CUSTOM(fmov_binind_r0_gen_fpu) {
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
 
         /*
@@ -5830,6 +6365,9 @@ DEF_FPU_HANDLER_CUSTOM(fmov_binind_r0_gen_fpu) {
 // FMOV @Rm+, XDn
 // 1111nnn1mmmm1001
 DEF_FPU_HANDLER_CUSTOM(fmov_indgeninc_fpu) {
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
 
         /*
@@ -5860,6 +6398,9 @@ DEF_FPU_HANDLER_CUSTOM(fmov_indgeninc_fpu) {
 // FMOV XDm, @Rn
 // 1111nnnnmmm11010
 DEF_FPU_HANDLER_CUSTOM(fmov_fpu_indgen) {
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
 
         /*
@@ -5890,6 +6431,9 @@ DEF_FPU_HANDLER_CUSTOM(fmov_fpu_indgen) {
 // FMOV XDm, @-Rn
 // 1111nnnnmmm11011
 DEF_FPU_HANDLER_CUSTOM(fmov_fpu_inddecgen) {
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
 
         /*
@@ -5921,6 +6465,9 @@ DEF_FPU_HANDLER_CUSTOM(fmov_fpu_inddecgen) {
 // FMOV XDm, @(R0, Rn)
 // 1111nnnnmmm10111
 DEF_FPU_HANDLER_CUSTOM(fmov_fpu_binind_r0_gen) {
+
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK) {
 
         /*
