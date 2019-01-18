@@ -730,7 +730,7 @@ static bool run_to_next_sh4_event_jit(void *ctxt) {
             ent->valid = true;
         }
 
-        newpc = code_block_intp_exec(blk);
+        newpc = code_block_intp_exec(sh4, blk);
 
         dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
             blk->cycle_count;

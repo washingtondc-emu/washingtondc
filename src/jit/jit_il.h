@@ -24,7 +24,7 @@
 #define JIT_IL_H_
 
 #include "cpu.h"
-#include "hw/sh4/sh4_inst.h"
+#include "hw/sh4/types.h"
 #include "MemoryMap.h"
 
 /*

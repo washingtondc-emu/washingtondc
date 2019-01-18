@@ -26,32 +26,31 @@
 #include <stdint.h>
 
 #include "dc_sched.h"
-#include "hw/sh4/sh4.h"
 
 void jit_init(struct dc_clock *clk);
 void jit_cleanup(void);
 
 static inline void
-jit_compile_native(Sh4 *sh4, struct code_block_x86_64 *blk, uint32_t pc) {
+jit_compile_native(void *cpu, struct code_block_x86_64 *blk, uint32_t pc) {
     struct il_code_block il_blk;
     il_code_block_init(&il_blk);
-    il_code_block_compile(sh4, &il_blk, pc);
+    il_code_block_compile(cpu, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
-    code_block_x86_64_compile(sh4, blk, &il_blk);
+    code_block_x86_64_compile(cpu, blk, &il_blk);
     il_code_block_cleanup(&il_blk);
 }
 
 static inline void
-jit_compile_intp(Sh4 *sh4, struct code_block_intp *blk, uint32_t pc) {
+jit_compile_intp(void *cpu, struct code_block_intp *blk, uint32_t pc) {
     struct il_code_block il_blk;
     il_code_block_init(&il_blk);
-    il_code_block_compile(sh4, &il_blk, pc);
+    il_code_block_compile(cpu, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
-    code_block_intp_compile(sh4, blk, &il_blk);
+    code_block_intp_compile(cpu, blk, &il_blk);
     il_code_block_cleanup(&il_blk);
 }
 

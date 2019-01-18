@@ -27,7 +27,6 @@
 #include "sh4_inst.h"
 #include "code_block.h"
 #include "dreamcast.h"
-#include "hw/sh4/sh4_reg.h"
 #include "hw/sh4/sh4_jit.h"
 
 #define DEFAULT_BLOCK_LEN 32

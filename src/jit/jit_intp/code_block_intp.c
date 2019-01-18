@@ -59,10 +59,9 @@ void code_block_intp_compile(void *cpu,
     out->slots = (uint32_t*)malloc(out->n_slots * sizeof(uint32_t));
 }
 
-reg32_t code_block_intp_exec(struct code_block_intp const *block) {
+reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
     unsigned inst_count = block->inst_count;
     struct jit_inst const* inst = block->inst_list;
-    Sh4 *cpu = dreamcast_get_cpu();
     reg32_t old_sr;
 
     while (inst_count--) {
