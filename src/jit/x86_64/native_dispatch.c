@@ -25,7 +25,6 @@
 #include <stdint.h>
 
 #include "error.h"
-#include "dreamcast.h"
 #include "dc_sched.h"
 #include "exec_mem.h"
 #include "emit_x86_64.h"
@@ -41,10 +40,7 @@ static dc_cycle_stamp_t *sched_tgt;
 static dc_cycle_stamp_t *cycle_stamp;
 static struct dc_clock *native_dispatch_clk;
 
-uint32_t (*native_dispatch_entry)(uint32_t pc);
-
-static void native_dispatch_entry_create(void);
-static void native_dispatch_emit(void);
+static void native_dispatch_emit(void *ctx_ptr);
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no);
 static void store_quad_from_reg(void *qptr, unsigned reg_no,
@@ -57,8 +53,6 @@ void native_dispatch_init(struct dc_clock *clk) {
 
     clock_set_target_pointer(clk, sched_tgt);
     clock_set_cycle_stamp_pointer(clk, cycle_stamp);
-
-    native_dispatch_entry_create();
 }
 
 void native_dispatch_cleanup(void) {
@@ -68,9 +62,9 @@ void native_dispatch_cleanup(void) {
     exec_mem_free(sched_tgt);
 }
 
-static void native_dispatch_entry_create(void) {
-    native_dispatch_entry = exec_mem_alloc(BASIC_ALLOC);
-    x86asm_set_dst(native_dispatch_entry, BASIC_ALLOC);
+native_dispatch_entry_func native_dispatch_entry_create(void *ctx_ptr) {
+    void *entry = exec_mem_alloc(BASIC_ALLOC);
+    x86asm_set_dst(entry, BASIC_ALLOC);
 
 #if defined(ABI_UNIX)
     x86asm_pushq_reg64(RBP);
@@ -101,13 +95,13 @@ static void native_dispatch_entry_create(void) {
 #endif
 
     /*
-     * When native_dispatch_entry is called, the stack is 8 bytes after a
+     * When entry is called, the stack is 8 bytes after a
      * 16-byte boundary; this is mandated by the calling convention on x86_64
      * GCC/Linux.  After pushing 48 bytes above, the stack remains 8 bytes off
      * from a 16-byte boundary.  The code emitted by code_block_x86_64.c
      * expects to be perfectly aligned on a 16-byte boundary, and it will
      * restore RSP and RBP to their initial values whenever it calls
-     * native_check_cycles.  This means that as long as native_dispatch_entry,
+     * native_check_cycles.  This means that as long as entry,
      * native_dispatch and native_check_cycles don't push anything else onto the
      * stack that they don't pop off of the stack before jumping to a code_block
      * then it will always be safe to jump into a code_block withing checking
@@ -119,10 +113,12 @@ static void native_dispatch_entry_create(void) {
      * JIT code is only expected to preserve the base pointer, and to leave the
      * new value of the PC in RAX.  Other than that, it may do as it pleases.
      */
-    native_dispatch_emit();
+    native_dispatch_emit(ctx_ptr);
+
+    return entry;
 }
 
-static void native_dispatch_emit(void) {
+static void native_dispatch_emit(void *ctx_ptr) {
     struct x86asm_lbl8 check_valid_bit, code_cache_slow_path, have_valid_ent,
         compile;
 
@@ -191,7 +187,7 @@ static void native_dispatch_emit(void) {
     x86asm_mov_reg32_reg32(pc_reg, REG_ARG2);
     x86asm_mov_reg64_reg64(cachep_reg, REG_ARG1);
     x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), REG_ARG1);
-    x86asm_mov_imm64_reg64((uintptr_t)dreamcast_get_cpu(), pc_reg);
+    x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, pc_reg);
     x86asm_mov_imm64_reg64((uintptr_t)(void*)jit_compile_native, func_reg);
     x86asm_addq_imm8_reg(-32, RSP);
     x86asm_call_reg(func_reg);
@@ -239,7 +235,7 @@ static void native_dispatch_emit(void) {
     x86asm_lbl8_cleanup(&check_valid_bit);
 }
 
-void native_check_cycles_emit(void) {
+void native_check_cycles_emit(void *ctx_ptr) {
     struct x86asm_lbl8 dont_return;
     x86asm_lbl8_init(&dont_return);
 
@@ -296,7 +292,7 @@ void native_check_cycles_emit(void) {
 
     // call native_dispatch
     x86asm_mov_reg32_reg32(jump_reg, REG_ARG0);
-    native_dispatch_emit();
+    native_dispatch_emit(ctx_ptr);
 
     x86asm_lbl8_cleanup(&dont_return);
 }

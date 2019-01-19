@@ -1511,5 +1511,5 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
     x86asm_mov_imm32_reg32(out->cycle_count, REG_ARG0);
     x86asm_mov_reg32_reg32(REG_RET, REG_ARG1);
     emit_stack_frame_close();
-    native_check_cycles_emit();
+    native_check_cycles_emit(cpu);
 }

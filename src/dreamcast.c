@@ -82,6 +82,7 @@
 #ifdef ENABLE_JIT_X86_64
 #include "jit/x86_64/native_dispatch.h"
 #include "jit/x86_64/native_mem.h"
+#include "jit/x86_64/exec_mem.h"
 #endif
 
 #include "dreamcast.h"
@@ -144,6 +145,8 @@ static bool run_to_next_sh4_event_jit(void *ctxt);
 static bool run_to_next_arm7_event(void *ctxt);
 
 #ifdef ENABLE_JIT_X86_64
+static native_dispatch_entry_func native_dispatch_entry;
+
 static bool run_to_next_sh4_event_jit_native(void *ctxt);
 #endif
 
@@ -262,6 +265,7 @@ void dreamcast_init(bool cmd_session) {
     arm7_set_mem_map(&arm7, &arm7_mem_map);
 
 #ifdef ENABLE_JIT_X86_64
+    native_dispatch_entry = native_dispatch_entry_create(&cpu);
     native_mem_register(cpu.mem.map);
 #endif
 
@@ -313,6 +317,12 @@ on_init_complete:
 
 void dreamcast_cleanup() {
     init_complete = false;
+
+#ifdef ENABLE_JIT_X86_64
+    exec_mem_free(native_dispatch_entry);
+    native_dispatch_entry = NULL;
+#endif
+
     memory_map_cleanup(cpu.mem.map);
 
     maple_cleanup();

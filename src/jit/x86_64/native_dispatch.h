@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,16 +23,12 @@
 #ifndef NATIVE_DISPATCH_H_
 #define NATIVE_DISPATCH_H_
 
+#include <stdint.h>
+
 void native_dispatch_init(struct dc_clock *clk);
 void native_dispatch_cleanup(void);
 
-/*
- * native_dispatch_entry is a generated function which saves all call-stack
- * registers which ought to be saved, calls native_dispatch, and then returns
- * after restoring the saved register state.  It is intended to be called from
- * C code.
- */
-extern uint32_t (*native_dispatch_entry)(uint32_t pc);
+typedef uint32_t(*native_dispatch_entry_func)(uint32_t);
 
 /*
  * native_dispatch_check_cycles is a function which updates the cycle counter
@@ -47,6 +43,14 @@ extern uint32_t (*native_dispatch_entry)(uint32_t pc);
  *
  * This function should not be called from C code.
  */
-void native_check_cycles_emit(void);
+void native_check_cycles_emit(void *ctx_ptr);
+
+/*
+ * native_dispatch_entry is a generated function which saves all call-stack
+ * registers which ought to be saved, calls native_dispatch, and then returns
+ * after restoring the saved register state.  It is intended to be called from
+ * C code.
+ */
+native_dispatch_entry_func native_dispatch_entry_create(void *ctx_ptr);
 
 #endif
