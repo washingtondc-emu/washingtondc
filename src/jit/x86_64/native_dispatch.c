@@ -40,7 +40,8 @@ static dc_cycle_stamp_t *sched_tgt;
 static dc_cycle_stamp_t *cycle_stamp;
 static struct dc_clock *native_dispatch_clk;
 
-static void native_dispatch_emit(void *ctx_ptr);
+static void native_dispatch_emit(void *ctx_ptr,
+                                 native_dispatch_compile_func compile_handler);
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no);
 static void store_quad_from_reg(void *qptr, unsigned reg_no,
@@ -62,7 +63,9 @@ void native_dispatch_cleanup(void) {
     exec_mem_free(sched_tgt);
 }
 
-native_dispatch_entry_func native_dispatch_entry_create(void *ctx_ptr) {
+native_dispatch_entry_func
+native_dispatch_entry_create(void *ctx_ptr,
+                             native_dispatch_compile_func compile_handler) {
     void *entry = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(entry, BASIC_ALLOC);
 
@@ -113,12 +116,13 @@ native_dispatch_entry_func native_dispatch_entry_create(void *ctx_ptr) {
      * JIT code is only expected to preserve the base pointer, and to leave the
      * new value of the PC in RAX.  Other than that, it may do as it pleases.
      */
-    native_dispatch_emit(ctx_ptr);
+    native_dispatch_emit(ctx_ptr, compile_handler);
 
     return entry;
 }
 
-static void native_dispatch_emit(void *ctx_ptr) {
+static void native_dispatch_emit(void *ctx_ptr,
+                                 native_dispatch_compile_func compile_handler) {
     struct x86asm_lbl8 check_valid_bit, code_cache_slow_path, have_valid_ent,
         compile;
 
@@ -188,7 +192,7 @@ static void native_dispatch_emit(void *ctx_ptr) {
     x86asm_mov_reg64_reg64(cachep_reg, REG_ARG1);
     x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), REG_ARG1);
     x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, pc_reg);
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)jit_compile_native, func_reg);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)compile_handler, func_reg);
     x86asm_addq_imm8_reg(-32, RSP);
     x86asm_call_reg(func_reg);
     x86asm_addq_imm8_reg(32, RSP);
@@ -235,7 +239,8 @@ static void native_dispatch_emit(void *ctx_ptr) {
     x86asm_lbl8_cleanup(&check_valid_bit);
 }
 
-void native_check_cycles_emit(void *ctx_ptr) {
+void native_check_cycles_emit(void *ctx_ptr,
+                              native_dispatch_compile_func compile_handler) {
     struct x86asm_lbl8 dont_return;
     x86asm_lbl8_init(&dont_return);
 
@@ -292,7 +297,7 @@ void native_check_cycles_emit(void *ctx_ptr) {
 
     // call native_dispatch
     x86asm_mov_reg32_reg32(jump_reg, REG_ARG0);
-    native_dispatch_emit(ctx_ptr);
+    native_dispatch_emit(ctx_ptr, compile_handler);
 
     x86asm_lbl8_cleanup(&dont_return);
 }

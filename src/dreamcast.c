@@ -265,7 +265,8 @@ void dreamcast_init(bool cmd_session) {
     arm7_set_mem_map(&arm7, &arm7_mem_map);
 
 #ifdef ENABLE_JIT_X86_64
-    native_dispatch_entry = native_dispatch_entry_create(&cpu);
+    native_dispatch_entry =
+        native_dispatch_entry_create(&cpu, sh4_jit_compile_native);
     native_mem_register(cpu.mem.map);
 #endif
 
@@ -736,7 +737,7 @@ static bool run_to_next_sh4_event_jit(void *ctxt) {
 
         struct code_block_intp *blk = &ent->blk.intp;
         if (!ent->valid) {
-            jit_compile_intp(sh4, blk, blk_addr);
+            sh4_jit_compile_intp(sh4, blk, blk_addr);
             ent->valid = true;
         }
 

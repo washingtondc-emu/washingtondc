@@ -66,19 +66,6 @@ void il_code_block_push_inst(struct il_code_block *block,
     block->inst_list[block->inst_count++] = *inst;
 }
 
-void
-il_code_block_compile(struct Sh4 *sh4,
-                      struct il_code_block *block, addr32_t addr) {
-    bool do_continue;
-
-    sh4_jit_new_block();
-
-    do {
-        do_continue = sh4_jit_compile_inst(sh4, block, addr);
-        addr += 2;
-    } while (do_continue);
-}
-
 static void il_code_block_add_slot(struct il_code_block *block) {
     block->n_slots++;
     struct il_slot *new_slot = block->slots + (block->n_slots - 1);

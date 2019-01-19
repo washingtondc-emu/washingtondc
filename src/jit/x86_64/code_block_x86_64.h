@@ -25,6 +25,8 @@
 
 #include <stdint.h>
 
+#include "native_dispatch.h"
+
 #ifndef ENABLE_JIT_X86_64
 #error this file should not be built when the x86_64 JIT backend is disabled
 #endif
@@ -43,7 +45,8 @@ void code_block_x86_64_cleanup(struct code_block_x86_64 *blk);
 
 void code_block_x86_64_compile(void *cpu,
                                struct code_block_x86_64 *out,
-                               struct il_code_block const *il_blk);
+                               struct il_code_block const *il_blk,
+                               native_dispatch_compile_func compile_func);
 
 /*
  * if the stack is not 16-byte aligned, make it 16-byte aligned.

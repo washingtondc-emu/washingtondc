@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,8 +23,9 @@
 #ifndef CODE_BLOCK_H_
 #define CODE_BLOCK_H_
 
+#include <stdbool.h>
+
 #include "jit_il.h"
-#include "hw/sh4/sh4.h"
 
 #ifdef JIT_OPTIMIZE
 #include "jit_determ.h"
@@ -76,6 +77,8 @@ void il_code_block_cleanup(struct il_code_block *block);
 
 void il_code_block_push_inst(struct il_code_block *block,
                               struct jit_inst const *inst);
+
+struct Sh4;
 
 /*
  * fill out block based on the SH4 basic-block which begins at guest-address

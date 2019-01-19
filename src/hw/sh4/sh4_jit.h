@@ -27,6 +27,13 @@
 
 #include "cpu.h"
 #include "types.h"
+#include "sh4_inst.h"
+#include "jit/jit_il.h"
+#include "jit/code_block.h"
+
+#ifdef ENABLE_JIT_X86_64
+#include "jit/x86_64/code_block_x86_64.h"
+#endif
 
 struct InstOpcode;
 struct il_code_block;
@@ -47,6 +54,49 @@ sh4_jit_compile_inst(struct Sh4 *sh4, struct il_code_block *block, unsigned pc);
  */
 typedef bool(*sh4_jit_fn)(struct Sh4 *sh4, struct il_code_block*,unsigned,
                             struct InstOpcode const*,cpu_inst_param);
+
+static inline void
+sh4_jit_il_code_block_compile(struct Sh4 *sh4,
+                              struct il_code_block *block, addr32_t addr) {
+    bool do_continue;
+
+    sh4_jit_new_block();
+
+    do {
+        do_continue = sh4_jit_compile_inst(sh4, block, addr);
+        addr += 2;
+    } while (do_continue);
+}
+
+#ifdef ENABLE_JIT_X86_64
+static inline void
+sh4_jit_compile_native(void *cpu, void *blk_ptr, uint32_t pc) {
+    struct il_code_block il_blk;
+    struct code_block_x86_64 *blk = (struct code_block_x86_64*)blk_ptr;
+
+    il_code_block_init(&il_blk);
+    sh4_jit_il_code_block_compile(cpu, &il_blk, pc);
+#ifdef JIT_OPTIMIZE
+    jit_determ_pass(&il_blk);
+#endif
+    code_block_x86_64_compile(cpu, blk, &il_blk, sh4_jit_compile_native);
+    il_code_block_cleanup(&il_blk);
+}
+#endif
+
+static inline void
+sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
+    struct il_code_block il_blk;
+    struct code_block_intp *blk = (struct code_block_intp*)blk_ptr;
+
+    il_code_block_init(&il_blk);
+    sh4_jit_il_code_block_compile(cpu, &il_blk, pc);
+#ifdef JIT_OPTIMIZE
+    jit_determ_pass(&il_blk);
+#endif
+    code_block_intp_compile(cpu, blk, &il_blk);
+    il_code_block_cleanup(&il_blk);
+}
 
 /*
  * disassembly function that emits a function call to the instruction's
