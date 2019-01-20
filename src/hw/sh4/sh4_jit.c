@@ -64,6 +64,8 @@ struct residency {
 // this is a temporary space the il uses to map sh4 registers to slots
 static struct residency reg_map[SH4_REGISTER_COUNT];
 
+static void sh4_jit_set_sr(void *ctx, uint32_t new_sr_val);
+
 static void res_associate_reg(unsigned reg_no, unsigned slot_no);
 static void res_disassociate_reg(Sh4 *sh4, struct il_code_block *block,
                                  unsigned reg_no);
@@ -224,7 +226,7 @@ bool sh4_jit_rte(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     res_drain_all_regs(sh4, block);
     res_invalidate_all_regs(block);
 
-    jit_restore_sr(block, reg_slot(sh4, block, SH4_REG_SSR));
+    jit_call_func(block, sh4_jit_set_sr, reg_slot(sh4, block, SH4_REG_SSR));
 
     sh4_jit_delay_slot(sh4, block, pc + 2);
 
@@ -1449,4 +1451,11 @@ static void res_disassociate_reg(Sh4 *sh4, struct il_code_block *block,
     res_drain_reg(sh4, block, reg_no);
     struct residency *res = reg_map + reg_no;
     res->stat = REG_STATUS_SH4;
+}
+
+static void sh4_jit_set_sr(void *ctx, uint32_t new_sr_val) {
+    struct Sh4 *sh4 = (struct Sh4*)ctx;
+    uint32_t old_sr = sh4->reg[SH4_REG_SR];
+    sh4->reg[SH4_REG_SR] = new_sr_val;
+    sh4_on_sr_change(sh4, old_sr);
 }

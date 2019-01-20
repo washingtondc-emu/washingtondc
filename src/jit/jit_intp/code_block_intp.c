@@ -62,7 +62,6 @@ void code_block_intp_compile(void *cpu,
 reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
     unsigned inst_count = block->inst_count;
     struct jit_inst const* inst = block->inst_list;
-    reg32_t old_sr;
 
     while (inst_count--) {
         switch (inst->op) {
@@ -90,13 +89,12 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                 inst->immed.set_slot.new_val;
             inst++;
             break;
-        case JIT_OP_RESTORE_SR: {
-            struct Sh4 *sh4 = (struct Sh4*)cpu;
-            old_sr = sh4->reg[SH4_REG_SR];
-            sh4->reg[SH4_REG_SR] = block->slots[inst->immed.restore_sr.slot_no];
-            sh4_on_sr_change(sh4, old_sr);
+        case JIT_OP_CALL_FUNC:
+            inst->immed.call_func.func(cpu,
+                                       block->slots[
+                                           inst->immed.call_func.slot_no
+                                           ]);
             inst++;
-        }
             break;
         case JIT_OP_READ_16_CONSTADDR:
             block->slots[inst->immed.read_16_constaddr.slot_no] =

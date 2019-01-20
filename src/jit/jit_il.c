@@ -70,11 +70,13 @@ void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
     il_code_block_push_inst(block, &op);
 }
 
-void jit_restore_sr(struct il_code_block *block, unsigned slot_no) {
+void jit_call_func(struct il_code_block *block,
+                   void(*func)(void*,uint32_t), unsigned slot_no) {
     struct jit_inst op;
 
-    op.op = JIT_OP_RESTORE_SR;
-    op.immed.restore_sr.slot_no = slot_no;
+    op.op = JIT_OP_CALL_FUNC;
+    op.immed.call_func.slot_no = slot_no;
+    op.immed.call_func.func = func;
 
     il_code_block_push_inst(block, &op);
 }

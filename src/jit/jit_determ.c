@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -432,7 +432,7 @@ static void update_state(struct jit_determ_state *state,
         dstp->known_bits = 0;
         dstp->known_val = 0;
         break;
-    case JIT_OP_RESTORE_SR:
+    case JIT_OP_CALL_FUNC:
         // touching the SR can do wild things to registers
     case JIT_OP_FALLBACK:
         // literally ANYTHING could have happened during the fallback function

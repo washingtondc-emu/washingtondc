@@ -650,33 +650,19 @@ static void emit_set_slot(void *cpu, struct jit_inst const *inst) {
     ungrab_slot(slot_idx);
 }
 
-// JIT_OP_RESTORE_SR implementation
-static void emit_restore_sr(void *cpu, struct jit_inst const *inst) {
-    struct Sh4 *sh4 = (struct Sh4*)cpu;
-
-    void *sr_ptr = sh4->reg + SH4_REG_SR;
-    void *ssr_ptr = sh4->reg + SH4_REG_SSR;
-
+// JIT_OP_CALL_FUNC implementation
+static void emit_call_func(void *cpu, struct jit_inst const *inst) {
     prefunc();
 
-    static const unsigned tmp_reg_1 = REG_ARG3;
-    static const unsigned tmp_reg_2 = REG_ARG2;
-
-    // move old_sr into ESI for the function call
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sr_ptr, tmp_reg_1);
-    x86asm_mov_indreg32_reg32(tmp_reg_1, REG_ARG1);
-
-    // update SR from SSR
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)ssr_ptr, tmp_reg_2);
-    x86asm_mov_indreg32_reg32(tmp_reg_2, tmp_reg_2);
-    x86asm_mov_reg32_indreg32(tmp_reg_2, tmp_reg_1);
-
     // now call sh4_on_sr_change(cpu, old_sr)
-    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)sh4, REG_ARG0);
+    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)cpu, REG_ARG0);
+    move_slot_to_reg(inst->immed.call_func.slot_no, REG_ARG1);
+
+    evict_register(REG_ARG1); // TODO: is this necessary ?
 
     ms_shadow_open();
     x86_64_align_stack();
-    x86asm_call_ptr(sh4_on_sr_change);
+    x86asm_call_ptr(inst->immed.call_func.func);
     ms_shadow_close();
 
     postfunc();
@@ -1403,8 +1389,8 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         case JIT_SET_SLOT:
             emit_set_slot(cpu, inst);
             break;
-        case JIT_OP_RESTORE_SR:
-            emit_restore_sr(cpu, inst);
+        case JIT_OP_CALL_FUNC:
+            emit_call_func(cpu, inst);
             break;
         case JIT_OP_READ_16_CONSTADDR:
             emit_read_16_constaddr(cpu, inst);

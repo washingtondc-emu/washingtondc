@@ -48,7 +48,7 @@ enum jit_opcode {
     JIT_SET_SLOT,
 
     // this will copy a slot into SR and handle any state changes
-    JIT_OP_RESTORE_SR,
+    JIT_OP_CALL_FUNC,
 
     // read 16 bits from a constant address and store them in a given slot
     JIT_OP_READ_16_CONSTADDR,
@@ -192,7 +192,8 @@ struct set_slot_immed {
     uint32_t new_val;
 };
 
-struct restore_sr_immed {
+struct call_func_immed {
+    void(*func)(void*,uint32_t);
     unsigned slot_no;
 };
 
@@ -369,7 +370,7 @@ union jit_immed {
     struct jump_immed jump;
     struct jump_cond_immed jump_cond;
     struct set_slot_immed set_slot;
-    struct restore_sr_immed restore_sr;
+    struct call_func_immed call_func;
     struct read_16_constaddr_immed read_16_constaddr;
     struct sign_extend_16_immed sign_extend_16;
     struct read_32_constaddr_immed read_32_constaddr;
@@ -420,7 +421,8 @@ void jit_jump_cond(struct il_code_block *block,
                    unsigned alt_jmp_addr_slot, unsigned t_val);
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
-void jit_restore_sr(struct il_code_block *block, unsigned slot_no);
+void jit_call_func(struct il_code_block *block,
+                   void(*func)(void*,uint32_t), unsigned slot_no);
 void jit_read_16_constaddr(struct il_code_block *block, struct memory_map *map,
                            addr32_t addr, unsigned slot_no);
 void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no);
