@@ -51,7 +51,6 @@ struct il_code_block {
     struct jit_inst *inst_list;
     unsigned inst_count;
     unsigned inst_alloc;
-    unsigned cycle_count;
 
     // this is a counter of how many slots the code block uses
     unsigned n_slots;
@@ -76,15 +75,5 @@ void il_code_block_cleanup(struct il_code_block *block);
 
 void il_code_block_push_inst(struct il_code_block *block,
                               struct jit_inst const *inst);
-
-struct Sh4;
-
-/*
- * fill out block based on the SH4 basic-block which begins at guest-address
- * "addr".
- */
-void
-il_code_block_compile(struct Sh4 *sh4,
-                      struct il_code_block *block, addr32_t addr);
 
 #endif

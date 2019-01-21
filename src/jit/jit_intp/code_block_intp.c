@@ -42,7 +42,8 @@ void code_block_intp_cleanup(struct code_block_intp *block) {
 
 void code_block_intp_compile(void *cpu,
                              struct code_block_intp *out,
-                             struct il_code_block const *il_blk) {
+                             struct il_code_block const *il_blk,
+                             unsigned cycle_count) {
     /*
      * TODO: consider shallow-copying the il_blk into out, and "stealing" its
      * ownership of inst_list.  This is a little messy and would necessitate
@@ -53,7 +54,7 @@ void code_block_intp_compile(void *cpu,
     size_t n_bytes = sizeof(struct jit_inst) * inst_count;
     out->inst_list = (struct jit_inst*)malloc(n_bytes);
     memcpy(out->inst_list, il_blk->inst_list, n_bytes);
-    out->cycle_count = il_blk->cycle_count * SH4_CLOCK_SCALE;
+    out->cycle_count = cycle_count;
     out->inst_count = inst_count;
     out->n_slots = il_blk->n_slots;
     out->slots = (uint32_t*)malloc(out->n_slots * sizeof(uint32_t));

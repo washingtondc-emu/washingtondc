@@ -165,8 +165,11 @@ sh4_jit_delay_slot(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
         printf("inst is 0x%04x\n", (unsigned)inst);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
-    block->cycle_count += sh4_count_inst_cycles(inst_op,
-                                                &ctx->last_inst_type);
+    unsigned old_cycle_count = ctx->cycle_count;
+    ctx->cycle_count += sh4_count_inst_cycles(inst_op,
+                                              &ctx->last_inst_type);
+    if (old_cycle_count > ctx->cycle_count)
+        LOG_ERROR("*** JIT DETECTED CYCLE COUNT OVERFLOW ***\n");
 }
 
 bool
@@ -174,8 +177,13 @@ sh4_jit_compile_inst(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                      struct il_code_block *block, unsigned pc) {
     cpu_inst_param inst = sh4_do_read_inst(sh4, pc);
     struct InstOpcode const *inst_op = sh4_decode_inst(inst);
-    block->cycle_count += sh4_count_inst_cycles(inst_op,
-                                                &ctx->last_inst_type);
+
+    unsigned old_cycle_count = ctx->cycle_count;
+    ctx->cycle_count += sh4_count_inst_cycles(inst_op,
+                                              &ctx->last_inst_type);
+    if (old_cycle_count > ctx->cycle_count)
+        LOG_ERROR("*** JIT DETECTED CYCLE COUNT OVERFLOW ***\n");
+
     return inst_op->disas(sh4, ctx, block, pc, inst_op, inst);
 }
 

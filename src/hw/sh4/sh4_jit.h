@@ -47,6 +47,7 @@ void sh4_jit_new_block(void);
 
 struct sh4_jit_compile_ctx {
     unsigned last_inst_type;
+    unsigned cycle_count;
 };
 
 bool
@@ -54,15 +55,14 @@ sh4_jit_compile_inst(struct Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
                      struct il_code_block *block, unsigned pc);
 
 static inline void
-sh4_jit_il_code_block_compile(struct Sh4 *sh4,
+sh4_jit_il_code_block_compile(struct Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
                               struct il_code_block *block, addr32_t addr) {
     bool do_continue;
-    struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE };
 
     sh4_jit_new_block();
 
     do {
-        do_continue = sh4_jit_compile_inst(sh4, &ctx, block, addr);
+        do_continue = sh4_jit_compile_inst(sh4, ctx, block, addr);
         addr += 2;
     } while (do_continue);
 }
@@ -72,13 +72,16 @@ static inline void
 sh4_jit_compile_native(void *cpu, void *blk_ptr, uint32_t pc) {
     struct il_code_block il_blk;
     struct code_block_x86_64 *blk = (struct code_block_x86_64*)blk_ptr;
+    struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE,
+                                       .cycle_count = 0 };
 
     il_code_block_init(&il_blk);
-    sh4_jit_il_code_block_compile(cpu, &il_blk, pc);
+    sh4_jit_il_code_block_compile(cpu, &ctx, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
-    code_block_x86_64_compile(cpu, blk, &il_blk, sh4_jit_compile_native);
+    code_block_x86_64_compile(cpu, blk, &il_blk, sh4_jit_compile_native,
+                              ctx.cycle_count * SH4_CLOCK_SCALE);
     il_code_block_cleanup(&il_blk);
 }
 #endif
@@ -87,13 +90,15 @@ static inline void
 sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
     struct il_code_block il_blk;
     struct code_block_intp *blk = (struct code_block_intp*)blk_ptr;
+    struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE,
+                                       .cycle_count = 0 };
 
     il_code_block_init(&il_blk);
-    sh4_jit_il_code_block_compile(cpu, &il_blk, pc);
+    sh4_jit_il_code_block_compile(cpu, &ctx, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
-    code_block_intp_compile(cpu, blk, &il_blk);
+    code_block_intp_compile(cpu, blk, &il_blk, ctx.cycle_count * SH4_CLOCK_SCALE);
     il_code_block_cleanup(&il_blk);
 }
 

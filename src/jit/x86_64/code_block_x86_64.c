@@ -1364,10 +1364,11 @@ void ms_shadow_close(void) {
 
 void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
                                struct il_code_block const *il_blk,
-                               native_dispatch_compile_func compile_func) {
+                               native_dispatch_compile_func compile_func,
+                               unsigned cycle_count) {
     struct jit_inst const* inst = il_blk->inst_list;
     unsigned inst_count = il_blk->inst_count;
-    out->cycle_count = il_blk->cycle_count * SH4_CLOCK_SCALE;
+    out->cycle_count = cycle_count;
 
     x86asm_set_dst(out->native, X86_64_ALLOC_SIZE);
 
