@@ -2011,9 +2011,9 @@ void sh4_inst_unary_trapa_disp(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_11000011iiiiiiii, INST_CONS_11000011iiiiiiii);
 
+#ifdef ENABLE_DEBUGGER
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_DEBUGGER
     /*
      * Send this to the gdb backend if it's running.  else, fall through to the
      * next case, which would jump to exception handling code if I had bothered
