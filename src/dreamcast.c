@@ -52,6 +52,7 @@
 #include "hw/pvr2/pvr2_ta.h"
 #include "log.h"
 #include "hw/sh4/sh4_read_inst.h"
+#include "hw/sh4/sh4_jit.h"
 #include "hw/pvr2/pvr2.h"
 #include "hw/pvr2/pvr2_reg.h"
 #include "hw/pvr2/pvr2_yuv.h"

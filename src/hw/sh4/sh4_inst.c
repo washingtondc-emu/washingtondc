@@ -35,6 +35,7 @@
 #include "sh4_mem.h"
 #include "sh4_tbl.h"
 #include "sh4_excp.h"
+#include "sh4_jit.h"
 #include "log.h"
 #include "intmath.h"
 

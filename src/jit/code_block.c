@@ -24,10 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sh4_inst.h"
 #include "code_block.h"
 #include "dreamcast.h"
-#include "hw/sh4/sh4_jit.h"
 
 #define DEFAULT_BLOCK_LEN 32
 #define BLOCK_GROW_LEN 1
@@ -38,7 +36,6 @@ void il_code_block_init(struct il_code_block *block) {
     block->inst_alloc = DEFAULT_BLOCK_LEN;
     block->inst_list = (struct jit_inst*)malloc(DEFAULT_BLOCK_LEN *
                                                 sizeof(struct jit_inst));
-    block->last_inst_type = SH4_GROUP_NONE;
 }
 
 void il_code_block_cleanup(struct il_code_block *block) {

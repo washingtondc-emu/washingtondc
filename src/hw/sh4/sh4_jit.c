@@ -146,7 +146,8 @@ void sh4_jit_new_block(void) {
 }
 
 static void
-sh4_jit_delay_slot(Sh4 *sh4, struct il_code_block *block, unsigned pc) {
+sh4_jit_delay_slot(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                   struct il_code_block *block, unsigned pc) {
     cpu_inst_param inst = sh4_do_read_inst(sh4, pc);
     struct InstOpcode const *inst_op = sh4_decode_inst(inst);
     if (inst_op->pc_relative) {
@@ -155,7 +156,7 @@ sh4_jit_delay_slot(Sh4 *sh4, struct il_code_block *block, unsigned pc) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    if (!inst_op->disas(sh4, block, pc, inst_op, inst)) {
+    if (!inst_op->disas(sh4, ctx, block, pc, inst_op, inst)) {
         /*
          * in theory, this will never happen because only branch instructions
          * can return true, and those all should have been filtered out by the
@@ -165,22 +166,23 @@ sh4_jit_delay_slot(Sh4 *sh4, struct il_code_block *block, unsigned pc) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
     block->cycle_count += sh4_count_inst_cycles(inst_op,
-                                                &block->last_inst_type);
+                                                &ctx->last_inst_type);
 }
 
 bool
-sh4_jit_compile_inst(struct Sh4 *sh4,
+sh4_jit_compile_inst(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                      struct il_code_block *block, unsigned pc) {
     cpu_inst_param inst = sh4_do_read_inst(sh4, pc);
     struct InstOpcode const *inst_op = sh4_decode_inst(inst);
     block->cycle_count += sh4_count_inst_cycles(inst_op,
-                                                &block->last_inst_type);
-    return inst_op->disas(sh4, block, pc, inst_op, inst);
+                                                &ctx->last_inst_type);
+    return inst_op->disas(sh4, ctx, block, pc, inst_op, inst);
 }
 
 bool
-sh4_jit_fallback(struct Sh4 *sh4, struct il_code_block *block,
-                 unsigned pc, struct InstOpcode const *op, cpu_inst_param inst) {
+sh4_jit_fallback(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                 struct il_code_block *block, unsigned pc,
+                 struct InstOpcode const *op, cpu_inst_param inst) {
     struct jit_inst il_inst;
 
     res_drain_all_regs(sh4, block);
@@ -195,12 +197,13 @@ sh4_jit_fallback(struct Sh4 *sh4, struct il_code_block *block,
     return true;
 }
 
-bool sh4_jit_rts(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_rts(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                 struct il_code_block *block, unsigned pc,
                  struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned slot_no = reg_slot(sh4, block, SH4_REG_PR);
     res_disassociate_reg(sh4, block, SH4_REG_PR);
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -212,7 +215,8 @@ bool sh4_jit_rts(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_rte(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_rte(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                 struct il_code_block *block, unsigned pc,
                  struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned slot_no = reg_slot(sh4, block, SH4_REG_SPC);
     res_disassociate_reg(sh4, block, SH4_REG_SPC);
@@ -228,7 +232,7 @@ bool sh4_jit_rte(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
     jit_call_func(block, sh4_jit_set_sr, reg_slot(sh4, block, SH4_REG_SSR));
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -240,7 +244,8 @@ bool sh4_jit_rte(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_braf_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_braf_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = (inst >> 8) & 0xf;
     unsigned jump_offs = pc + 4;
@@ -249,7 +254,7 @@ bool sh4_jit_braf_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     res_disassociate_reg(sh4, block, SH4_REG_R0 + reg_no);
     jit_add_const32(block, slot_no, jump_offs);
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -261,7 +266,8 @@ bool sh4_jit_braf_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_bsrf_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_bsrf_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = (inst >> 8) & 0xf;
     unsigned jump_offs = pc + 4;
@@ -274,7 +280,7 @@ bool sh4_jit_bsrf_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     unsigned pr_slot_no = reg_slot_noload(sh4, block, SH4_REG_PR);
     jit_set_slot(block, pr_slot_no, pc + 4);
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -286,7 +292,8 @@ bool sh4_jit_bsrf_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_bf(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_bf(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                struct il_code_block *block, unsigned pc,
                 struct InstOpcode const *op, cpu_inst_param inst) {
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
@@ -314,7 +321,8 @@ bool sh4_jit_bf(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_bt(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_bt(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                struct il_code_block *block, unsigned pc,
                 struct InstOpcode const *op, cpu_inst_param inst) {
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
@@ -342,14 +350,15 @@ bool sh4_jit_bt(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_bfs(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_bfs(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                 struct il_code_block *block, unsigned pc,
                  struct InstOpcode const *op, cpu_inst_param inst) {
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
     unsigned slot_no = reg_slot(sh4, block, SH4_REG_SR);
     res_disassociate_reg(sh4, block, SH4_REG_SR);
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -372,14 +381,15 @@ bool sh4_jit_bfs(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_bts(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_bts(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                 struct il_code_block *block, unsigned pc,
                  struct InstOpcode const *op, cpu_inst_param inst) {
     int jump_offs = (int)((int8_t)(inst & 0x00ff)) * 2 + 4;
 
     unsigned slot_no = reg_slot(sh4, block, SH4_REG_SR);
     res_disassociate_reg(sh4, block, SH4_REG_SR);
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -402,14 +412,15 @@ bool sh4_jit_bts(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_bra(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_bra(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                 struct il_code_block *block, unsigned pc,
                  struct InstOpcode const *op, cpu_inst_param inst) {
     int32_t disp = inst & 0x0fff;
     if (disp & 0x0800)
         disp |= 0xfffff000;
     disp = disp * 2 + 4;
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -424,7 +435,8 @@ bool sh4_jit_bra(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_bsr(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_bsr(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                 struct il_code_block *block, unsigned pc,
                  struct InstOpcode const *op, cpu_inst_param inst) {
     int32_t disp = inst & 0x0fff;
     if (disp & 0x0800)
@@ -434,7 +446,7 @@ bool sh4_jit_bsr(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     unsigned slot_no = reg_slot_noload(sh4, block, SH4_REG_PR);
     jit_set_slot(block, slot_no, pc + 4);
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -449,14 +461,15 @@ bool sh4_jit_bsr(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_jmp_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_jmp_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = (inst >> 8) & 0xf;
 
     unsigned slot_no = reg_slot(sh4, block, SH4_REG_R0 + reg_no);
     res_disassociate_reg(sh4, block, SH4_REG_R0 + reg_no);
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -468,7 +481,8 @@ bool sh4_jit_jmp_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     return false;
 }
 
-bool sh4_jit_jsr_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_jsr_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = (inst >> 8) & 0xf;
 
@@ -478,7 +492,7 @@ bool sh4_jit_jsr_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
     unsigned pr_slot_no = reg_slot_noload(sh4, block, SH4_REG_PR);
     jit_set_slot(block, pr_slot_no, pc + 4);
 
-    sh4_jit_delay_slot(sh4, block, pc + 2);
+    sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     res_drain_all_regs(sh4, block);
 
@@ -492,7 +506,8 @@ bool sh4_jit_jsr_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // disassembles the "mov.w @(disp, pc), rn" instruction
 bool
-sh4_jit_movw_a_disp_pc_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+sh4_jit_movw_a_disp_pc_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst >> 8) & 0xf) + SH4_REG_R0;
     unsigned disp = inst & 0xff;
@@ -509,7 +524,8 @@ sh4_jit_movw_a_disp_pc_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // disassembles the "mov.l @(disp, pc), rn" instruction
 bool
-sh4_jit_movl_a_disp_pc_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+sh4_jit_movl_a_disp_pc_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = (inst >> 8) & 0xf;
     unsigned disp = inst & 0xff;
@@ -522,7 +538,8 @@ sh4_jit_movl_a_disp_pc_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 }
 
 bool
-sh4_jit_mova_a_disp_pc_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+sh4_jit_mova_a_disp_pc_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned disp = inst & 0xff;
     addr32_t addr = disp * 4 + (pc & ~3) + 4;
@@ -534,29 +551,34 @@ sh4_jit_mova_a_disp_pc_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 }
 
 bool
-sh4_jit_nop(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+sh4_jit_nop(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+            struct il_code_block *block, unsigned pc,
             struct InstOpcode const *op, cpu_inst_param inst) {
     return true;
 }
 
-bool sh4_jit_ocbi_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_ocbi_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                      struct il_code_block *block, unsigned pc,
                       struct InstOpcode const *op, cpu_inst_param inst) {
     return true;
 }
 
-bool sh4_jit_ocbp_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_ocbp_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                      struct il_code_block *block, unsigned pc,
                       struct InstOpcode const *op, cpu_inst_param inst) {
     return true;
 }
 
-bool sh4_jit_ocbwb_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_ocbwb_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     return true;
 }
 
 // ADD Rm, Rn
 // 0011nnnnmmmm1100
-bool sh4_jit_add_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_add_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = (inst & 0x00f0) >> 4;
     unsigned reg_dst = (inst & 0x0f00) >> 8;
@@ -573,7 +595,8 @@ bool sh4_jit_add_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // ADD #imm, Rn
 // 0111nnnniiiiiiii
-bool sh4_jit_add_imm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_add_imm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                        struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, cpu_inst_param inst) {
     int32_t imm_val = (int32_t)(int8_t)(inst & 0xff);
     unsigned reg_dst = (inst & 0x0f00) >> 8;
@@ -589,7 +612,8 @@ bool sh4_jit_add_imm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // XOR Rm, Rn
 // 0010nnnnmmmm1010
-bool sh4_jit_xor_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_xor_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = (inst & 0x00f0) >> 4;
     unsigned reg_dst = (inst & 0x0f00) >> 8;
@@ -606,7 +630,8 @@ bool sh4_jit_xor_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // MOV Rm, Rn
 // 0110nnnnmmmm0011
-bool sh4_jit_mov_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_mov_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = (inst & 0x00f0) >> 4;
     unsigned reg_dst = (inst & 0x0f00) >> 8;
@@ -623,7 +648,8 @@ bool sh4_jit_mov_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // AND Rm, Rn
 // 0010nnnnmmmm1001
-bool sh4_jit_and_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_and_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = (inst & 0x00f0) >> 4;
     unsigned reg_dst = (inst & 0x0f00) >> 8;
@@ -640,7 +666,8 @@ bool sh4_jit_and_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // OR Rm, Rn
 // 0010nnnnmmmm1011
-bool sh4_jit_or_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_or_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                      struct il_code_block *block, unsigned pc,
                       struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = (inst & 0x00f0) >> 4;
     unsigned reg_dst = (inst & 0x0f00) >> 8;
@@ -657,7 +684,8 @@ bool sh4_jit_or_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SUB Rm, Rn
 // 0011nnnnmmmm1000
-bool sh4_jit_sub_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_sub_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = (inst & 0x00f0) >> 4;
     unsigned reg_dst = (inst & 0x0f00) >> 8;
@@ -675,7 +703,8 @@ bool sh4_jit_sub_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 // AND #imm, R0
 // 11001001iiiiiiii
 bool
-sh4_inst_binary_andb_imm_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+sh4_inst_binary_andb_imm_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                            struct il_code_block *block, unsigned pc,
                             struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned imm_val = inst & 0xff;
     unsigned slot_no = reg_slot(sh4, block, SH4_REG_R0);
@@ -688,7 +717,8 @@ sh4_inst_binary_andb_imm_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // OR #imm, R0
 // 11001011iiiiiiii
-bool sh4_jit_or_imm8_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_or_imm8_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                        struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned imm_val = inst & 0xff;
     unsigned slot_no = reg_slot(sh4, block, SH4_REG_R0);
@@ -701,7 +731,8 @@ bool sh4_jit_or_imm8_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // XOR #imm, R0
 // 11001010iiiiiiii
-bool sh4_jit_xor_imm8_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_xor_imm8_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned imm_val = inst & 0xff;
     unsigned slot_no = reg_slot(sh4, block, SH4_REG_R0);
@@ -715,7 +746,8 @@ bool sh4_jit_xor_imm8_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // TST Rm, Rn
 // 0010nnnnmmmm1000
-bool sh4_jit_tst_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_tst_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
@@ -744,7 +776,8 @@ bool sh4_jit_tst_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // TST #imm, R0
 // 11001000iiiiiiii
-bool sh4_jit_tst_imm8_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_tst_imm8_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned slot_r0 = reg_slot(sh4, block, SH4_REG_R0);
     unsigned slot_sr = reg_slot(sh4, block, SH4_REG_SR);
@@ -769,7 +802,8 @@ bool sh4_jit_tst_imm8_r0(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // MOV.L @Rm, Rn
 // 0110nnnnmmmm0010
-bool sh4_jit_movl_arm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_movl_arm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -786,7 +820,8 @@ bool sh4_jit_movl_arm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // MOV.L Rm, @Rn
 // 0010nnnnmmmm0010
-bool sh4_jit_movl_rm_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_movl_rm_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -804,7 +839,8 @@ bool sh4_jit_movl_rm_arn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 // MOV.L @(disp, Rm), Rn
 // 0101nnnnmmmmdddd
 bool
-sh4_jit_movl_a_disp4_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+sh4_jit_movl_a_disp4_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                           struct il_code_block *block, unsigned pc,
                            struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned disp = (inst & 0xf) << 2;
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
@@ -829,9 +865,9 @@ sh4_jit_movl_a_disp4_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 // MOV.L @(disp, GBR), R0
 // 11000110dddddddd
 bool
-sh4_jit_movl_a_disp8_gbr_r0(Sh4 *sh4, struct il_code_block *block,
-                            unsigned pc, struct InstOpcode const *op,
-                            cpu_inst_param inst) {
+sh4_jit_movl_a_disp8_gbr_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                            struct il_code_block *block, unsigned pc,
+                            struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned disp = (inst & 0xff) << 2;
     unsigned reg_src = SH4_REG_GBR;
     unsigned reg_dst = SH4_REG_R0;
@@ -854,7 +890,8 @@ sh4_jit_movl_a_disp8_gbr_r0(Sh4 *sh4, struct il_code_block *block,
 
 // MOV.L @Rm+, Rn
 // 0110nnnnmmmm0110
-bool sh4_jit_movl_armp_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_movl_armp_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -874,7 +911,8 @@ bool sh4_jit_movl_armp_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // MOV.L Rm, @-Rn
 // 0010nnnnmmmm0110
-bool sh4_jit_movl_rm_amrn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_movl_rm_amrn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -893,7 +931,8 @@ bool sh4_jit_movl_rm_amrn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // LDS.L @Rm+, PR
 // 0100mmmm00100110
-bool sh4_jit_ldsl_armp_pr(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_ldsl_armp_pr(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned addr_reg = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
 
@@ -911,7 +950,8 @@ bool sh4_jit_ldsl_armp_pr(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // MOV #imm, Rn
 // 1110nnnniiiiiiii
-bool sh4_jit_mov_imm8_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_mov_imm8_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     int32_t imm32 = (int32_t)((int8_t)(inst & 0xff));
     unsigned dst_reg = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -926,7 +966,8 @@ bool sh4_jit_mov_imm8_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHLL16 Rn
 // 0100nnnn00101000
-bool sh4_jit_shll16_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shll16_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -939,7 +980,8 @@ bool sh4_jit_shll16_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHLL2 Rn
 // 0100nnnn00001000
-bool sh4_jit_shll2_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shll2_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                      struct il_code_block *block, unsigned pc,
                       struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -952,7 +994,8 @@ bool sh4_jit_shll2_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHLL8 Rn
 // 0100nnnn00011000
-bool sh4_jit_shll8_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shll8_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                      struct il_code_block *block, unsigned pc,
                       struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -965,7 +1008,8 @@ bool sh4_jit_shll8_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHAR Rn
 // 0100nnnn00100001
-bool sh4_jit_shar_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shar_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -991,7 +1035,8 @@ bool sh4_jit_shar_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHLR Rn
 // 0100nnnn00000001
-bool sh4_jit_shlr_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shlr_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -1017,7 +1062,8 @@ bool sh4_jit_shlr_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHLL Rn
 // 0100nnnn00000000
-bool sh4_jit_shll_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shll_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -1044,16 +1090,18 @@ bool sh4_jit_shll_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHAL Rn
 // 0100nnnn00100000
-bool sh4_jit_shal_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shal_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
                      struct InstOpcode const *op, cpu_inst_param inst) {
     // As far as I know, SHLL and SHAL do the exact same thing.
-    return sh4_jit_shll_rn(sh4, block, pc, op, inst);
+    return sh4_jit_shll_rn(sh4, ctx, block, pc, op, inst);
 }
 
 
 // SHAD Rm, Rn
 // 0100nnnnmmmm1100
-bool sh4_jit_shad_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shad_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                        struct il_code_block *block, unsigned pc,
                         struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = (inst & 0x00f0) >> 4;
     unsigned reg_dst = (inst & 0x0f00) >> 8;
@@ -1070,7 +1118,8 @@ bool sh4_jit_shad_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHLR2 Rn
 // 0100nnnn00001001
-bool sh4_jit_shlr2_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shlr2_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                      struct il_code_block *block, unsigned pc,
                       struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -1083,7 +1132,8 @@ bool sh4_jit_shlr2_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHLR8 Rn
 // 0100nnnn00011001
-bool sh4_jit_shlr8_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shlr8_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                      struct il_code_block *block, unsigned pc,
                       struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -1096,7 +1146,8 @@ bool sh4_jit_shlr8_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SHLR16 Rn
 // 0100nnnn00101001
-bool sh4_jit_shlr16_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_shlr16_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -1109,7 +1160,8 @@ bool sh4_jit_shlr16_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SWAP.W Rm, Rn
 // 0110nnnnmmmm1001
-bool sh4_jit_swapw_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_swapw_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -1138,7 +1190,8 @@ bool sh4_jit_swapw_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // CMP/HI Rm, Rn
 // 0011nnnnmmmm0110
-bool sh4_jit_cmphi_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_cmphi_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -1157,7 +1210,8 @@ bool sh4_jit_cmphi_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // CMP/GT Rm, Rn
 // 0011nnnnmmmm0111
-bool sh4_jit_cmpgt_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_cmpgt_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -1176,7 +1230,8 @@ bool sh4_jit_cmpgt_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // CMP/EQ Rm, Rn
 // 0011nnnnmmmm0000
-bool sh4_jit_cmpeq_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_cmpeq_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -1195,7 +1250,8 @@ bool sh4_jit_cmpeq_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // CMP/HS Rm, Rn
 // 0011nnnnmmmm0010
-bool sh4_jit_cmphs_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_cmphs_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -1214,7 +1270,8 @@ bool sh4_jit_cmphs_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // MULU.W Rm, Rn
 // 0010nnnnmmmm1110
-bool sh4_jit_muluw_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_muluw_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_lhs = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_rhs = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -1251,7 +1308,8 @@ bool sh4_jit_muluw_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // STS MACL, Rn
 // 0000nnnn00011010
-bool sh4_jit_sts_macl_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_sts_macl_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
 
@@ -1267,7 +1325,8 @@ bool sh4_jit_sts_macl_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // CMP/GE Rm, Rn
 // 0011nnnnmmmm0011
-bool sh4_jit_cmpge_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_cmpge_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -1286,8 +1345,9 @@ bool sh4_jit_cmpge_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // CMP/PL Rn
 // 0100nnnn00010101
-bool sh4_jit_cmppl_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
-                        struct InstOpcode const *op, cpu_inst_param inst) {
+bool sh4_jit_cmppl_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                      struct il_code_block *block, unsigned pc,
+                      struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_lhs = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
 
     unsigned slot_lhs = reg_slot(sh4, block, reg_lhs);
@@ -1303,7 +1363,8 @@ bool sh4_jit_cmppl_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // CMP/PZ Rn
 // 0100nnnn00010001
-bool sh4_jit_cmppz_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_cmppz_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                      struct il_code_block *block, unsigned pc,
                       struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_lhs = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
 
@@ -1320,7 +1381,8 @@ bool sh4_jit_cmppz_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // NOT Rm, Rn
 // 0110nnnnmmmm0111
-bool sh4_jit_not_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_not_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
@@ -1338,7 +1400,8 @@ bool sh4_jit_not_rm_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // DT Rn
 // 0100nnnn00010000
-bool sh4_jit_dt_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_dt_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                   struct il_code_block *block, unsigned pc,
                    struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
     unsigned slot_no = reg_slot(sh4, block, reg_no);
@@ -1363,7 +1426,8 @@ bool sh4_jit_dt_rn(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // CLRT
 // 0000000000001000
-bool sh4_jit_clrt(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_clrt(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                  struct il_code_block *block, unsigned pc,
                   struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned sr_slot = reg_slot(sh4, block, SH4_REG_SR);
 
@@ -1376,7 +1440,8 @@ bool sh4_jit_clrt(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // SETT
 // 0000000000011000
-bool sh4_jit_sett(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_sett(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                  struct il_code_block *block, unsigned pc,
                   struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned sr_slot = reg_slot(sh4, block, SH4_REG_SR);
 
@@ -1389,7 +1454,8 @@ bool sh4_jit_sett(Sh4 *sh4, struct il_code_block *block, unsigned pc,
 
 // MOVT Rn
 // 0000nnnn00101001
-bool sh4_jit_movt(Sh4 *sh4, struct il_code_block *block, unsigned pc,
+bool sh4_jit_movt(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                  struct il_code_block *block, unsigned pc,
                   struct InstOpcode const *op, cpu_inst_param inst) {
     unsigned reg_no = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
 

@@ -27,7 +27,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "sh4_jit.h"
 #include "types.h"
 #include "cpu.h"
 
@@ -93,6 +92,18 @@ typedef enum sh4_inst_group {
      */
     SH4_GROUP_NONE
 } sh4_inst_group_t;
+
+struct InstOpcode;
+struct il_code_block;
+struct sh4_jit_compile_ctx;
+
+/*
+ * these functions return true if the jit frontend should keep going, or false
+ * if the dissassembler should end the current block.
+ */
+typedef bool(*sh4_jit_fn)(struct Sh4 *sh4, struct sh4_jit_compile_ctx*,
+                          struct il_code_block*,unsigned,
+                          struct InstOpcode const*,cpu_inst_param);
 
 struct InstOpcode {
     // opcode handler function
