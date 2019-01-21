@@ -27,7 +27,7 @@
 #include <stdint.h>
 
 #include "MemoryMap.h"
-#include "hw/sh4/types.h"
+#include "types.h"
 
 struct pvr2;
 

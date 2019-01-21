@@ -25,7 +25,7 @@
 
 #include <stdint.h>
 
-#include "hw/sh4/types.h"
+#include "types.h"
 #include "dc_sched.h"
 
 void native_dispatch_init(struct dc_clock *clk);

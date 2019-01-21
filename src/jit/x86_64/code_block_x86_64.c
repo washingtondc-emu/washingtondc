@@ -27,7 +27,6 @@
 #include <errno.h>
 #include <stddef.h>
 
-#include "hw/sh4/sh4.h"
 #include "error.h"
 #include "jit/code_block.h"
 #include "jit/jit_il.h"

@@ -30,7 +30,7 @@
 #include "x86_64/code_block_x86_64.h"
 #endif
 
-#include "hw/sh4/types.h"
+#include "types.h"
 
 /*
  * TODO: need to include FPU state in code cache, not just address.
