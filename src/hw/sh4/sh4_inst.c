@@ -4666,10 +4666,10 @@ void sh4_inst_unary_fldi0_fr(void *cpu, cpu_inst_param inst) {
 // 1111nnnn10011101
 void sh4_inst_unary_fldi1_fr(void *cpu, cpu_inst_param inst) {
 
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_INST(inst, INST_MASK_1111nnnn10011101, INST_CONS_1111nnnn10011101);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, 0);
-
-    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     *sh4_fpu_fr(sh4, (inst >> 8) & 0xf) = 1.0f;
 }
@@ -4832,10 +4832,10 @@ void sh4_inst_binary_fmov_dr_dr(void *cpu, cpu_inst_param inst) {
 // 1111nnn0mmmm1000
 void sh4_inst_binary_fmov_indgen_dr(void *cpu, cpu_inst_param inst) {
 
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_INST(inst, INST_MASK_1111nnn0mmmm1000, INST_CONS_1111nnn0mmmm1000);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
-
-    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_dr(sh4, (inst >> 9) & 0x7);
@@ -5870,10 +5870,10 @@ void sh4_inst_binary_stsl_fpul_inddecgen(void *cpu, cpu_inst_param inst) {
 // 1111nnn1mmm01100
 void sh4_inst_binary_fmov_dr_xd(void *cpu, cpu_inst_param inst) {
 
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_INST(inst, INST_MASK_1111nnn1mmm01100, INST_CONS_1111nnn1mmm01100);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
-
-    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int dr_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
@@ -5888,10 +5888,10 @@ void sh4_inst_binary_fmov_dr_xd(void *cpu, cpu_inst_param inst) {
 // 1111nnn0mmm11100
 void sh4_inst_binary_fmov_xd_dr(void *cpu, cpu_inst_param inst) {
 
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
     CHECK_INST(inst, INST_MASK_1111nnn0mmm11100, INST_CONS_1111nnn0mmm11100);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
-
-    struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     int dr_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
