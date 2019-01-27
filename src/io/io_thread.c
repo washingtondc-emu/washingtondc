@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -34,8 +34,11 @@
 
 #include "serial_server.h"
 #include "dreamcast.h"
-#include "cmd_tcp.h"
 #include "log.h"
+
+#ifdef ENABLE_TCP_CMD
+#include "cmd_tcp.h"
+#endif
 
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
@@ -97,7 +100,9 @@ static void *io_main(void *arg) {
     if (!io_thread_work_event)
         errx(1, "event_new returned NULL!");
 
+#ifdef ENABLE_TCP_CMD
     cmd_tcp_init();
+#endif
 
     serial_server_init(dreamcast_get_cpu());
 
@@ -131,7 +136,9 @@ static void *io_main(void *arg) {
 
     serial_server_cleanup();
 
+#ifdef ENABLE_TCP_CMD
     cmd_tcp_cleanup();
+#endif
 
     event_base_free(io_thread_event_base);
 

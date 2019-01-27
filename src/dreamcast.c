@@ -42,10 +42,7 @@
 #include "hw/maple/maple_controller.h"
 #include "io/io_thread.h"
 #include "io/serial_server.h"
-#include "io/cmd_tcp.h"
 #include "cmd/cons.h"
-#include "cmd/cmd_sys.h"
-#include "cmd/cmd.h"
 #include "glfw/window.h"
 #include "hw/pvr2/framebuffer.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
@@ -74,6 +71,12 @@
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
 #include "title.h"
+
+#ifdef ENABLE_TCP_CMD
+#include "io/cmd_tcp.h"
+#include "cmd/cmd_sys.h"
+#include "cmd/cmd.h"
+#endif
 
 #ifdef ENABLE_DEBUGGER
 #include "io/gdb_stub.h"
@@ -450,8 +453,10 @@ void dreamcast_run() {
         dreamcast_enable_debugger();
 #endif
 
+#ifdef ENABLE_TCP_CMD
     cmd_print_banner();
     cmd_run_once();
+#endif
 
     periodic_event.when = clock_cycle_stamp(&sh4_clock) + DC_PERIODIC_EVENT_PERIOD;
     periodic_event.handler = periodic_event_handler;
@@ -464,7 +469,9 @@ void dreamcast_run() {
     while (atomic_load_explicit(&is_running, memory_order_relaxed) &&
            (dc_get_state() == DC_STATE_NOT_RUNNING)) {
         usleep(1000 * 1000 / 10);
+#ifdef ENABLE_TCP_CMD
         cmd_run_once();
+#endif
     }
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
@@ -608,7 +615,9 @@ static bool dreamcast_check_debugger(void) {
             // call debug_run_once 100 times per second
             win_check_events();
             debug_run_once();
+#ifdef ENABLE_TCP_CMD
             cmd_run_once();
+#endif
             usleep(1000 * 1000 / 100);
         } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG &&
                  (is_running = dc_emu_thread_is_running()));
@@ -822,7 +831,12 @@ static void dreamcast_enable_serial_server(void) {
 }
 
 void dreamcast_enable_cmd_tcp(void) {
+#ifdef ENABLE_TCP_CMD
     cmd_tcp_attach();
+#else
+    LOG_ERROR("You must recompile with -DENABLE_TCP_CMD=On to use the tcp cmd "
+              "frontend.\n");
+#endif
 }
 
 static void dc_sigint_handler(int param) {
@@ -891,7 +905,9 @@ static void suspend_loop(void) {
                   "\"resume-execution\" into the CLI prompt.\n");
         do {
             win_check_events();
+#ifdef ENABLE_TCP_CMD
             cmd_run_once();
+#endif
             /*
              * TODO: sleep on a pthread condition or something instead of
              * polling.
@@ -952,7 +968,9 @@ void dc_end_frame(void) {
     win_update_title();
     framebuffer_render(&dc_pvr2);
     win_check_events();
+#ifdef ENABLE_TCP_CMD
     cmd_run_once();
+#endif
 }
 
 void dc_toggle_overlay(void) {

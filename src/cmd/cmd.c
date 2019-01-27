@@ -20,6 +20,10 @@
  *
  ******************************************************************************/
 
+#ifndef ENABLE_TCP_CMD
+#error ENABLE_TCP_CMD is not enabled
+#endif
+
 #include <err.h>
 #include <stdio.h>
 #include <stddef.h>
