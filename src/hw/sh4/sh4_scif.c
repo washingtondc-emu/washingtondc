@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -24,7 +24,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#ifdef ENABLE_TCP_SERIAL
 #include "io/serial_server.h"
+#endif
+
 #include "dreamcast.h"
 #include "sh4_reg.h"
 #include "sh4_reg_flags.h"
@@ -148,6 +151,7 @@ static bool read_char(struct sh4_scif *scif, char *char_out) {
     return false;
 }
 
+#ifdef ENABLE_TCP_SERIAL
 static bool write_char(struct sh4_scif *scif, char in) {
     drain_tx_buf(scif);
 
@@ -161,6 +165,7 @@ static bool write_char(struct sh4_scif *scif, char in) {
 
     return false;
 }
+#endif
 
 static void check_rx_trig(Sh4 *sh4);
 static void check_tx_trig(Sh4 *sh4);
@@ -255,13 +260,15 @@ void
 sh4_scftdr2_reg_write_handler(Sh4 *sh4,
                               struct Sh4MemMappedReg const *reg_info,
                               sh4_reg_val val) {
-    struct sh4_scif *scif = &sh4->scif;
+#ifdef ENABLE_TCP_SERIAL
+  struct sh4_scif *scif = &sh4->scif;
     if (scif->ser_srv_connected) {
         uint8_t dat = val;
         write_char(scif, (char)dat);
 
         serial_server_notify_tx_ready();
     }
+#endif
 }
 
 void sh4_scif_cts(Sh4 *sh4) {

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,6 +19,10 @@
  *
  *
  ******************************************************************************/
+
+#ifndef ENABLE_TCP_SERIAL
+#error recompile with -DENABLE_TCP_SERIAL=On
+#endif
 
 #ifndef SERIALSERVER_H_
 #define SERIALSERVER_H_

@@ -32,9 +32,12 @@
 #include <event2/buffer.h>
 #include <event2/thread.h>
 
-#include "serial_server.h"
 #include "dreamcast.h"
 #include "log.h"
+
+#ifdef ENABLE_TCP_SERIAL
+#include "serial_server.h"
+#endif
 
 #ifdef ENABLE_TCP_CMD
 #include "cmd_tcp.h"
@@ -104,7 +107,9 @@ static void *io_main(void *arg) {
     cmd_tcp_init();
 #endif
 
+#ifdef ENABLE_TCP_SERIAL
     serial_server_init(dreamcast_get_cpu());
+#endif
 
 #ifdef ENABLE_DEBUGGER
     gdb_init();
@@ -122,7 +127,9 @@ static void *io_main(void *arg) {
         if (!dc_is_running())
             break;
 
+#ifdef ENABLE_TCP_SERIAL
         serial_server_run();
+#endif
     }
 
     LOG_INFO("io thread finished\n");
@@ -134,7 +141,9 @@ static void *io_main(void *arg) {
     gdb_cleanup();
 #endif
 
+#ifdef ENABLE_TCP_SERIAL
     serial_server_cleanup();
+#endif
 
 #ifdef ENABLE_TCP_CMD
     cmd_tcp_cleanup();
@@ -154,5 +163,7 @@ static void io_work_callback(evutil_socket_t fd, short ev, void *arg) {
     if (!dc_is_running())
         event_base_loopbreak(io_thread_event_base);
 
+#ifdef ENABLE_TCP_SERIAL
     serial_server_run();
+#endif
 }

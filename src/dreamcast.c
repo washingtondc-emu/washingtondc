@@ -41,7 +41,6 @@
 #include "hw/maple/maple_device.h"
 #include "hw/maple/maple_controller.h"
 #include "io/io_thread.h"
-#include "io/serial_server.h"
 #include "cmd/cons.h"
 #include "glfw/window.h"
 #include "hw/pvr2/framebuffer.h"
@@ -71,6 +70,10 @@
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
 #include "title.h"
+
+#ifdef ENABLE_TCP_SERIAL
+#include "io/serial_server.h"
+#endif
 
 #ifdef ENABLE_TCP_CMD
 #include "io/cmd_tcp.h"
@@ -111,8 +114,6 @@ static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
 static bool init_complete;
 
 static bool using_debugger;
-
-bool serial_server_in_use;
 
 static struct timespec last_frame_realtime;
 static dc_cycle_stamp_t last_frame_virttime;
@@ -825,9 +826,13 @@ static void dreamcast_enable_debugger(void) {
 #endif
 
 static void dreamcast_enable_serial_server(void) {
-    serial_server_in_use = true;
+#ifdef ENABLE_TCP_SERIAL
     serial_server_attach();
     sh4_scif_connect_server(&cpu);
+#else
+    LOG_ERROR("You must recompile with -DENABLE_TCP_SERIAL=On to use the tcp "
+	      "serial server emulator.\n");
+#endif
 }
 
 void dreamcast_enable_cmd_tcp(void) {

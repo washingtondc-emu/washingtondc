@@ -82,6 +82,7 @@ option(ENABLE_LOG_DEBUG "enable extra debug logs" OFF)
 option(ENABLE_JIT_X86_64 "enable native x86_64 JIT backend" ON)
 option(JIT_OPTIMIZE "enable optimization passes on the JIT that dont actually work" OFF)
 option(ENABLE_TCP_CMD "enable remote command prompt over tcp port 2000" ON)
+option(ENABLE_TCP_SERIAL "enable serial server emulator over tcp port 1998" ON)
 
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)
    add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
@@ -109,6 +110,10 @@ endif()
 
 if (ENABLE_TCP_CMD)
     add_definitions(-DENABLE_TCP_CMD)
+endif()
+
+if (ENABLE_TCP_SERIAL)
+    add_definitions(-DENABLE_TCP_SERIAL)
 endif()
 
 # TODO: this was originally supposed to be just the sh4-related code,
@@ -232,8 +237,6 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/io/io_thread.h"
                 "${PROJECT_SOURCE_DIR}/src/io/io_thread.c"
                 "${PROJECT_SOURCE_DIR}/src/ring.h"
-                "${PROJECT_SOURCE_DIR}/src/io/serial_server.h"
-                "${PROJECT_SOURCE_DIR}/src/io/serial_server.c"
                 "${PROJECT_SOURCE_DIR}/src/config.h"
                 "${PROJECT_SOURCE_DIR}/src/config.c"
                 "${PROJECT_SOURCE_DIR}/src/cmd/cons.h"
@@ -298,6 +301,12 @@ if (ENABLE_TCP_CMD)
                                     "${PROJECT_SOURCE_DIR}/src/cmd/cmd_tcp_link.h"
                                     "${PROJECT_SOURCE_DIR}/src/cmd/cmd_tcp_link.c")
 endif()
+
+if (ENABLE_TCP_SERIAL)
+    set (sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/io/serial_server.h"
+                                    "${PROJECT_SOURCE_DIR}/src/io/serial_server.c")
+endif()
+
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/src/main.c")
 

@@ -33,8 +33,6 @@
 #include "dbg/debugger.h"
 #endif
 
-#include "io/serial_server.h"
-
 extern struct dc_clock sh4_clock;
 
 #define ADDR_IP_BIN        0x8c008000
