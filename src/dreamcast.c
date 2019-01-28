@@ -40,7 +40,6 @@
 #include "hw/maple/maple.h"
 #include "hw/maple/maple_device.h"
 #include "hw/maple/maple_controller.h"
-#include "io/io_thread.h"
 #include "cmd/cons.h"
 #include "glfw/window.h"
 #include "hw/pvr2/framebuffer.h"
@@ -70,6 +69,10 @@
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
 #include "title.h"
+
+#ifdef USE_LIBEVENT
+#include "io/io_thread.h"
+#endif
 
 #ifdef ENABLE_TCP_SERIAL
 #include "io/serial_server.h"
@@ -493,8 +496,10 @@ void dreamcast_run() {
     // tell the other threads it's time to clean up and exit
     atomic_store_explicit(&signal_exit_threads, true, memory_order_relaxed);
 
+#ifdef USE_LIBEVENT
     // kick the io_thread so it knows to check dc_is_running
     io_thread_kick();
+#endif
 
     switch (term_reason) {
     case TERM_REASON_NORM:

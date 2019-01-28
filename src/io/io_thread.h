@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -19,6 +19,10 @@
  *
  *
  ******************************************************************************/
+
+#ifndef USE_LIBEVENT
+#error this should not be built when -DUSE_LIBEVENT=Off
+#endif
 
 #include <event2/event.h>
 

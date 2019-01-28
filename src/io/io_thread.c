@@ -20,6 +20,10 @@
  *
  ******************************************************************************/
 
+#ifndef USE_LIBEVENT
+#error this should not be built when -DUSE_LIBEVENT=Off
+#endif
+
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>

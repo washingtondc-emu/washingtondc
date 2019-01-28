@@ -30,13 +30,16 @@
 #include "dreamcast.h"
 #include "gfx/gfx.h"
 #include "glfw/window.h"
-#include "io/io_thread.h"
 #include "gfx/opengl/opengl_output.h"
 #include "mount.h"
 #include "gdi.h"
 #include "config.h"
 #include "log.h"
 #include "title.h"
+
+#ifdef USE_LIBEVENT
+#include "io/io_thread.h"
+#endif
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
@@ -256,7 +259,10 @@ int main(int argc, char **argv) {
 
     win_init(640, 480);
     gfx_init(640, 480);
+
+#ifdef USE_LIBEVENT
     io_thread_launch();
+#endif
 
     config_set_enable_cmd_tcp(enable_cmd_tcp);
     config_set_ser_srv_enable(enable_serial);
@@ -268,9 +274,11 @@ int main(int argc, char **argv) {
     LOG_INFO("killing the window...\n");
     win_cleanup();
 
+#ifdef USE_LIBEVENT
     LOG_INFO("Waiting for io_thread to exit...\n");
     io_thread_join();
     LOG_INFO("io_thread has exited.\n");
+#endif
 
     if (mount_check())
         mount_eject();

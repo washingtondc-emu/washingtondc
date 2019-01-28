@@ -36,15 +36,6 @@ if(NOT CMAKE_BUILD_TYPE)
        message("Setting CMAKE_BUILD_TYPE to Release by default")
 endif()
 
-ExternalProject_Add(
-        libevent
-        PREFIX washingtondc-libevent
-        GIT_REPOSITORY https://github.com/libevent/libevent
-        GIT_TAG release-2.1.8-stable
-        INSTALL_DIR ${LIBEVENT_LIB_PATH}
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBEVENT_LIB_PATH} -DEVENT__DISABLE_TESTS=On -DEVENT__DISABLE_REGRESS=On -DEVENT__DISABLE_BENCHMARK=On -DEVENT__DISABLE_OPENSSL=On -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        BUILD_IN_SOURCE 1)
-
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -83,6 +74,7 @@ option(ENABLE_JIT_X86_64 "enable native x86_64 JIT backend" ON)
 option(JIT_OPTIMIZE "enable optimization passes on the JIT that dont actually work" OFF)
 option(ENABLE_TCP_CMD "enable remote command prompt over tcp port 2000" ON)
 option(ENABLE_TCP_SERIAL "enable serial server emulator over tcp port 1998" ON)
+option(USE_LIBEVENT "use libevent for asynchronous I/O processing" ON)
 
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)
    add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
@@ -110,10 +102,16 @@ endif()
 
 if (ENABLE_TCP_CMD)
     add_definitions(-DENABLE_TCP_CMD)
+    if (NOT USE_LIBEVENT)
+        message(FATAL_ERROR "-DUSE_LIBEVENT=On is a prerequisite for -DENABLE_TCP_CMD=On")
+    endif()
 endif()
 
 if (ENABLE_TCP_SERIAL)
     add_definitions(-DENABLE_TCP_SERIAL)
+    if (NOT USE_LIBEVENT)
+        message(FATAL_ERROR "-DUSE_LIBEVENT=On is a prerequisite for -DENABLE_TCP_SERIAL=On")
+    endif()
 endif()
 
 # TODO: this was originally supposed to be just the sh4-related code,
@@ -234,8 +232,6 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_tbl.c"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_jit.h"
                 "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4_jit.c"
-                "${PROJECT_SOURCE_DIR}/src/io/io_thread.h"
-                "${PROJECT_SOURCE_DIR}/src/io/io_thread.c"
                 "${PROJECT_SOURCE_DIR}/src/ring.h"
                 "${PROJECT_SOURCE_DIR}/src/config.h"
                 "${PROJECT_SOURCE_DIR}/src/config.c"
@@ -332,7 +328,18 @@ if (ENABLE_JIT_X86_64)
                                   "${PROJECT_SOURCE_DIR}/src/jit/x86_64/abi.h")
 endif()
 
+if (USE_LIBEVENT)
+    set(sh4_sources ${sh4_sources}
+        "${PROJECT_SOURCE_DIR}/src/io/io_thread.h"
+        "${PROJECT_SOURCE_DIR}/src/io/io_thread.c")
+endif()
+
+
 if (ENABLE_DEBUGGER)
+
+    if (NOT USE_LIBEVENT)
+        message(FATAL_ERROR "-DUSE_LIBEVENT=On is a prerequisite for -DENABLE_DEBUGGER=On")
+    endif()
 
     set(CAPSTONE_BUILD_SHARED OFF CACHE BOOL "" FORCE)
     set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -453,16 +460,13 @@ set(include_dirs "${OPENGL_INCLUDE_DIR}"
                  "${PROJECT_SOURCE_DIR}/external"
                  "${PROJECT_SOURCE_DIR}/external/glfw/include"
                  "${libpng_path}"
-                 "${zlib_path}"
-                 "${CMAKE_BINARY_DIR}/washingtondc-libevent/src/libevent/include")
+                 "${zlib_path}")
 
 if (ENABLE_DEBUGGER)
   set(include_dirs "${include_dirs}"
                    "${PROJECT_SOURCE_DIR}/external/sh4asm"
                    "${PROJECT_SOURCE_DIR}/external/capstone/include")
 endif()
-
-include_directories("${include_dirs}")
 
 # TODO: I wish there was an easy way to do this as a dependency like in make...
 configure_file("src/gfx/opengl/final_frag.glsl" "final_frag.glsl" COPYONLY)
@@ -478,8 +482,6 @@ add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
 
 add_executable(washingtondc ${washingtondc_sources})
 
-add_dependencies(washingtondc libevent sh4)
-add_dependencies(sh4 libevent)
 set(washingtondc_libs "m"
                       "sh4"
                       "rt"
@@ -488,8 +490,26 @@ set(washingtondc_libs "m"
                       "glfw"
                       "glew"
                       "${OPENGL_gl_LIBRARY}"
-                      "pthread"
-                      "${LIBEVENT_LIB_PATH}/lib/libevent.a")
+                      "pthread")
+
+if (USE_LIBEVENT)
+    add_definitions(-DUSE_LIBEVENT)
+    ExternalProject_Add(libevent
+                        PREFIX washingtondc-libevent
+                        GIT_REPOSITORY https://github.com/libevent/libevent
+                        GIT_TAG release-2.1.8-stable
+                        INSTALL_DIR ${LIBEVENT_LIB_PATH}
+                        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBEVENT_LIB_PATH} -DEVENT__DISABLE_TESTS=On -DEVENT__DISABLE_REGRESS=On -DEVENT__DISABLE_BENCHMARK=On -DEVENT__DISABLE_OPENSSL=On -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                        BUILD_IN_SOURCE 1)
+
+    set(washingtondc_libs "${washingtondc_libs}" "${LIBEVENT_LIB_PATH}/lib/libevent.a")
+    set(include_dirs "${include_dirs}"
+                     "${CMAKE_BINARY_DIR}/washingtondc-libevent/src/libevent/include")
+    add_dependencies(washingtondc libevent sh4)
+    add_dependencies(sh4 libevent)
+endif()
+
+include_directories("${include_dirs}")
 
 if (ENABLE_DEBUGGER)
     set(washingtondc_libs "${washingtondc_libs}" capstone-static)
