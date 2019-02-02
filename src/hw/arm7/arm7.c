@@ -224,6 +224,7 @@ void arm7_reset(struct arm7 *arm7, bool val) {
     if (!arm7->enabled && val) {
         // enable the CPU
         arm7->excp |= ARM7_EXCP_RESET;
+        arm7->excp_dirty = true;
     }
 
     arm7->enabled = val;
@@ -659,57 +660,61 @@ uint32_t arm7_pc_next(struct arm7 *arm7) {
 }
 
 static void arm7_check_excp(struct arm7 *arm7) {
-    enum arm7_excp excp = arm7->excp;
-    uint32_t cpsr = arm7->reg[ARM7_REG_CPSR];
+    if (arm7->excp_dirty) {
+        enum arm7_excp excp = arm7->excp;
+        uint32_t cpsr = arm7->reg[ARM7_REG_CPSR];
 
-    /*
-     * TODO: if we ever add support for systems other than Dreamcast, we need to
-     * check the IRQ line here.  Dreamcast only uses FIQ, so there's no point
-     * in checking for IRQ.
-     *
-     * TODO: also need to check for ARM7_EXCP_DATA_ABORT.
-     */
-
-    if (arm7->fiq_line)
-        excp |= ARM7_EXCP_FIQ;
-    else
-        excp &= ~ARM7_EXCP_FIQ;
-
-    if (excp & ARM7_EXCP_RESET) {
-        arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-        arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
-        arm7->reg[ARM7_REG_PC] = 0;
-        arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-            ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
-        reset_pipeline(arm7);
-        arm7->excp &= ~ARM7_EXCP_RESET;
-    } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
-        arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
-        arm7->reg[ARM7_REG_R14_FIQ] = arm7_pc_next(arm7) + 4;
-        arm7->reg[ARM7_REG_PC] = 0x1c;
-        LOG_DBG("FIQ jump to 0x1c\n");
-        arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-            ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
-        reset_pipeline(arm7);
-        arm7->excp &= ~ARM7_EXCP_FIQ;
-    } else if (excp & ARM7_EXCP_SWI) {
         /*
-         * This will be called *after* the SWI instruction has executed, when
-         * the arm7 is about to execute the next instruction.  The spec says
-         * that R14_svc needs to point to the instruction immediately after the
-         * SWI.  I expect the SWI instruction to not increment the PC at the
-         * end, so the instruction after the SWI will be pipeline[1].
-         * ARM7_REG_R15 points to the next instruction to be fetched, which is
-         * pipeline[0].  Therefore, the next instruction to be executed is at
-         * ARM7_REG_R15 - 4.
+         * TODO: if we ever add support for systems other than Dreamcast, we need to
+         * check the IRQ line here.  Dreamcast only uses FIQ, so there's no point
+         * in checking for IRQ.
+         *
+         * TODO: also need to check for ARM7_EXCP_DATA_ABORT.
          */
-        arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-        arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
-        arm7->reg[ARM7_REG_PC] = 0;
-        arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-            ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
-        reset_pipeline(arm7);
-        arm7->excp &= ~ARM7_EXCP_SWI;
+
+        if (arm7->fiq_line)
+            excp |= ARM7_EXCP_FIQ;
+        else
+            excp &= ~ARM7_EXCP_FIQ;
+
+        if (excp & ARM7_EXCP_RESET) {
+            arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
+            arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
+            arm7->reg[ARM7_REG_PC] = 0;
+            arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
+                ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
+            reset_pipeline(arm7);
+            arm7->excp &= ~ARM7_EXCP_RESET;
+        } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
+            arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
+            arm7->reg[ARM7_REG_R14_FIQ] = arm7_pc_next(arm7) + 4;
+            arm7->reg[ARM7_REG_PC] = 0x1c;
+            LOG_DBG("FIQ jump to 0x1c\n");
+            arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
+                ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
+            reset_pipeline(arm7);
+            arm7->excp &= ~ARM7_EXCP_FIQ;
+        } else if (excp & ARM7_EXCP_SWI) {
+            /*
+             * This will be called *after* the SWI instruction has executed, when
+             * the arm7 is about to execute the next instruction.  The spec says
+             * that R14_svc needs to point to the instruction immediately after the
+             * SWI.  I expect the SWI instruction to not increment the PC at the
+             * end, so the instruction after the SWI will be pipeline[1].
+             * ARM7_REG_R15 points to the next instruction to be fetched, which is
+             * pipeline[0].  Therefore, the next instruction to be executed is at
+             * ARM7_REG_R15 - 4.
+             */
+            arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
+            arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
+            arm7->reg[ARM7_REG_PC] = 0;
+            arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
+                ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
+            reset_pipeline(arm7);
+            arm7->excp &= ~ARM7_EXCP_SWI;
+        }
+
+        arm7->excp_dirty = false;
     }
 }
 
@@ -1246,6 +1251,7 @@ static unsigned arm7_spsr_idx(struct arm7 *arm7) {
 static void arm7_inst_swi(struct arm7 *arm7, arm7_inst inst) {
     LOG_WARN("Untested ARM7 SWI instruction used\n");
     arm7->excp |= ARM7_EXCP_SWI;
+    arm7->excp_dirty = true;
     // it is not a mistake that I have chosen to not call next_inst here
 }
 
@@ -1347,6 +1353,7 @@ static void arm7_error_set_regs(void *argptr) {
 
 void arm7_set_fiq(struct arm7 *arm7) {
     arm7->fiq_line = true;
+    arm7->excp_dirty = true;
 }
 
 void arm7_clear_fiq(struct arm7 *arm7) {

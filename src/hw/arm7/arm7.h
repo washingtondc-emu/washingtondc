@@ -198,6 +198,8 @@ struct arm7 {
 
     bool fiq_line;
 
+    bool excp_dirty;
+
     bool pipeline_full;
 };
 
