@@ -6124,30 +6124,27 @@ void sh4_inst_binary_fitrv_mxtrx_fv(void *cpu, cpu_inst_param inst) {
 
     float tmp_out[4];
 
-    float row0[4] = {
-        *(float*)(sh4->reg+SH4_REG_XF0),
-        *(float*)(sh4->reg+SH4_REG_XF4),
-        *(float*)(sh4->reg+SH4_REG_XF8),
-        *(float*)(sh4->reg+SH4_REG_XF12)
-    };
-    float row1[4] = {
-        *(float*)(sh4->reg+SH4_REG_XF1),
-        *(float*)(sh4->reg+SH4_REG_XF5),
-        *(float*)(sh4->reg+SH4_REG_XF9),
-        *(float*)(sh4->reg+SH4_REG_XF13)
-    };
-    float row2[4] = {
-        *(float*)(sh4->reg+SH4_REG_XF2),
-        *(float*)(sh4->reg+SH4_REG_XF6),
-        *(float*)(sh4->reg+SH4_REG_XF10),
-        *(float*)(sh4->reg+SH4_REG_XF14)
-    };
-    float row3[4] = {
-        *(float*)(sh4->reg+SH4_REG_XF3),
-        *(float*)(sh4->reg+SH4_REG_XF7),
-        *(float*)(sh4->reg+SH4_REG_XF11),
-        *(float*)(sh4->reg+SH4_REG_XF15)
-    };
+    float row0[4], row1[4], row2[4], row3[4];
+
+    memcpy(row0, sh4->reg+SH4_REG_XF0, sizeof(float));
+    memcpy(row0 + 1, sh4->reg+SH4_REG_XF4, sizeof(float));
+    memcpy(row0 + 2, sh4->reg+SH4_REG_XF8, sizeof(float));
+    memcpy(row0 + 3, sh4->reg+SH4_REG_XF12, sizeof(float));
+
+    memcpy(row1, sh4->reg+SH4_REG_XF1, sizeof(float));
+    memcpy(row1+1, sh4->reg+SH4_REG_XF5, sizeof(float));
+    memcpy(row1+2, sh4->reg+SH4_REG_XF9, sizeof(float));
+    memcpy(row1+3, sh4->reg+SH4_REG_XF13, sizeof(float));
+
+    memcpy(row2, sh4->reg+SH4_REG_XF2, sizeof(float));
+    memcpy(row2+1, sh4->reg+SH4_REG_XF6, sizeof(float));
+    memcpy(row2+2, sh4->reg+SH4_REG_XF10, sizeof(float));
+    memcpy(row2+3, sh4->reg+SH4_REG_XF14, sizeof(float));
+
+    memcpy(row3, sh4->reg+SH4_REG_XF3, sizeof(float));
+    memcpy(row3+1, sh4->reg+SH4_REG_XF7, sizeof(float));
+    memcpy(row3+2, sh4->reg+SH4_REG_XF11, sizeof(float));
+    memcpy(row3+3, sh4->reg+SH4_REG_XF15, sizeof(float));
 
     tmp_out[0] = tmp[0] * row0[0] +
         tmp[1] * row0[1] +
