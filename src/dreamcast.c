@@ -193,6 +193,14 @@ static void periodic_event_handler(struct SchedEvent *event);
 static struct SchedEvent periodic_event;
 
 void dreamcast_init(bool cmd_session) {
+#ifndef ENABLE_TCP_CMD
+    if (cmd_session) {
+	cmd_session = false;
+	LOG_ERROR("Over-riding requested cmd session; please recompile with "
+		  "-DENABLE_TCP_CMD=On -DUSE_LIBEVENT=On.\n");
+    }
+#endif
+
     atomic_store_explicit(&is_running, true, memory_order_relaxed);
 
     memory_init(&dc_mem);
