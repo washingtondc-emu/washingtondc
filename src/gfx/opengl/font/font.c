@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -232,9 +232,7 @@ void font_render_char(char ch, unsigned col, unsigned row,
     float glyph_clip_width = 2.0f * GLYPH_WIDTH / screen_w;
     float glyph_clip_height = 2.0f * GLYPH_HEIGHT / screen_h;
 
-    unsigned n_rows = screen_h / GLYPH_HEIGHT;
-
-    float pos_y = (n_rows - row - 1) * glyph_clip_height - 1.0f;
+    float pos_y = (1.0 - glyph_clip_height) - (row * glyph_clip_height);
     float pos_x = col * glyph_clip_width - 1.0f;
 
     do_render_ch(ch, pos_x, pos_y, glyph_clip_width, glyph_clip_height);

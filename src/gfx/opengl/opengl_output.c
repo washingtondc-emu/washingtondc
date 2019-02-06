@@ -212,7 +212,7 @@ void opengl_video_present() {
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    overlay_draw(640, 480);
+    overlay_draw(xres, yres);
 }
 
 static void init_poly() {
