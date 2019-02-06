@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -49,6 +50,9 @@ static void init_poly();
  * quad is drawn covering the entirety of the screen.
  */
 static struct shader fb_shader;
+
+// If true, then the screen will be flipped vertically.
+static bool do_flip;
 
 // number of floats per vertex.
 // that's 3 floats for the position and 2 for the texture coords
@@ -81,12 +85,13 @@ static struct fb_poly {
 } fb_poly;
 
 static int bound_obj_handle;
+static double bound_obj_w, bound_obj_h;
 
 static GLfloat trans_mat[16] = {
     1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 1.0f, 0.0f,
-    0.0f ,0.0f, 0.0f, 1.0f
+    0.0f, 0.0f, 0.0f, 1.0f
 };
 
 static GLfloat const tex_mat[9] = {
@@ -124,10 +129,7 @@ void opengl_video_new_framebuffer(int obj_handle,
 }
 
 static void set_flip(bool flip) {
-    if (flip)
-        trans_mat[5] = -1.0f;
-    else
-        trans_mat[5] = 1.0f;
+    do_flip = flip;
 }
 
 static void
@@ -160,15 +162,43 @@ opengl_video_update_framebuffer(int obj_handle,
     }
 
     bound_obj_handle = obj_handle;
+    bound_obj_w = (double)fb_read_width;
+    bound_obj_h = (double)fb_read_height;
 }
 
 void opengl_video_present() {
+    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
     glEnable(GL_TEXTURE_2D);
 
-    glViewport(0, 0, win_get_width(), win_get_height());
+    int xres = win_get_width();
+    int yres = win_get_height();
+
+    double xres_dbl = (double)xres;
+    double yres_dbl = (double)yres;
+
+    double xratio = xres_dbl / bound_obj_w;
+    double yratio = yres_dbl / bound_obj_h;
+
+    double clip_width, clip_height;
+
+    if (xratio > yratio) {
+        // output height is window height, and output width is scaled accordingly
+        clip_height = 1.0;
+        clip_width = (bound_obj_w / bound_obj_h) * (yres_dbl / xres_dbl);
+    } else {
+        // output width is window width, and output height is scaled accordingly
+        clip_width = 1.0;
+        clip_height = (bound_obj_h / bound_obj_w) * (xres_dbl / yres_dbl);
+    }
+
+    trans_mat[0] = clip_width;
+    trans_mat[5] = do_flip ? -clip_height : clip_height;
+
+    glViewport(0, 0, xres, yres);
     glUseProgram(fb_shader.shader_prog_obj);
     glBindTexture(GL_TEXTURE_2D, opengl_renderer_tex(bound_obj_handle));
     glUniform1i(glGetUniformLocation(fb_shader.shader_prog_obj, "fb_tex"), 0);
