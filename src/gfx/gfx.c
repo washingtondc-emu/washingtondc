@@ -74,6 +74,11 @@ void gfx_expose(void) {
     win_update();
 }
 
+void gfx_resize(int xres, int yres) {
+    opengl_video_present();
+    win_update();
+}
+
 static void gfx_do_init(void) {
     win_make_context_current();
 

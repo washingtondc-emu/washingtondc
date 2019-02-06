@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ static unsigned res_x, res_y;
 static GLFWwindow *win;
 
 static void expose_callback(GLFWwindow *win);
+static void resize_callback(GLFWwindow *win, int width, int height);
 static void scan_input(void);
 
 void win_init(unsigned width, unsigned height) {
@@ -52,7 +53,7 @@ void win_init(unsigned width, unsigned height) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
     glfwWindowHint(GLFW_DEPTH_BITS, 24);
 
     win = glfwCreateWindow(res_x, res_y, title_get(), NULL, NULL);
@@ -61,6 +62,8 @@ void win_init(unsigned width, unsigned height) {
         errx(1, "unable to create window");
 
     glfwSetWindowRefreshCallback(win, expose_callback);
+    glfwSetFramebufferSizeCallback(win, resize_callback);
+
     glfwSwapInterval(0);
 }
 
@@ -253,4 +256,18 @@ void win_make_context_current(void) {
 
 void win_update_title(void) {
     glfwSetWindowTitle(win, title_get());
+}
+
+static void resize_callback(GLFWwindow *win, int width, int height) {
+    res_x = width;
+    res_y = height;
+    gfx_resize(width, height);
+}
+
+int win_get_width(void) {
+    return res_x;
+}
+
+int win_get_height(void) {
+    return res_y;
 }

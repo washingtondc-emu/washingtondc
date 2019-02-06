@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -43,5 +43,8 @@ void win_update(void);
 void win_make_context_current(void);
 
 void win_update_title(void);
+
+int win_get_width(void);
+int win_get_height(void);
 
 #endif

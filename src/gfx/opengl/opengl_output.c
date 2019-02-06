@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@
 #include "gfx/opengl/font/font.h"
 #include "overlay.h"
 #include "log.h"
+#include "glfw/window.h"
 
 static void init_poly();
 
@@ -167,7 +168,7 @@ void opengl_video_present() {
     glDisable(GL_BLEND);
     glEnable(GL_TEXTURE_2D);
 
-    glViewport(0, 0, 640, 480); // TODO: don't hardcode
+    glViewport(0, 0, win_get_width(), win_get_height());
     glUseProgram(fb_shader.shader_prog_obj);
     glBindTexture(GL_TEXTURE_2D, opengl_renderer_tex(bound_obj_handle));
     glUniform1i(glGetUniformLocation(fb_shader.shader_prog_obj, "fb_tex"), 0);
