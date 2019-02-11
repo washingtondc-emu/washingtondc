@@ -42,6 +42,7 @@
 #include "overlay.h"
 #include "log.h"
 #include "glfw/window.h"
+#include "config_file.h"
 
 static void init_poly();
 
@@ -100,6 +101,8 @@ static GLfloat const tex_mat[9] = {
     0.0f, 0.0f, 1.0f
 };
 
+static GLfloat bgcolor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+
 static void set_flip(bool flip);
 
 static void
@@ -108,6 +111,44 @@ opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_height);
 
 void opengl_video_output_init() {
+    char const *custom_color = cfg_get_node("bgcolor");
+
+    if (custom_color) {
+        if (strlen(custom_color) == 6) {
+            int idx;
+            unsigned digits[6];
+
+            for (idx = 0; idx < 6; idx++) {
+                char ch = custom_color[idx];
+                if (ch >= '0' && ch <= '9') {
+                    digits[idx] = ch - '0';
+                } else if (ch >= 'a' && ch <= 'f') {
+                    digits[idx] = ch - 'a' + 10;
+                } else if (ch >= 'A' && ch <= 'F') {
+                    digits[idx] = ch - 'A' + 10;
+                } else {
+                    LOG_ERROR("Bad color syntax \"%s\"\n", custom_color);
+                    goto no_custom_color_for_you;
+                }
+            }
+
+            unsigned rgb[3] = {
+                digits[0] * 16 + digits[1],
+                digits[2] * 16 + digits[3],
+                digits[4] * 16 + digits[5]
+            };
+
+            bgcolor[0] = rgb[0] / 255.0f;
+            bgcolor[1] = rgb[1] / 255.0f;
+            bgcolor[2] = rgb[2] / 255.0f;
+
+            LOG_INFO("Setting custom background color to \"%s\"\n", custom_color);
+        } else {
+            LOG_ERROR("Bad color syntax \"%s\"\n", custom_color);
+        }
+    }
+ no_custom_color_for_you:
+
     shader_load_vert_from_file(&fb_shader, "final_vert.glsl");
     shader_load_frag_from_file(&fb_shader, "final_frag.glsl");
     shader_link(&fb_shader);
@@ -167,7 +208,7 @@ opengl_video_update_framebuffer(int obj_handle,
 }
 
 void opengl_video_present() {
-    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glClearColor(bgcolor[0], bgcolor[1], bgcolor[2], bgcolor[3]);
     glClear(GL_COLOR_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);

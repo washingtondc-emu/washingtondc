@@ -69,6 +69,7 @@
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
 #include "title.h"
+#include "config_file.h"
 
 #ifdef USE_LIBEVENT
 #include "io/io_thread.h"
@@ -195,11 +196,13 @@ static struct SchedEvent periodic_event;
 void dreamcast_init(bool cmd_session) {
 #ifndef ENABLE_TCP_CMD
     if (cmd_session) {
-	cmd_session = false;
-	LOG_ERROR("Over-riding requested cmd session; please recompile with "
-		  "-DENABLE_TCP_CMD=On -DUSE_LIBEVENT=On.\n");
+        cmd_session = false;
+        LOG_ERROR("Over-riding requested cmd session; please recompile with "
+                  "-DENABLE_TCP_CMD=On -DUSE_LIBEVENT=On.\n");
     }
 #endif
+
+    cfg_init();
 
     atomic_store_explicit(&is_running, true, memory_order_relaxed);
 
@@ -364,6 +367,7 @@ void dreamcast_cleanup() {
     boot_rom_cleanup(&firmware);
     flash_mem_cleanup(&flash_mem);
     memory_cleanup(&dc_mem);
+    cfg_cleanup();
 }
 
 /*
