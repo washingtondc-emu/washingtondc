@@ -47,7 +47,8 @@ enum cfg_parse_state {
     CFG_PARSE_KEY,
     CFG_PARSE_PRE_VAL,
     CFG_PARSE_VAL,
-    CFG_PARSE_POST_VAL
+    CFG_PARSE_POST_VAL,
+    CFG_PARSE_ERROR
 };
 
 static struct cfg_state {
@@ -155,7 +156,15 @@ void cfg_put_char(char ch) {
         if (ch == '\n') {
             cfg_add_entry();
             cfg_handle_newline();
+        } else if (!isspace(ch)) {
+            cfg_state.state = CFG_PARSE_ERROR;
+            LOG_ERROR("*** CFG ERROR INVALID DATA LINE %u ***\n", cfg_state.line_count);
         }
+        break;
+    default:
+    case CFG_PARSE_ERROR:
+        if (ch == '\n')
+            cfg_handle_newline();
         break;
     }
 }
