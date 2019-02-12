@@ -111,7 +111,7 @@ opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_height);
 
 void opengl_video_output_init() {
-    char const *custom_color = cfg_get_node("bgcolor");
+    char const *custom_color = cfg_get_node("ui.bgcolor");
 
     if (custom_color) {
         if (strlen(custom_color) == 6) {
