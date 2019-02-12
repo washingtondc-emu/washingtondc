@@ -58,6 +58,7 @@ static struct cfg_state {
     char val[CFG_NODE_VAL_LEN];
     unsigned line_count;
     struct fifo_head cfg_nodes;
+    bool in_comment;
 } cfg_state;
 
 static void cfg_add_entry(void);
@@ -101,6 +102,19 @@ void cfg_put_char(char ch) {
      */
     if (ch == '\0')
         ch = '\n';
+
+    /*
+     * Very simple preprocessor - replace comments with whitespace and
+     * otherwise don't modify the parser state
+     */
+    if (ch == ';')
+        cfg_state.in_comment = true;
+    if (cfg_state.in_comment) {
+        if (ch == '\n')
+            cfg_state.in_comment = false;
+        else
+            ch = ' ';
+    }
 
     switch (cfg_state.state) {
     case CFG_PARSE_PRE_KEY:
