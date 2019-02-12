@@ -32,10 +32,9 @@
 #include "gfx/gfx.h"
 #include "title.h"
 #include "config_file.h"
+#include "control_bind.h"
 
 #include "window.h"
-
-#define TOGGLE_OVERLAY_KEY GLFW_KEY_F2
 
 static unsigned res_x, res_y;
 static GLFWwindow *win;
@@ -73,9 +72,52 @@ void win_init(unsigned width, unsigned height) {
         LOG_INFO("vsync disabled\n");
         glfwSwapInterval(0);
     }
+
+    ctrl_bind_init();
+
+    // configure default keybinds
+    ctrl_bind_kbd_key("toggle-overlay", win, GLFW_KEY_F2);
+
+    /*
+     * TODO: these controller bindings are based on my Logitech F510.  They will
+     * be different for other controllers, so there needs to be a custom binding
+     * system
+     */
+    ctrl_bind_gamepad_btn("p1_1.btn_a", GLFW_JOYSTICK_1, 0);
+    ctrl_bind_gamepad_btn("p1_1.btn_b", GLFW_JOYSTICK_1, 1);
+    ctrl_bind_gamepad_btn("p1_1.btn_x", GLFW_JOYSTICK_1, 2);
+    ctrl_bind_gamepad_btn("p1_1.btn_y", GLFW_JOYSTICK_1, 3);
+    ctrl_bind_gamepad_btn("p1_1.btn_start", GLFW_JOYSTICK_1, 7);
+    ctrl_bind_axis_btn("p1_1.dpad-up", GLFW_JOYSTICK_1, 7, 1);
+    ctrl_bind_axis_btn("p1_1.dpad-left", GLFW_JOYSTICK_1, 7, -1);
+    ctrl_bind_axis_btn("p1_1.dpad-down", GLFW_JOYSTICK_1, 7, -1);
+    ctrl_bind_axis_btn("p1_1.dpad-right", GLFW_JOYSTICK_1, 7, 1);
+    ctrl_bind_axis_btn("p1_1.stick-left", GLFW_JOYSTICK_1, 0, -1);
+    ctrl_bind_axis_btn("p1_1.stick-right", GLFW_JOYSTICK_1, 0, 1);
+    ctrl_bind_axis_btn("p1_1.stick-up", GLFW_JOYSTICK_1, 1, 1);
+    ctrl_bind_axis_btn("p1_1.stick-down", GLFW_JOYSTICK_1, 1, -1);
+    ctrl_bind_axis_btn("p1_1.trig-l", GLFW_JOYSTICK_1, 2, 0);
+    ctrl_bind_axis_btn("p1_1.trig-r", GLFW_JOYSTICK_1, 5, 0);
+
+    /*
+     * p1_1 and p1_2 both refer to the same buttons on player 1's controller.
+     * It's there to provide a way to have two different bindings for the same
+     * button.
+     */
+    ctrl_bind_kbd_key("p1_2.dpad-up", win, GLFW_KEY_W);
+    ctrl_bind_kbd_key("p1_2.dpad-left", win, GLFW_KEY_A);
+    ctrl_bind_kbd_key("p1_2.dpad-down", win, GLFW_KEY_S);
+    ctrl_bind_kbd_key("p1_2.dpad-right", win, GLFW_KEY_D);
+    ctrl_bind_kbd_key("p1_2.btn_a", win, GLFW_KEY_KP_2);
+    ctrl_bind_kbd_key("p1_2.btn_b", win, GLFW_KEY_KP_6);
+    ctrl_bind_kbd_key("p1_2.btn_x", win, GLFW_KEY_KP_4);
+    ctrl_bind_kbd_key("p1_2.btn_y", win, GLFW_KEY_KP_8);
+    ctrl_bind_kbd_key("p1_2.btn_start", win, GLFW_KEY_SPACE);
 }
 
 void win_cleanup() {
+    ctrl_bind_cleanup();
+
     glfwTerminate();
 }
 
@@ -116,94 +158,52 @@ enum gamepad_hat {
 };
 
 static void scan_input(void) {
-    int btn_cnt, axis_cnt;
-    const unsigned char *gamepad_state =
-        glfwGetJoystickButtons(GLFW_JOYSTICK_1, &btn_cnt);
-    const float *axis_state = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axis_cnt);
+    bool btns[GAMEPAD_BTN_COUNT];
+    bool hat[GAMEPAD_HAT_COUNT];
 
-    bool btns[GAMEPAD_BTN_COUNT] = { 0 };
-    bool hat[GAMEPAD_HAT_COUNT] = { 0 };
-
-    /*
-     * TODO: these controller bindings are based on my Logitech F510.  They will
-     * be different for other controllers, so there needs to be a custom binding
-     * system
-     */
-    if (gamepad_state && btn_cnt >= GAMEPAD_BTN_COUNT) {
-        btns[GAMEPAD_BTN_A] = gamepad_state[GAMEPAD_BTN_A];
-        btns[GAMEPAD_BTN_B] = gamepad_state[GAMEPAD_BTN_B];
-        btns[GAMEPAD_BTN_X] = gamepad_state[GAMEPAD_BTN_X];
-        btns[GAMEPAD_BTN_Y] = gamepad_state[GAMEPAD_BTN_Y];
-        btns[GAMEPAD_BTN_START] = gamepad_state[GAMEPAD_BTN_START];
-    }
-
-    // neutral position
-    unsigned stick_hor = 128;
-    unsigned stick_vert = 128;
-    unsigned hat_hor = 128;
-    unsigned hat_vert = 128;
-    unsigned trig_l = 0, trig_r = 0;
-
-    if (axis_cnt >= 1)
-        stick_hor = (unsigned)(axis_state[0] * 128) + 128;
-
-    if (axis_cnt >= 2)
-        stick_vert = (unsigned)(axis_state[1] * 128) + 128;
-
-    if (axis_cnt >= 7)
-        hat_hor = (unsigned)(axis_state[6] * 128) + 128;
-
-    if (axis_cnt >= 8)
-        hat_vert = (unsigned)(axis_state[7] * 128) + 128;
-
-    if (axis_cnt >= 3)
-        trig_l = (unsigned)(axis_state[2] * 128) + 128;
-
-    if (axis_cnt >= 6)
-        trig_r = (unsigned)(axis_state[5] * 128) + 128;
+    int trig_l = ctrl_get_axis("p1_1.trig-l") * 128 + 128;
+    int trig_r = ctrl_get_axis("p1_1.trig-r") * 128 + 128;
+    int stick_vert = (ctrl_get_axis("p1_1.stick-up") -
+                      ctrl_get_axis("p1_1.stick-down")) * 128 + 128;
+    int stick_hor = (ctrl_get_axis("p1_1.stick-right") -
+                     ctrl_get_axis("p1_1.stick-left")) * 128 + 128;
 
     if (stick_hor > 255)
         stick_hor = 255;
+    if (stick_hor < 0)
+        stick_hor = 0;
     if (stick_vert > 255)
         stick_vert = 255;
-    if (hat_hor > 255)
-        hat_hor = 255;
-    if (hat_vert > 255)
-        hat_vert = 255;
+    if (stick_vert < 0)
+        stick_vert = 0;
     if (trig_l > 255)
         trig_l = 255;
+    if (trig_l < 0)
+        trig_l = 0;
     if (trig_r > 255)
         trig_r = 255;
+    if (trig_r < 0)
+        trig_r = 0;
 
-    if (hat_vert <= 64)
-        hat[GAMEPAD_HAT_UP] = true;
-    else if (hat_vert >= 192)
-        hat[GAMEPAD_HAT_DOWN] = true;
+    btns[GAMEPAD_BTN_A] = ctrl_get_button("p1_1.btn_a") ||
+        ctrl_get_button("p1_2.btn_a");
+    btns[GAMEPAD_BTN_B] = ctrl_get_button("p1_1.btn_b") ||
+        ctrl_get_button("p1_2.btn_b");
+    btns[GAMEPAD_BTN_X] = ctrl_get_button("p1_1.btn_x") ||
+        ctrl_get_button("p1_2.btn_x");
+    btns[GAMEPAD_BTN_Y] = ctrl_get_button("p1_1.btn_y") ||
+        ctrl_get_button("p1_2.btn_y");
+    btns[GAMEPAD_BTN_START] = ctrl_get_button("p1_1.btn_start") ||
+        ctrl_get_button("p1_2.btn_start");
 
-    if (hat_hor <= 64)
-        hat[GAMEPAD_HAT_LEFT] = true;
-    else if (hat_hor >= 192)
-        hat[GAMEPAD_HAT_RIGHT] = true;
-
-    btns[GAMEPAD_BTN_A] = btns[GAMEPAD_BTN_A] ||
-        (glfwGetKey(win, GLFW_KEY_KP_2) == GLFW_PRESS);
-    btns[GAMEPAD_BTN_B] = btns[GAMEPAD_BTN_B] ||
-        (glfwGetKey(win, GLFW_KEY_KP_6) == GLFW_PRESS);
-    btns[GAMEPAD_BTN_X] = btns[GAMEPAD_BTN_X] ||
-        (glfwGetKey(win, GLFW_KEY_KP_4) == GLFW_PRESS);
-    btns[GAMEPAD_BTN_Y] = btns[GAMEPAD_BTN_Y] ||
-        (glfwGetKey(win, GLFW_KEY_KP_8) == GLFW_PRESS);
-    btns[GAMEPAD_BTN_START] = btns[GAMEPAD_BTN_START] ||
-        (glfwGetKey(win, GLFW_KEY_SPACE) == GLFW_PRESS);
-
-    hat[GAMEPAD_HAT_UP] = hat[GAMEPAD_HAT_UP] ||
-        (glfwGetKey(win, GLFW_KEY_W) == GLFW_PRESS);
-    hat[GAMEPAD_HAT_DOWN] = hat[GAMEPAD_HAT_DOWN] ||
-        (glfwGetKey(win, GLFW_KEY_S) == GLFW_PRESS);
-    hat[GAMEPAD_HAT_LEFT] = hat[GAMEPAD_HAT_LEFT] ||
-        (glfwGetKey(win, GLFW_KEY_A) == GLFW_PRESS);
-    hat[GAMEPAD_HAT_RIGHT] = hat[GAMEPAD_HAT_RIGHT] ||
-        (glfwGetKey(win, GLFW_KEY_D) == GLFW_PRESS);
+    hat[GAMEPAD_HAT_UP] = ctrl_get_button("p1_1.dpad-up") ||
+        ctrl_get_button("p1_2.dpad-up");
+    hat[GAMEPAD_HAT_DOWN] = ctrl_get_button("p1_1.dpad-down") ||
+        ctrl_get_button("p1_2.dpad-down");
+    hat[GAMEPAD_HAT_LEFT] = ctrl_get_button("p1_1.dpad-left") ||
+        ctrl_get_button("p1_2.dpad-left");
+    hat[GAMEPAD_HAT_RIGHT] = ctrl_get_button("p1_1.dpad-right") ||
+        ctrl_get_button("p1_2.dpad-right");
 
     if (btns[GAMEPAD_BTN_A])
         maple_controller_press_btns(0, MAPLE_CONT_BTN_A_MASK);
@@ -252,7 +252,7 @@ static void scan_input(void) {
 
     // Allow the user to toggle the overlay by pressing F2
     static bool overlay_key_prev = false;
-    bool overlay_key = glfwGetKey(win, TOGGLE_OVERLAY_KEY);
+    bool overlay_key = ctrl_get_button("toggle-overlay");
     if (overlay_key && !overlay_key_prev)
         dc_toggle_overlay();
     overlay_key_prev = overlay_key;
