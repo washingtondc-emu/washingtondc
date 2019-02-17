@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "config.h"
 #include "error.h"
@@ -797,6 +798,26 @@ static void time_diff(struct timespec *delta,
     }
 }
 
+static int time_cmp(struct timespec const *lhs, struct timespec const *rhs) {
+    if (lhs->tv_sec < rhs->tv_sec)
+        return -1;
+    else if (lhs->tv_sec > rhs->tv_sec)
+        return 1;
+    else if (lhs->tv_nsec < rhs->tv_nsec)
+        return -1;
+    else if (lhs->tv_nsec > rhs->tv_nsec)
+        return 1;
+    return 0;
+}
+
+static void timespec_from_seconds(struct timespec *outp, double seconds) {
+    double int_part;
+    double frac_part = modf(seconds, &int_part);
+
+    outp->tv_sec = int_part;
+    outp->tv_nsec = frac_part * 1000000000.0;
+}
+
 void dc_print_perf_stats(void) {
     if (init_complete) {
         struct timespec end_time, delta_time;
@@ -969,22 +990,35 @@ static void periodic_event_handler(struct SchedEvent *event) {
 }
 
 void dc_end_frame(void) {
-    struct timespec timestamp, delta;
+    struct timespec timestamp, delta, virt_frametime_ns;
     dc_cycle_stamp_t virt_timestamp = clock_cycle_stamp(&sh4_clock);
     double framerate, virt_framerate, virt_frametime;
 
     end_of_frame = true;
 
-    do {
-        framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
-        virt_frametime = (double)(virt_timestamp - last_frame_virttime);
+    virt_frametime = (double)(virt_timestamp - last_frame_virttime);
+    double virt_frametime_seconds = virt_frametime / (double)SCHED_FREQUENCY;
+    timespec_from_seconds(&virt_frametime_ns, virt_frametime_seconds);
 
+    do {
         clock_gettime(CLOCK_MONOTONIC, &timestamp);
         time_diff(&delta, &timestamp, &last_frame_realtime);
 
-        framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
-        virt_framerate = (double)SCHED_FREQUENCY / virt_frametime;
-    } while (limit_framerate && virt_framerate < framerate);
+        struct timespec sleep_amt;
+        time_diff(&sleep_amt, &virt_frametime_ns, &delta);
+
+        /*
+         * TODO: according to C specification, nanosleep sleeps for *at least*
+         * the amount of time you asked it to.  This leads to WashingtonDC
+         * having a framerate a little below 59.94Hz.  Should consider sleeping
+         * for less than sleep_amt and then burning the remaining cycles away
+         * with a busy loop.
+         */
+        nanosleep(&sleep_amt, NULL);
+    } while (limit_framerate && time_cmp(&virt_frametime_ns, &delta) > 0);
+
+    framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
+    virt_framerate = (double)SCHED_FREQUENCY / virt_frametime;
 
     last_frame_realtime = timestamp;
     last_frame_virttime = virt_timestamp;
