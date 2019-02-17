@@ -31,6 +31,7 @@
 #include "hw/maple/maple_controller.h"
 #include "gfx/gfx.h"
 #include "title.h"
+#include "config_file.h"
 
 #include "window.h"
 
@@ -64,7 +65,14 @@ void win_init(unsigned width, unsigned height) {
     glfwSetWindowRefreshCallback(win, expose_callback);
     glfwSetFramebufferSizeCallback(win, resize_callback);
 
-    glfwSwapInterval(0);
+    char const *vsync_str = cfg_get_node("vsync_enable");
+    if (vsync_str && (strcmp(vsync_str, "true") == 0 || strcmp(vsync_str, "1") == 0)) {
+        LOG_INFO("vsync enabled\n");
+        glfwSwapInterval(1);
+    } else {
+        LOG_INFO("vsync disabled\n");
+        glfwSwapInterval(0);
+    }
 }
 
 void win_cleanup() {
