@@ -117,6 +117,9 @@ static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
 static bool init_complete;
 static bool end_of_frame;
 
+// If true, don't allow the physical framerate to exceed the virtual framerate.
+static bool limit_framerate = true;
+
 static bool using_debugger;
 
 static struct timespec last_frame_realtime;
@@ -203,6 +206,8 @@ void dreamcast_init(bool cmd_session) {
 #endif
 
     cfg_init();
+
+    cfg_get_bool("win.limit-framerate", &limit_framerate);
 
     atomic_store_explicit(&is_running, true, memory_order_relaxed);
 
@@ -965,16 +970,22 @@ static void periodic_event_handler(struct SchedEvent *event) {
 
 void dc_end_frame(void) {
     struct timespec timestamp, delta;
-    clock_gettime(CLOCK_MONOTONIC, &timestamp);
     dc_cycle_stamp_t virt_timestamp = clock_cycle_stamp(&sh4_clock);
+    double framerate, virt_framerate, virt_frametime;
 
     end_of_frame = true;
 
-    time_diff(&delta, &timestamp, &last_frame_realtime);
+    do {
+        framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
+        virt_frametime = (double)(virt_timestamp - last_frame_virttime);
 
-    double framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
-    double virt_framerate = (double)SCHED_FREQUENCY /
-        (double)(virt_timestamp - last_frame_virttime);
+        clock_gettime(CLOCK_MONOTONIC, &timestamp);
+        time_diff(&delta, &timestamp, &last_frame_realtime);
+
+        framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
+        virt_framerate = (double)SCHED_FREQUENCY / virt_frametime;
+    } while (limit_framerate && virt_framerate < framerate);
+
     last_frame_realtime = timestamp;
     last_frame_virttime = virt_timestamp;
     overlay_set_fps(framerate);
