@@ -111,11 +111,11 @@ static struct gdrom_ctxt gdrom;
 static struct pvr2 dc_pvr2;
 
 static atomic_bool is_running = ATOMIC_VAR_INIT(false);
-static atomic_bool end_of_frame = ATOMIC_VAR_INIT(false);
 static atomic_bool frame_stop = ATOMIC_VAR_INIT(false);
 static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
 
 static bool init_complete;
+static bool end_of_frame;
 
 static bool using_debugger;
 
@@ -377,20 +377,15 @@ void dreamcast_cleanup() {
 static struct timespec start_time;
 
 static void run_one_frame(void) {
-    bool true_val = true;
-    while (!atomic_compare_exchange_strong_explicit(&end_of_frame, &true_val,
-                                                    false,
-                                                    memory_order_relaxed,
-                                                    memory_order_relaxed)) {
+    while (!end_of_frame) {
         if (dc_clock_run_timeslice(&sh4_clock))
             return;
         if (dc_clock_run_timeslice(&arm7_clock))
             return;
         if (config_get_jit())
             code_cache_gc();
-
-        true_val = true;
     }
+    end_of_frame = false;
 }
 
 static void main_loop_sched(void) {
@@ -973,7 +968,7 @@ void dc_end_frame(void) {
     clock_gettime(CLOCK_MONOTONIC, &timestamp);
     dc_cycle_stamp_t virt_timestamp = clock_cycle_stamp(&sh4_clock);
 
-    atomic_store_explicit(&end_of_frame, true, memory_order_relaxed);
+    end_of_frame = true;
 
     time_diff(&delta, &timestamp, &last_frame_realtime);
 
