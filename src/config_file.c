@@ -153,6 +153,7 @@ void cfg_put_char(char ch) {
         break;
     case CFG_PARSE_VAL:
         if (ch == '\n') {
+            cfg_state.val[cfg_state.val_len] = '\0';
             cfg_add_entry();
             cfg_handle_newline();
         } else if (isspace(ch)) {
