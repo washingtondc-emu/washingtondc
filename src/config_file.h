@@ -38,4 +38,6 @@ void cfg_put_char(char ch);
 
 char const *cfg_get_node(char const *key);
 
+int cfg_get_bool(char const *key, bool *outp);
+
 #endif

@@ -65,8 +65,8 @@ void win_init(unsigned width, unsigned height) {
     glfwSetWindowRefreshCallback(win, expose_callback);
     glfwSetFramebufferSizeCallback(win, resize_callback);
 
-    char const *vsync_str = cfg_get_node("vsync_enable");
-    if (vsync_str && (strcmp(vsync_str, "true") == 0 || strcmp(vsync_str, "1") == 0)) {
+    bool vsync_en = false;
+    if (cfg_get_bool("win.vsync", &vsync_en) == 0 && vsync_en) {
         LOG_INFO("vsync enabled\n");
         glfwSwapInterval(1);
     } else {

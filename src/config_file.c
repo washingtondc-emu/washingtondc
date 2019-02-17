@@ -63,6 +63,7 @@ static struct cfg_state {
 
 static void cfg_add_entry(void);
 static void cfg_handle_newline(void);
+static int cfg_parse_bool(char const *val, bool *outp);
 
 void cfg_init(void) {
     memset(&cfg_state, 0, sizeof(cfg_state));
@@ -230,4 +231,26 @@ char const *cfg_get_node(char const *key) {
     }
 
     return NULL;
+}
+
+static int cfg_parse_bool(char const *valstr, bool *outp) {
+    if (strcmp(valstr, "true") == 0 || strcmp(valstr, "1") == 0) {
+        *outp = true;
+        return 0;
+    } else if (strcmp(valstr, "false") == 0 || strcmp(valstr, "0") == 0) {
+        *outp = false;
+        return 0;
+    }
+    return -1;
+}
+
+int cfg_get_bool(char const *key, bool *outp) {
+    char const *nodestr = cfg_get_node(key);
+    if (nodestr) {
+        int success = cfg_parse_bool(nodestr, outp);
+        if (success != 0)
+            LOG_ERROR("error parsing config node \"%s\"\n", key);
+        return success;
+    }
+    return -1;
 }
