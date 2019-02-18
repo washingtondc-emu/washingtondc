@@ -118,8 +118,16 @@ static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
 static bool init_complete;
 static bool end_of_frame;
 
-// If true, don't allow the physical framerate to exceed the virtual framerate.
-static bool limit_framerate = true;
+static enum framelimit_mode {
+    // run the simulation as fast as possible with no frame-limiting
+    FRAMELIMIT_MODE_UNLIMITED,
+
+    // busy-loop to burn away excess host CPU time
+    FRAMELIMIT_MODE_SPIN,
+
+    // sleep away excess host CPU time
+    FRAMELIMIT_MODE_SLEEP
+} framelimit_mode;
 
 static bool using_debugger;
 
@@ -208,7 +216,21 @@ void dreamcast_init(bool cmd_session) {
 
     cfg_init();
 
-    cfg_get_bool("win.limit-framerate", &limit_framerate);
+    char const *framelimit_mode_str = cfg_get_node("win.framelimit-mode");
+    if (framelimit_mode_str) {
+        if (strcmp(framelimit_mode_str, "unlimited") == 0) {
+            framelimit_mode = FRAMELIMIT_MODE_UNLIMITED;
+        } else if (strcmp(framelimit_mode_str, "spin") == 0) {
+            framelimit_mode = FRAMELIMIT_MODE_SPIN;
+        } else if (strcmp(framelimit_mode_str, "sleep") == 0) {
+            framelimit_mode = FRAMELIMIT_MODE_SLEEP;
+        } else {
+            LOG_ERROR("unable to parse framelimit mode \"%s\"\n", framelimit_mode_str);
+            framelimit_mode = FRAMELIMIT_MODE_SPIN;
+        }
+    } else {
+        framelimit_mode = FRAMELIMIT_MODE_SPIN;
+    }
 
     atomic_store_explicit(&is_running, true, memory_order_relaxed);
 
@@ -1000,22 +1022,29 @@ void dc_end_frame(void) {
     double virt_frametime_seconds = virt_frametime / (double)SCHED_FREQUENCY;
     timespec_from_seconds(&virt_frametime_ns, virt_frametime_seconds);
 
-    do {
+    if (framelimit_mode != FRAMELIMIT_MODE_UNLIMITED)
+        do {
+            clock_gettime(CLOCK_MONOTONIC, &timestamp);
+            time_diff(&delta, &timestamp, &last_frame_realtime);
+
+            struct timespec sleep_amt;
+            time_diff(&sleep_amt, &virt_frametime_ns, &delta);
+
+            /*
+             * TODO: according to C specification, nanosleep sleeps for *at least*
+             * the amount of time you asked it to.  This leads to WashingtonDC
+             * having a framerate a little below 59.94Hz.  Should consider sleeping
+             * for less than sleep_amt and then burning the remaining cycles away
+             * with a busy loop.
+             */
+            if (framelimit_mode == FRAMELIMIT_MODE_SLEEP)
+                nanosleep(&sleep_amt, NULL);
+        } while (time_cmp(&virt_frametime_ns, &delta) > 0);
+
+    if (framelimit_mode != FRAMELIMIT_MODE_SPIN) {
         clock_gettime(CLOCK_MONOTONIC, &timestamp);
         time_diff(&delta, &timestamp, &last_frame_realtime);
-
-        struct timespec sleep_amt;
-        time_diff(&sleep_amt, &virt_frametime_ns, &delta);
-
-        /*
-         * TODO: according to C specification, nanosleep sleeps for *at least*
-         * the amount of time you asked it to.  This leads to WashingtonDC
-         * having a framerate a little below 59.94Hz.  Should consider sleeping
-         * for less than sleep_amt and then burning the remaining cycles away
-         * with a busy loop.
-         */
-        nanosleep(&sleep_amt, NULL);
-    } while (limit_framerate && time_cmp(&virt_frametime_ns, &delta) > 0);
+    }
 
     framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
     virt_framerate = (double)SCHED_FREQUENCY / virt_frametime;
