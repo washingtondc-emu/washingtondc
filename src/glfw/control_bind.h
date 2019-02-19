@@ -86,12 +86,7 @@ bool ctrl_get_button(char const name[CTRL_BIND_NAME_LEN]);
 
 float ctrl_get_axis(char const name[CTRL_BIND_NAME_LEN]);
 
-// simple convenience functions for constructing bindings
-void ctrl_bind_kbd_key(char const name[CTRL_BIND_NAME_LEN], GLFWwindow *win, int key);
-void ctrl_bind_gamepad_btn(char const name[CTRL_BIND_NAME_LEN], int js, unsigned btn);
-void
-ctrl_bind_axis_btn(char const name[CTRL_BIND_NAME_LEN], int js,
-                   int axis, int sign);
+int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind);
 
 void ctrl_bind_init(void);
 void ctrl_bind_cleanup(void);

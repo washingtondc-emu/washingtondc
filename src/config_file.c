@@ -172,9 +172,44 @@ static void cfg_create_default_config(void) {
         "(accurate but wastes CPU time)\n"
         ";     sleep - limit framerate by sleeping (less accurate but more "
         "efficient)\n"
-        "win.framelimit_mode spin\n";
+        "win.framelimit_mode spin\n"
+        "\n"
+        /*
+         * TODO: find a way to explain the naming convention for control
+         * bindings to end-users
+         */
+        "wash.ctrl.toggle-overlay kbd.f2\n"
+        "\n"
+        "; mapping d-pad to the right joystick because I forgot to implement the\n"
+        "; hat lol\n"
+        "dc.ctrl.p1_1.dpad-up js0.axis4-\n"
+        "dc.ctrl.p1_1.dpad-left js0.axis3-\n"
+        "dc.ctrl.p1_1.dpad-down js0.axis4+\n"
+        "dc.ctrl.p1_1.dpad-right js0.axis3+\n"
+        "dc.ctrl.p1_1.stick-left  js0.axis0-\n"
+        "dc.ctrl.p1_1.stick-right js0.axis0+\n"
+        "dc.ctrl.p1_1.stick-up    js0.axis1+\n"
+        "dc.ctrl.p1_1.stick-down  js0.axis1-\n"
+        "dc.ctrl.p1_1.trig-l      js0.axis2\n"
+        "dc.ctrl.p1_1.trig-r      js0.axis5\n"
+        "dc.ctrl.p1_1.btn-a js0.btn0\n"
+        "dc.ctrl.p1_1.btn-b js0.btn1\n"
+        "dc.ctrl.p1_1.btn-x js0.btn2\n"
+        "dc.ctrl.p1_1.btn-y js0.btn3\n"
+        "dc.ctrl.p1_1.btn-start js0.btn7\n"
+        "\n"
+        "dc.ctrl.p1_2.dpad-up    kbd.w\n"
+        "dc.ctrl.p1_2.dpad-left  kbd.a\n"
+        "dc.ctrl.p1_2.dpad-down  kbd.s\n"
+        "dc.ctrl.p1_2.dpad-right kbd.d\n"
+        "dc.ctrl.p1_2.btn-a      kbd.keypad2\n"
+        "dc.ctrl.p1_2.btn-b      kbd.keypad6\n"
+        "dc.ctrl.p1_2.btn-x      kbd.keypad4\n"
+        "dc.ctrl.p1_2.btn-y      kbd.keypad8\n"
+        "dc.ctrl.p1_2.btn-start  kbd.space\n";
 
-    LOG_INFO("Attempting to create configuration directory \"%s\"\n", cfg_file_dir);
+    LOG_INFO("Attempting to create configuration directory \"%s\"\n",
+             cfg_file_dir);
     if (mkdir(cfg_file_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0) {
         if (errno == EEXIST) {
             LOG_INFO("The directory already exists, I'm going to assume that's "

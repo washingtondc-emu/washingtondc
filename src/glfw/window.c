@@ -43,6 +43,33 @@ static void expose_callback(GLFWwindow *win);
 static void resize_callback(GLFWwindow *win, int width, int height);
 static void scan_input(void);
 
+static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
+    char const *bindstr = cfg_get_node(cfg_node);
+    if (!bindstr)
+        return -1;
+    struct host_ctrl_bind bind;
+    int err;
+    if ((err = ctrl_parse_bind(bindstr, &bind)) < 0) {
+        return err;
+    }
+    if (bind.tp == HOST_CTRL_TP_KBD) {
+        bind.ctrl.kbd.win = win;
+        ctrl_bind_key(name, bind);
+        return 0;
+    } else if (bind.tp == HOST_CTRL_TP_GAMEPAD) {
+        bind.ctrl.gamepad.js += GLFW_JOYSTICK_1;
+        ctrl_bind_key(name, bind);
+        return 0;
+    } else if (bind.tp == HOST_CTRL_TP_AXIS) {
+        bind.ctrl.gamepad.js += GLFW_JOYSTICK_1;
+        ctrl_bind_key(name, bind);
+        return 0;
+    }
+
+    // TODO: gamepad buttons and axes
+    return -1;
+}
+
 void win_init(unsigned width, unsigned height) {
     res_x = width;
     res_y = height;
@@ -76,43 +103,38 @@ void win_init(unsigned width, unsigned height) {
     ctrl_bind_init();
 
     // configure default keybinds
-    ctrl_bind_kbd_key("toggle-overlay", win, GLFW_KEY_F2);
+    bind_ctrl_from_cfg("toggle-overlay", "wash.ctrl.toggle-overlay");
 
-    /*
-     * TODO: these controller bindings are based on my Logitech F510.  They will
-     * be different for other controllers, so there needs to be a custom binding
-     * system
-     */
-    ctrl_bind_gamepad_btn("p1_1.btn_a", GLFW_JOYSTICK_1, 0);
-    ctrl_bind_gamepad_btn("p1_1.btn_b", GLFW_JOYSTICK_1, 1);
-    ctrl_bind_gamepad_btn("p1_1.btn_x", GLFW_JOYSTICK_1, 2);
-    ctrl_bind_gamepad_btn("p1_1.btn_y", GLFW_JOYSTICK_1, 3);
-    ctrl_bind_gamepad_btn("p1_1.btn_start", GLFW_JOYSTICK_1, 7);
-    ctrl_bind_axis_btn("p1_1.dpad-up", GLFW_JOYSTICK_1, 7, 1);
-    ctrl_bind_axis_btn("p1_1.dpad-left", GLFW_JOYSTICK_1, 7, -1);
-    ctrl_bind_axis_btn("p1_1.dpad-down", GLFW_JOYSTICK_1, 7, -1);
-    ctrl_bind_axis_btn("p1_1.dpad-right", GLFW_JOYSTICK_1, 7, 1);
-    ctrl_bind_axis_btn("p1_1.stick-left", GLFW_JOYSTICK_1, 0, -1);
-    ctrl_bind_axis_btn("p1_1.stick-right", GLFW_JOYSTICK_1, 0, 1);
-    ctrl_bind_axis_btn("p1_1.stick-up", GLFW_JOYSTICK_1, 1, 1);
-    ctrl_bind_axis_btn("p1_1.stick-down", GLFW_JOYSTICK_1, 1, -1);
-    ctrl_bind_axis_btn("p1_1.trig-l", GLFW_JOYSTICK_1, 2, 0);
-    ctrl_bind_axis_btn("p1_1.trig-r", GLFW_JOYSTICK_1, 5, 0);
+    bind_ctrl_from_cfg("p1_1.dpad-up", "dc.ctrl.p1_1.dpad-up");
+    bind_ctrl_from_cfg("p1_1.dpad-left", "dc.ctrl.p1_1.dpad-left");
+    bind_ctrl_from_cfg("p1_1.dpad-down", "dc.ctrl.p1_1.dpad-down");
+    bind_ctrl_from_cfg("p1_1.dpad-right", "dc.ctrl.p1_1.dpad-right");
+    bind_ctrl_from_cfg("p1_1.btn_a", "dc.ctrl.p1_1.btn-a");
+    bind_ctrl_from_cfg("p1_1.btn_b", "dc.ctrl.p1_1.btn-b");
+    bind_ctrl_from_cfg("p1_1.btn_x", "dc.ctrl.p1_1.btn-x");
+    bind_ctrl_from_cfg("p1_1.btn_y", "dc.ctrl.p1_1.btn-y");
+    bind_ctrl_from_cfg("p1_1.btn_start", "dc.ctrl.p1_1.btn-start");
+    bind_ctrl_from_cfg("p1_1.stick-left", "dc.ctrl.p1_1.stick-left");
+    bind_ctrl_from_cfg("p1_1.stick-right", "dc.ctrl.p1_1.stick-right");
+    bind_ctrl_from_cfg("p1_1.stick-up", "dc.ctrl.p1_1.stick-up");
+    bind_ctrl_from_cfg("p1_1.stick-down", "dc.ctrl.p1_1.stick-down");
+    bind_ctrl_from_cfg("p1_1.trig-l", "dc.ctrl.p1_1.trig-l");
+    bind_ctrl_from_cfg("p1_1.trig-r", "dc.ctrl.p1_1.trig-r");
 
     /*
      * p1_1 and p1_2 both refer to the same buttons on player 1's controller.
      * It's there to provide a way to have two different bindings for the same
      * button.
      */
-    ctrl_bind_kbd_key("p1_2.dpad-up", win, GLFW_KEY_W);
-    ctrl_bind_kbd_key("p1_2.dpad-left", win, GLFW_KEY_A);
-    ctrl_bind_kbd_key("p1_2.dpad-down", win, GLFW_KEY_S);
-    ctrl_bind_kbd_key("p1_2.dpad-right", win, GLFW_KEY_D);
-    ctrl_bind_kbd_key("p1_2.btn_a", win, GLFW_KEY_KP_2);
-    ctrl_bind_kbd_key("p1_2.btn_b", win, GLFW_KEY_KP_6);
-    ctrl_bind_kbd_key("p1_2.btn_x", win, GLFW_KEY_KP_4);
-    ctrl_bind_kbd_key("p1_2.btn_y", win, GLFW_KEY_KP_8);
-    ctrl_bind_kbd_key("p1_2.btn_start", win, GLFW_KEY_SPACE);
+    bind_ctrl_from_cfg("p1_2.dpad-up", "dc.ctrl.p1_2.dpad-up");
+    bind_ctrl_from_cfg("p1_2.dpad-left", "dc.ctrl.p1_2.dpad-left");
+    bind_ctrl_from_cfg("p1_2.dpad-down", "dc.ctrl.p1_2.dpad-down");
+    bind_ctrl_from_cfg("p1_2.dpad-right", "dc.ctrl.p1_2.dpad-right");
+    bind_ctrl_from_cfg("p1_2.btn_a", "dc.ctrl.p1_2.btn-a");
+    bind_ctrl_from_cfg("p1_2.btn_b", "dc.ctrl.p1_2.btn-b");
+    bind_ctrl_from_cfg("p1_2.btn_x", "dc.ctrl.p1_2.btn-x");
+    bind_ctrl_from_cfg("p1_2.btn_y", "dc.ctrl.p1_2.btn-y");
+    bind_ctrl_from_cfg("p1_2.btn_start", "dc.ctrl.p1_2.btn-start");
 }
 
 void win_cleanup() {
