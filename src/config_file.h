@@ -40,4 +40,8 @@ char const *cfg_get_node(char const *key);
 
 int cfg_get_bool(char const *key, bool *outp);
 
+char const *cfg_get_default_dir(void);
+
+char const *cfg_get_default_file(void);
+
 #endif
