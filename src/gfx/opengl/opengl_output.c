@@ -111,43 +111,12 @@ opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_height);
 
 void opengl_video_output_init() {
-    char const *custom_color = cfg_get_node("ui.bgcolor");
-
-    if (custom_color) {
-        if (strlen(custom_color) == 6) {
-            int idx;
-            unsigned digits[6];
-
-            for (idx = 0; idx < 6; idx++) {
-                char ch = custom_color[idx];
-                if (ch >= '0' && ch <= '9') {
-                    digits[idx] = ch - '0';
-                } else if (ch >= 'a' && ch <= 'f') {
-                    digits[idx] = ch - 'a' + 10;
-                } else if (ch >= 'A' && ch <= 'F') {
-                    digits[idx] = ch - 'A' + 10;
-                } else {
-                    LOG_ERROR("Bad color syntax \"%s\"\n", custom_color);
-                    goto no_custom_color_for_you;
-                }
-            }
-
-            unsigned rgb[3] = {
-                digits[0] * 16 + digits[1],
-                digits[2] * 16 + digits[3],
-                digits[4] * 16 + digits[5]
-            };
-
-            bgcolor[0] = rgb[0] / 255.0f;
-            bgcolor[1] = rgb[1] / 255.0f;
-            bgcolor[2] = rgb[2] / 255.0f;
-
-            LOG_INFO("Setting custom background color to \"%s\"\n", custom_color);
-        } else {
-            LOG_ERROR("Bad color syntax \"%s\"\n", custom_color);
-        }
+    int rgb[3];
+    if (cfg_get_rgb("ui.bgcolor", rgb, rgb + 1, rgb + 2) == 0) {
+        bgcolor[0] = rgb[0] / 255.0f;
+        bgcolor[1] = rgb[1] / 255.0f;
+        bgcolor[2] = rgb[2] / 255.0f;
     }
- no_custom_color_for_you:
 
     shader_load_vert_from_file(&fb_shader, "final_vert.glsl");
     shader_load_frag_from_file(&fb_shader, "final_frag.glsl");

@@ -158,8 +158,8 @@ static void cfg_create_default_config(void) {
         ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"
         ";;;;;;;;;;\n"
         "\n"
-        "; background color\n"
-        "ui.bgcolor 3d77c0\n"
+        "; background color (use html hex syntax)\n"
+        "ui.bgcolor #3d77c0\n"
         "\n"
         "; vsync\n"
         "; options are true (to enable) or false (to disable)\n"
@@ -400,6 +400,48 @@ int cfg_get_bool(char const *key, bool *outp) {
     char const *nodestr = cfg_get_node(key);
     if (nodestr) {
         int success = cfg_parse_bool(nodestr, outp);
+        if (success != 0)
+            LOG_ERROR("error parsing config node \"%s\"\n", key);
+        return success;
+    }
+    return -1;
+}
+
+static int cfg_parse_rgb(char const *valstr, int *red, int *green, int *blue) {
+    if (strlen(valstr) != 7)
+        return -1;
+
+    if (valstr[0] != '#')
+        return -1;
+
+    int idx;
+    unsigned digits[6];
+
+    for (idx = 0; idx < 6; idx++) {
+        char ch = valstr[idx + 1];
+        if (ch >= '0' && ch <= '9') {
+            digits[idx] = ch - '0';
+        } else if (ch >= 'a' && ch <= 'f') {
+            digits[idx] = ch - 'a' + 10;
+        } else if (ch >= 'A' && ch <= 'F') {
+            digits[idx] = ch - 'A' + 10;
+        } else {
+            LOG_ERROR("Bad color syntax \"%s\"\n", valstr);
+            return -1;
+        }
+    }
+
+    *red = digits[0] * 16 + digits[1];
+    *green = digits[2] * 16 + digits[3];
+    *blue = digits[4] * 16 + digits[5];
+
+    return 0;
+}
+
+int cfg_get_rgb(char const *key, int *red, int *green, int *blue) {
+    char const *nodestr = cfg_get_node(key);
+    if (nodestr) {
+        int success = cfg_parse_rgb(nodestr, red, green, blue);
         if (success != 0)
             LOG_ERROR("error parsing config node \"%s\"\n", key);
         return success;
