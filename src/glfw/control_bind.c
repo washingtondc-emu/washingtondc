@@ -41,10 +41,13 @@ struct ctrl_bind {
 static bool ctrl_get_gamepad_button_state(struct host_gamepad_btn const *btn);
 static bool ctrl_get_kbd_button_state(struct host_kbd_ctrl const *btn);
 static bool ctrl_get_axis_button_state(struct host_gamepad_axis const *btn);
+static bool ctrl_get_gamepad_hat_state(struct host_gamepad_hat const *btn);
 
 static float ctrl_get_gamepad_axis_state(struct host_gamepad_btn const *btn);
 static float ctrl_get_kbd_axis_state(struct host_kbd_ctrl const *btn);
 static float ctrl_get_axis_axis_state(struct host_gamepad_axis const *btn);
+static float
+ctrl_get_gamepad_hat_axis_state(struct host_gamepad_hat const *btn);
 
 int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind);
 
@@ -108,6 +111,8 @@ bool ctrl_get_bind_button_state(struct host_ctrl_bind const *key) {
         return ctrl_get_kbd_button_state(&key->ctrl.kbd);
     case HOST_CTRL_TP_AXIS:
         return ctrl_get_axis_button_state(&key->ctrl.axis);
+    case HOST_CTRL_TP_HAT:
+        return ctrl_get_gamepad_hat_state(&key->ctrl.hat);
     default:
         return false;
     }
@@ -121,6 +126,8 @@ float ctrl_get_axis_state(struct host_ctrl_bind const *axis) {
         return ctrl_get_kbd_axis_state(&axis->ctrl.kbd);
     case HOST_CTRL_TP_AXIS:
         return ctrl_get_axis_axis_state(&axis->ctrl.axis);
+    case HOST_CTRL_TP_HAT:
+        return ctrl_get_gamepad_hat_axis_state(&axis->ctrl.hat);
     default:
         return 0.0f;
     }
@@ -137,6 +144,15 @@ static bool ctrl_get_gamepad_button_state(struct host_gamepad_btn const *btn) {
 
 static bool ctrl_get_kbd_button_state(struct host_kbd_ctrl const *btn) {
     return glfwGetKey(btn->win, btn->key) == GLFW_PRESS;
+}
+
+static bool ctrl_get_gamepad_hat_state(struct host_gamepad_hat const *btn) {
+    int len;
+    unsigned hat_idx = btn->hat;
+    const unsigned char *hat_state = glfwGetJoystickHats(btn->js, &len);
+    if (hat_state && len > hat_idx)
+        return hat_state[hat_idx] & btn->mask ? true : false;
+    return false;
 }
 
 #define AXIS_BUTTON_THRESH 0.5f
@@ -188,6 +204,16 @@ static float ctrl_get_axis_axis_state(struct host_gamepad_axis const *btn) {
             return axis_state[btn->axis_no];
         }
     }
+    return 0.0f;
+}
+
+static float
+ctrl_get_gamepad_hat_axis_state(struct host_gamepad_hat const *btn) {
+    int len;
+    unsigned hat_idx = btn->hat;
+    const unsigned char *hat_state = glfwGetJoystickHats(btn->js, &len);
+    if (hat_state && len > hat_idx && (hat_state[hat_idx] & btn->mask))
+        return 1.0f;
     return 0.0f;
 }
 
@@ -281,6 +307,41 @@ int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind) {
         bind->ctrl.axis.js = jsno;
         bind->ctrl.axis.axis_no = axis;
         bind->ctrl.axis.sign = sign;
+        return 0;
+    } else if (intf_len == 4 && intf[0] == 'h' && intf[1] == 'a' &&
+               intf[2] == 't' && isdigit(intf[3])) {
+        char dir[BINDSTR_COMPONENT_MAX] = { 0 };
+        bool have_dir = false;
+        unsigned dir_len = 0;
+
+        while (*bindstr) {
+            have_dir = true;
+            if (*bindstr == '.') {
+                bindstr++;
+                break;
+            }
+            if (dir_len >= BINDSTR_COMPONENT_MAX - 1)
+                return -1;
+            dir[dir_len++] = *bindstr++;
+        }
+
+        if (!have_dir)
+            return false;
+
+        if (strcmp(dir, "up") == 0)
+            bind->ctrl.hat.mask = GLFW_HAT_UP;
+        else if (strcmp(dir, "left") == 0)
+            bind->ctrl.hat.mask = GLFW_HAT_LEFT;
+        else if (strcmp(dir, "down") == 0)
+            bind->ctrl.hat.mask = GLFW_HAT_DOWN;
+        else if (strcmp(dir, "right") == 0)
+            bind->ctrl.hat.mask = GLFW_HAT_RIGHT;
+        else
+            return -1;
+
+        bind->tp = HOST_CTRL_TP_HAT;
+        bind->ctrl.hat.js = jsno;
+        bind->ctrl.hat.hat = intf[3] - '0';
         return 0;
     }
 

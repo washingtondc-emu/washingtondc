@@ -44,6 +44,12 @@ struct host_gamepad_axis {
     int sign; // +1 for positive axis movement, -1 for negative axis movement
 };
 
+struct host_gamepad_hat {
+    int js;
+    int hat;
+    int mask; // GLFW_HAT_UP, GLFW_HAT_DOWN, GLFW_HAT_LEFT, or GLFW_HAT_RIGHT
+};
+
 struct host_kbd_ctrl {
     GLFWwindow *win;
     // glfw key identifier
@@ -54,12 +60,14 @@ union host_ctrl {
     struct host_gamepad_btn gamepad;
     struct host_gamepad_axis axis;
     struct host_kbd_ctrl kbd;
+    struct host_gamepad_hat hat;
 };
 
 enum HOST_CTRL_TP {
     HOST_CTRL_TP_GAMEPAD,
     HOST_CTRL_TP_AXIS,
-    HOST_CTRL_TP_KBD
+    HOST_CTRL_TP_KBD,
+    HOST_CTRL_TP_HAT
 };
 
 struct host_ctrl_bind {
@@ -73,7 +81,6 @@ void
 ctrl_bind_key(char const bind[CTRL_BIND_NAME_LEN], struct host_ctrl_bind key);
 
 bool ctrl_get_bind_button_state(struct host_ctrl_bind const *key);
-
 float ctrl_get_axis_state(struct host_ctrl_bind const *axis);
 
 /*

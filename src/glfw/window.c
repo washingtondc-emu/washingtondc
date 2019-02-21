@@ -64,9 +64,12 @@ static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
         bind.ctrl.gamepad.js += GLFW_JOYSTICK_1;
         ctrl_bind_key(name, bind);
         return 0;
+    } else if (bind.tp == HOST_CTRL_TP_HAT) {
+        bind.ctrl.gamepad.js += GLFW_JOYSTICK_1;
+        ctrl_bind_key(name, bind);
+        return 0;
     }
 
-    // TODO: gamepad buttons and axes
     return -1;
 }
 
