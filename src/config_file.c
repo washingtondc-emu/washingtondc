@@ -200,15 +200,21 @@ static void cfg_create_default_config(void) {
         "dc.ctrl.p1_1.btn-y js0.btn3\n"
         "dc.ctrl.p1_1.btn-start js0.btn7\n"
         "\n"
-        "dc.ctrl.p1_2.dpad-up    kbd.w\n"
-        "dc.ctrl.p1_2.dpad-left  kbd.a\n"
-        "dc.ctrl.p1_2.dpad-down  kbd.s\n"
-        "dc.ctrl.p1_2.dpad-right kbd.d\n"
-        "dc.ctrl.p1_2.btn-a      kbd.keypad2\n"
-        "dc.ctrl.p1_2.btn-b      kbd.keypad6\n"
-        "dc.ctrl.p1_2.btn-x      kbd.keypad4\n"
-        "dc.ctrl.p1_2.btn-y      kbd.keypad8\n"
-        "dc.ctrl.p1_2.btn-start  kbd.space\n";
+        "dc.ctrl.p1_1.stick-up    kbd.w\n"
+        "dc.ctrl.p1_1.stick-left  kbd.a\n"
+        "dc.ctrl.p1_1.stick-down  kbd.s\n"
+        "dc.ctrl.p1_1.stick-right kbd.d\n"
+        "dc.ctrl.p1_1.trig-l      kbd.q\n"
+        "dc.ctrl.p1_1.trig-r      kbd.e\n"
+        "dc.ctrl.p1_2.dpad-up     kbd.up\n"
+        "dc.ctrl.p1_2.dpad-left   kbd.left\n"
+        "dc.ctrl.p1_2.dpad-down   kbd.down\n"
+        "dc.ctrl.p1_2.dpad-right  kbd.right\n"
+        "dc.ctrl.p1_2.btn-a       kbd.keypad2\n"
+        "dc.ctrl.p1_2.btn-b       kbd.keypad6\n"
+        "dc.ctrl.p1_2.btn-x       kbd.keypad4\n"
+        "dc.ctrl.p1_2.btn-y       kbd.keypad8\n"
+        "dc.ctrl.p1_2.btn-start   kbd.space\n";
 
     LOG_INFO("Attempting to create configuration directory \"%s\"\n",
              cfg_file_dir);
