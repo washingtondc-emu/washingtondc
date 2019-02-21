@@ -70,10 +70,16 @@ The only games I know to work so far are Power Stone and Crazy Taxi.
     |============================|
     | keyboard   |     Dreamcast |
     |============================|
-    | W          | UP    (D-PAD) |
-    | S          | DOWN  (D-PAD) |
-    | A          | LEFT  (D-PAD) |
-    | D          | RIGHT (D-PAD) |
+    | W          | UP    (STICK) |
+    | S          | DOWN  (STICK) |
+    | A          | LEFT  (STICK) |
+    | D          | RIGHT (STICK) |
+    | Q          | LEFT TRIGGER  |
+    | E          | RIGHT TRIGGER |
+    | UP         | UP    (D-PAD) |
+    | LEFT       | LEFT  (D-PAD) |
+    | DOWN       | DOWN  (D-PAD) |
+    | RIGHT      | RIGHT (D-PAD) |
     | 2 (numpad) | A             |
     | 6 (numpad) | B             |
     | 4 (numpad) | X             |
