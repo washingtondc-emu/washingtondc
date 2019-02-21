@@ -174,6 +174,10 @@ static void cfg_create_default_config(void) {
         "efficient)\n"
         "win.framelimit_mode spin\n"
         "\n"
+        "; don't change this line.  It doesn't techincally do anything yet\n"
+        "; but it will in future revisions of WashingtonDC.\n"
+        "wash.dc.port.0.0 dreamcast_controller\n"
+        "\n"
         /*
          * TODO: find a way to explain the naming convention for control
          * bindings to end-users
