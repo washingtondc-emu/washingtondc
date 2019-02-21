@@ -162,7 +162,7 @@ static bool ctrl_get_axis_button_state(struct host_gamepad_axis const *btn) {
     const float *axis_state = glfwGetJoystickAxes(btn->js, &axis_cnt);
 
     if (axis_state && axis_cnt > btn->axis_no) {
-        if (btn->sign > 0)
+        if (btn->sign >= 0)
             return axis_state[btn->axis_no] > AXIS_BUTTON_THRESH;
         else if (btn->sign < 0)
             return axis_state[btn->axis_no] < -AXIS_BUTTON_THRESH;
@@ -176,13 +176,13 @@ static float ctrl_get_gamepad_axis_state(struct host_gamepad_btn const *btn) {
     const unsigned char *gamepad_state = glfwGetJoystickButtons(btn->js, &len);
     if (gamepad_state && len > btn_idx && gamepad_state[btn_idx] == GLFW_PRESS)
         return 1.0f;
-    return 0.0f;
+    return -1.0f;
 }
 
 static float ctrl_get_kbd_axis_state(struct host_kbd_ctrl const *btn) {
     if (glfwGetKey(btn->win, btn->key) == GLFW_PRESS)
         return 1.0f;
-    return 0.0f;
+    return -1.0f;
 }
 
 static float ctrl_get_axis_axis_state(struct host_gamepad_axis const *btn) {
@@ -190,18 +190,10 @@ static float ctrl_get_axis_axis_state(struct host_gamepad_axis const *btn) {
     const float *axis_state = glfwGetJoystickAxes(btn->js, &axis_cnt);
 
     if (axis_state && axis_cnt > btn->axis_no) {
-        if (btn->sign > 0) {
-            if (axis_state[btn->axis_no] > 0.0f)
+        if (btn->sign >= 0) {
                 return axis_state[btn->axis_no];
-            else
-                return 0.0f;
         } else if (btn->sign < 0) {
-            if (axis_state[btn->axis_no] < 0.0f)
                 return -axis_state[btn->axis_no];
-            else
-                return 0.0f;
-        } else {
-            return axis_state[btn->axis_no];
         }
     }
     return 0.0f;

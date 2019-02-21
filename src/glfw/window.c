@@ -188,10 +188,23 @@ static void scan_input(void) {
 
     int trig_l = ctrl_get_axis("p1_1.trig-l") * 128 + 128;
     int trig_r = ctrl_get_axis("p1_1.trig-r") * 128 + 128;
-    int stick_vert = (ctrl_get_axis("p1_1.stick-up") -
-                      ctrl_get_axis("p1_1.stick-down")) * 128 + 128;
-    int stick_hor = (ctrl_get_axis("p1_1.stick-right") -
-                     ctrl_get_axis("p1_1.stick-left")) * 128 + 128;
+
+    float stick_up = ctrl_get_axis("p1_1.stick-up");
+    float stick_down = ctrl_get_axis("p1_1.stick-down");
+    float stick_left = ctrl_get_axis("p1_1.stick-left");
+    float stick_right = ctrl_get_axis("p1_1.stick-right");
+
+    if (stick_up < 0.0f)
+        stick_up = 0.0f;
+    if (stick_down < 0.0f)
+        stick_down = 0.0f;
+    if (stick_left < 0.0f)
+        stick_left = 0.0f;
+    if (stick_right < 0.0f)
+        stick_right = 0.0f;
+
+    int stick_vert = (stick_up - stick_down) * 128 + 128;
+    int stick_hor = (stick_right - stick_left) * 128 + 128;
 
     if (stick_hor > 255)
         stick_hor = 255;
