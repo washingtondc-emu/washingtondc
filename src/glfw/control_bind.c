@@ -77,7 +77,7 @@ float ctrl_get_axis(char const name[CTRL_BIND_NAME_LEN]) {
     struct host_ctrl_bind *bind = ctrl_get_bind(name);
     if (bind)
         return ctrl_get_axis_state(bind);
-    return 0.0f;
+    return -1.0f;
  }
 
 struct host_ctrl_bind *ctrl_get_bind(char const name[CTRL_BIND_NAME_LEN]) {
@@ -129,7 +129,7 @@ float ctrl_get_axis_state(struct host_ctrl_bind const *axis) {
     case HOST_CTRL_TP_HAT:
         return ctrl_get_gamepad_hat_axis_state(&axis->ctrl.hat);
     default:
-        return 0.0f;
+        return -1.0f;
     }
 }
 
@@ -196,7 +196,7 @@ static float ctrl_get_axis_axis_state(struct host_gamepad_axis const *btn) {
                 return -axis_state[btn->axis_no];
         }
     }
-    return 0.0f;
+    return -1.0f;
 }
 
 static float
@@ -206,7 +206,7 @@ ctrl_get_gamepad_hat_axis_state(struct host_gamepad_hat const *btn) {
     const unsigned char *hat_state = glfwGetJoystickHats(btn->js, &len);
     if (hat_state && len > hat_idx && (hat_state[hat_idx] & btn->mask))
         return 1.0f;
-    return 0.0f;
+    return -1.0f;
 }
 
 #define BINDSTR_COMPONENT_MAX 16
