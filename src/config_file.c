@@ -78,6 +78,13 @@ static void path_append(char *dst, char const *src, size_t dst_sz) {
     while (dst[zero_idx])
         zero_idx++;
 
+    if (!zero_idx) {
+        // special case - dst is empty so copy src over
+        strncpy(dst, src, dst_sz);
+        dst[dst_sz - 1] = '\0';
+        return;
+    }
+
     /*
      * If there's a trailing / on dst and a leading / on src then get rid of
      * the leading slash on src.
