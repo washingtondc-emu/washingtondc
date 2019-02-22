@@ -203,7 +203,7 @@ static void scan_input(void) {
     if (stick_right < 0.0f)
         stick_right = 0.0f;
 
-    int stick_vert = (stick_up - stick_down) * 128 + 128;
+    int stick_vert = (stick_down - stick_up) * 128 + 128;
     int stick_hor = (stick_right - stick_left) * 128 + 128;
 
     if (stick_hor > 255)
