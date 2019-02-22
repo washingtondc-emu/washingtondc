@@ -108,42 +108,42 @@ void win_init(unsigned width, unsigned height) {
     // configure default keybinds
     bind_ctrl_from_cfg("toggle-overlay", "wash.ctrl.toggle-overlay");
 
-    bind_ctrl_from_cfg("p1_1.dpad-up", "dc.ctrl.p1_1.dpad-up");
-    bind_ctrl_from_cfg("p1_1.dpad-left", "dc.ctrl.p1_1.dpad-left");
-    bind_ctrl_from_cfg("p1_1.dpad-down", "dc.ctrl.p1_1.dpad-down");
-    bind_ctrl_from_cfg("p1_1.dpad-right", "dc.ctrl.p1_1.dpad-right");
-    bind_ctrl_from_cfg("p1_1.btn_a", "dc.ctrl.p1_1.btn-a");
-    bind_ctrl_from_cfg("p1_1.btn_b", "dc.ctrl.p1_1.btn-b");
-    bind_ctrl_from_cfg("p1_1.btn_x", "dc.ctrl.p1_1.btn-x");
-    bind_ctrl_from_cfg("p1_1.btn_y", "dc.ctrl.p1_1.btn-y");
-    bind_ctrl_from_cfg("p1_1.btn_start", "dc.ctrl.p1_1.btn-start");
-    bind_ctrl_from_cfg("p1_1.stick-left", "dc.ctrl.p1_1.stick-left");
-    bind_ctrl_from_cfg("p1_1.stick-right", "dc.ctrl.p1_1.stick-right");
-    bind_ctrl_from_cfg("p1_1.stick-up", "dc.ctrl.p1_1.stick-up");
-    bind_ctrl_from_cfg("p1_1.stick-down", "dc.ctrl.p1_1.stick-down");
-    bind_ctrl_from_cfg("p1_1.trig-l", "dc.ctrl.p1_1.trig-l");
-    bind_ctrl_from_cfg("p1_1.trig-r", "dc.ctrl.p1_1.trig-r");
+    bind_ctrl_from_cfg("p1_1.dpad-up", "dc.ctrl.p1.dpad-up");
+    bind_ctrl_from_cfg("p1_1.dpad-left", "dc.ctrl.p1.dpad-left");
+    bind_ctrl_from_cfg("p1_1.dpad-down", "dc.ctrl.p1.dpad-down");
+    bind_ctrl_from_cfg("p1_1.dpad-right", "dc.ctrl.p1.dpad-right");
+    bind_ctrl_from_cfg("p1_1.btn_a", "dc.ctrl.p1.btn-a");
+    bind_ctrl_from_cfg("p1_1.btn_b", "dc.ctrl.p1.btn-b");
+    bind_ctrl_from_cfg("p1_1.btn_x", "dc.ctrl.p1.btn-x");
+    bind_ctrl_from_cfg("p1_1.btn_y", "dc.ctrl.p1.btn-y");
+    bind_ctrl_from_cfg("p1_1.btn_start", "dc.ctrl.p1.btn-start");
+    bind_ctrl_from_cfg("p1_1.stick-left", "dc.ctrl.p1.stick-left");
+    bind_ctrl_from_cfg("p1_1.stick-right", "dc.ctrl.p1.stick-right");
+    bind_ctrl_from_cfg("p1_1.stick-up", "dc.ctrl.p1.stick-up");
+    bind_ctrl_from_cfg("p1_1.stick-down", "dc.ctrl.p1.stick-down");
+    bind_ctrl_from_cfg("p1_1.trig-l", "dc.ctrl.p1.trig-l");
+    bind_ctrl_from_cfg("p1_1.trig-r", "dc.ctrl.p1.trig-r");
 
     /*
      * p1_1 and p1_2 both refer to the same buttons on player 1's controller.
      * It's there to provide a way to have two different bindings for the same
      * button.
      */
-    bind_ctrl_from_cfg("p1_2.dpad-up", "dc.ctrl.p1_2.dpad-up");
-    bind_ctrl_from_cfg("p1_2.dpad-left", "dc.ctrl.p1_2.dpad-left");
-    bind_ctrl_from_cfg("p1_2.dpad-down", "dc.ctrl.p1_2.dpad-down");
-    bind_ctrl_from_cfg("p1_2.dpad-right", "dc.ctrl.p1_2.dpad-right");
-    bind_ctrl_from_cfg("p1_2.btn_a", "dc.ctrl.p1_2.btn-a");
-    bind_ctrl_from_cfg("p1_2.btn_b", "dc.ctrl.p1_2.btn-b");
-    bind_ctrl_from_cfg("p1_2.btn_x", "dc.ctrl.p1_2.btn-x");
-    bind_ctrl_from_cfg("p1_2.btn_y", "dc.ctrl.p1_2.btn-y");
-    bind_ctrl_from_cfg("p1_2.btn_start", "dc.ctrl.p1_2.btn-start");
-    bind_ctrl_from_cfg("p1_2.stick-left", "dc.ctrl.p1_2.stick-left");
-    bind_ctrl_from_cfg("p1_2.stick-right", "dc.ctrl.p1_2.stick-right");
-    bind_ctrl_from_cfg("p1_2.stick-up", "dc.ctrl.p1_2.stick-up");
-    bind_ctrl_from_cfg("p1_2.stick-down", "dc.ctrl.p1_2.stick-down");
-    bind_ctrl_from_cfg("p1_2.trig-l", "dc.ctrl.p1_2.trig-l");
-    bind_ctrl_from_cfg("p1_2.trig-r", "dc.ctrl.p1_2.trig-r");
+    bind_ctrl_from_cfg("p1_2.dpad-up", "dc.ctrl.p1.dpad-up(1)");
+    bind_ctrl_from_cfg("p1_2.dpad-left", "dc.ctrl.p1.dpad-left(1)");
+    bind_ctrl_from_cfg("p1_2.dpad-down", "dc.ctrl.p1.dpad-down(1)");
+    bind_ctrl_from_cfg("p1_2.dpad-right", "dc.ctrl.p1.dpad-right(1)");
+    bind_ctrl_from_cfg("p1_2.btn_a", "dc.ctrl.p1.btn-a(1)");
+    bind_ctrl_from_cfg("p1_2.btn_b", "dc.ctrl.p1.btn-b(1)");
+    bind_ctrl_from_cfg("p1_2.btn_x", "dc.ctrl.p1.btn-x(1)");
+    bind_ctrl_from_cfg("p1_2.btn_y", "dc.ctrl.p1.btn-y(1)");
+    bind_ctrl_from_cfg("p1_2.btn_start", "dc.ctrl.p1.btn-start(1)");
+    bind_ctrl_from_cfg("p1_2.stick-left", "dc.ctrl.p1.stick-left(1)");
+    bind_ctrl_from_cfg("p1_2.stick-right", "dc.ctrl.p1.stick-right(1)");
+    bind_ctrl_from_cfg("p1_2.stick-up", "dc.ctrl.p1.stick-up(1)");
+    bind_ctrl_from_cfg("p1_2.stick-down", "dc.ctrl.p1.stick-down(1)");
+    bind_ctrl_from_cfg("p1_2.trig-l", "dc.ctrl.p1.trig-l(1)");
+    bind_ctrl_from_cfg("p1_2.trig-r", "dc.ctrl.p1.trig-r(1)");
 }
 
 void win_cleanup() {
