@@ -138,6 +138,12 @@ void win_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("p1_2.btn_x", "dc.ctrl.p1_2.btn-x");
     bind_ctrl_from_cfg("p1_2.btn_y", "dc.ctrl.p1_2.btn-y");
     bind_ctrl_from_cfg("p1_2.btn_start", "dc.ctrl.p1_2.btn-start");
+    bind_ctrl_from_cfg("p1_2.stick-left", "dc.ctrl.p1_2.stick-left");
+    bind_ctrl_from_cfg("p1_2.stick-right", "dc.ctrl.p1_2.stick-right");
+    bind_ctrl_from_cfg("p1_2.stick-up", "dc.ctrl.p1_2.stick-up");
+    bind_ctrl_from_cfg("p1_2.stick-down", "dc.ctrl.p1_2.stick-down");
+    bind_ctrl_from_cfg("p1_2.trig-l", "dc.ctrl.p1_2.trig-l");
+    bind_ctrl_from_cfg("p1_2.trig-r", "dc.ctrl.p1_2.trig-r");
 }
 
 void win_cleanup() {
@@ -186,13 +192,55 @@ static void scan_input(void) {
     bool btns[GAMEPAD_BTN_COUNT];
     bool hat[GAMEPAD_HAT_COUNT];
 
-    int trig_l = ctrl_get_axis("p1_1.trig-l") * 128 + 128;
-    int trig_r = ctrl_get_axis("p1_1.trig-r") * 128 + 128;
+    float trig_l_real_1 = ctrl_get_axis("p1_1.trig-l") + 1.0f;
+    float trig_l_real_2 = ctrl_get_axis("p1_2.trig-l") + 1.0f;
+    float trig_l_real = trig_l_real_1 + trig_l_real_2;
+    if (trig_l_real < 0.0f)
+        trig_l_real = 0.0f;
+    else if (trig_l_real > 1.0f)
+        trig_l_real = 1.0f;
 
-    float stick_up = ctrl_get_axis("p1_1.stick-up");
-    float stick_down = ctrl_get_axis("p1_1.stick-down");
-    float stick_left = ctrl_get_axis("p1_1.stick-left");
-    float stick_right = ctrl_get_axis("p1_1.stick-right");
+    float trig_r_real_1 = ctrl_get_axis("p1_1.trig-r") + 1.0f;
+    float trig_r_real_2 = ctrl_get_axis("p1_2.trig-r") + 1.0f;
+    float trig_r_real = trig_r_real_1 + trig_r_real_2;
+    if (trig_r_real < 0.0f)
+        trig_r_real = 0.0f;
+    else if (trig_r_real > 1.0f)
+        trig_r_real = 1.0f;
+
+    int trig_l = trig_l_real * 255;
+    int trig_r = trig_r_real * 255;
+
+    float stick_up_real_1 = ctrl_get_axis("p1_1.stick-up");
+    float stick_down_real_1 = ctrl_get_axis("p1_1.stick-down");
+    float stick_left_real_1 = ctrl_get_axis("p1_1.stick-left");
+    float stick_right_real_1 = ctrl_get_axis("p1_1.stick-right");
+    float stick_up_real_2 = ctrl_get_axis("p1_2.stick-up");
+    float stick_down_real_2 = ctrl_get_axis("p1_2.stick-down");
+    float stick_left_real_2 = ctrl_get_axis("p1_2.stick-left");
+    float stick_right_real_2 = ctrl_get_axis("p1_2.stick-right");
+
+    if (stick_up_real_1 < 0.0f)
+        stick_up_real_1 = 0.0f;
+    if (stick_up_real_2 < 0.0f)
+        stick_up_real_2 = 0.0f;
+    if (stick_down_real_1 < 0.0f)
+        stick_down_real_1 = 0.0f;
+    if (stick_down_real_2 < 0.0f)
+        stick_down_real_2 = 0.0f;
+    if (stick_left_real_1 < 0.0f)
+        stick_left_real_1 = 0.0f;
+    if (stick_left_real_2 < 0.0f)
+        stick_left_real_2 = 0.0f;
+    if (stick_right_real_1 < 0.0f)
+        stick_right_real_1 = 0.0f;
+    if (stick_right_real_2 < 0.0f)
+        stick_right_real_2 = 0.0f;
+
+    float stick_up = stick_up_real_1 + stick_up_real_2;
+    float stick_down = stick_down_real_1 + stick_down_real_2;
+    float stick_left = stick_left_real_1 + stick_left_real_2;
+    float stick_right = stick_right_real_1 + stick_right_real_2;
 
     if (stick_up < 0.0f)
         stick_up = 0.0f;
@@ -202,6 +250,14 @@ static void scan_input(void) {
         stick_left = 0.0f;
     if (stick_right < 0.0f)
         stick_right = 0.0f;
+    if (stick_up > 1.0f)
+        stick_up = 1.0f;
+    if (stick_down > 1.0f)
+        stick_down = 1.0f;
+    if (stick_left > 1.0f)
+        stick_left = 1.0f;
+    if (stick_right > 1.0f)
+        stick_right = 1.0f;
 
     int stick_vert = (stick_down - stick_up) * 128 + 128;
     int stick_hor = (stick_right - stick_left) * 128 + 128;
