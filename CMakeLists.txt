@@ -472,12 +472,6 @@ if (ENABLE_DEBUGGER)
                    "${PROJECT_SOURCE_DIR}/external/capstone/include")
 endif()
 
-# TODO: I wish there was an easy way to do this as a dependency like in make...
-configure_file("src/gfx/opengl/final_frag.glsl" "final_frag.glsl" COPYONLY)
-configure_file("src/gfx/opengl/final_vert.glsl" "final_vert.glsl" COPYONLY)
-configure_file("src/gfx/opengl/pvr2_ta_vert.glsl" "pvr2_ta_vert.glsl" COPYONLY)
-configure_file("src/gfx/opengl/pvr2_ta_frag.glsl" "pvr2_ta_frag.glsl" COPYONLY)
-
 configure_file("regression_tests/sh4div_test.pl" "sh4div_test.pl" COPYONLY)
 add_test(NAME sh4div_test COMMAND ./sh4div_test.pl)
 

@@ -111,6 +111,32 @@ opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_height);
 
 void opengl_video_output_init() {
+    static char const * const final_vert_glsl =
+        "#extension GL_ARB_explicit_uniform_location : enable\n"
+
+        "layout (location = 0) in vec3 vert_pos;\n"
+        "layout (location = 1) in vec2 tex_coord;\n"
+        "layout (location = 2) uniform mat4 trans_mat;\n"
+        "layout (location = 3) uniform mat3 tex_mat;\n"
+
+        "out vec2 st;\n"
+
+        "void main() {\n"
+        "    gl_Position = trans_mat * vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);\n"
+        "    st = (tex_mat * vec3(tex_coord.x, tex_coord.y, 1.0)).xy;\n"
+        "}\n";
+
+    static char const * const final_frag_glsl =
+        "in vec2 st;\n"
+        "out vec4 color;\n"
+
+        "uniform sampler2D fb_tex;\n"
+
+        "void main() {\n"
+        "    vec4 sample = texture(fb_tex, st);\n"
+        "    color = sample;\n"
+        "}\n";
+
     int rgb[3];
     if (cfg_get_rgb("ui.bgcolor", rgb, rgb + 1, rgb + 2) == 0) {
         bgcolor[0] = rgb[0] / 255.0f;
@@ -118,8 +144,8 @@ void opengl_video_output_init() {
         bgcolor[2] = rgb[2] / 255.0f;
     }
 
-    shader_load_vert_from_file(&fb_shader, "final_vert.glsl");
-    shader_load_frag_from_file(&fb_shader, "final_frag.glsl");
+    shader_load_vert(&fb_shader, final_vert_glsl);
+    shader_load_frag(&fb_shader, final_frag_glsl);
     shader_link(&fb_shader);
 
     init_poly();
