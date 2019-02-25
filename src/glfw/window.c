@@ -108,15 +108,10 @@ void win_init(unsigned width, unsigned height) {
         win_mode = WIN_MODE_WINDOWED;
     }
 
-    switch (win_mode) {
-    case WIN_MODE_FULLSCREEN:
-        win = glfwCreateWindow(res_x, res_y, title_get(), glfwGetPrimaryMonitor(), NULL);
-        break;
-    default:
-    case WIN_MODE_WINDOWED:
-        win = glfwCreateWindow(res_x, res_y, title_get(), NULL, NULL);
-        break;
-    }
+    win = glfwCreateWindow(res_x, res_y, title_get(), NULL, NULL);
+    if (win_mode == WIN_MODE_FULLSCREEN)
+        glfwSetWindowMonitor(win, glfwGetPrimaryMonitor(), 0, 0,
+                             res_x, res_y, GLFW_DONT_CARE);
 
     if (!win)
         errx(1, "unable to create window");
