@@ -36,12 +36,20 @@
 
 #include "window.h"
 
+enum win_mode {
+    WIN_MODE_WINDOWED,
+    WIN_MODE_FULLSCREEN
+};
+
 static unsigned res_x, res_y;
+static unsigned win_res_x, win_res_y;
 static GLFWwindow *win;
+static enum win_mode win_mode = WIN_MODE_WINDOWED;
 
 static void expose_callback(GLFWwindow *win);
 static void resize_callback(GLFWwindow *win, int width, int height);
 static void scan_input(void);
+static void toggle_fullscreen(void);
 
 static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
     char const *bindstr = cfg_get_node(cfg_node);
@@ -73,26 +81,30 @@ static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
     return -1;
 }
 
-enum win_mode {
-    WIN_MODE_WINDOWED,
-    WIN_MODE_FULLSCREEN
-};
-
 void win_init(unsigned width, unsigned height) {
     res_x = width;
     res_y = height;
 
+    win_res_x = width;
+    win_res_y = height;
+
     if (!glfwInit())
         err(1, "unable to initialize glfw");
+
+    GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode *vidmode = glfwGetVideoMode(monitor);
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
     glfwWindowHint(GLFW_DEPTH_BITS, 24);
+    glfwWindowHint(GLFW_RED_BITS, vidmode->redBits);
+    glfwWindowHint(GLFW_GREEN_BITS, vidmode->greenBits);
+    glfwWindowHint(GLFW_BLUE_BITS, vidmode->blueBits);
+    glfwWindowHint(GLFW_REFRESH_RATE, vidmode->refreshRate);
 
     char const *win_mode_str = cfg_get_node("win.window-mode");
-    enum win_mode win_mode;
 
     if (win_mode_str) {
         if (strcmp(win_mode_str, "fullscreen") == 0) {
@@ -108,10 +120,15 @@ void win_init(unsigned width, unsigned height) {
         win_mode = WIN_MODE_WINDOWED;
     }
 
-    win = glfwCreateWindow(res_x, res_y, title_get(), NULL, NULL);
-    if (win_mode == WIN_MODE_FULLSCREEN)
-        glfwSetWindowMonitor(win, glfwGetPrimaryMonitor(), 0, 0,
-                             res_x, res_y, GLFW_DONT_CARE);
+    if (win_mode == WIN_MODE_FULLSCREEN) {
+        LOG_INFO("Enabling fullscreen mode.\n");
+        res_x = vidmode->width;
+        res_y = vidmode->height;
+        win = glfwCreateWindow(res_x, res_y, title_get(), monitor, NULL);
+    } else {
+        LOG_INFO("Enabling windowed mode.\n");
+        win = glfwCreateWindow(res_x, res_y, title_get(), NULL, NULL);
+    }
 
     if (!win)
         errx(1, "unable to create window");
@@ -132,6 +149,7 @@ void win_init(unsigned width, unsigned height) {
 
     // configure default keybinds
     bind_ctrl_from_cfg("toggle-overlay", "wash.ctrl.toggle-overlay");
+    bind_ctrl_from_cfg("toggle-fullscreen", "wash.ctrl.toggle-fullscreen");
 
     /*
      * This bind immediately exits the emulator.  It is unbound in the default
@@ -383,6 +401,13 @@ static void scan_input(void) {
         dc_toggle_overlay();
     overlay_key_prev = overlay_key;
 
+    // Allow the user to toggle fullscreen
+    static bool fullscreen_key_prev = false;
+    bool fullscreen_key = ctrl_get_button("toggle-fullscreen");
+    if (fullscreen_key && !fullscreen_key_prev)
+        toggle_fullscreen();
+    fullscreen_key_prev = fullscreen_key;
+
     bool exit_key = ctrl_get_button("exit-now");
     if (exit_key) {
         LOG_INFO("emergency exit button pressed - WashingtonDC will exit soon.\n");
@@ -410,4 +435,32 @@ int win_get_width(void) {
 
 int win_get_height(void) {
     return res_y;
+}
+
+static void toggle_fullscreen(void) {
+    int old_res_x = res_x;
+    int old_res_y = res_y;
+
+    if (win_mode == WIN_MODE_WINDOWED) {
+        LOG_INFO("toggle windowed=>fullscreen\n");
+
+        GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode *vidmode = glfwGetVideoMode(monitor);
+        res_x = vidmode->width;
+        res_y = vidmode->height;
+
+        win_mode = WIN_MODE_FULLSCREEN;
+        glfwSetWindowMonitor(win, glfwGetPrimaryMonitor(), 0, 0,
+                             res_x, res_y, GLFW_DONT_CARE);
+    } else {
+        LOG_INFO("toggle fullscreen=>windowed\n");
+        win_mode = WIN_MODE_WINDOWED;
+        res_x = win_res_x;
+        res_y = win_res_y;
+        glfwSetWindowMonitor(win, NULL, 0, 0,
+                             res_x, res_y, GLFW_DONT_CARE);
+    }
+
+    if (res_x != old_res_x || res_y != old_res_y)
+        gfx_resize(res_x, res_y);
 }
