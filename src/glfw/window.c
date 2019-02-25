@@ -108,6 +108,13 @@ void win_init(unsigned width, unsigned height) {
     // configure default keybinds
     bind_ctrl_from_cfg("toggle-overlay", "wash.ctrl.toggle-overlay");
 
+    /*
+     * This bind immediately exits the emulator.  It is unbound in the default
+     * config because I don't want people pressing it by mistake, but it's good
+     * to have around for dev work.
+     */
+    bind_ctrl_from_cfg("exit-now", "wash.ctrl.exit");
+
     bind_ctrl_from_cfg("p1_1.dpad-up", "dc.ctrl.p1.dpad-up");
     bind_ctrl_from_cfg("p1_1.dpad-left", "dc.ctrl.p1.dpad-left");
     bind_ctrl_from_cfg("p1_1.dpad-down", "dc.ctrl.p1.dpad-down");
@@ -350,6 +357,12 @@ static void scan_input(void) {
     if (overlay_key && !overlay_key_prev)
         dc_toggle_overlay();
     overlay_key_prev = overlay_key;
+
+    bool exit_key = ctrl_get_button("exit-now");
+    if (exit_key) {
+        LOG_INFO("emergency exit button pressed - WashingtonDC will exit soon.\n");
+        dreamcast_kill();
+    }
 }
 
 void win_make_context_current(void) {

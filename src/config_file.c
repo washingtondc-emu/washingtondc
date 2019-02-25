@@ -191,6 +191,12 @@ static void cfg_create_default_config(void) {
          */
         "wash.ctrl.toggle-overlay kbd.f2\n"
         "\n"
+        "; this bind can be used to immediately terminate WashingtonDC\n"
+        "; it's disabled by default to prevent users from pressing it by\n"
+        "; mistake, but if you feel confident in your ability to never hit\n"
+        "; the wrong key then feel free to use this bind.\n"
+        "; wash.ctrl.exit kbd.f10\n"
+        "\n"
         "dc.ctrl.p1.dpad-up     js0.hat0.up\n"
         "dc.ctrl.p1.dpad-left   js0.hat0.left\n"
         "dc.ctrl.p1.dpad-down   js0.hat0.down\n"

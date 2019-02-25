@@ -51,7 +51,7 @@ void dreamcast_run();
  * Kill the emulator.  This function can be safely called
  * from any thread.
  */
-void dreamcast_kill();
+void dreamcast_kill(void);
 
 Sh4 *dreamcast_get_cpu();
 
@@ -64,8 +64,6 @@ bool dc_is_running(void);
  * all other threads should call dc_is_running() instead.
  */
 bool dc_emu_thread_is_running(void);
-
-void dreamcast_kill(void);
 
 bool dc_debugger_enabled(void);
 
