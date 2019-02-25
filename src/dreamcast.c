@@ -112,9 +112,9 @@ static struct gdrom_ctxt gdrom;
 static struct pvr2 dc_pvr2;
 
 static atomic_bool is_running = ATOMIC_VAR_INIT(false);
-static atomic_bool frame_stop = ATOMIC_VAR_INIT(false);
 static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
 
+static bool frame_stop;
 static bool init_complete;
 static bool end_of_frame;
 
@@ -419,10 +419,8 @@ static void run_one_frame(void) {
 static void main_loop_sched(void) {
     while (atomic_load_explicit(&is_running, memory_order_relaxed)) {
         run_one_frame();
-        bool true_val = true;
-        if (atomic_compare_exchange_strong_explicit(&frame_stop, &true_val,
-                                                    false, memory_order_relaxed,
-                                                    memory_order_relaxed)) {
+        if (frame_stop) {
+            frame_stop = false;
             if (dc_state == DC_STATE_RUNNING) {
                 dc_state_transition(DC_STATE_SUSPEND, DC_STATE_RUNNING);
                 suspend_loop();
@@ -430,8 +428,6 @@ static void main_loop_sched(void) {
                 LOG_WARN("Unable to suspend execution at frame stop: "
                          "system is not running\n");
             }
-
-            true_val = true;
         }
     }
 }
@@ -1254,7 +1250,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
 }
 
 void dc_request_frame_stop(void) {
-    atomic_store_explicit(&frame_stop, true, memory_order_relaxed);
+    frame_stop = true;
 }
 
 void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
