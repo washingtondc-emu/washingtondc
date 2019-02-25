@@ -181,6 +181,12 @@ static void cfg_create_default_config(void) {
         "efficient)\n"
         "win.framelimit_mode spin\n"
         "\n"
+        "; default external resolution.  this is the size of the window when\n"
+        "; it is initially created, but you can also change it at runtime by\n"
+        "; resizing the window.\n"
+        "win.external-res.x 640\n"
+        "win.external-res.y 480\n"
+        "\n"
         "; don't change this line.  It doesn't techincally do anything yet\n"
         "; but it will in future revisions of WashingtonDC.\n"
         "wash.dc.port.0.0 dreamcast_controller\n"
@@ -498,10 +504,54 @@ static int cfg_parse_rgb(char const *valstr, int *red, int *green, int *blue) {
     return 0;
 }
 
+static int cfg_parse_decimal_int(char const *valstr, int *val_out) {
+    if (!*valstr)
+        return -1; //empty string
+
+    int sign = 1;
+    if (valstr[0] == '-') {
+        valstr++;
+        sign = -1;
+    } else if (valstr[0] == '+') {
+        // you can prepend positive values with + but it won't do anything.
+        valstr++;
+    }
+
+    size_t len = strlen(valstr);
+    if (len == 0)
+        return -1;
+
+    int scale = 1;
+    int sum = 0;
+    do {
+        int digit = valstr[len - 1];
+        if (!isdigit(digit))
+            return -1;
+        digit -= '0';
+        sum += scale * digit;
+        scale *= 10;
+    } while (--len);
+
+    *val_out = sign * sum;
+    return 0;
+}
+
 int cfg_get_rgb(char const *key, int *red, int *green, int *blue) {
     char const *nodestr = cfg_get_node(key);
     if (nodestr) {
         int success = cfg_parse_rgb(nodestr, red, green, blue);
+        if (success != 0)
+            LOG_ERROR("error parsing config node \"%s\"\n", key);
+        return success;
+    }
+    return -1;
+}
+
+int cfg_get_int(char const *key, int *val) {
+    char const *nodestr = cfg_get_node(key);
+
+    if (nodestr) {
+        int success = cfg_parse_decimal_int(nodestr, val);
         if (success != 0)
             LOG_ERROR("error parsing config node \"%s\"\n", key);
         return success;

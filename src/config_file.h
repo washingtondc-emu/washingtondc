@@ -42,6 +42,8 @@ int cfg_get_bool(char const *key, bool *outp);
 
 int cfg_get_rgb(char const *key, int *red, int *green, int *blue);
 
+int cfg_get_int(char const *key, int *val);
+
 char const *cfg_get_default_dir(void);
 
 char const *cfg_get_default_file(void);

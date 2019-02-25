@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 #include "config.h"
 #include "log.h"
 #include "title.h"
+#include "config_file.h"
 
 #ifdef USE_LIBEVENT
 #include "io/io_thread.h"
@@ -257,8 +258,14 @@ int main(int argc, char **argv) {
 
     title_set_content(title_content);
 
-    win_init(640, 480);
-    gfx_init(640, 480);
+    int win_width, win_height;
+    if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0)
+        win_width = 640;
+    if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0)
+        win_height = 480;
+
+    win_init(win_width, win_height);
+    gfx_init(win_width, win_height);
 
 #ifdef USE_LIBEVENT
     io_thread_launch();
