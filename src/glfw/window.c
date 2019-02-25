@@ -73,6 +73,11 @@ static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
     return -1;
 }
 
+enum win_mode {
+    WIN_MODE_WINDOWED,
+    WIN_MODE_FULLSCREEN
+};
+
 void win_init(unsigned width, unsigned height) {
     res_x = width;
     res_y = height;
@@ -86,7 +91,32 @@ void win_init(unsigned width, unsigned height) {
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
     glfwWindowHint(GLFW_DEPTH_BITS, 24);
 
-    win = glfwCreateWindow(res_x, res_y, title_get(), NULL, NULL);
+    char const *win_mode_str = cfg_get_node("win.window-mode");
+    enum win_mode win_mode;
+
+    if (win_mode_str) {
+        if (strcmp(win_mode_str, "fullscreen") == 0) {
+            win_mode = WIN_MODE_FULLSCREEN;
+        } else if (strcmp(win_mode_str, "windowed") == 0) {
+            win_mode = WIN_MODE_WINDOWED;
+        } else {
+            LOG_ERROR("Unrecognized window mode \"%s\" - using \"windowed\" "
+                      "mode instead\n", win_mode_str);
+            win_mode = WIN_MODE_WINDOWED;
+        }
+    } else {
+        win_mode = WIN_MODE_WINDOWED;
+    }
+
+    switch (win_mode) {
+    case WIN_MODE_FULLSCREEN:
+        win = glfwCreateWindow(res_x, res_y, title_get(), glfwGetPrimaryMonitor(), NULL);
+        break;
+    default:
+    case WIN_MODE_WINDOWED:
+        win = glfwCreateWindow(res_x, res_y, title_get(), NULL, NULL);
+        break;
+    }
 
     if (!win)
         errx(1, "unable to create window");
