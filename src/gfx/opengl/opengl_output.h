@@ -50,6 +50,8 @@ void opengl_video_present();
 void opengl_video_output_init();
 void opengl_video_output_cleanup();
 
+void opengl_video_toggle_filter(void);
+
 // vertex position (x, y, z)
 #define OUTPUT_SLOT_VERT_POS 0
 

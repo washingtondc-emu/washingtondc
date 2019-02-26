@@ -305,3 +305,15 @@ static void init_poly() {
     fb_poly.vao = vao;
     fb_poly.ebo = ebo;
 }
+
+void opengl_video_toggle_filter(void) {
+    if (min_filter == GL_NEAREST)
+        min_filter = GL_LINEAR;
+    else
+        min_filter = GL_NEAREST;
+
+    if (mag_filter == GL_NEAREST)
+        mag_filter = GL_LINEAR;
+    else
+        mag_filter = GL_NEAREST;
+}

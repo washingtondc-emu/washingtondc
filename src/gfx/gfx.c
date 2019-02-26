@@ -246,6 +246,10 @@ int gfx_save_screenshot(char const *path) {
     return err_val;
 }
 
+void gfx_toggle_output_filter(void) {
+    opengl_video_toggle_filter();
+}
+
 #if 0
 #define AUTO_SCREEN_PATH_MAX 128
 static void gfx_auto_screenshot(void) {

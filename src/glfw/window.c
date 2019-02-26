@@ -150,6 +150,7 @@ void win_init(unsigned width, unsigned height) {
     // configure default keybinds
     bind_ctrl_from_cfg("toggle-overlay", "wash.ctrl.toggle-overlay");
     bind_ctrl_from_cfg("toggle-fullscreen", "wash.ctrl.toggle-fullscreen");
+    bind_ctrl_from_cfg("toggle-filter", "wash.ctrl.toggle-filter");
 
     /*
      * This bind immediately exits the emulator.  It is unbound in the default
@@ -407,6 +408,12 @@ static void scan_input(void) {
     if (fullscreen_key && !fullscreen_key_prev)
         toggle_fullscreen();
     fullscreen_key_prev = fullscreen_key;
+
+    static bool filter_key_prev = false;
+    bool filter_key = ctrl_get_button("toggle-filter");
+    if (filter_key && !filter_key_prev)
+        gfx_toggle_output_filter();
+    filter_key_prev = filter_key;
 
     bool exit_key = ctrl_get_button("exit-now");
     if (exit_key) {

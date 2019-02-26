@@ -124,4 +124,10 @@ void gfx_grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
 
 int gfx_save_screenshot(char const *path);
 
+/*
+ * This takes place immediately because the user can toggle it asynchronously
+ * with a keybind.  It is not part of gfx_il.
+ */
+void gfx_toggle_output_filter(void);
+
 #endif
