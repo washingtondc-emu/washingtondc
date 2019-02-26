@@ -87,6 +87,7 @@ static struct fb_poly {
 
 static int bound_obj_handle;
 static double bound_obj_w, bound_obj_h;
+static GLenum min_filter = GL_NEAREST, mag_filter = GL_NEAREST;
 
 static GLfloat trans_mat[16] = {
     1.0f, 0.0f, 0.0f, 0.0f,
@@ -111,6 +112,26 @@ opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_height);
 
 void opengl_video_output_init() {
+    char const *filter_str;
+
+    filter_str = cfg_get_node("gfx.output.filter");
+
+    if (filter_str) {
+        if (strcmp(filter_str, "nearest") == 0) {
+            min_filter = GL_NEAREST;
+            mag_filter = GL_NEAREST;
+        } else if (strcmp(filter_str, "linear") == 0) {
+            min_filter = GL_LINEAR;
+            mag_filter = GL_LINEAR;
+        } else {
+            min_filter = GL_NEAREST;
+            mag_filter = GL_NEAREST;
+        }
+    } else {
+        min_filter = GL_NEAREST;
+        mag_filter = GL_NEAREST;
+    }
+
     static char const * const final_vert_glsl =
         "#extension GL_ARB_explicit_uniform_location : enable\n"
 
@@ -176,26 +197,29 @@ opengl_video_update_framebuffer(int obj_handle,
         return;
 
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
+    GLuint tex_obj = opengl_renderer_tex(obj_handle);
+
+    glBindTexture(GL_TEXTURE_2D, tex_obj);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
 
     if (!(obj->state & GFX_OBJ_STATE_TEX)) {
-        GLuint tex_obj = opengl_renderer_tex(obj_handle);
         if (obj->dat_len < fb_read_width * fb_read_height * sizeof(uint32_t))
             RAISE_ERROR(ERROR_INTEGRITY);
 
-        glBindTexture(GL_TEXTURE_2D, tex_obj);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_read_width, fb_read_height, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, obj->dat);
-        glBindTexture(GL_TEXTURE_2D, 0);
 
         opengl_renderer_tex_set_dims(obj_handle, fb_read_width, fb_read_height);
         opengl_renderer_tex_set_format(obj_handle, GL_RGBA);
         opengl_renderer_tex_set_dat_type(obj_handle, GL_UNSIGNED_BYTE);
         opengl_renderer_tex_set_dirty(obj_handle, false);
     }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     bound_obj_handle = obj_handle;
     bound_obj_w = (double)fb_read_width;
