@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -22,43 +22,37 @@
 
 #include <string.h>
 #include <stdint.h>
-#include <stdatomic.h>
 
 #include "gfx_config.h"
 
 static struct gfx_cfg const gfx_cfg_default = {
-    .wireframe = false,
-    .tex_enable = true,
-    .depth_enable = true,
-    .blend_enable = true,
-    .bgcolor_enable = true,
-    .color_enable = true
+    .wireframe = 0,
+    .tex_enable = 1,
+    .depth_enable = 1,
+    .blend_enable = 1,
+    .bgcolor_enable = 1,
+    .color_enable = 1
 };
 
 static struct gfx_cfg const gfx_cfg_wireframe = {
-    .wireframe = true,
-    .tex_enable = false,
-    .depth_enable = false,
-    .blend_enable = false,
-    .bgcolor_enable = false,
-    .color_enable = false
+    .wireframe = 1,
+    .tex_enable = 0,
+    .depth_enable = 0,
+    .blend_enable = 0,
+    .bgcolor_enable = 0,
+    .color_enable = 0
 };
 
-static atomic_uintptr_t cur_profile_intptr =
-    ATOMIC_VAR_INIT((uintptr_t)&gfx_cfg_default);
+static struct gfx_cfg cur_profile = gfx_cfg_default;
 
 void gfx_config_default(void) {
-    atomic_store_explicit(&cur_profile_intptr, (uintptr_t)&gfx_cfg_default,
-                          memory_order_relaxed);
+    cur_profile = gfx_cfg_default;
 }
 
 void gfx_config_wireframe(void) {
-    atomic_store_explicit(&cur_profile_intptr, (uintptr_t)&gfx_cfg_wireframe,
-                          memory_order_relaxed);
+    cur_profile = gfx_cfg_wireframe;
 }
 
-void gfx_config_read(struct gfx_cfg *cfg) {
-    void *cur_profile = (void*)atomic_load_explicit(&cur_profile_intptr,
-                                                    memory_order_relaxed);
-    memcpy(cfg, cur_profile, sizeof(&cfg));
+struct gfx_cfg gfx_config_read(void) {
+    return cur_profile;
 }

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
 #ifndef GFX_CONFIG_H_
 #define GFX_CONFIG_H_
 
-#include <stdbool.h>
-
 /*
  * The purpose of this file is to store settings for the graphics renderer.
  * There's a "default" configuration that renders everything the way you'd
@@ -34,30 +32,26 @@
  * depth-sorting), and I think it would be helpful to be able to do things like
  * render in wireframe or selectively disable polygons based on display lists,
  * etc.
- *
- * This code should not be used to implement graphics emulation.  These settings
- * are write-only from the cmd thread and read-only from the gfx thread.  No
- * other threads should ever touch this.
  */
 
 struct gfx_cfg {
     // if true, the renderer will render polygons as lines
-    bool wireframe;
+    int wireframe : 1;
 
     // if false, textures will be forcibly disabled
-    bool tex_enable;
+    int tex_enable : 1;
 
     // if false, depth-testing will be forcibly disabled
-    bool depth_enable;
+    int depth_enable : 1;
 
     // if false, blending will be forcibly disabled
-    bool blend_enable;
+    int blend_enable : 1;
 
     // if false, the background color will always be black
-    bool bgcolor_enable;
+    int bgcolor_enable : 1;
 
     // if false, all polygons will be white
-    bool color_enable;
+    int color_enable : 1;
 };
 
 /*
@@ -69,7 +63,6 @@ void gfx_config_default(void);
 // set the config to wireframe mode
 void gfx_config_wireframe(void);
 
-// only call the following function from the gfx_thread
-void gfx_config_read(struct gfx_cfg *cfg);
+struct gfx_cfg gfx_config_read(void);
 
 #endif

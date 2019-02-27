@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -77,8 +77,6 @@ struct obj_tex_meta {
 static GLuint obj_tex_array[GFX_OBJ_COUNT];
 
 static struct obj_tex_meta obj_tex_meta_array[GFX_OBJ_COUNT];
-
-static struct gfx_cfg rend_cfg;
 
 static DEF_ERROR_INT_ATTR(gfx_tex_fmt);
 
@@ -481,7 +479,7 @@ static void render_conv_argb_1555(uint16_t *pixels, size_t n_pixels) {
 }
 
 static void opengl_renderer_set_blend_enable(bool enable) {
-    gfx_config_read(&rend_cfg);
+    struct gfx_cfg rend_cfg = gfx_config_read();
 
     if (rend_cfg.blend_enable && enable)
         glEnable(GL_BLEND);
@@ -494,7 +492,7 @@ static bool tex_enable;
 static unsigned screen_width, screen_height;
 
 static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
-    gfx_config_read(&rend_cfg);
+    struct gfx_cfg rend_cfg = gfx_config_read();
 
     /*
      * TODO: currently disable color also disables textures; ideally these
@@ -626,7 +624,7 @@ static void opengl_renderer_draw_array(float const *verts, unsigned n_verts) {
 }
 
 static void opengl_renderer_clear(float const bgcolor[4]) {
-    gfx_config_read(&rend_cfg);
+    struct gfx_cfg rend_cfg = gfx_config_read();
 
     if (!rend_cfg.wireframe) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
