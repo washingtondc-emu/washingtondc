@@ -196,7 +196,7 @@ static void cfg_create_default_config(void) {
         "; how to filter the final image.  choices are:\n"
         ";     nearest - for nearest-neighbor sampling\n"
         ";     linear - for bilinear interpolation\n"
-        "gfx.output.filter nearest\n"
+        "gfx.output.filter linear\n"
         "\n"
         "; don't change this line.  It doesn't techincally do anything yet\n"
         "; but it will in future revisions of WashingtonDC.\n"
