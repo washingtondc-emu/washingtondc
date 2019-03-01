@@ -22,6 +22,7 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "gfx_config.h"
 
@@ -45,12 +46,23 @@ static struct gfx_cfg const gfx_cfg_wireframe = {
 
 static struct gfx_cfg cur_profile = gfx_cfg_default;
 
+bool wireframe_mode = false;
+
 void gfx_config_default(void) {
     cur_profile = gfx_cfg_default;
+    wireframe_mode = false;
 }
 
 void gfx_config_wireframe(void) {
     cur_profile = gfx_cfg_wireframe;
+    wireframe_mode = true;
+}
+
+void gfx_config_toggle_wireframe(void) {
+    if (wireframe_mode)
+        gfx_config_default();
+    else
+        gfx_config_wireframe();
 }
 
 struct gfx_cfg gfx_config_read(void) {

@@ -209,6 +209,7 @@ static void cfg_create_default_config(void) {
         "wash.ctrl.toggle-overlay kbd.f2\n"
         "wash.ctrl.toggle-fullscreen kbd.f11\n"
         "wash.ctrl.toggle-filter kbd.f3\n"
+        "wash.ctrl.toggle-wireframe kbd.f4\n"
         "\n"
         "; this bind can be used to immediately terminate WashingtonDC\n"
         "; it's disabled by default to prevent users from pressing it by\n"

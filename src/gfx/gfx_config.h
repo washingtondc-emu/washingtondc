@@ -63,6 +63,8 @@ void gfx_config_default(void);
 // set the config to wireframe mode
 void gfx_config_wireframe(void);
 
+void gfx_config_toggle_wireframe(void);
+
 struct gfx_cfg gfx_config_read(void);
 
 #endif

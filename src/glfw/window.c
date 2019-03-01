@@ -30,6 +30,7 @@
 #include "dreamcast.h"
 #include "hw/maple/maple_controller.h"
 #include "gfx/gfx.h"
+#include "gfx/gfx_config.h"
 #include "title.h"
 #include "config_file.h"
 #include "control_bind.h"
@@ -151,6 +152,7 @@ void win_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("toggle-overlay", "wash.ctrl.toggle-overlay");
     bind_ctrl_from_cfg("toggle-fullscreen", "wash.ctrl.toggle-fullscreen");
     bind_ctrl_from_cfg("toggle-filter", "wash.ctrl.toggle-filter");
+    bind_ctrl_from_cfg("toggle-wireframe", "wash.ctrl.toggle-wireframe");
 
     /*
      * This bind immediately exits the emulator.  It is unbound in the default
@@ -401,6 +403,13 @@ static void scan_input(void) {
     if (overlay_key && !overlay_key_prev)
         dc_toggle_overlay();
     overlay_key_prev = overlay_key;
+
+    // toggle wireframe rendering
+    static bool wireframe_key_prev = false;
+    bool wireframe_key = ctrl_get_button("toggle-wireframe");
+    if (wireframe_key && !wireframe_key_prev)
+        gfx_config_toggle_wireframe();
+    wireframe_key_prev = wireframe_key;
 
     // Allow the user to toggle fullscreen
     static bool fullscreen_key_prev = false;
