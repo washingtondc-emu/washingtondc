@@ -319,9 +319,18 @@ void pvr2_tex_mem_area64_write_float(addr32_t addr, float val, void *ctxt) {
 }
 
 double pvr2_tex_mem_area64_read_double(addr32_t addr, void *ctxt) {
-    error_set_length(8);
-    error_set_address(addr);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
+
+    if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
+        ((addr - 1 + sizeof(double)) > ADDR_TEX64_LAST) ||
+        ((addr - 1 + sizeof(double)) < ADDR_TEX64_FIRST)) {
+        error_set_feature("out-of-bounds PVR2 texture memory read");
+        error_set_address(addr);
+        error_set_length(sizeof(double));
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    return ((double*)pvr2->mem.tex64)[(addr - ADDR_TEX64_FIRST) / sizeof(double)];
 }
 
 void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt) {
