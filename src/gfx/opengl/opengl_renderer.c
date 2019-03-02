@@ -35,6 +35,7 @@
 #include "gfx/gfx.h"
 #include "log.h"
 #include "pix_conv.h"
+#include "config_file.h"
 
 #include "opengl_renderer.h"
 
@@ -314,6 +315,18 @@ static char const * const pvr2_ta_frag_glsl =
 
 
 static void opengl_render_init(void) {
+    char const *oit_mode_str = cfg_get_node("gfx.rend.oit-mode");
+    if (oit_mode_str) {
+        if (strcmp(oit_mode_str, "per-group") == 0)
+            gfx_config_oit_enable();
+        else if (strcmp(oit_mode_str, "disabled") == 0)
+            gfx_config_oit_disable();
+        else
+            gfx_config_oit_disable();
+    } else {
+        gfx_config_oit_enable();
+    }
+
     shader_load_vert(&pvr_ta_shader, pvr2_ta_vert_glsl);
     shader_load_frag(&pvr_ta_shader, pvr2_ta_frag_glsl);
     shader_link(&pvr_ta_shader);
@@ -781,13 +794,23 @@ bool opengl_renderer_tex_get_dirty(unsigned obj_no) {
 }
 
 static void opengl_renderer_begin_sort_mode(void) {
-    LOG_INFO("SORT MODE ENABLE\n");
-    oit_state.enabled = true;
-    oit_state.tri_count = 0;
-    oit_state.group_count = 0;
+    if (oit_state.enabled)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    if (gfx_config_read().depth_sort_enable) {
+        LOG_INFO("SORT MODE ENABLE\n");
+        oit_state.enabled = true;
+        oit_state.tri_count = 0;
+        oit_state.group_count = 0;
+    }
 }
 
 static void opengl_renderer_end_sort_mode(void) {
+    if (!gfx_config_read().depth_sort_enable)
+        return;
+    if (!oit_state.enabled)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
     LOG_INFO("SORT MODE DISABLE (%u triangles)\n", oit_state.tri_count);
     oit_state.enabled = false;
 

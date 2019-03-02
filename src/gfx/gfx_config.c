@@ -26,35 +26,37 @@
 
 #include "gfx_config.h"
 
-static struct gfx_cfg const gfx_cfg_default = {
+static struct gfx_cfg cur_profile = {
     .wireframe = 0,
     .tex_enable = 1,
     .depth_enable = 1,
     .blend_enable = 1,
     .bgcolor_enable = 1,
-    .color_enable = 1
+    .color_enable = 1,
+    .depth_sort_enable = 1
 };
-
-static struct gfx_cfg const gfx_cfg_wireframe = {
-    .wireframe = 1,
-    .tex_enable = 0,
-    .depth_enable = 0,
-    .blend_enable = 0,
-    .bgcolor_enable = 0,
-    .color_enable = 0
-};
-
-static struct gfx_cfg cur_profile = gfx_cfg_default;
 
 bool wireframe_mode = false;
 
 void gfx_config_default(void) {
-    cur_profile = gfx_cfg_default;
+    cur_profile.wireframe = 0;
+    cur_profile.tex_enable = 1;
+    cur_profile.depth_enable = 1;
+    cur_profile.blend_enable = 1;
+    cur_profile.bgcolor_enable = 1;
+    cur_profile.color_enable = 1;
+
     wireframe_mode = false;
 }
 
 void gfx_config_wireframe(void) {
-    cur_profile = gfx_cfg_wireframe;
+    cur_profile.wireframe = 1;
+    cur_profile.tex_enable = 0;
+    cur_profile.depth_enable = 0;
+    cur_profile.blend_enable = 0;
+    cur_profile.bgcolor_enable = 0;
+    cur_profile.color_enable = 0;
+
     wireframe_mode = true;
 }
 
@@ -67,4 +69,11 @@ void gfx_config_toggle_wireframe(void) {
 
 struct gfx_cfg gfx_config_read(void) {
     return cur_profile;
+}
+
+void gfx_config_oit_enable(void) {
+    cur_profile.depth_sort_enable = 1;
+}
+void gfx_config_oit_disable(void) {
+    cur_profile.depth_sort_enable = 0;
 }

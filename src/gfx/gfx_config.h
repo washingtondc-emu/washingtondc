@@ -52,6 +52,9 @@ struct gfx_cfg {
 
     // if false, all polygons will be white
     int color_enable : 1;
+
+    // if true, enable order-independent transparency
+    int depth_sort_enable : 1;
 };
 
 /*
@@ -66,5 +69,8 @@ void gfx_config_wireframe(void);
 void gfx_config_toggle_wireframe(void);
 
 struct gfx_cfg gfx_config_read(void);
+
+void gfx_config_oit_enable(void);
+void gfx_config_oit_disable(void);
 
 #endif
