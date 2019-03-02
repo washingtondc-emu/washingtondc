@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "dreamcast.h"
+#include "hw/pvr2/pvr2.h"
 #include "gfx/opengl/font/font.h"
 
 #include "overlay.h"
@@ -41,6 +43,38 @@ void overlay_draw(unsigned screen_width, unsigned screen_height) {
         tmp[63] = '\0';
 
         font_render(tmp, 0, 0, screen_width, screen_height);
+
+        struct pvr2_stat stat;
+        dc_get_pvr2_stats(&stat);
+
+        /*
+         * TODO: put in list names when we have a font that can display text
+         * characters
+         */
+        snprintf(tmp, sizeof(tmp), "%u",
+                 stat.poly_count[DISPLAY_LIST_OPAQUE]);
+        tmp[63] = '\0';
+        font_render(tmp, 0, 1, screen_width, screen_height);
+
+        snprintf(tmp, sizeof(tmp), "%u",
+                 stat.poly_count[DISPLAY_LIST_OPAQUE_MOD]);
+        tmp[63] = '\0';
+        font_render(tmp, 0, 2, screen_width, screen_height);
+
+        snprintf(tmp, sizeof(tmp), "%u",
+                 stat.poly_count[DISPLAY_LIST_TRANS]);
+        tmp[63] = '\0';
+        font_render(tmp, 0, 3, screen_width, screen_height);
+
+        snprintf(tmp, sizeof(tmp), "%u",
+                 stat.poly_count[DISPLAY_LIST_TRANS_MOD]);
+        tmp[63] = '\0';
+        font_render(tmp, 0, 4, screen_width, screen_height);
+
+        snprintf(tmp, sizeof(tmp), "%u",
+                 stat.poly_count[DISPLAY_LIST_PUNCH_THROUGH]);
+        tmp[63] = '\0';
+        font_render(tmp, 0, 5, screen_width, screen_height);
     }
 }
 

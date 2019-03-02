@@ -1303,6 +1303,10 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     }
 }
 
+void dc_get_pvr2_stats(struct pvr2_stat *stats) {
+    *stats = dc_pvr2.stat;
+}
+
 static float sh4_unmapped_readfloat(uint32_t addr, void *ctxt) {
     error_set_feature("memory mapping");
     error_set_address(addr);

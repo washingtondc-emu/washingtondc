@@ -36,6 +36,10 @@
 
 #define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
 
+struct pvr2_stat {
+    unsigned poly_count[DISPLAY_LIST_COUNT];
+};
+
 struct pvr2 {
     uint32_t reg_backing[N_PVR2_REGS / sizeof(uint32_t)];
     struct dc_clock *clk;
@@ -45,6 +49,8 @@ struct pvr2 {
     struct pvr2_fb fb;
     struct pvr2_tex_mem mem;
     struct pvr2_tex_cache tex_cache;
+
+    struct pvr2_stat stat;
 };
 
 void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk);
