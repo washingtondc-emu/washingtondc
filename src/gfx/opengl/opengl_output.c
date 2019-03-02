@@ -124,12 +124,12 @@ void opengl_video_output_init() {
             min_filter = GL_LINEAR;
             mag_filter = GL_LINEAR;
         } else {
-            min_filter = GL_NEAREST;
-            mag_filter = GL_NEAREST;
+            min_filter = GL_LINEAR;
+            mag_filter = GL_LINEAR;
         }
     } else {
-        min_filter = GL_NEAREST;
-        mag_filter = GL_NEAREST;
+        min_filter = GL_LINEAR;
+        mag_filter = GL_LINEAR;
     }
 
     static char const * const final_vert_glsl =
