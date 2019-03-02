@@ -147,6 +147,14 @@ static void rend_post_framebuffer(struct gfx_il_inst *cmd) {
     gfx_post_framebuffer(obj_handle, width, height, do_flip);
 }
 
+static void rend_begin_depth_sort(struct gfx_il_inst *cmd) {
+    rend_ifp->begin_sort_mode();
+}
+
+static void rend_end_depth_sort(struct gfx_il_inst *cmd) {
+    rend_ifp->end_sort_mode();
+}
+
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     /* bool rendering = false; */
 
@@ -201,6 +209,12 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_POST_FRAMEBUFFER:
             rend_post_framebuffer(cmd);
+            break;
+        case GFX_IL_BEGIN_DEPTH_SORT:
+            rend_begin_depth_sort(cmd);
+            break;
+        case GFX_IL_END_DEPTH_SORT:
+            rend_end_depth_sort(cmd);
             break;
         }
         cmd++;

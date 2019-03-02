@@ -60,6 +60,10 @@ struct rend_if {
     void (*draw_array)(float const *verts, unsigned n_verts);
 
     void (*clear)(float const bgcolor[4]);
+
+    void (*begin_sort_mode)(void);
+
+    void (*end_sort_mode)(void);
 };
 
 // initialize and clean up the graphics renderer

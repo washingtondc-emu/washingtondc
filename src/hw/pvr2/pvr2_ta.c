@@ -1513,10 +1513,26 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     // execute queued gfx_il commands
     enum display_list_type list;
     for (list = DISPLAY_LIST_FIRST; list <= DISPLAY_LIST_LAST; list++) {
+        bool sort_mode = false;
+        if (list == DISPLAY_LIST_TRANS) {
+            /*
+             * order-independent transparency is enabled when bit 0 of
+             * ISP_FEED_CFG is 0.
+             */
+            if (!(pvr2->reg_backing[PVR2_ISP_FEED_CFG] & 1)) {
+                sort_mode = true;
+                cmd.op = GFX_IL_BEGIN_DEPTH_SORT;
+                rend_exec_il(&cmd, 1);
+            }
+        }
         struct gfx_il_inst_chain *chain = ta->disp_list_begin[list];
         while (chain) {
             rend_exec_il(&chain->cmd, 1);
             chain = chain->next;
+        }
+        if (sort_mode) {
+            cmd.op = GFX_IL_END_DEPTH_SORT;
+            rend_exec_il(&cmd, 1);
         }
     }
 

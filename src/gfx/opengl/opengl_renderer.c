@@ -132,6 +132,27 @@ static const GLenum depth_funcs[PVR2_DEPTH_FUNC_COUNT] = {
     [PVR2_DEPTH_ALWAYS]              = GL_ALWAYS
 };
 
+#define OIT_MAX_GROUPS 1024
+
+struct oit_group {
+    float const *verts;
+    unsigned n_verts;
+
+    float avg_depth;
+
+    struct gfx_rend_param rend_param;
+};
+
+static struct oit_state {
+    unsigned tri_count;
+    unsigned group_count;
+    bool enabled;
+
+    struct oit_group groups[OIT_MAX_GROUPS];
+
+    struct gfx_rend_param cur_rend_param;
+} oit_state;
+
 // converts pixels from ARGB 4444 to RGBA 4444
 static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels);
 
@@ -149,6 +170,8 @@ static void opengl_renderer_clear(float const bgcolor[4]);
 static void opengl_renderer_set_screen_dim(unsigned width, unsigned height);
 static void opengl_renderer_set_clip_range(float new_clip_min,
                                            float new_clip_max);
+static void opengl_renderer_begin_sort_mode(void);
+static void opengl_renderer_end_sort_mode(void);
 
 struct rend_if const opengl_rend_if = {
     .init = opengl_render_init,
@@ -160,7 +183,9 @@ struct rend_if const opengl_rend_if = {
     .draw_array = opengl_renderer_draw_array,
     .clear = opengl_renderer_clear,
     .set_screen_dim = opengl_renderer_set_screen_dim,
-    .set_clip_range = opengl_renderer_set_clip_range
+    .set_clip_range = opengl_renderer_set_clip_range,
+    .begin_sort_mode = opengl_renderer_begin_sort_mode,
+    .end_sort_mode = opengl_renderer_end_sort_mode
 };
 
 static char const * const pvr2_ta_vert_glsl =
@@ -492,6 +517,16 @@ static bool tex_enable;
 static unsigned screen_width, screen_height;
 
 static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
+    if (oit_state.enabled) {
+        /*
+         * This gets flipped around to GL_LEQUAL when we set the actual OpenGL
+         * depth function
+         */
+        oit_state.cur_rend_param.depth_func = PVR2_DEPTH_GREATER;
+        oit_state.cur_rend_param = *param;
+        return;
+    }
+
     struct gfx_cfg rend_cfg = gfx_config_read();
 
     /*
@@ -574,6 +609,31 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
 }
 
 static void opengl_renderer_draw_array(float const *verts, unsigned n_verts) {
+    if (!n_verts)
+        return;
+
+    if (oit_state.enabled) {
+        oit_state.tri_count += n_verts / 3;
+
+        if (oit_state.group_count < OIT_MAX_GROUPS) {
+            struct oit_group *grp = oit_state.groups + oit_state.group_count++;
+            grp->rend_param = oit_state.cur_rend_param;
+            grp->verts = verts;
+            grp->n_verts = n_verts;
+
+            float avg_depth = 0.0f;
+            unsigned vert_no;
+            for (vert_no = 0; vert_no < n_verts; vert_no++)
+                avg_depth += verts[vert_no * GFX_VERT_LEN + 2];
+            avg_depth /= n_verts;
+
+            grp->avg_depth = avg_depth;
+        } else {
+            LOG_ERROR("OPENGL GFX: OIT BUFFER OVERFLOW!!!\n");
+        }
+        return;
+    }
+
     float clip_min_actual = clip_min * 1.01f;
     float clip_max_actual = clip_max * 1.01f;
 
@@ -718,6 +778,42 @@ GLenum opengl_renderer_tex_get_dat_type(unsigned obj_no) {
 
 bool opengl_renderer_tex_get_dirty(unsigned obj_no) {
     return obj_tex_meta_array[obj_no].dirty;
+}
+
+static void opengl_renderer_begin_sort_mode(void) {
+    LOG_INFO("SORT MODE ENABLE\n");
+    oit_state.enabled = true;
+    oit_state.tri_count = 0;
+    oit_state.group_count = 0;
+}
+
+static void opengl_renderer_end_sort_mode(void) {
+    LOG_INFO("SORT MODE DISABLE (%u triangles)\n", oit_state.tri_count);
+    oit_state.enabled = false;
+
+    // do an insertion sort because i'm a pleb
+    unsigned src_idx, dst_idx;
+    unsigned grp_cnt = oit_state.group_count;
+    if (grp_cnt) {
+        struct oit_group tmp;
+        for (src_idx = 0; src_idx < grp_cnt - 1; src_idx++) {
+            struct oit_group *grp_src = oit_state.groups + src_idx;
+            for (dst_idx = src_idx + 1; dst_idx < grp_cnt; dst_idx++) {
+                struct oit_group *grp_dst = oit_state.groups + dst_idx;
+                if (grp_dst->avg_depth >= grp_src->avg_depth) {
+                    tmp = *grp_src;
+                    *grp_src = *grp_dst;
+                    *grp_dst = tmp;
+                }
+            }
+        }
+
+        for (src_idx = 0; src_idx < grp_cnt; src_idx++) {
+            struct oit_group *grp_src = oit_state.groups + src_idx;
+            opengl_renderer_set_rend_param(&grp_src->rend_param);
+            opengl_renderer_draw_array(grp_src->verts, grp_src->n_verts);
+        }
+    }
 }
 
 static GLenum tex_fmt_to_data_type(enum gfx_tex_fmt gfx_fmt) {

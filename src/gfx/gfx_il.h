@@ -85,7 +85,14 @@ enum gfx_il {
     GFX_IL_FREE_OBJ,
 
     // render data in a gfx_obj to the framebuffer
-    GFX_IL_POST_FRAMEBUFFER
+    GFX_IL_POST_FRAMEBUFFER,
+
+    /*
+     * all triangles submitted between GFX_IL_BEGIN_DEPTH_SORT and
+     * GFX_IL_END_DEPTH_SORT will be depth-sorted.
+     */
+    GFX_IL_BEGIN_DEPTH_SORT,
+    GFX_IL_END_DEPTH_SORT
 };
 
 struct gfx_rend_param {
