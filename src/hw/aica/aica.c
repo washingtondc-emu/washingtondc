@@ -564,7 +564,23 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
         aica->afsel = (enum aica_afsel)(val >> 14);
 
         break;
-
+    case 0x2884:
+    case 0x2888:
+    case 0x288c:
+        /*
+         * Twinkle Star Sprites writes 0 to these three registers once during
+         * boot.  They don't appear to do anything impoprtant.  Let 0 through
+         * and panic if we ever see anything else get written.
+         */
+        if (!aica->sys_reg[idx]) {
+            LOG_DBG("AICA: Writing 0x%08x to register index %u\n",
+                    (unsigned)aica->sys_reg[idx], idx);
+        } else {
+            error_set_value(aica->sys_reg[idx]);
+            error_set_address(4 * idx);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+        break;
     default:
 #ifdef AICA_PEDANTIC
         error_set_value(aica->sys_reg[idx]);
