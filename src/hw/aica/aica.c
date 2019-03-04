@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -404,6 +404,7 @@ aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
         break;
     default:
 #ifdef AICA_PEDANTIC
+        error_set_value(aica->sys_reg[idx]);
         error_set_address(4 * idx);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
@@ -566,6 +567,7 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
 
     default:
 #ifdef AICA_PEDANTIC
+        error_set_value(aica->sys_reg[idx]);
         error_set_address(4 * idx);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 #endif
