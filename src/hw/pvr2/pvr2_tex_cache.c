@@ -279,8 +279,13 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
         tex->meta.addr_last = addr - 1 + PVR2_CODE_BOOK_LEN +
             sizeof(uint8_t) * side_len * side_len / 4;
     } else {
-        tex->meta.addr_last = addr - 1 + pixel_sizes[tex_fmt] *
-            (1 << w_shift) * (1 << h_shift);
+        if (tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+            tex->meta.addr_last = addr - 1 +
+                ((1 << w_shift) * (1 << h_shift)) / 2;
+        } else {
+            tex->meta.addr_last = addr - 1 + pixel_sizes[tex_fmt] *
+                (1 << w_shift) * (1 << h_shift);
+        }
         if (tex->meta.mipmap) {
             if (tex->meta.w_shift != tex->meta.h_shift) {
                 error_set_feature("proper response for attempt to enable "
