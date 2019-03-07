@@ -187,7 +187,7 @@ static void cfg_create_default_config(void) {
         "win.external-res.x 640\n"
         "win.external-res.y 480\n"
         "\n"
-        "Pick what kind of window you want.\n"
+        "; Pick what kind of window you want.\n"
         "; available values are:\n"
         "; * windowed\n"
         "; * fullscreen\n"
