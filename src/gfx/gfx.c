@@ -96,39 +96,11 @@ static void gfx_do_init(void) {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-static uint32_t *fb_screengrab;
-static size_t fb_screengrab_w, fb_screengrab_h;
-
 void gfx_post_framebuffer(int obj_handle,
                           unsigned fb_new_width,
                           unsigned fb_new_height, bool do_flip) {
     opengl_video_new_framebuffer(obj_handle, fb_new_width, fb_new_height,
                                  do_flip);
-
-    // TODO: restore this functionality
-#if 0
-    // save a copy of fb_new for screengrabs
-    if ((fb_new_width * fb_new_height) != (fb_screengrab_w * fb_screengrab_h)) {
-        fb_screengrab_w = fb_new_width;
-        fb_screengrab_h = fb_new_height;
-        size_t n_bytes = fb_screengrab_w * fb_screengrab_h * 4;
-        void *fb_tmp = realloc(fb_screengrab, n_bytes);
-        if (!fb_tmp) {
-            LOG_WARN("Unable to preserve screengrab: failed reallocation of "
-                     "%llu bytes\n", (unsigned long long)n_bytes);
-            fb_screengrab_w = 0;
-            fb_screengrab_h = 0;
-            free(fb_screengrab);
-            fb_screengrab = NULL;
-            return;
-        }
-        fb_screengrab = fb_tmp;
-    }
-
-    memcpy(fb_screengrab, fb_new, fb_screengrab_w * fb_screengrab_h * 4);
-    if (config_get_enable_auto_screenshot())
-        gfx_auto_screenshot();
-#endif
     frame_counter++;
 }
 
@@ -144,31 +116,40 @@ void gfx_post_framebuffer(int obj_handle,
  * doing it in the gfx code.
  */
 
-void gfx_grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
-                     unsigned *fb_height_out) {
-    if (!fb_screengrab) {
-        *fb_out = NULL;
-        *fb_width_out = 0;
-        *fb_height_out = 0;
-        return;
+static int gfx_grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
+                           unsigned *fb_height_out, bool *do_flip_out) {
+    struct gfx_framebuffer fb;
+    struct gfx_il_inst cmd = {
+        .op = GFX_IL_GRAB_FRAMEBUFFER,
+        .arg = {
+            .grab_framebuffer = {
+                .fb = &fb
+            }
+        }
+    };
+    rend_exec_il(&cmd, 1);
+
+    if (fb.valid) {
+        *fb_out = fb.dat;
+        *fb_width_out = fb.width;
+        *fb_height_out = fb.height;
+        *do_flip_out = fb.flip;
+        return 0;
     }
 
-    size_t n_words = fb_screengrab_w * fb_screengrab_h;
-    uint32_t *fb = (uint32_t*)malloc(n_words * sizeof(uint32_t));
-
-    memcpy(fb, fb_screengrab, n_words * sizeof(uint32_t));
-
-    *fb_out = fb;
-    *fb_width_out = fb_screengrab_w;
-    *fb_height_out = fb_screengrab_h;
+    return -1;
 }
 
 int gfx_save_screenshot(char const *path) {
     int err_val = 0;
     uint32_t *fb_tmp;
     unsigned fb_width, fb_height;
+    bool do_flip;
 
-    gfx_grab_screen(&fb_tmp, &fb_width, &fb_height);
+    if (gfx_grab_screen(&fb_tmp, &fb_width, &fb_height, &do_flip) < 0) {
+        LOG_ERROR("%s - Failed to capture screenshot\n", __func__);
+        return -1;
+    }
 
     if (!fb_tmp) {
         LOG_WARN("Unable to save screenshot to %s due to failure to obtain "
@@ -215,7 +196,11 @@ int gfx_save_screenshot(char const *path) {
             (png_bytep)malloc(sizeof(png_byte) * fb_width * 3);
 
         for (col = 0; col < fb_width; col++) {
-            unsigned pix_idx = row * fb_width + col;
+            unsigned pix_idx;
+            if (!do_flip)
+                pix_idx = (fb_height - 1 - row) * fb_width + col;
+            else
+                pix_idx = row * fb_width + col;
             uint32_t in_px = fb_tmp[pix_idx];
             unsigned red = in_px & 0xff;
             unsigned green = (in_px >> 8) & 0xff;

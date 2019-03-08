@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -51,6 +51,9 @@ void opengl_video_output_init();
 void opengl_video_output_cleanup();
 
 void opengl_video_toggle_filter(void);
+
+int opengl_video_get_fb(int *obj_handle_out, unsigned *width_out,
+                        unsigned *height_out, bool *flip_out);
 
 // vertex position (x, y, z)
 #define OUTPUT_SLOT_VERT_POS 0

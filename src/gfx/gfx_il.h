@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -87,6 +87,8 @@ enum gfx_il {
     // render data in a gfx_obj to the framebuffer
     GFX_IL_POST_FRAMEBUFFER,
 
+    GFX_IL_GRAB_FRAMEBUFFER,
+
     /*
      * all triangles submitted between GFX_IL_BEGIN_DEPTH_SORT and
      * GFX_IL_END_DEPTH_SORT will be depth-sorted.
@@ -108,6 +110,13 @@ struct gfx_rend_param {
 
     bool enable_depth_writes;
     enum Pvr2DepthFunc depth_func;
+};
+
+struct gfx_framebuffer {
+    void *dat;
+    unsigned width, height;
+    bool valid;
+    bool flip;
 };
 
 union gfx_il_arg {
@@ -196,6 +205,10 @@ union gfx_il_arg {
         unsigned width, height;
         bool vert_flip;
     } post_framebuffer;
+
+    struct {
+        struct gfx_framebuffer *fb;
+    } grab_framebuffer;
 };
 
 struct gfx_il_inst {

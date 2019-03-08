@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "gfx/gfx_tex_cache.h"
 #include "gfx/opengl/opengl_target.h"
 #include "gfx/opengl/opengl_renderer.h"
+#include "gfx/opengl/opengl_output.h"
 #include "dreamcast.h"
 #include "log.h"
 #include "gfx_il.h"
@@ -147,6 +148,38 @@ static void rend_post_framebuffer(struct gfx_il_inst *cmd) {
     gfx_post_framebuffer(obj_handle, width, height, do_flip);
 }
 
+static void rend_grab_framebuffer(struct gfx_il_inst *cmd) {
+    int handle;
+    unsigned width, height;
+    bool do_flip;
+
+    if (opengl_video_get_fb(&handle, &width, &height, &do_flip) != 0) {
+        cmd->arg.grab_framebuffer.fb->valid = false;
+        return;
+    }
+
+    struct gfx_obj *obj = gfx_obj_get(handle);
+    if (!obj) {
+        cmd->arg.grab_framebuffer.fb->valid = false;
+        return;
+    }
+
+    size_t n_bytes = obj->dat_len;
+    void *dat = malloc(n_bytes);
+    if (!dat) {
+        cmd->arg.grab_framebuffer.fb->valid = false;
+        return;
+    }
+
+    gfx_obj_read(handle, dat, n_bytes);
+
+    cmd->arg.grab_framebuffer.fb->valid = true;
+    cmd->arg.grab_framebuffer.fb->width = width;
+    cmd->arg.grab_framebuffer.fb->height = height;
+    cmd->arg.grab_framebuffer.fb->dat = dat;
+    cmd->arg.grab_framebuffer.fb->flip = do_flip;
+}
+
 static void rend_begin_depth_sort(struct gfx_il_inst *cmd) {
     rend_ifp->begin_sort_mode();
 }
@@ -209,6 +242,9 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_POST_FRAMEBUFFER:
             rend_post_framebuffer(cmd);
+            break;
+        case GFX_IL_GRAB_FRAMEBUFFER:
+            rend_grab_framebuffer(cmd);
             break;
         case GFX_IL_BEGIN_DEPTH_SORT:
             rend_begin_depth_sort(cmd);

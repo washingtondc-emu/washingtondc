@@ -317,3 +317,14 @@ void opengl_video_toggle_filter(void) {
     else
         mag_filter = GL_NEAREST;
 }
+
+int opengl_video_get_fb(int *obj_handle_out, unsigned *width_out,
+                        unsigned *height_out, bool *flip_out) {
+    if (bound_obj_handle < 0)
+        return -1;
+    *obj_handle_out = bound_obj_handle;
+    *width_out = bound_obj_w;
+    *height_out = bound_obj_h;
+    *flip_out = do_flip;
+    return 0;
+}
