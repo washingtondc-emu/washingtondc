@@ -153,6 +153,7 @@ void win_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("toggle-fullscreen", "wash.ctrl.toggle-fullscreen");
     bind_ctrl_from_cfg("toggle-filter", "wash.ctrl.toggle-filter");
     bind_ctrl_from_cfg("toggle-wireframe", "wash.ctrl.toggle-wireframe");
+    bind_ctrl_from_cfg("screenshot", "wash.ctrl.screenshot");
 
     /*
      * This bind immediately exits the emulator.  It is unbound in the default
@@ -423,6 +424,12 @@ static void scan_input(void) {
     if (filter_key && !filter_key_prev)
         gfx_toggle_output_filter();
     filter_key_prev = filter_key;
+
+    static bool screenshot_key_prev = false;
+    bool screenshot_key = ctrl_get_button("screenshot");
+    if (screenshot_key && !screenshot_key_prev)
+        gfx_save_screenshot("screenshot.png");
+    screenshot_key_prev = screenshot_key;
 
     bool exit_key = ctrl_get_button("exit-now");
     if (exit_key) {
