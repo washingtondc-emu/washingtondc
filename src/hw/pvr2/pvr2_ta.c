@@ -1476,6 +1476,28 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     int tgt = framebuffer_set_render_target(pvr2);
 
     /*
+     * This is really driving me insane and I don't know what to do about it.
+     *
+     * A number of games will use different resolutions when reading from the
+     * framebuffer than they will when writing to it.  Most of the time it's
+     * just a couple of extra rows which isn't that big of a deal, but in
+     * SoulCalibur's case there's also an extra column.  Lobbing pixels off of
+     * a texture isn't so easy to do in OpenGL, so IDK what to do.
+     */
+    unsigned read_width, read_height;
+    framebuffer_get_render_target_dims(pvr2, tgt, &read_width, &read_height);
+    if (read_width != width || read_height != height) {
+        /*
+         * Also I suspect that the read-width needs to be doubled because it's
+         * always half what I expect it to be.  That's fairly reasonably and
+         * not nearly as exasperating as the case described above.
+         */
+        LOG_WARN("Warning: read-dimensions of framebuffer are %ux%u, but "
+                 "write-dimensions are %ux%u\n",
+                 read_width, read_height, width, height);
+    }
+
+    /*
      * TODO: This is extremely inaccurate.  PVR2 only draws on a per-tile
      * basis; I think that includes clearing the framebuffer on a per-tile
      * basis as well.

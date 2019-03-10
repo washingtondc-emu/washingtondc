@@ -1423,6 +1423,13 @@ int framebuffer_set_render_target(struct pvr2 *pvr2) {
     return fb_heap[idx].obj_handle;
 }
 
+void framebuffer_get_render_target_dims(struct pvr2 *pvr2, int tgt,
+                                        unsigned *width, unsigned *height) {
+    struct framebuffer *fb = pvr2->fb.fb_heap + tgt;
+    *width = fb->fb_read_width;
+    *height = fb->fb_read_height;
+}
+
 static inline bool check_overlap(uint32_t range1_start, uint32_t range1_end,
                                  uint32_t range2_start, uint32_t range2_end) {
     if ((range1_start >= range2_start) && (range1_start <= range2_end))

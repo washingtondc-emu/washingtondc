@@ -133,6 +133,9 @@ static inline void framebuffer_sync_from_host_maybe(void) {
 
 int framebuffer_set_render_target(struct pvr2 *pvr2);
 
+void framebuffer_get_render_target_dims(struct pvr2 *pvr2, int tgt,
+                                        unsigned *width, unsigned *height);
+
 void pvr2_framebuffer_notify_write(struct pvr2 *pvr2, uint32_t addr,
                                    unsigned n_bytes);
 
