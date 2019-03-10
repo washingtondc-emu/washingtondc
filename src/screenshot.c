@@ -84,7 +84,7 @@ int save_screenshot_dir(void) {
 
 static int do_save_screenshot(FILE *stream, char const *path) {
     int err_val = 0;
-    uint32_t *fb_tmp;
+    uint32_t *fb_tmp = NULL;
     unsigned fb_width, fb_height;
     bool do_flip;
 
