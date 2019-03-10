@@ -323,8 +323,8 @@ int opengl_video_get_fb(int *obj_handle_out, unsigned *width_out,
     if (bound_obj_handle < 0)
         return -1;
     *obj_handle_out = bound_obj_handle;
-    *width_out = bound_obj_w;
-    *height_out = bound_obj_h;
+    *width_out = opengl_renderer_tex_get_width(bound_obj_handle);
+    *height_out = opengl_renderer_tex_get_height(bound_obj_handle);
     *flip_out = do_flip;
     return 0;
 }
