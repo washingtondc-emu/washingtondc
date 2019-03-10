@@ -30,13 +30,12 @@
 
 #include "log.h"
 #include "fifo.h"
+#include "hostfile.h"
 
 #include "config_file.h"
 
 #define CFG_NODE_KEY_LEN 256
 #define CFG_NODE_VAL_LEN 256
-
-#define CFG_FILE_NAME "wash.cfg"
 
 struct cfg_node {
     struct fifo_node list_node;
@@ -67,88 +66,9 @@ static void cfg_add_entry(void);
 static void cfg_handle_newline(void);
 static int cfg_parse_bool(char const *val, bool *outp);
 
-#define CFG_PATH_LEN 4096
-
-static void path_append(char *dst, char const *src, size_t dst_sz) {
-    if (!src[0])
-        return; // nothing to append
-
-    // get the index of the null terminator
-    unsigned zero_idx = 0;
-    while (dst[zero_idx])
-        zero_idx++;
-
-    if (!zero_idx) {
-        // special case - dst is empty so copy src over
-        strncpy(dst, src, dst_sz);
-        dst[dst_sz - 1] = '\0';
-        return;
-    }
-
-    /*
-     * If there's a trailing / on dst and a leading / on src then get rid of
-     * the leading slash on src.
-     *
-     * If there is not a trailing / on dst and there is not a leading slash on
-     * src then give dst a trailing /.
-     */
-    if (dst[zero_idx - 1] == '/' && src[0] == '/') {
-        // remove leading / from src
-        src = src + 1;
-        if (!src[0])
-            return; // nothing to append
-    } else if (dst[zero_idx - 1] != '/' && src[0] != '/') {
-        // add trailing / to dst
-        if (zero_idx < dst_sz - 1) {
-            dst[zero_idx++] = '/';
-            dst[zero_idx] = '\0';
-        } else {
-            return; // out of space
-        }
-    }
-
-    // there's no more space
-    if (zero_idx >= dst_sz -1 )
-        return;
-
-    strncpy(dst + zero_idx, src, dst_sz - zero_idx);
-    dst[dst_sz - 1] = '\0';
-}
-
-char const *cfg_get_default_dir(void) {
-    static char path[CFG_PATH_LEN];
-    char const *config_root = getenv("XDG_CONFIG_HOME");
-    if (config_root) {
-        strncpy(path, config_root, CFG_PATH_LEN);
-        path[CFG_PATH_LEN - 1] = '\0';
-    } else {
-        char const *home_dir = getenv("HOME");
-        if (home_dir) {
-            strncpy(path, home_dir, CFG_PATH_LEN);
-            path[CFG_PATH_LEN - 1] = '\0';
-        } else {
-            return NULL;
-        }
-        path_append(path, "/.config", CFG_PATH_LEN);
-    }
-    path_append(path, "washdc", CFG_PATH_LEN);
-    return path;
-}
-
-char const *cfg_get_default_file(void) {
-    static char path[CFG_PATH_LEN];
-    char const *cfg_dir = cfg_get_default_dir();
-    if (!cfg_dir)
-        return NULL;
-    strncpy(path, cfg_dir, CFG_PATH_LEN);
-    path[CFG_PATH_LEN - 1] = '\0';
-    path_append(path, "wash.cfg", CFG_PATH_LEN);
-    return path;
-}
-
 static void cfg_create_default_config(void) {
-    char const *cfg_file_path = cfg_get_default_file();
-    char const *cfg_file_dir = cfg_get_default_dir();
+    char const *cfg_file_path = hostfile_cfg_file();
+    char const *cfg_file_dir = hostfile_cfg_dir();
 
     static char const *cfg_default =
         ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"
@@ -291,8 +211,8 @@ void cfg_init(void) {
     memset(&cfg_state, 0, sizeof(cfg_state));
     cfg_state.state = CFG_PARSE_PRE_KEY;
 
-    char const *cfg_file_path = cfg_get_default_file();
-    char const *cfg_file_dir = cfg_get_default_dir();
+    char const *cfg_file_path = hostfile_cfg_file();
+    char const *cfg_file_dir = hostfile_cfg_dir();
 
     if (cfg_file_dir)
         LOG_INFO("cfg directory is \"%s\"\n", cfg_file_dir);
@@ -314,7 +234,7 @@ void cfg_init(void) {
     }
 
     if (cfg_file) {
-        LOG_INFO("Parsing configuration file %s\n", CFG_FILE_NAME);
+        LOG_INFO("Parsing wash.cfg\n");
         for (;;) {
             int ch = fgetc(cfg_file);
             if (ch == EOF)
@@ -324,7 +244,7 @@ void cfg_init(void) {
         cfg_put_char('\n'); // in case the last line doesn't end with newline
         fclose(cfg_file);
     } else {
-        LOG_INFO("Unable to open %s; does it even exist?\n", CFG_FILE_NAME);
+        LOG_INFO("Unable to open wash.cfg; does it even exist?\n");
     }
 }
 
