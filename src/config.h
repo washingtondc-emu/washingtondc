@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -76,14 +76,6 @@ CONFIG_DECL_STRING(ip_bin_path);
 
 // path to the 1st_read.bin file
 CONFIG_DECL_STRING(exec_bin_path);
-
-/*
- * autoscreenshot is a feature which saves every frame to a given folder as a
- * sequence of PNG files.  It's kinda like recording a video, but it's easier to
- * implement and this is all I really need right now for debugging anyways.
- */
-CONFIG_DECL_BOOL(enable_auto_screenshot);
-CONFIG_DECL_STRING(auto_screenshot_dir);
 
 // enable the dynamic recompiler, or disable it to use the interpreter
 CONFIG_DECL_BOOL(jit);

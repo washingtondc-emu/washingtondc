@@ -52,10 +52,6 @@ static unsigned frame_counter;
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
 static void gfx_do_init(void);
 
-#if 0
-static void gfx_auto_screenshot(void);
-#endif
-
 void gfx_init(unsigned width, unsigned height) {
     win_width = width;
     win_height = height;
@@ -106,20 +102,3 @@ void gfx_post_framebuffer(int obj_handle,
 void gfx_toggle_output_filter(void) {
     opengl_video_toggle_filter();
 }
-
-#if 0
-#define AUTO_SCREEN_PATH_MAX 128
-static void gfx_auto_screenshot(void) {
-    static char path[AUTO_SCREEN_PATH_MAX];
-
-    memset(path, 0, sizeof(path));
-
-    snprintf(path, AUTO_SCREEN_PATH_MAX, "%s/frame_%u.png",
-             config_get_auto_screenshot_dir(), frame_counter);
-
-    path[AUTO_SCREEN_PATH_MAX - 1] = '\0';
-
-    LOG_INFO("saving a screenshot to \"%s\"\n", path);
-    gfx_save_screenshot(path);
-}
-#endif
