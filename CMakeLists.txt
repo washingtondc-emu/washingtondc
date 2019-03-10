@@ -291,7 +291,9 @@ set(sh4_sources "${PROJECT_SOURCE_DIR}/src/hw/sh4/sh4.c"
                 "${PROJECT_SOURCE_DIR}/src/config_file.h"
                 "${PROJECT_SOURCE_DIR}/src/config_file.c"
                 "${PROJECT_SOURCE_DIR}/src/hostfile.h"
-                "${PROJECT_SOURCE_DIR}/src/hostfile.c")
+                "${PROJECT_SOURCE_DIR}/src/hostfile.c"
+                "${PROJECT_SOURCE_DIR}/src/screenshot.h"
+                "${PROJECT_SOURCE_DIR}/src/screenshot.c")
 
 if (ENABLE_TCP_CMD)
     set (sh4_sources ${sh4_sources} "${PROJECT_SOURCE_DIR}/src/cmd/cmd.h"

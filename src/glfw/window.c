@@ -34,6 +34,7 @@
 #include "title.h"
 #include "config_file.h"
 #include "control_bind.h"
+#include "screenshot.h"
 
 #include "window.h"
 
@@ -428,7 +429,7 @@ static void scan_input(void) {
     static bool screenshot_key_prev = false;
     bool screenshot_key = ctrl_get_button("screenshot");
     if (screenshot_key && !screenshot_key_prev)
-        gfx_save_screenshot("screenshot.png");
+        save_screenshot_dir();
     screenshot_key_prev = screenshot_key;
 
     bool exit_key = ctrl_get_button("exit-now");

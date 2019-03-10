@@ -119,8 +119,6 @@ void gfx_post_framebuffer(int obj_handle,
                           unsigned fb_new_width,
                           unsigned fb_new_height, bool do_flip);
 
-int gfx_save_screenshot(char const *path);
-
 /*
  * This takes place immediately because the user can toggle it asynchronously
  * with a keybind.  It is not part of gfx_il.

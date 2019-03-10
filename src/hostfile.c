@@ -23,14 +23,17 @@
 #include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
 
+#include "log.h"
 #include "hostfile.h"
 
 #define CFG_FILE_NAME "wash.cfg"
 
-#define CFG_PATH_LEN 4096
+#define HOSTFILE_PATH_LEN 4096
 
-static void path_append(char *dst, char const *src, size_t dst_sz) {
+void hostfile_path_append(char *dst, char const *src, size_t dst_sz) {
     if (!src[0])
         return; // nothing to append
 
@@ -77,32 +80,72 @@ static void path_append(char *dst, char const *src, size_t dst_sz) {
 }
 
 char const *hostfile_cfg_dir(void) {
-    static char path[CFG_PATH_LEN];
+    static char path[HOSTFILE_PATH_LEN];
     char const *config_root = getenv("XDG_CONFIG_HOME");
     if (config_root) {
-        strncpy(path, config_root, CFG_PATH_LEN);
-        path[CFG_PATH_LEN - 1] = '\0';
+        strncpy(path, config_root, HOSTFILE_PATH_LEN);
+        path[HOSTFILE_PATH_LEN - 1] = '\0';
     } else {
         char const *home_dir = getenv("HOME");
         if (home_dir) {
-            strncpy(path, home_dir, CFG_PATH_LEN);
-            path[CFG_PATH_LEN - 1] = '\0';
+            strncpy(path, home_dir, HOSTFILE_PATH_LEN);
+            path[HOSTFILE_PATH_LEN - 1] = '\0';
         } else {
             return NULL;
         }
-        path_append(path, "/.config", CFG_PATH_LEN);
+        hostfile_path_append(path, "/.config", HOSTFILE_PATH_LEN);
     }
-    path_append(path, "washdc", CFG_PATH_LEN);
+    hostfile_path_append(path, "washdc", HOSTFILE_PATH_LEN);
     return path;
 }
 
 char const *hostfile_cfg_file(void) {
-    static char path[CFG_PATH_LEN];
+    static char path[HOSTFILE_PATH_LEN];
     char const *cfg_dir = hostfile_cfg_dir();
     if (!cfg_dir)
         return NULL;
-    strncpy(path, cfg_dir, CFG_PATH_LEN);
-    path[CFG_PATH_LEN - 1] = '\0';
-    path_append(path, "wash.cfg", CFG_PATH_LEN);
+    strncpy(path, cfg_dir, HOSTFILE_PATH_LEN);
+    path[HOSTFILE_PATH_LEN - 1] = '\0';
+    hostfile_path_append(path, "wash.cfg", HOSTFILE_PATH_LEN);
     return path;
+}
+
+char const *hostfile_data_dir(void) {
+    static char path[HOSTFILE_PATH_LEN];
+    char const *data_root = getenv("XDG_DATA_HOME");
+    if (data_root) {
+        strncpy(path, data_root, HOSTFILE_PATH_LEN);
+        path[HOSTFILE_PATH_LEN - 1] = '\0';
+    } else {
+        char const *home_dir = getenv("HOME");
+        if (home_dir) {
+            strncpy(path, home_dir, HOSTFILE_PATH_LEN);
+            path[HOSTFILE_PATH_LEN - 1] = '\0';
+        } else {
+            return NULL;
+        }
+        hostfile_path_append(path, "/.local/share", HOSTFILE_PATH_LEN);
+    }
+    hostfile_path_append(path, "washdc", HOSTFILE_PATH_LEN);
+    return path;
+}
+
+char const *hostfile_screenshot_dir(void) {
+    static char path[HOSTFILE_PATH_LEN];
+    char const *data_dir = hostfile_data_dir();
+    if (!data_dir)
+        return NULL;
+    strncpy(path, data_dir, HOSTFILE_PATH_LEN);
+    path[HOSTFILE_PATH_LEN - 1] = '\0';
+    hostfile_path_append(path, "/screenshots", HOSTFILE_PATH_LEN);
+    return path;
+}
+
+void hostfile_create_screenshot_dir(void) {
+    char const *data_dir = hostfile_data_dir();
+    if (mkdir(data_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 && errno != EEXIST)
+        LOG_ERROR("%s - failure to create %s\n", __func__, data_dir);
+    char const *screenshot_dir = hostfile_screenshot_dir();
+    if (mkdir(screenshot_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 && errno != EEXIST)
+        LOG_ERROR("%s - failure to create %s\n", __func__, data_dir);
 }

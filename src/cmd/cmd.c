@@ -41,6 +41,7 @@
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "gfx/gfx.h"
 #include "pix_conv.h"
+#include "screenshot.h"
 
 #include "cmd.h"
 
@@ -490,7 +491,7 @@ static int cmd_screenshot(int argc, char **argv) {
         return 1;
     }
 
-    if (gfx_save_screenshot(argv[1]) == 0) {
+    if (save_screenshot(argv[1]) == 0) {
         cons_printf("screenshot saved to \"%s\"\n", argv[1]);
         return 0;
     } else {

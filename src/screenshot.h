@@ -20,19 +20,10 @@
  *
  ******************************************************************************/
 
-#ifndef HOSTFILE_H_
-#define HOSTFILE_H_
+#ifndef SCREENSHOT_H_
+#define SCREENSHOT_H_
 
-char const *hostfile_cfg_dir(void);
-
-char const *hostfile_cfg_file(void);
-
-char const *hostfile_data_dir(void);
-
-char const *hostfile_screenshot_dir(void);
-
-void hostfile_path_append(char *dst, char const *src, size_t dst_sz);
-
-void hostfile_create_screenshot_dir(void);
+int save_screenshot(char const *path);
+int save_screenshot_dir(void);
 
 #endif
