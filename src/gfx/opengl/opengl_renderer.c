@@ -133,7 +133,7 @@ static const GLenum depth_funcs[PVR2_DEPTH_FUNC_COUNT] = {
     [PVR2_DEPTH_ALWAYS]              = GL_ALWAYS
 };
 
-#define OIT_MAX_GROUPS 1024
+#define OIT_MAX_GROUPS (4*1024)
 
 struct oit_group {
     float const *verts;
