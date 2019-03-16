@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,7 +20,10 @@
  *
  ******************************************************************************/
 
-#include <GL/gl.h>
+/*
+ * intentionally avoid including OpenGL headers to make sure that this header
+ * does not get included by code which is not OpenGL-specific.
+ */
 
 struct shader {
     GLuint vert_shader;

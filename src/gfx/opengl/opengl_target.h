@@ -23,10 +23,6 @@
 #ifndef OPENGL_TARGET_H_
 #define OPENGL_TARGET_H_
 
-#define GL3_PROTOTYPES 1
-#include <GL/glew.h>
-#include <GL/gl.h>
-
 /* code for configuring opengl's rendering target (which is a texture+FBO) */
 
 void opengl_target_init(void);
