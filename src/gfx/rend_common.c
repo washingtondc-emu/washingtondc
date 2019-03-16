@@ -24,7 +24,6 @@
 #include <stdlib.h>
 
 #include "gfx/gfx_tex_cache.h"
-#include "gfx/opengl/opengl_target.h"
 #include "gfx/opengl/opengl_renderer.h"
 #include "gfx/opengl/opengl_output.h"
 #include "dreamcast.h"
@@ -69,15 +68,15 @@ static void rend_unbind_tex(struct gfx_il_inst *cmd) {
 }
 
 static void rend_begin_rend(struct gfx_il_inst *cmd) {
-    opengl_target_begin(cmd->arg.begin_rend.screen_width,
-                        cmd->arg.begin_rend.screen_height,
-                        cmd->arg.begin_rend.rend_tgt_obj);
+    rend_ifp->target_begin(cmd->arg.begin_rend.screen_width,
+                           cmd->arg.begin_rend.screen_height,
+                           cmd->arg.begin_rend.rend_tgt_obj);
     rend_ifp->set_screen_dim(cmd->arg.begin_rend.screen_width,
                              cmd->arg.begin_rend.screen_height);
 }
 
 static void rend_end_rend(struct gfx_il_inst *cmd) {
-    opengl_target_end(cmd->arg.end_rend.rend_tgt_obj);
+    rend_ifp->target_end(cmd->arg.end_rend.rend_tgt_obj);
 }
 
 static void rend_set_blend_enable(struct gfx_il_inst *cmd) {
@@ -132,11 +131,11 @@ static void rend_obj_free(struct gfx_il_inst *cmd) {
 }
 
 static void rend_bind_render_target(struct gfx_il_inst *cmd) {
-    opengl_target_bind_obj(cmd->arg.bind_render_target.gfx_obj_handle);
+    rend_ifp->target_bind_obj(cmd->arg.bind_render_target.gfx_obj_handle);
 }
 
 static void rend_unbind_render_target(struct gfx_il_inst *cmd) {
-    opengl_target_unbind_obj(cmd->arg.unbind_render_target.gfx_obj_handle);
+    rend_ifp->target_unbind_obj(cmd->arg.unbind_render_target.gfx_obj_handle);
 }
 
 static void rend_post_framebuffer(struct gfx_il_inst *cmd) {

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -64,6 +64,14 @@ struct rend_if {
     void (*begin_sort_mode)(void);
 
     void (*end_sort_mode)(void);
+
+    void (*target_bind_obj)(int handle);
+
+    void (*target_unbind_obj)(int handle);
+
+    void (*target_begin)(unsigned width, unsigned height, int tgt_handle);
+
+    void (*target_end)(int tgt_handle);
 };
 
 // initialize and clean up the graphics renderer

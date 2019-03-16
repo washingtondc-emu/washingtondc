@@ -186,7 +186,11 @@ struct rend_if const opengl_rend_if = {
     .set_screen_dim = opengl_renderer_set_screen_dim,
     .set_clip_range = opengl_renderer_set_clip_range,
     .begin_sort_mode = opengl_renderer_begin_sort_mode,
-    .end_sort_mode = opengl_renderer_end_sort_mode
+    .end_sort_mode = opengl_renderer_end_sort_mode,
+    .target_bind_obj = opengl_target_bind_obj,
+    .target_unbind_obj = opengl_target_unbind_obj,
+    .target_begin = opengl_target_begin,
+    .target_end = opengl_target_end
 };
 
 static char const * const pvr2_ta_vert_glsl =
@@ -315,6 +319,8 @@ static char const * const pvr2_ta_frag_glsl =
 
 
 static void opengl_render_init(void) {
+    opengl_target_init();
+
     char const *oit_mode_str = cfg_get_node("gfx.rend.oit-mode");
     if (oit_mode_str) {
         if (strcmp(oit_mode_str, "per-group") == 0)

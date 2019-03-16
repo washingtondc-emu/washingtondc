@@ -33,7 +33,6 @@
 #include "glfw/window.h"
 #include "dreamcast.h"
 #include "gfx/opengl/opengl_output.h"
-#include "gfx/opengl/opengl_target.h"
 #include "gfx/opengl/font/font.h"
 #include "gfx/rend_common.h"
 #include "gfx/gfx_tex_cache.h"
@@ -81,7 +80,6 @@ static void gfx_do_init(void) {
     glewInit();
     glViewport(0, 0, win_width, win_height);
 
-    opengl_target_init();
     opengl_video_output_init();
     gfx_tex_cache_init();
     rend_init();
