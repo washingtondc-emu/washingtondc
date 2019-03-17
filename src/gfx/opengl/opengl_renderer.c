@@ -27,8 +27,6 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "shader.h"
-#include "opengl_target.h"
 #include "dreamcast.h"
 #include "gfx/gfx_config.h"
 #include "gfx/gfx_tex_cache.h"
@@ -36,6 +34,9 @@
 #include "log.h"
 #include "pix_conv.h"
 #include "config_file.h"
+#include "opengl_output.h"
+#include "opengl_target.h"
+#include "shader.h"
 
 #include "opengl_renderer.h"
 
@@ -190,7 +191,11 @@ struct rend_if const opengl_rend_if = {
     .target_bind_obj = opengl_target_bind_obj,
     .target_unbind_obj = opengl_target_unbind_obj,
     .target_begin = opengl_target_begin,
-    .target_end = opengl_target_end
+    .target_end = opengl_target_end,
+    .video_get_fb = opengl_video_get_fb,
+    .video_present = opengl_video_present,
+    .video_new_framebuffer = opengl_video_new_framebuffer,
+    .video_toggle_filter = opengl_video_toggle_filter
 };
 
 static char const * const pvr2_ta_vert_glsl =
@@ -319,6 +324,7 @@ static char const * const pvr2_ta_frag_glsl =
 
 
 static void opengl_render_init(void) {
+    opengl_video_output_init();
     opengl_target_init();
 
     char const *oit_mode_str = cfg_get_node("gfx.rend.oit-mode");

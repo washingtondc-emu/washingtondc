@@ -25,32 +25,31 @@
 
 #include "gfx/gfx_tex_cache.h"
 #include "gfx/opengl/opengl_renderer.h"
-#include "gfx/opengl/opengl_output.h"
 #include "dreamcast.h"
 #include "log.h"
 #include "gfx_il.h"
 
 #include "rend_common.h"
 
-static struct rend_if const *rend_ifp = &opengl_rend_if;
+struct rend_if const * const gfx_rend_ifp = &opengl_rend_if;
 
 // initialize and clean up the graphics renderer
 void rend_init(void) {
-    rend_ifp->init();
+    gfx_rend_ifp->init();
 }
 
 void rend_cleanup(void) {
-    rend_ifp->cleanup();
+    gfx_rend_ifp->cleanup();
 }
 
 // tell the renderer to update the given texture from the cache
 void rend_update_tex(unsigned tex_no) {
-    rend_ifp->update_tex(tex_no);
+    gfx_rend_ifp->update_tex(tex_no);
 }
 
 // tell the renderer to release the given texture from the cache
 void rend_release_tex(unsigned tex_no) {
-    rend_ifp->release_tex(tex_no);
+    gfx_rend_ifp->release_tex(tex_no);
 }
 
 static void rend_bind_tex(struct gfx_il_inst *cmd) {
@@ -68,41 +67,41 @@ static void rend_unbind_tex(struct gfx_il_inst *cmd) {
 }
 
 static void rend_begin_rend(struct gfx_il_inst *cmd) {
-    rend_ifp->target_begin(cmd->arg.begin_rend.screen_width,
+    gfx_rend_ifp->target_begin(cmd->arg.begin_rend.screen_width,
                            cmd->arg.begin_rend.screen_height,
                            cmd->arg.begin_rend.rend_tgt_obj);
-    rend_ifp->set_screen_dim(cmd->arg.begin_rend.screen_width,
+    gfx_rend_ifp->set_screen_dim(cmd->arg.begin_rend.screen_width,
                              cmd->arg.begin_rend.screen_height);
 }
 
 static void rend_end_rend(struct gfx_il_inst *cmd) {
-    rend_ifp->target_end(cmd->arg.end_rend.rend_tgt_obj);
+    gfx_rend_ifp->target_end(cmd->arg.end_rend.rend_tgt_obj);
 }
 
 static void rend_set_blend_enable(struct gfx_il_inst *cmd) {
     bool en = cmd->arg.set_blend_enable.do_enable;
-    rend_ifp->set_blend_enable(en);
+    gfx_rend_ifp->set_blend_enable(en);
 }
 
 static void rend_set_rend_param(struct gfx_il_inst *cmd) {
     struct gfx_rend_param const *param = &cmd->arg.set_rend_param.param;
-    rend_ifp->set_rend_param(param);
+    gfx_rend_ifp->set_rend_param(param);
 }
 
 static void rend_set_clip_range(struct gfx_il_inst *cmd) {
     float clip_min = cmd->arg.set_clip_range.clip_min;
     float clip_max = cmd->arg.set_clip_range.clip_max;
-    rend_ifp->set_clip_range(clip_min, clip_max);
+    gfx_rend_ifp->set_clip_range(clip_min, clip_max);
 }
 
 static void rend_draw_array(struct gfx_il_inst *cmd) {
     unsigned n_verts = cmd->arg.draw_array.n_verts;
     float const *verts = cmd->arg.draw_array.verts;
-    rend_ifp->draw_array(verts, n_verts);
+    gfx_rend_ifp->draw_array(verts, n_verts);
 }
 
 static void rend_clear(struct gfx_il_inst *cmd) {
-    rend_ifp->clear(cmd->arg.clear.bgcolor);
+    gfx_rend_ifp->clear(cmd->arg.clear.bgcolor);
 }
 
 static void rend_obj_init(struct gfx_il_inst *cmd) {
@@ -131,11 +130,11 @@ static void rend_obj_free(struct gfx_il_inst *cmd) {
 }
 
 static void rend_bind_render_target(struct gfx_il_inst *cmd) {
-    rend_ifp->target_bind_obj(cmd->arg.bind_render_target.gfx_obj_handle);
+    gfx_rend_ifp->target_bind_obj(cmd->arg.bind_render_target.gfx_obj_handle);
 }
 
 static void rend_unbind_render_target(struct gfx_il_inst *cmd) {
-    rend_ifp->target_unbind_obj(cmd->arg.unbind_render_target.gfx_obj_handle);
+    gfx_rend_ifp->target_unbind_obj(cmd->arg.unbind_render_target.gfx_obj_handle);
 }
 
 static void rend_post_framebuffer(struct gfx_il_inst *cmd) {
@@ -152,7 +151,7 @@ static void rend_grab_framebuffer(struct gfx_il_inst *cmd) {
     unsigned width, height;
     bool do_flip;
 
-    if (opengl_video_get_fb(&handle, &width, &height, &do_flip) != 0) {
+    if (gfx_rend_ifp->video_get_fb(&handle, &width, &height, &do_flip) != 0) {
         cmd->arg.grab_framebuffer.fb->valid = false;
         return;
     }
@@ -180,11 +179,11 @@ static void rend_grab_framebuffer(struct gfx_il_inst *cmd) {
 }
 
 static void rend_begin_depth_sort(struct gfx_il_inst *cmd) {
-    rend_ifp->begin_sort_mode();
+    gfx_rend_ifp->begin_sort_mode();
 }
 
 static void rend_end_depth_sort(struct gfx_il_inst *cmd) {
-    rend_ifp->end_sort_mode();
+    gfx_rend_ifp->end_sort_mode();
 }
 
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {

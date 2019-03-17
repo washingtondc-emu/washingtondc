@@ -32,7 +32,6 @@
 
 #include "glfw/window.h"
 #include "dreamcast.h"
-#include "gfx/opengl/opengl_output.h"
 #include "gfx/opengl/font/font.h"
 #include "gfx/rend_common.h"
 #include "gfx/gfx_tex_cache.h"
@@ -64,12 +63,12 @@ void gfx_cleanup(void) {
 }
 
 void gfx_expose(void) {
-    opengl_video_present();
+    gfx_rend_ifp->video_present();
     win_update();
 }
 
 void gfx_resize(int xres, int yres) {
-    opengl_video_present();
+    gfx_rend_ifp->video_present();
     win_update();
 }
 
@@ -80,7 +79,6 @@ static void gfx_do_init(void) {
     glewInit();
     glViewport(0, 0, win_width, win_height);
 
-    opengl_video_output_init();
     gfx_tex_cache_init();
     rend_init();
 
@@ -92,11 +90,11 @@ static void gfx_do_init(void) {
 void gfx_post_framebuffer(int obj_handle,
                           unsigned fb_new_width,
                           unsigned fb_new_height, bool do_flip) {
-    opengl_video_new_framebuffer(obj_handle, fb_new_width, fb_new_height,
-                                 do_flip);
+    gfx_rend_ifp->video_new_framebuffer(obj_handle, fb_new_width, fb_new_height,
+                                        do_flip);
     frame_counter++;
 }
 
 void gfx_toggle_output_filter(void) {
-    opengl_video_toggle_filter();
+    gfx_rend_ifp->video_toggle_filter();
 }

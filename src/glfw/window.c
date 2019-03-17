@@ -26,7 +26,6 @@
 
 #include <GLFW/glfw3.h>
 
-#include "gfx/opengl/opengl_output.h"
 #include "dreamcast.h"
 #include "hw/maple/maple_controller.h"
 #include "gfx/gfx.h"

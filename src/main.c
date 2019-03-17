@@ -30,7 +30,6 @@
 #include "dreamcast.h"
 #include "gfx/gfx.h"
 #include "glfw/window.h"
-#include "gfx/opengl/opengl_output.h"
 #include "mount.h"
 #include "gdi.h"
 #include "config.h"

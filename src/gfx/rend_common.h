@@ -72,6 +72,17 @@ struct rend_if {
     void (*target_begin)(unsigned width, unsigned height, int tgt_handle);
 
     void (*target_end)(int tgt_handle);
+
+    int (*video_get_fb)(int *obj_handle_out, unsigned *width_out,
+                        unsigned *height_out, bool *flip_out);
+
+    void (*video_present)(void);
+
+    void (*video_new_framebuffer)(int obj_handle,
+                                  unsigned fb_new_width,
+                                  unsigned fb_new_height, bool do_flip);
+
+    void (*video_toggle_filter)(void);
 };
 
 // initialize and clean up the graphics renderer
@@ -83,5 +94,7 @@ void rend_update_tex(unsigned tex_no);
 
 // tell the renderer to release the given texture from the cache
 void rend_release_tex(unsigned tex_no);
+
+struct rend_if const * const gfx_rend_ifp;
 
 #endif
