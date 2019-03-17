@@ -66,7 +66,6 @@
 #include "jit/jit_intp/code_block_intp.h"
 #include "jit/code_cache.h"
 #include "jit/jit.h"
-#include "gfx/opengl/overlay.h"
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
 #include "title.h"
@@ -512,7 +511,7 @@ void dreamcast_run() {
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     clock_gettime(CLOCK_MONOTONIC, &last_frame_realtime);
-    overlay_show(show_overlay);
+    gfx_overlay_show(show_overlay);
 
     sh4_clock.dispatch = select_sh4_backend();
     sh4_clock.dispatch_ctxt = &cpu;
@@ -1047,8 +1046,8 @@ void dc_end_frame(void) {
 
     last_frame_realtime = timestamp;
     last_frame_virttime = virt_timestamp;
-    overlay_set_fps(framerate);
-    overlay_set_virt_fps(virt_framerate);
+    gfx_overlay_set_fps(framerate);
+    gfx_overlay_set_virt_fps(virt_framerate);
 
     title_set_fps_internal(virt_framerate);
 
@@ -1062,7 +1061,7 @@ void dc_end_frame(void) {
 
 void dc_toggle_overlay(void) {
     show_overlay = !show_overlay;
-    overlay_show(show_overlay);
+    gfx_overlay_show(show_overlay);
 }
 
 int dc_tex_get_meta(struct pvr2_tex_meta *out, unsigned tex_no) {

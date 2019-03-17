@@ -32,7 +32,6 @@
 
 #include "glfw/window.h"
 #include "dreamcast.h"
-#include "gfx/opengl/font/font.h"
 #include "gfx/rend_common.h"
 #include "gfx/gfx_tex_cache.h"
 #include "log.h"
@@ -59,7 +58,7 @@ void gfx_init(unsigned width, unsigned height) {
 }
 
 void gfx_cleanup(void) {
-    font_cleanup();
+    rend_cleanup();
 }
 
 void gfx_expose(void) {
@@ -82,8 +81,6 @@ static void gfx_do_init(void) {
     gfx_tex_cache_init();
     rend_init();
 
-    font_init();
-
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
@@ -97,4 +94,19 @@ void gfx_post_framebuffer(int obj_handle,
 
 void gfx_toggle_output_filter(void) {
     gfx_rend_ifp->video_toggle_filter();
+}
+
+void gfx_overlay_set_fps(double fps) {
+    if (gfx_rend_ifp->overlay_set_fps)
+        gfx_rend_ifp->overlay_set_fps(fps);
+}
+
+void gfx_overlay_set_virt_fps(double fps) {
+    if (gfx_rend_ifp->overlay_set_virt_fps)
+        gfx_rend_ifp->overlay_set_virt_fps(fps);
+}
+
+void gfx_overlay_show(bool do_show) {
+    if (gfx_rend_ifp->overlay_show)
+        gfx_rend_ifp->overlay_show(do_show);
 }

@@ -37,6 +37,8 @@
 #include "opengl_output.h"
 #include "opengl_target.h"
 #include "shader.h"
+#include "font/font.h"
+#include "overlay.h"
 
 #include "opengl_renderer.h"
 
@@ -195,7 +197,10 @@ struct rend_if const opengl_rend_if = {
     .video_get_fb = opengl_video_get_fb,
     .video_present = opengl_video_present,
     .video_new_framebuffer = opengl_video_new_framebuffer,
-    .video_toggle_filter = opengl_video_toggle_filter
+    .video_toggle_filter = opengl_video_toggle_filter,
+    .overlay_set_fps = gfx_gl_overlay_set_fps,
+    .overlay_set_virt_fps = gfx_gl_overlay_set_virt_fps,
+    .overlay_show = gfx_gl_overlay_show
 };
 
 static char const * const pvr2_ta_vert_glsl =
@@ -383,9 +388,13 @@ static void opengl_render_init(void) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
+
+    font_init();
 }
 
 static void opengl_render_cleanup(void) {
+    font_cleanup();
+
     glDeleteTextures(GFX_OBJ_COUNT, obj_tex_array);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);

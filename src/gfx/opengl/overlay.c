@@ -32,11 +32,11 @@
 static double framerate, virt_framerate;
 static bool not_hidden = true;
 
-void overlay_show(bool do_show) {
+void gfx_gl_overlay_show(bool do_show) {
     not_hidden = do_show;
 }
 
-void overlay_draw(unsigned screen_width, unsigned screen_height) {
+void gfx_gl_overlay_draw(unsigned screen_width, unsigned screen_height) {
     if (not_hidden) {
         char tmp[64];
         snprintf(tmp, sizeof(tmp), "%.2f / %.2f", framerate, virt_framerate);
@@ -78,10 +78,10 @@ void overlay_draw(unsigned screen_width, unsigned screen_height) {
     }
 }
 
-void overlay_set_fps(double fps) {
+void gfx_gl_overlay_set_fps(double fps) {
     framerate = fps;
 }
 
-void overlay_set_virt_fps(double fps) {
+void gfx_gl_overlay_set_virt_fps(double fps) {
     virt_framerate = fps;
 }

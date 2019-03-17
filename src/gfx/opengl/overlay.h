@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,11 +31,11 @@
  * this gets called by opengl_video_present to draw the overlay on top of the
  * screen.
  */
-void overlay_draw(unsigned screen_width, unsigned screen_height);
+void gfx_gl_overlay_draw(unsigned screen_width, unsigned screen_height);
 
-void overlay_set_fps(double fps);
-void overlay_set_virt_fps(double fps);
+void gfx_gl_overlay_set_fps(double fps);
+void gfx_gl_overlay_set_virt_fps(double fps);
 
-void overlay_show(bool do_show);
+void gfx_gl_overlay_show(bool do_show);
 
 #endif

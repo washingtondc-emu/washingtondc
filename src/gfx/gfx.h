@@ -125,4 +125,8 @@ void gfx_post_framebuffer(int obj_handle,
  */
 void gfx_toggle_output_filter(void);
 
+void gfx_overlay_set_fps(double fps);
+void gfx_overlay_set_virt_fps(double fps);
+void gfx_overlay_show(bool do_show);
+
 #endif
