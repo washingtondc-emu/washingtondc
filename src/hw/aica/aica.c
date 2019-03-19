@@ -707,7 +707,7 @@ static void aica_chan_playctrl_write(struct aica *aica, unsigned chan_no) {
 
     chan->fmt = (val >> 7) & 3;
     chan->addr_start &= ~(0xffff << 16);
-    chan->addr_start |= (chan->addr_start & 0x7f) << 16;
+    chan->addr_start |= (val & 0x7f) << 16;
     chan->addr_cur = chan->addr_start;
     chan->loop_en = (bool)(val & (1 << 9));
     LOG_DBG("AICA: addr_start is now 0x%08x\n", (unsigned)chan->addr_start);
