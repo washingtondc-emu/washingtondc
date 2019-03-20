@@ -45,7 +45,7 @@
  * TODO: I'm really only assuming this is 44.1KHz because that's the standard,
  * I don't actually know if this is correct.
  */
-#define AICA_SAMPLE_FREQ 44100
+#define AICA_SAMPLE_FREQ 22050
 
 /*
  * TODO: SCHED_FREQUENCY is not an integer multiple of AICA_SAMPLE_FREQ, so
@@ -311,6 +311,13 @@ static void aica_sys_write_double(addr32_t addr, double val, void *ctxt) {
 
 static void
 aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
+
+    /*
+     * TODO: this only really needs to be called for registers which may have
+     * changed due to time, such as PLAYPOS and the timer registers.
+     */
+    aica_sync(aica);
+
     uint32_t val;
     struct aica_chan *chan;
     switch (4 * idx) {
@@ -379,21 +386,18 @@ aica_sys_reg_pre_read(struct aica *aica, unsigned idx, bool from_sh4) {
 
     case AICA_TIMERA_CTRL:
         LOG_DBG("read AICA_TIMERA_CTRL\n");
-        aica_sync(aica);
         aica->sys_reg[AICA_TIMERA_CTRL / 4] =
             ((aica->timers[0].prescale_log & 0x7) << 8) |
             (aica->timers[0].counter & 0xf);
         break;
     case AICA_TIMERB_CTRL:
         LOG_DBG("read AICA_TIMERB_CTRL\n");
-        aica_sync(aica);
         aica->sys_reg[AICA_TIMERB_CTRL / 4] =
             ((aica->timers[1].prescale_log & 0x7) << 8) |
             (aica->timers[1].counter & 0xf);
         break;
     case AICA_TIMERC_CTRL:
         LOG_DBG("read AICA_TIMERC_CTRL\n");
-        aica_sync(aica);
         aica->sys_reg[AICA_TIMERC_CTRL / 4] =
             ((aica->timers[2].prescale_log & 0x7) << 8) |
             (aica->timers[2].counter & 0xf);
@@ -1499,7 +1503,7 @@ static void aica_process_sample(struct aica *aica) {
             chan->sample_pos += 8; // ?
         }
 
-        if (chan->sample_pos >= chan->loop_end) {
+        if (chan->sample_pos > chan->loop_end) {
             if (!chan->loop_end_signaled)
                 chan->loop_end_playstatus_flag = true;
 
