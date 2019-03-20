@@ -686,7 +686,8 @@ static void aica_do_keyon(struct aica *aica) {
             chan->playing = true;
             chan->step_no = 0;
             chan->sample_no = 0;
-            chan->sample_pos = chan->loop_start;
+            chan->sample_pos = 0/* chan->addr_start */;
+            chan->addr_cur = chan->addr_start;
             chan->atten_env_state = AICA_ENV_ATTACK;
             chan->atten = 0x280;
             chan->loop_end_playstatus_flag = false;
@@ -1485,26 +1486,31 @@ static void aica_process_sample(struct aica *aica) {
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate, chan->step_no);
 
-        chan->sample_pos += 8;
+        if (chan_no == 0 && chan->fmt == AICA_FMT_16_BIT_SIGNED) {
+            /* printf("loop goes from 0x%04x to 0x%04x\n", (unsigned)chan->loop_start, (unsigned)chan->loop_end); */
+            /* printf("sample_pos 0x%04x\n", (unsigned)chan->sample_pos); */
+
+            LOG_INFO("Loops are %senabled\n", chan->loop_en ? "" : "NOT ");
+            uint16_t sample = aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
+            sound_submit_sample(sample);
+            chan->addr_cur += 2;
+            chan->sample_pos++;
+        } else {
+            chan->sample_pos += 8; // ?
+        }
+
         if (chan->sample_pos >= chan->loop_end) {
             if (!chan->loop_end_signaled)
                 chan->loop_end_playstatus_flag = true;
 
             if (chan->loop_en) {
                 chan->sample_pos = chan->loop_start;
+                chan->addr_cur = chan->addr_start + chan->loop_start * 2;
             } else {
                 chan->sample_pos = chan->loop_end;
+                chan->addr_cur = chan->loop_end;
                 chan->loop_end_signaled = true;
             }
-        }
-
-        if (chan_no == 0 && chan->fmt == AICA_FMT_16_BIT_SIGNED) {
-            /* printf("loop goes from 0x%04x to 0x%04x\n", (unsigned)chan->loop_start, (unsigned)chan->loop_end); */
-            /* printf("sample_pos 0x%04x\n", (unsigned)chan->sample_pos); */
-
-            uint16_t sample = aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
-            sound_submit_sample(sample);
-            chan->addr_cur += 2;
         }
 
         chan->sample_no++;
