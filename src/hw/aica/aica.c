@@ -29,6 +29,7 @@
 
 #include <stdbool.h>
 #include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "sound/sound.h"
@@ -1478,8 +1479,19 @@ static unsigned const decay_step_delta[][4] = {
     { 8, 8, 8, 8 }  // 0x3c
 };
 
+static inline int16_t add_sample16(int16_t s1, int16_t s2) {
+    if ((s2 > 0) && (s1 > INT16_MAX - s2))
+        return INT16_MAX;
+    if ((s2 < 0) && (s1 < INT16_MIN - s2))
+        return INT16_MIN;
+    return s1 + s2;
+}
+
 static void aica_process_sample(struct aica *aica) {
     unsigned chan_no;
+
+    int16_t sample_total = 0;
+    bool gotem = false;
 
     for (chan_no = 0; chan_no < AICA_CHAN_COUNT; chan_no++) {
         struct aica_chan *chan = aica->channels + chan_no;
@@ -1490,13 +1502,16 @@ static void aica_process_sample(struct aica *aica) {
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate, chan->step_no);
 
-        if (chan_no == 0 && chan->fmt == AICA_FMT_16_BIT_SIGNED) {
+        if (chan->fmt == AICA_FMT_16_BIT_SIGNED) {
             /* printf("loop goes from 0x%04x to 0x%04x\n", (unsigned)chan->loop_start, (unsigned)chan->loop_end); */
             /* printf("sample_pos 0x%04x\n", (unsigned)chan->sample_pos); */
 
             LOG_INFO("Loops are %senabled\n", chan->loop_en ? "" : "NOT ");
-            uint16_t sample = aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
-            sound_submit_sample(sample);
+            int16_t sample = aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
+
+            sample_total = add_sample16(sample_total, sample);
+            gotem = true;
+
             chan->addr_cur += 2;
             chan->sample_pos++;
         } else {
@@ -1554,6 +1569,9 @@ static void aica_process_sample(struct aica *aica) {
             chan->step_no++;
         }
     }
+
+    if (gotem)
+        sound_submit_sample(sample_total);
 }
 
 static void raise_aica_sh4_int(struct aica *aica) {
