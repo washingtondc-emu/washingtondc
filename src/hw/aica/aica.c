@@ -784,7 +784,11 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         chan->fns = tmp & BIT_RANGE(0, 10);
 
         // octage is a 4-bit two's complement value that ranges from -8 to +7
-        chan->octave = 0xf & ((~((tmp & BIT_RANGE(11, 14)) >> 11)) + 1);
+        uint32_t oct32 = (tmp & BIT_RANGE(11, 14)) >> 11;
+        if (oct32 & (1 << 3))
+            chan->octave = oct32 | ~BIT_RANGE(0, 3);
+        else
+            chan->octave = oct32;
         break;
     default:
         memcpy(&tmp, src, sizeof(tmp));
