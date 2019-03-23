@@ -796,6 +796,15 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
             chan->octave = oct32 | ~BIT_RANGE(0, 3);
         else
             chan->octave = oct32;
+
+        double sample_rate = 1.0 + chan->fns / (double)(1 << 11);
+        if (chan->octave > 0)
+            sample_rate *= 1 << chan->octave;
+        else
+            sample_rate /= 1 << -chan->octave;
+
+        LOG_INFO("AICA channel %u sample_rate is %f oct %d fns 0x%04x\n",
+                 chan_no, sample_rate, chan->octave, chan->fns);
         break;
     default:
         memcpy(&tmp, src, sizeof(tmp));
@@ -1491,7 +1500,6 @@ static void aica_process_sample(struct aica *aica) {
     unsigned chan_no;
 
     int16_t sample_total = 0;
-    bool gotem = false;
 
     for (chan_no = 0; chan_no < AICA_CHAN_COUNT; chan_no++) {
         struct aica_chan *chan = aica->channels + chan_no;
@@ -1502,7 +1510,7 @@ static void aica_process_sample(struct aica *aica) {
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate, chan->step_no);
 
-        if (chan->fmt == AICA_FMT_16_BIT_SIGNED) {
+        /* if (true || chan->fmt == AICA_FMT_16_BIT_SIGNED) */ {
             /* printf("loop goes from 0x%04x to 0x%04x\n", (unsigned)chan->loop_start, (unsigned)chan->loop_end); */
             /* printf("sample_pos 0x%04x\n", (unsigned)chan->sample_pos); */
 
@@ -1510,13 +1518,12 @@ static void aica_process_sample(struct aica *aica) {
             int16_t sample = aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
 
             sample_total = add_sample16(sample_total, sample);
-            gotem = true;
 
             chan->addr_cur += 2;
             chan->sample_pos++;
-        } else {
-            chan->sample_pos += 8; // ?
-        }
+        } /* else { */
+        /*     chan->sample_pos += 8; // ? */
+        /* } */
 
         if (chan->sample_pos > chan->loop_end) {
             if (!chan->loop_end_signaled)
@@ -1570,8 +1577,7 @@ static void aica_process_sample(struct aica *aica) {
         }
     }
 
-    if (gotem)
-        sound_submit_sample(sample_total);
+    sound_submit_sample(sample_total);
 }
 
 static void raise_aica_sh4_int(struct aica *aica) {
