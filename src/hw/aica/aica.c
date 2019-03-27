@@ -46,7 +46,7 @@
  * TODO: I'm really only assuming this is 44.1KHz because that's the standard,
  * I don't actually know if this is correct.
  */
-#define AICA_SAMPLE_FREQ 22050
+#define AICA_SAMPLE_FREQ 44100
 
 /*
  * TODO: SCHED_FREQUENCY is not an integer multiple of AICA_SAMPLE_FREQ, so
@@ -692,6 +692,7 @@ static void aica_do_keyon(struct aica *aica) {
             chan->step_no = 0;
             chan->sample_no = 0;
             chan->sample_pos = 0/* chan->addr_start */;
+            chan->sample_partial = 0.0;
             chan->addr_cur = chan->addr_start;
             chan->atten_env_state = AICA_ENV_ATTACK;
             chan->atten = 0x280;
@@ -1507,23 +1508,50 @@ static void aica_process_sample(struct aica *aica) {
         if (!chan->playing)
             continue;
 
+        double sample_rate = 1.0 + chan->fns / (double)(1 << 11);
+        if (chan->octave > 0)
+            sample_rate *= 1 << chan->octave;
+        else
+            sample_rate /= 1 << -chan->octave;
+
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate, chan->step_no);
 
-        /* if (true || chan->fmt == AICA_FMT_16_BIT_SIGNED) */ {
+        bool did_increment = false;
+        // TODO: sample_rate > 1.0
+        if (chan->fmt == AICA_FMT_16_BIT_SIGNED && sample_rate <= 1.0) {
             /* printf("loop goes from 0x%04x to 0x%04x\n", (unsigned)chan->loop_start, (unsigned)chan->loop_end); */
             /* printf("sample_pos 0x%04x\n", (unsigned)chan->sample_pos); */
 
             LOG_INFO("Loops are %senabled\n", chan->loop_en ? "" : "NOT ");
             int16_t sample = aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
 
+            // TODO: linear interpolation
             sample_total = add_sample16(sample_total, sample);
 
-            chan->addr_cur += 2;
-            chan->sample_pos++;
-        } /* else { */
-        /*     chan->sample_pos += 8; // ? */
-        /* } */
+            chan->sample_partial += sample_rate;
+            if (chan->sample_partial >= 1.0) {
+                chan->sample_partial = 0.0;
+                chan->addr_cur += 2; //whatever
+                chan->sample_pos++;
+                did_increment = true;
+            }
+            /* chan->addr_cur += 2; */
+            /* chan->sample_pos++; */
+        } else {
+            // TODO: other formats
+            if (sample_rate <= 1.0)
+                chan->sample_partial += sample_rate;
+            else
+                chan->sample_partial += 1.0;
+
+            if (chan->sample_partial >= 1.0) {
+                chan->sample_partial = 0.0;
+                chan->addr_cur += 2; //whatever
+                chan->sample_pos++;
+                did_increment = true;
+            }
+        }
 
         if (chan->sample_pos > chan->loop_end) {
             if (!chan->loop_end_signaled)
@@ -1539,41 +1567,43 @@ static void aica_process_sample(struct aica *aica) {
             }
         }
 
-        chan->sample_no++;
-        if (samples_per_step && chan->sample_no >= samples_per_step) {
-            unsigned step_mod = chan->step_no % 4;
-            unsigned rate_idx;
-            if (effective_rate >= 0x30 && effective_rate <= 0x3c)
-                rate_idx = effective_rate - 0x30;
-            else if (effective_rate < 0x30)
-                rate_idx = 0;
-            else
-                rate_idx = 0x3c - 0x30;
+        if (did_increment) {
+            chan->sample_no++;
+            if (samples_per_step && chan->sample_no >= samples_per_step) {
+                unsigned step_mod = chan->step_no % 4;
+                unsigned rate_idx;
+                if (effective_rate >= 0x30 && effective_rate <= 0x3c)
+                    rate_idx = effective_rate - 0x30;
+                else if (effective_rate < 0x30)
+                    rate_idx = 0;
+                else
+                    rate_idx = 0x3c - 0x30;
 
-            if (chan->atten_env_state == AICA_ENV_ATTACK) {
-                chan->atten -=
-                    (chan->atten >> attack_step_delta[rate_idx][step_mod]) + 1;
-                if (!chan->atten) {
-                    chan->atten_env_state = AICA_ENV_DECAY;
-                }
-            } else {
-                chan->atten += decay_step_delta[rate_idx][step_mod];
-
-                if (chan->atten >= 0x3bf)
-                    chan->atten = 0x1fff;
-
-                if (chan->atten_env_state == AICA_ENV_DECAY) {
-                    if (chan->atten >= chan->decay_level)
-                        chan->atten_env_state = AICA_ENV_SUSTAIN;
+                if (chan->atten_env_state == AICA_ENV_ATTACK) {
+                    chan->atten -=
+                        (chan->atten >> attack_step_delta[rate_idx][step_mod]) + 1;
+                    if (!chan->atten) {
+                        chan->atten_env_state = AICA_ENV_DECAY;
+                    }
                 } else {
-                    // sustain or release
-                    if (chan->atten >= 0x3bf)
-                        chan->playing = false;
-                }
-            }
+                    chan->atten += decay_step_delta[rate_idx][step_mod];
 
-            chan->sample_no = 0;
-            chan->step_no++;
+                    if (chan->atten >= 0x3bf)
+                        chan->atten = 0x1fff;
+
+                    if (chan->atten_env_state == AICA_ENV_DECAY) {
+                        if (chan->atten >= chan->decay_level)
+                            chan->atten_env_state = AICA_ENV_SUSTAIN;
+                    } else {
+                        // sustain or release
+                        if (chan->atten >= 0x3bf)
+                            chan->playing = false;
+                    }
+                }
+
+                chan->sample_no = 0;
+                chan->step_no++;
+            }
         }
     }
 

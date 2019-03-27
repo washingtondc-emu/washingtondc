@@ -108,6 +108,7 @@ struct aica_chan {
     unsigned step_no;
     unsigned sample_no;
     unsigned sample_pos;
+    double sample_partial;
 
     // from the AmpEnv1 register
     unsigned attack_rate, decay_rate, sustain_rate;
