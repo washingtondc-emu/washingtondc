@@ -58,6 +58,8 @@ void error_raise(enum error_type tp) {
     error_print();
     fflush(stdout);
     fflush(stderr);
+    log_flush();
+    log_cleanup();
     abort(); // abort so we get a core-dump
 }
 

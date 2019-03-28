@@ -57,6 +57,7 @@ static void print_usage(char const *cmd) {
             "direct boot)\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
+            "\t-l\t\tdump logs to stdout\n"
             "\t-m\t\tmount the given image in the GD-ROM drive\n"
             "\t-n\t\tdon't inline memory reads/writes into the jit\n"
             "\t-p\t\tdisable the dynarec and enable the interpreter instead\n"
@@ -81,8 +82,9 @@ int main(int argc, char **argv) {
     struct mount_meta content_meta; // only valid if path_gdi is non-null
     bool enable_jit = false, enable_native_jit = false,
         enable_interpreter = false, inline_mem = true;
+    bool log_stdout = false;
 
-    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxpnw")) != -1) {
+    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxpnwl")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -131,8 +133,13 @@ int main(int argc, char **argv) {
         case 'n':
             inline_mem = false;
             break;
+        case 'l':
+            log_stdout = true;
+            break;
         }
     }
+
+    log_init(log_stdout);
 
     argv += optind;
     argc -= optind;
@@ -288,6 +295,8 @@ int main(int argc, char **argv) {
 
     if (mount_check())
         mount_eject();
+
+    log_cleanup();
 
     exit(0);
 }
