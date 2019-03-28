@@ -27,10 +27,12 @@
 
 static FILE *logfile;
 static bool also_stdout;
+static bool verbose_mode;
 
-void log_init(bool to_stdout) {
+void log_init(bool to_stdout, bool verbose) {
     logfile = fopen("wash.log", "w");
     also_stdout = to_stdout;
+    verbose_mode = verbose;
 }
 
 void log_cleanup(void) {
@@ -43,15 +45,17 @@ void log_flush(void) {
 }
 
 void log_do_write(enum log_severity lvl, char const *fmt, ...) {
-    va_list args;
+    if (verbose_mode || lvl >= log_severity_warn) {
+        va_list args;
 
-    va_start(args, fmt);
-    vfprintf(logfile, fmt, args);
-    va_end(args);
-
-    if (also_stdout || lvl >= log_severity_error) {
         va_start(args, fmt);
-        vprintf(fmt, args);
+        vfprintf(logfile, fmt, args);
         va_end(args);
+
+        if (also_stdout || lvl >= log_severity_error) {
+            va_start(args, fmt);
+            vprintf(fmt, args);
+            va_end(args);
+        }
     }
 }

@@ -62,6 +62,7 @@ static void print_usage(char const *cmd) {
             "\t-n\t\tdon't inline memory reads/writes into the jit\n"
             "\t-p\t\tdisable the dynarec and enable the interpreter instead\n"
             "\t-j\t\tenable dynamic recompiler (as opposed to interpreter)\n"
+            "\t-v\t\tenable verbose logging\n"
             "\t-x\t\tenable native x86_64 dynamic recompiler backend "
             "(default)\n");
 }
@@ -82,9 +83,9 @@ int main(int argc, char **argv) {
     struct mount_meta content_meta; // only valid if path_gdi is non-null
     bool enable_jit = false, enable_native_jit = false,
         enable_interpreter = false, inline_mem = true;
-    bool log_stdout = false;
+    bool log_stdout = false, log_verbose = false;
 
-    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxpnwl")) != -1) {
+    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxpnwlv")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
@@ -136,10 +137,13 @@ int main(int argc, char **argv) {
         case 'l':
             log_stdout = true;
             break;
+        case 'v':
+            log_verbose = true;
+            break;
         }
     }
 
-    log_init(log_stdout);
+    log_init(log_stdout, log_verbose);
 
     argv += optind;
     argc -= optind;

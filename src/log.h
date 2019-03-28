@@ -66,7 +66,7 @@ enum log_severity {
 
 void log_do_write(enum log_severity lvl, char const *fmt, ...);
 
-void log_init(bool to_stdout);
+void log_init(bool to_stdout, bool verbose);
 void log_flush(void);
 void log_cleanup(void);
 
