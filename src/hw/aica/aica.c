@@ -61,6 +61,17 @@
 #define AICA_CHAN_AMP_ENV1 0x0010
 #define AICA_CHAN_AMP_ENV2 0x0014
 #define AICA_CHAN_SAMPLE_RATE_PITCH 0x0018
+#define AICA_CHAN_LFO_CTRL 0x001c
+#define AICA_CHAN_DSP_SEND 0x0020
+#define AICA_CHAN_DIR_PAN_VOL_SEND 0x0024
+#define AICA_CHAN_LPF1_VOL 0x0028
+#define AICA_CHAN_LPF2 0x002c
+#define AICA_CHAN_LPF3 0x0030
+#define AICA_CHAN_LPF4 0x0034
+#define AICA_CHAN_LPF5 0x0038
+#define AICA_CHAN_LPF6 0x003c
+#define AICA_CHAN_LPF7 0x0040
+#define AICA_CHAN_LPF8 0x0044
 
 #define AICA_MASTER_VOLUME 0x2800
 
@@ -152,11 +163,15 @@
  */
 #define AICA_SH4_INT_DELAY 0
 
+static DEF_ERROR_INT_ATTR(channel)
+
 static void raise_aica_sh4_int(struct aica *aica);
 static void post_delay_raise_aica_sh4_int(struct SchedEvent *event);
 
 // If this is defined, WashingtonDC will panic on unrecognized AICA addresses.
 #define AICA_PEDANTIC
+
+static char const *aica_chan_reg_name(int idx);
 
 static void aica_update_interrupts(struct aica *aica);
 
@@ -630,8 +645,12 @@ static void aica_sys_channel_read(struct aica *aica, void *dst,
 
     struct aica_chan *chan = aica->channels + chan_no;
     uint32_t tmp;
+    unsigned idx = chan_reg / 4;
+    unsigned reg_no = 4 * idx;
 
-    switch (4 * (chan_reg / 4)) {
+    LOG_INFO("Reading from AICA channel %u register \"%s\"\n",
+             chan_no, aica_chan_reg_name(reg_no));
+    switch (reg_no) {
     case AICA_CHAN_PLAY_CTRL:
         memcpy(&tmp, chan->raw + AICA_CHAN_PLAY_CTRL, sizeof(tmp));
         tmp &= ~(1 << 15);
@@ -641,8 +660,27 @@ static void aica_sys_channel_read(struct aica *aica, void *dst,
         tmp = chan->addr_start & 0xffff;
         memcpy(chan->raw + AICA_CHAN_SAMPLE_ADDR_LOW, &tmp, sizeof(tmp));
         break;
+    case AICA_CHAN_LOOP_START:
+    case AICA_CHAN_LOOP_END:
+    case AICA_CHAN_SAMPLE_RATE_PITCH:
+    case AICA_CHAN_DSP_SEND:
+    case AICA_CHAN_LFO_CTRL:
+    case AICA_CHAN_DIR_PAN_VOL_SEND:
+    case AICA_CHAN_LPF1_VOL:
+    case AICA_CHAN_LPF2:
+    case AICA_CHAN_LPF3:
+    case AICA_CHAN_LPF4:
+    case AICA_CHAN_LPF5:
+    case AICA_CHAN_LPF6:
+    case AICA_CHAN_LPF7:
+    case AICA_CHAN_LPF8:
+        break;
     default:
-        LOG_INFO("Reading from AICA register 0x%08x\n", (unsigned)chan_reg/4);
+#ifdef AICA_PEDANTIC
+        error_set_channel(chan_no);
+        error_set_address(reg_no);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
     }
 
     memcpy(dst, chan->raw + chan_reg, len);
@@ -749,6 +787,10 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
     memcpy(chan->raw + chan_reg, src, len);
     unsigned reg_no = 4 * (chan_reg / 4);
 
+    memcpy(&tmp, src, sizeof(tmp));
+    LOG_INFO("AICA: write 0x%08x to channel %u register \"%s\"\n",
+             (int)tmp, chan_no, aica_chan_reg_name(reg_no));
+
     switch (reg_no) {
     case AICA_CHAN_PLAY_CTRL:
         aica_chan_playctrl_write(aica, chan_no);
@@ -807,10 +849,34 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         LOG_INFO("AICA channel %u sample_rate is %f oct %d fns 0x%04x\n",
                  chan_no, sample_rate, chan->octave, chan->fns);
         break;
+    case AICA_CHAN_LFO_CTRL:
+        memcpy(&tmp, src, sizeof(tmp));
+        if (tmp & (1 << 15))
+            LOG_WARN("AICA: low-frequency oscillator is not implemented!\n");
+        break;
+    case AICA_CHAN_DSP_SEND:
+    case AICA_CHAN_DIR_PAN_VOL_SEND:
+    case AICA_CHAN_LPF1_VOL:
+    case AICA_CHAN_LPF2:
+    case AICA_CHAN_LPF3:
+    case AICA_CHAN_LPF4:
+    case AICA_CHAN_LPF5:
+    case AICA_CHAN_LPF6:
+    case AICA_CHAN_LPF7:
+    case AICA_CHAN_LPF8:
+        break;
     default:
         memcpy(&tmp, src, sizeof(tmp));
-        LOG_DBG("AICA: write to addr 0x%08x chan %u offset %u val 0x%08x\n",
+        LOG_INFO("AICA: write to addr 0x%08x chan %u offset %u val 0x%08x\n",
                 (unsigned)addr, chan_no, chan_reg, (unsigned)tmp);
+#ifdef AICA_PEDANTIC
+        if (tmp) {
+            error_set_channel(chan_no);
+            error_set_address(reg_no);
+            error_set_value(tmp);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+#endif
     }
 }
 
@@ -1623,5 +1689,34 @@ static void post_delay_raise_aica_sh4_int(struct SchedEvent *event) {
         aica->aica_sh4_raise_event.when =
             clock_cycle_stamp(aica->clk) + AICA_SH4_INT_DELAY;
         sched_event(aica->sh4_clk, &aica->aica_sh4_raise_event);
+    }
+}
+
+#define AICA_REG_NAME_CASE(reg) case (reg): return #reg
+static char const *aica_chan_reg_name(int idx) {
+    static char tmp[32];
+    switch (idx) {
+        AICA_REG_NAME_CASE(AICA_CHAN_PLAY_CTRL);
+        AICA_REG_NAME_CASE(AICA_CHAN_SAMPLE_ADDR_LOW);
+        AICA_REG_NAME_CASE(AICA_CHAN_LOOP_START);
+        AICA_REG_NAME_CASE(AICA_CHAN_LOOP_END);
+        AICA_REG_NAME_CASE(AICA_CHAN_AMP_ENV1);
+        AICA_REG_NAME_CASE(AICA_CHAN_AMP_ENV2);
+        AICA_REG_NAME_CASE(AICA_CHAN_SAMPLE_RATE_PITCH);
+        AICA_REG_NAME_CASE(AICA_CHAN_LFO_CTRL);
+        AICA_REG_NAME_CASE(AICA_CHAN_DSP_SEND);
+        AICA_REG_NAME_CASE(AICA_CHAN_DIR_PAN_VOL_SEND);
+        AICA_REG_NAME_CASE(AICA_CHAN_LPF1_VOL);
+        AICA_REG_NAME_CASE(AICA_CHAN_LPF2);
+        AICA_REG_NAME_CASE(AICA_CHAN_LPF3);
+        AICA_REG_NAME_CASE(AICA_CHAN_LPF4);
+        AICA_REG_NAME_CASE(AICA_CHAN_LPF5);
+        AICA_REG_NAME_CASE(AICA_CHAN_LPF6);
+        AICA_REG_NAME_CASE(AICA_CHAN_LPF7);
+        AICA_REG_NAME_CASE(AICA_CHAN_LPF8);
+    default:
+        snprintf(tmp, sizeof(tmp), "unknown channel register 0x%04x", idx);
+        tmp[31] = '\0';
+        return tmp;
     }
 }
