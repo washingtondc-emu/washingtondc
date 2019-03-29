@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,38 +20,32 @@
  *
  ******************************************************************************/
 
-#include <stdatomic.h>
 #include <stdbool.h>
 #include <string.h>
 
 #include "config.h"
 
 #define CONFIG_DEF_BOOL(prop, defval)                                   \
-    static atomic_bool config_ ## prop = ATOMIC_VAR_INIT(defval);       \
+    static bool config_ ## prop = defval;                               \
     bool config_get_ ## prop(void) {                                    \
-        return atomic_load_explicit(&config_ ## prop,                   \
-                                    memory_order_relaxed);              \
+        return config_##prop;                                           \
     }                                                                   \
     void config_set_ ## prop(bool new_val) {                            \
-        atomic_store_explicit(&config_ ## prop, new_val,                \
-                              memory_order_relaxed);                    \
+        config_##prop = new_val;                                        \
     }
 
 #define CONFIG_DEF_INT(prop, defval)                                 \
-    static atomic_int config_ ## prop = ATOMIC_VAR_INIT(defval);     \
+    static int config_ ## prop = defval;                             \
     int config_get_ ## prop(void) {                                  \
-        return atomic_load_explicit(&config_ ## prop,                \
-                                    memory_order_relaxed);           \
+        return config_ ## prop;                                      \
     }                                                                \
     void config_set_ ## prop(int new_val) {                          \
-        atomic_store_explicit(&config_ ## prop, new_val,             \
-                              memory_order_relaxed);                 \
+        config_ ## prop = new_val;                                   \
     }
 
 #define CONFIG_DEF_STRING(prop)                                         \
     static char config_ ##prop[CONFIG_STR_LEN];                         \
     char const *config_get_ ## prop(void) {                             \
-        atomic_thread_fence(memory_order_acquire);                      \
         return config_ ##prop;                                          \
     }                                                                   \
     void config_set_ ## prop(char const *new_val) {                     \
@@ -62,7 +56,6 @@
         } else {                                                        \
             memset(config_ ## prop, 0, sizeof(config_ ## prop));        \
         }                                                               \
-        atomic_thread_fence(memory_order_release);                      \
     }
 
 #ifdef ENABLE_DEBUGGER
