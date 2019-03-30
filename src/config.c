@@ -88,3 +88,6 @@ CONFIG_DEF_BOOL(native_jit, false);
 #endif
 
 CONFIG_DEF_BOOL(inline_mem, true);
+
+CONFIG_DEF_BOOL(log_verbose, false);
+CONFIG_DEF_BOOL(log_stdout, false);

@@ -98,4 +98,7 @@ CONFIG_DECL_BOOL(native_jit);
  */
 CONFIG_DECL_BOOL(inline_mem);
 
+CONFIG_DECL_BOOL(log_stdout);
+CONFIG_DECL_BOOL(log_verbose);
+
 #endif

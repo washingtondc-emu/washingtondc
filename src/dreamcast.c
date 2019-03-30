@@ -70,6 +70,9 @@
 #include "hw/arm7/arm7.h"
 #include "title.h"
 #include "config_file.h"
+#include "mount.h"
+#include "gdi.h"
+#include "sound/sound.h"
 
 #ifdef USE_LIBEVENT
 #include "io/io_thread.h"
@@ -204,7 +207,40 @@ static void suspend_loop(void);
 static void periodic_event_handler(struct SchedEvent *event);
 static struct SchedEvent periodic_event;
 
-void dreamcast_init(bool cmd_session) {
+void dreamcast_init(char const *gdi_path, bool cmd_session) {
+    int win_width, win_height;
+
+    log_init(config_get_log_stdout(), config_get_log_verbose());
+
+    char const *title_content = NULL;
+    struct mount_meta content_meta; // only valid if gdi_path is non-null
+
+    if (gdi_path) {
+        mount_gdi(gdi_path);
+        if (mount_get_meta(&content_meta) == 0) {
+            // dump meta to stdout and set the window title to the game title
+            title_content = content_meta.title;
+
+            LOG_INFO("GDI image %s mounted:\n", gdi_path);
+            LOG_INFO("\thardware: %s\n", content_meta.hardware);
+            LOG_INFO("\tmaker: %s\n", content_meta.maker);
+            LOG_INFO("\tdevice info: %s\n", content_meta.dev_info);
+            LOG_INFO("\tregion: %s\n", content_meta.region);
+            LOG_INFO("\tperipheral support: %s\n", content_meta.periph_support);
+            LOG_INFO("\tproduct id: %s\n", content_meta.product_id);
+            LOG_INFO("\tproduct version: %s\n", content_meta.product_version);
+            LOG_INFO("\trelease date: %s\n", content_meta.rel_date);
+            LOG_INFO("\tboot file: %s\n", content_meta.boot_file);
+            LOG_INFO("\tcompany: %s\n", content_meta.company);
+            LOG_INFO("\ttitle: %s\n", content_meta.title);
+        }
+    }
+
+    if (!(config_get_boot_mode() == DC_BOOT_DIRECT || gdi_path))
+        title_content = "firmware";
+
+    title_set_content(title_content);
+
 #ifndef ENABLE_TCP_CMD
     if (cmd_session) {
         cmd_session = false;
@@ -343,7 +379,7 @@ void dreamcast_init(bool cmd_session) {
 #ifdef ENABLE_DEBUGGER
     if (config_get_dbg_enable()) {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
-        goto on_init_complete;
+        goto do_init_win_gfx;
     }
 #endif
 
@@ -357,13 +393,35 @@ void dreamcast_init(bool cmd_session) {
     }
 
 #ifdef ENABLE_DEBUGGER
-on_init_complete:
+do_init_win_gfx:
 #endif
+    if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0)
+        win_width = 640;
+    if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0)
+        win_height = 480;
+
+    win_init(win_width, win_height);
+    gfx_init(win_width, win_height);
+
+    sound_init();
+
+#ifdef USE_LIBEVENT
+    io_thread_launch();
+#endif
+
     init_complete = true;
 }
 
 void dreamcast_cleanup() {
     init_complete = false;
+
+    log_cleanup();
+
+    sound_cleanup();
+    gfx_cleanup();
+
+    LOG_INFO("killing the window...\n");
+    win_cleanup();
 
 #ifdef ENABLE_JIT_X86_64
     exec_mem_free(native_dispatch_entry);
@@ -395,6 +453,15 @@ void dreamcast_cleanup() {
     flash_mem_cleanup(&flash_mem);
     memory_cleanup(&dc_mem);
     cfg_cleanup();
+
+#ifdef USE_LIBEVENT
+    LOG_INFO("Waiting for io_thread to exit...\n");
+    io_thread_join();
+    LOG_INFO("io_thread has exited.\n");
+#endif
+
+    if (mount_check())
+        mount_eject();
 }
 
 /*
@@ -545,8 +612,6 @@ void dreamcast_run() {
         LOG_INFO("program execution ended for unknown reasons\n");
         break;
     }
-
-    dreamcast_cleanup();
 }
 
 static bool run_to_next_arm7_event(void *ctxt) {

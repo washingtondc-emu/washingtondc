@@ -41,9 +41,15 @@ extern struct dc_clock sh4_clock;
 #define ADDR_SYSCALLS      0x8c000000
 #define LEN_SYSCALLS           0x8000
 
-void dreamcast_init(bool cmd_session);
+/*
+ * gdi_path is a path to the GDI image to mount, or NULL to boot with nothing
+ * in the disc drive.
+ * win_width and win_height are window dimensions
+ * cmd_session should be true if the remote command prompt is enabled.
+ */
+void dreamcast_init(char const *gdi_path, bool cmd_session);
 
-/* void dreamcast_cleanup(); */
+void dreamcast_cleanup();
 
 void dreamcast_run();
 

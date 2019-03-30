@@ -25,22 +25,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <libgen.h>
 
 #include "dreamcast.h"
-#include "gfx/gfx.h"
-#include "glfw/window.h"
-#include "mount.h"
-#include "gdi.h"
 #include "config.h"
-#include "log.h"
-#include "title.h"
-#include "config_file.h"
-#include "sound/sound.h"
-
-#ifdef USE_LIBEVENT
-#include "io/io_thread.h"
-#endif
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
@@ -80,8 +67,6 @@ int main(int argc, char **argv) {
     char *path_gdi = NULL;
     bool enable_serial = false;
     bool enable_cmd_tcp = false;
-    char const *title_content = NULL;
-    struct mount_meta content_meta; // only valid if path_gdi is non-null
     bool enable_jit = false, enable_native_jit = false,
         enable_interpreter = false, inline_mem = true;
     bool log_stdout = false, log_verbose = false;
@@ -144,20 +129,21 @@ int main(int argc, char **argv) {
         }
     }
 
-    log_init(log_stdout, log_verbose);
-
     argv += optind;
     argc -= optind;
 
+    config_set_log_stdout(log_stdout);
+    config_set_log_verbose(log_verbose);
+
     if (enable_debugger && enable_washdbg) {
-        LOG_ERROR("You can't enable WashDbg and GDB at the same time\n");
+        fprintf(stderr, "You can't enable WashDbg and GDB at the same time\n");
         exit(1);
     }
 
     if (enable_debugger || enable_washdbg) {
         if (enable_jit || enable_native_jit) {
-            LOG_WARN("Debugger enabled - this overrides the jit compiler "
-                     "and sets WashingtonDC to interpreter mode\n");
+            fprintf(stderr, "Debugger enabled - this overrides the jit "
+                    "compiler and sets WashingtonDC to interpreter mode\n");
             enable_jit = false;
             enable_native_jit = false;
         }
@@ -167,8 +153,8 @@ int main(int argc, char **argv) {
         config_set_dbg_enable(true);
         config_set_washdbg_enable(enable_washdbg);
 #else
-        LOG_ERROR("ERROR: Unable to enable remote gdb stub.\n"
-                  "Please rebuild with -DENABLE_DEBUGGER=On\n");
+        fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
+                "Please rebuild with -DENABLE_DEBUGGER=On\n");
         exit(1);
 #endif
     } else {
@@ -178,8 +164,8 @@ int main(int argc, char **argv) {
     }
 
     if (enable_interpreter && (enable_jit || enable_native_jit)) {
-        LOG_ERROR("ERROR: You can\'t use the interpreter and the JIT at the "
-                  "same time, silly!\n");
+        fprintf(stderr, "ERROR: You can\'t use the interpreter and the JIT at "
+                "the same time, silly!\n");
         exit(1);
     }
 
@@ -200,44 +186,24 @@ int main(int argc, char **argv) {
     config_set_native_jit(enable_native_jit);
 #else
     if (enable_native_jit) {
-        LOG_ERROR("ERROR: the native x86_64 jit backend was not enabled for "
-                  "this build configuration.\n"
-                  "Rebuild WashingtonDC with -DENABLE_JIT_X86_64=On to enable "
-                  "the native x86_64 jit backend.\n");
+        fprintf(stderr, "ERROR: the native x86_64 jit backend was not enabled "
+                "for this build configuration.\n"
+                "Rebuild WashingtonDC with -DENABLE_JIT_X86_64=On to enable "
+                "the native x86_64 jit backend.\n");
         exit(1);
     }
 #endif
 
-    if (path_gdi) {
-        mount_gdi(path_gdi);
-        if (mount_get_meta(&content_meta) == 0) {
-            // dump meta to stdout and set the window title to the game title
-            title_content = content_meta.title;
-
-            LOG_INFO("GDI image %s mounted:\n", path_gdi);
-            LOG_INFO("\thardware: %s\n", content_meta.hardware);
-            LOG_INFO("\tmaker: %s\n", content_meta.maker);
-            LOG_INFO("\tdevice info: %s\n", content_meta.dev_info);
-            LOG_INFO("\tregion: %s\n", content_meta.region);
-            LOG_INFO("\tperipheral support: %s\n", content_meta.periph_support);
-            LOG_INFO("\tproduct id: %s\n", content_meta.product_id);
-            LOG_INFO("\tproduct version: %s\n", content_meta.product_version);
-            LOG_INFO("\trelease date: %s\n", content_meta.rel_date);
-            LOG_INFO("\tboot file: %s\n", content_meta.boot_file);
-            LOG_INFO("\tcompany: %s\n", content_meta.company);
-            LOG_INFO("\ttitle: %s\n", content_meta.title);
-        }
-    }
-
     if (skip_ip_bin) {
         if (!path_syscalls_bin) {
-            LOG_ERROR("Error: cannot direct-boot without a system call "
-                      "table (-s flag).\n");
+            fprintf(stderr, "Error: cannot direct-boot without a system call "
+                    "table (-s flag).\n");
             exit(1);
         }
 
         if (!path_1st_read_bin) {
-            LOG_ERROR("Error: cannot direct-boot without a 1ST-READ.BIN\n");
+            fprintf(stderr, "Error: cannot direct-boot without a "
+                    "1ST-READ.BIN\n");
             exit(1);
         }
 
@@ -247,8 +213,8 @@ int main(int argc, char **argv) {
         config_set_syscall_path(path_syscalls_bin);
     } else if (boot_direct) {
         if (!path_syscalls_bin) {
-            LOG_ERROR("Error: cannot direct-boot without a system call "
-                      "table (-s flag).\n");
+            fprintf(stderr, "Error: cannot direct-boot without a system call "
+                    "table (-s flag).\n");
             exit(1);
         }
 
@@ -259,52 +225,17 @@ int main(int argc, char **argv) {
         config_set_boot_mode(DC_BOOT_FIRMWARE);
     }
 
-    if (!(boot_direct || path_gdi))
-        title_content = "firmware";
-
     config_set_dc_bios_path(bios_path);
     config_set_dc_flash_path(flash_path);
 
-    dreamcast_init(enable_cmd_tcp);
-
-    title_set_content(title_content);
-
-    int win_width, win_height;
-    if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0)
-        win_width = 640;
-    if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0)
-        win_height = 480;
-
-    win_init(win_width, win_height);
-    gfx_init(win_width, win_height);
-
-    sound_init();
-
-#ifdef USE_LIBEVENT
-    io_thread_launch();
-#endif
+    dreamcast_init(path_gdi, enable_cmd_tcp);
 
     config_set_enable_cmd_tcp(enable_cmd_tcp);
     config_set_ser_srv_enable(enable_serial);
 
     dreamcast_run();
 
-    sound_cleanup();
-    gfx_cleanup();
-
-    LOG_INFO("killing the window...\n");
-    win_cleanup();
-
-#ifdef USE_LIBEVENT
-    LOG_INFO("Waiting for io_thread to exit...\n");
-    io_thread_join();
-    LOG_INFO("io_thread has exited.\n");
-#endif
-
-    if (mount_check())
-        mount_eject();
-
-    log_cleanup();
+    dreamcast_cleanup();
 
     exit(0);
 }
