@@ -26,8 +26,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "dreamcast.h"
-#include "config.h"
+#include "washdc.h"
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
@@ -70,6 +69,7 @@ int main(int argc, char **argv) {
     bool enable_jit = false, enable_native_jit = false,
         enable_interpreter = false, inline_mem = true;
     bool log_stdout = false, log_verbose = false;
+    struct washdc_launch_settings settings = { };
 
     while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxpnwlv")) != -1) {
         switch (opt) {
@@ -132,8 +132,8 @@ int main(int argc, char **argv) {
     argv += optind;
     argc -= optind;
 
-    config_set_log_stdout(log_stdout);
-    config_set_log_verbose(log_verbose);
+    settings.log_to_stdout = log_stdout;
+    settings.log_verbose = log_verbose;
 
     if (enable_debugger && enable_washdbg) {
         fprintf(stderr, "You can't enable WashDbg and GDB at the same time\n");
@@ -150,8 +150,8 @@ int main(int argc, char **argv) {
         enable_interpreter = true;
 
 #ifdef ENABLE_DEBUGGER
-        config_set_dbg_enable(true);
-        config_set_washdbg_enable(enable_washdbg);
+        settings.dbg_enable = true;
+        settings.washdbg_enable = enable_washdbg;
 #else
         fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
                 "Please rebuild with -DENABLE_DEBUGGER=On\n");
@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
 #endif
     } else {
 #ifdef ENABLE_DEBUGGER
-        config_set_dbg_enable(false);
+        settings.dbg_enable = false;
 #endif
     }
 
@@ -179,11 +179,11 @@ int main(int argc, char **argv) {
         enable_jit = true;
 #endif
 
-    config_set_inline_mem(inline_mem);
-    config_set_jit(enable_jit || enable_native_jit);
+    settings.inline_mem = inline_mem;
+    settings.enable_jit = enable_jit || enable_native_jit;
 
 #ifdef ENABLE_JIT_X86_64
-    config_set_native_jit(enable_native_jit);
+    settings.enable_native_jit = enable_native_jit;
 #else
     if (enable_native_jit) {
         fprintf(stderr, "ERROR: the native x86_64 jit backend was not enabled "
@@ -207,10 +207,10 @@ int main(int argc, char **argv) {
             exit(1);
         }
 
-        config_set_boot_mode(DC_BOOT_DIRECT);
-        config_set_ip_bin_path(path_ip_bin);
-        config_set_exec_bin_path(path_1st_read_bin);
-        config_set_syscall_path(path_syscalls_bin);
+        settings.boot_mode = WASHDC_BOOT_DIRECT;
+        settings.path_ip_bin = path_ip_bin;
+        settings.path_1st_read_bin = path_1st_read_bin;
+        settings.path_syscalls_bin = path_syscalls_bin;
     } else if (boot_direct) {
         if (!path_syscalls_bin) {
             fprintf(stderr, "Error: cannot direct-boot without a system call "
@@ -218,24 +218,24 @@ int main(int argc, char **argv) {
             exit(1);
         }
 
-        config_set_boot_mode(DC_BOOT_IP_BIN);
-        config_set_ip_bin_path(path_ip_bin);
-        config_set_syscall_path(path_syscalls_bin);
+        settings.boot_mode = WASHDC_BOOT_IP_BIN;
+        settings.path_ip_bin = path_ip_bin;
+        settings.path_syscalls_bin = path_syscalls_bin;
     } else {
-        config_set_boot_mode(DC_BOOT_FIRMWARE);
+        settings.boot_mode = WASHDC_BOOT_FIRMWARE;
     }
 
-    config_set_dc_bios_path(bios_path);
-    config_set_dc_flash_path(flash_path);
+    settings.path_dc_bios = bios_path;
+    settings.path_dc_flash = flash_path;
+    settings.enable_cmd_tcp = enable_cmd_tcp;
+    settings.enable_serial = enable_serial;
+    settings.path_gdi = path_gdi;
 
-    dreamcast_init(path_gdi, enable_cmd_tcp);
+    washdc_init(&settings);
 
-    config_set_enable_cmd_tcp(enable_cmd_tcp);
-    config_set_ser_srv_enable(enable_serial);
+    washdc_run();
 
-    dreamcast_run();
-
-    dreamcast_cleanup();
+    washdc_cleanup();
 
     exit(0);
 }
