@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 
-#include "washdc.h"
+#include "washdc/washdc.h"
 
 #include "config.h"
 #include "dreamcast.h"
