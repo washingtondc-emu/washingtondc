@@ -52,7 +52,7 @@ $FIRMWARE_PATH="./dc_bios.bin";
 $FLASH_PATH="./dc_flash.bin";
 $SYSCALL_PATH="./syscalls.bin";
 $SH4DIV_TEST_PATH="./sh4div_test.bin";
-$WASH_PATH="./washingtondc";
+$WASH_PATH="./src/washingtondc/washingtondc";
 $WASH_ARGS="-b $FIRMWARE_PATH -f $FLASH_PATH -s $SYSCALL_PATH -u $SH4DIV_TEST_PATH -tc";
 
 # path to where the serial port output from WashingtonDC gets logged
