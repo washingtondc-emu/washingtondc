@@ -415,12 +415,15 @@ do_init_win_gfx:
 void dreamcast_cleanup() {
     init_complete = false;
 
-    log_cleanup();
+#ifdef USE_LIBEVENT
+    LOG_INFO("Waiting for io_thread to exit...\n");
+    io_thread_join();
+    LOG_INFO("io_thread has exited.\n");
+#endif
 
     sound_cleanup();
     gfx_cleanup();
 
-    LOG_INFO("killing the window...\n");
     win_cleanup();
 
 #ifdef ENABLE_JIT_X86_64
@@ -454,14 +457,10 @@ void dreamcast_cleanup() {
     memory_cleanup(&dc_mem);
     cfg_cleanup();
 
-#ifdef USE_LIBEVENT
-    LOG_INFO("Waiting for io_thread to exit...\n");
-    io_thread_join();
-    LOG_INFO("io_thread has exited.\n");
-#endif
-
     if (mount_check())
         mount_eject();
+
+    log_cleanup();
 }
 
 /*
