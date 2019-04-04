@@ -27,6 +27,7 @@
 #include <stdlib.h>
 
 #include "washdc/washdc.h"
+#include "washdc/buildconfig.h"
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
@@ -149,18 +150,16 @@ int main(int argc, char **argv) {
         }
         enable_interpreter = true;
 
-#ifdef ENABLE_DEBUGGER
-        settings.dbg_enable = true;
-        settings.washdbg_enable = enable_washdbg;
-#else
-        fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
-                "Please rebuild with -DENABLE_DEBUGGER=On\n");
-        exit(1);
-#endif
+        if (washdc_have_debugger()) {
+            settings.dbg_enable = true;
+            settings.washdbg_enable = enable_washdbg;
+        } else {
+            fprintf(stderr, "ERROR: Unable to enable remote gdb stub.\n"
+                    "Please rebuild with -DENABLE_DEBUGGER=On\n");
+            exit(1);
+        }
     } else {
-#ifdef ENABLE_DEBUGGER
         settings.dbg_enable = false;
-#endif
     }
 
     if (enable_interpreter && (enable_jit || enable_native_jit)) {
@@ -169,30 +168,30 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-#ifdef ENABLE_JIT_X86_64
-    // enable the jit (with x86_64 backend) by default
-    if (!(enable_jit || enable_native_jit || enable_interpreter))
-        enable_native_jit = true;
-#else
-    // enable the jit (with jit-interpreter) by default
-    if (!(enable_jit || enable_interpreter))
-        enable_jit = true;
-#endif
+    if (washdc_have_x86_64_jit()) {
+        // enable the jit (with x86_64 backend) by default
+        if (!(enable_jit || enable_native_jit || enable_interpreter))
+            enable_native_jit = true;
+    } else {
+        // enable the jit (with jit-interpreter) by default
+        if (!(enable_jit || enable_interpreter))
+            enable_jit = true;
+    }
 
     settings.inline_mem = inline_mem;
     settings.enable_jit = enable_jit || enable_native_jit;
 
-#ifdef ENABLE_JIT_X86_64
-    settings.enable_native_jit = enable_native_jit;
-#else
-    if (enable_native_jit) {
-        fprintf(stderr, "ERROR: the native x86_64 jit backend was not enabled "
-                "for this build configuration.\n"
-                "Rebuild WashingtonDC with -DENABLE_JIT_X86_64=On to enable "
-                "the native x86_64 jit backend.\n");
-        exit(1);
+    if (washdc_have_x86_64_jit()) {
+        settings.enable_native_jit = enable_native_jit;
+    } else {
+        if (enable_native_jit) {
+            fprintf(stderr, "ERROR: the native x86_64 jit backend was not enabled "
+                    "for this build configuration.\n"
+                    "Rebuild WashingtonDC with -DENABLE_JIT_X86_64=On to enable "
+                    "the native x86_64 jit backend.\n");
+            exit(1);
+        }
     }
-#endif
 
     if (skip_ip_bin) {
         if (!path_syscalls_bin) {

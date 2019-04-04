@@ -266,7 +266,9 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/sound/sound.h"
                       "${WASHDC_SOURCE_DIR}/sound/sound.c"
                       "${WASHDC_SOURCE_DIR}/washdc.c"
-                      "${WASHDC_SOURCE_DIR}/include/washdc/washdc.h")
+                      "${WASHDC_SOURCE_DIR}/include/washdc/washdc.h"
+                      "${WASHDC_SOURCE_DIR}/include/washdc/buildconfig.h"
+                      "${WASHDC_SOURCE_DIR}/buildconfig.c")
 
 if (ENABLE_TCP_CMD)
     set (libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/cmd/cmd.h"
