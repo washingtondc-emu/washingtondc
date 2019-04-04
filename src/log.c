@@ -45,7 +45,7 @@ void log_flush(void) {
 }
 
 void log_do_write(enum log_severity lvl, char const *fmt, ...) {
-    if (verbose_mode || lvl >= log_severity_warn) {
+    if (verbose_mode || lvl >= log_severity_info) {
         va_list args;
 
         va_start(args, fmt);
