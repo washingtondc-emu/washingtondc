@@ -66,15 +66,15 @@ struct washdc_launch_settings {
 
     bool log_to_stdout;
     bool log_verbose;
-#ifdef ENABLE_DEBUGGER
+    /* #ifdef ENABLE_DEBUGGER */
     bool dbg_enable;
     bool washdbg_enable;
-#endif
+    /* #endif */
     bool inline_mem;
     bool enable_jit;
-#ifdef ENABLE_JIT_X86_64
+    /* #ifdef ENABLE_JIT_X86_64 */
     bool enable_native_jit;
-#endif
+    /* #endif */
     bool enable_cmd_tcp;
     bool cmd_session;
     bool enable_serial;
