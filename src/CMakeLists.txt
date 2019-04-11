@@ -49,7 +49,7 @@ if(UNIX)
     # the -Wno-format-trunction is there to prevent gcc from raising frivolous
     # warnings whenever there's a chance that snprintf might do the one thing
     # it exists to do.
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wno-format-truncation")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-format-truncation")
 endif()
 
 if (USE_LIBEVENT)
