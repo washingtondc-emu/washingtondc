@@ -68,7 +68,7 @@ if (USE_LIBEVENT)
                      "${CMAKE_BINARY_DIR}/washingtondc-libevent/src/libevent/include")
 endif()
 
-add_subdirectory(washdc)
+add_subdirectory(libwashdc)
 add_subdirectory(washingtondc)
 
 if (USE_LIBEVENT)

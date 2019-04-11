@@ -51,5 +51,5 @@ if (ENABLE_DEBUGGER)
     set(washingtondc_libs "${washingtondc_libs}" capstone-static)
 endif()
 
-target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/washdc/include")
+target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/libwashdc/include")
 target_link_libraries(washingtondc "${washingtondc_libs}")
