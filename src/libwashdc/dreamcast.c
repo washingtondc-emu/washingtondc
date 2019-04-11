@@ -42,7 +42,6 @@
 #include "hw/maple/maple_device.h"
 #include "hw/maple/maple_controller.h"
 #include "cmd/cons.h"
-#include "glfw/window.h"
 #include "hw/pvr2/framebuffer.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
 #include "hw/pvr2/pvr2_ta.h"
@@ -69,10 +68,11 @@
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
 #include "title.h"
-#include "config_file.h"
+#include "washdc/config_file.h"
 #include "mount.h"
 #include "gdi.h"
 #include "sound/sound.h"
+#include "washdc/win.h"
 
 #ifdef USE_LIBEVENT
 #include "io/io_thread.h"

@@ -24,7 +24,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "fifo.h"
+#include "washdc/fifo.h"
 
 #include "control_bind.h"
 

@@ -28,7 +28,11 @@ set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
 
-set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.c")
+set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.c"
+                         "${PROJECT_SOURCE_DIR}/glfw/window.c"
+                         "${PROJECT_SOURCE_DIR}/glfw/window.h"
+                         "${PROJECT_SOURCE_DIR}/glfw/control_bind.c"
+                         "${PROJECT_SOURCE_DIR}/glfw/control_bind.h")
 
 add_executable(washingtondc ${washingtondc_sources})
 

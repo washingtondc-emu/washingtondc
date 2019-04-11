@@ -24,6 +24,15 @@
 
 #include "config.h"
 #include "dreamcast.h"
+#include "screenshot.h"
+#include "hw/maple/maple_controller.h"
+#include "gfx/gfx.h"
+#include "gfx/gfx_config.h"
+#include "title.h"
+#include "washdc/win.h"
+
+static uint32_t trans_bind_washdc_to_maple(uint32_t wash);
+static int trans_axis_washdc_to_maple(int axis);
 
 static enum dc_boot_mode translate_boot_mode(enum washdc_boot_mode mode) {
     switch (mode) {
@@ -58,6 +67,8 @@ void washdc_init(struct washdc_launch_settings const *settings) {
     config_set_enable_cmd_tcp(settings->enable_cmd_tcp);
     config_set_ser_srv_enable(settings->enable_serial);
 
+    win_set_intf(settings->win_intf);
+
     dreamcast_init(settings->path_gdi, settings->enable_cmd_tcp);
 }
 
@@ -67,4 +78,113 @@ void washdc_cleanup() {
 
 void washdc_run() {
     dreamcast_run();
+}
+
+void washdc_kill(void) {
+    dreamcast_kill();
+}
+
+int washdc_save_screenshot(char const *path) {
+    return save_screenshot(path);
+}
+
+int washdc_save_screenshot_dir(void) {
+    return save_screenshot_dir();
+}
+
+// mark all buttons in btns as being pressed
+void washdc_controller_press_btns(unsigned port_no, uint32_t btns) {
+    maple_controller_press_btns(port_no, trans_bind_washdc_to_maple(btns));
+}
+
+// mark all buttons in btns as being released
+void washdc_controller_release_btns(unsigned port_no, uint32_t btns) {
+    maple_controller_release_btns(port_no, trans_bind_washdc_to_maple(btns));
+}
+
+// 0 = min, 255 = max, 128 = half
+void washdc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val) {
+    maple_controller_set_axis(port_no, trans_axis_washdc_to_maple(axis), val);
+}
+
+void washdc_on_expose(void) {
+    gfx_expose();
+}
+
+void washdc_on_resize(int xres, int yres) {
+    gfx_resize(xres, yres);
+}
+
+char const *washdc_win_get_title(void) {
+    return title_get();
+}
+
+void washdc_gfx_toggle_wireframe(void) {
+    gfx_config_toggle_wireframe();
+}
+
+void washdc_gfx_toggle_filter(void) {
+    gfx_toggle_output_filter();
+}
+
+void washdc_gfx_toggle_overlay(void) {
+    dc_toggle_overlay();
+}
+
+static uint32_t trans_bind_washdc_to_maple(uint32_t wash) {
+    uint32_t ret = 0;
+
+    if (wash & WASHDC_CONT_BTN_C_MASK)
+        ret |= MAPLE_CONT_BTN_C_MASK;
+    if (wash & WASHDC_CONT_BTN_B_MASK)
+        ret |= MAPLE_CONT_BTN_B_MASK;
+    if (wash & WASHDC_CONT_BTN_A_MASK)
+        ret |= MAPLE_CONT_BTN_A_MASK;
+    if (wash & WASHDC_CONT_BTN_START_MASK)
+        ret |= MAPLE_CONT_BTN_START_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD_UP_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD_UP_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD_DOWN_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD_DOWN_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD_LEFT_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD_LEFT_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD_RIGHT_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD_RIGHT_MASK;
+    if (wash & WASHDC_CONT_BTN_Z_MASK)
+        ret |= MAPLE_CONT_BTN_Z_MASK;
+    if (wash & WASHDC_CONT_BTN_Y_MASK)
+        ret |= MAPLE_CONT_BTN_Y_MASK;
+    if (wash & WASHDC_CONT_BTN_X_MASK)
+        ret |= MAPLE_CONT_BTN_X_MASK;
+    if (wash & WASHDC_CONT_BTN_D_MASK)
+        ret |= MAPLE_CONT_BTN_D_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD2_UP_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD2_UP_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD2_DOWN_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD2_DOWN_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD2_LEFT_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD2_LEFT_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD2_RIGHT_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD2_RIGHT_MASK;
+
+    return ret;
+}
+
+static int trans_axis_washdc_to_maple(int axis) {
+    switch (axis) {
+    case WASHDC_CONTROLLER_AXIS_R_TRIG:
+        return MAPLE_CONTROLLER_AXIS_R_TRIG;
+    case WASHDC_CONTROLLER_AXIS_L_TRIG:
+        return MAPLE_CONTROLLER_AXIS_L_TRIG;
+    case WASHDC_CONTROLLER_AXIS_JOY1_Y:
+        return MAPLE_CONTROLLER_AXIS_JOY1_Y;
+    case WASHDC_CONTROLLER_AXIS_JOY2_X:
+        return MAPLE_CONTROLLER_AXIS_JOY2_X;
+    case WASHDC_CONTROLLER_AXIS_JOY2_Y:
+        return MAPLE_CONTROLLER_AXIS_JOY2_Y;
+    default:
+        LOG_ERROR("unknown axis %d\n", axis);
+    case WASHDC_CONTROLLER_AXIS_JOY1_X:
+        return MAPLE_CONTROLLER_AXIS_JOY1_X;
+    }
 }

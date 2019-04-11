@@ -29,10 +29,10 @@
 #include <sys/stat.h>
 
 #include "log.h"
-#include "fifo.h"
+#include "washdc/fifo.h"
 #include "hostfile.h"
 
-#include "config_file.h"
+#include "washdc/config_file.h"
 
 #define CFG_NODE_KEY_LEN 256
 #define CFG_NODE_VAL_LEN 256

@@ -27,7 +27,7 @@
 #include <stdlib.h>
 
 #include "dreamcast.h"
-#include "fifo.h"
+#include "washdc/fifo.h"
 #include "MemoryMap.h"
 #include "hw/arm7/arm7.h"
 

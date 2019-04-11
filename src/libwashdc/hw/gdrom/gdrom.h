@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "fifo.h"
+#include "washdc/fifo.h"
 #include "log.h"
 #include "dc_sched.h"
 

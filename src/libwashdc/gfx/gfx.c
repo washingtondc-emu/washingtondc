@@ -30,7 +30,7 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "glfw/window.h"
+#include "washdc/win.h"
 #include "dreamcast.h"
 #include "gfx/rend_common.h"
 #include "gfx/gfx_tex_cache.h"

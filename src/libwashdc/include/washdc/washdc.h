@@ -24,6 +24,7 @@
 #define LIBWASHDC_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +44,8 @@ void washdc_cleanup();
 
 void washdc_run();
 
+void washdc_kill(void);
+
 enum washdc_boot_mode {
     // standard boot into firmware
     WASHDC_BOOT_FIRMWARE,
@@ -54,6 +57,8 @@ enum washdc_boot_mode {
     WASHDC_BOOT_DIRECT
 };
 
+struct win_intf;
+
 struct washdc_launch_settings {
     char const *path_ip_bin;
     char const *path_1st_read_bin;
@@ -61,6 +66,8 @@ struct washdc_launch_settings {
     char const *path_dc_bios;
     char const *path_dc_flash;
     char const *path_gdi;
+
+    struct win_intf const *win_intf;
 
     enum washdc_boot_mode boot_mode;
 
@@ -79,6 +86,87 @@ struct washdc_launch_settings {
     bool cmd_session;
     bool enable_serial;
 };
+
+int washdc_save_screenshot(char const *path);
+int washdc_save_screenshot_dir(void);
+
+void washdc_on_expose(void);
+void washdc_on_resize(int xres, int yres);
+
+char const *washdc_win_get_title(void);
+
+void washdc_gfx_toggle_wireframe(void);
+void washdc_gfx_toggle_filter(void);
+
+void washdc_gfx_toggle_overlay(void);
+
+#define WASHDC_CONT_BTN_C_SHIFT 0
+#define WASHDC_CONT_BTN_C_MASK (1 << WASHDC_CONT_BTN_C_SHIFT)
+
+#define WASHDC_CONT_BTN_B_SHIFT 1
+#define WASHDC_CONT_BTN_B_MASK (1 << WASHDC_CONT_BTN_B_SHIFT)
+
+#define WASHDC_CONT_BTN_A_SHIFT 2
+#define WASHDC_CONT_BTN_A_MASK (1 << WASHDC_CONT_BTN_A_SHIFT)
+
+#define WASHDC_CONT_BTN_START_SHIFT 3
+#define WASHDC_CONT_BTN_START_MASK (1 << WASHDC_CONT_BTN_START_SHIFT)
+
+#define WASHDC_CONT_BTN_DPAD_UP_SHIFT 4
+#define WASHDC_CONT_BTN_DPAD_UP_MASK (1 << WASHDC_CONT_BTN_DPAD_UP_SHIFT)
+
+#define WASHDC_CONT_BTN_DPAD_DOWN_SHIFT 5
+#define WASHDC_CONT_BTN_DPAD_DOWN_MASK (1 << WASHDC_CONT_BTN_DPAD_DOWN_SHIFT)
+
+#define WASHDC_CONT_BTN_DPAD_LEFT_SHIFT 6
+#define WASHDC_CONT_BTN_DPAD_LEFT_MASK (1 << WASHDC_CONT_BTN_DPAD_LEFT_SHIFT)
+
+#define WASHDC_CONT_BTN_DPAD_RIGHT_SHIFT 7
+#define WASHDC_CONT_BTN_DPAD_RIGHT_MASK (1 << WASHDC_CONT_BTN_DPAD_RIGHT_SHIFT)
+
+#define WASHDC_CONT_BTN_Z_SHIFT 8
+#define WASHDC_CONT_BTN_Z_MASK (1 << WASHDC_CONT_BTN_Z_SHIFT)
+
+#define WASHDC_CONT_BTN_Y_SHIFT 9
+#define WASHDC_CONT_BTN_Y_MASK (1 << WASHDC_CONT_BTN_Y_SHIFT)
+
+#define WASHDC_CONT_BTN_X_SHIFT 10
+#define WASHDC_CONT_BTN_X_MASK (1 << WASHDC_CONT_BTN_X_SHIFT)
+
+#define WASHDC_CONT_BTN_D_SHIFT 11
+#define WASHDC_CONT_BTN_D_MASK (1 << WASHDC_CONT_BTN_D_SHIFT)
+
+#define WASHDC_CONT_BTN_DPAD2_UP_SHIFT 12
+#define WASHDC_CONT_BTN_DPAD2_UP_MASK (1 << WASHDC_CONT_BTN_DPAD2_UP_SHIFT)
+
+#define WASHDC_CONT_BTN_DPAD2_DOWN_SHIFT 13
+#define WASHDC_CONT_BTN_DPAD2_DOWN_MASK (1 << WASHDC_CONT_BTN_DPAD2_DOWN_SHIFT)
+
+#define WASHDC_CONT_BTN_DPAD2_LEFT_SHIFT 14
+#define WASHDC_CONT_BTN_DPAD2_LEFT_MASK (1 << WASHDC_CONT_BTN_DPAD2_LEFT_SHIFT)
+
+#define WASHDC_CONT_BTN_DPAD2_RIGHT_SHIFT 15
+#define WASHDC_CONT_BTN_DPAD2_RIGHT_MASK (1 << WASHDC_CONT_BTN_DPAD2_RIGHT_SHIFT)
+
+enum {
+    WASHDC_CONTROLLER_AXIS_R_TRIG,
+    WASHDC_CONTROLLER_AXIS_L_TRIG,
+    WASHDC_CONTROLLER_AXIS_JOY1_X,
+    WASHDC_CONTROLLER_AXIS_JOY1_Y,
+    WASHDC_CONTROLLER_AXIS_JOY2_X,
+    WASHDC_CONTROLLER_AXIS_JOY2_Y,
+
+    WASHDC_CONTROLLER_N_AXES
+};
+
+// mark all buttons in btns as being pressed
+void washdc_controller_press_btns(unsigned port_no, uint32_t btns);
+
+// mark all buttons in btns as being released
+void washdc_controller_release_btns(unsigned port_no, uint32_t btns);
+
+// 0 = min, 255 = max, 128 = half
+void washdc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val);
 
 #ifdef __cplusplus
 }

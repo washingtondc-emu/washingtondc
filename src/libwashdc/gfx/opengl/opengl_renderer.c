@@ -33,7 +33,7 @@
 #include "gfx/gfx.h"
 #include "log.h"
 #include "pix_conv.h"
-#include "config_file.h"
+#include "washdc/config_file.h"
 #include "opengl_output.h"
 #include "opengl_target.h"
 #include "shader.h"

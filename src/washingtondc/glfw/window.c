@@ -22,20 +22,39 @@
 
 #include <err.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include <GLFW/glfw3.h>
 
-#include "dreamcast.h"
-#include "hw/maple/maple_controller.h"
-#include "gfx/gfx.h"
-#include "gfx/gfx_config.h"
-#include "title.h"
-#include "config_file.h"
+#include "washdc/washdc.h"
+
+#include "washdc/config_file.h"
 #include "control_bind.h"
-#include "screenshot.h"
 
 #include "window.h"
+
+static void win_glfw_init(unsigned width, unsigned height);
+static void win_glfw_cleanup();
+static void win_glfw_check_events(void);
+static void win_glfw_update(void);
+static void win_glfw_make_context_current(void);
+static void win_glfw_update_title(void);
+static int win_glfw_get_width(void);
+static int win_glfw_get_height(void);
+
+
+struct win_intf const win_intf_glfw = {
+    .init = win_glfw_init,
+    .cleanup = win_glfw_cleanup,
+    .check_events = win_glfw_check_events,
+    .update = win_glfw_update,
+    .make_context_current = win_glfw_make_context_current,
+    .get_width = win_glfw_get_width,
+    .get_height = win_glfw_get_height,
+    .update_title = win_glfw_update_title
+};
 
 enum win_mode {
     WIN_MODE_WINDOWED,
@@ -82,7 +101,7 @@ static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
     return -1;
 }
 
-void win_init(unsigned width, unsigned height) {
+static void win_glfw_init(unsigned width, unsigned height) {
     res_x = width;
     res_y = height;
 
@@ -113,8 +132,8 @@ void win_init(unsigned width, unsigned height) {
         } else if (strcmp(win_mode_str, "windowed") == 0) {
             win_mode = WIN_MODE_WINDOWED;
         } else {
-            LOG_ERROR("Unrecognized window mode \"%s\" - using \"windowed\" "
-                      "mode instead\n", win_mode_str);
+            fprintf(stderr, "Unrecognized window mode \"%s\" - "
+                    "using \"windowed\" mode instead\n", win_mode_str);
             win_mode = WIN_MODE_WINDOWED;
         }
     } else {
@@ -122,13 +141,14 @@ void win_init(unsigned width, unsigned height) {
     }
 
     if (win_mode == WIN_MODE_FULLSCREEN) {
-        LOG_INFO("Enabling fullscreen mode.\n");
+        printf("Enabling fullscreen mode.\n");
         res_x = vidmode->width;
         res_y = vidmode->height;
-        win = glfwCreateWindow(res_x, res_y, title_get(), monitor, NULL);
+        win = glfwCreateWindow(res_x, res_y, washdc_win_get_title(),
+                               monitor, NULL);
     } else {
-        LOG_INFO("Enabling windowed mode.\n");
-        win = glfwCreateWindow(res_x, res_y, title_get(), NULL, NULL);
+        printf("Enabling windowed mode.\n");
+        win = glfwCreateWindow(res_x, res_y, washdc_win_get_title(), NULL, NULL);
     }
 
     if (!win)
@@ -139,10 +159,10 @@ void win_init(unsigned width, unsigned height) {
 
     bool vsync_en = false;
     if (cfg_get_bool("win.vsync", &vsync_en) == 0 && vsync_en) {
-        LOG_INFO("vsync enabled\n");
+        printf("vsync enabled\n");
         glfwSwapInterval(1);
     } else {
-        LOG_INFO("vsync disabled\n");
+        printf("vsync disabled\n");
         glfwSwapInterval(0);
     }
 
@@ -200,27 +220,27 @@ void win_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("p1_2.trig-r", "dc.ctrl.p1.trig-r(1)");
 }
 
-void win_cleanup() {
+static void win_glfw_cleanup() {
     ctrl_bind_cleanup();
 
     glfwTerminate();
 }
 
-void win_check_events(void) {
+static void win_glfw_check_events(void) {
     glfwPollEvents();
 
     scan_input();
 
     if (glfwWindowShouldClose(win))
-        dreamcast_kill();
+        washdc_kill();
 }
 
-void win_update() {
+static void win_glfw_update() {
     glfwSwapBuffers(win);
 }
 
 static void expose_callback(GLFWwindow *win) {
-    gfx_expose();
+    washdc_on_expose();
 }
 
 enum gamepad_btn {
@@ -354,62 +374,62 @@ static void scan_input(void) {
         ctrl_get_button("p1_2.dpad-right");
 
     if (btns[GAMEPAD_BTN_A])
-        maple_controller_press_btns(0, MAPLE_CONT_BTN_A_MASK);
+        washdc_controller_press_btns(0, WASHDC_CONT_BTN_A_MASK);
     else
-        maple_controller_release_btns(0, MAPLE_CONT_BTN_A_MASK);
+        washdc_controller_release_btns(0, WASHDC_CONT_BTN_A_MASK);
     if (btns[GAMEPAD_BTN_B])
-        maple_controller_press_btns(0, MAPLE_CONT_BTN_B_MASK);
+        washdc_controller_press_btns(0, WASHDC_CONT_BTN_B_MASK);
     else
-        maple_controller_release_btns(0, MAPLE_CONT_BTN_B_MASK);
+        washdc_controller_release_btns(0, WASHDC_CONT_BTN_B_MASK);
     if (btns[GAMEPAD_BTN_X])
-        maple_controller_press_btns(0, MAPLE_CONT_BTN_X_MASK);
+        washdc_controller_press_btns(0, WASHDC_CONT_BTN_X_MASK);
     else
-        maple_controller_release_btns(0, MAPLE_CONT_BTN_X_MASK);
+        washdc_controller_release_btns(0, WASHDC_CONT_BTN_X_MASK);
     if (btns[GAMEPAD_BTN_Y])
-        maple_controller_press_btns(0, MAPLE_CONT_BTN_Y_MASK);
+        washdc_controller_press_btns(0, WASHDC_CONT_BTN_Y_MASK);
     else
-        maple_controller_release_btns(0, MAPLE_CONT_BTN_Y_MASK);
+        washdc_controller_release_btns(0, WASHDC_CONT_BTN_Y_MASK);
     if (btns[GAMEPAD_BTN_START])
-        maple_controller_press_btns(0, MAPLE_CONT_BTN_START_MASK);
+        washdc_controller_press_btns(0, WASHDC_CONT_BTN_START_MASK);
     else
-        maple_controller_release_btns(0, MAPLE_CONT_BTN_START_MASK);
+        washdc_controller_release_btns(0, WASHDC_CONT_BTN_START_MASK);
 
     if (hat[GAMEPAD_HAT_UP])
-        maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_UP_MASK);
+        washdc_controller_press_btns(0, WASHDC_CONT_BTN_DPAD_UP_MASK);
     else
-        maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_UP_MASK);
+        washdc_controller_release_btns(0, WASHDC_CONT_BTN_DPAD_UP_MASK);
     if (hat[GAMEPAD_HAT_DOWN])
-        maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_DOWN_MASK);
+        washdc_controller_press_btns(0, WASHDC_CONT_BTN_DPAD_DOWN_MASK);
     else
-        maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_DOWN_MASK);
+        washdc_controller_release_btns(0, WASHDC_CONT_BTN_DPAD_DOWN_MASK);
     if (hat[GAMEPAD_HAT_LEFT])
-        maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_LEFT_MASK);
+        washdc_controller_press_btns(0, WASHDC_CONT_BTN_DPAD_LEFT_MASK);
     else
-        maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_LEFT_MASK);
+        washdc_controller_release_btns(0, WASHDC_CONT_BTN_DPAD_LEFT_MASK);
     if (hat[GAMEPAD_HAT_RIGHT])
-        maple_controller_press_btns(0, MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
+        washdc_controller_press_btns(0, WASHDC_CONT_BTN_DPAD_RIGHT_MASK);
     else
-        maple_controller_release_btns(0, MAPLE_CONT_BTN_DPAD_RIGHT_MASK);
+        washdc_controller_release_btns(0, WASHDC_CONT_BTN_DPAD_RIGHT_MASK);
 
-    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_R_TRIG, trig_r);
-    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_L_TRIG, trig_l);
-    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY1_X, stick_hor);
-    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY1_Y, stick_vert);
-    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY2_X, 0);
-    maple_controller_set_axis(0, MAPLE_CONTROLLER_AXIS_JOY2_Y, 0);
+    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_R_TRIG, trig_r);
+    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_L_TRIG, trig_l);
+    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_JOY1_X, stick_hor);
+    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_JOY1_Y, stick_vert);
+    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_JOY2_X, 0);
+    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_JOY2_Y, 0);
 
     // Allow the user to toggle the overlay by pressing F2
     static bool overlay_key_prev = false;
     bool overlay_key = ctrl_get_button("toggle-overlay");
     if (overlay_key && !overlay_key_prev)
-        dc_toggle_overlay();
+        washdc_gfx_toggle_overlay();
     overlay_key_prev = overlay_key;
 
     // toggle wireframe rendering
     static bool wireframe_key_prev = false;
     bool wireframe_key = ctrl_get_button("toggle-wireframe");
     if (wireframe_key && !wireframe_key_prev)
-        gfx_config_toggle_wireframe();
+        washdc_gfx_toggle_wireframe();
     wireframe_key_prev = wireframe_key;
 
     // Allow the user to toggle fullscreen
@@ -422,41 +442,41 @@ static void scan_input(void) {
     static bool filter_key_prev = false;
     bool filter_key = ctrl_get_button("toggle-filter");
     if (filter_key && !filter_key_prev)
-        gfx_toggle_output_filter();
+        washdc_gfx_toggle_filter();
     filter_key_prev = filter_key;
 
     static bool screenshot_key_prev = false;
     bool screenshot_key = ctrl_get_button("screenshot");
     if (screenshot_key && !screenshot_key_prev)
-        save_screenshot_dir();
+        washdc_save_screenshot_dir();
     screenshot_key_prev = screenshot_key;
 
     bool exit_key = ctrl_get_button("exit-now");
     if (exit_key) {
-        LOG_INFO("emergency exit button pressed - WashingtonDC will exit soon.\n");
-        dreamcast_kill();
+        printf("emergency exit button pressed - WashingtonDC will exit soon.\n");
+        washdc_kill();
     }
 }
 
-void win_make_context_current(void) {
+static void win_glfw_make_context_current(void) {
     glfwMakeContextCurrent(win);
 }
 
-void win_update_title(void) {
-    glfwSetWindowTitle(win, title_get());
+static void win_glfw_update_title(void) {
+    glfwSetWindowTitle(win, washdc_win_get_title());
 }
 
 static void resize_callback(GLFWwindow *win, int width, int height) {
     res_x = width;
     res_y = height;
-    gfx_resize(width, height);
+    washdc_on_resize(width, height);
 }
 
-int win_get_width(void) {
+static int win_glfw_get_width(void) {
     return res_x;
 }
 
-int win_get_height(void) {
+static int win_glfw_get_height(void) {
     return res_y;
 }
 
@@ -465,7 +485,7 @@ static void toggle_fullscreen(void) {
     int old_res_y = res_y;
 
     if (win_mode == WIN_MODE_WINDOWED) {
-        LOG_INFO("toggle windowed=>fullscreen\n");
+        printf("toggle windowed=>fullscreen\n");
 
         GLFWmonitor *monitor = glfwGetPrimaryMonitor();
         const GLFWvidmode *vidmode = glfwGetVideoMode(monitor);
@@ -476,7 +496,7 @@ static void toggle_fullscreen(void) {
         glfwSetWindowMonitor(win, glfwGetPrimaryMonitor(), 0, 0,
                              res_x, res_y, GLFW_DONT_CARE);
     } else {
-        LOG_INFO("toggle fullscreen=>windowed\n");
+        printf("toggle fullscreen=>windowed\n");
         win_mode = WIN_MODE_WINDOWED;
         res_x = win_res_x;
         res_y = win_res_y;
@@ -485,5 +505,5 @@ static void toggle_fullscreen(void) {
     }
 
     if (res_x != old_res_x || res_y != old_res_y)
-        gfx_resize(res_x, res_y);
+        washdc_on_resize(res_x, res_y);
 }

@@ -32,7 +32,7 @@
 #include "dreamcast.h"
 #include "io/io_thread.h"
 #include "dbg/debugger.h"
-#include "fifo.h"
+#include "washdc/fifo.h"
 #include "log.h"
 
 #include "gdb_stub.h"

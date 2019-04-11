@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,8 +27,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
-
-#include "log.h"
 
 #define FIFO_DEREF(nodep, tp, memb) \
     (*((tp*)(((uint8_t*)nodep) - offsetof(tp, memb))))
@@ -107,8 +105,9 @@ static inline void fifo_erase(struct fifo_head *fifo, struct fifo_node *node) {
         *cursp = node->next;
         node->next = NULL;
     } else {
-        LOG_WARN("WARNING: attempting to erase non-present "
-                 "element from FIFO\n");
+        // TODO: turn back into LOG_WARN
+        fprintf(stderr, "WARNING: attempting to erase non-present "
+                              "element from FIFO\n");
     }
 }
 

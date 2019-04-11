@@ -28,6 +28,7 @@
 
 #include "washdc/washdc.h"
 #include "washdc/buildconfig.h"
+#include "glfw/window.h"
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
@@ -229,6 +230,7 @@ int main(int argc, char **argv) {
     settings.enable_cmd_tcp = enable_cmd_tcp;
     settings.enable_serial = enable_serial;
     settings.path_gdi = path_gdi;
+    settings.win_intf = &win_intf_glfw;
 
     washdc_init(&settings);
 

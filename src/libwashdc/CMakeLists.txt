@@ -31,10 +31,6 @@ if(NOT CMAKE_BUILD_TYPE)
        message("Setting CMAKE_BUILD_TYPE to Release by default")
 endif()
 
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-
 # i need this for strdup and clock_gettime on Debian for some unknown reason
 add_definitions(-D_POSIX_C_SOURCE=200809L)
 
@@ -162,10 +158,8 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/dreamcast.c"
                       "${WASHDC_SOURCE_DIR}/dc_sched.h"
                       "${WASHDC_SOURCE_DIR}/dc_sched.c"
-                      "${WASHDC_SOURCE_DIR}/glfw/window.c"
-                      "${WASHDC_SOURCE_DIR}/glfw/window.h"
-                      "${WASHDC_SOURCE_DIR}/glfw/control_bind.c"
-                      "${WASHDC_SOURCE_DIR}/glfw/control_bind.h"
+                      "${WASHDC_SOURCE_DIR}/win/win.c"
+                      "${WASHDC_SOURCE_DIR}/include/washdc/win.h"
                       "${WASHDC_SOURCE_DIR}/hw/pvr2/framebuffer.c"
                       "${WASHDC_SOURCE_DIR}/hw/pvr2/framebuffer.h"
                       "${WASHDC_SOURCE_DIR}/hw/pvr2/pvr2_gfx_obj.c"
@@ -189,7 +183,7 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/mem_areas.h"
                       "${WASHDC_SOURCE_DIR}/stringlib.h"
                       "${WASHDC_SOURCE_DIR}/stringlib.c"
-                      "${WASHDC_SOURCE_DIR}/fifo.h"
+                      "${WASHDC_SOURCE_DIR}/include/washdc/fifo.h"
                       "${WASHDC_SOURCE_DIR}/gdi.h"
                       "${WASHDC_SOURCE_DIR}/gdi.c"
                       "${WASHDC_SOURCE_DIR}/mount.h"
@@ -257,7 +251,7 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/title.h"
                       "${WASHDC_SOURCE_DIR}/title.c"
                       "${WASHDC_SOURCE_DIR}/cpu.h"
-                      "${WASHDC_SOURCE_DIR}/config_file.h"
+                      "${WASHDC_SOURCE_DIR}/include/washdc/config_file.h"
                       "${WASHDC_SOURCE_DIR}/config_file.c"
                       "${WASHDC_SOURCE_DIR}/hostfile.h"
                       "${WASHDC_SOURCE_DIR}/hostfile.c"

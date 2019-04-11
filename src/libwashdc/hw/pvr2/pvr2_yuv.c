@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include "log.h"
 #include "error.h"
 #include "pvr2_tex_mem.h"
 #include "pvr2_tex_cache.h"

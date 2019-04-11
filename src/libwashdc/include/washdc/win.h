@@ -20,32 +20,37 @@
  *
  ******************************************************************************/
 
-#ifndef CONFIG_FILE_H_
-#define CONFIG_FILE_H_
+#ifndef WIN_H_
+#define WIN_H_
 
-/*
- * text file containing configuration settings.
- *
- * This is completely unrelated to the bullshit in config.h/config.c; that only
- * pertains to runtime settings and not everything in there even maps to the
- * config file.
- */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void cfg_init(void);
-void cfg_cleanup(void);
+struct win_intf {
+    void (*init)(unsigned width, unsigned height);
+    void (*cleanup)(void);
+    void (*check_events)(void);
+    void (*update)(void);
+    void (*make_context_current)(void);
+    void (*update_title)(void);
+    int (*get_width)(void);
+    int (*get_height)(void);
+};
 
-void cfg_put_char(char ch);
+void win_set_intf(struct win_intf const *intf);
 
-char const *cfg_get_node(char const *key);
+void win_init(unsigned width, unsigned height);
+void win_cleanup();
+void win_check_events(void);
+void win_update(void);
+void win_make_context_current(void);
+void win_update_title(void);
+int win_get_width(void);
+int win_get_height(void);
 
-int cfg_get_bool(char const *key, bool *outp);
-
-int cfg_get_rgb(char const *key, int *red, int *green, int *blue);
-
-int cfg_get_int(char const *key, int *val);
-
-char const *cfg_get_default_dir(void);
-
-char const *cfg_get_default_file(void);
+#ifdef __cplusplus
+}
+#endif
 
 #endif

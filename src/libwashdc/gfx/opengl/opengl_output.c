@@ -32,7 +32,6 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "glfw/window.h"
 #include "opengl_output.h"
 #include "opengl_renderer.h"
 #include "shader.h"
@@ -41,8 +40,8 @@
 #include "gfx/opengl/font/font.h"
 #include "overlay.h"
 #include "log.h"
-#include "glfw/window.h"
-#include "config_file.h"
+#include "washdc/win.h"
+#include "washdc/config_file.h"
 
 static void init_poly();
 
