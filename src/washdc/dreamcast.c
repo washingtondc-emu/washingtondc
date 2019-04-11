@@ -415,6 +415,12 @@ do_init_win_gfx:
 void dreamcast_cleanup() {
     init_complete = false;
 
+#ifdef ENABLE_DEBUGGER
+    LOG_INFO("Cleanup up debugger\n");
+    debug_cleanup();
+    LOG_INFO("debugger cleaned up\n");
+#endif
+
 #ifdef USE_LIBEVENT
     LOG_INFO("Waiting for io_thread to exit...\n");
     io_thread_join();
@@ -426,26 +432,23 @@ void dreamcast_cleanup() {
 
     win_cleanup();
 
+    aica_rtc_cleanup(&rtc);
+
 #ifdef ENABLE_JIT_X86_64
     exec_mem_free(native_dispatch_entry);
     native_dispatch_entry = NULL;
 #endif
 
-    memory_map_cleanup(cpu.mem.map);
+    memory_map_cleanup(&arm7_mem_map);
+    memory_map_cleanup(&mem_map);
 
     maple_cleanup();
-    aica_rtc_cleanup(&rtc);
     gdrom_cleanup(&gdrom);
     pvr2_cleanup(&dc_pvr2);
-    memory_map_cleanup(&mem_map);
     aica_cleanup(&aica);
     g2_cleanup();
     g1_cleanup();
     sys_block_cleanup();
-
-#ifdef ENABLE_DEBUGGER
-    debug_cleanup();
-#endif
 
     jit_cleanup();
     arm7_cleanup(&arm7);
