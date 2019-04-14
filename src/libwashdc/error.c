@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "washdc/fifo.h"
+#include "fifo.h"
 #include "dreamcast.h"
 #include "log.h"
 

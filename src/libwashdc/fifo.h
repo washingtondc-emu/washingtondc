@@ -28,7 +28,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define FIFO_DEREF(nodep, tp, memb) \
+#include "log.h"
+
+#define FIFO_DEREF(nodep, tp, memb)                     \
     (*((tp*)(((uint8_t*)nodep) - offsetof(tp, memb))))
 
 #define FIFO_HEAD_INITIALIZER(name) { .first = NULL, .plast = &name.first }
@@ -105,9 +107,8 @@ static inline void fifo_erase(struct fifo_head *fifo, struct fifo_node *node) {
         *cursp = node->next;
         node->next = NULL;
     } else {
-        // TODO: turn back into LOG_WARN
-        fprintf(stderr, "WARNING: attempting to erase non-present "
-                              "element from FIFO\n");
+        LOG_WARN("WARNING: attempting to erase "
+                 "non-present element from FIFO\n");
     }
 }
 

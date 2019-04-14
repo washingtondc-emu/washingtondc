@@ -23,16 +23,15 @@
 set(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
 cmake_minimum_required(VERSION 2.6)
 
-project(WashingtonDC C)
+project(WashingtonDC CXX)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
 
-set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.c"
-                         "${PROJECT_SOURCE_DIR}/glfw/window.c"
-                         "${PROJECT_SOURCE_DIR}/glfw/window.h"
-                         "${PROJECT_SOURCE_DIR}/glfw/control_bind.c"
-                         "${PROJECT_SOURCE_DIR}/glfw/control_bind.h")
+set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
+                         "${PROJECT_SOURCE_DIR}/window.cpp"
+                         "${PROJECT_SOURCE_DIR}/window.hpp"
+                         "${PROJECT_SOURCE_DIR}/control_bind.cpp"
+                         "${PROJECT_SOURCE_DIR}/control_bind.hpp")
 
 add_executable(washingtondc ${washingtondc_sources})
 

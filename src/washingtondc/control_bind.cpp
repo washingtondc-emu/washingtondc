@@ -20,23 +20,21 @@
  *
  ******************************************************************************/
 
-#include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
+#include <cctype>
+#include <cstring>
+#include <cstdlib>
+#include <list>
 
-#include "washdc/fifo.h"
-
-#include "control_bind.h"
-
-static struct bind_state {
-    struct fifo_head bind_list;
-} bind_state;
+#include "control_bind.hpp"
 
 struct ctrl_bind {
     char name[CTRL_BIND_NAME_LEN];
     struct host_ctrl_bind host;
-    struct fifo_node list_node;
 };
+
+static struct bind_state {
+    std::list<ctrl_bind> bind_list;
+} bind_state;
 
 static bool ctrl_get_gamepad_button_state(struct host_gamepad_btn const *btn);
 static bool ctrl_get_kbd_button_state(struct host_kbd_ctrl const *btn);
@@ -54,16 +52,10 @@ int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind);
 static int get_glfw3_key(char const *keystr, int *key);
 
 void ctrl_bind_init(void) {
-    fifo_init(&bind_state.bind_list);
 }
 
 void ctrl_bind_cleanup(void) {
-    while (!fifo_empty(&bind_state.bind_list)) {
-        struct fifo_node *list_node = fifo_pop(&bind_state.bind_list);
-        struct ctrl_bind *bind =
-            &FIFO_DEREF(list_node, struct ctrl_bind, list_node);
-        free(bind);
-    }
+    bind_state.bind_list.clear();
 }
 
 bool ctrl_get_button(char const name[CTRL_BIND_NAME_LEN]) {
@@ -81,26 +73,23 @@ float ctrl_get_axis(char const name[CTRL_BIND_NAME_LEN]) {
  }
 
 struct host_ctrl_bind *ctrl_get_bind(char const name[CTRL_BIND_NAME_LEN]) {
-    struct fifo_node *curs;
-    FIFO_FOREACH(bind_state.bind_list, curs) {
-        struct ctrl_bind *bind = &FIFO_DEREF(curs, struct ctrl_bind, list_node);
-        if (strcmp(bind->name, name) == 0)
-            return &bind->host;
+    for (ctrl_bind &bind : bind_state.bind_list) {
+        if (strcmp(bind.name, name) == 0)
+            return &bind.host;
     }
     return NULL;
 }
 
 void
 ctrl_bind_key(char const bind[CTRL_BIND_NAME_LEN], struct host_ctrl_bind key) {
-    struct ctrl_bind *node =
-        (struct ctrl_bind*)malloc(sizeof(struct ctrl_bind));
+    struct ctrl_bind node;
 
-    strncpy(node->name, bind, CTRL_BIND_NAME_LEN);
-    node->name[CTRL_BIND_NAME_LEN - 1] = '\0';
+    strncpy(node.name, bind, CTRL_BIND_NAME_LEN);
+    node.name[CTRL_BIND_NAME_LEN - 1] = '\0';
 
-    node->host = key;
+    node.host = key;
 
-    fifo_push(&bind_state.bind_list, &node->list_node);
+    bind_state.bind_list.push_front(node);
 }
 
 bool ctrl_get_bind_button_state(struct host_ctrl_bind const *key) {

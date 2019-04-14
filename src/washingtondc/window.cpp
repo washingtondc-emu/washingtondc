@@ -21,19 +21,19 @@
  ******************************************************************************/
 
 #include <err.h>
-#include <ctype.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
+#include <cctype>
+#include <cstdio>
+#include <cstdbool>
+#include <cstring>
 
 #include <GLFW/glfw3.h>
 
 #include "washdc/washdc.h"
 
 #include "washdc/config_file.h"
-#include "control_bind.h"
 
-#include "window.h"
+#include "control_bind.hpp"
+#include "window.hpp"
 
 static void win_glfw_init(unsigned width, unsigned height);
 static void win_glfw_cleanup();
@@ -43,18 +43,6 @@ static void win_glfw_make_context_current(void);
 static void win_glfw_update_title(void);
 static int win_glfw_get_width(void);
 static int win_glfw_get_height(void);
-
-
-struct win_intf const win_intf_glfw = {
-    .init = win_glfw_init,
-    .cleanup = win_glfw_cleanup,
-    .check_events = win_glfw_check_events,
-    .update = win_glfw_update,
-    .make_context_current = win_glfw_make_context_current,
-    .get_width = win_glfw_get_width,
-    .get_height = win_glfw_get_height,
-    .update_title = win_glfw_update_title
-};
 
 enum win_mode {
     WIN_MODE_WINDOWED,
@@ -70,6 +58,21 @@ static void expose_callback(GLFWwindow *win);
 static void resize_callback(GLFWwindow *win, int width, int height);
 static void scan_input(void);
 static void toggle_fullscreen(void);
+
+struct win_intf const* get_win_intf_glfw(void) {
+    static struct win_intf win_intf_glfw = { };
+
+    win_intf_glfw.init = win_glfw_init;
+    win_intf_glfw.cleanup = win_glfw_cleanup;
+    win_intf_glfw.check_events = win_glfw_check_events;
+    win_intf_glfw.update = win_glfw_update;
+    win_intf_glfw.make_context_current = win_glfw_make_context_current;
+    win_intf_glfw.get_width = win_glfw_get_width;
+    win_intf_glfw.get_height = win_glfw_get_height;
+    win_intf_glfw.update_title = win_glfw_update_title;
+
+    return &win_intf_glfw;
+}
 
 static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
     char const *bindstr = cfg_get_node(cfg_node);

@@ -29,7 +29,7 @@
 #include <sys/stat.h>
 
 #include "log.h"
-#include "washdc/fifo.h"
+#include "fifo.h"
 #include "hostfile.h"
 
 #include "washdc/config_file.h"

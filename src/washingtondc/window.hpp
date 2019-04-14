@@ -20,11 +20,11 @@
  *
  ******************************************************************************/
 
-#ifndef WINDOW_H_
-#define WINDOW_H_
+#ifndef WINDOW_HPP_
+#define WINDOW_HPP_
 
 #include "washdc/win.h"
 
-extern struct win_intf const win_intf_glfw;
+struct win_intf const* get_win_intf_glfw(void);
 
 #endif
