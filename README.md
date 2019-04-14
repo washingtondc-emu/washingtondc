@@ -1,14 +1,10 @@
 # WashingtonDC
 
-WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  It's still at
-an early stage of development; currently the only known games it can run are
-the Dreamcast firmware, Crazy Taxi, Daytona USA, Power Stone and a handful of
-homebrew programs.
+https://washemu.github.io
 
-## GALLERY
-![Alt text](media/washingtondc_daytona_usa_in_game.png "Daytona USA")
-![Alt text](media/washingtondc_power_stone_in_game.png "Power Stone")
-![Alt text](media/washingtondc_crazy_taxi_in_game.png "Crazy Taxi")
+WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  It's still at
+an early stage of development; it's able to play several dozen Dreamcast games,
+although there still isn't audio support.
 
 ## COMPILING
 ```
@@ -16,6 +12,9 @@ mkdir build
 cd build
 cmake [OPTIONS] ..
 make
+
+The program executable will be at src/washingtondc/washingtondc (relative to
+the root of the build directory)
 
 Available options for the cmake generation are:
 
@@ -30,7 +29,7 @@ DEEP_SYSCALL_TRACE=On/Off(default) - log system calls made by guest software.
 ```
 ## USAGE
 ```
-./washingtondc -b dc_bios.bin -f dc_flash.bin [options] [-d IP.BIN] [-u 1ST_READ.BIN]
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin [options] [-d IP.BIN] [-u 1ST_READ.BIN]
 
 OPTIONS:
 -b <bios_path> path to dreamcast boot ROM
@@ -64,7 +63,16 @@ closest thing to a UI that WashingtonDC has.
 You can view online command documentation with the 'help' command.
 'begin-execution' is the command to start the emulator.
 
-The only games I know to work so far are Power Stone and Crazy Taxi.
+
+## CONTROLS
+
+Control bindings are stored in $HOME/.config/washdc/wash.cfg.  This file is
+automatically created the first time WashingtonDC is run.  Controls can be
+edited by editing this file.
+
+The default keyboard controls are listed below.  The default gamepad controls
+are designed around the Logitech F310 in XInput mode, although you can remap
+them to fit any other controller.
 
 ```
     |============================|
@@ -91,15 +99,15 @@ The only games I know to work so far are Power Stone and Crazy Taxi.
 ## EXAMPLES
 load the firmware (dc_bios.bin) with no .gdi disc image mounted:
 ```
-./washingtondc -b dc_bios.bin -f dc_flash.bin
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin
 ```
 load the firmware with a .gdi disc image mounted:
 ```
-./washingtondc -b dc_bios.bin -f dc_flash.bin -m /path/to/disc.gdi
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -m /path/to/disc.gdi
 ```
 direct-boot a homebrew program (requires a system call table dump):
 ```
-./washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -u 1st_read.bin
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -u 1st_read.bin
 ```
 ## LICENSE
 WashingtonDC is licensed under the terms of the GNU GPLv3.  The terms of this
@@ -137,7 +145,7 @@ external/glew.  The license for this software can be found at
 external/glew/LICENSE.txt.
 
 ## CONTACT
-You can reach me at my public-facing e-mail address, chimerasaurusrex@gmail.com.
+You can reach me at my public-facing e-mail address, snickerbockers@washemu.org.
 
 I'm also @sbockers on twitter if you can tolerate my lame sense of humor.
 
