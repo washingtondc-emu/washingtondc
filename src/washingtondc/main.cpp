@@ -234,19 +234,19 @@ int main(int argc, char **argv) {
     settings.path_gdi = path_gdi;
     settings.win_intf = get_win_intf_glfw();
 
-    overlay_intf.overlay_draw = overlay_draw;
-    overlay_intf.overlay_set_fps = overlay_set_fps;
-    overlay_intf.overlay_set_virt_fps = overlay_set_virt_fps;
+    overlay_intf.overlay_draw = overlay::draw;
+    overlay_intf.overlay_set_fps = overlay::set_fps;
+    overlay_intf.overlay_set_virt_fps = overlay::set_virt_fps;
 
     settings.overlay_intf = &overlay_intf;
 
     washdc_init(&settings);
 
-    overlay_init();
+    overlay::init();
 
     washdc_run();
 
-    overlay_cleanup();
+    overlay::cleanup();
 
     washdc_cleanup();
 

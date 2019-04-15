@@ -24,6 +24,7 @@
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <algorithm>
 
 #include <GLFW/glfw3.h>
 
@@ -41,8 +42,8 @@ static void win_glfw_check_events(void);
 static void win_glfw_update(void);
 static void win_glfw_make_context_current(void);
 static void win_glfw_update_title(void);
-static int win_glfw_get_width(void);
-static int win_glfw_get_height(void);
+int win_glfw_get_width(void);
+int win_glfw_get_height(void);
 
 enum win_mode {
     WIN_MODE_WINDOWED,
@@ -54,13 +55,21 @@ static unsigned win_res_x, win_res_y;
 static GLFWwindow *win;
 static enum win_mode win_mode = WIN_MODE_WINDOWED;
 
+static const unsigned N_MOUSE_BTNS = 3;
+static bool mouse_btns[N_MOUSE_BTNS];
+
 static bool show_overlay;
+
+static double mouse_scroll_x, mouse_scroll_y;
 
 static void expose_callback(GLFWwindow *win);
 static void resize_callback(GLFWwindow *win, int width, int height);
 static void scan_input(void);
 static void toggle_fullscreen(void);
 static void toggle_overlay(void);
+static void mouse_btn_cb(GLFWwindow *win, int btn, int action, int mods);
+static void
+mouse_scroll_cb(GLFWwindow *win, double scroll_x, double scroll_y);
 
 struct win_intf const* get_win_intf_glfw(void) {
     static struct win_intf win_intf_glfw = { };
@@ -114,6 +123,9 @@ static void win_glfw_init(unsigned width, unsigned height) {
     win_res_x = width;
     win_res_y = height;
 
+    std::fill(mouse_btns, mouse_btns + N_MOUSE_BTNS, false);
+    mouse_scroll_x = mouse_scroll_y = 0.0;
+
     if (!glfwInit())
         err(1, "unable to initialize glfw");
 
@@ -162,6 +174,7 @@ static void win_glfw_init(unsigned width, unsigned height) {
 
     glfwSetWindowRefreshCallback(win, expose_callback);
     glfwSetFramebufferSizeCallback(win, resize_callback);
+    glfwSetScrollCallback(win, mouse_scroll_cb);
 
     bool vsync_en = false;
     if (cfg_get_bool("win.vsync", &vsync_en) == 0 && vsync_en) {
@@ -224,6 +237,8 @@ static void win_glfw_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("p1_2.stick-down", "dc.ctrl.p1.stick-down(1)");
     bind_ctrl_from_cfg("p1_2.trig-l", "dc.ctrl.p1.trig-l(1)");
     bind_ctrl_from_cfg("p1_2.trig-r", "dc.ctrl.p1.trig-r(1)");
+
+    glfwSetMouseButtonCallback(win, mouse_btn_cb);
 }
 
 static void win_glfw_cleanup() {
@@ -233,9 +248,13 @@ static void win_glfw_cleanup() {
 }
 
 static void win_glfw_check_events(void) {
+    mouse_scroll_x = mouse_scroll_y = 0.0;
+
     glfwPollEvents();
 
     scan_input();
+
+    overlay::update();
 
     if (glfwWindowShouldClose(win))
         washdc_kill();
@@ -478,11 +497,11 @@ static void resize_callback(GLFWwindow *win, int width, int height) {
     washdc_on_resize(width, height);
 }
 
-static int win_glfw_get_width(void) {
+int win_glfw_get_width(void) {
     return res_x;
 }
 
-static int win_glfw_get_height(void) {
+int win_glfw_get_height(void) {
     return res_y;
 }
 
@@ -516,5 +535,31 @@ static void toggle_fullscreen(void) {
 
 static void toggle_overlay(void) {
     show_overlay = !show_overlay;
-    overlay_show(show_overlay);
+    overlay::show(show_overlay);
+}
+
+static void mouse_btn_cb(GLFWwindow *win, int btn, int action, int mods) {
+    if (btn >= 0 && btn < N_MOUSE_BTNS)
+        mouse_btns[btn] = (action == GLFW_PRESS);
+}
+
+bool win_glfw_get_mouse_btn(unsigned btn) {
+    if (btn < N_MOUSE_BTNS)
+        return mouse_btns[btn];
+    return false;
+}
+
+void win_glfw_get_mouse_pos(double *mouse_x, double *mouse_y) {
+    glfwGetCursorPos(win, mouse_x, mouse_y);
+}
+
+void win_glfw_get_mouse_scroll(double *mouse_x, double *mouse_y) {
+    *mouse_x = mouse_scroll_x;
+    *mouse_y = mouse_scroll_y;
+}
+
+static void
+mouse_scroll_cb(GLFWwindow *win, double scroll_x, double scroll_y) {
+    mouse_scroll_x = scroll_x;
+    mouse_scroll_y = scroll_y;
 }

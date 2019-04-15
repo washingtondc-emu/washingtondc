@@ -27,4 +27,12 @@
 
 struct win_intf const* get_win_intf_glfw(void);
 
+int win_glfw_get_width(void);
+int win_glfw_get_height(void);
+
+bool win_glfw_get_mouse_btn(unsigned btn);
+
+void win_glfw_get_mouse_pos(double *mouse_x, double *mouse_y);
+void win_glfw_get_mouse_scroll(double *mouse_x, double *mouse_y);
+
 #endif

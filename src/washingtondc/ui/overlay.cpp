@@ -22,120 +22,82 @@
 
 #include <cstring>
 #include <cstdio>
+#include <memory>
 
+#define GL3_PROTOTYPES 1
+#include <GL/glew.h>
 #include <GL/gl.h>
 
-#ifdef NOTYET
-#include "dreamcast.h"
-#include "hw/pvr2/pvr2.h"
-#endif
-#include "font/font.hpp"
 #include "washdc/win.h"
 #include "washdc/gfx/gl/shader.h"
 #include "washdc/washdc.h"
+#include "imgui.h"
+#include "renderer.hpp"
+#include "../window.hpp"
 
 #include "overlay.hpp"
 
 static double framerate, virt_framerate;
 static bool not_hidden;
 
-static struct shader ui_shader;
+std::unique_ptr<renderer> ui_renderer;
 
-static void shader_init(void);
-
-void overlay_show(bool do_show) {
+void overlay::show(bool do_show) {
     not_hidden = do_show;
 }
 
-void overlay_draw(void) {
+void overlay::draw() {
     if (not_hidden) {
-        unsigned screen_width = win_get_width();
-        unsigned screen_height = win_get_height();
-
-        char tmp[64];
-        snprintf(tmp, sizeof(tmp), "%.2f / %.2f", framerate, virt_framerate);
-        tmp[63] = '\0';
-
-        font_render(tmp, 0, 0, screen_width, screen_height);
-
         struct washdc_pvr2_stat stat;
         washdc_get_pvr2_stat(&stat);
 
-        /*
-         * TODO: put in list names when we have a font that can display text
-         * characters
-         */
-        snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
-        tmp[63] = '\0';
-        font_render(tmp, 0, 1, screen_width, screen_height);
+        ImGuiIO& io = ImGui::GetIO();
+        io.DisplaySize = ImVec2((float)win_glfw_get_width(),
+                                (float)win_glfw_get_height());
 
-        snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD]);
-        tmp[63] = '\0';
-        font_render(tmp, 0, 2, screen_width, screen_height);
+        ImGui::NewFrame();
 
-        snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS]);
-        tmp[63] = '\0';
-        font_render(tmp, 0, 3, screen_width, screen_height);
+        ImGui::Begin("Performance");
 
-        snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD]);
-        tmp[63] = '\0';
-        font_render(tmp, 0, 4, screen_width, screen_height);
+        ImGui::Text("Framerate: %.2f / %.2f", framerate, virt_framerate);
+        ImGui::Text("%u opaque polygons",
+                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
+        ImGui::Text("%u opaque modifier polygons",
+                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD]);
+        ImGui::Text("%u transparent polygons",
+                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS]);
+        ImGui::Text("%u transparent modifier polygons",
+                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD]);
+        ImGui::Text("%u punch-through polygons",
+                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
 
-        snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
-        tmp[63] = '\0';
-        font_render(tmp, 0, 5, screen_width, screen_height);
+        ImGui::End();
+
+        ImGui::Render();
+        ui_renderer->do_render(ImGui::GetDrawData());
     }
 }
 
-void overlay_set_fps(double fps) {
+void overlay::set_fps(double fps) {
     framerate = fps;
 }
 
-void overlay_set_virt_fps(double fps) {
+void overlay::set_virt_fps(double fps) {
     virt_framerate = fps;
 }
 
-void overlay_init(void) {
-    font_init();
+void overlay::init() {
+    ImGui::CreateContext();
+
+    ui_renderer = std::make_unique<renderer>();
 }
 
-void overlay_cleanup(void) {
-    font_cleanup();
+void overlay::cleanup() {
+    ui_renderer.reset();
+
+    ImGui::DestroyContext();
 }
 
-static void shader_init(void) {
-    static char const * const final_vert_glsl =
-        "#extension GL_ARB_explicit_uniform_location : enable\n"
-
-        "layout (location = 0) in vec3 vert_pos;\n"
-        "layout (location = 1) in vec2 tex_coord;\n"
-        "layout (location = 2) uniform mat4 trans_mat;\n"
-        "layout (location = 3) uniform mat3 tex_mat;\n"
-
-        "out vec2 st;\n"
-
-        "void main() {\n"
-        "    gl_Position = trans_mat * vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);\n"
-        "    st = (tex_mat * vec3(tex_coord.x, tex_coord.y, 1.0)).xy;\n"
-        "}\n";
-
-    static char const * const final_frag_glsl =
-        "in vec2 st;\n"
-        "out vec4 color;\n"
-
-        "uniform sampler2D fb_tex;\n"
-
-        "void main() {\n"
-        "    vec4 sample = texture(fb_tex, st);\n"
-        "    color = sample;\n"
-        "}\n";
-
-    shader_load_vert(&ui_shader, final_vert_glsl);
-    shader_load_frag(&ui_shader, final_frag_glsl);
-    shader_link(&ui_shader);
+void overlay::update() {
+    ui_renderer->update();
 }

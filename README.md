@@ -144,6 +144,10 @@ this software with some unnecessary components removed is included in
 external/glew.  The license for this software can be found at
 external/glew/LICENSE.txt.
 
+WashingtonDC uses the imgui library.  This software is included via a git
+submodule.  The license for this software can be found at
+external/imgui/LICENSE.txt.
+
 ## CONTACT
 You can reach me at my public-facing e-mail address, snickerbockers@washemu.org.
 

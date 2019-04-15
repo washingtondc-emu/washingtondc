@@ -10,3 +10,6 @@
 [submodule "external/portaudio"]
 	path = external/portaudio
 	url = https://git.assembla.com/portaudio.git
+[submodule "external/imgui"]
+	path = external/imgui
+	url = https://https://github.com/ocornut/imgui

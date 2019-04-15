@@ -29,24 +29,15 @@
  * this gets called by opengl_video_present to draw the overlay on top of the
  * screen.
  */
-void overlay_draw(void);
 
-void overlay_set_fps(double fps);
-void overlay_set_virt_fps(double fps);
-
-void overlay_show(bool do_show);
-
-void overlay_init(void);
-void overlay_cleanup(void);
-
-// vertex position (x, y, z)
-#define UI_SLOT_VERT_POS 0
-
-// vertex texture coordinates (s, t)
-#define UI_SLOT_VERT_ST 1
-
-#define UI_SLOT_TRANS_MAT 2
-
-#define UI_SLOT_TEX_MAT 3
+namespace overlay {
+    void init();
+    void cleanup();
+    void draw();
+    void update();
+    void show(bool do_show);
+    void set_fps(double fps);
+    void set_virt_fps(double fps);
+}
 
 #endif

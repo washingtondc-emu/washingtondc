@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,19 +20,38 @@
  *
  ******************************************************************************/
 
-#ifndef FONT_H_
-#define FONT_H_
+#ifndef RENDERER_HPP_
+#define RENDERER_HPP_
 
-// Very simple bitmap font that I intend to not keep around very long
+#include <string>
 
-void font_init(void);
-void font_cleanup(void);
+#define GL3_PROTOTYPES 1
+#include <GL/glew.h>
+#include <GL/gl.h>
 
-/* void font_render(char const *txt, float pos_x, float pos_y, float width); */
-void font_render(char const *txt, unsigned col, unsigned row,
-                 float screen_w, float screen_h);
-void font_render_char(char ch, unsigned col, unsigned row,
-                      float screen_w, float screen_h);
-void font_get_height(float width);
+#include "imgui.h"
+
+class renderer {
+    GLuint vbo, vao, ebo;
+    GLuint frag_shader, vert_shader;
+    GLuint program;
+    GLuint tex_obj;
+
+    static char const * const vert_shader_glsl;
+    static char const * const frag_shader_glsl;
+
+    void do_render_draw_list(struct ImDrawList *list, const ImVec2& disp_pos,
+                             const ImVec2& disp_dims);
+
+    void create_program();
+
+public:
+    renderer();
+    ~renderer();
+
+    void do_render(struct ImDrawData *dat);
+
+    void update();
+};
 
 #endif
