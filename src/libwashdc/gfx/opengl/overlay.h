@@ -31,7 +31,7 @@
  * this gets called by opengl_video_present to draw the overlay on top of the
  * screen.
  */
-void gfx_gl_overlay_draw(unsigned screen_width, unsigned screen_height);
+void gfx_gl_overlay_draw(void);
 
 void gfx_gl_overlay_set_fps(double fps);
 void gfx_gl_overlay_set_virt_fps(double fps);

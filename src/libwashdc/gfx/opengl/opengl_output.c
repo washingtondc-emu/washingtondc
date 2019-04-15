@@ -110,7 +110,7 @@ opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_width,
                                 unsigned fb_read_height);
 
-void opengl_video_output_init() {
+void opengl_video_output_init(void) {
     char const *filter_str;
 
     filter_str = cfg_get_node("gfx.output.filter");
@@ -171,7 +171,7 @@ void opengl_video_output_init() {
     init_poly();
 }
 
-void opengl_video_output_cleanup() {
+void opengl_video_output_cleanup(void) {
     // TODO cleanup OpenGL stuff
 }
 
@@ -180,8 +180,6 @@ void opengl_video_new_framebuffer(int obj_handle,
                                   unsigned fb_new_height, bool do_flip) {
     set_flip(do_flip);
     opengl_video_update_framebuffer(obj_handle, fb_new_width, fb_new_height);
-    opengl_video_present();
-    win_update();
 }
 
 static void set_flip(bool flip) {
@@ -225,7 +223,7 @@ opengl_video_update_framebuffer(int obj_handle,
     bound_obj_h = (double)fb_read_height;
 }
 
-void opengl_video_present() {
+void opengl_video_present(void) {
     glClearColor(bgcolor[0], bgcolor[1], bgcolor[2], bgcolor[3]);
     glClear(GL_COLOR_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -270,8 +268,6 @@ void opengl_video_present() {
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    gfx_gl_overlay_draw(xres, yres);
 }
 
 static void init_poly() {

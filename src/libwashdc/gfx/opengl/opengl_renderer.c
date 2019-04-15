@@ -200,7 +200,8 @@ struct rend_if const opengl_rend_if = {
     .video_toggle_filter = opengl_video_toggle_filter,
     .overlay_set_fps = gfx_gl_overlay_set_fps,
     .overlay_set_virt_fps = gfx_gl_overlay_set_virt_fps,
-    .overlay_show = gfx_gl_overlay_show
+    .overlay_show = gfx_gl_overlay_show,
+    .overlay_draw = gfx_gl_overlay_draw
 };
 
 static char const * const pvr2_ta_vert_glsl =

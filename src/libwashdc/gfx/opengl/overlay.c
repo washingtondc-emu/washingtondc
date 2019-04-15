@@ -26,6 +26,7 @@
 #include "dreamcast.h"
 #include "hw/pvr2/pvr2.h"
 #include "gfx/opengl/font/font.h"
+#include "washdc/win.h"
 
 #include "overlay.h"
 
@@ -36,8 +37,11 @@ void gfx_gl_overlay_show(bool do_show) {
     not_hidden = do_show;
 }
 
-void gfx_gl_overlay_draw(unsigned screen_width, unsigned screen_height) {
+void gfx_gl_overlay_draw(void) {
     if (not_hidden) {
+        unsigned screen_width = win_get_width();
+        unsigned screen_height = win_get_height();
+
         char tmp[64];
         snprintf(tmp, sizeof(tmp), "%.2f / %.2f", framerate, virt_framerate);
         tmp[63] = '\0';

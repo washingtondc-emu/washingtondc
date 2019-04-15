@@ -45,10 +45,10 @@ void opengl_video_new_framebuffer(int obj_handle,
                                   unsigned fb_new_width,
                                   unsigned fb_new_height, bool do_flip);
 
-void opengl_video_present();
+void opengl_video_present(void);
 
-void opengl_video_output_init();
-void opengl_video_output_cleanup();
+void opengl_video_output_init(void);
+void opengl_video_output_cleanup(void);
 
 void opengl_video_toggle_filter(void);
 
