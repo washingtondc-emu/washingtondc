@@ -22,13 +22,13 @@
 
 #include <unistd.h>
 #include <cstdio>
-#include <cstdbool>
 #include <cstdint>
 #include <cstdlib>
 
 #include "washdc/washdc.h"
 #include "washdc/buildconfig.h"
 #include "window.hpp"
+#include "overlay.hpp"
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
@@ -55,6 +55,8 @@ static void print_usage(char const *cmd) {
             "\t-x\t\tenable native x86_64 dynamic recompiler backend "
             "(default)\n");
 }
+
+struct washdc_overlay_intf overlay_intf;
 
 int main(int argc, char **argv) {
     int opt;
@@ -232,9 +234,19 @@ int main(int argc, char **argv) {
     settings.path_gdi = path_gdi;
     settings.win_intf = get_win_intf_glfw();
 
+    overlay_intf.overlay_draw = overlay_draw;
+    overlay_intf.overlay_set_fps = overlay_set_fps;
+    overlay_intf.overlay_set_virt_fps = overlay_set_virt_fps;
+
+    settings.overlay_intf = &overlay_intf;
+
     washdc_init(&settings);
 
+    overlay_init();
+
     washdc_run();
+
+    overlay_cleanup();
 
     washdc_cleanup();
 

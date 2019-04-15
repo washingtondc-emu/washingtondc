@@ -20,6 +20,13 @@
  *
  ******************************************************************************/
 
+#ifndef WASHDC_SHADER_H_
+#define WASHDC_SHADER_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * intentionally avoid including OpenGL headers to make sure that this header
  * does not get included by code which is not OpenGL-specific.
@@ -67,3 +74,9 @@ void shader_load_frag(struct shader *out, char const *frag_shader_src);
 void shader_link(struct shader *out);
 
 void shader_cleanup(struct shader *shader);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

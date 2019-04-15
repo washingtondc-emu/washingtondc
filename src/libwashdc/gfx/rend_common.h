@@ -83,11 +83,6 @@ struct rend_if {
                                   unsigned fb_new_height, bool do_flip);
 
     void (*video_toggle_filter)(void);
-
-    void (*overlay_set_fps)(double fps);
-    void (*overlay_set_virt_fps)(double fps);
-    void (*overlay_show)(bool do_show);
-    void (*overlay_draw)(void);
 };
 
 // initialize and clean up the graphics renderer

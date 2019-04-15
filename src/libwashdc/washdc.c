@@ -30,6 +30,7 @@
 #include "gfx/gfx_config.h"
 #include "title.h"
 #include "washdc/win.h"
+#include "hw/pvr2/pvr2.h"
 
 static uint32_t trans_bind_washdc_to_maple(uint32_t wash);
 static int trans_axis_washdc_to_maple(int axis);
@@ -68,8 +69,10 @@ void washdc_init(struct washdc_launch_settings const *settings) {
     config_set_ser_srv_enable(settings->enable_serial);
 
     win_set_intf(settings->win_intf);
+    gfx_set_overlay_intf(settings->overlay_intf);
 
-    dreamcast_init(settings->path_gdi, settings->enable_cmd_tcp);
+    dreamcast_init(settings->path_gdi, settings->enable_cmd_tcp,
+                   settings->overlay_intf);
 }
 
 void washdc_cleanup() {
@@ -125,10 +128,6 @@ void washdc_gfx_toggle_wireframe(void) {
 
 void washdc_gfx_toggle_filter(void) {
     gfx_toggle_output_filter();
-}
-
-void washdc_gfx_toggle_overlay(void) {
-    dc_toggle_overlay();
 }
 
 static uint32_t trans_bind_washdc_to_maple(uint32_t wash) {
@@ -187,4 +186,20 @@ static int trans_axis_washdc_to_maple(int axis) {
     case WASHDC_CONTROLLER_AXIS_JOY1_X:
         return MAPLE_CONTROLLER_AXIS_JOY1_X;
     }
+}
+
+void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat) {
+    struct pvr2_stat src;
+    dc_get_pvr2_stats(&src);
+
+    stat->poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE] =
+        src.poly_count[DISPLAY_LIST_OPAQUE];
+    stat->poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD] =
+        src.poly_count[DISPLAY_LIST_OPAQUE_MOD];
+    stat->poly_count[WASHDC_PVR2_POLY_GROUP_TRANS] =
+        src.poly_count[DISPLAY_LIST_TRANS];
+    stat->poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD] =
+        src.poly_count[DISPLAY_LIST_TRANS_MOD];
+    stat->poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH] =
+        src.poly_count[DISPLAY_LIST_PUNCH_THROUGH];
 }

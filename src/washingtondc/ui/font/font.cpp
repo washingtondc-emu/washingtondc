@@ -28,22 +28,22 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "digit_0.h"
-#include "digit_1.h"
-#include "digit_2.h"
-#include "digit_3.h"
-#include "digit_4.h"
-#include "digit_5.h"
-#include "digit_6.h"
-#include "digit_7.h"
-#include "digit_8.h"
-#include "digit_9.h"
-#include "dot.h"
-#include "slash.h"
-#include "space.h"
-#include "gfx/opengl/opengl_output.h"
+#include "digit_0.hpp"
+#include "digit_1.hpp"
+#include "digit_2.hpp"
+#include "digit_3.hpp"
+#include "digit_4.hpp"
+#include "digit_5.hpp"
+#include "digit_6.hpp"
+#include "digit_7.hpp"
+#include "digit_8.hpp"
+#include "digit_9.hpp"
+#include "dot.hpp"
+#include "slash.hpp"
+#include "space.hpp"
+#include "overlay.hpp"
 
-#include "font.h"
+#include "font.hpp"
 
 #define GLYPH_WIDTH 8
 #define GLYPH_HEIGHT 16
@@ -199,14 +199,14 @@ static void create_poly(void) {
                  VERT_LEN * VERT_COUNT * sizeof(GLfloat),
                  quad_verts, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(OUTPUT_SLOT_VERT_POS, 3, GL_FLOAT, GL_FALSE,
+    glVertexAttribPointer(UI_SLOT_VERT_POS, 3, GL_FLOAT, GL_FALSE,
                           VERT_LEN * sizeof(GLfloat),
                           (GLvoid*)0);
-    glEnableVertexAttribArray(OUTPUT_SLOT_VERT_POS);
-    glVertexAttribPointer(OUTPUT_SLOT_VERT_ST, 2, GL_FLOAT, GL_FALSE,
+    glEnableVertexAttribArray(UI_SLOT_VERT_POS);
+    glVertexAttribPointer(UI_SLOT_VERT_ST, 2, GL_FLOAT, GL_FALSE,
                           VERT_LEN * sizeof(GLfloat),
                           (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(OUTPUT_SLOT_VERT_ST);
+    glEnableVertexAttribArray(UI_SLOT_VERT_ST);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, QUAD_IDX_COUNT * sizeof(GLuint),
@@ -261,8 +261,8 @@ static void do_render_ch(char ch, GLfloat pos_x, GLfloat pos_y,
         0.0f, 0.0f, 1.0f
     };
 
-    glUniformMatrix4fv(OUTPUT_SLOT_TRANS_MAT, 1, GL_TRUE, mview_mat);
-    glUniformMatrix3fv(OUTPUT_SLOT_TEX_MAT, 1, GL_TRUE, tex_mat);
+    glUniformMatrix4fv(UI_SLOT_TRANS_MAT, 1, GL_TRUE, mview_mat);
+    glUniformMatrix3fv(UI_SLOT_TEX_MAT, 1, GL_TRUE, tex_mat);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_obj);

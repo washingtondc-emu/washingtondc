@@ -23,7 +23,6 @@
 #include <err.h>
 #include <cctype>
 #include <cstdio>
-#include <cstdbool>
 #include <cstring>
 
 #include <GLFW/glfw3.h>
@@ -34,6 +33,7 @@
 
 #include "control_bind.hpp"
 #include "window.hpp"
+#include "ui/overlay.hpp"
 
 static void win_glfw_init(unsigned width, unsigned height);
 static void win_glfw_cleanup();
@@ -54,10 +54,13 @@ static unsigned win_res_x, win_res_y;
 static GLFWwindow *win;
 static enum win_mode win_mode = WIN_MODE_WINDOWED;
 
+static bool show_overlay;
+
 static void expose_callback(GLFWwindow *win);
 static void resize_callback(GLFWwindow *win, int width, int height);
 static void scan_input(void);
 static void toggle_fullscreen(void);
+static void toggle_overlay(void);
 
 struct win_intf const* get_win_intf_glfw(void) {
     static struct win_intf win_intf_glfw = { };
@@ -425,7 +428,7 @@ static void scan_input(void) {
     static bool overlay_key_prev = false;
     bool overlay_key = ctrl_get_button("toggle-overlay");
     if (overlay_key && !overlay_key_prev)
-        washdc_gfx_toggle_overlay();
+        toggle_overlay();
     overlay_key_prev = overlay_key;
 
     // toggle wireframe rendering
@@ -509,4 +512,9 @@ static void toggle_fullscreen(void) {
 
     if (res_x != old_res_x || res_y != old_res_y)
         washdc_on_resize(res_x, res_y);
+}
+
+static void toggle_overlay(void) {
+    show_overlay = !show_overlay;
+    overlay_show(show_overlay);
 }

@@ -47,7 +47,9 @@ extern struct dc_clock sh4_clock;
  * win_width and win_height are window dimensions
  * cmd_session should be true if the remote command prompt is enabled.
  */
-void dreamcast_init(char const *gdi_path, bool cmd_session);
+struct washdc_overlay_intf;
+void dreamcast_init(char const *gdi_path, bool cmd_session,
+                    struct washdc_overlay_intf const *overlay_intf_fns);
 
 void dreamcast_cleanup();
 

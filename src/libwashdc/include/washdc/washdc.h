@@ -59,6 +59,21 @@ enum washdc_boot_mode {
 
 struct win_intf;
 
+/*
+ * functions for drawing an overlay on top of the emulator output.
+ * The overlay must use the same graphics API as the gfx backend (which so far
+ * is always OpenGL).
+ *
+ * TODO: I really want to port the entire gfx renderer over from libwashdc into
+ * the frontend, but that would take a while and I have other more pressing
+ * things to work on now.
+ */
+struct washdc_overlay_intf {
+    void (*overlay_draw)(void);
+    void (*overlay_set_fps)(double fps);
+    void (*overlay_set_virt_fps)(double fps);
+};
+
 struct washdc_launch_settings {
     char const *path_ip_bin;
     char const *path_1st_read_bin;
@@ -68,6 +83,7 @@ struct washdc_launch_settings {
     char const *path_gdi;
 
     struct win_intf const *win_intf;
+    struct washdc_overlay_intf const *overlay_intf;
 
     enum washdc_boot_mode boot_mode;
 
@@ -97,8 +113,6 @@ char const *washdc_win_get_title(void);
 
 void washdc_gfx_toggle_wireframe(void);
 void washdc_gfx_toggle_filter(void);
-
-void washdc_gfx_toggle_overlay(void);
 
 #define WASHDC_CONT_BTN_C_SHIFT 0
 #define WASHDC_CONT_BTN_C_MASK (1 << WASHDC_CONT_BTN_C_SHIFT)
@@ -167,6 +181,22 @@ void washdc_controller_release_btns(unsigned port_no, uint32_t btns);
 
 // 0 = min, 255 = max, 128 = half
 void washdc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val);
+
+enum washdc_pvr2_poly_group {
+    WASHDC_PVR2_POLY_GROUP_OPAQUE,
+    WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD,
+    WASHDC_PVR2_POLY_GROUP_TRANS,
+    WASHDC_PVR2_POLY_GROUP_TRANS_MOD,
+    WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH,
+
+    WASHDC_PVR2_POLY_GROUP_COUNT
+};
+
+struct washdc_pvr2_stat {
+    unsigned poly_count[WASHDC_PVR2_POLY_GROUP_COUNT];
+};
+
+void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat);
 
 #ifdef __cplusplus
 }

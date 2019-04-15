@@ -27,13 +27,33 @@ project(WashingtonDC CXX)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 
+set(UI_SOURCE_DIR "${PROJECT_SOURCE_DIR}/ui")
+set(ui_sources "${UI_SOURCE_DIR}/font/digit_0.hpp"
+               "${UI_SOURCE_DIR}/font/digit_1.hpp"
+               "${UI_SOURCE_DIR}/font/digit_2.hpp"
+               "${UI_SOURCE_DIR}/font/digit_3.hpp"
+               "${UI_SOURCE_DIR}/font/digit_4.hpp"
+               "${UI_SOURCE_DIR}/font/digit_5.hpp"
+               "${UI_SOURCE_DIR}/font/digit_6.hpp"
+               "${UI_SOURCE_DIR}/font/digit_7.hpp"
+               "${UI_SOURCE_DIR}/font/digit_8.hpp"
+               "${UI_SOURCE_DIR}/font/digit_9.hpp"
+               "${UI_SOURCE_DIR}/font/dot.hpp"
+               "${UI_SOURCE_DIR}/font/slash.hpp"
+               "${UI_SOURCE_DIR}/font/space.hpp"
+               "${UI_SOURCE_DIR}/font/font.hpp"
+               "${UI_SOURCE_DIR}/font/font.cpp"
+               "${UI_SOURCE_DIR}/overlay.hpp"
+               "${UI_SOURCE_DIR}/overlay.cpp")
+
+
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/window.cpp"
                          "${PROJECT_SOURCE_DIR}/window.hpp"
                          "${PROJECT_SOURCE_DIR}/control_bind.cpp"
                          "${PROJECT_SOURCE_DIR}/control_bind.hpp")
 
-add_executable(washingtondc ${washingtondc_sources})
+add_executable(washingtondc ${washingtondc_sources} ${ui_sources})
 
 set(washingtondc_libs "m"
                       "washdc"
@@ -54,5 +74,5 @@ if (ENABLE_DEBUGGER)
     set(washingtondc_libs "${washingtondc_libs}" capstone-static)
 endif()
 
-target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/libwashdc/include")
+target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/libwashdc/include" "${PROJECT_SOURCE_DIR}/ui")
 target_link_libraries(washingtondc "${washingtondc_libs}")

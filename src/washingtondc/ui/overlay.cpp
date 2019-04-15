@@ -20,24 +20,34 @@
  *
  ******************************************************************************/
 
-#include <string.h>
-#include <stdio.h>
+#include <cstring>
+#include <cstdio>
 
+#include <GL/gl.h>
+
+#ifdef NOTYET
 #include "dreamcast.h"
 #include "hw/pvr2/pvr2.h"
-#include "gfx/opengl/font/font.h"
+#endif
+#include "font/font.hpp"
 #include "washdc/win.h"
+#include "washdc/gfx/gl/shader.h"
+#include "washdc/washdc.h"
 
-#include "overlay.h"
+#include "overlay.hpp"
 
 static double framerate, virt_framerate;
-static bool not_hidden = true;
+static bool not_hidden;
 
-void gfx_gl_overlay_show(bool do_show) {
+static struct shader ui_shader;
+
+static void shader_init(void);
+
+void overlay_show(bool do_show) {
     not_hidden = do_show;
 }
 
-void gfx_gl_overlay_draw(void) {
+void overlay_draw(void) {
     if (not_hidden) {
         unsigned screen_width = win_get_width();
         unsigned screen_height = win_get_height();
@@ -48,44 +58,84 @@ void gfx_gl_overlay_draw(void) {
 
         font_render(tmp, 0, 0, screen_width, screen_height);
 
-        struct pvr2_stat stat;
-        dc_get_pvr2_stats(&stat);
+        struct washdc_pvr2_stat stat;
+        washdc_get_pvr2_stat(&stat);
 
         /*
          * TODO: put in list names when we have a font that can display text
          * characters
          */
         snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[DISPLAY_LIST_OPAQUE]);
+                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
         tmp[63] = '\0';
         font_render(tmp, 0, 1, screen_width, screen_height);
 
         snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[DISPLAY_LIST_OPAQUE_MOD]);
+                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD]);
         tmp[63] = '\0';
         font_render(tmp, 0, 2, screen_width, screen_height);
 
         snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[DISPLAY_LIST_TRANS]);
+                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS]);
         tmp[63] = '\0';
         font_render(tmp, 0, 3, screen_width, screen_height);
 
         snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[DISPLAY_LIST_TRANS_MOD]);
+                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD]);
         tmp[63] = '\0';
         font_render(tmp, 0, 4, screen_width, screen_height);
 
         snprintf(tmp, sizeof(tmp), "%u",
-                 stat.poly_count[DISPLAY_LIST_PUNCH_THROUGH]);
+                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
         tmp[63] = '\0';
         font_render(tmp, 0, 5, screen_width, screen_height);
     }
 }
 
-void gfx_gl_overlay_set_fps(double fps) {
+void overlay_set_fps(double fps) {
     framerate = fps;
 }
 
-void gfx_gl_overlay_set_virt_fps(double fps) {
+void overlay_set_virt_fps(double fps) {
     virt_framerate = fps;
+}
+
+void overlay_init(void) {
+    font_init();
+}
+
+void overlay_cleanup(void) {
+    font_cleanup();
+}
+
+static void shader_init(void) {
+    static char const * const final_vert_glsl =
+        "#extension GL_ARB_explicit_uniform_location : enable\n"
+
+        "layout (location = 0) in vec3 vert_pos;\n"
+        "layout (location = 1) in vec2 tex_coord;\n"
+        "layout (location = 2) uniform mat4 trans_mat;\n"
+        "layout (location = 3) uniform mat3 tex_mat;\n"
+
+        "out vec2 st;\n"
+
+        "void main() {\n"
+        "    gl_Position = trans_mat * vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);\n"
+        "    st = (tex_mat * vec3(tex_coord.x, tex_coord.y, 1.0)).xy;\n"
+        "}\n";
+
+    static char const * const final_frag_glsl =
+        "in vec2 st;\n"
+        "out vec4 color;\n"
+
+        "uniform sampler2D fb_tex;\n"
+
+        "void main() {\n"
+        "    vec4 sample = texture(fb_tex, st);\n"
+        "    color = sample;\n"
+        "}\n";
+
+    shader_load_vert(&ui_shader, final_vert_glsl);
+    shader_load_frag(&ui_shader, final_frag_glsl);
+    shader_link(&ui_shader);
 }

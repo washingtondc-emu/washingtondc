@@ -34,11 +34,9 @@
 
 #include "opengl_output.h"
 #include "opengl_renderer.h"
-#include "shader.h"
+#include "washdc/gfx/gl/shader.h"
 #include "gfx/gfx.h"
 #include "gfx/gfx_obj.h"
-#include "gfx/opengl/font/font.h"
-#include "overlay.h"
 #include "log.h"
 #include "washdc/win.h"
 #include "washdc/config_file.h"

@@ -20,10 +20,8 @@
  *
  ******************************************************************************/
 
-#ifndef OVERLAY_H_
-#define OVERLAY_H_
-
-#include <stdbool.h>
+#ifndef OVERLAY_HPP_
+#define OVERLAY_HPP_
 
 // This is a simple UI that can optionally be drawn on top of the screen.
 
@@ -31,11 +29,24 @@
  * this gets called by opengl_video_present to draw the overlay on top of the
  * screen.
  */
-void gfx_gl_overlay_draw(void);
+void overlay_draw(void);
 
-void gfx_gl_overlay_set_fps(double fps);
-void gfx_gl_overlay_set_virt_fps(double fps);
+void overlay_set_fps(double fps);
+void overlay_set_virt_fps(double fps);
 
-void gfx_gl_overlay_show(bool do_show);
+void overlay_show(bool do_show);
+
+void overlay_init(void);
+void overlay_cleanup(void);
+
+// vertex position (x, y, z)
+#define UI_SLOT_VERT_POS 0
+
+// vertex texture coordinates (s, t)
+#define UI_SLOT_VERT_ST 1
+
+#define UI_SLOT_TRANS_MAT 2
+
+#define UI_SLOT_TEX_MAT 3
 
 #endif

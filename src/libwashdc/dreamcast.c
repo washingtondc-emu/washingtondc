@@ -135,7 +135,6 @@ static bool using_debugger;
 
 static struct timespec last_frame_realtime;
 static dc_cycle_stamp_t last_frame_virttime;
-static bool show_overlay;
 
 static struct memory_interface sh4_unmapped_mem;
 static struct memory_interface arm7_unmapped_mem;
@@ -207,8 +206,13 @@ static void suspend_loop(void);
 static void periodic_event_handler(struct SchedEvent *event);
 static struct SchedEvent periodic_event;
 
-void dreamcast_init(char const *gdi_path, bool cmd_session) {
+static struct washdc_overlay_intf const *overlay_intf;
+
+void dreamcast_init(char const *gdi_path, bool cmd_session,
+                    struct washdc_overlay_intf const *overlay_intf_fns) {
     int win_width, win_height;
+
+    overlay_intf = overlay_intf_fns;
 
     log_init(config_get_log_stdout(), config_get_log_verbose());
 
@@ -578,9 +582,7 @@ void dreamcast_run() {
     }
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
-
     clock_gettime(CLOCK_MONOTONIC, &last_frame_realtime);
-    gfx_overlay_show(show_overlay);
 
     sh4_clock.dispatch = select_sh4_backend();
     sh4_clock.dispatch_ctxt = &cpu;
@@ -1113,8 +1115,8 @@ void dc_end_frame(void) {
 
     last_frame_realtime = timestamp;
     last_frame_virttime = virt_timestamp;
-    gfx_overlay_set_fps(framerate);
-    gfx_overlay_set_virt_fps(virt_framerate);
+    overlay_intf->overlay_set_fps(framerate);
+    overlay_intf->overlay_set_virt_fps(virt_framerate);
 
     title_set_fps_internal(virt_framerate);
 
@@ -1124,11 +1126,6 @@ void dc_end_frame(void) {
 #ifdef ENABLE_TCP_CMD
     cmd_run_once();
 #endif
-}
-
-void dc_toggle_overlay(void) {
-    show_overlay = !show_overlay;
-    gfx_overlay_show(show_overlay);
 }
 
 int dc_tex_get_meta(struct pvr2_tex_meta *out, unsigned tex_no) {

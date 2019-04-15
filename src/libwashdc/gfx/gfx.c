@@ -46,6 +46,8 @@ static unsigned win_width, win_height;
 
 static unsigned frame_counter;
 
+static struct washdc_overlay_intf const *overlay_intf;
+
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
 static void gfx_do_init(void);
 
@@ -63,13 +65,15 @@ void gfx_cleanup(void) {
 
 void gfx_expose(void) {
     gfx_rend_ifp->video_present();
-    gfx_rend_ifp->overlay_draw();
+    if (overlay_intf->overlay_draw)
+        overlay_intf->overlay_draw();
     win_update();
 }
 
 void gfx_resize(int xres, int yres) {
     gfx_rend_ifp->video_present();
-    gfx_rend_ifp->overlay_draw();
+    if (overlay_intf->overlay_draw)
+        overlay_intf->overlay_draw();
     win_update();
 }
 
@@ -92,7 +96,8 @@ void gfx_post_framebuffer(int obj_handle,
     gfx_rend_ifp->video_new_framebuffer(obj_handle, fb_new_width, fb_new_height,
                                         do_flip);
     gfx_rend_ifp->video_present();
-    gfx_rend_ifp->overlay_draw();
+    if (overlay_intf->overlay_draw)
+        overlay_intf->overlay_draw();
     win_update();
     frame_counter++;
 }
@@ -101,17 +106,6 @@ void gfx_toggle_output_filter(void) {
     gfx_rend_ifp->video_toggle_filter();
 }
 
-void gfx_overlay_set_fps(double fps) {
-    if (gfx_rend_ifp->overlay_set_fps)
-        gfx_rend_ifp->overlay_set_fps(fps);
-}
-
-void gfx_overlay_set_virt_fps(double fps) {
-    if (gfx_rend_ifp->overlay_set_virt_fps)
-        gfx_rend_ifp->overlay_set_virt_fps(fps);
-}
-
-void gfx_overlay_show(bool do_show) {
-    if (gfx_rend_ifp->overlay_show)
-        gfx_rend_ifp->overlay_show(do_show);
+void gfx_set_overlay_intf(struct washdc_overlay_intf const *intf) {
+    overlay_intf = intf;
 }
