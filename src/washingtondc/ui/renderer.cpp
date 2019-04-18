@@ -159,6 +159,7 @@ void renderer::do_render_draw_list(struct ImDrawList *list,
     glActiveTexture(GL_TEXTURE0);
     glEnable(GL_SCISSOR_TEST);
     glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     GLfloat mview_mat[16] = {
         2.0f / (disp_dims.x - disp_pos.x), 0.0f, 0.0f, -1.0f * (disp_pos.x + disp_dims.x) / (disp_dims.x - disp_pos.x),
