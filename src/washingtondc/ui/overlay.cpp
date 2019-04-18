@@ -39,43 +39,70 @@
 
 static double framerate, virt_framerate;
 static bool not_hidden;
+static bool en_perf_win = true;
 
 std::unique_ptr<renderer> ui_renderer;
+
+namespace overlay {
+static void show_perf_win(void);
+}
 
 void overlay::show(bool do_show) {
     not_hidden = do_show;
 }
 
 void overlay::draw() {
-    if (not_hidden) {
-        struct washdc_pvr2_stat stat;
-        washdc_get_pvr2_stat(&stat);
+    if (!not_hidden)
+        return;
 
-        ImGuiIO& io = ImGui::GetIO();
-        io.DisplaySize = ImVec2((float)win_glfw_get_width(),
-                                (float)win_glfw_get_height());
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2((float)win_glfw_get_width(),
+                            (float)win_glfw_get_height());
 
-        ImGui::NewFrame();
+    ImGui::NewFrame();
 
-        ImGui::Begin("Performance");
+    // main menu bar
+    if (ImGui::BeginMainMenuBar()) {
 
-        ImGui::Text("Framerate: %.2f / %.2f", framerate, virt_framerate);
-        ImGui::Text("%u opaque polygons",
-                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
-        ImGui::Text("%u opaque modifier polygons",
-                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD]);
-        ImGui::Text("%u transparent polygons",
-                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS]);
-        ImGui::Text("%u transparent modifier polygons",
-                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD]);
-        ImGui::Text("%u punch-through polygons",
-                    stat.poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Quit", "Ctrl+Q"))
+                washdc_kill();
+            ImGui::EndMenu();
+        }
 
-        ImGui::End();
+        if (ImGui::BeginMenu("Window")) {
+            ImGui::Checkbox("Performance", &en_perf_win);
+            ImGui::EndMenu();
+        }
 
-        ImGui::Render();
-        ui_renderer->do_render(ImGui::GetDrawData());
+        ImGui::EndMainMenuBar();
     }
+
+    // Performance Window
+    if (en_perf_win)
+        show_perf_win();
+
+    ImGui::Render();
+    ui_renderer->do_render(ImGui::GetDrawData());
+}
+
+static void overlay::show_perf_win(void) {
+    struct washdc_pvr2_stat stat;
+    washdc_get_pvr2_stat(&stat);
+
+    ImGui::Begin("Performance", &en_perf_win);
+    ImGui::Text("Framerate: %.2f / %.2f", framerate, virt_framerate);
+    ImGui::Text("%u opaque polygons",
+                stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
+    ImGui::Text("%u opaque modifier polygons",
+                stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD]);
+    ImGui::Text("%u transparent polygons",
+                stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS]);
+    ImGui::Text("%u transparent modifier polygons",
+                stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD]);
+    ImGui::Text("%u punch-through polygons",
+                stat.poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
+    ImGui::End();
 }
 
 void overlay::set_fps(double fps) {
@@ -87,6 +114,9 @@ void overlay::set_virt_fps(double fps) {
 }
 
 void overlay::init() {
+    en_perf_win = true;
+    not_hidden = false;
+
     ImGui::CreateContext();
 
     ui_renderer = std::make_unique<renderer>();
