@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,12 +20,14 @@
  *
  ******************************************************************************/
 
-#ifndef MEMORYMAP_H_
-#define MEMORYMAP_H_
+#ifndef WASHDC_MEMORYMAP_H_
+#define WASHDC_MEMORYMAP_H_
 
 #include <stdint.h>
 
-#include "mem_areas.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef
 float(*memory_map_readfloat_func)(uint32_t addr, void *ctxt);
@@ -218,5 +220,9 @@ int
 memory_map_try_read_float(struct memory_map *map, uint32_t addr, float *val);
 int
 memory_map_try_read_double(struct memory_map *map, uint32_t addr, double *val);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

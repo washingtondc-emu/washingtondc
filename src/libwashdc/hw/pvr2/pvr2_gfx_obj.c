@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 
-#include "error.h"
+#include "washdc/error.h"
 #include "gfx/gfx_obj.h"
 
 #include "pvr2_gfx_obj.h"

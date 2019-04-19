@@ -27,8 +27,8 @@
 #include <stdint.h>
 
 #include "dc_sched.h"
-#include "types.h"
-#include "MemoryMap.h"
+#include "washdc/types.h"
+#include "washdc/MemoryMap.h"
 #include "gfx/gfx.h"
 #include "gfx/gfx_il.h"
 

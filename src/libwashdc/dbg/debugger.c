@@ -27,11 +27,11 @@
 #include <stdlib.h>
 
 #include "dreamcast.h"
-#include "fifo.h"
-#include "MemoryMap.h"
+#include "washdc/fifo.h"
+#include "washdc/MemoryMap.h"
 #include "hw/arm7/arm7.h"
 
-#include "dbg/debugger.h"
+#include "washdc/debugger.h"
 
 #ifndef ENABLE_DEBUGGER
 #error This file should not be included unless the debugger is enabled

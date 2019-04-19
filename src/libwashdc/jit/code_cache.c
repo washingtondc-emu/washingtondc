@@ -25,7 +25,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "error.h"
+#include "washdc/error.h"
 #include "code_block.h"
 #include "log.h"
 #include "config.h"

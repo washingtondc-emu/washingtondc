@@ -26,9 +26,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "types.h"
+#include "washdc/types.h"
 #include "mem_areas.h"
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 
 /*
  * I don't yet understand the 32-bit/64-bit access area dichotomy, so I'm

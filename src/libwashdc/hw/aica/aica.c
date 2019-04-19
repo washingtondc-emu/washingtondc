@@ -35,7 +35,7 @@
 #include "sound/sound.h"
 #include "log.h"
 #include "dc_sched.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "intmath.h"
 #include "hw/arm7/arm7.h"
 #include "hw/sys/holly_intc.h"

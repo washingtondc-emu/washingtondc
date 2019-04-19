@@ -25,7 +25,7 @@
 
 #include <portaudio.h>
 
-#include "error.h"
+#include "washdc/error.h"
 #include "sound.h"
 
 static DEF_ERROR_INT_ATTR(portaudio_error)

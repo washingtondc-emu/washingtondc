@@ -27,7 +27,7 @@
 #include "mem_areas.h"
 #include "dreamcast.h"
 #include "memory.h"
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 
 #include "jit_mem.h"
 

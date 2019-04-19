@@ -25,8 +25,8 @@
 
 #include <stdbool.h>
 
-#include "cpu.h"
-#include "types.h"
+#include "washdc/cpu.h"
+#include "washdc/types.h"
 #include "sh4_inst.h"
 #include "jit/jit_il.h"
 #include "jit/code_block.h"

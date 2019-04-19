@@ -27,7 +27,7 @@
 #include <stdbool.h>
 
 #include "dc_sched.h"
-#include "types.h"
+#include "washdc/types.h"
 
 struct pvr2;
 struct pvr2_core_mem_mapped_reg;

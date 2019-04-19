@@ -25,8 +25,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "types.h"
-#include "error.h"
+#include "washdc/types.h"
+#include "washdc/error.h"
 #include "hw/pvr2/pvr2.h"
 #include "hw/pvr2/spg.h"
 #include "hw/pvr2/pvr2_reg.h"

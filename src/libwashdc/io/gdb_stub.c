@@ -26,14 +26,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <string.h>
 
-#include "cpu.h"
-#include "hw/sh4/sh4_reg.h"
-#include "dreamcast.h"
+#include "washdc/cpu.h"
+#include "washdc/hw/sh4/sh4_reg_idx.h"
+#include "washdc/washdc.h"
+#include "washdc/fifo.h"
+#include "washdc/log.h"
+#include "washdc/error.h"
+#include "washdc/debugger.h"
 #include "io/io_thread.h"
-#include "dbg/debugger.h"
-#include "fifo.h"
-#include "log.h"
 
 #include "gdb_stub.h"
 
@@ -294,8 +296,8 @@ void gdb_cleanup(void) {
          * ANYWAYS,  the 10 second delay is annoying but not nearly as annoying
          * as needing to killall gdb every time I quit.
          */
-        LOG_INFO("Artificial 10-second delay to work around a bug present in "
-                 "some gdb installations, please be patient...\n");
+        washdc_log_info("Artificial 10-second delay to work around a bug present in "
+                        "some gdb installations, please be patient...\n");
         sleep(10);
         bufferevent_free(stub.bev);
     }
@@ -314,7 +316,8 @@ void gdb_cleanup(void) {
 }
 
 static void gdb_callback_attach(void *argptr) {
-    LOG_INFO("Awaiting remote GDB connection on port %d...\n", GDB_PORT_NO);
+    washdc_log_info("Awaiting remote GDB connection on port %d...\n",
+                    GDB_PORT_NO);
 
     gdb_stub_lock();
 
@@ -326,7 +329,7 @@ static void gdb_callback_attach(void *argptr) {
 
     gdb_stub_unlock();
 
-    LOG_INFO("Connection established.\n");
+    washdc_log_info("Connection established.\n");
 }
 
 static void gdb_callback_run_once(void *argptr) {
@@ -421,8 +424,8 @@ static void deserialize_regs(struct string const *input_str, reg32_t regs[N_REGS
 
     if (sz_expect != sz_actual) {
         // TODO: better error messages
-        LOG_ERROR("sz_expect is %u, az_actual is %u\n",
-                  (unsigned)sz_expect, (unsigned)sz_actual);
+        washdc_log_error("sz_expect is %u, az_actual is %u\n",
+                         (unsigned)sz_expect, (unsigned)sz_actual);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 }
@@ -537,7 +540,7 @@ static int conv_reg_idx_to_sh4(unsigned reg_no, reg32_t reg_sr) {
     else if (reg_no >= FR0 && reg_no <= FR15)
         return reg_no - FR0 + SH4_REG_FR0;
 
-    LOG_WARN("Error: unable to map register index %d\n", reg_no);
+    washdc_log_warn("Error: unable to map register index %d\n", reg_no);
     return -1;
 }
 
@@ -546,8 +549,8 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
 
     if ((reg_no >= R0B0 && reg_no <= R7B0) ||
         (reg_no >= R0B1 && reg_no <= R7B1)) {
-        LOG_WARN("WARNING: this gdb stub does not allow writes to "
-                 "banked registers\n");
+        washdc_log_warn("WARNING: this gdb stub does not allow writes to "
+                        "banked registers\n");
         return 0;
     }
 
@@ -557,8 +560,8 @@ static int set_reg(reg32_t reg_file[SH4_REGISTER_COUNT],
         reg_file[idx] = reg_val;
     } else {
 #ifdef GDBSTUB_VERBOSE
-        LOG_WARN("WARNING: GdbStub unable to set value of register %x to %x\n",
-                 reg_no, reg_val);
+        washdc_log_warn("WARNING: GdbStub unable to set value of register %x "
+                        "to %x\n", reg_no, reg_val);
 #endif
         return 1;
     }
@@ -772,7 +775,8 @@ static void handle_P_packet(struct string *out, struct string const *dat) {
 
     if ((equals_idx < 0) || ((size_t)equals_idx >= (string_length(dat) - 1))) {
 #ifdef GDBSTUB_VERBOSE
-        LOG_WARN("WARNING: malformed P packet in gdbstub \"%s\"\n", string_get(dat));
+        washdc_log_warn("WARNING: malformed P packet in gdbstub \"%s\"\n",
+                        string_get(dat));
 #endif
 
         string_set(out, "E16");
@@ -793,15 +797,16 @@ static void handle_P_packet(struct string *out, struct string const *dat) {
 
     if (reg_no >= N_REGS) {
 #ifdef GDBSTUB_VERBOSE
-        LOG_WARN("ERROR: unable to write to register number %x\n", reg_no);
+        washdc_log_error("ERROR: unable to write to register number %x\n",
+                        reg_no);
 #endif
         string_set(out, "E16");
         goto cleanup;
     }
 
     if ((reg_no >= R0B0 && reg_no <= R7B0) || (reg_no >= R0B1 && reg_no <= R7B1)) {
-        LOG_WARN("WARNING: this gdb stub does not allow writes to "
-                 "banked registers\n");
+        washdc_log_warn("WARNING: this gdb stub does not allow writes to "
+                        "banked registers\n");
     } else {
         int sh4_reg_no = conv_reg_idx_to_sh4(reg_no,
                                              debug_get_reg(DEBUG_CONTEXT_SH4,
@@ -825,7 +830,7 @@ static void handle_D_packet(struct string *out, struct string const *dat) {
 }
 
 static void handle_K_packet(struct string *out, struct string const *dat) {
-    dreamcast_kill();
+    washdc_kill();
 
     string_set(out, "OK");
 }
@@ -1136,7 +1141,7 @@ cleanup:
 
 static void transmit_pkt(struct string const *pkt) {
 #ifdef GDBSTUB_VERBOSE
-    LOG_INFO(">>>> %s\n", string_get(pkt));
+    washdc_log_info(">>>> %s\n", string_get(pkt));
 #endif
 
     string_copy(&stub.unack_packet, pkt);
@@ -1213,7 +1218,7 @@ static bool next_packet(struct string *pkt) {
     string_set(&stub.input_packet, string_get(&pktbuf_tmp));
 
 #ifdef GDBSTUB_VERBOSE
-    LOG_INFO("<<<< %s\n", string_get(pkt));
+    washdc_log_info("<<<< %s\n", string_get(pkt));
 #endif
 
     found_pkt = true;
@@ -1233,9 +1238,9 @@ listener_cb(struct evconnlistener *listener,
     gdb_stub_lock();
 
     if (stub.state != GDB_STATE_LISTENING) {
-        LOG_WARN("WARNING: %s called when state is not "
-                 "GDB_STATE_LISTENING (state is %u)\n",
-                 __func__, (unsigned)stub.state);
+        washdc_log_warn("WARNING: %s called when state is not "
+                        "GDB_STATE_LISTENING (state is %u)\n",
+                        __func__, (unsigned)stub.state);
         gdb_stub_unlock();
         return;
     }
@@ -1284,9 +1289,9 @@ static void handle_read(struct bufferevent *bev, void *arg) {
         if (string_length(&stub.input_packet)) {
 
             if (string_length(&stub.unack_packet)) {
-                LOG_WARN("WARNING: new packet incoming; no acknowledgement was "
-                         "ever received for \"%s\"\n",
-                         string_get(&stub.unack_packet));
+                washdc_log_warn("WARNING: new packet incoming; no "
+                                "acknowledgement was ever received for "
+                                "\"%s\"\n", string_get(&stub.unack_packet));
                 string_set(&stub.unack_packet, "");
             }
 
@@ -1301,7 +1306,7 @@ static void handle_read(struct bufferevent *bev, void *arg) {
                 // TODO: verify the checksum
 
 #ifdef GDBSTUB_VERBOSE
-                LOG_INFO(">>>> +\n");
+                washdc_log_info(">>>> +\n");
 #endif
                 struct string plus_symbol;
                 string_init_txt(&plus_symbol, "+");
@@ -1314,22 +1319,23 @@ static void handle_read(struct bufferevent *bev, void *arg) {
         } else {
             if (c == '+') {
 #ifdef GDBSTUB_VERBOSE
-                LOG_INFO("<<<< +\n");
+                washdc_log_info("<<<< +\n");
 #endif
                 if (!string_length(&stub.unack_packet))
-                    LOG_WARN("WARNING: received acknowledgement for "
-                             "unsent packet\n");
+                    washdc_log_warn("WARNING: received acknowledgement for "
+                                    "unsent packet\n");
                 string_set(&stub.unack_packet, "");
             } else if (c == '-') {
 #ifdef GDBSTUB_VERBOSE
-                LOG_INFO("<<<< -\n");
+                washdc_log_info("<<<< -\n");
 #endif
                 if (!string_length(&stub.unack_packet)) {
-                    LOG_WARN("WARNING: received negative "
-                             "acknowledgement for unsent packet\n");
+                    washdc_log_warn("WARNING: received negative "
+                                    "acknowledgement for unsent packet\n");
                 } else {
 #ifdef GDBSTUB_VERBOSE
-                    LOG_INFO(">>>> %s\n",  string_get(&stub.unack_packet));
+                    washdc_log_info(">>>> %s\n",
+                                    string_get(&stub.unack_packet));
 #endif
                     transmit(&stub.unack_packet);
                 }
@@ -1338,10 +1344,12 @@ static void handle_read(struct bufferevent *bev, void *arg) {
                 string_set(&stub.input_packet, "$");
             } else if (c == 3) {
                 // user pressed ctrl+c (^C) on the gdb frontend
-                LOG_INFO("GDBSTUB: user requested breakpoint (ctrl-C)\n");
+                washdc_log_info("GDBSTUB: user requested breakpoint "
+                                "(ctrl-C)\n");
                 debug_request_break();
             } else {
-                LOG_WARN("WARNING: ignoring unexpected character %c\n", c);
+                washdc_log_warn("WARNING: ignoring unexpected character %c\n",
+                                c);
             }
         }
     }
@@ -1875,7 +1883,8 @@ static void deferred_cmd_run(void) {
     deferred_cmd_lock();
 
     while ((cmd = deferred_cmd_pop_nolock())) {
-        LOG_DBG("gdb_stub: deferred cmd %s\n", deferred_cmd_names[cmd->cmd_type]);
+        washdc_log_debug("gdb_stub: deferred cmd %s\n",
+                         deferred_cmd_names[cmd->cmd_type]);
         switch (cmd->cmd_type) {
         case DEFERRED_CMD_GET_ALL_REGS:
             deferred_cmd_do_get_all_regs(cmd);

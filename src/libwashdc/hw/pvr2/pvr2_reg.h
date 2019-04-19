@@ -26,8 +26,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "MemoryMap.h"
-#include "types.h"
+#include "washdc/MemoryMap.h"
+#include "washdc/types.h"
 
 struct pvr2;
 

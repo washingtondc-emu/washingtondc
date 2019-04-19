@@ -28,7 +28,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "log.h"
+#include "washdc/log.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define FIFO_DEREF(nodep, tp, memb)                     \
     (*((tp*)(((uint8_t*)nodep) - offsetof(tp, memb))))
@@ -107,9 +111,13 @@ static inline void fifo_erase(struct fifo_head *fifo, struct fifo_node *node) {
         *cursp = node->next;
         node->next = NULL;
     } else {
-        LOG_WARN("WARNING: attempting to erase "
-                 "non-present element from FIFO\n");
+        washdc_log_warn("WARNING: attempting to erase "
+                        "non-present element from FIFO\n");
     }
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #ifndef EXTERNAL_DEV_H_
 #define EXTERNAL_DEV_H_
 
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 
 extern struct memory_interface ext_dev_intf;
 

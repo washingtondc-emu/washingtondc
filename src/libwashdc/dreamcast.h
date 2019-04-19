@@ -30,7 +30,7 @@
 #include "dc_sched.h"
 
 #ifdef ENABLE_DEBUGGER
-#include "dbg/debugger.h"
+#include "washdc/debugger.h"
 #endif
 
 extern struct dc_clock sh4_clock;

@@ -30,7 +30,7 @@
 #include <sys/mman.h>
 
 #include "log.h"
-#include "error.h"
+#include "washdc/error.h"
 
 #include "exec_mem.h"
 

@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "error.h"
+#include "washdc/error.h"
 #include "dreamcast.h"
 #include "sh4_ocache.h"
 #include "sh4.h"
@@ -40,7 +40,7 @@
 #include "intmath.h"
 
 #ifdef ENABLE_DEBUGGER
-#include "dbg/debugger.h"
+#include "washdc/debugger.h"
 #endif
 
 #ifdef DEEP_SYSCALL_TRACE

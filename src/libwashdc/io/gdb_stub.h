@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -34,9 +34,9 @@
 #include <event2/listener.h>
 #include <event2/buffer.h>
 
-#include "dbg/debugger.h"
-#include "types.h"
-#include "stringlib.h"
+#include "washdc/debugger.h"
+#include "washdc/types.h"
+#include "washdc/stringlib.h"
 
 // it's 'cause 1999 is the year the Dreamcast came out in America
 #define GDB_PORT_NO 1999

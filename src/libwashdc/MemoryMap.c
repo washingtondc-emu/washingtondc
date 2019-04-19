@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@
 #include <stddef.h>
 
 #include "dreamcast.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "mem_code.h"
 
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 
 void memory_map_init(struct memory_map *map) {
     memset(map, 0, sizeof(*map));

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 
 #include "log.h"
 #include "io_thread.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "dbg/washdbg_core.h"
 #include "ring.h"
 

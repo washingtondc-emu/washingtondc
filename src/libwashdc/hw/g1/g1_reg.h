@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,9 +27,9 @@
 #include <stdint.h>
 
 #include "mmio.h"
-#include "types.h"
+#include "washdc/types.h"
 #include "mem_areas.h"
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 
 #define N_G1_REGS (ADDR_G1_LAST - ADDR_G1_FIRST + 1)
 DECL_MMIO_REGION(g1_reg_32, N_G1_REGS, ADDR_G1_FIRST, uint32_t)

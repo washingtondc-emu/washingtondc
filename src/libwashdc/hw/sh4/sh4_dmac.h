@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #define SH4_DMAC_H_
 
 struct Sh4;
-#include "types.h"
+#include "washdc/types.h"
 
 struct sh4_dmac {
     /*

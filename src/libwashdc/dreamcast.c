@@ -30,11 +30,11 @@
 #include <math.h>
 
 #include "config.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "hw/flash_mem.h"
 #include "dc_sched.h"
 #include "hw/pvr2/spg.h"
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 #include "gfx/gfx.h"
 #include "hw/aica/aica_rtc.h"
 #include "hw/gdrom/gdrom.h"

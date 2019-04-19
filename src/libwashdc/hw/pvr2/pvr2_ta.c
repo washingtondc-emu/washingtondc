@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "error.h"
+#include "washdc/error.h"
 #include "gfx/gfx.h"
 #include "hw/sys/holly_intc.h"
 #include "pvr2_tex_mem.h"

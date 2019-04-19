@@ -24,8 +24,8 @@
 #define JIT_MEM_H_
 
 #include "jit/code_block.h"
-#include "types.h"
-#include "MemoryMap.h"
+#include "washdc/types.h"
+#include "washdc/MemoryMap.h"
 
 /*
  * this function can intelligently bypass the memory-mapping and go straight

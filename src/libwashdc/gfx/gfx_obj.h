@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "error.h"
+#include "washdc/error.h"
 
 /*
  * An obj represents a blob of data sent to the gfx system.  It will be the

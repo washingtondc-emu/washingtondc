@@ -23,9 +23,9 @@
 #ifndef JIT_IL_H_
 #define JIT_IL_H_
 
-#include "cpu.h"
-#include "types.h"
-#include "MemoryMap.h"
+#include "washdc/cpu.h"
+#include "washdc/types.h"
+#include "washdc/MemoryMap.h"
 
 /*
  * Defines the number of slots available to IL programs.

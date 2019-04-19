@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,9 +26,9 @@
 #include <stdbool.h>
 #include <assert.h>
 
-#include "error.h"
+#include "washdc/error.h"
 #include "dc_sched.h"
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 #include "hw/aica/aica_wave_mem.h"
 
 #define ARM7_CLOCK_SCALE (SCHED_FREQUENCY / (45 * 1000 * 1000))

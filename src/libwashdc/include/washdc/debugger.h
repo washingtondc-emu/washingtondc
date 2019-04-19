@@ -23,16 +23,16 @@
 #ifndef DEBUGGER_H_
 #define DEBUGGER_H_
 
-#ifndef ENABLE_DEBUGGER
-#error This file should not be included unless the debugger is enabled
-#endif
-
 #include <stdbool.h>
 
-#include "cpu.h"
-#include "types.h"
-#include "hw/sh4/sh4_reg.h"
-#include "MemoryMap.h"
+#include "washdc/cpu.h"
+#include "washdc/types.h"
+#include "washdc/hw/sh4/sh4_reg_idx.h"
+#include "washdc/MemoryMap.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum debug_state {
     // the debugger is not suspending the dreamcast
@@ -302,5 +302,9 @@ int debug_write_mem(enum dbg_context_id id, void const *input,
                     addr32_t addr, unsigned len);
 
 uint32_t debug_pc_next(enum dbg_context_id id);
+
+#ifdef __cplusplus
+}␘
+#endif
 
 #endif

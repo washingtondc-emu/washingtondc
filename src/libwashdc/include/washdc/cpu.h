@@ -20,11 +20,19 @@
  *
  ******************************************************************************/
 
-#ifndef CPU_H_
-#define CPU_H_
+#ifndef WASHDC_CPU_H_
+#define WASHDC_CPU_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Future home of common cpu infrastructure
 
 typedef unsigned cpu_inst_param;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

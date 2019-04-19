@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 #include <stddef.h>
 
-#include "types.h"
+#include "washdc/types.h"
 
 float maple_reg_read_float(addr32_t addr, void *ctxt);
 void maple_reg_write_float(addr32_t addr, float val, void *ctxt);

@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "error.h"
+#include "washdc/error.h"
 #include "dreamcast.h"
 #include "hw/sh4/sh4.h"
 #include "hw/sys/holly_intc.h"

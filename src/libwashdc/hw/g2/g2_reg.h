@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,8 +25,8 @@
 
 #include <stddef.h>
 
-#include "types.h"
-#include "MemoryMap.h"
+#include "washdc/types.h"
+#include "washdc/MemoryMap.h"
 
 uint8_t g2_reg_read_8(addr32_t addr, void *ctxt);
 void g2_reg_write_8(addr32_t addr, uint8_t val, void *ctxt);

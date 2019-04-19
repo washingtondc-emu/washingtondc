@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,7 +31,11 @@
  */
 
 #include <stdbool.h>
-#include <stdio.h>
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct string {
     /*
@@ -214,5 +218,9 @@ uint32_t string_read_hex32(struct string const *str, int first_idx);
 
 // dst must be initialized prior to calling this
 void string_dirname(struct string *dst, char const *input);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

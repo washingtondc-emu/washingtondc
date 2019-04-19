@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 
-#include "cpu.h"
+#include "washdc/cpu.h"
 #include "code_block.h"
 
 #include "jit_il.h"

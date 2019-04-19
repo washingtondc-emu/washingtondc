@@ -32,7 +32,7 @@
 #include "framebuffer.h"
 #include "mem_areas.h"
 #include "log.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "gfx/gfx_il.h"
 #include "gfx/gfx_tex_cache.h"
 #include "dreamcast.h"

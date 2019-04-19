@@ -27,7 +27,7 @@
 
 #include <stdint.h>
 
-#include "fifo.h"
+#include "washdc/fifo.h"
 
 enum error_type {
     ERROR_NONE = 0,

@@ -23,11 +23,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "fifo.h"
+#include "washdc/fifo.h"
 #include "dreamcast.h"
 #include "log.h"
 
-#include "error.h"
+#include "washdc/error.h"
 
 static char const *error_type_string(enum error_type tp);
 static void print_attr(struct error_attr const *attr);

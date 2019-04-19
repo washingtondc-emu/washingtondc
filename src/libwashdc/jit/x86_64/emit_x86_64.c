@@ -31,7 +31,7 @@
 #include <stdbool.h>
 
 #include "log.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "exec_mem.h"
 
 #include "emit_x86_64.h"

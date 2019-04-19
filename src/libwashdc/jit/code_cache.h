@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include "x86_64/code_block_x86_64.h"
 #endif
 
-#include "types.h"
+#include "washdc/types.h"
 
 /*
  * TODO: need to include FPU state in code cache, not just address.

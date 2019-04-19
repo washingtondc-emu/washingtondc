@@ -27,8 +27,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "types.h"
-#include "cpu.h"
+#include "washdc/types.h"
+#include "washdc/cpu.h"
 
 struct Sh4;
 typedef struct Sh4 Sh4;

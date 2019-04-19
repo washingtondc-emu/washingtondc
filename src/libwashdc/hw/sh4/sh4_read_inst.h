@@ -28,12 +28,12 @@
  * and sh4_mem.c that I wanted to inline.
  */
 
-#include "cpu.h"
+#include "washdc/cpu.h"
 #include "sh4.h"
 #include "sh4_excp.h"
 #include "dreamcast.h"
 #include "mem_areas.h"
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 
 #ifdef DEEP_SYSCALL_TRACE
 #include "deep_syscall_trace.h"

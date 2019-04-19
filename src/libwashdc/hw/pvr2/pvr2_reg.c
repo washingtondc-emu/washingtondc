@@ -26,10 +26,10 @@
 #include <stdlib.h>
 
 #include "mem_code.h"
-#include "types.h"
-#include "MemoryMap.h"
+#include "washdc/types.h"
+#include "washdc/MemoryMap.h"
 #include "log.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "pvr2_ta.h"
 #include "spg.h"
 #include "pvr2_tex_cache.h"

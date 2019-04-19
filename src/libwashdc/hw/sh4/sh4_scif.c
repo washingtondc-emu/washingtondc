@@ -32,7 +32,7 @@
 #include "sh4_reg.h"
 #include "sh4_reg_flags.h"
 #include "sh4.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "log.h"
 #include "dc_sched.h"
 #include "dreamcast.h"

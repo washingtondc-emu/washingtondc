@@ -26,10 +26,18 @@
 #include <assert.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef uint32_t reg32_t;
 typedef uint32_t addr32_t;
 
 static_assert(sizeof(reg32_t) == sizeof(float),
               "cannot fit a float into a reg32_t");
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

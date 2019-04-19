@@ -27,7 +27,7 @@
 #include <errno.h>
 #include <stddef.h>
 
-#include "error.h"
+#include "washdc/error.h"
 #include "jit/code_block.h"
 #include "jit/jit_il.h"
 #include "exec_mem.h"
@@ -37,7 +37,7 @@
 #include "native_mem.h"
 #include "abi.h"
 #include "config.h"
-#include "cpu.h"
+#include "washdc/cpu.h"
 
 #include "code_block_x86_64.h"
 

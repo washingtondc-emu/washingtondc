@@ -25,10 +25,10 @@
 
 #include <stdint.h>
 
-#include "types.h"
+#include "washdc/types.h"
 #include "mem_code.h"
 #include "mem_areas.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "log.h"
 #include "mmio.h"
 #include "hw/sys/holly_intc.h"

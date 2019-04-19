@@ -23,12 +23,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "error.h"
+#include "washdc/error.h"
 
 #include "sh4.h"
 #include "sh4_reg.h"
 #include "sh4_reg_flags.h"
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 #include "sh4_dmac.h"
 #include "mem_areas.h"
 #include "hw/sys/holly_intc.h"

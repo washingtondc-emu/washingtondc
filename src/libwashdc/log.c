@@ -24,10 +24,14 @@
 #include <stdarg.h>
 
 #include "log.h"
+#include "washdc/log.h"
 
 static FILE *logfile;
 static bool also_stdout;
 static bool verbose_mode;
+
+static void log_do_write_vararg(enum log_severity lvl,
+                                char const *fmt, va_list args);
 
 void log_init(bool to_stdout, bool verbose) {
     logfile = fopen("wash.log", "w");
@@ -45,17 +49,43 @@ void log_flush(void) {
 }
 
 void log_do_write(enum log_severity lvl, char const *fmt, ...) {
+    va_list args;
+
+    va_start(args, fmt);
+    log_do_write_vararg(lvl, fmt, args);
+    va_end(args);
+}
+
+static void log_do_write_vararg(enum log_severity lvl,
+                                char const *fmt, va_list args) {
     if (verbose_mode || lvl >= log_severity_info) {
-        va_list args;
-
-        va_start(args, fmt);
+        va_list args2;
+        va_copy(args2, args);
         vfprintf(logfile, fmt, args);
-        va_end(args);
 
-        if (also_stdout || lvl >= log_severity_error) {
-            va_start(args, fmt);
-            vprintf(fmt, args);
-            va_end(args);
-        }
+        if (also_stdout || lvl >= log_severity_error)
+            vprintf(fmt, args2);
+        va_end(args2);
     }
+}
+
+void washdc_log(enum washdc_log_severity severity,
+                char const *fmt, va_list args) {
+    enum log_severity lvl;
+    switch (severity) {
+    case washdc_log_severity_debug:
+        lvl = log_severity_debug;
+        break;
+    case washdc_log_severity_info:
+        lvl = log_severity_info;
+        break;
+    case washdc_log_severity_warn:
+        lvl = log_severity_warn;
+        break;
+    default:
+    case washdc_log_severity_error:
+        lvl = log_severity_error;
+    }
+
+    log_do_write_vararg(lvl, fmt, args);
 }

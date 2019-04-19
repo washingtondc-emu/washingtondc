@@ -23,9 +23,9 @@
 #include <string.h>
 
 #include "pvr2.h"
-#include "error.h"
+#include "washdc/error.h"
 #include "mem_code.h"
-#include "MemoryMap.h"
+#include "washdc/MemoryMap.h"
 #include "pvr2_reg.h"
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"

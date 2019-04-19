@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "types.h"
+#include "washdc/types.h"
 
 typedef size_t sh4_ocache_line_t;     // index of cache-line (32-bytes/incrment)
 typedef uint32_t sh4_ocache_key_t;

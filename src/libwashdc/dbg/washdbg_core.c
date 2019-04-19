@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 #include "dreamcast.h"
 #include "io/washdbg_tcp.h"
 #include "sh4asm_core/disas.h"
-#include "dbg/debugger.h"
+#include "washdc/debugger.h"
 #include "hw/arm7/arm7.h"
 
 #include "dbg/washdbg_core.h"
