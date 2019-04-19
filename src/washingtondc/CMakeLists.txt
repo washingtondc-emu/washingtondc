@@ -34,7 +34,6 @@ set(ui_sources "${UI_SOURCE_DIR}/overlay.hpp"
                "${UI_SOURCE_DIR}/renderer.cpp")
 
 set(IMGUI_SOURCE_DIR "${CMAKE_SOURCE_DIR}/external/imgui")
-
 set(imgui_sources "${IMGUI_SOURCE_DIR}/imgui.cpp"
                   "${IMGUI_SOURCE_DIR}/imgui.h"
                   "${IMGUI_SOURCE_DIR}/imgui_demo.cpp"
@@ -46,13 +45,80 @@ set(imgui_sources "${IMGUI_SOURCE_DIR}/imgui.cpp"
                   "${IMGUI_SOURCE_DIR}/imstb_textedit.h"
                   "${IMGUI_SOURCE_DIR}/imstb_truetype.h")
 
+set(IO_SOURCE_DIR "${PROJECT_SOURCE_DIR}/frontend_io")
+set(io_sources "${IO_SOURCE_DIR}/io_thread.hpp"
+               "${IO_SOURCE_DIR}/io_thread.cpp")
+
+set(SH4ASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/external/sh4asm/sh4asm_core")
+set(sh4asm_sources "${SH4ASM_SOURCE_DIR}/disas.h"
+                   "${SH4ASM_SOURCE_DIR}/disas.c"
+		   "${SH4ASM_SOURCE_DIR}/sh4_asm_emit.h"
+		   "${SH4ASM_SOURCE_DIR}/sh4_asm_emit.c")
+
+set(debug_sources "${IO_SOURCE_DIR}/washdbg_tcp.hpp"
+                  "${IO_SOURCE_DIR}/washdbg_tcp.cpp"
+                  "${IO_SOURCE_DIR}/washdbg_core.hpp"
+                  "${IO_SOURCE_DIR}/washdbg_core.cpp"
+                  "${IO_SOURCE_DIR}/gdb_stub.hpp"
+                  "${IO_SOURCE_DIR}/gdb_stub.cpp")
+
+set(serial_sources "${IO_SOURCE_DIR}/serial_server.hpp"
+                   "${IO_SOURCE_DIR}/serial_server.cpp")
+
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/window.cpp"
                          "${PROJECT_SOURCE_DIR}/window.hpp"
                          "${PROJECT_SOURCE_DIR}/control_bind.cpp"
                          "${PROJECT_SOURCE_DIR}/control_bind.hpp")
 
-add_executable(washingtondc ${washingtondc_sources} ${ui_sources} ${imgui_sources})
+if (ENABLE_TCP_SERIAL)
+    add_definitions(-DENABLE_TCP_SERIAL)
+    if (NOT USE_LIBEVENT)
+        message(FATAL_ERROR "-DUSE_LIBEVENT=On is a prerequisite for -DENABLE_TCP_SERIAL=On")
+    endif()
+    set (washingtondc_sources ${washingtondc_sources} ${serial_sources})
+endif()
+
+if (ENABLE_DEBUGGER)
+    if (NOT USE_LIBEVENT)
+        message(FATAL_ERROR "-DUSE_LIBEVENT=On is a prerequisite for -DENABLE_DEBUGGER=On")
+    endif()
+
+    set(CAPSTONE_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "" FORCE)
+
+    set(CAPSTONE_ARM_SUPPORT ON CACHE BOOL "" FORCE)
+    set(CAPSTONE_ARM64_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_M68K_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_MIPS_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_PPC_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_SPARC_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_SYSZ_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_XCORE_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_X86_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_TMS320C64X_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_M680X_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_EVM_SUPPORT OFF CACHE BOOL "" FORCE)
+
+    set(washingtondc_sources ${washingtondc_sources} ${sh4asm_sources} ${debug_sources})
+
+    add_definitions(-DENABLE_DEBUGGER)
+    if (ENABLE_WATCHPOINTS)
+        add_definitions(-DENABLE_WATCHPOINTS)
+    endif()
+
+    if (ENABLE_DBG_COND)
+        add_definitions(-DENABLE_DBG_COND)
+    endif()
+endif()
+
+if (USE_LIBEVENT)
+    set(washingtondc_sources "${washingtondc_sources}" "${io_sources}")
+endif()
+
+add_executable(washingtondc ${washingtondc_sources} ${ui_sources}
+                            ${imgui_sources})
 
 set(washingtondc_libs "m"
                       "washdc"
@@ -65,9 +131,9 @@ set(washingtondc_libs "m"
                       "pthread"
                       "portaudio")
 
-if (USE_LIBEVENT)
+#if (USE_LIBEVENT)
     set(washingtondc_libs "${washingtondc_libs}" "${LIBEVENT_LIB_PATH}/lib/libevent.a")
-endif()
+#endif()
 
 if (ENABLE_DEBUGGER)
     set(washingtondc_libs "${washingtondc_libs}" capstone-static)
@@ -76,5 +142,6 @@ endif()
 target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include"
                                                 "${CMAKE_SOURCE_DIR}/src/libwashdc/include"
                                                 "${PROJECT_SOURCE_DIR}/ui"
-                                                "${IMGUI_SOURCE_DIR}")
+                                                "${IMGUI_SOURCE_DIR}"
+                                                "${CMAKE_SOURCE_DIR}/external/sh4asm")
 target_link_libraries(washingtondc "${washingtondc_libs}")

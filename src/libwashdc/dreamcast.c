@@ -73,17 +73,8 @@
 #include "sound/sound.h"
 #include "washdc/win.h"
 
-#ifdef USE_LIBEVENT
-#include "io/io_thread.h"
-#endif
-
 #ifdef ENABLE_TCP_SERIAL
-#include "io/serial_server.h"
-#endif
-
-#ifdef ENABLE_DEBUGGER
-#include "io/gdb_stub.h"
-#include "io/washdbg_tcp.h"
+#include "serial_server.h"
 #endif
 
 #ifdef ENABLE_JIT_X86_64
@@ -198,12 +189,18 @@ static void periodic_event_handler(struct SchedEvent *event);
 static struct SchedEvent periodic_event;
 
 static struct washdc_overlay_intf const *overlay_intf;
+static struct debug_frontend const *dbg_intf;
+static struct serial_server_intf const *sersrv;
 
 void dreamcast_init(char const *gdi_path, bool cmd_session,
-                    struct washdc_overlay_intf const *overlay_intf_fns) {
+                    struct washdc_overlay_intf const *overlay_intf_fns,
+                    struct debug_frontend const *dbg_frontend,
+                    struct serial_server_intf const *ser_intf) {
     int win_width, win_height;
 
     overlay_intf = overlay_intf_fns;
+    dbg_intf = dbg_frontend;
+    sersrv = ser_intf;
 
     log_init(config_get_log_stdout(), config_get_log_verbose());
 
@@ -396,10 +393,6 @@ do_init_win_gfx:
 
     sound_init();
 
-#ifdef USE_LIBEVENT
-    io_thread_launch();
-#endif
-
     init_complete = true;
 }
 
@@ -410,12 +403,6 @@ void dreamcast_cleanup() {
     LOG_INFO("Cleanup up debugger\n");
     debug_cleanup();
     LOG_INFO("debugger cleaned up\n");
-#endif
-
-#ifdef USE_LIBEVENT
-    LOG_INFO("Waiting for io_thread to exit...\n");
-    io_thread_join();
-    LOG_INFO("io_thread has exited.\n");
 #endif
 
     sound_cleanup();
@@ -495,8 +482,8 @@ typedef bool(*cpu_backend_func)(void*);
 
 static cpu_backend_func select_sh4_backend(void) {
 #ifdef ENABLE_DEBUGGER
-    bool use_gdb_stub = config_get_dbg_enable();
-    if (use_gdb_stub)
+    bool use_debugger = config_get_dbg_enable();
+    if (use_debugger)
         return run_to_next_sh4_event_debugger;
 #endif
 
@@ -567,11 +554,6 @@ void dreamcast_run() {
 
     // tell the other threads it's time to clean up and exit
     atomic_store_explicit(&signal_exit_threads, true, memory_order_relaxed);
-
-#ifdef USE_LIBEVENT
-    // kick the io_thread so it knows to check dc_is_running
-    io_thread_kick();
-#endif
 
     switch (term_reason) {
     case TERM_REASON_NORM:
@@ -909,17 +891,18 @@ Sh4 *dreamcast_get_cpu() {
 
 #ifdef ENABLE_DEBUGGER
 static void dreamcast_enable_debugger(void) {
-    using_debugger = true;
-    if (config_get_washdbg_enable())
-        debug_attach(&washdbg_frontend);
-    else
-        debug_attach(&gdb_frontend);
+    if (dbg_intf) {
+        using_debugger = true;
+        debug_attach(dbg_intf);
+    } else {
+        using_debugger = false;
+    }
 }
 #endif
 
 static void dreamcast_enable_serial_server(void) {
 #ifdef ENABLE_TCP_SERIAL
-    serial_server_attach();
+    serial_server_attach(sersrv, &cpu);
     sh4_scif_connect_server(&cpu);
 #else
     LOG_ERROR("You must recompile with -DENABLE_TCP_SERIAL=On to use the tcp "

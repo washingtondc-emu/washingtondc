@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,15 +20,11 @@
  *
  ******************************************************************************/
 
-#ifndef USE_LIBEVENT
-#error this should not be built when -DUSE_LIBEVENT=Off
-#endif
-
 #include <err.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <pthread.h>
+#include <cstdlib>
+#include <iostream>
+#include <atomic>
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>
@@ -36,75 +32,85 @@
 #include <event2/buffer.h>
 #include <event2/thread.h>
 
-#include "dreamcast.h"
-#include "log.h"
-
-#ifdef ENABLE_TCP_SERIAL
-#include "serial_server.h"
-#endif
+#include "washdc/log.h"
+#include "washdc/washdc.h"
 
 #ifdef ENABLE_DEBUGGER
-#include "gdb_stub.h"
-#include "washdbg_tcp.h"
+#include "gdb_stub.hpp"
+#include "washdbg_tcp.hpp"
 #endif
 
-#include "io_thread.h"
+#ifdef ENABLE_TCP_SERIAL
+#include "serial_server.hpp"
+#endif
 
-struct event_base *io_thread_event_base;
+#ifndef USE_LIBEVENT
+#error this file should not be built with USE_LIBEVENT disabled!
+#endif
 
+namespace io {
+
+struct event_base *event_base;
 /*
  * event that gets invoked whenever somebody calls io_thread_kick
  * to tell the io_thread that it has work to do
  */
-static struct event *io_thread_work_event;
+static struct event *work_event;
 
-static pthread_t io_thread;
+static pthread_t td;
 
-static pthread_mutex_t io_thread_create_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t io_thread_create_condition = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t create_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t create_condition = PTHREAD_COND_INITIALIZER;
 
-static void *io_main(void *arg);
-static void io_work_callback(evutil_socket_t fd, short ev, void *arg);
+static void* io_main(void *arg);
+static void work_callback(evutil_socket_t fd, short ev, void *arg);
 
-void io_thread_launch(void) {
+static std::atomic_bool alive;
+
+void init() {
     int err_code;
+    alive = true;
 
-    if (pthread_mutex_lock(&io_thread_create_mutex) != 0)
+    if (pthread_mutex_lock(&create_mutex) != 0)
         abort(); // TODO: error handling
 
-    if ((err_code = pthread_create(&io_thread, NULL, io_main, NULL)) != 0)
+    if ((err_code = pthread_create(&td, NULL, io_main, NULL)) != 0)
         err(errno, "Unable to launch io thread");
 
-    if (pthread_cond_wait(&io_thread_create_condition,
-                          &io_thread_create_mutex) != 0) {
+    if (pthread_cond_wait(&create_condition, &create_mutex) != 0) {
             abort(); // TODO: error handling
     }
 
-    if (pthread_mutex_unlock(&io_thread_create_mutex) != 0)
+    if (pthread_mutex_unlock(&create_mutex) != 0)
         abort(); // TODO: error handling
 }
 
-void io_thread_join(void) {
-    pthread_join(io_thread, NULL);
+void cleanup() {
+    pthread_join(td, NULL);
 }
 
-static void *io_main(void *arg) {
-    if (pthread_mutex_lock(&io_thread_create_mutex) != 0)
+void kick() {
+    if (alive)
+        event_active(work_event, 0, 0);
+}
+
+static void* io_main(void *arg) {
+    if (pthread_mutex_lock(&create_mutex) != 0)
         abort(); // TODO: error handling
 
     evthread_use_pthreads();
 
-    io_thread_event_base = event_base_new();
-    if (!io_thread_event_base)
+    event_base = event_base_new();
+    if (!event_base)
         errx(1, "event_base_new returned -1!");
 
-    io_thread_work_event = event_new(io_thread_event_base, -1, EV_PERSIST,
-                                     io_work_callback, NULL);
-    if (!io_thread_work_event)
+    work_event = event_new(event_base, -1, EV_PERSIST,
+                           work_callback, NULL);
+    if (!work_event)
         errx(1, "event_new returned NULL!");
 
 #ifdef ENABLE_TCP_SERIAL
-    serial_server_init(dreamcast_get_cpu());
+    serial_server_init();
 #endif
 
 #ifdef ENABLE_DEBUGGER
@@ -112,25 +118,29 @@ static void *io_main(void *arg) {
     washdbg_tcp_init();
 #endif
 
-    if (pthread_cond_signal(&io_thread_create_condition) != 0)
+
+    if (pthread_cond_signal(&create_condition) != 0)
         abort(); // TODO: error handling
 
-    if (pthread_mutex_unlock(&io_thread_create_mutex) != 0)
+    if (pthread_mutex_unlock(&create_mutex) != 0)
         abort(); // TODO: error handling
 
     int const evflags = EVLOOP_NO_EXIT_ON_EMPTY;
-    while (event_base_loop(io_thread_event_base, evflags) >= 0) {
-        if (!dc_is_running())
+    while (event_base_loop(event_base, evflags) >= 0) {
+        if (!washdc_is_running())
             break;
 
+        alive = false;
 #ifdef ENABLE_TCP_SERIAL
         serial_server_run();
 #endif
     }
 
-    LOG_INFO("io thread finished\n");
+    std::cout << "io thread finished" << std::endl;
 
-    event_free(io_thread_work_event);
+    event_free(work_event);
+
+
 
 #ifdef ENABLE_DEBUGGER
     washdbg_tcp_cleanup();
@@ -141,21 +151,19 @@ static void *io_main(void *arg) {
     serial_server_cleanup();
 #endif
 
-    event_base_free(io_thread_event_base);
+    event_base_free(event_base);
 
     pthread_exit(NULL);
     return NULL; // this line never executes
 }
 
-void io_thread_kick(void) {
-    event_active(io_thread_work_event, 0, 0);
-}
-
-static void io_work_callback(evutil_socket_t fd, short ev, void *arg) {
-    if (!dc_is_running())
-        event_base_loopbreak(io_thread_event_base);
+static void work_callback(evutil_socket_t fd, short ev, void *arg) {
+    if (!washdc_is_running())
+        event_base_loopbreak(event_base);
 
 #ifdef ENABLE_TCP_SERIAL
     serial_server_run();
 #endif
+}
+
 }

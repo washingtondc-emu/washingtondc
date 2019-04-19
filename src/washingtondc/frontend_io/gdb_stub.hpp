@@ -23,11 +23,14 @@
 #ifndef GDBSTUB_H_
 #define GDBSTUB_H_
 
+#ifndef USE_LIBEVENT
+#error this file should not be built with USE_LIBEVENT disabled!
+#endif
 #ifndef ENABLE_DEBUGGER
-#error This file should not be included unless the debugger is enabled
+#error this file whould not be built with ENABLE_DEBUGGER disabled!
 #endif
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>
@@ -36,7 +39,6 @@
 
 #include "washdc/debugger.h"
 #include "washdc/types.h"
-#include "washdc/stringlib.h"
 
 // it's 'cause 1999 is the year the Dreamcast came out in America
 #define GDB_PORT_NO 1999

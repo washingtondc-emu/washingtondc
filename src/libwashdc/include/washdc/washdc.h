@@ -46,6 +46,8 @@ void washdc_run();
 
 void washdc_kill(void);
 
+bool washdc_is_running(void);
+
 enum washdc_boot_mode {
     // standard boot into firmware
     WASHDC_BOOT_FIRMWARE,
@@ -84,6 +86,11 @@ struct washdc_launch_settings {
 
     struct win_intf const *win_intf;
     struct washdc_overlay_intf const *overlay_intf;
+
+    // only valid if dbg_enable is true
+    struct debug_frontend const *dbg_intf;
+
+    struct serial_server_intf const *sersrv;
 
     enum washdc_boot_mode boot_mode;
 

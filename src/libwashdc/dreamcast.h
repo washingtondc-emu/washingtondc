@@ -28,6 +28,7 @@
 #include "memory.h"
 #include "hw/sh4/sh4.h"
 #include "dc_sched.h"
+#include "washdc/serial_server.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "washdc/debugger.h"
@@ -49,7 +50,9 @@ extern struct dc_clock sh4_clock;
  */
 struct washdc_overlay_intf;
 void dreamcast_init(char const *gdi_path, bool cmd_session,
-                    struct washdc_overlay_intf const *overlay_intf_fns);
+                    struct washdc_overlay_intf const *overlay_intf_fns,
+                    struct debug_frontend const *dbg_frontend,
+                    struct serial_server_intf const *ser_intf);
 
 void dreamcast_cleanup();
 

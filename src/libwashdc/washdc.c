@@ -73,7 +73,8 @@ void washdc_init(struct washdc_launch_settings const *settings) {
     gfx_set_overlay_intf(settings->overlay_intf);
 
     dreamcast_init(settings->path_gdi, settings->enable_cmd_tcp,
-                   settings->overlay_intf);
+                   settings->overlay_intf, settings->dbg_intf,
+                   settings->sersrv);
 }
 
 void washdc_cleanup() {
@@ -86,6 +87,10 @@ void washdc_run() {
 
 void washdc_kill(void) {
     dreamcast_kill();
+}
+
+bool washdc_is_running(void) {
+    return dc_is_running();
 }
 
 int washdc_save_screenshot(char const *path) {

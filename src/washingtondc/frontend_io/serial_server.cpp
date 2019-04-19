@@ -20,51 +20,68 @@
  *
  ******************************************************************************/
 
+#ifndef USE_LIBEVENT
+#error recompile with -DUSE_LIBEVENT=On
+#endif
+
 #ifndef ENABLE_TCP_SERIAL
 #error recompile with -DENABLE_TCP_SERIAL=On
 #endif
 
-#include <stdio.h>
+#include <cstdio>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <pthread.h>
-#include <stdatomic.h>
-#include <string.h>
+#include <atomic>
+#include <cstring>
+#include <iostream>
 
-#include "dreamcast.h"
 #include "washdc/error.h"
-#include "io_thread.h"
-#include "log.h"
-#include "washdc/ring.h"
+#include "washdc/serial_server.h"
+#include "io_thread.hpp"
 
-#include "serial_server.h"
+#include "serial_server.hpp"
 
 static struct serial_server {
     struct evconnlistener *listener;
     struct bufferevent *bev;
     struct evbuffer *outbound;
 
-    struct Sh4 *cpu;
-
     /*
      * used to signal whether or not the serial server is
      * listening for a remote connection over TCP.
      */
-    atomic_bool is_listening;
+    std::atomic_bool is_listening;
 
-    atomic_bool ready_to_write;
+    std::atomic_bool ready_to_write;
 
-    atomic_flag no_more_work;
+    std::atomic_flag no_more_work;
 } srv = {
     .no_more_work = ATOMIC_FLAG_INIT
+};
+
+/*
+ * The SCIF calls this to let us know that it has data ready to transmit.
+ * If the SerialServer is idling, it will immediately call sh4_scif_cts, and the
+ * sh4 will send the data to the SerialServer via the SerialServer's put method
+ *
+ * If the SerialServer is active, this function does nothing and the server will call
+ * sh4_scif_cts later when it is ready.
+ */
+static void serial_server_notify_tx_ready(void);
+
+// this function can be safely called from outside of the context of the io thread
+static void serial_server_attach(void);
+
+struct serial_server_intf const sersrv_intf = {
+    .attach = serial_server_attach, // attach
+    serial_server_notify_tx_ready // notify_tx_ready
 };
 
 static pthread_mutex_t srv_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_cond_t listener_condition = PTHREAD_COND_INITIALIZER;
-
-typedef struct Sh4 Sh4;
 
 static void
 listener_cb(struct evconnlistener *listener,
@@ -81,10 +98,8 @@ static void signal_connection(void);
 
 static void drain_txq(void);
 
-void serial_server_init(struct Sh4 *cpu) {
+void serial_server_init(void) {
     atomic_flag_test_and_set(&srv.no_more_work);
-    atomic_init(&srv.is_listening, false);
-    atomic_init(&srv.ready_to_write, false);
 }
 
 void serial_server_cleanup(void) {
@@ -98,12 +113,11 @@ void serial_server_cleanup(void) {
     memset(&srv, 0, sizeof(srv));
 }
 
-void serial_server_attach(void) {
-    LOG_INFO("Awaiting serial connection on port %d...\n", SERIAL_PORT_NO);
+static void serial_server_attach(void) {
+    std::cout << "Awaiting serial connection on port " << SERIAL_PORT_NO << std::endl;
 
     ser_srv_lock();
 
-    srv.cpu = dreamcast_get_cpu();
     if (!(srv.outbound = evbuffer_new()))
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
@@ -113,7 +127,7 @@ void serial_server_attach(void) {
     sin.sin_port = htons(SERIAL_PORT_NO);
     unsigned evflags = LEV_OPT_THREADSAFE | LEV_OPT_REUSEABLE |
         LEV_OPT_CLOSE_ON_FREE;
-    srv.listener = evconnlistener_new_bind(io_thread_event_base, listener_cb,
+    srv.listener = evconnlistener_new_bind(io::event_base, listener_cb,
                                            &srv, evflags, -1,
                                            (struct sockaddr*)&sin, sizeof(sin));
 
@@ -124,12 +138,10 @@ void serial_server_attach(void) {
 
     ser_srv_unlock();
 
-    LOG_INFO("Connection established.\n");
+    std::cout << "Connection established." << std::endl;
 }
 
 static void handle_read(struct bufferevent *bev, void *arg) {
-    struct text_ring *rxq = &srv.cpu->scif.rxq;
-
     struct evbuffer *read_buffer;
     if (!(read_buffer = evbuffer_new()))
         RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -143,9 +155,7 @@ static void handle_read(struct bufferevent *bev, void *arg) {
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
         // TODO: it is possible for data to get dropped here.
-        text_ring_produce(rxq, (char)cur_byte);
-
-        sh4_scif_rx(srv.cpu);
+        washdc_serial_server_rx((char)cur_byte);
     }
 
     evbuffer_free(read_buffer);
@@ -159,7 +169,7 @@ static void handle_write(struct bufferevent *bev, void *arg) {
     if (!evbuffer_get_length(srv.outbound)) {
         atomic_store(&srv.ready_to_write, true);
         drain_txq();
-        sh4_scif_cts(srv.cpu);
+        washdc_serial_server_cts();
         return;
     }
 
@@ -167,9 +177,9 @@ static void handle_write(struct bufferevent *bev, void *arg) {
     atomic_store(&srv.ready_to_write, false);
 }
 
-void serial_server_notify_tx_ready(void) {
+static void serial_server_notify_tx_ready(void) {
     atomic_flag_clear(&srv.no_more_work);
-    io_thread_kick();
+    io::kick();
 }
 
 static void
@@ -178,7 +188,7 @@ listener_cb(struct evconnlistener *listener,
             int socklen, void *arg) {
     ser_srv_lock();
 
-    srv.bev = bufferevent_socket_new(io_thread_event_base, fd,
+    srv.bev = bufferevent_socket_new(io::event_base, fd,
                                      BEV_OPT_CLOSE_ON_FREE);
     if (!srv.bev)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -220,11 +230,11 @@ static void handle_events(struct bufferevent *bev, short events, void *arg) {
         ev_type = "unknown";
     }
     if (events != BEV_EVENT_EOF) {
-        LOG_ERROR("%s called: \"%s\" (%d) event received; exiting with code 2\n",
-                  __func__, ev_type, (int)events);
+        std::cerr << __func__ << " called: \"" << ev_type << "\" (" << events
+                  << ") event received; exiting with code 2" << std::endl;
         exit(2);
     } else {
-        LOG_WARN("%s called - EOF received\n", __func__);
+        std::cerr << __func__ << " called - EOF received" << std::endl;
         bufferevent_free(srv.bev);
         srv.bev = NULL;
     }
@@ -244,7 +254,7 @@ static void wait_for_connection(void) {
     atomic_store(&srv.is_listening, true);
 
     do {
-        LOG_INFO("still waiting...\n");
+        std::cout << "still waiting..." << std::endl;
         if (pthread_cond_wait(&listener_condition, &srv_mutex) < 0)
             abort(); // TODO: error handling
 
@@ -264,9 +274,9 @@ void serial_server_run(void) {
 }
 
 // returns true if tx was successful, false otherwise
-static bool do_tx_char(struct text_ring *txq) {
+static bool do_tx_char(void) {
     char ch;
-    if (text_ring_consume(txq, &ch)) {
+    if (washdc_serial_server_tx(&ch) == 0) {
         evbuffer_add(srv.outbound, &ch, sizeof(ch));
         return true;
     }
@@ -274,12 +284,9 @@ static bool do_tx_char(struct text_ring *txq) {
 }
 
 static void drain_txq(void) {
-    Sh4 *sh4 = dreamcast_get_cpu();
-
     // drain the txq
-    struct text_ring *txq = &sh4->scif.txq;
     bool did_tx = false;
-    while (do_tx_char(txq))
+    while (do_tx_char())
         did_tx = true;
     if (atomic_load(&srv.ready_to_write) && did_tx) {
         bufferevent_write_buffer(srv.bev, srv.outbound);

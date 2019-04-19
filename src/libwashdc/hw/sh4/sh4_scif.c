@@ -25,7 +25,7 @@
 #include <stdbool.h>
 
 #ifdef ENABLE_TCP_SERIAL
-#include "io/serial_server.h"
+#include "serial_server.h"
 #endif
 
 #include "dreamcast.h"

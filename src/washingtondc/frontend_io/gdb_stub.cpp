@@ -20,13 +20,13 @@
  *
  ******************************************************************************/
 
-#include <errno.h>
+#include <cerrno>
 #include <unistd.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdint>
+#include <cstdlib>
+#include <cstdio>
 #include <pthread.h>
-#include <string.h>
+#include <cstring>
 
 #include "washdc/cpu.h"
 #include "washdc/hw/sh4/sh4_reg_idx.h"
@@ -35,9 +35,10 @@
 #include "washdc/log.h"
 #include "washdc/error.h"
 #include "washdc/debugger.h"
-#include "io/io_thread.h"
+#include "washdc/stringlib.h"
+#include "io_thread.hpp"
 
-#include "gdb_stub.h"
+#include "gdb_stub.hpp"
 
 // uncomment this to log all traffic in/out of the debugger to stdout
 // #define GDBSTUB_VERBOSE
@@ -248,15 +249,15 @@ static size_t deserialize_data(struct string const *input_str,
 }
 
 void gdb_init(void) {
-    gdb_request_listen_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+    gdb_request_listen_event = event_new(io::event_base, -1, EV_PERSIST,
                                          on_request_listen_event, NULL);
-    gdb_inform_break_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+    gdb_inform_break_event = event_new(io::event_base, -1, EV_PERSIST,
                                        on_break_event, NULL);
-    gdb_inform_softbreak_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+    gdb_inform_softbreak_event = event_new(io::event_base, -1, EV_PERSIST,
                                            on_softbreak_event, NULL);
-    gdb_inform_read_watchpoint_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+    gdb_inform_read_watchpoint_event = event_new(io::event_base, -1, EV_PERSIST,
                                                  on_read_watchpoint_event, NULL);
-    gdb_inform_write_watchpoint_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+    gdb_inform_write_watchpoint_event = event_new(io::event_base, -1, EV_PERSIST,
                                                   on_write_watchpoint_event, NULL);
 
     string_init(&stub.unack_packet);
@@ -1245,7 +1246,7 @@ listener_cb(struct evconnlistener *listener,
         return;
     }
 
-    stub.bev = bufferevent_socket_new(io_thread_event_base, fd,
+    stub.bev = bufferevent_socket_new(io::event_base, fd,
                                       BEV_OPT_CLOSE_ON_FREE);
     if (!stub.bev)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -1391,7 +1392,7 @@ static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg) {
     sin.sin_family = AF_INET;
     sin.sin_port = htons(GDB_PORT_NO);
     unsigned event_flags = LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE;
-    stub.listener = evconnlistener_new_bind(io_thread_event_base, listener_cb, NULL,
+    stub.listener = evconnlistener_new_bind(io::event_base, listener_cb, NULL,
                                             event_flags, -1,
                                             (struct sockaddr*)&sin, sizeof(sin));
 

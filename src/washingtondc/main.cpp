@@ -30,6 +30,19 @@
 #include "window.hpp"
 #include "overlay.hpp"
 
+#ifdef USE_LIBEVENT
+#include "frontend_io/io_thread.hpp"
+#endif
+
+#ifdef ENABLE_DEBUGGER
+#include "frontend_io/gdb_stub.hpp"
+#include "frontend_io/washdbg_tcp.hpp"
+#endif
+
+#ifdef ENABLE_TCP_SERIAL
+#include "frontend_io/serial_server.hpp"
+#endif
+
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
 
@@ -165,6 +178,16 @@ int main(int argc, char **argv) {
         settings.dbg_enable = false;
     }
 
+#ifdef ENABLE_DEBUGGER
+    if (enable_debugger && !enable_washdbg)
+        settings.dbg_intf = &gdb_frontend;
+    else if (!enable_debugger && enable_washdbg)
+        settings.dbg_intf = &washdbg_frontend;
+#else
+    enable_debugger = false;
+    enable_washdbg = false;
+#endif
+
     if (enable_interpreter && (enable_jit || enable_native_jit)) {
         fprintf(stderr, "ERROR: You can\'t use the interpreter and the JIT at "
                 "the same time, silly!\n");
@@ -234,11 +257,19 @@ int main(int argc, char **argv) {
     settings.path_gdi = path_gdi;
     settings.win_intf = get_win_intf_glfw();
 
+#ifdef ENABLE_TCP_SERIAL
+    settings.sersrv = &sersrv_intf;
+#endif
+
     overlay_intf.overlay_draw = overlay::draw;
     overlay_intf.overlay_set_fps = overlay::set_fps;
     overlay_intf.overlay_set_virt_fps = overlay::set_virt_fps;
 
     settings.overlay_intf = &overlay_intf;
+
+#ifdef USE_LIBEVENT
+    io::init();
+#endif
 
     washdc_init(&settings);
 
@@ -247,6 +278,11 @@ int main(int argc, char **argv) {
     washdc_run();
 
     overlay::cleanup();
+
+#ifdef USE_LIBEVENT
+    io::kick();
+    io::cleanup();
+#endif
 
     washdc_cleanup();
 

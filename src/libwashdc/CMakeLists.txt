@@ -66,9 +66,6 @@ endif()
 
 if (ENABLE_TCP_SERIAL)
     add_definitions(-DENABLE_TCP_SERIAL)
-    if (NOT USE_LIBEVENT)
-        message(FATAL_ERROR "-DUSE_LIBEVENT=On is a prerequisite for -DENABLE_TCP_SERIAL=On")
-    endif()
 endif()
 
 set(WASHDC_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
@@ -84,6 +81,7 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/hw/sh4/sh4_mem.c"
                       "${WASHDC_SOURCE_DIR}/hw/sh4/sh4_reg.h"
                       "${WASHDC_SOURCE_DIR}/include/washdc/hw/sh4/sh4_reg_idx.h"
+                      "${WASHDC_SOURCE_DIR}/include/washdc/hw/arm7/arm7_reg_idx.h"
                       "${WASHDC_SOURCE_DIR}/hw/sh4/sh4_reg_flags.h"
                       "${WASHDC_SOURCE_DIR}/hw/sh4/sh4_reg.c"
                       "${WASHDC_SOURCE_DIR}/hw/sh4/sh4_scif.c"
@@ -239,12 +237,10 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/include/washdc/washdc.h"
                       "${WASHDC_SOURCE_DIR}/include/washdc/buildconfig.h"
                       "${WASHDC_SOURCE_DIR}/buildconfig.c"
-                      "${WASHDC_SOURCE_DIR}/include/washdc/debugger.h")
-
-if (ENABLE_TCP_SERIAL)
-    set (libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/io/serial_server.h"
-                                                "${WASHDC_SOURCE_DIR}/io/serial_server.c")
-endif()
+                      "${WASHDC_SOURCE_DIR}/include/washdc/debugger.h"
+                      "${WASHDC_SOURCE_DIR}/include/washdc/serial_server.h"
+                      "${WASHDC_SOURCE_DIR}/serial_server.h"
+                      "${WASHDC_SOURCE_DIR}/serial_server.c")
 
 if (JIT_OPTIMIZE)
    add_definitions(-DJIT_OPTIMIZE)
@@ -268,48 +264,9 @@ if (ENABLE_JIT_X86_64)
                                               "${WASHDC_SOURCE_DIR}/jit/x86_64/abi.h")
 endif()
 
-if (USE_LIBEVENT)
-    set(libwashdc_sources ${libwashdc_sources}
-        "${WASHDC_SOURCE_DIR}/io/io_thread.h"
-        "${WASHDC_SOURCE_DIR}/io/io_thread.c")
-endif()
-
-
 if (ENABLE_DEBUGGER)
-
-    if (NOT USE_LIBEVENT)
-        message(FATAL_ERROR "-DUSE_LIBEVENT=On is a prerequisite for -DENABLE_DEBUGGER=On")
-    endif()
-
-    set(CAPSTONE_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "" FORCE)
-
-    set(CAPSTONE_ARM_SUPPORT ON CACHE BOOL "" FORCE)
-    set(CAPSTONE_ARM64_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_M68K_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_MIPS_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_PPC_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_SPARC_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_SYSZ_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_XCORE_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_X86_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_TMS320C64X_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_M680X_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_EVM_SUPPORT OFF CACHE BOOL "" FORCE)
-
     add_definitions(-DENABLE_DEBUGGER)
-    set(libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/dbg/debugger.c"
-                                               "${WASHDC_SOURCE_DIR}/io/gdb_stub.h"
-                                               "${WASHDC_SOURCE_DIR}/io/gdb_stub.c"
-                                               "${WASHDC_SOURCE_DIR}/io/washdbg_tcp.h"
-                                               "${WASHDC_SOURCE_DIR}/io/washdbg_tcp.c"
-                                               "${WASHDC_SOURCE_DIR}/dbg/washdbg_core.h"
-                                               "${WASHDC_SOURCE_DIR}/dbg/washdbg_core.c"
-                                               "${CMAKE_SOURCE_DIR}/external/sh4asm/sh4asm_core/disas.h"
-                                               "${CMAKE_SOURCE_DIR}/external/sh4asm/sh4asm_core/disas.c"
-                                               "${CMAKE_SOURCE_DIR}/external/sh4asm/sh4asm_core/sh4_asm_emit.h"
-                                               "${CMAKE_SOURCE_DIR}/external/sh4asm/sh4asm_core/sh4_asm_emit.c")
+    set(libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/dbg/debugger.c")
 
     if (ENABLE_WATCHPOINTS)
         add_definitions(-DENABLE_WATCHPOINTS)

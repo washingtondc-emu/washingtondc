@@ -20,21 +20,30 @@
  *
  ******************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
+#include <iostream>
 
 #include "capstone/capstone.h"
 
-#include "log.h"
-#include "dreamcast.h"
-#include "io/washdbg_tcp.h"
 #include "sh4asm_core/disas.h"
+#include "washdc/log.h"
 #include "washdc/debugger.h"
-#include "hw/arm7/arm7.h"
+#include "washdc/hw/arm7/arm7_reg_idx.h"
+#include "washdc/error.h"
+#include "washdc/washdc.h"
+#include "washdbg_tcp.hpp"
 
-#include "dbg/washdbg_core.h"
+#include "washdbg_core.hpp"
+
+#ifndef USE_LIBEVENT
+#error this file should not be built with USE_LIBEVENT disabled!
+#endif
+#ifndef ENABLE_DEBUGGER
+#error this file whould not be built with ENABLE_DEBUGGER disabled!
+#endif
 
 #define BUF_LEN 1024
 
@@ -121,12 +130,13 @@ enum washdbg_state {
 } cur_state;
 
 void washdbg_init(void) {
-    LOG_INFO("%s called\n", __func__);
+    std::cout << __func__ << " called" << std::endl;
     cs_err cs_err_val = cs_open(CS_ARCH_ARM, CS_MODE_ARM,
                                 &capstone_handle);
     if (cs_err_val != CS_ERR_OK) {
         // disable disassembly for ARM7
-        LOG_ERROR("cs_open returned error code %d\n", (int)cs_err_val);
+        std::cerr << "cs_open returned error code" << (int)cs_err_val <<
+            std::endl;
     } else {
         capstone_avail = true;
     }
@@ -157,8 +167,8 @@ static bool washdbg_is_continue_cmd(char const *cmd) {
 }
 
 void washdbg_do_exit(int argc, char **argv) {
-    LOG_INFO("User requested exit via WashDbg\n");
-    dreamcast_kill();
+    std::cout << "User requested exit via WashDbg" << std::endl;
+    washdc_kill();
     cur_state = WASHDBG_STATE_CMD_EXIT;
 }
 
@@ -181,7 +191,7 @@ static bool washdbg_is_step_cmd(char const *cmd) {
 }
 
 static void washdbg_do_step(int argc, char **argv) {
-    LOG_INFO("WashDbg single-step requested\n");
+    std::cout << "WashDbg single-step requested" << std::endl;
     cur_state = WASHDBG_STATE_RUNNING;
     debug_request_single_step();
 }
@@ -391,7 +401,7 @@ static struct x_state {
     size_t str_pos;
 
     void *dat;
-    unsigned byte_count;
+    enum washdbg_byte_count byte_count;
     unsigned count;
     unsigned idx;
     enum x_state_disas_mode disas_mode;
@@ -422,17 +432,17 @@ static void washdbg_x_set_string(void) {
         return;
     }
     switch (x_state.byte_count) {
-    case 4:
+    case WASHDBG_4_BYTE:
         val32 = ((uint32_t*)x_state.dat)[x_state.idx];
         snprintf(x_state.str, sizeof(x_state.str), "0x%08x: 0x%08x\n",
                  (unsigned)x_state.next_addr, (unsigned)val32);
         break;
-    case 2:
+    case WASHDBG_2_BYTE:
         val16 = ((uint16_t*)x_state.dat)[x_state.idx];
         snprintf(x_state.str, sizeof(x_state.str), "0x%08x: 0x%04x\n",
                  (unsigned)x_state.next_addr, (unsigned)val16);
         break;
-    case 1:
+    case WASHDBG_1_BYTE:
         val8 = ((uint8_t*)x_state.dat)[x_state.idx];
         snprintf(x_state.str, sizeof(x_state.str), "0x%08x: 0x%02x\n",
                  (unsigned)x_state.next_addr, (unsigned)val8);
@@ -473,15 +483,15 @@ static void washdbg_x(int argc, char **argv) {
     if (x_state.byte_count == WASHDBG_INST) {
         switch (ctx) {
         case DEBUG_CONTEXT_SH4:
-            x_state.byte_count = 2;
+            x_state.byte_count = WASHDBG_2_BYTE;
             x_state.disas_mode = X_STATE_DISAS_SH4;
             break;
         case DEBUG_CONTEXT_ARM7:
-            x_state.byte_count = 4;
+            x_state.byte_count = WASHDBG_4_BYTE;
             if (capstone_avail) {
                 x_state.disas_mode = X_STATE_DISAS_ARM7;
             } else {
-                LOG_ERROR("capstone_avail is false\n");
+                std::cerr << "capstone_avail is false" << std::endl;
                 x_state.disas_mode = X_STATE_DISAS_DISABLED;
             }
             break;
@@ -614,7 +624,7 @@ static int washdbg_bplist_load_bp(void) {
 
     struct washdbg_bp_stat *chosen = NULL;
     unsigned idx_cur;
-    enum dbg_context_id ctx_cur;
+    int ctx_cur;
     for (ctx_cur = bplist_state.ctx_next, idx_cur = bplist_state.bp_next;
          ctx_cur < NUM_DEBUG_CONTEXTS; ctx_cur++) {
         for (; idx_cur < DEBUG_N_BREAKPOINTS;
@@ -624,10 +634,11 @@ static int washdbg_bplist_load_bp(void) {
                 chosen = bp;
 
                 bplist_state.bp_next = idx_cur + 1;
-                bplist_state.ctx_next = ctx_cur;
+                bplist_state.ctx_next = (enum dbg_context_id)ctx_cur;
                 if (bplist_state.bp_next >= DEBUG_N_BREAKPOINTS) {
                     bplist_state.bp_next = 0;
-                    bplist_state.ctx_next++;
+                    bplist_state.ctx_next =
+                        (enum dbg_context_id)(1 + bplist_state.ctx_next);
                 }
                 goto have_chosen;
             }
@@ -1408,7 +1419,7 @@ static int reg_idx_arm7(char const *reg_name) {
 static int eval_expression(char const *expr, enum dbg_context_id *ctx_id, unsigned *out) {
     enum dbg_context_id ctx = debug_current_context();
 
-    char *first_colon = strchr(expr, ':');
+    char const *first_colon = strchr(expr, ':');
     if (first_colon != NULL) {
         unsigned n_chars = first_colon - expr;
         if (n_chars == 3 && toupper(expr[0]) == 'S' &&
@@ -1562,7 +1573,7 @@ parse_fmt_string(char const *str, enum washdbg_byte_count *byte_count_out,
 the_end:
 
     *count_out = count;
-    *byte_count_out = byte_count;
+    *byte_count_out = (enum washdbg_byte_count)byte_count;
 
     return 0;
 }
@@ -1594,8 +1605,8 @@ static char const *washdbg_disas_single_arm7(uint32_t addr, uint32_t val) {
     if (count == 1) {
         snprintf(buf, sizeof(buf), "%s %s", insn->mnemonic, insn->op_str);
     } else {
-        LOG_ERROR("cs_disasm returned %u; cs_errno is %d\n",
-                  (unsigned)count, (int)cs_errno(capstone_handle));
+        std::cerr << "cs_disasm returned " << count << " cs_errno is " <<
+            cs_errno(capstone_handle) << std::endl;
         snprintf(buf, sizeof(buf), "0x%08x", (unsigned)val);
     }
 
@@ -1617,7 +1628,7 @@ static int parse_int_str(char const *valstr, uint32_t *out) {
         *out = parse_hex_str(valstr + 2);
         return 0;
     } else {
-        LOG_ERROR("valstr is \"%s\"\n", valstr);
+        std::cerr << "valstr is " << valstr << std::endl;
         washdbg_print_error("unable to parse value.\n");
     }
     return - 1;

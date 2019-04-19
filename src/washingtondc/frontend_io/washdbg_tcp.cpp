@@ -21,23 +21,31 @@
  ******************************************************************************/
 
 #include <err.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <atomic>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <pthread.h>
+#include <iostream>
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
 #include <event2/buffer.h>
 
-#include "log.h"
-#include "io_thread.h"
+#include "washdc/log.h"
+#include "io_thread.hpp"
 #include "washdc/error.h"
-#include "dbg/washdbg_core.h"
-#include "washdc/ring.h"
+#include "washdbg_core.hpp"
 
-#include "washdbg_tcp.h"
+#include "washdbg_tcp.hpp"
+
+#ifndef USE_LIBEVENT
+#error this file should not be built with USE_LIBEVENT disabled!
+#endif
+#ifndef ENABLE_DEBUGGER
+#error this file whould not be built with ENABLE_DEBUGGER disabled!
+#endif
 
 static enum washdbg_state {
     // washdbg is not in use
@@ -85,34 +93,80 @@ static void on_check_tx_event(evutil_socket_t fd, short ev, void *arg);
 // drain the tx_ring
 static void drain_tx(void);
 
+template <typename tp, unsigned log>
+class washdbg_ring {
+    std::atomic_int prod_idx, cons_idx;
+    tp buf[1 << log];
+
+public:
+    washdbg_ring() : prod_idx(0), cons_idx(0) {
+    }
+
+    void reset() {
+        prod_idx = 0;
+        cons_idx = 0;
+    }
+
+    bool produce(tp val) {
+        /* TODO: can I use memory_order_relaxed to load prod_idx ?*/
+        int prod = prod_idx.load(std::memory_order_acquire);
+        int cons = cons_idx.load(std::memory_order_acquire);
+        int next_prod = (prod_idx + 1) & ((1 << (log)) - 1);
+
+        if (next_prod == cons) {
+            std::cout << "WARNING: washdbg_ring character dropped" << std::endl;
+            return false;
+        }
+
+        buf[prod] = val;
+        prod_idx.store(next_prod, std::memory_order_release);
+        return true;
+    }
+
+    bool consume(tp *outp) {
+        int prod = prod_idx.load(std::memory_order_acquire);
+        int cons = cons_idx.load(std::memory_order_acquire);
+        int next_cons = (cons + 1) & ((1 << log) - 1);
+
+        if (prod == cons)
+            return false;
+
+        *outp = buf[cons];
+        cons_idx.store(next_cons, std::memory_order_release);
+        return true;
+    }
+};
+
 static struct event *request_listen_event, *check_tx_event;
 
 struct debug_frontend washdbg_frontend = {
-    .attach = washdbg_attach,
-    .run_once = washdbg_run_once,
-    .on_break = washdbg_core_on_break,
-    .on_cleanup = washdbg_cleanup
+    washdbg_attach, // attach
+    washdbg_core_on_break, // on_break
+    NULL, // on_read_watchpoint
+    NULL, // on_write_watchpoint
+    NULL, // on_softbreak
+    washdbg_cleanup, // on_cleanup
+    washdbg_run_once, // run_once
 };
 
-struct text_ring tx_ring, rx_ring;
+static washdbg_ring<char, 10> tx_ring, rx_ring;
 
 void washdbg_tcp_init(void) {
-    text_ring_init(&rx_ring);
-    text_ring_init(&tx_ring);
-
     state = WASHDBG_DISABLED;
     outbound_buf = evbuffer_new();
-    request_listen_event = event_new(io_thread_event_base, -1, EV_PERSIST,
-                                         on_request_listen_event, NULL);
-    check_tx_event = event_new(io_thread_event_base, -1, EV_PERSIST,
+    request_listen_event = event_new(io::event_base, -1, EV_PERSIST,
+                                     on_request_listen_event, NULL);
+    check_tx_event = event_new(io::event_base, -1, EV_PERSIST,
                                on_check_tx_event, NULL);
-    LOG_INFO("washdbg initialized\n");
+    std::cout << "washdbg initialized" << std::endl;
 }
 
 void washdbg_tcp_cleanup(void) {
     event_free(check_tx_event);
     event_free(request_listen_event);
-    LOG_INFO("washdbg de-initialized\n");
+    std::cout << "washdbg de-initialized" << std::endl;
+    rx_ring.reset();
+    tx_ring.reset();
 }
 
 /*
@@ -122,8 +176,9 @@ void washdbg_tcp_cleanup(void) {
 int washdbg_tcp_puts(char const *str) {
     int n_chars = 0;
     while (*str) {
-        if (!text_ring_produce(&tx_ring, *str)) {
-            LOG_WARN("%s - tx_ring failed to produce\n", __func__);
+        if (!tx_ring.produce(*str)) {
+            std::cerr << __func__ << " - tx_ring failed to produce" <<
+                std::endl;
             break;
         }
         str++;
@@ -145,7 +200,7 @@ static void drain_tx(void) {
         have_extra_char = false;
     }
 
-    while (text_ring_consume(&tx_ring, &ch)) {
+    while (tx_ring.consume(&ch)) {
         if (evbuffer_add(outbound_buf, &ch, sizeof(ch)) < 0) {
             extra_char = ch;
             have_extra_char = true;
@@ -158,14 +213,15 @@ static void drain_tx(void) {
 
 static void washdbg_run_once(void *argptr) {
     char ch;
-    while (text_ring_consume(&rx_ring, &ch))
+    while (rx_ring.consume(&ch))
         washdbg_input_ch(ch);
     washdbg_core_run_once();
 }
 
 // this function gets called from the emulation thread.
 static void washdbg_attach(void* argptr) {
-    printf("washdbg awaiting remote connection on port %d...\n", WASHDBG_PORT);
+    std::cout << "washdbg awaiting remote connection on port " <<
+        WASHDBG_PORT << "..." << std::endl;
 
     listener_lock();
 
@@ -174,9 +230,9 @@ static void washdbg_attach(void* argptr) {
     listener_wait();
 
     if (state == WASHDBG_ATTACHED)
-        LOG_INFO("WashDbg remote connection established\n");
+        std::cout << "WashDbg remote connection established" << std::endl;
     else
-        LOG_INFO("Failed to establish a remote WashDbg connection.\n");
+        std::cout << "Failed to establish a remote WashDbg connection." << std::endl;
 
     listener_unlock();
 
@@ -194,7 +250,7 @@ static void on_request_listen_event(evutil_socket_t fd, short ev, void *arg) {
     sin.sin_port = htons(WASHDBG_PORT);
     unsigned evflags = LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE |
         LEV_OPT_THREADSAFE;
-    listener = evconnlistener_new_bind(io_thread_event_base, listener_cb,
+    listener = evconnlistener_new_bind(io::event_base, listener_cb,
                                        NULL, evflags, -1,
                                        (struct sockaddr*)&sin, sizeof(sin));
     if (!listener)
@@ -209,7 +265,7 @@ listener_cb(struct evconnlistener *listener,
             int socklen, void *arg) {
     listener_lock();
 
-    bev = bufferevent_socket_new(io_thread_event_base, fd,
+    bev = bufferevent_socket_new(io::event_base, fd,
                                  BEV_OPT_CLOSE_ON_FREE);
     if (!bev) {
         warnx("Unable to allocate a new bufferevent\n");
@@ -250,7 +306,7 @@ static void dump_to_rx_ring(char const *dat, unsigned n_chars) {
         if (dat[idx] == 3)
             debug_request_break();
         else
-            text_ring_produce(&rx_ring, dat[idx]);
+            rx_ring.produce(dat[idx]);
 }
 
 // libevent callback for when the socket has data for us to read

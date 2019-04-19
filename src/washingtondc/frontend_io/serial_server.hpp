@@ -20,45 +20,34 @@
  *
  ******************************************************************************/
 
-#ifndef ENABLE_TCP_SERIAL
-#error recompile with -DENABLE_TCP_SERIAL=On
-#endif
+#ifndef SERIALSERVER_HPP_
+#define SERIALSERVER_HPP_
 
-#ifndef SERIALSERVER_H_
-#define SERIALSERVER_H_
-
-#include <stdint.h>
+#include <cstdint>
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
 #include <event2/buffer.h>
 
-struct Sh4;
+#include "washdc/serial_server.h"
+
+#ifndef ENABLE_TCP_SERIAL
+#error this file should not be built with ENABLE_TCP_SERIAL disabled!
+#endif
 
 // it's 'cause 1998 is the year the Dreamcast came out in Japan
 #define SERIAL_PORT_NO 1998
 
-void serial_server_init(struct Sh4 *cpu);
+void serial_server_init(void);
 void serial_server_cleanup(void);
-
-// this function can be safely called from outside of the context of the io thread
-void serial_server_attach(void);
-
-/*
- * The SCIF calls this to let us know that it has data ready to transmit.
- * If the SerialServer is idling, it will immediately call sh4_scif_cts, and the
- * sh4 will send the data to the SerialServer via the SerialServer's put method
- *
- * If the SerialServer is active, this function does nothing and the server will call
- * sh4_scif_cts later when it is ready.
- */
-void serial_server_notify_tx_ready(void);
 
 /*
  * This gets called every time the io_thread wakes up.  It will check if any
  * work needs to be done, and it will perform that work.
  */
 void serial_server_run(void);
+
+extern struct serial_server_intf const sersrv_intf;
 
 #endif

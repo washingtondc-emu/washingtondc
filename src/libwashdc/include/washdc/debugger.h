@@ -304,7 +304,7 @@ int debug_write_mem(enum dbg_context_id id, void const *input,
 uint32_t debug_pc_next(enum dbg_context_id id);
 
 #ifdef __cplusplus
-}␘
+}
 #endif
 
 #endif

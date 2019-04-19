@@ -20,26 +20,29 @@
  *
  ******************************************************************************/
 
-#ifndef WASHDBG_H_
-#define WASHDBG_H_
+#ifndef WASHDBG_CORE_H_
+#define WASHDBG_CORE_H_
 
 #include "washdc/debugger.h"
+#include "washdc/types.h"
 
+#ifndef USE_LIBEVENT
+#error this file should not be built with USE_LIBEVENT disabled!
+#endif
 #ifndef ENABLE_DEBUGGER
-#error This file should not be included unless the debugger is enabled
+#error this file whould not be built with ENABLE_DEBUGGER disabled!
 #endif
 
-/*
- * It's safe to have this overlap with the gdb port because you won't use both
- * at the same time.
- */
-#define WASHDBG_PORT 1999
+// These functions should only be called from within the emulation thread
 
-extern struct debug_frontend washdbg_frontend;
+void washdbg_init(void);
 
-void washdbg_tcp_init(void);
-void washdbg_tcp_cleanup(void);
+void washdbg_cleanup(void* argp);
 
-int washdbg_tcp_puts(char const *str);
+void washdbg_input_ch(char ch);
+
+void washdbg_core_run_once(void);
+
+void washdbg_core_on_break(enum dbg_context_id id, void *argptr);
 
 #endif
