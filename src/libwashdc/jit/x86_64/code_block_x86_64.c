@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <stddef.h>
 
+#include "log.h"
 #include "washdc/error.h"
 #include "jit/code_block.h"
 #include "jit/jit_il.h"

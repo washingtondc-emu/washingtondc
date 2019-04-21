@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "log.h"
 #include "washdc/error.h"
 #include "dreamcast.h"
 #include "jit/code_block.h"

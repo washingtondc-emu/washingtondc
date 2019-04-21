@@ -30,10 +30,13 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <string.h>
 
 #include "dreamcast.h"
+#include "washdc/error.h"
 #include "io_thread.h"
 #include "log.h"
+#include "washdc/ring.h"
 
 #include "serial_server.h"
 

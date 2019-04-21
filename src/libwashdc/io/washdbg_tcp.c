@@ -35,7 +35,7 @@
 #include "io_thread.h"
 #include "washdc/error.h"
 #include "dbg/washdbg_core.h"
-#include "ring.h"
+#include "washdc/ring.h"
 
 #include "washdbg_tcp.h"
 

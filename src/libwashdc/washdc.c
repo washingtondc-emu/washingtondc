@@ -31,6 +31,7 @@
 #include "title.h"
 #include "washdc/win.h"
 #include "hw/pvr2/pvr2.h"
+#include "log.h"
 
 static uint32_t trans_bind_washdc_to_maple(uint32_t wash);
 static int trans_axis_washdc_to_maple(int axis);

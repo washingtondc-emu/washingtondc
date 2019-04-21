@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@
 #include "sh4_icache.h"
 #include "jit/code_cache.h"
 #include "config.h"
+#include "log.h"
 
 #define SH4_ICACHE_READ_ADDR_ARRAY_TMPL(type, postfix)                  \
     type sh4_icache_read_addr_array_##postfix(Sh4 *sh4,                 \

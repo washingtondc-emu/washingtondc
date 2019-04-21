@@ -28,6 +28,10 @@
 
 #include "log.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * This is a ringbuffer designed to buffer text between threads.
  * In the event of an overflow, this buffer will drop incoming data at the
@@ -64,7 +68,7 @@
         int next_prod_idx = (prod_idx + 1) & ((1 << (log)) - 1);        \
                                                                         \
         if (next_prod_idx == cons_idx) {                                \
-            LOG_WARN("WARNING: text_ring character dropped\n");         \
+            washdc_log_warn("WARNING: text_ring character dropped\n");  \
             return false;                                               \
         }                                                               \
                                                                         \
@@ -98,5 +102,9 @@
     }                                                                   \
 
 DEF_RING(text_ring, char, 10)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

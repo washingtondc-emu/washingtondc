@@ -24,6 +24,7 @@
 #include "jit/code_block.h"
 #include "jit/jit_mem.h"
 
+#include "log.h"
 #include "sh4.h"
 #include "sh4_read_inst.h"
 #include "sh4_jit.h"

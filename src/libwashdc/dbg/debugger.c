@@ -26,6 +26,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 
+#include "log.h"
 #include "dreamcast.h"
 #include "washdc/fifo.h"
 #include "washdc/MemoryMap.h"

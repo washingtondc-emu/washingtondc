@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "log.h"
 #include "sh4.h"
 #include "sh4_dmac.h"
 #include "hw/sys/holly_intc.h"
