@@ -41,7 +41,6 @@
 #include "hw/maple/maple.h"
 #include "hw/maple/maple_device.h"
 #include "hw/maple/maple_controller.h"
-#include "cmd/cons.h"
 #include "hw/pvr2/framebuffer.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
 #include "hw/pvr2/pvr2_ta.h"
@@ -80,12 +79,6 @@
 
 #ifdef ENABLE_TCP_SERIAL
 #include "io/serial_server.h"
-#endif
-
-#ifdef ENABLE_TCP_CMD
-#include "io/cmd_tcp.h"
-#include "cmd/cmd_sys.h"
-#include "cmd/cmd.h"
 #endif
 
 #ifdef ENABLE_DEBUGGER
@@ -188,8 +181,6 @@ static bool run_to_next_arm7_event_debugger(void *ctxt);
 // this must be called before run or not at all
 static void dreamcast_enable_serial_server(void);
 
-static void dreamcast_enable_cmd_tcp(void);
-
 static void suspend_loop(void);
 
 /*
@@ -215,6 +206,10 @@ void dreamcast_init(char const *gdi_path, bool cmd_session,
     overlay_intf = overlay_intf_fns;
 
     log_init(config_get_log_stdout(), config_get_log_verbose());
+
+    // the cmd system has been removed.
+    if (cmd_session)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     char const *title_content = NULL;
     struct mount_meta content_meta; // only valid if gdi_path is non-null
@@ -244,14 +239,6 @@ void dreamcast_init(char const *gdi_path, bool cmd_session,
         title_content = "firmware";
 
     title_set_content(title_content);
-
-#ifndef ENABLE_TCP_CMD
-    if (cmd_session) {
-        cmd_session = false;
-        LOG_ERROR("Over-riding requested cmd session; please recompile with "
-                  "-DENABLE_TCP_CMD=On -DUSE_LIBEVENT=On.\n");
-    }
-#endif
 
     cfg_init();
 
@@ -549,9 +536,6 @@ void dreamcast_run() {
     if (config_get_ser_srv_enable())
         dreamcast_enable_serial_server();
 
-    if (config_get_enable_cmd_tcp())
-        dreamcast_enable_cmd_tcp();
-
 #ifdef ENABLE_DEBUGGER
     debug_init();
     debug_init_context(DEBUG_CONTEXT_SH4, &cpu, &mem_map);
@@ -560,26 +544,13 @@ void dreamcast_run() {
         dreamcast_enable_debugger();
 #endif
 
-#ifdef ENABLE_TCP_CMD
-    cmd_print_banner();
-    cmd_run_once();
-#endif
-
     periodic_event.when = clock_cycle_stamp(&sh4_clock) + DC_PERIODIC_EVENT_PERIOD;
     periodic_event.handler = periodic_event_handler;
     sched_event(&sh4_clock, &periodic_event);
 
-    /*
-     * if there's a cmd session attached, then hang here until the user enters
-     * the begin-execution command.
-     */
-    while (atomic_load_explicit(&is_running, memory_order_relaxed) &&
-           (dc_get_state() == DC_STATE_NOT_RUNNING)) {
-        usleep(1000 * 1000 / 10);
-#ifdef ENABLE_TCP_CMD
-        cmd_run_once();
-#endif
-    }
+    // back when cmd existed, this was where we'd wait for the user to begin-execution
+    if (dc_get_state() == DC_STATE_NOT_RUNNING)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
     clock_gettime(CLOCK_MONOTONIC, &last_frame_realtime);
@@ -720,9 +691,6 @@ static bool dreamcast_check_debugger(void) {
             // call debug_run_once 100 times per second
             win_check_events();
             debug_run_once();
-#ifdef ENABLE_TCP_CMD
-            cmd_run_once();
-#endif
             usleep(1000 * 1000 / 100);
         } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG &&
                  (is_running = dc_emu_thread_is_running()));
@@ -959,15 +927,6 @@ static void dreamcast_enable_serial_server(void) {
 #endif
 }
 
-void dreamcast_enable_cmd_tcp(void) {
-#ifdef ENABLE_TCP_CMD
-    cmd_tcp_attach();
-#else
-    LOG_ERROR("You must recompile with -DENABLE_TCP_CMD=On to use the tcp cmd "
-              "frontend.\n");
-#endif
-}
-
 static void dc_sigint_handler(int param) {
     atomic_store_explicit(&is_running, false, memory_order_relaxed);
     term_reason = TERM_REASON_SIGINT;
@@ -1030,13 +989,8 @@ bool dc_debugger_enabled(void) {
 static void suspend_loop(void) {
     enum dc_state cur_state = dc_get_state();
     if (cur_state == DC_STATE_SUSPEND) {
-        cons_puts("Execution suspended.  To resume, enter "
-                  "\"resume-execution\" into the CLI prompt.\n");
         do {
             win_check_events();
-#ifdef ENABLE_TCP_CMD
-            cmd_run_once();
-#endif
             /*
              * TODO: sleep on a pthread condition or something instead of
              * polling.
@@ -1044,19 +998,6 @@ static void suspend_loop(void) {
             usleep(1000 * 1000 / 60);
         } while (atomic_load_explicit(&is_running, memory_order_relaxed) &&
                  ((cur_state = dc_get_state()) == DC_STATE_SUSPEND));
-
-        if (dc_is_running()) {
-            cons_puts("execution resumed\n");
-        } else {
-            /*
-             * TODO: this message doesn't actually get printed.  The likely
-             * cause is that the cmd thread does not have time to print it.
-             * it may be worthwile to drain all output before the cmd
-             * thread exits, but I'd also have to be careful not to spend
-             * too long waiting on an ack from an external system...
-             */
-            cons_puts("responding to request to exit\n");
-        }
     }
 }
 
@@ -1123,9 +1064,6 @@ void dc_end_frame(void) {
     win_update_title();
     framebuffer_render(&dc_pvr2);
     win_check_events();
-#ifdef ENABLE_TCP_CMD
-    cmd_run_once();
-#endif
 }
 
 int dc_tex_get_meta(struct pvr2_tex_meta *out, unsigned tex_no) {

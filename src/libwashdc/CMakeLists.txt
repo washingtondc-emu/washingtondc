@@ -64,13 +64,6 @@ if (ENABLE_LOG_DEBUG)
    add_definitions(-DENABLE_LOG_DEBUG)
 endif()
 
-if (ENABLE_TCP_CMD)
-    add_definitions(-DENABLE_TCP_CMD)
-    if (NOT USE_LIBEVENT)
-        message(FATAL_ERROR "-DUSE_LIBEVENT=On is a prerequisite for -DENABLE_TCP_CMD=On")
-    endif()
-endif()
-
 if (ENABLE_TCP_SERIAL)
     add_definitions(-DENABLE_TCP_SERIAL)
     if (NOT USE_LIBEVENT)
@@ -200,8 +193,6 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/ring.h"
                       "${WASHDC_SOURCE_DIR}/config.h"
                       "${WASHDC_SOURCE_DIR}/config.c"
-                      "${WASHDC_SOURCE_DIR}/cmd/cons.h"
-                      "${WASHDC_SOURCE_DIR}/cmd/cons.c"
                       "${WASHDC_SOURCE_DIR}/gfx/gfx_config.h"
                       "${WASHDC_SOURCE_DIR}/gfx/gfx_config.c"
                       "${WASHDC_SOURCE_DIR}/gfx/gfx_tex_cache.h"
@@ -249,17 +240,6 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/include/washdc/buildconfig.h"
                       "${WASHDC_SOURCE_DIR}/buildconfig.c"
                       "${WASHDC_SOURCE_DIR}/include/washdc/debugger.h")
-
-if (ENABLE_TCP_CMD)
-    set (libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/cmd/cmd.h"
-                                                "${WASHDC_SOURCE_DIR}/cmd/cmd.c"
-                                                "${WASHDC_SOURCE_DIR}/io/cmd_tcp.h"
-                                                "${WASHDC_SOURCE_DIR}/io/cmd_tcp.c"
-                                                "${WASHDC_SOURCE_DIR}/cmd/cmd_sys.h"
-                                                "${WASHDC_SOURCE_DIR}/cmd/cmd_sys.c"
-                                                "${WASHDC_SOURCE_DIR}/cmd/cmd_tcp_link.h"
-                                                "${WASHDC_SOURCE_DIR}/cmd/cmd_tcp_link.c")
-endif()
 
 if (ENABLE_TCP_SERIAL)
     set (libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/io/serial_server.h"

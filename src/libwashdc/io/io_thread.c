@@ -43,10 +43,6 @@
 #include "serial_server.h"
 #endif
 
-#ifdef ENABLE_TCP_CMD
-#include "cmd_tcp.h"
-#endif
-
 #ifdef ENABLE_DEBUGGER
 #include "gdb_stub.h"
 #include "washdbg_tcp.h"
@@ -107,10 +103,6 @@ static void *io_main(void *arg) {
     if (!io_thread_work_event)
         errx(1, "event_new returned NULL!");
 
-#ifdef ENABLE_TCP_CMD
-    cmd_tcp_init();
-#endif
-
 #ifdef ENABLE_TCP_SERIAL
     serial_server_init(dreamcast_get_cpu());
 #endif
@@ -147,10 +139,6 @@ static void *io_main(void *arg) {
 
 #ifdef ENABLE_TCP_SERIAL
     serial_server_cleanup();
-#endif
-
-#ifdef ENABLE_TCP_CMD
-    cmd_tcp_cleanup();
 #endif
 
     event_base_free(io_thread_event_base);
