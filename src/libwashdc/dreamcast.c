@@ -192,7 +192,7 @@ static struct washdc_overlay_intf const *overlay_intf;
 static struct debug_frontend const *dbg_intf;
 static struct serial_server_intf const *sersrv;
 
-void dreamcast_init(char const *gdi_path, bool cmd_session,
+void dreamcast_init(char const *gdi_path,
                     struct washdc_overlay_intf const *overlay_intf_fns,
                     struct debug_frontend const *dbg_frontend,
                     struct serial_server_intf const *ser_intf) {
@@ -203,10 +203,6 @@ void dreamcast_init(char const *gdi_path, bool cmd_session,
     sersrv = ser_intf;
 
     log_init(config_get_log_stdout(), config_get_log_verbose());
-
-    // the cmd system has been removed.
-    if (cmd_session)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     char const *title_content = NULL;
     struct mount_meta content_meta; // only valid if gdi_path is non-null
@@ -371,7 +367,8 @@ void dreamcast_init(char const *gdi_path, bool cmd_session,
     }
 #endif
 
-    if (!cmd_session) {
+    // TODO: hold here when pausing/resuming gets implemented
+    /* if (!cmd_session) */ {
         /*
          * if there's no debugging support and we have a remote cmd session
          * attached, then leave the system in DC_STATE_NOT_RUNNING until the

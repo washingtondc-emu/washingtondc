@@ -105,7 +105,6 @@ struct washdc_launch_settings {
     /* #ifdef ENABLE_JIT_X86_64 */
     bool enable_native_jit;
     /* #endif */
-    bool enable_cmd_tcp;
     bool cmd_session;
     bool enable_serial;
 };

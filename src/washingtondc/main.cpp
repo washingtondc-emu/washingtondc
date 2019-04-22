@@ -82,19 +82,15 @@ int main(int argc, char **argv) {
     char *path_syscalls_bin = NULL;
     char *path_gdi = NULL;
     bool enable_serial = false;
-    bool enable_cmd_tcp = false;
     bool enable_jit = false, enable_native_jit = false,
         enable_interpreter = false, inline_mem = true;
     bool log_stdout = false, log_verbose = false;
     struct washdc_launch_settings settings = { };
 
-    while ((opt = getopt(argc, argv, "cb:f:s:m:d:u:ghtjxpnwlv")) != -1) {
+    while ((opt = getopt(argc, argv, "b:f:s:m:d:u:ghtjxpnwlv")) != -1) {
         switch (opt) {
         case 'b':
             bios_path = optarg;
-            break;
-        case 'c':
-            enable_cmd_tcp = true;
             break;
         case 'f':
             flash_path = optarg;
@@ -252,7 +248,6 @@ int main(int argc, char **argv) {
 
     settings.path_dc_bios = bios_path;
     settings.path_dc_flash = flash_path;
-    settings.enable_cmd_tcp = enable_cmd_tcp;
     settings.enable_serial = enable_serial;
     settings.path_gdi = path_gdi;
     settings.win_intf = get_win_intf_glfw();

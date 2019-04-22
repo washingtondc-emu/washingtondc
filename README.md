@@ -35,7 +35,6 @@ src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin [options] [-d IP.BI
 
 OPTIONS:
 -b <bios_path> path to dreamcast boot ROM
--c enable development/debugging console access via TCP port 2000
 -f <flash_path> path to dreamcast flash ROM image
 -g enable remote GDB backend via TCP port 1999
 -d enable direct boot <IP.BIN path>
@@ -57,13 +56,6 @@ rebinded yet.  It must be controlled using a keyboard with a number pad.
 The -b and -f options are mandatory because we need a firmware to boot.  To do a
 direct-boot, the -s option is also needed to provide a system call image since
 the firmware won't have had a chance to load one itself.
-
-The -c command opens up a TCP on port 2000 that you can connect to via telnet to
-control the emulator via a text-based command-line interface; this is the
-closest thing to a UI that WashingtonDC has.
-
-You can view online command documentation with the 'help' command.
-'begin-execution' is the command to start the emulator.
 
 
 ## CONTROLS
