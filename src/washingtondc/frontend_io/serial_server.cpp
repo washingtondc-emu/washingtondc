@@ -38,6 +38,7 @@
 #include <iostream>
 
 #include "washdc/error.h"
+#include "washdc/washdc.h"
 #include "washdc/serial_server.h"
 #include "io_thread.hpp"
 
@@ -231,8 +232,8 @@ static void handle_events(struct bufferevent *bev, short events, void *arg) {
     }
     if (events != BEV_EVENT_EOF) {
         std::cerr << __func__ << " called: \"" << ev_type << "\" (" << events
-                  << ") event received; exiting with code 2" << std::endl;
-        exit(2);
+                  << ") event received; calling washdc_kill" << std::endl;
+        washdc_kill();
     } else {
         std::cerr << __func__ << " called - EOF received" << std::endl;
         bufferevent_free(srv.bev);

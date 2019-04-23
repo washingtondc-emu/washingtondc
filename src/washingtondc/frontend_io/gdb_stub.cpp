@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <pthread.h>
 #include <cstring>
+#include <iostream>
 
 #include "washdc/cpu.h"
 #include "washdc/hw/sh4/sh4_reg_idx.h"
@@ -1266,7 +1267,32 @@ listener_cb(struct evconnlistener *listener,
 }
 
 static void handle_events(struct bufferevent *bev, short events, void *arg) {
-    exit(2);
+    char const *ev_type;
+    switch (events) {
+    case BEV_EVENT_EOF:
+        ev_type = "eof";
+        break;
+    case BEV_EVENT_ERROR:
+        ev_type = "error";
+        break;
+    case BEV_EVENT_TIMEOUT:
+        ev_type = "timeout";
+        break;
+    case BEV_EVENT_READING:
+        ev_type = "reading";
+        break;
+    case BEV_EVENT_WRITING:
+        ev_type = "writing";
+        break;
+    case BEV_EVENT_CONNECTED:
+        ev_type = "connected";
+        break;
+    default:
+        ev_type = "unknown";
+    }
+    std::cerr << __func__ << " called: \"" << ev_type << "\" (" << events
+              << ") event received; calling washdc_kill" << std::endl;
+    washdc_kill();
 }
 
 static void handle_read(struct bufferevent *bev, void *arg) {

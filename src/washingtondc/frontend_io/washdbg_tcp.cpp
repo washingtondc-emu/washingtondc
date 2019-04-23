@@ -37,6 +37,7 @@
 #include "io_thread.hpp"
 #include "washdc/error.h"
 #include "washdbg_core.hpp"
+#include "washdc/washdc.h"
 
 #include "washdbg_tcp.hpp"
 
@@ -296,7 +297,32 @@ static void on_check_tx_event(evutil_socket_t fd, short ev, void *arg) {
 }
 
 static void handle_events(struct bufferevent *bev, short events, void *arg) {
-    exit(2);
+    char const *ev_type;
+    switch (events) {
+    case BEV_EVENT_EOF:
+        ev_type = "eof";
+        break;
+    case BEV_EVENT_ERROR:
+        ev_type = "error";
+        break;
+    case BEV_EVENT_TIMEOUT:
+        ev_type = "timeout";
+        break;
+    case BEV_EVENT_READING:
+        ev_type = "reading";
+        break;
+    case BEV_EVENT_WRITING:
+        ev_type = "writing";
+        break;
+    case BEV_EVENT_CONNECTED:
+        ev_type = "connected";
+        break;
+    default:
+        ev_type = "unknown";
+    }
+    std::cerr << __func__ << " called: \"" << ev_type << "\" (" << events
+              << ") event received; calling washdc_kill" << std::endl;
+    washdc_kill();
 }
 
 // dat should *not* be null-terminated
