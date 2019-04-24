@@ -26,6 +26,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "gameconsole.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -38,7 +40,8 @@ struct washdc_launch_settings;
  * win_width and win_height are window dimensions
  * cmd_session should be true if the remote command prompt is enabled.
  */
-void washdc_init(struct washdc_launch_settings const *settings);
+struct washdc_gameconsole const*
+washdc_init(struct washdc_launch_settings const *settings);
 
 void washdc_cleanup();
 

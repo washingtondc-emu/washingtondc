@@ -1720,3 +1720,14 @@ static char const *aica_chan_reg_name(int idx) {
         return tmp;
     }
 }
+
+void aica_get_sndchan_stat(struct aica const *aica,
+                           unsigned ch_no,
+                           struct washdc_sndchan_stat *stat) {
+    if (ch_no < AICA_CHAN_COUNT) {
+        stat->playing = aica->channels[ch_no].playing;
+    } else {
+        LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
+        stat->playing = false;
+    }
+}

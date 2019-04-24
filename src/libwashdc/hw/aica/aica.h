@@ -27,6 +27,7 @@
 
 #include "dc_sched.h"
 #include "aica_wave_mem.h"
+#include "washdc/gameconsole.h"
 
 struct arm7;
 
@@ -206,5 +207,9 @@ void aica_cleanup(struct aica *aica);
 extern struct memory_interface aica_sys_intf;
 
 extern bool aica_log_verbose_val;
+
+void aica_get_sndchan_stat(struct aica const *aica,
+                           unsigned ch_no,
+                           struct washdc_sndchan_stat *stat);
 
 #endif

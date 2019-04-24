@@ -48,7 +48,8 @@ static enum dc_boot_mode translate_boot_mode(enum washdc_boot_mode mode) {
     }
 }
 
-void washdc_init(struct washdc_launch_settings const *settings) {
+struct washdc_gameconsole const*
+washdc_init(struct washdc_launch_settings const *settings) {
     config_set_log_stdout(settings->log_to_stdout);
     config_set_log_verbose(settings->log_verbose);
 #ifdef ENABLE_DEBUGGER
@@ -71,9 +72,9 @@ void washdc_init(struct washdc_launch_settings const *settings) {
     win_set_intf(settings->win_intf);
     gfx_set_overlay_intf(settings->overlay_intf);
 
-    dreamcast_init(settings->path_gdi,
-                   settings->overlay_intf, settings->dbg_intf,
-                   settings->sersrv);
+    return dreamcast_init(settings->path_gdi,
+                          settings->overlay_intf, settings->dbg_intf,
+                          settings->sersrv);
 }
 
 void washdc_cleanup() {

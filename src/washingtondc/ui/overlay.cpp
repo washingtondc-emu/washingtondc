@@ -23,6 +23,7 @@
 #include <cstring>
 #include <cstdio>
 #include <memory>
+#include <sstream>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -31,21 +32,28 @@
 #include "washdc/win.h"
 #include "washdc/gfx/gl/shader.h"
 #include "washdc/washdc.h"
+#include "washdc/gameconsole.h"
 #include "imgui.h"
 #include "renderer.hpp"
 #include "../window.hpp"
 
 #include "overlay.hpp"
 
+// see main.cpp
+extern struct washdc_gameconsole *console;
+
 static double framerate, virt_framerate;
 static bool not_hidden;
 static bool en_perf_win = true;
 static bool en_demo_win = false;
+static bool en_aica_win = true;
+static bool show_nonplaying_channels = true;
 
 std::unique_ptr<renderer> ui_renderer;
 
 namespace overlay {
 static void show_perf_win(void);
+static void show_aica_win(void);
 }
 
 void overlay::show(bool do_show) {
@@ -73,6 +81,7 @@ void overlay::draw() {
 
         if (ImGui::BeginMenu("Window")) {
             ImGui::Checkbox("Performance", &en_perf_win);
+            ImGui::Checkbox("AICA", &en_aica_win);
             ImGui::EndMenu();
         }
 
@@ -90,6 +99,8 @@ void overlay::draw() {
 
     if (en_demo_win)
         ImGui::ShowDemoWindow(&en_demo_win);
+    if (en_aica_win)
+        show_aica_win();
 
     ImGui::Render();
     ui_renderer->do_render(ImGui::GetDrawData());
@@ -111,6 +122,29 @@ static void overlay::show_perf_win(void) {
                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD]);
     ImGui::Text("%u punch-through polygons",
                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
+    ImGui::End();
+}
+
+static void overlay::show_aica_win(void) {
+    ImGui::Begin("AICA", &en_aica_win);
+    ImGui::BeginChild("Scrolling");
+    ImGui::Checkbox("Show non-playing channels", &show_nonplaying_channels);
+    for (unsigned idx = 0; idx < console->snddev.n_channels; idx++) {
+        struct washdc_sndchan_stat ch_stat;
+        washdc_gameconsole_sndchan(console, idx, &ch_stat);
+
+        if (!show_nonplaying_channels && !ch_stat.playing)
+            continue;
+        std::stringstream ss;
+        ss << "channel " << idx << "(" <<
+            (ch_stat.playing ? "playing" : "not playing") << ")";
+        if (ImGui::CollapsingHeader(ss.str().c_str())) {
+            std::stringstream playing_ss;
+            playing_ss << "Playing: " << (ch_stat.playing ? "True" : "False");
+            ImGui::Text(playing_ss.str().c_str());
+        }
+    }
+    ImGui::EndChild();
     ImGui::End();
 }
 

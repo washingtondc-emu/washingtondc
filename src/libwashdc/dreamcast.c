@@ -192,10 +192,26 @@ static struct washdc_overlay_intf const *overlay_intf;
 static struct debug_frontend const *dbg_intf;
 static struct serial_server_intf const *sersrv;
 
-void dreamcast_init(char const *gdi_path,
-                    struct washdc_overlay_intf const *overlay_intf_fns,
-                    struct debug_frontend const *dbg_frontend,
-                    struct serial_server_intf const *ser_intf) {
+static void dc_get_sndchan_stat(struct washdc_snddev const *dev,
+                                unsigned ch_no,
+                                struct washdc_sndchan_stat *stat) {
+    aica_get_sndchan_stat(&aica, ch_no, stat);
+}
+
+static struct washdc_gameconsole dccons = {
+    .name = "SEGA Dreamcast",
+    .snddev = {
+        .name = "AICA",
+        .n_channels = AICA_CHAN_COUNT,
+        .get_chan = dc_get_sndchan_stat
+    }
+};
+
+struct washdc_gameconsole const*
+dreamcast_init(char const *gdi_path,
+               struct washdc_overlay_intf const *overlay_intf_fns,
+               struct debug_frontend const *dbg_frontend,
+               struct serial_server_intf const *ser_intf) {
     int win_width, win_height;
 
     overlay_intf = overlay_intf_fns;
@@ -391,6 +407,8 @@ do_init_win_gfx:
     sound_init();
 
     init_complete = true;
+
+    return &dccons;
 }
 
 void dreamcast_cleanup() {

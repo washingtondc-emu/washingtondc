@@ -71,6 +71,8 @@ static void print_usage(char const *cmd) {
 
 struct washdc_overlay_intf overlay_intf;
 
+struct washdc_gameconsole const *console;
+
 int main(int argc, char **argv) {
     int opt;
     char const *bios_path = NULL, *flash_path = NULL;
@@ -266,7 +268,7 @@ int main(int argc, char **argv) {
     io::init();
 #endif
 
-    washdc_init(&settings);
+    console = washdc_init(&settings);
 
     overlay::init();
 
