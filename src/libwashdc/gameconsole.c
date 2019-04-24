@@ -28,3 +28,9 @@ void washdc_gameconsole_sndchan(struct washdc_gameconsole const *cons,
     cons->snddev.get_chan(&cons->snddev, ch_no, stat);
 }
 
+void washdc_gameconsole_sndchan_var(struct washdc_gameconsole const *cons,
+                                    struct washdc_sndchan_stat const *chan,
+                                    unsigned var_no,
+                                    struct washdc_var *var) {
+    cons->snddev.get_var(&cons->snddev, chan, var_no, var);
+}

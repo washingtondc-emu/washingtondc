@@ -54,6 +54,7 @@ std::unique_ptr<renderer> ui_renderer;
 namespace overlay {
 static void show_perf_win(void);
 static void show_aica_win(void);
+static std::string var_as_str(struct washdc_var const *var);
 }
 
 void overlay::show(bool do_show) {
@@ -135,12 +136,24 @@ static void overlay::show_aica_win(void) {
 
         if (!show_nonplaying_channels && !ch_stat.playing)
             continue;
+
         std::stringstream ss;
         ss << "channel " << idx;
         if (ImGui::CollapsingHeader(ss.str().c_str())) {
             std::stringstream playing_ss;
             playing_ss << "Playing: " << (ch_stat.playing ? "True" : "False");
             ImGui::Text(playing_ss.str().c_str());
+
+            unsigned n_vars = ch_stat.n_vars;
+            for (unsigned var_no = 0; var_no < n_vars; var_no++) {
+                struct washdc_var var;
+                washdc_gameconsole_sndchan_var(console, &ch_stat, var_no, &var);
+                if (var.tp != WASHDC_VAR_INVALID) {
+                    std::stringstream var_ss;
+                    var_ss << var.name << ": " << var_as_str(&var);
+                    ImGui::Text(var_ss.str().c_str());
+                }
+            }
         }
     }
     ImGui::EndChild();
@@ -172,4 +185,17 @@ void overlay::cleanup() {
 
 void overlay::update() {
     ui_renderer->update();
+}
+
+static std::string overlay::var_as_str(struct washdc_var const *var) {
+    switch (var->tp) {
+    case WASHDC_VAR_BOOL:
+        if (var->val.as_bool)
+            return "TRUE";
+        else
+            return "FALSE";
+    default:
+    case WASHDC_VAR_INVALID:
+        return "INVALID";
+    }
 }

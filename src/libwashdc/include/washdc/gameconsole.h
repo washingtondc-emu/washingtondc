@@ -29,8 +29,34 @@
 extern "C" {
 #endif
 
+#define WASHDC_VAR_NAME_LEN 16
+
+enum washdc_var_type {
+    WASHDC_VAR_INVALID,
+    WASHDC_VAR_BOOL
+};
+
+union washdc_var_val {
+    bool as_bool;
+};
+
+struct washdc_var {
+    char name[WASHDC_VAR_NAME_LEN];
+    enum washdc_var_type tp;
+    union washdc_var_val val;
+};
+
 struct washdc_sndchan_stat {
+    unsigned ch_idx;
+
+    /*
+     * This variable is treated as a special-case so that frontends can sue it
+     * to filter out channels that aren't playing.  Otherwise, it would be a
+     * washdc_var like everything else is.
+     */
     bool playing;
+
+    unsigned n_vars;
 };
 
 struct washdc_snddev {
@@ -40,6 +66,9 @@ struct washdc_snddev {
     void (*get_chan)(struct washdc_snddev const *dev,
                      unsigned ch_no,
                      struct washdc_sndchan_stat *stat);
+    void (*get_var)(struct washdc_snddev const *dev,
+                    struct washdc_sndchan_stat const *chan,
+                    unsigned var_no, struct washdc_var *var);
 };
 
 struct washdc_gameconsole {
@@ -51,6 +80,10 @@ struct washdc_gameconsole {
 void washdc_gameconsole_sndchan(struct washdc_gameconsole const *cons,
                                 unsigned ch_no,
                                 struct washdc_sndchan_stat *stat);
+void washdc_gameconsole_sndchan_var(struct washdc_gameconsole const *cons,
+                                    struct washdc_sndchan_stat const *chan,
+                                    unsigned var_no,
+                                    struct washdc_var *var);
 
 #ifdef __cplusplus
 }

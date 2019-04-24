@@ -212,4 +212,9 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            unsigned ch_no,
                            struct washdc_sndchan_stat *stat);
 
+void aica_get_sndchan_var(struct aica const *aica,
+                          struct washdc_sndchan_stat const *stat,
+                          unsigned var_no,
+                          struct washdc_var *var);
+
 #endif

@@ -1726,8 +1726,31 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            struct washdc_sndchan_stat *stat) {
     if (ch_no < AICA_CHAN_COUNT) {
         stat->playing = aica->channels[ch_no].playing;
+        stat->n_vars = 1;
+        stat->ch_idx = ch_no;
     } else {
         LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
         stat->playing = false;
     }
+}
+
+void aica_get_sndchan_var(struct aica const *aica,
+                          struct washdc_sndchan_stat const *stat,
+                          unsigned var_no,
+                          struct washdc_var *var) {
+    if (stat->ch_idx >= AICA_CHAN_COUNT)
+        goto inval;
+    switch (var_no) {
+    case 0:
+        strncpy(var->name, "ready_keyon", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_BOOL;
+        var->val.as_bool = aica->channels[stat->ch_idx].ready_keyon;
+        return;
+    default:
+        goto inval;
+    }
+ inval:
+    memset(var, 0, sizeof(*var));
+    var->tp = WASHDC_VAR_INVALID;
 }
