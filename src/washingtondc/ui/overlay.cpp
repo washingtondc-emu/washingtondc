@@ -136,8 +136,7 @@ static void overlay::show_aica_win(void) {
         if (!show_nonplaying_channels && !ch_stat.playing)
             continue;
         std::stringstream ss;
-        ss << "channel " << idx << "(" <<
-            (ch_stat.playing ? "playing" : "not playing") << ")";
+        ss << "channel " << idx;
         if (ImGui::CollapsingHeader(ss.str().c_str())) {
             std::stringstream playing_ss;
             playing_ss << "Playing: " << (ch_stat.playing ? "True" : "False");
