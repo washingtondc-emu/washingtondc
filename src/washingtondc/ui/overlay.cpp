@@ -40,6 +40,7 @@
 static double framerate, virt_framerate;
 static bool not_hidden;
 static bool en_perf_win = true;
+static bool en_demo_win = false;
 
 std::unique_ptr<renderer> ui_renderer;
 
@@ -75,12 +76,20 @@ void overlay::draw() {
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("About")) {
+            ImGui::Checkbox("ImGui demo window", &en_demo_win);
+            ImGui::EndMenu();
+        }
+
         ImGui::EndMainMenuBar();
     }
 
     // Performance Window
     if (en_perf_win)
         show_perf_win();
+
+    if (en_demo_win)
+        ImGui::ShowDemoWindow(&en_demo_win);
 
     ImGui::Render();
     ui_renderer->do_render(ImGui::GetDrawData());
