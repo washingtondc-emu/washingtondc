@@ -28,6 +28,6 @@
 void sound_init(void);
 void sound_cleanup(void);
 
-void sound_submit_sample(int16_t sample);
+void sound_submit_sample(int32_t sample);
 
 #endif

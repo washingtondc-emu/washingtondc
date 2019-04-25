@@ -835,10 +835,9 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
 
         // octage is a 4-bit two's complement value that ranges from -8 to +7
         uint32_t oct32 = (tmp & BIT_RANGE(11, 14)) >> 11;
-        if (oct32 & (1 << 3))
-            chan->octave = oct32 | ~BIT_RANGE(0, 3);
-        else
-            chan->octave = oct32;
+        if (oct32 & 8)
+            oct32 |= 0xfffffff0;
+        chan->octave = oct32;
 
         double sample_rate = 1.0 + chan->fns / (double)(1 << 11);
         if (chan->octave > 0)
@@ -1555,18 +1554,18 @@ static unsigned const decay_step_delta[][4] = {
     { 8, 8, 8, 8 }  // 0x3c
 };
 
-static inline int16_t add_sample16(int16_t s1, int16_t s2) {
-    if ((s2 > 0) && (s1 > INT16_MAX - s2))
-        return INT16_MAX;
-    if ((s2 < 0) && (s1 < INT16_MIN - s2))
-        return INT16_MIN;
+static inline int32_t add_sample32(int32_t s1, int32_t s2) {
+    if ((s2 > 0) && (s1 > INT32_MAX - s2))
+        return INT32_MAX;
+    if ((s2 < 0) && (s1 < INT32_MIN - s2))
+        return INT32_MIN;
     return s1 + s2;
 }
 
 static void aica_process_sample(struct aica *aica) {
     unsigned chan_no;
 
-    int16_t sample_total = 0;
+    int32_t sample_total = 0;
 
     for (chan_no = 0; chan_no < AICA_CHAN_COUNT; chan_no++) {
         struct aica_chan *chan = aica->channels + chan_no;
@@ -1574,30 +1573,28 @@ static void aica_process_sample(struct aica *aica) {
         if (!chan->playing)
             continue;
 
-        double sample_rate = 1.0 + chan->fns / (double)(1 << 11);
+        unsigned phaseinc = (chan->fns ^ 0x400);
         if (chan->octave > 0)
-            sample_rate *= 1 << chan->octave;
+            phaseinc <<= chan->octave;
         else
-            sample_rate /= 1 << -chan->octave;
+            phaseinc >>= -chan->octave;
 
+        double sample_rate = phaseinc / (double)0x400;
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate, chan->step_no);
 
         bool did_increment = false;
         // TODO: sample_rate > 1.0
-        if (chan->fmt == AICA_FMT_16_BIT_SIGNED && sample_rate <= 1.0) {
-            /* printf("loop goes from 0x%04x to 0x%04x\n", (unsigned)chan->loop_start, (unsigned)chan->loop_end); */
-            /* printf("sample_pos 0x%04x\n", (unsigned)chan->sample_pos); */
-
-            LOG_INFO("Loops are %senabled\n", chan->loop_en ? "" : "NOT ");
-            int16_t sample = aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
+        if (chan->fmt == AICA_FMT_16_BIT_SIGNED /* && sample_rate <= 1.0 */) {
+            int32_t sample = (int32_t)(int16_t)aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
+            sample <<= 8;
 
             // TODO: linear interpolation
-            sample_total = add_sample16(sample_total, sample);
+            sample_total = add_sample32(sample_total, sample);
 
             chan->sample_partial += sample_rate;
-            if (chan->sample_partial >= 1.0) {
-                chan->sample_partial = 0.0;
+            while (chan->sample_partial >= 1.0) {
+                chan->sample_partial -= 1.0;
                 chan->addr_cur += 2; //whatever
                 chan->sample_pos++;
                 did_increment = true;

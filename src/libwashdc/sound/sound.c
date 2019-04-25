@@ -106,7 +106,7 @@ static int snd_cb(const void *input, void *output,
     return 0;
 }
 
-void sound_submit_sample(int16_t sample) {
+void sound_submit_sample(int32_t sample) {
     if (outfile)
         fwrite(&sample, sizeof(sample), 1, outfile);
 }
