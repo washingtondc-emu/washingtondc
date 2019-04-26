@@ -70,8 +70,9 @@
 #include "washdc/config_file.h"
 #include "mount.h"
 #include "gdi.h"
-#include "sound/sound.h"
 #include "washdc/win.h"
+#include "washdc/sound_intf.h"
+#include "sound.h"
 
 #ifdef ENABLE_TCP_SERIAL
 #include "serial_server.h"
@@ -103,17 +104,6 @@ static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
 static bool frame_stop;
 static bool init_complete;
 static bool end_of_frame;
-
-static enum framelimit_mode {
-    // run the simulation as fast as possible with no frame-limiting
-    FRAMELIMIT_MODE_UNLIMITED,
-
-    // busy-loop to burn away excess host CPU time
-    FRAMELIMIT_MODE_SPIN,
-
-    // sleep away excess host CPU time
-    FRAMELIMIT_MODE_SLEEP
-} framelimit_mode;
 
 static bool using_debugger;
 
@@ -218,7 +208,8 @@ struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
                struct washdc_overlay_intf const *overlay_intf_fns,
                struct debug_frontend const *dbg_frontend,
-               struct serial_server_intf const *ser_intf) {
+               struct serial_server_intf const *ser_intf,
+               struct washdc_sound_intf const *snd_intf) {
     int win_width, win_height;
 
     overlay_intf = overlay_intf_fns;
@@ -257,22 +248,6 @@ dreamcast_init(char const *gdi_path,
     title_set_content(title_content);
 
     cfg_init();
-
-    char const *framelimit_mode_str = cfg_get_node("win.framelimit-mode");
-    if (framelimit_mode_str) {
-        if (strcmp(framelimit_mode_str, "unlimited") == 0) {
-            framelimit_mode = FRAMELIMIT_MODE_UNLIMITED;
-        } else if (strcmp(framelimit_mode_str, "spin") == 0) {
-            framelimit_mode = FRAMELIMIT_MODE_SPIN;
-        } else if (strcmp(framelimit_mode_str, "sleep") == 0) {
-            framelimit_mode = FRAMELIMIT_MODE_SLEEP;
-        } else {
-            LOG_ERROR("unable to parse framelimit mode \"%s\"\n", framelimit_mode_str);
-            framelimit_mode = FRAMELIMIT_MODE_SPIN;
-        }
-    } else {
-        framelimit_mode = FRAMELIMIT_MODE_SPIN;
-    }
 
     atomic_store_explicit(&is_running, true, memory_order_relaxed);
 
@@ -411,7 +386,7 @@ do_init_win_gfx:
     win_init(win_width, win_height);
     gfx_init(win_width, win_height);
 
-    sound_init();
+    dc_sound_init(snd_intf);
 
     init_complete = true;
 
@@ -427,7 +402,7 @@ void dreamcast_cleanup() {
     LOG_INFO("debugger cleaned up\n");
 #endif
 
-    sound_cleanup();
+    dc_sound_cleanup();
     gfx_cleanup();
 
     win_cleanup();
@@ -856,18 +831,6 @@ static void time_diff(struct timespec *delta,
     }
 }
 
-static int time_cmp(struct timespec const *lhs, struct timespec const *rhs) {
-    if (lhs->tv_sec < rhs->tv_sec)
-        return -1;
-    else if (lhs->tv_sec > rhs->tv_sec)
-        return 1;
-    else if (lhs->tv_nsec < rhs->tv_nsec)
-        return -1;
-    else if (lhs->tv_nsec > rhs->tv_nsec)
-        return 1;
-    return 0;
-}
-
 static void timespec_from_seconds(struct timespec *outp, double seconds) {
     double int_part;
     double frac_part = modf(seconds, &int_part);
@@ -1032,29 +995,8 @@ void dc_end_frame(void) {
     double virt_frametime_seconds = virt_frametime / (double)SCHED_FREQUENCY;
     timespec_from_seconds(&virt_frametime_ns, virt_frametime_seconds);
 
-    if (framelimit_mode != FRAMELIMIT_MODE_UNLIMITED)
-        do {
-            clock_gettime(CLOCK_MONOTONIC, &timestamp);
-            time_diff(&delta, &timestamp, &last_frame_realtime);
-
-            struct timespec sleep_amt;
-            time_diff(&sleep_amt, &virt_frametime_ns, &delta);
-
-            /*
-             * TODO: according to C specification, nanosleep sleeps for *at least*
-             * the amount of time you asked it to.  This leads to WashingtonDC
-             * having a framerate a little below 59.94Hz.  Should consider sleeping
-             * for less than sleep_amt and then burning the remaining cycles away
-             * with a busy loop.
-             */
-            if (framelimit_mode == FRAMELIMIT_MODE_SLEEP)
-                nanosleep(&sleep_amt, NULL);
-        } while (time_cmp(&virt_frametime_ns, &delta) > 0);
-
-    if (framelimit_mode != FRAMELIMIT_MODE_SPIN) {
-        clock_gettime(CLOCK_MONOTONIC, &timestamp);
-        time_diff(&delta, &timestamp, &last_frame_realtime);
-    }
+    clock_gettime(CLOCK_MONOTONIC, &timestamp);
+    time_diff(&delta, &timestamp, &last_frame_realtime);
 
     framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
     virt_framerate = (double)SCHED_FREQUENCY / virt_frametime;

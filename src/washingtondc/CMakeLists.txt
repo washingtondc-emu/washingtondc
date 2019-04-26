@@ -69,7 +69,9 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/window.cpp"
                          "${PROJECT_SOURCE_DIR}/window.hpp"
                          "${PROJECT_SOURCE_DIR}/control_bind.cpp"
-                         "${PROJECT_SOURCE_DIR}/control_bind.hpp")
+                         "${PROJECT_SOURCE_DIR}/control_bind.hpp"
+                         "${PROJECT_SOURCE_DIR}/sound.hpp"
+                         "${PROJECT_SOURCE_DIR}/sound.cpp")
 
 if (ENABLE_TCP_SERIAL)
     add_definitions(-DENABLE_TCP_SERIAL)

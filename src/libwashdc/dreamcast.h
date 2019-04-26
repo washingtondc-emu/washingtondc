@@ -50,11 +50,14 @@ extern struct dc_clock sh4_clock;
  * cmd_session should be true if the remote command prompt is enabled.
  */
 struct washdc_overlay_intf;
+struct washdc_sound_intf;
+
 struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
                struct washdc_overlay_intf const *overlay_intf_fns,
                struct debug_frontend const *dbg_frontend,
-               struct serial_server_intf const *ser_intf);
+               struct serial_server_intf const *ser_intf,
+               struct washdc_sound_intf const *snd_intf);
 
 void dreamcast_cleanup();
 

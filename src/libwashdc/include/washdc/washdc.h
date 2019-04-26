@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "sound_intf.h"
 #include "gameconsole.h"
 
 #ifdef __cplusplus
@@ -94,6 +95,8 @@ struct washdc_launch_settings {
     struct debug_frontend const *dbg_intf;
 
     struct serial_server_intf const *sersrv;
+
+    struct washdc_sound_intf const *sndsrv;
 
     enum washdc_boot_mode boot_mode;
 

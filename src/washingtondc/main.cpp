@@ -29,6 +29,7 @@
 #include "washdc/buildconfig.h"
 #include "window.hpp"
 #include "overlay.hpp"
+#include "sound.hpp"
 
 #ifdef USE_LIBEVENT
 #include "frontend_io/io_thread.hpp"
@@ -42,6 +43,12 @@
 #ifdef ENABLE_TCP_SERIAL
 #include "frontend_io/serial_server.hpp"
 #endif
+
+static struct washdc_sound_intf snd_intf = {
+    .init = sound::init,
+    .cleanup = sound::cleanup,
+    .submit_samples = sound::submit_samples
+};
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
@@ -257,6 +264,8 @@ int main(int argc, char **argv) {
 #ifdef ENABLE_TCP_SERIAL
     settings.sersrv = &sersrv_intf;
 #endif
+
+    settings.sndsrv = &snd_intf;
 
     overlay_intf.overlay_draw = overlay::draw;
     overlay_intf.overlay_set_fps = overlay::set_fps;

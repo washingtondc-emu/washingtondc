@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "sound/sound.h"
+#include "sound.h"
 #include "log.h"
 #include "dc_sched.h"
 #include "washdc/error.h"
@@ -674,6 +674,8 @@ static void aica_sys_channel_read(struct aica *aica, void *dst,
     case AICA_CHAN_LPF6:
     case AICA_CHAN_LPF7:
     case AICA_CHAN_LPF8:
+    case AICA_CHAN_AMP_ENV1:
+    case AICA_CHAN_AMP_ENV2:
         break;
     default:
 #ifdef AICA_PEDANTIC
@@ -1581,13 +1583,16 @@ static void aica_process_sample(struct aica *aica) {
 
         double sample_rate = phaseinc / (double)0x400;
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
-        unsigned samples_per_step = aica_samples_per_step(effective_rate, chan->step_no);
+        unsigned samples_per_step = aica_samples_per_step(effective_rate,
+                                                          chan->step_no);
 
+        // TODO: I'm probably not handling sample_rate > 1.0 correctly
         bool did_increment = false;
-        // TODO: sample_rate > 1.0
-        if (chan->fmt == AICA_FMT_16_BIT_SIGNED /* && sample_rate <= 1.0 */) {
-            int32_t sample = (int32_t)(int16_t)aica_wave_mem_read_16(chan->addr_cur, &aica->mem);
-            sample <<= 8;
+        if (chan->fmt == AICA_FMT_16_BIT_SIGNED) {
+            int32_t sample =
+                (int32_t)(int16_t)aica_wave_mem_read_16(chan->addr_cur,
+                                                        &aica->mem);
+            sample <<= 12;
 
             // TODO: linear interpolation
             sample_total = add_sample32(sample_total, sample);
@@ -1670,7 +1675,7 @@ static void aica_process_sample(struct aica *aica) {
         }
     }
 
-    sound_submit_sample(sample_total);
+    dc_submit_sound_samples(&sample_total, 1);
 }
 
 static void raise_aica_sh4_int(struct aica *aica) {

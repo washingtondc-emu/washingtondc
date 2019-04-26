@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,14 +20,22 @@
  *
  ******************************************************************************/
 
-#ifndef SOUND_H_
-#define SOUND_H_
+#include <stddef.h>
 
-#include <stdint.h>
+#include "sound.h"
 
-void sound_init(void);
-void sound_cleanup(void);
+struct washdc_sound_intf const *sndsrv;
 
-void sound_submit_sample(int32_t sample);
+void dc_sound_init(struct washdc_sound_intf const *intf) {
+    sndsrv = intf;
+    sndsrv->init();
+}
 
-#endif
+void dc_sound_cleanup(void) {
+    sndsrv->cleanup();
+    sndsrv = NULL;
+}
+
+void dc_submit_sound_samples(washdc_sample_type *samples, unsigned count) {
+    sndsrv->submit_samples(samples, count);
+}

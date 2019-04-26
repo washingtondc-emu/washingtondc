@@ -231,8 +231,6 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/hostfile.c"
                       "${WASHDC_SOURCE_DIR}/screenshot.h"
                       "${WASHDC_SOURCE_DIR}/screenshot.c"
-                      "${WASHDC_SOURCE_DIR}/sound/sound.h"
-                      "${WASHDC_SOURCE_DIR}/sound/sound.c"
                       "${WASHDC_SOURCE_DIR}/washdc.c"
                       "${WASHDC_SOURCE_DIR}/include/washdc/washdc.h"
                       "${WASHDC_SOURCE_DIR}/include/washdc/gameconsole.h"
@@ -242,7 +240,10 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/include/washdc/debugger.h"
                       "${WASHDC_SOURCE_DIR}/include/washdc/serial_server.h"
                       "${WASHDC_SOURCE_DIR}/serial_server.h"
-                      "${WASHDC_SOURCE_DIR}/serial_server.c")
+                      "${WASHDC_SOURCE_DIR}/serial_server.c"
+                      "${WASHDC_SOURCE_DIR}/include/washdc/sound_intf.h"
+                      "${WASHDC_SOURCE_DIR}/sound.h"
+                      "${WASHDC_SOURCE_DIR}/sound.c")
 
 if (JIT_OPTIMIZE)
    add_definitions(-DJIT_OPTIMIZE)

@@ -36,6 +36,7 @@
 #include "imgui.h"
 #include "renderer.hpp"
 #include "../window.hpp"
+#include "../sound.hpp"
 
 #include "overlay.hpp"
 
@@ -48,8 +49,9 @@ static bool en_perf_win = true;
 static bool en_demo_win = false;
 static bool en_aica_win = true;
 static bool show_nonplaying_channels = true;
+static bool do_mute_audio = true;
 
-std::unique_ptr<renderer> ui_renderer;
+static std::unique_ptr<renderer> ui_renderer;
 
 namespace overlay {
 static void show_perf_win(void);
@@ -71,12 +73,19 @@ void overlay::draw() {
 
     ImGui::NewFrame();
 
+    bool mute_old = do_mute_audio;
+
     // main menu bar
     if (ImGui::BeginMainMenuBar()) {
 
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Quit", "Ctrl+Q"))
                 washdc_kill();
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Audio")) {
+            ImGui::Checkbox("mute", &do_mute_audio);
             ImGui::EndMenu();
         }
 
@@ -103,6 +112,9 @@ void overlay::draw() {
     if (en_aica_win)
         show_aica_win();
 
+    if (mute_old != do_mute_audio)
+        sound::mute(do_mute_audio);
+
     ImGui::Render();
     ui_renderer->do_render(ImGui::GetDrawData());
 }
@@ -112,7 +124,7 @@ static void overlay::show_perf_win(void) {
     washdc_get_pvr2_stat(&stat);
 
     ImGui::Begin("Performance", &en_perf_win);
-    ImGui::Text("Framerate: %.2f / %.2f", framerate, virt_framerate);
+    ImGui::Text("Framerate: %.2f / %.2f (%.2f%%)", framerate, virt_framerate, 100.0 * (framerate / virt_framerate));
     ImGui::Text("%u opaque polygons",
                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
     ImGui::Text("%u opaque modifier polygons",
