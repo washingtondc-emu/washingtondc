@@ -99,7 +99,7 @@ static void cfg_create_default_config(void) {
         "(accurate but wastes CPU time)\n"
         ";     sleep - limit framerate by sleeping (less accurate but more "
         "efficient)\n"
-        "win.framelimit_mode spin\n"
+        "win.framelimit-mode spin\n"
         "\n"
         "; default external resolution.  this is the size of the window when\n"
         "; it is initially created, but you can also change it at runtime by\n"
