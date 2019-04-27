@@ -142,6 +142,12 @@ WashingtonDC uses the imgui library.  This software is included via a git
 submodule.  The license for this software can be found at
 external/imgui/LICENSE.txt.
 
+Some code from FFmpeg was used to implement Yamaha's ADPCM format.  This code is
+part of the FFmpeg library and is licensed under version 2.1 or greater of the
+GNU Lesser General Public License (LGPL).  The GNU LGPL allows licensees to
+optionally accept code under the terms of the GPL instead; I have chosen to do
+that and accept it under the terms of the GNU GPL version 3.
+
 ## CONTACT
 You can reach me at my public-facing e-mail address, snickerbockers@washemu.org.
 

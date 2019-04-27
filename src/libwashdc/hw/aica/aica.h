@@ -122,6 +122,11 @@ struct aica_chan {
     // from the SampleRatePitch register
     int octave;
     unsigned fns;
+
+    // for ADPCM decoding
+    int predictor, step;
+    bool adpcm_next_step;
+    int32_t adpcm_sample;
 };
 
 struct aica_timer {

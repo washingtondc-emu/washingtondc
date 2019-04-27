@@ -39,6 +39,7 @@
 #include "intmath.h"
 #include "hw/arm7/arm7.h"
 #include "hw/sys/holly_intc.h"
+#include "adpcm.h"
 
 #include "aica.h"
 
@@ -241,6 +242,12 @@ static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no);
 static unsigned aica_samples_per_step(unsigned effective_rate, unsigned step_no);
 
 static void aica_process_sample(struct aica *aica);
+
+static void aica_chan_reset_adpcm(struct aica_chan *chan) {
+    chan->step = 0;
+    chan->predictor = 0;
+    chan->adpcm_next_step = true;
+}
 
 struct memory_interface aica_sys_intf = {
     .read32 = aica_sys_read_32,
@@ -738,6 +745,9 @@ static void aica_do_keyon(struct aica *aica) {
             chan->atten = 0x280;
             chan->loop_end_playstatus_flag = false;
             chan->loop_end_signaled = false;
+
+            aica_chan_reset_adpcm(chan);
+
             LOG_INFO("AICA channel %u key-on fmt %s ptr 0x%08x\n",
                    chan_no, fmt_name(chan->fmt),
                    (unsigned)chan->addr_start);
@@ -1621,21 +1631,39 @@ static void aica_process_sample(struct aica *aica) {
                 did_increment = true;
             }
         } else {
-            // TODO: other formats
-            if (sample_rate <= 1.0)
-                chan->sample_partial += sample_rate;
-            else
-                chan->sample_partial += 1.0;
+            // 4-bit ADPCM
+            if (chan->adpcm_next_step) {
+                uint8_t sample = aica_wave_mem_read_8(chan->addr_cur, &aica->mem);
+                if (chan->sample_pos & 1)
+                    sample = (sample >> 4) & 0xf;
+                else
+                    sample &= 0xf;
 
+                chan->adpcm_sample =
+                    (int32_t)adpcm_yamaha_expand_nibble(chan, sample);
+                chan->adpcm_next_step = false;
+            }
+
+            sample_total = add_sample32(sample_total, chan->adpcm_sample << 8);
+
+            chan->sample_partial += sample_rate;
             if (chan->sample_partial >= 1.0) {
-                chan->sample_partial = 0.0;
-                chan->addr_cur += 2; //whatever
+                chan->sample_partial -= 1.0;
+                if (chan->sample_pos & 1) {
+                    chan->addr_cur++;
+                    printf("channel %u next addr!\n", chan_no);
+                } else {
+                    printf("channel %u we hold!\n", chan_no);
+                }
                 chan->sample_pos++;
                 did_increment = true;
+                chan->adpcm_next_step = true;
             }
         }
 
         if (chan->sample_pos > chan->loop_end) {
+            aica_chan_reset_adpcm(chan);
+
             if (!chan->loop_end_signaled)
                 chan->loop_end_playstatus_flag = true;
 
