@@ -1600,12 +1600,26 @@ static void aica_process_sample(struct aica *aica) {
             chan->sample_partial += sample_rate;
             while (chan->sample_partial >= 1.0) {
                 chan->sample_partial -= 1.0;
-                chan->addr_cur += 2; //whatever
+                chan->addr_cur += 2;
                 chan->sample_pos++;
                 did_increment = true;
             }
-            /* chan->addr_cur += 2; */
-            /* chan->sample_pos++; */
+        } else if (chan->fmt == AICA_FMT_8_BIT_SIGNED) {
+            int32_t sample =
+                (int32_t)(int8_t)aica_wave_mem_read_8(chan->addr_cur,
+                                                      &aica->mem);
+            sample <<= 16;
+
+            // TODO: linear interpolation
+            sample_total = add_sample32(sample_total, sample);
+
+            chan->sample_partial += sample_rate;
+            while (chan->sample_partial >= 1.0) {
+                chan->sample_partial -= 1.0;
+                chan->addr_cur++;
+                chan->sample_pos++;
+                did_increment = true;
+            }
         } else {
             // TODO: other formats
             if (sample_rate <= 1.0)
