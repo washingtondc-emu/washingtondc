@@ -28,6 +28,7 @@
 
 #include "washdc/error.h"
 #include "sound.hpp"
+#include "washdc/config_file.h"
 
 namespace sound {
 
@@ -53,6 +54,8 @@ static bool do_mute;
 
 void init(void) {
     do_mute = true;
+    cfg_get_bool("audio.mute", &do_mute);
+
     read_buf_idx = write_buf_idx = 0;
 
     int err;
@@ -130,6 +133,10 @@ void submit_samples(washdc_sample_type *samples, unsigned count) {
 
 void mute(bool en_mute) {
     do_mute = en_mute;
+}
+
+bool is_muted(void) {
+    return do_mute;
 }
 
 }

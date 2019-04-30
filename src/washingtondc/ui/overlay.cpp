@@ -49,7 +49,6 @@ static bool en_perf_win = true;
 static bool en_demo_win = false;
 static bool en_aica_win = true;
 static bool show_nonplaying_channels = true;
-static bool do_mute_audio = true;
 
 static std::unique_ptr<renderer> ui_renderer;
 
@@ -73,7 +72,8 @@ void overlay::draw() {
 
     ImGui::NewFrame();
 
-    bool mute_old = do_mute_audio;
+    bool mute_old = sound::is_muted();
+    bool do_mute_audio = mute_old;
 
     // main menu bar
     if (ImGui::BeginMainMenuBar()) {

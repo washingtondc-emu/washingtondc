@@ -36,6 +36,8 @@ void submit_samples(washdc_sample_type *samples, unsigned count);
 
 void mute(bool en_mute);
 
+bool is_muted(void);
+
 }
 
 #endif
