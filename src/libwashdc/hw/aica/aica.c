@@ -1651,9 +1651,6 @@ static void aica_process_sample(struct aica *aica) {
                 chan->sample_partial -= 1.0;
                 if (chan->sample_pos & 1) {
                     chan->addr_cur++;
-                    printf("channel %u next addr!\n", chan_no);
-                } else {
-                    printf("channel %u we hold!\n", chan_no);
                 }
                 chan->sample_pos++;
                 did_increment = true;
