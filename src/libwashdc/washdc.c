@@ -233,3 +233,7 @@ void washdc_run_one_frame(void) {
                   "suspended\n", __func__);
     }
 }
+
+unsigned washdc_get_frame_count(void) {
+    return dc_get_frame_count();
+}

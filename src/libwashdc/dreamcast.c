@@ -127,6 +127,8 @@ static enum dc_state dc_state = DC_STATE_NOT_RUNNING;
 struct dc_clock arm7_clock;
 struct dc_clock sh4_clock;
 
+static unsigned frame_count;
+
 static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
@@ -211,6 +213,8 @@ dreamcast_init(char const *gdi_path,
                struct serial_server_intf const *ser_intf,
                struct washdc_sound_intf const *snd_intf) {
     int win_width, win_height;
+
+    frame_count = 0;
 
     overlay_intf = overlay_intf_fns;
     dbg_intf = dbg_frontend;
@@ -459,9 +463,14 @@ static void run_one_frame(void) {
     end_of_frame = false;
 }
 
+unsigned dc_get_frame_count(void) {
+    return frame_count;
+}
+
 static void main_loop_sched(void) {
     while (atomic_load_explicit(&is_running, memory_order_relaxed)) {
         run_one_frame();
+        frame_count++;
         if (frame_stop) {
             frame_stop = false;
             if (dc_state == DC_STATE_RUNNING) {

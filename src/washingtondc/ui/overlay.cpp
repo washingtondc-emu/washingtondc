@@ -139,6 +139,7 @@ static void overlay::show_perf_win(void) {
 
     ImGui::Begin("Performance", &en_perf_win);
     ImGui::Text("Framerate: %.2f / %.2f (%.2f%%)", framerate, virt_framerate, 100.0 * (framerate / virt_framerate));
+    ImGui::Text("%u frames rendered\n", washdc_get_frame_count());
     ImGui::Text("%u opaque polygons",
                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
     ImGui::Text("%u opaque modifier polygons",

@@ -215,6 +215,8 @@ void washdc_resume(void);
 bool washdc_is_paused(void);
 void washdc_run_one_frame(void);
 
+unsigned washdc_get_frame_count(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -142,4 +142,6 @@ void dc_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
 struct pvr2_stat;
 void dc_get_pvr2_stats(struct pvr2_stat *stats);
 
+unsigned dc_get_frame_count(void);
+
 #endif
