@@ -228,6 +228,9 @@ static std::string overlay::var_as_str(struct washdc_var const *var) {
     case WASHDC_VAR_INT:
         ss << var->val.as_int;
         return ss.str();
+    case WASHDC_VAR_HEX:
+        ss << "0x" << std::hex << var->val.as_int;
+        return ss.str();
     case WASHDC_VAR_INVALID:
         return "INVALID";
     }

@@ -34,7 +34,15 @@ extern "C" {
 enum washdc_var_type {
     WASHDC_VAR_INVALID,
     WASHDC_VAR_BOOL,
-    WASHDC_VAR_INT
+
+    /*
+     * WASHDC_VAR_INT and WASHDC_VAR_HEX both use the as_int member of
+     * washdc_var_val.  The point of WASHDC_VAR_HEX is to provide a hint to
+     * frontends about how this should be displayed, but really it's the same
+     * as WASHDC_VAR_INT.
+     */
+    WASHDC_VAR_INT,
+    WASHDC_VAR_HEX
 };
 
 union washdc_var_val {
