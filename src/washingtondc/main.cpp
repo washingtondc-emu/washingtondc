@@ -279,7 +279,7 @@ int main(int argc, char **argv) {
 
     console = washdc_init(&settings);
 
-    overlay::init();
+    overlay::init(enable_debugger || enable_washdbg);
 
     washdc_run();
 

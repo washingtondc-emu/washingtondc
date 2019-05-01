@@ -64,6 +64,10 @@ void gfx_cleanup(void) {
 }
 
 void gfx_expose(void) {
+    gfx_redraw();
+}
+
+void gfx_redraw(void) {
     gfx_rend_ifp->video_present();
     if (overlay_intf->overlay_draw)
         overlay_intf->overlay_draw();

@@ -31,7 +31,7 @@
  */
 
 namespace overlay {
-    void init();
+    void init(bool enabled_debugger);
     void cleanup();
     void draw();
     void update();

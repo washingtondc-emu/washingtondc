@@ -114,6 +114,7 @@ void gfx_cleanup(void);
 
 // refresh the window
 void gfx_expose(void);
+void gfx_redraw(void);
 void gfx_resize(int xres, int yres);
 
 void gfx_post_framebuffer(int obj_handle,

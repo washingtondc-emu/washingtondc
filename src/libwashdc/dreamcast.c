@@ -365,7 +365,7 @@ dreamcast_init(char const *gdi_path,
     }
 #endif
 
-    // TODO: hold here when pausing/resuming gets implemented
+    // TODO: hold here when pausing on start gets implemented
     /* if (!cmd_session) */ {
         /*
          * if there's no debugging support and we have a remote cmd session
@@ -959,6 +959,7 @@ static void suspend_loop(void) {
     if (cur_state == DC_STATE_SUSPEND) {
         do {
             win_check_events();
+            gfx_redraw();
             /*
              * TODO: sleep on a pthread condition or something instead of
              * polling.

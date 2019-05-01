@@ -209,3 +209,15 @@ void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat) {
     stat->poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH] =
         src.poly_count[DISPLAY_LIST_PUNCH_THROUGH];
 }
+
+void washdc_pause(void) {
+    dc_request_frame_stop();
+}
+
+void washdc_resume(void) {
+    dc_state_transition(DC_STATE_RUNNING, DC_STATE_SUSPEND);
+}
+
+bool washdc_is_paused(void) {
+    return dc_get_state() == DC_STATE_SUSPEND;
+}

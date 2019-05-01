@@ -49,6 +49,7 @@ static bool en_perf_win = true;
 static bool en_demo_win = false;
 static bool en_aica_win = true;
 static bool show_nonplaying_channels = true;
+static bool have_debugger;
 
 static std::unique_ptr<renderer> ui_renderer;
 
@@ -81,6 +82,17 @@ void overlay::draw() {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Quit", "Ctrl+Q"))
                 washdc_kill();
+            ImGui::EndMenu();
+        }
+
+        if (!have_debugger && ImGui::BeginMenu("Execution")) {
+            if (washdc_is_paused()) {
+                if (ImGui::MenuItem("Resume"))
+                    washdc_resume();
+            } else {
+                if (ImGui::MenuItem("Pause"))
+                    washdc_pause();
+            }
             ImGui::EndMenu();
         }
 
@@ -180,9 +192,10 @@ void overlay::set_virt_fps(double fps) {
     virt_framerate = fps;
 }
 
-void overlay::init() {
+void overlay::init(bool enable_debugger) {
     en_perf_win = true;
     not_hidden = false;
+    have_debugger = enable_debugger;
 
     ImGui::CreateContext();
 
