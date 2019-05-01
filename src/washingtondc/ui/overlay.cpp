@@ -89,6 +89,8 @@ void overlay::draw() {
             if (washdc_is_paused()) {
                 if (ImGui::MenuItem("Resume"))
                     washdc_resume();
+                if (ImGui::MenuItem("Run one frame"))
+                    washdc_run_one_frame();
             } else {
                 if (ImGui::MenuItem("Pause"))
                     washdc_pause();

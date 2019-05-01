@@ -221,3 +221,15 @@ void washdc_resume(void) {
 bool washdc_is_paused(void) {
     return dc_get_state() == DC_STATE_SUSPEND;
 }
+
+void washdc_run_one_frame(void) {
+    enum dc_state dc_state = dc_get_state();
+
+    if (dc_state == DC_STATE_SUSPEND) {
+        dc_request_frame_stop();
+        dc_state_transition(DC_STATE_RUNNING, DC_STATE_SUSPEND);
+    } else {
+        LOG_ERROR("%s - cannot run one frame becase emulator state is not "
+                  "suspended\n", __func__);
+    }
+}

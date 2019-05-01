@@ -213,6 +213,7 @@ void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat);
 void washdc_pause(void);
 void washdc_resume(void);
 bool washdc_is_paused(void);
+void washdc_run_one_frame(void);
 
 #ifdef __cplusplus
 }
