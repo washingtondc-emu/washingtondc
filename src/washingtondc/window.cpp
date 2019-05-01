@@ -35,6 +35,7 @@
 #include "control_bind.hpp"
 #include "window.hpp"
 #include "ui/overlay.hpp"
+#include "sound.hpp"
 
 static void win_glfw_init(unsigned width, unsigned height);
 static void win_glfw_cleanup();
@@ -193,6 +194,7 @@ static void win_glfw_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("toggle-filter", "wash.ctrl.toggle-filter");
     bind_ctrl_from_cfg("toggle-wireframe", "wash.ctrl.toggle-wireframe");
     bind_ctrl_from_cfg("screenshot", "wash.ctrl.screenshot");
+    bind_ctrl_from_cfg("toggle-mute", "wash.ctrl.toggle-mute");
 
     /*
      * This bind immediately exits the emulator.  It is unbound in the default
@@ -475,6 +477,12 @@ static void scan_input(void) {
     if (screenshot_key && !screenshot_key_prev)
         washdc_save_screenshot_dir();
     screenshot_key_prev = screenshot_key;
+
+    static bool mute_key_prev = false;
+    bool mute_key = ctrl_get_button("toggle-mute");
+    if (mute_key && !mute_key_prev)
+        sound::mute(!sound::is_muted());
+    mute_key_prev = mute_key;
 
     bool exit_key = ctrl_get_button("exit-now");
     if (exit_key) {
