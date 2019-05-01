@@ -132,6 +132,11 @@ static void cfg_create_default_config(void) {
         "wash.ctrl.toggle-overlay kbd.f2\n"
         "wash.ctrl.toggle-filter kbd.f3\n"
         "wash.ctrl.toggle-wireframe kbd.f4\n"
+
+        "wash.ctrl.resume-execution kbd.f5\n"
+        "wash.ctrl.run-one-frame kbd.f6\n"
+        "wash.ctrl.pause-execution kbd.f7\n"
+
         "wash.ctrl.toggle-mute kbd.f8\n"
         "wash.ctrl.toggle-fullscreen kbd.f11\n"
         "wash.ctrl.screenshot kbd.f12\n"

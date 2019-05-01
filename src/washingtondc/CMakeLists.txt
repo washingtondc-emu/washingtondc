@@ -66,6 +66,7 @@ set(serial_sources "${IO_SOURCE_DIR}/serial_server.hpp"
                    "${IO_SOURCE_DIR}/serial_server.cpp")
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
+                         "${PROJECT_SOURCE_DIR}/washingtondc.hpp"
                          "${PROJECT_SOURCE_DIR}/window.cpp"
                          "${PROJECT_SOURCE_DIR}/window.hpp"
                          "${PROJECT_SOURCE_DIR}/control_bind.cpp"

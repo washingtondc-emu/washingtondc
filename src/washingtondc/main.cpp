@@ -294,3 +294,15 @@ int main(int argc, char **argv) {
 
     exit(0);
 }
+
+void do_resume(void) {
+    washdc_resume();
+}
+
+void do_run_one_frame(void) {
+    washdc_run_one_frame();
+}
+
+void do_pause(void) {
+    washdc_pause();
+}

@@ -195,6 +195,9 @@ static void win_glfw_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("toggle-wireframe", "wash.ctrl.toggle-wireframe");
     bind_ctrl_from_cfg("screenshot", "wash.ctrl.screenshot");
     bind_ctrl_from_cfg("toggle-mute", "wash.ctrl.toggle-mute");
+    bind_ctrl_from_cfg("resume-execution", "wash.ctrl.resume-execution");
+    bind_ctrl_from_cfg("run-one-frame", "wash.ctrl.run-one-frame");
+    bind_ctrl_from_cfg("pause-execution", "wash.ctrl.pause-execution");
 
     /*
      * This bind immediately exits the emulator.  It is unbound in the default
@@ -483,6 +486,30 @@ static void scan_input(void) {
     if (mute_key && !mute_key_prev)
         sound::mute(!sound::is_muted());
     mute_key_prev = mute_key;
+
+    static bool resume_key_prev = false;
+    bool resume_key = ctrl_get_button("resume-execution");
+    if (resume_key && !resume_key_prev) {
+        if (washdc_is_paused())
+            washdc_resume();
+    }
+    resume_key_prev = resume_key;
+
+    static bool run_frame_prev = false;
+    bool run_frame_key = ctrl_get_button("run-one-frame");
+    if (run_frame_key && !run_frame_prev) {
+        if (washdc_is_paused())
+            washdc_run_one_frame();
+    }
+    run_frame_prev = run_frame_key;
+
+    static bool pause_key_prev = false;
+    bool pause_key = ctrl_get_button("pause-execution");
+    if (pause_key && !pause_key_prev) {
+        if (!washdc_is_paused())
+            washdc_pause();
+    }
+    pause_key_prev = pause_key;
 
     bool exit_key = ctrl_get_button("exit-now");
     if (exit_key) {
