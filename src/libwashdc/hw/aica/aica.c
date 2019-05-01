@@ -243,6 +243,8 @@ static unsigned aica_samples_per_step(unsigned effective_rate, unsigned step_no)
 
 static void aica_process_sample(struct aica *aica);
 
+static double get_sample_rate_multiplier(struct aica_chan const *chan);
+
 static void aica_chan_reset_adpcm(struct aica_chan *chan) {
     chan->step = 0;
     chan->predictor = 0;
@@ -851,11 +853,7 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
             oct32 |= 0xfffffff0;
         chan->octave = oct32;
 
-        double sample_rate = 1.0 + chan->fns / (double)(1 << 11);
-        if (chan->octave > 0)
-            sample_rate *= 1 << chan->octave;
-        else
-            sample_rate /= 1 << -chan->octave;
+        double sample_rate = get_sample_rate_multiplier(chan);
 
         LOG_INFO("AICA channel %u sample_rate is %f oct %d fns 0x%04x\n",
                  chan_no, sample_rate, chan->octave, chan->fns);
@@ -1574,6 +1572,15 @@ static inline int32_t add_sample32(int32_t s1, int32_t s2) {
     return s1 + s2;
 }
 
+static double get_sample_rate_multiplier(struct aica_chan const *chan) {
+    unsigned phaseinc = (chan->fns ^ 0x400);
+    if (chan->octave > 0)
+        phaseinc <<= chan->octave;
+    else
+        phaseinc >>= -chan->octave;
+    return phaseinc / (double)0x400;
+}
+
 static void aica_process_sample(struct aica *aica) {
     unsigned chan_no;
 
@@ -1585,13 +1592,7 @@ static void aica_process_sample(struct aica *aica) {
         if (!chan->playing)
             continue;
 
-        unsigned phaseinc = (chan->fns ^ 0x400);
-        if (chan->octave > 0)
-            phaseinc <<= chan->octave;
-        else
-            phaseinc >>= -chan->octave;
-
-        double sample_rate = phaseinc / (double)0x400;
+        double sample_rate = get_sample_rate_multiplier(chan);
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate,
                                                           chan->step_no);
@@ -1767,7 +1768,7 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            struct washdc_sndchan_stat *stat) {
     if (ch_no < AICA_CHAN_COUNT) {
         stat->playing = aica->channels[ch_no].playing;
-        stat->n_vars = 3;
+        stat->n_vars = 4;
         stat->ch_idx = ch_no;
     } else {
         LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
@@ -1779,6 +1780,7 @@ void aica_get_sndchan_var(struct aica const *aica,
                           struct washdc_sndchan_stat const *stat,
                           unsigned var_no,
                           struct washdc_var *var) {
+    double sample_rate;
     if (stat->ch_idx >= AICA_CHAN_COUNT)
         goto inval;
     switch (var_no) {
@@ -1799,6 +1801,14 @@ void aica_get_sndchan_var(struct aica const *aica,
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
         var->val.as_int = aica->channels[stat->ch_idx].fns;
+        return;
+    case 3:
+        sample_rate =
+            get_sample_rate_multiplier(aica->channels + stat->ch_idx) * 44100;
+        strncpy(var->name, "Sample Rate", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_INT;
+        var->val.as_int = (int)sample_rate;
         return;
     default:
         goto inval;
