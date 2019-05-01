@@ -1767,7 +1767,7 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            struct washdc_sndchan_stat *stat) {
     if (ch_no < AICA_CHAN_COUNT) {
         stat->playing = aica->channels[ch_no].playing;
-        stat->n_vars = 1;
+        stat->n_vars = 2;
         stat->ch_idx = ch_no;
     } else {
         LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
@@ -1787,6 +1787,12 @@ void aica_get_sndchan_var(struct aica const *aica,
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_BOOL;
         var->val.as_bool = aica->channels[stat->ch_idx].ready_keyon;
+        return;
+    case 1:
+        strncpy(var->name, "octave", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_INT;
+        var->val.as_int = aica->channels[stat->ch_idx].octave;
         return;
     default:
         goto inval;

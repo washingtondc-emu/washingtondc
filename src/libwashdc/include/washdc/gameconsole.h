@@ -33,11 +33,13 @@ extern "C" {
 
 enum washdc_var_type {
     WASHDC_VAR_INVALID,
-    WASHDC_VAR_BOOL
+    WASHDC_VAR_BOOL,
+    WASHDC_VAR_INT
 };
 
 union washdc_var_val {
     bool as_bool;
+    int as_int;
 };
 
 struct washdc_var {

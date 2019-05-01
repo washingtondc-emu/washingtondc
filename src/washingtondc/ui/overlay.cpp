@@ -217,6 +217,7 @@ void overlay::update() {
 }
 
 static std::string overlay::var_as_str(struct washdc_var const *var) {
+    std::stringstream ss;
     switch (var->tp) {
     case WASHDC_VAR_BOOL:
         if (var->val.as_bool)
@@ -224,6 +225,9 @@ static std::string overlay::var_as_str(struct washdc_var const *var) {
         else
             return "FALSE";
     default:
+    case WASHDC_VAR_INT:
+        ss << var->val.as_int;
+        return ss.str();
     case WASHDC_VAR_INVALID:
         return "INVALID";
     }
