@@ -120,7 +120,7 @@ struct aica_chan {
     unsigned release_rate;
 
     // from the SampleRatePitch register
-    int octave;
+    uint32_t octave;
     unsigned fns;
 
     // for ADPCM decoding

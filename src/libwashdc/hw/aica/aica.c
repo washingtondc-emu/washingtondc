@@ -243,6 +243,7 @@ static unsigned aica_samples_per_step(unsigned effective_rate, unsigned step_no)
 
 static void aica_process_sample(struct aica *aica);
 
+static int get_octave_signed(struct aica_chan const *chan);
 static double get_sample_rate_multiplier(struct aica_chan const *chan);
 
 static void aica_chan_reset_adpcm(struct aica_chan *chan) {
@@ -849,14 +850,12 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
 
         // octage is a 4-bit two's complement value that ranges from -8 to +7
         uint32_t oct32 = (tmp & BIT_RANGE(11, 14)) >> 11;
-        if (oct32 & 8)
-            oct32 |= 0xfffffff0;
         chan->octave = oct32;
 
         double sample_rate = get_sample_rate_multiplier(chan);
 
         LOG_INFO("AICA channel %u sample_rate is %f oct %d fns 0x%04x\n",
-                 chan_no, sample_rate, chan->octave, chan->fns);
+                 chan_no, sample_rate, get_octave_signed(chan), chan->fns);
         break;
     case AICA_CHAN_LFO_CTRL:
         memcpy(&tmp, src, sizeof(tmp));
@@ -1353,7 +1352,7 @@ static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no) {
     if (chan->krs == 15) {
         return rate * 2;
     } else {
-        return (chan->krs + chan->octave + rate) * 2 + ((chan->fns >> 9) & 1);
+        return (chan->krs + get_octave_signed(chan) + rate) * 2 + ((chan->fns >> 9) & 1);
     }
 }
 
@@ -1574,11 +1573,19 @@ static inline int32_t add_sample32(int32_t s1, int32_t s2) {
 
 static double get_sample_rate_multiplier(struct aica_chan const *chan) {
     unsigned phaseinc = (chan->fns ^ 0x400);
-    if (chan->octave > 0)
-        phaseinc <<= chan->octave;
+    int oct = get_octave_signed(chan);
+    if (oct > 0)
+        phaseinc <<= oct;
     else
-        phaseinc >>= -chan->octave;
+        phaseinc >>= -oct;
     return phaseinc / (double)0x400;
+}
+
+static int get_octave_signed(struct aica_chan const *chan) {
+    int oct_signed = chan->octave;
+    if (oct_signed & 8)
+        oct_signed |= ~0xf;
+    return oct_signed;
 }
 
 static void aica_process_sample(struct aica *aica) {
@@ -1793,7 +1800,7 @@ void aica_get_sndchan_var(struct aica const *aica,
     case 1:
         strncpy(var->name, "octave", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
-        var->tp = WASHDC_VAR_INT;
+        var->tp = WASHDC_VAR_HEX;
         var->val.as_int = aica->channels[stat->ch_idx].octave;
         return;
     case 2:
