@@ -1352,7 +1352,14 @@ static unsigned aica_chan_effective_rate(struct aica const *aica, unsigned chan_
     if (chan->krs == 15) {
         return rate * 2;
     } else {
-        return (chan->krs + get_octave_signed(chan) + rate) * 2 + ((chan->fns >> 9) & 1);
+        /*
+         * TODO: some sound effects in Sonic Adventure 2 loop after they should
+         * have already ended (like the sound when he picks up a ring).
+         * Effective rate determines how quickly the state Amplitude Envelope
+         * Generator transitions between states.  Is the effective rate being
+         * calculated incorrectly?
+         */
+        return (chan->krs + chan->octave + rate) * 2 + ((chan->fns >> 9) & 1);
     }
 }
 
@@ -1572,20 +1579,22 @@ static inline int32_t add_sample32(int32_t s1, int32_t s2) {
 }
 
 static double get_sample_rate_multiplier(struct aica_chan const *chan) {
-    unsigned phaseinc = (chan->fns ^ 0x400);
-    int oct = get_octave_signed(chan);
-    if (oct > 0)
-        phaseinc <<= oct;
-    else
-        phaseinc >>= -oct;
-    return phaseinc / (double)0x400;
+    // TODO: I feel as though there must be a bettter way to do this
+    double mantissa = (chan->fns ^ 0x400) / 1024.0;
+    int log = get_octave_signed(chan);
+    double mult = 1.0;
+    if (log > 0)
+        for (int idx = 0; idx < log; idx++)
+            mult *= 2.0;
+    else if (log < 0)
+        for (int idx = 0; idx < -log; idx++)
+            mult *= 0.5;
+    return mult * mantissa;
 }
 
 static int get_octave_signed(struct aica_chan const *chan) {
     int oct_signed = chan->octave;
-    if (oct_signed & 8)
-        oct_signed |= ~0xf;
-    return oct_signed;
+    return (oct_signed ^ 8) - 8;
 }
 
 static void aica_process_sample(struct aica *aica) {
