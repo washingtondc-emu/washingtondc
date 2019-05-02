@@ -237,7 +237,7 @@ static char const *fmt_name(enum aica_fmt fmt);
 
 static void aica_sync(struct aica *aica);
 
-static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no);
+static unsigned aica_chan_effective_rate(struct aica const *aica, unsigned chan_no);
 
 static unsigned aica_samples_per_step(unsigned effective_rate, unsigned step_no);
 
@@ -1329,8 +1329,8 @@ static void aica_sync(struct aica *aica) {
     }
 }
 
-static unsigned aica_chan_effective_rate(struct aica *aica, unsigned chan_no) {
-    struct aica_chan *chan = aica->channels + chan_no;
+static unsigned aica_chan_effective_rate(struct aica const *aica, unsigned chan_no) {
+    struct aica_chan const *chan = aica->channels + chan_no;
     unsigned rate;
     switch (chan->atten_env_state) {
     case AICA_ENV_ATTACK:
@@ -1775,7 +1775,7 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            struct washdc_sndchan_stat *stat) {
     if (ch_no < AICA_CHAN_COUNT) {
         stat->playing = aica->channels[ch_no].playing;
-        stat->n_vars = 4;
+        stat->n_vars = 5;
         stat->ch_idx = ch_no;
     } else {
         LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
@@ -1816,6 +1816,12 @@ void aica_get_sndchan_var(struct aica const *aica,
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_INT;
         var->val.as_int = (int)sample_rate;
+        return;
+    case 4:
+        strncpy(var->name, "Effective Rate", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_INT;
+        var->val.as_int = aica_chan_effective_rate(aica, stat->ch_idx);
         return;
     default:
         goto inval;
