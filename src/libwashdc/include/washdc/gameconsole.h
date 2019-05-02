@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #define WASHDC_VAR_NAME_LEN 16
+#define WASHDC_VAR_STR_LEN 32
 
 enum washdc_var_type {
     WASHDC_VAR_INVALID,
@@ -42,10 +43,13 @@ enum washdc_var_type {
      * as WASHDC_VAR_INT.
      */
     WASHDC_VAR_INT,
-    WASHDC_VAR_HEX
+    WASHDC_VAR_HEX,
+
+    WASHDC_VAR_STR
 };
 
 union washdc_var_val {
+    char as_str[WASHDC_VAR_STR_LEN];
     bool as_bool;
     int as_int;
 };

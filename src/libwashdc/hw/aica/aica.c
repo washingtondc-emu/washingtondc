@@ -1775,7 +1775,7 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            struct washdc_sndchan_stat *stat) {
     if (ch_no < AICA_CHAN_COUNT) {
         stat->playing = aica->channels[ch_no].playing;
-        stat->n_vars = 5;
+        stat->n_vars = 6;
         stat->ch_idx = ch_no;
     } else {
         LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
@@ -1790,28 +1790,29 @@ void aica_get_sndchan_var(struct aica const *aica,
     double sample_rate;
     if (stat->ch_idx >= AICA_CHAN_COUNT)
         goto inval;
+    struct aica_chan const *chan = aica->channels + stat->ch_idx;
     switch (var_no) {
     case 0:
         strncpy(var->name, "ready_keyon", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_BOOL;
-        var->val.as_bool = aica->channels[stat->ch_idx].ready_keyon;
+        var->val.as_bool = chan->ready_keyon;
         return;
     case 1:
         strncpy(var->name, "octave", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
-        var->val.as_int = aica->channels[stat->ch_idx].octave;
+        var->val.as_int = chan->octave;
         return;
     case 2:
         strncpy(var->name, "FNS", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
-        var->val.as_int = aica->channels[stat->ch_idx].fns;
+        var->val.as_int = chan->fns;
         return;
     case 3:
         sample_rate =
-            get_sample_rate_multiplier(aica->channels + stat->ch_idx) * 44100;
+            get_sample_rate_multiplier(chan) * 44100;
         strncpy(var->name, "Sample Rate", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_INT;
@@ -1822,6 +1823,29 @@ void aica_get_sndchan_var(struct aica const *aica,
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_INT;
         var->val.as_int = aica_chan_effective_rate(aica, stat->ch_idx);
+        return;
+    case 5:
+        strncpy(var->name, "Envelope State", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_STR;
+        switch(chan->atten_env_state) {
+        case AICA_ENV_ATTACK:
+            strncpy(var->val.as_str, "attack", WASHDC_VAR_STR_LEN);
+            break;
+        case AICA_ENV_DECAY:
+            strncpy(var->val.as_str, "decay", WASHDC_VAR_STR_LEN);
+            break;
+        case AICA_ENV_SUSTAIN:
+            strncpy(var->val.as_str, "sustain", WASHDC_VAR_STR_LEN);
+            break;
+        case AICA_ENV_RELEASE:
+            strncpy(var->val.as_str, "release", WASHDC_VAR_STR_LEN);
+            break;
+        default:
+            strncpy(var->val.as_str, "unknown (ERROR!)", WASHDC_VAR_STR_LEN);
+            break;
+        }
+        var->val.as_str[WASHDC_VAR_STR_LEN - 1] = '\0';
         return;
     default:
         goto inval;
