@@ -1783,7 +1783,7 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            struct washdc_sndchan_stat *stat) {
     if (ch_no < AICA_CHAN_COUNT) {
         stat->playing = aica->channels[ch_no].playing;
-        stat->n_vars = 7;
+        stat->n_vars = 10;
         stat->ch_idx = ch_no;
     } else {
         LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
@@ -1861,6 +1861,27 @@ void aica_get_sndchan_var(struct aica const *aica,
         var->tp = WASHDC_VAR_STR;
         strncpy(var->val.as_str, fmt_name(chan->fmt), WASHDC_VAR_STR_LEN);
         var->val.as_str[WASHDC_VAR_STR_LEN - 1] = '\0';
+        return;
+    case 7:
+        //addr_start
+        strncpy(var->name, "Start Address", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->addr_start;
+        return;
+    case 8:
+        // loop_start
+        strncpy(var->name, "Loop Start", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->loop_start;
+        return;
+    case 9:
+        //loop_end
+        strncpy(var->name, "Loop End", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->loop_end;
         return;
     default:
         goto inval;
