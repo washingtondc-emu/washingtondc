@@ -5,8 +5,7 @@ http://washemu.org
 snickerbockers@washemu.org
 
 WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  It's still at
-an early stage of development; it's able to play several dozen Dreamcast games,
-although there still isn't audio support.
+an early stage of development; it's able to play several dozen Dreamcast games.
 
 ## COMPILING
 ```
