@@ -1298,10 +1298,9 @@ static char const *fmt_name(enum aica_fmt fmt) {
         return "16-bit signed";
     case AICA_FMT_8_BIT_SIGNED:
         return "8-bit signed";
+    default:
     case AICA_FMT_4_BIT_ADPCM:
         return "4-bit Yamaha ADPCM";
-    default:
-        return "unknown or invalid";
     }
 }
 
@@ -1784,7 +1783,7 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            struct washdc_sndchan_stat *stat) {
     if (ch_no < AICA_CHAN_COUNT) {
         stat->playing = aica->channels[ch_no].playing;
-        stat->n_vars = 6;
+        stat->n_vars = 7;
         stat->ch_idx = ch_no;
     } else {
         LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
@@ -1854,6 +1853,13 @@ void aica_get_sndchan_var(struct aica const *aica,
             strncpy(var->val.as_str, "unknown (ERROR!)", WASHDC_VAR_STR_LEN);
             break;
         }
+        var->val.as_str[WASHDC_VAR_STR_LEN - 1] = '\0';
+        return;
+    case 6:
+        strncpy(var->name, "Format", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_STR;
+        strncpy(var->val.as_str, fmt_name(chan->fmt), WASHDC_VAR_STR_LEN);
         var->val.as_str[WASHDC_VAR_STR_LEN - 1] = '\0';
         return;
     default:
