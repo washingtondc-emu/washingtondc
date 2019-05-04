@@ -48,6 +48,8 @@
  * I don't actually know if this is correct.
  */
 #define AICA_SAMPLE_FREQ 44100
+#define AICA_EXTERNAL_FREQ (1 * AICA_SAMPLE_FREQ)
+#define AICA_FREQ_RATIO (AICA_EXTERNAL_FREQ / AICA_SAMPLE_FREQ)
 
 /*
  * TODO: SCHED_FREQUENCY is not an integer multiple of AICA_SAMPLE_FREQ, so
@@ -1318,8 +1320,8 @@ static void aica_sync(struct aica *aica) {
          * process all samples between aica->last_sample_sync and aica_get
          * sample_count(aica)
          */
-        dc_cycle_stamp_t n_samples =
-            aica_get_sample_count(aica) - aica->last_sample_sync;
+        dc_cycle_stamp_t n_samples = AICA_FREQ_RATIO *
+            (aica_get_sample_count(aica) - aica->last_sample_sync);
 
         while (n_samples--)
             aica_process_sample(aica);
@@ -1607,12 +1609,11 @@ static void aica_process_sample(struct aica *aica) {
         if (!chan->playing)
             continue;
 
-        double sample_rate = get_sample_rate_multiplier(chan);
+        double sample_rate = get_sample_rate_multiplier(chan) / (double)AICA_FREQ_RATIO;
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate,
                                                           chan->step_no);
 
-        // TODO: I'm probably not handling sample_rate > 1.0 correctly
         bool did_increment = false;
         if (chan->fmt == AICA_FMT_16_BIT_SIGNED) {
             int32_t sample =

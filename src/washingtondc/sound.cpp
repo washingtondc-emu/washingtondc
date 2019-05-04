@@ -66,7 +66,13 @@ void init(void) {
         error_set_portaudio_error_text(Pa_GetErrorText(err));
         RAISE_ERROR(ERROR_EXT_FAILURE);
     }
-    err = Pa_OpenDefaultStream(&snd_stream, 0, 2, paInt32, 44100,
+
+    /*
+     * XXX: if you ever change the sample frequency to something other than
+     * 44.1kHz, then AICA_EXTERNAL_FREQ in libwashdc/hw/aica/aica.c needs to be
+     * changed to match it.
+     */
+    err = Pa_OpenDefaultStream(&snd_stream, 0, 2, paInt32, 44100*1,
                                paFramesPerBufferUnspecified,
                                snd_cb, NULL);
     if (err != paNoError) {
