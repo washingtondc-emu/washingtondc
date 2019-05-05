@@ -146,5 +146,8 @@ target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include"
                                                 "${CMAKE_SOURCE_DIR}/src/libwashdc/include"
                                                 "${PROJECT_SOURCE_DIR}/ui"
                                                 "${IMGUI_SOURCE_DIR}"
-                                                "${CMAKE_SOURCE_DIR}/external/sh4asm")
+                                                "${CMAKE_SOURCE_DIR}/external/sh4asm"
+                                                "${CMAKE_SOURCE_DIR}/external/capstone/include"
+                                                "${CMAKE_SOURCE_DIR}/external/glew/include"
+                                                "${LIBEVENT_LIB_PATH}/include")
 target_link_libraries(washingtondc "${washingtondc_libs}")
