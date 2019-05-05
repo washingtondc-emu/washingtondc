@@ -98,11 +98,7 @@ struct gdb_stub {
     enum dbg_context_id dbg_ctx;
 };
 
-static struct gdb_stub stub = {
-    .lock = PTHREAD_MUTEX_INITIALIZER,
-    .cond = PTHREAD_COND_INITIALIZER,
-    .state = GDB_STATE_DISABLED
-};
+static struct gdb_stub stub;
 
 static struct event *gdb_request_listen_event,
     *gdb_inform_break_event, *gdb_inform_softbreak_event,
@@ -212,13 +208,14 @@ static int gdb_stub_remove_read_watchpoint(addr32_t addr, unsigned len);
  */
 static void deferred_cmd_run(void);
 
-struct debug_frontend const gdb_frontend = {
-    .attach = gdb_callback_attach,
-    .on_break = gdb_callback_break,
-    .on_read_watchpoint = gdb_callback_read_watchpoint,
-    .on_write_watchpoint = gdb_callback_write_watchpoint,
-    .on_softbreak = gdb_callback_softbreak,
-    .run_once = gdb_callback_run_once
+struct debug_frontend gdb_frontend = {
+    gdb_callback_attach, // .attach
+    gdb_callback_break, // .on_break
+    gdb_callback_read_watchpoint, // .on_read_watchpoint
+    gdb_callback_write_watchpoint, // .on_write_watchpoint
+    gdb_callback_softbreak, // .on_softbreak
+    NULL, // on_cleanup
+    gdb_callback_run_once // .run_once
 };
 
 static size_t deserialize_data(struct string const *input_str,
@@ -250,6 +247,10 @@ static size_t deserialize_data(struct string const *input_str,
 }
 
 void gdb_init(void) {
+    pthread_mutex_init(&stub.lock, NULL);
+    pthread_cond_init(&stub.cond, NULL);
+    stub.state = GDB_STATE_DISABLED;
+
     gdb_request_listen_event = event_new(io::event_base, -1, EV_PERSIST,
                                          on_request_listen_event, NULL);
     gdb_inform_break_event = event_new(io::event_base, -1, EV_PERSIST,
@@ -315,6 +316,9 @@ void gdb_cleanup(void) {
     event_free(gdb_inform_softbreak_event);
     event_free(gdb_inform_break_event);
     event_free(gdb_request_listen_event);
+
+    pthread_cond_destroy(&stub.cond);
+    pthread_mutex_destroy(&stub.lock);
 }
 
 static void gdb_callback_attach(void *argptr) {

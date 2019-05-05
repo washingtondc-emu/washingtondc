@@ -58,9 +58,7 @@ static struct serial_server {
     std::atomic_bool ready_to_write;
 
     std::atomic_flag no_more_work;
-} srv = {
-    .no_more_work = ATOMIC_FLAG_INIT
-};
+} srv;
 
 /*
  * The SCIF calls this to let us know that it has data ready to transmit.
