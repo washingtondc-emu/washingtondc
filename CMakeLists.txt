@@ -105,6 +105,7 @@ add_library(glew "${glew_path}/src/glew.c"
                  "${glew_path}/include/GL/glew.h"
                  "${glew_path}/include/GL/wglew.h"
                  "${glew_path}/include/GL/glxew.h")
+target_include_directories(glew PRIVATE "${glew_path}/include")
 
 set(include_dirs "${OPENGL_INCLUDE_DIR}"
                  "${CMAKE_SOURCE_DIR}/external/glew/include"
