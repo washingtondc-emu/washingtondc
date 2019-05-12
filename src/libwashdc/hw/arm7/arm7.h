@@ -32,8 +32,17 @@
 #include "hw/aica/aica_wave_mem.h"
 #include "washdc/hw/arm7/arm7_reg_idx.h"
 
-#define ARM7_CLOCK_SCALE (SCHED_FREQUENCY / (45 * 1000 * 1000))
-static_assert(SCHED_FREQUENCY % (45 * 1000 * 1000) == 0,
+/*
+ * XXX  all available documentation on the dreamcast states that the ARM7 is
+ * clocked at 45MHz.
+ * I have run some very primitive tests and found that it appears to be more
+ * like 5MHz.
+ * For now I'm putting it at 10MHz just to be safe (the test I ran was VERY
+ * primitive and did not cover all possible cases), but I do believe that this
+ * could go all the way down to 5MHz.
+ */
+#define ARM7_CLOCK_SCALE (SCHED_FREQUENCY / (10 * 1000 * 1000))
+static_assert(SCHED_FREQUENCY % (10 * 1000 * 1000) == 0,
               "scheduler frequency does not cleanly divide by SH4 frequency");
 
 // negative/less-than
