@@ -176,8 +176,8 @@ static inline bool debug_is_at_watch(void) {
 #ifdef ENABLE_WATCHPOINTS
     if (get_ctx()->cur_state == DEBUG_STATE_PRE_WATCH) {
         Sh4 *sh4 = dreamcast_get_cpu();
-        printf("DEBUGGER: NOW ENTERING WATCHPOINT BREAK AT PC=0x%08x\n",
-               (unsigned)sh4->reg[SH4_REG_PC]);
+        DBG_TRACE("NOW ENTERING WATCHPOINT BREAK AT PC=0x%08x\n",
+                  (unsigned)sh4->reg[SH4_REG_PC]);
         if (get_ctx()->is_read_watchpoint)
             frontend_on_read_watchpoint(get_ctx()->watchpoint_addr);
         else
@@ -386,10 +386,10 @@ bool debug_is_w_watch(addr32_t addr, unsigned len) {
                 dbg_state_transition(DEBUG_STATE_PRE_WATCH);
                 ctx->watchpoint_addr = addr;
                 ctx->is_read_watchpoint = false;
-                printf("DEBUGGER: write-watchpoint at 0x%08x triggered "
-                       "(PC=0x%08x, cur_ctx = %s)!\n",
-                       (unsigned)addr, (unsigned)dbg_get_pc(dbg.cur_ctx),
-                       cur_ctx_str());
+                DBG_TRACE("write-watchpoint at 0x%08x triggered "
+                          "(PC=0x%08x, cur_ctx = %s)!\n",
+                          (unsigned)addr, (unsigned)dbg_get_pc(dbg.cur_ctx),
+                          cur_ctx_str());
                 return true;
             }
         }
@@ -418,10 +418,10 @@ bool debug_is_r_watch(addr32_t addr, unsigned len) {
                 dbg_state_transition(DEBUG_STATE_PRE_WATCH);
                 ctx->watchpoint_addr = addr;
                 ctx->is_read_watchpoint = true;
-                printf("DEBUGGER: read-watchpoint at 0x%08x triggered "
-                       "(PC=0x%08x, cur_ctx = %s)!\n",
-                       (unsigned)addr, (unsigned)dbg_get_pc(dbg.cur_ctx),
-                       cur_ctx_str());
+                DBG_TRACE("read-watchpoint at 0x%08x triggered "
+                          "(PC=0x%08x, cur_ctx = %s)!\n",
+                          (unsigned)addr, (unsigned)dbg_get_pc(dbg.cur_ctx),
+                          cur_ctx_str());
                 return true;
             }
         }
@@ -559,6 +559,8 @@ void dbg_do_trace(char const *msg, ...) {
     vprintf(msg, var_args);
 
     va_end(var_args);
+
+    fflush(stdout);
 }
 #endif
 
