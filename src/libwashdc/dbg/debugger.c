@@ -149,7 +149,7 @@ static void dbg_do_trace(char const *msg, ...);
 
 static void dbg_state_transition(enum debug_state new_state);
 
-static char const *cur_ctx_str(void);
+__attribute__((unused)) static char const *cur_ctx_str(void);
 
 static addr32_t dbg_get_pc(enum dbg_context_id id);
 
@@ -175,9 +175,8 @@ void debug_cleanup(void) {
 static inline bool debug_is_at_watch(void) {
 #ifdef ENABLE_WATCHPOINTS
     if (get_ctx()->cur_state == DEBUG_STATE_PRE_WATCH) {
-        Sh4 *sh4 = dreamcast_get_cpu();
         DBG_TRACE("NOW ENTERING WATCHPOINT BREAK AT PC=0x%08x\n",
-                  (unsigned)sh4->reg[SH4_REG_PC]);
+                  (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);
         if (get_ctx()->is_read_watchpoint)
             frontend_on_read_watchpoint(get_ctx()->watchpoint_addr);
         else
@@ -297,6 +296,8 @@ int debug_remove_break(enum dbg_context_id id, addr32_t addr) {
 int debug_add_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
     struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to add read-watchpoint at 0x%08x\n", (unsigned)addr);
+
+#ifdef ENABLE_WATCHPOINTS
     for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++) {
         struct watchpoint *wp = ctx->r_watchpoints + idx;
         if (!wp->enabled) {
@@ -306,6 +307,7 @@ int debug_add_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
             return 0;
         }
     }
+#endif
 
     DBG_TRACE("unable to add read-watchpoint at 0x%08x (there are already %u "
               "read-watchpoints)\n",
@@ -316,6 +318,8 @@ int debug_add_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
 int debug_remove_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
     struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to remove read-watchpoint at 0x%08x\n", (unsigned)addr);
+
+#ifdef ENABLE_WATCHPOINTS
     for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++) {
         struct watchpoint *wp = ctx->r_watchpoints + idx;
         if (wp->enabled && wp->addr == addr && wp->len == len) {
@@ -323,6 +327,7 @@ int debug_remove_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
             return 0;
         }
     }
+#endif
 
     DBG_TRACE("unable to remove read-watchpoint at 0x%08x (it does not "
               "exist)\n", (unsigned)addr);
@@ -333,6 +338,8 @@ int debug_remove_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
 int debug_add_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
     struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to add write-watchpoint at 0x%08x\n", (unsigned)addr);
+
+#ifdef ENABLE_WATCHPOINTS
     for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++) {
         struct watchpoint *wp = ctx->w_watchpoints + idx;
         if (!wp->enabled) {
@@ -342,6 +349,7 @@ int debug_add_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
             return 0;
         }
     }
+#endif
 
     DBG_TRACE("unable to add write-watchpoint at 0x%08x (there are already %u "
               "read-watchpoints)\n",
@@ -352,6 +360,8 @@ int debug_add_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
 int debug_remove_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
     struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to remove write-watchpoint at 0x%08x\n", (unsigned)addr);
+
+#ifdef ENABLE_WATCHPOINTS
     for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++) {
         struct watchpoint *wp = ctx->w_watchpoints + idx;
         if (wp->enabled && wp->addr == addr && wp->len == len) {
@@ -359,6 +369,7 @@ int debug_remove_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
             return 0;
         }
     }
+#endif
 
     DBG_TRACE("unable to remove write-watchpoint at 0x%08x (it does not "
               "exist)\n", (unsigned)addr);
@@ -401,13 +412,13 @@ bool debug_is_r_watch(addr32_t addr, unsigned len) {
     struct debug_context *ctx = get_ctx();
 
     if (ctx->cur_state != DEBUG_STATE_NORM)
-        return false;
+	return false;
 
     addr32_t access_first = addr;
     addr32_t access_last = addr + (len - 1);
 
     for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++) {
-        struct watchpoint *wp = ctx->w_watchpoints + idx;
+        struct watchpoint *wp = ctx->r_watchpoints + idx;
         if (wp->enabled) {
             addr32_t watch_first = wp->addr;
             addr32_t watch_last = watch_first + (wp->len - 1);
