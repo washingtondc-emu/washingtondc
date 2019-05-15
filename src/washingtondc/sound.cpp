@@ -46,8 +46,8 @@ static int snd_cb(const void *input, void *output,
 static std::mutex buffer_lock;
 static std::condition_variable samples_submitted;
 
-// an entire second.  TODO: this is probably too big lol
-static const unsigned BUF_LEN = 1024;
+// 1/10 of a second
+static const unsigned BUF_LEN = 4410;
 static washdc_sample_type sample_buf[BUF_LEN];
 static unsigned read_buf_idx, write_buf_idx;
 static bool do_mute;
