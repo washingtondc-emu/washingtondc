@@ -26,6 +26,7 @@
 #include "washdc/MemoryMap.h"
 #include "hw/sh4/sh4_ocache.h"
 #include "hw/sh4/sh4_icache.h"
+#include "log.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "washdc/debugger.h"
@@ -165,6 +166,11 @@ SH4_TRY_WRITE_P4_TMPL(double, double)
         } else if (addr >= SH4_IC_ADDR_ARRAY_FIRST &&                   \
                    addr <= SH4_IC_ADDR_ARRAY_LAST) {                    \
             return sh4_icache_read_addr_array_##postfix(sh4, addr);     \
+        } else if (addr == 0xfffffffc) {                                \
+            /* see the Guilty Gear X section of bullshit.txt */         \
+            LOG_INFO("UNKNOWN READ ADDRESS 0x%08x %u BYTES (PC=0x%08x)\n", \
+                     (int)addr, (int)sizeof(type), (int)sh4->reg[SH4_REG_PC]); \
+            return 0;                                                   \
         } else {                                                        \
             error_set_length(sizeof(type));                             \
             error_set_address(addr);                                    \
@@ -197,6 +203,12 @@ SH4_DO_READ_P4_TMPL(double, double)
         } else if (addr >= SH4_IC_ADDR_ARRAY_FIRST &&                   \
                    addr <= SH4_IC_ADDR_ARRAY_LAST) {                    \
             *valp = sh4_icache_read_addr_array_##postfix(sh4, addr);    \
+            return 0;                                                   \
+        } else if (addr == 0xfffffffc) {                                \
+            /* see the Guilty Gear X section of bullshit.txt */         \
+            *valp = 0;                                                  \
+            LOG_INFO("UNKNOWN READ ADDRESS 0x%08x %u BYTES PC=0x%08x\n", \
+                     (int)addr, (int)sizeof(type), (int)sh4->reg[SH4_REG_PC]); \
             return 0;                                                   \
         } else {                                                        \
             return -1;                                                  \

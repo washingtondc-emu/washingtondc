@@ -1,0 +1,22 @@
+                          snickerbockers proudly presents
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ THE BULLSHIT FILE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+                documenting weird things SEGA Dreamcast games
+		somehow manage to get away with doing
+
+
+Guilty Gear X:
+    * attempts to read a 4 byte integer from 0xfffffffc
+    * This happens because it reads from -4 offset from a NULL pointer
+    * the pointer is 160 bytes from the beginning of some struct which is
+      itself 192 bytes
+    * there are several such structures in an array
+    * this is not always an error sometimes the pointer is not NULL, and instead
+      points to a valid memory address
+    * on real hardware, *(uint32_t*)0xfffffffc == 0
+    * Here is where the NULL pointer is loaded into R4:
+          0x8c0245f8:  mov.l   @(r0,r14),r4
+    * Here is where the memory access at 0xfffffffc happens:
+          0x8c025ece:	add    #-8,r4
+          0x8c025ed0:	mov.l  @(4,r4),r3
