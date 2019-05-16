@@ -127,6 +127,9 @@ struct aica_chan {
     int predictor, step;
     bool adpcm_next_step;
     int32_t adpcm_sample;
+
+    // if true, this channel has been forcibly muted by the user through the UI.
+    bool is_muted;
 };
 
 struct aica_timer {
@@ -221,5 +224,11 @@ void aica_get_sndchan_var(struct aica const *aica,
                           struct washdc_sndchan_stat const *stat,
                           unsigned var_no,
                           struct washdc_var *var);
+
+/*
+ * This is ultimately called from the UI code when the user wants to forcibly
+ * mute a channel.
+ */
+void aica_mute_chan(struct aica *aica, unsigned chan_no, bool is_muted);
 
 #endif

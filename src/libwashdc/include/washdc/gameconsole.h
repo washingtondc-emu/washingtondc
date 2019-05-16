@@ -83,6 +83,8 @@ struct washdc_snddev {
     void (*get_var)(struct washdc_snddev const *dev,
                     struct washdc_sndchan_stat const *chan,
                     unsigned var_no, struct washdc_var *var);
+    void (*mute_chan)(struct washdc_snddev const *dev,
+                      unsigned chan_no, bool do_mute);
 };
 
 struct washdc_gameconsole {
@@ -98,6 +100,8 @@ void washdc_gameconsole_sndchan_var(struct washdc_gameconsole const *cons,
                                     struct washdc_sndchan_stat const *chan,
                                     unsigned var_no,
                                     struct washdc_var *var);
+void washdc_gameconsole_sndchan_mute(struct washdc_gameconsole const *cons,
+                                     unsigned ch_no, bool mute);
 
 #ifdef __cplusplus
 }

@@ -196,13 +196,19 @@ static void dc_get_sndchan_var(struct washdc_snddev const *dev,
     aica_get_sndchan_var(&aica, chan, var_no, var);
 }
 
+static void dc_mute_sndchan(struct washdc_snddev const *dev,
+                            unsigned chan_no, bool is_muted) {
+    aica_mute_chan(&aica, chan_no, is_muted);
+}
+
 static struct washdc_gameconsole dccons = {
     .name = "SEGA Dreamcast",
     .snddev = {
         .name = "AICA",
         .n_channels = AICA_CHAN_COUNT,
         .get_chan = dc_get_sndchan_stat,
-        .get_var = dc_get_sndchan_var
+        .get_var = dc_get_sndchan_var,
+        .mute_chan = dc_mute_sndchan
     }
 };
 

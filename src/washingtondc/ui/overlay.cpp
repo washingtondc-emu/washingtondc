@@ -52,6 +52,9 @@ static bool en_aica_win = true;
 static bool show_nonplaying_channels = true;
 static bool have_debugger;
 
+static unsigned n_chans;
+static bool *sndchan_mute;
+
 static std::unique_ptr<renderer> ui_renderer;
 
 namespace overlay {
@@ -158,7 +161,10 @@ static void overlay::show_aica_win(void) {
     ImGui::Begin("AICA", &en_aica_win);
     ImGui::BeginChild("Scrolling");
     ImGui::Checkbox("Show non-playing channels", &show_nonplaying_channels);
+
     for (unsigned idx = 0; idx < console->snddev.n_channels; idx++) {
+        ImGui::PushID(idx);
+
         struct washdc_sndchan_stat ch_stat;
         washdc_gameconsole_sndchan(console, idx, &ch_stat);
 
@@ -168,6 +174,14 @@ static void overlay::show_aica_win(void) {
         std::stringstream ss;
         ss << "channel " << idx;
         if (ImGui::CollapsingHeader(ss.str().c_str())) {
+            if (idx >= n_chans) {
+                fprintf(stderr, "ERROR BUFFER OVERFLOW\n");
+                continue;
+            }
+
+            ImGui::Checkbox("mute", sndchan_mute + idx);
+            washdc_gameconsole_sndchan_mute(console, idx, sndchan_mute[idx]);
+
             std::stringstream playing_ss;
             playing_ss << "Playing: " << (ch_stat.playing ? "True" : "False");
             ImGui::Text(playing_ss.str().c_str());
@@ -183,6 +197,7 @@ static void overlay::show_aica_win(void) {
                 }
             }
         }
+        ImGui::PopID();
     }
     ImGui::EndChild();
     ImGui::End();
@@ -197,6 +212,10 @@ void overlay::set_virt_fps(double fps) {
 }
 
 void overlay::init(bool enable_debugger) {
+    n_chans = console->snddev.n_channels;
+    sndchan_mute = new bool[n_chans];
+    std::fill(sndchan_mute, sndchan_mute + n_chans, false);
+
     en_perf_win = true;
     not_hidden = false;
     have_debugger = enable_debugger;
@@ -210,6 +229,8 @@ void overlay::cleanup() {
     ui_renderer.reset();
 
     ImGui::DestroyContext();
+
+    delete[] sndchan_mute;
 }
 
 void overlay::update() {

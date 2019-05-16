@@ -1621,7 +1621,8 @@ static void aica_process_sample(struct aica *aica) {
             sample <<= 12;
 
             // TODO: linear interpolation
-            sample_total = add_sample32(sample_total, sample);
+            if (!chan->is_muted)
+                sample_total = add_sample32(sample_total, sample);
 
             chan->sample_partial += sample_rate;
             while (chan->sample_partial >= 1.0) {
@@ -1637,7 +1638,8 @@ static void aica_process_sample(struct aica *aica) {
             sample <<= 16;
 
             // TODO: linear interpolation
-            sample_total = add_sample32(sample_total, sample);
+            if (!chan->is_muted)
+                sample_total = add_sample32(sample_total, sample);
 
             chan->sample_partial += sample_rate;
             while (chan->sample_partial >= 1.0) {
@@ -1660,7 +1662,8 @@ static void aica_process_sample(struct aica *aica) {
                 chan->adpcm_next_step = false;
             }
 
-            sample_total = add_sample32(sample_total, chan->adpcm_sample << 8);
+            if (!chan->is_muted)
+                sample_total = add_sample32(sample_total, chan->adpcm_sample << 8);
 
             chan->sample_partial += sample_rate;
             if (chan->sample_partial >= 1.0) {
@@ -1889,4 +1892,12 @@ void aica_get_sndchan_var(struct aica const *aica,
  inval:
     memset(var, 0, sizeof(*var));
     var->tp = WASHDC_VAR_INVALID;
+}
+
+/*
+ * This is ultimately called from the UI code when the user wants to forcibly
+ * mute a channel.
+ */
+void aica_mute_chan(struct aica *aica, unsigned chan_no, bool is_muted) {
+    aica->channels[chan_no].is_muted = is_muted;
 }

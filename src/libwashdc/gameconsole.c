@@ -34,3 +34,8 @@ void washdc_gameconsole_sndchan_var(struct washdc_gameconsole const *cons,
                                     struct washdc_var *var) {
     cons->snddev.get_var(&cons->snddev, chan, var_no, var);
 }
+
+void washdc_gameconsole_sndchan_mute(struct washdc_gameconsole const *cons,
+                                     unsigned ch_no, bool mute) {
+    cons->snddev.mute_chan(&cons->snddev, ch_no, mute);
+}
