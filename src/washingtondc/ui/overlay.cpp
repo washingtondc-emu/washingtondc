@@ -184,7 +184,7 @@ static void overlay::show_aica_win(void) {
 
             std::stringstream playing_ss;
             playing_ss << "Playing: " << (ch_stat.playing ? "True" : "False");
-            ImGui::Text(playing_ss.str().c_str());
+            ImGui::Text("%s", playing_ss.str().c_str());
 
             unsigned n_vars = ch_stat.n_vars;
             for (unsigned var_no = 0; var_no < n_vars; var_no++) {
@@ -193,7 +193,7 @@ static void overlay::show_aica_win(void) {
                 if (var.tp != WASHDC_VAR_INVALID) {
                     std::stringstream var_ss;
                     var_ss << var.name << ": " << var_as_str(&var);
-                    ImGui::Text(var_ss.str().c_str());
+                    ImGui::Text("%s", var_ss.str().c_str());
                 }
             }
         }
