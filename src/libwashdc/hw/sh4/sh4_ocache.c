@@ -214,13 +214,43 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
     addr32_t addr_actual = (addr & SH4_SQ_ADDR_MASK) |
         (((qacr & SH4_QACR_MASK) >> SH4_QACR_SHIFT) << 26);
 
-    int idx;
-    for (idx = 0; idx < 8; idx++) {
-        memory_map_write_32(sh4->mem.map,
-                            addr_actual + idx * sizeof(uint32_t),
-                            (sh4->ocache.sq + sq_idx)[idx]);
+    struct memory_map_region *region =
+        memory_map_get_region(sh4->mem.map, addr_actual, 8 * sizeof(uint32_t));
+
+    if (region) {
+        struct memory_interface const *intf = region->intf;
+        uint32_t mask = region->mask;
+        void *ctxt = region->ctxt;
+        memory_map_write32_func write32 = intf->write32;
+        uint32_t *sq = sh4->ocache.sq + sq_idx;
+
+        CHECK_W_WATCHPOINT(addr_actual + 0, uint32_t);
+        write32((addr_actual + 0) & mask, sq[0], ctxt);
+        CHECK_W_WATCHPOINT(addr_actual + 4, uint32_t);
+        write32((addr_actual + 4) & mask, sq[1], ctxt);
+        CHECK_W_WATCHPOINT(addr_actual + 8, uint32_t);
+        write32((addr_actual + 8) & mask, sq[2], ctxt);
+        CHECK_W_WATCHPOINT(addr_actual + 12, uint32_t);
+        write32((addr_actual + 12) & mask, sq[3], ctxt);
+        CHECK_W_WATCHPOINT(addr_actual + 16, uint32_t);
+        write32((addr_actual + 16) & mask, sq[4], ctxt);
+        CHECK_W_WATCHPOINT(addr_actual + 20, uint32_t);
+        write32((addr_actual + 20) & mask, sq[5], ctxt);
+        CHECK_W_WATCHPOINT(addr_actual + 24, uint32_t);
+        write32((addr_actual + 24) & mask, sq[6], ctxt);
+        CHECK_W_WATCHPOINT(addr_actual + 28, uint32_t);
+        write32((addr_actual + 28) & mask, sq[7], ctxt);
+
+        return MEM_ACCESS_SUCCESS;
+    } else {
+        uint32_t first_addr = addr;
+        uint32_t last_addr = addr + (8 * sizeof(uint32_t) - 1);
+        LOG_ERROR("MEMORY MAP FAILURE TO FIND REGION CORRESPONDING TO BYTE "
+                  "RANGE 0x%08x TO 0x%08x\n", (int)first_addr, (int)last_addr);
+        error_set_address(addr_actual);
+        error_set_length(8 * sizeof(uint32_t));
+        RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
-    return MEM_ACCESS_SUCCESS;
 }
 
 /*

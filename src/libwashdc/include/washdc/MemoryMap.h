@@ -24,9 +24,18 @@
 #define WASHDC_MEMORYMAP_H_
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef ENABLE_WATCHPOINTS
+#define CHECK_R_WATCHPOINT(addr, type) debug_is_r_watch(addr, sizeof(type))
+#define CHECK_W_WATCHPOINT(addr, type) debug_is_w_watch(addr, sizeof(type))
+#else
+#define CHECK_R_WATCHPOINT(addr, type)
+#define CHECK_W_WATCHPOINT(addr, type)
 #endif
 
 typedef
@@ -220,6 +229,22 @@ int
 memory_map_try_read_float(struct memory_map *map, uint32_t addr, float *val);
 int
 memory_map_try_read_double(struct memory_map *map, uint32_t addr, double *val);
+
+static inline struct memory_map_region *
+memory_map_get_region(struct memory_map *map,
+                      uint32_t first_addr, unsigned n_bytes) {
+    uint32_t last_addr = first_addr + (n_bytes - 1);
+    unsigned region_no;
+    for (region_no = 0; region_no < map->n_regions; region_no++) {
+        struct memory_map_region *reg = map->regions + region_no;
+        uint32_t range_mask = reg->range_mask;
+        if ((first_addr & range_mask) >= reg->first_addr &&
+            (last_addr & range_mask) <= reg->last_addr) {
+            return reg;
+        }
+    }
+    return NULL;
+}
 
 #ifdef __cplusplus
 }
