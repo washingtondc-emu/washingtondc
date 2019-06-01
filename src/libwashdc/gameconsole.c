@@ -39,3 +39,15 @@ void washdc_gameconsole_sndchan_mute(struct washdc_gameconsole const *cons,
                                      unsigned ch_no, bool mute) {
     cons->snddev.mute_chan(&cons->snddev, ch_no, mute);
 }
+
+void washdc_gameconsole_texinfo(struct washdc_gameconsole const *cons,
+                                unsigned tex_no,
+                                struct washdc_texinfo *texinfo) {
+    cons->texcache.get_texinfo(&cons->texcache, tex_no,  texinfo);
+}
+
+void washdc_gameconsole_texinfo_var(struct washdc_gameconsole const *cons,
+                                    struct washdc_texinfo const *texinfo,
+                                    unsigned var_no, struct washdc_var *var) {
+    cons->texcache.get_var(&cons->texcache, texinfo, var_no, var);
+}

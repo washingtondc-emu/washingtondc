@@ -49,6 +49,7 @@ static bool not_hidden;
 static bool en_perf_win = true;
 static bool en_demo_win = false;
 static bool en_aica_win = true;
+static bool en_tex_cache_win = true;
 static bool show_nonplaying_channels = true;
 static bool have_debugger;
 
@@ -67,6 +68,7 @@ static std::unique_ptr<renderer> ui_renderer;
 namespace overlay {
 static void show_perf_win(void);
 static void show_aica_win(void);
+static void show_tex_cache_win(void);
 static std::string var_as_str(struct washdc_var const *var);
 }
 
@@ -145,6 +147,7 @@ void overlay::draw() {
         if (ImGui::BeginMenu("Window")) {
             ImGui::Checkbox("Performance", &en_perf_win);
             ImGui::Checkbox("AICA", &en_aica_win);
+            ImGui::Checkbox("Texture Cache", &en_tex_cache_win);
             ImGui::EndMenu();
         }
 
@@ -164,6 +167,9 @@ void overlay::draw() {
         ImGui::ShowDemoWindow(&en_demo_win);
     if (en_aica_win)
         show_aica_win();
+
+    if (en_tex_cache_win)
+        show_tex_cache_win();
 
     if (mute_old != do_mute_audio)
         sound::mute(do_mute_audio);
@@ -246,6 +252,7 @@ static void overlay::show_aica_win(void) {
         if (ImGui::CollapsingHeader(ss.str().c_str())) {
             if (idx >= n_chans) {
                 fprintf(stderr, "ERROR BUFFER OVERFLOW\n");
+                ImGui::PopID();
                 continue;
             }
 
@@ -269,6 +276,38 @@ static void overlay::show_aica_win(void) {
         }
         ImGui::PopID();
     }
+    ImGui::EndChild();
+    ImGui::End();
+}
+
+static void overlay::show_tex_cache_win(void) {
+    ImGui::Begin("Texture Cache", &en_tex_cache_win);
+    ImGui::BeginChild("Scrolling");
+
+    for (unsigned idx = 0; idx < console->texcache.sz; idx++) {
+        struct washdc_texinfo texinfo;
+        washdc_gameconsole_texinfo(console, idx, &texinfo);
+        if (!texinfo.valid)
+            continue;
+
+        ImGui::PushID(idx);
+
+        std::stringstream title;
+        title << "texture " << idx;
+        ImGui::CollapsingHeader(title.str().c_str());
+        for (unsigned var_no = 0; var_no < texinfo.n_vars; var_no++) {
+            struct washdc_var var;
+            washdc_gameconsole_texinfo_var(console, &texinfo, var_no, &var);
+            if (var.tp != WASHDC_VAR_INVALID) {
+                std::stringstream ss;
+                ss << var.name << ": " << var_as_str(&var);
+                ImGui::Text("%s", ss.str().c_str());
+            }
+        }
+
+        ImGui::PopID();
+    }
+
     ImGui::EndChild();
     ImGui::End();
 }

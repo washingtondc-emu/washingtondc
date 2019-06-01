@@ -201,6 +201,158 @@ static void dc_mute_sndchan(struct washdc_snddev const *dev,
     aica_mute_chan(&aica, chan_no, is_muted);
 }
 
+static void dc_get_texinfo(struct washdc_texcache const *cache,
+                           unsigned tex_no, struct washdc_texinfo *texinfo) {
+    struct pvr2_tex_meta meta;
+    if (tex_no < PVR2_TEX_CACHE_SIZE &&
+        pvr2_tex_get_meta(&dc_pvr2, &meta, tex_no) == 0) {
+        texinfo->idx = tex_no;
+        texinfo->valid = true;
+        texinfo->n_vars = 12;
+    } else {
+        texinfo->valid = false;
+    }
+}
+
+static void dc_get_texinfo_var(struct washdc_texcache const *cache,
+                               struct washdc_texinfo const *texinfo,
+                               unsigned var_no,
+                               struct washdc_var *var) {
+    struct pvr2_tex_meta meta;
+    if (!texinfo->valid ||
+        pvr2_tex_get_meta(&dc_pvr2, &meta, texinfo->idx) != 0)
+        goto inval;
+
+    switch (var_no) {
+    case 0:
+        // addr_first
+        strncpy(var->name, "addr_first", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = meta.addr_first;
+        return;
+    case 1:
+        //addr_last
+        strncpy(var->name, "addr_last", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = meta.addr_last;
+        return;
+    case 2:
+        // x-res
+        strncpy(var->name, "width", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
+        var->tp = WASHDC_VAR_INT;
+        var->val.as_int = 1 << meta.w_shift;
+        return;
+    case 3:
+        // y-res
+        strncpy(var->name, "height", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
+        var->tp = WASHDC_VAR_INT;
+        var->val.as_int = 1 << meta.h_shift;
+        return;
+    case 4:
+        // pixel format
+        strncpy(var->name, "pix_fmt", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
+        var->tp = WASHDC_VAR_STR;
+        switch (meta.pix_fmt) {
+        case GFX_TEX_FMT_ARGB_1555:
+            strncpy(var->val.as_str, "ARGB_1555", WASHDC_VAR_STR_LEN);
+            break;
+        case GFX_TEX_FMT_RGB_565:
+            strncpy(var->val.as_str, "RGB_565", WASHDC_VAR_STR_LEN);
+            break;
+        case GFX_TEX_FMT_ARGB_4444:
+            strncpy(var->val.as_str, "ARGB_4444", WASHDC_VAR_STR_LEN);
+            break;
+        case GFX_TEX_FMT_ARGB_8888:
+            strncpy(var->val.as_str, "ARGB_8888", WASHDC_VAR_STR_LEN);
+            break;
+        case GFX_TEX_FMT_YUV_422:
+            strncpy(var->val.as_str, "YUV_422", WASHDC_VAR_STR_LEN);
+            break;
+        default:
+            strncpy(var->val.as_str, "UNKNOWN (error?)", WASHDC_VAR_STR_LEN);
+        }
+        var->val.as_str[WASHDC_VAR_STR_LEN - 1] = '\0';
+        return;
+    case 5:
+        // tex format
+        strncpy(var->name, "tex_fmt", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
+        var->tp = WASHDC_VAR_STR;
+        switch (meta.tex_fmt) {
+        case TEX_CTRL_PIX_FMT_ARGB_1555:
+            strncpy(var->val.as_str, "ARGB_1555", WASHDC_VAR_STR_LEN);
+            break;
+        case TEX_CTRL_PIX_FMT_RGB_565:
+            strncpy(var->val.as_str, "RGB_565", WASHDC_VAR_STR_LEN);
+            break;
+        case TEX_CTRL_PIX_FMT_ARGB_4444:
+            strncpy(var->val.as_str, "ARGB_4444", WASHDC_VAR_STR_LEN);
+            break;
+        case TEX_CTRL_PIX_FMT_YUV_422:
+            strncpy(var->val.as_str, "YUV_422", WASHDC_VAR_STR_LEN);
+            break;
+        case TEX_CTRL_PIX_FMT_BUMP_MAP:
+            strncpy(var->val.as_str, "BUMP_MAP", WASHDC_VAR_STR_LEN);
+            break;
+        case TEX_CTRL_PIX_FMT_4_BPP_PAL:
+            strncpy(var->val.as_str, "4_BPP_PALETTE", WASHDC_VAR_STR_LEN);
+            break;
+        case TEX_CTRL_PIX_FMT_8_BPP_PAL:
+            strncpy(var->val.as_str, "8_BPP_PALETTE", WASHDC_VAR_STR_LEN);
+            break;
+        default:
+            strncpy(var->val.as_str, "UNKNOWN (error?)", WASHDC_VAR_STR_LEN);
+        }
+        var->val.as_str[WASHDC_VAR_STR_LEN - 1] = '\0';
+        return;
+    case 6:
+        // tex_palette_start
+        strncpy(var->name, "tex_palette_start", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = meta.tex_palette_start;
+        return;
+    case 8:
+        // twiddled
+        strncpy(var->name, "twiddled", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_BOOL;
+        var->val.as_bool = meta.twiddled;
+        return;
+    case 9:
+        // stride_sel
+        strncpy(var->name, "stride_sel", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_BOOL;
+        var->val.as_bool = meta.stride_sel;
+        return;
+    case 10:
+        // vq_compression
+        strncpy(var->name, "vq_compression", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_BOOL;
+        var->val.as_bool = meta.vq_compression;
+        return;
+    case 11:
+        // mipmap
+        strncpy(var->name, "mipmap", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_BOOL;
+        var->val.as_bool = meta.mipmap;
+        return;
+    default:
+        goto inval;
+    }
+ inval:
+    memset(var, 0, sizeof(*var));
+    var->tp = WASHDC_VAR_INVALID;
+}
+
 static struct washdc_gameconsole dccons = {
     .name = "SEGA Dreamcast",
     .snddev = {
@@ -209,6 +361,11 @@ static struct washdc_gameconsole dccons = {
         .get_chan = dc_get_sndchan_stat,
         .get_var = dc_get_sndchan_var,
         .mute_chan = dc_mute_sndchan
+    },
+    .texcache = {
+        .sz = PVR2_TEX_CACHE_SIZE,
+        .get_texinfo = dc_get_texinfo,
+        .get_var = dc_get_texinfo_var
     }
 };
 
@@ -1027,10 +1184,6 @@ void dc_end_frame(void) {
     win_update_title();
     framebuffer_render(&dc_pvr2);
     win_check_events();
-}
-
-int dc_tex_get_meta(struct pvr2_tex_meta *out, unsigned tex_no) {
-    return pvr2_tex_get_meta(&dc_pvr2, out, tex_no);
 }
 
 void dc_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,

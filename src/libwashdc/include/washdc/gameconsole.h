@@ -90,10 +90,29 @@ struct washdc_snddev {
                       unsigned chan_no, bool do_mute);
 };
 
+struct washdc_texinfo {
+    unsigned idx;
+    unsigned n_vars;
+    bool valid;
+};
+
+struct washdc_texcache {
+    unsigned sz;
+
+    void (*get_texinfo)(struct washdc_texcache const* cache,
+                        unsigned tex_no,
+                        struct washdc_texinfo *texinfo);
+    void (*get_var)(struct washdc_texcache const *cache,
+                    struct washdc_texinfo const *texinfo,
+                    unsigned var_no,
+                    struct washdc_var *var);
+};
+
 struct washdc_gameconsole {
     char const *name;
 
     struct washdc_snddev snddev;
+    struct washdc_texcache texcache;
 };
 
 void washdc_gameconsole_sndchan(struct washdc_gameconsole const *cons,
@@ -105,6 +124,13 @@ void washdc_gameconsole_sndchan_var(struct washdc_gameconsole const *cons,
                                     struct washdc_var *var);
 void washdc_gameconsole_sndchan_mute(struct washdc_gameconsole const *cons,
                                      unsigned ch_no, bool mute);
+
+void washdc_gameconsole_texinfo(struct washdc_gameconsole const *cons,
+                                unsigned tex_no,
+                                struct washdc_texinfo *texinfo);
+void washdc_gameconsole_texinfo_var(struct washdc_gameconsole const *cons,
+                                    struct washdc_texinfo const *texinfo,
+                                    unsigned var_no, struct washdc_var *var);
 
 #ifdef __cplusplus
 }
