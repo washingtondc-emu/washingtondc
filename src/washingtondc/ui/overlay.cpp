@@ -52,6 +52,13 @@ static bool en_aica_win = true;
 static bool show_nonplaying_channels = true;
 static bool have_debugger;
 
+enum exec_options {
+    EXEC_OPT_PAUSED,
+    EXEC_OPT_100P,
+    EXEC_OPT_UNLIMITED
+};
+static enum exec_options exec_opt;
+
 static unsigned n_chans;
 static bool *sndchan_mute;
 
@@ -91,13 +98,41 @@ void overlay::draw() {
 
         if (!have_debugger && ImGui::BeginMenu("Execution")) {
             if (washdc_is_paused()) {
-                if (ImGui::MenuItem("Resume"))
+                exec_opt = EXEC_OPT_PAUSED;
+                if (ImGui::MenuItem("Resume (normal speed)")) {
+                    sound::set_sync_mode(sound::SYNC_MODE_NORM);
+                    exec_opt = EXEC_OPT_100P;
                     do_resume();
-                if (ImGui::MenuItem("Run one frame"))
+                }
+                if (ImGui::MenuItem("Resume (unlimited speed)")) {
+                    sound::set_sync_mode(sound::SYNC_MODE_UNLIMITED);
+                    exec_opt = EXEC_OPT_UNLIMITED;
+                    do_resume();
+                }
+                if (ImGui::MenuItem("Run one frame")) {
+                    exec_opt = EXEC_OPT_100P;
                     do_run_one_frame();
+                }
             } else {
-                if (ImGui::MenuItem("Pause"))
-                    do_pause();
+                int choice = (int)exec_opt;
+                ImGui::RadioButton("Pause", &choice, EXEC_OPT_PAUSED);
+                ImGui::RadioButton("100% speed", &choice, EXEC_OPT_100P);
+                ImGui::RadioButton("Unlimited speed", &choice, EXEC_OPT_UNLIMITED);
+
+                if (choice != (int)exec_opt) {
+                    exec_opt = (enum exec_options)choice;
+                    switch (exec_opt) {
+                    case EXEC_OPT_PAUSED:
+                        do_pause();
+                        break;
+                    case EXEC_OPT_100P:
+                        sound::set_sync_mode(sound::SYNC_MODE_NORM);
+                        break;
+                    case EXEC_OPT_UNLIMITED:
+                        sound::set_sync_mode(sound::SYNC_MODE_UNLIMITED);
+                        break;
+                    }
+                }
             }
             ImGui::EndMenu();
         }
@@ -212,6 +247,8 @@ void overlay::set_virt_fps(double fps) {
 }
 
 void overlay::init(bool enable_debugger) {
+    exec_opt = EXEC_OPT_100P;
+
     n_chans = console->snddev.n_channels;
     sndchan_mute = new bool[n_chans];
     std::fill(sndchan_mute, sndchan_mute + n_chans, false);

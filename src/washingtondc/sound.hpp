@@ -38,6 +38,13 @@ void mute(bool en_mute);
 
 bool is_muted(void);
 
+enum sync_mode {
+    SYNC_MODE_NORM,
+    SYNC_MODE_UNLIMITED
+};
+
+void set_sync_mode(enum sync_mode mode);
+
 }
 
 #endif

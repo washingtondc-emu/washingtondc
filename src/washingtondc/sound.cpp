@@ -51,9 +51,11 @@ static const unsigned BUF_LEN = 4410;
 static washdc_sample_type sample_buf[BUF_LEN];
 static unsigned read_buf_idx, write_buf_idx;
 static bool do_mute;
+static enum sync_mode audio_sync_mode;
 
 void init(void) {
     do_mute = true;
+    audio_sync_mode = SYNC_MODE_NORM;
     cfg_get_bool("audio.mute", &do_mute);
 
     read_buf_idx = write_buf_idx = 0;
@@ -119,9 +121,10 @@ void submit_samples(washdc_sample_type *samples, unsigned count) {
 
     while (count) {
         unsigned next_write_buf_idx = (1 + write_buf_idx) % BUF_LEN;
-        while (next_write_buf_idx == read_buf_idx) {
-            samples_submitted.wait(lck);
-        }
+        if (audio_sync_mode == SYNC_MODE_NORM)
+            while (next_write_buf_idx == read_buf_idx) {
+                samples_submitted.wait(lck);
+            }
         if (do_mute)
             sample_buf[write_buf_idx] = 0;
         else
@@ -137,6 +140,10 @@ void mute(bool en_mute) {
 
 bool is_muted(void) {
     return do_mute;
+}
+
+void set_sync_mode(enum sync_mode mode) {
+    audio_sync_mode = mode;
 }
 
 }
