@@ -173,12 +173,25 @@ void overlay::draw() {
 }
 
 static void overlay::show_perf_win(void) {
+    static double best = -DBL_MAX;
+    static double worst = DBL_MAX;
+
     struct washdc_pvr2_stat stat;
     washdc_get_pvr2_stat(&stat);
 
+    double framerate_ratio = framerate / virt_framerate;
+    if (framerate_ratio > best)
+        best = framerate_ratio;
+    if (framerate_ratio < worst)
+        worst = framerate_ratio;
+
     ImGui::Begin("Performance", &en_perf_win);
-    ImGui::Text("Framerate: %.2f / %.2f (%.2f%%)", framerate, virt_framerate, 100.0 * (framerate / virt_framerate));
+    ImGui::Text("Framerate: %.2f / %.2f (%.2f%%)", framerate, virt_framerate, 100.0 * framerate_ratio);
     ImGui::Text("%u frames rendered\n", washdc_get_frame_count());
+
+    ImGui::Text("Best: %f%%", 100.0 * best);
+    ImGui::Text("Worst: %f%%", 100.0 * worst);
+
     ImGui::Text("%u opaque polygons",
                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
     ImGui::Text("%u opaque modifier polygons",
