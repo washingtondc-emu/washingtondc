@@ -175,15 +175,32 @@ void overlay::draw() {
 static void overlay::show_perf_win(void) {
     static double best = -DBL_MAX;
     static double worst = DBL_MAX;
+    static const int MAX_FRAMES = 60 * 60 * 10;
+    static int n_frames = 0;
+    static int frame_idx = 0;
+    static double total = 0.0;
+    static double buf[MAX_FRAMES];
 
     struct washdc_pvr2_stat stat;
     washdc_get_pvr2_stat(&stat);
 
     double framerate_ratio = framerate / virt_framerate;
-    if (framerate_ratio > best)
-        best = framerate_ratio;
-    if (framerate_ratio < worst)
-        worst = framerate_ratio;
+    if (!washdc_is_paused()) {
+        // update persistent stats
+        if (framerate_ratio > best)
+            best = framerate_ratio;
+        if (framerate_ratio < worst)
+            worst = framerate_ratio;
+
+        if (n_frames < MAX_FRAMES)
+            n_frames++;
+        else
+            total -= buf[frame_idx];
+
+        total += framerate_ratio;
+        buf[frame_idx] = framerate_ratio;
+        frame_idx = (frame_idx + 1) % MAX_FRAMES;
+    }
 
     ImGui::Begin("Performance", &en_perf_win);
     ImGui::Text("Framerate: %.2f / %.2f (%.2f%%)", framerate, virt_framerate, 100.0 * framerate_ratio);
@@ -191,6 +208,11 @@ static void overlay::show_perf_win(void) {
 
     ImGui::Text("Best: %f%%", 100.0 * best);
     ImGui::Text("Worst: %f%%", 100.0 * worst);
+    if (n_frames < MAX_FRAMES)
+        ImGui::Text("Average: %f%%", 100.0 * (total / n_frames));
+    else
+        ImGui::Text("Average: %f%% (last %d frames)\n",
+                    100.0 * (total / n_frames), MAX_FRAMES);
 
     ImGui::Text("%u opaque polygons",
                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
