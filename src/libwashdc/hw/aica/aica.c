@@ -1354,13 +1354,20 @@ static unsigned aica_chan_effective_rate(struct aica const *aica, unsigned chan_
         return rate * 2;
     } else {
         /*
-         * TODO: some sound effects in Sonic Adventure 2 loop after they should
-         * have already ended (like the sound when he picks up a ring).
          * Effective rate determines how quickly the state Amplitude Envelope
-         * Generator transitions between states.  Is the effective rate being
-         * calculated incorrectly?
+         * Generator transitions between states, so if the effective-rate is
+         * not being calculated correctly, then possible bugs include channels
+         * repeating after they should have stopped, and channels not playing
+         * at all.
+         *
+         * XXX The corlett docs say this should be (KRS + rate + octave * 2) +
+         *     bit-9 of FNS.  i've found this to be problematic, since octave
+         *     can be a negative value but the rate cannot be negative so I've
+         *     removed it.  I do not have any information on how this case is
+         *     handled.  Removing octave also fixed many channels that were
+         *     looping after they should have terminated in Crazy Taxi.
          */
-        return (chan->krs + chan->octave + rate) * 2 + ((chan->fns >> 9) & 1);
+        return (chan->krs + rate) * 2 + ((chan->fns >> 9) & 1);
     }
 }
 
