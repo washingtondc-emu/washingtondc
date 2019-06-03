@@ -45,13 +45,16 @@ enum washdc_var_type {
     WASHDC_VAR_INT,
     WASHDC_VAR_HEX,
 
-    WASHDC_VAR_STR
+    WASHDC_VAR_STR,
+
+    WASHDC_VAR_DOUBLE
 };
 
 union washdc_var_val {
     char as_str[WASHDC_VAR_STR_LEN];
     bool as_bool;
     int as_int;
+    double as_double;
 };
 
 struct washdc_var {

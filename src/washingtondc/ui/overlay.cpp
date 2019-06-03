@@ -326,6 +326,9 @@ static std::string overlay::var_as_str(struct washdc_var const *var) {
         return ss.str();
     case WASHDC_VAR_STR:
         return var->val.as_str;
+    case WASHDC_VAR_DOUBLE:
+        ss << var->val.as_double;
+        return ss.str();
     case WASHDC_VAR_INVALID:
         return "INVALID";
     }

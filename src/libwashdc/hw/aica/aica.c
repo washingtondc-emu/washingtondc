@@ -1605,6 +1605,23 @@ static int get_octave_signed(struct aica_chan const *chan) {
     return (oct_signed ^ 8) - 8;
 }
 
+static double atten_scale(unsigned atten) {
+    if (atten > 0x3bf) atten = 0x3bf;
+    unsigned mantissa = atten & 0x3f;
+    unsigned log = atten >> 6;
+    unsigned scale = (mantissa + 0x40) << log;
+    scale >>= 7;//get rid of fractional part
+    if (scale > 65536) {
+        LOG_ERROR("Oh fuck, scale is %u!\n", scale);
+        LOG_ERROR("atten was 0x%03x\n", atten);
+        LOG_ERROR("log was %u\n", log);
+        LOG_ERROR("mantissa was 0x%06x\n", mantissa);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+    scale = 65536 - scale;
+    return scale / 65536.0;
+}
+
 static void aica_process_sample(struct aica *aica) {
     unsigned chan_no;
 
@@ -1670,8 +1687,10 @@ static void aica_process_sample(struct aica *aica) {
                 chan->adpcm_next_step = false;
             }
 
+            int32_t sample = chan->adpcm_sample << 8;
+
             if (!chan->is_muted)
-                sample_total = add_sample32(sample_total, chan->adpcm_sample << 8);
+                sample_total = add_sample32(sample_total, sample);
 
             chan->sample_partial += sample_rate;
             if (chan->sample_partial >= 1.0) {
@@ -1818,18 +1837,30 @@ void aica_get_sndchan_var(struct aica const *aica,
         var->val.as_bool = chan->ready_keyon;
         return;
     case 1:
+        strncpy(var->name, "attenuation", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->atten;
+        return;
+    case 2:
+        strncpy(var->name, "atten-scale", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_DOUBLE;
+        var->val.as_double = atten_scale(chan->atten);
+        return;
+    case 3:
         strncpy(var->name, "octave", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
         var->val.as_int = chan->octave;
         return;
-    case 2:
+    case 4:
         strncpy(var->name, "FNS", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
         var->val.as_int = chan->fns;
         return;
-    case 3:
+    case 5:
         sample_rate =
             get_sample_rate_multiplier(chan) * 44100;
         strncpy(var->name, "Sample Rate", WASHDC_VAR_NAME_LEN);
@@ -1837,13 +1868,13 @@ void aica_get_sndchan_var(struct aica const *aica,
         var->tp = WASHDC_VAR_INT;
         var->val.as_int = (int)sample_rate;
         return;
-    case 4:
+    case 6:
         strncpy(var->name, "Effective Rate", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_INT;
         var->val.as_int = aica_chan_effective_rate(aica, stat->ch_idx);
         return;
-    case 5:
+    case 7:
         strncpy(var->name, "Envelope State", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_STR;
@@ -1866,28 +1897,28 @@ void aica_get_sndchan_var(struct aica const *aica,
         }
         var->val.as_str[WASHDC_VAR_STR_LEN - 1] = '\0';
         return;
-    case 6:
+    case 8:
         strncpy(var->name, "Format", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_STR;
         strncpy(var->val.as_str, fmt_name(chan->fmt), WASHDC_VAR_STR_LEN);
         var->val.as_str[WASHDC_VAR_STR_LEN - 1] = '\0';
         return;
-    case 7:
+    case 9:
         //addr_start
         strncpy(var->name, "Start Address", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
         var->val.as_int = chan->addr_start;
         return;
-    case 8:
+    case 10:
         // loop_start
         strncpy(var->name, "Loop Start", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
         var->val.as_int = chan->loop_start;
         return;
-    case 9:
+    case 11:
         //loop_end
         strncpy(var->name, "Loop End", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
