@@ -43,6 +43,11 @@
 
 #include "aica.h"
 
+// fixed-point format used for attenuation scaling
+typedef uint32_t aica_atten;
+#define AICA_ATTEN_SHIFT 16
+#define AICA_ATTEN_UNIT (1 << AICA_ATTEN_SHIFT)
+
 /*
  * TODO: I'm really only assuming this is 44.1KHz because that's the standard,
  * I don't actually know if this is correct.
@@ -1612,21 +1617,21 @@ static int get_octave_signed(struct aica_chan const *chan) {
     return (oct_signed ^ 8) - 8;
 }
 
-static double atten_scale(unsigned atten) {
+static aica_atten atten_scale(unsigned atten) {
     if (atten > 0x3bf) atten = 0x3bf;
     unsigned mantissa = atten & 0x3f;
     unsigned log = atten >> 6;
-    unsigned scale = (mantissa + 0x40) << log;
-    scale >>= 7;//get rid of fractional part
-    if (scale > 65536) {
-        LOG_ERROR("Oh fuck, scale is %u!\n", scale);
+    mantissa = ((~mantissa) + 0x40);
+    mantissa <<= (AICA_ATTEN_SHIFT - 6);
+    unsigned scale = mantissa >> log;
+    if (scale > AICA_ATTEN_UNIT) {
+        LOG_ERROR("scale is %u!\n", scale);
         LOG_ERROR("atten was 0x%03x\n", atten);
         LOG_ERROR("log was %u\n", log);
         LOG_ERROR("mantissa was 0x%06x\n", mantissa);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
-    scale = 65536 - scale;
-    return scale / 65536.0;
+    return scale;
 }
 
 static void aica_process_sample(struct aica *aica) {
@@ -1854,7 +1859,8 @@ void aica_get_sndchan_var(struct aica const *aica,
         strncpy(var->name, "atten-scale", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_DOUBLE;
-        var->val.as_double = atten_scale(chan->atten);
+        var->val.as_double =
+            (double)atten_scale(chan->atten) / (double)AICA_ATTEN_UNIT;
         return;
     case 3:
         strncpy(var->name, "octave", WASHDC_VAR_NAME_LEN);
