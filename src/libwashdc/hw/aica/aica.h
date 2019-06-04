@@ -79,6 +79,9 @@ struct aica_chan {
      */
     unsigned atten;
 
+    // from the DirectPanVolSend channel register (offset 0x24)
+    unsigned volume, pan;
+
     // the state of the amplitude envelope in the PlayStatus register
     enum aica_env_state atten_env_state;
 

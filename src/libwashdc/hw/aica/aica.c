@@ -864,8 +864,12 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         if (tmp & (1 << 15))
             LOG_WARN("AICA: low-frequency oscillator is not implemented!\n");
         break;
-    case AICA_CHAN_DSP_SEND:
     case AICA_CHAN_DIR_PAN_VOL_SEND:
+        memcpy(&tmp, chan->raw + AICA_CHAN_DIR_PAN_VOL_SEND, sizeof(tmp));
+        chan->volume = (tmp >> 8) & 0xf;
+        chan->pan = tmp & 0x1f;
+        break;
+    case AICA_CHAN_DSP_SEND:
     case AICA_CHAN_LPF1_VOL:
     case AICA_CHAN_LPF2:
     case AICA_CHAN_LPF3:
@@ -1813,7 +1817,7 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            struct washdc_sndchan_stat *stat) {
     if (ch_no < AICA_CHAN_COUNT) {
         stat->playing = aica->channels[ch_no].playing;
-        stat->n_vars = 10;
+        stat->n_vars = 16;
         stat->ch_idx = ch_no;
     } else {
         LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
@@ -1924,6 +1928,34 @@ void aica_get_sndchan_var(struct aica const *aica,
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
         var->val.as_int = chan->loop_end;
+        return;
+    case 12:
+        // direct send volume (DISDL)
+        strncpy(var->name, "volume", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->volume;
+        return;
+    case 13:
+        // direct send pan (DIPAN)
+        strncpy(var->name, "pan", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->pan;
+        return;
+    case 14:
+        // octave
+        strncpy(var->name, "octave", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->octave;
+        return;
+    case 15:
+        // FNS
+        strncpy(var->name, "FNS", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->fns;
         return;
     default:
         goto inval;
