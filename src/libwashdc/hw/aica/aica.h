@@ -63,6 +63,10 @@ enum aica_afsel {
     AICA_AFSEL_FILTER
 };
 
+#define AICA_SAMPLE_POS_SHIFT 20
+#define AICA_SAMPLE_POS_UNIT (1 << AICA_SAMPLE_POS_SHIFT)
+typedef uint32_t aica_sample_pos;
+
 // It's AICA's cute younger sister, aica-chan!
 struct aica_chan {
     uint8_t raw[AICA_CHAN_LEN];
@@ -112,7 +116,7 @@ struct aica_chan {
     unsigned step_no;
     unsigned sample_no;
     unsigned sample_pos;
-    double sample_partial;
+    aica_sample_pos sample_partial;
 
     // from the AmpEnv1 register
     unsigned attack_rate, decay_rate, sustain_rate;

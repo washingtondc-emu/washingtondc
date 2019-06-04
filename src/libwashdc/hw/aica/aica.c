@@ -246,7 +246,7 @@ static unsigned aica_samples_per_step(unsigned effective_rate, unsigned step_no)
 static void aica_process_sample(struct aica *aica);
 
 static int get_octave_signed(struct aica_chan const *chan);
-static double get_sample_rate_multiplier(struct aica_chan const *chan);
+static aica_sample_pos get_sample_rate_multiplier(struct aica_chan const *chan);
 
 static void aica_chan_reset_adpcm(struct aica_chan *chan) {
     chan->step = 0;
@@ -744,7 +744,7 @@ static void aica_do_keyon(struct aica *aica) {
             chan->step_no = 0;
             chan->sample_no = 0;
             chan->sample_pos = 0/* chan->addr_start */;
-            chan->sample_partial = 0.0;
+            chan->sample_partial = 0;
             chan->addr_cur = chan->addr_start;
             chan->atten_env_state = AICA_ENV_ATTACK;
             chan->atten = 0x280;
@@ -854,7 +854,8 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         uint32_t oct32 = (tmp & BIT_RANGE(11, 14)) >> 11;
         chan->octave = oct32;
 
-        double sample_rate = get_sample_rate_multiplier(chan);
+        double sample_rate = (double)get_sample_rate_multiplier(chan) /
+            (double)(1 << AICA_SAMPLE_POS_SHIFT);
 
         LOG_INFO("AICA channel %u sample_rate is %f oct %d fns 0x%04x\n",
                  chan_no, sample_rate, get_octave_signed(chan), chan->fns);
@@ -1590,18 +1591,20 @@ static inline int32_t add_sample32(int32_t s1, int32_t s2) {
     return s1 + s2;
 }
 
-static double get_sample_rate_multiplier(struct aica_chan const *chan) {
-    // TODO: I feel as though there must be a bettter way to do this
-    double mantissa = (chan->fns ^ 0x400) / 1024.0;
-    int log = get_octave_signed(chan);
-    double mult = 1.0;
+static aica_sample_pos get_sample_rate_multiplier(struct aica_chan const *chan) {
+    // add 1.0 to the mantissa
+    aica_sample_pos mantissa = (chan->fns ^ 0x400);
+
+    /*
+     * subtract 10 because thats how many bits of precision the mantissa has in
+     * AICA's format
+     */
+    int log = get_octave_signed(chan) + (AICA_SAMPLE_POS_SHIFT - 10);
+
     if (log > 0)
-        for (int idx = 0; idx < log; idx++)
-            mult *= 2.0;
-    else if (log < 0)
-        for (int idx = 0; idx < -log; idx++)
-            mult *= 0.5;
-    return mult * mantissa;
+        return mantissa << log;
+    else
+        return mantissa >> (-log);
 }
 
 static int get_octave_signed(struct aica_chan const *chan) {
@@ -1637,7 +1640,8 @@ static void aica_process_sample(struct aica *aica) {
         if (!chan->playing)
             continue;
 
-        double sample_rate = get_sample_rate_multiplier(chan) / (double)AICA_FREQ_RATIO;
+        aica_sample_pos sample_rate =
+            get_sample_rate_multiplier(chan) / AICA_FREQ_RATIO;
         unsigned effective_rate = aica_chan_effective_rate(aica, chan_no);
         unsigned samples_per_step = aica_samples_per_step(effective_rate,
                                                           chan->step_no);
@@ -1654,8 +1658,8 @@ static void aica_process_sample(struct aica *aica) {
                 sample_total = add_sample32(sample_total, sample);
 
             chan->sample_partial += sample_rate;
-            while (chan->sample_partial >= 1.0) {
-                chan->sample_partial -= 1.0;
+            while (chan->sample_partial >= AICA_SAMPLE_POS_UNIT) {
+                chan->sample_partial -= AICA_SAMPLE_POS_UNIT;
                 chan->addr_cur += 2;
                 chan->sample_pos++;
                 did_increment = true;
@@ -1671,8 +1675,8 @@ static void aica_process_sample(struct aica *aica) {
                 sample_total = add_sample32(sample_total, sample);
 
             chan->sample_partial += sample_rate;
-            while (chan->sample_partial >= 1.0) {
-                chan->sample_partial -= 1.0;
+            while (chan->sample_partial >= AICA_SAMPLE_POS_UNIT) {
+                chan->sample_partial -= AICA_SAMPLE_POS_UNIT;
                 chan->addr_cur++;
                 chan->sample_pos++;
                 did_increment = true;
@@ -1697,8 +1701,8 @@ static void aica_process_sample(struct aica *aica) {
                 sample_total = add_sample32(sample_total, sample);
 
             chan->sample_partial += sample_rate;
-            if (chan->sample_partial >= 1.0) {
-                chan->sample_partial -= 1.0;
+            if (chan->sample_partial >= AICA_SAMPLE_POS_UNIT) {
+                chan->sample_partial -= AICA_SAMPLE_POS_UNIT;
                 if (chan->sample_pos & 1) {
                     chan->addr_cur++;
                 }
@@ -1866,7 +1870,7 @@ void aica_get_sndchan_var(struct aica const *aica,
         return;
     case 5:
         sample_rate =
-            get_sample_rate_multiplier(chan) * 44100;
+            ((uint64_t)get_sample_rate_multiplier(chan) * (uint64_t)44100) >> AICA_SAMPLE_POS_SHIFT;
         strncpy(var->name, "Sample Rate", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_INT;
