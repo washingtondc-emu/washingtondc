@@ -119,7 +119,7 @@ static void cfg_create_default_config(void) {
         "\n"
         "; set this to true to mute audio.  Set it to false to allow audio \n"
         "; to play\n"
-        "audio.mute true\n"
+        "audio.mute false\n"
         "\n"
         "; don't change this line.  It doesn't techincally do anything yet\n"
         "; but it will in future revisions of WashingtonDC.\n"

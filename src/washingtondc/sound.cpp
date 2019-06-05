@@ -54,7 +54,7 @@ static bool do_mute;
 static enum sync_mode audio_sync_mode;
 
 void init(void) {
-    do_mute = true;
+    do_mute = false;
     audio_sync_mode = SYNC_MODE_NORM;
     cfg_get_bool("audio.mute", &do_mute);
 
