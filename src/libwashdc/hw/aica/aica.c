@@ -1656,8 +1656,6 @@ static void aica_process_sample(struct aica *aica) {
             int32_t sample =
                 (int32_t)(int16_t)aica_wave_mem_read_16(chan->addr_cur,
                                                         &aica->mem);
-            sample <<= 12;
-
             // TODO: linear interpolation
             if (!chan->is_muted)
                 sample_total = add_sample32(sample_total, sample);
@@ -1673,7 +1671,7 @@ static void aica_process_sample(struct aica *aica) {
             int32_t sample =
                 (int32_t)(int8_t)aica_wave_mem_read_8(chan->addr_cur,
                                                       &aica->mem);
-            sample <<= 16;
+            sample <<= 8;
 
             // TODO: linear interpolation
             if (!chan->is_muted)
@@ -1700,7 +1698,7 @@ static void aica_process_sample(struct aica *aica) {
                 chan->adpcm_next_step = false;
             }
 
-            int32_t sample = chan->adpcm_sample << 8;
+            int32_t sample = chan->adpcm_sample;
 
             if (!chan->is_muted)
                 sample_total = add_sample32(sample_total, sample);
@@ -1773,6 +1771,7 @@ static void aica_process_sample(struct aica *aica) {
         }
     }
 
+    sample_total <<= 8;
     dc_submit_sound_samples(&sample_total, 1);
 }
 
