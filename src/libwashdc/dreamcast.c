@@ -209,6 +209,35 @@ static void dc_get_texinfo(struct washdc_texcache const *cache,
         texinfo->idx = tex_no;
         texinfo->valid = true;
         texinfo->n_vars = 12;
+
+        texinfo->w_shift = meta.w_shift;
+        texinfo->h_shift = meta.h_shift;
+
+        switch (meta.pix_fmt) {
+        case GFX_TEX_FMT_ARGB_1555:
+            texinfo->fmt = WASHDC_TEX_FMT_ARGB_1555;
+            break;
+        case GFX_TEX_FMT_RGB_565:
+            texinfo->fmt = WASHDC_TEX_FMT_RGB_565;
+            break;
+        case GFX_TEX_FMT_ARGB_4444:
+            texinfo->fmt = WASHDC_TEX_FMT_ARGB_4444;
+            break;
+        case GFX_TEX_FMT_ARGB_8888:
+            texinfo->fmt = WASHDC_TEX_FMT_ARGB_8888;
+            break;
+        case GFX_TEX_FMT_YUV_422:
+            texinfo->fmt = WASHDC_TEX_FMT_YUV_422;
+            break;
+        default:
+            // should never happen
+            texinfo->valid = false;
+            LOG_ERROR("%s - UNKNOWN TEXTURE FORMAT 0x%02x\n",
+                      __func__, (int)meta.pix_fmt);
+            return;
+        }
+
+        dc_tex_cache_read(&texinfo->tex_dat, &texinfo->n_tex_bytes, &meta);
     } else {
         texinfo->valid = false;
     }

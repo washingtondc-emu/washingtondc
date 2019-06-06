@@ -23,6 +23,7 @@
 #ifndef WASHDC_GAMECONSOLE_H_
 #define WASHDC_GAMECONSOLE_H_
 
+#include <stddef.h>
 #include <stdbool.h>
 
 #ifdef __cplusplus
@@ -90,10 +91,25 @@ struct washdc_snddev {
                       unsigned chan_no, bool do_mute);
 };
 
+enum washdc_tex_fmt {
+    WASHDC_TEX_FMT_ARGB_1555,
+    WASHDC_TEX_FMT_RGB_565,
+    WASHDC_TEX_FMT_ARGB_4444,
+    WASHDC_TEX_FMT_ARGB_8888,
+    WASHDC_TEX_FMT_YUV_422,
+
+    WASHDC_TEX_FMT_COUNT
+};
+
 struct washdc_texinfo {
     unsigned idx;
     unsigned n_vars;
     bool valid;
+
+    void *tex_dat;
+    size_t n_tex_bytes;
+    int w_shift, h_shift;
+    enum washdc_tex_fmt fmt;
 };
 
 struct washdc_texcache {

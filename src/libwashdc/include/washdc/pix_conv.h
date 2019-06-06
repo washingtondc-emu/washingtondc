@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,16 +20,24 @@
  *
  ******************************************************************************/
 
-#ifndef PIX_CONV_H_
-#define PIX_CONV_H_
+#ifndef WASHDC_PIX_CONV_H_
+#define WASHDC_PIX_CONV_H_
 
 #include <stdint.h>
 
-// converts a given YUV value to 24-bit RGB
-void yuv_to_rgb(uint8_t *rgb_out, unsigned lum,
-                unsigned chrom_b, unsigned chrom_r);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
-                        unsigned width, unsigned height);
+// converts a given YUV value to 24-bit RGB
+void washdc_yuv_to_rgb(uint8_t *rgb_out, unsigned lum,
+                       unsigned chrom_b, unsigned chrom_r);
+
+void washdc_conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
+                               unsigned width, unsigned height);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -20,7 +20,7 @@
  *
  ******************************************************************************/
 
-#include "pix_conv.h"
+#include "washdc/pix_conv.h"
 
 // pix_conv.c: The future home of all texture and pixel conversion functions
 
@@ -29,8 +29,8 @@
  * The source for these values is the wikipedia article on YUV:
  * https://en.wikipedia.org/wiki/YUV#Y′UV444_to_RGB888_conversion
  */
-void yuv_to_rgb(uint8_t *rgb_out, unsigned lum,
-                unsigned chrom_b, unsigned chrom_r) {
+void washdc_yuv_to_rgb(uint8_t *rgb_out, unsigned lum,
+                       unsigned chrom_b, unsigned chrom_r) {
     double yuv[3] = {
         lum, chrom_b, chrom_r
     };
@@ -58,8 +58,8 @@ void yuv_to_rgb(uint8_t *rgb_out, unsigned lum,
     rgb_out[2] = (uint8_t)rgb[2];
 }
 
-void conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
-                        unsigned width, unsigned height) {
+void washdc_conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
+                               unsigned width, unsigned height) {
     uint8_t *rgbp = (uint8_t*)rgb_out;
     uint32_t const *tex_in = (uint32_t const *)yuv_in;
 
@@ -72,8 +72,8 @@ void conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
             unsigned chrom_b = in & 0xff;
             unsigned chrom_r = (in >> 16) & 0xff;
 
-            yuv_to_rgb(outp, lum[0], chrom_b, chrom_r);
-            yuv_to_rgb(outp + 3, lum[1], chrom_b, chrom_r);
+            washdc_yuv_to_rgb(outp, lum[0], chrom_b, chrom_r);
+            washdc_yuv_to_rgb(outp + 3, lum[1], chrom_b, chrom_r);
         }
     }
 }

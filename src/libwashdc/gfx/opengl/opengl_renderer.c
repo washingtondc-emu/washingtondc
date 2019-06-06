@@ -32,7 +32,7 @@
 #include "gfx/gfx_tex_cache.h"
 #include "gfx/gfx.h"
 #include "log.h"
-#include "pix_conv.h"
+#include "washdc/pix_conv.h"
 #include "washdc/config_file.h"
 #include "opengl_output.h"
 #include "opengl_target.h"
@@ -547,7 +547,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
             (uint8_t*)malloc(sizeof(uint8_t) * 3 * tex_w * tex_h);
         if (!tmp_dat)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
-        conv_yuv422_rgb888(tmp_dat, tex_dat, tex_w, tex_h);
+        washdc_conv_yuv422_rgb888(tmp_dat, tex_dat, tex_w, tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex_w, tex_h, 0,
                      GL_RGB, GL_UNSIGNED_BYTE, tmp_dat);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
