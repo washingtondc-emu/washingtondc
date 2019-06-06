@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018. 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -98,6 +98,17 @@ static inline int32_t sub_flags(int32_t lhs, int32_t rhs, bool carry_in,
     }
 
     return res64;
+}
+
+// left-shift by n-bits and saturate to INT32_MAX or INT32_MIN if necessary
+static inline int32_t sat_shift(int32_t in, unsigned n_bits) {
+    // outbits includes all bits shifted out AND the sign-bit
+    int32_t outbits = in >> (31 - n_bits);
+    if (outbits == 0 || outbits == -1)
+        return in << n_bits;
+    if (in < 0)
+        return INT32_MIN;
+    return INT32_MAX;
 }
 
 #endif

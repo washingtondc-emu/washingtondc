@@ -122,6 +122,26 @@ static int snd_cb(const void *input, void *output,
     return 0;
 }
 
+// left-shift by n-bits and saturate to INT32_MAX or INT32_MIN if necessary
+static inline int32_t sat_shift(int32_t in, unsigned n_bits) {
+    // outbits includes all bits shifted out AND the sign-bit
+    int32_t outbits = in >> (31 - n_bits);
+    if (outbits == 0 || outbits == -1)
+        return in << n_bits;
+    if (in < 0)
+        return INT32_MIN;
+    return INT32_MAX;
+}
+
+static washdc_sample_type scale_sample(washdc_sample_type sample) {
+    /*
+     * even though we use 32-bit int to store samples, we expect the emu
+     * core to submit samples that were initially 16-bit, so we have to
+     * scale them up a bit to compensate for the 16-bit to 32-bit conversion.
+     */
+    return sat_shift(sample, 8);
+}
+
 void submit_samples(washdc_sample_type *samples, unsigned count) {
     std::unique_lock<std::mutex> lck(buffer_lock);
 
@@ -134,7 +154,7 @@ void submit_samples(washdc_sample_type *samples, unsigned count) {
         if (do_mute)
             sample_buf[write_buf_idx] = 0;
         else
-            sample_buf[write_buf_idx] = *samples++;
+            sample_buf[write_buf_idx] = scale_sample(*samples++);
         write_buf_idx = next_write_buf_idx;
         count--;
     }

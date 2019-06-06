@@ -40,6 +40,7 @@
 #include "hw/arm7/arm7.h"
 #include "hw/sys/holly_intc.h"
 #include "adpcm.h"
+#include "intmath.h"
 
 #include "aica.h"
 
@@ -1671,7 +1672,7 @@ static void aica_process_sample(struct aica *aica) {
             int32_t sample =
                 (int32_t)(int8_t)aica_wave_mem_read_8(chan->addr_cur,
                                                       &aica->mem);
-            sample <<= 8;
+            sample = sat_shift(sample, 8);
 
             // TODO: linear interpolation
             if (!chan->is_muted)
@@ -1771,7 +1772,6 @@ static void aica_process_sample(struct aica *aica) {
         }
     }
 
-    sample_total <<= 8;
     dc_submit_sound_samples(&sample_total, 1);
 }
 
