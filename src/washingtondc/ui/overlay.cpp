@@ -71,8 +71,24 @@ namespace overlay {
 static void show_perf_win(void);
 static void show_aica_win(void);
 static void show_tex_cache_win(void);
+static void show_tex_win(unsigned idx);
 static std::string var_as_str(struct washdc_var const *var);
-static std::vector<GLuint> textures;
+
+/*
+ * This structure represents a texture in the texture-cache which the UI has a
+ * separate copy of
+ */
+struct tex_stat {
+    // OpenGL object that the ui's copy of the texture is
+    GLuint tex_obj;
+
+    // if true then the window for this texture will be shown
+    bool show_window;
+
+    double aspect_ratio;
+};
+
+static std::vector<tex_stat> textures;
 }
 
 void overlay::show(bool do_show) {
@@ -173,6 +189,10 @@ void overlay::draw() {
 
     if (en_tex_cache_win)
         show_tex_cache_win();
+
+    for (unsigned tex_idx = 0; tex_idx < textures.size(); tex_idx++)
+        if (textures.at(tex_idx).show_window)
+            show_tex_win(tex_idx);
 
     if (mute_old != do_mute_audio)
         sound::mute(do_mute_audio);
@@ -283,6 +303,34 @@ static void overlay::show_aica_win(void) {
     ImGui::End();
 }
 
+static void overlay::show_tex_win(unsigned idx) {
+    std::stringstream title_stream;
+    tex_stat const& stat = textures.at(idx);
+
+    title_stream << "texture cache entry " << idx;
+
+    ImGui::Begin(title_stream.str().c_str(), &textures.at(idx).show_window,
+                 ImGuiWindowFlags_NoScrollbar);
+
+    ImVec2 win_sz = ImGui::GetContentRegionAvail();
+    ImVec2 img_sz;
+
+    if (win_sz.x / win_sz.y < stat.aspect_ratio) {
+        // fit to x
+        img_sz.x = win_sz.x;
+        img_sz.y = win_sz.x / stat.aspect_ratio;
+    } else {
+        // fit to y
+        img_sz.y = win_sz.y;
+        img_sz.x = win_sz.y * stat.aspect_ratio;
+    }
+
+    ImGui::Image((ImTextureID)(uintptr_t)stat.tex_obj, img_sz, ImVec2(0,0),
+                 ImVec2(1,1), ImVec4(1,1,1,1), ImVec4(1,1,1,1));
+
+    ImGui::End();
+}
+
 static void overlay::show_tex_cache_win(void) {
     ImGui::Begin("Texture Cache", &en_tex_cache_win);
     ImGui::BeginChild("Scrolling");
@@ -290,8 +338,10 @@ static void overlay::show_tex_cache_win(void) {
     for (unsigned idx = 0; idx < console->texcache.sz; idx++) {
         struct washdc_texinfo texinfo;
         washdc_gameconsole_texinfo(console, idx, &texinfo);
-        if (!texinfo.valid)
+        if (!texinfo.valid) {
+            textures.at(idx).show_window = false;
             continue;
+        }
 
         ImGui::PushID(idx);
 
@@ -308,7 +358,7 @@ static void overlay::show_tex_cache_win(void) {
             }
         }
 
-        glBindTexture(GL_TEXTURE_2D, textures.at(idx));
+        glBindTexture(GL_TEXTURE_2D, textures.at(idx).tex_obj);
 
         unsigned tex_w = 1 << texinfo.w_shift, tex_h = 1 << texinfo.h_shift;
         void *dat = texinfo.tex_dat;
@@ -423,9 +473,12 @@ static void overlay::show_tex_cache_win(void) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-        ImGui::Image((ImTextureID)(uintptr_t)textures.at(idx), ImVec2(64, 64),
-                     ImVec2(0, 0), ImVec2(1,1), ImVec4(1,1,1,1),
-                     ImVec4(1, 1, 1, 1));
+        if (ImGui::ImageButton((ImTextureID)(uintptr_t)textures.at(idx).tex_obj, ImVec2(64, 64),
+                               ImVec2(0, 0), ImVec2(1,1), -1, ImVec4(1,1,1,1),
+                               ImVec4(1, 1, 1, 1))) {
+            textures.at(idx).show_window = true;
+            textures.at(idx).aspect_ratio = (double)tex_w / (double)tex_h;
+        }
 
     reloop:
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -462,11 +515,13 @@ void overlay::init(bool enable_debugger) {
     ui_renderer = std::make_unique<renderer>();
 
     textures.resize(console->texcache.sz);
-    glGenTextures(console->texcache.sz, textures.data());
+    for (tex_stat& stat : textures)
+        glGenTextures(1, &stat.tex_obj);
 }
 
 void overlay::cleanup() {
-    glDeleteTextures(textures.size(), textures.data());
+    for (tex_stat& stat : textures)
+        glDeleteTextures(1, &stat.tex_obj);
 
     ui_renderer.reset();
 
