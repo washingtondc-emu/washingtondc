@@ -1,5 +1,7 @@
 ![WashingtonDC](media/washingtondc_logo_640x320.png)
 
+![GPLv3](media/gplv3-with-text-84x42.png)
+
 http://washemu.org
 
 snickerbockers@washemu.org
