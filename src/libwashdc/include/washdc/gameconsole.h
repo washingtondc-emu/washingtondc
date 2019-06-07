@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-#define WASHDC_VAR_NAME_LEN 16
+#define WASHDC_VAR_NAME_LEN 32
 #define WASHDC_VAR_STR_LEN 32
 
 enum washdc_var_type {
