@@ -86,9 +86,15 @@ struct tex_stat {
     bool show_window;
 
     double aspect_ratio;
+
+    // if true an update is needed
+    bool dirty;
 };
 
+static void update_tex_cache_ent(struct washdc_texinfo *texinfo, tex_stat stat);
+
 static std::vector<tex_stat> textures;
+
 }
 
 void overlay::show(bool do_show) {
@@ -187,12 +193,29 @@ void overlay::draw() {
     if (en_aica_win)
         show_aica_win();
 
+    for (tex_stat& stat : textures)
+        stat.dirty = true;
+
     if (en_tex_cache_win)
         show_tex_cache_win();
 
-    for (unsigned tex_idx = 0; tex_idx < textures.size(); tex_idx++)
-        if (textures.at(tex_idx).show_window)
+    for (unsigned tex_idx = 0; tex_idx < textures.size(); tex_idx++) {
+        if (textures.at(tex_idx).show_window) {
+            if (textures.at(tex_idx).dirty) {
+                struct washdc_texinfo texinfo;
+                textures.at(tex_idx).dirty = false;
+                washdc_gameconsole_texinfo(console, tex_idx, &texinfo);
+                if (!texinfo.valid) {
+                    textures.at(tex_idx).show_window = false;
+                    continue;
+                }
+                update_tex_cache_ent(&texinfo, textures.at(tex_idx));
+                free(texinfo.tex_dat);
+            }
+
             show_tex_win(tex_idx);
+        }
+    }
 
     if (mute_old != do_mute_audio)
         sound::mute(do_mute_audio);
@@ -331,12 +354,135 @@ static void overlay::show_tex_win(unsigned idx) {
     ImGui::End();
 }
 
+static void
+overlay::update_tex_cache_ent(struct washdc_texinfo *texinfo,
+                              struct overlay::tex_stat stat) {
+    glBindTexture(GL_TEXTURE_2D, stat.tex_obj);
+
+    unsigned tex_w = 1 << texinfo->w_shift, tex_h = 1 << texinfo->h_shift;
+    void *dat = texinfo->tex_dat;
+
+    int color_tp_png;
+    unsigned n_colors;
+    unsigned pvr2_pix_size;
+    GLenum fmt;
+    std::vector<uint8_t> dat_conv;
+    switch (texinfo->fmt) {
+    case WASHDC_TEX_FMT_ARGB_1555:
+    case WASHDC_TEX_FMT_ARGB_4444:
+        n_colors = 4;
+        pvr2_pix_size = 2;
+        fmt = GL_RGBA;
+        break;
+    case WASHDC_TEX_FMT_RGB_565:
+        n_colors = 3;
+        pvr2_pix_size = 2;
+        fmt = GL_RGB;
+        break;
+    case WASHDC_TEX_FMT_ARGB_8888:
+        n_colors = 4;
+        pvr2_pix_size = 4;
+        fmt = GL_RGBA;
+        break;
+    case WASHDC_TEX_FMT_YUV_422:
+        fmt = GL_RGB;
+        n_colors = 3;
+        pvr2_pix_size = 3;
+        dat_conv.resize(n_colors * tex_w * tex_h);
+        washdc_conv_yuv422_rgb888(dat_conv.data(), dat, tex_w, tex_h);
+        dat = dat_conv.data();
+        fmt = GL_RGB;
+        break;
+    default:
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return;
+    }
+
+    std::vector<uint8_t> tmp_pix_buf(tex_w * tex_h * n_colors);
+
+    unsigned row, col;
+    for (row = 0; row < tex_h; row++) {
+        uint8_t *cur_row = tmp_pix_buf.data() + tex_w * n_colors * row;
+
+        for (col = 0; col < tex_w; col++) {
+            unsigned pix_idx = row * tex_w + col;
+            uint8_t src_pix[4];
+            unsigned red, green, blue, alpha;
+
+            memcpy(src_pix, ((uint8_t*)dat) + pix_idx * pvr2_pix_size, sizeof(src_pix));
+
+            switch (texinfo->fmt) {
+            case WASHDC_TEX_FMT_ARGB_1555:
+                alpha = src_pix[1] & 0x80 ? 255 : 0;
+                red = (src_pix[1] & 0x7c) >> 2;
+                green = ((src_pix[1] & 0x03) << 3) | ((src_pix[0] & 0xe0) >> 5);
+                blue = src_pix[0] & 0x1f;
+
+                red <<= 3;
+                green <<= 3;
+                blue <<= 3;
+                break;
+            case WASHDC_TEX_FMT_ARGB_4444:
+                blue = src_pix[0] & 0x0f;
+                green = (src_pix[0] & 0xf0) >> 4;
+                red = src_pix[1] & 0x0f;
+                alpha = (src_pix[1] & 0xf0) >> 4;
+
+                alpha <<= 4;
+                red <<= 4;
+                green <<= 4;
+                blue <<= 4;
+                break;
+            case WASHDC_TEX_FMT_RGB_565:
+                blue = src_pix[0] & 0x1f;
+                green = ((src_pix[0] & 0xe0) >> 5) | ((src_pix[1] & 0x7) << 3);
+                red = (src_pix[1] & 0xf1) >> 3;
+
+                red <<= 3;
+                green <<= 2;
+                blue <<= 3;
+                break;
+            case WASHDC_TEX_FMT_YUV_422:
+                red = src_pix[0];
+                green = src_pix[1];
+                blue = src_pix[2];
+                break;
+            case WASHDC_TEX_FMT_ARGB_8888:
+                alpha = src_pix[0];
+                red = src_pix[1];
+                green = src_pix[2];
+                blue = src_pix[3];
+                break;
+            default:
+                glBindTexture(GL_TEXTURE_2D, 0);
+                return;
+            }
+
+            cur_row[n_colors * col] = red;
+            cur_row[n_colors * col + 1] = green;
+            cur_row[n_colors * col + 2] = blue;
+            if (n_colors == 4)
+                cur_row[n_colors * col + 3] = alpha;
+        }
+    }
+
+    glTexImage2D(GL_TEXTURE_2D, 0, fmt, tex_w, tex_h, 0, fmt, GL_UNSIGNED_BYTE, tmp_pix_buf.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+
 static void overlay::show_tex_cache_win(void) {
     ImGui::Begin("Texture Cache", &en_tex_cache_win);
     ImGui::BeginChild("Scrolling");
 
     for (unsigned idx = 0; idx < console->texcache.sz; idx++) {
         struct washdc_texinfo texinfo;
+
         washdc_gameconsole_texinfo(console, idx, &texinfo);
         if (!texinfo.valid) {
             textures.at(idx).show_window = false;
@@ -358,130 +504,18 @@ static void overlay::show_tex_cache_win(void) {
             }
         }
 
-        glBindTexture(GL_TEXTURE_2D, textures.at(idx).tex_obj);
-
-        unsigned tex_w = 1 << texinfo.w_shift, tex_h = 1 << texinfo.h_shift;
-        void *dat = texinfo.tex_dat;
-
-        int color_tp_png;
-        unsigned n_colors;
-        unsigned pvr2_pix_size;
-        GLenum fmt;
-        std::vector<uint8_t> dat_conv;
-        switch (texinfo.fmt) {
-        case WASHDC_TEX_FMT_ARGB_1555:
-        case WASHDC_TEX_FMT_ARGB_4444:
-            n_colors = 4;
-            pvr2_pix_size = 2;
-            fmt = GL_RGBA;
-            break;
-        case WASHDC_TEX_FMT_RGB_565:
-            n_colors = 3;
-            pvr2_pix_size = 2;
-            fmt = GL_RGB;
-            break;
-        case WASHDC_TEX_FMT_ARGB_8888:
-            n_colors = 4;
-            pvr2_pix_size = 4;
-            fmt = GL_RGBA;
-            break;
-        case WASHDC_TEX_FMT_YUV_422:
-            fmt = GL_RGB;
-            n_colors = 3;
-            pvr2_pix_size = 3;
-            dat_conv.resize(n_colors * tex_w * tex_h);
-            washdc_conv_yuv422_rgb888(dat_conv.data(), dat, tex_w, tex_h);
-            dat = dat_conv.data();
-            fmt = GL_RGB;
-            break;
-        default:
-            free(texinfo.tex_dat);
-            ImGui::PopID();
-            continue;
+        if (textures.at(idx).dirty) {
+            update_tex_cache_ent(&texinfo, textures.at(idx));
+            textures.at(idx).dirty = false;
         }
-
-        std::vector<uint8_t> tmp_pix_buf(tex_w * tex_h * n_colors);
-
-        unsigned row, col;
-        for (row = 0; row < tex_h; row++) {
-            uint8_t *cur_row = tmp_pix_buf.data() + tex_w * n_colors * row;
-
-            for (col = 0; col < tex_w; col++) {
-                unsigned pix_idx = row * tex_w + col;
-                uint8_t src_pix[4];
-                unsigned red, green, blue, alpha;
-
-                memcpy(src_pix, ((uint8_t*)dat) + pix_idx * pvr2_pix_size, sizeof(src_pix));
-
-                switch (texinfo.fmt) {
-                case WASHDC_TEX_FMT_ARGB_1555:
-                    alpha = src_pix[1] & 0x80 ? 255 : 0;
-                    red = (src_pix[1] & 0x7c) >> 2;
-                    green = ((src_pix[1] & 0x03) << 3) | ((src_pix[0] & 0xe0) >> 5);
-                    blue = src_pix[0] & 0x1f;
-
-                    red <<= 3;
-                    green <<= 3;
-                    blue <<= 3;
-                    break;
-                case WASHDC_TEX_FMT_ARGB_4444:
-                    blue = src_pix[0] & 0x0f;
-                    green = (src_pix[0] & 0xf0) >> 4;
-                    red = src_pix[1] & 0x0f;
-                    alpha = (src_pix[1] & 0xf0) >> 4;
-
-                    alpha <<= 4;
-                    red <<= 4;
-                    green <<= 4;
-                    blue <<= 4;
-                    break;
-                case WASHDC_TEX_FMT_RGB_565:
-                    blue = src_pix[0] & 0x1f;
-                    green = ((src_pix[0] & 0xe0) >> 5) | ((src_pix[1] & 0x7) << 3);
-                    red = (src_pix[1] & 0xf1) >> 3;
-
-                    red <<= 3;
-                    green <<= 2;
-                    blue <<= 3;
-                    break;
-                case WASHDC_TEX_FMT_YUV_422:
-                    red = src_pix[0];
-                    green = src_pix[1];
-                    blue = src_pix[2];
-                    break;
-                case WASHDC_TEX_FMT_ARGB_8888:
-                    alpha = src_pix[0];
-                    red = src_pix[1];
-                    green = src_pix[2];
-                    blue = src_pix[3];
-                    break;
-                default:
-                    goto reloop;
-                }
-
-                cur_row[n_colors * col] = red;
-                cur_row[n_colors * col + 1] = green;
-                cur_row[n_colors * col + 2] = blue;
-                if (n_colors == 4)
-                    cur_row[n_colors * col + 3] = alpha;
-            }
-        }
-
-        glTexImage2D(GL_TEXTURE_2D, 0, fmt, tex_w, tex_h, 0, fmt, GL_UNSIGNED_BYTE, tmp_pix_buf.data());
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         if (ImGui::ImageButton((ImTextureID)(uintptr_t)textures.at(idx).tex_obj, ImVec2(64, 64),
                                ImVec2(0, 0), ImVec2(1,1), -1, ImVec4(1,1,1,1),
                                ImVec4(1, 1, 1, 1))) {
             textures.at(idx).show_window = true;
+            unsigned tex_w = 1 << texinfo.w_shift, tex_h = 1 << texinfo.h_shift;
             textures.at(idx).aspect_ratio = (double)tex_w / (double)tex_h;
         }
-
-    reloop:
-        glBindTexture(GL_TEXTURE_2D, 0);
 
         free(texinfo.tex_dat);
         ImGui::PopID();
