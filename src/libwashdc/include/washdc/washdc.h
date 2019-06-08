@@ -207,8 +207,24 @@ enum washdc_pvr2_poly_group {
 struct washdc_pvr2_stat {
     unsigned poly_count[WASHDC_PVR2_POLY_GROUP_COUNT];
 
+    /*
+     * number of times textures get transmitted to the gfx infra.
+     * this includes both overwritten textures and new textures that aren't
+     * overwriting anything that already exists.
+     */
     unsigned tex_xmit_count;
+
+    // number of times (non-paletted) textures get overwritten
     unsigned tex_overwrite_count;
+
+    /*
+     * number of times paletted textures get overwritten
+     *
+     * the reason why this is separate from tex_overwrite_count is that this
+     * type of overwrite is done through a different code-path so it makes
+     * sense to track them separately.  Otherwise they are redundant.
+     */
+    unsigned pal_tex_overwrite_count;
 };
 
 void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat);

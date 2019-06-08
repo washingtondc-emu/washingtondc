@@ -280,6 +280,8 @@ static void overlay::show_perf_win(void) {
                 stat.tex_xmit_count);
     ImGui::Text("%u texture overwrites",
                 stat.tex_overwrite_count);
+    ImGui::Text("%u paletted texture overwrites",
+                stat.pal_tex_overwrite_count);
     ImGui::End();
 }
 

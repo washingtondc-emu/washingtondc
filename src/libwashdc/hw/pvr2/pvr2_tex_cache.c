@@ -368,8 +368,10 @@ void pvr2_tex_cache_notify_palette_tp_change(struct pvr2 *pvr2) {
         struct pvr2_tex *tex = tex_cache + idx;
         if (tex->state == PVR2_TEX_READY &&
             (tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
-             tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL))
+             tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL)) {
+            pvr2->stat.persistent_counters.pal_tex_overwrite_count++;
             tex->state = PVR2_TEX_DIRTY;
+        }
     }
 }
 
