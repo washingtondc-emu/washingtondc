@@ -278,10 +278,12 @@ static void overlay::show_perf_win(void) {
                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
     ImGui::Text("%u texture transmissions",
                 stat.tex_xmit_count);
-    ImGui::Text("%u texture overwrites",
-                stat.tex_overwrite_count);
-    ImGui::Text("%u paletted texture overwrites",
-                stat.pal_tex_overwrite_count);
+    ImGui::Text("%u texture invalidates",
+                stat.tex_invalidate_count);
+    ImGui::Text("%u paletted texture invalidates",
+                stat.pal_tex_invalidate_count);
+    ImGui::Text("%u texture overwrites", stat.texture_overwrite_count);
+    ImGui::Text("%u fresh texture uploads", stat.fresh_texture_upload_count);
     ImGui::End();
 }
 

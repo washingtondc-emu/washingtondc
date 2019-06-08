@@ -214,17 +214,29 @@ struct washdc_pvr2_stat {
      */
     unsigned tex_xmit_count;
 
-    // number of times (non-paletted) textures get overwritten
-    unsigned tex_overwrite_count;
+    // number of times (non-paletted) textures get invalidated
+    unsigned tex_invalidate_count;
 
     /*
-     * number of times paletted textures get overwritten
+     * number of times paletted textures get invalidated
      *
-     * the reason why this is separate from tex_overwrite_count is that this
+     * the reason why this is separate from tex_invalidate_count is that this
      * type of overwrite is done through a different code-path so it makes
      * sense to track them separately.  Otherwise they are redundant.
      */
-    unsigned pal_tex_overwrite_count;
+    unsigned pal_tex_invalidate_count;
+
+    /*
+     * number of times a texture gets kicked out of the cache to make room
+     * for another one
+     */
+    unsigned texture_overwrite_count;
+
+    /*
+     * number of times a new texture gets uploaded into an empty slot in
+     * the texture cache.
+     */
+    unsigned fresh_texture_upload_count;
 };
 
 void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat);

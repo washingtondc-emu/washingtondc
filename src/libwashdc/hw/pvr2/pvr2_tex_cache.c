@@ -232,6 +232,9 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
 
     if (idx >= PVR2_TEX_CACHE_SIZE) {
         // kick the oldest tex out of the cache to make room
+
+        pvr2->stat.persistent_counters.texture_overwrite_count++;
+
         if (oldest_tex) {
             tex = oldest_tex;
         } else {
@@ -246,6 +249,8 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
             rend_exec_il(&cmd, 1);
             pvr2_free_gfx_obj(tex->obj_no);
         }
+    } else {
+        pvr2->stat.persistent_counters.fresh_texture_upload_count++;
     }
 
     tex->meta.addr_first = addr;
@@ -369,7 +374,7 @@ void pvr2_tex_cache_notify_palette_tp_change(struct pvr2 *pvr2) {
         if (tex->state == PVR2_TEX_READY &&
             (tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
              tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL)) {
-            pvr2->stat.persistent_counters.pal_tex_overwrite_count++;
+            pvr2->stat.persistent_counters.pal_tex_invalidate_count++;
             tex->state = PVR2_TEX_DIRTY;
         }
     }
@@ -753,7 +758,7 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
             unsigned last_page = tex_in->meta.addr_last / PVR2_TEX_PAGE_SIZE;
             while (page <= last_page) {
                 if (page_stamps[page++] > tex_in->last_update) {
-                    pvr2->stat.persistent_counters.tex_overwrite_count++;
+                    pvr2->stat.persistent_counters.tex_invalidate_count++;
                     need_update = true;
                     break;
                 }
