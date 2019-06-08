@@ -774,6 +774,8 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
              * cache.
              */
             if (tex_in->frame_stamp_last_used != cur_frame_stamp) {
+                pvr2->stat.persistent_counters.tex_eviction_count++;
+
                 tex_in->state = PVR2_TEX_INVALID;
 
                 cmd.op = GFX_IL_UNBIND_TEX;

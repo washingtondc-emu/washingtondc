@@ -237,6 +237,17 @@ struct washdc_pvr2_stat {
      * the texture cache.
      */
     unsigned fresh_texture_upload_count;
+
+    /*
+     * number of times a texture got kicked out of the cache because it got
+     * invalidated but it wasn't immediately needed so we just ignored it.
+     *
+     * For the sake of simplicity, this counter is included in the
+     * tex_xmit_count even though it probably shouldn't since the texture
+     * doesn't get transmitted.  It also overlaps with tex_invalidate_count
+     * since that's generally how textures end up in this situation.
+     */
+    unsigned tex_eviction_count;
 };
 
 void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat);

@@ -217,6 +217,8 @@ void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat) {
         src.persistent_counters.texture_overwrite_count;
     stat->fresh_texture_upload_count =
         src.persistent_counters.fresh_texture_upload_count;
+    stat->tex_eviction_count =
+        src.persistent_counters.tex_eviction_count;
 }
 
 void washdc_pause(void) {

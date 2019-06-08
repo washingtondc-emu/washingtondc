@@ -284,6 +284,7 @@ static void overlay::show_perf_win(void) {
                 stat.pal_tex_invalidate_count);
     ImGui::Text("%u texture overwrites", stat.texture_overwrite_count);
     ImGui::Text("%u fresh texture uploads", stat.fresh_texture_upload_count);
+    ImGui::Text("%u texture cache evictions", stat.tex_eviction_count);
     ImGui::End();
 }
 
