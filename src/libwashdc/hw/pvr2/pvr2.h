@@ -45,6 +45,7 @@ struct pvr2_stat {
     // performance counters that don't get reset ever
     struct {
         unsigned tex_xmit_count;
+        unsigned tex_overwrite_count;
     } persistent_counters;
 };
 

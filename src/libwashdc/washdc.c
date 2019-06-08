@@ -210,6 +210,7 @@ void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat) {
         src.per_frame_counters.poly_count[DISPLAY_LIST_PUNCH_THROUGH];
 
     stat->tex_xmit_count = src.persistent_counters.tex_xmit_count;
+    stat->tex_overwrite_count = src.persistent_counters.tex_overwrite_count;
 }
 
 void washdc_pause(void) {

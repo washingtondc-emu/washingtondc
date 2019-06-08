@@ -751,6 +751,7 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
             unsigned last_page = tex_in->meta.addr_last / PVR2_TEX_PAGE_SIZE;
             while (page <= last_page) {
                 if (page_stamps[page++] > tex_in->last_update) {
+                    pvr2->stat.persistent_counters.tex_overwrite_count++;
                     need_update = true;
                     break;
                 }
