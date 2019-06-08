@@ -47,7 +47,7 @@ static const int8_t ff_adpcm_yamaha_difflookup[] = {
     -1, -3, -5, -7, -9, -11, -13, -15
 };
 
-static inline int16_t adpcm_yamaha_expand_nibble(struct aica_chan *c, uint8_t nibble)
+static inline int32_t adpcm_yamaha_expand_nibble(struct aica_chan *c, uint8_t nibble)
 {
     if(!c->step) {
         c->predictor = 0;
@@ -56,11 +56,6 @@ static inline int16_t adpcm_yamaha_expand_nibble(struct aica_chan *c, uint8_t ni
 
     c->predictor += (c->step * ff_adpcm_yamaha_difflookup[nibble]) / 8;
     c->step = (c->step * ff_adpcm_yamaha_indexscale[nibble]) >> 8;
-
-    /* if (c->predictor < INT16_MIN) */
-    /*     c->predictor = INT16_MIN; */
-    /* else if (c->predictor < INT16_MAX) */
-    /*     c->predictor = INT16_MAX; */
 
     if (c->step < 127)
         c->step = 127;

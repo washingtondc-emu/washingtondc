@@ -1694,8 +1694,7 @@ static void aica_process_sample(struct aica *aica) {
                 else
                     sample &= 0xf;
 
-                chan->adpcm_sample =
-                    (int32_t)adpcm_yamaha_expand_nibble(chan, sample);
+                chan->adpcm_sample = adpcm_yamaha_expand_nibble(chan, sample);
                 chan->adpcm_next_step = false;
             }
 
