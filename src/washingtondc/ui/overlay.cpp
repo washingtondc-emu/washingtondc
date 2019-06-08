@@ -276,6 +276,8 @@ static void overlay::show_perf_win(void) {
                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD]);
     ImGui::Text("%u punch-through polygons",
                 stat.poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
+    ImGui::Text("%u texture transmissions",
+                stat.tex_xmit_count);
     ImGui::End();
 }
 

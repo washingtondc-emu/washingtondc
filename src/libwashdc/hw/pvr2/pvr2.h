@@ -37,7 +37,15 @@
 #define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
 
 struct pvr2_stat {
-    unsigned poly_count[DISPLAY_LIST_COUNT];
+    // performance counters that get reset on a per-frame basis
+    struct {
+        unsigned poly_count[DISPLAY_LIST_COUNT];
+    } per_frame_counters;
+
+    // performance counters that don't get reset ever
+    struct {
+        unsigned tex_xmit_count;
+    } persistent_counters;
 };
 
 struct pvr2 {

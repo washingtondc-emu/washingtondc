@@ -206,6 +206,8 @@ enum washdc_pvr2_poly_group {
 
 struct washdc_pvr2_stat {
     unsigned poly_count[WASHDC_PVR2_POLY_GROUP_COUNT];
+
+    unsigned tex_xmit_count;
 };
 
 void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat);

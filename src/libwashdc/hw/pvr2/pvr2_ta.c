@@ -1672,7 +1672,7 @@ static void finish_poly_group(struct pvr2 *pvr2, enum display_list_type disp_lis
     pvr2_ta_push_gfx_il(pvr2, cmd);
 
     unsigned n_verts = ta->pvr2_ta_vert_buf_count - ta->pvr2_ta_vert_cur_group;
-    pvr2->stat.poly_count[disp_list] += n_verts / 3;
+    pvr2->stat.per_frame_counters.poly_count[disp_list] += n_verts / 3;
 
     cmd.op = GFX_IL_DRAW_ARRAY;
     cmd.arg.draw_array.n_verts = n_verts;
@@ -1712,7 +1712,8 @@ static void render_frame_init(struct pvr2 *pvr2) {
     memset(ta->list_submitted, 0, sizeof(ta->list_submitted));
     ta->cur_list = DISPLAY_LIST_NONE;
 
-    memset(&pvr2->stat, 0, sizeof(pvr2->stat));
+    memset(&pvr2->stat.per_frame_counters, 0,
+           sizeof(pvr2->stat.per_frame_counters));
 }
 
 unsigned get_cur_frame_stamp(struct pvr2 *pvr2) {

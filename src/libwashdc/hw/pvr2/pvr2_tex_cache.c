@@ -758,6 +758,8 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
         }
 
         if (need_update) {
+            pvr2->stat.persistent_counters.tex_xmit_count++;
+
             /*
              * If the texture has been written to this frame but it is not
              * actively in use then tell the gfx system to evict it from the
