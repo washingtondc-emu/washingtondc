@@ -1723,7 +1723,17 @@ static void aica_process_sample(struct aica *aica) {
 
             if (chan->loop_en) {
                 chan->sample_pos = chan->loop_start;
-                chan->addr_cur = chan->addr_start + chan->loop_start * 2;
+                switch (chan->fmt) {
+                case AICA_FMT_16_BIT_SIGNED:
+                    chan->addr_cur = chan->addr_start + chan->loop_start * 2;
+                    break;
+                case AICA_FMT_8_BIT_SIGNED:
+                    chan->addr_cur = chan->addr_start + chan->loop_start;
+                    break;
+                default:
+                    // 4-bit ADPCM
+                    chan->addr_cur = chan->addr_start + chan->loop_start / 2;
+                }
             } else {
                 chan->sample_pos = chan->loop_end;
                 chan->addr_cur = chan->loop_end;
