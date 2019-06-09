@@ -44,31 +44,6 @@ option(JIT_OPTIMIZE "enable optimization passes on the JIT that dont actually wo
 option(ENABLE_TCP_SERIAL "enable serial server emulator over tcp port 1998" ON)
 option(USE_LIBEVENT "use libevent for asynchronous I/O processing" ON)
 
-# libpng version 1.6.34
-set(libpng_path "${CMAKE_SOURCE_DIR}/external/libpng")
-add_library(png "${libpng_path}/png.h"
-                "${libpng_path}/pngconf.h"
-                "${libpng_path}/pngdebug.h"
-                "${libpng_path}/pnginfo.h"
-                "${libpng_path}/pnglibconf.h"
-                "${libpng_path}/pngpriv.h"
-                "${libpng_path}/pngstruct.h"
-                "${libpng_path}/png.c"
-                "${libpng_path}/pngerror.c"
-                "${libpng_path}/pngget.c"
-                "${libpng_path}/pngmem.c"
-                "${libpng_path}/pngpread.c"
-                "${libpng_path}/pngread.c"
-                "${libpng_path}/pngrio.c"
-                "${libpng_path}/pngrtran.c"
-                "${libpng_path}/pngrutil.c"
-                "${libpng_path}/pngset.c"
-                "${libpng_path}/pngtrans.c"
-                "${libpng_path}/pngwio.c"
-                "${libpng_path}/pngwrite.c"
-                "${libpng_path}/pngwtran.c"
-                "${libpng_path}/pngwutil.c")
-
 # zlib version 1.2.11
 set(zlib_path "${CMAKE_SOURCE_DIR}/external/zlib")
 add_library(zlib "${zlib_path}/zlib.h"
@@ -97,6 +72,33 @@ add_library(zlib "${zlib_path}/zlib.h"
                  "${zlib_path}/trees.c"
                  "${zlib_path}/uncompr.c"
                  "${zlib_path}/zutil.c")
+
+# libpng version 1.6.34
+set(libpng_path "${CMAKE_SOURCE_DIR}/external/libpng")
+add_library(png "${libpng_path}/png.h"
+                "${libpng_path}/pngconf.h"
+                "${libpng_path}/pngdebug.h"
+                "${libpng_path}/pnginfo.h"
+                "${libpng_path}/pnglibconf.h"
+                "${libpng_path}/pngpriv.h"
+                "${libpng_path}/pngstruct.h"
+                "${libpng_path}/png.c"
+                "${libpng_path}/pngerror.c"
+                "${libpng_path}/pngget.c"
+                "${libpng_path}/pngmem.c"
+                "${libpng_path}/pngpread.c"
+                "${libpng_path}/pngread.c"
+                "${libpng_path}/pngrio.c"
+                "${libpng_path}/pngrtran.c"
+                "${libpng_path}/pngrutil.c"
+                "${libpng_path}/pngset.c"
+                "${libpng_path}/pngtrans.c"
+                "${libpng_path}/pngwio.c"
+                "${libpng_path}/pngwrite.c"
+                "${libpng_path}/pngwtran.c"
+                "${libpng_path}/pngwutil.c")
+
+target_include_directories(png PRIVATE "${zlib_path}")
 
 # glew version 2.1.0
 set(glew_path "${CMAKE_SOURCE_DIR}/external/glew")
