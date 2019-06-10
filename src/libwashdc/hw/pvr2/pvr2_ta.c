@@ -218,6 +218,8 @@ static void pvr2_pt_complete_int_event_handler(struct SchedEvent *event);
 void pvr2_ta_init(struct pvr2 *pvr2) {
     struct pvr2_ta *ta = &pvr2->ta;
 
+    ta->pt_alpha_ref = 0xff;
+
     ta->pvr2_render_complete_int_event.handler =
         pvr2_render_complete_int_event_handler;
     ta->pvr2_op_complete_int_event.handler =
@@ -1637,6 +1639,10 @@ static void finish_poly_group(struct pvr2 *pvr2, enum display_list_type disp_lis
 
     cmd.arg.set_rend_param.param.tex_inst = ta->hdr.tex_inst;
     cmd.arg.set_rend_param.param.tex_filter = ta->hdr.tex_filter;
+
+    cmd.arg.set_rend_param.param.pt_mode =
+        (disp_list == DISPLAY_LIST_PUNCH_THROUGH);
+    cmd.arg.set_rend_param.param.pt_ref = ta->pt_alpha_ref & 0xff;
 
     // enqueue the configuration command
     pvr2_ta_push_gfx_il(pvr2, cmd);

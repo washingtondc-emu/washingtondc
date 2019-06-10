@@ -123,8 +123,7 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     case PVR2_PT_ALPHA_REF:
-        // let it go through silently
-        reg_backing[PVR2_PT_ALPHA_REF] = val;
+        pvr2->ta.pt_alpha_ref = val;
         break;
     case PVR2_STARTRENDER:
         reg_backing[PVR2_STARTRENDER] = val;
@@ -318,8 +317,7 @@ pvr2_reg_do_read(struct pvr2 *pvr2, unsigned idx) {
     PVR2_REG_READ_CASE(PVR2_TA_YUV_TEX_CTRL);
     PVR2_REG_READ_CASE(PVR2_TA_NEXT_OPB_INIT);
     case PVR2_PT_ALPHA_REF:
-        // let it go through silently
-        return reg_backing[PVR2_PT_ALPHA_REF];
+        return pvr2->ta.pt_alpha_ref;
     case PVR2_ID:
         /* hardcoded hardware ID */
         return 0x17fd11db;

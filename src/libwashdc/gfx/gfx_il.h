@@ -110,6 +110,10 @@ struct gfx_rend_param {
 
     bool enable_depth_writes;
     enum Pvr2DepthFunc depth_func;
+
+    // punch-through polygon mode
+    bool pt_mode;
+    unsigned pt_ref; // 0-255
 };
 
 struct gfx_framebuffer {

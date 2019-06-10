@@ -46,9 +46,6 @@
 #define OFFS_COLOR_SLOT        3
 #define TEX_COORD_SLOT         4
 
-static GLuint bound_tex_slot;
-static GLuint tex_inst_slot;
-
 static struct shader pvr_ta_shader;
 static struct shader pvr_ta_tex_shader;
 
@@ -288,6 +285,12 @@ static char const * const pvr2_ta_frag_glsl =
     "uniform int tex_inst;\n"
     "#endif\n"
 
+    /*
+     * TODO: use the pre-processor to only do the Punch-through test when we
+     * actually have to
+     */
+    "uniform float pt_alpha_ref;\n"
+
     "void main() {\n"
     "#ifdef TEX_ENABLE\n"
     "    vec4 tex_color = texture(bound_tex, st);\n"
@@ -320,8 +323,18 @@ static char const * const pvr2_ta_frag_glsl =
     "#else\n"
     "    color = vert_base_color;\n"
     "#endif\n"
+    "    if (color.a < pt_alpha_ref)\n"
+    "        discard;\n"
     "}\n";
 
+static struct shader_slots {
+    // only valid for pvr_ta_tex
+    GLuint bound_tex_slot;
+    GLuint tex_inst_slot;
+
+    // valid for all shaders
+    GLuint pt_alpha_ref_slot;
+} pvr_ta_tex_slots, pvr_ta_no_color_slots, pvr_ta_slots;
 
 static void opengl_render_init(void) {
     opengl_video_output_init();
@@ -355,10 +368,17 @@ static void opengl_render_init(void) {
                                    "#define COLOR_DISABLE\n");
     shader_link(&pvr_ta_no_color_shader);
 
-    bound_tex_slot = glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj,
-                                          "bound_tex");
-    tex_inst_slot = glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj,
-                                         "tex_inst");
+    pvr_ta_tex_slots.bound_tex_slot =
+        glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj, "bound_tex");
+    pvr_ta_tex_slots.tex_inst_slot =
+        glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj, "tex_inst");
+
+    pvr_ta_tex_slots.pt_alpha_ref_slot =
+        glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj, "pt_alpha_ref");
+    pvr_ta_slots.pt_alpha_ref_slot =
+        glGetUniformLocation(pvr_ta_shader.shader_prog_obj, "pt_alpha_ref");
+    pvr_ta_no_color_slots.pt_alpha_ref_slot =
+        glGetUniformLocation(pvr_ta_no_color_shader.shader_prog_obj, "pt_alpha_ref");
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -615,13 +635,20 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex_wrap_mode_gl[0]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex_wrap_mode_gl[1]);
 
-        glUniform1i(bound_tex_slot, 0);
-        glUniform1i(tex_inst_slot, param->tex_inst);
+        glUniform1i(pvr_ta_tex_slots.bound_tex_slot, 0);
+        glUniform1i(pvr_ta_tex_slots.tex_inst_slot, param->tex_inst);
+        glUniform1f(pvr_ta_tex_slots.pt_alpha_ref_slot,
+                    param->pt_mode ? param->pt_ref / 255.0f : 0.0f);
+
         glActiveTexture(GL_TEXTURE0);
     } else if (rend_cfg.color_enable) {
         glUseProgram(pvr_ta_shader.shader_prog_obj);
+        glUniform1f(pvr_ta_slots.pt_alpha_ref_slot,
+                    param->pt_mode ? param->pt_ref / 255.0f : 0.0f);
     } else {
         glUseProgram(pvr_ta_no_color_shader.shader_prog_obj);
+        glUniform1f(pvr_ta_no_color_slots.pt_alpha_ref_slot,
+                    param->pt_mode ? param->pt_ref / 255.0f : 0.0f);
     }
 
     glBlendFunc(src_blend_factors[(unsigned)param->src_blend_factor],

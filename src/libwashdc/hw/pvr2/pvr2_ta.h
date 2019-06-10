@@ -324,6 +324,8 @@ struct pvr2_ta {
     float sprite_base_color_rgba[4];
     float sprite_offs_color_rgba[4];
 
+    unsigned pt_alpha_ref;
+
     struct SchedEvent pvr2_render_complete_int_event,
         pvr2_op_complete_int_event,
         pvr2_op_mod_complete_int_event,
