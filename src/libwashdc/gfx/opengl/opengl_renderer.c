@@ -37,25 +37,17 @@
 #include "opengl_output.h"
 #include "opengl_target.h"
 #include "washdc/gfx/gl/shader.h"
+#include "shader_cache.h"
 
 #include "opengl_renderer.h"
 
 #define POSITION_SLOT          0
-#define TRANS_MAT_SLOT         1
-#define BASE_COLOR_SLOT        2
-#define OFFS_COLOR_SLOT        3
-#define TEX_COORD_SLOT         4
+#define BASE_COLOR_SLOT        1
+#define OFFS_COLOR_SLOT        2
+#define TEX_COORD_SLOT         3
 
-static struct shader pvr_ta_shader;
-static struct shader pvr_ta_tex_shader;
-
-/*
- * special shader for wireframe mode that ignores vertex colors and textures
- * TODO: this shader also ignores textures.  This is not desirable since
- * textures are a separate config, but ultimately it's not that big of a deal
- * since wireframe mode always disables textures anyways
- */
-static struct shader pvr_ta_no_color_shader;
+static struct shader_cache shader_cache;
+static GLint trans_mat_slot = -1;
 
 static GLuint vbo, vao;
 
@@ -196,16 +188,15 @@ struct rend_if const opengl_rend_if = {
 };
 
 static char const * const pvr2_ta_vert_glsl =
-    "#extension GL_ARB_explicit_uniform_location : enable\n"
-
     "layout (location = 0) in vec3 vert_pos;\n"
-    "layout (location = 1) uniform mat4 trans_mat;\n"
-    "layout (location = 2) in vec4 base_color;\n"
-    "layout (location = 3) in vec4 offs_color;\n"
+    "layout (location = 1) in vec4 base_color;\n"
+    "layout (location = 2) in vec4 offs_color;\n"
 
     "#ifdef TEX_ENABLE\n"
-    "layout (location = 4) in vec2 tex_coord_in;\n"
+    "layout (location = 3) in vec2 tex_coord_in;\n"
     "#endif\n"
+
+    "uniform mat4 trans_mat;\n"
 
     "out vec4 vert_base_color, vert_offs_color;\n"
     "#ifdef TEX_ENABLE\n"
@@ -260,12 +251,12 @@ static char const * const pvr2_ta_vert_glsl =
     "}\n"
 
     "void color_transform() {\n"
-    "#ifdef COLOR_DISABLE\n"
-    "    vert_base_color = vec4(1.0, 1.0, 1.0, 1.0);\n"
-    "    vert_offs_color = vec4(0.0, 0.0, 0.0, 0.0);\n"
-    "#else\n"
+    "#ifdef COLOR_ENABLE\n"
     "    vert_base_color = base_color;\n"
     "    vert_offs_color = offs_color;\n"
+    "#else\n"
+    "    vert_base_color = vec4(1.0, 1.0, 1.0, 1.0);\n"
+    "    vert_offs_color = vec4(0.0, 0.0, 0.0, 0.0);\n"
     "#endif\n"
     "}\n"
 
@@ -327,14 +318,48 @@ static char const * const pvr2_ta_frag_glsl =
     "        discard;\n"
     "}\n";
 
-static struct shader_slots {
-    // only valid for pvr_ta_tex
-    GLuint bound_tex_slot;
-    GLuint tex_inst_slot;
+static struct shader_cache_ent* create_shader(shader_key key) {
+    char const *preamble;
+    bool tex_en = (bool)(key & SHADER_KEY_TEX_ENABLE_BIT);
+    bool color_en = (bool)(key & SHADER_KEY_COLOR_ENABLE_BIT);
 
-    // valid for all shaders
-    GLuint pt_alpha_ref_slot;
-} pvr_ta_tex_slots, pvr_ta_no_color_slots, pvr_ta_slots;
+    if (tex_en && color_en)
+        preamble = "#define TEX_ENABLE\n#define COLOR_ENABLE\n";
+    else if (tex_en)
+        preamble = "#define TEX_ENABLE\n";
+    else if (color_en)
+        preamble = "#define COLOR_ENABLE\n";
+    else
+        preamble = NULL;
+
+    struct shader_cache_ent *ent = shader_cache_add_ent(&shader_cache, key);
+
+    if (!ent) {
+        LOG_ERROR("Failure to create shader cache for key 0x%08x\n!", (int)key);
+        return NULL;
+    }
+
+    shader_load_vert_with_preamble(&ent->shader, pvr2_ta_vert_glsl, preamble);
+    shader_load_frag_with_preamble(&ent->shader, pvr2_ta_frag_glsl, preamble);
+    shader_link(&ent->shader);
+
+    /*
+     * not all of these are valid for every shader.  This is alright because
+     * glGetUniformLocation will return -1 for invalid uniform handles.
+     * When -1 is passed as a uniform location to glUniform*, it will silently
+     * fail without error.
+     */
+    ent->slots[SHADER_CACHE_SLOT_BOUND_TEX] =
+        glGetUniformLocation(ent->shader.shader_prog_obj, "bound_tex");
+    ent->slots[SHADER_CACHE_SLOT_TEX_INST] =
+        glGetUniformLocation(ent->shader.shader_prog_obj, "tex_inst");
+    ent->slots[SHADER_CACHE_SLOT_PT_ALPHA_REF] =
+        glGetUniformLocation(ent->shader.shader_prog_obj, "pt_alpha_ref");
+    ent->slots[SHADER_CACHE_SLOT_TRANS_MAT] =
+        glGetUniformLocation(ent->shader.shader_prog_obj, "trans_mat");
+
+    return ent;
+}
 
 static void opengl_render_init(void) {
     opengl_video_output_init();
@@ -352,33 +377,22 @@ static void opengl_render_init(void) {
         gfx_config_oit_enable();
     }
 
-    shader_load_vert(&pvr_ta_shader, pvr2_ta_vert_glsl);
-    shader_load_frag(&pvr_ta_shader, pvr2_ta_frag_glsl);
-    shader_link(&pvr_ta_shader);
+    shader_cache_init(&shader_cache);
 
-    shader_load_vert_with_preamble(&pvr_ta_tex_shader, pvr2_ta_vert_glsl,
-                                   "#define TEX_ENABLE\n");
-    shader_load_frag_with_preamble(&pvr_ta_tex_shader, pvr2_ta_frag_glsl,
-                                   "#define TEX_ENABLE\n");
-    shader_link(&pvr_ta_tex_shader);
+    // instantiate shaders
+    if (!create_shader(SHADER_KEY_COLOR_ENABLE_BIT))
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    if (!create_shader(SHADER_KEY_TEX_ENABLE_BIT | SHADER_KEY_COLOR_ENABLE_BIT))
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    shader_load_vert_with_preamble(&pvr_ta_no_color_shader, pvr2_ta_vert_glsl,
-                                   "#define COLOR_DISABLE\n");
-    shader_load_frag_with_preamble(&pvr_ta_no_color_shader, pvr2_ta_frag_glsl,
-                                   "#define COLOR_DISABLE\n");
-    shader_link(&pvr_ta_no_color_shader);
-
-    pvr_ta_tex_slots.bound_tex_slot =
-        glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj, "bound_tex");
-    pvr_ta_tex_slots.tex_inst_slot =
-        glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj, "tex_inst");
-
-    pvr_ta_tex_slots.pt_alpha_ref_slot =
-        glGetUniformLocation(pvr_ta_tex_shader.shader_prog_obj, "pt_alpha_ref");
-    pvr_ta_slots.pt_alpha_ref_slot =
-        glGetUniformLocation(pvr_ta_shader.shader_prog_obj, "pt_alpha_ref");
-    pvr_ta_no_color_slots.pt_alpha_ref_slot =
-        glGetUniformLocation(pvr_ta_no_color_shader.shader_prog_obj, "pt_alpha_ref");
+    /*
+     * special shader for wireframe mode that ignores vertex colors and textures
+     * TODO: this shader also ignores textures.  This is not desirable since
+     * textures are a separate config, but ultimately it's not that big of a deal
+     * since wireframe mode always disables textures anyways
+     */
+    if (!create_shader(0))
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -409,9 +423,8 @@ static void opengl_render_cleanup(void) {
     glDeleteTextures(GFX_OBJ_COUNT, obj_tex_array);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
-    shader_cleanup(&pvr_ta_no_color_shader);
-    shader_cleanup(&pvr_ta_tex_shader);
-    shader_cleanup(&pvr_ta_shader);
+
+    shader_cache_cleanup(&shader_cache);
 
     vao = 0;
     vbo = 0;
@@ -578,8 +591,10 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
      * TODO: currently disable color also disables textures; ideally these
      * would be two independent settings.
      */
+    shader_key shader_cache_key;
     if (param->tex_enable && rend_cfg.tex_enable && rend_cfg.color_enable) {
-        glUseProgram(pvr_ta_tex_shader.shader_prog_obj);
+        shader_cache_key =
+            SHADER_KEY_TEX_ENABLE_BIT | SHADER_KEY_COLOR_ENABLE_BIT;
 
         if (gfx_tex_cache_get(param->tex_idx)->valid) {
             int obj_handle = gfx_tex_cache_get(param->tex_idx)->obj_handle;
@@ -635,21 +650,25 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tex_wrap_mode_gl[0]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tex_wrap_mode_gl[1]);
 
-        glUniform1i(pvr_ta_tex_slots.bound_tex_slot, 0);
-        glUniform1i(pvr_ta_tex_slots.tex_inst_slot, param->tex_inst);
-        glUniform1f(pvr_ta_tex_slots.pt_alpha_ref_slot,
-                    param->pt_mode ? param->pt_ref / 255.0f : 0.0f);
-
         glActiveTexture(GL_TEXTURE0);
     } else if (rend_cfg.color_enable) {
-        glUseProgram(pvr_ta_shader.shader_prog_obj);
-        glUniform1f(pvr_ta_slots.pt_alpha_ref_slot,
-                    param->pt_mode ? param->pt_ref / 255.0f : 0.0f);
+        shader_cache_key = SHADER_KEY_COLOR_ENABLE_BIT;
     } else {
-        glUseProgram(pvr_ta_no_color_shader.shader_prog_obj);
-        glUniform1f(pvr_ta_no_color_slots.pt_alpha_ref_slot,
-                    param->pt_mode ? param->pt_ref / 255.0f : 0.0f);
+        shader_cache_key = 0;
     }
+    struct shader_cache_ent *shader_ent = shader_cache_find(&shader_cache,
+                                                            shader_cache_key);
+    if (!shader_ent) {
+        LOG_ERROR("%s Failure to set render parameter: unable to find "
+                  "texture with key 0x%08x\n", __func__, (int)shader_cache_key);
+        return;
+    }
+    glUseProgram(shader_ent->shader.shader_prog_obj);
+    glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_BOUND_TEX], 0);
+    glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_TEX_INST], param->tex_inst);
+    glUniform1f(shader_ent->slots[SHADER_CACHE_SLOT_PT_ALPHA_REF],
+                param->pt_mode ? param->pt_ref / 255.0f : 0.0f);
+    trans_mat_slot = shader_ent->slots[SHADER_CACHE_SLOT_TRANS_MAT];
 
     glBlendFunc(src_blend_factors[(unsigned)param->src_blend_factor],
                 dst_blend_factors[(unsigned)param->dst_blend_factor]);
@@ -702,7 +721,7 @@ static void opengl_renderer_draw_array(float const *verts, unsigned n_verts) {
         0, 0, 0, 1
     };
 
-    glUniformMatrix4fv(TRANS_MAT_SLOT, 1, GL_TRUE, trans_mat);
+    glUniformMatrix4fv(trans_mat_slot, 1, GL_TRUE, trans_mat);
 
     // now draw the geometry itself
     glBindVertexArray(vao);
