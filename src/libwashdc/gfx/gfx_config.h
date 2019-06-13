@@ -55,6 +55,9 @@ struct gfx_cfg {
 
     // if true, enable order-independent transparency
     int depth_sort_enable : 1;
+
+    // if true, allow punch-through polygons.  if false then don't.
+    int pt_enable : 1;
 };
 
 /*

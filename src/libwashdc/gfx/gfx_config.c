@@ -33,7 +33,8 @@ static struct gfx_cfg cur_profile = {
     .blend_enable = 1,
     .bgcolor_enable = 1,
     .color_enable = 1,
-    .depth_sort_enable = 1
+    .depth_sort_enable = 1,
+    .pt_enable = 1
 };
 
 bool wireframe_mode = false;
@@ -45,6 +46,7 @@ void gfx_config_default(void) {
     cur_profile.blend_enable = 1;
     cur_profile.bgcolor_enable = 1;
     cur_profile.color_enable = 1;
+    cur_profile.pt_enable = 1;
 
     wireframe_mode = false;
 }
@@ -56,6 +58,7 @@ void gfx_config_wireframe(void) {
     cur_profile.blend_enable = 0;
     cur_profile.bgcolor_enable = 0;
     cur_profile.color_enable = 0;
+    cur_profile.pt_enable = 0;
 
     wireframe_mode = true;
 }

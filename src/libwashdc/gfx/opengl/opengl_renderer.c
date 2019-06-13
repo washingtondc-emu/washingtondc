@@ -268,7 +268,7 @@ static char const * const pvr2_ta_vert_glsl =
 
 static char const * const pvr2_ta_frag_glsl =
     "in vec4 vert_base_color, vert_offs_color;\n"
-    "out vec4 color;\n"
+    "out vec4 out_color;\n"
 
     "#ifdef TEX_ENABLE\n"
     "in vec2 st;\n"
@@ -276,13 +276,17 @@ static char const * const pvr2_ta_frag_glsl =
     "uniform int tex_inst;\n"
     "#endif\n"
 
-    /*
-     * TODO: use the pre-processor to only do the Punch-through test when we
-     * actually have to
-     */
+    "#ifdef PUNCH_THROUGH_ENABLE\n"
     "uniform float pt_alpha_ref;\n"
 
+    "void punch_through_test(float alpha) {\n"
+    "    if (alpha < pt_alpha_ref)\n"
+    "        discard;\n"
+    "}\n"
+    "#endif\n"
+
     "void main() {\n"
+    "    vec4 color;\n"
     "#ifdef TEX_ENABLE\n"
     "    vec4 tex_color = texture(bound_tex, st);\n"
 
@@ -314,8 +318,12 @@ static char const * const pvr2_ta_frag_glsl =
     "#else\n"
     "    color = vert_base_color;\n"
     "#endif\n"
-    "    if (color.a < pt_alpha_ref)\n"
-    "        discard;\n"
+
+    "#ifdef PUNCH_THROUGH_ENABLE\n"
+    "    punch_through_test(color.a);\n"
+    "#endif\n"
+
+    "    out_color = color;\n"
     "}\n";
 
 static struct shader_cache_ent* create_shader(shader_key key) {
@@ -323,10 +331,12 @@ static struct shader_cache_ent* create_shader(shader_key key) {
     static char preamble[PREAMBLE_LEN];
     bool tex_en = (bool)(key & SHADER_KEY_TEX_ENABLE_BIT);
     bool color_en = (bool)(key & SHADER_KEY_COLOR_ENABLE_BIT);
+    bool punchthrough = (bool)(key & SHADER_KEY_PUNCH_THROUGH_BIT);
 
-    snprintf(preamble, PREAMBLE_LEN, "%s%s",
+    snprintf(preamble, PREAMBLE_LEN, "%s%s%s",
              tex_en ? "#define TEX_ENABLE\n" : "",
-             color_en ? "#define COLOR_ENABLE\n" : "");
+             color_en ? "#define COLOR_ENABLE\n" : "",
+             punchthrough ? "#define PUNCH_THROUGH_ENABLE\n" : "");
     preamble[PREAMBLE_LEN - 1] = '\0';
 
     struct shader_cache_ent *ent = shader_cache_add_ent(&shader_cache, key);
@@ -653,6 +663,10 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
     } else {
         shader_cache_key = 0;
     }
+
+    if (param->pt_mode && rend_cfg.pt_enable)
+        shader_cache_key |= SHADER_KEY_PUNCH_THROUGH_BIT;
+
     struct shader_cache_ent *shader_ent = fetch_shader(shader_cache_key);
     if (!shader_ent) {
         LOG_ERROR("%s Failure to set render parameter: unable to find "
@@ -663,7 +677,7 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
     glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_BOUND_TEX], 0);
     glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_TEX_INST], param->tex_inst);
     glUniform1f(shader_ent->slots[SHADER_CACHE_SLOT_PT_ALPHA_REF],
-                param->pt_mode ? param->pt_ref / 255.0f : 0.0f);
+                param->pt_ref / 255.0f);
     trans_mat_slot = shader_ent->slots[SHADER_CACHE_SLOT_TRANS_MAT];
 
     glBlendFunc(src_blend_factors[(unsigned)param->src_blend_factor],
