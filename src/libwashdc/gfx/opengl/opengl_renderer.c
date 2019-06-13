@@ -319,18 +319,15 @@ static char const * const pvr2_ta_frag_glsl =
     "}\n";
 
 static struct shader_cache_ent* create_shader(shader_key key) {
-    char const *preamble;
+    #define PREAMBLE_LEN 128
+    static char preamble[PREAMBLE_LEN];
     bool tex_en = (bool)(key & SHADER_KEY_TEX_ENABLE_BIT);
     bool color_en = (bool)(key & SHADER_KEY_COLOR_ENABLE_BIT);
 
-    if (tex_en && color_en)
-        preamble = "#define TEX_ENABLE\n#define COLOR_ENABLE\n";
-    else if (tex_en)
-        preamble = "#define TEX_ENABLE\n";
-    else if (color_en)
-        preamble = "#define COLOR_ENABLE\n";
-    else
-        preamble = NULL;
+    snprintf(preamble, PREAMBLE_LEN, "%s%s",
+             tex_en ? "#define TEX_ENABLE\n" : "",
+             color_en ? "#define COLOR_ENABLE\n" : "");
+    preamble[PREAMBLE_LEN - 1] = '\0';
 
     struct shader_cache_ent *ent = shader_cache_add_ent(&shader_cache, key);
 
@@ -361,6 +358,21 @@ static struct shader_cache_ent* create_shader(shader_key key) {
     return ent;
 }
 
+static DEF_ERROR_INT_ATTR(shader_cache_key)
+
+static struct shader_cache_ent* fetch_shader(shader_key key) {
+    struct shader_cache_ent *shader_ent =
+        shader_cache_find(&shader_cache, key);
+    if (shader_ent)
+        return shader_ent;
+    shader_ent = create_shader(key);
+    if (shader_ent)
+        return shader_ent;
+
+    error_set_shader_cache_key(key);
+    RAISE_ERROR(ERROR_FAILED_ALLOC);
+}
+
 static void opengl_render_init(void) {
     opengl_video_output_init();
     opengl_target_init();
@@ -378,21 +390,6 @@ static void opengl_render_init(void) {
     }
 
     shader_cache_init(&shader_cache);
-
-    // instantiate shaders
-    if (!create_shader(SHADER_KEY_COLOR_ENABLE_BIT))
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-    if (!create_shader(SHADER_KEY_TEX_ENABLE_BIT | SHADER_KEY_COLOR_ENABLE_BIT))
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-    /*
-     * special shader for wireframe mode that ignores vertex colors and textures
-     * TODO: this shader also ignores textures.  This is not desirable since
-     * textures are a separate config, but ultimately it's not that big of a deal
-     * since wireframe mode always disables textures anyways
-     */
-    if (!create_shader(0))
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -656,8 +653,7 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
     } else {
         shader_cache_key = 0;
     }
-    struct shader_cache_ent *shader_ent = shader_cache_find(&shader_cache,
-                                                            shader_cache_key);
+    struct shader_cache_ent *shader_ent = fetch_shader(shader_cache_key);
     if (!shader_ent) {
         LOG_ERROR("%s Failure to set render parameter: unable to find "
                   "texture with key 0x%08x\n", __func__, (int)shader_cache_key);
