@@ -267,13 +267,17 @@ static char const * const pvr2_ta_vert_glsl =
     "}\n";
 
 static char const * const pvr2_ta_frag_glsl =
+    "#define TEX_INST_DECAL 0\n"
+    "#define TEX_INST_MOD 1\n"
+    "#define TEX_INST_DECAL_ALPHA 2\n"
+    "#define TEX_INST_MOD_ALPHA 3\n"
+
     "in vec4 vert_base_color, vert_offs_color;\n"
     "out vec4 out_color;\n"
 
     "#ifdef TEX_ENABLE\n"
     "in vec2 st;\n"
     "uniform sampler2D bound_tex;\n"
-    "uniform int tex_inst;\n"
     "#endif\n"
 
     "#ifdef PUNCH_THROUGH_ENABLE\n"
@@ -285,36 +289,35 @@ static char const * const pvr2_ta_frag_glsl =
     "}\n"
     "#endif\n"
 
-    "void main() {\n"
-    "    vec4 color;\n"
     "#ifdef TEX_ENABLE\n"
+    "vec4 eval_tex_inst() {\n"
     "    vec4 tex_color = texture(bound_tex, st);\n"
-
+    "    vec4 color;\n"
     // TODO: is the offset alpha color supposed to be used for anything?
-    "    switch (tex_inst) {\n"
-    "    default:\n"
-    "    case 0:\n"
-    // decal
+    "#if TEX_INST == TEX_INST_DECAL\n"
     "        color.rgb = tex_color.rgb + vert_offs_color.rgb;\n"
     "        color.a = tex_color.a;\n"
-    "        break;\n"
-    "    case 1:\n"
-    // modulate
+    "#elif TEX_INST == TEX_INST_MOD\n"
     "        color.rgb = tex_color.rgb * vert_base_color.rgb + vert_offs_color.rgb;\n"
     "        color.a = tex_color.a;\n"
-    "        break;\n"
-    "    case 2:\n"
-    // decal with alpha
+    "#elif TEX_INST == TEX_INST_DECAL_ALPHA\n"
     "        color.rgb = tex_color.rgb * tex_color.a +\n"
     "            vert_base_color.rgb * (1.0 - tex_color.a) + vert_offs_color.rgb;\n"
     "        color.a = vert_base_color.a;\n"
-    "        break;\n"
-    "    case 3:\n"
-    // modulate with alpha
+    "#elif TEX_INST == TEX_INST_MOD_ALPHA\n"
     "        color.rgb = tex_color.rgb * vert_base_color.rgb + vert_offs_color.rgb;\n"
     "        color.a = tex_color.a * vert_base_color.a;\n"
-    "        break;\n"
-    "    }\n"
+    "#else\n"
+    "#error unknown TEX_INST\n"
+    "#endif\n"
+    "    return color;\n"
+    "}\n"
+    "#endif\n"
+
+    "void main() {\n"
+    "    vec4 color;\n"
+    "#ifdef TEX_ENABLE\n"
+    "    color = eval_tex_inst();\n"
     "#else\n"
     "    color = vert_base_color;\n"
     "#endif\n"
@@ -327,16 +330,43 @@ static char const * const pvr2_ta_frag_glsl =
     "}\n";
 
 static struct shader_cache_ent* create_shader(shader_key key) {
-    #define PREAMBLE_LEN 128
+    #define PREAMBLE_LEN 256
     static char preamble[PREAMBLE_LEN];
     bool tex_en = (bool)(key & SHADER_KEY_TEX_ENABLE_BIT);
     bool color_en = (bool)(key & SHADER_KEY_COLOR_ENABLE_BIT);
     bool punchthrough = (bool)(key & SHADER_KEY_PUNCH_THROUGH_BIT);
+    int tex_inst = key & SHADER_KEY_TEX_INST_MASK;
 
-    snprintf(preamble, PREAMBLE_LEN, "%s%s%s",
+    char const *tex_inst_str = "";
+    if (tex_en) {
+        switch (tex_inst) {
+        case SHADER_KEY_TEX_INST_DECAL_BIT:
+            tex_inst_str = "#define TEX_INST TEX_INST_DECAL\n";
+            break;
+        case SHADER_KEY_TEX_INST_MOD_BIT:
+            tex_inst_str = "#define TEX_INST TEX_INST_MOD\n";
+            break;
+        case SHADER_KEY_TEX_INST_DECAL_ALPHA_BIT:
+            tex_inst_str = "#define TEX_INST TEX_INST_DECAL_ALPHA\n";
+            break;
+        case SHADER_KEY_TEX_INST_MOD_ALPHA_BIT:
+            tex_inst_str = "#define TEX_INST TEX_INST_MOD_ALPHA\n";
+            break;
+        default:
+            /*
+             * this ought to be impossible since SHADER_KEY_TEX_INST_MASK
+             * is two bits
+             */
+            LOG_ERROR("Unknown tex_inst %d\n", tex_inst);
+            tex_en = false;
+        }
+    }
+
+    snprintf(preamble, PREAMBLE_LEN, "%s%s%s%s",
              tex_en ? "#define TEX_ENABLE\n" : "",
              color_en ? "#define COLOR_ENABLE\n" : "",
-             punchthrough ? "#define PUNCH_THROUGH_ENABLE\n" : "");
+             punchthrough ? "#define PUNCH_THROUGH_ENABLE\n" : "",
+             tex_inst_str);
     preamble[PREAMBLE_LEN - 1] = '\0';
 
     struct shader_cache_ent *ent = shader_cache_add_ent(&shader_cache, key);
@@ -358,8 +388,6 @@ static struct shader_cache_ent* create_shader(shader_key key) {
      */
     ent->slots[SHADER_CACHE_SLOT_BOUND_TEX] =
         glGetUniformLocation(ent->shader.shader_prog_obj, "bound_tex");
-    ent->slots[SHADER_CACHE_SLOT_TEX_INST] =
-        glGetUniformLocation(ent->shader.shader_prog_obj, "tex_inst");
     ent->slots[SHADER_CACHE_SLOT_PT_ALPHA_REF] =
         glGetUniformLocation(ent->shader.shader_prog_obj, "pt_alpha_ref");
     ent->slots[SHADER_CACHE_SLOT_TRANS_MAT] =
@@ -603,6 +631,21 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
         shader_cache_key =
             SHADER_KEY_TEX_ENABLE_BIT | SHADER_KEY_COLOR_ENABLE_BIT;
 
+        switch (param->tex_inst) {
+        case TEX_INST_DECAL:
+            shader_cache_key |= SHADER_KEY_TEX_INST_DECAL_BIT;
+            break;
+        case TEX_INST_MOD:
+            shader_cache_key |= SHADER_KEY_TEX_INST_MOD_BIT;
+            break;
+        case TEXT_INST_DECAL_ALPHA:
+            shader_cache_key |= SHADER_KEY_TEX_INST_DECAL_ALPHA_BIT;
+            break;
+        case TEX_INST_MOD_ALPHA:
+            shader_cache_key |= SHADER_KEY_TEX_INST_MOD_ALPHA_BIT;
+            break;
+        }
+
         if (gfx_tex_cache_get(param->tex_idx)->valid) {
             int obj_handle = gfx_tex_cache_get(param->tex_idx)->obj_handle;
             glBindTexture(GL_TEXTURE_2D, obj_tex_array[obj_handle]);
@@ -675,7 +718,6 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
     }
     glUseProgram(shader_ent->shader.shader_prog_obj);
     glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_BOUND_TEX], 0);
-    glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_TEX_INST], param->tex_inst);
     glUniform1f(shader_ent->slots[SHADER_CACHE_SLOT_PT_ALPHA_REF],
                 param->pt_ref / 255.0f);
     trans_mat_slot = shader_ent->slots[SHADER_CACHE_SLOT_TRANS_MAT];
