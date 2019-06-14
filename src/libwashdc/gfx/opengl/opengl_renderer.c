@@ -281,10 +281,10 @@ static char const * const pvr2_ta_frag_glsl =
     "#endif\n"
 
     "#ifdef PUNCH_THROUGH_ENABLE\n"
-    "uniform float pt_alpha_ref;\n"
+    "uniform int pt_alpha_ref;\n"
 
     "void punch_through_test(float alpha) {\n"
-    "    if (alpha < pt_alpha_ref)\n"
+    "    if (int(alpha * 255) < pt_alpha_ref)\n"
     "        discard;\n"
     "}\n"
     "#endif\n"
@@ -718,8 +718,8 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
     }
     glUseProgram(shader_ent->shader.shader_prog_obj);
     glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_BOUND_TEX], 0);
-    glUniform1f(shader_ent->slots[SHADER_CACHE_SLOT_PT_ALPHA_REF],
-                param->pt_ref / 255.0f);
+    glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_PT_ALPHA_REF],
+                param->pt_ref - 1);
     trans_mat_slot = shader_ent->slots[SHADER_CACHE_SLOT_TRANS_MAT];
 
     glBlendFunc(src_blend_factors[(unsigned)param->src_blend_factor],
