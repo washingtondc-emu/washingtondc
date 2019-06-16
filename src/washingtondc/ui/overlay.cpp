@@ -51,7 +51,10 @@ static bool not_hidden;
 static bool en_perf_win = true;
 static bool en_demo_win = false;
 static bool en_aica_win = true;
-static bool en_tex_cache_win = true;
+
+// disabled by default due to poor performance
+static bool en_tex_cache_win = false;
+
 static bool show_nonplaying_channels = true;
 static bool have_debugger;
 
