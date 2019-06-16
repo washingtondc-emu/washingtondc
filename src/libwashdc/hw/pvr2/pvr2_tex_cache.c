@@ -165,6 +165,42 @@ void pvr2_tex_cache_cleanup(struct pvr2 *pvr2) {
             pvr2_free_gfx_obj(cache->tex_cache[idx].obj_no);
 }
 
+struct pvr2_tex_hash {
+    uint32_t addr_first;
+    unsigned w_shift, h_shift;
+    int tex_fmt;
+    uint32_t tex_palette_start;
+    bool twiddled : 1;
+    bool vq_compression : 1;
+    bool mipmap : 1;
+};
+
+static inline bool pvr2_tex_hash_eq(struct pvr2_tex_hash const *hash1,
+                                    struct pvr2_tex_hash const *hash2) {
+    if (hash1->addr_first != hash2->addr_first)
+        return false;
+    if (hash1->w_shift != hash2->w_shift)
+        return false;
+    if (hash1->h_shift != hash2->h_shift)
+        return false;
+    if (hash1->tex_fmt != hash2->tex_fmt)
+        return false;
+    if (hash1->twiddled != hash2->twiddled)
+        return false;
+    if (hash1->vq_compression != hash2->vq_compression)
+        return false;
+    if (hash1->mipmap != hash2->mipmap)
+        return false;
+
+    if (hash1->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+        hash1->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+        if (hash1->tex_palette_start != hash2->tex_palette_start)
+            return false;
+    }
+
+    return true;
+}
+
 struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
                                      uint32_t addr, uint32_t pal_addr,
                                      unsigned w_shift, unsigned h_shift,
@@ -173,19 +209,39 @@ struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
                                      bool stride_sel) {
     unsigned idx;
     struct pvr2_tex *tex;
-    bool pal_tex =
-        tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
-        tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL;
     struct pvr2_tex *tex_cache = pvr2->tex_cache.tex_cache;
+
+    struct pvr2_tex_hash search_hash = {
+        .addr_first = addr,
+        .w_shift = w_shift,
+        .h_shift = h_shift,
+        .tex_fmt = tex_fmt,
+        .twiddled = twiddled,
+        .vq_compression = vq_compression,
+        .mipmap = mipmap,
+        .tex_palette_start = pal_addr
+    };
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         tex = tex_cache + idx;
-        if (pvr2_tex_valid(tex->state) && (tex->meta.addr_first == addr) &&
-            (tex->meta.w_shift == w_shift) && (tex->meta.h_shift == h_shift) &&
-            (tex->meta.tex_fmt == tex_fmt) && (tex->meta.twiddled == twiddled) &&
-            (tex->meta.vq_compression == vq_compression) &&
-            (mipmap == tex->meta.mipmap) &&
-            (!pal_tex || pal_addr == tex->meta.tex_palette_start)) {
+
+        if (!pvr2_tex_valid(tex->state))
+            continue;
+
+        struct pvr2_tex_meta *meta = &tex->meta;
+
+        struct pvr2_tex_hash tex_hash = {
+            .addr_first = meta->addr_first,
+            .w_shift = meta->w_shift,
+            .h_shift = meta->h_shift,
+            .tex_fmt = meta->tex_fmt,
+            .twiddled = meta->twiddled,
+            .vq_compression = meta->vq_compression,
+            .mipmap = meta->mipmap,
+            .tex_palette_start = meta->tex_palette_start
+        };
+
+        if (pvr2_tex_hash_eq(&search_hash, &tex_hash)) {
             tex->frame_stamp_last_used = get_cur_frame_stamp(pvr2);
             return tex;
         }
