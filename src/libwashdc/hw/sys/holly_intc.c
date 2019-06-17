@@ -122,9 +122,15 @@ void holly_clear_nrm_int(HollyNrmInt int_type) {
     reg_istnrm &= ~mask;
 }
 
+#include "jit/code_cache.h"
+
 // TODO: what happens if another lower priority interrupt overwrites the IRL
 // level before the higher priority interrupt has been cleared?
 void holly_raise_ext_int(HollyExtInt int_type) {
+    if (int_type == HOLLY_EXT_INT_GDROM) {
+        code_cache_invalidate_all();
+    }
+
     reg32_t mask = ext_intp_tbl[int_type].mask;
 
     reg_istext |= mask;
