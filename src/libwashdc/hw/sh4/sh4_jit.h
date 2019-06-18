@@ -71,7 +71,8 @@ sh4_jit_il_code_block_compile(struct Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
 static inline void
 sh4_jit_compile_native(void *cpu, void *blk_ptr, uint32_t pc) {
     struct il_code_block il_blk;
-    struct code_block_x86_64 *blk = (struct code_block_x86_64*)blk_ptr;
+    union jit_code_block *jit_blk = (union jit_code_block*)blk_ptr;
+    struct code_block_x86_64 *blk = &jit_blk->x86_64;
     struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE,
                                        .cycle_count = 0 };
 
@@ -89,7 +90,8 @@ sh4_jit_compile_native(void *cpu, void *blk_ptr, uint32_t pc) {
 static inline void
 sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
     struct il_code_block il_blk;
-    struct code_block_intp *blk = (struct code_block_intp*)blk_ptr;
+    union jit_code_block *jit_blk = (union jit_code_block*)blk_ptr;
+    struct code_block_intp *blk = &jit_blk->intp;
     struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE,
                                        .cycle_count = 0 };
 

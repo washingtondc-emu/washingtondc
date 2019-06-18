@@ -998,16 +998,17 @@ static bool run_to_next_sh4_event_jit(void *ctxt) {
         addr32_t blk_addr = newpc;
         struct cache_entry *ent = code_cache_find(blk_addr);
 
-        struct code_block_intp *blk = &ent->blk.intp;
+        union jit_code_block *blk = &ent->blk;
+        struct code_block_intp *intp_blk = &blk->intp;
         if (!ent->valid) {
             sh4_jit_compile_intp(sh4, blk, blk_addr);
             ent->valid = true;
         }
 
-        newpc = code_block_intp_exec(sh4, blk);
+        newpc = code_block_intp_exec(sh4, intp_blk);
 
         dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
-            blk->cycle_count;
+            intp_blk->cycle_count;
         clock_set_cycle_stamp(&sh4_clock, cycles_after);
         tgt_stamp = clock_target_stamp(&sh4_clock);
     }

@@ -130,7 +130,7 @@ dispatch_slow_path(uint32_t pc,
     code_cache_tbl[pc & CODE_CACHE_HASH_TBL_MASK] = entry;
 
     if (!entry->valid) {
-        compile_handler(ctx_ptr, &entry->blk.x86_64, pc);
+        compile_handler(ctx_ptr, &entry->blk, pc);
         entry->valid = 1;
     }
 
