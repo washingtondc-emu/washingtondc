@@ -28,8 +28,13 @@
 #include "washdc/cpu.h"
 #include "washdc/types.h"
 #include "sh4_inst.h"
+#include "sh4_read_inst.h"
 #include "jit/jit_il.h"
 #include "jit/code_block.h"
+
+#ifdef JIT_PROFILE
+#include "jit/jit_profile.h"
+#endif
 
 #ifdef ENABLE_JIT_X86_64
 #include "jit/x86_64/code_block_x86_64.h"
@@ -52,36 +57,63 @@ struct sh4_jit_compile_ctx {
 
 bool
 sh4_jit_compile_inst(struct Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
-                     struct il_code_block *block, unsigned pc);
+                     struct il_code_block *block, cpu_inst_param inst,
+                     unsigned pc);
 
 static inline void
 sh4_jit_il_code_block_compile(struct Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
+                              struct jit_code_block *jit_blk,
                               struct il_code_block *block, addr32_t addr) {
     bool do_continue;
 
     sh4_jit_new_block();
 
     do {
-        do_continue = sh4_jit_compile_inst(sh4, ctx, block, addr);
+        cpu_inst_param inst = sh4_do_read_inst(sh4, addr);
+
+#ifdef JIT_PROFILE
+        uint16_t inst16 = inst;
+        jit_profile_push_inst(&sh4->jit_profile, jit_blk->profile, &inst16);
+#endif
+
+        do_continue = sh4_jit_compile_inst(sh4, ctx, block, inst, addr);
         addr += 2;
     } while (do_continue);
 }
 
 #ifdef ENABLE_JIT_X86_64
+
+static inline void
+sh4_jit_compile_native(void *cpu, void *blk_ptr, uint32_t pc);
+
+#ifdef JIT_PROFILE
+static void sh4_jit_profile_notify(void *cpu, struct jit_profile_per_block *blk_profile) {
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+    jit_profile_notify(&sh4->jit_profile, blk_profile);
+}
+#endif
+
+static struct native_dispatch_meta const sh4_native_dispatch_meta = {
+#ifdef JIT_PROFILE
+    .profile_notify = sh4_jit_profile_notify,
+#endif
+    .on_compile = sh4_jit_compile_native
+};
+
 static inline void
 sh4_jit_compile_native(void *cpu, void *blk_ptr, uint32_t pc) {
     struct il_code_block il_blk;
-    union jit_code_block *jit_blk = (union jit_code_block*)blk_ptr;
+    struct jit_code_block *jit_blk = (struct jit_code_block*)blk_ptr;
     struct code_block_x86_64 *blk = &jit_blk->x86_64;
     struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE,
                                        .cycle_count = 0 };
 
     il_code_block_init(&il_blk);
-    sh4_jit_il_code_block_compile(cpu, &ctx, &il_blk, pc);
+    sh4_jit_il_code_block_compile(cpu, &ctx, jit_blk, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
-    code_block_x86_64_compile(cpu, blk, &il_blk, sh4_jit_compile_native,
+    code_block_x86_64_compile(cpu, blk, &il_blk, sh4_native_dispatch_meta,
                               ctx.cycle_count * SH4_CLOCK_SCALE);
     il_code_block_cleanup(&il_blk);
 }
@@ -90,19 +122,28 @@ sh4_jit_compile_native(void *cpu, void *blk_ptr, uint32_t pc) {
 static inline void
 sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
     struct il_code_block il_blk;
-    union jit_code_block *jit_blk = (union jit_code_block*)blk_ptr;
+    struct jit_code_block *jit_blk = (struct jit_code_block*)blk_ptr;
     struct code_block_intp *blk = &jit_blk->intp;
     struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE,
                                        .cycle_count = 0 };
 
     il_code_block_init(&il_blk);
-    sh4_jit_il_code_block_compile(cpu, &ctx, &il_blk, pc);
+    sh4_jit_il_code_block_compile(cpu, &ctx, jit_blk, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
     code_block_intp_compile(cpu, blk, &il_blk, ctx.cycle_count * SH4_CLOCK_SCALE);
     il_code_block_cleanup(&il_blk);
 }
+
+/*
+ * Since the SH4 doesn't own the jit context, this doesn't really do anything
+ * except initialize the profiling context if that's enabled (because the
+ * profiling context does actually belong to the SH4 even though the jit itself
+ * does not).
+ */
+void sh4_jit_init(struct Sh4 *sh4);
+void sh4_jit_cleanup(struct Sh4 *sh4);
 
 /*
  * disassembly function that emits a function call to the instruction's

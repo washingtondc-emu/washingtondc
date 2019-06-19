@@ -28,6 +28,10 @@
 #include "washdc/types.h"
 #include "dc_sched.h"
 
+#ifdef JIT_PROFILE
+#include "jit/jit_profile.h"
+#endif
+
 void native_dispatch_init(struct dc_clock *clk);
 void native_dispatch_cleanup(void);
 
@@ -35,6 +39,18 @@ typedef uint32_t(*native_dispatch_entry_func)(uint32_t);
 
 struct il_code_block;
 typedef void(*native_dispatch_compile_func)(void*,void*,addr32_t);
+#ifdef JIT_PROFILE
+typedef
+void(*native_dispatch_profile_notify_func)(void*,
+                                           struct jit_profile_per_block *blk);
+#endif
+
+struct native_dispatch_meta {
+#ifdef JIT_PROFILE
+    native_dispatch_profile_notify_func profile_notify;
+#endif
+    native_dispatch_compile_func on_compile;
+};
 
 /*
  * native_dispatch_check_cycles is a function which updates the cycle counter
@@ -49,8 +65,8 @@ typedef void(*native_dispatch_compile_func)(void*,void*,addr32_t);
  *
  * This function should not be called from C code.
  */
-void native_check_cycles_emit(void *ctx_ptr,
-                              native_dispatch_compile_func compile_handler);
+void
+native_check_cycles_emit(void *ctx_ptr, struct native_dispatch_meta funcs);
 
 /*
  * native_dispatch_entry is a generated function which saves all call-stack
@@ -59,7 +75,6 @@ void native_check_cycles_emit(void *ctx_ptr,
  * C code.
  */
 native_dispatch_entry_func
-native_dispatch_entry_create(void *ctx_ptr,
-                             native_dispatch_compile_func compile_handler);
+native_dispatch_entry_create(void *ctx_ptr, struct native_dispatch_meta funcs);
 
 #endif

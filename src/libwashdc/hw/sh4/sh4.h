@@ -40,6 +40,10 @@
 #include "sh4_dmac.h"
 #include "dc_sched.h"
 
+#ifdef JIT_PROFILE
+#include "jit/jit_profile.h"
+#endif
+
 /*
  * The clock-scale is here defined as the number of scheduler cyclers per sh4
  * cycle.
@@ -101,6 +105,10 @@ struct Sh4 {
     struct sh4_dmac dmac;
 
     struct sh4_mem mem;
+
+#ifdef JIT_PROFILE
+    struct jit_profile_ctxt jit_profile;
+#endif
 
     /*
      * pointer to place where memory-mapped registers are stored.

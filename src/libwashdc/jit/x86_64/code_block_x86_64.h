@@ -43,10 +43,9 @@ struct code_block_x86_64 {
 void code_block_x86_64_init(struct code_block_x86_64 *blk);
 void code_block_x86_64_cleanup(struct code_block_x86_64 *blk);
 
-void code_block_x86_64_compile(void *cpu,
-                               struct code_block_x86_64 *out,
+void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
                                struct il_code_block const *il_blk,
-                               native_dispatch_compile_func compile_func,
+                               struct native_dispatch_meta dispatch_meta,
                                unsigned cycle_count);
 
 /*

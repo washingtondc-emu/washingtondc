@@ -255,6 +255,12 @@ if (JIT_OPTIMIZE)
 
 endif()
 
+if (JIT_PROFILE)
+    add_definitions(-DJIT_PROFILE)
+    set(libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/jit/jit_profile.h"
+                                               "${WASHDC_SOURCE_DIR}/jit/jit_profile.c")
+endif()
+
 if (ENABLE_JIT_X86_64)
    add_definitions(-DENABLE_JIT_X86_64)
    set(libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/jit/x86_64/code_block_x86_64.h"

@@ -43,6 +43,7 @@ option(ENABLE_JIT_X86_64 "enable native x86_64 JIT backend" ON)
 option(JIT_OPTIMIZE "enable optimization passes on the JIT that dont actually work" OFF)
 option(ENABLE_TCP_SERIAL "enable serial server emulator over tcp port 1998" ON)
 option(USE_LIBEVENT "use libevent for asynchronous I/O processing" ON)
+option(JIT_PROFILE "Profile JIT code blocks based on frequency" OFF)
 
 # zlib version 1.2.11
 set(zlib_path "${CMAKE_SOURCE_DIR}/external/zlib")
@@ -114,11 +115,11 @@ set(include_dirs "${OPENGL_INCLUDE_DIR}"
                  "${CMAKE_SOURCE_DIR}/external/glfw/include"
                  "${libpng_path}"
                  "${zlib_path}"
-                 "${PROJECT_SOURCE_DIR}/external/portaudio/include")
+                 "${PROJECT_SOURCE_DIR}/external/portaudio/include"
+                 "${PROJECT_SOURCE_DIR}/external/sh4asm")
 
 if (ENABLE_DEBUGGER)
   set(include_dirs "${include_dirs}"
-                   "${PROJECT_SOURCE_DIR}/external/sh4asm"
                    "${PROJECT_SOURCE_DIR}/external/capstone/include")
 endif()
 

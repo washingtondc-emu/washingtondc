@@ -30,6 +30,7 @@
 #include "sh4_mem.h"
 #include "washdc/error.h"
 #include "dreamcast.h"
+#include "sh4_jit.h"
 
 #include "sh4.h"
 
@@ -58,6 +59,8 @@ void sh4_init(Sh4 *sh4, struct dc_clock *clk) {
 
     sh4_init_inst_lut();
 
+    sh4_jit_init(sh4);
+
     /*
      * TODO: in the future dynamically allocate the sh4_error_callback so I can
      * have one for each CPU (on multi-cpu systems like the hikaru)
@@ -69,6 +72,8 @@ void sh4_init(Sh4 *sh4, struct dc_clock *clk) {
 
 void sh4_cleanup(Sh4 *sh4) {
     error_rm_callback(&sh4_error_callback);
+
+    sh4_jit_cleanup(sh4);
 
     sh4_tmu_cleanup(sh4);
 

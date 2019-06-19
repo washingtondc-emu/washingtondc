@@ -464,7 +464,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { NULL }
 };
 
-static struct avl_node *sh4_reg_avl_ctor(void) {
+static struct avl_node *sh4_reg_avl_ctor(avl_key_type key) {
     struct sh4_avl_node *node =
         (struct sh4_avl_node*)calloc(1, sizeof(struct sh4_avl_node));
 

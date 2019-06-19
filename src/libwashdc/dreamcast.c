@@ -526,7 +526,7 @@ dreamcast_init(char const *gdi_path,
 
 #ifdef ENABLE_JIT_X86_64
     native_dispatch_entry =
-        native_dispatch_entry_create(&cpu, sh4_jit_compile_native);
+        native_dispatch_entry_create(&cpu, sh4_native_dispatch_meta);
     native_mem_register(cpu.mem.map);
 #endif
 
@@ -998,12 +998,16 @@ static bool run_to_next_sh4_event_jit(void *ctxt) {
         addr32_t blk_addr = newpc;
         struct cache_entry *ent = code_cache_find(blk_addr);
 
-        union jit_code_block *blk = &ent->blk;
+        struct jit_code_block *blk = &ent->blk;
         struct code_block_intp *intp_blk = &blk->intp;
         if (!ent->valid) {
             sh4_jit_compile_intp(sh4, blk, blk_addr);
             ent->valid = true;
         }
+
+#ifdef JIT_PROFILE
+        jit_profile_notify(&sh4->jit_profile, blk->profile);
+#endif
 
         newpc = code_block_intp_exec(sh4, intp_blk);
 

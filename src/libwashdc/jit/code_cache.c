@@ -93,15 +93,10 @@ static bool native_mode = true;
 #endif
 
 static struct avl_node*
-cache_entry_ctor(void) {
+cache_entry_ctor(avl_key_type key) {
     struct cache_entry *ent = calloc(1, sizeof(struct cache_entry));
 
-#ifdef ENABLE_JIT_X86_64
-    if (native_mode)
-        code_block_x86_64_init(&ent->blk.x86_64);
-    else
-#endif
-        code_block_intp_init(&ent->blk.intp);
+    jit_code_block_init(&ent->blk, key, native_mode);
 
     n_entries++;
     if (n_entries >= MAX_ENTRIES)
@@ -112,12 +107,9 @@ cache_entry_ctor(void) {
 static void
 cache_entry_dtor(struct avl_node *node) {
     struct cache_entry *ent = &AVL_DEREF(node, struct cache_entry, node);
-#ifdef ENABLE_JIT_X86_64
-    if (native_mode)
-        code_block_x86_64_cleanup(&ent->blk.x86_64);
-    else
-#endif
-        code_block_intp_cleanup(&ent->blk.intp);
+
+    jit_code_block_cleanup(&ent->blk, native_mode);
+
     free(ent);
 }
 

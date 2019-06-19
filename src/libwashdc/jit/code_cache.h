@@ -41,7 +41,7 @@ struct cache_entry {
     struct avl_node node;
 
     uint8_t valid;
-    union jit_code_block blk;
+    struct jit_code_block blk;
 };
 
 /*

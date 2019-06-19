@@ -45,7 +45,7 @@ struct avl_node {
 
 struct avl_node;
 
-typedef struct avl_node*(*avl_node_ctor)(void);
+typedef struct avl_node*(*avl_node_ctor)(avl_key_type);
 typedef void(*avl_node_dtor)(struct avl_node*);
 
 struct avl_tree {
@@ -207,7 +207,7 @@ static void avl_rot_left(struct avl_tree *tree, struct avl_node *old_root) {
 static inline struct avl_node *
 avl_basic_insert(struct avl_tree *tree, struct avl_node **node_p,
                  struct avl_node *parent, avl_key_type key) {
-    struct avl_node *new_node = tree->ctor();
+    struct avl_node *new_node = tree->ctor(key);
     if (!new_node)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
     *node_p = new_node;

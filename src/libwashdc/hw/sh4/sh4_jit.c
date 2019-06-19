@@ -20,9 +20,17 @@
  *
  ******************************************************************************/
 
+#include <stdio.h>
+
+#include "sh4asm_core/disas.h"
+
 #include "jit/jit_il.h"
 #include "jit/code_block.h"
 #include "jit/jit_mem.h"
+
+#ifdef JIT_PROFILE
+#include "jit/jit_profile.h"
+#endif
 
 #include "log.h"
 #include "sh4.h"
@@ -95,6 +103,48 @@ static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no)
  */
 static unsigned
 reg_slot_noload(Sh4 *sh4, struct il_code_block *block, unsigned reg_no);
+
+#ifdef JIT_PROFILE
+static void sh4_jit_profile_disas(FILE *out, uint32_t addr, void const *instp);
+static void sh4_jit_profile_emit_fn(char ch);
+#endif
+
+void sh4_jit_init(struct Sh4 *sh4) {
+#ifdef JIT_PROFILE
+    jit_profile_ctxt_init(&sh4->jit_profile, sizeof(uint16_t));
+    sh4->jit_profile.disas = sh4_jit_profile_disas;
+#endif
+}
+
+void sh4_jit_cleanup(struct Sh4 *sh4) {
+#ifdef JIT_PROFILE
+    FILE *outfile = fopen("sh4_profile.txt", "w");
+    if (outfile) {
+        jit_profile_print(&sh4->jit_profile, outfile);
+        fclose(outfile);
+    } else {
+        LOG_ERROR("Failure to open sh4_profile.txt for writing\n");
+    }
+    jit_profile_ctxt_cleanup(&sh4->jit_profile);
+#endif
+}
+
+#ifdef JIT_PROFILE
+static FILE *jit_profile_out;
+
+static void sh4_jit_profile_disas(FILE *out, uint32_t addr, void const *instp) {
+    jit_profile_out = out;
+
+    uint16_t inst;
+    memcpy(&inst, instp, sizeof(inst));
+    disas_inst(inst, sh4_jit_profile_emit_fn);
+    jit_profile_out = NULL;
+}
+
+static void sh4_jit_profile_emit_fn(char ch) {
+    fputc(ch, jit_profile_out);
+}
+#endif
 
 static void
 res_drain_reg(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
@@ -175,8 +225,8 @@ sh4_jit_delay_slot(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
 bool
 sh4_jit_compile_inst(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
-                     struct il_code_block *block, unsigned pc) {
-    cpu_inst_param inst = sh4_do_read_inst(sh4, pc);
+                     struct il_code_block *block, cpu_inst_param inst,
+                     unsigned pc) {
     struct InstOpcode const *inst_op = sh4_decode_inst(inst);
 
     unsigned old_cycle_count = ctx->cycle_count;
