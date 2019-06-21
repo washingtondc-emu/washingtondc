@@ -123,8 +123,7 @@ native_dispatch_entry_create(void *ctx_ptr,
 
 static void native_dispatch_emit(void *ctx_ptr,
                                  native_dispatch_compile_func compile_handler) {
-    struct x86asm_lbl8 check_valid_bit, code_cache_slow_path, have_valid_ent,
-        compile;
+    struct x86asm_lbl8 code_cache_slow_path, have_valid_ent;
 
     /*
      * BEFORE CALLING THIS FUNCTION, EDI MUST HOLD THE 32-BIT SH4 PC ADDRESS
@@ -150,10 +149,8 @@ static void native_dispatch_emit(void *ctx_ptr,
     static unsigned const func_reg = REG_RET;
     static unsigned const ret_reg = REG_RET;
 
-    x86asm_lbl8_init(&check_valid_bit);
     x86asm_lbl8_init(&code_cache_slow_path);
     x86asm_lbl8_init(&have_valid_ent);
-    x86asm_lbl8_init(&compile);
 
     x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl, code_cache_tbl_ptr_reg);
 
@@ -173,34 +170,6 @@ static void native_dispatch_emit(void *ctx_ptr,
     x86asm_movl_disp8_reg_reg(addr_offs, cachep_reg, tmp_reg_1);
     x86asm_cmpl_reg32_reg32(tmp_reg_1, pc_reg);
     x86asm_jnz_lbl8(&code_cache_slow_path);// not equal
-
-    x86asm_lbl8_define(&check_valid_bit);
-    // cachep_reg now points to the struct cache_entry
-    size_t const valid_offs = offsetof(struct cache_entry, valid);
-    x86asm_movb_disp8_reg_reg(valid_offs, cachep_reg, tmp_reg_1);// EMITTING WRONG INST
-    x86asm_testl_imm32_reg32(1, tmp_reg_1);
-    x86asm_jnz_lbl8(&have_valid_ent);
-
-    x86asm_lbl8_define(&compile);
-
-    /*
-     * the PC should still be in pc_reg.
-     * this is the last time we'll need it so there's no need to store it
-     * anywhere
-     */
-    x86asm_mov_reg32_reg32(pc_reg, REG_ARG2);
-    x86asm_mov_reg64_reg64(cachep_reg, REG_ARG1);
-    x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), REG_ARG1);
-    x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, pc_reg);
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)compile_handler, func_reg);
-    x86asm_addq_imm8_reg(-32, RSP);
-    x86asm_call_reg(func_reg);
-    x86asm_addq_imm8_reg(32, RSP);
-
-    // now set the valid bit
-    x86asm_xorl_reg32_reg32(ret_reg, ret_reg);
-    x86asm_incl_reg32(ret_reg);
-    x86asm_movb_reg_disp8_reg(ret_reg, valid_offs, cachep_reg);
 
     x86asm_lbl8_define(&have_valid_ent);
     // cachep_reg points to a valid struct cache_entry which we want to jump to.
@@ -230,13 +199,39 @@ static void native_dispatch_emit(void *ctx_ptr,
     // now write the pointer into the table
     x86asm_movq_reg_sib(ret_reg, code_cache_tbl_ptr_reg, 8, code_hash_reg);
 
-    // now jump up to the compile-point
-    x86asm_jmp_lbl8(&check_valid_bit);
+    // now check to make sure it's a valid entry
+    // cachep_reg now points to the struct cache_entry
+    size_t const valid_offs = offsetof(struct cache_entry, valid);
+    x86asm_movb_disp8_reg_reg(valid_offs, cachep_reg, tmp_reg_1);// EMITTING WRONG INST
+    x86asm_testl_imm32_reg32(1, tmp_reg_1);
+    x86asm_jnz_lbl8(&have_valid_ent);
 
-    x86asm_lbl8_cleanup(&compile);
+
+    // Now compile the block since it is invalid
+
+    /*
+     * the PC should still be in pc_reg.
+     * this is the last time we'll need it so there's no need to store it
+     * anywhere
+     */
+    x86asm_mov_reg32_reg32(pc_reg, REG_ARG2);
+    x86asm_mov_reg64_reg64(cachep_reg, REG_ARG1);
+    x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), REG_ARG1);
+    x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, pc_reg);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)compile_handler, func_reg);
+    x86asm_addq_imm8_reg(-32, RSP);
+    x86asm_call_reg(func_reg);
+    x86asm_addq_imm8_reg(32, RSP);
+
+    // now set the valid bit
+    x86asm_xorl_reg32_reg32(ret_reg, ret_reg);
+    x86asm_incl_reg32(ret_reg);
+    x86asm_movb_reg_disp8_reg(ret_reg, valid_offs, cachep_reg);
+
+    x86asm_jmp_lbl8(&have_valid_ent);
+
     x86asm_lbl8_cleanup(&have_valid_ent);
     x86asm_lbl8_cleanup(&code_cache_slow_path);
-    x86asm_lbl8_cleanup(&check_valid_bit);
 }
 
 void native_check_cycles_emit(void *ctx_ptr,
