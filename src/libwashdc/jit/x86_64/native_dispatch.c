@@ -121,6 +121,22 @@ native_dispatch_entry_create(void *ctx_ptr,
     return entry;
 }
 
+static struct cache_entry *
+dispatch_slow_path(uint32_t pc,
+                   native_dispatch_compile_func compile_handler,
+                   void *ctx_ptr) {
+    struct cache_entry *entry = code_cache_find_slow(pc);
+
+    code_cache_tbl[pc & CODE_CACHE_HASH_TBL_MASK] = entry;
+
+    if (!entry->valid) {
+        compile_handler(ctx_ptr, &entry->blk.x86_64, pc);
+        entry->valid = 1;
+    }
+
+    return entry;
+}
+
 static void native_dispatch_emit(void *ctx_ptr,
                                  native_dispatch_compile_func compile_handler) {
     struct x86asm_lbl8 code_cache_slow_path, have_valid_ent;
@@ -143,7 +159,7 @@ static void native_dispatch_emit(void *ctx_ptr,
     static unsigned const pc_reg = REG_ARG0;
     static unsigned const cachep_reg = REG_NONVOL0;
     static unsigned const tmp_reg_1 = REG_NONVOL1;
-    static unsigned const tmp_reg_2 = REG_NONVOL2;
+    // static unsigned const tmp_reg_2 = REG_NONVOL2;
     static unsigned const code_cache_tbl_ptr_reg = REG_NONVOL3;
     static unsigned const code_hash_reg = REG_NONVOL4;
     static unsigned const func_reg = REG_RET;
@@ -185,48 +201,12 @@ static void native_dispatch_emit(void *ctx_ptr,
 
     x86asm_lbl8_define(&code_cache_slow_path);
 
-    // call code_cache_find_slow
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)&code_cache_find_slow, func_reg);
-    x86asm_mov_reg32_reg32(pc_reg, tmp_reg_1);
-    x86asm_mov_reg64_reg64(code_hash_reg, tmp_reg_2);
-    x86asm_addq_imm8_reg(-32, RSP);
+    // PC is still in pc_reg, which is REG_ARG0
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)dispatch_slow_path, func_reg);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)compile_handler, REG_ARG1);
+    x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, REG_ARG2);
     x86asm_call_reg(func_reg);
-    x86asm_addq_imm8_reg(32, RSP);
-    x86asm_mov_reg32_reg32(tmp_reg_1, pc_reg);
-    x86asm_mov_reg64_reg64(tmp_reg_2, code_hash_reg);
     x86asm_mov_reg64_reg64(ret_reg, cachep_reg);
-
-    // now write the pointer into the table
-    x86asm_movq_reg_sib(ret_reg, code_cache_tbl_ptr_reg, 8, code_hash_reg);
-
-    // now check to make sure it's a valid entry
-    // cachep_reg now points to the struct cache_entry
-    size_t const valid_offs = offsetof(struct cache_entry, valid);
-    x86asm_movb_disp8_reg_reg(valid_offs, cachep_reg, tmp_reg_1);// EMITTING WRONG INST
-    x86asm_testl_imm32_reg32(1, tmp_reg_1);
-    x86asm_jnz_lbl8(&have_valid_ent);
-
-
-    // Now compile the block since it is invalid
-
-    /*
-     * the PC should still be in pc_reg.
-     * this is the last time we'll need it so there's no need to store it
-     * anywhere
-     */
-    x86asm_mov_reg32_reg32(pc_reg, REG_ARG2);
-    x86asm_mov_reg64_reg64(cachep_reg, REG_ARG1);
-    x86asm_addq_imm8_reg(offsetof(struct cache_entry, blk.x86_64), REG_ARG1);
-    x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, pc_reg);
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)compile_handler, func_reg);
-    x86asm_addq_imm8_reg(-32, RSP);
-    x86asm_call_reg(func_reg);
-    x86asm_addq_imm8_reg(32, RSP);
-
-    // now set the valid bit
-    x86asm_xorl_reg32_reg32(ret_reg, ret_reg);
-    x86asm_incl_reg32(ret_reg);
-    x86asm_movb_reg_disp8_reg(ret_reg, valid_offs, cachep_reg);
 
     x86asm_jmp_lbl8(&have_valid_ent);
 
