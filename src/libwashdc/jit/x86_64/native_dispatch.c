@@ -216,8 +216,8 @@ static void native_dispatch_emit(void *ctx_ptr,
 
 void native_check_cycles_emit(void *ctx_ptr,
                               native_dispatch_compile_func compile_handler) {
-    struct x86asm_lbl8 dont_return;
-    x86asm_lbl8_init(&dont_return);
+    struct x86asm_lbl8 do_return;
+    x86asm_lbl8_init(&do_return);
 
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
@@ -232,7 +232,21 @@ void native_check_cycles_emit(void *ctx_ptr,
     load_quad_into_reg(cycle_stamp, cycle_stamp_reg);
     x86asm_addq_reg64_reg64(cycle_stamp_reg, cycle_count_reg);
     x86asm_cmpq_reg64_reg64(sched_tgt_reg, cycle_count_reg);
-    x86asm_jb_lbl8(&dont_return);
+
+    x86asm_jae_lbl8(&do_return);
+
+    store_quad_from_reg(cycle_stamp, cycle_count_reg, REG_VOL1);
+
+    // call native_dispatch
+    x86asm_mov_reg32_reg32(jump_reg, REG_ARG0);
+    native_dispatch_emit(ctx_ptr, compile_handler);
+
+    /*
+     * the code created by native_dispatch_emit does not return, so execution
+     * does not continue past this point.
+     */
+
+    x86asm_lbl8_define(&do_return);
 
     // return PC
     x86asm_mov_reg32_reg32(jump_reg, ret_reg);
@@ -265,16 +279,7 @@ void native_check_cycles_emit(void *ctx_ptr,
 
     x86asm_ret();
 
-    // continue
-    x86asm_lbl8_define(&dont_return);
-
-    store_quad_from_reg(cycle_stamp, cycle_count_reg, REG_VOL1);
-
-    // call native_dispatch
-    x86asm_mov_reg32_reg32(jump_reg, REG_ARG0);
-    native_dispatch_emit(ctx_ptr, compile_handler);
-
-    x86asm_lbl8_cleanup(&dont_return);
+    x86asm_lbl8_cleanup(&do_return);
 }
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no) {

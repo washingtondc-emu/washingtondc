@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018 snickerbockers
+ *    Copyright (C) 2018, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -347,6 +347,14 @@ void x86asm_jns_lbl8(struct x86asm_lbl8 *lbl);
  */
 void x86asm_ja_disp8(int disp8);
 void x86asm_ja_lbl8(struct x86asm_lbl8 *lbl);
+
+/*
+ * jae (pc+disp8)
+ *
+ * jump if above or equal (carry-flag is 0)
+ */
+void x86asm_jae_disp8(int disp8);
+void x86asm_jae_lbl8(struct x86asm_lbl8 *lbl);
 
 /*
  * jbe (pc+disp8)
