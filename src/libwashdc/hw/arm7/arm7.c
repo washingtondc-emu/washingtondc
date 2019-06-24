@@ -85,6 +85,10 @@ static uint32_t decode_shift_ldr_str(struct arm7 *arm7,
 
 static void arm7_error_set_regs(void *argptr);
 
+static inline void
+arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
+            arm7_inst inst);
+
 static bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
 }
@@ -593,8 +597,9 @@ static struct arm7_opcode {
     { NULL }
 };
 
-void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
-                 arm7_inst inst) {
+static inline void
+arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
+            arm7_inst inst) {
     struct arm7_opcode const *curs = ops;
     while (curs->fn) {
         if ((curs->mask & inst) == curs->val) {

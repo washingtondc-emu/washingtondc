@@ -163,9 +163,6 @@ void arm7_cleanup(struct arm7 *arm7);
 
 void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out);
 
-void arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
-                 arm7_inst inst);
-
 unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst);
 
 void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map);
