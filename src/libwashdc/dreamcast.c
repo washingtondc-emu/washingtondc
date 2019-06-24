@@ -1049,17 +1049,23 @@ void dc_print_perf_stats(void) {
 
         LOG_INFO("Total elapsed time: %u seconds and %u nanoseconds\n",
                  (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
+        printf("Total elapsed time: %u seconds and %u nanoseconds\n",
+               (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
 
         LOG_INFO("%u SH4 CPU cycles executed\n",
                  (unsigned)sh4_get_cycles(&cpu));
+        printf("%u SH4 CPU cycles executed\n",
+               (unsigned)sh4_get_cycles(&cpu));
 
         double seconds = delta_time.tv_sec +
             ((double)delta_time.tv_nsec) / 1000000000.0;
         double hz = (double)sh4_get_cycles(&cpu) / seconds;
         double hz_ratio = hz / (double)(200 * 1000 * 1000);
 
-        LOG_INFO("Performance is %f MHz (%f%%)\n",
+        LOG_INFO("Average Performance is %f MHz (%f%%)\n",
                  hz / 1000000.0, hz_ratio * 100.0);
+        printf("Average Performance is %f MHz (%f%%)\n",
+               hz / 1000000.0, hz_ratio * 100.0);
     } else {
         LOG_INFO("Program execution halted before WashingtonDC was completely "
                  "initialized.\n");
