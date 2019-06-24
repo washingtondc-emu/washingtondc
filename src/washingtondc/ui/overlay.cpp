@@ -25,6 +25,7 @@
 #include <memory>
 #include <sstream>
 #include <vector>
+#include <iostream>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -35,6 +36,7 @@
 #include "washdc/washdc.h"
 #include "washdc/gameconsole.h"
 #include "washdc/pix_conv.h"
+#include "washdc/config_file.h"
 #include "imgui.h"
 #include "renderer.hpp"
 #include "../window.hpp"
@@ -546,7 +548,22 @@ void overlay::set_virt_fps(double fps) {
 }
 
 void overlay::init(bool enable_debugger) {
-    exec_opt = EXEC_OPT_100P;
+    char const *exec_mode_str = cfg_get_node("exec.speed");
+    if (exec_mode_str == NULL || strcmp(exec_mode_str, "full") == 0) {
+        exec_opt = EXEC_OPT_100P;
+        sound::set_sync_mode(sound::SYNC_MODE_NORM);
+    } else if (strcmp(exec_mode_str, "unlimited") == 0) {
+        exec_opt = EXEC_OPT_UNLIMITED;
+        sound::set_sync_mode(sound::SYNC_MODE_UNLIMITED);
+    } else if (strcmp(exec_mode_str, "pause") == 0) {
+        exec_opt = EXEC_OPT_PAUSED;
+        do_pause();
+    } else {
+        exec_opt = EXEC_OPT_100P;
+        sound::set_sync_mode(sound::SYNC_MODE_NORM);
+        std::cerr << "Unrecognized execution mode \"" <<
+            exec_mode_str << "\"" << std::endl;
+    }
 
     n_chans = console->snddev.n_channels;
     sndchan_mute = new bool[n_chans];

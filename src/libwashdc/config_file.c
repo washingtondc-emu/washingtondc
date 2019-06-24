@@ -125,6 +125,13 @@ static void cfg_create_default_config(void) {
         "; but it will in future revisions of WashingtonDC.\n"
         "wash.dc.port.0.0 dreamcast_controller\n"
         "\n"
+        "; default execution speed\n"
+        "; choices are\n"
+        ";     full: run at 100% speed\n"
+        ";     unlimited: run as fast as the host machine will allow\n"
+        ";     pause: start the emulator paused\n"
+        "exec.speed full\n"
+        "\n"
         /*
          * TODO: find a way to explain the naming convention for control
          * bindings to end-users
