@@ -123,7 +123,7 @@ static DEF_ERROR_INT_ATTR(display_list_index);
 static DEF_ERROR_INT_ATTR(geo_buf_group_index);
 static DEF_ERROR_INT_ATTR(ta_fifo_cmd)
 static DEF_ERROR_INT_ATTR(pvr2_global_param)
-static DEF_ERROR_INT_ATTR(ta_fifo_byte_count)
+static DEF_ERROR_INT_ATTR(ta_fifo_word_count)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_0)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_1)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_2)
@@ -152,7 +152,7 @@ char const *display_list_names[DISPLAY_LIST_COUNT] = {
     "Unknown Display list 7"
 };
 
-static void input_poly_fifo(struct pvr2 *pvr2, uint8_t byte);
+inline static void input_poly_fifo(struct pvr2 *pvr2, uint32_t byte);
 
 // this function gets called every time a full packet is received by the TA
 static int decode_packet(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
@@ -317,17 +317,7 @@ uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt) {
 void pvr2_ta_fifo_poly_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
     PVR2_TRACE("writing 4 bytes to TA polygon FIFO: 0x%08x\n", (unsigned)val);
-
-    uint8_t bytes[4] = {
-        val & 0xff,
-        (val >> 8) & 0xff,
-        (val >> 16) & 0xff,
-        (val >> 24) & 0xff
-    };
-    input_poly_fifo(pvr2, bytes[0]);
-    input_poly_fifo(pvr2, bytes[1]);
-    input_poly_fifo(pvr2, bytes[2]);
-    input_poly_fifo(pvr2, bytes[3]);
+    input_poly_fifo(pvr2, val);
 }
 
 uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr, void *ctxt) {
@@ -339,17 +329,7 @@ uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_ta_fifo_poly_write_16(addr32_t addr, uint16_t val, void *ctxt) {
-    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-#ifdef PVR2_LOG_VERBOSE
-    LOG_DBG("WARNING: writing 2 bytes to TA polygon FIFO: 0x%04x\n",
-            (unsigned)val);
-#endif
-    uint8_t bytes[2] = {
-        val & 0xff,
-        (val >> 8) & 0xff,
-    };
-    input_poly_fifo(pvr2, bytes[0]);
-    input_poly_fifo(pvr2, bytes[1]);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 
@@ -362,12 +342,7 @@ uint8_t pvr2_ta_fifo_poly_read_8(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_ta_fifo_poly_write_8(addr32_t addr, uint8_t val, void *ctxt) {
-    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-#ifdef PVR2_LOG_VERBOSE
-    LOG_DBG("WARNING: writing 1 byte to TA polygon FIFO: 0x%02x\n",
-            (unsigned)val);
-#endif
-    input_poly_fifo(pvr2, val);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 float pvr2_ta_fifo_poly_read_float(addr32_t addr, void *ctxt) {
@@ -611,7 +586,8 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 static void
 on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt_vtx const *vtx) {
     struct pvr2_ta *ta = &pvr2->ta;
-    float const *ta_fifo_float = (float const*)ta->ta_fifo;
+    float ta_fifo_float[PVR2_CMD_MAX_LEN];
+    memcpy(ta_fifo_float, ta->ta_fifo32, sizeof(ta_fifo_float));
 
     /*
      * four quadrilateral vertices.  the z-coordinate of p4 is determined
@@ -887,11 +863,11 @@ static void handle_packet(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     }
 }
 
-static void input_poly_fifo(struct pvr2 *pvr2, uint8_t byte) {
+inline static void input_poly_fifo(struct pvr2 *pvr2, uint32_t byte) {
     struct pvr2_ta *ta = &pvr2->ta;
-    ta->ta_fifo[ta->ta_fifo_byte_count++] = byte;
+    ta->ta_fifo32[ta->ta_fifo_word_count++] = byte;
 
-    if (!(ta->ta_fifo_byte_count % 32)) {
+    if (!(ta->ta_fifo_word_count % 8)) {
         struct pvr2_pkt pkt;
         if (decode_packet(pvr2, &pkt) == 0) {
             handle_packet(pvr2, &pkt);
@@ -904,14 +880,14 @@ static void dump_fifo(struct pvr2 *pvr2) {
 #ifdef ENABLE_LOG_DEBUG
     unsigned idx;
     uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo;
-    LOG_DBG("Dumping FIFO: %u bytes\n", pvr2->ta.ta_fifo_byte_count);
-    for (idx = 0; idx < pvr2->ta.ta_fifo_byte_count / 4; idx++)
+    LOG_DBG("Dumping FIFO: %u bytes\n", pvr2->ta.ta_fifo_word_count*4);
+    for (idx = 0; idx < pvr2->ta.ta_fifo_word_count; idx++)
         LOG_DBG("\t0x%08x\n", (unsigned)ta_fifo32[idx]);
 #endif
 }
 
 static int decode_packet(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
-    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo;
+    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo32;
     unsigned cmd_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
 
     switch(cmd_tp) {
@@ -932,7 +908,7 @@ static int decode_packet(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         error_set_feature("PVR2 command type");
         error_set_ta_fifo_cmd(cmd_tp);
         /* error_set_display_list_index(poly_state.current_list); */
-        error_set_ta_fifo_byte_count(pvr2->ta.ta_fifo_byte_count);
+        error_set_ta_fifo_word_count(pvr2->ta.ta_fifo_word_count);
         error_set_ta_fifo_word_0(ta_fifo32[0]);
         error_set_ta_fifo_word_1(ta_fifo32[1]);
         error_set_ta_fifo_word_2(ta_fifo32[2]);
@@ -960,13 +936,13 @@ static int decode_end_of_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
 
 static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta->ta_fifo;
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta->ta_fifo32;
 
-    if (ta->ta_fifo_byte_count < ta->hdr.vtx_len)
+    if (ta->ta_fifo_word_count < (ta->hdr.vtx_len / 4))
         return -1;
-    else if (ta->ta_fifo_byte_count > ta->hdr.vtx_len) {
+    else if (ta->ta_fifo_word_count > (ta->hdr.vtx_len / 4)) {
         LOG_ERROR("byte count is %u, vtx_len is %u\n",
-                  ta->ta_fifo_byte_count, ta->hdr.vtx_len);
+                  ta->ta_fifo_word_count * 4, ta->hdr.vtx_len);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
@@ -1123,7 +1099,7 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
 }
 
 static int decode_user_clip(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
-    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo;
+    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo32;
     struct pvr2_pkt_user_clip *user_clip = &pkt->dat.user_clip;
 
     pkt->tp = PVR2_PKT_USER_CLIP;
@@ -1137,7 +1113,7 @@ static int decode_user_clip(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
 
 static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta->ta_fifo;
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta->ta_fifo32;
     struct pvr2_pkt_hdr *hdr = &pkt->dat.hdr;
 
     unsigned param_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
@@ -1186,9 +1162,9 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    if (ta->ta_fifo_byte_count < hdr_len)
+    if (ta->ta_fifo_word_count < (hdr_len / 4))
         return -1;
-    else if (ta->ta_fifo_byte_count > hdr_len)
+    else if (ta->ta_fifo_word_count > (hdr_len / 4))
         RAISE_ERROR(ERROR_INTEGRITY);
 
     pkt->tp = PVR2_PKT_HDR;
@@ -1686,7 +1662,7 @@ static void finish_poly_group(struct pvr2 *pvr2, enum display_list_type disp_lis
 }
 
 static void ta_fifo_finish_packet(struct pvr2_ta *ta) {
-    ta->ta_fifo_byte_count = 0;
+    ta->ta_fifo_word_count = 0;
 }
 
 static void render_frame_init(struct pvr2 *pvr2) {

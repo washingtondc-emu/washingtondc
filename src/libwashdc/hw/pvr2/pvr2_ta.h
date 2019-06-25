@@ -276,8 +276,8 @@ struct gfx_il_inst_chain {
 struct pvr2_ta {
     enum display_list_type cur_list;
 
-    uint8_t ta_fifo[PVR2_CMD_MAX_LEN];
-    unsigned ta_fifo_byte_count;
+    uint32_t ta_fifo32[PVR2_CMD_MAX_LEN];
+    unsigned ta_fifo_word_count;
 
     bool list_submitted[DISPLAY_LIST_COUNT];
 
