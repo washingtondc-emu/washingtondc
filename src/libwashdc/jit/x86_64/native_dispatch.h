@@ -37,8 +37,8 @@ void native_dispatch_cleanup(void);
 
 typedef uint32_t(*native_dispatch_entry_func)(uint32_t);
 
-struct il_code_block;
-typedef void(*native_dispatch_compile_func)(void*,void*,addr32_t);
+struct jit_code_block;
+typedef void(*native_dispatch_compile_func)(void*,struct jit_code_block*,addr32_t);
 #ifdef JIT_PROFILE
 typedef
 void(*native_dispatch_profile_notify_func)(void*,

@@ -84,7 +84,7 @@ sh4_jit_il_code_block_compile(struct Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
 #ifdef ENABLE_JIT_X86_64
 
 static inline void
-sh4_jit_compile_native(void *cpu, void *blk_ptr, uint32_t pc);
+sh4_jit_compile_native(void *cpu, struct jit_code_block *blk_ptr, uint32_t pc);
 
 #ifdef JIT_PROFILE
 static void sh4_jit_profile_notify(void *cpu, struct jit_profile_per_block *blk_profile) {
@@ -101,9 +101,8 @@ static struct native_dispatch_meta const sh4_native_dispatch_meta = {
 };
 
 static inline void
-sh4_jit_compile_native(void *cpu, void *blk_ptr, uint32_t pc) {
+sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
     struct il_code_block il_blk;
-    struct jit_code_block *jit_blk = (struct jit_code_block*)blk_ptr;
     struct code_block_x86_64 *blk = &jit_blk->x86_64;
     struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE,
                                        .cycle_count = 0 };
