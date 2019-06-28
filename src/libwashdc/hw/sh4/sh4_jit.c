@@ -137,7 +137,7 @@ static void sh4_jit_profile_disas(FILE *out, uint32_t addr, void const *instp) {
 
     uint16_t inst;
     memcpy(&inst, instp, sizeof(inst));
-    disas_inst(inst, sh4_jit_profile_emit_fn);
+    sh4asm_disas_inst(inst, sh4_jit_profile_emit_fn);
     jit_profile_out = NULL;
 }
 

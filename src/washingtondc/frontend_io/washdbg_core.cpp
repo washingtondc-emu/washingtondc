@@ -1590,7 +1590,7 @@ static void washdbg_disas_single_emit(char ch) {
 
 static char const *washdbg_disas_single_sh4(uint32_t addr, uint16_t val) {
     memset(sh4_disas_line, 0, sizeof(sh4_disas_line));
-    disas_inst(val, washdbg_disas_single_emit);
+    sh4asm_disas_inst(val, washdbg_disas_single_emit);
 
     return sh4_disas_line;
 }

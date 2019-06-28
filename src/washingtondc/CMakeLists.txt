@@ -51,9 +51,7 @@ set(io_sources "${IO_SOURCE_DIR}/io_thread.hpp"
 
 set(SH4ASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/external/sh4asm/sh4asm_core")
 set(sh4asm_sources "${SH4ASM_SOURCE_DIR}/disas.h"
-                   "${SH4ASM_SOURCE_DIR}/disas.c"
-		   "${SH4ASM_SOURCE_DIR}/sh4_asm_emit.h"
-		   "${SH4ASM_SOURCE_DIR}/sh4_asm_emit.c")
+                   "${SH4ASM_SOURCE_DIR}/sh4asm_txt_emit.h")
 
 set(debug_sources "${IO_SOURCE_DIR}/washdbg_tcp.hpp"
                   "${IO_SOURCE_DIR}/washdbg_tcp.cpp"
