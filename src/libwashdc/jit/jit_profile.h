@@ -39,7 +39,7 @@ struct jit_code_block;
  * bottlenecks.  It does give an indication of what the most common code-paths
  * are in a given game so that those paths can be optimized.
  */
-#define JIT_PROFILE_N_BLOCKS 10
+#define JIT_PROFILE_N_BLOCKS 128
 
 typedef unsigned long long jit_profile_freq;
 
