@@ -536,85 +536,93 @@ DEF_INST_FN(cmn, false, true, false)
 
 typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
 
-static struct arm7_opcode {
-    arm7_opcode_fn fn;
-    arm7_inst mask;
-    arm7_inst val;
-    unsigned n_cycles;
-} const ops[] = {
+static inline void
+arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
+            arm7_inst inst) {
     /*
      * TODO: these cycle counts are mostly bullshit.  I don't even know if it's
      * valid to assume that any given opcode will always take the same number
      * of cycles.  ARM has a lot of corner cases and it's all bullsht, really.
      */
-
-    // branch (with or without link)
-    { arm7_inst_branch, MASK_B, VAL_B, 2 * S_CYCLE + 1 * N_CYCLE },
-
-    /*
-     * TODO: this is supposed to take 2 * S_CYCLE + 2 * N_CYCLE + I_CYCLE
-     * cycles if R15 is involved...?
-     */
-    { arm7_inst_ldr_str, MASK_LDR_STR, VAL_LDR_STR,
-      1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE },
-
-    // TODO: yet another made up fictional cycle-count
-    { arm7_block_xfer, MASK_BLOCK_XFER, VAL_BLOCK_XFER,
-      1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE },
-
-    /*
-     * It's important that these always go *before* the data processing
-     * instructions due to opcode overlap.
-     */
-    { arm7_inst_mrs, MASK_MRS, VAL_MRS, 1 * S_CYCLE },
-    { arm7_inst_msr, MASK_MSR, VAL_MSR, 1 * S_CYCLE },
-
-    /*
-     * this one also has to go before the data processing instructions
-     * TODO: yet another fake cycle count.
-     */
-    { arm7_inst_mul, MASK_MUL, VAL_MUL, 4 * S_CYCLE },
-
-    /*
-     * TODO: this cycle count is literally just something I made up with no
-     * basis in reality.  It needs to be corrected.
-     */
-    { arm7_inst_orr, MASK_ORR, VAL_ORR, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_eor, MASK_EOR, VAL_EOR, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_bic, MASK_BIC, VAL_BIC, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_mov, MASK_MOV, VAL_MOV, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_add, MASK_ADD, VAL_ADD, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_sub, MASK_SUB, VAL_SUB, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_rsb, MASK_RSB, VAL_RSB, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_cmp, MASK_CMP, VAL_CMP, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_tst, MASK_TST, VAL_TST, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_and, MASK_AND, VAL_AND, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_mvn, MASK_MVN, VAL_MVN, 2 * S_CYCLE + 1 * N_CYCLE },
-    { arm7_inst_cmn, MASK_CMN, VAL_CMN, 2 * S_CYCLE + 1 * N_CYCLE },
-
-    { arm7_inst_swi, MASK_SWI, VAL_SWI, 2 * S_CYCLE + 1 * N_CYCLE },
-
-    { NULL }
-};
-
-static inline void
-arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
-            arm7_inst inst) {
-    struct arm7_opcode const *curs = ops;
-    while (curs->fn) {
-        if ((curs->mask & inst) == curs->val) {
-            inst_out->op = curs->fn;
-            inst_out->cycles = curs->n_cycles;
-            goto return_success;
-        }
-        curs++;
+    if ((inst & MASK_B) == VAL_B) {
+        // branch (with or without link)
+        inst_out->op = arm7_inst_branch;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_LDR_STR) == VAL_LDR_STR) {
+        /*
+         * TODO: this is supposed to take 2 * S_CYCLE + 2 * N_CYCLE + I_CYCLE
+         * cycles if R15 is involved...?
+         */
+        inst_out->op = arm7_inst_ldr_str;
+        inst_out->cycles = 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
+    } else if ((inst & MASK_BLOCK_XFER) == VAL_BLOCK_XFER) {
+        inst_out->op = arm7_block_xfer;
+        inst_out->cycles = 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
+    } else if ((inst & MASK_MRS) == VAL_MRS) {
+        /*
+         * It's important that this alway goes *before* the data processing
+         * instructions due to opcode overlap.
+         */
+        inst_out->op = arm7_inst_mrs;
+        inst_out->cycles = 1 * S_CYCLE;
+    } else if ((inst & MASK_MSR) == VAL_MSR) {
+        /*
+         * It's important that this alway goes *before* the data processing
+         * instructions due to opcode overlap.
+         */
+        inst_out->op = arm7_inst_msr;
+        inst_out->cycles = 1 * S_CYCLE;
+    } else if ((inst & MASK_MUL) == VAL_MUL) {
+        /*
+         * this one also has to go before the data processing instructions
+         */
+        inst_out->op = arm7_inst_mul;
+        inst_out->cycles = 4 * S_CYCLE;
+    } else if ((inst & MASK_ORR) == VAL_ORR) {
+        inst_out->op = arm7_inst_orr;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_EOR) == VAL_EOR) {
+        inst_out->op = arm7_inst_eor;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_BIC) == VAL_BIC) {
+        inst_out->op = arm7_inst_bic;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_MOV) == VAL_MOV) {
+        inst_out->op = arm7_inst_mov;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_ADD) == VAL_ADD) {
+        inst_out->op = arm7_inst_add;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_SUB) == VAL_SUB) {
+        inst_out->op = arm7_inst_sub;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_RSB) == VAL_RSB) {
+        inst_out->op = arm7_inst_rsb;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_CMP) == VAL_CMP) {
+        inst_out->op = arm7_inst_cmp;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_TST) == VAL_TST) {
+        inst_out->op = arm7_inst_tst;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_AND) == VAL_AND) {
+        inst_out->op = arm7_inst_and;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_MVN) == VAL_MVN) {
+        inst_out->op = arm7_inst_mvn;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_CMN) == VAL_CMN) {
+        inst_out->op = arm7_inst_cmn;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else if ((inst & MASK_SWI) == VAL_SWI) {
+        inst_out->op = arm7_inst_swi;
+        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
+    } else {
+        error_set_arm7_inst(inst);
+        error_set_arm7_pc(arm7->reg[ARM7_REG_PC]);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    error_set_arm7_inst(inst);
-    error_set_arm7_pc(arm7->reg[ARM7_REG_PC]);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
-return_success:
     inst_out->cond = arm7_cond(inst);
     inst_out->inst = inst;
 }
