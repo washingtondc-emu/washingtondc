@@ -774,12 +774,12 @@ static bool run_to_next_arm7_event(void *ctxt) {
 
     if (arm7.enabled) {
         while (tgt_stamp > clock_cycle_stamp(&arm7_clock)) {
-            struct arm7_decoded_inst decoded;
-            arm7_fetch_inst(&arm7, &decoded);
-
-            unsigned inst_cycles = arm7_exec(&arm7, &decoded);
+            int extra_cycles;
+            arm7_inst inst = arm7_fetch_inst(&arm7, &extra_cycles);
+            arm7_op_fn handler = arm7_decode(&arm7, inst);
+            unsigned inst_cycles = handler(&arm7, inst);
             dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&arm7_clock) +
-                inst_cycles * ARM7_CLOCK_SCALE;
+                (inst_cycles + extra_cycles) * ARM7_CLOCK_SCALE;
 
             tgt_stamp = clock_target_stamp(&arm7_clock);
             if (cycles_after > tgt_stamp)
@@ -816,12 +816,12 @@ static bool run_to_next_arm7_event_debugger(void *ctxt) {
 
         while (!(exit_now = dreamcast_check_debugger()) &&
                tgt_stamp > clock_cycle_stamp(&arm7_clock)) {
-            struct arm7_decoded_inst decoded;
-            arm7_fetch_inst(&arm7, &decoded);
-
-            unsigned inst_cycles = arm7_exec(&arm7, &decoded);
+            int extra_cycles;
+            arm7_inst inst = arm7_fetch_inst(&arm7, &extra_cycles);
+            arm7_op_fn handler = arm7_decode(&arm7, inst);
+            unsigned inst_cycles = handler(&arm7, inst);
             dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&arm7_clock) +
-                inst_cycles * ARM7_CLOCK_SCALE;
+                (inst_cycles + extra_cycles) * ARM7_CLOCK_SCALE;
 
             tgt_stamp = clock_target_stamp(&arm7_clock);
             if (cycles_after > tgt_stamp)

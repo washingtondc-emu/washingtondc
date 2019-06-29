@@ -147,23 +147,8 @@ struct arm7 {
     bool pipeline_full;
 };
 
-typedef bool(*arm7_cond_fn)(struct arm7*);
-typedef void(*arm7_op_fn)(struct arm7*,arm7_inst);
-
-struct arm7_decoded_inst {
-    arm7_cond_fn cond;
-    arm7_op_fn op;
-    arm7_inst inst;
-
-    unsigned cycles;
-};
-
 void arm7_init(struct arm7 *arm7, struct dc_clock *clk, struct aica_wave_mem *inst_mem);
 void arm7_cleanup(struct arm7 *arm7);
-
-void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out);
-
-unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst);
 
 void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map);
 
@@ -217,6 +202,123 @@ inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
     }
 
     return arm7->reg + idx_actual;
+}
+
+typedef unsigned(*arm7_op_fn)(struct arm7*,arm7_inst);
+arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst);
+
+/*
+ * call this when something like a branch or exception happens that invalidates
+ * instructions in the pipeline.
+ *
+ * This won't effect the PC, but it will clear out anything already in the
+ * pipeline.  What that means is that anything in the pipeline which hasn't
+ * been executed yet will get trashed.  The upshot of this is that it's only
+ * safe to call arm7_reset_pipeline when the PC has actually changed.
+ */
+static inline void arm7_reset_pipeline(struct arm7 *arm7) {
+    arm7->pipeline_full = false;
+}
+
+static inline uint32_t arm7_do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
+    if (addr <= 0x007fffff)
+        return aica_wave_mem_read_32(addr & 0x001fffff, arm7->inst_mem);
+    return ~0;
+}
+
+static inline void arm7_check_excp(struct arm7 *arm7) {
+    if (arm7->excp_dirty) {
+        enum arm7_excp excp = arm7->excp;
+        uint32_t cpsr = arm7->reg[ARM7_REG_CPSR];
+
+        /*
+         * TODO: if we ever add support for systems other than Dreamcast, we need to
+         * check the IRQ line here.  Dreamcast only uses FIQ, so there's no point
+         * in checking for IRQ.
+         *
+         * TODO: also need to check for ARM7_EXCP_DATA_ABORT.
+         */
+
+        if (arm7->fiq_line)
+            excp |= ARM7_EXCP_FIQ;
+        else
+            excp &= ~ARM7_EXCP_FIQ;
+
+        if (excp & ARM7_EXCP_RESET) {
+            arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
+            arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
+            arm7->reg[ARM7_REG_PC] = 0;
+            arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
+                ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
+            arm7_reset_pipeline(arm7);
+            arm7->excp &= ~ARM7_EXCP_RESET;
+        } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
+            arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
+            arm7->reg[ARM7_REG_R14_FIQ] = arm7_pc_next(arm7) + 4;
+            arm7->reg[ARM7_REG_PC] = 0x1c;
+            LOG_DBG("FIQ jump to 0x1c\n");
+            arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
+                ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
+            arm7_reset_pipeline(arm7);
+            arm7->excp &= ~ARM7_EXCP_FIQ;
+        } else if (excp & ARM7_EXCP_SWI) {
+            /*
+             * This will be called *after* the SWI instruction has executed, when
+             * the arm7 is about to execute the next instruction.  The spec says
+             * that R14_svc needs to point to the instruction immediately after the
+             * SWI.  I expect the SWI instruction to not increment the PC at the
+             * end, so the instruction after the SWI will be pipeline[1].
+             * ARM7_REG_R15 points to the next instruction to be fetched, which is
+             * pipeline[0].  Therefore, the next instruction to be executed is at
+             * ARM7_REG_R15 - 4.
+             */
+            arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
+            arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
+            arm7->reg[ARM7_REG_PC] = 0;
+            arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
+                ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
+            arm7_reset_pipeline(arm7);
+            arm7->excp &= ~ARM7_EXCP_SWI;
+        }
+
+        arm7->excp_dirty = false;
+    }
+}
+
+static inline arm7_inst arm7_fetch_inst(struct arm7 *arm7, int *extra_cycles) {
+    arm7_check_excp(arm7);
+
+    int cycle_count = 0;
+    uint32_t pc = arm7->reg[ARM7_REG_PC];
+
+    if (!arm7->pipeline_full) {
+        cycle_count = 2;
+
+        arm7->pipeline_pc[0] = pc + 4;
+        arm7->pipeline[0] = arm7_do_fetch_inst(arm7, pc + 4);
+
+        arm7->pipeline_pc[1] = pc;
+        arm7->pipeline[1] = arm7_do_fetch_inst(arm7, pc);
+
+        arm7->pipeline_full = true;
+
+        pc += 8;
+        arm7->reg[ARM7_REG_PC] = pc;
+    }
+
+    arm7_inst inst_fetched = arm7_do_fetch_inst(arm7, pc);
+    uint32_t newpc = arm7->pipeline_pc[0];
+    arm7_inst newinst = arm7->pipeline[0];
+    arm7_inst ret = arm7->pipeline[1];
+
+    arm7->pipeline_pc[0] = pc;
+    arm7->pipeline[0] = inst_fetched;
+    arm7->pipeline_pc[1] = newpc;
+    arm7->pipeline[1] = newinst;
+
+    *extra_cycles = cycle_count;
+
+    return ret;
 }
 
 #endif

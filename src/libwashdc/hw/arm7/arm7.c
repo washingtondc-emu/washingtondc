@@ -51,27 +51,12 @@ static DEF_ERROR_U32_ATTR(arm7_pc)
 
 static void arm7_check_excp(struct arm7 *arm7);
 
-static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr);
-static void reset_pipeline(struct arm7 *arm7);
-
-static void arm7_inst_branch(struct arm7 *arm7, arm7_inst inst);
-static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst);
-static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst);
-static void arm7_inst_mrs(struct arm7 *arm7, arm7_inst inst);
-static void arm7_inst_msr(struct arm7 *arm7, arm7_inst inst);
-static void arm7_inst_orr(struct arm7 *arm7, arm7_inst inst);
-static void arm7_inst_bic(struct arm7 *arm7, arm7_inst inst);
-static void arm7_inst_mov(struct arm7 *arm7, arm7_inst inst);
-static void arm7_inst_mul(struct arm7 *arm7, arm7_inst inst);
-
-static void arm7_inst_swi(struct arm7 *arm7, arm7_inst inst);
+static uint32_t arm7_do_fetch_inst(struct arm7 *arm7, uint32_t addr);
 
 static bool arm7_cond_eq(struct arm7 *arm7);
 static bool arm7_cond_ne(struct arm7 *arm7);
 static bool arm7_cond_cs(struct arm7 *arm7);
 static bool arm7_cond_cc(struct arm7 *arm7);
-
-static arm7_cond_fn arm7_cond(arm7_inst inst);
 
 static unsigned arm7_spsr_idx(struct arm7 *arm7);
 
@@ -85,118 +70,68 @@ static uint32_t decode_shift_ldr_str(struct arm7 *arm7,
 
 static void arm7_error_set_regs(void *argptr);
 
-static inline void
-arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
-            arm7_inst inst);
-
-static bool arm7_cond_eq(struct arm7 *arm7) {
+static inline bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
 }
 
-static bool arm7_cond_ne(struct arm7 *arm7) {
+static inline bool arm7_cond_ne(struct arm7 *arm7) {
     return !arm7_cond_eq(arm7);
 }
 
-static bool arm7_cond_cs(struct arm7 *arm7) {
+static inline bool arm7_cond_cs(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
 }
 
-static bool arm7_cond_cc(struct arm7 *arm7) {
+static inline bool arm7_cond_cc(struct arm7 *arm7) {
     return !arm7_cond_cs(arm7);
 }
 
-static bool arm7_cond_mi(struct arm7 *arm7) {
+static inline bool arm7_cond_mi(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_N_MASK);
 }
 
-static bool arm7_cond_pl(struct arm7 *arm7) {
+static inline bool arm7_cond_pl(struct arm7 *arm7) {
     return !arm7_cond_mi(arm7);
 }
 
-static bool arm7_cond_vs(struct arm7 *arm7) {
+static inline bool arm7_cond_vs(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_V_MASK);
 }
 
-static bool arm7_cond_vc(struct arm7 *arm7) {
+static inline bool arm7_cond_vc(struct arm7 *arm7) {
     return !arm7_cond_vs(arm7);
 }
 
-static bool arm7_cond_hi(struct arm7 *arm7) {
+static inline bool arm7_cond_hi(struct arm7 *arm7) {
     return arm7_cond_ne(arm7) && arm7_cond_cs(arm7);
 }
 
-static bool arm7_cond_ls(struct arm7 *arm7) {
+static inline bool arm7_cond_ls(struct arm7 *arm7) {
     return arm7_cond_cc(arm7) || arm7_cond_eq(arm7);
 }
 
-static bool arm7_cond_ge(struct arm7 *arm7) {
+static inline bool arm7_cond_ge(struct arm7 *arm7) {
     return arm7_cond_mi(arm7) == arm7_cond_vs(arm7);
 }
 
-static bool arm7_cond_lt(struct arm7 *arm7) {
+static inline bool arm7_cond_lt(struct arm7 *arm7) {
     return !arm7_cond_ge(arm7);
 }
 
-static bool arm7_cond_gt(struct arm7 *arm7) {
+static inline bool arm7_cond_gt(struct arm7 *arm7) {
     return arm7_cond_ne(arm7) && arm7_cond_ge(arm7);
 }
 
-static bool arm7_cond_le(struct arm7 *arm7) {
+static inline bool arm7_cond_le(struct arm7 *arm7) {
     return !arm7_cond_gt(arm7);
 }
 
-static bool arm7_cond_al(struct arm7 *arm7) {
+static inline bool arm7_cond_al(struct arm7 *arm7) {
     return true;
 }
 
-static bool arm7_cond_nv(struct arm7 *arm7) {
+static inline bool arm7_cond_nv(struct arm7 *arm7) {
     return false;
-}
-
-static arm7_cond_fn arm7_cond(arm7_inst inst) {
-    switch ((inst & ARM7_INST_COND_MASK) >> ARM7_INST_COND_SHIFT) {
-    case 0:
-        return arm7_cond_eq;
-    case 1:
-        return arm7_cond_ne;
-    case 2:
-        return arm7_cond_cs;
-    case 3:
-        return arm7_cond_cc;
-    case 4:
-        return arm7_cond_mi;
-    case 5:
-        return arm7_cond_pl;
-    case 6:
-        return arm7_cond_vs;
-    case 7:
-        return arm7_cond_vc;
-    case 8:
-        return arm7_cond_hi;
-    case 9:
-        return arm7_cond_ls;
-    case 10:
-        return arm7_cond_ge;
-    case 11:
-        return arm7_cond_lt;
-    case 12:
-        return arm7_cond_gt;
-    case 13:
-        return arm7_cond_le;
-    case 14:
-        return arm7_cond_al;
-    case 15:
-        /*
-         * ARM7 docs say that software should not use this because its meaning
-         * may change in later ARM versions.  Despite this, Daytona USA's devs
-         * chose to throw caution to the wind and use it anyways.
-         */
-        return arm7_cond_nv;
-    default:
-        // it isn't even possible to jump here tbh
-        error_set_arm7_inst(inst);
-        RAISE_ERROR(ERROR_INTEGRITY);
-    }
 }
 
 static struct error_callback arm7_error_callback;
@@ -218,7 +153,7 @@ void arm7_cleanup(struct arm7 *arm7) {
 
 void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map) {
     arm7->map = arm7_mem_map;
-    reset_pipeline(arm7);
+    arm7_reset_pipeline(arm7);
 }
 
 void arm7_reset(struct arm7 *arm7, bool val) {
@@ -513,7 +448,7 @@ DEF_DATA_OP(bic) {
         if (write_result) {                                             \
             *arm7_gen_reg(arm7, rd) = res;                              \
             if (rd == 15) {                                             \
-                reset_pipeline(arm7);                                   \
+                arm7_reset_pipeline(arm7);                              \
                 return;                                                 \
             }                                                           \
         }                                                               \
@@ -536,134 +471,8 @@ DEF_INST_FN(cmn, false, true, false)
 
 typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
 
-static inline void
-arm7_decode(struct arm7 *arm7, struct arm7_decoded_inst *inst_out,
-            arm7_inst inst) {
-    /*
-     * TODO: these cycle counts are mostly bullshit.  I don't even know if it's
-     * valid to assume that any given opcode will always take the same number
-     * of cycles.  ARM has a lot of corner cases and it's all bullsht, really.
-     */
-    if ((inst & MASK_B) == VAL_B) {
-        // branch (with or without link)
-        inst_out->op = arm7_inst_branch;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_LDR_STR) == VAL_LDR_STR) {
-        /*
-         * TODO: this is supposed to take 2 * S_CYCLE + 2 * N_CYCLE + I_CYCLE
-         * cycles if R15 is involved...?
-         */
-        inst_out->op = arm7_inst_ldr_str;
-        inst_out->cycles = 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
-    } else if ((inst & MASK_BLOCK_XFER) == VAL_BLOCK_XFER) {
-        inst_out->op = arm7_block_xfer;
-        inst_out->cycles = 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
-    } else if ((inst & MASK_MRS) == VAL_MRS) {
-        /*
-         * It's important that this alway goes *before* the data processing
-         * instructions due to opcode overlap.
-         */
-        inst_out->op = arm7_inst_mrs;
-        inst_out->cycles = 1 * S_CYCLE;
-    } else if ((inst & MASK_MSR) == VAL_MSR) {
-        /*
-         * It's important that this alway goes *before* the data processing
-         * instructions due to opcode overlap.
-         */
-        inst_out->op = arm7_inst_msr;
-        inst_out->cycles = 1 * S_CYCLE;
-    } else if ((inst & MASK_MUL) == VAL_MUL) {
-        /*
-         * this one also has to go before the data processing instructions
-         */
-        inst_out->op = arm7_inst_mul;
-        inst_out->cycles = 4 * S_CYCLE;
-    } else if ((inst & MASK_ORR) == VAL_ORR) {
-        inst_out->op = arm7_inst_orr;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_EOR) == VAL_EOR) {
-        inst_out->op = arm7_inst_eor;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_BIC) == VAL_BIC) {
-        inst_out->op = arm7_inst_bic;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_MOV) == VAL_MOV) {
-        inst_out->op = arm7_inst_mov;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_ADD) == VAL_ADD) {
-        inst_out->op = arm7_inst_add;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_SUB) == VAL_SUB) {
-        inst_out->op = arm7_inst_sub;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_RSB) == VAL_RSB) {
-        inst_out->op = arm7_inst_rsb;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_CMP) == VAL_CMP) {
-        inst_out->op = arm7_inst_cmp;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_TST) == VAL_TST) {
-        inst_out->op = arm7_inst_tst;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_AND) == VAL_AND) {
-        inst_out->op = arm7_inst_and;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_MVN) == VAL_MVN) {
-        inst_out->op = arm7_inst_mvn;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_CMN) == VAL_CMN) {
-        inst_out->op = arm7_inst_cmn;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else if ((inst & MASK_SWI) == VAL_SWI) {
-        inst_out->op = arm7_inst_swi;
-        inst_out->cycles = 2 * S_CYCLE + 1 * N_CYCLE;
-    } else {
-        error_set_arm7_inst(inst);
-        error_set_arm7_pc(arm7->reg[ARM7_REG_PC]);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    inst_out->cond = arm7_cond(inst);
-    inst_out->inst = inst;
-}
-
 static void next_inst(struct arm7 *arm7) {
     arm7->reg[ARM7_REG_PC] += 4;
-}
-
-void arm7_fetch_inst(struct arm7 *arm7, struct arm7_decoded_inst *inst_out) {
-    arm7_check_excp(arm7);
-
-    int cycle_count = 0;
-    uint32_t pc = arm7->reg[ARM7_REG_PC];
-
-    if (!arm7->pipeline_full) {
-        cycle_count = 2;
-
-        arm7->pipeline_pc[0] = pc + 4;
-        arm7->pipeline[0] = do_fetch_inst(arm7, pc + 4);
-
-        arm7->pipeline_pc[1] = pc;
-        arm7->pipeline[1] = do_fetch_inst(arm7, pc);
-
-        arm7->pipeline_full = true;
-
-        pc += 8;
-        arm7->reg[ARM7_REG_PC] = pc;
-    }
-
-    arm7_inst inst_fetched = do_fetch_inst(arm7, pc);
-    uint32_t newpc = arm7->pipeline_pc[0];
-    arm7_inst newinst = arm7->pipeline[0];
-    arm7_inst ret = arm7->pipeline[1];
-
-    arm7->pipeline_pc[0] = pc;
-    arm7->pipeline[0] = inst_fetched;
-    arm7->pipeline_pc[1] = newpc;
-    arm7->pipeline[1] = newinst;
-
-    arm7_decode(arm7, inst_out, ret);
-    inst_out->cycles += cycle_count;
 }
 
 uint32_t arm7_pc_next(struct arm7 *arm7) {
@@ -672,443 +481,726 @@ uint32_t arm7_pc_next(struct arm7 *arm7) {
     return arm7->reg[ARM7_REG_PC];
 }
 
-static void arm7_check_excp(struct arm7 *arm7) {
-    if (arm7->excp_dirty) {
-        enum arm7_excp excp = arm7->excp;
-        uint32_t cpsr = arm7->reg[ARM7_REG_CPSR];
+#define EVAL_COND(cond) if (!arm7_cond_##cond(arm7)) goto cond_fail;
 
-        /*
-         * TODO: if we ever add support for systems other than Dreamcast, we need to
-         * check the IRQ line here.  Dreamcast only uses FIQ, so there's no point
-         * in checking for IRQ.
-         *
-         * TODO: also need to check for ARM7_EXCP_DATA_ABORT.
-         */
-
-        if (arm7->fiq_line)
-            excp |= ARM7_EXCP_FIQ;
-        else
-            excp &= ~ARM7_EXCP_FIQ;
-
-        if (excp & ARM7_EXCP_RESET) {
-            arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-            arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
-            arm7->reg[ARM7_REG_PC] = 0;
-            arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-                ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
-            reset_pipeline(arm7);
-            arm7->excp &= ~ARM7_EXCP_RESET;
-        } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
-            arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
-            arm7->reg[ARM7_REG_R14_FIQ] = arm7_pc_next(arm7) + 4;
-            arm7->reg[ARM7_REG_PC] = 0x1c;
-            LOG_DBG("FIQ jump to 0x1c\n");
-            arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-                ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
-            reset_pipeline(arm7);
-            arm7->excp &= ~ARM7_EXCP_FIQ;
-        } else if (excp & ARM7_EXCP_SWI) {
-            /*
-             * This will be called *after* the SWI instruction has executed, when
-             * the arm7 is about to execute the next instruction.  The spec says
-             * that R14_svc needs to point to the instruction immediately after the
-             * SWI.  I expect the SWI instruction to not increment the PC at the
-             * end, so the instruction after the SWI will be pipeline[1].
-             * ARM7_REG_R15 points to the next instruction to be fetched, which is
-             * pipeline[0].  Therefore, the next instruction to be executed is at
-             * ARM7_REG_R15 - 4.
-             */
-            arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-            arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
-            arm7->reg[ARM7_REG_PC] = 0;
-            arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-                ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
-            reset_pipeline(arm7);
-            arm7->excp &= ~ARM7_EXCP_SWI;
-        }
-
-        arm7->excp_dirty = false;
-    }
-}
-
-static uint32_t do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
-    if (addr <= 0x007fffff)
-        return aica_wave_mem_read_32(addr & 0x001fffff, arm7->inst_mem);
-    return ~0;
-    /* return memory_map_read_32(arm7->map, addr); */
-}
-
-/*
- * call this when something like a branch or exception happens that invalidates
- * instructions in the pipeline.
- *
- * This won't effect the PC, but it will clear out anything already in the
- * pipeline.  What that means is that anything in the pipeline which hasn't
- * been executed yet will get trashed.  The upshot of this is that it's only
- * safe to call reset_pipeline when the PC has actually changed.
- */
-static void reset_pipeline(struct arm7 *arm7) {
-    arm7->pipeline_full = false;
-}
-
-static void arm7_inst_branch(struct arm7 *arm7, arm7_inst inst) {
-    uint32_t offs = inst & ((1 << 24) - 1);
-    if (offs & (1 << 23))
-        offs |= 0xff000000;
-    offs <<= 2;
-
-    if (inst & (1 << 24)) {
-        // link bit
-        *arm7_gen_reg(arm7, 14) = arm7->reg[ARM7_REG_PC] - 4;
+// branch (with or without link)
+#define DEF_BRANCH_INST(cond)                                           \
+    static unsigned                                                     \
+    arm7_inst_branch_##cond(struct arm7 *arm7, arm7_inst inst) {        \
+        EVAL_COND(cond)                                                 \
+        uint32_t offs = inst & ((1 << 24) - 1);                         \
+        if (offs & (1 << 23))                                           \
+            offs |= 0xff000000;                                         \
+        offs <<= 2;                                                     \
+                                                                        \
+        if (inst & (1 << 24)) {                                         \
+            /* link bit */                                              \
+            *arm7_gen_reg(arm7, 14) = arm7->reg[ARM7_REG_PC] - 4;       \
+        }                                                               \
+                                                                        \
+        uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];                \
+                                                                        \
+        arm7->reg[ARM7_REG_PC] = pc_new;                                \
+        arm7_reset_pipeline(arm7);                                      \
+                                                                        \
+        goto the_end;                                                   \
+    cond_fail:                                                          \
+        next_inst(arm7);                                                \
+    the_end:                                                            \
+        return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
-    uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];
+DEF_BRANCH_INST(eq)
+DEF_BRANCH_INST(ne)
+DEF_BRANCH_INST(cs)
+DEF_BRANCH_INST(cc)
+DEF_BRANCH_INST(mi)
+DEF_BRANCH_INST(pl)
+DEF_BRANCH_INST(vs)
+DEF_BRANCH_INST(vc)
+DEF_BRANCH_INST(hi)
+DEF_BRANCH_INST(ls)
+DEF_BRANCH_INST(ge)
+DEF_BRANCH_INST(lt)
+DEF_BRANCH_INST(gt)
+DEF_BRANCH_INST(le)
+DEF_BRANCH_INST(al)
+DEF_BRANCH_INST(nv)
 
-    arm7->reg[ARM7_REG_PC] = pc_new;
-    reset_pipeline(arm7);
-}
-
-static void arm7_inst_ldr_str(struct arm7 *arm7, arm7_inst inst) {
-    unsigned rn = (inst >> 16) & 0xf;
-    unsigned rd = (inst >> 12) & 0xf;
-
-    bool writeback = inst & (1 << 21);
-    int len = (inst & (1 << 22)) ? 1 : 4;
-    int sign = (inst & (1 << 23)) ? 1 : -1;
-    bool pre = inst & (1 << 24);
-    bool offs_reg = inst & (1 << 25);
-    bool to_mem = !(inst & (1 << 20));
-    bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
-
-    uint32_t offs;
-
-    if (offs_reg) {
-        offs = decode_shift_ldr_str(arm7, inst, &carry);
-    } else {
-        offs = inst & ((1 << 12) - 1);
+#define DEF_LDR_STR_INST(cond)                                          \
+    static unsigned                                                     \
+    arm7_inst_ldr_str_##cond(struct arm7 *arm7, arm7_inst inst) {       \
+        EVAL_COND(cond);                                                \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        bool writeback = inst & (1 << 21);                              \
+        int len = (inst & (1 << 22)) ? 1 : 4;                           \
+        int sign = (inst & (1 << 23)) ? 1 : -1;                         \
+        bool pre = inst & (1 << 24);                                    \
+        bool offs_reg = inst & (1 << 25);                               \
+        bool to_mem = !(inst & (1 << 20));                              \
+        bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK); \
+                                                                        \
+        uint32_t offs;                                                  \
+                                                                        \
+        if (offs_reg) {                                                 \
+            offs = decode_shift_ldr_str(arm7, inst, &carry);            \
+        } else {                                                        \
+            offs = inst & ((1 << 12) - 1);                              \
+        }                                                               \
+                                                                        \
+        /* TODO: should this instruction update the carry flag? */      \
+                                                                        \
+        uint32_t addr = *arm7_gen_reg(arm7, rn);                        \
+                                                                        \
+        if (pre) {                                                      \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+                                                                        \
+        if (len == 4) {                                                 \
+            if (addr % 4) {                                             \
+                /* Log this case, it's got some pretty fucked up */     \
+                /* handling for loads (see below).  Stores appear */    \
+                /* to only clear the lower two bits, but Imust */       \
+                /* tread carefully; this would not be the first time I */ \
+                /* misinterpreted an obscure corner-case in ARM7DI's */ \
+                /* CPU manual.*/                                        \
+                LOG_DBG("ARM7 Unaligned memory %s at PC=0x%08x\n",      \
+                        to_mem ? "store" : "load",                      \
+                        (unsigned)arm7->reg[ARM7_REG_PC]);              \
+            }                                                           \
+            if (to_mem) {                                               \
+                uint32_t val = *arm7_gen_reg(arm7, rd);                 \
+                if (rd == 15)                                           \
+                    val += 4;                                           \
+                addr &= ~3;                                             \
+                memory_map_write_32(arm7->map, addr, val);              \
+            } else {                                                    \
+                uint32_t addr_read = addr & ~3;                         \
+                uint32_t val = memory_map_read_32(arm7->map, addr_read); \
+                                                                        \
+                /* Deal with unaligned offsets.  It does the load */    \
+                /* from the aligned address (ie address with bits */    \
+                /* 0 and 1 cleared) and then right-rotates so that */   \
+                /* the LSB corresponds to the original unalgined address */ \
+                switch (addr % 4) {                                     \
+                case 3:                                                 \
+                    val = ((val >> 24) & 0xffffff) | (val << 8);        \
+                    break;                                              \
+                case 2:                                                 \
+                    val = ((val >> 16) & 0xffffff) | (val << 16);       \
+                    break;                                              \
+                case 1:                                                 \
+                    val = ((val >> 8) & 0xffffff) | (val << 24);        \
+                    break;                                              \
+                }                                                       \
+                *arm7_gen_reg(arm7, rd) = val;                          \
+            }                                                           \
+        } else {                                                        \
+            if (to_mem) {                                               \
+                uint32_t val = *arm7_gen_reg(arm7, rd);                 \
+                if (rd == 15)                                           \
+                    val += 4;                                           \
+                memory_map_write_8(arm7->map, addr, val);               \
+            } else {                                                    \
+                *arm7_gen_reg(arm7, rd) =                               \
+                    (uint32_t)memory_map_read_8(arm7->map, addr);       \
+            }                                                           \
+        }                                                               \
+                                                                        \
+        if (!pre) {                                                     \
+            if (writeback) {                                            \
+                /* docs say the writeback is implied when the */        \
+                /* pre bit is not set, and that the writeback */        \
+                /* bit should be zero in this case. */                  \
+                error_set_arm7_inst(inst);                              \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            }                                                           \
+            writeback = true;                                           \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        if (writeback) {                                                \
+            if (rn == 15)                                               \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            *arm7_gen_reg(arm7, rn) = addr;                             \
+        }                                                               \
+                                                                        \
+        if (!to_mem && rd == 15) {                                      \
+            arm7_reset_pipeline(arm7);                                  \
+            goto the_end;                                               \
+        }                                                               \
+    cond_fail:                                                          \
+        next_inst(arm7);                                                \
+    the_end:                                                            \
+        return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
     }
 
-    // TODO: should this instruction update the carry flag?
+DEF_LDR_STR_INST(eq)
+DEF_LDR_STR_INST(ne)
+DEF_LDR_STR_INST(cs)
+DEF_LDR_STR_INST(cc)
+DEF_LDR_STR_INST(mi)
+DEF_LDR_STR_INST(pl)
+DEF_LDR_STR_INST(vs)
+DEF_LDR_STR_INST(vc)
+DEF_LDR_STR_INST(hi)
+DEF_LDR_STR_INST(ls)
+DEF_LDR_STR_INST(ge)
+DEF_LDR_STR_INST(lt)
+DEF_LDR_STR_INST(gt)
+DEF_LDR_STR_INST(le)
+DEF_LDR_STR_INST(al)
+DEF_LDR_STR_INST(nv)
 
-    uint32_t addr = *arm7_gen_reg(arm7, rn);
-
-    if (pre) {
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
+#define DEF_BLOCK_XFER_INST(cond)                                       \
+    static unsigned                                                     \
+    arm7_inst_block_xfer_##cond(struct arm7 *arm7, arm7_inst inst) {    \
+        EVAL_COND(cond);                                                \
+        unsigned rn = (inst & BIT_RANGE(16, 19)) >> 16;                 \
+        unsigned reg_list = inst & 0xffff;                              \
+        bool pre = (bool)(inst & (1 << 24));                            \
+        bool up = (bool)(inst & (1 << 23));                             \
+        bool psr_user_force = (bool)(inst & (1 << 22));                 \
+        bool writeback = (bool)(inst & (1 << 21));                      \
+        bool load = (bool)(inst & (1 << 20));                           \
+                                                                        \
+        if (psr_user_force && (!(reg_list & (1 << 15)) || !load)) {     \
+            error_set_arm7_inst(inst);                                  \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
+                                                                        \
+        /* docs say you cant do this */                                 \
+        if (rn == 15)                                                   \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+                                                                        \
+        uint32_t *baseptr = arm7_gen_reg(arm7, rn);                     \
+        uint32_t base = *baseptr;                                       \
+                                                                        \
+        /* This is actually not illegal, but there are some weird */    \
+        /* corner cases I have to consider first. */                    \
+        if (writeback && (reg_list & (1 << rn)))                        \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+                                                                        \
+        if (!reg_list)                                                  \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+                                                                        \
+        if (base % 4) {                                                 \
+            error_set_feature("unaligned ARM7 block transfers");        \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
+                                                                        \
+        int reg_no;                                                     \
+        if (up) {                                                       \
+            if (load) {                                                 \
+                for (reg_no = 0; reg_no < 15; reg_no++)                 \
+                    if (reg_list & (1 << reg_no)) {                     \
+                        if (pre)                                        \
+                            base += 4;                                  \
+                        *arm7_gen_reg(arm7, reg_no) =                   \
+                            memory_map_read_32(arm7->map, base);        \
+                        if (!pre)                                       \
+                            base += 4;                                  \
+                    }                                                   \
+                if (reg_list & (1 << 15)) {                             \
+                    if (psr_user_force)                                 \
+                        arm7->reg[ARM7_REG_CPSR] =                      \
+                            arm7->reg[arm7_spsr_idx(arm7)];             \
+                    if (pre)                                            \
+                        base += 4;                                      \
+                    arm7->reg[ARM7_REG_PC] =                            \
+                        memory_map_read_32(arm7->map, base);            \
+                    if (!pre)                                           \
+                        base += 4;                                      \
+                }                                                       \
+            } else {                                                    \
+                /* store */                                             \
+                if (psr_user_force)                                     \
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);                   \
+                for (reg_no = 0; reg_no < 15; reg_no++)                 \
+                    if (reg_list & (1 << reg_no)) {                     \
+                        if (pre)                                        \
+                            base += 4;                                  \
+                        memory_map_write_32(arm7->map, base,            \
+                                            *arm7_gen_reg(arm7, reg_no)); \
+                        if (!pre)                                       \
+                            base += 4;                                  \
+                    }                                                   \
+                                                                        \
+                if (reg_list & (1 << 15)) {                             \
+                    if (pre)                                            \
+                        base += 4;                                      \
+                    memory_map_write_32(arm7->map, base,                \
+                                        arm7->reg[ARM7_REG_PC] + 4);    \
+                    if (!pre)                                           \
+                        base += 4;                                      \
+                }                                                       \
+            }                                                           \
+        } else {                                                        \
+            if (psr_user_force)                                         \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            /* TODO: */                                                 \
+            /* This transfers higher registers before lower */          \
+            /* registers.  The spec says that lower registers must */   \
+            /* always go first.  I don't think that will be a */        \
+            /* problem since it all happens instantly, but it's */      \
+            /* somethingto keep in mind if you ever try to use this */  \
+            /* interpreter on a system which has a FIFO register */     \
+            /* like the one SH4 uses to communicate with PowerVR2's */  \
+            /* Tile Accelerator. */                                     \
+            if (load) {                                                 \
+                for (reg_no = 15; reg_no >= 0; reg_no--) {              \
+                    if (reg_list & (1 << reg_no)) {                     \
+                        if (pre)                                        \
+                            base -= 4;                                  \
+                        *arm7_gen_reg(arm7, reg_no) =                   \
+                            memory_map_read_32(arm7->map, base);        \
+                        if (!pre)                                       \
+                            base -= 4;                                  \
+                    }                                                   \
+                }                                                       \
+            } else {                                                    \
+                if (reg_list & (1 << 15)) {                             \
+                    if (psr_user_force)                                 \
+                        RAISE_ERROR(ERROR_UNIMPLEMENTED);               \
+                    if (pre)                                            \
+                        base -= 4;                                      \
+                    memory_map_write_32(arm7->map, base,                \
+                                        arm7->reg[ARM7_REG_PC] + 4);    \
+                    if (!pre)                                           \
+                        base -= 4;                                      \
+                }                                                       \
+                                                                        \
+                for (reg_no = 14; reg_no >= 0; reg_no--) {              \
+                    if (reg_list & (1 << reg_no)) {                     \
+                        if (pre)                                        \
+                            base -= 4;                                  \
+                        memory_map_write_32(arm7->map, base,            \
+                                            *arm7_gen_reg(arm7, reg_no)); \
+                        if (!pre)                                       \
+                            base -= 4;                                  \
+                    }                                                   \
+                }                                                       \
+            }                                                           \
+        }                                                               \
+                                                                        \
+        /* Now handle the writeback.  Spec has some fairly */           \
+        /* complicated rules about this when the rn is in the */        \
+        /* register list, but the code above should have raised */      \
+        /* an ERROR_UNIMPLEMENTED if that was the case. */              \
+        if (writeback)                                                  \
+            *baseptr = base;                                            \
+                                                                        \
+        if (load && (reg_list & (1 << 15))) {                           \
+            arm7_reset_pipeline(arm7);                                  \
+            goto the_end;                                               \
+        }                                                               \
+    cond_fail:                                                          \
+        next_inst(arm7);                                                \
+    the_end:                                                            \
+        return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
     }
 
-
-    if (len == 4) {
-        if (addr % 4) {
-            /*
-             * Log this case, it's got some pretty fucked up handling for loads
-             * (see below).  Stores appear to only clear the lower two bits, but I
-             * must tread carefully; this would not be the first time I
-             * misinterpreted an obscure corner-case in ARM7DI's CPU manual.
-             */
-            LOG_DBG("ARM7 Unaligned memory %s at PC=0x%08x\n",
-                    to_mem ? "store" : "load",
-                    (unsigned)arm7->reg[ARM7_REG_PC]);
-        }
-        if (to_mem) {
-            uint32_t val = *arm7_gen_reg(arm7, rd);
-            if (rd == 15)
-                val += 4;
-            addr &= ~3;
-            memory_map_write_32(arm7->map, addr, val);
-        } else {
-            uint32_t addr_read = addr & ~3;
-            uint32_t val = memory_map_read_32(arm7->map, addr_read);
-
-            /*
-             * Deal with unaligned offsets.  It does the load from the aligned
-             * address (ie address with bits 0 and 1 cleared) and then
-             * right-rotates so that the LSB corresponds to the original
-             * unaligned address.
-             */
-            switch (addr % 4) {
-            case 3:
-                val = ((val >> 24) & 0xffffff) | (val << 8);
-                break;
-            case 2:
-                val = ((val >> 16) & 0xffffff) | (val << 16);
-                break;
-            case 1:
-                val = ((val >> 8) & 0xffffff) | (val << 24);
-                break;
-            }
-            *arm7_gen_reg(arm7, rd) = val;
-        }
-    } else {
-        if (to_mem) {
-            uint32_t val = *arm7_gen_reg(arm7, rd);
-            if (rd == 15)
-                val += 4;
-            memory_map_write_8(arm7->map, addr, val);
-        } else {
-            *arm7_gen_reg(arm7, rd) = (uint32_t)memory_map_read_8(arm7->map, addr);
-        }
-    }
-
-    if (!pre) {
-        if (writeback) {
-            /*
-             * docs say the writeback is implied when the pre bit is not set,
-             * and that the writeback bit should be zero in this case.
-             */
-            error_set_arm7_inst(inst);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        writeback = true;
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
-    }
-
-    if (writeback) {
-        if (rn == 15)
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        *arm7_gen_reg(arm7, rn) = addr;
-    }
-
-    if (!to_mem && rd == 15)
-        reset_pipeline(arm7);
-    else
-        next_inst(arm7);
-}
-
-static void arm7_block_xfer(struct arm7 *arm7, arm7_inst inst) {
-    unsigned rn = (inst & BIT_RANGE(16, 19)) >> 16;
-    unsigned reg_list = inst & 0xffff;
-    bool pre = (bool)(inst & (1 << 24));
-    bool up = (bool)(inst & (1 << 23));
-    bool psr_user_force = (bool)(inst & (1 << 22));
-    bool writeback = (bool)(inst & (1 << 21));
-    bool load = (bool)(inst & (1 << 20));
-
-    if (psr_user_force && (!(reg_list & (1 << 15)) || !load)) {
-        error_set_arm7_inst(inst);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    // docs say you cant do this
-    if (rn == 15)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
-    uint32_t *baseptr = arm7_gen_reg(arm7, rn);
-    uint32_t base = *baseptr;
-
-    /*
-     * This is actually not illegal, but there are some weird corner cases I
-     * have to consider first.
-     */
-    if (writeback && (reg_list & (1 << rn)))
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
-    if (!reg_list)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
-    if (base % 4) {
-        error_set_feature("unaligned ARM7 block transfers");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    int reg_no;
-    if (up) {
-        if (load) {
-            for (reg_no = 0; reg_no < 15; reg_no++)
-                if (reg_list & (1 << reg_no)) {
-                    if (pre)
-                        base += 4;
-                    *arm7_gen_reg(arm7, reg_no) =
-                        memory_map_read_32(arm7->map, base);
-                    if (!pre)
-                        base += 4;
-                }
-            if (reg_list & (1 << 15)) {
-                if (psr_user_force)
-                    arm7->reg[ARM7_REG_CPSR] = arm7->reg[arm7_spsr_idx(arm7)];
-                if (pre)
-                    base += 4;
-                arm7->reg[ARM7_REG_PC] =
-                    memory_map_read_32(arm7->map, base);
-                if (!pre)
-                    base += 4;
-            }
-        } else {
-            // store
-            if (psr_user_force)
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
-            for (reg_no = 0; reg_no < 15; reg_no++)
-                if (reg_list & (1 << reg_no)) {
-                    if (pre)
-                        base += 4;
-                    memory_map_write_32(arm7->map, base,
-                                        *arm7_gen_reg(arm7, reg_no));
-                    if (!pre)
-                        base += 4;
-                }
-
-            if (reg_list & (1 << 15)) {
-                if (pre)
-                    base += 4;
-                memory_map_write_32(arm7->map, base,
-                                    arm7->reg[ARM7_REG_PC] + 4);
-                if (!pre)
-                    base += 4;
-            }
-        }
-    } else {
-        if (psr_user_force)
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        /*
-         * TODO:
-         * This transfers higher registers before lower registers.  The spec
-         * says that lower registers must always go first.  I don't think that
-         * will be a problem since it all happens instantly, but it's something
-         * to keep in mind if you ever try to use this interpreter on a system
-         * which has a FIFO register like the one SH4 uses to communicate with
-         * PowerVR2's Tile Accelerator.
-         */
-        if (load) {
-            for (reg_no = 15; reg_no >= 0; reg_no--) {
-                if (reg_list & (1 << reg_no)) {
-                    if (pre)
-                        base -= 4;
-                    *arm7_gen_reg(arm7, reg_no) =
-                        memory_map_read_32(arm7->map, base);
-                    if (!pre)
-                        base -= 4;
-                }
-            }
-        } else {
-            if (reg_list & (1 << 15)) {
-                if (psr_user_force)
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                if (pre)
-                    base -= 4;
-                memory_map_write_32(arm7->map, base,
-                                    arm7->reg[ARM7_REG_PC] + 4);
-                if (!pre)
-                    base -= 4;
-            }
-
-            for (reg_no = 14; reg_no >= 0; reg_no--) {
-                if (reg_list & (1 << reg_no)) {
-                    if (pre)
-                        base -= 4;
-                    memory_map_write_32(arm7->map, base,
-                                        *arm7_gen_reg(arm7, reg_no));
-                    if (!pre)
-                        base -= 4;
-                }
-            }
-        }
-    }
-
-    /*
-     * Now handle the writeback.  Spec has some fairly complicated rules about
-     * this when the rn is in the register list, but the code above should have
-     * raised an ERROR_UNIMPLEMENTED if that was the case.
-     */
-    if (writeback)
-        *baseptr = base;
-
-    if (load && (reg_list & (1 << 15)))
-        reset_pipeline(arm7);
-    else
-        next_inst(arm7);
-}
+DEF_BLOCK_XFER_INST(eq)
+DEF_BLOCK_XFER_INST(ne)
+DEF_BLOCK_XFER_INST(cs)
+DEF_BLOCK_XFER_INST(cc)
+DEF_BLOCK_XFER_INST(mi)
+DEF_BLOCK_XFER_INST(pl)
+DEF_BLOCK_XFER_INST(vs)
+DEF_BLOCK_XFER_INST(vc)
+DEF_BLOCK_XFER_INST(hi)
+DEF_BLOCK_XFER_INST(ls)
+DEF_BLOCK_XFER_INST(ge)
+DEF_BLOCK_XFER_INST(lt)
+DEF_BLOCK_XFER_INST(gt)
+DEF_BLOCK_XFER_INST(le)
+DEF_BLOCK_XFER_INST(al)
+DEF_BLOCK_XFER_INST(nv)
 
 /*
  * MRS
  * Copy CPSR (or SPSR) to a register
  */
-static void arm7_inst_mrs(struct arm7 *arm7, arm7_inst inst) {
-    bool src_psr = (1 << 22) & inst;
-    unsigned dst_reg = (inst >> 12) & 0xf;
+#define DEF_MRS_INST(cond)                                      \
+    static unsigned                                             \
+    arm7_inst_mrs_##cond(struct arm7 *arm7, arm7_inst inst) {   \
+        EVAL_COND(cond);                                        \
+        bool src_psr = (1 << 22) & inst;                        \
+        unsigned dst_reg = (inst >> 12) & 0xf;                  \
+                                                                \
+        uint32_t const *src_p;                                  \
+        if (src_psr)                                            \
+            src_p = arm7->reg + arm7_spsr_idx(arm7);            \
+        else                                                    \
+            src_p = arm7->reg + ARM7_REG_CPSR;                  \
+                                                                \
+        *arm7_gen_reg(arm7, dst_reg) = *src_p;                  \
+                                                                \
+    cond_fail:                                                  \
+        next_inst(arm7);                                        \
+        return 1 * S_CYCLE;                                     \
+    }                                                           \
 
-    uint32_t const *src_p;
-    if (src_psr)
-        src_p = arm7->reg + arm7_spsr_idx(arm7);
-    else
-        src_p = arm7->reg + ARM7_REG_CPSR;
-
-    *arm7_gen_reg(arm7, dst_reg) = *src_p;
-
-    next_inst(arm7);
-}
+DEF_MRS_INST(eq)
+DEF_MRS_INST(ne)
+DEF_MRS_INST(cs)
+DEF_MRS_INST(cc)
+DEF_MRS_INST(mi)
+DEF_MRS_INST(pl)
+DEF_MRS_INST(vs)
+DEF_MRS_INST(vc)
+DEF_MRS_INST(hi)
+DEF_MRS_INST(ls)
+DEF_MRS_INST(ge)
+DEF_MRS_INST(lt)
+DEF_MRS_INST(gt)
+DEF_MRS_INST(le)
+DEF_MRS_INST(al)
+DEF_MRS_INST(nv)
 
 /*
  * MSR
  * Copy a register to CPSR (or SPSR)
  */
-static void arm7_inst_msr(struct arm7 *arm7, arm7_inst inst) {
-    bool dst_psr = (1 << 22) & inst;
-
-    uint32_t *dst_p;
-    if (dst_psr)
-        dst_p = arm7->reg + arm7_spsr_idx(arm7);
-    else
-        dst_p = arm7->reg + ARM7_REG_CPSR;
-
-    unsigned src_reg = inst & 0xff;
-    *dst_p = *arm7_gen_reg(arm7, src_reg);
-
-    next_inst(arm7);
-}
-
-static void arm7_inst_mul(struct arm7 *arm7, arm7_inst inst) {
-    bool accum = (bool)(inst & (1 << 21));
-    bool set_flags = (bool)(inst & (1 << 20));
-    unsigned rd = (BIT_RANGE(16, 19) & inst) >> 16;
-    unsigned rn = (BIT_RANGE(12, 15) & inst) >> 12;
-    unsigned rs = (BIT_RANGE(8, 11) & inst) >> 8;
-    unsigned rm = BIT_RANGE(0, 3) & inst;
-
-#ifdef INVARIANTS
-    if ((BIT_RANGE(22, 27) & inst) || (((BIT_RANGE(4, 7) & inst) >> 4) != 9))
-        RAISE_ERROR(ERROR_INTEGRITY);
-#endif
-
-    // doc says you can't do this
-    if (rd == rm)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
-    // doc says you can't do this either
-    if (rd == 15 || rn == 15 || rs == 15 || rm == 15)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
-    uint32_t val = *arm7_gen_reg(arm7, rm) * *arm7_gen_reg(arm7, rs);
-    if (accum)
-        val += *arm7_gen_reg(arm7, rn);
-
-    *arm7_gen_reg(arm7, rd) = val;
-
-    if (set_flags) {
-        uint32_t cpsr = arm7->reg[ARM7_REG_CPSR];
-        if (val & (1 << 31))
-            cpsr |= ARM7_CPSR_N_MASK;
-        else
-            cpsr &= ~ARM7_CPSR_N_MASK;
-
-        if (!val)
-            cpsr |= ARM7_CPSR_Z_MASK;
-        else
-            cpsr &= ~ARM7_CPSR_Z_MASK;
-
-        // apparently the value of C is undefined
-        cpsr &= ~ARM7_CPSR_C_MASK;
-
-        // V flag is unaffected by this instruction
-
-        arm7->reg[ARM7_REG_CPSR] = cpsr;
+#define DEF_MSR_INST(cond)                                      \
+    static unsigned                                             \
+    arm7_inst_msr_##cond(struct arm7 *arm7, arm7_inst inst) {   \
+        EVAL_COND(cond);                                        \
+        bool dst_psr = (1 << 22) & inst;                        \
+                                                                \
+        uint32_t *dst_p;                                        \
+        if (dst_psr)                                            \
+            dst_p = arm7->reg + arm7_spsr_idx(arm7);            \
+        else                                                    \
+            dst_p = arm7->reg + ARM7_REG_CPSR;                  \
+                                                                \
+        unsigned src_reg = inst & 0xff;                         \
+        *dst_p = *arm7_gen_reg(arm7, src_reg);                  \
+                                                                \
+    cond_fail:                                                  \
+        next_inst(arm7);                                        \
+        return 1 * S_CYCLE;                                     \
     }
 
-    next_inst(arm7);
+DEF_MSR_INST(eq)
+DEF_MSR_INST(ne)
+DEF_MSR_INST(cs)
+DEF_MSR_INST(cc)
+DEF_MSR_INST(mi)
+DEF_MSR_INST(pl)
+DEF_MSR_INST(vs)
+DEF_MSR_INST(vc)
+DEF_MSR_INST(hi)
+DEF_MSR_INST(ls)
+DEF_MSR_INST(ge)
+DEF_MSR_INST(lt)
+DEF_MSR_INST(gt)
+DEF_MSR_INST(le)
+DEF_MSR_INST(al)
+DEF_MSR_INST(nv)
+
+#ifdef INVARIANTS
+#define MUL_INVARIANTS_CHECK                                            \
+    if ((BIT_RANGE(22, 27) & inst) || (((BIT_RANGE(4, 7) & inst) >> 4) != 9)) \
+        RAISE_ERROR(ERROR_INTEGRITY);
+#else
+#define MUL_INVARIANTS_CHECK
+#endif
+
+#define DEF_MUL_INST(cond)                                      \
+    static unsigned                                             \
+    arm7_inst_mul_##cond(struct arm7 *arm7, arm7_inst inst) {   \
+        EVAL_COND(cond);                                        \
+        bool accum = (bool)(inst & (1 << 21));                  \
+        bool set_flags = (bool)(inst & (1 << 20));              \
+        unsigned rd = (BIT_RANGE(16, 19) & inst) >> 16;         \
+        unsigned rn = (BIT_RANGE(12, 15) & inst) >> 12;         \
+        unsigned rs = (BIT_RANGE(8, 11) & inst) >> 8;           \
+        unsigned rm = BIT_RANGE(0, 3) & inst;                   \
+                                                                \
+        MUL_INVARIANTS_CHECK;                                   \
+                                                                \
+        /* doc says you can't do this */                        \
+        if (rd == rm)                                           \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                   \
+                                                                \
+        /* doc says you can't do this either */                 \
+        if (rd == 15 || rn == 15 || rs == 15 || rm == 15)       \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                   \
+                                                                        \
+        uint32_t val = *arm7_gen_reg(arm7, rm) * *arm7_gen_reg(arm7, rs); \
+        if (accum)                                                      \
+            val += *arm7_gen_reg(arm7, rn);                             \
+                                                                        \
+        *arm7_gen_reg(arm7, rd) = val;                                  \
+                                                                        \
+        if (set_flags) {                                                \
+            uint32_t cpsr = arm7->reg[ARM7_REG_CPSR];                   \
+            if (val & (1 << 31))                                        \
+                cpsr |= ARM7_CPSR_N_MASK;                               \
+            else                                                        \
+                cpsr &= ~ARM7_CPSR_N_MASK;                              \
+                                                                        \
+            if (!val)                                                   \
+                cpsr |= ARM7_CPSR_Z_MASK;                               \
+            else                                                        \
+                cpsr &= ~ARM7_CPSR_Z_MASK;                              \
+                                                                        \
+            /* apparently the value of C is undefined */                \
+            cpsr &= ~ARM7_CPSR_C_MASK;                                  \
+                                                                        \
+            /* V flag is unaffected by this instruction */              \
+                                                                        \
+            arm7->reg[ARM7_REG_CPSR] = cpsr;                            \
+        }                                                               \
+                                                                        \
+    cond_fail:                                                          \
+        next_inst(arm7);                                                \
+        return 4 * S_CYCLE;                                             \
+    }
+
+DEF_MUL_INST(eq)
+DEF_MUL_INST(ne)
+DEF_MUL_INST(cs)
+DEF_MUL_INST(cc)
+DEF_MUL_INST(mi)
+DEF_MUL_INST(pl)
+DEF_MUL_INST(vs)
+DEF_MUL_INST(vc)
+DEF_MUL_INST(hi)
+DEF_MUL_INST(ls)
+DEF_MUL_INST(ge)
+DEF_MUL_INST(lt)
+DEF_MUL_INST(gt)
+DEF_MUL_INST(le)
+DEF_MUL_INST(al)
+DEF_MUL_INST(nv)
+
+#define DEF_COND_TBL(opcode)                                        \
+    static arm7_op_fn const arm7_##opcode##_cond_tbl[16] = {        \
+        arm7_inst_##opcode##_eq,                                    \
+        arm7_inst_##opcode##_ne,                                    \
+        arm7_inst_##opcode##_cs,                                    \
+        arm7_inst_##opcode##_cc,                                    \
+        arm7_inst_##opcode##_mi,                                    \
+        arm7_inst_##opcode##_pl,                                    \
+        arm7_inst_##opcode##_vs,                                    \
+        arm7_inst_##opcode##_vc,                                    \
+        arm7_inst_##opcode##_hi,                                    \
+        arm7_inst_##opcode##_ls,                                    \
+        arm7_inst_##opcode##_ge,                                    \
+        arm7_inst_##opcode##_lt,                                    \
+        arm7_inst_##opcode##_gt,                                    \
+        arm7_inst_##opcode##_le,                                    \
+        arm7_inst_##opcode##_al,                                    \
+        arm7_inst_##opcode##_nv                                     \
+    }
+
+#define DEF_DATA_OP_INST(op_name, cond, is_logic, require_s, write_result) \
+    static unsigned                                                     \
+    arm7_inst_##op_name##_##cond(struct arm7 *arm7, arm7_inst inst) {   \
+        EVAL_COND(cond);                                                \
+        bool s_flag = inst & (1 << 20);                                 \
+        bool i_flag = inst & (1 << 25);                                 \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        bool carry_in = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;    \
+        bool n_out, c_out, z_out, v_out;                                \
+                                                                        \
+        uint32_t input_1 = *arm7_gen_reg(arm7, rn);                     \
+        uint32_t input_2;                                               \
+                                                                        \
+        c_out = carry_in;                                               \
+        if (i_flag) {                                                   \
+            input_2 = decode_immed(inst);                               \
+        } else {                                                        \
+            input_2 = decode_shift(arm7, inst, &c_out);                 \
+            if ((inst & (1 << 4)) && rn == 15)                          \
+                input_1 += 4;                                           \
+        }                                                               \
+                                                                        \
+        uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
+                                                  carry_in, &n_out,     \
+                                                  &c_out, &z_out, &v_out); \
+        if (s_flag && rd != 15) {                                       \
+            if (is_logic) {                                             \
+                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
+                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
+                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
+                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
+                                              ARM7_CPSR_N_MASK |        \
+                                              ARM7_CPSR_C_MASK);        \
+                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag | c_flag); \
+            } else {                                                    \
+                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
+                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
+                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
+                uint32_t v_flag = v_out ? ARM7_CPSR_V_MASK : 0;         \
+                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
+                                              ARM7_CPSR_N_MASK |        \
+                                              ARM7_CPSR_C_MASK |        \
+                                              ARM7_CPSR_V_MASK);        \
+                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag |          \
+                                             c_flag | v_flag);          \
+            }                                                           \
+        } else if (s_flag && rd == 15) {                                \
+            arm7->reg[ARM7_REG_CPSR] = arm7->reg[arm7_spsr_idx(arm7)];  \
+        } else if (require_s) {                                         \
+            RAISE_ERROR(ERROR_INTEGRITY);                               \
+        }                                                               \
+                                                                        \
+        if (write_result) {                                             \
+            *arm7_gen_reg(arm7, rd) = res;                              \
+            if (rd == 15) {                                             \
+                arm7_reset_pipeline(arm7);                              \
+                goto the_end;                                           \
+            }                                                           \
+        }                                                               \
+                                                                        \
+    cond_fail:                                                          \
+        next_inst(arm7);                                                \
+    the_end:                                                            \
+        return 2 * S_CYCLE + 1 * N_CYCLE;                               \
+    }
+
+#define DEF_DATA_OP_INST_ALL_CONDS(op_name, is_logic, require_s, write_result) \
+    DEF_DATA_OP_INST(op_name, eq, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, ne, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, cs, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, cc, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, mi, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, pl, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, vs, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, vc, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, hi, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, ls, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, ge, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, lt, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, gt, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, le, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, al, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST(op_name, nv, is_logic, require_s, write_result)
+
+DEF_DATA_OP_INST_ALL_CONDS(orr, true, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(eor, true, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(and, true, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(bic, true, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(mov, true, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(add, false, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(sub, false, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(rsb, false, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(cmp, false, true, false)
+DEF_DATA_OP_INST_ALL_CONDS(tst, true, true, false)
+DEF_DATA_OP_INST_ALL_CONDS(mvn, true, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(cmn, false, true, false)
+
+#define DEF_SWI_INST(cond)                                              \
+    static unsigned                                                     \
+    arm7_inst_swi_##cond(struct arm7 *arm7, arm7_inst inst) {           \
+        EVAL_COND(cond);                                                \
+        LOG_WARN("Untested ARM7 SWI instruction used\n");               \
+        arm7->excp |= ARM7_EXCP_SWI;                                    \
+        arm7->excp_dirty = true;                                        \
+        /* it is not a mistake that I have chosen */                    \
+        /* to not call next_inst here */                                \
+        goto the_end;                                                   \
+    cond_fail:                                                          \
+        next_inst(arm7);                                                \
+    the_end:                                                            \
+        return 2 * S_CYCLE + 1 * N_CYCLE;                               \
+    }
+
+DEF_SWI_INST(eq)
+DEF_SWI_INST(ne)
+DEF_SWI_INST(cs)
+DEF_SWI_INST(cc)
+DEF_SWI_INST(mi)
+DEF_SWI_INST(pl)
+DEF_SWI_INST(vs)
+DEF_SWI_INST(vc)
+DEF_SWI_INST(hi)
+DEF_SWI_INST(ls)
+DEF_SWI_INST(ge)
+DEF_SWI_INST(lt)
+DEF_SWI_INST(gt)
+DEF_SWI_INST(le)
+DEF_SWI_INST(al)
+DEF_SWI_INST(nv)
+
+arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
+    DEF_COND_TBL(branch);
+    DEF_COND_TBL(ldr_str);
+    DEF_COND_TBL(block_xfer);
+    DEF_COND_TBL(mrs);
+    DEF_COND_TBL(msr);
+    DEF_COND_TBL(mul);
+    DEF_COND_TBL(orr);
+    DEF_COND_TBL(eor);
+    DEF_COND_TBL(and);
+    DEF_COND_TBL(bic);
+    DEF_COND_TBL(mov);
+    DEF_COND_TBL(add);
+    DEF_COND_TBL(sub);
+    DEF_COND_TBL(rsb);
+    DEF_COND_TBL(cmp);
+    DEF_COND_TBL(tst);
+    DEF_COND_TBL(mvn);
+    DEF_COND_TBL(cmn);
+    DEF_COND_TBL(swi);
+
+    if ((inst & MASK_B) == VAL_B) {
+        return arm7_branch_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_LDR_STR) == VAL_LDR_STR) {
+        return arm7_ldr_str_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_BLOCK_XFER) == VAL_BLOCK_XFER) {
+        return arm7_block_xfer_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_MRS) == VAL_MRS) {
+        return arm7_mrs_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_MSR) == VAL_MSR) {
+        return arm7_msr_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_MUL) == VAL_MUL) {
+        return arm7_mul_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_ORR) == VAL_ORR) {
+        return arm7_orr_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_EOR) == VAL_EOR) {
+        return arm7_eor_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_AND) == VAL_AND) {
+        return arm7_and_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_BIC) == VAL_BIC) {
+        return arm7_bic_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_MOV) == VAL_MOV) {
+        return arm7_mov_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_ADD) == VAL_ADD) {
+        return arm7_add_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_SUB) == VAL_SUB) {
+        return arm7_sub_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_RSB) == VAL_RSB) {
+        return arm7_rsb_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_CMP) == VAL_CMP) {
+        return arm7_cmp_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_TST) == VAL_TST) {
+        return arm7_tst_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_MVN) == VAL_MVN) {
+        return arm7_mvn_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_CMN) == VAL_CMN) {
+        return arm7_cmn_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_SWI) == VAL_SWI) {
+        return arm7_swi_cond_tbl[(inst >> 28) & 0xf];
+    }
+
+    error_set_arm7_inst(inst);
+    error_set_arm7_pc(arm7->reg[ARM7_REG_PC]);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static uint32_t ror(uint32_t in, unsigned n_bits) {
@@ -1228,20 +1320,6 @@ decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry) {
     return do_decode_shift(arm7, shift_fn, src_val, shift_amt, carry);
 }
 
-unsigned arm7_exec(struct arm7 *arm7, struct arm7_decoded_inst const *inst) {
-    if (inst->cond(arm7))
-        inst->op(arm7, inst->inst);
-    else
-        next_inst(arm7);
-
-    /*
-     * TODO: how many cycles does it take to execute an instruction when the
-     * conditional fails?
-     */
-
-    return inst->cycles;
-}
-
 static unsigned arm7_spsr_idx(struct arm7 *arm7) {
     switch (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) {
     case ARM7_MODE_FIQ:
@@ -1259,13 +1337,6 @@ static unsigned arm7_spsr_idx(struct arm7 *arm7) {
     default:
         RAISE_ERROR(ERROR_INTEGRITY);
     }
-}
-
-static void arm7_inst_swi(struct arm7 *arm7, arm7_inst inst) {
-    LOG_WARN("Untested ARM7 SWI instruction used\n");
-    arm7->excp |= ARM7_EXCP_SWI;
-    arm7->excp_dirty = true;
-    // it is not a mistake that I have chosen to not call next_inst here
 }
 
 void arm7_get_regs(struct arm7 *arm7, void *dat_out) {
