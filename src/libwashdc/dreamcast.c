@@ -773,19 +773,23 @@ static bool run_to_next_arm7_event(void *ctxt) {
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&arm7_clock);
 
     if (arm7.enabled) {
-        while (tgt_stamp > clock_cycle_stamp(&arm7_clock)) {
+        dc_cycle_stamp_t cycles_after;
+        for (;;) {
             int extra_cycles;
             arm7_inst inst = arm7_fetch_inst(&arm7, &extra_cycles);
             arm7_op_fn handler = arm7_decode(&arm7, inst);
             unsigned inst_cycles = handler(&arm7, inst);
-            dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&arm7_clock) +
+            cycles_after = clock_cycle_stamp(&arm7_clock) +
                 (inst_cycles + extra_cycles) * ARM7_CLOCK_SCALE;
 
             tgt_stamp = clock_target_stamp(&arm7_clock);
-            if (cycles_after > tgt_stamp)
+            if (tgt_stamp <= cycles_after) {
                 cycles_after = tgt_stamp;
+                break;
+            }
             clock_set_cycle_stamp(&arm7_clock, cycles_after);
         }
+        clock_set_cycle_stamp(&arm7_clock, cycles_after);
     } else {
         /*
          * XXX When the ARM7 is disabled, the PC is supposed to continue
@@ -812,10 +816,9 @@ static bool run_to_next_arm7_event_debugger(void *ctxt) {
     bool exit_now;
 
     if (arm7.enabled) {
-        debug_set_context(DEBUG_CONTEXT_ARM7); //TODO unfinished
-
-        while (!(exit_now = dreamcast_check_debugger()) &&
-               tgt_stamp > clock_cycle_stamp(&arm7_clock)) {
+        debug_set_context(DEBUG_CONTEXT_ARM7);
+        dc_cycle_stamp_t cycles_after;
+        for (;;) {
             int extra_cycles;
             arm7_inst inst = arm7_fetch_inst(&arm7, &extra_cycles);
             arm7_op_fn handler = arm7_decode(&arm7, inst);
@@ -824,14 +827,17 @@ static bool run_to_next_arm7_event_debugger(void *ctxt) {
                 (inst_cycles + extra_cycles) * ARM7_CLOCK_SCALE;
 
             tgt_stamp = clock_target_stamp(&arm7_clock);
-            if (cycles_after > tgt_stamp)
+            if (tgt_stamp <= cycles_after) {
                 cycles_after = tgt_stamp;
+                break;
+            }
             clock_set_cycle_stamp(&arm7_clock, cycles_after);
 
 #ifdef ENABLE_DBG_COND
         debug_check_conditions(DEBUG_CONTEXT_ARM7);
 #endif
         }
+        clock_set_cycle_stamp(&arm7_clock, cycles_after);
     } else {
         /*
          * XXX When the ARM7 is disabled, the PC is supposed to continue
