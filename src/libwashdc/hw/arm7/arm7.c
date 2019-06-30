@@ -476,9 +476,7 @@ static void next_inst(struct arm7 *arm7) {
 }
 
 uint32_t arm7_pc_next(struct arm7 *arm7) {
-    if (arm7->pipeline_full)
-        return arm7->pipeline_pc[1];
-    return arm7->reg[ARM7_REG_PC];
+    return arm7->pipeline_pc[1];
 }
 
 #define EVAL_COND(cond) if (!arm7_cond_##cond(arm7)) goto cond_fail;

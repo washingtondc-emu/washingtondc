@@ -117,6 +117,8 @@ struct arm7 {
 
     uint32_t reg[ARM7_REGISTER_COUNT];
 
+    unsigned extra_cycles;
+
     /*
      * One oddity about ARM7 (compared to saner CPUs like x86 and SH4) is that
      * the CPU does not hide its pipelining from software.  The Program Counter
@@ -143,8 +145,6 @@ struct arm7 {
     bool fiq_line;
 
     bool excp_dirty;
-
-    bool pipeline_full;
 };
 
 void arm7_init(struct arm7 *arm7, struct dc_clock *clk, struct aica_wave_mem *inst_mem);
@@ -207,6 +207,8 @@ inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
 typedef unsigned(*arm7_op_fn)(struct arm7*,arm7_inst);
 arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst);
 
+static inline uint32_t arm7_do_fetch_inst(struct arm7 *arm7, uint32_t addr);
+
 /*
  * call this when something like a branch or exception happens that invalidates
  * instructions in the pipeline.
@@ -217,7 +219,18 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst);
  * safe to call arm7_reset_pipeline when the PC has actually changed.
  */
 static inline void arm7_reset_pipeline(struct arm7 *arm7) {
-    arm7->pipeline_full = false;
+    uint32_t pc = arm7->reg[ARM7_REG_PC];
+
+    arm7->extra_cycles = 2;
+
+    arm7->pipeline_pc[0] = pc + 4;
+    arm7->pipeline[0] = arm7_do_fetch_inst(arm7, pc + 4);
+
+    arm7->pipeline_pc[1] = pc;
+    arm7->pipeline[1] = arm7_do_fetch_inst(arm7, pc);
+
+    pc += 8;
+    arm7->reg[ARM7_REG_PC] = pc;
 }
 
 static inline uint32_t arm7_do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
@@ -288,23 +301,7 @@ static inline void arm7_check_excp(struct arm7 *arm7) {
 static inline arm7_inst arm7_fetch_inst(struct arm7 *arm7, int *extra_cycles) {
     arm7_check_excp(arm7);
 
-    int cycle_count = 0;
     uint32_t pc = arm7->reg[ARM7_REG_PC];
-
-    if (!arm7->pipeline_full) {
-        cycle_count = 2;
-
-        arm7->pipeline_pc[0] = pc + 4;
-        arm7->pipeline[0] = arm7_do_fetch_inst(arm7, pc + 4);
-
-        arm7->pipeline_pc[1] = pc;
-        arm7->pipeline[1] = arm7_do_fetch_inst(arm7, pc);
-
-        arm7->pipeline_full = true;
-
-        pc += 8;
-        arm7->reg[ARM7_REG_PC] = pc;
-    }
 
     arm7_inst inst_fetched = arm7_do_fetch_inst(arm7, pc);
     uint32_t newpc = arm7->pipeline_pc[0];
@@ -316,7 +313,8 @@ static inline arm7_inst arm7_fetch_inst(struct arm7 *arm7, int *extra_cycles) {
     arm7->pipeline_pc[1] = newpc;
     arm7->pipeline[1] = newinst;
 
-    *extra_cycles = cycle_count;
+    *extra_cycles = arm7->extra_cycles;
+    arm7->extra_cycles = 0;
 
     return ret;
 }
