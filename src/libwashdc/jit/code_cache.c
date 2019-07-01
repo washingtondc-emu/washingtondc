@@ -187,18 +187,18 @@ void code_cache_gc(void) {
 #endif
 }
 
-struct cache_entry *code_cache_find(addr32_t addr) {
-    unsigned hash_idx = addr & CODE_CACHE_HASH_TBL_MASK;
+struct cache_entry *code_cache_find(jit_hash hash) {
+    unsigned hash_idx = hash & CODE_CACHE_HASH_TBL_MASK;
     struct cache_entry *maybe = code_cache_tbl[hash_idx];
-    if (maybe && maybe->node.key == addr)
+    if (maybe && maybe->node.key == hash)
         return maybe;
 
-    struct cache_entry *ret = code_cache_find_slow(addr);
+    struct cache_entry *ret = code_cache_find_slow(hash);
     code_cache_tbl[hash_idx] = ret;
     return ret;
 }
 
-struct cache_entry *code_cache_find_slow(addr32_t addr) {
-    struct avl_node *node = avl_find(&tree, addr);
+struct cache_entry *code_cache_find_slow(jit_hash hash) {
+    struct avl_node *node = avl_find(&tree, hash);
     return &AVL_DEREF(node, struct cache_entry, node);
 }

@@ -37,7 +37,6 @@
 #define BASIC_ALLOC 32
 
 // for native_dispatch
-static unsigned const pc_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
 static unsigned const cachep_reg = REG_NONVOL0;
 static unsigned const tmp_reg_1 = REG_NONVOL1;
 static unsigned const native_reg = REG_NONVOL2;
@@ -47,8 +46,10 @@ static unsigned const code_hash_reg = REG_NONVOL4;
 // for native_check_cycles
 static unsigned const sched_tgt_reg = REG_NONVOL0;
 static unsigned const countdown_reg = REG_NONVOL0;
-static unsigned const cycle_count_reg = NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG;
-static unsigned const jump_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
+static unsigned const new_pc_reg = NATIVE_DISPATCH_PC_REG;
+static unsigned const hash_reg = NATIVE_DISPATCH_HASH_REG;
+static unsigned const cycle_stamp_reg = NATIVE_DISPATCH_CYCLE_COUNT_REG;
+static unsigned const ret_reg = REG_RET;
 
 static void native_dispatch_emit(struct native_dispatch_meta const *meta);
 
@@ -115,7 +116,7 @@ static void create_return_fn(struct native_dispatch_meta *meta) {
     x86asm_set_dst(meta->return_fn, NULL, BASIC_ALLOC);
 
     // return PC
-    x86asm_mov_reg32_reg32(jump_reg, REG_RET);
+    x86asm_mov_reg32_reg32(new_pc_reg, REG_RET);
 
     // store sched_tgt into cycle_stamp
     load_quad_into_reg(meta->clock_vals + WASHDC_CLOCK_IDX_TARGET,
@@ -246,12 +247,13 @@ void native_dispatch_entry_create(struct native_dispatch_meta *meta) {
 
 static struct cache_entry *
 dispatch_slow_path(uint32_t pc, struct native_dispatch_meta const *meta) {
-    struct cache_entry *entry = code_cache_find_slow(pc);
+    void *ctx_ptr = meta->ctx_ptr;
+    struct cache_entry *entry = code_cache_find_slow(meta->hash_func(ctx_ptr, pc));
 
     code_cache_tbl[pc & CODE_CACHE_HASH_TBL_MASK] = entry;
 
     if (!entry->valid) {
-        meta->on_compile(meta->ctx_ptr, meta, &entry->blk, pc);
+        meta->on_compile(ctx_ptr, meta, &entry->blk, pc);
         entry->valid = 1;
     }
 
@@ -262,7 +264,8 @@ static void native_dispatch_emit(struct native_dispatch_meta const *meta) {
     struct x86asm_lbl8 code_cache_slow_path, have_valid_ent;
 
     /*
-     * BEFORE CALLING THIS FUNCTION, EDI MUST HOLD THE 32-BIT SH4 PC ADDRESS
+     * BEFORE CALLING THIS FUNCTION, REG_ARG0 MUST HOLD THE 32-BIT CODE HASH
+     * VALUE.
      * THIS IS THE ONLY PARAMETER EXPECTED BY THIS FUNCTION.
      * THE CODE EMITTED BY THIS FUNCTION WILL NOT RETURN.
      *
@@ -278,12 +281,12 @@ static void native_dispatch_emit(struct native_dispatch_meta const *meta) {
     x86asm_lbl8_init(&code_cache_slow_path);
     x86asm_lbl8_init(&have_valid_ent);
 
-    x86asm_mov_reg32_reg32(pc_reg, code_hash_reg);
+    x86asm_mov_reg32_reg32(hash_reg, code_hash_reg);
     x86asm_andl_imm32_reg32(CODE_CACHE_HASH_TBL_MASK, code_hash_reg);
 
     x86asm_movq_sib_reg(code_cache_tbl_ptr_reg, 8, code_hash_reg, cachep_reg);
 
-    // now check the address against the one that's still in pc_reg
+    // now check the address against the one that's still in hash_reg
     size_t const addr_offs = offsetof(struct cache_entry, node.key);
     if (addr_offs >= 256)
         RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
@@ -294,7 +297,7 @@ static void native_dispatch_emit(struct native_dispatch_meta const *meta) {
         RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
     x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, native_reg);
 
-    x86asm_cmpl_reg32_reg32(tmp_reg_1, pc_reg);
+    x86asm_cmpl_reg32_reg32(tmp_reg_1, hash_reg);
     x86asm_jnz_lbl8(&code_cache_slow_path);// not equal
 
     x86asm_lbl8_define(&have_valid_ent);
@@ -325,7 +328,7 @@ void native_check_cycles_emit(struct native_dispatch_meta const *meta) {
 
     load_quad_into_reg(meta->clock_vals + WASHDC_CLOCK_IDX_COUNTDOWN,
                        countdown_reg);
-    x86asm_subq_reg64_reg64(cycle_count_reg, countdown_reg);
+    x86asm_subq_reg64_reg64(cycle_stamp_reg, countdown_reg);
 
     jmp_to_addr_jbe(meta->return_fn, REG_VOL0);
 
@@ -350,10 +353,9 @@ native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta) {
     meta->dispatch_slow_path = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(meta->dispatch_slow_path, NULL, BASIC_ALLOC);
 
-    // PC is still in pc_reg, which is REG_ARG0
+    // pc is still in REG_ARG0
     x86asm_mov_imm64_reg64((uintptr_t)(void*)dispatch_slow_path, REG_RET);
     x86asm_mov_imm64_reg64((uintptr_t)(void*)meta, REG_ARG1);
-    x86asm_mov_imm64_reg64((uintptr_t)meta->ctx_ptr, REG_ARG2);
 
     // fix stack alignment in case the C code uses SSE instructions
     x86asm_addq_imm8_reg(-8, RSP);

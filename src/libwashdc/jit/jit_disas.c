@@ -32,15 +32,17 @@ void jit_disas_il(FILE *out, struct jit_inst const *inst, int idx) {
                 idx, immed->fallback.fallback_fn, (int)immed->fallback.inst);
         break;
     case JIT_OP_JUMP:
-        fprintf(out, "%02X: JUMP <SLOT %02X>\n",
-                idx, immed->jump.jmp_addr_slot);
+        fprintf(out, "%02X: JUMP <SLOT %02X, SLOT %02X>\n",
+                idx, immed->jump.jmp_addr_slot, immed->jump.jmp_hash_slot);
         break;
     case JIT_JUMP_COND:
         fprintf(out,
-                "%02X: JUMP_COND <SLOT %02X> IF (<SLOT %02X> & 1) == %u "
-                "ELSE <SLOT %02X>\n", idx, immed->jump_cond.jmp_addr_slot,
+                "%02X: JUMP_COND <SLOT %02X, SLOT %02X> IF "
+                "(<SLOT %02X> & 1) == %u ELSE <SLOT %02X, SLOT %02X>\n", idx,
+                immed->jump_cond.jmp_addr_slot, immed->jump_cond.jmp_hash_slot,
                 immed->jump_cond.flag_slot, immed->jump_cond.t_flag,
-                immed->jump_cond.alt_jmp_addr_slot);
+                immed->jump_cond.alt_jmp_addr_slot,
+                immed->jump_cond.alt_jmp_hash_slot);
         break;
     case JIT_SET_SLOT:
         fprintf(out, "%02X: SET %08X, <SLOT %02X>\n", idx,

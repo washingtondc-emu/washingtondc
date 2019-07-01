@@ -32,6 +32,8 @@
 
 #include "washdc/types.h"
 
+#include "defs.h"
+
 /*
  * TODO: need to include FPU state in code cache, not just address.
  * Otherwise, this code will trip over anything that tries to switch
@@ -52,13 +54,13 @@ struct cache_entry {
  * That said, blk will already be init'd no matter what, even if valid is
  * false.
  */
-struct cache_entry *code_cache_find(addr32_t addr);
+struct cache_entry *code_cache_find(jit_hash hash);
 
 /*
  * This is like code_cache_find, but it skips the second-level hash table.
  * This function is intended for JIT code which handles that itself
  */
-struct cache_entry *code_cache_find_slow(addr32_t addr);
+struct cache_entry *code_cache_find_slow(jit_hash hash);
 
 void code_cache_invalidate_all(void);
 

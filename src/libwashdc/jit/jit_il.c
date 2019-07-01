@@ -37,24 +37,30 @@ void jit_fallback(struct il_code_block *block,
     il_code_block_push_inst(block, &op);
 }
 
-void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot) {
+void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot,
+              unsigned jmp_hash_slot) {
     struct jit_inst op;
 
     op.op = JIT_OP_JUMP;
     op.immed.jump.jmp_addr_slot = jmp_addr_slot;
+    op.immed.jump.jmp_hash_slot = jmp_hash_slot;
 
     il_code_block_push_inst(block, &op);
 }
 
 void jit_jump_cond(struct il_code_block *block,
-                   unsigned flag_slot, unsigned jmp_addr_slot,
-                   unsigned alt_jmp_addr_slot, unsigned t_val) {
+                   unsigned flag_slot,
+                   unsigned jmp_addr_slot, unsigned alt_jmp_addr_slot,
+                   unsigned jmp_hash_slot, unsigned alt_jmp_hash_slot,
+                   unsigned t_val) {
     struct jit_inst op;
 
     op.op = JIT_JUMP_COND;
     op.immed.jump_cond.flag_slot = flag_slot;
     op.immed.jump_cond.jmp_addr_slot = jmp_addr_slot;
     op.immed.jump_cond.alt_jmp_addr_slot = alt_jmp_addr_slot;
+    op.immed.jump_cond.jmp_hash_slot = jmp_hash_slot;
+    op.immed.jump_cond.alt_jmp_hash_slot = alt_jmp_hash_slot;
     op.immed.jump_cond.t_flag = t_val;
 
     il_code_block_push_inst(block, &op);
@@ -469,11 +475,14 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
     case JIT_OP_FALLBACK:
         return false;
     case JIT_OP_JUMP:
-        return slot_no == immed->jump.jmp_addr_slot;
+        return slot_no == immed->jump.jmp_addr_slot ||
+            slot_no == immed->jump.jmp_hash_slot;
     case JIT_JUMP_COND:
         return slot_no == immed->jump_cond.flag_slot ||
             slot_no == immed->jump_cond.jmp_addr_slot ||
-            slot_no == immed->jump_cond.alt_jmp_addr_slot;
+            slot_no == immed->jump_cond.alt_jmp_addr_slot ||
+            slot_no == immed->jump_cond.jmp_hash_slot ||
+            slot_no == immed->jump_cond.alt_jmp_hash_slot;
     case JIT_SET_SLOT:
         return false;
     case JIT_OP_CALL_FUNC:

@@ -713,15 +713,22 @@ static void emit_jump(struct code_block_x86_64 *blk,
                       struct il_code_block const *il_blk,
                       void *cpu, struct jit_inst const *inst) {
     unsigned jmp_addr_slot = inst->immed.jump.jmp_addr_slot;
+    unsigned jmp_hash_slot = inst->immed.jump.jmp_hash_slot;
 
-    evict_register(blk, NATIVE_CHECK_CYCLES_JUMP_REG);
-    grab_register(NATIVE_CHECK_CYCLES_JUMP_REG);
+    evict_register(blk, NATIVE_DISPATCH_PC_REG);
+    grab_register(NATIVE_DISPATCH_PC_REG);
+
+    evict_register(blk, NATIVE_DISPATCH_HASH_REG);
+    grab_register(NATIVE_DISPATCH_HASH_REG);
 
     grab_slot(blk, il_blk, inst, jmp_addr_slot);
+    grab_slot(blk, il_blk, inst, jmp_hash_slot);
 
-    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no,
-                           NATIVE_CHECK_CYCLES_JUMP_REG);
+    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, NATIVE_DISPATCH_PC_REG);
+    x86asm_mov_reg32_reg32(slots[jmp_hash_slot].reg_no,
+                           NATIVE_DISPATCH_HASH_REG);
 
+    ungrab_slot(jmp_hash_slot);
     ungrab_slot(jmp_addr_slot);
 }
 
@@ -732,15 +739,19 @@ static void emit_jump_cond(struct code_block_x86_64 *blk,
     unsigned t_flag = inst->immed.jump_cond.t_flag ? 1 : 0;
     unsigned flag_slot = inst->immed.jump_cond.flag_slot;
     unsigned jmp_addr_slot = inst->immed.jump_cond.jmp_addr_slot;
+    unsigned jmp_hash_slot = inst->immed.jump_cond.jmp_hash_slot;
     unsigned alt_jmp_addr_slot = inst->immed.jump_cond.alt_jmp_addr_slot;
+    unsigned alt_jmp_hash_slot = inst->immed.jump_cond.alt_jmp_hash_slot;
 
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
     evict_register(blk, RAX);
     grab_register(RAX);
-    evict_register(blk, NATIVE_CHECK_CYCLES_JUMP_REG);
-    grab_register(NATIVE_CHECK_CYCLES_JUMP_REG);
+    evict_register(blk, NATIVE_DISPATCH_HASH_REG);
+    grab_register(NATIVE_DISPATCH_HASH_REG);
+    evict_register(blk, NATIVE_DISPATCH_PC_REG);
+    grab_register(NATIVE_DISPATCH_PC_REG);
 
     grab_slot(blk, il_blk, inst, flag_slot);
     x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, RAX);
@@ -748,6 +759,8 @@ static void emit_jump_cond(struct code_block_x86_64 *blk,
 
     grab_slot(blk, il_blk, inst, jmp_addr_slot);
     grab_slot(blk, il_blk, inst, alt_jmp_addr_slot);
+    grab_slot(blk, il_blk, inst, jmp_hash_slot);
+    grab_slot(blk, il_blk, inst, alt_jmp_hash_slot);
 
     /*
      * move the alt-jmp addr into the return register, then replace that with
@@ -756,21 +769,29 @@ static void emit_jump_cond(struct code_block_x86_64 *blk,
     x86asm_and_imm32_rax(1);
     ungrab_register(RAX);
 
-    x86asm_mov_reg32_reg32(slots[alt_jmp_addr_slot].reg_no, NATIVE_CHECK_CYCLES_JUMP_REG);
+    x86asm_mov_reg32_reg32(slots[alt_jmp_addr_slot].reg_no, NATIVE_DISPATCH_PC_REG);
+    x86asm_mov_reg32_reg32(slots[alt_jmp_hash_slot].reg_no, NATIVE_DISPATCH_HASH_REG);
+
     if (t_flag)
         x86asm_jz_lbl8(&lbl);
     else
         x86asm_jnz_lbl8(&lbl);
-    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, NATIVE_CHECK_CYCLES_JUMP_REG);
+
+    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, NATIVE_DISPATCH_PC_REG);
+    x86asm_mov_reg32_reg32(slots[jmp_hash_slot].reg_no, NATIVE_DISPATCH_HASH_REG);
+
     x86asm_lbl8_define(&lbl);
 
-    // the chosen address is now in NATIVE_CHECK_CYCLES_JUMP_REG, so we're ready to return
+    // the chosen address is now in NATIVE_DISPATCH_PC_REG, so we're ready to return
 
+    ungrab_slot(alt_jmp_hash_slot);
+    ungrab_slot(jmp_hash_slot);
     ungrab_slot(alt_jmp_addr_slot);
     ungrab_slot(jmp_addr_slot);
 
     // not that it matters at this point...
-    ungrab_register(NATIVE_CHECK_CYCLES_JUMP_REG);
+    ungrab_register(NATIVE_DISPATCH_PC_REG);
+    ungrab_register(NATIVE_DISPATCH_HASH_REG);
 
     x86asm_lbl8_cleanup(&lbl);
 }
@@ -1739,7 +1760,7 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
     }
 
     x86asm_mov_imm32_reg32(out->cycle_count,
-                           NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG);
+                           NATIVE_DISPATCH_CYCLE_COUNT_REG);
 
     if (out->dirty_stack) {
         emit_stack_frame_close();

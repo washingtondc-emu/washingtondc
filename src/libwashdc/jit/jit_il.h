@@ -172,6 +172,9 @@ struct jit_fallback_immed {
 struct jump_immed {
     // this should point to the slot where the jump address is stored
     unsigned jmp_addr_slot;
+
+    // this should point to the slot where the jump hash is stored
+    unsigned jmp_hash_slot;
 };
 
 struct jump_cond_immed {
@@ -182,7 +185,11 @@ struct jump_cond_immed {
      */
     unsigned flag_slot;
 
+    // jump addresses
     unsigned jmp_addr_slot, alt_jmp_addr_slot;
+
+    // hashed versions of the above jump addresses
+    unsigned jmp_hash_slot, alt_jmp_hash_slot;
 
     /*
      * expected value of the t_flag (either 0 or 1).  the conditional jump will
@@ -436,10 +443,12 @@ bool jit_inst_is_write_slot(struct jit_inst const *inst, unsigned slot_no);
 
 void jit_fallback(struct il_code_block *block,
                   void(*fallback_fn)(void*,cpu_inst_param), cpu_inst_param inst);
-void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot);
+void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot, unsigned jmp_hash_slot);
 void jit_jump_cond(struct il_code_block *block,
-                   unsigned flag_slot, unsigned jmp_addr_slot,
-                   unsigned alt_jmp_addr_slot, unsigned t_val);
+                   unsigned flag_slot,
+                   unsigned jmp_addr_slot, unsigned alt_jmp_addr_slot,
+                   unsigned jmp_hash_slot, unsigned alt_jmp_hash_slot,
+                   unsigned t_val);
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
 void jit_call_func(struct il_code_block *block,

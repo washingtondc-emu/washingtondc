@@ -28,6 +28,7 @@
 #include "washdc/types.h"
 #include "dc_sched.h"
 #include "abi.h"
+#include "jit/defs.h"
 
 #ifdef JIT_PROFILE
 #include "jit/jit_profile.h"
@@ -40,12 +41,20 @@ struct native_dispatch_meta;
 void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr);
 void native_dispatch_cleanup(struct native_dispatch_meta *meta);
 
-typedef uint32_t(*native_dispatch_entry_func)(uint32_t);
+#define NATIVE_DISPATCH_PC_REG REG_ARG0
+#define NATIVE_DISPATCH_HASH_REG REG_ARG1
+#define NATIVE_DISPATCH_CYCLE_COUNT_REG REG_ARG2
+
+// the first uint32_t parameter is supposed to be the PC, second is the hash
+typedef uint32_t(*native_dispatch_entry_func)(uint32_t, uint32_t);
 
 struct jit_code_block;
 typedef
 void(*native_dispatch_compile_func)(void*,struct native_dispatch_meta const*,
                                     struct jit_code_block*,addr32_t);
+
+typedef jit_hash(*native_dispatch_hash_func)(void*,uint32_t);
+
 #ifdef JIT_PROFILE
 typedef
 void(*native_dispatch_profile_notify_func)(void*,
@@ -82,6 +91,7 @@ struct native_dispatch_meta {
      * code.
      */
     native_dispatch_entry_func entry;
+
     /*
      * This is the default "invalid" code block that we fill out the
      * code_cache_tbl with whenever the cache gets nuked.  The idea is that
@@ -96,6 +106,8 @@ struct native_dispatch_meta {
 
     // cache_entry that points to trampoline
     struct cache_entry fake_cache_entry;
+
+    native_dispatch_hash_func hash_func;
 };
 
 /*
@@ -113,8 +125,5 @@ struct native_dispatch_meta {
  */
 void
 native_check_cycles_emit(struct native_dispatch_meta const *meta);
-
-#define NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG REG_ARG1
-#define NATIVE_CHECK_CYCLES_JUMP_REG REG_ARG0
 
 #endif
