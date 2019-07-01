@@ -270,6 +270,22 @@ bool
 sh4_jit_compile_inst(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                      struct il_code_block *block, cpu_inst_param inst,
                      unsigned pc) {
+    if (sh4_ocache_in_ram_area(pc)) {
+        /*
+         * the jit hashes code by discarding the top three bits of the PC so
+         * that those can be used for FPSCR flags.
+         * This means that the Operand Cache's RAM area will overlap with
+         * normal memory.  If this error is ever tripped, then an alternative
+         * hashing algorithm will be required.
+         *
+         * AFAIK, this is the only region of on-chip memory where it's plausible
+         * to think that executable code could be stored.  Even so, I'm not sure
+         * if it's actually possible.
+         */
+        LOG_ERROR("**** ATTEMPT TO EXECUTE CODE FROM SH4 OPERAND CACHE ****\n");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
     struct InstOpcode const *inst_op = sh4_decode_inst(inst);
 
     unsigned old_cycle_count = ctx->cycle_count;
