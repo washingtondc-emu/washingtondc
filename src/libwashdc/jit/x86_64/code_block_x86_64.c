@@ -589,22 +589,22 @@ static void emit_fallback(void *cpu, struct jit_inst const *inst) {
 
 // JIT_OP_JUMP implementation
 static void emit_jump(void *cpu, struct jit_inst const *inst) {
-    unsigned slot_no = inst->immed.jump.slot_no;
+    unsigned jmp_addr_slot = inst->immed.jump.jmp_addr_slot;
 
     evict_register(REG_RET);
     grab_register(REG_RET);
 
-    grab_slot(slot_no);
+    grab_slot(jmp_addr_slot);
 
-    x86asm_mov_reg32_reg32(slots[slot_no].reg_no, REG_RET);
+    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, REG_RET);
 
-    ungrab_slot(slot_no);
+    ungrab_slot(jmp_addr_slot);
 }
 
 // JIT_JUMP_COND implementation
 static void emit_jump_cond(void *cpu, struct jit_inst const *inst) {
     unsigned t_flag = inst->immed.jump_cond.t_flag ? 1 : 0;
-    unsigned flag_slot = inst->immed.jump_cond.slot_no;
+    unsigned flag_slot = inst->immed.jump_cond.flag_slot;
     unsigned jmp_addr_slot = inst->immed.jump_cond.jmp_addr_slot;
     unsigned alt_jmp_addr_slot = inst->immed.jump_cond.alt_jmp_addr_slot;
 

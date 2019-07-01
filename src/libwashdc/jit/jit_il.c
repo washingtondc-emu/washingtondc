@@ -36,22 +36,22 @@ void jit_fallback(struct il_code_block *block,
     il_code_block_push_inst(block, &op);
 }
 
-void jit_jump(struct il_code_block *block, unsigned slot_no) {
+void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot) {
     struct jit_inst op;
 
     op.op = JIT_OP_JUMP;
-    op.immed.jump.slot_no = slot_no;
+    op.immed.jump.jmp_addr_slot = jmp_addr_slot;
 
     il_code_block_push_inst(block, &op);
 }
 
 void jit_jump_cond(struct il_code_block *block,
-                   unsigned slot_no, unsigned jmp_addr_slot,
+                   unsigned flag_slot, unsigned jmp_addr_slot,
                    unsigned alt_jmp_addr_slot, unsigned t_val) {
     struct jit_inst op;
 
     op.op = JIT_JUMP_COND;
-    op.immed.jump_cond.slot_no = slot_no;
+    op.immed.jump_cond.flag_slot = flag_slot;
     op.immed.jump_cond.jmp_addr_slot = jmp_addr_slot;
     op.immed.jump_cond.alt_jmp_addr_slot = alt_jmp_addr_slot;
     op.immed.jump_cond.t_flag = t_val;

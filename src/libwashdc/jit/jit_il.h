@@ -166,7 +166,7 @@ struct jit_fallback_immed {
 
 struct jump_immed {
     // this should point to the slot where the jump address is stored
-    unsigned slot_no;
+    unsigned jmp_addr_slot;
 };
 
 struct jump_cond_immed {
@@ -175,7 +175,7 @@ struct jump_cond_immed {
      *
      * But it should point to SR.
      */
-    unsigned slot_no;
+    unsigned flag_slot;
 
     unsigned jmp_addr_slot, alt_jmp_addr_slot;
 
@@ -415,9 +415,9 @@ struct il_code_block;
 
 void jit_fallback(struct il_code_block *block,
                   void(*fallback_fn)(void*,cpu_inst_param), cpu_inst_param inst);
-void jit_jump(struct il_code_block *block, unsigned slot_no);
+void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot);
 void jit_jump_cond(struct il_code_block *block,
-                   unsigned slot_no, unsigned jmp_addr_slot,
+                   unsigned flag_slot, unsigned jmp_addr_slot,
                    unsigned alt_jmp_addr_slot, unsigned t_val);
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
