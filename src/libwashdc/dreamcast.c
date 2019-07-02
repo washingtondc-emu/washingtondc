@@ -823,7 +823,7 @@ static bool run_to_next_arm7_event_debugger(void *ctxt) {
             arm7_inst inst = arm7_fetch_inst(&arm7, &extra_cycles);
             arm7_op_fn handler = arm7_decode(&arm7, inst);
             unsigned inst_cycles = handler(&arm7, inst);
-            dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&arm7_clock) +
+            cycles_after = clock_cycle_stamp(&arm7_clock) +
                 (inst_cycles + extra_cycles) * ARM7_CLOCK_SCALE;
 
             tgt_stamp = clock_target_stamp(&arm7_clock);
