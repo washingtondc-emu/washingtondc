@@ -526,7 +526,7 @@ dreamcast_init(char const *gdi_path,
 
 #ifdef ENABLE_JIT_X86_64
     native_dispatch_entry =
-        native_dispatch_entry_create(&cpu, sh4_native_dispatch_meta);
+        native_dispatch_entry_create(&cpu, &sh4_native_dispatch_meta);
     native_mem_register(cpu.mem.map);
 #endif
 

@@ -37,6 +37,13 @@
 #include "sh4_read_inst.h"
 #include "sh4_jit.h"
 
+struct native_dispatch_meta const sh4_native_dispatch_meta = {
+#ifdef JIT_PROFILE
+    .profile_notify = sh4_jit_profile_notify,
+#endif
+    .on_compile = sh4_jit_compile_native
+};
+
 enum reg_status {
     // the register resides in the sh4's reg array
     REG_STATUS_SH4,

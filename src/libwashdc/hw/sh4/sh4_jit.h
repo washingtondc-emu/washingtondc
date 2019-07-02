@@ -94,12 +94,7 @@ static void sh4_jit_profile_notify(void *cpu, struct jit_profile_per_block *blk_
 }
 #endif
 
-static struct native_dispatch_meta const sh4_native_dispatch_meta = {
-#ifdef JIT_PROFILE
-    .profile_notify = sh4_jit_profile_notify,
-#endif
-    .on_compile = sh4_jit_compile_native
-};
+extern struct native_dispatch_meta const sh4_native_dispatch_meta;
 
 static inline void
 sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
@@ -126,7 +121,7 @@ sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
                                  il_blk.inst_list + inst_no);
     }
 #endif
-    code_block_x86_64_compile(cpu, blk, &il_blk, sh4_native_dispatch_meta,
+    code_block_x86_64_compile(cpu, blk, &il_blk, &sh4_native_dispatch_meta,
                               ctx.cycle_count * SH4_CLOCK_SCALE);
 
 #ifdef JIT_PROFILE

@@ -67,7 +67,7 @@ struct native_dispatch_meta {
  * This function should not be called from C code.
  */
 void
-native_check_cycles_emit(void *ctx_ptr, struct native_dispatch_meta funcs);
+native_check_cycles_emit(void *ctx_ptr, struct native_dispatch_meta const *funcs);
 
 /*
  * native_dispatch_entry is a generated function which saves all call-stack
@@ -76,7 +76,7 @@ native_check_cycles_emit(void *ctx_ptr, struct native_dispatch_meta funcs);
  * C code.
  */
 native_dispatch_entry_func
-native_dispatch_entry_create(void *ctx_ptr, struct native_dispatch_meta funcs);
+native_dispatch_entry_create(void *ctx_ptr, struct native_dispatch_meta const *funcs);
 
 #define NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG REG_ARG1
 #define NATIVE_CHECK_CYCLES_JUMP_REG REG_ARG0

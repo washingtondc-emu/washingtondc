@@ -1418,7 +1418,7 @@ void ms_shadow_close(void) {
 
 void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
                                struct il_code_block const *il_blk,
-                               struct native_dispatch_meta dispatch_meta,
+                               struct native_dispatch_meta const *dispatch_meta,
                                unsigned cycle_count) {
     struct jit_inst const* inst = il_blk->inst_list;
     unsigned inst_count = il_blk->inst_count;
