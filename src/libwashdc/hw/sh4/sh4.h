@@ -151,7 +151,7 @@ reg32_t sh4_get_pc(Sh4 *sh4);
  * call this function instead of setting the value directly to make sure
  * that any state changes are immediately processed.
  */
-void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val);
+void sh4_set_fpscr(void *cpu, reg32_t new_val);
 
 // clear the cause bits in the FPSCR reg
 static inline void sh4_fpu_clear_cause(Sh4 *sh4) {
@@ -367,5 +367,13 @@ static inline void sh4_write_double(struct Sh4 *sh4, unsigned dr_reg, double val
 }
 
 uint32_t sh4_pc_next(struct Sh4 *sh4);
+
+static inline bool sh4_fpscr_pr(struct Sh4 const *sh4) {
+    return (bool)(sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_PR_MASK);
+}
+
+static inline bool sh4_fpscr_sz(struct Sh4 const *sh4) {
+    return (bool)(sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK);
+}
 
 #endif

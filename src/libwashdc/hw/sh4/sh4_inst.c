@@ -175,7 +175,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_FE, 1, 0xffff, 0xfbfd },
 
     // FSCHG
-    { &sh4_inst_fschg, sh4_jit_fallback, false,
+    { &sh4_inst_fschg, sh4_jit_fschg, false,
       SH4_GROUP_FE, 1, 0xffff, 0xf3fd },
 
     // MOVT Rn
@@ -993,7 +993,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_FE, 1, 0xf1ff, 0xf0ad },
 
     // LDS Rm, FPSCR
-    { &sh4_inst_binary_lds_gen_fpscr, sh4_jit_fallback, false,
+    { &sh4_inst_binary_lds_gen_fpscr, sh4_jit_lds_rm_fpscr, false,
       SH4_GROUP_CO, 1, 0xf0ff, 0x406a },
 
     // LDS Rm, FPUL
@@ -1001,7 +1001,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_LS, 1, 0xf0ff, 0x405a },
 
     // LDS.L @Rm+, FPSCR
-    { &sh4_inst_binary_ldsl_indgeninc_fpscr, sh4_jit_fallback, false,
+    { &sh4_inst_binary_ldsl_indgeninc_fpscr, sh4_jit_ldsl_armp_fpscr, false,
       SH4_GROUP_CO, 1, 0xf0ff, 0x4066 },
 
     // LDS.L @Rm+, FPUL

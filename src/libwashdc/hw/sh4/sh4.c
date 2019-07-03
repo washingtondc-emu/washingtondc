@@ -164,7 +164,8 @@ void sh4_on_sr_change(Sh4 *sh4, reg32_t old_sr) {
     }
 }
 
-void sh4_set_fpscr(Sh4 *sh4, reg32_t new_val) {
+void sh4_set_fpscr(void *cpu, reg32_t new_val) {
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
     /*
      * XXX This function allows the FPU rounding mode to "bleed" out of the SH4's
      * state and effect any other component that needs to use the FPU.
