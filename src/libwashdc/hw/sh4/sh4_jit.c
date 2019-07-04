@@ -1862,6 +1862,143 @@ bool sh4_jit_fschg(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     return true;
 }
 
+// FMOV.S FRm, @(R0, Rn)
+// 1111nnnnmmmm0111
+// FMOV DRm, @(R0, Rn)
+// 1111nnnnmmm00111
+// FMOV XDm, @(R0, Rn)
+// 1111nnnnmmm10111
+bool sh4_jit_fmov_fpu_a_r0_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                              struct il_code_block *block, unsigned pc,
+                              struct InstOpcode const *op, cpu_inst_param inst) {
+    void (*handler)(void*, cpu_inst_param);
+
+    if (ctx->sz_bit) {
+        if (inst & (1 << 4))
+            handler = sh4_inst_binary_fmov_xs_binind_r0_gen;
+        else
+            handler = sh4_inst_binary_fmov_dr_binind_r0_gen;
+    } else {
+        // single-precistion mode
+        handler = sh4_inst_binary_fmovs_fr_binind_r0_gen;
+    }
+
+    struct jit_inst il_inst;
+
+    res_drain_all_regs(sh4, block);
+    res_invalidate_all_regs(block);
+
+    il_inst.op = JIT_OP_FALLBACK;
+    il_inst.immed.fallback.fallback_fn = handler;
+    il_inst.immed.fallback.inst = inst;
+
+    il_code_block_push_inst(block, &il_inst);
+
+    return true;
+}
+
+// FMOV.S @Rm+, FRn
+// 1111nnnnmmmm1001
+// FMOV @Rm+, DRn
+// 1111nnn0mmmm1001
+// FMOV @Rm+, XDn
+// 1111nnn1mmmm1001
+bool sh4_jit_fmov_fpu_armp_fpu(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                               struct il_code_block *block, unsigned pc,
+                               struct InstOpcode const *op, cpu_inst_param inst) {
+   void (*handler)(void*, cpu_inst_param);
+
+   if (ctx->sz_bit) {
+       if (inst & (1 << 8))
+           handler = sh4_inst_binary_fmov_indgeninc_xd;
+       else
+           handler = sh4_inst_binary_fmov_indgeninc_dr;
+   } else {
+       handler = sh4_inst_binary_fmovs_indgeninc_fr;
+   }
+
+    struct jit_inst il_inst;
+
+    res_drain_all_regs(sh4, block);
+    res_invalidate_all_regs(block);
+
+    il_inst.op = JIT_OP_FALLBACK;
+    il_inst.immed.fallback.fallback_fn = handler;
+    il_inst.immed.fallback.inst = inst;
+
+    il_code_block_push_inst(block, &il_inst);
+
+    return true;
+}
+
+// FMOV.S @Rm, FRn
+// 1111nnnnmmmm1000
+// FMOV @Rm, DRn
+// 1111nnn0mmmm1000
+// FMOV @Rm, XDn
+// 1111nnn1mmmm1000
+bool sh4_jit_fmov_arm_fpu(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
+                          struct InstOpcode const *op, cpu_inst_param inst) {
+    void (*handler)(void*, cpu_inst_param);
+
+   if (ctx->sz_bit) {
+       if (inst & (1 << 8))
+           handler = sh4_inst_binary_fmov_indgen_xd;
+       else
+           handler = sh4_inst_binary_fmov_indgen_dr;
+   } else {
+       handler = sh4_inst_binary_fmovs_indgen_fr;
+   }
+
+    struct jit_inst il_inst;
+
+    res_drain_all_regs(sh4, block);
+    res_invalidate_all_regs(block);
+
+    il_inst.op = JIT_OP_FALLBACK;
+    il_inst.immed.fallback.fallback_fn = handler;
+    il_inst.immed.fallback.inst = inst;
+
+    il_code_block_push_inst(block, &il_inst);
+
+    return true;
+}
+
+// FMOV.S FRm, @-Rn
+// 1111nnnnmmmm1011
+// FMOV DRm, @-Rn
+// 1111nnnnmmm01011
+// FMOV XDm, @-Rn
+// 1111nnnnmmm11011
+bool sh4_jit_fmov_fpu_amrn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                           struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, cpu_inst_param inst) {
+    void (*handler)(void*, cpu_inst_param);
+
+   if (ctx->sz_bit) {
+       if (inst & (1 << 4))
+           handler = sh4_inst_binary_fmov_xd_inddecgen;
+       else
+           handler = sh4_inst_binary_fmov_dr_inddecgen;
+   } else {
+       handler = sh4_inst_binary_fmovs_fr_inddecgen;
+   }
+
+    struct jit_inst il_inst;
+
+    res_drain_all_regs(sh4, block);
+    res_invalidate_all_regs(block);
+
+    il_inst.op = JIT_OP_FALLBACK;
+    il_inst.immed.fallback.fallback_fn = handler;
+    il_inst.immed.fallback.inst = inst;
+
+    il_code_block_push_inst(block, &il_inst);
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

@@ -842,7 +842,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnn0mmmm1000
     // FMOV @Rm, XDn
     // 1111nnn1mmmm1000
-    { FPU_HANDLER(fmovs_ind_gen), sh4_jit_fallback, false,
+    { FPU_HANDLER(fmovs_ind_gen), sh4_jit_fmov_arm_fpu, false,
       SH4_GROUP_LS, 1, 0xf00f, 0xf008 },
 
     // FMOV.S @(R0, Rm), FRn
@@ -860,7 +860,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnn0mmmm1001
     // FMOV @Rm+, XDn
     // 1111nnn1mmmm1001
-    { FPU_HANDLER(fmov_indgeninc_fpu), sh4_jit_fallback, false,
+    { FPU_HANDLER(fmov_indgeninc_fpu), sh4_jit_fmov_fpu_armp_fpu, false,
       SH4_GROUP_LS, 1, 0xf00f, 0xf009 },
 
     // FMOV.S FRm, @Rn
@@ -878,7 +878,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmm01011
     // FMOV XDm, @-Rn
     // 1111nnnnmmm11011
-    { FPU_HANDLER(fmov_fpu_inddecgen), sh4_jit_fallback, false,
+    { FPU_HANDLER(fmov_fpu_inddecgen), sh4_jit_fmov_fpu_amrn, false,
       SH4_GROUP_LS, 1, 0xf00f, 0xf00b },
 
     // FMOV.S FRm, @(R0, Rn)
@@ -887,7 +887,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmm00111
     // FMOV XDm, @(R0, Rn)
     // 1111nnnnmmm10111
-    { FPU_HANDLER(fmov_fpu_binind_r0_gen), sh4_jit_fallback, false,
+    { FPU_HANDLER(fmov_fpu_binind_r0_gen), sh4_jit_fmov_fpu_a_r0_rn, false,
       SH4_GROUP_LS, 1, 0xf00f, 0xf007 },
 
     // FLDS FRm, FPUL

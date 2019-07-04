@@ -629,4 +629,44 @@ bool sh4_jit_fschg(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 // STS FPSCR, Rn
 // STS.L FPSCR, @-Rn
 
+// FMOV.S FRm, @(R0, Rn)
+// 1111nnnnmmmm0111
+// FMOV DRm, @(R0, Rn)
+// 1111nnnnmmm00111
+// FMOV XDm, @(R0, Rn)
+// 1111nnnnmmm10111
+bool sh4_jit_fmov_fpu_a_r0_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                              struct il_code_block *block, unsigned pc,
+                              struct InstOpcode const *op, cpu_inst_param inst);
+
+// FMOV.S @Rm+, FRn
+// 1111nnnnmmmm1001
+// FMOV @Rm+, DRn
+// 1111nnn0mmmm1001
+// FMOV @Rm+, XDn
+// 1111nnn1mmmm1001
+bool sh4_jit_fmov_fpu_armp_fpu(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                               struct il_code_block *block, unsigned pc,
+                               struct InstOpcode const *op, cpu_inst_param inst);
+
+// FMOV.S @Rm, FRn
+// 1111nnnnmmmm1000
+// FMOV @Rm, DRn
+// 1111nnn0mmmm1000
+// FMOV @Rm, XDn
+// 1111nnn1mmmm1000
+bool sh4_jit_fmov_arm_fpu(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
+                          struct InstOpcode const *op, cpu_inst_param inst);
+
+// FMOV.S FRm, @-Rn
+// 1111nnnnmmmm1011
+// FMOV DRm, @-Rn
+// 1111nnnnmmm01011
+// FMOV XDm, @-Rn
+// 1111nnnnmmm11011
+bool sh4_jit_fmov_fpu_amrn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                           struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, cpu_inst_param inst);
+
 #endif
