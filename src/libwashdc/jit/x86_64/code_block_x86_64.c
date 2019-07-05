@@ -136,7 +136,11 @@ static struct reg_stat {
         .prio = 4
     },
     [R14] = {
-        .locked = false,
+        /*
+         * pointer to code_cache_tbl.  This is the same on both Unix and
+         * Microsoft ABI.
+         */
+        .locked = true,
         .prio = 5
     },
     [R15] = {

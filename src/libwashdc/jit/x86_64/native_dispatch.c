@@ -64,6 +64,8 @@ void native_dispatch_cleanup(void) {
     exec_mem_free(sched_tgt);
 }
 
+#define CODE_CACHE_TBL_PTR REG_NONVOL3
+
 native_dispatch_entry_func
 native_dispatch_entry_create(void *ctx_ptr,
                              struct native_dispatch_meta meta) {
@@ -113,6 +115,9 @@ native_dispatch_entry_create(void *ctx_ptr,
      */
     x86asm_addq_imm8_reg(-8, RSP);
 
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl,
+                           CODE_CACHE_TBL_PTR);
+
     /*
      * JIT code is only expected to preserve the base pointer, and to leave the
      * new value of the PC in RAX.  Other than that, it may do as it pleases.
@@ -161,15 +166,13 @@ static void native_dispatch_emit(void *ctx_ptr,
     static unsigned const cachep_reg = REG_NONVOL0;
     static unsigned const tmp_reg_1 = REG_NONVOL1;
     static unsigned const native_reg = REG_NONVOL2;
-    static unsigned const code_cache_tbl_ptr_reg = REG_NONVOL3;
+    static unsigned const code_cache_tbl_ptr_reg = CODE_CACHE_TBL_PTR;
     static unsigned const code_hash_reg = REG_NONVOL4;
     static unsigned const func_reg = REG_RET;
     static unsigned const ret_reg = REG_RET;
 
     x86asm_lbl8_init(&code_cache_slow_path);
     x86asm_lbl8_init(&have_valid_ent);
-
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl, code_cache_tbl_ptr_reg);
 
     x86asm_mov_reg32_reg32(pc_reg, code_hash_reg);
     x86asm_andl_imm32_reg32(CODE_CACHE_HASH_TBL_MASK, code_hash_reg);
