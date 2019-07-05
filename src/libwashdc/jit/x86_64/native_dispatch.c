@@ -160,7 +160,7 @@ static void native_dispatch_emit(void *ctx_ptr,
     static unsigned const pc_reg = REG_ARG0;
     static unsigned const cachep_reg = REG_NONVOL0;
     static unsigned const tmp_reg_1 = REG_NONVOL1;
-    // static unsigned const tmp_reg_2 = REG_NONVOL2;
+    static unsigned const native_reg = REG_NONVOL2;
     static unsigned const code_cache_tbl_ptr_reg = REG_NONVOL3;
     static unsigned const code_hash_reg = REG_NONVOL4;
     static unsigned const func_reg = REG_RET;
@@ -185,6 +185,12 @@ static void native_dispatch_emit(void *ctx_ptr,
     if (addr_offs >= 256)
         RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
     x86asm_movl_disp8_reg_reg(addr_offs, cachep_reg, tmp_reg_1);
+
+    size_t const native_offs = offsetof(struct cache_entry, blk.x86_64.native);
+    if (native_offs >= 256)
+        RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
+    x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, native_reg);
+
     x86asm_cmpl_reg32_reg32(tmp_reg_1, pc_reg);
     x86asm_jnz_lbl8(&code_cache_slow_path);// not equal
 
@@ -205,13 +211,8 @@ static void native_dispatch_emit(void *ctx_ptr,
     x86asm_mov_reg32_reg32(tmp_reg_1, pc_reg);
 #endif
 
-    size_t const native_offs = offsetof(struct cache_entry, blk.x86_64.native);
-    if (native_offs >= 256)
-        RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
-    x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, func_reg);
-
     // the native pointer now resides in RDX
-    x86asm_jmpq_reg64(func_reg); // tail-call elimination
+    x86asm_jmpq_reg64(native_reg); // tail-call elimination
     // after this point no code is executed
 
     x86asm_lbl8_define(&code_cache_slow_path);
@@ -222,6 +223,8 @@ static void native_dispatch_emit(void *ctx_ptr,
     x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, REG_ARG2);
     x86asm_call_reg(func_reg);
     x86asm_mov_reg64_reg64(ret_reg, cachep_reg);
+
+    x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, native_reg);
 
     x86asm_jmp_lbl8(&have_valid_ent);
 
