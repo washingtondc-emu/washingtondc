@@ -1421,10 +1421,16 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
      * TODO: The below code does not account for what happens when a DMA tranfer
      * crosses over into a different memory region.
      */
+    struct memory_map_region *src_region = memory_map_get_region(&mem_map,
+                                                                 xfer_src,
+                                                                 n_words * 4);
+    memory_map_read32_func read32 = src_region->intf->read32;
+    void *ctxt = src_region->ctxt;
+    uint32_t mask = src_region->mask;
     if ((xfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&
         (xfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
         while (n_words--) {
-            uint32_t buf = memory_map_read_32(&mem_map, xfer_src);
+            uint32_t buf = read32(xfer_src & mask, ctxt);
             pvr2_ta_fifo_poly_write_32(xfer_dst, buf, &dc_pvr2);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
@@ -1435,7 +1441,7 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
         xfer_dst = xfer_dst - ADDR_AREA4_TEX64_FIRST + ADDR_TEX64_FIRST;
 
         while (n_words--) {
-            uint32_t buf = memory_map_read_32(&mem_map, xfer_src);
+            uint32_t buf = read32(xfer_src & mask, ctxt);
             pvr2_tex_mem_area64_write_32(xfer_dst, buf, &dc_pvr2);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
@@ -1446,7 +1452,7 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
         xfer_dst = xfer_dst - ADDR_AREA4_TEX32_FIRST + ADDR_TEX32_FIRST;
 
         while (n_words--) {
-            uint32_t buf = memory_map_read_32(&mem_map, xfer_src);
+            uint32_t buf = read32(xfer_src & mask, ctxt);
             pvr2_tex_mem_area32_write_32(xfer_dst, buf, &dc_pvr2);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
@@ -1454,7 +1460,7 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
                xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
         while (n_words--) {
-            uint32_t in = memory_map_read_32(&mem_map, xfer_src);
+            uint32_t in = read32(xfer_src & mask, ctxt);
             xfer_src += sizeof(in);
             pvr2_yuv_input_data(&dc_pvr2, &in, sizeof(in));
         }
