@@ -26,6 +26,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "jit_il.h"
+
 #ifndef JIT_PROFILE
 #error this file should only be included in -DJIT_PROFILE=On builds
 #endif
@@ -49,6 +51,9 @@ struct jit_profile_per_block {
     uint32_t first_addr;
     unsigned inst_count;
     void *instructions;
+
+    unsigned il_inst_count;
+    struct jit_inst *il_insts;
 
     unsigned refcount;
 };
@@ -83,10 +88,15 @@ struct jit_profile_per_block *jit_profile_create_block(uint32_t addr_first);
 // release a reference to a code block
 void jit_profile_free_block(struct jit_profile_per_block *blk);
 
-// called when the jit pushes a new instruction onto a block it's compiling.
+// called when the jit pushes a new CPU instruction onto a block it's compiling.
 void jit_profile_push_inst(struct jit_profile_ctxt *ctxt,
                            struct jit_profile_per_block *blk,
                            void *inst);
+
+// called when the jit pushes a new IL instruction onto a block it's compiling.
+void jit_profile_push_il_inst(struct jit_profile_ctxt *ctxt,
+                              struct jit_profile_per_block *blk,
+                              struct jit_inst const *inst);
 
 void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout);
 

@@ -102,6 +102,7 @@ static struct native_dispatch_meta const sh4_native_dispatch_meta = {
 
 static inline void
 sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
     struct il_code_block il_blk;
     struct code_block_x86_64 *blk = &jit_blk->x86_64;
     struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE,
@@ -111,6 +112,13 @@ sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
     sh4_jit_il_code_block_compile(cpu, &ctx, jit_blk, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
+#endif
+#ifdef JIT_PROFILE
+    unsigned inst_no;
+    for (inst_no = 0; inst_no < il_blk.inst_count; inst_no++) {
+        jit_profile_push_il_inst(&sh4->jit_profile, jit_blk->profile,
+                                 il_blk.inst_list + inst_no);
+    }
 #endif
     code_block_x86_64_compile(cpu, blk, &il_blk, sh4_native_dispatch_meta,
                               ctx.cycle_count * SH4_CLOCK_SCALE);

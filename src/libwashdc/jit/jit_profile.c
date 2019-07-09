@@ -26,6 +26,7 @@
 
 #include "washdc/error.h"
 #include "code_block.h"
+#include "jit_disas.h"
 
 #include "jit_profile.h"
 
@@ -106,6 +107,7 @@ struct jit_profile_per_block *jit_profile_create_block(uint32_t addr_first) {
 void jit_profile_free_block(struct jit_profile_per_block *blk) {
     if (--blk->refcount == 0) {
         free(blk->instructions);
+        free(blk->il_insts);
         free(blk);
     }
 }
@@ -124,6 +126,17 @@ void jit_profile_push_inst(struct jit_profile_ctxt *ctxt,
     blk->instructions = newinst;
 }
 
+void jit_profile_push_il_inst(struct jit_profile_ctxt *ctxt,
+                              struct jit_profile_per_block *blk,
+                              struct jit_inst const *inst) {
+    struct jit_inst *new_il_insts =
+        realloc(blk->il_insts, ++blk->il_inst_count * sizeof(struct jit_inst));
+    if (!new_il_insts)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    new_il_insts[blk->il_inst_count - 1] = *inst;
+    blk->il_insts = new_il_insts;
+}
+
 void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout) {
     unsigned n_blocks = 0;
     unsigned idx;
@@ -137,6 +150,8 @@ void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout) {
         struct jit_profile_per_block *profile = ctxt->high_score[idx];
         if (!profile)
             continue;
+        fputs("\n=========================================================="
+              "======================\n", fout);
         fprintf(fout, "rank %u\n", ++rank);
         fprintf(fout, "\taddress: 0x%08x\n", (unsigned)profile->first_addr);
         fprintf(fout, "\tinstruction count: %u\n", profile->inst_count);
@@ -157,6 +172,13 @@ void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout) {
                 fputs("\n", fout);
             }
             fputs("\n", fout);
+        }
+
+        if (profile->il_inst_count) {
+            fputs("IL instructions:\n", fout);
+            unsigned inst_no;
+            for (inst_no = 0; inst_no < profile->il_inst_count; inst_no++)
+                jit_disas_il(fout, profile->il_insts + inst_no, inst_no);
         }
     }
 }
