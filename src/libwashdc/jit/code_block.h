@@ -66,6 +66,10 @@ struct il_code_block {
     // The length of this array is inst_count, but only if it is non-NULL
     struct jit_determ_state *determ;
 #endif
+
+#ifdef JIT_PROFILE
+    struct jit_profile_per_block *profile;
+#endif
 };
 
 struct jit_code_block {

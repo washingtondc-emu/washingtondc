@@ -109,10 +109,17 @@ sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
                                        .cycle_count = 0 };
 
     il_code_block_init(&il_blk);
+
+#ifdef JIT_PROFILE
+    il_blk.profile = jit_blk->profile;
+#endif
+
     sh4_jit_il_code_block_compile(cpu, &ctx, jit_blk, &il_blk, pc);
+
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);
 #endif
+
 #ifdef JIT_PROFILE
     unsigned inst_no;
     for (inst_no = 0; inst_no < il_blk.inst_count; inst_no++) {
@@ -135,6 +142,11 @@ sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
                                        .cycle_count = 0 };
 
     il_code_block_init(&il_blk);
+
+#ifdef JIT_PROFILE
+    il_blk.profile = jit_blk->profile;
+#endif
+
     sh4_jit_il_code_block_compile(cpu, &ctx, jit_blk, &il_blk, pc);
 #ifdef JIT_OPTIMIZE
     jit_determ_pass(&il_blk);

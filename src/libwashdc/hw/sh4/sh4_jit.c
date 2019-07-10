@@ -207,6 +207,11 @@ sh4_jit_delay_slot(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
+#ifdef JIT_PROFILE
+        uint16_t inst16 = inst;
+        jit_profile_push_inst(&sh4->jit_profile, block->profile, &inst16);
+#endif
+
     if (!inst_op->disas(sh4, ctx, block, pc, inst_op, inst)) {
         /*
          * in theory, this will never happen because only branch instructions
