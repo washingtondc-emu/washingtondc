@@ -70,7 +70,7 @@ native_dispatch_entry_func
 native_dispatch_entry_create(void *ctx_ptr,
                              struct native_dispatch_meta meta) {
     void *entry = exec_mem_alloc(BASIC_ALLOC);
-    x86asm_set_dst(entry, BASIC_ALLOC);
+    x86asm_set_dst(entry, NULL, BASIC_ALLOC);
 
 #if defined(ABI_UNIX)
     x86asm_pushq_reg64(RBP);

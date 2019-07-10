@@ -118,7 +118,7 @@ void x86asm_lbl8_define(struct x86asm_lbl8 *lbl);
 void x86asm_lbl8_push_jmp_pt(struct x86asm_lbl8 *lbl,
                              struct lbl_jmp_pt const *jmp_pt);
 
-void x86asm_set_dst(void *out_ptr, unsigned n_bytes);
+void x86asm_set_dst(void *out_ptr, unsigned *out_n_bytes, unsigned n_bytes);
 
 // call a function pointer contained in a general-purpose register
 void x86asm_call_reg(unsigned reg_no);

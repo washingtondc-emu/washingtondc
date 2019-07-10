@@ -115,7 +115,7 @@ static void error_func(void) {
 
 static void* emit_native_mem_read_16(struct memory_map const *map) {
     void *native_mem_read_16_impl = exec_mem_alloc(BASIC_ALLOC);
-    x86asm_set_dst(native_mem_read_16_impl, BASIC_ALLOC);
+    x86asm_set_dst(native_mem_read_16_impl, NULL, BASIC_ALLOC);
 
     static unsigned const addr_reg = REG_RET;
 
@@ -175,7 +175,7 @@ static void* emit_native_mem_read_16(struct memory_map const *map) {
 
 static void* emit_native_mem_read_32(struct memory_map const *map) {
     void *native_mem_read_32_impl = exec_mem_alloc(BASIC_ALLOC);
-    x86asm_set_dst(native_mem_read_32_impl, BASIC_ALLOC);
+    x86asm_set_dst(native_mem_read_32_impl, NULL, BASIC_ALLOC);
 
     static unsigned const addr_reg = REG_RET;
 
@@ -236,7 +236,7 @@ static void* emit_native_mem_read_32(struct memory_map const *map) {
 
 static void* emit_native_mem_write_32(struct memory_map const *map) {
     void *native_mem_write_32_impl = exec_mem_alloc(BASIC_ALLOC);
-    x86asm_set_dst(native_mem_write_32_impl, BASIC_ALLOC);
+    x86asm_set_dst(native_mem_write_32_impl, NULL, BASIC_ALLOC);
 
     static unsigned const addr_reg = REG_RET;
 

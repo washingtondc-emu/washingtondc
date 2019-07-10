@@ -42,6 +42,7 @@ static void *alloc_start;
 static unsigned alloc_len;
 
 static uint8_t *outp;
+static unsigned *n_bytes_out;
 static unsigned outp_len;
 
 static void try_grow(void) {
@@ -65,6 +66,8 @@ static void put8(uint8_t val) {
     if (outp_len >= 1) {
         *outp++ = val;
         outp_len--;
+        if (n_bytes_out)
+            *n_bytes_out += sizeof(uint8_t);
     } else {
         try_grow();
         put8(val);
@@ -77,6 +80,8 @@ static void put16(uint16_t val) {
         memcpy(outp, &val, sizeof(val));
         outp += 2;
         outp_len -= 2;
+        if (n_bytes_out)
+            *n_bytes_out += sizeof(uint16_t);
     } else {
         try_grow();
         put16(val);
@@ -89,6 +94,8 @@ static void put32(uint32_t val) {
         memcpy(outp, &val, sizeof(val));
         outp += 4;
         outp_len -= 4;
+        if (n_bytes_out)
+            *n_bytes_out += sizeof(uint32_t);
     } else {
         try_grow();
         put32(val);
@@ -101,6 +108,8 @@ static void put64(uint64_t val) {
         memcpy(outp, &val, sizeof(val));
         outp += 8;
         outp_len -= 8;
+        if (n_bytes_out)
+            *n_bytes_out += sizeof(uint64_t);
     } else {
         try_grow();
         put64(val);
@@ -244,11 +253,12 @@ static void emit_mod_reg_rm_2(unsigned rex, unsigned opcode1,
     }
 }
 
-void x86asm_set_dst(void *out_ptr, unsigned n_bytes) {
+void x86asm_set_dst(void *out_ptr, unsigned *out_n_bytes, unsigned n_bytes) {
     alloc_start = out_ptr;
     alloc_len = n_bytes;
     outp = (uint8_t*)out_ptr;
     outp_len = n_bytes;
+    n_bytes_out = out_n_bytes;
 }
 
 void x86asm_call_reg(unsigned reg_no) {

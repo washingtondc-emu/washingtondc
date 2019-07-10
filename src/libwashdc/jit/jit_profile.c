@@ -24,6 +24,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <capstone/capstone.h>
+
 #include "washdc/error.h"
 #include "code_block.h"
 #include "jit_disas.h"
@@ -108,6 +110,7 @@ void jit_profile_free_block(struct jit_profile_per_block *blk) {
     if (--blk->refcount == 0) {
         free(blk->instructions);
         free(blk->il_insts);
+        free(blk->native_dat);
         free(blk);
     }
 }
@@ -180,5 +183,52 @@ void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout) {
             for (inst_no = 0; inst_no < profile->il_inst_count; inst_no++)
                 jit_disas_il(fout, profile->il_insts + inst_no, inst_no);
         }
+
+        fputc('\n', fout);
+        fprintf(fout, "%u bytes of native executable code:\n", profile->native_bytes);
+
+        if (!profile->native_bytes)
+            continue;
+
+        csh capstone_handle;
+        cs_err cs_err_val = cs_open(CS_ARCH_X86, CS_MODE_64, &capstone_handle);
+        if (cs_err_val != CS_ERR_OK) {
+            fprintf(fout, "unable to disassemble due to capstone error %08X\n",
+                    (int)cs_err_val);
+            continue;
+        }
+
+        cs_insn *insn;
+        size_t inst_count = cs_disasm(capstone_handle, profile->native_dat,
+                                      profile->native_bytes,
+                                      (uint64_t)profile->native_dat,
+                                      0, &insn);
+        if (!inst_count) {
+            fprintf(fout, "unable to disassemble due to capstone error %08X\n",
+                    cs_errno(capstone_handle));
+            cs_close(&capstone_handle);
+            continue;
+        }
+
+        for (size_t inst_no = 0; inst_no < inst_count; inst_no++) {
+            fprintf(fout, "%016llX: %s %s\n",
+                    (unsigned long long)insn[inst_no].address,
+                    insn[inst_no].mnemonic, insn[inst_no].op_str);
+        }
+
+        cs_free(insn, inst_count);
+        cs_close(&capstone_handle);
     }
+}
+
+void jit_profile_set_native_insts(struct jit_profile_ctxt *ctxt,
+                                  struct jit_profile_per_block *blk,
+                                  unsigned n_bytes,
+                                  void const *dat) {
+    blk->native_bytes = n_bytes;
+    blk->native_dat = malloc(blk->native_bytes);
+    if (blk->native_dat)
+        memcpy(blk->native_dat, dat, n_bytes);
+    else
+        blk->native_bytes = 0;
 }

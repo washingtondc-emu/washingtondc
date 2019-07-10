@@ -129,6 +129,12 @@ sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
 #endif
     code_block_x86_64_compile(cpu, blk, &il_blk, sh4_native_dispatch_meta,
                               ctx.cycle_count * SH4_CLOCK_SCALE);
+
+#ifdef JIT_PROFILE
+    jit_profile_set_native_insts(&sh4->jit_profile, jit_blk->profile,
+                                 blk->bytes_used, blk->native);
+#endif
+
     il_code_block_cleanup(&il_blk);
 }
 #endif

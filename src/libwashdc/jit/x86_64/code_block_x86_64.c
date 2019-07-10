@@ -1374,7 +1374,7 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
     unsigned inst_count = il_blk->inst_count;
     out->cycle_count = cycle_count;
 
-    x86asm_set_dst(out->native, X86_64_ALLOC_SIZE);
+    x86asm_set_dst(out->native, &out->bytes_used, X86_64_ALLOC_SIZE);
 
     reset_slots();
 

@@ -56,6 +56,9 @@ struct jit_profile_per_block {
     struct jit_inst *il_insts;
 
     unsigned refcount;
+
+    unsigned native_bytes;
+    void *native_dat;
 };
 
 typedef void(*jit_profile_disas_fn)(FILE *out, uint32_t addr, void const *instp);
@@ -100,4 +103,8 @@ void jit_profile_push_il_inst(struct jit_profile_ctxt *ctxt,
 
 void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout);
 
+void jit_profile_set_native_insts(struct jit_profile_ctxt *ctxt,
+                                  struct jit_profile_per_block *blk,
+                                  unsigned n_bytes,
+                                  void const *dat);
 #endif

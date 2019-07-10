@@ -80,27 +80,18 @@ if (ENABLE_TCP_SERIAL)
     set (washingtondc_sources ${washingtondc_sources} ${serial_sources})
 endif()
 
+set(need_capstone "FALSE")
+
+if (JIT_PROFILE)
+    set(need_capstone "TRUE")
+endif()
+
 if (ENABLE_DEBUGGER)
     if (NOT USE_LIBEVENT)
         message(FATAL_ERROR "-DUSE_LIBEVENT=On is a prerequisite for -DENABLE_DEBUGGER=On")
     endif()
 
-    set(CAPSTONE_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "" FORCE)
-
-    set(CAPSTONE_ARM_SUPPORT ON CACHE BOOL "" FORCE)
-    set(CAPSTONE_ARM64_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_M68K_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_MIPS_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_PPC_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_SPARC_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_SYSZ_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_XCORE_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_X86_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_TMS320C64X_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_M680X_SUPPORT OFF CACHE BOOL "" FORCE)
-    set(CAPSTONE_EVM_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(need_capstone "TRUE")
 
     set(washingtondc_sources ${washingtondc_sources} ${sh4asm_sources} ${debug_sources})
 
@@ -112,6 +103,27 @@ if (ENABLE_DEBUGGER)
     if (ENABLE_DBG_COND)
         add_definitions(-DENABLE_DBG_COND)
     endif()
+endif()
+
+if (need_capstone STREQUAL "TRUE")
+    if (JIT_PROFILE)
+        set(CAPSTONE_X86_SUPPORT ON CACHE BOOL "" FORCE)
+    else()
+        set(CAPSTONE_X86_SUPPORT OFF CACHE BOOL "" FORCE)
+    endif()
+
+    set(CAPSTONE_ARM_SUPPORT ON CACHE BOOL "" FORCE)
+
+    set(CAPSTONE_ARM64_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_M68K_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_MIPS_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_PPC_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_SPARC_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_SYSZ_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_XCORE_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_TMS320C64X_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_M680X_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(CAPSTONE_EVM_SUPPORT OFF CACHE BOOL "" FORCE)
 endif()
 
 if (USE_LIBEVENT)
@@ -136,7 +148,7 @@ set(washingtondc_libs "m"
     set(washingtondc_libs "${washingtondc_libs}" "${LIBEVENT_LIB_PATH}/lib/libevent.a")
 #endif()
 
-if (ENABLE_DEBUGGER)
+if (need_capstone STREQUAL "TRUE")
     set(washingtondc_libs "${washingtondc_libs}" capstone-static)
 endif()
 
