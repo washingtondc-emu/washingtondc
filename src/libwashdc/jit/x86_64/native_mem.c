@@ -78,9 +78,10 @@ void native_mem_cleanup(void) {
     }
 }
 
-void native_mem_read_32(struct memory_map const *map) {
-    ms_shadow_open();
-    x86_64_align_stack();
+void native_mem_read_32(struct code_block_x86_64 *blk,
+                        struct memory_map const *map) {
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
     struct native_mem_map *native_map = mem_map_impl(map);
     if (!native_map)
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -88,9 +89,10 @@ void native_mem_read_32(struct memory_map const *map) {
     ms_shadow_close();
 }
 
-void native_mem_read_16(struct memory_map const *map) {
-    ms_shadow_open();
-    x86_64_align_stack();
+void native_mem_read_16(struct code_block_x86_64 *blk,
+                        struct memory_map const *map) {
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
     struct native_mem_map *native_map = mem_map_impl(map);
     if (!native_map)
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -99,9 +101,10 @@ void native_mem_read_16(struct memory_map const *map) {
     ms_shadow_close();
 }
 
-void native_mem_write_32(struct memory_map const *map) {
-    ms_shadow_open();
-    x86_64_align_stack();
+void native_mem_write_32(struct code_block_x86_64 *blk,
+                         struct memory_map const *map) {
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
     struct native_mem_map *native_map = mem_map_impl(map);
     if (!native_map)
         RAISE_ERROR(ERROR_INTEGRITY);

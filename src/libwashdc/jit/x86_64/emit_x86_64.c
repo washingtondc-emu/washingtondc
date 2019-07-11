@@ -261,6 +261,10 @@ void x86asm_set_dst(void *out_ptr, unsigned *out_n_bytes, unsigned n_bytes) {
     n_bytes_out = out_n_bytes;
 }
 
+void *x86asm_get_out_ptr(void) {
+    return outp;
+}
+
 void x86asm_call_reg(unsigned reg_no) {
     /*
      * OPCODE: 0xff

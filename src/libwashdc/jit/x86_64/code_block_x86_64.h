@@ -34,10 +34,18 @@
 struct il_code_block;
 
 struct code_block_x86_64 {
-    /* void(*native)(void); */
-    void *native;
+    /*
+     * native points to the function where this code block is implemented.
+     * exec_mem_alloc_start points to the beginning of the actual allocation
+     * (which might include local variables or other non-executable data)
+     */
+    void *native; // void(*native)(void);
+    void *exec_mem_alloc_start;
+
     uint32_t cycle_count;
     unsigned bytes_used;
+
+    bool dirty_stack;
 };
 
 void code_block_x86_64_init(struct code_block_x86_64 *blk);
@@ -53,13 +61,13 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
  * This way, when the CALL instruction is issued the stack will be off from
  * 16-byte alignment by 8 bytes; this is what GCC's calling convention requires.
  */
-void x86_64_align_stack(void);
+void x86_64_align_stack(struct code_block_x86_64 *blk);
 
 /*
  * Microsoft's ABI requires 32 bytes to be allocated on the stack when calling
  * a function.
  */
-void ms_shadow_open(void);
+void ms_shadow_open(struct code_block_x86_64 *blk);
 void ms_shadow_close(void);
 
 #endif
