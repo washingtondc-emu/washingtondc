@@ -131,8 +131,11 @@ sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
                               ctx.cycle_count * SH4_CLOCK_SCALE);
 
 #ifdef JIT_PROFILE
+    ptrdiff_t wasted_bytes = 0;
+    if (blk->native != blk->exec_mem_alloc_start)
+        wasted_bytes = ((char*)blk->native) - ((char*)blk->exec_mem_alloc_start);
     jit_profile_set_native_insts(&sh4->jit_profile, jit_blk->profile,
-                                 blk->bytes_used, blk->native);
+                                 blk->bytes_used - wasted_bytes, blk->native);
 #endif
 
     il_code_block_cleanup(&il_blk);
