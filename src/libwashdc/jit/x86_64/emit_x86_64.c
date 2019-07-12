@@ -913,6 +913,12 @@ void x86asm_jae_disp8(int disp8) {
     put8(disp8);
 }
 
+void x86asm_jae_disp32(uint32_t disp32) {
+    put8(0x0f);
+    put8(0x83);
+    put32(disp32);
+}
+
 void x86asm_jae_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x73);

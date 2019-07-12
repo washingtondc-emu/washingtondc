@@ -52,6 +52,8 @@ static void create_return_fn(void);
 
 static void jmp_to_addr(void *addr, unsigned clobber_reg);
 
+static void jmp_to_addr_ae(void *addr, unsigned clobber_reg);
+
 void native_dispatch_init(struct dc_clock *clk) {
     native_dispatch_clk = clk;
     sched_tgt = exec_mem_alloc(sizeof(*sched_tgt));
@@ -287,9 +289,6 @@ static void native_dispatch_emit(void *ctx_ptr,
 
 void native_check_cycles_emit(void *ctx_ptr,
                               struct native_dispatch_meta meta) {
-    struct x86asm_lbl8 do_return;
-    x86asm_lbl8_init(&do_return);
-
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
 
@@ -298,7 +297,7 @@ void native_check_cycles_emit(void *ctx_ptr,
     x86asm_addq_reg64_reg64(cycle_stamp_reg, cycle_count_reg);
     x86asm_cmpq_reg64_reg64(sched_tgt_reg, cycle_count_reg);
 
-    x86asm_jae_lbl8(&do_return);
+    jmp_to_addr_ae(return_fn, REG_VOL0);
 
     store_quad_from_reg(cycle_stamp, cycle_count_reg, REG_VOL1);
 
@@ -310,12 +309,6 @@ void native_check_cycles_emit(void *ctx_ptr,
      * the code created by native_dispatch_emit does not return, so execution
      * does not continue past this point.
      */
-
-    x86asm_lbl8_define(&do_return);
-
-    jmp_to_addr(return_fn, REG_VOL1);
-
-    x86asm_lbl8_cleanup(&do_return);
 }
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no) {
@@ -354,4 +347,13 @@ static void jmp_to_addr(void *addr, unsigned clobber_reg) {
         x86asm_mov_imm64_reg64((uintptr_t)addr, clobber_reg);
         x86asm_jmpq_reg64(clobber_reg);
     }
+}
+
+static void jmp_to_addr_ae(void *addr, unsigned clobber_reg) {
+    char *base = x86asm_get_outp() + 6;
+    intptr_t diff = ((char*)addr) - base;
+    if (diff <= INT32_MAX && diff >= INT32_MIN)
+        x86asm_jae_disp32(diff);
+    else
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }

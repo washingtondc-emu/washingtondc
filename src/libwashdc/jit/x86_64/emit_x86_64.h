@@ -355,6 +355,7 @@ void x86asm_ja_lbl8(struct x86asm_lbl8 *lbl);
  * jump if above or equal (carry-flag is 0)
  */
 void x86asm_jae_disp8(int disp8);
+void x86asm_jae_disp32(uint32_t disp32);
 void x86asm_jae_lbl8(struct x86asm_lbl8 *lbl);
 
 /*
