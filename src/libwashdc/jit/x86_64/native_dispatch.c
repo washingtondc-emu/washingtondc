@@ -39,6 +39,7 @@
 static dc_cycle_stamp_t *sched_tgt;
 static dc_cycle_stamp_t *cycle_stamp;
 static struct dc_clock *native_dispatch_clk;
+static void *return_fn;
 
 static void native_dispatch_emit(void *ctx_ptr,
                                  struct native_dispatch_meta meta);
@@ -47,6 +48,9 @@ static void native_dispatch_emit(void *ctx_ptr,
 static void load_quad_into_reg(void *qptr, unsigned reg_no);
 static void store_quad_from_reg(void *qptr, unsigned reg_no,
                                 unsigned clobber_reg);
+static void create_return_fn(void);
+
+static void jmp_to_addr(void *addr, unsigned clobber_reg);
 
 void native_dispatch_init(struct dc_clock *clk) {
     native_dispatch_clk = clk;
@@ -55,13 +59,59 @@ void native_dispatch_init(struct dc_clock *clk) {
 
     clock_set_target_pointer(clk, sched_tgt);
     clock_set_cycle_stamp_pointer(clk, cycle_stamp);
+
+    create_return_fn();
 }
 
 void native_dispatch_cleanup(void) {
     // TODO: free all executable memory pointers
+    exec_mem_free(return_fn);
+    return_fn = NULL;
+
     clock_set_target_pointer(native_dispatch_clk, NULL);
     exec_mem_free(cycle_stamp);
     exec_mem_free(sched_tgt);
+}
+
+static unsigned const sched_tgt_reg = REG_NONVOL0;
+static unsigned const cycle_count_reg = REG_ARG0;
+static unsigned const jump_reg = REG_ARG1;
+static unsigned const cycle_stamp_reg = REG_RET;
+
+static void create_return_fn(void) {
+    return_fn = exec_mem_alloc(BASIC_ALLOC);
+    x86asm_set_dst(return_fn, NULL, BASIC_ALLOC);
+
+    // return PC
+    x86asm_mov_reg32_reg32(jump_reg, REG_RET);
+
+    // store sched_tgt into cycle_stamp
+    store_quad_from_reg(cycle_stamp, sched_tgt_reg, REG_VOL1);
+
+    // close the stack frame
+    x86asm_addq_imm8_reg(8, RSP);
+
+#if defined(ABI_UNIX)
+    x86asm_popq_reg64(R15);
+    x86asm_popq_reg64(R14);
+    x86asm_popq_reg64(R13);
+    x86asm_popq_reg64(R12);
+    x86asm_popq_reg64(RBX);
+    x86asm_popq_reg64(RBP);
+#elif defined(ABI_MICROSOFT)
+    x86asm_popq_reg64(R15);
+    x86asm_popq_reg64(R14);
+    x86asm_popq_reg64(R13);
+    x86asm_popq_reg64(R12);
+    x86asm_popq_reg64(RSI);
+    x86asm_popq_reg64(RDI);
+    x86asm_popq_reg64(RBX);
+    x86asm_popq_reg64(RBP);
+#else
+#error unknown abi
+#endif
+
+    x86asm_ret();
 }
 
 #define CODE_CACHE_TBL_PTR REG_NONVOL3
@@ -243,12 +293,6 @@ void native_check_cycles_emit(void *ctx_ptr,
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
 
-    static unsigned const sched_tgt_reg = REG_NONVOL0;
-    static unsigned const cycle_count_reg = REG_ARG0;
-    static unsigned const jump_reg = REG_ARG1;
-    static unsigned const cycle_stamp_reg = REG_RET;
-    static unsigned const ret_reg = REG_RET;
-
     load_quad_into_reg(sched_tgt, sched_tgt_reg);
     load_quad_into_reg(cycle_stamp, cycle_stamp_reg);
     x86asm_addq_reg64_reg64(cycle_stamp_reg, cycle_count_reg);
@@ -269,36 +313,7 @@ void native_check_cycles_emit(void *ctx_ptr,
 
     x86asm_lbl8_define(&do_return);
 
-    // return PC
-    x86asm_mov_reg32_reg32(jump_reg, ret_reg);
-
-    // store sched_tgt into cycle_stamp
-    store_quad_from_reg(cycle_stamp, sched_tgt_reg, REG_VOL1);
-
-    // close the stack frame
-    x86asm_addq_imm8_reg(8, RSP);
-
-#if defined(ABI_UNIX)
-    x86asm_popq_reg64(R15);
-    x86asm_popq_reg64(R14);
-    x86asm_popq_reg64(R13);
-    x86asm_popq_reg64(R12);
-    x86asm_popq_reg64(RBX);
-    x86asm_popq_reg64(RBP);
-#elif defined(ABI_MICROSOFT)
-    x86asm_popq_reg64(R15);
-    x86asm_popq_reg64(R14);
-    x86asm_popq_reg64(R13);
-    x86asm_popq_reg64(R12);
-    x86asm_popq_reg64(RSI);
-    x86asm_popq_reg64(RDI);
-    x86asm_popq_reg64(RBX);
-    x86asm_popq_reg64(RBP);
-#else
-#error unknown abi
-#endif
-
-    x86asm_ret();
+    jmp_to_addr(return_fn, REG_VOL1);
 
     x86asm_lbl8_cleanup(&do_return);
 }
@@ -327,5 +342,16 @@ static void store_quad_from_reg(void *qptr, unsigned reg_no,
     } else {
         x86asm_mov_imm64_reg64(qaddr, clobber_reg);
         x86asm_movq_reg64_indreg64(reg_no, clobber_reg);
+    }
+}
+
+static void jmp_to_addr(void *addr, unsigned clobber_reg) {
+    char *base = x86asm_get_outp() + 5;
+    intptr_t diff = ((char*)addr) - base;
+    if (diff <= INT32_MAX && diff >= INT32_MIN) {
+        x86asm_jmpq_offs32(diff);
+    } else {
+        x86asm_mov_imm64_reg64((uintptr_t)addr, clobber_reg);
+        x86asm_jmpq_reg64(clobber_reg);
     }
 }

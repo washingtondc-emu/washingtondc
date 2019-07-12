@@ -459,6 +459,8 @@ void x86asm_negl_reg32(unsigned reg_no);
 
 void x86asm_jmpq_reg64(unsigned reg_no);
 
+void x86asm_jmpq_offs32(int32_t offs);
+
 // movb <disp8>(%<reg_src>), <reg_dst>
 void x86asm_movb_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst);
 

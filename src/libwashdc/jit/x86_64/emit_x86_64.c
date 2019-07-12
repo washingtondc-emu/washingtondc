@@ -281,6 +281,11 @@ void x86asm_jmpq_reg64(unsigned reg_no) {
     emit_mod_reg_rm(0, 0xff, 3, 4, reg_no);
 }
 
+void x86asm_jmpq_offs32(int32_t offs) {
+    put8(0xe9);
+    put32(offs);
+}
+
 void x86asm_mov_imm16_reg(unsigned imm16, unsigned reg_no) {
     /*
      * PREFIX: 0x66 (16-bit operand)
