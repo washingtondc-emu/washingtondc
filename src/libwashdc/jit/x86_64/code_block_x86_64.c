@@ -597,12 +597,13 @@ static void emit_jump(struct code_block_x86_64 *blk, void *cpu,
                       struct jit_inst const *inst) {
     unsigned jmp_addr_slot = inst->immed.jump.jmp_addr_slot;
 
-    evict_register(blk, REG_RET);
-    grab_register(REG_RET);
+    evict_register(blk, NATIVE_CHECK_CYCLES_JUMP_REG);
+    grab_register(NATIVE_CHECK_CYCLES_JUMP_REG);
 
     grab_slot(blk, jmp_addr_slot);
 
-    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, REG_RET);
+    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no,
+                           NATIVE_CHECK_CYCLES_JUMP_REG);
 
     ungrab_slot(jmp_addr_slot);
 }
@@ -618,11 +619,13 @@ static void emit_jump_cond(struct code_block_x86_64 *blk, void *cpu,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    evict_register(blk, REG_RET);
-    grab_register(REG_RET);
+    evict_register(blk, RAX);
+    grab_register(RAX);
+    evict_register(blk, NATIVE_CHECK_CYCLES_JUMP_REG);
+    grab_register(NATIVE_CHECK_CYCLES_JUMP_REG);
 
     grab_slot(blk, flag_slot);
-    x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, REG_RET);
+    x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, RAX);
     ungrab_slot(flag_slot);
 
     grab_slot(blk, jmp_addr_slot);
@@ -633,20 +636,23 @@ static void emit_jump_cond(struct code_block_x86_64 *blk, void *cpu,
      * the normal jmp addr if the flag is set.
      */
     x86asm_and_imm32_rax(1);
-    x86asm_mov_reg32_reg32(slots[alt_jmp_addr_slot].reg_no, REG_RET);
+    ungrab_register(RAX);
+
+    x86asm_mov_reg32_reg32(slots[alt_jmp_addr_slot].reg_no, NATIVE_CHECK_CYCLES_JUMP_REG);
     if (t_flag)
         x86asm_jz_lbl8(&lbl);
     else
         x86asm_jnz_lbl8(&lbl);
-    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, REG_RET);
+    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, NATIVE_CHECK_CYCLES_JUMP_REG);
     x86asm_lbl8_define(&lbl);
 
-    // the chosen address is now in %rax, so we're ready to return
+    // the chosen address is now in NATIVE_CHECK_CYCLES_JUMP_REG, so we're ready to return
 
     ungrab_slot(alt_jmp_addr_slot);
     ungrab_slot(jmp_addr_slot);
 
-    ungrab_register(REG_RET); // not that it matters at this point...
+    // not that it matters at this point...
+    ungrab_register(NATIVE_CHECK_CYCLES_JUMP_REG);
 
     x86asm_lbl8_cleanup(&lbl);
 }
@@ -1548,8 +1554,8 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         inst++;
     }
 
-    x86asm_mov_imm32_reg32(out->cycle_count, REG_ARG0);
-    x86asm_mov_reg32_reg32(REG_RET, REG_ARG1);
+    x86asm_mov_imm32_reg32(out->cycle_count,
+                           NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG);
 
     if (out->dirty_stack) {
         emit_stack_frame_close();

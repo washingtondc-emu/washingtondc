@@ -76,8 +76,8 @@ void native_dispatch_cleanup(void) {
 }
 
 static unsigned const sched_tgt_reg = REG_NONVOL0;
-static unsigned const cycle_count_reg = REG_ARG0;
-static unsigned const jump_reg = REG_ARG1;
+static unsigned const cycle_count_reg = NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG;
+static unsigned const jump_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
 static unsigned const cycle_stamp_reg = REG_RET;
 
 static void create_return_fn(void) {
@@ -214,14 +214,13 @@ static void native_dispatch_emit(void *ctx_ptr,
      */
 
     // 32-bit SH4 PC address
-    static unsigned const pc_reg = REG_ARG0;
+    static unsigned const pc_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
     static unsigned const cachep_reg = REG_NONVOL0;
     static unsigned const tmp_reg_1 = REG_NONVOL1;
     static unsigned const native_reg = REG_NONVOL2;
     static unsigned const code_cache_tbl_ptr_reg = CODE_CACHE_TBL_PTR;
     static unsigned const code_hash_reg = REG_NONVOL4;
     static unsigned const func_reg = REG_RET;
-    static unsigned const ret_reg = REG_RET;
 
     x86asm_lbl8_init(&code_cache_slow_path);
     x86asm_lbl8_init(&have_valid_ent);
@@ -277,7 +276,7 @@ static void native_dispatch_emit(void *ctx_ptr,
     x86asm_mov_imm64_reg64((uintptr_t)(void*)meta.on_compile, REG_ARG1);
     x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, REG_ARG2);
     x86asm_call_reg(func_reg);
-    x86asm_mov_reg64_reg64(ret_reg, cachep_reg);
+    x86asm_mov_reg64_reg64(REG_RET, cachep_reg);
 
     x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, native_reg);
 
@@ -302,7 +301,6 @@ void native_check_cycles_emit(void *ctx_ptr,
     store_quad_from_reg(cycle_stamp, cycle_count_reg, REG_VOL1);
 
     // call native_dispatch
-    x86asm_mov_reg32_reg32(jump_reg, REG_ARG0);
     native_dispatch_emit(ctx_ptr, meta);
 
     /*

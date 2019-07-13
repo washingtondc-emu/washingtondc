@@ -27,6 +27,7 @@
 
 #include "washdc/types.h"
 #include "dc_sched.h"
+#include "abi.h"
 
 #ifdef JIT_PROFILE
 #include "jit/jit_profile.h"
@@ -76,5 +77,8 @@ native_check_cycles_emit(void *ctx_ptr, struct native_dispatch_meta funcs);
  */
 native_dispatch_entry_func
 native_dispatch_entry_create(void *ctx_ptr, struct native_dispatch_meta funcs);
+
+#define NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG REG_ARG1
+#define NATIVE_CHECK_CYCLES_JUMP_REG REG_ARG0
 
 #endif
