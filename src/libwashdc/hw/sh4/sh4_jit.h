@@ -31,6 +31,7 @@
 #include "sh4_read_inst.h"
 #include "jit/jit_il.h"
 #include "jit/code_block.h"
+#include "jit/optimize.h"
 
 #ifdef JIT_PROFILE
 #include "jit/jit_profile.h"
@@ -116,6 +117,8 @@ sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
 
     sh4_jit_il_code_block_compile(cpu, &ctx, jit_blk, &il_blk, pc);
 
+    jit_optimize(&il_blk);
+
 #ifdef JIT_PROFILE
     unsigned inst_no;
     for (inst_no = 0; inst_no < il_blk.inst_count; inst_no++) {
@@ -153,6 +156,9 @@ sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
 #endif
 
     sh4_jit_il_code_block_compile(cpu, &ctx, jit_blk, &il_blk, pc);
+
+    jit_optimize(&il_blk);
+
     code_block_intp_compile(cpu, blk, &il_blk, ctx.cycle_count * SH4_CLOCK_SCALE);
     il_code_block_cleanup(&il_blk);
 }
