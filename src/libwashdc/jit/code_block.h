@@ -28,10 +28,6 @@
 
 #include "jit_il.h"
 
-#ifdef JIT_OPTIMIZE
-#include "jit_determ.h"
-#endif
-
 #ifdef ENABLE_JIT_X86_64
 #include "x86_64/code_block_x86_64.h"
 #endif
@@ -61,11 +57,6 @@ struct il_code_block {
     unsigned n_slots;
 
     struct il_slot slots[MAX_SLOTS];
-
-#ifdef JIT_OPTIMIZE
-    // The length of this array is inst_count, but only if it is non-NULL
-    struct jit_determ_state *determ;
-#endif
 
 #ifdef JIT_PROFILE
     struct jit_profile_per_block *profile;

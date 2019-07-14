@@ -40,9 +40,6 @@ void il_code_block_init(struct il_code_block *block) {
 
 void il_code_block_cleanup(struct il_code_block *block) {
     free(block->inst_list);
-#ifdef JIT_OPTIMIZE
-    free(block->determ);
-#endif
     memset(block, 0, sizeof(*block));
 }
 

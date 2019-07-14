@@ -40,7 +40,6 @@ option(PVR2_LOG_VERBOSE "enable this to make the pvr2 code log mundane events" O
 option(DEEP_SYSCALL_TRACE "enable logging to observe the behavior of system calls" OFF)
 option(ENABLE_LOG_DEBUG "enable extra debug logs" OFF)
 option(ENABLE_JIT_X86_64 "enable native x86_64 JIT backend" ON)
-option(JIT_OPTIMIZE "enable optimization passes on the JIT that dont actually work" OFF)
 option(ENABLE_TCP_SERIAL "enable serial server emulator over tcp port 1998" ON)
 option(USE_LIBEVENT "use libevent for asynchronous I/O processing" ON)
 option(JIT_PROFILE "Profile JIT code blocks based on frequency" OFF)

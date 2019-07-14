@@ -250,13 +250,6 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/sound.h"
                       "${WASHDC_SOURCE_DIR}/sound.c")
 
-if (JIT_OPTIMIZE)
-   add_definitions(-DJIT_OPTIMIZE)
-   set (libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/jit/jit_determ.h"
-                                               "${WASHDC_SOURCE_DIR}/jit/jit_determ.c")
-
-endif()
-
 if (JIT_PROFILE)
     add_definitions(-DJIT_PROFILE)
     set(libwashdc_sources ${libwashdc_sources} "${WASHDC_SOURCE_DIR}/jit/jit_profile.h"
