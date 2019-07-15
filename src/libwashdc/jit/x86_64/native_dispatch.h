@@ -33,13 +33,17 @@
 #include "jit/jit_profile.h"
 #endif
 
-void native_dispatch_init(struct dc_clock *clk);
-void native_dispatch_cleanup(void);
+struct native_dispatch_meta;
+
+void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr);
+void native_dispatch_cleanup(struct native_dispatch_meta *meta);
 
 typedef uint32_t(*native_dispatch_entry_func)(uint32_t);
 
 struct jit_code_block;
-typedef void(*native_dispatch_compile_func)(void*,struct jit_code_block*,addr32_t);
+typedef
+void(*native_dispatch_compile_func)(void*,struct native_dispatch_meta const*,
+                                    struct jit_code_block*,addr32_t);
 #ifdef JIT_PROFILE
 typedef
 void(*native_dispatch_profile_notify_func)(void*,
@@ -47,10 +51,22 @@ void(*native_dispatch_profile_notify_func)(void*,
 #endif
 
 struct native_dispatch_meta {
+    dc_cycle_stamp_t *sched_tgt;
+    dc_cycle_stamp_t *cycle_stamp;
+    struct dc_clock *clk;
+    void *return_fn;
 #ifdef JIT_PROFILE
     native_dispatch_profile_notify_func profile_notify;
 #endif
     native_dispatch_compile_func on_compile;
+
+    /*
+     * entry is a generated function which saves all call-stack registers which
+     * ought to be saved, calls native_dispatch, and then returns after
+     * restoring the saved register state.  It is intended to be called from C
+     * code.
+     */
+    native_dispatch_entry_func entry;
 };
 
 /*
@@ -68,15 +84,6 @@ struct native_dispatch_meta {
  */
 void
 native_check_cycles_emit(void *ctx_ptr, struct native_dispatch_meta const *funcs);
-
-/*
- * native_dispatch_entry is a generated function which saves all call-stack
- * registers which ought to be saved, calls native_dispatch, and then returns
- * after restoring the saved register state.  It is intended to be called from
- * C code.
- */
-native_dispatch_entry_func
-native_dispatch_entry_create(void *ctx_ptr, struct native_dispatch_meta const *funcs);
 
 #define NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG REG_ARG1
 #define NATIVE_CHECK_CYCLES_JUMP_REG REG_ARG0

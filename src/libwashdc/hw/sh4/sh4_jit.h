@@ -84,9 +84,6 @@ sh4_jit_il_code_block_compile(struct Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
 
 #ifdef ENABLE_JIT_X86_64
 
-static inline void
-sh4_jit_compile_native(void *cpu, struct jit_code_block *blk_ptr, uint32_t pc);
-
 #ifdef JIT_PROFILE
 static void sh4_jit_profile_notify(void *cpu, struct jit_profile_per_block *blk_profile) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
@@ -94,10 +91,9 @@ static void sh4_jit_profile_notify(void *cpu, struct jit_profile_per_block *blk_
 }
 #endif
 
-extern struct native_dispatch_meta const sh4_native_dispatch_meta;
-
 static inline void
-sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
+sh4_jit_compile_native(void *cpu, struct native_dispatch_meta const *meta,
+                       struct jit_code_block *jit_blk, uint32_t pc) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
     struct il_code_block il_blk;
     struct code_block_x86_64 *blk = &jit_blk->x86_64;
@@ -121,7 +117,7 @@ sh4_jit_compile_native(void *cpu, struct jit_code_block *jit_blk, uint32_t pc) {
                                  il_blk.inst_list + inst_no);
     }
 #endif
-    code_block_x86_64_compile(cpu, blk, &il_blk, &sh4_native_dispatch_meta,
+    code_block_x86_64_compile(cpu, blk, &il_blk, meta,
                               ctx.cycle_count * SH4_CLOCK_SCALE);
 
 #ifdef JIT_PROFILE
@@ -166,6 +162,8 @@ sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
  */
 void sh4_jit_init(struct Sh4 *sh4);
 void sh4_jit_cleanup(struct Sh4 *sh4);
+
+void sh4_jit_set_native_dispatch_meta(struct native_dispatch_meta *meta);
 
 /*
  * disassembly function that emits a function call to the instruction's

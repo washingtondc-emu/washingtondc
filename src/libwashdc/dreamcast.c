@@ -113,6 +113,8 @@ static dc_cycle_stamp_t last_frame_virttime;
 static struct memory_interface sh4_unmapped_mem;
 static struct memory_interface arm7_unmapped_mem;
 
+static struct native_dispatch_meta sh4_native_dispatch_meta;
+
 enum TermReason {
     TERM_REASON_NORM,   // normal program exit
     TERM_REASON_SIGINT, // received SIGINT
@@ -143,8 +145,6 @@ static bool run_to_next_sh4_event_jit(void *ctxt);
 static bool run_to_next_arm7_event(void *ctxt);
 
 #ifdef ENABLE_JIT_X86_64
-static native_dispatch_entry_func native_dispatch_entry;
-
 static bool run_to_next_sh4_event_jit_native(void *ctxt);
 #endif
 
@@ -507,7 +507,16 @@ dreamcast_init(char const *gdi_path,
     dc_clock_init(&arm7_clock);
     sh4_init(&cpu, &sh4_clock);
     arm7_init(&arm7, &arm7_clock, &aica.mem);
+
+#ifdef ENABLE_JIT_X86_64
+    exec_mem_init();
+    sh4_jit_set_native_dispatch_meta(&sh4_native_dispatch_meta);
+    sh4_native_dispatch_meta.clk = &sh4_clock;
+    native_dispatch_init(&sh4_native_dispatch_meta, &cpu);
+    native_mem_init();
+#endif
     jit_init(&sh4_clock);
+
     sys_block_init();
     g1_init();
     g2_init();
@@ -525,8 +534,6 @@ dreamcast_init(char const *gdi_path,
     arm7_set_mem_map(&arm7, &arm7_mem_map);
 
 #ifdef ENABLE_JIT_X86_64
-    native_dispatch_entry =
-        native_dispatch_entry_create(&cpu, &sh4_native_dispatch_meta);
     native_mem_register(cpu.mem.map);
 #endif
 
@@ -605,11 +612,6 @@ void dreamcast_cleanup() {
 
     aica_rtc_cleanup(&rtc);
 
-#ifdef ENABLE_JIT_X86_64
-    exec_mem_free(native_dispatch_entry);
-    native_dispatch_entry = NULL;
-#endif
-
     memory_map_cleanup(&arm7_mem_map);
     memory_map_cleanup(&mem_map);
 
@@ -622,6 +624,12 @@ void dreamcast_cleanup() {
     sys_block_cleanup();
 
     jit_cleanup();
+#ifdef ENABLE_JIT_X86_64
+    native_mem_cleanup();
+    native_dispatch_cleanup(&sh4_native_dispatch_meta);
+    exec_mem_cleanup();
+#endif
+
     arm7_cleanup(&arm7);
     sh4_cleanup(&cpu);
     dc_clock_cleanup(&arm7_clock);
@@ -986,7 +994,7 @@ static bool run_to_next_sh4_event_jit_native(void *ctxt) {
 
     reg32_t newpc = sh4->reg[SH4_REG_PC];
 
-    newpc = native_dispatch_entry(newpc);
+    newpc = sh4_native_dispatch_meta.entry(newpc);
 
     sh4->reg[SH4_REG_PC] = newpc;
 

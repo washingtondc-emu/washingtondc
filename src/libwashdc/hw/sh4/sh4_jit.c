@@ -44,6 +44,13 @@ struct native_dispatch_meta const sh4_native_dispatch_meta = {
     .on_compile = sh4_jit_compile_native
 };
 
+void sh4_jit_set_native_dispatch_meta(struct native_dispatch_meta *meta) {
+#ifdef JIT_PROFILE
+    meta->profile_notify = sh4_jit_profile_notify;
+#endif
+    meta->on_compile = sh4_jit_compile_native;
+}
+
 enum reg_status {
     // the register resides in the sh4's reg array
     REG_STATUS_SH4,

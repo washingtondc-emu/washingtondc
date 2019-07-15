@@ -36,43 +36,41 @@
 
 #define BASIC_ALLOC 32
 
-static dc_cycle_stamp_t *sched_tgt;
-static dc_cycle_stamp_t *cycle_stamp;
-static struct dc_clock *native_dispatch_clk;
-static void *return_fn;
-
 static void native_dispatch_emit(void *ctx_ptr,
                                  struct native_dispatch_meta const *meta);
-
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no);
 static void store_quad_from_reg(void *qptr, unsigned reg_no,
                                 unsigned clobber_reg);
-static void create_return_fn(void);
+static void create_return_fn(struct native_dispatch_meta *meta);
 
 static void jmp_to_addr(void *addr, unsigned clobber_reg);
 
 static void jmp_to_addr_ae(void *addr, unsigned clobber_reg);
 
-void native_dispatch_init(struct dc_clock *clk) {
-    native_dispatch_clk = clk;
-    sched_tgt = exec_mem_alloc(sizeof(*sched_tgt));
-    cycle_stamp = exec_mem_alloc(sizeof(*cycle_stamp));
+static native_dispatch_entry_func
+native_dispatch_entry_create(void *ctx_ptr, struct native_dispatch_meta const *funcs);
 
-    clock_set_target_pointer(clk, sched_tgt);
-    clock_set_cycle_stamp_pointer(clk, cycle_stamp);
+void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
+    meta->sched_tgt = exec_mem_alloc(sizeof(*meta->sched_tgt));
+    meta->cycle_stamp = exec_mem_alloc(sizeof(*meta->cycle_stamp));
 
-    create_return_fn();
+    clock_set_target_pointer(meta->clk, meta->sched_tgt);
+    clock_set_cycle_stamp_pointer(meta->clk, meta->cycle_stamp);
+
+    create_return_fn(meta);
+    meta->entry = native_dispatch_entry_create(ctx_ptr, meta);
 }
 
-void native_dispatch_cleanup(void) {
+void native_dispatch_cleanup(struct native_dispatch_meta *meta) {
     // TODO: free all executable memory pointers
-    exec_mem_free(return_fn);
-    return_fn = NULL;
+    exec_mem_free(meta->entry);
+    exec_mem_free(meta->return_fn);
+    meta->return_fn = NULL;
 
-    clock_set_target_pointer(native_dispatch_clk, NULL);
-    exec_mem_free(cycle_stamp);
-    exec_mem_free(sched_tgt);
+    clock_set_target_pointer(meta->clk, NULL);
+    exec_mem_free(meta->cycle_stamp);
+    exec_mem_free(meta->sched_tgt);
 }
 
 static unsigned const sched_tgt_reg = REG_NONVOL0;
@@ -80,15 +78,15 @@ static unsigned const cycle_count_reg = NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG;
 static unsigned const jump_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
 static unsigned const cycle_stamp_reg = REG_RET;
 
-static void create_return_fn(void) {
-    return_fn = exec_mem_alloc(BASIC_ALLOC);
-    x86asm_set_dst(return_fn, NULL, BASIC_ALLOC);
+static void create_return_fn(struct native_dispatch_meta *meta) {
+    meta->return_fn = exec_mem_alloc(BASIC_ALLOC);
+    x86asm_set_dst(meta->return_fn, NULL, BASIC_ALLOC);
 
     // return PC
     x86asm_mov_reg32_reg32(jump_reg, REG_RET);
 
     // store sched_tgt into cycle_stamp
-    store_quad_from_reg(cycle_stamp, sched_tgt_reg, REG_VOL1);
+    store_quad_from_reg(meta->cycle_stamp, sched_tgt_reg, REG_VOL1);
 
     // close the stack frame
     x86asm_addq_imm8_reg(8, RSP);
@@ -118,7 +116,7 @@ static void create_return_fn(void) {
 
 #define CODE_CACHE_TBL_PTR REG_NONVOL3
 
-native_dispatch_entry_func
+static native_dispatch_entry_func
 native_dispatch_entry_create(void *ctx_ptr,
                              struct native_dispatch_meta const *meta) {
     void *entry = exec_mem_alloc(BASIC_ALLOC);
@@ -187,7 +185,7 @@ dispatch_slow_path(uint32_t pc, struct native_dispatch_meta const *meta,
     code_cache_tbl[pc & CODE_CACHE_HASH_TBL_MASK] = entry;
 
     if (!entry->valid) {
-        meta->on_compile(ctx_ptr, &entry->blk, pc);
+        meta->on_compile(ctx_ptr, meta, &entry->blk, pc);
         entry->valid = 1;
     }
 
@@ -290,14 +288,14 @@ void native_check_cycles_emit(void *ctx_ptr,
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
 
-    load_quad_into_reg(sched_tgt, sched_tgt_reg);
-    load_quad_into_reg(cycle_stamp, cycle_stamp_reg);
+    load_quad_into_reg(meta->sched_tgt, sched_tgt_reg);
+    load_quad_into_reg(meta->cycle_stamp, cycle_stamp_reg);
     x86asm_addq_reg64_reg64(cycle_stamp_reg, cycle_count_reg);
     x86asm_cmpq_reg64_reg64(sched_tgt_reg, cycle_count_reg);
 
-    jmp_to_addr_ae(return_fn, REG_VOL0);
+    jmp_to_addr_ae(meta->return_fn, REG_VOL0);
 
-    store_quad_from_reg(cycle_stamp, cycle_count_reg, REG_VOL1);
+    store_quad_from_reg(meta->cycle_stamp, cycle_count_reg, REG_VOL1);
 
     // call native_dispatch
     native_dispatch_emit(ctx_ptr, meta);
