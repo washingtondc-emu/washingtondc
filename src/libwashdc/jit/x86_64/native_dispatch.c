@@ -36,6 +36,23 @@
 
 #define BASIC_ALLOC 32
 
+#define CODE_CACHE_TBL_PTR REG_NONVOL3
+
+// for native_dispatch
+static unsigned const pc_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
+static unsigned const cachep_reg = REG_NONVOL0;
+static unsigned const tmp_reg_1 = REG_NONVOL1;
+static unsigned const native_reg = REG_NONVOL2;
+static unsigned const code_cache_tbl_ptr_reg = CODE_CACHE_TBL_PTR;
+static unsigned const code_hash_reg = REG_NONVOL4;
+static unsigned const func_reg = REG_RET;
+
+// for native_check_cycles
+static unsigned const sched_tgt_reg = REG_NONVOL0;
+static unsigned const cycle_count_reg = NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG;
+static unsigned const jump_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
+static unsigned const cycle_stamp_reg = REG_RET;
+
 static void native_dispatch_emit(struct native_dispatch_meta const *meta);
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no);
@@ -49,6 +66,9 @@ static void jmp_to_addr_ae(void *addr, unsigned clobber_reg);
 
 void native_dispatch_entry_create(struct native_dispatch_meta *meta);
 
+static void
+native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta);
+
 void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
     meta->ctx_ptr = ctx_ptr;
 
@@ -58,6 +78,7 @@ void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
     clock_set_target_pointer(meta->clk, meta->sched_tgt);
     clock_set_cycle_stamp_pointer(meta->clk, meta->cycle_stamp);
 
+    native_dispatch_create_slow_path_entry(meta);
     create_return_fn(meta);
     native_dispatch_entry_create(meta);
 }
@@ -72,11 +93,6 @@ void native_dispatch_cleanup(struct native_dispatch_meta *meta) {
     exec_mem_free(meta->cycle_stamp);
     exec_mem_free(meta->sched_tgt);
 }
-
-static unsigned const sched_tgt_reg = REG_NONVOL0;
-static unsigned const cycle_count_reg = NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG;
-static unsigned const jump_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
-static unsigned const cycle_stamp_reg = REG_RET;
 
 static void create_return_fn(struct native_dispatch_meta *meta) {
     meta->return_fn = exec_mem_alloc(BASIC_ALLOC);
@@ -113,8 +129,6 @@ static void create_return_fn(struct native_dispatch_meta *meta) {
 
     x86asm_ret();
 }
-
-#define CODE_CACHE_TBL_PTR REG_NONVOL3
 
 void native_dispatch_entry_create(struct native_dispatch_meta *meta) {
     void *entry = exec_mem_alloc(BASIC_ALLOC);
@@ -206,15 +220,6 @@ static void native_dispatch_emit(struct native_dispatch_meta const *meta) {
      *    values change often.
      */
 
-    // 32-bit SH4 PC address
-    static unsigned const pc_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
-    static unsigned const cachep_reg = REG_NONVOL0;
-    static unsigned const tmp_reg_1 = REG_NONVOL1;
-    static unsigned const native_reg = REG_NONVOL2;
-    static unsigned const code_cache_tbl_ptr_reg = CODE_CACHE_TBL_PTR;
-    static unsigned const code_hash_reg = REG_NONVOL4;
-    static unsigned const func_reg = REG_RET;
-
     x86asm_lbl8_init(&code_cache_slow_path);
     x86asm_lbl8_init(&have_valid_ent);
 
@@ -264,15 +269,9 @@ static void native_dispatch_emit(struct native_dispatch_meta const *meta) {
 
     x86asm_lbl8_define(&code_cache_slow_path);
 
-    // PC is still in pc_reg, which is REG_ARG0
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)dispatch_slow_path, func_reg);
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)meta, REG_ARG1);
-    x86asm_call_reg(func_reg);
-    x86asm_mov_reg64_reg64(REG_RET, cachep_reg);
-
-    x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, native_reg);
-
-    x86asm_jmp_lbl8(&have_valid_ent);
+    x86asm_mov_imm64_reg64((uintptr_t)have_valid_ent.ptr, REG_RET);
+    x86asm_pushq_reg64(REG_RET);
+    jmp_to_addr(meta->dispatch_slow_path, REG_RET);
 
     x86asm_lbl8_cleanup(&have_valid_ent);
     x86asm_lbl8_cleanup(&code_cache_slow_path);
@@ -298,6 +297,27 @@ void native_check_cycles_emit(struct native_dispatch_meta const *meta) {
      * the code created by native_dispatch_emit does not return, so execution
      * does not continue past this point.
      */
+}
+
+static void
+native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta) {
+    size_t const native_offs = offsetof(struct cache_entry, blk.x86_64.native);
+    if (native_offs >= 256)
+        RAISE_ERROR(ERROR_INTEGRITY); // this will never happen
+
+    meta->dispatch_slow_path = exec_mem_alloc(BASIC_ALLOC);
+    x86asm_set_dst(meta->dispatch_slow_path, NULL, BASIC_ALLOC);
+
+    // PC is still in pc_reg, which is REG_ARG0
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)dispatch_slow_path, REG_RET);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)meta, REG_ARG1);
+    x86asm_mov_imm64_reg64((uintptr_t)meta->ctx_ptr, REG_ARG2);
+    x86asm_call_reg(REG_RET);
+    x86asm_mov_reg64_reg64(REG_RET, cachep_reg);
+
+    x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, native_reg);
+
+    x86asm_ret();
 }
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no) {

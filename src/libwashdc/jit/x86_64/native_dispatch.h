@@ -61,8 +61,9 @@ struct native_dispatch_meta {
     dc_cycle_stamp_t *cycle_stamp;
     struct dc_clock *clk;
     void *return_fn;
-    void *ctx_ptr;
+    void *dispatch_slow_path;
 
+    void *ctx_ptr;
 
 #ifdef JIT_PROFILE
     native_dispatch_profile_notify_func profile_notify; // user-specified
