@@ -51,14 +51,23 @@ void(*native_dispatch_profile_notify_func)(void*,
 #endif
 
 struct native_dispatch_meta {
+    /*
+     * Only fields which are explicitly marked as "user-specified" are to be
+     * filled-in by the user.  All other fields are initialized by
+     * native_dispatch_init and cleaned up by native_dispatch_cleanup.
+     */
+
     dc_cycle_stamp_t *sched_tgt;
     dc_cycle_stamp_t *cycle_stamp;
     struct dc_clock *clk;
     void *return_fn;
+    void *ctx_ptr;
+
+
 #ifdef JIT_PROFILE
-    native_dispatch_profile_notify_func profile_notify;
+    native_dispatch_profile_notify_func profile_notify; // user-specified
 #endif
-    native_dispatch_compile_func on_compile;
+    native_dispatch_compile_func on_compile; // user-specified
 
     /*
      * entry is a generated function which saves all call-stack registers which
@@ -83,7 +92,7 @@ struct native_dispatch_meta {
  * This function should not be called from C code.
  */
 void
-native_check_cycles_emit(void *ctx_ptr, struct native_dispatch_meta const *funcs);
+native_check_cycles_emit(struct native_dispatch_meta const *meta);
 
 #define NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG REG_ARG1
 #define NATIVE_CHECK_CYCLES_JUMP_REG REG_ARG0

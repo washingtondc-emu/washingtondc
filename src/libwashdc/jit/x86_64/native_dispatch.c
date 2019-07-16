@@ -36,8 +36,7 @@
 
 #define BASIC_ALLOC 32
 
-static void native_dispatch_emit(void *ctx_ptr,
-                                 struct native_dispatch_meta const *meta);
+static void native_dispatch_emit(struct native_dispatch_meta const *meta);
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no);
 static void store_quad_from_reg(void *qptr, unsigned reg_no,
@@ -48,10 +47,11 @@ static void jmp_to_addr(void *addr, unsigned clobber_reg);
 
 static void jmp_to_addr_ae(void *addr, unsigned clobber_reg);
 
-static native_dispatch_entry_func
-native_dispatch_entry_create(void *ctx_ptr, struct native_dispatch_meta const *funcs);
+void native_dispatch_entry_create(struct native_dispatch_meta *meta);
 
 void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
+    meta->ctx_ptr = ctx_ptr;
+
     meta->sched_tgt = exec_mem_alloc(sizeof(*meta->sched_tgt));
     meta->cycle_stamp = exec_mem_alloc(sizeof(*meta->cycle_stamp));
 
@@ -59,7 +59,7 @@ void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
     clock_set_cycle_stamp_pointer(meta->clk, meta->cycle_stamp);
 
     create_return_fn(meta);
-    meta->entry = native_dispatch_entry_create(ctx_ptr, meta);
+    native_dispatch_entry_create(meta);
 }
 
 void native_dispatch_cleanup(struct native_dispatch_meta *meta) {
@@ -116,9 +116,7 @@ static void create_return_fn(struct native_dispatch_meta *meta) {
 
 #define CODE_CACHE_TBL_PTR REG_NONVOL3
 
-static native_dispatch_entry_func
-native_dispatch_entry_create(void *ctx_ptr,
-                             struct native_dispatch_meta const *meta) {
+void native_dispatch_entry_create(struct native_dispatch_meta *meta) {
     void *entry = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(entry, NULL, BASIC_ALLOC);
 
@@ -172,28 +170,26 @@ native_dispatch_entry_create(void *ctx_ptr,
      * JIT code is only expected to preserve the base pointer, and to leave the
      * new value of the PC in RAX.  Other than that, it may do as it pleases.
      */
-    native_dispatch_emit(ctx_ptr, meta);
+    native_dispatch_emit(meta);
 
-    return entry;
+    meta->entry = (native_dispatch_entry_func)entry;
 }
 
 static struct cache_entry *
-dispatch_slow_path(uint32_t pc, struct native_dispatch_meta const *meta,
-                   void *ctx_ptr) {
+dispatch_slow_path(uint32_t pc, struct native_dispatch_meta const *meta) {
     struct cache_entry *entry = code_cache_find_slow(pc);
 
     code_cache_tbl[pc & CODE_CACHE_HASH_TBL_MASK] = entry;
 
     if (!entry->valid) {
-        meta->on_compile(ctx_ptr, meta, &entry->blk, pc);
+        meta->on_compile(meta->ctx_ptr, meta, &entry->blk, pc);
         entry->valid = 1;
     }
 
     return entry;
 }
 
-static void native_dispatch_emit(void *ctx_ptr,
-                                 struct native_dispatch_meta const *meta) {
+static void native_dispatch_emit(struct native_dispatch_meta const *meta) {
     struct x86asm_lbl8 code_cache_slow_path, have_valid_ent;
 
     /*
@@ -254,7 +250,7 @@ static void native_dispatch_emit(void *ctx_ptr,
 
     x86asm_mov_reg32_reg32(pc_reg, tmp_reg_1);
 
-    x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, REG_ARG0);
+    x86asm_mov_imm64_reg64((uintptr_t)meta->ctx_ptr, REG_ARG0);
     x86asm_movq_disp8_reg_reg(jit_profile_offs, cachep_reg, REG_ARG1);
     x86asm_mov_imm64_reg64((uintptr_t)(void*)meta->profile_notify, func_reg);
     x86asm_call_reg(func_reg);
@@ -271,7 +267,6 @@ static void native_dispatch_emit(void *ctx_ptr,
     // PC is still in pc_reg, which is REG_ARG0
     x86asm_mov_imm64_reg64((uintptr_t)(void*)dispatch_slow_path, func_reg);
     x86asm_mov_imm64_reg64((uintptr_t)(void*)meta, REG_ARG1);
-    x86asm_mov_imm64_reg64((uintptr_t)ctx_ptr, REG_ARG2);
     x86asm_call_reg(func_reg);
     x86asm_mov_reg64_reg64(REG_RET, cachep_reg);
 
@@ -283,8 +278,7 @@ static void native_dispatch_emit(void *ctx_ptr,
     x86asm_lbl8_cleanup(&code_cache_slow_path);
 }
 
-void native_check_cycles_emit(void *ctx_ptr,
-                              struct native_dispatch_meta const *meta) {
+void native_check_cycles_emit(struct native_dispatch_meta const *meta) {
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
 
@@ -298,7 +292,7 @@ void native_check_cycles_emit(void *ctx_ptr,
     store_quad_from_reg(meta->cycle_stamp, cycle_count_reg, REG_VOL1);
 
     // call native_dispatch
-    native_dispatch_emit(ctx_ptr, meta);
+    native_dispatch_emit(meta);
 
     /*
      * the code created by native_dispatch_emit does not return, so execution

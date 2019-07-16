@@ -1563,5 +1563,5 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         out->native = skip_stack_frame;
     }
 
-    native_check_cycles_emit(cpu, dispatch_meta);
+    native_check_cycles_emit(dispatch_meta);
 }
