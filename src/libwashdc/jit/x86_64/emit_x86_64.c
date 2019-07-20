@@ -705,6 +705,12 @@ void x86asm_subl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x29, 3, reg_src, reg_dst);
 }
 
+// subq %<reg_src>, %<reg_dst>
+void x86asm_subq_reg64_reg64(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm(REX_W, 0x29, 3, reg_src, reg_dst);
+}
+
+
 // movl %<reg_src>, %<reg_dst>
 void x86asm_mov_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x89, 3, reg_src, reg_dst);
@@ -933,6 +939,12 @@ void x86asm_jae_lbl8(struct x86asm_lbl8 *lbl) {
 void x86asm_jbe_disp8(int disp8) {
     put8(0x76);
     put8(disp8);
+}
+
+void x86asm_jbe_disp32(uint32_t disp32) {
+    put8(0x0f);
+    put8(0x86);
+    put32(disp32);
 }
 
 void x86asm_jbe_lbl8(struct x86asm_lbl8 *lbl) {

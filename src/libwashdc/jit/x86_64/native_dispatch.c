@@ -49,6 +49,7 @@ static unsigned const func_reg = REG_RET;
 
 // for native_check_cycles
 static unsigned const sched_tgt_reg = REG_NONVOL0;
+static unsigned const countdown_reg = REG_NONVOL0;
 static unsigned const cycle_count_reg = NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG;
 static unsigned const jump_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
 static unsigned const cycle_stamp_reg = REG_RET;
@@ -62,7 +63,7 @@ static void create_return_fn(struct native_dispatch_meta *meta);
 
 static void jmp_to_addr(void *addr, unsigned clobber_reg);
 
-static void jmp_to_addr_ae(void *addr, unsigned clobber_reg);
+static void jmp_to_addr_jbe(void *addr, unsigned clobber_reg);
 
 void native_dispatch_entry_create(struct native_dispatch_meta *meta);
 
@@ -74,9 +75,11 @@ void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
 
     meta->sched_tgt = exec_mem_alloc(sizeof(*meta->sched_tgt));
     meta->cycle_stamp = exec_mem_alloc(sizeof(*meta->cycle_stamp));
+    meta->countdown = exec_mem_alloc(sizeof(*meta->countdown));
 
     clock_set_target_pointer(meta->clk, meta->sched_tgt);
     clock_set_cycle_stamp_pointer(meta->clk, meta->cycle_stamp);
+    clock_set_countdown_pointer(meta->clk, meta->countdown);
 
     native_dispatch_create_slow_path_entry(meta);
     create_return_fn(meta);
@@ -89,9 +92,17 @@ void native_dispatch_cleanup(struct native_dispatch_meta *meta) {
     exec_mem_free(meta->return_fn);
     meta->return_fn = NULL;
 
+    clock_set_countdown_pointer(meta->clk, NULL);
+    clock_set_cycle_stamp_pointer(meta->clk, NULL);
     clock_set_target_pointer(meta->clk, NULL);
+
+    exec_mem_free(meta->countdown);
     exec_mem_free(meta->cycle_stamp);
     exec_mem_free(meta->sched_tgt);
+
+    meta->countdown = NULL;
+    meta->cycle_stamp = NULL;
+    meta->sched_tgt = NULL;
 }
 
 static void create_return_fn(struct native_dispatch_meta *meta) {
@@ -102,7 +113,10 @@ static void create_return_fn(struct native_dispatch_meta *meta) {
     x86asm_mov_reg32_reg32(jump_reg, REG_RET);
 
     // store sched_tgt into cycle_stamp
+    load_quad_into_reg(meta->sched_tgt, sched_tgt_reg);
     store_quad_from_reg(meta->cycle_stamp, sched_tgt_reg, REG_VOL1);
+    x86asm_xorl_reg32_reg32(sched_tgt_reg, sched_tgt_reg);
+    store_quad_from_reg(meta->countdown, sched_tgt_reg, REG_VOL1);
 
     // close the stack frame
     x86asm_addq_imm8_reg(8, RSP);
@@ -281,14 +295,12 @@ void native_check_cycles_emit(struct native_dispatch_meta const *meta) {
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
 
-    load_quad_into_reg(meta->sched_tgt, sched_tgt_reg);
-    load_quad_into_reg(meta->cycle_stamp, cycle_stamp_reg);
-    x86asm_addq_reg64_reg64(cycle_stamp_reg, cycle_count_reg);
-    x86asm_cmpq_reg64_reg64(sched_tgt_reg, cycle_count_reg);
+    load_quad_into_reg(meta->countdown, countdown_reg);
+    x86asm_subq_reg64_reg64(cycle_count_reg, countdown_reg);
 
-    jmp_to_addr_ae(meta->return_fn, REG_VOL0);
+    jmp_to_addr_jbe(meta->return_fn, REG_VOL0);
 
-    store_quad_from_reg(meta->cycle_stamp, cycle_count_reg, REG_VOL1);
+    store_quad_from_reg(meta->countdown, countdown_reg, REG_VOL1);
 
     // call native_dispatch
     native_dispatch_emit(meta);
@@ -358,11 +370,11 @@ static void jmp_to_addr(void *addr, unsigned clobber_reg) {
     }
 }
 
-static void jmp_to_addr_ae(void *addr, unsigned clobber_reg) {
+static void jmp_to_addr_jbe(void *addr, unsigned clobber_reg) {
     char *base = x86asm_get_outp() + 6;
     intptr_t diff = ((char*)addr) - base;
     if (diff <= INT32_MAX && diff >= INT32_MIN)
-        x86asm_jae_disp32(diff);
+        x86asm_jbe_disp32(diff);
     else
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }

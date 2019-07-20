@@ -75,6 +75,9 @@ struct dc_clock {
     dc_cycle_stamp_t target_stamp_priv;
     dc_cycle_stamp_t *target_stamp_ptr_priv;
 
+    dc_cycle_stamp_t countdown_priv;
+    dc_cycle_stamp_t *countdown_ptr_priv;
+
     // the next scheduled event
     struct SchedEvent *ev_next_priv;
 };
@@ -102,15 +105,22 @@ dc_cycle_stamp_t clock_target_stamp(struct dc_clock *clock);
 static inline void
 clock_set_cycle_stamp(struct dc_clock *clock, dc_cycle_stamp_t val) {
     *clock->cycle_stamp_ptr_priv = val;
+    *clock->countdown_ptr_priv = *clock->target_stamp_ptr_priv - val;
 }
 
 static inline dc_cycle_stamp_t clock_cycle_stamp(struct dc_clock *clock) {
-    return *clock->cycle_stamp_ptr_priv;
+    return *clock->target_stamp_ptr_priv - *clock->countdown_ptr_priv;
+}
+
+static inline dc_cycle_stamp_t clock_countdown(struct dc_clock *clock) {
+    return *clock->countdown_ptr_priv;
 }
 
 void clock_set_target_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr);
 
 void
 clock_set_cycle_stamp_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr);
+
+void clock_set_countdown_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr);
 
 #endif

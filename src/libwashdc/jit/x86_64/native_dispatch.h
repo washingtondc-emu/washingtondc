@@ -59,6 +59,7 @@ struct native_dispatch_meta {
 
     dc_cycle_stamp_t *sched_tgt;
     dc_cycle_stamp_t *cycle_stamp;
+    dc_cycle_stamp_t *countdown;
     struct dc_clock *clk;
     void *return_fn;
     void *dispatch_slow_path;

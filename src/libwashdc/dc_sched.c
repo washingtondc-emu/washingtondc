@@ -36,12 +36,16 @@ void dc_clock_init(struct dc_clock *clk) {
     memset(clk, 0, sizeof(*clk));
     clk->cycle_stamp_ptr_priv = &clk->cycle_stamp_priv;
     clk->target_stamp_ptr_priv = &clk->target_stamp_priv;
+    clk->countdown_ptr_priv = &clk->countdown_priv;
 }
 
 void dc_clock_cleanup(struct dc_clock *clk) {
 }
 
 static void update_target_stamp(struct dc_clock *clock) {
+    *clock->cycle_stamp_ptr_priv =
+        *clock->target_stamp_ptr_priv - *clock->countdown_ptr_priv;
+
     if (clock->ev_next_priv) {
         *clock->target_stamp_ptr_priv = clock->ev_next_priv->when;
     } else {
@@ -59,8 +63,12 @@ static void update_target_stamp(struct dc_clock *clock) {
          * TBH, I'm not even 100% sure this problem can even happen since
          * there's no way to turn off SPG, TMU, etc.
          */
-        *clock->target_stamp_ptr_priv = clock_cycle_stamp(clock) + 16 * SH4_CLOCK_SCALE;
+        *clock->target_stamp_ptr_priv =
+            clock_cycle_stamp(clock) + 16 * SH4_CLOCK_SCALE;
     }
+
+    *clock->countdown_ptr_priv =
+        *clock->target_stamp_ptr_priv - *clock->cycle_stamp_ptr_priv;
 }
 
 void sched_event(struct dc_clock *clock, struct SchedEvent *event) {
@@ -176,6 +184,16 @@ clock_set_cycle_stamp_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr) {
     } else {
         clock->cycle_stamp_priv = *clock->cycle_stamp_ptr_priv;
         clock->cycle_stamp_ptr_priv = &clock->cycle_stamp_priv;
+    }
+}
+
+void clock_set_countdown_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr) {
+    if (ptr) {
+        *ptr = clock_countdown(clock);
+        clock->countdown_ptr_priv = ptr;
+    } else {
+        clock->countdown_priv = *clock->countdown_ptr_priv;
+        clock->countdown_ptr_priv = &clock->countdown_priv;
     }
 }
 

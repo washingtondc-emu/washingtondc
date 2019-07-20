@@ -245,6 +245,9 @@ void x86asm_addl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 // subl %<reg_src>, %<reg_dst>
 void x86asm_subl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 
+// subl %<reg_src>, %<reg_dst>
+void x86asm_subq_reg64_reg64(unsigned reg_src, unsigned reg_dst);
+
 // movl %<reg_src>, %<reg_dst>
 void x86asm_mov_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 
@@ -364,6 +367,7 @@ void x86asm_jae_lbl8(struct x86asm_lbl8 *lbl);
  * jump if below or equal
  */
 void x86asm_jbe_disp8(int disp8);
+void x86asm_jbe_disp32(uint32_t disp32);
 void x86asm_jbe_lbl8(struct x86asm_lbl8 *lbl);
 
 void x86asm_jb_disp8(int disp8);
