@@ -34,20 +34,19 @@ static DEF_ERROR_U64_ATTR(event_sched_dc_cycle_stamp)
 
 void dc_clock_init(struct dc_clock *clk) {
     memset(clk, 0, sizeof(*clk));
-    clk->cycle_stamp_ptr_priv = &clk->cycle_stamp_priv;
-    clk->target_stamp_ptr_priv = &clk->target_stamp_priv;
-    clk->countdown_ptr_priv = &clk->countdown_priv;
+    clk->ptrs_priv = clk->priv;
 }
 
 void dc_clock_cleanup(struct dc_clock *clk) {
 }
 
 static void update_target_stamp(struct dc_clock *clock) {
-    *clock->cycle_stamp_ptr_priv =
-        *clock->target_stamp_ptr_priv - *clock->countdown_ptr_priv;
+    clock->ptrs_priv[WASHDC_CLOCK_IDX_STAMP] =
+        clock->ptrs_priv[WASHDC_CLOCK_IDX_TARGET] -
+        clock->ptrs_priv[WASHDC_CLOCK_IDX_COUNTDOWN];
 
     if (clock->ev_next_priv) {
-        *clock->target_stamp_ptr_priv = clock->ev_next_priv->when;
+        clock->ptrs_priv[WASHDC_CLOCK_IDX_TARGET] = clock->ev_next_priv->when;
     } else {
         /*
          * Somehow there are no events scheduled.
@@ -63,12 +62,13 @@ static void update_target_stamp(struct dc_clock *clock) {
          * TBH, I'm not even 100% sure this problem can even happen since
          * there's no way to turn off SPG, TMU, etc.
          */
-        *clock->target_stamp_ptr_priv =
+        clock->ptrs_priv[WASHDC_CLOCK_IDX_TARGET] =
             clock_cycle_stamp(clock) + 16 * SH4_CLOCK_SCALE;
     }
 
-    *clock->countdown_ptr_priv =
-        *clock->target_stamp_ptr_priv - *clock->cycle_stamp_ptr_priv;
+    clock->ptrs_priv[WASHDC_CLOCK_IDX_COUNTDOWN] =
+        clock->ptrs_priv[WASHDC_CLOCK_IDX_TARGET] -
+        clock->ptrs_priv[WASHDC_CLOCK_IDX_STAMP];
 }
 
 void sched_event(struct dc_clock *clock, struct SchedEvent *event) {
@@ -163,37 +163,18 @@ struct SchedEvent *peek_event(struct dc_clock *clock) {
 }
 
 dc_cycle_stamp_t clock_target_stamp(struct dc_clock *clock) {
-    return *clock->target_stamp_ptr_priv;
+    return clock->ptrs_priv[WASHDC_CLOCK_IDX_TARGET];
 }
 
-void clock_set_target_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr) {
-    if (ptr) {
-        *ptr = clock_target_stamp(clock);
-        clock->target_stamp_ptr_priv = ptr;
+void clock_set_ptrs_priv(struct dc_clock *clock, dc_cycle_stamp_t *ptrs) {
+    if (ptrs) {
+        ptrs[WASHDC_CLOCK_IDX_COUNTDOWN] = clock_countdown(clock);
+        ptrs[WASHDC_CLOCK_IDX_TARGET] = clock_target_stamp(clock);
+        ptrs[WASHDC_CLOCK_IDX_STAMP] = clock_cycle_stamp(clock);
+        clock->ptrs_priv = ptrs;
     } else {
-        clock->target_stamp_priv = *clock->target_stamp_ptr_priv;
-        clock->target_stamp_ptr_priv = &clock->target_stamp_priv;
-    }
-}
-
-void
-clock_set_cycle_stamp_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr) {
-    if (ptr) {
-        *ptr = clock_cycle_stamp(clock);
-        clock->cycle_stamp_ptr_priv = ptr;
-    } else {
-        clock->cycle_stamp_priv = *clock->cycle_stamp_ptr_priv;
-        clock->cycle_stamp_ptr_priv = &clock->cycle_stamp_priv;
-    }
-}
-
-void clock_set_countdown_pointer(struct dc_clock *clock, dc_cycle_stamp_t *ptr) {
-    if (ptr) {
-        *ptr = clock_countdown(clock);
-        clock->countdown_ptr_priv = ptr;
-    } else {
-        clock->countdown_priv = *clock->countdown_ptr_priv;
-        clock->countdown_ptr_priv = &clock->countdown_priv;
+        memcpy(clock->priv, ptrs, sizeof(clock->priv));
+        clock->ptrs_priv = &clock->priv;
     }
 }
 

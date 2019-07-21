@@ -73,13 +73,10 @@ native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta);
 void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
     meta->ctx_ptr = ctx_ptr;
 
-    meta->sched_tgt = exec_mem_alloc(sizeof(*meta->sched_tgt));
-    meta->cycle_stamp = exec_mem_alloc(sizeof(*meta->cycle_stamp));
-    meta->countdown = exec_mem_alloc(sizeof(*meta->countdown));
+    meta->clock_vals =
+        exec_mem_alloc(sizeof(meta->clock_vals[0]) * WASHDC_CLOCK_IDX_COUNT);
 
-    clock_set_target_pointer(meta->clk, meta->sched_tgt);
-    clock_set_cycle_stamp_pointer(meta->clk, meta->cycle_stamp);
-    clock_set_countdown_pointer(meta->clk, meta->countdown);
+    clock_set_ptrs_priv(meta->clk, meta->clock_vals);
 
     native_dispatch_create_slow_path_entry(meta);
     create_return_fn(meta);
@@ -92,17 +89,11 @@ void native_dispatch_cleanup(struct native_dispatch_meta *meta) {
     exec_mem_free(meta->return_fn);
     meta->return_fn = NULL;
 
-    clock_set_countdown_pointer(meta->clk, NULL);
-    clock_set_cycle_stamp_pointer(meta->clk, NULL);
-    clock_set_target_pointer(meta->clk, NULL);
+    clock_set_ptrs_priv(meta->clk, NULL);
 
-    exec_mem_free(meta->countdown);
-    exec_mem_free(meta->cycle_stamp);
-    exec_mem_free(meta->sched_tgt);
+    exec_mem_free(meta->clock_vals);
 
-    meta->countdown = NULL;
-    meta->cycle_stamp = NULL;
-    meta->sched_tgt = NULL;
+    meta->clock_vals = NULL;
 }
 
 static void create_return_fn(struct native_dispatch_meta *meta) {
@@ -113,10 +104,13 @@ static void create_return_fn(struct native_dispatch_meta *meta) {
     x86asm_mov_reg32_reg32(jump_reg, REG_RET);
 
     // store sched_tgt into cycle_stamp
-    load_quad_into_reg(meta->sched_tgt, sched_tgt_reg);
-    store_quad_from_reg(meta->cycle_stamp, sched_tgt_reg, REG_VOL1);
+    load_quad_into_reg(meta->clock_vals + WASHDC_CLOCK_IDX_TARGET,
+                       sched_tgt_reg);
+    store_quad_from_reg(meta->clock_vals + WASHDC_CLOCK_IDX_STAMP,
+                        sched_tgt_reg, REG_VOL1);
     x86asm_xorl_reg32_reg32(sched_tgt_reg, sched_tgt_reg);
-    store_quad_from_reg(meta->countdown, sched_tgt_reg, REG_VOL1);
+    store_quad_from_reg(meta->clock_vals + WASHDC_CLOCK_IDX_COUNTDOWN,
+                        sched_tgt_reg, REG_VOL1);
 
     // close the stack frame
     x86asm_addq_imm8_reg(8, RSP);
@@ -295,12 +289,14 @@ void native_check_cycles_emit(struct native_dispatch_meta const *meta) {
     static_assert(sizeof(dc_cycle_stamp_t) == 8,
                   "dc_cycle_stamp_t is not a quadword!");
 
-    load_quad_into_reg(meta->countdown, countdown_reg);
+    load_quad_into_reg(meta->clock_vals + WASHDC_CLOCK_IDX_COUNTDOWN,
+                       countdown_reg);
     x86asm_subq_reg64_reg64(cycle_count_reg, countdown_reg);
 
     jmp_to_addr_jbe(meta->return_fn, REG_VOL0);
 
-    store_quad_from_reg(meta->countdown, countdown_reg, REG_VOL1);
+    store_quad_from_reg(meta->clock_vals + WASHDC_CLOCK_IDX_COUNTDOWN,
+                        countdown_reg, REG_VOL1);
 
     // call native_dispatch
     native_dispatch_emit(meta);
