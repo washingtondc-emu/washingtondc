@@ -173,7 +173,7 @@ void clock_set_ptrs_priv(struct dc_clock *clock, dc_cycle_stamp_t *ptrs) {
         ptrs[WASHDC_CLOCK_IDX_STAMP] = clock_cycle_stamp(clock);
         clock->ptrs_priv = ptrs;
     } else {
-        memcpy(clock->priv, ptrs, sizeof(clock->priv));
+        memcpy(clock->priv, clock->ptrs_priv, sizeof(clock->priv));
         clock->ptrs_priv = &clock->priv;
     }
 }
