@@ -62,6 +62,9 @@ struct native_dispatch_meta {
     struct dc_clock *clk;
     void *return_fn;
     void *dispatch_slow_path;
+#ifdef JIT_PROFILE
+    void *profile_code;
+#endif
 
     void *ctx_ptr;
 

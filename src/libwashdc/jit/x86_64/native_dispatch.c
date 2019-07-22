@@ -65,6 +65,10 @@ static void jmp_to_addr_jbe(void *addr, unsigned clobber_reg);
 
 void native_dispatch_entry_create(struct native_dispatch_meta *meta);
 
+#ifdef JIT_PROFILE
+static void create_profile_code(struct native_dispatch_meta *meta);
+#endif
+
 static void
 native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta);
 
@@ -78,6 +82,9 @@ void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
 
     native_dispatch_create_slow_path_entry(meta);
     create_return_fn(meta);
+#ifdef JIT_PROFILE
+    create_profile_code(meta);
+#endif
     native_dispatch_entry_create(meta);
 }
 
@@ -85,6 +92,9 @@ void native_dispatch_cleanup(struct native_dispatch_meta *meta) {
     // TODO: free all executable memory pointers
     exec_mem_free(meta->entry);
     exec_mem_free(meta->return_fn);
+#ifdef JIT_PROFILE
+    exec_mem_free(meta->profile_code);
+#endif
     meta->return_fn = NULL;
 
     clock_set_ptrs_priv(meta->clk, NULL);
@@ -135,6 +145,21 @@ static void create_return_fn(struct native_dispatch_meta *meta) {
 
     x86asm_ret();
 }
+
+#ifdef JIT_PROFILE
+static void create_profile_code(struct native_dispatch_meta *meta) {
+    meta->profile_code = exec_mem_alloc(BASIC_ALLOC);
+    x86asm_set_dst(meta->profile_code, NULL, BASIC_ALLOC);
+
+    // call jit_profile_notify
+    size_t const jit_profile_offs = offsetof(struct cache_entry, blk.profile);
+
+    x86asm_mov_imm64_reg64((uintptr_t)meta->ctx_ptr, REG_ARG0);
+    x86asm_movq_disp8_reg_reg(jit_profile_offs, cachep_reg, REG_ARG1);
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)meta->profile_notify, func_reg);
+    x86asm_jmpq_reg64(func_reg); // tail-call elimination
+}
+#endif
 
 void native_dispatch_entry_create(struct native_dispatch_meta *meta) {
     void *entry = exec_mem_alloc(BASIC_ALLOC);
@@ -256,21 +281,12 @@ static void native_dispatch_emit(struct native_dispatch_meta const *meta) {
     // cachep_reg points to a valid struct cache_entry which we want to jump to.
 
 #ifdef JIT_PROFILE
-    // call jit_profile_notify
-    size_t const jit_profile_offs = offsetof(struct cache_entry, blk.profile);
-
-    x86asm_mov_reg32_reg32(pc_reg, tmp_reg_1);
-
-    x86asm_mov_imm64_reg64((uintptr_t)meta->ctx_ptr, REG_ARG0);
-    x86asm_movq_disp8_reg_reg(jit_profile_offs, cachep_reg, REG_ARG1);
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)meta->profile_notify, func_reg);
-    x86asm_call_reg(func_reg);
-
-    x86asm_mov_reg32_reg32(tmp_reg_1, pc_reg);
+    x86asm_pushq_reg64(native_reg);
+    jmp_to_addr(meta->profile_code, REG_RET);
+#else
+    x86asm_jmpq_reg64(native_reg); // tail-call elimination
 #endif
 
-    // the native pointer now resides in RDX
-    x86asm_jmpq_reg64(native_reg); // tail-call elimination
     // after this point no code is executed
 
     x86asm_lbl8_define(&code_cache_slow_path);
