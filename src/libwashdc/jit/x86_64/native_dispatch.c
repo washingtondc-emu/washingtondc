@@ -36,14 +36,12 @@
 
 #define BASIC_ALLOC 32
 
-#define CODE_CACHE_TBL_PTR REG_NONVOL3
-
 // for native_dispatch
 static unsigned const pc_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
 static unsigned const cachep_reg = REG_NONVOL0;
 static unsigned const tmp_reg_1 = REG_NONVOL1;
 static unsigned const native_reg = REG_NONVOL2;
-static unsigned const code_cache_tbl_ptr_reg = CODE_CACHE_TBL_PTR;
+static unsigned const code_cache_tbl_ptr_reg = REG_NONVOL3;
 static unsigned const code_hash_reg = REG_NONVOL4;
 static unsigned const func_reg = REG_RET;
 
@@ -186,7 +184,7 @@ void native_dispatch_entry_create(struct native_dispatch_meta *meta) {
     x86asm_addq_imm8_reg(-8, RSP);
 
     x86asm_mov_imm64_reg64((uintptr_t)(void*)code_cache_tbl,
-                           CODE_CACHE_TBL_PTR);
+                           code_cache_tbl_ptr_reg);
 
     /*
      * JIT code is only expected to preserve the base pointer, and to leave the
