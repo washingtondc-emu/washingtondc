@@ -1050,25 +1050,18 @@ emit_slot_to_bool(struct code_block_x86_64 *blk, void *cpu,
                   struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.slot_to_bool.slot_no;
 
-    struct x86asm_lbl8 lbl;
-    x86asm_lbl8_init(&lbl);
-
     evict_register(blk, REG_RET);
     grab_register(REG_RET);
     grab_slot(blk, slot_no);
 
     x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
     x86asm_testl_reg32_reg32(slots[slot_no].reg_no, slots[slot_no].reg_no);
-    x86asm_jz_lbl8(&lbl);
-    x86asm_incl_reg32(REG_RET);
+    x86asm_setnzl_reg32(REG_RET);
 
-    x86asm_lbl8_define(&lbl);
     x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
     ungrab_register(REG_RET);
-
-    x86asm_lbl8_cleanup(&lbl);
 }
 
 static void
