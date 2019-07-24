@@ -21,14 +21,20 @@
  ******************************************************************************/
 
 #include <string.h>
+#include <stdbool.h>
 
 #include "code_block.h"
 
 static void jit_optimize_nop(struct il_code_block *blk);
+static void jit_optimize_dead_write(struct il_code_block *blk);
+static bool
+check_for_reads_after(struct il_code_block *blk, unsigned inst_idx);
+
 static void strike_inst(struct il_code_block *blk, unsigned slot_no);
 
 void jit_optimize(struct il_code_block *blk) {
     jit_optimize_nop(blk);
+    jit_optimize_dead_write(blk);
 }
 
 static void strike_inst(struct il_code_block *blk, unsigned inst_idx) {
@@ -62,4 +68,52 @@ static void jit_optimize_nop(struct il_code_block *blk) {
         }
         inst_no++;
     }
+}
+
+// remove IL instructions which write to a slot which is not later read from
+static void jit_optimize_dead_write(struct il_code_block *blk) {
+    unsigned src_inst = 0;
+    while (src_inst < blk->inst_count) {
+        struct jit_inst *inst = blk->inst_list + src_inst;
+        int write_slots[JIT_IL_MAX_WRITE_SLOTS];
+        jit_inst_get_write_slots(inst, write_slots);
+
+        // skip this instruction if it doesn't write to any slots
+        unsigned write_count = 0;
+        unsigned slot_no;
+        for (slot_no = 0; slot_no < JIT_IL_MAX_WRITE_SLOTS; slot_no++)
+            if (write_slots[slot_no] != -1)
+                write_count++;
+        if (!write_count) {
+            src_inst++;
+            continue;
+        }
+
+        if (!check_for_reads_after(blk, src_inst))
+            strike_inst(blk, src_inst);
+        else
+            src_inst++;
+    }
+}
+
+static bool
+check_for_reads_after(struct il_code_block *blk, unsigned inst_idx) {
+    struct jit_inst *inst = blk->inst_list + inst_idx;
+    int write_slots[JIT_IL_MAX_WRITE_SLOTS];
+    jit_inst_get_write_slots(inst, write_slots);
+
+    unsigned check_idx;
+    for (check_idx = inst_idx + 1; check_idx < blk->inst_count; check_idx++) {
+        struct jit_inst *check_inst = blk->inst_list + check_idx;
+        int slot_no;
+        for (slot_no = 0; slot_no < JIT_IL_MAX_WRITE_SLOTS; slot_no++) {
+            if (write_slots[slot_no] != -1) {
+                if (jit_inst_is_read_slot(check_inst, write_slots[slot_no]))
+                    return true;
+                else if (jit_inst_is_write_slot(check_inst, write_slots[slot_no]))
+                    write_slots[slot_no] = -1;
+            }
+        }
+    }
+    return false;
 }

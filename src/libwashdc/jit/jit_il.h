@@ -23,6 +23,8 @@
 #ifndef JIT_IL_H_
 #define JIT_IL_H_
 
+#include <stdbool.h>
+
 #include "washdc/cpu.h"
 #include "washdc/types.h"
 #include "washdc/MemoryMap.h"
@@ -412,6 +414,15 @@ struct jit_inst {
 };
 
 struct il_code_block;
+
+// return true if the instruction reads from the given slot, else return false
+bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no);
+
+// return true if the instruction writes to the given slot, else return false
+#define JIT_IL_MAX_WRITE_SLOTS 2
+void jit_inst_get_write_slots(struct jit_inst const *inst,
+                              int write_slots[JIT_IL_MAX_WRITE_SLOTS]);
+bool jit_inst_is_write_slot(struct jit_inst const *inst, unsigned slot_no);
 
 void jit_fallback(struct il_code_block *block,
                   void(*fallback_fn)(void*,cpu_inst_param), cpu_inst_param inst);
