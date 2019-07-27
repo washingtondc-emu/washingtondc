@@ -154,10 +154,8 @@ char const *display_list_names[DISPLAY_LIST_COUNT] = {
 
 inline static void input_poly_fifo(struct pvr2 *pvr2, uint32_t byte);
 
-// this function gets called every time a full packet is received by the TA
-static int decode_packet(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
-
-static void handle_packet(struct pvr2 *pvr2, struct pvr2_pkt const *pkt);
+static void handle_packet(struct pvr2 *pvr2);
+static void dump_fifo(struct pvr2 *pvr2);
 
 static void render_frame_init(struct pvr2 *pvr2);
 
@@ -836,72 +834,49 @@ static void on_pkt_user_clip_received(struct pvr2 *pvr2, struct pvr2_pkt const *
                pkt->dat.user_clip.ymax * 32);
 }
 
-static void handle_packet(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
-    switch (pkt->tp) {
-    case PVR2_PKT_HDR:
-        PVR2_TRACE("header packet received\n");
-        on_pkt_hdr_received(pvr2, pkt);
-        break;
-    case PVR2_PKT_END_OF_LIST:
-        PVR2_TRACE("end-of-list packet received\n");
-        on_pkt_end_of_list_received(pvr2, pkt);
-        break;
-    case PVR2_PKT_VTX:
-        PVR2_TRACE("vertex packet received\n");
-        on_pkt_vtx_received(pvr2, pkt);
-        break;
-    case PVR2_PKT_INPUT_LIST:
-        PVR2_TRACE("input list packet received\n");
-        on_pkt_input_list_received(pvr2, pkt);
-        break;
-    case PVR2_PKT_USER_CLIP:
-        PVR2_TRACE("user clip packet received\n");
-        on_pkt_user_clip_received(pvr2, pkt);
-        break;
-    default:
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-}
-
-inline static void input_poly_fifo(struct pvr2 *pvr2, uint32_t byte) {
-    struct pvr2_ta *ta = &pvr2->ta;
-    ta->ta_fifo32[ta->ta_fifo_word_count++] = byte;
-
-    if (!(ta->ta_fifo_word_count % 8)) {
-        struct pvr2_pkt pkt;
-        if (decode_packet(pvr2, &pkt) == 0) {
-            handle_packet(pvr2, &pkt);
-            ta_fifo_finish_packet(ta);
-        }
-    }
-}
-
-static void dump_fifo(struct pvr2 *pvr2) {
-#ifdef ENABLE_LOG_DEBUG
-    unsigned idx;
-    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo;
-    LOG_DBG("Dumping FIFO: %u bytes\n", pvr2->ta.ta_fifo_word_count*4);
-    for (idx = 0; idx < pvr2->ta.ta_fifo_word_count; idx++)
-        LOG_DBG("\t0x%08x\n", (unsigned)ta_fifo32[idx]);
-#endif
-}
-
-static int decode_packet(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
+static void handle_packet(struct pvr2 *pvr2) {
+    struct pvr2_pkt pkt;
     uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo32;
     unsigned cmd_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
+    struct pvr2_ta *ta = &pvr2->ta;
 
     switch(cmd_tp) {
     case TA_CMD_TYPE_POLY_HDR:
     case TA_CMD_TYPE_SPRITE_HDR:
-        return decode_poly_hdr(pvr2, pkt);
+        if (decode_poly_hdr(pvr2, &pkt) == 0) {
+            PVR2_TRACE("header packet received\n");
+            on_pkt_hdr_received(pvr2, &pkt);
+            ta_fifo_finish_packet(ta);
+        }
+        break;
     case TA_CMD_TYPE_END_OF_LIST:
-        return decode_end_of_list(pvr2, pkt);
+        if (decode_end_of_list(pvr2, &pkt) == 0) {
+            PVR2_TRACE("end-of-list packet received\n");
+            on_pkt_end_of_list_received(pvr2, &pkt);
+            ta_fifo_finish_packet(ta);
+        }
+        break;
     case TA_CMD_TYPE_VERTEX:
-        return decode_vtx(pvr2, pkt);
+        if (decode_vtx(pvr2, &pkt) == 0) {
+            PVR2_TRACE("vertex packet received\n");
+            on_pkt_vtx_received(pvr2, &pkt);
+            ta_fifo_finish_packet(ta);
+        }
+        break;
     case TA_CMD_TYPE_INPUT_LIST:
-        return decode_input_list(pvr2, pkt);
+        if (decode_input_list(pvr2, &pkt) == 0) {
+            PVR2_TRACE("input list packet received\n");
+            on_pkt_input_list_received(pvr2, &pkt);
+            ta_fifo_finish_packet(ta);
+        }
+        break;
     case TA_CMD_TYPE_USER_CLIP:
-        return decode_user_clip(pvr2, pkt);
+        if (decode_user_clip(pvr2, &pkt) == 0) {
+            PVR2_TRACE("user clip packet received\n");
+            on_pkt_user_clip_received(pvr2, &pkt);
+            ta_fifo_finish_packet(ta);
+        }
+        break;
     default:
         LOG_ERROR("UNKNOWN CMD TYPE 0x%x\n", cmd_tp);
         dump_fifo(pvr2);
@@ -927,6 +902,24 @@ static int decode_packet(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         error_set_ta_fifo_word_f(ta_fifo32[15]);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+}
+
+inline static void input_poly_fifo(struct pvr2 *pvr2, uint32_t byte) {
+    struct pvr2_ta *ta = &pvr2->ta;
+    ta->ta_fifo32[ta->ta_fifo_word_count++] = byte;
+
+    if (!(ta->ta_fifo_word_count % 8))
+        handle_packet(pvr2);
+}
+
+static void dump_fifo(struct pvr2 *pvr2) {
+#ifdef ENABLE_LOG_DEBUG
+    unsigned idx;
+    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo;
+    LOG_DBG("Dumping FIFO: %u bytes\n", pvr2->ta.ta_fifo_word_count*4);
+    for (idx = 0; idx < pvr2->ta.ta_fifo_word_count; idx++)
+        LOG_DBG("\t0x%08x\n", (unsigned)ta_fifo32[idx]);
+#endif
 }
 
 static int decode_end_of_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
