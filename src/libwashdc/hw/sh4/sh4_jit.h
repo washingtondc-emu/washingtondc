@@ -546,4 +546,11 @@ sh4_jit_movl_a_disp8_gbr_r0(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                             struct il_code_block *block, unsigned pc,
                             struct InstOpcode const *op, cpu_inst_param inst);
 
+// STS.L PR, @-Rn
+// 0100nnnn00100010
+bool
+sh4_jit_stsl_pr_amrn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                  struct il_code_block *block, unsigned pc,
+                  struct InstOpcode const *op, cpu_inst_param inst);
+
 #endif

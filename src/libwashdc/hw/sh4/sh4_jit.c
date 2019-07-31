@@ -1548,6 +1548,25 @@ bool sh4_jit_movt(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     return true;
 }
 
+// STS.L PR, @-Rn
+// 0100nnnn00100010
+bool
+sh4_jit_stsl_pr_amrn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
+                     struct InstOpcode const *op, cpu_inst_param inst) {
+    unsigned addr_reg = ((inst >> 8) & 0xf) + SH4_REG_R0;
+    unsigned addr_slot = reg_slot(sh4, block, addr_reg);
+    unsigned pr_slot = reg_slot(sh4, block, SH4_REG_PR);
+
+    jit_add_const32(block, addr_slot, -4);
+    jit_write_32_slot(block, sh4->mem.map, pr_slot, addr_slot);
+
+    reg_map[addr_reg].stat = REG_STATUS_SLOT;
+    reg_map[SH4_REG_PR].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
 

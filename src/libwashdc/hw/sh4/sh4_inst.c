@@ -676,7 +676,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_CO, 2, 0xf0ff, 0x4026 },
 
     // STS.L PR, @-Rn
-    { &sh4_inst_binary_stsl_pr_inddecgen, sh4_jit_fallback, false,
+    { &sh4_inst_binary_stsl_pr_inddecgen, sh4_jit_stsl_pr_amrn, false,
       SH4_GROUP_CO, 2, 0xf0ff, 0x4022 },
 
     // MOV.B Rm, @Rn
