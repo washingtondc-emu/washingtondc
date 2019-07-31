@@ -4098,15 +4098,20 @@ void sh4_inst_binary_movb_indgeninc_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-    reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
-    reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
+    unsigned src_reg_no = (inst >> 4) & 0xf;
+    unsigned dst_reg_no = (inst >> 8) & 0xf;
+
+    reg32_t *src_reg = sh4_gen_reg(sh4, src_reg_no);
+    reg32_t *dst_reg = sh4_gen_reg(sh4, dst_reg_no);
     int8_t val;
 
     reg32_t src_addr = *src_reg;
-    (*src_reg)++;
     val = memory_map_read_8(sh4->mem.map, src_addr);
 
     *dst_reg = (int32_t)val;
+
+    if (src_reg_no != dst_reg_no)
+        (*src_reg)++;
 }
 
 #define INST_MASK_0110nnnnmmmm0101 0xf00f
@@ -4120,15 +4125,20 @@ void sh4_inst_binary_movw_indgeninc_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-    reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
-    reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
+    unsigned src_reg_no = (inst >> 4) & 0xf;
+    unsigned dst_reg_no = (inst >> 8) & 0xf;
+
+    reg32_t *src_reg = sh4_gen_reg(sh4, src_reg_no);
+    reg32_t *dst_reg = sh4_gen_reg(sh4, dst_reg_no);
     int16_t val;
 
     reg32_t src_addr = *src_reg;
-    (*src_reg) += 2;
     val = memory_map_read_16(sh4->mem.map, src_addr);
 
     *dst_reg = (int32_t)val;
+
+    if (src_reg_no != dst_reg_no)
+        (*src_reg) += 2;
 }
 
 #define INST_MASK_0110nnnnmmmm0110 0xf00f
@@ -4142,15 +4152,20 @@ void sh4_inst_binary_movl_indgeninc_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-    reg32_t *src_reg = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
-    reg32_t *dst_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
+    unsigned src_reg_no = (inst >> 4) & 0xf;
+    unsigned dst_reg_no = (inst >> 8) & 0xf;
+
+    reg32_t *src_reg = sh4_gen_reg(sh4, src_reg_no);
+    reg32_t *dst_reg = sh4_gen_reg(sh4, dst_reg_no);
     int32_t val;
 
     reg32_t src_addr = *src_reg;
-    (*src_reg) += 4;
     val = memory_map_read_32(sh4->mem.map, src_addr);
 
     *dst_reg = (int32_t)val;
+
+    if (src_reg_no != dst_reg_no)
+        (*src_reg) += 4;
 }
 
 #define INST_MASK_0000nnnnmmmm1111 0xf00f
