@@ -115,6 +115,14 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                                    inst->immed.read_32_constaddr.addr);
             inst++;
             break;
+        case JIT_OP_READ_16_SLOT:
+            block->slots[inst->immed.read_16_slot.dst_slot] =
+                memory_map_read_16(inst->immed.read_16_slot.map,
+                                   block->slots[
+                                       inst->immed.read_16_slot.addr_slot
+                                       ]);
+            inst++;
+            break;
         case JIT_OP_READ_32_SLOT:
             block->slots[inst->immed.read_32_slot.dst_slot] =
                 memory_map_read_32(inst->immed.read_32_slot.map,

@@ -764,6 +764,39 @@ static void emit_read_32_constaddr(struct code_block_x86_64 *blk, void *cpu,
     ungrab_register(REG_RET);
 }
 
+// JIT_OP_READ_16_SLOT implementation
+static void emit_read_16_slot(struct code_block_x86_64 *blk, void *cpu,
+                              struct jit_inst const *inst) {
+    unsigned dst_slot = inst->immed.read_16_slot.dst_slot;
+    unsigned addr_slot = inst->immed.read_16_slot.addr_slot;
+    struct memory_map const *map = inst->immed.read_16_slot.map;
+
+    // call memory_map_read_32(*addr_slot)
+    prefunc(blk);
+
+    if (config_get_inline_mem()) {
+        move_slot_to_reg(blk, addr_slot, REG_ARG0);
+        evict_register(blk, REG_ARG0);
+        native_mem_read_16(blk, map);
+    } else {
+        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+        move_slot_to_reg(blk, addr_slot, REG_ARG1);
+        evict_register(blk, REG_ARG1);
+        ms_shadow_open(blk);
+        x86_64_align_stack(blk);
+        x86asm_call_ptr(memory_map_read_16);
+        ms_shadow_close();
+    }
+
+    postfunc();
+
+    grab_slot(blk, dst_slot);
+    x86asm_mov_reg32_reg32(REG_RET, slots[dst_slot].reg_no);
+
+    ungrab_slot(dst_slot);
+    ungrab_register(REG_RET);
+}
+
 // JIT_OP_READ_32_SLOT implementation
 static void emit_read_32_slot(struct code_block_x86_64 *blk, void *cpu,
                               struct jit_inst const *inst) {
@@ -1453,6 +1486,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         case JIT_OP_READ_32_CONSTADDR:
             emit_read_32_constaddr(out, cpu, inst);
             break;
+        case JIT_OP_READ_16_SLOT:
+            emit_read_16_slot(out, cpu, inst);
+            break;
         case JIT_OP_READ_32_SLOT:
             emit_read_32_slot(out, cpu, inst);
             break;
@@ -1543,6 +1579,8 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         case JIT_OP_SHAD:
             emit_shad(out, cpu, inst);
             break;
+        default:
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
         inst++;
     }

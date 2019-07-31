@@ -61,6 +61,9 @@ enum jit_opcode {
     // read a 32-bit int at a constant address into a slot
     JIT_OP_READ_32_CONSTADDR,
 
+    // read a 16-bit int at an address contained in a slot into another slot
+    JIT_OP_READ_16_SLOT,
+
     // read a 32-bit int at an address contained in a slot into another slot
     JIT_OP_READ_32_SLOT,
 
@@ -213,6 +216,12 @@ struct read_32_constaddr_immed {
     struct memory_map *map;
     addr32_t addr;
     unsigned slot_no;
+};
+
+struct read_16_slot_immed {
+    struct memory_map *map;
+    unsigned addr_slot;
+    unsigned dst_slot;
 };
 
 struct read_32_slot_immed {
@@ -376,6 +385,7 @@ union jit_immed {
     struct read_16_constaddr_immed read_16_constaddr;
     struct sign_extend_16_immed sign_extend_16;
     struct read_32_constaddr_immed read_32_constaddr;
+    struct read_16_slot_immed read_16_slot;
     struct read_32_slot_immed read_32_slot;
     struct write_32_slot_immed write_32_slot;
     struct load_slot16_immed load_slot16;
@@ -439,6 +449,8 @@ void jit_read_16_constaddr(struct il_code_block *block, struct memory_map *map,
 void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no);
 void jit_read_32_constaddr(struct il_code_block *block, struct memory_map *map,
                            addr32_t addr, unsigned slot_no);
+void jit_read_16_slot(struct il_code_block *block, struct memory_map *map,
+                      unsigned addr_slot, unsigned dst_slot);
 void jit_read_32_slot(struct il_code_block *block, struct memory_map *map,
                       unsigned addr_slot, unsigned dst_slot);
 void jit_write_32_slot(struct il_code_block *block, struct memory_map *map,

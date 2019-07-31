@@ -115,6 +115,18 @@ void jit_read_32_constaddr(struct il_code_block *block, struct memory_map *map,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_read_16_slot(struct il_code_block *block, struct memory_map *map,
+                      unsigned addr_slot, unsigned dst_slot) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_READ_16_SLOT;
+    op.immed.read_16_slot.map = map;
+    op.immed.read_16_slot.addr_slot = addr_slot;
+    op.immed.read_16_slot.dst_slot = dst_slot;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_read_32_slot(struct il_code_block *block, struct memory_map *map,
                       unsigned addr_slot, unsigned dst_slot) {
     struct jit_inst op;
@@ -472,6 +484,8 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
         return slot_no == immed->sign_extend_16.slot_no;
     case JIT_OP_READ_32_CONSTADDR:
         return false;
+    case JIT_OP_READ_16_SLOT:
+        return slot_no == immed->read_16_slot.addr_slot;
     case JIT_OP_READ_32_SLOT:
         return slot_no == immed->read_32_slot.addr_slot;
     case JIT_OP_WRITE_32_SLOT:
@@ -578,6 +592,9 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
         break;
     case JIT_OP_READ_32_CONSTADDR:
         write_slots[0] = immed->read_32_constaddr.slot_no;
+        break;
+    case JIT_OP_READ_16_SLOT:
+        write_slots[0] = immed->read_16_slot.dst_slot;
         break;
     case JIT_OP_READ_32_SLOT:
         write_slots[0] = immed->read_32_slot.dst_slot;

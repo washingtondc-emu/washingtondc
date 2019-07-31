@@ -966,6 +966,28 @@ sh4_jit_movl_a_disp8_gbr_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     return true;
 }
 
+// MOV.W @Rm+, Rn
+// 0110nnnnmmmm0101
+bool sh4_jit_movw_armp_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
+                          struct InstOpcode const *op, cpu_inst_param inst) {
+    unsigned reg_src = ((inst >> 4) & 0xf) + SH4_REG_R0;
+    unsigned reg_dst = ((inst >> 8) & 0xf) + SH4_REG_R0;
+
+    unsigned slot_src = reg_slot(sh4, block, reg_src);
+    unsigned slot_dst = reg_slot(sh4, block, reg_dst);
+
+    jit_read_16_slot(block, sh4->mem.map, slot_src, slot_dst);
+    jit_sign_extend_16(block, slot_dst);
+    if (reg_src != reg_dst)
+        jit_add_const32(block, slot_src, 2);
+
+    reg_map[reg_dst].stat = REG_STATUS_SLOT;
+    reg_map[reg_src].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 // MOV.L @Rm+, Rn
 // 0110nnnnmmmm0110
 bool sh4_jit_movl_armp_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,

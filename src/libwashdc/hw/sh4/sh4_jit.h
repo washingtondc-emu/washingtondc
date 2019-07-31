@@ -341,6 +341,12 @@ bool sh4_jit_movl_arm_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                          struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst);
 
+// MOV.W @Rm+, Rn
+// 0110nnnnmmmm0101
+bool
+sh4_jit_movw_armp_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                     struct il_code_block *block, unsigned pc,
+                     struct InstOpcode const *op, cpu_inst_param inst);
 // MOV.L @Rm+, Rn
 // 0110nnnnmmmm0110
 bool sh4_jit_movl_armp_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,

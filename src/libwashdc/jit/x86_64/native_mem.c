@@ -313,6 +313,7 @@ emit_ram_read_16(struct memory_map_region const *region, void *ctxt) {
 
     x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
+    x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
     x86asm_movw_sib_reg(REG_ARG1, 1, REG_ARG0, REG_RET);
 }
 
