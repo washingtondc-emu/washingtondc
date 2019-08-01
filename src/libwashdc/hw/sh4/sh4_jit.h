@@ -335,6 +335,12 @@ bool sh4_jit_tst_imm8_r0(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                          struct il_code_block *block, unsigned pc,
                          struct InstOpcode const *op, cpu_inst_param inst);
 
+// MOV.L @(R0, Rm), Rn
+// 0000nnnnmmmm1110
+bool sh4_jit_movl_a_r0_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                             struct il_code_block *block, unsigned pc,
+                             struct InstOpcode const *op, cpu_inst_param inst);
+
 // MOV.L @Rm, Rn
 // 0110nnnnmmmm0010
 bool sh4_jit_movl_arm_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
