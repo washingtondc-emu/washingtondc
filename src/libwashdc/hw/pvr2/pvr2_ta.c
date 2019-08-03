@@ -413,7 +413,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 #endif
 
     if (hdr->two_volumes_mode)
-        LOG_WARN("Unimplemented two-volumes mode polygon!\n");
+        LOG_DBG("Unimplemented two-volumes mode polygon!\n");
 
     if (ta->cur_list != hdr->list) {
         if (ta->cur_list == DISPLAY_LIST_NONE) {
