@@ -1463,9 +1463,9 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
          * always half what I expect it to be.  That's fairly reasonably and
          * not nearly as exasperating as the case described above.
          */
-        LOG_WARN("Warning: read-dimensions of framebuffer are %ux%u, but "
-                 "write-dimensions are %ux%u\n",
-                 read_width, read_height, width, height);
+        LOG_DBG("Warning: read-dimensions of framebuffer are %ux%u, but "
+                "write-dimensions are %ux%u\n",
+                read_width, read_height, width, height);
     }
 
     /*
