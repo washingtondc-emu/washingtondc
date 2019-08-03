@@ -666,8 +666,8 @@ static void aica_sys_channel_read(struct aica *aica, void *dst,
     unsigned idx = chan_reg / 4;
     unsigned reg_no = 4 * idx;
 
-    LOG_INFO("Reading from AICA channel %u register \"%s\"\n",
-             chan_no, aica_chan_reg_name(reg_no));
+    LOG_DBG("Reading from AICA channel %u register \"%s\"\n",
+            chan_no, aica_chan_reg_name(reg_no));
     switch (reg_no) {
     case AICA_CHAN_PLAY_CTRL:
         memcpy(&tmp, chan->raw + AICA_CHAN_PLAY_CTRL, sizeof(tmp));
@@ -811,7 +811,7 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
     unsigned reg_no = 4 * (chan_reg / 4);
 
     memcpy(&tmp, src, sizeof(tmp));
-    LOG_INFO("AICA: write 0x%08x to channel %u register \"%s\"\n",
+    LOG_DBG("AICA: write 0x%08x to channel %u register \"%s\"\n",
              (int)tmp, chan_no, aica_chan_reg_name(reg_no));
 
     switch (reg_no) {
@@ -863,7 +863,7 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         double sample_rate = (double)get_sample_rate_multiplier(chan) /
             (double)(1 << AICA_SAMPLE_POS_SHIFT);
 
-        LOG_INFO("AICA channel %u sample_rate is %f oct %d fns 0x%04x\n",
+        LOG_DBG("AICA channel %u sample_rate is %f oct %d fns 0x%04x\n",
                  chan_no, sample_rate, get_octave_signed(chan), chan->fns);
         break;
     case AICA_CHAN_LFO_CTRL:
@@ -888,7 +888,7 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         break;
     default:
         memcpy(&tmp, src, sizeof(tmp));
-        LOG_INFO("AICA: write to addr 0x%08x chan %u offset %u val 0x%08x\n",
+        LOG_DBG("AICA: write to addr 0x%08x chan %u offset %u val 0x%08x\n",
                 (unsigned)addr, chan_no, chan_reg, (unsigned)tmp);
 #ifdef AICA_PEDANTIC
         if (tmp) {
