@@ -899,7 +899,9 @@ bool sh4_jit_movl_a_r0_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
 
+    free_slot(block, slot_srcaddr);
     jit_discard_slot(block, slot_srcaddr);
+
     return true;
 }
 
