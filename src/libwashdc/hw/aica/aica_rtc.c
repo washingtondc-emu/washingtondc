@@ -23,12 +23,15 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 #include "dreamcast.h"
 #include "washdc/MemoryMap.h"
 #include "dc_sched.h"
 #include "log.h"
+#include "hostfile.h"
 
 #include "aica_rtc.h"
 
@@ -45,15 +48,69 @@ static void cancel_aica_rtc_event(struct aica_rtc *rtc);
 #define AICA_RTC_ADDR_LOW    0x710004
 #define AICA_RTC_ADDR_ENABLE 0x710008
 
+#define AICA_RTC_FILE "rtc_value.txt"
+#define AICA_RTC_FILE_MAXPATH 512
+static char rtc_file_path[AICA_RTC_FILE_MAXPATH];
+
 void aica_rtc_init(struct aica_rtc *rtc, struct dc_clock *clock) {
     memset(rtc, 0, sizeof(*rtc));
-    rtc->cur_rtc_val = RTC_DEFAULT;
+
+    strncpy(rtc_file_path, hostfile_data_dir(), AICA_RTC_FILE_MAXPATH);
+    rtc_file_path[AICA_RTC_FILE_MAXPATH-1] = '\0';
+    hostfile_path_append(rtc_file_path, AICA_RTC_FILE, sizeof(rtc_file_path));
+
+    LOG_INFO("Attempting to open existing real-time clock state at \"%s\"\n",
+             rtc_file_path);
+    FILE *rtc_file = fopen(rtc_file_path, "r");
+    bool have_clock = false;
+    if (rtc_file) {
+        char rtc_str[16] = { 0 };
+        int n_chars = 0;
+        int ch;
+        while (n_chars < 15 && (ch = fgetc(rtc_file)) != EOF && !isspace(ch))
+            rtc_str[n_chars++] = ch;
+        rtc_str[15] = '\0';
+        if (n_chars > 0 && n_chars < 15) {
+            int idx;
+            bool alldigits = true;
+            for (idx = 0; idx < n_chars; idx++)
+                if (!isdigit(rtc_str[idx]))
+                    alldigits = false;
+            if (alldigits) {
+                rtc->cur_rtc_val = atoi(rtc_str);
+                have_clock = true;
+            }
+        }
+        fclose(rtc_file);
+    }
+    if (!have_clock) {
+        LOG_INFO("Unable to access real-time clock state; state will be "
+                 "initialized to 0.\n");
+        rtc->cur_rtc_val = RTC_DEFAULT;
+    }
+
     rtc->aica_rtc_clk = clock;
 
     sched_aica_rtc_event(rtc);
 }
 
 void aica_rtc_cleanup(struct aica_rtc *rtc) {
+    LOG_INFO("Attempting to save real-time clock state to \"%s\"\n",
+             rtc_file_path);
+    LOG_INFO("For the record, the final RTC value is %u\n",
+             (unsigned)rtc->cur_rtc_val);
+
+    strncpy(rtc_file_path, hostfile_data_dir(), AICA_RTC_FILE_MAXPATH);
+    rtc_file_path[AICA_RTC_FILE_MAXPATH-1] = '\0';
+    hostfile_path_append(rtc_file_path, AICA_RTC_FILE, sizeof(rtc_file_path));
+
+    FILE *rtc_file = fopen(rtc_file_path, "w");
+    if (rtc_file) {
+        fprintf(rtc_file, "%u\n", rtc->cur_rtc_val);
+        fclose(rtc_file);
+    } else {
+        LOG_INFO("Unable to save real-time clockstate\n");
+    }
 }
 
 float aica_rtc_read_float(addr32_t addr, void *ctxt) {
