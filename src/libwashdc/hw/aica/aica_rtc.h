@@ -30,18 +30,22 @@
 #include "washdc/types.h"
 #include "washdc/MemoryMap.h"
 
+#define AICA_RTC_FILE_MAXPATH 512
+
 struct aica_rtc {
     struct dc_clock *aica_rtc_clk;
     struct SchedEvent aica_rtc_event;
     uint32_t cur_rtc_val;
     bool write_enable;
+    char aica_rtc_path[AICA_RTC_FILE_MAXPATH];
 };
 
 /*
  * The AICA's RTC is ironically not available to AICA, so this clock should
  * point to the SH4's clock, not the ARM7's clock.
  */
-void aica_rtc_init(struct aica_rtc *rtc, struct dc_clock *clock);
+void aica_rtc_init(struct aica_rtc *rtc, struct dc_clock *clock,
+                   char const *path);
 void aica_rtc_cleanup(struct aica_rtc *rtc);
 
 float aica_rtc_read_float(addr32_t addr, void *ctxt);
