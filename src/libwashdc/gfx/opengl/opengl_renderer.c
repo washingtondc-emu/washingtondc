@@ -908,7 +908,6 @@ static void opengl_renderer_begin_sort_mode(void) {
         RAISE_ERROR(ERROR_INTEGRITY);
 
     if (gfx_config_read().depth_sort_enable) {
-        LOG_INFO("SORT MODE ENABLE\n");
         oit_state.enabled = true;
         oit_state.tri_count = 0;
         oit_state.group_count = 0;
@@ -921,7 +920,6 @@ static void opengl_renderer_end_sort_mode(void) {
     if (!oit_state.enabled)
         RAISE_ERROR(ERROR_INTEGRITY);
 
-    LOG_INFO("SORT MODE DISABLE (%u triangles)\n", oit_state.tri_count);
     oit_state.enabled = false;
 
     // do an insertion sort because i'm a pleb
