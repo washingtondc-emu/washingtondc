@@ -33,6 +33,8 @@
 #include "overlay.hpp"
 #include "sound.hpp"
 #include "washdc/hostfile.h"
+#include "hostfile.hpp"
+#include "console_config.hpp"
 
 #ifdef USE_LIBEVENT
 #include "frontend_io/io_thread.hpp"
@@ -48,14 +50,13 @@
 #endif
 
 #define CFG_FILE_NAME "wash.cfg"
-#define HOSTFILE_PATH_LEN 4096
 
-static void path_append(char *dst, char const *src, size_t dst_sz);
-static char const *screenshot_dir(void);
-static char const *data_dir(void);
-static char const *cfg_dir(void);
-static char const *cfg_file(void);
-static void create_screenshot_dir(void);
+void path_append(char *dst, char const *src, size_t dst_sz);
+char const *screenshot_dir(void);
+char const *data_dir(void);
+char const *cfg_dir(void);
+char const *cfg_file(void);
+void create_screenshot_dir(void);
 
 static struct washdc_sound_intf snd_intf = {
     .init = sound::init,
@@ -77,6 +78,7 @@ static void print_usage(char const *cmd) {
     fprintf(stderr, "WashingtonDC Dreamcast Emulator\n\n");
 
     fprintf(stderr, "OPTIONS:\n"
+            "\t-c <console_name>\tname of console to boot\n"
             "\t-b <bios_path>\tpath to dreamcast boot ROM\n"
             "\t-f <flash_path>\tpath to dreamcast flash ROM image\n"
             "\t-g\t\tenable remote GDB backend\n"
@@ -103,7 +105,6 @@ struct washdc_gameconsole const *console;
 
 int main(int argc, char **argv) {
     int opt;
-    char const *bios_path = NULL, *flash_path = NULL;
     char const *cmd = argv[0];
     bool enable_debugger = false;
     bool enable_washdbg = false;
@@ -116,15 +117,10 @@ int main(int argc, char **argv) {
         enable_interpreter = false, inline_mem = true;
     bool log_stdout = false, log_verbose = false;
     struct washdc_launch_settings settings = { };
+    char const *console_name = NULL;
 
-    while ((opt = getopt(argc, argv, "b:f:s:m:d:u:ghtjxpnwlv")) != -1) {
+    while ((opt = getopt(argc, argv, "b:f:c:s:m:d:u:ghtjxpnwlv")) != -1) {
         switch (opt) {
-        case 'b':
-            bios_path = optarg;
-            break;
-        case 'f':
-            flash_path = optarg;
-            break;
         case 'g':
             enable_debugger = true;
             break;
@@ -169,8 +165,23 @@ int main(int argc, char **argv) {
         case 'v':
             log_verbose = true;
             break;
+        case 'c':
+            console_name = optarg;
+            break;
+        case 'b':
+        case 'f':
+            fprintf(stderr, "ERROR:\n"
+                    "The -b and -f options are now obsolete.\n"
+                    "The new way to specify bios and flash images is to place\n"
+                    "the bios image in %s , and the flash image in %s .\n",
+                    console_get_firmware_path("default_dc"),
+                    console_get_flashrom_path("default_dc"));
+            exit(1);
         }
     }
+
+    if (!console_name)
+        console_name = "default_dc";
 
     argv += optind;
     argc -= optind;
@@ -180,7 +191,11 @@ int main(int argc, char **argv) {
 
     settings.hostfile_api = &hostfile_api;
 
+    create_cfg_dir();
+    create_data_dir();
     create_screenshot_dir();
+
+    create_console_dir("default");
 
     if (enable_debugger && enable_washdbg) {
         fprintf(stderr, "You can't enable WashDbg and GDB at the same time\n");
@@ -280,8 +295,9 @@ int main(int argc, char **argv) {
         settings.boot_mode = WASHDC_BOOT_FIRMWARE;
     }
 
-    settings.path_dc_bios = bios_path;
-    settings.path_dc_flash = flash_path;
+    settings.path_dc_bios = console_get_firmware_path(console_name);
+    settings.path_dc_flash = console_get_flashrom_path(console_name);
+    settings.path_rtc = console_get_rtc_path(console_name);
     settings.enable_serial = enable_serial;
     settings.path_gdi = path_gdi;
     settings.win_intf = get_win_intf_glfw();
@@ -332,7 +348,7 @@ void do_pause(void) {
     washdc_pause();
 }
 
-static void path_append(char *dst, char const *src, size_t dst_sz) {
+void path_append(char *dst, char const *src, size_t dst_sz) {
     if (!src[0])
         return; // nothing to append
 
@@ -378,7 +394,7 @@ static void path_append(char *dst, char const *src, size_t dst_sz) {
     dst[dst_sz - 1] = '\0';
 }
 
-static char const *screenshot_dir(void) {
+char const *screenshot_dir(void) {
     static char path[HOSTFILE_PATH_LEN];
     char const *the_data_dir = data_dir();
     if (!the_data_dir)
@@ -389,7 +405,7 @@ static char const *screenshot_dir(void) {
     return path;
 }
 
-static char const *data_dir(void) {
+char const *data_dir(void) {
     static char path[HOSTFILE_PATH_LEN];
     char const *data_root = getenv("XDG_DATA_HOME");
     if (data_root) {
@@ -409,7 +425,7 @@ static char const *data_dir(void) {
     return path;
 }
 
-static char const *cfg_dir(void) {
+char const *cfg_dir(void) {
     static char path[HOSTFILE_PATH_LEN];
     char const *config_root = getenv("XDG_CONFIG_HOME");
     if (config_root) {
@@ -429,7 +445,7 @@ static char const *cfg_dir(void) {
     return path;
 }
 
-static char const *cfg_file(void) {
+char const *cfg_file(void) {
     static char path[HOSTFILE_PATH_LEN];
     char const *the_cfg_dir = cfg_dir();
     if (!the_cfg_dir)
@@ -441,12 +457,24 @@ static char const *cfg_file(void) {
 }
 
 void create_screenshot_dir(void) {
-    char const *the_data_dir = data_dir();
-    if (mkdir(the_data_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
-        errno != EEXIST)
-        fprintf(stderr, "%s - failure to create %s\n", __func__, the_data_dir);
+    create_data_dir();
+
     char const *the_screenshot_dir = screenshot_dir();
     if (mkdir(the_screenshot_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
         errno != EEXIST)
         fprintf(stderr, "%s - failure to create %s\n", __func__, the_screenshot_dir);
+}
+
+void create_cfg_dir(void) {
+    char const *the_cfg_dir = cfg_dir();
+    if (mkdir(the_cfg_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
+        errno != EEXIST)
+        fprintf(stderr, "%s - failure to create %s\n", __func__, the_cfg_dir);
+}
+
+void create_data_dir(void) {
+    char const *the_data_dir = data_dir();
+    if (mkdir(the_data_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
+        errno != EEXIST)
+        fprintf(stderr, "%s - failure to create %s\n", __func__, the_data_dir);
 }

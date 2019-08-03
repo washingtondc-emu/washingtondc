@@ -115,6 +115,7 @@ void flash_mem_cleanup(struct flash_mem *mem) {
 static void flash_mem_load(struct flash_mem *mem, char const *path) {
     FILE *fp = fopen(path, "rb");
     if (!fp) {
+        LOG_ERROR("Unable to open \"%s\"\n", path);
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
         return;

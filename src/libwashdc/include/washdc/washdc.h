@@ -88,6 +88,7 @@ struct washdc_launch_settings {
     char const *path_dc_bios;
     char const *path_dc_flash;
     char const *path_gdi;
+    char const *path_rtc;
 
     struct washdc_hostfile_api const *hostfile_api;
 

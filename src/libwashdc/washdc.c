@@ -69,6 +69,7 @@ washdc_init(struct washdc_launch_settings const *settings) {
     config_set_dc_bios_path(settings->path_dc_bios);
     config_set_dc_flash_path(settings->path_dc_flash);
     config_set_ser_srv_enable(settings->enable_serial);
+    config_set_dc_path_rtc(settings->path_rtc);
 
     win_set_intf(settings->win_intf);
     gfx_set_overlay_intf(settings->overlay_intf);

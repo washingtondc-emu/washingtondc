@@ -399,17 +399,6 @@ static struct washdc_gameconsole dccons = {
     }
 };
 
-
-
-static char const *washdc_rtc_file_path(void) {
-#define DC_RTC_FILE_MAXPATH 512
-    static char rtc_file_path[DC_RTC_FILE_MAXPATH];
-    strncpy(rtc_file_path, washdc_hostfile_data_dir(), DC_RTC_FILE_MAXPATH);
-    rtc_file_path[DC_RTC_FILE_MAXPATH-1] = '\0';
-    washdc_hostfile_path_append(rtc_file_path, "rtc_value.txt", sizeof(rtc_file_path));
-    return rtc_file_path;
-}
-
 struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
                struct washdc_overlay_intf const *overlay_intf_fns,
@@ -571,7 +560,7 @@ dreamcast_init(char const *gdi_path,
         cpu.reg[SH4_REG_VBR] = 0x8c00f400;
     }
 
-    aica_rtc_init(&rtc, &sh4_clock, washdc_rtc_file_path());
+    aica_rtc_init(&rtc, &sh4_clock, config_get_dc_path_rtc());
 
 #ifdef ENABLE_DEBUGGER
     if (config_get_dbg_enable()) {

@@ -62,6 +62,9 @@ CONFIG_DECL_STRING(dc_bios_path);
 // path to the dreamcast flash image
 CONFIG_DECL_STRING(dc_flash_path);
 
+// path to the rtc image
+CONFIG_DECL_STRING(dc_path_rtc);
+
 // path to the syscalls.bin system call image
 CONFIG_DECL_STRING(syscall_path);
 

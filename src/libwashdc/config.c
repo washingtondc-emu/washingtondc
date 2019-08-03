@@ -69,6 +69,8 @@ CONFIG_DEF_STRING(dc_bios_path);
 
 CONFIG_DEF_STRING(dc_flash_path);
 
+CONFIG_DEF_STRING(dc_path_rtc);
+
 CONFIG_DEF_STRING(syscall_path);
 
 CONFIG_DEF_INT(boot_mode, 0);
