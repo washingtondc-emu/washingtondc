@@ -24,12 +24,15 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <sys/stat.h>
 
 #include "washdc/washdc.h"
 #include "washdc/buildconfig.h"
 #include "window.hpp"
 #include "overlay.hpp"
 #include "sound.hpp"
+#include "washdc/hostfile.h"
 
 #ifdef USE_LIBEVENT
 #include "frontend_io/io_thread.hpp"
@@ -44,10 +47,28 @@
 #include "frontend_io/serial_server.hpp"
 #endif
 
+#define CFG_FILE_NAME "wash.cfg"
+#define HOSTFILE_PATH_LEN 4096
+
+static void path_append(char *dst, char const *src, size_t dst_sz);
+static char const *screenshot_dir(void);
+static char const *data_dir(void);
+static char const *cfg_dir(void);
+static char const *cfg_file(void);
+static void create_screenshot_dir(void);
+
 static struct washdc_sound_intf snd_intf = {
     .init = sound::init,
     .cleanup = sound::cleanup,
     .submit_samples = sound::submit_samples
+};
+
+static struct washdc_hostfile_api const hostfile_api = {
+    .cfg_dir = cfg_dir,
+    .cfg_file = cfg_file,
+    .data_dir = data_dir,
+    .screenshot_dir = screenshot_dir,
+    .path_append = path_append
 };
 
 static void print_usage(char const *cmd) {
@@ -156,6 +177,10 @@ int main(int argc, char **argv) {
 
     settings.log_to_stdout = log_stdout;
     settings.log_verbose = log_verbose;
+
+    settings.hostfile_api = &hostfile_api;
+
+    create_screenshot_dir();
 
     if (enable_debugger && enable_washdbg) {
         fprintf(stderr, "You can't enable WashDbg and GDB at the same time\n");
@@ -305,4 +330,123 @@ void do_run_one_frame(void) {
 
 void do_pause(void) {
     washdc_pause();
+}
+
+static void path_append(char *dst, char const *src, size_t dst_sz) {
+    if (!src[0])
+        return; // nothing to append
+
+    // get the index of the null terminator
+    unsigned zero_idx = 0;
+    while (dst[zero_idx])
+        zero_idx++;
+
+    if (!zero_idx) {
+        // special case - dst is empty so copy src over
+        strncpy(dst, src, dst_sz);
+        dst[dst_sz - 1] = '\0';
+        return;
+    }
+
+    /*
+     * If there's a trailing / on dst and a leading / on src then get rid of
+     * the leading slash on src.
+     *
+     * If there is not a trailing / on dst and there is not a leading slash on
+     * src then give dst a trailing /.
+     */
+    if (dst[zero_idx - 1] == '/' && src[0] == '/') {
+        // remove leading / from src
+        src = src + 1;
+        if (!src[0])
+            return; // nothing to append
+    } else if (dst[zero_idx - 1] != '/' && src[0] != '/') {
+        // add trailing / to dst
+        if (zero_idx < dst_sz - 1) {
+            dst[zero_idx++] = '/';
+            dst[zero_idx] = '\0';
+        } else {
+            return; // out of space
+        }
+    }
+
+    // there's no more space
+    if (zero_idx >= dst_sz -1 )
+        return;
+
+    strncpy(dst + zero_idx, src, dst_sz - zero_idx);
+    dst[dst_sz - 1] = '\0';
+}
+
+static char const *screenshot_dir(void) {
+    static char path[HOSTFILE_PATH_LEN];
+    char const *the_data_dir = data_dir();
+    if (!the_data_dir)
+        return NULL;
+    strncpy(path, the_data_dir, HOSTFILE_PATH_LEN);
+    path[HOSTFILE_PATH_LEN - 1] = '\0';
+    path_append(path, "/screenshots", HOSTFILE_PATH_LEN);
+    return path;
+}
+
+static char const *data_dir(void) {
+    static char path[HOSTFILE_PATH_LEN];
+    char const *data_root = getenv("XDG_DATA_HOME");
+    if (data_root) {
+        strncpy(path, data_root, HOSTFILE_PATH_LEN);
+        path[HOSTFILE_PATH_LEN - 1] = '\0';
+    } else {
+        char const *home_dir = getenv("HOME");
+        if (home_dir) {
+            strncpy(path, home_dir, HOSTFILE_PATH_LEN);
+            path[HOSTFILE_PATH_LEN - 1] = '\0';
+        } else {
+            return NULL;
+        }
+        path_append(path, "/.local/share", HOSTFILE_PATH_LEN);
+    }
+    path_append(path, "washdc", HOSTFILE_PATH_LEN);
+    return path;
+}
+
+static char const *cfg_dir(void) {
+    static char path[HOSTFILE_PATH_LEN];
+    char const *config_root = getenv("XDG_CONFIG_HOME");
+    if (config_root) {
+        strncpy(path, config_root, HOSTFILE_PATH_LEN);
+        path[HOSTFILE_PATH_LEN - 1] = '\0';
+    } else {
+        char const *home_dir = getenv("HOME");
+        if (home_dir) {
+            strncpy(path, home_dir, HOSTFILE_PATH_LEN);
+            path[HOSTFILE_PATH_LEN - 1] = '\0';
+        } else {
+            return NULL;
+        }
+        path_append(path, "/.config", HOSTFILE_PATH_LEN);
+    }
+    path_append(path, "washdc", HOSTFILE_PATH_LEN);
+    return path;
+}
+
+static char const *cfg_file(void) {
+    static char path[HOSTFILE_PATH_LEN];
+    char const *the_cfg_dir = cfg_dir();
+    if (!the_cfg_dir)
+        return NULL;
+    strncpy(path, the_cfg_dir, HOSTFILE_PATH_LEN);
+    path[HOSTFILE_PATH_LEN - 1] = '\0';
+    path_append(path, "wash.cfg", HOSTFILE_PATH_LEN);
+    return path;
+}
+
+void create_screenshot_dir(void) {
+    char const *the_data_dir = data_dir();
+    if (mkdir(the_data_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
+        errno != EEXIST)
+        fprintf(stderr, "%s - failure to create %s\n", __func__, the_data_dir);
+    char const *the_screenshot_dir = screenshot_dir();
+    if (mkdir(the_screenshot_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
+        errno != EEXIST)
+        fprintf(stderr, "%s - failure to create %s\n", __func__, the_screenshot_dir);
 }

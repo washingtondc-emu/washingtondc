@@ -35,6 +35,7 @@
 
 static uint32_t trans_bind_washdc_to_maple(uint32_t wash);
 static int trans_axis_washdc_to_maple(int axis);
+static struct washdc_hostfile_api *hostfile_api;
 
 static enum dc_boot_mode translate_boot_mode(enum washdc_boot_mode mode) {
     switch (mode) {
@@ -71,6 +72,8 @@ washdc_init(struct washdc_launch_settings const *settings) {
 
     win_set_intf(settings->win_intf);
     gfx_set_overlay_intf(settings->overlay_intf);
+
+    hostfile_api = settings->hostfile_api;
 
     return dreamcast_init(settings->path_gdi,
                           settings->overlay_intf, settings->dbg_intf,
@@ -247,4 +250,24 @@ void washdc_run_one_frame(void) {
 
 unsigned washdc_get_frame_count(void) {
     return dc_get_frame_count();
+}
+
+void washdc_hostfile_path_append(char *dst, char const *src, size_t dst_sz) {
+    return hostfile_api->path_append(dst, src, dst_sz);
+}
+
+char const *washdc_hostfile_cfg_dir(void) {
+    return hostfile_api->cfg_dir();
+}
+
+char const *washdc_hostfile_cfg_file(void) {
+    return hostfile_api->cfg_file();
+}
+
+char const *washdc_hostfile_data_dir(void) {
+    return hostfile_api->data_dir();
+}
+
+char const *washdc_hostfile_screenshot_dir(void) {
+    return hostfile_api->screenshot_dir();
 }

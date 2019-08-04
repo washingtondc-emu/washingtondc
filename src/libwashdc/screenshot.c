@@ -26,7 +26,7 @@
 #include <time.h>
 #include <string.h>
 
-#include "hostfile.h"
+#include "washdc/hostfile.h"
 #include "gfx/gfx_il.h"
 #include "log.h"
 
@@ -57,8 +57,7 @@ int save_screenshot_dir(void) {
     strftime(timestr, TIMESTR_LEN, "%F-%H-%M-%S", timeinfo);
     timestr[TIMESTR_LEN - 1] = '\0';
 
-    hostfile_create_screenshot_dir();
-    char const *screenshot_dir = hostfile_screenshot_dir();
+    char const *screenshot_dir = washdc_hostfile_screenshot_dir();
     static char filename[PATH_LEN];
     static char path[PATH_LEN];
     snprintf(filename, PATH_LEN, "%s.png", timestr);
@@ -67,7 +66,7 @@ int save_screenshot_dir(void) {
     for (idx = 0; idx < 16; idx++) {
         strncpy(path, screenshot_dir, PATH_LEN);
         path[PATH_LEN - 1] = '\0';
-        hostfile_path_append(path, filename, PATH_LEN);
+        washdc_hostfile_path_append(path, filename, PATH_LEN);
         stream = fopen(path, "wbx");
         if (stream)
             break;

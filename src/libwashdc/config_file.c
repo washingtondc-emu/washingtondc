@@ -30,7 +30,7 @@
 
 #include "log.h"
 #include "washdc/fifo.h"
-#include "hostfile.h"
+#include "washdc/hostfile.h"
 
 #include "washdc/config_file.h"
 
@@ -67,8 +67,8 @@ static void cfg_handle_newline(void);
 static int cfg_parse_bool(char const *val, bool *outp);
 
 static void cfg_create_default_config(void) {
-    char const *cfg_file_path = hostfile_cfg_file();
-    char const *cfg_file_dir = hostfile_cfg_dir();
+    char const *cfg_file_path = washdc_hostfile_cfg_file();
+    char const *cfg_file_dir = washdc_hostfile_cfg_dir();
 
     static char const *cfg_default =
         ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"
@@ -219,8 +219,8 @@ void cfg_init(void) {
     memset(&cfg_state, 0, sizeof(cfg_state));
     cfg_state.state = CFG_PARSE_PRE_KEY;
 
-    char const *cfg_file_path = hostfile_cfg_file();
-    char const *cfg_file_dir = hostfile_cfg_dir();
+    char const *cfg_file_path = washdc_hostfile_cfg_file();
+    char const *cfg_file_dir = washdc_hostfile_cfg_dir();
 
     if (cfg_file_dir)
         LOG_INFO("cfg directory is \"%s\"\n", cfg_file_dir);

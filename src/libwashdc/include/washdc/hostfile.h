@@ -20,19 +20,35 @@
  *
  ******************************************************************************/
 
-#ifndef HOSTFILE_H_
-#define HOSTFILE_H_
+#ifndef WASHDC_HOSTFILE_H_
+#define WASHDC_HOSTFILE_H_
 
-char const *hostfile_cfg_dir(void);
+#include <stddef.h>
 
-char const *hostfile_cfg_file(void);
+struct washdc_hostfile_api {
+    char const*(*cfg_dir)(void);
+    char const*(*cfg_file)(void);
+    char const*(*data_dir)(void);
+    char const*(*screenshot_dir)(void);
 
-char const *hostfile_data_dir(void);
+    /*
+     * join two paths together.
+     *
+     * first parameter: the destination and also the left side of the path
+     * second parameter: the right side of the path
+     * third parameter: the length of the first parameter.
+     */
+    void(*path_append)(char *, char const*, size_t);
+};
 
-char const *hostfile_screenshot_dir(void);
+char const *washdc_hostfile_cfg_dir(void);
 
-void hostfile_path_append(char *dst, char const *src, size_t dst_sz);
+char const *washdc_hostfile_cfg_file(void);
 
-void hostfile_create_screenshot_dir(void);
+char const *washdc_hostfile_data_dir(void);
+
+char const *washdc_hostfile_screenshot_dir(void);
+
+void washdc_hostfile_path_append(char *dst, char const *src, size_t dst_sz);
 
 #endif

@@ -31,7 +31,6 @@
 #include "washdc/MemoryMap.h"
 #include "dc_sched.h"
 #include "log.h"
-#include "hostfile.h"
 
 #include "aica_rtc.h"
 

@@ -28,6 +28,7 @@
 
 #include "sound_intf.h"
 #include "gameconsole.h"
+#include "hostfile.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,6 +88,8 @@ struct washdc_launch_settings {
     char const *path_dc_bios;
     char const *path_dc_flash;
     char const *path_gdi;
+
+    struct washdc_hostfile_api const *hostfile_api;
 
     struct win_intf const *win_intf;
     struct washdc_overlay_intf const *overlay_intf;
