@@ -256,11 +256,13 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (!console_name)
-        console_name = "default_dc";
+    bool have_console_name = console_name;
 
-    if (launch_wizard)
+    if (launch_wizard) {
+        if (!console_name)
+            console_name = "default_dc";
         wizard(console_name, dc_bios_path, dc_flash_path);
+    }
 
     argv += optind;
     argc -= optind;
@@ -368,9 +370,16 @@ int main(int argc, char **argv) {
         settings.boot_mode = WASHDC_BOOT_FIRMWARE;
     }
 
-    settings.path_dc_bios = console_get_firmware_path(console_name);
-    settings.path_dc_flash = console_get_flashrom_path(console_name);
-    settings.path_rtc = console_get_rtc_path(console_name);
+    if (dc_bios_path)
+        settings.path_dc_bios = dc_bios_path;
+    else if (have_console_name)
+        settings.path_dc_bios = console_get_firmware_path(console_name);
+    if (dc_flash_path)
+        settings.path_dc_flash = dc_flash_path;
+    else if (have_console_name)
+        settings.path_dc_flash = console_get_flashrom_path(console_name);
+    if (have_console_name)
+        settings.path_rtc = console_get_rtc_path(console_name);
     settings.enable_serial = enable_serial;
     settings.path_gdi = path_gdi;
     settings.win_intf = get_win_intf_glfw();
