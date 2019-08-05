@@ -25,6 +25,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <string>
+#include <iostream>
 #include <sys/stat.h>
 
 #include "washdc/washdc.h"
@@ -103,6 +105,75 @@ struct washdc_overlay_intf overlay_intf;
 
 struct washdc_gameconsole const *console;
 
+static void wizard(std::string const& console_name, char const *dc_bios_path, char const *dc_flash_path) {
+    std::string firmware_path, flash_path;
+
+    if (dc_bios_path) {
+        firmware_path = dc_bios_path;
+    } else {
+        std::cout << "Please enter the path to your Dreamcast firmware image:" << std::endl;
+        std::cin >> firmware_path;
+    }
+
+    if (dc_flash_path) {
+        flash_path = dc_flash_path;
+    } else {
+        std::cout << "Please enter the path to your Dreamcast flash image:" << std::endl;
+        std::cin >> flash_path;
+    }
+
+    std::string firmware_out_path = console_get_firmware_path(console_name.c_str());
+    std::string flash_out_path = console_get_flashrom_path(console_name.c_str());
+
+    create_console_dir(console_name.c_str());
+
+    FILE *firmware_in = fopen(firmware_path.c_str(), "rb");
+    if (!firmware_in) {
+        std::cerr << "ERROR: unable to read from " << firmware_path << std::endl;
+        exit(1);
+    }
+
+    FILE *firmware_out = fopen(firmware_out_path.c_str(), "wb");
+    if (!firmware_out) {
+        std::cerr << "ERROR: unable to write to " << firmware_out_path << std::endl;
+        exit(1);
+    }
+
+    FILE *flash_in = fopen(flash_path.c_str(), "rb");
+    if (!flash_in) {
+        std::cerr << "ERROR: unable to read from" << flash_path << std::endl;
+        exit(1);
+    }
+
+    FILE *flash_out = fopen(flash_out_path.c_str(), "wb");
+    if (!flash_out) {
+        std::cerr << "ERROR: unable to write to " << flash_out_path << std::endl;
+        exit(1);
+    }
+
+    int ch;
+    while ((ch = fgetc(firmware_in)) != EOF)
+        fputc(ch, firmware_out);
+
+    std::cout << firmware_path << " was successfully copied to " <<
+        firmware_out_path << std::endl;
+
+    while ((ch = fgetc(flash_in)) != EOF)
+        fputc(ch, flash_out);
+
+    std::cout << flash_path << " was successfully copied to " <<
+        flash_out_path << std::endl;
+
+    fclose(flash_out);
+    fclose(flash_in);
+    fclose(firmware_out);
+    fclose(firmware_in);
+
+    std::cout << "Press ENTER to continue." << std::endl;
+    while (std::cin.get() != '\n')
+        ;
+}
+
 int main(int argc, char **argv) {
     int opt;
     char const *cmd = argv[0];
@@ -118,14 +189,19 @@ int main(int argc, char **argv) {
     bool log_stdout = false, log_verbose = false;
     struct washdc_launch_settings settings = { };
     char const *console_name = NULL;
+    bool launch_wizard = false;
+    char const *dc_bios_path = NULL, *dc_flash_path = NULL;
 
-    while ((opt = getopt(argc, argv, "b:f:c:s:m:d:u:ghtjxpnwlv")) != -1) {
+    create_cfg_dir();
+    create_data_dir();
+    create_screenshot_dir();
+
+    while ((opt = getopt(argc, argv, "w:b:f:c:s:m:d:u:g:htjxpnlv")) != -1) {
         switch (opt) {
         case 'g':
             enable_debugger = true;
-            break;
-        case 'w':
-            enable_washdbg = true;
+            if (strcmp(optarg, "washdbg") == 0)
+                enable_washdbg = true;
             break;
         case 'd':
             boot_direct = true;
@@ -169,19 +245,22 @@ int main(int argc, char **argv) {
             console_name = optarg;
             break;
         case 'b':
+            dc_bios_path = optarg;
+            break;
         case 'f':
-            fprintf(stderr, "ERROR:\n"
-                    "The -b and -f options are now obsolete.\n"
-                    "The new way to specify bios and flash images is to place\n"
-                    "the bios image in %s , and the flash image in %s .\n",
-                    console_get_firmware_path("default_dc"),
-                    console_get_flashrom_path("default_dc"));
-            exit(1);
+            dc_flash_path = optarg;
+            break;
+        case 'w':
+            launch_wizard = true;
+            break;
         }
     }
 
     if (!console_name)
         console_name = "default_dc";
+
+    if (launch_wizard)
+        wizard(console_name, dc_bios_path, dc_flash_path);
 
     argv += optind;
     argc -= optind;
@@ -190,12 +269,6 @@ int main(int argc, char **argv) {
     settings.log_verbose = log_verbose;
 
     settings.hostfile_api = &hostfile_api;
-
-    create_cfg_dir();
-    create_data_dir();
-    create_screenshot_dir();
-
-    create_console_dir("default");
 
     if (enable_debugger && enable_washdbg) {
         fprintf(stderr, "You can't enable WashDbg and GDB at the same time\n");
