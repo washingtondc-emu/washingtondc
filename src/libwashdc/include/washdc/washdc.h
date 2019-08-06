@@ -34,6 +34,8 @@
 extern "C" {
 #endif
 
+#define WASHDC_PATH_LEN 4096
+
 struct washdc_launch_settings;
 
 /*
@@ -117,6 +119,9 @@ struct washdc_launch_settings {
     /* #endif */
     bool cmd_session;
     bool enable_serial;
+
+    // if true, the flash image will be written out at the end
+    bool write_to_flash;
 };
 
 int washdc_save_screenshot(char const *path);

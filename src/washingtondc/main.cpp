@@ -191,6 +191,7 @@ int main(int argc, char **argv) {
     char const *console_name = NULL;
     bool launch_wizard = false;
     char const *dc_bios_path = NULL, *dc_flash_path = NULL;
+    bool write_to_flash_mem = false;
 
     create_cfg_dir();
     create_data_dir();
@@ -258,6 +259,15 @@ int main(int argc, char **argv) {
 
     bool have_console_name = console_name;
 
+    if (!dc_flash_path) {
+        /*
+         * We only write to flash_mem when console-mode is enabled because that
+         * way, WashingtonDC has its own copy of the flash image so we don't
+         * need to worry about overwriting something the user wants to preserve.
+         */
+        write_to_flash_mem = true;
+    }
+
     if (launch_wizard) {
         if (!console_name)
             console_name = "default_dc";
@@ -269,6 +279,7 @@ int main(int argc, char **argv) {
 
     settings.log_to_stdout = log_stdout;
     settings.log_verbose = log_verbose;
+    settings.write_to_flash = write_to_flash_mem;
 
     settings.hostfile_api = &hostfile_api;
 

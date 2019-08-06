@@ -26,6 +26,7 @@
 #include "washdc/types.h"
 #include "mem_areas.h"
 #include "washdc/MemoryMap.h"
+#include "washdc/washdc.h"
 
 #define FLASH_MEM_SZ (ADDR_FLASH_LAST - ADDR_FLASH_FIRST + 1)
 
@@ -47,10 +48,16 @@ struct flash_mem {
      */
     bool erase_unlocked;
 
+    // if true, the backing file will be written to from flash_mem_cleanup
+    bool writeable;
+
     uint8_t flash_mem[FLASH_MEM_SZ];
+
+    // path to the backing file
+    char file_path[WASHDC_PATH_LEN];
 };
 
-void flash_mem_init(struct flash_mem *mem, char const *path);
+void flash_mem_init(struct flash_mem *mem, char const *path, bool writeable);
 void flash_mem_cleanup(struct flash_mem *mem);
 
 extern struct memory_interface flash_mem_intf;

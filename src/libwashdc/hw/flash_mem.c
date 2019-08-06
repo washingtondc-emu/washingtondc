@@ -99,20 +99,36 @@ static void flash_mem_write_16(addr32_t addr, uint16_t val, void *ctxt);
 static uint8_t flash_mem_read_8(addr32_t addr, void *ctxt);
 static void flash_mem_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
-static void flash_mem_load(struct flash_mem *mem, char const *path);
+static void flash_mem_load(struct flash_mem *mem);
 
-void flash_mem_init(struct flash_mem *mem, char const *path) {
+void flash_mem_init(struct flash_mem *mem, char const *path, bool writeable) {
     memset(mem, 0, sizeof(*mem));
 
     mem->state = FLASH_STATE_AA;
+    mem->writeable = writeable;
 
-    flash_mem_load(mem, path);
+    strncpy(mem->file_path, path, sizeof(mem->file_path));
+    mem->file_path[FLASH_MEM_SZ - 1] = '\0';
+
+    flash_mem_load(mem);
 }
 
 void flash_mem_cleanup(struct flash_mem *mem) {
+    if (mem->writeable) {
+        LOG_INFO("Saving flash memory to %s\n", mem->file_path);
+        FILE *backing_file = fopen(mem->file_path, "wb");
+        if (backing_file) {
+            fwrite(mem->flash_mem, 1, FLASH_MEM_SZ, backing_file);
+            fclose(backing_file);
+        } else {
+            LOG_ERROR("Unable to open %s\n", mem->file_path);
+        }
+    }
 }
 
-static void flash_mem_load(struct flash_mem *mem, char const *path) {
+static void flash_mem_load(struct flash_mem *mem) {
+    char const *path = mem->file_path;
+
     FILE *fp = fopen(path, "rb");
     if (!fp) {
         LOG_ERROR("Unable to open \"%s\"\n", path);

@@ -404,7 +404,8 @@ dreamcast_init(char const *gdi_path,
                struct washdc_overlay_intf const *overlay_intf_fns,
                struct debug_frontend const *dbg_frontend,
                struct serial_server_intf const *ser_intf,
-               struct washdc_sound_intf const *snd_intf) {
+               struct washdc_sound_intf const *snd_intf,
+               bool flash_mem_writeable) {
     int win_width, win_height;
 
     frame_count = 0;
@@ -449,7 +450,7 @@ dreamcast_init(char const *gdi_path,
     atomic_store_explicit(&is_running, true, memory_order_relaxed);
 
     memory_init(&dc_mem);
-    flash_mem_init(&flash_mem, config_get_dc_flash_path());
+    flash_mem_init(&flash_mem, config_get_dc_flash_path(), flash_mem_writeable);
     boot_rom_init(&firmware, config_get_dc_bios_path());
 
     int boot_mode = config_get_boot_mode();

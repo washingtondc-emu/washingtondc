@@ -57,7 +57,8 @@ dreamcast_init(char const *gdi_path,
                struct washdc_overlay_intf const *overlay_intf_fns,
                struct debug_frontend const *dbg_frontend,
                struct serial_server_intf const *ser_intf,
-               struct washdc_sound_intf const *snd_intf);
+               struct washdc_sound_intf const *snd_intf,
+               bool flash_mem_writeable);
 
 void dreamcast_cleanup();
 
