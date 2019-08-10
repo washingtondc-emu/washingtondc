@@ -375,31 +375,139 @@ static void move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no,
     slot->in_reg = true;
 }
 
+enum reg_hint {
+    REG_HINT_NONE = 0,
+
+    /*
+     * this hint tells the allocator to favor registers that will be preserved
+     * across function calls.
+     */
+    REG_HINT_FUNCTION = 1
+};
+
+static bool reg_available(unsigned reg_no) {
+    struct reg_stat const *reg = regs + reg_no;
+    return !(reg->locked || reg->grabbed || reg->in_use);
+}
+
 /*
  * This function will pick an unused register to use.  This doesn't change the
  * state of the register.  If there are no unused registers available, this
  * function will return -1.
  */
-static int pick_unused_reg(void) {
-    unsigned reg_no;
-    unsigned best_reg = 0;
-    int best_prio;
-    bool found_one = false;
+static int pick_unused_reg_ex(enum reg_hint hints) {
+#ifdef ABI_MICROSOFT
+    /*
+     * it'll still work, but it'll be suboptimal because register allocation
+     * decisions are made based on which registers would be preserved across
+     * function calls on the Unix ABI.
+     */
+#warning this needs to be optimised for the Microsoft calling convention
+#endif
 
-    for (reg_no = 0; reg_no < N_REGS; reg_no++) {
-        struct reg_stat const *reg = regs + reg_no;
-        if (!reg->locked && !reg->grabbed && !reg->in_use) {
-            if (!found_one || reg->prio > best_prio) {
-                found_one = true;
-                best_prio = reg->prio;
-                best_reg = reg_no;
-            }
-        }
+    if (hints & REG_HINT_FUNCTION) {
+        /*
+         * first consider registers which will be preserved across function
+         * calls.
+         */
+        if (reg_available(RBX))
+            return RBX;
+        if (reg_available(R14)) // always locked
+            return R14;
+        if (reg_available(R15))
+            return R15;
+        if (reg_available(R12))
+            return R12;
+        if (reg_available(R13))
+            return R13;
+
+        // pick one of the ones that will get clobbered by function calls
+        if (reg_available(RCX))
+            return RCX;
+        if (reg_available(RDI))
+            return RDI;
+        if (reg_available(RSI))
+            return RSI;
+        if (reg_available(RDX))
+            return RDX;
+        if (reg_available(R8))
+            return R8;
+        if (reg_available(R9))
+            return R9;
+        if (reg_available(R10))
+            return R10;
+        if (reg_available(R11))
+            return R11;
+        if (reg_available(RAX))
+            return RAX;
+    } else {
+        // first look at registers that don't need a REX
+        if (reg_available(RAX))
+            return RAX;
+        if (reg_available(RSI))
+            return RSI;
+        if (reg_available(RCX))
+            return RCX;
+        if (reg_available(RDX))
+            return RDX;
+        if (reg_available(RDI))
+            return RDI; // this gets clobbered by MUL
+
+        // consider RBX even though it's nonvolatile since it doesn't need REX
+        if (reg_available(RBX))
+            return RBX;
+
+        // volatile registers that need REX
+        if (reg_available(R8))
+            return R8;
+        if (reg_available(R9))
+            return R9;
+        if (reg_available(R10))
+            return R10;
+        if (reg_available(R11))
+            return R11;
+
+        // nonvolatile registers that need REX
+        if (reg_available(R12))
+            return R12;
+        if (reg_available(R13))
+            return R13;
+        if (reg_available(R14))
+            return R14;
+        if (reg_available(R15))
+            return R15;
     }
 
-    if (found_one)
-        return best_reg;
     return -1;
+}
+
+static int pick_unused_reg(void) {
+    return pick_unused_reg_ex(REG_HINT_FUNCTION);
+}
+
+/*
+ * returns true if the given jit_inst would emit a function call.
+ * this is used only for optimisation purposes.
+ */
+static bool does_inst_emit_call(struct jit_inst const *inst) {
+    return inst->op == JIT_OP_FALLBACK || inst->op == JIT_OP_CALL_FUNC ||
+        (inst->op == JIT_OP_READ_16_CONSTADDR ||
+         inst->op == JIT_OP_READ_32_CONSTADDR ||
+         inst->op == JIT_OP_READ_16_SLOT ||
+         inst->op == JIT_OP_READ_32_SLOT ||
+         inst->op == JIT_OP_WRITE_32_SLOT);
+}
+
+static enum reg_hint suggested_reg_hints(struct il_code_block const *blk,
+                                         unsigned slot_no,
+                                         struct jit_inst const *inst) {
+    unsigned beg = inst - blk->inst_list;
+    unsigned end = jit_code_block_slot_lifespan(blk, slot_no, beg);
+
+    while (beg <= end)
+        if (does_inst_emit_call(blk->inst_list + beg++))
+            return REG_HINT_FUNCTION;
+    return REG_HINT_NONE;
 }
 
 /*
@@ -407,14 +515,15 @@ static int pick_unused_reg(void) {
  * the state of the register or do anything to save the value in that register.
  * All it does is find a register which is not locked and not grabbed.
  */
-static unsigned pick_reg(void) {
+static unsigned pick_reg_ex(enum reg_hint hints) {
+
     unsigned reg_no;
     unsigned best_reg = 0;
     int best_prio;
     bool found_one = false;
 
     // first pass: try to find one that's not in use
-    int unused_reg = pick_unused_reg();
+    int unused_reg = pick_unused_reg_ex(hints);
     if (unused_reg >= 0)
         return (unsigned)unused_reg;
 
@@ -438,6 +547,10 @@ static unsigned pick_reg(void) {
 
     LOG_ERROR("x86_64: no more registers!\n");
     RAISE_ERROR(ERROR_INTEGRITY);
+}
+
+static unsigned pick_reg(void) {
+    return pick_reg_ex(REG_HINT_FUNCTION);
 }
 
 /*
@@ -472,7 +585,9 @@ static void evict_register(struct code_block_x86_64 *blk, unsigned reg_no) {
  * to the stack (if there's something already in it), move this slot to that
  * register, and mark that register as grabbed.
  */
-static void grab_slot(struct code_block_x86_64 *blk, unsigned slot_no) {
+static void grab_slot(struct code_block_x86_64 *blk,
+                      struct il_code_block const *il_blk,
+                      struct jit_inst const *inst, unsigned slot_no) {
     if (slot_no >= MAX_SLOTS)
         RAISE_ERROR(ERROR_TOO_BIG);
     struct slot *slot = slots + slot_no;
@@ -485,11 +600,11 @@ static void grab_slot(struct code_block_x86_64 *blk, unsigned slot_no) {
                 goto mark_grabbed;
         }
 
-        unsigned reg_no = pick_reg();
+        unsigned reg_no = pick_reg_ex(suggested_reg_hints(il_blk, slot_no, inst));
         move_slot_to_reg(blk, slot_no, reg_no);
         goto mark_grabbed;
     } else {
-        unsigned reg_no = pick_reg();
+        unsigned reg_no = pick_reg_ex(suggested_reg_hints(il_blk, slot_no, inst));
         struct reg_stat *reg = regs + reg_no;
         if (reg->in_use)
             move_slot_to_stack(blk, reg->slot_no);
@@ -575,6 +690,7 @@ static void emit_stack_frame_close(void) {
 
 // JIT_OP_FALLBACK implementation
 static void emit_fallback(struct code_block_x86_64 *blk,
+                          struct il_code_block const *il_blk,
                           void *cpu, struct jit_inst const *inst) {
     cpu_inst_param inst_bin = inst->immed.fallback.inst;
 
@@ -593,14 +709,15 @@ static void emit_fallback(struct code_block_x86_64 *blk,
 }
 
 // JIT_OP_JUMP implementation
-static void emit_jump(struct code_block_x86_64 *blk, void *cpu,
-                      struct jit_inst const *inst) {
+static void emit_jump(struct code_block_x86_64 *blk,
+                      struct il_code_block const *il_blk,
+                      void *cpu, struct jit_inst const *inst) {
     unsigned jmp_addr_slot = inst->immed.jump.jmp_addr_slot;
 
     evict_register(blk, NATIVE_CHECK_CYCLES_JUMP_REG);
     grab_register(NATIVE_CHECK_CYCLES_JUMP_REG);
 
-    grab_slot(blk, jmp_addr_slot);
+    grab_slot(blk, il_blk, inst, jmp_addr_slot);
 
     x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no,
                            NATIVE_CHECK_CYCLES_JUMP_REG);
@@ -609,8 +726,9 @@ static void emit_jump(struct code_block_x86_64 *blk, void *cpu,
 }
 
 // JIT_JUMP_COND implementation
-static void emit_jump_cond(struct code_block_x86_64 *blk, void *cpu,
-                           struct jit_inst const *inst) {
+static void emit_jump_cond(struct code_block_x86_64 *blk,
+                           struct il_code_block const *il_blk,
+                           void *cpu, struct jit_inst const *inst) {
     unsigned t_flag = inst->immed.jump_cond.t_flag ? 1 : 0;
     unsigned flag_slot = inst->immed.jump_cond.flag_slot;
     unsigned jmp_addr_slot = inst->immed.jump_cond.jmp_addr_slot;
@@ -624,12 +742,12 @@ static void emit_jump_cond(struct code_block_x86_64 *blk, void *cpu,
     evict_register(blk, NATIVE_CHECK_CYCLES_JUMP_REG);
     grab_register(NATIVE_CHECK_CYCLES_JUMP_REG);
 
-    grab_slot(blk, flag_slot);
+    grab_slot(blk, il_blk, inst, flag_slot);
     x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, RAX);
     ungrab_slot(flag_slot);
 
-    grab_slot(blk, jmp_addr_slot);
-    grab_slot(blk, alt_jmp_addr_slot);
+    grab_slot(blk, il_blk, inst, jmp_addr_slot);
+    grab_slot(blk, il_blk, inst, alt_jmp_addr_slot);
 
     /*
      * move the alt-jmp addr into the return register, then replace that with
@@ -658,19 +776,21 @@ static void emit_jump_cond(struct code_block_x86_64 *blk, void *cpu,
 }
 
 // JIT_SET_REG implementation
-static void emit_set_slot(struct code_block_x86_64 *blk, void *cpu,
-                          struct jit_inst const *inst) {
+static void emit_set_slot(struct code_block_x86_64 *blk,
+                          struct il_code_block const *il_blk,
+                          void *cpu, struct jit_inst const *inst) {
     unsigned slot_idx = inst->immed.set_slot.slot_idx;
     uint32_t new_val = inst->immed.set_slot.new_val;
 
-    grab_slot(blk, slot_idx);
+    grab_slot(blk, il_blk, inst, slot_idx);
     x86asm_mov_imm32_reg32(new_val, slots[slot_idx].reg_no);
     ungrab_slot(slot_idx);
 }
 
 // JIT_OP_CALL_FUNC implementation
-static void emit_call_func(struct code_block_x86_64 *blk, void *cpu,
-                           struct jit_inst const *inst) {
+static void emit_call_func(struct code_block_x86_64 *blk,
+                           struct il_code_block const *il_blk,
+                           void *cpu, struct jit_inst const *inst) {
     prefunc(blk);
 
     // now call sh4_on_sr_change(cpu, old_sr)
@@ -689,8 +809,9 @@ static void emit_call_func(struct code_block_x86_64 *blk, void *cpu,
 }
 
 // JIT_OP_READ_16_CONSTADDR implementation
-static void emit_read_16_constaddr(struct code_block_x86_64 *blk, void *cpu,
-                                   struct jit_inst const *inst) {
+static void emit_read_16_constaddr(struct code_block_x86_64 *blk,
+                                   struct il_code_block const *il_blk,
+                                   void *cpu, struct jit_inst const *inst) {
     addr32_t vaddr = inst->immed.read_16_constaddr.addr;
     unsigned slot_no = inst->immed.read_16_constaddr.slot_no;
     struct memory_map const *map = inst->immed.read_16_constaddr.map;
@@ -712,7 +833,7 @@ static void emit_read_16_constaddr(struct code_block_x86_64 *blk, void *cpu,
 
     postfunc();
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
     x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
     ungrab_register(REG_RET);
@@ -720,11 +841,12 @@ static void emit_read_16_constaddr(struct code_block_x86_64 *blk, void *cpu,
 }
 
 // JIT_OP_SIGN_EXTEND_16 implementation
-static void emit_sign_extend_16(struct code_block_x86_64 *blk, void *cpu,
-                                struct jit_inst const *inst) {
+static void emit_sign_extend_16(struct code_block_x86_64 *blk,
+                                struct il_code_block const *il_blk,
+                                void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.sign_extend_16.slot_no;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
     x86asm_movsx_reg16_reg32(reg_no, reg_no);
@@ -733,8 +855,9 @@ static void emit_sign_extend_16(struct code_block_x86_64 *blk, void *cpu,
 }
 
 // JIT_OP_READ_32_CONSTADDR implementation
-static void emit_read_32_constaddr(struct code_block_x86_64 *blk, void *cpu,
-                                   struct jit_inst const *inst) {
+static void emit_read_32_constaddr(struct code_block_x86_64 *blk,
+                                   struct il_code_block const *il_blk,
+                                   void *cpu, struct jit_inst const *inst) {
     addr32_t vaddr = inst->immed.read_32_constaddr.addr;
     unsigned slot_no = inst->immed.read_32_constaddr.slot_no;
     struct memory_map const *map = inst->immed.read_32_constaddr.map;
@@ -757,7 +880,7 @@ static void emit_read_32_constaddr(struct code_block_x86_64 *blk, void *cpu,
 
     postfunc();
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
     x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
@@ -765,8 +888,9 @@ static void emit_read_32_constaddr(struct code_block_x86_64 *blk, void *cpu,
 }
 
 // JIT_OP_READ_16_SLOT implementation
-static void emit_read_16_slot(struct code_block_x86_64 *blk, void *cpu,
-                              struct jit_inst const *inst) {
+static void emit_read_16_slot(struct code_block_x86_64 *blk,
+                              struct il_code_block const *il_blk,
+                              void *cpu, struct jit_inst const *inst) {
     unsigned dst_slot = inst->immed.read_16_slot.dst_slot;
     unsigned addr_slot = inst->immed.read_16_slot.addr_slot;
     struct memory_map const *map = inst->immed.read_16_slot.map;
@@ -790,7 +914,7 @@ static void emit_read_16_slot(struct code_block_x86_64 *blk, void *cpu,
 
     postfunc();
 
-    grab_slot(blk, dst_slot);
+    grab_slot(blk, il_blk, inst, dst_slot);
     x86asm_mov_reg32_reg32(REG_RET, slots[dst_slot].reg_no);
 
     ungrab_slot(dst_slot);
@@ -798,8 +922,9 @@ static void emit_read_16_slot(struct code_block_x86_64 *blk, void *cpu,
 }
 
 // JIT_OP_READ_32_SLOT implementation
-static void emit_read_32_slot(struct code_block_x86_64 *blk, void *cpu,
-                              struct jit_inst const *inst) {
+static void emit_read_32_slot(struct code_block_x86_64 *blk,
+                              struct il_code_block const *il_blk,
+                              void *cpu, struct jit_inst const *inst) {
     unsigned dst_slot = inst->immed.read_32_slot.dst_slot;
     unsigned addr_slot = inst->immed.read_32_slot.addr_slot;
     struct memory_map const *map = inst->immed.read_32_slot.map;
@@ -823,7 +948,7 @@ static void emit_read_32_slot(struct code_block_x86_64 *blk, void *cpu,
 
     postfunc();
 
-    grab_slot(blk, dst_slot);
+    grab_slot(blk, il_blk, inst, dst_slot);
     x86asm_mov_reg32_reg32(REG_RET, slots[dst_slot].reg_no);
 
     ungrab_slot(dst_slot);
@@ -831,8 +956,9 @@ static void emit_read_32_slot(struct code_block_x86_64 *blk, void *cpu,
 }
 
 // JIT_OP_WRITE_32_SLOT implementation
-static void emit_write_32_slot(struct code_block_x86_64 *blk, void *cpu,
-                               struct jit_inst const *inst) {
+static void emit_write_32_slot(struct code_block_x86_64 *blk,
+                               struct il_code_block const *il_blk,
+                               void *cpu, struct jit_inst const *inst) {
     unsigned src_slot = inst->immed.write_32_slot.src_slot;
     unsigned addr_slot = inst->immed.write_32_slot.addr_slot;
     struct memory_map const *map = inst->immed.write_32_slot.map;
@@ -867,12 +993,13 @@ static void emit_write_32_slot(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_load_slot16(struct code_block_x86_64 *blk, void *cpu,
-                 struct jit_inst const* inst) {
+emit_load_slot16(struct code_block_x86_64 *blk,
+                 struct il_code_block const *il_blk,
+                 void *cpu, struct jit_inst const* inst) {
     unsigned slot_no = inst->immed.load_slot16.slot_no;
     void const *src_ptr = inst->immed.load_slot16.src;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
 
@@ -883,12 +1010,13 @@ emit_load_slot16(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_load_slot(struct code_block_x86_64 *blk, void *cpu,
-               struct jit_inst const* inst) {
+emit_load_slot(struct code_block_x86_64 *blk,
+               struct il_code_block const *il_blk,
+               void *cpu, struct jit_inst const* inst) {
     unsigned slot_no = inst->immed.load_slot.slot_no;
     void const *src_ptr = inst->immed.load_slot.src;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
 
@@ -899,14 +1027,15 @@ emit_load_slot(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_store_slot(struct code_block_x86_64 *blk, void *cpu,
-                struct jit_inst const *inst) {
+emit_store_slot(struct code_block_x86_64 *blk,
+                struct il_code_block const *il_blk,
+                void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.store_slot.slot_no;
     void const *dst_ptr = inst->immed.store_slot.dst;
 
     evict_register(blk, REG_RET);
     grab_register(REG_RET);
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
     x86asm_mov_imm64_reg64((uintptr_t)dst_ptr, REG_RET);
@@ -917,14 +1046,15 @@ emit_store_slot(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_add(struct code_block_x86_64 *blk, void *cpu,
-         struct jit_inst const *inst) {
+emit_add(struct code_block_x86_64 *blk,
+         struct il_code_block const *il_blk,
+         void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.add.slot_src;
     unsigned slot_dst = inst->immed.add.slot_dst;
 
-    grab_slot(blk, slot_src);
+    grab_slot(blk, il_blk, inst, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, slot_dst);
+        grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_addl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -934,14 +1064,15 @@ emit_add(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_sub(struct code_block_x86_64 *blk, void *cpu,
-         struct jit_inst const *inst) {
+emit_sub(struct code_block_x86_64 *blk,
+         struct il_code_block const *il_blk,
+         void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.add.slot_src;
     unsigned slot_dst = inst->immed.add.slot_dst;
 
-    grab_slot(blk, slot_src);
+    grab_slot(blk, il_blk, inst, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, slot_dst);
+        grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_subl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -951,15 +1082,16 @@ emit_sub(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_add_const32(struct code_block_x86_64 *blk, void *cpu,
-                 struct jit_inst const *inst) {
+emit_add_const32(struct code_block_x86_64 *blk,
+                 struct il_code_block const *il_blk,
+                 void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.add_const32.slot_dst;
     uint32_t const_val = inst->immed.add_const32.const32;
 
     evict_register(blk, REG_RET);
     grab_register(REG_RET);
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
 
@@ -972,14 +1104,15 @@ emit_add_const32(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_xor(struct code_block_x86_64 *blk, void *cpu,
-         struct jit_inst const *inst) {
+emit_xor(struct code_block_x86_64 *blk,
+         struct il_code_block const *il_blk,
+         void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.xor.slot_src;
     unsigned slot_dst = inst->immed.xor.slot_dst;
 
-    grab_slot(blk, slot_src);
+    grab_slot(blk, il_blk, inst, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, slot_dst);
+        grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_xorl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -989,14 +1122,15 @@ emit_xor(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_mov(struct code_block_x86_64 *blk, void *cpu,
-         struct jit_inst const *inst) {
+emit_mov(struct code_block_x86_64 *blk,
+         struct il_code_block const *il_blk,
+         void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.mov.slot_src;
     unsigned slot_dst = inst->immed.mov.slot_dst;
 
-    grab_slot(blk, slot_src);
+    grab_slot(blk, il_blk, inst, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, slot_dst);
+        grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_mov_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -1006,14 +1140,15 @@ emit_mov(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_and(struct code_block_x86_64 *blk, void *cpu,
-         struct jit_inst const *inst) {
+emit_and(struct code_block_x86_64 *blk,
+         struct il_code_block const *il_blk,
+         void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.and.slot_src;
     unsigned slot_dst = inst->immed.and.slot_dst;
 
-    grab_slot(blk, slot_src);
+    grab_slot(blk, il_blk, inst, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, slot_dst);
+        grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_andl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -1023,12 +1158,13 @@ emit_and(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_and_const32(struct code_block_x86_64 *blk, void *cpu,
-                 struct jit_inst const *inst) {
+emit_and_const32(struct code_block_x86_64 *blk,
+                 struct il_code_block const *il_blk,
+                 void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.and_const32.slot_no;
     unsigned const32 = inst->immed.and_const32.const32;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     x86asm_andl_imm32_reg32(const32, slots[slot_no].reg_no);
 
@@ -1036,14 +1172,15 @@ emit_and_const32(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_or(struct code_block_x86_64 *blk, void *cpu,
-        struct jit_inst const *inst) {
+emit_or(struct code_block_x86_64 *blk,
+        struct il_code_block const *il_blk,
+        void *cpu, struct jit_inst const *inst) {
     unsigned slot_src = inst->immed.or.slot_src;
     unsigned slot_dst = inst->immed.or.slot_dst;
 
-    grab_slot(blk, slot_src);
+    grab_slot(blk, il_blk, inst, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, slot_dst);
+        grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_orl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -1053,12 +1190,13 @@ emit_or(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_or_const32(struct code_block_x86_64 *blk, void *cpu,
-                struct jit_inst const *inst) {
+emit_or_const32(struct code_block_x86_64 *blk,
+                struct il_code_block const *il_blk,
+                void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.or_const32.slot_no;
     unsigned const32 = inst->immed.or_const32.const32;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     x86asm_orl_imm32_reg32(const32, slots[slot_no].reg_no);
 
@@ -1066,12 +1204,13 @@ emit_or_const32(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_xor_const32(struct code_block_x86_64 *blk, void *cpu,
-                 struct jit_inst const *inst) {
+emit_xor_const32(struct code_block_x86_64 *blk,
+                 struct il_code_block const *il_blk,
+                 void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.xor_const32.slot_no;
     unsigned const32 = inst->immed.xor_const32.const32;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     x86asm_xorl_imm32_reg32(const32, slots[slot_no].reg_no);
 
@@ -1079,13 +1218,14 @@ emit_xor_const32(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_slot_to_bool(struct code_block_x86_64 *blk, void *cpu,
-                  struct jit_inst const *inst) {
+emit_slot_to_bool(struct code_block_x86_64 *blk,
+                  struct il_code_block const *il_blk,
+                  void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.slot_to_bool.slot_no;
 
     evict_register(blk, REG_RET);
     grab_register(REG_RET);
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
     x86asm_testl_reg32_reg32(slots[slot_no].reg_no, slots[slot_no].reg_no);
@@ -1098,11 +1238,12 @@ emit_slot_to_bool(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_not(struct code_block_x86_64 *blk, void *cpu,
-         struct jit_inst const *inst) {
+emit_not(struct code_block_x86_64 *blk,
+         struct il_code_block const *il_blk,
+         void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.not.slot_no;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
 
     x86asm_notl_reg32(slots[slot_no].reg_no);
 
@@ -1110,49 +1251,53 @@ emit_not(struct code_block_x86_64 *blk, void *cpu,
 }
 
 static void
-emit_shll(struct code_block_x86_64 *blk, void *cpu,
-          struct jit_inst const *inst) {
+emit_shll(struct code_block_x86_64 *blk,
+          struct il_code_block const *il_blk,
+          void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.shll.slot_no;
     unsigned shift_amt = inst->immed.shll.shift_amt;
 
     if (shift_amt >= 32)
         shift_amt = 32;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
     x86asm_shll_imm8_reg32(shift_amt, slots[slot_no].reg_no);
     ungrab_slot(slot_no);
 }
 
 static void
-emit_shar(struct code_block_x86_64 *blk, void *cpu,
-          struct jit_inst const *inst) {
+emit_shar(struct code_block_x86_64 *blk,
+          struct il_code_block const *il_blk,
+          void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.shar.slot_no;
     unsigned shift_amt = inst->immed.shar.shift_amt;
 
     if (shift_amt >= 32)
         shift_amt = 32;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
     x86asm_sarl_imm8_reg32(shift_amt, slots[slot_no].reg_no);
     ungrab_slot(slot_no);
 }
 
 static void
-emit_shlr(struct code_block_x86_64 *blk, void *cpu,
-          struct jit_inst const *inst) {
+emit_shlr(struct code_block_x86_64 *blk,
+          struct il_code_block const *il_blk,
+          void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.shlr.slot_no;
     unsigned shift_amt = inst->immed.shlr.shift_amt;
 
     if (shift_amt >= 32)
         shift_amt = 32;
 
-    grab_slot(blk, slot_no);
+    grab_slot(blk, il_blk, inst, slot_no);
     x86asm_shrl_imm8_reg32(shift_amt, slots[slot_no].reg_no);
     ungrab_slot(slot_no);
 }
 
-static void emit_set_gt_unsigned(struct code_block_x86_64 *blk, void *cpu,
-                                 struct jit_inst const *inst) {
+static void emit_set_gt_unsigned(struct code_block_x86_64 *blk,
+                                 struct il_code_block const *il_blk,
+                                 void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_gt_unsigned.slot_lhs;
     unsigned slot_rhs = inst->immed.set_gt_unsigned.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_unsigned.slot_dst;
@@ -1160,9 +1305,9 @@ static void emit_set_gt_unsigned(struct code_block_x86_64 *blk, void *cpu,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, slot_lhs);
-    grab_slot(blk, slot_rhs);
-    grab_slot(blk, slot_dst);
+    grab_slot(blk, il_blk, inst, slot_lhs);
+    grab_slot(blk, il_blk, inst, slot_rhs);
+    grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jbe_lbl8(&lbl);
@@ -1176,8 +1321,9 @@ static void emit_set_gt_unsigned(struct code_block_x86_64 *blk, void *cpu,
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_gt_signed(struct code_block_x86_64 *blk, void *cpu,
-                               struct jit_inst const *inst) {
+static void emit_set_gt_signed(struct code_block_x86_64 *blk,
+                               struct il_code_block const *il_blk,
+                               void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_gt_signed.slot_lhs;
     unsigned slot_rhs = inst->immed.set_gt_signed.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_signed.slot_dst;
@@ -1185,9 +1331,9 @@ static void emit_set_gt_signed(struct code_block_x86_64 *blk, void *cpu,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, slot_lhs);
-    grab_slot(blk, slot_rhs);
-    grab_slot(blk, slot_dst);
+    grab_slot(blk, il_blk, inst, slot_lhs);
+    grab_slot(blk, il_blk, inst, slot_rhs);
+    grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jle_lbl8(&lbl);
@@ -1201,8 +1347,9 @@ static void emit_set_gt_signed(struct code_block_x86_64 *blk, void *cpu,
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_gt_signed_const(struct code_block_x86_64 *blk, void *cpu,
-                                     struct jit_inst const *inst) {
+static void emit_set_gt_signed_const(struct code_block_x86_64 *blk,
+                                     struct il_code_block const *il_blk,
+                                     void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_gt_signed_const.slot_lhs;
     unsigned imm_rhs = inst->immed.set_gt_signed_const.imm_rhs;
     unsigned slot_dst = inst->immed.set_gt_signed_const.slot_dst;
@@ -1210,8 +1357,8 @@ static void emit_set_gt_signed_const(struct code_block_x86_64 *blk, void *cpu,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, slot_lhs);
-    grab_slot(blk, slot_dst);
+    grab_slot(blk, il_blk, inst, slot_lhs);
+    grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_cmpl_imm8_reg32(imm_rhs, slots[slot_lhs].reg_no);
     x86asm_jle_lbl8(&lbl);
@@ -1224,8 +1371,9 @@ static void emit_set_gt_signed_const(struct code_block_x86_64 *blk, void *cpu,
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_ge_signed_const(struct code_block_x86_64 *blk, void *cpu,
-                                     struct jit_inst const *inst) {
+static void emit_set_ge_signed_const(struct code_block_x86_64 *blk,
+                                     struct il_code_block const *il_blk,
+                                     void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_ge_signed_const.slot_lhs;
     unsigned imm_rhs = inst->immed.set_ge_signed_const.imm_rhs;
     unsigned slot_dst = inst->immed.set_ge_signed_const.slot_dst;
@@ -1233,8 +1381,8 @@ static void emit_set_ge_signed_const(struct code_block_x86_64 *blk, void *cpu,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, slot_lhs);
-    grab_slot(blk, slot_dst);
+    grab_slot(blk, il_blk, inst, slot_lhs);
+    grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_cmpl_imm8_reg32(imm_rhs, slots[slot_lhs].reg_no);
     x86asm_jl_lbl8(&lbl);
@@ -1247,8 +1395,9 @@ static void emit_set_ge_signed_const(struct code_block_x86_64 *blk, void *cpu,
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_eq(struct code_block_x86_64 *blk, void *cpu,
-                        struct jit_inst const *inst) {
+static void emit_set_eq(struct code_block_x86_64 *blk,
+                        struct il_code_block const *il_blk,
+                        void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_eq.slot_lhs;
     unsigned slot_rhs = inst->immed.set_eq.slot_rhs;
     unsigned slot_dst = inst->immed.set_eq.slot_dst;
@@ -1256,9 +1405,9 @@ static void emit_set_eq(struct code_block_x86_64 *blk, void *cpu,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, slot_lhs);
-    grab_slot(blk, slot_rhs);
-    grab_slot(blk, slot_dst);
+    grab_slot(blk, il_blk, inst, slot_lhs);
+    grab_slot(blk, il_blk, inst, slot_rhs);
+    grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jnz_lbl8(&lbl);
@@ -1273,8 +1422,9 @@ static void emit_set_eq(struct code_block_x86_64 *blk, void *cpu,
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_ge_unsigned(struct code_block_x86_64 *blk, void *cpu,
-                                 struct jit_inst const *inst) {
+static void emit_set_ge_unsigned(struct code_block_x86_64 *blk,
+                                 struct il_code_block const *il_blk,
+                                 void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_ge_unsigned.slot_lhs;
     unsigned slot_rhs = inst->immed.set_ge_unsigned.slot_rhs;
     unsigned slot_dst = inst->immed.set_ge_unsigned.slot_dst;
@@ -1282,9 +1432,9 @@ static void emit_set_ge_unsigned(struct code_block_x86_64 *blk, void *cpu,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, slot_lhs);
-    grab_slot(blk, slot_rhs);
-    grab_slot(blk, slot_dst);
+    grab_slot(blk, il_blk, inst, slot_lhs);
+    grab_slot(blk, il_blk, inst, slot_rhs);
+    grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jb_lbl8(&lbl);
@@ -1298,8 +1448,9 @@ static void emit_set_ge_unsigned(struct code_block_x86_64 *blk, void *cpu,
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_set_ge_signed(struct code_block_x86_64 *blk, void *cpu,
-                               struct jit_inst const *inst) {
+static void emit_set_ge_signed(struct code_block_x86_64 *blk,
+                               struct il_code_block const *il_blk,
+                               void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.set_ge_signed.slot_lhs;
     unsigned slot_rhs = inst->immed.set_ge_signed.slot_rhs;
     unsigned slot_dst = inst->immed.set_ge_signed.slot_dst;
@@ -1307,9 +1458,9 @@ static void emit_set_ge_signed(struct code_block_x86_64 *blk, void *cpu,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, slot_lhs);
-    grab_slot(blk, slot_rhs);
-    grab_slot(blk, slot_dst);
+    grab_slot(blk, il_blk, inst, slot_lhs);
+    grab_slot(blk, il_blk, inst, slot_rhs);
+    grab_slot(blk, il_blk, inst, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jl_lbl8(&lbl);
@@ -1323,8 +1474,9 @@ static void emit_set_ge_signed(struct code_block_x86_64 *blk, void *cpu,
     x86asm_lbl8_cleanup(&lbl);
 }
 
-static void emit_mul_u32(struct code_block_x86_64 *blk, void *cpu,
-                         struct jit_inst const *inst) {
+static void emit_mul_u32(struct code_block_x86_64 *blk,
+                         struct il_code_block const *il_blk,
+                         void *cpu, struct jit_inst const *inst) {
     unsigned slot_lhs = inst->immed.mul_u32.slot_lhs;
     unsigned slot_rhs = inst->immed.mul_u32.slot_rhs;
     unsigned slot_dst = inst->immed.mul_u32.slot_dst;
@@ -1334,9 +1486,9 @@ static void emit_mul_u32(struct code_block_x86_64 *blk, void *cpu,
     evict_register(blk, EDX);
     grab_register(EDX);
 
-    grab_slot(blk, slot_lhs);
-    grab_slot(blk, slot_rhs);
-    grab_slot(blk, slot_dst);
+    grab_slot(blk, il_blk, inst, slot_lhs);
+    grab_slot(blk, il_blk, inst, slot_rhs);
+    grab_slot(blk, il_blk, inst, slot_dst);
 
 #ifdef INVARIANTS
     if (slots[slot_lhs].reg_no == REG_RET || slots[slot_lhs].reg_no == EDX ||
@@ -1356,8 +1508,9 @@ static void emit_mul_u32(struct code_block_x86_64 *blk, void *cpu,
     ungrab_register(REG_RET);
 }
 
-static void emit_shad(struct code_block_x86_64 *blk, void *cpu,
-                      struct jit_inst const *inst) {
+static void emit_shad(struct code_block_x86_64 *blk,
+                      struct il_code_block const *il_blk,
+                      void *cpu, struct jit_inst const *inst) {
     unsigned slot_val = inst->immed.shad.slot_val;
     unsigned slot_shift_amt = inst->immed.shad.slot_shift_amt;
 
@@ -1369,11 +1522,11 @@ static void emit_shad(struct code_block_x86_64 *blk, void *cpu,
     evict_register(blk, reg_tmp);
     grab_register(reg_tmp);
 
-    grab_slot(blk, slot_shift_amt);
+    grab_slot(blk, il_blk, inst, slot_shift_amt);
     x86asm_mov_reg32_reg32(slots[slot_shift_amt].reg_no, RCX);
     ungrab_slot(slot_shift_amt);
 
-    grab_slot(blk, slot_val);
+    grab_slot(blk, il_blk, inst, slot_val);
 
     x86asm_mov_reg32_reg32(slots[slot_val].reg_no, reg_tmp);
     x86asm_shll_cl_reg32(slots[slot_val].reg_no);
@@ -1463,121 +1616,121 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
     while (inst_count--) {
         switch (inst->op) {
         case JIT_OP_FALLBACK:
-            emit_fallback(out, cpu, inst);
+            emit_fallback(out, il_blk, cpu, inst);
             break;
         case JIT_OP_JUMP:
-            emit_jump(out, cpu, inst);
+            emit_jump(out, il_blk, cpu, inst);
             break;
         case JIT_JUMP_COND:
-            emit_jump_cond(out, cpu, inst);
+            emit_jump_cond(out, il_blk, cpu, inst);
             break;
         case JIT_SET_SLOT:
-            emit_set_slot(out, cpu, inst);
+            emit_set_slot(out, il_blk, cpu, inst);
             break;
         case JIT_OP_CALL_FUNC:
-            emit_call_func(out, cpu, inst);
+            emit_call_func(out, il_blk, cpu, inst);
             break;
         case JIT_OP_READ_16_CONSTADDR:
-            emit_read_16_constaddr(out, cpu, inst);
+            emit_read_16_constaddr(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SIGN_EXTEND_16:
-            emit_sign_extend_16(out, cpu, inst);
+            emit_sign_extend_16(out, il_blk, cpu, inst);
             break;
         case JIT_OP_READ_32_CONSTADDR:
-            emit_read_32_constaddr(out, cpu, inst);
+            emit_read_32_constaddr(out, il_blk, cpu, inst);
             break;
         case JIT_OP_READ_16_SLOT:
-            emit_read_16_slot(out, cpu, inst);
+            emit_read_16_slot(out, il_blk, cpu, inst);
             break;
         case JIT_OP_READ_32_SLOT:
-            emit_read_32_slot(out, cpu, inst);
+            emit_read_32_slot(out, il_blk, cpu, inst);
             break;
         case JIT_OP_WRITE_32_SLOT:
-            emit_write_32_slot(out, cpu, inst);
+            emit_write_32_slot(out, il_blk, cpu, inst);
             break;
         case JIT_OP_LOAD_SLOT16:
-            emit_load_slot16(out, cpu, inst);
+            emit_load_slot16(out, il_blk, cpu, inst);
             break;
         case JIT_OP_LOAD_SLOT:
-            emit_load_slot(out, cpu, inst);
+            emit_load_slot(out, il_blk, cpu, inst);
             break;
         case JIT_OP_STORE_SLOT:
-            emit_store_slot(out, cpu, inst);
+            emit_store_slot(out, il_blk, cpu, inst);
             break;
         case JIT_OP_ADD:
-            emit_add(out, cpu, inst);
+            emit_add(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SUB:
-            emit_sub(out, cpu, inst);
+            emit_sub(out, il_blk, cpu, inst);
             break;
         case JIT_OP_ADD_CONST32:
-            emit_add_const32(out, cpu, inst);
+            emit_add_const32(out, il_blk, cpu, inst);
             break;
         case JIT_OP_XOR:
-            emit_xor(out, cpu, inst);
+            emit_xor(out, il_blk, cpu, inst);
             break;
         case JIT_OP_XOR_CONST32:
-            emit_xor_const32(out, cpu, inst);
+            emit_xor_const32(out, il_blk, cpu, inst);
             break;
         case JIT_OP_MOV:
-            emit_mov(out, cpu, inst);
+            emit_mov(out, il_blk, cpu, inst);
             break;
         case JIT_OP_AND:
-            emit_and(out, cpu, inst);
+            emit_and(out, il_blk, cpu, inst);
             break;
         case JIT_OP_AND_CONST32:
-            emit_and_const32(out, cpu, inst);
+            emit_and_const32(out, il_blk, cpu, inst);
             break;
         case JIT_OP_OR:
-            emit_or(out, cpu, inst);
+            emit_or(out, il_blk, cpu, inst);
             break;
         case JIT_OP_OR_CONST32:
-            emit_or_const32(out, cpu, inst);
+            emit_or_const32(out, il_blk, cpu, inst);
             break;
         case JIT_OP_DISCARD_SLOT:
             discard_slot(out, inst->immed.discard_slot.slot_no);
             break;
         case JIT_OP_SLOT_TO_BOOL:
-            emit_slot_to_bool(out, cpu, inst);
+            emit_slot_to_bool(out, il_blk, cpu, inst);
             break;
         case JIT_OP_NOT:
-            emit_not(out, cpu, inst);
+            emit_not(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SHLL:
-            emit_shll(out, cpu, inst);
+            emit_shll(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SHAR:
-            emit_shar(out, cpu, inst);
+            emit_shar(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SHLR:
-            emit_shlr(out, cpu, inst);
+            emit_shlr(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SET_GT_UNSIGNED:
-            emit_set_gt_unsigned(out, cpu, inst);
+            emit_set_gt_unsigned(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SET_GT_SIGNED:
-            emit_set_gt_signed(out, cpu, inst);
+            emit_set_gt_signed(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SET_GT_SIGNED_CONST:
-            emit_set_gt_signed_const(out, cpu, inst);
+            emit_set_gt_signed_const(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SET_EQ:
-            emit_set_eq(out, cpu, inst);
+            emit_set_eq(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SET_GE_UNSIGNED:
-            emit_set_ge_unsigned(out, cpu, inst);
+            emit_set_ge_unsigned(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SET_GE_SIGNED:
-            emit_set_ge_signed(out, cpu, inst);
+            emit_set_ge_signed(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SET_GE_SIGNED_CONST:
-            emit_set_ge_signed_const(out, cpu, inst);
+            emit_set_ge_signed_const(out, il_blk, cpu, inst);
             break;
         case JIT_OP_MUL_U32:
-            emit_mul_u32(out, cpu, inst);
+            emit_mul_u32(out, il_blk, cpu, inst);
             break;
         case JIT_OP_SHAD:
-            emit_shad(out, cpu, inst);
+            emit_shad(out, il_blk, cpu, inst);
             break;
         default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);

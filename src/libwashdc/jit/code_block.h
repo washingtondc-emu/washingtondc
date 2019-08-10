@@ -115,4 +115,12 @@ jit_code_block_cleanup(struct jit_code_block *blk, bool native_mode) {
         code_block_intp_cleanup(&blk->intp);
 }
 
+/*
+ * starting from base, return the index of the last slot instruction which
+ * references a given slot.
+ */
+unsigned
+jit_code_block_slot_lifespan(struct il_code_block const *blk,
+                             unsigned slot_no, unsigned base);
+
 #endif

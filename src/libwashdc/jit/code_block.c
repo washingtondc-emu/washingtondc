@@ -114,3 +114,20 @@ unsigned alloc_slot(struct il_code_block *block) {
 
 void free_slot(struct il_code_block *block, unsigned slot_no) {
 }
+
+unsigned
+jit_code_block_slot_lifespan(struct il_code_block const *blk,
+                             unsigned slot_no, unsigned base) {
+    unsigned last_ref = base;
+    unsigned idx = base;
+    while (idx < blk->inst_count) {
+        struct jit_inst const *inst = blk->inst_list + idx;
+        if (inst->op == JIT_OP_DISCARD_SLOT)
+            break;
+        if (jit_inst_is_read_slot(inst, slot_no) ||
+            jit_inst_is_write_slot(inst, slot_no))
+            last_ref = idx;
+        idx++;
+    }
+    return last_ref;
+}
