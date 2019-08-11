@@ -60,6 +60,42 @@ void il_code_block_push_inst(struct il_code_block *block,
     block->inst_list[block->inst_count++] = *inst;
 }
 
+void il_code_block_strike_inst(struct il_code_block *blk, unsigned inst_idx) {
+    unsigned insts_after = blk->inst_count - 1 - inst_idx;
+    if (insts_after) {
+        memmove(blk->inst_list + inst_idx, blk->inst_list + inst_idx + 1,
+                sizeof(struct jit_inst) * insts_after);
+    }
+    --blk->inst_count;
+}
+
+void il_code_block_insert_inst(struct il_code_block *blk,
+                               struct jit_inst const *inst, unsigned idx) {
+    if (idx == blk->inst_count) {
+        il_code_block_push_inst(blk, inst);
+        return;
+    }
+
+    if (blk->inst_count >= blk->inst_alloc) {
+        unsigned new_alloc = blk->inst_alloc + BLOCK_GROW_LEN;
+        struct jit_inst *new_list =
+            (struct jit_inst*)realloc(blk->inst_list,
+                                      new_alloc * sizeof(struct jit_inst));
+        if (!new_list)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+        blk->inst_list = new_list;
+        blk->inst_alloc = new_alloc;
+    }
+
+    unsigned n_insts_after = blk->inst_count - idx;
+    if (n_insts_after)
+        memmove(blk->inst_list + idx + 1, blk->inst_list + idx,
+                n_insts_after * sizeof(struct jit_inst));
+    blk->inst_list[idx] = *inst;
+    blk->inst_count++;
+}
+
 static void il_code_block_add_slot(struct il_code_block *block) {
     block->n_slots++;
     struct il_slot *new_slot = block->slots + (block->n_slots - 1);

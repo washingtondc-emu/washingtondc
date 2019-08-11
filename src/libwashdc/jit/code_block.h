@@ -82,6 +82,9 @@ void il_code_block_cleanup(struct il_code_block *block);
 
 void il_code_block_push_inst(struct il_code_block *block,
                               struct jit_inst const *inst);
+void il_code_block_strike_inst(struct il_code_block *blk, unsigned inst_idx);
+void il_code_block_insert_inst(struct il_code_block *blk,
+                               struct jit_inst const *inst, unsigned idx);
 
 static inline void
 jit_code_block_init(struct jit_code_block *blk, uint32_t addr_first,

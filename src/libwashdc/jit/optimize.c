@@ -27,23 +27,15 @@
 
 static void jit_optimize_nop(struct il_code_block *blk);
 static void jit_optimize_dead_write(struct il_code_block *blk);
+static void jit_optimize_discard(struct il_code_block *blk);
+
 static bool
 check_for_reads_after(struct il_code_block *blk, unsigned inst_idx);
-
-static void strike_inst(struct il_code_block *blk, unsigned slot_no);
 
 void jit_optimize(struct il_code_block *blk) {
     jit_optimize_nop(blk);
     jit_optimize_dead_write(blk);
-}
-
-static void strike_inst(struct il_code_block *blk, unsigned inst_idx) {
-    unsigned insts_after = blk->inst_count - 1 - inst_idx;
-    if (insts_after) {
-        memmove(blk->inst_list + inst_idx, blk->inst_list + inst_idx + 1,
-                sizeof(struct jit_inst) * insts_after);
-    }
-    --blk->inst_count;
+    jit_optimize_discard(blk);
 }
 
 // remove IL instructions which don't actually do anything.
@@ -63,7 +55,7 @@ static void jit_optimize_nop(struct il_code_block *blk) {
              * instruction in the IL is separate from the SLOT_TO_BOOL
              * operation.
              */
-            strike_inst(blk, inst_no);
+            il_code_block_strike_inst(blk, inst_no);
             continue;
         }
         inst_no++;
@@ -90,7 +82,7 @@ static void jit_optimize_dead_write(struct il_code_block *blk) {
         }
 
         if (!check_for_reads_after(blk, src_inst))
-            strike_inst(blk, src_inst);
+            il_code_block_strike_inst(blk, src_inst);
         else
             src_inst++;
     }
@@ -116,4 +108,21 @@ check_for_reads_after(struct il_code_block *blk, unsigned inst_idx) {
         }
     }
     return false;
+}
+
+static void jit_optimize_discard(struct il_code_block *blk) {
+    for (unsigned slot_no = 0; slot_no < blk->n_slots; slot_no++) {
+        int inst_no;
+        for (inst_no = blk->inst_count - 1; inst_no >= 0; inst_no--) {
+            struct jit_inst const *inst = blk->inst_list + inst_no;
+            if (jit_inst_is_read_slot(inst, slot_no) ||
+                jit_inst_is_write_slot(inst, slot_no)) {
+                struct jit_inst op;
+                op.op = JIT_OP_DISCARD_SLOT;
+                op.immed.discard_slot.slot_no = slot_no;
+                il_code_block_insert_inst(blk, &op, inst_no + 1);
+                break;
+            }
+        }
+    }
 }

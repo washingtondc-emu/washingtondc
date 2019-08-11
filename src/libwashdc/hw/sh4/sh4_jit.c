@@ -185,7 +185,6 @@ static void res_invalidate_reg(struct il_code_block *block, unsigned reg_no) {
     if (res->stat != REG_STATUS_SH4) {
         res->stat = REG_STATUS_SH4;
         free_slot(block, res->slot_no);
-        jit_discard_slot(block, res->slot_no);
     }
 }
 
@@ -288,7 +287,6 @@ bool sh4_jit_rts(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_jump(block, slot_no);
 
     free_slot(block, slot_no);
-    jit_discard_slot(block, slot_no);
 
     return false;
 }
@@ -317,7 +315,6 @@ bool sh4_jit_rte(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_jump(block, slot_no);
 
     free_slot(block, slot_no);
-    jit_discard_slot(block, slot_no);
 
     return false;
 }
@@ -339,7 +336,6 @@ bool sh4_jit_braf_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_jump(block, slot_no);
 
     free_slot(block, slot_no);
-    jit_discard_slot(block, slot_no);
 
     return false;
 }
@@ -365,7 +361,6 @@ bool sh4_jit_bsrf_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_jump(block, addr_slot_no);
 
     free_slot(block, addr_slot_no);
-    jit_discard_slot(block, addr_slot_no);
 
     return false;
 }
@@ -390,11 +385,8 @@ bool sh4_jit_bf(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     free_slot(block, alt_jmp_addr_slot);
     free_slot(block, jmp_addr_slot);
-    jit_discard_slot(block, alt_jmp_addr_slot);
-    jit_discard_slot(block, jmp_addr_slot);
 
     free_slot(block, slot_no);
-    jit_discard_slot(block, slot_no);
 
     return false;
 }
@@ -419,11 +411,8 @@ bool sh4_jit_bt(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     free_slot(block, alt_jmp_addr_slot);
     free_slot(block, jmp_addr_slot);
-    jit_discard_slot(block, alt_jmp_addr_slot);
-    jit_discard_slot(block, jmp_addr_slot);
 
     free_slot(block, slot_no);
-    jit_discard_slot(block, slot_no);
 
     return false;
 }
@@ -450,11 +439,8 @@ bool sh4_jit_bfs(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     free_slot(block, alt_jmp_addr_slot);
     free_slot(block, jmp_addr_slot);
-    jit_discard_slot(block, alt_jmp_addr_slot);
-    jit_discard_slot(block, jmp_addr_slot);
 
     free_slot(block, slot_no);
-    jit_discard_slot(block, slot_no);
 
     return false;
 }
@@ -481,11 +467,8 @@ bool sh4_jit_bts(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     free_slot(block, alt_jmp_addr_slot);
     free_slot(block, jmp_addr_slot);
-    jit_discard_slot(block, alt_jmp_addr_slot);
-    jit_discard_slot(block, jmp_addr_slot);
 
     free_slot(block, slot_no);
-    jit_discard_slot(block, slot_no);
 
     return false;
 }
@@ -508,7 +491,6 @@ bool sh4_jit_bra(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_jump(block, addr_slot);
 
     free_slot(block, addr_slot);
-    jit_discard_slot(block, addr_slot);
 
     return false;
 }
@@ -534,7 +516,6 @@ bool sh4_jit_bsr(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_jump(block, addr_slot);
 
     free_slot(block, addr_slot);
-    jit_discard_slot(block, addr_slot);
 
     return false;
 }
@@ -554,7 +535,6 @@ bool sh4_jit_jmp_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_jump(block, slot_no);
 
     free_slot(block, slot_no);
-    jit_discard_slot(block, slot_no);
 
     return false;
 }
@@ -577,7 +557,6 @@ bool sh4_jit_jsr_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_jump(block, addr_slot_no);
 
     free_slot(block, addr_slot_no);
-    jit_discard_slot(block, addr_slot_no);
 
     return false;
 }
@@ -847,7 +826,6 @@ bool sh4_jit_tst_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
 
     free_slot(block, slot_dst);
-    jit_discard_slot(block, slot_dst);
 
     return true;
 }
@@ -873,7 +851,6 @@ bool sh4_jit_tst_imm8_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
 
     free_slot(block, slot_r0);
-    jit_discard_slot(block, slot_r0);
 
     return true;
 }
@@ -900,7 +877,6 @@ bool sh4_jit_movl_a_r0_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
 
     free_slot(block, slot_srcaddr);
-    jit_discard_slot(block, slot_srcaddr);
 
     return true;
 }
@@ -962,7 +938,6 @@ sh4_jit_movl_a_disp4_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
 
     free_slot(block, slot_src);
-    jit_discard_slot(block, slot_src);
 
     return true;
 }
@@ -988,7 +963,6 @@ sh4_jit_movl_a_disp8_gbr_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
 
     free_slot(block, slot_src);
-    jit_discard_slot(block, slot_src);
 
     return true;
 }
@@ -1151,7 +1125,6 @@ bool sh4_jit_shar_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
 
     free_slot(block, tmp_cpy);
-    jit_discard_slot(block, tmp_cpy);
 
     jit_shar(block, slot_no, 1);
 
@@ -1178,7 +1151,6 @@ bool sh4_jit_shlr_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
 
     free_slot(block, tmp_cpy);
-    jit_discard_slot(block, tmp_cpy);
 
     jit_shlr(block, slot_no, 1);
 
@@ -1206,7 +1178,6 @@ bool sh4_jit_shll_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
 
     free_slot(block, tmp_cpy);
-    jit_discard_slot(block, tmp_cpy);
 
     jit_shll(block, slot_no, 1);
 
@@ -1310,7 +1281,6 @@ bool sh4_jit_swapw_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[reg_dst].stat = REG_STATUS_SLOT;
 
     free_slot(block, slot_tmp);
-    jit_discard_slot(block, slot_tmp);
 
     return true;
 }
@@ -1425,9 +1395,7 @@ bool sh4_jit_muluw_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     reg_map[SH4_REG_MACL].stat = REG_STATUS_SLOT;
 
-    jit_discard_slot(block, slot_rhs_16);
     free_slot(block, slot_rhs_16);
-    jit_discard_slot(block, slot_lhs_16);
     free_slot(block, slot_lhs_16);
 
     return true;
@@ -1545,8 +1513,6 @@ bool sh4_jit_dt_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     reg_map[reg_no].stat = REG_STATUS_SLOT;
     reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
-
-    jit_discard_slot(block, tmp_slot);
 
     return true;
 }
