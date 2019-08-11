@@ -334,7 +334,12 @@ native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta) {
     x86asm_mov_imm64_reg64((uintptr_t)(void*)dispatch_slow_path, REG_RET);
     x86asm_mov_imm64_reg64((uintptr_t)(void*)meta, REG_ARG1);
     x86asm_mov_imm64_reg64((uintptr_t)meta->ctx_ptr, REG_ARG2);
+
+    // fix stack alignment in case the C code uses SSE instructions
+    x86asm_addq_imm8_reg(-8, RSP);
     x86asm_call_reg(REG_RET);
+    x86asm_addq_imm8_reg(8, RSP);
+
     x86asm_mov_reg64_reg64(REG_RET, cachep_reg);
 
     x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, native_reg);
