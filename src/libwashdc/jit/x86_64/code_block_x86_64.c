@@ -721,15 +721,8 @@ static void emit_jump(struct code_block_x86_64 *blk,
     evict_register(blk, NATIVE_DISPATCH_HASH_REG);
     grab_register(NATIVE_DISPATCH_HASH_REG);
 
-    grab_slot(blk, il_blk, inst, jmp_addr_slot);
-    grab_slot(blk, il_blk, inst, jmp_hash_slot);
-
-    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, NATIVE_DISPATCH_PC_REG);
-    x86asm_mov_reg32_reg32(slots[jmp_hash_slot].reg_no,
-                           NATIVE_DISPATCH_HASH_REG);
-
-    ungrab_slot(jmp_hash_slot);
-    ungrab_slot(jmp_addr_slot);
+    move_slot_to_reg(blk, jmp_addr_slot, NATIVE_DISPATCH_PC_REG);
+    move_slot_to_reg(blk, jmp_hash_slot, NATIVE_DISPATCH_HASH_REG);
 }
 
 // JIT_JUMP_COND implementation
@@ -753,14 +746,7 @@ static void emit_jump_cond(struct code_block_x86_64 *blk,
     evict_register(blk, NATIVE_DISPATCH_PC_REG);
     grab_register(NATIVE_DISPATCH_PC_REG);
 
-    grab_slot(blk, il_blk, inst, flag_slot);
-    x86asm_mov_reg32_reg32(slots[flag_slot].reg_no, RAX);
-    ungrab_slot(flag_slot);
-
-    grab_slot(blk, il_blk, inst, jmp_addr_slot);
-    grab_slot(blk, il_blk, inst, alt_jmp_addr_slot);
-    grab_slot(blk, il_blk, inst, jmp_hash_slot);
-    grab_slot(blk, il_blk, inst, alt_jmp_hash_slot);
+    move_slot_to_reg(blk, flag_slot, RAX);
 
     /*
      * move the alt-jmp addr into the return register, then replace that with
@@ -769,30 +755,20 @@ static void emit_jump_cond(struct code_block_x86_64 *blk,
     x86asm_and_imm32_rax(1);
     ungrab_register(RAX);
 
-    x86asm_mov_reg32_reg32(slots[alt_jmp_addr_slot].reg_no, NATIVE_DISPATCH_PC_REG);
-    x86asm_mov_reg32_reg32(slots[alt_jmp_hash_slot].reg_no, NATIVE_DISPATCH_HASH_REG);
+    move_slot_to_reg(blk, alt_jmp_addr_slot, NATIVE_DISPATCH_PC_REG);
+    move_slot_to_reg(blk, alt_jmp_hash_slot, NATIVE_DISPATCH_HASH_REG);
 
     if (t_flag)
         x86asm_jz_lbl8(&lbl);
     else
         x86asm_jnz_lbl8(&lbl);
 
-    x86asm_mov_reg32_reg32(slots[jmp_addr_slot].reg_no, NATIVE_DISPATCH_PC_REG);
-    x86asm_mov_reg32_reg32(slots[jmp_hash_slot].reg_no, NATIVE_DISPATCH_HASH_REG);
+    move_slot_to_reg(blk, jmp_addr_slot, NATIVE_DISPATCH_PC_REG);
+    move_slot_to_reg(blk, jmp_hash_slot, NATIVE_DISPATCH_HASH_REG);
 
     x86asm_lbl8_define(&lbl);
 
     // the chosen address is now in NATIVE_DISPATCH_PC_REG, so we're ready to return
-
-    ungrab_slot(alt_jmp_hash_slot);
-    ungrab_slot(jmp_hash_slot);
-    ungrab_slot(alt_jmp_addr_slot);
-    ungrab_slot(jmp_addr_slot);
-
-    // not that it matters at this point...
-    ungrab_register(NATIVE_DISPATCH_PC_REG);
-    ungrab_register(NATIVE_DISPATCH_HASH_REG);
-
     x86asm_lbl8_cleanup(&lbl);
 }
 
