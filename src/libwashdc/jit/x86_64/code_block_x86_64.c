@@ -725,50 +725,33 @@ static void emit_jump(struct code_block_x86_64 *blk,
     move_slot_to_reg(blk, jmp_hash_slot, NATIVE_DISPATCH_HASH_REG);
 }
 
-// JIT_JUMP_COND implementation
-static void emit_jump_cond(struct code_block_x86_64 *blk,
-                           struct il_code_block const *il_blk,
-                           void *cpu, struct jit_inst const *inst) {
-    unsigned t_flag = inst->immed.jump_cond.t_flag ? 1 : 0;
-    unsigned flag_slot = inst->immed.jump_cond.flag_slot;
-    unsigned jmp_addr_slot = inst->immed.jump_cond.jmp_addr_slot;
-    unsigned jmp_hash_slot = inst->immed.jump_cond.jmp_hash_slot;
-    unsigned alt_jmp_addr_slot = inst->immed.jump_cond.alt_jmp_addr_slot;
-    unsigned alt_jmp_hash_slot = inst->immed.jump_cond.alt_jmp_hash_slot;
-
+static void emit_cset(struct code_block_x86_64 *blk,
+                      struct il_code_block const *il_blk,
+                      void *cpu, struct jit_inst const *inst) {
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
+    uint32_t src_val = inst->immed.cset.src_val;
+    unsigned dst_slot = inst->immed.cset.dst_slot;
+    unsigned flag_slot = inst->immed.cset.flag_slot;
 
-    evict_register(blk, RAX);
-    grab_register(RAX);
-    evict_register(blk, NATIVE_DISPATCH_HASH_REG);
-    grab_register(NATIVE_DISPATCH_HASH_REG);
-    evict_register(blk, NATIVE_DISPATCH_PC_REG);
-    grab_register(NATIVE_DISPATCH_PC_REG);
+    grab_slot(blk, il_blk, inst, flag_slot);
 
-    move_slot_to_reg(blk, flag_slot, RAX);
+    unsigned flag_reg = slots[flag_slot].reg_no;
 
-    /*
-     * move the alt-jmp addr into the return register, then replace that with
-     * the normal jmp addr if the flag is set.
-     */
-    x86asm_and_imm32_rax(1);
-    ungrab_register(RAX);
-
-    move_slot_to_reg(blk, alt_jmp_addr_slot, NATIVE_DISPATCH_PC_REG);
-    move_slot_to_reg(blk, alt_jmp_hash_slot, NATIVE_DISPATCH_HASH_REG);
-
-    if (t_flag)
+    x86asm_testl_imm32_reg32(1, flag_reg);
+    if (inst->immed.cset.t_flag)
         x86asm_jz_lbl8(&lbl);
     else
         x86asm_jnz_lbl8(&lbl);
 
-    move_slot_to_reg(blk, jmp_addr_slot, NATIVE_DISPATCH_PC_REG);
-    move_slot_to_reg(blk, jmp_hash_slot, NATIVE_DISPATCH_HASH_REG);
+    grab_slot(blk, il_blk, inst, dst_slot);
+    unsigned dst_reg = slots[dst_slot].reg_no;
+    x86asm_mov_imm32_reg32(src_val, dst_reg);
+    ungrab_slot(dst_slot);
 
     x86asm_lbl8_define(&lbl);
 
-    // the chosen address is now in NATIVE_DISPATCH_PC_REG, so we're ready to return
+    ungrab_slot(flag_slot);
     x86asm_lbl8_cleanup(&lbl);
 }
 
@@ -1618,8 +1601,8 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         case JIT_OP_JUMP:
             emit_jump(out, il_blk, cpu, inst);
             break;
-        case JIT_JUMP_COND:
-            emit_jump_cond(out, il_blk, cpu, inst);
+        case JIT_CSET:
+            emit_cset(out, il_blk, cpu, inst);
             break;
         case JIT_SET_SLOT:
             emit_set_slot(out, il_blk, cpu, inst);

@@ -73,19 +73,14 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
             break;
         case JIT_OP_JUMP:
             return block->slots[inst->immed.jump.jmp_addr_slot];
-        case JIT_JUMP_COND:
-            /*
-             * This ends the current block even if the jump was not executed.
-             * Otherwise, there would have to be multiple exit points for each
-             * block; this would not be impossible to implement but it would
-             * mess with the cycle-counting since a given block would not
-             * complete in the same number of cycles every time.
-             */
-            if ((block->slots[inst->immed.jump_cond.flag_slot] & 1) ==
-                inst->immed.jump_cond.t_flag) {
-                return block->slots[inst->immed.jump_cond.jmp_addr_slot];
+        case JIT_CSET:
+            if ((block->slots[inst->immed.cset.flag_slot] & 1) ==
+                inst->immed.cset.t_flag) {
+                block->slots[inst->immed.cset.dst_slot] =
+                    inst->immed.cset.src_val;
             }
-            return block->slots[inst->immed.jump_cond.alt_jmp_addr_slot];
+            inst++;
+            break;
         case JIT_SET_SLOT:
             block->slots[inst->immed.set_slot.slot_idx] =
                 inst->immed.set_slot.new_val;

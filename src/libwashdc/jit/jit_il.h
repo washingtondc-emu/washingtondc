@@ -43,8 +43,8 @@ enum jit_opcode {
     // This jumps to the jump destination address previously stored
     JIT_OP_JUMP,
 
-    // this will jump iff the conditional jump flag is set
-    JIT_JUMP_COND,
+    // conditionally set based on flag
+    JIT_CSET,
 
     // this will set a register to the given constant value
     JIT_SET_SLOT,
@@ -177,26 +177,11 @@ struct jump_immed {
     unsigned jmp_hash_slot;
 };
 
-struct jump_cond_immed {
-    /*
-     * this should point to SR, but really it can point to any register.
-     *
-     * But it should point to SR.
-     */
-    unsigned flag_slot;
+struct cset_immed {
+    unsigned flag_slot, t_flag;
 
-    // jump addresses
-    unsigned jmp_addr_slot, alt_jmp_addr_slot;
-
-    // hashed versions of the above jump addresses
-    unsigned jmp_hash_slot, alt_jmp_hash_slot;
-
-    /*
-     * expected value of the t_flag (either 0 or 1).  the conditional jump will
-     * go to the jump address if bit 0 in the given slot matches this expected
-     * value.  Otherwise, it will go to the alt jump address.
-     */
-    unsigned t_flag;
+    uint32_t src_val;
+    unsigned dst_slot;
 };
 
 struct set_slot_immed {
@@ -386,7 +371,7 @@ struct mul_u32_immed {
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct jump_immed jump;
-    struct jump_cond_immed jump_cond;
+    struct cset_immed cset;
     struct set_slot_immed set_slot;
     struct call_func_immed call_func;
     struct read_16_constaddr_immed read_16_constaddr;
@@ -444,11 +429,8 @@ bool jit_inst_is_write_slot(struct jit_inst const *inst, unsigned slot_no);
 void jit_fallback(struct il_code_block *block,
                   void(*fallback_fn)(void*,cpu_inst_param), cpu_inst_param inst);
 void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot, unsigned jmp_hash_slot);
-void jit_jump_cond(struct il_code_block *block,
-                   unsigned flag_slot,
-                   unsigned jmp_addr_slot, unsigned alt_jmp_addr_slot,
-                   unsigned jmp_hash_slot, unsigned alt_jmp_hash_slot,
-                   unsigned t_val);
+void jit_cset(struct il_code_block *block, unsigned flag_slot,
+              unsigned t_flag, uint32_t src_val, unsigned dst_slot);
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
 void jit_call_func(struct il_code_block *block,
