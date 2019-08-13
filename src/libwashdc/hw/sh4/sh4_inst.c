@@ -833,7 +833,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnn1mmm01100
     // FMOV XDm, XDn
     // 1111nnn1mmm11100
-    { FPU_HANDLER(fmov_gen), sh4_jit_fallback, false,
+    { FPU_HANDLER(fmov_gen), sh4_jit_fmov_frm_frn, false,
       SH4_GROUP_LS, 1, 0xf00f, 0xf00c },
 
     // FMOV.S @Rm, FRn
@@ -851,7 +851,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnn0mmmm0110
     // FMOV @(R0, Rm), XDn
     // 1111nnn1mmmm0110
-    { FPU_HANDLER(fmov_binind_r0_gen_fpu), sh4_jit_fallback, false,
+    { FPU_HANDLER(fmov_binind_r0_gen_fpu), sh4_jit_fmovs_a_r0_rm_fpu, false,
       SH4_GROUP_LS, 1, 0xf00f, 0xf006 },
 
     // FMOV.S @Rm+, FRn
@@ -925,7 +925,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm0101
     // FCMP/GT DRm, DRn
     // 1111nnn0mmm00101
-    { FPU_HANDLER(fcmpgt_fpu), sh4_jit_fallback, false,
+    { FPU_HANDLER(fcmpgt_fpu), sh4_jit_fcmpgt_frm_frn, false,
       SH4_GROUP_FE, 1, 0xf00f, 0xf005 },
 
     // FDIV FRm, FRn
@@ -951,7 +951,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm0010
     // FMUL DRm, DRn
     // 1111nnn0mmm00010
-    { FPU_HANDLER(fmul_fpu), sh4_jit_fallback, false,
+    { FPU_HANDLER(fmul_fpu), sh4_jit_fmul_frm_frn, false,
       SH4_GROUP_FE, 1, 0xf00f, 0xf002 },
 
     // FNEG FRn
@@ -972,7 +972,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm0001
     // FSUB DRm, DRn
     // 1111nnn0mmm00001
-    { FPU_HANDLER(fsub_fpu), sh4_jit_fallback, false,
+    { FPU_HANDLER(fsub_fpu), sh4_jit_fsub_frm_frn, false,
       SH4_GROUP_FE, 1, 0xf00f, 0xf001 },
 
     // FTRC FRm, FPUL
