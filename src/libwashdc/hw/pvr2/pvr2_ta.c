@@ -931,11 +931,11 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
     uint32_t const *ta_fifo32 = (uint32_t const*)ta->ta_fifo32;
 
-    if (ta->ta_fifo_word_count < (ta->hdr.vtx_len / 4))
+    if (ta->ta_fifo_word_count < ta->hdr.vtx_len)
         return -1;
-    else if (ta->ta_fifo_word_count > (ta->hdr.vtx_len / 4)) {
+    else if (ta->ta_fifo_word_count > ta->hdr.vtx_len) {
         LOG_ERROR("byte count is %u, vtx_len is %u\n",
-                  ta->ta_fifo_word_count * 4, ta->hdr.vtx_len);
+                  ta->ta_fifo_word_count * 4, ta->hdr.vtx_len * 4);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
@@ -1112,8 +1112,8 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     unsigned param_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
     enum pvr2_hdr_tp tp;
 
-    unsigned hdr_len = 32;
-    unsigned vtx_len = 32;
+    unsigned hdr_len = 8;
+    unsigned vtx_len = 8;
 
     // we need these to figure out whether the header is 32 bytes or 64 bytes.
     bool two_volumes_mode = (bool)(ta_fifo32[0] & TA_CMD_TWO_VOLUMES_MASK);
@@ -1131,33 +1131,33 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         tp = PVR2_HDR_TRIANGLE_STRIP;
         if (disp_list == DISPLAY_LIST_OPAQUE_MOD ||
             disp_list == DISPLAY_LIST_TRANS_MOD) {
-            hdr_len = 32;
-            vtx_len = 64;
+            hdr_len = 8;
+            vtx_len = 16;
         } else {
             if (col_tp == TA_COLOR_TYPE_INTENSITY_MODE_1 &&
                 (two_volumes_mode || (tex_enable && offset_color_enable))) {
-                hdr_len = 64;
+                hdr_len = 16;
             }
 
             if (tex_enable) {
                 if ((!two_volumes_mode && col_tp == TA_COLOR_TYPE_FLOAT) ||
                     (two_volumes_mode && col_tp != TA_COLOR_TYPE_FLOAT))
-                    vtx_len = 64;
+                    vtx_len = 16;
             }
         }
 
         break;
     case TA_CMD_TYPE_SPRITE_HDR:
         tp = PVR2_HDR_QUAD;
-        vtx_len = 64;
+        vtx_len = 16;
         break;
     default:
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    if (ta->ta_fifo_word_count < (hdr_len / 4))
+    if (ta->ta_fifo_word_count < hdr_len)
         return -1;
-    else if (ta->ta_fifo_word_count > (hdr_len / 4))
+    else if (ta->ta_fifo_word_count > hdr_len)
         RAISE_ERROR(ERROR_INTEGRITY);
 
     pkt->tp = PVR2_PKT_HDR;
