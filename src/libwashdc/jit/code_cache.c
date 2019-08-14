@@ -68,6 +68,7 @@ static struct oldroot_node *oldroot;
 static struct avl_tree tree;
 
 struct cache_entry* code_cache_tbl[CODE_CACHE_HASH_TBL_LEN];
+static void *dflt_entry;
 
 /*
  * the maximum number of code-cache entries that can be created before the
@@ -120,6 +121,10 @@ static void reinit_tree(void) {
 void code_cache_init(void) {
     reinit_tree();
 
+    unsigned idx;
+    for (idx = 0; idx < CODE_CACHE_HASH_TBL_LEN; idx++)
+        code_cache_tbl[idx] = dflt_entry;
+
 #ifdef ENABLE_JIT_X86_64
     native_mode = config_get_native_jit();
 #endif
@@ -128,6 +133,13 @@ void code_cache_init(void) {
 void code_cache_cleanup(void) {
     code_cache_invalidate_all();
     code_cache_gc();
+}
+
+void code_cache_set_default(void *dflt) {
+    dflt_entry = dflt;
+    unsigned idx;
+    for (idx = 0; idx < CODE_CACHE_HASH_TBL_LEN; idx++)
+        code_cache_tbl[idx] = dflt_entry;
 }
 
 void code_cache_invalidate_all(void) {
@@ -154,7 +166,10 @@ void code_cache_invalidate_all(void) {
     oldroot = list_node;
 
     reinit_tree();
-    memset(code_cache_tbl, 0, sizeof(code_cache_tbl));
+
+    unsigned idx;
+    for (idx = 0; idx < CODE_CACHE_HASH_TBL_LEN; idx++)
+        code_cache_tbl[idx] = dflt_entry;
 
     n_entries = 0;
 }

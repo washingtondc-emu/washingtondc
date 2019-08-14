@@ -33,6 +33,8 @@
 #include "jit/jit_profile.h"
 #endif
 
+#include "jit/code_cache.h"
+
 struct native_dispatch_meta;
 
 void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr);
@@ -80,6 +82,20 @@ struct native_dispatch_meta {
      * code.
      */
     native_dispatch_entry_func entry;
+    /*
+     * This is the default "invalid" code block that we fill out the
+     * code_cache_tbl with whenever the cache gets nuked.  The idea is that
+     * this will point to a fake code block which is equivalent to the slow-path
+     * from the native_dispatch code.  The point of all this is to avoid
+     * needing to check for NULL pointers in the code created by
+     * native_dispatch_emit; otherwise there needs to be an additional branch to
+     * make sure that whatever we grab from the code_cache_tbl actually points
+     * to a real code block.
+     */
+    void *trampoline;
+
+    // cache_entry that points to trampoline
+    struct cache_entry fake_cache_entry;
 };
 
 /*

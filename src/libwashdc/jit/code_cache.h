@@ -71,6 +71,12 @@ void code_cache_cleanup(void);
  */
 void code_cache_gc(void);
 
+/*
+ * set the value that the code_cache_tbl gets overwritten with whenever there's
+ * a nuke
+ */
+void code_cache_set_default(void *dflt);
+
 #define CODE_CACHE_HASH_TBL_SHIFT 16
 #define CODE_CACHE_HASH_TBL_LEN (1 << CODE_CACHE_HASH_TBL_SHIFT)
 #define CODE_CACHE_HASH_TBL_MASK (CODE_CACHE_HASH_TBL_LEN - 1)

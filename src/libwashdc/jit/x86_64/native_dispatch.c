@@ -70,6 +70,9 @@ static void create_profile_code(struct native_dispatch_meta *meta);
 static void
 native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta);
 
+static void
+native_dispatch_trampoline_create(struct native_dispatch_meta *meta);
+
 void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
     meta->ctx_ptr = ctx_ptr;
 
@@ -84,6 +87,8 @@ void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
     create_profile_code(meta);
 #endif
     native_dispatch_entry_create(meta);
+
+    native_dispatch_trampoline_create(meta);
 }
 
 void native_dispatch_cleanup(struct native_dispatch_meta *meta) {
@@ -100,6 +105,9 @@ void native_dispatch_cleanup(struct native_dispatch_meta *meta) {
     exec_mem_free(meta->clock_vals);
 
     meta->clock_vals = NULL;
+
+    exec_mem_free(meta->trampoline);
+    code_cache_set_default(NULL);
 }
 
 static void create_return_fn(struct native_dispatch_meta *meta) {
@@ -146,16 +154,34 @@ static void create_return_fn(struct native_dispatch_meta *meta) {
 
 #ifdef JIT_PROFILE
 static void create_profile_code(struct native_dispatch_meta *meta) {
+    struct x86asm_lbl8 skipit;
+    x86asm_lbl8_init(&skipit);
+
     meta->profile_code = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(meta->profile_code, NULL, BASIC_ALLOC);
 
-    // call jit_profile_notify
     size_t const jit_profile_offs = offsetof(struct cache_entry, blk.profile);
+    x86asm_movq_disp8_reg_reg(jit_profile_offs, cachep_reg, REG_ARG1);
 
+    /*
+     * ignore NULL pointers.
+     *
+     * the trampoline block has a null pointer here because it's not a real
+     * code block.
+     */
+    x86asm_testq_reg64_reg64(REG_ARG1, REG_ARG1);
+    x86asm_jz_lbl8(&skipit);
+
+    // call jit_profile_notify
     x86asm_mov_imm64_reg64((uintptr_t)meta->ctx_ptr, REG_ARG0);
     x86asm_movq_disp8_reg_reg(jit_profile_offs, cachep_reg, REG_ARG1);
     x86asm_mov_imm64_reg64((uintptr_t)(void*)meta->profile_notify, REG_RET);
     x86asm_jmpq_reg64(REG_RET); // tail-call elimination
+
+    x86asm_lbl8_define(&skipit);
+    x86asm_ret();
+
+    x86asm_lbl8_cleanup(&skipit);
 }
 #endif
 
@@ -257,10 +283,6 @@ static void native_dispatch_emit(struct native_dispatch_meta const *meta) {
 
     x86asm_movq_sib_reg(code_cache_tbl_ptr_reg, 8, code_hash_reg, cachep_reg);
 
-    // make sure the pointer isn't null; if so, jump to the slow-path
-    x86asm_testq_reg64_reg64(cachep_reg, cachep_reg);
-    x86asm_jz_lbl8(&code_cache_slow_path);
-
     // now check the address against the one that's still in pc_reg
     size_t const addr_offs = offsetof(struct cache_entry, node.key);
     if (addr_offs >= 256)
@@ -343,6 +365,42 @@ native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta) {
     x86asm_movq_disp8_reg_reg(native_offs, cachep_reg, native_reg);
 
     x86asm_ret();
+}
+
+static void native_dispatch_trampoline_create(struct native_dispatch_meta *meta) {
+    meta->trampoline = exec_mem_alloc(BASIC_ALLOC);
+    x86asm_set_dst(meta->trampoline, NULL, BASIC_ALLOC);
+
+    // PC should already be in REG_ARG0
+    x86asm_mov_imm64_reg64((uintptr_t)meta->dispatch_slow_path, REG_RET);
+
+    // fix stack alignment in case the C code uses SSE instructions
+    x86asm_addq_imm8_reg(-8, RSP);
+    x86asm_call_reg(REG_RET);
+    x86asm_addq_imm8_reg(8, RSP);
+
+#ifdef JIT_PROFILE
+    x86asm_pushq_reg64(native_reg);
+    jmp_to_addr(meta->profile_code, REG_RET);
+#else
+    x86asm_jmpq_reg64(native_reg); // tail-call elimination
+#endif
+
+    // after this point no code is executed
+
+    /*
+     * create the actual code block.  the key is arbitrary; we use 0xa0000000
+     * so that it always gets tested and we know that it works.  This means
+     * that PC=0xa0000000 is the only time the trampoline ever gets invoked
+     * because every other hash value will be seen as a potentially-valid block
+     * which isn't the one we're looking for.
+     */
+    memset(&meta->fake_cache_entry, 0, sizeof(meta->fake_cache_entry));
+    meta->fake_cache_entry.valid = 1;
+    meta->fake_cache_entry.blk.x86_64.native = meta->trampoline;
+    meta->fake_cache_entry.node.key = 0xa0000000;
+
+    code_cache_set_default(&meta->fake_cache_entry);
 }
 
 static void load_quad_into_reg(void *qptr, unsigned reg_no) {

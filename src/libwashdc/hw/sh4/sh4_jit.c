@@ -37,12 +37,7 @@
 #include "sh4_read_inst.h"
 #include "sh4_jit.h"
 
-struct native_dispatch_meta const sh4_native_dispatch_meta = {
-#ifdef JIT_PROFILE
-    .profile_notify = sh4_jit_profile_notify,
-#endif
-    .on_compile = sh4_jit_compile_native
-};
+#include "jit/x86_64/native_dispatch.h"
 
 void sh4_jit_set_native_dispatch_meta(struct native_dispatch_meta *meta) {
 #ifdef JIT_PROFILE
