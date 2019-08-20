@@ -715,10 +715,7 @@ static void emit_jump(struct code_block_x86_64 *blk,
     unsigned jmp_addr_slot = inst->immed.jump.jmp_addr_slot;
     unsigned jmp_hash_slot = inst->immed.jump.jmp_hash_slot;
 
-    evict_register(blk, NATIVE_DISPATCH_PC_REG);
     grab_register(NATIVE_DISPATCH_PC_REG);
-
-    evict_register(blk, NATIVE_DISPATCH_HASH_REG);
     grab_register(NATIVE_DISPATCH_HASH_REG);
 
     move_slot_to_reg(blk, jmp_addr_slot, NATIVE_DISPATCH_PC_REG);
