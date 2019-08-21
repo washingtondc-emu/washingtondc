@@ -382,7 +382,19 @@ enum reg_hint {
      * this hint tells the allocator to favor registers that will be preserved
      * across function calls.
      */
-    REG_HINT_FUNCTION = 1
+    REG_HINT_FUNCTION = 1,
+
+    /*
+     * Tells the allocator that this slot will be used to store the hash for
+     * the jump instruction
+     */
+    REG_HINT_JUMP_HASH = 2,
+
+    /*
+     * Tells the allocator that this slot will be used to store the address for
+     * the jump instruction
+     */
+    REG_HINT_JUMP_ADDR = 4
 };
 
 static bool reg_available(unsigned reg_no) {
@@ -404,6 +416,16 @@ static int pick_unused_reg_ex(enum reg_hint hints) {
      */
 #warning this needs to be optimised for the Microsoft calling convention
 #endif
+
+    if (hints & REG_HINT_JUMP_ADDR) {
+        if (reg_available(NATIVE_DISPATCH_PC_REG))
+            return NATIVE_DISPATCH_PC_REG;
+    }
+
+    if (hints & REG_HINT_JUMP_HASH) {
+        if (reg_available(NATIVE_DISPATCH_HASH_REG))
+            return NATIVE_DISPATCH_HASH_REG;
+    }
 
     if (hints & REG_HINT_FUNCTION) {
         /*
@@ -504,10 +526,24 @@ static enum reg_hint suggested_reg_hints(struct il_code_block const *blk,
     unsigned beg = inst - blk->inst_list;
     unsigned end = jit_code_block_slot_lifespan(blk, slot_no, beg);
 
-    while (beg <= end)
-        if (does_inst_emit_call(blk->inst_list + beg++))
-            return REG_HINT_FUNCTION;
-    return REG_HINT_NONE;
+    enum reg_hint hint = REG_HINT_NONE;
+
+    while (beg <= end) {
+        struct jit_inst *cur_inst = blk->inst_list + beg;
+
+        if (does_inst_emit_call(cur_inst))
+            hint |= REG_HINT_FUNCTION;
+
+        if (cur_inst->op == JIT_OP_JUMP) {
+            if (cur_inst->immed.jump.jmp_addr_slot == slot_no)
+                hint |= REG_HINT_JUMP_ADDR;
+            if (cur_inst->immed.jump.jmp_hash_slot == slot_no)
+                hint |= REG_HINT_JUMP_HASH;
+        }
+
+        beg++;
+    }
+    return hint;
 }
 
 /*
