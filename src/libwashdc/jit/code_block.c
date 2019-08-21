@@ -122,7 +122,8 @@ jit_code_block_slot_lifespan(struct il_code_block const *blk,
     unsigned idx = base;
     while (idx < blk->inst_count) {
         struct jit_inst const *inst = blk->inst_list + idx;
-        if (inst->op == JIT_OP_DISCARD_SLOT)
+        if (inst->op == JIT_OP_DISCARD_SLOT &&
+            inst->immed.discard_slot.slot_no == slot_no)
             break;
         if (jit_inst_is_read_slot(inst, slot_no) ||
             jit_inst_is_write_slot(inst, slot_no))
