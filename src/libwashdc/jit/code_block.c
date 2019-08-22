@@ -66,25 +66,15 @@ static void il_code_block_add_slot(struct il_code_block *block) {
     memset(new_slot, 0, sizeof(*new_slot));
 }
 
-// this tells whether a given slot is in use
-bool slot_status(struct il_code_block *block, unsigned slot_no) {
-    if (slot_no >= MAX_SLOTS)
-        RAISE_ERROR(ERROR_OVERFLOW);
-
-    return block->slots[slot_no].in_use;
-}
-
 unsigned alloc_slot(struct il_code_block *block) {
     if (block->n_slots >= MAX_SLOTS)
         RAISE_ERROR(ERROR_OVERFLOW);
 
     unsigned slot_no = block->n_slots++;
-    block->slots[slot_no].in_use = true;
     il_code_block_add_slot(block);
 
     return slot_no;
 }
 
 void free_slot(struct il_code_block *block, unsigned slot_no) {
-    block->slots[slot_no].in_use = false;
 }

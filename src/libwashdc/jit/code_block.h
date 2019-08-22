@@ -38,14 +38,15 @@
 
 #include "jit_intp/code_block_intp.h"
 
-// this tells whether a given slot is in use
-bool slot_status(struct il_code_block *block, unsigned slot_no);
-
 unsigned alloc_slot(struct il_code_block *block);
 void free_slot(struct il_code_block *block, unsigned slot_no);
 
 struct il_slot {
-    bool in_use;
+    /*
+     * This is only here because I'm not a big fan of empty structs, or the
+     * ambiguous malloc(0) behavior.
+     */
+    char useless_placeholder;
 };
 
 struct il_code_block {
