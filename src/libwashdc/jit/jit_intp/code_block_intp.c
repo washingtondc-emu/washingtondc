@@ -158,8 +158,8 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
             inst++;
             break;
         case JIT_OP_SUB:
-            block->slots[inst->immed.add.slot_dst] -=
-                block->slots[inst->immed.add.slot_src];
+            block->slots[inst->immed.sub.slot_dst] -=
+                block->slots[inst->immed.sub.slot_src];
             inst++;
             break;
         case JIT_OP_ADD_CONST32:
