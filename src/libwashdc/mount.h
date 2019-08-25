@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -101,6 +101,14 @@ struct mount_meta {
 #define MOUNT_LD_REGION 0
 #define MOUNT_HD_REGION 1
 
+enum mount_disc_type {
+    DISC_TYPE_CDDA = 0,
+    DISC_TYPE_CDROM = 1,
+    DISC_TYPE_CDROM_XA = 2,
+    DISC_TYPE_CDI = 3, // i think this refers to phillips CD-I, not .cdi images
+    DISC_TYPE_GDROM = 8
+};
+
 struct mount_ops {
     // return the number of sessions on the disc (shouldn't be more than 2)
     unsigned(*session_count)(struct mount*);
@@ -120,6 +128,14 @@ struct mount_ops {
 
     // return true if this disc has a high-density region
     bool (*has_hd_region)(struct mount*);
+
+    enum mount_disc_type (*get_disc_type)(struct mount*);
+
+    /*
+     * first output is the first track of the session, second output is the
+     * starting fad of that track.
+     */
+    void (*get_session_start)(struct mount*, unsigned, unsigned*, unsigned*);
 };
 
 // mount an image as the current disc in the virtual gdrom drive
@@ -133,6 +149,8 @@ bool mount_check(void);
 
 // return the number of sessions in the disc
 unsigned mount_session_count(void);
+
+enum mount_disc_type mount_get_disc_type(void);
 
 int mount_read_toc(struct mount_toc* out, unsigned session);
 
@@ -157,5 +175,8 @@ bool mount_has_hd_region(void);
  * mount_encode_toc and it should not be freed.
  */
 void const* mount_encode_toc(struct mount_toc const *toc);
+
+void mount_get_session_start(unsigned session_no, unsigned* first_track,
+                             unsigned* first_fad);
 
 #endif

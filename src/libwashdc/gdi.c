@@ -51,6 +51,7 @@ static unsigned mount_gdi_session_count(struct mount *mount);
 static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
                               unsigned session_no);
 static int mount_read_sector(struct mount *mount, void *buf, unsigned fad);
+static enum mount_disc_type gdi_get_disc_type(struct mount* mount);
 
 // return true if this is a legitimate gd-rom; else return false
 static bool gdi_validate_fmt(struct gdi_info const *info);
@@ -68,6 +69,9 @@ static void print_gdi(struct gdi_info const *gdi);
 
 static bool mount_gdi_has_hd_region(struct mount *mount);
 
+static void gdi_get_session_start(struct mount *mount, unsigned session_no,
+                                  unsigned *start_track, unsigned *fad);
+
 static struct mount_ops gdi_mount_ops = {
     .session_count = mount_gdi_session_count,
     .read_toc = mount_gdi_read_toc,
@@ -75,7 +79,9 @@ static struct mount_ops gdi_mount_ops = {
     .cleanup = mount_gdi_cleanup,
     .get_meta = mount_gdi_get_meta,
     .get_leadout = mount_gdi_get_leadout,
-    .has_hd_region = mount_gdi_has_hd_region
+    .has_hd_region = mount_gdi_has_hd_region,
+    .get_disc_type = gdi_get_disc_type,
+    .get_session_start = gdi_get_session_start
 };
 
 /* enforce sane limits - MAX_TRACKS might need to be bigger tbh */
@@ -316,6 +322,10 @@ static unsigned mount_gdi_session_count(struct mount *mount) {
     return 1;
 }
 
+static enum mount_disc_type gdi_get_disc_type(struct mount* mount) {
+    return DISC_TYPE_GDROM;
+}
+
 static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
                               unsigned region) {
     struct gdi_mount const *gdi_mount = (struct gdi_mount const*)mount->state;
@@ -457,4 +467,18 @@ static unsigned mount_gdi_get_leadout(struct mount *mount) {
 
 static bool mount_gdi_has_hd_region(struct mount *mount) {
     return true;
+}
+
+static void gdi_get_session_start(struct mount *mount, unsigned session_no,
+                                  unsigned *start_track, unsigned *fad) {
+    if (session_no != 0)
+        RAISE_ERROR(ERROR_INTEGRITY);// there's only one session on a GD-ROM
+
+    struct gdi_mount const *gdi_mount = (struct gdi_mount const*)mount->state;
+
+    if (!gdi_mount->meta.n_tracks)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    *start_track = 0;
+    *fad = gdi_mount->meta.tracks[0].fad_start;
 }

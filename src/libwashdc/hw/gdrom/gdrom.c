@@ -842,21 +842,14 @@ static void gdrom_input_req_session_packet(struct gdrom_ctxt *gdrom) {
     bufq_clear(gdrom);
 
     unsigned tno, fad;
-    if (session_no == 0) {
-        struct mount_toc toc;
-        mount_read_toc(&toc, 0);
-        fad = cdrom_lba_to_fad(mount_get_leadout());
 
-        /*
-         * GD discs only have one session according to the req_ession packet
-         * command.  This seems incorrect since they obviously have two
-         * sessions, but I've verified this behavior on hardware.
-         *
-         * MIL-CDs have two sessions as expected.
-         */
-        tno = 1;
+    unsigned sess_count = mount_session_count();
+
+    if (session_no == 0) {
+        fad = cdrom_lba_to_fad(mount_get_leadout());
+        tno = sess_count;
     } else {
-        if (session_no != 1) {
+        if (session_no > sess_count) {
             /*
              * I think the correct behavior in this situation is to never raise
              * the DRQ flag.  I'm not sure what exactly happens, I just know
@@ -870,12 +863,9 @@ static void gdrom_input_req_session_packet(struct gdrom_ctxt *gdrom) {
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
-        struct mount_toc toc;
         session_no -= 1;
-        mount_read_toc(&toc, 0);
-
-        tno = toc.first_track;
-        fad = toc.tracks[toc.first_track - 1].fad;
+        mount_get_session_start(session_no, &tno, &fad);
+        tno++; // CD standard has tracks start at 1 instead of 0
     }
 
     uint8_t reply[6] = {
@@ -1209,16 +1199,16 @@ gdrom_write_data(struct gdrom_ctxt *gdrom, uint8_t const *buf,
  * should return the type of disc in the drive (which will usually be
  * DISC_TYPE_GDROM)
  */
-enum gdrom_disc_type  gdrom_get_disc_type(void) {
+enum mount_disc_type gdrom_get_disc_type(void) {
     if (mount_check())
-        return DISC_TYPE_GDROM;
+        return mount_get_disc_type();
 
     /*
      * this technically evaluates to DISC_TYPE_CDDA, but it doesn't matter
      * because anything that calls this function will be smart enough to check
      * the drive state and realize that there's nothing inserted.
      */
-    return (enum gdrom_disc_type)0;
+    return (enum mount_disc_type)0;
 }
 
 /*

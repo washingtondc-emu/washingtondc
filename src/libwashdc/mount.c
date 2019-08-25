@@ -62,6 +62,14 @@ unsigned mount_session_count(void) {
     RAISE_ERROR(ERROR_INTEGRITY);
 }
 
+enum mount_disc_type mount_get_disc_type(void) {
+    if (mounted)
+        return img.ops->get_disc_type(&img);
+
+    error_set_wtf("calling mount_session_count when there's nothing mounted");
+    RAISE_ERROR(ERROR_INTEGRITY);
+}
+
 int mount_read_toc(struct mount_toc* out, unsigned region) {
     if (mounted) {
         if ((region == MOUNT_HD_REGION && !mount_has_hd_region()) ||
@@ -155,4 +163,9 @@ unsigned mount_get_leadout(void) {
 
 bool mount_has_hd_region(void) {
     return img.ops->has_hd_region(&img);
+}
+
+void mount_get_session_start(unsigned session_no, unsigned* first_track,
+                             unsigned* first_fad) {
+    return img.ops->get_session_start(&img, session_no, first_track, first_fad);
 }

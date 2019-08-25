@@ -29,6 +29,7 @@
 #include "washdc/fifo.h"
 #include "log.h"
 #include "dc_sched.h"
+#include "mount.h"
 
 #define GDROM_TRACE(msg, ...)                                           \
     do {                                                                \
@@ -217,14 +218,6 @@ void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes);
 
 void gdrom_write_data(struct gdrom_ctxt *gdrom, uint8_t const *buf, unsigned n_bytes);
 
-enum gdrom_disc_type {
-    DISC_TYPE_CDDA = 0,
-    DISC_TYPE_CDROM = 1,
-    DISC_TYPE_CDROM_XA = 2,
-    DISC_TYPE_CDI = 3, // i think this refers to phillips CD-I, not .cdi images
-    DISC_TYPE_GDROM = 8
-};
-
 enum gdrom_disc_state {
     GDROM_STATE_BUSY  = 0x0,
     GDROM_STATE_PAUSE = 0x1,
@@ -242,7 +235,7 @@ enum gdrom_disc_state {
  * should return the type of disc in the drive (which will usually be
  * DISC_TYPE_GDROM)
  */
-enum gdrom_disc_type gdrom_get_disc_type(void);
+enum mount_disc_type gdrom_get_disc_type(void);
 
 /*
  * return the state the physical drive is in (GDROM_STATE_NODISC,
