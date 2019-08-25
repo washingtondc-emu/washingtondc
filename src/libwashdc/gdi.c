@@ -46,6 +46,7 @@ struct gdi_mount {
 };
 
 static void mount_gdi_cleanup(struct mount *mount);
+static void cleanup_gdi_info(struct gdi_info *info);
 static unsigned mount_gdi_session_count(struct mount *mount);
 static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
                               unsigned session_no);
@@ -57,6 +58,13 @@ static bool gdi_validate_fmt(struct gdi_info const *info);
 static int mount_gdi_get_meta(struct mount *mount, struct mount_meta *meta);
 
 static unsigned mount_gdi_get_leadout(struct mount *mount);
+static void parse_gdi(struct gdi_info *outp, char const *path);
+
+/*
+ * dumps the given gdi to stdout, this is really only here for
+ * debugging/validation/logging.
+ */
+static void print_gdi(struct gdi_info const *gdi);
 
 static bool mount_gdi_has_hd_region(struct mount *mount);
 
@@ -80,7 +88,7 @@ static struct mount_ops gdi_mount_ops = {
  */
 #define MIN_TRACKS 3
 
-void parse_gdi(struct gdi_info *outp, char const *path) {
+static void parse_gdi(struct gdi_info *outp, char const *path) {
     unsigned track_count = 0;
     struct string whole_file_txt;
     struct gdi_track *tracks = NULL;
@@ -205,7 +213,7 @@ void parse_gdi(struct gdi_info *outp, char const *path) {
     outp->tracks = tracks;
 }
 
-void cleanup_gdi(struct gdi_info *info) {
+static void cleanup_gdi_info(struct gdi_info *info) {
     unsigned track_no;
 
     for (track_no = 0; track_no < info->n_tracks; track_no++) {
@@ -223,7 +231,7 @@ static bool gdi_validate_fmt(struct gdi_info const *info) {
     return info->n_tracks >= 3;
 }
 
-void print_gdi(struct gdi_info const *gdi) {
+static void print_gdi(struct gdi_info const *gdi) {
     LOG_INFO("%u\n", gdi->n_tracks);
 
     unsigned track_no;
@@ -298,6 +306,9 @@ static void mount_gdi_cleanup(struct mount *mount) {
     for (track_no = 0; track_no < state->meta.n_tracks; track_no++)
         fclose(state->track_streams[track_no]);
     free(state->track_streams);
+
+    cleanup_gdi_info(&state->meta);
+
     free(state);
 }
 
