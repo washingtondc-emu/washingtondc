@@ -56,12 +56,15 @@ static bool gdi_validate_fmt(struct gdi_info const *info);
 
 static int mount_gdi_get_meta(struct mount *mount, struct mount_meta *meta);
 
+static unsigned mount_gdi_get_leadout(struct mount *mount);
+
 static struct mount_ops gdi_mount_ops = {
     .session_count = mount_gdi_session_count,
     .read_toc = mount_gdi_read_toc,
     .read_sector = mount_read_sector,
     .cleanup = mount_gdi_cleanup,
-    .get_meta = mount_gdi_get_meta
+    .get_meta = mount_gdi_get_meta,
+    .get_leadout = mount_gdi_get_leadout
 };
 
 /* enforce sane limits - MAX_TRACKS might need to be bigger tbh */
@@ -428,4 +431,16 @@ static int mount_gdi_get_meta(struct mount *mount, struct mount_meta *meta) {
     memcpy(meta->title, buffer + 128, MOUNT_META_TITLE_LEN);
 
     return 0;
+}
+
+static unsigned mount_gdi_get_leadout(struct mount *mount) {
+    struct gdi_mount const *gdi_mount = (struct gdi_mount const*)mount->state;
+    unsigned n_tracks = gdi_mount->meta.n_tracks;
+    struct gdi_track const *last_track = gdi_mount->meta.tracks + (n_tracks - 1);
+    unsigned sector_size = last_track->sector_size;
+
+    unsigned last_track_len = gdi_mount->track_lengths[n_tracks - 1] / sector_size;
+    unsigned last_track_offs = cdrom_fad_to_lba(last_track->fad_start);
+
+    return last_track_len + last_track_offs;
 }

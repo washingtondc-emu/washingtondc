@@ -147,3 +147,7 @@ int mount_get_meta(struct mount_meta *meta) {
 
     return img.ops->get_meta(&img, meta);
 }
+
+unsigned mount_get_leadout(void) {
+    return img.ops->get_leadout(&img);
+}

@@ -217,18 +217,19 @@ struct gdrom_bufq_node {
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#define GDROM_PKT_TEST_UNIT  0x00
-#define GDROM_PKT_REQ_STAT   0x10
-#define GDROM_PKT_REQ_MODE   0x11
-#define GDROM_PKT_SET_MODE   0x12
-#define GDROM_PKT_REQ_ERROR  0x13
-#define GDROM_PKT_READ_TOC   0x14
-#define GDROM_PKT_READ       0x30
-#define GDROM_PKT_PLAY       0x20
-#define GDROM_PKT_SEEK       0x21
-#define GDROM_PKT_SUBCODE    0x40
-#define GDROM_PKT_START_DISK 0x70
-#define GDROM_PKT_UNKNOWN_71 0x71
+#define GDROM_PKT_TEST_UNIT   0x00
+#define GDROM_PKT_REQ_STAT    0x10
+#define GDROM_PKT_REQ_MODE    0x11
+#define GDROM_PKT_SET_MODE    0x12
+#define GDROM_PKT_REQ_ERROR   0x13
+#define GDROM_PKT_READ_TOC    0x14
+#define GDROM_PKT_REQ_SESSION 0x15
+#define GDROM_PKT_READ        0x30
+#define GDROM_PKT_PLAY        0x20
+#define GDROM_PKT_SEEK        0x21
+#define GDROM_PKT_SUBCODE     0x40
+#define GDROM_PKT_START_DISK  0x70
+#define GDROM_PKT_UNKNOWN_71  0x71
 
 // Empty out the bufq and free resources.
 static void bufq_clear(struct gdrom_ctxt *ctxt);
@@ -264,6 +265,8 @@ static void gdrom_input_read_subcode_packet(struct gdrom_ctxt *gdrom);
 
 static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom);
 static void gdrom_input_play_packet(struct gdrom_ctxt *gdrom);
+
+static void gdrom_input_req_session_packet(struct gdrom_ctxt *gdrom);
 
 /* struct gdrom_ctxt gdrom; */
 
@@ -643,6 +646,9 @@ static void gdrom_input_packet(struct gdrom_ctxt *gdrom) {
     case GDROM_PKT_PLAY:
         gdrom_input_play_packet(gdrom);
         break;
+    case GDROM_PKT_REQ_SESSION:
+        gdrom_input_req_session_packet(gdrom);
+        break;
     default:
         error_set_feature("unknown GD-ROM packet command");
         error_set_gdrom_command((unsigned)gdrom->pkt_buf[0]);
@@ -825,6 +831,73 @@ static void gdrom_input_req_error_packet(struct gdrom_ctxt *gdrom) {
     }
 
     gdrom_state_transfer_pio_read(gdrom, byte_count);
+}
+
+static DEF_ERROR_INT_ATTR(session_number)
+
+static void gdrom_input_req_session_packet(struct gdrom_ctxt *gdrom) {
+    unsigned session_no = gdrom->pkt_buf[2];
+    unsigned alloc_len = gdrom->pkt_buf[4];
+
+    bufq_clear(gdrom);
+
+    unsigned tno, fad;
+    if (session_no == 0) {
+        struct mount_toc toc;
+        mount_read_toc(&toc, 0);
+        fad = mount_get_leadout() + 150;
+
+        /*
+         * GD discs only have one session according to the req_ession packet
+         * command.  This seems incorrect since they obviously have two
+         * sessions, but I've verified this behavior on hardware.
+         *
+         * MIL-CDs have two sessions as expected.
+         */
+        tno = 1;
+    } else {
+        if (session_no != 1) {
+            /*
+             * I think the correct behavior in this situation is to never raise
+             * the DRQ flag.  I'm not sure what exactly happens, I just know
+             * that it never raises the DRQ flag.
+             *
+             * Whatever the case, it obviously doesn't work on real hardware so
+             * I can't imagine that there are any games that try to do this.
+             */
+            error_set_feature("REQ_SESSION packet for non-existant sessions");
+            error_set_session_number(session_no);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        struct mount_toc toc;
+        session_no -= 1;
+        mount_read_toc(&toc, session_no);
+
+        tno = toc.first_track;
+        fad = toc.tracks[toc.first_track - 1].fad;
+    }
+
+    uint8_t reply[6] = {
+        gdrom_get_drive_state(),
+        0,
+        tno,
+        (fad >> 16) & 0xff,
+        (fad >> 8) & 0xff,
+        fad & 0xff
+    };
+
+    struct gdrom_bufq_node *node =
+        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+    if (!node)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+
+    memcpy(node->dat, reply, sizeof(reply));
+    node->idx = 0;
+    node->len = alloc_len < 6 ? alloc_len : 6;
+    fifo_push(&gdrom->bufq, &node->fifo_node);
+
+    gdrom_state_transfer_pio_read(gdrom, node->len);
 }
 
 /*

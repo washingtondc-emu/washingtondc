@@ -111,6 +111,9 @@ struct mount_ops {
     void (*cleanup)(struct mount*);
 
     int (*get_meta)(struct mount*, struct mount_meta*);
+
+    /* returns leadout for the whole disc in terms of lba */
+    unsigned (*get_leadout)(struct mount*);
 };
 
 // mount an image as the current disc in the virtual gdrom drive
@@ -130,6 +133,8 @@ int mount_read_toc(struct mount_toc* out, unsigned session);
 int mount_read_sectors(void *buf_out, unsigned fad, unsigned sector_count);
 
 int mount_get_meta(struct mount_meta *meta);
+
+unsigned mount_get_leadout(void);
 
 /*
  * size of an actual CD-ROM Table-Of-Contents structure.  This is the length of
