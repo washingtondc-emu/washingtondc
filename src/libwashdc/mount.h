@@ -98,11 +98,14 @@ struct mount_meta {
     char title[MOUNT_META_TITLE_LEN + 1];
 };
 
+#define MOUNT_LD_REGION 0
+#define MOUNT_HD_REGION 1
+
 struct mount_ops {
     // return the number of sessions on the disc (shouldn't be more than 2)
     unsigned(*session_count)(struct mount*);
 
-    // read in the TOC for the given session; return 0 on success or nonzero on error
+    // read in the TOC for the given density region; return 0 on success or nonzero on error
     int(*read_toc)(struct mount*, struct mount_toc*, unsigned);
 
     int(*read_sector)(struct mount*, void*, unsigned);
@@ -114,6 +117,9 @@ struct mount_ops {
 
     /* returns leadout for the whole disc in terms of lba */
     unsigned (*get_leadout)(struct mount*);
+
+    // return true if this disc has a high-density region
+    bool (*has_hd_region)(struct mount*);
 };
 
 // mount an image as the current disc in the virtual gdrom drive
@@ -135,6 +141,8 @@ int mount_read_sectors(void *buf_out, unsigned fad, unsigned sector_count);
 int mount_get_meta(struct mount_meta *meta);
 
 unsigned mount_get_leadout(void);
+
+bool mount_has_hd_region(void);
 
 /*
  * size of an actual CD-ROM Table-Of-Contents structure.  This is the length of

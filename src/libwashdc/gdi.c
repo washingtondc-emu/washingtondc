@@ -58,13 +58,16 @@ static int mount_gdi_get_meta(struct mount *mount, struct mount_meta *meta);
 
 static unsigned mount_gdi_get_leadout(struct mount *mount);
 
+static bool mount_gdi_has_hd_region(struct mount *mount);
+
 static struct mount_ops gdi_mount_ops = {
     .session_count = mount_gdi_session_count,
     .read_toc = mount_gdi_read_toc,
     .read_sector = mount_read_sector,
     .cleanup = mount_gdi_cleanup,
     .get_meta = mount_gdi_get_meta,
-    .get_leadout = mount_gdi_get_leadout
+    .get_leadout = mount_gdi_get_leadout,
+    .has_hd_region = mount_gdi_has_hd_region
 };
 
 /* enforce sane limits - MAX_TRACKS might need to be bigger tbh */
@@ -299,22 +302,18 @@ static void mount_gdi_cleanup(struct mount *mount) {
 }
 
 static unsigned mount_gdi_session_count(struct mount *mount) {
-    return 2;
+    return 1;
 }
 
 static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
-                              unsigned session_no) {
+                              unsigned region) {
     struct gdi_mount const *gdi_mount = (struct gdi_mount const*)mount->state;
     struct gdi_info const *info = &gdi_mount->meta;
 
-    // GD-ROM disks have two sessions
-    if (session_no > 1)
-        return -1;
-
     memset(toc->tracks, 0, sizeof(toc->tracks));
 
-    if (session_no == 0) {
-        // session 0 contains the first two tracks
+    if (region == MOUNT_LD_REGION) {
+        // the LD region contains the first two tracks
 
         // track 1
         toc->tracks[0].fad = info->tracks[0].fad_start;
@@ -331,7 +330,7 @@ static int mount_gdi_read_toc(struct mount *mount, struct mount_toc *toc,
         toc->first_track = 1;
         toc->last_track = 2;
     } else {
-        // session 1 contains all tracks but the first two
+        // the HD region contains all tracks but the first two
 
         unsigned src_track_no;
         for (src_track_no = 3; src_track_no <= info->n_tracks; src_track_no++) {
@@ -443,4 +442,8 @@ static unsigned mount_gdi_get_leadout(struct mount *mount) {
     unsigned last_track_offs = cdrom_fad_to_lba(last_track->fad_start);
 
     return last_track_len + last_track_offs;
+}
+
+static bool mount_gdi_has_hd_region(struct mount *mount) {
+    return true;
 }

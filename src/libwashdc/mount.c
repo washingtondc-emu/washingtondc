@@ -62,11 +62,12 @@ unsigned mount_session_count(void) {
     RAISE_ERROR(ERROR_INTEGRITY);
 }
 
-int mount_read_toc(struct mount_toc* out, unsigned session) {
+int mount_read_toc(struct mount_toc* out, unsigned region) {
     if (mounted) {
-        if (session < mount_session_count() && img.ops->read_toc)
-            return img.ops->read_toc(&img, out, session);
-        return -1;
+        if ((region == MOUNT_HD_REGION && !mount_has_hd_region()) ||
+            !img.ops->read_toc)
+            return -1;
+        return img.ops->read_toc(&img, out, region);
     } else {
         error_set_wtf("calling mount_read_toc when there's nothing mounted");
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -150,4 +151,8 @@ int mount_get_meta(struct mount_meta *meta) {
 
 unsigned mount_get_leadout(void) {
     return img.ops->get_leadout(&img);
+}
+
+bool mount_has_hd_region(void) {
+    return img.ops->has_hd_region(&img);
 }

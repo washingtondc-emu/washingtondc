@@ -845,7 +845,7 @@ static void gdrom_input_req_session_packet(struct gdrom_ctxt *gdrom) {
     if (session_no == 0) {
         struct mount_toc toc;
         mount_read_toc(&toc, 0);
-        fad = mount_get_leadout() + 150;
+        fad = cdrom_lba_to_fad(mount_get_leadout());
 
         /*
          * GD discs only have one session according to the req_ession packet
@@ -872,7 +872,7 @@ static void gdrom_input_req_session_packet(struct gdrom_ctxt *gdrom) {
 
         struct mount_toc toc;
         session_no -= 1;
-        mount_read_toc(&toc, session_no);
+        mount_read_toc(&toc, 0);
 
         tno = toc.first_track;
         fad = toc.tracks[toc.first_track - 1].fad;
@@ -1026,18 +1026,18 @@ static void gdrom_input_req_mode_packet(struct gdrom_ctxt *gdrom) {
 }
 
 static void gdrom_input_read_toc_packet(struct gdrom_ctxt *gdrom) {
-    unsigned session = gdrom->pkt_buf[1] & 1;
+    unsigned region = gdrom->pkt_buf[1] & 1;
     unsigned len = (((unsigned)gdrom->pkt_buf[3]) << 8) | gdrom->pkt_buf[4];
 
     GDROM_TRACE("GET_TOC command received\n");
     GDROM_TRACE("request to read %u bytes from the Table of Contents for "
-                "Session %u\n", len, session);
+                "region %s\n", len, region ? "HIGH_DENSITY" : "LOW_DENSITY");
 
     struct mount_toc toc;
     memset(&toc, 0, sizeof(toc));
 
     // TODO: call mount_check and signal an error if nothing is mounted
-    mount_read_toc(&toc, session);
+    mount_read_toc(&toc, region);
 
     bufq_clear(gdrom);
     struct gdrom_bufq_node *node =
