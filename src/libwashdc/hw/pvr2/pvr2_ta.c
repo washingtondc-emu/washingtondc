@@ -915,7 +915,7 @@ inline static void input_poly_fifo(struct pvr2 *pvr2, uint32_t byte) {
 static void dump_fifo(struct pvr2 *pvr2) {
 #ifdef ENABLE_LOG_DEBUG
     unsigned idx;
-    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo;
+    uint32_t const *ta_fifo32 = pvr2->ta.ta_fifo32;
     LOG_DBG("Dumping FIFO: %u bytes\n", pvr2->ta.ta_fifo_word_count*4);
     for (idx = 0; idx < pvr2->ta.ta_fifo_word_count; idx++)
         LOG_DBG("\t0x%08x\n", (unsigned)ta_fifo32[idx]);
