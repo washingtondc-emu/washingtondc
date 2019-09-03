@@ -201,8 +201,10 @@ int main(int argc, char **argv) {
         switch (opt) {
         case 'g':
             enable_debugger = true;
-            if (strcmp(optarg, "washdbg") == 0)
+            if (strcmp(optarg, "washdbg") == 0) {
                 enable_washdbg = true;
+                enable_debugger = false;
+            }
             break;
         case 'd':
             boot_direct = true;
