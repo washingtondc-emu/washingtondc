@@ -465,17 +465,25 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
     unsigned bytes_transmitted = 0;
     unsigned bytes_to_transmit = gdrom->dma_len_reg;
     unsigned addr = gdrom->dma_start_addr_reg;
+    unsigned addr_orig = addr;
+
+    struct fifo_node *fifo_node = fifo_peek(&gdrom->bufq);
 
     while (bytes_transmitted < bytes_to_transmit) {
-        struct fifo_node *fifo_node = fifo_pop(&gdrom->bufq);
-
-        if (!fifo_node)
+        if (!fifo_node) {
+            LOG_ERROR("GD-ROM underflow\n");
             goto done;
+        }
 
         struct gdrom_bufq_node *bufq_node =
             &FIFO_DEREF(fifo_node, struct gdrom_bufq_node, fifo_node);
 
-        unsigned chunk_sz = bufq_node->len;
+#ifdef INVARIANTS
+        if (bufq_node->idx >= bufq_node->len)
+            RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+        unsigned chunk_sz = bufq_node->len - bufq_node->idx;
 
         if ((chunk_sz + bytes_transmitted) > bytes_to_transmit)
             chunk_sz = bytes_to_transmit - bytes_transmitted;
@@ -487,29 +495,42 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
          * bytes_transmitted will still count the full length of chunk_sz
          * because that seems like the logical behavior here.  I have not run
          * any hardware tests to confirm that this is correct.
+         *
+         * For now we raise unimplemented errors when this happens because I
+         * don't have any known testcases.
          */
         if (addr < gdrom_dma_prot_top(gdrom)) {
             // don't do this chunk if the end is below gdrom_dma_prot_top
-            if ((chunk_sz + addr) < gdrom_dma_prot_top(gdrom))
-                goto chunk_finished;
-
-            chunk_sz -= (gdrom_dma_prot_top(gdrom) - addr);
-            addr = gdrom_dma_prot_top(gdrom);
+            error_set_feature("the GD-ROM DMA protection register");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
         if ((addr + chunk_sz - 1) > gdrom_dma_prot_bot(gdrom)) {
-            chunk_sz = gdrom_dma_prot_bot(gdrom) - addr + 1;
+            error_set_feature("the GD-ROM DMA protection register");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
         sh4_dmac_transfer_to_mem(dreamcast_get_cpu(), addr, chunk_sz,
-                                 1, bufq_node->dat);
+                                 1, bufq_node->dat + bufq_node->idx);
+
+        bufq_node->idx += chunk_sz;
+
+        if (bufq_node->idx < bufq_node->len)
+            continue;
 
     chunk_finished:
+        fifo_pop(&gdrom->bufq);
         addr += chunk_sz;
         free(bufq_node);
+        fifo_node = fifo_peek(&gdrom->bufq);
     }
 
 done:
+    if (bytes_transmitted)
+        GDROM_TRACE("GD-ROM DMA transfer %u bytes to %08X\n",
+                    bytes_transmitted, addr_orig);
+
+
     // set GD_LEND, etc here
     gdrom->gdlend_reg = bytes_transmitted;
     gdrom->dma_start_reg = 0;
