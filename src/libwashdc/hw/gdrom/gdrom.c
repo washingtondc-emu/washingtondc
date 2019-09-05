@@ -1097,14 +1097,28 @@ static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom) {
         (((unsigned)gdrom->pkt_buf[3]) << 8) |
         (((unsigned)gdrom->pkt_buf[4]) << 24);
 
-    if (param_tp == 4) {
-        LOG_INFO("%s - Pausing playback\n", __func__);
-    } else {
-        error_set_gdrom_seek_param_tp(param_tp);
-        error_set_gdrom_seek_seek_pt(seek_pt);
-        error_set_gdrom_command((unsigned)gdrom->pkt_buf[0]);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    char const *param_tp_str;
+    switch (param_tp) {
+    case 1:
+        param_tp_str = "FAD";
+        break;
+    case 2:
+        param_tp_str = "MSF";
+        break;
+    case 3:
+        param_tp_str = "STOP";
+        break;
+    case 4:
+        param_tp_str = "PAUSE";
+        break;
+    default:
+        param_tp_str = "UNKNOWN/CORRUPT";
     }
+
+    // CDDA playback isn't implemented yet, so we can't do anything here.
+    LOG_INFO("%s - CDDA SEEK command received.\n", __func__);
+    LOG_INFO("\tparam_tp = %s (%u)\n", param_tp_str, param_tp);
+    LOG_INFO("\tseek_pt = %06X\n", seek_pt);
 
     gdrom_delayed_processing(gdrom);
 }
