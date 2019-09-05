@@ -256,6 +256,9 @@ int main(int argc, char **argv) {
         case 'w':
             launch_wizard = true;
             break;
+        default:
+            print_usage(cmd);
+            exit(0);
         }
     }
 
