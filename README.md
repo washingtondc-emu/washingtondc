@@ -37,20 +37,28 @@ DEEP_SYSCALL_TRACE=On/Off(default) - log system calls made by guest software.
 src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin [options] [-d IP.BIN] [-u 1ST_READ.BIN]
 
 OPTIONS:
--b <bios_path> path to dreamcast boot ROM
--f <flash_path> path to dreamcast flash ROM image
--g enable remote GDB backend via TCP port 1999
--d enable direct boot <IP.BIN path>
--u skip IP.BIN and boot straight to 1ST_READ.BIN <1ST_READ.BIN>
--m <gdi path> path to .gdi file which will be mounted in the GD-ROM drive
--n don't do native memory inlining when the jit is enabled
--s path to dreamcast system call image (only needed for direct boot)
--t establish serial server over TCP port 1998
--h display this message and exit
--p disable the dynamic recompiler and enable the interpreter instead
--j disable the x86_64 backend and use the JIT IL interpreter instead
--x enable the x86_64 dynamic recompiler backend (this is enabled by default)
--w enable the experimental WashDbg debugger via text stream over TCP port 1999
+-b <bios_path>           path to dreamcast boot ROM
+-f <flash_path>          path to dreamcast flash ROM image
+-g gdb                   enable remote GDB backend on tcp port 1999
+-g                       washdbg enable remote WashDbg backend on tcp port 1999
+-d                       enable direct boot <IP.BIN path>
+-u                       skip IP.BIN and boot straight to
+                             1ST_READ.BIN <1ST_READ.BIN>
+-m                       <gdi path> path to .gdi file which will be mounted in
+                             the GD-ROM drive
+-n                       don't do native memory inlining when the jit is enabled
+-s                       path to dreamcast system call image (only needed for
+                             direct boot)
+-t                       establish serial server over TCP port 1998
+-h                       display this message and exit
+-p                       disable the dynamic recompiler and enable the
+                             interpreter instead
+-j                       disable the x86_64 backend and use the JIT IL
+                             interpreter instead
+-x                       enable the x86_64 dynamic recompiler backend (this is
+                             enabled by default)
+-w                       enable the experimental WashDbg debugger via text
+                             stream over TCP port 1999
 
 ```
 The emulator currently only supports one controller, and the controls cannot be
