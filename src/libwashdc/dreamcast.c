@@ -1015,7 +1015,7 @@ static bool run_to_next_sh4_event_jit(void *ctxt) {
     reg32_t newpc = sh4->reg[SH4_REG_PC];
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
 
-    while (tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
+    do {
         addr32_t blk_addr = newpc;
         struct cache_entry *ent = code_cache_find(blk_addr);
 
@@ -1036,7 +1036,7 @@ static bool run_to_next_sh4_event_jit(void *ctxt) {
             intp_blk->cycle_count;
         clock_set_cycle_stamp(&sh4_clock, cycles_after);
         tgt_stamp = clock_target_stamp(&sh4_clock);
-    }
+    } while (tgt_stamp > clock_cycle_stamp(&sh4_clock));
     if (clock_cycle_stamp(&sh4_clock) > tgt_stamp)
         clock_set_cycle_stamp(&sh4_clock, tgt_stamp);
 
