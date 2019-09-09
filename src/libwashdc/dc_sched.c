@@ -174,7 +174,7 @@ void clock_set_ptrs_priv(struct dc_clock *clock, dc_cycle_stamp_t *ptrs) {
         clock->ptrs_priv = ptrs;
     } else {
         memcpy(clock->priv, clock->ptrs_priv, sizeof(clock->priv));
-        clock->ptrs_priv = &clock->priv;
+        clock->ptrs_priv = clock->priv;
     }
 }
 

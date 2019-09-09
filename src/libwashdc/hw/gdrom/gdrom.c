@@ -465,7 +465,6 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
     unsigned bytes_transmitted = 0;
     unsigned bytes_to_transmit = gdrom->dma_len_reg;
     unsigned addr = gdrom->dma_start_addr_reg;
-    unsigned addr_orig = addr;
 
     struct fifo_node *fifo_node = fifo_peek(&gdrom->bufq);
 
@@ -518,7 +517,6 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
         if (bufq_node->idx < bufq_node->len)
             continue;
 
-    chunk_finished:
         fifo_pop(&gdrom->bufq);
         addr += chunk_sz;
         free(bufq_node);

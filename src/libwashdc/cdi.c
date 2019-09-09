@@ -155,7 +155,8 @@ bool cdi_image_is_valid( FILE *f )
 
     fseek( f, -8, SEEK_END );
     len = ftell(f)+8;
-    fread( &trail, sizeof(trail), 1, f );
+    if (fread( &trail, sizeof(trail), 1, f ) != 1)
+        return false;
     if( trail.header_offset >= len ||
             trail.header_offset == 0 )
         return false;
@@ -199,80 +200,83 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
     struct cdi_trailer trail;
     char marker[20];
 
+    memset(outp, 0, sizeof(*outp));
+
     FILE *f = fopen(path, "rb");
 
     if (!cdi_image_is_valid(f))
-        RAISE_ERROR(ERROR_FILE_IO);
+        goto on_error;
 
     if (!f)
         return -1;
     fseek( f, -8, SEEK_END );
     len = ftell(f)+8;
-    fread( &trail, sizeof(trail), 1, f );
+    if (fread( &trail, sizeof(trail), 1, f ) != 1)
+        goto on_error;
     if( trail.header_offset >= len ||
-        trail.header_offset == 0 ) {
-        LOG_ERROR( "Invalid CDI image" );
-        fclose(f);
-        return -1;
-    }
+        trail.header_offset == 0 )
+        goto on_error;
 
     if( trail.cdi_version != CDI_V2_ID && trail.cdi_version != CDI_V3_ID &&
-            trail.cdi_version != CDI_V35_ID ) {
-        LOG_ERROR( "Invalid CDI image" );
-        fclose(f);
-        return -1;
-    }
+        trail.cdi_version != CDI_V35_ID )
+        goto on_error;
 
     if( trail.cdi_version == CDI_V35_ID ) {
         fseek( f, -(long)trail.header_offset, SEEK_END );
     } else {
         fseek( f, trail.header_offset, SEEK_SET );
     }
-    fread( &session_count, sizeof(session_count), 1, f );
+    if (fread( &session_count, sizeof(session_count), 1, f ) != 1)
+        goto on_error;
 
-    outp->n_sessions = session_count;
     outp->sessions = calloc(session_count, sizeof(outp->sessions[0]));
+    if (!outp->sessions)
+        goto on_error;
+    outp->n_sessions = session_count;
 
     for( i=0; i< session_count; i++ ) {        
-        fread( &track_count, sizeof(track_count), 1, f );
-        if( (i != session_count-1 && track_count < 1) || track_count > 99 ) {
-            LOG_ERROR("Invalid number of tracks (%d), bad cdi image", track_count);
-            fclose(f);
-            return -1;
-        }
+        if (fread( &track_count, sizeof(track_count), 1, f ) != 1)
+            goto on_error;
+        if( (i != session_count-1 && track_count < 1) || track_count > 99 )
+            goto on_error;
         if( track_count + total_tracks > 99 ) {
             LOG_ERROR("Invalid number of tracks in disc, bad cdi image" );
-            fclose(f);
-            return -1;
+            goto on_error;
         }
         outp->sessions[i].tracks = calloc(track_count, sizeof(outp->sessions[i].tracks[0]));
+        if (!outp->sessions[i].tracks)
+            goto on_error;
         outp->sessions[i].first_track = total_tracks;
         outp->sessions[i].n_tracks = track_count;
         for( j=0; j<track_count; j++ ) {
             struct cdi_track_data trk;
             uint32_t new_fmt = 0;
             uint8_t fnamelen = 0;
-            fread( &new_fmt, sizeof(new_fmt), 1, f );
+            if (fread( &new_fmt, sizeof(new_fmt), 1, f ) != 1)
+                goto on_error;
             if( new_fmt != 0 ) { /* Additional data 3.00.780+ ?? */
                 fseek( f, 8, SEEK_CUR ); /* Skip */
             }
-            fread( marker, 20, 1, f );
+            if (fread( marker, 20, 1, f ) != 1)
+                goto on_error;
             if( memcmp( marker, TRACK_START_MARKER, 20) != 0 ) {
                 LOG_ERROR( "Track start marker not found, error reading cdi image" );
-                fclose(f);
-                return -1;
+                goto on_error;
             }
             fseek( f, 4, SEEK_CUR );
-            fread( &fnamelen, 1, 1, f );
+            if (fread( &fnamelen, 1, 1, f ) != 1)
+                goto on_error;
             fseek( f, (int)fnamelen, SEEK_CUR ); /* skip over the filename */
             fseek( f, 19, SEEK_CUR );
-            fread( &new_fmt, sizeof(new_fmt), 1, f );
+            if (fread( &new_fmt, sizeof(new_fmt), 1, f ) != 1)
+                goto on_error;
             if( new_fmt == 0x80000000 ) {
                 fseek( f, 10, SEEK_CUR );
             } else {
                 fseek( f, 2, SEEK_CUR );
             }
-            fread( &trk, sizeof(trk), 1, f );
+            if (fread( &trk, sizeof(trk), 1, f ) != 1)
+                goto on_error;
             outp->sessions[i].tracks[j].lba= trk.start_lba;
             unsigned sector_count = trk.length;
             outp->sessions[i].tracks[j].n_sectors = sector_count;
@@ -326,7 +330,8 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
             if( trail.cdi_version != CDI_V2_ID ) {
                 uint32_t extmarker;
                 fseek( f, 5, SEEK_CUR );
-                fread( &extmarker, sizeof(extmarker), 1, f);
+                if (fread( &extmarker, sizeof(extmarker), 1, f) != 1)
+                    goto on_error;
                 if( extmarker == 0xFFFFFFFF )  {
                     fseek( f, 78, SEEK_CUR );
                 }
@@ -343,6 +348,17 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
     cdi_dump(outp);
 
     return 0;
+
+ on_error:
+    LOG_ERROR( "Invalid CDI image" );
+
+    unsigned sess_idx;
+    for (sess_idx = 0; sess_idx < outp->n_sessions; sess_idx++)
+        free(outp->sessions[sess_idx].tracks);
+
+    free(outp->sessions);
+    fclose(f);
+    return -1;
 }
 
 static unsigned cdi_get_session_count(struct mount *mount) {
@@ -472,10 +488,11 @@ static int cdi_read_sector(struct mount *mount, void *buf, unsigned fad) {
                 unsigned byte_offset = get_sector_size(track->mode) * lba_rel
                     + get_sector_data_offset(track->mode) + track->offset;
                 LOG_INFO("\tbyte_offset is %X\n", byte_offset);
-                LOG_INFO("\mode is %X\n", track->mode);
+                LOG_INFO("\tmode is %X\n", track->mode);
 
                 fseek(info->fp, byte_offset, SEEK_SET);
-                fread(buf, 2048, 1, info->fp);
+                if (fread(buf, 2048, 1, info->fp) != 1)
+                    return -1;
                 return 0;
             }
         }

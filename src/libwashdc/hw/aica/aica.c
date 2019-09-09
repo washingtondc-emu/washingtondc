@@ -180,7 +180,9 @@ static void post_delay_raise_aica_sh4_int(struct SchedEvent *event);
 // If this is defined, WashingtonDC will panic on unrecognized AICA addresses.
 #define AICA_PEDANTIC
 
+#ifdef ENABLE_LOG_DEBUG
 static char const *aica_chan_reg_name(int idx);
+#endif
 
 static void aica_update_interrupts(struct aica *aica);
 
@@ -860,11 +862,13 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         uint32_t oct32 = (tmp & BIT_RANGE(11, 14)) >> 11;
         chan->octave = oct32;
 
+#ifdef ENABLE_LOG_DEBUG
         double sample_rate = (double)get_sample_rate_multiplier(chan) /
             (double)(1 << AICA_SAMPLE_POS_SHIFT);
 
         LOG_DBG("AICA channel %u sample_rate is %f oct %d fns 0x%04x\n",
                  chan_no, sample_rate, get_octave_signed(chan), chan->fns);
+#endif
         break;
     case AICA_CHAN_LFO_CTRL:
         memcpy(&tmp, src, sizeof(tmp));
@@ -1800,6 +1804,7 @@ static void post_delay_raise_aica_sh4_int(struct SchedEvent *event) {
     }
 }
 
+#ifdef ENABLE_LOG_DEBUG
 #define AICA_REG_NAME_CASE(reg) case (reg): return #reg
 static char const *aica_chan_reg_name(int idx) {
     static char tmp[32];
@@ -1828,6 +1833,7 @@ static char const *aica_chan_reg_name(int idx) {
         return tmp;
     }
 }
+#endif
 
 void aica_get_sndchan_stat(struct aica const *aica,
                            unsigned ch_no,

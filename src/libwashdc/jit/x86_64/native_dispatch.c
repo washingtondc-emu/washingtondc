@@ -43,14 +43,12 @@ static unsigned const tmp_reg_1 = REG_NONVOL1;
 static unsigned const native_reg = REG_NONVOL2;
 static unsigned const code_cache_tbl_ptr_reg = REG_NONVOL3;
 static unsigned const code_hash_reg = REG_NONVOL4;
-static unsigned const func_reg = REG_RET;
 
 // for native_check_cycles
 static unsigned const sched_tgt_reg = REG_NONVOL0;
 static unsigned const countdown_reg = REG_NONVOL0;
 static unsigned const cycle_count_reg = NATIVE_CHECK_CYCLES_CYCLE_COUNT_REG;
 static unsigned const jump_reg = NATIVE_CHECK_CYCLES_JUMP_REG;
-static unsigned const cycle_stamp_reg = REG_RET;
 
 static void native_dispatch_emit(struct native_dispatch_meta const *meta);
 
@@ -156,8 +154,8 @@ static void create_profile_code(struct native_dispatch_meta *meta) {
 
     x86asm_mov_imm64_reg64((uintptr_t)meta->ctx_ptr, REG_ARG0);
     x86asm_movq_disp8_reg_reg(jit_profile_offs, cachep_reg, REG_ARG1);
-    x86asm_mov_imm64_reg64((uintptr_t)(void*)meta->profile_notify, func_reg);
-    x86asm_jmpq_reg64(func_reg); // tail-call elimination
+    x86asm_mov_imm64_reg64((uintptr_t)(void*)meta->profile_notify, REG_RET);
+    x86asm_jmpq_reg64(REG_RET); // tail-call elimination
 }
 #endif
 

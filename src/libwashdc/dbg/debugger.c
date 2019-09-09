@@ -294,10 +294,10 @@ int debug_remove_break(enum dbg_context_id id, addr32_t addr) {
 
 // these functions return 0 on success, nonzero on failure
 int debug_add_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
-    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to add read-watchpoint at 0x%08x\n", (unsigned)addr);
 
 #ifdef ENABLE_WATCHPOINTS
+    struct debug_context *ctx = dbg.contexts + id;
     for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++) {
         struct watchpoint *wp = ctx->r_watchpoints + idx;
         if (!wp->enabled) {
@@ -316,10 +316,10 @@ int debug_add_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
 }
 
 int debug_remove_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
-    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to remove read-watchpoint at 0x%08x\n", (unsigned)addr);
 
 #ifdef ENABLE_WATCHPOINTS
+    struct debug_context *ctx = dbg.contexts + id;
     for (unsigned idx = 0; idx < DEBUG_N_R_WATCHPOINTS; idx++) {
         struct watchpoint *wp = ctx->r_watchpoints + idx;
         if (wp->enabled && wp->addr == addr && wp->len == len) {
@@ -336,10 +336,10 @@ int debug_remove_r_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
 
 // these functions return 0 on success, nonzer on failure
 int debug_add_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
-    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to add write-watchpoint at 0x%08x\n", (unsigned)addr);
 
 #ifdef ENABLE_WATCHPOINTS
+    struct debug_context *ctx = dbg.contexts + id;
     for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++) {
         struct watchpoint *wp = ctx->w_watchpoints + idx;
         if (!wp->enabled) {
@@ -358,10 +358,10 @@ int debug_add_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
 }
 
 int debug_remove_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
-    struct debug_context *ctx = dbg.contexts + id;
     DBG_TRACE("request to remove write-watchpoint at 0x%08x\n", (unsigned)addr);
 
 #ifdef ENABLE_WATCHPOINTS
+    struct debug_context *ctx = dbg.contexts + id;
     for (unsigned idx = 0; idx < DEBUG_N_W_WATCHPOINTS; idx++) {
         struct watchpoint *wp = ctx->w_watchpoints + idx;
         if (wp->enabled && wp->addr == addr && wp->len == len) {

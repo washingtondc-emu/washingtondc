@@ -35,7 +35,7 @@
 
 static uint32_t trans_bind_washdc_to_maple(uint32_t wash);
 static int trans_axis_washdc_to_maple(int axis);
-static struct washdc_hostfile_api *hostfile_api;
+static struct washdc_hostfile_api const *hostfile_api;
 
 static enum dc_boot_mode translate_boot_mode(enum washdc_boot_mode mode) {
     switch (mode) {

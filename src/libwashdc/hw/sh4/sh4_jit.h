@@ -94,7 +94,6 @@ static void sh4_jit_profile_notify(void *cpu, struct jit_profile_per_block *blk_
 static inline void
 sh4_jit_compile_native(void *cpu, struct native_dispatch_meta const *meta,
                        struct jit_code_block *jit_blk, uint32_t pc) {
-    struct Sh4 *sh4 = (struct Sh4*)cpu;
     struct il_code_block il_blk;
     struct code_block_x86_64 *blk = &jit_blk->x86_64;
     struct sh4_jit_compile_ctx ctx = { .last_inst_type = SH4_GROUP_NONE,

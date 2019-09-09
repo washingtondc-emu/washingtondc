@@ -828,7 +828,6 @@ static bool run_to_next_arm7_event(void *ctxt) {
 #ifdef ENABLE_DEBUGGER
 static bool run_to_next_arm7_event_debugger(void *ctxt) {
     dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&arm7_clock);
-    bool exit_now;
 
     if (arm7.enabled) {
         debug_set_context(DEBUG_CONTEXT_ARM7);
