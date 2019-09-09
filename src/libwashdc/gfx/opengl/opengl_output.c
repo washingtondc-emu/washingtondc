@@ -32,14 +32,13 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
+#include "washdc/gfx/obj.h"
+#include "washdc/win.h"
+#include "washdc/config_file.h"
+
 #include "opengl_output.h"
 #include "opengl_renderer.h"
 #include "shader.h"
-#include "gfx/gfx.h"
-#include "gfx/gfx_obj.h"
-#include "log.h"
-#include "washdc/win.h"
-#include "washdc/config_file.h"
 
 static void init_poly();
 
@@ -202,8 +201,10 @@ opengl_video_update_framebuffer(int obj_handle,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
 
     if (!(obj->state & GFX_OBJ_STATE_TEX)) {
-        if (obj->dat_len < fb_read_width * fb_read_height * sizeof(uint32_t))
-            RAISE_ERROR(ERROR_INTEGRITY);
+        if (obj->dat_len < fb_read_width * fb_read_height * sizeof(uint32_t)) {
+            fprintf(stderr, "ERROR: INTEGRITY\n");
+            abort();
+        }
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_read_width, fb_read_height, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, obj->dat);

@@ -22,23 +22,24 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "dreamcast.h"
-#include "gfx/gfx_config.h"
-#include "gfx/gfx_tex_cache.h"
-#include "gfx/gfx.h"
-#include "log.h"
+#include "washdc/error.h"
+#include "washdc/gfx/config.h"
+#include "washdc/gfx/tex_cache.h"
+#include "washdc/gfx/def.h"
+#include "washdc/gfx/obj.h"
 #include "washdc/pix_conv.h"
 #include "washdc/config_file.h"
+
 #include "opengl_output.h"
 #include "opengl_target.h"
 #include "shader.h"
 #include "shader_cache.h"
-
 #include "opengl_renderer.h"
 
 #define POSITION_SLOT          0
@@ -357,7 +358,7 @@ static struct shader_cache_ent* create_shader(shader_key key) {
              * this ought to be impossible since SHADER_KEY_TEX_INST_MASK
              * is two bits
              */
-            LOG_ERROR("Unknown tex_inst %d\n", tex_inst);
+            fprintf(stderr, "Unknown tex_inst %d\n", tex_inst);
             tex_en = false;
         }
     }
@@ -372,7 +373,8 @@ static struct shader_cache_ent* create_shader(shader_key key) {
     struct shader_cache_ent *ent = shader_cache_add_ent(&shader_cache, key);
 
     if (!ent) {
-        LOG_ERROR("Failure to create shader cache for key 0x%08x\n!", (int)key);
+        fprintf(stderr, "Failure to create shader cache for key 0x%08x\n!",
+                (int)key);
         return NULL;
     }
 
@@ -650,15 +652,16 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
             int obj_handle = gfx_tex_cache_get(param->tex_idx)->obj_handle;
             glBindTexture(GL_TEXTURE_2D, obj_tex_array[obj_handle]);
         } else {
-            LOG_WARN("WARNING: attempt to bind invalid texture %u\n",
-                     (unsigned)param->tex_idx);
+            fprintf(stderr, "WARNING: attempt to bind invalid texture %u\n",
+                    (unsigned)param->tex_idx);
             glBindTexture(GL_TEXTURE_2D, 0);
         }
 
         switch (param->tex_filter) {
         case TEX_FILTER_TRILINEAR_A:
         case TEX_FILTER_TRILINEAR_B:
-            LOG_WARN("WARNING: trilinear filtering is not yet supported\n");
+            fprintf(stderr,
+                    "WARNING: trilinear filtering is not yet supported\n");
             // intentional fall-through
         case TEX_FILTER_NEAREST:
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -712,8 +715,8 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
 
     struct shader_cache_ent *shader_ent = fetch_shader(shader_cache_key);
     if (!shader_ent) {
-        LOG_ERROR("%s Failure to set render parameter: unable to find "
-                  "texture with key 0x%08x\n", __func__, (int)shader_cache_key);
+        fprintf(stderr, "%s Failure to set render parameter: unable to find "
+                "texture with key 0x%08x\n", __func__, (int)shader_cache_key);
         return;
     }
     glUseProgram(shader_ent->shader.shader_prog_obj);
@@ -752,7 +755,7 @@ static void opengl_renderer_draw_array(float const *verts, unsigned n_verts) {
 
             grp->avg_depth = avg_depth;
         } else {
-            LOG_ERROR("OPENGL GFX: OIT BUFFER OVERFLOW!!!\n");
+            fprintf(stderr, "OPENGL GFX: OIT BUFFER OVERFLOW!!!\n");
         }
         return;
     }

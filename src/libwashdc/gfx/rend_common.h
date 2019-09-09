@@ -30,60 +30,7 @@
 #define REND_COMMON_H_
 
 #include "gfx/gfx_il.h"
-
-struct rend_if {
-    void (*init)(void);
-
-    void (*cleanup)(void);
-
-    /*
-     * called to notify the renderer that it needs to update the given
-     * texture from the bound gfx_obj
-     */
-    void (*update_tex)(unsigned tex_obj);
-
-    /*
-     * called to notify the renderer that it needs to release the resources
-     * associated with the given texture.
-     */
-    void (*release_tex)(unsigned tex_obj);
-
-    // enable/disable blending
-    void (*set_blend_enable)(bool do_enable);
-
-    void (*set_rend_param)(struct gfx_rend_param const *param);
-
-    void (*set_screen_dim)(unsigned width, unsigned height);
-
-    void (*set_clip_range)(float clip_min, float clip_max);
-
-    void (*draw_array)(float const *verts, unsigned n_verts);
-
-    void (*clear)(float const bgcolor[4]);
-
-    void (*begin_sort_mode)(void);
-
-    void (*end_sort_mode)(void);
-
-    void (*target_bind_obj)(int handle);
-
-    void (*target_unbind_obj)(int handle);
-
-    void (*target_begin)(unsigned width, unsigned height, int tgt_handle);
-
-    void (*target_end)(int tgt_handle);
-
-    int (*video_get_fb)(int *obj_handle_out, unsigned *width_out,
-                        unsigned *height_out, bool *flip_out);
-
-    void (*video_present)(void);
-
-    void (*video_new_framebuffer)(int obj_handle,
-                                  unsigned fb_new_width,
-                                  unsigned fb_new_height, bool do_flip);
-
-    void (*video_toggle_filter)(void);
-};
+#include "washdc/gfx/gfx_all.h"
 
 // initialize and clean up the graphics renderer
 void rend_init(void);

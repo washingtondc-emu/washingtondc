@@ -29,10 +29,9 @@
 #include <GL/gl.h>
 
 #include "washdc/error.h"
-#include "log.h"
-#include "gfx/gfx_obj.h"
-#include "gfx/opengl/opengl_renderer.h"
+#include "washdc/gfx/obj.h"
 
+#include "opengl_renderer.h"
 #include "opengl_target.h"
 
 static GLuint fbo;
@@ -54,7 +53,7 @@ void opengl_target_init(void) {
 
 void opengl_target_begin(unsigned width, unsigned height, int tgt_handle) {
     if (tgt_handle < 0) {
-        LOG_ERROR("%s - no rendering target is bound\n", __func__);
+        fprintf(stderr, "%s - no rendering target is bound\n", __func__);
         return;
     }
 
@@ -107,22 +106,23 @@ void opengl_target_begin(unsigned width, unsigned height, int tgt_handle) {
 
     GLenum stat;
     if((stat = glCheckFramebufferStatus(GL_FRAMEBUFFER)) != GL_FRAMEBUFFER_COMPLETE) {
-        LOG_ERROR("%s ERROR: framebuffer status is not complete: %d\n", __func__, stat);
+        fprintf(stderr, "%s ERROR: framebuffer status is not complete: %d\n",
+                __func__, stat);
         switch (stat) {
         case GL_FRAMEBUFFER_UNDEFINED:
-            LOG_ERROR("GL_FRAMEBUFFER_UNDEFINED\n");
+            fprintf(stderr, "GL_FRAMEBUFFER_UNDEFINED\n");
             break;
         case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-            LOG_ERROR("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
+            fprintf(stderr, "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
             break;
         case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-            LOG_ERROR("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
+            fprintf(stderr, "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
             break;
         case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
-            LOG_ERROR("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
+            fprintf(stderr, "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
             break;
         default:
-            LOG_ERROR("unknown\n");
+            fprintf(stderr, "unknown\n");
         }
         abort();
     }
@@ -130,7 +130,7 @@ void opengl_target_begin(unsigned width, unsigned height, int tgt_handle) {
 
 void opengl_target_end(int tgt_handle) {
     if (tgt_handle < 0) {
-        LOG_ERROR("%s ERROR: no target bound\n", __func__);
+        fprintf(stderr, "%s ERROR: no target bound\n", __func__);
         return;
     }
 
@@ -148,7 +148,7 @@ static void opengl_target_grab_pixels(int obj_handle, void *out,
     size_t length_expect = fbo_width * fbo_height * 4 * sizeof(uint8_t);
 
     if (buf_size < length_expect) {
-        LOG_ERROR("need at least 0x%08x bytes (have 0x%08x)\n",
+        fprintf(stderr, "need at least 0x%08x bytes (have 0x%08x)\n",
                   (unsigned)length_expect, (unsigned)buf_size);
         error_set_length(buf_size);
         error_set_expected_length(length_expect);

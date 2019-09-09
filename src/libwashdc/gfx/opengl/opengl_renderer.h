@@ -25,7 +25,7 @@
 
 #include <GL/gl.h>
 
-#include "gfx/rend_common.h"
+#include "washdc/gfx/gfx_all.h"
 
 extern struct rend_if const opengl_rend_if;
 

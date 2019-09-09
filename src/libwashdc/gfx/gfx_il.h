@@ -27,6 +27,7 @@
 
 #include "gfx/gfx.h"
 #include "gfx/gfx_obj.h"
+#include "washdc/gfx/tex_cache.h"
 
 enum gfx_il {
     // load a texture into the cache
@@ -95,25 +96,6 @@ enum gfx_il {
      */
     GFX_IL_BEGIN_DEPTH_SORT,
     GFX_IL_END_DEPTH_SORT
-};
-
-struct gfx_rend_param {
-    bool tex_enable;
-    unsigned tex_idx;
-    // only valid if tex_enable=true
-    enum tex_inst tex_inst;
-    enum tex_filter tex_filter;
-    enum tex_wrap_mode tex_wrap_mode[2]; // wrap mode for u and v coordinates
-
-    // only valid if blend_enable=true
-    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
-
-    bool enable_depth_writes;
-    enum Pvr2DepthFunc depth_func;
-
-    // punch-through polygon mode
-    bool pt_mode;
-    unsigned pt_ref; // 0-255
 };
 
 struct gfx_framebuffer {

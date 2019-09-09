@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,25 +20,37 @@
  *
  ******************************************************************************/
 
-#ifndef GFX_TEX_CACHE_H_
-#define GFX_TEX_CACHE_H_
+#ifndef WASHDC_GFX_TEX_CACHE_H_
+#define WASHDC_GFX_TEX_CACHE_H_
 
 #include <stdbool.h>
-#include <stdint.h>
 
-#include "washdc/gfx/tex_cache.h"
+enum gfx_tex_fmt {
+    GFX_TEX_FMT_ARGB_1555,
+    GFX_TEX_FMT_RGB_565,
+    GFX_TEX_FMT_ARGB_4444,
+    GFX_TEX_FMT_ARGB_8888,
+    GFX_TEX_FMT_YUV_422,
+
+    GFX_TEX_FMT_COUNT
+};
 
 /*
- * Bind the given gfx_obj to the given texture-unit.
+ * This is the gfx_thread's copy of the texture cache.  It mirrors the one
+ * in the geo_buf code, and is updated every time a new geo_buf is submitted by
+ * the PVR2 STARTRENDER command.
  */
-void gfx_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
-                        unsigned height, enum gfx_tex_fmt tex_fmt);
 
-void gfx_tex_cache_unbind(unsigned tex_no);
+#define GFX_TEX_CACHE_SIZE 512
+#define GFX_TEX_CACHE_MASK (GFX_TEX_CACHE_SIZE - 1)
 
-void gfx_tex_cache_evict(unsigned idx);
+struct gfx_tex {
+    int obj_handle;
+    enum gfx_tex_fmt tex_fmt;
+    unsigned width, height;
+    bool valid;
+};
 
-void gfx_tex_cache_init(void);
-void gfx_tex_cache_cleanup(void);
+struct gfx_tex const* gfx_tex_cache_get(unsigned idx);
 
 #endif
