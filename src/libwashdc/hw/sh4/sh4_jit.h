@@ -110,6 +110,7 @@ sh4_jit_compile_native(void *cpu, struct native_dispatch_meta const *meta,
     jit_optimize(&il_blk);
 
 #ifdef JIT_PROFILE
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
     unsigned inst_no;
     for (inst_no = 0; inst_no < il_blk.inst_count; inst_no++) {
         jit_profile_push_il_inst(&sh4->jit_profile, jit_blk->profile,
