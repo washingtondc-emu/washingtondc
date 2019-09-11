@@ -516,11 +516,13 @@ dreamcast_init(char const *gdi_path,
     arm7_init(&arm7, &arm7_clock, &aica.mem);
 
 #ifdef ENABLE_JIT_X86_64
-    exec_mem_init();
-    sh4_jit_set_native_dispatch_meta(&sh4_native_dispatch_meta);
-    sh4_native_dispatch_meta.clk = &sh4_clock;
-    native_dispatch_init(&sh4_native_dispatch_meta, &cpu);
-    native_mem_init();
+    if (config_get_native_jit()) {
+        exec_mem_init();
+        sh4_jit_set_native_dispatch_meta(&sh4_native_dispatch_meta);
+        sh4_native_dispatch_meta.clk = &sh4_clock;
+        native_dispatch_init(&sh4_native_dispatch_meta, &cpu);
+        native_mem_init();
+    }
 #endif
     jit_init(&sh4_clock);
 
@@ -541,7 +543,8 @@ dreamcast_init(char const *gdi_path,
     arm7_set_mem_map(&arm7, &arm7_mem_map);
 
 #ifdef ENABLE_JIT_X86_64
-    native_mem_register(cpu.mem.map);
+    if (config_get_native_jit())
+        native_mem_register(cpu.mem.map);
 #endif
 
     /* set the PC to the booststrap code within IP.BIN */
@@ -632,9 +635,11 @@ void dreamcast_cleanup() {
 
     jit_cleanup();
 #ifdef ENABLE_JIT_X86_64
-    native_mem_cleanup();
-    native_dispatch_cleanup(&sh4_native_dispatch_meta);
-    exec_mem_cleanup();
+    if (config_get_native_jit()) {
+        native_mem_cleanup();
+        native_dispatch_cleanup(&sh4_native_dispatch_meta);
+        exec_mem_cleanup();
+    }
 #endif
 
     arm7_cleanup(&arm7);
