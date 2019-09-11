@@ -135,6 +135,16 @@ static void sh4_jit_hash_slot(struct Sh4 *sh4, struct il_code_block *block,
                               unsigned jmp_addr_slot, unsigned hash_slot,
                               unsigned fpscr_slot);
 
+/*
+ * this is like sh4_jit_hash_slot, except it's for situations in which the
+ * values of fpscr's PR and SZ bits are anready know.
+ */
+static void
+sh4_jit_hash_slot_known_fpscr(struct Sh4 *sh4,
+                              struct sh4_jit_compile_ctx const *ctx,
+                              struct il_code_block *block,
+                              unsigned jmp_addr_slot, unsigned hash_slot);
+
 void sh4_jit_init(struct Sh4 *sh4) {
 #ifdef JIT_PROFILE
     jit_profile_ctxt_init(&sh4->jit_profile, sizeof(uint16_t));
@@ -298,9 +308,13 @@ bool sh4_jit_rts(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, jmp_addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
     jit_jump(block, jmp_addr_slot, hash_slot);
@@ -331,12 +345,15 @@ bool sh4_jit_rte(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, jmp_addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, jmp_addr_slot, hash_slot);
 
     free_slot(block, hash_slot);
@@ -358,12 +375,15 @@ bool sh4_jit_braf_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, jmp_addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, jmp_addr_slot, hash_slot);
 
     free_slot(block, hash_slot);
@@ -388,12 +408,15 @@ bool sh4_jit_bsrf_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, addr_slot_no, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, addr_slot_no, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, addr_slot_no, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, addr_slot_no, hash_slot);
 
     free_slot(block, hash_slot);
@@ -415,13 +438,15 @@ bool sh4_jit_bf(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     jit_cset(block, flag_slot, 1, pc+2, jmp_addr_slot);
     unsigned hash_slot = alloc_slot(block);
-
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, jmp_addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, jmp_addr_slot, hash_slot);
 
     free_slot(block, hash_slot);
@@ -444,12 +469,15 @@ bool sh4_jit_bt(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     jit_cset(block, flag_slot, 0, pc + 2, jmp_addr_slot);
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, jmp_addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, jmp_addr_slot, hash_slot);
 
     free_slot(block, hash_slot);
@@ -474,12 +502,15 @@ bool sh4_jit_bfs(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     jit_cset(block, flag_slot, 1, pc + 4, jmp_addr_slot);
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, jmp_addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, jmp_addr_slot, hash_slot);
 
     free_slot(block, hash_slot);
@@ -504,12 +535,15 @@ bool sh4_jit_bts(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     jit_cset(block, flag_slot, 0, pc + 4, jmp_addr_slot);
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, jmp_addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, jmp_addr_slot, hash_slot);
 
     free_slot(block, hash_slot);
@@ -533,12 +567,15 @@ bool sh4_jit_bra(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_set_slot(block, addr_slot, pc + disp);
 
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, addr_slot, hash_slot);
 
     free_slot(block, hash_slot);
@@ -564,12 +601,15 @@ bool sh4_jit_bsr(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_set_slot(block, addr_slot, pc + disp);
 
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, addr_slot, hash_slot);
 
     free_slot(block, hash_slot);
@@ -589,12 +629,15 @@ bool sh4_jit_jmp_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, jmp_addr_slot, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, jmp_addr_slot, hash_slot);
 
     free_slot(block, hash_slot);
@@ -617,12 +660,15 @@ bool sh4_jit_jsr_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
 
     unsigned hash_slot = alloc_slot(block);
-    unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
-    sh4_jit_hash_slot(sh4, block, addr_slot_no, hash_slot, fpscr_slot);
-    free_slot(block, fpscr_slot);
+    if (ctx->dirty_fpscr) {
+        unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
+        sh4_jit_hash_slot(sh4, block, addr_slot_no, hash_slot, fpscr_slot);
+        free_slot(block, fpscr_slot);
+    } else {
+        sh4_jit_hash_slot_known_fpscr(sh4, ctx, block, addr_slot_no, hash_slot);
+    }
 
     res_drain_all_regs(sh4, block);
-
     jit_jump(block, addr_slot_no, hash_slot);
 
     free_slot(block, hash_slot);
@@ -1674,6 +1720,7 @@ bool sh4_jit_lds_rm_fpscr(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     free_slot(block, slot_src);
 
+    ctx->dirty_fpscr = true;
     if (!ctx->in_delay_slot) {
         /*
          * since the code hash (which includes SZ and PR) just changed, we need to
@@ -1686,6 +1733,7 @@ bool sh4_jit_lds_rm_fpscr(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
         unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
         sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
 
+        res_drain_all_regs(sh4, block);
         jit_jump(block, jmp_addr_slot, hash_slot);
 
         free_slot(block, hash_slot);
@@ -1723,6 +1771,7 @@ bool sh4_jit_ldsl_armp_fpscr(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     free_slot(block, new_val_slot);
 
+    ctx->dirty_fpscr = true;
     if (!ctx->in_delay_slot) {
         /*
          * since the code hash (which includes SZ and PR) just changed, we need to
@@ -1735,6 +1784,7 @@ bool sh4_jit_ldsl_armp_fpscr(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
         unsigned fpscr_slot = reg_slot(sh4, block, SH4_REG_FPSCR);
         sh4_jit_hash_slot(sh4, block, jmp_addr_slot, hash_slot, fpscr_slot);
 
+        res_drain_all_regs(sh4, block);
         jit_jump(block, jmp_addr_slot, hash_slot);
 
         free_slot(block, hash_slot);
@@ -1755,6 +1805,7 @@ bool sh4_jit_fschg(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     res_disassociate_reg(sh4, block, SH4_REG_FPSCR);
 
     jit_xor_const32(block, new_val_slot, SH4_FPSCR_SZ_MASK);
+    ctx->sz_bit = !ctx->sz_bit;
 
     /*
      * there are a few different ways editing the FPSCR can cause side-effects (for
@@ -1769,6 +1820,7 @@ bool sh4_jit_fschg(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 
     free_slot(block, new_val_slot);
 
+    ctx->dirty_fpscr = true;
     if (!ctx->in_delay_slot) {
         /*
          * since the code hash (which includes SZ and PR) just changed, we need to
@@ -1783,7 +1835,6 @@ bool sh4_jit_fschg(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
         free_slot(block, fpscr_slot);
 
         res_drain_all_regs(sh4, block);
-
         jit_jump(block, jmp_addr_slot, hash_slot);
 
         free_slot(block, hash_slot);
@@ -1874,6 +1925,20 @@ static void sh4_jit_hash_slot(struct Sh4 *sh4, struct il_code_block *block,
 
     free_slot(block, sz_slot);
     free_slot(block, pr_slot);
+}
+
+static void
+sh4_jit_hash_slot_known_fpscr(struct Sh4 *sh4,
+                              struct sh4_jit_compile_ctx const *ctx,
+                              struct il_code_block *block,
+                              unsigned jmp_addr_slot, unsigned hash_slot) {
+    jit_mov(block, jmp_addr_slot, hash_slot);
+    jit_and_const32(block, hash_slot, SH4_JIT_HASH_MASK);
+
+    if (ctx->pr_bit)
+        jit_or_const32(block, hash_slot, SH4_JIT_HASH_PR_MASK);
+    if (ctx->sz_bit)
+        jit_or_const32(block, hash_slot, SH4_JIT_HASH_SZ_MASK);
 }
 
 static jit_hash sh4_jit_hash_wrapper(void *ctx, uint32_t addr) {
