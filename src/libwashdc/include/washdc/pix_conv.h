@@ -29,10 +29,6 @@
 extern "C" {
 #endif
 
-// converts a given YUV value to 24-bit RGB
-void washdc_yuv_to_rgb(uint8_t *rgb_out, unsigned lum,
-                       unsigned chrom_b, unsigned chrom_r);
-
 void washdc_conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
                                unsigned width, unsigned height);
 

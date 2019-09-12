@@ -25,19 +25,28 @@
 // pix_conv.c: The future home of all texture and pixel conversion functions
 
 /*
- * converts a given YUV value to 24-bit RGB
+ * converts a given YUV value pair to two 24-bit RGB pixels
  * The source for these values is the wikipedia article on YUV:
  * https://en.wikipedia.org/wiki/YUV#Y′UV444_to_RGB888_conversion
  */
-void washdc_yuv_to_rgb(uint8_t *rgb_out, unsigned lum,
-                       unsigned chrom_b, unsigned chrom_r) {
-    double yuv[3] = {
-        lum, chrom_b, chrom_r
+static void
+washdc_yuv_to_rgb_2pixels(uint8_t *rgb_out, unsigned lum1, unsigned lum2,
+                          unsigned chrom_b, unsigned chrom_r) {
+    double yuv[2] = {
+        chrom_b, chrom_r
     };
-    double rgb[3] = {
-        yuv[0] + 1.402 *  (yuv[2] - 128),
-        yuv[0] - 0.344 * (yuv[1] - 128) - 0.714 * (yuv[2] - 128),
-        yuv[0] + 1.772 * (yuv[1] - 128)
+    double adds[3] = {
+        1.402 *  (yuv[1] - 128),
+        -0.344 * (yuv[0] - 128) - 0.714 * (yuv[1] - 128),
+        1.772 * (yuv[0] - 128)
+    };
+    double rgb[6] = {
+        lum1 + adds[0],
+        lum1 - adds[1],
+        lum1 + adds[2],
+        lum2 + adds[0],
+        lum2 - adds[1],
+        lum2 + adds[2]
     };
 
     if (rgb[0] < 0)
@@ -52,28 +61,43 @@ void washdc_yuv_to_rgb(uint8_t *rgb_out, unsigned lum,
         rgb[2] = 0;
     else if (rgb[2] > 255)
         rgb[2] = 255;
+    if (rgb[3] < 0)
+        rgb[3] = 0;
+    else if (rgb[3] > 255)
+        rgb[3] = 255;
+    if (rgb[4] < 0)
+        rgb[4] = 0;
+    else if (rgb[4] > 255)
+        rgb[4] = 255;
+    if (rgb[5] < 0)
+        rgb[5] = 0;
+    else if (rgb[5] > 255)
+        rgb[5] = 255;
 
     rgb_out[0] = (uint8_t)rgb[0];
     rgb_out[1] = (uint8_t)rgb[1];
     rgb_out[2] = (uint8_t)rgb[2];
+    rgb_out[3] = (uint8_t)rgb[3];
+    rgb_out[4] = (uint8_t)rgb[4];
+    rgb_out[5] = (uint8_t)rgb[5];
 }
 
 void washdc_conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
                                unsigned width, unsigned height) {
     uint8_t *rgbp = (uint8_t*)rgb_out;
     uint32_t const *tex_in = (uint32_t const *)yuv_in;
+    unsigned half_width = width / 2;
 
     unsigned col, row;
-    for (col = 0; col < (width / 2); col++) {
+    for (col = 0; col < half_width; col++) {
         for (row = 0; row < height; row++) {
             uint8_t *outp = 3 * (row * width + col * 2) + rgbp;
-            uint32_t in = tex_in[row * (width / 2) + col];
+            uint32_t in = tex_in[row * half_width + col];
             unsigned lum[2] = { (in >> 8) & 0xff, (in >> 24) & 0xff };
             unsigned chrom_b = in & 0xff;
             unsigned chrom_r = (in >> 16) & 0xff;
 
-            washdc_yuv_to_rgb(outp, lum[0], chrom_b, chrom_r);
-            washdc_yuv_to_rgb(outp + 3, lum[1], chrom_b, chrom_r);
+            washdc_yuv_to_rgb_2pixels(outp, lum[0], lum[1], chrom_b, chrom_r);
         }
     }
 }
