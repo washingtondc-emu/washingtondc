@@ -368,9 +368,25 @@ void sh4_dmac_transfer_words(Sh4 *sh4, addr32_t transfer_src,
                              addr32_t transfer_dst, size_t n_words) {
     struct memory_map *map = sh4->mem.map;
     size_t counter;
+
+    struct memory_map_region *src_region = memory_map_get_region(map, transfer_src,
+                                                                 n_words * sizeof(uint32_t));
+    struct memory_map_region *dst_region = memory_map_get_region(map, transfer_dst,
+                                                                 n_words * sizeof(uint32_t));
+    memory_map_read32_func read32 = src_region->intf->read32;
+    memory_map_write32_func write32 = dst_region->intf->write32;
+    uint32_t src_mask = src_region->mask;
+    uint32_t dst_mask = dst_region->mask;
+    void *src_ctx = src_region->ctxt;
+    void *dst_ctx = dst_region->ctxt;
+
     for (counter = 0; counter < n_words; counter++) {
-        uint32_t word = memory_map_read_32(map, transfer_src);
-        memory_map_write_32(map, transfer_dst, word);
+        CHECK_R_WATCHPOINT(transfer_src, uint32_t);
+        CHECK_W_WATCHPOINT(transfer_dst, uint32_t);
+
+        uint32_t word = read32(transfer_src & src_mask, src_ctx);
+        write32(transfer_dst & dst_mask, word, dst_ctx);
+
         transfer_src += sizeof(uint32_t);
         transfer_dst += sizeof(uint32_t);
     }
