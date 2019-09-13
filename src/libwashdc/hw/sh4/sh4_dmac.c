@@ -364,13 +364,15 @@ void sh4_dmac_transfer_from_mem(Sh4 *sh4, addr32_t transfer_src, size_t unit_sz,
     }
 }
 
-void sh4_dmac_transfer(Sh4 *sh4, addr32_t transfer_src,
-                       addr32_t transfer_dst, size_t n_bytes) {
+void sh4_dmac_transfer_words(Sh4 *sh4, addr32_t transfer_src,
+                             addr32_t transfer_dst, size_t n_words) {
     struct memory_map *map = sh4->mem.map;
     size_t counter;
-    for (counter = 0; counter < n_bytes; counter++) {
-        uint8_t byte = memory_map_read_8(map, transfer_src++);
-        memory_map_write_8(map, transfer_dst++, byte);
+    for (counter = 0; counter < n_words; counter++) {
+        uint32_t word = memory_map_read_32(map, transfer_src);
+        memory_map_write_32(map, transfer_dst, word);
+        transfer_src += sizeof(uint32_t);
+        transfer_dst += sizeof(uint32_t);
     }
 }
 

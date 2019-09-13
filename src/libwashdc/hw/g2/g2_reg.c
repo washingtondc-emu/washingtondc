@@ -140,12 +140,13 @@ static void sb_adst_reg_mmio_write(struct mmio_region_g2_reg_32 *region,
         uint32_t src_addr = adstar & ~(BIT_RANGE(0, 4) | BIT_RANGE(29, 31));
         uint32_t dst_addr = adstag & ~(BIT_RANGE(0, 4) | BIT_RANGE(29, 31));
         unsigned n_bytes = adlen & BIT_RANGE(5, 24);
+        unsigned n_words = n_bytes / 4;
 
         LOG_DBG("AICA: Request to transfer 0x%08x bytes from 0x%08x to "
                 "0x%08x\n",
                 n_bytes, (unsigned)src_addr, (unsigned)dst_addr);
 
-        sh4_dmac_transfer(dreamcast_get_cpu(), src_addr, dst_addr, n_bytes);
+        sh4_dmac_transfer_words(dreamcast_get_cpu(), src_addr, dst_addr, n_words);
 
         aica_dma_raise_event.handler = post_delay_aica_dma_int;
         aica_dma_raise_event.when =

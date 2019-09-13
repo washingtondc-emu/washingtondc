@@ -91,8 +91,8 @@ void sh4_dmac_transfer_to_mem(Sh4 *sh4, addr32_t transfer_dst, size_t unit_sz,
 void sh4_dmac_transfer_from_mem(Sh4 *sh4, addr32_t transfer_src, size_t unit_sz,
                                 size_t n_units, void *dat);
 
-void sh4_dmac_transfer(Sh4 *sh4, addr32_t transfer_src,
-                       addr32_t transfer_dst, size_t n_bytes);
+void sh4_dmac_transfer_words(Sh4 *sh4, addr32_t transfer_src,
+                             addr32_t transfer_dst, size_t n_words);
 
 // perform a DMA transfer using channel 2's settings
 void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes);
