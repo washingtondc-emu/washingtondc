@@ -565,6 +565,45 @@ void x86asm_movw_sib_reg(unsigned reg_base, unsigned scale,
     put8(sib);
 }
 
+// movb (%<reg_base>, <scale>, %<reg_index>), %<reg_dst>
+void x86asm_movb_sib_reg(unsigned reg_base, unsigned scale,
+                         unsigned reg_index, unsigned reg_dst) {
+    unsigned log2;
+    switch (scale) {
+    case 1:
+        log2 = 0;
+        break;
+    case 2:
+        log2 = 1;
+        break;
+    case 4:
+        log2 = 2;
+        break;
+    case 8:
+        log2 = 3;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    unsigned rex = 0;
+    if (reg_base >= R8) {
+        rex |= REX_B;
+        reg_base -= R8;
+    }
+    if (reg_index >= R8) {
+        rex |= REX_X;
+        reg_index -= R8;
+    }
+
+    put8(0x66);
+
+    emit_mod_reg_rm_sib(rex, 0x8a, 0, reg_dst, SIB);
+
+    unsigned sib = reg_base | (reg_index << 3) | (log2 << 6);
+    put8(sib);
+}
+
 // movq %<reg_src>, (%<reg_base>, <scale>, %<reg_index>)
 void x86asm_movq_reg_sib(unsigned reg_src, unsigned reg_base,
                          unsigned scale, unsigned reg_index) {
@@ -1036,6 +1075,11 @@ void x86asm_jns_lbl8(struct x86asm_lbl8 *lbl) {
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
+}
+
+// movsx <%reg8>, %<reg32>
+void x86asm_movsx_reg8_reg32(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm_2(0, 0x0f, 0xbe, 3, reg_dst, reg_src);
 }
 
 // movsx %<reg16>, %<reg32>

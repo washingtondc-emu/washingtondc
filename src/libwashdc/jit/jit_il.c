@@ -95,6 +95,15 @@ void jit_read_16_constaddr(struct il_code_block *block, struct memory_map *map,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_sign_extend_8(struct il_code_block *block, unsigned slot_no) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_SIGN_EXTEND_8;
+    op.immed.sign_extend_8.slot_no = slot_no;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no) {
     struct jit_inst op;
 
@@ -112,6 +121,18 @@ void jit_read_32_constaddr(struct il_code_block *block, struct memory_map *map,
     op.immed.read_32_constaddr.map = map;
     op.immed.read_32_constaddr.addr = addr;
     op.immed.read_32_constaddr.slot_no = slot_no;
+
+    il_code_block_push_inst(block, &op);
+}
+
+void jit_read_8_slot(struct il_code_block *block, struct memory_map *map,
+                     unsigned addr_slot, unsigned dst_slot) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_READ_8_SLOT;
+    op.immed.read_8_slot.map = map;
+    op.immed.read_8_slot.addr_slot = addr_slot;
+    op.immed.read_8_slot.dst_slot = dst_slot;
 
     il_code_block_push_inst(block, &op);
 }
@@ -481,10 +502,14 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
         return slot_no == immed->call_func.slot_no;
     case JIT_OP_READ_16_CONSTADDR:
         return false;
+    case JIT_OP_SIGN_EXTEND_8:
+        return slot_no == immed->sign_extend_8.slot_no;
     case JIT_OP_SIGN_EXTEND_16:
         return slot_no == immed->sign_extend_16.slot_no;
     case JIT_OP_READ_32_CONSTADDR:
         return false;
+    case JIT_OP_READ_8_SLOT:
+        return slot_no == immed->read_8_slot.addr_slot;
     case JIT_OP_READ_16_SLOT:
         return slot_no == immed->read_16_slot.addr_slot;
     case JIT_OP_READ_32_SLOT:
@@ -589,11 +614,17 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
     case JIT_OP_READ_16_CONSTADDR:
         write_slots[0] = immed->read_16_constaddr.slot_no;
         break;
+    case JIT_OP_SIGN_EXTEND_8:
+        write_slots[0] = immed->sign_extend_8.slot_no;
+        break;
     case JIT_OP_SIGN_EXTEND_16:
         write_slots[0] = immed->sign_extend_16.slot_no;
         break;
     case JIT_OP_READ_32_CONSTADDR:
         write_slots[0] = immed->read_32_constaddr.slot_no;
+        break;
+    case JIT_OP_READ_8_SLOT:
+        write_slots[0] = immed->read_8_slot.dst_slot;
         break;
     case JIT_OP_READ_16_SLOT:
         write_slots[0] = immed->read_16_slot.dst_slot;

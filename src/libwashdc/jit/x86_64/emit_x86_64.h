@@ -204,8 +204,12 @@ void x86asm_movq_sib_reg(unsigned reg_base, unsigned scale,
 void x86asm_movl_sib_reg(unsigned reg_base, unsigned scale,
                          unsigned reg_index, unsigned reg_dst);
 
-// movl (%<reg_base>, <scale>, %<reg_index>), %<reg_dst>
+// movw (%<reg_base>, <scale>, %<reg_index>), %<reg_dst>
 void x86asm_movw_sib_reg(unsigned reg_base, unsigned scale,
+                         unsigned reg_index, unsigned reg_dst);
+
+// movb (%<reg_base>, <scale>, %<reg_index>), %<reg_dst>
+void x86asm_movb_sib_reg(unsigned reg_base, unsigned scale,
                          unsigned reg_index, unsigned reg_dst);
 
 // movq %<reg_src>, (%<reg_base>, <scale>, %<reg_index>)
@@ -389,6 +393,9 @@ void x86asm_jle_lbl8(struct x86asm_lbl8 *lbl);
 
 void x86asm_jmp_disp8(int disp8);
 void x86asm_jmp_lbl8(struct x86asm_lbl8 *lbl);
+
+// movsx <%reg8>, %<reg32>
+void x86asm_movsx_reg8_reg32(unsigned reg_src, unsigned reg_dst);
 
 // movsx <%reg16>, %<reg32>
 void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst);

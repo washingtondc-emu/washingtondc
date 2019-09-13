@@ -515,6 +515,7 @@ static bool does_inst_emit_call(struct jit_inst const *inst) {
     return inst->op == JIT_OP_FALLBACK || inst->op == JIT_OP_CALL_FUNC ||
         (inst->op == JIT_OP_READ_16_CONSTADDR ||
          inst->op == JIT_OP_READ_32_CONSTADDR ||
+         inst->op == JIT_OP_READ_8_SLOT ||
          inst->op == JIT_OP_READ_16_SLOT ||
          inst->op == JIT_OP_READ_32_SLOT ||
          inst->op == JIT_OP_WRITE_32_SLOT);
@@ -853,6 +854,20 @@ static void emit_read_16_constaddr(struct code_block_x86_64 *blk,
     ungrab_slot(slot_no);
 }
 
+// JIT_OP_SIGN_EXTEND_8 implementation
+static void emit_sign_extend_8(struct code_block_x86_64 *blk,
+                                struct il_code_block const *il_blk,
+                                void *cpu, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.sign_extend_8.slot_no;
+
+    grab_slot(blk, il_blk, inst, slot_no);
+
+    unsigned reg_no = slots[slot_no].reg_no;
+    x86asm_movsx_reg8_reg32(reg_no, reg_no);
+
+    ungrab_slot(slot_no);
+}
+
 // JIT_OP_SIGN_EXTEND_16 implementation
 static void emit_sign_extend_16(struct code_block_x86_64 *blk,
                                 struct il_code_block const *il_blk,
@@ -900,6 +915,40 @@ static void emit_read_32_constaddr(struct code_block_x86_64 *blk,
     ungrab_register(REG_RET);
 }
 
+// JIT_OP_READ_8_SLOT implementation
+static void emit_read_8_slot(struct code_block_x86_64 *blk,
+                             struct il_code_block const *il_blk,
+                             void *cpu, struct jit_inst const *inst) {
+    unsigned dst_slot = inst->immed.read_8_slot.dst_slot;
+    unsigned addr_slot = inst->immed.read_8_slot.addr_slot;
+    struct memory_map const *map = inst->immed.read_8_slot.map;
+
+    // call memory_map_read_8(*addr_slot)
+    prefunc(blk);
+
+    if (config_get_inline_mem()) {
+        move_slot_to_reg(blk, addr_slot, REG_ARG0);
+        evict_register(blk, REG_ARG0);
+        native_mem_read_8(blk, map);
+    } else {
+        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+        move_slot_to_reg(blk, addr_slot, REG_ARG1);
+        evict_register(blk, REG_ARG1);
+        ms_shadow_open(blk);
+        x86_64_align_stack(blk);
+        x86asm_call_ptr(memory_map_read_8);
+        ms_shadow_close();
+    }
+
+    postfunc();
+
+    grab_slot(blk, il_blk, inst, dst_slot);
+    x86asm_mov_reg32_reg32(REG_RET, slots[dst_slot].reg_no);
+
+    ungrab_slot(dst_slot);
+    ungrab_register(REG_RET);
+}
+
 // JIT_OP_READ_16_SLOT implementation
 static void emit_read_16_slot(struct code_block_x86_64 *blk,
                               struct il_code_block const *il_blk,
@@ -908,7 +957,7 @@ static void emit_read_16_slot(struct code_block_x86_64 *blk,
     unsigned addr_slot = inst->immed.read_16_slot.addr_slot;
     struct memory_map const *map = inst->immed.read_16_slot.map;
 
-    // call memory_map_read_32(*addr_slot)
+    // call memory_map_read_16(*addr_slot)
     prefunc(blk);
 
     if (config_get_inline_mem()) {
@@ -1646,11 +1695,17 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         case JIT_OP_READ_16_CONSTADDR:
             emit_read_16_constaddr(out, il_blk, cpu, inst);
             break;
+        case JIT_OP_SIGN_EXTEND_8:
+            emit_sign_extend_8(out, il_blk, cpu, inst);
+            break;
         case JIT_OP_SIGN_EXTEND_16:
             emit_sign_extend_16(out, il_blk, cpu, inst);
             break;
         case JIT_OP_READ_32_CONSTADDR:
             emit_read_32_constaddr(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_READ_8_SLOT:
+            emit_read_8_slot(out, il_blk, cpu, inst);
             break;
         case JIT_OP_READ_16_SLOT:
             emit_read_16_slot(out, il_blk, cpu, inst);

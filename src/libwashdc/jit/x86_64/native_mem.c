@@ -41,6 +41,7 @@
 #define BASIC_ALLOC 32
 
 static void* emit_native_mem_read_32(struct memory_map const *map);
+static void* emit_native_mem_read_8(struct memory_map const *map);
 static void* emit_native_mem_read_16(struct memory_map const *map);
 static void* emit_native_mem_write_32(struct memory_map const *map);
 
@@ -49,12 +50,14 @@ emit_ram_read_32(struct memory_map_region const *region, void *ctxt);
 static void
 emit_ram_read_16(struct memory_map_region const *region, void *ctxt);
 static void
+emit_ram_read_8(struct memory_map_region const *region, void *ctxt);
+static void
 emit_ram_write_32(struct memory_map_region const *region, void *ctxt);
 
 struct native_mem_map {
     struct memory_map const *map;
     struct fifo_node node;
-    void *read_32_impl, *read_16_impl, *write_32_impl;
+    void *read_32_impl, *read_16_impl, *read_8_impl, *write_32_impl;
 };
 
 static struct fifo_head native_impl;
@@ -72,6 +75,7 @@ void native_mem_cleanup(void) {
 
         exec_mem_free(native_map->read_32_impl);
         exec_mem_free(native_map->read_16_impl);
+        exec_mem_free(native_map->read_8_impl);
         exec_mem_free(native_map->write_32_impl);
 
         free(native_map);
@@ -86,6 +90,18 @@ void native_mem_read_32(struct code_block_x86_64 *blk,
     if (!native_map)
         RAISE_ERROR(ERROR_INTEGRITY);
     x86asm_call_ptr(native_map->read_32_impl);
+    ms_shadow_close();
+}
+
+void native_mem_read_8(struct code_block_x86_64 *blk,
+                        struct memory_map const *map) {
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    struct native_mem_map *native_map = mem_map_impl(map);
+    if (!native_map)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    x86asm_call_ptr(native_map->read_8_impl);
+    x86asm_and_imm32_rax(0x0000ff);
     ms_shadow_close();
 }
 
@@ -114,6 +130,66 @@ void native_mem_write_32(struct code_block_x86_64 *blk,
 
 static void error_func(void) {
     RAISE_ERROR(ERROR_INTEGRITY);
+}
+
+static void* emit_native_mem_read_8(struct memory_map const *map) {
+    void *native_mem_read_8_impl = exec_mem_alloc(BASIC_ALLOC);
+    x86asm_set_dst(native_mem_read_8_impl, NULL, BASIC_ALLOC);
+
+    static unsigned const addr_reg = REG_RET;
+
+    static unsigned const func_call_reg = REG_ARG3;
+
+    unsigned region_no;
+    for (region_no = 0; region_no < map->n_regions; region_no++) {
+        struct memory_map_region const *region = map->regions + region_no;
+
+        struct x86asm_lbl8 check_next;
+        x86asm_lbl8_init(&check_next);
+
+        x86asm_mov_reg32_reg32(REG_ARG0, addr_reg);
+        x86asm_andl_imm32_reg32(region->range_mask, addr_reg);
+
+        uint32_t region_start = region->first_addr,
+            region_end = region->last_addr - (sizeof(uint8_t) - 1);
+
+        x86asm_cmpl_imm32_reg32(region_start, addr_reg);
+        x86asm_jb_lbl8(&check_next);
+
+        x86asm_cmpl_imm32_reg32(region_end, addr_reg);
+        x86asm_ja_lbl8(&check_next);
+
+        switch (region->id) {
+        case MEMORY_MAP_REGION_RAM:
+            emit_ram_read_8(region, region->ctxt);
+            x86asm_ret();
+            break;
+        default:
+            // tail-call
+            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG1);
+            x86asm_mov_imm64_reg64((uintptr_t)region->intf->read8, func_call_reg);
+            x86asm_jmpq_reg64(func_call_reg);
+        }
+
+        // check next region
+        x86asm_lbl8_define(&check_next);
+        x86asm_lbl8_cleanup(&check_next);
+    }
+
+    struct memory_interface const *unmap = map->unmap;
+    if (unmap && unmap->read8) {
+        x86asm_mov_reg32_reg32(REG_ARG0, addr_reg);
+        x86asm_mov_imm64_reg64((uintptr_t)map->unmap_ctxt, REG_ARG1);
+        x86asm_mov_imm64_reg64((uintptr_t)unmap->read8, func_call_reg);
+        x86asm_jmpq_reg64(func_call_reg);
+    } else {
+        // raise an error, the memory addr is not in a region
+        x86asm_mov_imm64_reg64((uintptr_t)error_func, REG_VOL1);
+        x86asm_jmpq_reg64(REG_VOL1);
+    }
+
+    return native_mem_read_8_impl;
 }
 
 static void* emit_native_mem_read_16(struct memory_map const *map) {
@@ -318,6 +394,16 @@ emit_ram_read_16(struct memory_map_region const *region, void *ctxt) {
 }
 
 static void
+emit_ram_read_8(struct memory_map_region const *region, void *ctxt) {
+    struct Memory *mem = (struct Memory*)ctxt;
+
+    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
+    x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
+    x86asm_movb_sib_reg(REG_ARG1, 1, REG_ARG0, REG_RET);
+}
+
+static void
 emit_ram_write_32(struct memory_map_region const *region, void *ctxt) {
     // value to write should be in ESI
     // address should be in EDI
@@ -347,6 +433,7 @@ void native_mem_register(struct memory_map const *map) {
     native_map->map = map;
     native_map->read_32_impl = emit_native_mem_read_32(map);
     native_map->read_16_impl = emit_native_mem_read_16(map);
+    native_map->read_8_impl = emit_native_mem_read_8(map);
     native_map->write_32_impl = emit_native_mem_write_32(map);
 
     fifo_push(&native_impl, &native_map->node);

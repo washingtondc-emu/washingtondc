@@ -55,11 +55,17 @@ enum jit_opcode {
     // read 16 bits from a constant address and store them in a given slot
     JIT_OP_READ_16_CONSTADDR,
 
+    // sign-extend an 8-bit int in a slot into a 32-bit int
+    JIT_OP_SIGN_EXTEND_8,
+
     // sign-extend a 16-bit int in a slot into a 32-bit int
     JIT_OP_SIGN_EXTEND_16,
 
     // read a 32-bit int at a constant address into a slot
     JIT_OP_READ_32_CONSTADDR,
+
+    // read a 8-bit int at an address contained in a slot into another slot
+    JIT_OP_READ_8_SLOT,
 
     // read a 16-bit int at an address contained in a slot into another slot
     JIT_OP_READ_16_SLOT,
@@ -200,6 +206,10 @@ struct read_16_constaddr_immed {
     unsigned slot_no;
 };
 
+struct sign_extend_8_immed {
+    unsigned slot_no;
+};
+
 struct sign_extend_16_immed {
     unsigned slot_no;
 };
@@ -208,6 +218,12 @@ struct read_32_constaddr_immed {
     struct memory_map *map;
     addr32_t addr;
     unsigned slot_no;
+};
+
+struct read_8_slot_immed {
+    struct memory_map *map;
+    unsigned addr_slot;
+    unsigned dst_slot;
 };
 
 struct read_16_slot_immed {
@@ -375,8 +391,10 @@ union jit_immed {
     struct set_slot_immed set_slot;
     struct call_func_immed call_func;
     struct read_16_constaddr_immed read_16_constaddr;
+    struct sign_extend_16_immed sign_extend_8;
     struct sign_extend_16_immed sign_extend_16;
     struct read_32_constaddr_immed read_32_constaddr;
+    struct read_8_slot_immed read_8_slot;
     struct read_16_slot_immed read_16_slot;
     struct read_32_slot_immed read_32_slot;
     struct write_32_slot_immed write_32_slot;
@@ -437,9 +455,12 @@ void jit_call_func(struct il_code_block *block,
                    void(*func)(void*,uint32_t), unsigned slot_no);
 void jit_read_16_constaddr(struct il_code_block *block, struct memory_map *map,
                            addr32_t addr, unsigned slot_no);
+void jit_sign_extend_8(struct il_code_block *block, unsigned slot_no);
 void jit_sign_extend_16(struct il_code_block *block, unsigned slot_no);
 void jit_read_32_constaddr(struct il_code_block *block, struct memory_map *map,
                            addr32_t addr, unsigned slot_no);
+void jit_read_8_slot(struct il_code_block *block, struct memory_map *map,
+                     unsigned addr_slot, unsigned dst_slot);
 void jit_read_16_slot(struct il_code_block *block, struct memory_map *map,
                       unsigned addr_slot, unsigned dst_slot);
 void jit_read_32_slot(struct il_code_block *block, struct memory_map *map,

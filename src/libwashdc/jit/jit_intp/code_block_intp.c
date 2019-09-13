@@ -99,6 +99,11 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                                    inst->immed.read_16_constaddr.addr);
             inst++;
             break;
+        case JIT_OP_SIGN_EXTEND_8:
+            block->slots[inst->immed.sign_extend_8.slot_no] =
+                (int32_t)(int8_t)block->slots[inst->immed.sign_extend_8.slot_no];
+            inst++;
+            break;
         case JIT_OP_SIGN_EXTEND_16:
             block->slots[inst->immed.sign_extend_16.slot_no] =
                 (int32_t)(int16_t)block->slots[inst->immed.sign_extend_16.slot_no];
@@ -108,6 +113,14 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
             block->slots[inst->immed.read_32_constaddr.slot_no] =
                 memory_map_read_32(inst->immed.read_32_constaddr.map,
                                    inst->immed.read_32_constaddr.addr);
+            inst++;
+            break;
+        case JIT_OP_READ_8_SLOT:
+            block->slots[inst->immed.read_8_slot.dst_slot] =
+                memory_map_read_8(inst->immed.read_8_slot.map,
+                                   block->slots[
+                                       inst->immed.read_8_slot.addr_slot
+                                       ]);
             inst++;
             break;
         case JIT_OP_READ_16_SLOT:

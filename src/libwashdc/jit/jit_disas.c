@@ -55,6 +55,10 @@ void jit_disas_il(FILE *out, struct jit_inst const *inst, int idx) {
                 idx, (unsigned)immed->read_16_constaddr.addr,
                 immed->read_16_constaddr.slot_no);
         break;
+    case JIT_OP_SIGN_EXTEND_8:
+        fprintf(out, "%02X: SIGN_EXTEND_8 <SLOT %02X>\n", idx,
+                immed->sign_extend_8.slot_no);
+        break;
     case JIT_OP_SIGN_EXTEND_16:
         fprintf(out, "%02X: SIGN_EXTEND_16 <SLOT %02X>\n", idx,
                 immed->sign_extend_16.slot_no);
@@ -63,6 +67,11 @@ void jit_disas_il(FILE *out, struct jit_inst const *inst, int idx) {
         fprintf(out, "%02X: READ_32_CONSTADDR *(U32*)%08X, *<SLOT %02X>\n",
                 idx, (unsigned)immed->read_32_constaddr.addr,
                 immed->read_32_constaddr.slot_no);
+        break;
+    case JIT_OP_READ_8_SLOT:
+        fprintf(out, "%02X: READ_8_SLOT *(U8*)<SLOT %02X>, <SLOT %02X>\n",
+                idx, immed->read_8_slot.addr_slot,
+                immed->read_8_slot.dst_slot);
         break;
     case JIT_OP_READ_16_SLOT:
         fprintf(out, "%02X: READ_16_SLOT *(U16*)<SLOT %02X>, <SLOT %02X>\n",
