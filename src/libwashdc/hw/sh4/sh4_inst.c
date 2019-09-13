@@ -5387,7 +5387,30 @@ void sh4_inst_binary_ftrc_fr_fpul(void *cpu, cpu_inst_param inst) {
     int round_mode = fegetround();
     fesetround(FE_TOWARDZERO);
 
-    val_int = val;
+    uint32_t lit;
+    memcpy(&lit, val_in_p, sizeof(lit));
+
+    if (val >= 0.0f) {
+        if (lit > 0x7f800000) {
+            // NINF
+            val_int = 0x80000000;
+        } else if (lit > 0x4effffff) {
+            // PINF
+            val_int = 0x7fffffff;
+        } else {
+            // NORM
+            val_int = val;
+        }
+    } else {
+        if ((lit & 0x7fffffff) > (0xcf000000 & 0x7fffffff)) {
+            // NINF
+            val_int = 0x80000000;
+        } else {
+            // NORM
+            val_int = val;
+        }
+    }
+
     memcpy(sh4->reg + SH4_REG_FPUL, &val_int, sizeof(sh4->reg[SH4_REG_FPUL]));
 
     fesetround(round_mode);
