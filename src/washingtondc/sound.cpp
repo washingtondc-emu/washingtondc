@@ -50,11 +50,12 @@ static std::condition_variable samples_submitted;
 static const unsigned BUF_LEN = 4410;
 static washdc_sample_type sample_buf[BUF_LEN];
 static unsigned read_buf_idx, write_buf_idx;
-static bool do_mute;
+static bool do_mute, have_sound_dev;
 static enum sync_mode audio_sync_mode;
 
 void init(void) {
     do_mute = false;
+    have_sound_dev = true;
     audio_sync_mode = SYNC_MODE_NORM;
     cfg_get_bool("audio.mute", &do_mute);
 
@@ -62,9 +63,10 @@ void init(void) {
 
     int err;
     if ((err = Pa_Initialize()) != paNoError) {
-        error_set_portaudio_error(err);
-        error_set_portaudio_error_text(Pa_GetErrorText(err));
-        RAISE_ERROR(ERROR_EXT_FAILURE);
+        fprintf(stderr, "Unable to initialize PortAudio: %s\n",
+                Pa_GetErrorText(err));
+        have_sound_dev = false;
+        return;
     }
 
     /*
@@ -76,9 +78,10 @@ void init(void) {
                                paFramesPerBufferUnspecified,
                                snd_cb, NULL);
     if (err != paNoError) {
-        error_set_portaudio_error(err);
-        error_set_portaudio_error_text(Pa_GetErrorText(err));
-        RAISE_ERROR(ERROR_EXT_FAILURE);
+        fprintf(stderr, "Unable to open default PortAudio stream: %s\n",
+                Pa_GetErrorText(err));
+        have_sound_dev = false;
+        return;
     }
 
     Pa_StartStream(snd_stream);
@@ -86,15 +89,17 @@ void init(void) {
 
 void cleanup(void) {
     int err;
-    if ((err = Pa_StopStream(snd_stream)) != paNoError) {
-        error_set_portaudio_error(err);
-        error_set_portaudio_error_text(Pa_GetErrorText(err));
-        RAISE_ERROR(ERROR_EXT_FAILURE);
-    }
-    if ((err = Pa_Terminate()) != paNoError) {
-        error_set_portaudio_error(err);
-        error_set_portaudio_error_text(Pa_GetErrorText(err));
-        RAISE_ERROR(ERROR_EXT_FAILURE);
+    if (have_sound_dev) {
+        if ((err = Pa_StopStream(snd_stream)) != paNoError) {
+            error_set_portaudio_error(err);
+            error_set_portaudio_error_text(Pa_GetErrorText(err));
+            RAISE_ERROR(ERROR_EXT_FAILURE);
+        }
+        if ((err = Pa_Terminate()) != paNoError) {
+            error_set_portaudio_error(err);
+            error_set_portaudio_error_text(Pa_GetErrorText(err));
+            RAISE_ERROR(ERROR_EXT_FAILURE);
+        }
     }
 }
 
@@ -143,6 +148,8 @@ static washdc_sample_type scale_sample(washdc_sample_type sample) {
 }
 
 void submit_samples(washdc_sample_type *samples, unsigned count) {
+    if (!have_sound_dev)
+        return;
     std::unique_lock<std::mutex> lck(buffer_lock);
 
     while (count) {
