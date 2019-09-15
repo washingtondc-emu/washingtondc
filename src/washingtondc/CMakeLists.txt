@@ -145,7 +145,7 @@ set(washingtondc_libs "m"
                       "glew"
                       "${OPENGL_gl_LIBRARY}"
                       "pthread"
-                      "portaudio")
+                      "portaudio_static")
 
 if (USE_LIBEVENT)
     set(washingtondc_libs "${washingtondc_libs}" "${LIBEVENT_LIB_PATH}/lib/libevent.a")
