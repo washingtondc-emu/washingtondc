@@ -26,10 +26,6 @@
 #include <err.h>
 #include <stdbool.h>
 
-#define GL3_PROTOTYPES 1
-#include <GL/glew.h>
-#include <GL/gl.h>
-
 #include "washdc/win.h"
 #include "dreamcast.h"
 #include "gfx/rend_common.h"
@@ -84,14 +80,8 @@ void gfx_resize(int xres, int yres) {
 static void gfx_do_init(void) {
     win_make_context_current();
 
-    glewExperimental = GL_TRUE;
-    glewInit();
-    glViewport(0, 0, win_width, win_height);
-
     gfx_tex_cache_init();
     rend_init();
-
-    glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void gfx_post_framebuffer(int obj_handle,

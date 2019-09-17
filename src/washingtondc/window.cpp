@@ -26,6 +26,10 @@
 #include <cstring>
 #include <algorithm>
 
+#define GL3_PROTOTYPES 1
+#include <GL/glew.h>
+#include <GL/gl.h>
+
 #include <GLFW/glfw3.h>
 
 #include "washdc/washdc.h"
@@ -244,6 +248,12 @@ static void win_glfw_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("p1_2.trig-r", "dc.ctrl.p1.trig-r(1)");
 
     glfwSetMouseButtonCallback(win, mouse_btn_cb);
+
+    // now init OpenGL
+    win_glfw_make_context_current();
+    glewExperimental = GL_TRUE;
+    glewInit();
+    glViewport(0, 0, win_res_x, win_res_y);
 }
 
 static void win_glfw_cleanup() {
