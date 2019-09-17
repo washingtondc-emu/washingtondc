@@ -25,7 +25,7 @@
 
 #include <GL/gl.h>
 
-#include "washdc/gfx/gl/shader.h"
+#include "shader.h"
 
 typedef unsigned shader_key;
 

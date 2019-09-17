@@ -36,7 +36,7 @@
 #include "washdc/config_file.h"
 #include "opengl_output.h"
 #include "opengl_target.h"
-#include "washdc/gfx/gl/shader.h"
+#include "shader.h"
 #include "shader_cache.h"
 
 #include "opengl_renderer.h"

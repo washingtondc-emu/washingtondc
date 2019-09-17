@@ -34,7 +34,7 @@
 
 #include "opengl_output.h"
 #include "opengl_renderer.h"
-#include "washdc/gfx/gl/shader.h"
+#include "shader.h"
 #include "gfx/gfx.h"
 #include "gfx/gfx_obj.h"
 #include "log.h"

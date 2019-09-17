@@ -32,7 +32,6 @@
 #include <GL/gl.h>
 
 #include "washdc/win.h"
-#include "washdc/gfx/gl/shader.h"
 #include "washdc/washdc.h"
 #include "washdc/gameconsole.h"
 #include "washdc/pix_conv.h"

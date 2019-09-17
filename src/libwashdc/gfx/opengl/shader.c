@@ -29,7 +29,7 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "washdc/gfx/gl/shader.h"
+#include "shader.h"
 
 static char *read_txt(char const *path);
 
