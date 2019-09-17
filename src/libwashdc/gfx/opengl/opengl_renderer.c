@@ -35,6 +35,7 @@
 #include "washdc/gfx/obj.h"
 #include "washdc/pix_conv.h"
 #include "washdc/config_file.h"
+#include "washdc/win.h"
 
 #include "opengl_output.h"
 #include "opengl_target.h"
@@ -414,6 +415,10 @@ static struct shader_cache_ent* fetch_shader(shader_key key) {
 }
 
 static void opengl_render_init(void) {
+    win_make_context_current();
+    glewExperimental = GL_TRUE;
+    glewInit();
+
     opengl_video_output_init();
     opengl_target_init();
 
@@ -858,6 +863,7 @@ static void opengl_renderer_clear(float const bgcolor[4]) {
 static void opengl_renderer_set_screen_dim(unsigned width, unsigned height) {
     screen_width = width;
     screen_height = height;
+    glViewport(0, 0, width, height);
 }
 
 static void opengl_renderer_set_clip_range(float new_clip_min,
