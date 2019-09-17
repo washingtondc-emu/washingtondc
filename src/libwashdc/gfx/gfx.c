@@ -45,14 +45,14 @@ static unsigned frame_counter;
 static struct washdc_overlay_intf const *overlay_intf;
 
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
-static void gfx_do_init(void);
+static void gfx_do_init(struct rend_if const * rend_if);
 
-void gfx_init(unsigned width, unsigned height) {
+void gfx_init(struct rend_if const * rend_if, unsigned width, unsigned height) {
     win_width = width;
     win_height = height;
 
     LOG_INFO("GFX: rendering graphics from within the main emulation thread\n");
-    gfx_do_init();
+    gfx_do_init(rend_if);
 }
 
 void gfx_cleanup(void) {
@@ -77,11 +77,11 @@ void gfx_resize(int xres, int yres) {
     win_update();
 }
 
-static void gfx_do_init(void) {
+static void gfx_do_init(struct rend_if const * rend_if) {
     win_make_context_current();
 
     gfx_tex_cache_init();
-    rend_init();
+    rend_init(rend_if);
 }
 
 void gfx_post_framebuffer(int obj_handle,

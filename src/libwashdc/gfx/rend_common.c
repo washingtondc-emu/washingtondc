@@ -24,22 +24,23 @@
 #include <stdlib.h>
 
 #include "gfx/gfx_tex_cache.h"
-#include "gfx/opengl/opengl_renderer.h"
 #include "dreamcast.h"
 #include "log.h"
 #include "gfx_il.h"
 
 #include "rend_common.h"
 
-struct rend_if const * const gfx_rend_ifp = &opengl_rend_if;
+struct rend_if const * gfx_rend_ifp;
 
 // initialize and clean up the graphics renderer
-void rend_init(void) {
+void rend_init(struct rend_if const *rend_if) {
+    gfx_rend_ifp = rend_if;
     gfx_rend_ifp->init();
 }
 
 void rend_cleanup(void) {
     gfx_rend_ifp->cleanup();
+    gfx_rend_ifp = NULL;
 }
 
 // tell the renderer to update the given texture from the cache

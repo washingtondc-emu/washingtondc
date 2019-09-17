@@ -76,6 +76,8 @@
 #include "sound.h"
 #include "washdc/hostfile.h"
 
+#include "gfx/opengl/opengl_renderer.h" // for opengl_rend_if
+
 #ifdef ENABLE_TCP_SERIAL
 #include "serial_server.h"
 #endif
@@ -597,7 +599,7 @@ do_init_win_gfx:
         win_height = 480;
 
     win_init(win_width, win_height);
-    gfx_init(win_width, win_height);
+    gfx_init(&opengl_rend_if, win_width, win_height);
 
     dc_sound_init(snd_intf);
 

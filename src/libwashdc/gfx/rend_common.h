@@ -33,7 +33,7 @@
 #include "washdc/gfx/gfx_all.h"
 
 // initialize and clean up the graphics renderer
-void rend_init(void);
+void rend_init(struct rend_if const *rend_if);
 void rend_cleanup(void);
 
 // tell the renderer to update the given texture from the cache
@@ -42,6 +42,6 @@ void rend_update_tex(unsigned tex_no);
 // tell the renderer to release the given texture from the cache
 void rend_release_tex(unsigned tex_no);
 
-struct rend_if const * const gfx_rend_ifp;
+struct rend_if const * gfx_rend_ifp;
 
 #endif
