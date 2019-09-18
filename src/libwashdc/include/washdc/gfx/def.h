@@ -25,6 +25,10 @@
 
 #include <assert.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * offsets to vertex components within the vert array.
  * these are in terms of sizeof(float)
@@ -119,5 +123,9 @@ struct gfx_rend_param {
     bool pt_mode;
     unsigned pt_ref; // 0-255
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

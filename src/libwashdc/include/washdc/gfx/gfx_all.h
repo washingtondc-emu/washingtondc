@@ -26,6 +26,10 @@
 #include "config.h"
 #include "def.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct rend_if {
     void (*init)(void);
 
@@ -79,5 +83,9 @@ struct rend_if {
 
     void (*video_toggle_filter)(void);
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

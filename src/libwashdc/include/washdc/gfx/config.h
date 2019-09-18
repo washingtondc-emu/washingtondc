@@ -23,6 +23,10 @@
 #ifndef WASHDC_GFX_GFX_CONFIG_H_
 #define WASHDC_GFX_GFX_CONFIG_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * The purpose of this file is to store settings for the graphics renderer.
  * There's a "default" configuration that renders everything the way you'd
@@ -64,5 +68,9 @@ struct gfx_cfg gfx_config_read(void);
 
 void gfx_config_oit_enable(void);
 void gfx_config_oit_disable(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

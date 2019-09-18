@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2017, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,45 +20,34 @@
  *
  ******************************************************************************/
 
-#ifndef WASHDC_GFX_TEX_CACHE_H_
-#define WASHDC_GFX_TEX_CACHE_H_
+#ifndef SERIALSERVER_HPP_
+#define SERIALSERVER_HPP_
 
-#include <stdbool.h>
+#include <cstdint>
 
-#ifdef __cplusplus
-extern "C" {
+#include <event2/event.h>
+#include <event2/bufferevent.h>
+#include <event2/listener.h>
+#include <event2/buffer.h>
+
+#include "washdc/serial_server.h"
+
+#ifndef ENABLE_TCP_SERIAL
+#error this file should not be built with ENABLE_TCP_SERIAL disabled!
 #endif
 
-enum gfx_tex_fmt {
-    GFX_TEX_FMT_ARGB_1555,
-    GFX_TEX_FMT_RGB_565,
-    GFX_TEX_FMT_ARGB_4444,
-    GFX_TEX_FMT_ARGB_8888,
-    GFX_TEX_FMT_YUV_422,
+// it's 'cause 1998 is the year the Dreamcast came out in Japan
+#define SERIAL_PORT_NO 1998
 
-    GFX_TEX_FMT_COUNT
-};
+void serial_server_init(void);
+void serial_server_cleanup(void);
 
 /*
- * This is the gfx_thread's copy of the texture cache.  It mirrors the one
- * in the geo_buf code, and is updated every time a new geo_buf is submitted by
- * the PVR2 STARTRENDER command.
+ * This gets called every time the io_thread wakes up.  It will check if any
+ * work needs to be done, and it will perform that work.
  */
+void serial_server_run(void);
 
-#define GFX_TEX_CACHE_SIZE 512
-#define GFX_TEX_CACHE_MASK (GFX_TEX_CACHE_SIZE - 1)
-
-struct gfx_tex {
-    int obj_handle;
-    enum gfx_tex_fmt tex_fmt;
-    unsigned width, height;
-    bool valid;
-};
-
-struct gfx_tex const* gfx_tex_cache_get(unsigned idx);
-
-#ifdef __cplusplus
-}
-#endif
+extern struct serial_server_intf const sersrv_intf;
 
 #endif

@@ -20,45 +20,23 @@
  *
  ******************************************************************************/
 
-#ifndef WASHDC_GFX_TEX_CACHE_H_
-#define WASHDC_GFX_TEX_CACHE_H_
-
-#include <stdbool.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-enum gfx_tex_fmt {
-    GFX_TEX_FMT_ARGB_1555,
-    GFX_TEX_FMT_RGB_565,
-    GFX_TEX_FMT_ARGB_4444,
-    GFX_TEX_FMT_ARGB_8888,
-    GFX_TEX_FMT_YUV_422,
-
-    GFX_TEX_FMT_COUNT
-};
+#ifndef CONSOLE_CONFIG_HPP_
+#define CONSOLE_CONFIG_HPP_
 
 /*
- * This is the gfx_thread's copy of the texture cache.  It mirrors the one
- * in the geo_buf code, and is updated every time a new geo_buf is submitted by
- * the PVR2 STARTRENDER command.
+ * a 'console' in this context is a collection of per-console configs.
+ * this includes RTC value, firmware image and flash image.
+ * In the future it will also include which VMUs and controllers are connected.
+ *
+ * Effectively, it represents a virtual dreamcast console, and you can have
+ * several different consoles with different settings just like in real life.
  */
 
-#define GFX_TEX_CACHE_SIZE 512
-#define GFX_TEX_CACHE_MASK (GFX_TEX_CACHE_SIZE - 1)
+char const *console_get_dir(char const *console_name);
+void create_console_dir(char const *console_name);
 
-struct gfx_tex {
-    int obj_handle;
-    enum gfx_tex_fmt tex_fmt;
-    unsigned width, height;
-    bool valid;
-};
-
-struct gfx_tex const* gfx_tex_cache_get(unsigned idx);
-
-#ifdef __cplusplus
-}
-#endif
+char const *console_get_rtc_path(char const *console_name);
+char const *console_get_firmware_path(char const *console_name);
+char const *console_get_flashrom_path(char const *console_name);
 
 #endif

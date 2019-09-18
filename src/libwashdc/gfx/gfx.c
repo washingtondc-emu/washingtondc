@@ -65,14 +65,14 @@ void gfx_expose(void) {
 
 void gfx_redraw(void) {
     gfx_rend_ifp->video_present();
-    if (overlay_intf->overlay_draw)
+    if (overlay_intf && overlay_intf->overlay_draw)
         overlay_intf->overlay_draw();
     win_update();
 }
 
 void gfx_resize(int xres, int yres) {
     gfx_rend_ifp->video_present();
-    if (overlay_intf->overlay_draw)
+    if (overlay_intf && overlay_intf->overlay_draw)
         overlay_intf->overlay_draw();
     win_update();
 }
@@ -90,7 +90,7 @@ void gfx_post_framebuffer(int obj_handle,
     gfx_rend_ifp->video_new_framebuffer(obj_handle, fb_new_width, fb_new_height,
                                         do_flip);
     gfx_rend_ifp->video_present();
-    if (overlay_intf->overlay_draw)
+    if (overlay_intf && overlay_intf->overlay_draw)
         overlay_intf->overlay_draw();
     win_update();
     frame_counter++;

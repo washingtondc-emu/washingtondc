@@ -20,45 +20,19 @@
  *
  ******************************************************************************/
 
-#ifndef WASHDC_GFX_TEX_CACHE_H_
-#define WASHDC_GFX_TEX_CACHE_H_
+#ifndef HOSTFILE_HPP_
+#define HOSTFILE_HPP_
 
-#include <stdbool.h>
+#define HOSTFILE_PATH_LEN 4096
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+void path_append(char *dst, char const *src, size_t dst_sz);
+char const *screenshot_dir(void);
+char const *data_dir(void);
+char const *cfg_dir(void);
+char const *cfg_file(void);
+void create_screenshot_dir(void);
 
-enum gfx_tex_fmt {
-    GFX_TEX_FMT_ARGB_1555,
-    GFX_TEX_FMT_RGB_565,
-    GFX_TEX_FMT_ARGB_4444,
-    GFX_TEX_FMT_ARGB_8888,
-    GFX_TEX_FMT_YUV_422,
-
-    GFX_TEX_FMT_COUNT
-};
-
-/*
- * This is the gfx_thread's copy of the texture cache.  It mirrors the one
- * in the geo_buf code, and is updated every time a new geo_buf is submitted by
- * the PVR2 STARTRENDER command.
- */
-
-#define GFX_TEX_CACHE_SIZE 512
-#define GFX_TEX_CACHE_MASK (GFX_TEX_CACHE_SIZE - 1)
-
-struct gfx_tex {
-    int obj_handle;
-    enum gfx_tex_fmt tex_fmt;
-    unsigned width, height;
-    bool valid;
-};
-
-struct gfx_tex const* gfx_tex_cache_get(unsigned idx);
-
-#ifdef __cplusplus
-}
-#endif
+void create_cfg_dir(void);
+void create_data_dir(void);
 
 #endif

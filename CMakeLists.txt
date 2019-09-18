@@ -43,6 +43,8 @@ option(ENABLE_JIT_X86_64 "enable native x86_64 JIT backend" ON)
 option(ENABLE_TCP_SERIAL "enable serial server emulator over tcp port 1998" ON)
 option(USE_LIBEVENT "use libevent for asynchronous I/O processing" ON)
 option(JIT_PROFILE "Profile JIT code blocks based on frequency" OFF)
+option(BUILD_WASHINGTONDC "Build the washingtondc frontend program" ON)
+option(BUILD_WASHDC_HEADLESS "Build the washdc-headless frontend program" ON)
 
 # zlib version 1.2.11
 set(zlib_path "${CMAKE_SOURCE_DIR}/external/zlib")

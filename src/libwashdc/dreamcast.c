@@ -1246,8 +1246,12 @@ void dc_end_frame(void) {
 
     last_frame_realtime = timestamp;
     last_frame_virttime = virt_timestamp;
-    overlay_intf->overlay_set_fps(framerate);
-    overlay_intf->overlay_set_virt_fps(virt_framerate);
+    if (overlay_intf) {
+        if (overlay_intf->overlay_set_fps)
+            overlay_intf->overlay_set_fps(framerate);
+        if (overlay_intf->overlay_set_virt_fps)
+            overlay_intf->overlay_set_virt_fps(virt_framerate);
+    }
 
     title_set_fps_internal(virt_framerate);
 

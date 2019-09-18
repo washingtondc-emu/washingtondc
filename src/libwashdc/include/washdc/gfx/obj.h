@@ -26,6 +26,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * An obj represents a blob of data sent to the gfx system.  It will be the
  * underlying storage class for textures and render targets.
@@ -79,5 +83,9 @@ static inline void gfx_obj_alloc(struct gfx_obj *obj) {
 struct gfx_obj *gfx_obj_get(int handle);
 
 int gfx_obj_handle(struct gfx_obj *obj);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
