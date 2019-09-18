@@ -77,6 +77,7 @@ washdc_init(struct washdc_launch_settings const *settings) {
     hostfile_api = settings->hostfile_api;
 
     return dreamcast_init(settings->path_gdi,
+                          settings->gfx_rend_if,
                           settings->overlay_intf, settings->dbg_intf,
                           settings->sersrv, settings->sndsrv,
                           settings->write_to_flash);

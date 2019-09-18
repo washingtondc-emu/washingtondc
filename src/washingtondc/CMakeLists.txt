@@ -27,6 +27,8 @@ project(WashingtonDC CXX)
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 
+find_package(OpenGL REQUIRED)
+
 set(UI_SOURCE_DIR "${PROJECT_SOURCE_DIR}/ui")
 set(ui_sources "${UI_SOURCE_DIR}/overlay.hpp"
                "${UI_SOURCE_DIR}/overlay.cpp"
@@ -63,6 +65,18 @@ set(debug_sources "${IO_SOURCE_DIR}/washdbg_tcp.hpp"
 set(serial_sources "${IO_SOURCE_DIR}/serial_server.hpp"
                    "${IO_SOURCE_DIR}/serial_server.cpp")
 
+set(gfxgl_sources "${PROJECT_SOURCE_DIR}/opengl/shader.h"
+                  "${PROJECT_SOURCE_DIR}/opengl/shader.c"
+                  "${PROJECT_SOURCE_DIR}/opengl/shader_cache.h"
+                  "${PROJECT_SOURCE_DIR}/opengl/shader_cache.c"
+                  "${PROJECT_SOURCE_DIR}/opengl/opengl_output.h"
+                  "${PROJECT_SOURCE_DIR}/opengl/opengl_output.c"
+                  "${PROJECT_SOURCE_DIR}/opengl/opengl_target.h"
+                  "${PROJECT_SOURCE_DIR}/opengl/opengl_target.c"
+                  "${PROJECT_SOURCE_DIR}/opengl/opengl_renderer.h"
+                  "${PROJECT_SOURCE_DIR}/opengl/opengl_renderer.c")
+
+
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/washingtondc.hpp"
                          "${PROJECT_SOURCE_DIR}/window.cpp"
@@ -96,7 +110,7 @@ if (ENABLE_DEBUGGER)
 
     set(need_capstone "TRUE")
 
-    set(washingtondc_sources ${washingtondc_sources} ${sh4asm_sources} ${debug_sources})
+    set(washingtondc_sources ${washingtondc_sources} ${sh4asm_sources} ${debug_sources} ${gfxgl_sources})
 
     add_definitions(-DENABLE_DEBUGGER)
     if (ENABLE_WATCHPOINTS)

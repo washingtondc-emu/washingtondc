@@ -29,6 +29,7 @@
 #include "sound_intf.h"
 #include "gameconsole.h"
 #include "hostfile.h"
+#include "washdc/gfx/gfx_all.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -103,6 +104,8 @@ struct washdc_launch_settings {
     struct serial_server_intf const *sersrv;
 
     struct washdc_sound_intf const *sndsrv;
+
+    struct rend_if const *gfx_rend_if;
 
     enum washdc_boot_mode boot_mode;
 

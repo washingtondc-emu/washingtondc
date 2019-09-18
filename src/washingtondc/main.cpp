@@ -37,6 +37,7 @@
 #include "washdc/hostfile.h"
 #include "hostfile.hpp"
 #include "console_config.hpp"
+#include "opengl/opengl_renderer.h"
 
 #ifdef USE_LIBEVENT
 #include "frontend_io/io_thread.hpp"
@@ -405,6 +406,8 @@ int main(int argc, char **argv) {
 #endif
 
     settings.sndsrv = &snd_intf;
+
+    settings.gfx_rend_if = &opengl_rend_if;
 
     overlay_intf.overlay_draw = overlay::draw;
     overlay_intf.overlay_set_fps = overlay::set_fps;

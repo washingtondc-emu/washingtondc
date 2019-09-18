@@ -76,8 +76,6 @@
 #include "sound.h"
 #include "washdc/hostfile.h"
 
-#include "gfx/opengl/opengl_renderer.h" // for opengl_rend_if
-
 #ifdef ENABLE_TCP_SERIAL
 #include "serial_server.h"
 #endif
@@ -404,6 +402,7 @@ static struct washdc_gameconsole dccons = {
 
 struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
+               struct rend_if const *gfx_if,
                struct washdc_overlay_intf const *overlay_intf_fns,
                struct debug_frontend const *dbg_frontend,
                struct serial_server_intf const *ser_intf,
@@ -599,7 +598,7 @@ do_init_win_gfx:
         win_height = 480;
 
     win_init(win_width, win_height);
-    gfx_init(&opengl_rend_if, win_width, win_height);
+    gfx_init(gfx_if, win_width, win_height);
 
     dc_sound_init(snd_intf);
 

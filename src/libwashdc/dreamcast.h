@@ -30,6 +30,7 @@
 #include "dc_sched.h"
 #include "washdc/serial_server.h"
 #include "washdc/gameconsole.h"
+#include "washdc/gfx/gfx_all.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "washdc/debugger.h"
@@ -54,6 +55,7 @@ struct washdc_sound_intf;
 
 struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
+               struct rend_if const *gfx_if,
                struct washdc_overlay_intf const *overlay_intf_fns,
                struct debug_frontend const *dbg_frontend,
                struct serial_server_intf const *ser_intf,

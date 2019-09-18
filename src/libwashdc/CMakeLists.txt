@@ -38,8 +38,6 @@ add_definitions(-D_POSIX_C_SOURCE=200809L)
 # I don't give a damn about portability to Windows
 add_definitions(-D_GNU_SOURCE)
 
-find_package(OpenGL REQUIRED)
-
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)
    add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
 endif()
@@ -159,21 +157,11 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/hw/pvr2/pvr2_gfx_obj.h"
                       "${WASHDC_SOURCE_DIR}/hw/pvr2/pvr2_yuv.c"
                       "${WASHDC_SOURCE_DIR}/hw/pvr2/pvr2_yuv.h"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/shader.h"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/shader.c"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/shader_cache.h"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/shader_cache.c"
                       "${WASHDC_SOURCE_DIR}/include/washdc/gfx/gfx_all.h"
                       "${WASHDC_SOURCE_DIR}/include/washdc/gfx/config.h"
                       "${WASHDC_SOURCE_DIR}/include/washdc/gfx/def.h"
                       "${WASHDC_SOURCE_DIR}/include/washdc/gfx/tex_cache.h"
                       "${WASHDC_SOURCE_DIR}/include/washdc/gfx/obj.h"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/opengl_output.h"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/opengl_output.c"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/opengl_target.h"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/opengl_target.c"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/opengl_renderer.h"
-                      "${WASHDC_SOURCE_DIR}/gfx/opengl/opengl_renderer.c"
                       "${WASHDC_SOURCE_DIR}/gfx/rend_common.h"
                       "${WASHDC_SOURCE_DIR}/gfx/rend_common.c"
                       "${WASHDC_SOURCE_DIR}/gfx/gfx.h"
