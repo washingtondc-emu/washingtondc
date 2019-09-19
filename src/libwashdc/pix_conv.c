@@ -31,18 +31,18 @@
  */
 static void
 washdc_yuv_to_rgb_2pixels(uint8_t *rgb_out, unsigned lum1, unsigned lum2,
-                          float chrom_b, float chrom_r) {
-    float adds[3] = {
-        1.402f *  chrom_r,
-        -0.344f * chrom_b - 0.714f * chrom_r,
-        1.772f * chrom_b
+                          int chrom_b, int chrom_r) {
+    int adds[3] = {
+        (0x166e8 * chrom_r) >> 16,
+        (0x5810 * chrom_b + 0xb6c8 * chrom_r) >> 16,
+        (0x1c5a0 * chrom_b) >> 16
     };
-    float rgb[6] = {
+    int rgb[6] = {
         lum1 + adds[0],
-        lum1 - adds[1],
+        lum1 + adds[1],
         lum1 + adds[2],
         lum2 + adds[0],
-        lum2 - adds[1],
+        lum2 + adds[1],
         lum2 + adds[2]
     };
 
@@ -91,11 +91,11 @@ void washdc_conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
             uint8_t *outp = 3 * (row * width + col * 2) + rgbp;
             uint32_t in = tex_in[row * half_width + col];
             unsigned lum[2] = { (in >> 8) & 0xff, (in >> 24) & 0xff };
-            float chrom_b = in & 0xff;
-            float chrom_r = (in >> 16) & 0xff;
+            int chrom_b = in & 0xff;
+            int chrom_r = (in >> 16) & 0xff;
 
             washdc_yuv_to_rgb_2pixels(outp, lum[0], lum[1],
-                                      chrom_b - 128.0f, chrom_r - 128.0f);
+                                      chrom_b - 128, chrom_r - 128);
         }
     }
 }
