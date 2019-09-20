@@ -297,31 +297,37 @@ void sh4_dmac_dmaor_reg_write_handler(Sh4 *sh4,
 void sh4_dmac_transfer_to_mem(Sh4 *sh4, addr32_t transfer_dst, size_t unit_sz,
                               size_t n_units, void const *dat) {
     size_t total_len = unit_sz * n_units;
+    struct memory_map_region *region =
+        memory_map_get_region(sh4->mem.map,
+                              transfer_dst & ~0xe0000000, total_len);
+    uint32_t addr_mask = region->mask;
+    void *ctx = region->ctxt;
+
     if (total_len % 4 == 0) {
+        memory_map_write32_func write32 = region->intf->write32;
         total_len /= 4;
         uint32_t const *dat32 = (uint32_t const*)dat;
         while (total_len) {
-            memory_map_write_32(sh4->mem.map,
-                                transfer_dst & ~0xe0000000, *dat32);
+            write32(transfer_dst & addr_mask, *dat32, ctx);
             transfer_dst += 4;
             dat32++;
             total_len--;
         }
     } else if (total_len % 2 == 0) {
+        memory_map_write16_func write16 = region->intf->write16;
         total_len /= 2;
         uint16_t const *dat16 = (uint16_t const*)dat;
         while (total_len) {
-            memory_map_write_16(sh4->mem.map,
-                                transfer_dst & ~0xe0000000, *dat16);
+            write16(transfer_dst & addr_mask, *dat16, ctx);
             transfer_dst += 2;
             dat16++;
             total_len--;
         }
     } else {
+        memory_map_write8_func write8 = region->intf->write8;
         uint8_t const *dat8 = (uint8_t const*)dat;
         while (total_len) {
-            memory_map_write_8(sh4->mem.map,
-                               transfer_dst & ~0xe0000000, *dat8);
+            write8(transfer_dst & addr_mask, *dat8, ctx);
             transfer_dst++;
             dat8++;
             total_len--;
