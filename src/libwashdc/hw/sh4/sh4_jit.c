@@ -2244,6 +2244,35 @@ bool sh4_jit_fadd_frm_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     return true;
 }
 
+// FTRC FRm, FPUL
+// 1111mmmm00111101
+// FTRC DRm, FPUL
+// 1111mmm000111101
+bool sh4_jit_ftrc_frm_fpul(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                           struct il_code_block *block, unsigned pc,
+                           struct InstOpcode const *op, cpu_inst_param inst) {
+    void (*handler)(void*, cpu_inst_param);
+
+    if (ctx->pr_bit)
+        handler = sh4_inst_binary_ftrc_dr_fpul;
+    else
+        handler = sh4_inst_binary_ftrc_fr_fpul;
+
+    struct jit_inst il_inst;
+
+    res_drain_all_regs(sh4, block);
+    res_invalidate_all_regs(block);
+
+    il_inst.op = JIT_OP_FALLBACK;
+    il_inst.immed.fallback.fallback_fn = handler;
+    il_inst.immed.fallback.inst = inst;
+
+    il_code_block_push_inst(block, &il_inst);
+
+    return true;
+}
+
+
 // FMOV.S @(R0, Rm), FRn
 // 1111nnnnmmmm0110
 // FMOV @(R0, Rm), DRn

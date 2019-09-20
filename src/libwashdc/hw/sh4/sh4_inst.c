@@ -979,7 +979,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111mmmm00111101
     // FTRC DRm, FPUL
     // 1111mmm000111101
-    { FPU_HANDLER(ftrc_fpu), sh4_jit_fallback, false,
+    { FPU_HANDLER(ftrc_fpu), sh4_jit_ftrc_frm_fpul, false,
       SH4_GROUP_FE, 1, 0xf0ff, 0xf03d },
 
     // FCNVDS DRm, FPUL
