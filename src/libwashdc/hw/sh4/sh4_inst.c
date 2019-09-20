@@ -744,7 +744,7 @@ static struct InstOpcode opcode_list[] = {
       false, SH4_GROUP_LS, 1, 0xff00, 0x8100 },
 
     // MOV.L Rm, @(disp, Rn)
-    { &sh4_inst_binary_movl_gen_binind_disp_gen, sh4_jit_fallback,
+    { &sh4_inst_binary_movl_gen_binind_disp_gen, sh4_jit_movl_rm_a_disp4_rn,
       false, SH4_GROUP_LS, 1, 0xf000, 0x1000 },
 
     // MOV.B @(disp, Rm), R0
