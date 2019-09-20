@@ -1040,6 +1040,25 @@ bool sh4_jit_movl_a_r0_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     return true;
 }
 
+// MOV.B @Rm, Rn
+// 0110nnnnmmmm0000
+bool sh4_jit_movb_arm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                         struct il_code_block *block, unsigned pc,
+                         struct InstOpcode const *op, cpu_inst_param inst) {
+    unsigned reg_src = ((inst & 0x00f0) >> 4) + SH4_REG_R0;
+    unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+
+    unsigned slot_src = reg_slot(sh4, block, reg_src);
+    unsigned slot_dst = reg_slot(sh4, block, reg_dst);
+
+    jit_read_8_slot(block, sh4->mem.map, slot_src, slot_dst);
+    jit_sign_extend_8(block, slot_dst);
+
+    reg_map[reg_dst].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 // MOV.L @Rm, Rn
 // 0110nnnnmmmm0010
 bool sh4_jit_movl_arm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
