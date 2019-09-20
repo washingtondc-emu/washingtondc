@@ -596,7 +596,7 @@ void x86asm_movb_sib_reg(unsigned reg_base, unsigned scale,
         reg_index -= R8;
     }
 
-    put8(0x66);
+    /* put8(0x66); */
 
     emit_mod_reg_rm_sib(rex, 0x8a, 0, reg_dst, SIB);
 
