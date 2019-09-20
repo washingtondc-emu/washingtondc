@@ -621,6 +621,13 @@ sh4_jit_stsl_pr_amrn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                   struct il_code_block *block, unsigned pc,
                   struct InstOpcode const *op, cpu_inst_param inst);
 
+// EXTU.B Rm, Rn
+// 0110nnnnmmmm1100
+bool
+sh4_jit_extub_rm_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                    struct il_code_block *block, unsigned pc,
+                    struct InstOpcode const *op, cpu_inst_param inst);
+
 // LDS Rm, FPSCR
 // 0100mmmm01101010
 bool sh4_jit_lds_rm_fpscr(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,

@@ -548,7 +548,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_EX, 1, 0xf00f, 0x600f },
 
     // EXTU.B Rm, Rn
-    { &sh4_inst_binary_extub_gen_gen, sh4_jit_fallback, false,
+    { &sh4_inst_binary_extub_gen_gen, sh4_jit_extub_rm_rn, false,
       SH4_GROUP_EX, 1, 0xf00f, 0x600c },
 
     // EXTU.W Rm, Rn

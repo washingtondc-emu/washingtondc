@@ -1783,6 +1783,26 @@ sh4_jit_stsl_pr_amrn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     return true;
 }
 
+// EXTU.B Rm, Rn
+// 0110nnnnmmmm1100
+bool
+sh4_jit_extub_rm_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                    struct il_code_block *block, unsigned pc,
+                    struct InstOpcode const *op, cpu_inst_param inst) {
+    unsigned src_reg = ((inst >> 4) & 0xf) + SH4_REG_R0;
+    unsigned dst_reg = ((inst >> 8) & 0xf) + SH4_REG_R0;
+
+    unsigned src_slot = reg_slot(sh4, block, src_reg);
+    unsigned dst_slot = reg_slot(sh4, block, dst_reg);
+
+    jit_mov(block, src_slot, dst_slot);
+    jit_and_const32(block, dst_slot, 0xff);
+
+    reg_map[dst_reg].stat = REG_STATUS_SLOT;
+
+    return true;
+}
+
 // LDS Rm, FPSCR
 // 0100mmmm01101010
 bool sh4_jit_lds_rm_fpscr(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
