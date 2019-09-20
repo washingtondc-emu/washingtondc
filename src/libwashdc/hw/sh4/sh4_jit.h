@@ -730,6 +730,14 @@ bool sh4_jit_fsub_frm_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                           struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, cpu_inst_param inst);
 
+// FADD FRm, FRn
+// 1111nnnnmmmm0000
+// FADD DRm, DRn
+// 1111nnn0mmm00000
+bool sh4_jit_fadd_frm_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                          struct il_code_block *block, unsigned pc,
+                          struct InstOpcode const *op, cpu_inst_param inst);
+
 // FMOV.S @(R0, Rm), FRn
 // 1111nnnnmmmm0110
 // FMOV @(R0, Rm), DRn

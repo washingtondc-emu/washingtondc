@@ -911,7 +911,7 @@ static struct InstOpcode opcode_list[] = {
     // 1111nnnnmmmm0000
     // FADD DRm, DRn
     // 1111nnn0mmm00000
-    { FPU_HANDLER(fadd_fpu), sh4_jit_fallback, false,
+    { FPU_HANDLER(fadd_fpu), sh4_jit_fadd_frm_frn, false,
       SH4_GROUP_FE, 1, 0xf00f, 0xf000 },
 
     // FCMP/EQ FRm, FRn
