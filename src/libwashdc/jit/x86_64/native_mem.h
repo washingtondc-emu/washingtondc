@@ -40,6 +40,8 @@ void native_mem_read_16(struct code_block_x86_64 *blk,
                         struct memory_map const *map);
 void native_mem_read_32(struct code_block_x86_64 *blk,
                         struct memory_map const *map);
+void native_mem_write_8(struct code_block_x86_64 *blk,
+                        struct memory_map const *map);
 void native_mem_write_32(struct code_block_x86_64 *blk,
                          struct memory_map const *map);
 

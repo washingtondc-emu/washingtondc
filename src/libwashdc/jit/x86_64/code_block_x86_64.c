@@ -518,6 +518,7 @@ static bool does_inst_emit_call(struct jit_inst const *inst) {
          inst->op == JIT_OP_READ_8_SLOT ||
          inst->op == JIT_OP_READ_16_SLOT ||
          inst->op == JIT_OP_READ_32_SLOT ||
+         inst->op == JIT_OP_WRITE_8_SLOT ||
          inst->op == JIT_OP_WRITE_32_SLOT);
 }
 
@@ -1014,6 +1015,43 @@ static void emit_read_32_slot(struct code_block_x86_64 *blk,
     x86asm_mov_reg32_reg32(REG_RET, slots[dst_slot].reg_no);
 
     ungrab_slot(dst_slot);
+    ungrab_register(REG_RET);
+}
+
+// JIT_OP_WRITE_8_SLOT implementation
+static void emit_write_8_slot(struct code_block_x86_64 *blk,
+                               struct il_code_block const *il_blk,
+                               void *cpu, struct jit_inst const *inst) {
+    unsigned src_slot = inst->immed.write_8_slot.src_slot;
+    unsigned addr_slot = inst->immed.write_8_slot.addr_slot;
+    struct memory_map const *map = inst->immed.write_8_slot.map;
+
+    prefunc(blk);
+
+    if (config_get_inline_mem()) {
+        move_slot_to_reg(blk, addr_slot, REG_ARG0);
+        move_slot_to_reg(blk, src_slot, REG_ARG1);
+
+        evict_register(blk, REG_ARG0);
+        evict_register(blk, REG_ARG1);
+
+        native_mem_write_8(blk, map);
+    } else {
+        move_slot_to_reg(blk, addr_slot, REG_ARG1);
+        move_slot_to_reg(blk, src_slot, REG_ARG2);
+
+        evict_register(blk, REG_ARG1);
+        evict_register(blk, REG_ARG2);
+
+        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+        ms_shadow_open(blk);
+        x86_64_align_stack(blk);
+        x86asm_call_ptr(memory_map_write_8);
+        ms_shadow_close();
+    }
+
+    postfunc();
+
     ungrab_register(REG_RET);
 }
 
@@ -1712,6 +1750,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_READ_32_SLOT:
             emit_read_32_slot(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_WRITE_8_SLOT:
+            emit_write_8_slot(out, il_blk, cpu, inst);
             break;
         case JIT_OP_WRITE_32_SLOT:
             emit_write_32_slot(out, il_blk, cpu, inst);

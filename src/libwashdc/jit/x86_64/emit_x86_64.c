@@ -678,6 +678,45 @@ void x86asm_movl_reg_sib(unsigned reg_src, unsigned reg_base,
     put8(sib);
 }
 
+// movb %<reg_src>, (%<reg_base>, <scale>, %<reg_index>)
+void x86asm_movb_reg_sib(unsigned reg_src, unsigned reg_base,
+                         unsigned scale, unsigned reg_index) {
+    unsigned log2;
+    switch (scale) {
+    case 1:
+        log2 = 0;
+        break;
+    case 2:
+        log2 = 1;
+        break;
+    case 4:
+        log2 = 2;
+        break;
+    case 8:
+        log2 = 3;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    unsigned rex = 0;
+    if (reg_base >= R8) {
+        rex |= REX_B;
+        reg_base -= R8;
+    }
+    if (reg_index >= R8) {
+        rex |= REX_X;
+        reg_index -= R8;
+    }
+
+    /* put8(0x66); */
+
+    emit_mod_reg_rm_sib(rex, 0x88, 0, reg_src, SIB);
+
+    unsigned sib = reg_base | (reg_index << 3) | (log2 << 6);
+    put8(sib);
+}
+
 // movl (<reg_src>), <reg_dst>
 void x86asm_mov_indreg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x8b, 0, reg_dst, reg_src);

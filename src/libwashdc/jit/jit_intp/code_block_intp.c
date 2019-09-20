@@ -139,6 +139,12 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                                        ]);
             inst++;
             break;
+        case JIT_OP_WRITE_8_SLOT:
+            memory_map_write_8(inst->immed.write_8_slot.map,
+                                block->slots[inst->immed.write_8_slot.addr_slot],
+                                block->slots[inst->immed.write_8_slot.src_slot]);
+            inst++;
+            break;
         case JIT_OP_WRITE_32_SLOT:
             memory_map_write_32(inst->immed.write_32_slot.map,
                                 block->slots[inst->immed.write_32_slot.addr_slot],

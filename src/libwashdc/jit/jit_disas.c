@@ -83,6 +83,11 @@ void jit_disas_il(FILE *out, struct jit_inst const *inst, int idx) {
                 idx, immed->read_32_slot.addr_slot,
                 immed->read_32_slot.dst_slot);
         break;
+    case JIT_OP_WRITE_8_SLOT:
+        fprintf(out, "%02X: WRITE_8_SLOT <SLOT %02X>, *(U8*)<SLOT %02X>\n",
+                idx, immed->write_8_slot.src_slot,
+                immed->write_8_slot.addr_slot);
+        break;
     case JIT_OP_WRITE_32_SLOT:
         fprintf(out, "%02X: WRITE_32_SLOT <SLOT %02X>, *(U32*)<SLOT %02X>\n",
                 idx, immed->write_32_slot.src_slot,

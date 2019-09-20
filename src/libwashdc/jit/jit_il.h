@@ -74,6 +74,12 @@ enum jit_opcode {
     JIT_OP_READ_32_SLOT,
 
     /*
+     * write an 8-bit int contained in a slot to memory at an address contained
+     * in a slot
+     */
+    JIT_OP_WRITE_8_SLOT,
+
+    /*
      * write a 32-bit int contained in a slot to memory at an address contained
      * in a slot
      */
@@ -238,6 +244,12 @@ struct read_32_slot_immed {
     unsigned dst_slot;
 };
 
+struct write_8_slot_immed {
+    struct memory_map *map;
+    unsigned src_slot;
+    unsigned addr_slot;
+};
+
 struct write_32_slot_immed {
     struct memory_map *map;
     unsigned src_slot;
@@ -397,6 +409,7 @@ union jit_immed {
     struct read_8_slot_immed read_8_slot;
     struct read_16_slot_immed read_16_slot;
     struct read_32_slot_immed read_32_slot;
+    struct write_8_slot_immed write_8_slot;
     struct write_32_slot_immed write_32_slot;
     struct load_slot16_immed load_slot16;
     struct load_slot_immed load_slot;
@@ -465,6 +478,8 @@ void jit_read_16_slot(struct il_code_block *block, struct memory_map *map,
                       unsigned addr_slot, unsigned dst_slot);
 void jit_read_32_slot(struct il_code_block *block, struct memory_map *map,
                       unsigned addr_slot, unsigned dst_slot);
+void jit_write_8_slot(struct il_code_block *block, struct memory_map *map,
+                      unsigned src_slot, unsigned addr_slot);
 void jit_write_32_slot(struct il_code_block *block, struct memory_map *map,
                        unsigned src_slot, unsigned addr_slot);
 void jit_load_slot(struct il_code_block *block, unsigned slot_no,
