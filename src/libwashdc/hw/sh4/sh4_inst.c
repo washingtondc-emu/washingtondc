@@ -5387,7 +5387,7 @@ void sh4_inst_binary_ftrc_fr_fpul(void *cpu, cpu_inst_param inst) {
     int round_mode = fegetround();
     fesetround(FE_TOWARDZERO);
 
-    uint32_t lit;
+    int32_t lit;
     memcpy(&lit, val_in_p, sizeof(lit));
 
     if (val >= 0.0f) {
