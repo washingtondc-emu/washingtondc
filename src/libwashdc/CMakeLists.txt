@@ -34,9 +34,10 @@ endif()
 # i need this for strdup and clock_gettime on Debian for some unknown reason
 add_definitions(-D_POSIX_C_SOURCE=200809L)
 
-# While I prefer to avoid using GNU-specific stuff when possible, in general
-# I don't give a damn about portability to Windows
-add_definitions(-D_GNU_SOURCE)
+# need this for MAP_ANONYMOUS on unix
+if (NOT WIN32)
+    add_definitions(-D_GNU_SOURCE)
+endif()
 
 if (DBG_EXIT_ON_UNDEFINED_OPCODE)
    add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
