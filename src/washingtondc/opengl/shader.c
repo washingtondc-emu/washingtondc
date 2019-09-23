@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2019 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,10 +20,10 @@
  *
  ******************************************************************************/
 
-#include <err.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -73,7 +73,8 @@ void shader_load_vert_with_preamble(struct shader *out,
 
         glDeleteShader(vert_shader);
 
-        errx(1, "Error compiling shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling shader: %s\n", shader_log);
+        exit(1);
     }
 
     out->vert_shader = vert_shader;
@@ -105,7 +106,8 @@ void shader_load_frag_with_preamble(struct shader *out,
     if (!shader_success) {
         glGetShaderInfoLog(frag_shader, LOG_LEN_GLSL, NULL, shader_log);
 
-        errx(1, "Error compiling shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling shader: %s\n", shader_log);
+        exit(1);
     }
 
     out->frag_shader = frag_shader;
@@ -160,7 +162,8 @@ void shader_link(struct shader *out) {
 
         out->vert_shader = out->frag_shader = 0;
 
-        errx(1, "Error compiling shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling shader: %s\n", shader_log);
+        exit(1);
     }
 
     out->shader_prog_obj = shader_obj;
@@ -171,20 +174,30 @@ static char *read_txt(char const *path) {
     char *src;
     long src_len;
 
-    if (!(txt_fp = fopen(path, "r")))
-        err(1, "Unable to open \"%s\"\n", path);
+    if (!(txt_fp = fopen(path, "r"))) {
+        fprintf(stderr, "Unable to open \"%s\": %s\n", path, strerror(errno));;
+        exit(1);
+    }
 
-    if (fseek(txt_fp, 0, SEEK_END) < 0)
-        err(1, "unable to seek \"%s\"\n", path);
-    if ((src_len = ftell(txt_fp)) < 0)
-        err(1, "unable to obtain length of \"%s\"\n", path);
-    if (fseek(txt_fp, 0, SEEK_SET) < 0)
-        err(1, "unable to seek \"%s\"\n", path);
+    if (fseek(txt_fp, 0, SEEK_END) < 0) {
+        fprintf(stderr, "unable to seek \"%s\": %s\n", path, strerror(errno));
+        exit(1);
+    }
+    if ((src_len = ftell(txt_fp)) < 0) {
+        fprintf(stderr, "unable to obtain length of \"%s\": %s\n", path, strerror(errno));
+        exit(1);
+    }
+    if (fseek(txt_fp, 0, SEEK_SET) < 0) {
+        fprintf(stderr, "unable to seek \"%s\": %s\n", path, strerror(errno));
+        exit(1);
+    }
 
     src = (char*)malloc(sizeof(char) * (1 + src_len));
     if (fread(src, sizeof(char),
               src_len, txt_fp) != src_len) {
-        err(1, "unable to read from \"%s\"\n", path);
+        fprintf(stderr, "unable to read from \"%s\": %s\n",
+                path, strerror(errno));
+        exit(1);
     }
     src[src_len - 1] = '\0';
 

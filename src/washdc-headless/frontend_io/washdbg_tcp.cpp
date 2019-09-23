@@ -20,7 +20,6 @@
  *
  ******************************************************************************/
 
-#include <err.h>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
@@ -269,7 +268,7 @@ listener_cb(struct evconnlistener *listener,
     bev = bufferevent_socket_new(io::event_base, fd,
                                  BEV_OPT_CLOSE_ON_FREE);
     if (!bev) {
-        warnx("Unable to allocate a new bufferevent\n");
+        fprintf(stderr, "Unable to allocate a new bufferevent\n");
         state = WASHDBG_DISABLED;
         goto signal_listener;
     }
@@ -341,7 +340,8 @@ static void handle_read(struct bufferevent *bev, void *arg) {
     struct evbuffer *read_buffer;
 
     if (!(read_buffer = evbuffer_new())) {
-        warnx("WashDbg %s unable to allocate a new evbuffer\n", __func__);
+        fprintf(stderr, "WashDbg %s unable to allocate a new evbuffer\n",
+                __func__);
         return;
     }
 
@@ -353,7 +353,7 @@ static void handle_read(struct bufferevent *bev, void *arg) {
     for (idx = 0; idx < buflen; idx++) {
         uint8_t tmp;
         if (evbuffer_remove(read_buffer, &tmp, sizeof(tmp)) < 0) {
-            warnx("CMD_THREAD %s unable to remove text\n", __func__);
+            fprintf(stderr, "CMD_THREAD %s unable to remove text\n", __func__);
             continue;
         }
 

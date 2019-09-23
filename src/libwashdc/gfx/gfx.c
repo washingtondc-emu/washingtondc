@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <err.h>
 #include <stdbool.h>
 
 #include "washdc/win.h"

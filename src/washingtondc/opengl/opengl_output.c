@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <err.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>

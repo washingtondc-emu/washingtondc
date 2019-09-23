@@ -20,7 +20,6 @@
  *
  ******************************************************************************/
 
-#include <err.h>
 #include <iostream>
 
 #include "../window.hpp"
@@ -219,12 +218,14 @@ void renderer::create_program() {
     glGetShaderiv(frag_shader, GL_COMPILE_STATUS, &shader_success);
     if (!shader_success) {
         glGetShaderInfoLog(frag_shader, LOG_LEN_GLSL, NULL, shader_log);
-        errx(1, "Error compiling fragment shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling fragment shader: %s\n", shader_log);
+        exit(1);
     }
     glGetShaderiv(vert_shader, GL_COMPILE_STATUS, &shader_success);
     if (!shader_success) {
         glGetShaderInfoLog(vert_shader, LOG_LEN_GLSL, NULL, shader_log);
-        errx(1, "Error compiling vertex shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling vertex shader: %s\n", shader_log);
+        exit(1);
     }
 
     glAttachShader(program, vert_shader);
@@ -239,7 +240,8 @@ void renderer::create_program() {
         // glDeleteShader(out->frag_shader);
         // glDeleteProgram(shader_obj);
 
-        errx(1, "Error compiling shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling shader: %s\n", shader_log);
+        exit(1);
     }
 }
 

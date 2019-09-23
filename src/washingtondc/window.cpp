@@ -20,7 +20,6 @@
  *
  ******************************************************************************/
 
-#include <err.h>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
@@ -127,8 +126,10 @@ static void win_glfw_init(unsigned width, unsigned height) {
     std::fill(mouse_btns, mouse_btns + N_MOUSE_BTNS, false);
     mouse_scroll_x = mouse_scroll_y = 0.0;
 
-    if (!glfwInit())
-        err(1, "unable to initialize glfw");
+    if (!glfwInit()) {
+        fprintf(stderr, "unable to initialized glfw.\n");
+        exit(1);
+    }
 
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *vidmode = glfwGetVideoMode(monitor);
@@ -170,8 +171,10 @@ static void win_glfw_init(unsigned width, unsigned height) {
         win = glfwCreateWindow(res_x, res_y, washdc_win_get_title(), NULL, NULL);
     }
 
-    if (!win)
-        errx(1, "unable to create window");
+    if (!win) {
+        fprintf(stderr, "unable to create window\n");
+        exit(1);
+    }
 
     glfwSetWindowRefreshCallback(win, expose_callback);
     glfwSetFramebufferSizeCallback(win, resize_callback);

@@ -20,11 +20,12 @@
  *
  ******************************************************************************/
 
-#include <err.h>
 #include <pthread.h>
 #include <cstdlib>
 #include <iostream>
 #include <atomic>
+#include <cstring>
+#include <cerrno>
 
 #include <event2/event.h>
 #include <event2/bufferevent.h>
@@ -74,8 +75,10 @@ void init() {
     if (pthread_mutex_lock(&create_mutex) != 0)
         abort(); // TODO: error handling
 
-    if ((err_code = pthread_create(&td, NULL, io_main, NULL)) != 0)
-        err(errno, "Unable to launch io thread");
+    if ((err_code = pthread_create(&td, NULL, io_main, NULL)) != 0) {
+        fprintf(stderr, "Unable to launch io thread: %s\n", strerror(errno));
+        exit(1);
+    }
 
     if (pthread_cond_wait(&create_condition, &create_mutex) != 0) {
             abort(); // TODO: error handling
@@ -101,13 +104,17 @@ static void* io_main(void *arg) {
     evthread_use_pthreads();
 
     event_base = event_base_new();
-    if (!event_base)
-        errx(1, "event_base_new returned -1!");
+    if (!event_base) {
+        fprintf(stderr, "event_base_new returned -1!\n");
+        exit(1);
+    }
 
     work_event = event_new(event_base, -1, EV_PERSIST,
                            work_callback, NULL);
-    if (!work_event)
-        errx(1, "event_new returned NULL!");
+    if (!work_event) {
+        fprintf(stderr, "event_new returned NULL!\n");
+        exit(1);
+    }
 
 #ifdef ENABLE_TCP_SERIAL
     serial_server_init();
